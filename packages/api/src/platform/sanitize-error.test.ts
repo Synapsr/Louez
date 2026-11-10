@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { describe, mock, test } from "node:test";
 
 import { ORPCError } from "@orpc/server";
@@ -17,6 +18,9 @@ const { variantErrors } = await import("../contracts/product-variants");
 const { platformErrors } = await import("./errors");
 const { KNOWN_CODES, describeProviderError, logProviderError, sanitizeCode, sanitizeError } =
   await import("./sanitize-error");
+
+/** The repository's root on this machine: frames are kept for its own files only. */
+const ROOT = fileURLToPath(new URL("../../../../", import.meta.url)).replace(/\/$/, "");
 
 // Fake values only: what an error may carry, and must not reach a log.
 const PRIVATE = "Private Customer";
@@ -141,6 +145,16 @@ describe("sanitizing errors: codes and code locations, no text", () => {
       assert.equal(sanitizeCode(code), code);
     }
     assert.equal(sanitizeCode(1062), "1062");
+    // A number is a code only when it is a known MySQL error number.
+    for (const code of [33612345678, 612345678, 7, -1, 1.5, Number.NaN]) {
+      assert.equal(sanitizeCode(code), "[code]");
+    }
+    const numbered = sanitizeError(
+      Object.assign(new Error("x"), { code: 33612345678, type: 33612345678, errno: 1062 }),
+    );
+    assert.equal(numbered.code, "[code]");
+    assert.equal(numbered.type, "[code]");
+    assertNone(numbered, ["33612345678"]);
     for (const code of ["missing", "fraudulent", "CANARY_PRIVATE", "jane@example.test", 1.5]) {
       assert.equal(sanitizeCode(code), "[code]");
     }
@@ -156,88 +170,114 @@ describe("sanitizing errors: codes and code locations, no text", () => {
 });
 
 describe("sanitizing errors: frames", () => {
-  test("a frame keeps its place in the repository only, without its function", () => {
+  test("a frame keeps its place in the repository only, when this machine holds its file", () => {
     const error = new Error("boom");
     error.stack = [
       "Error: boom",
-      "    at listInbox (/app/packages/api/src/services/inbox.ts:1723:9)",
+      `    at listInbox (${ROOT}/packages/api/src/services/inbox.ts:1723:9)`,
+      `    at ${ROOT}/packages/api/src/platform/errors.ts:9:9`,
+      `    at render (file://${ROOT}/apps/web/instrumentation.ts:4:2)`,
       "    at async Promise.all (index 12)",
       "    at Object.<anonymous> (node:internal/modules/cjs/loader:1638:15)",
-      "    at query (file:///app/node_modules/.pnpm/mysql2@3.14.0/node_modules/mysql2/lib/conn.js:1:1)",
-      "    at render (/Users/jane/Louez/apps/web/.next/server/app/(dashboard)/page.js:4:2)",
-      "    at /Users/jane/Louez/packages/db/src/index.ts:9:9",
+      // Shaped as the repository's, but not a file of this machine.
+      "    at listInbox (/app/packages/api/src/services/inbox.ts:1:1)",
+      "    at load (/app/packages/api/src/attacker_chosen_name.ts:1:2)",
+      `    at load (${ROOT}/packages/api/src/attacker_chosen_name.ts:1:2)`,
+      // Third-party code, wherever it stands.
+      "    at load (/app/node_modules/provider/packages/api/src/services/inbox.ts:1:2)",
+      `    at load (${ROOT}/node_modules/provider/packages/api/src/services/inbox.ts:1:2)`,
+      `    at load (${ROOT}/packages/api/node_modules/zod/index.js:1:1)`,
+      // Outside the repository, or out of it through `..`.
       "    at fn (/home/jane/notes.js:1:1)",
+      `    at fn (${ROOT}/packages/api/src/../../../../etc/hosts:1:1)`,
       "    at handler (https://app.louez.test/x?code=FAKE_FRAME:0:1)",
-      "    at load (/app/packages/api/node_modules/zod/index.js:1:1)",
-      "at missing (/app/packages/api/src/x.ts:1:1)",
+      `at missing (${ROOT}/packages/api/src/services/inbox.ts:1:1)`,
     ].join("\n");
     assert.deepEqual(sanitizeError(error).frames, [
       "packages/api/src/services/inbox.ts:1723:9",
-      "apps/web/.next/server/app/(dashboard)/page.js:4:2",
-      "packages/db/src/index.ts:9:9",
+      "packages/api/src/platform/errors.ts:9:9",
+      "apps/web/instrumentation.ts:4:2",
     ]);
     assert.equal(sanitizeError(error, { frames: 1 }).frames.length, 1);
   });
 
   test("a message that imitates a frame is never read as one", () => {
-    const message = `boom\n    at PrivateCustomer (/app/packages/api/src/${CANARY}.ts:1:2)`;
+    const message = `boom\n    at PrivateCustomer (/app/packages/api/src/${CANARY}.ts:1:2)\n    at x (${ROOT}/packages/api/src/attacker_chosen_name.ts:1:2)`;
     for (const error of [
       new Error(message),
       new TypeError(message),
       new ORPCError("BAD_REQUEST", { message }),
     ]) {
       const facts = sanitizeError(error);
-      assertNone(facts, ["PrivateCustomer", CANARY]);
-      assert.ok(facts.frames.every((frame) => frame.startsWith("packages/api/src/platform/")));
+      assertNone(facts, ["PrivateCustomer", CANARY, "attacker_chosen_name"]);
+      assert.ok(facts.frames.length > 0);
     }
-    // A stack whose start is not the message gives no frame at all.
-    const changed = new Error(message);
-    changed.message = "boom";
-    assertNone(sanitizeError(changed), ["PrivateCustomer", CANARY]);
+    // The stack is written first, the message shortened after: its frames still say nothing.
+    const shortened = new Error(message);
+    void shortened.stack;
+    shortened.message = "boom";
+    const facts = sanitizeError(shortened);
+    assertNone(facts, ["PrivateCustomer", CANARY, "attacker_chosen_name"]);
+    assert.ok(facts.frames.every((frame) => frame.startsWith("packages/api/src/platform/")));
   });
 });
 
 describe("sanitizing errors: structures", () => {
-  test("a MySQL error keeps its code, number and the schema object named at its place", () => {
+  test("a MySQL error keeps its code, number and the schema object Louez's schema names", () => {
     const sqlError = (code: string, errno: number, sqlMessage: string) =>
       sanitizeError(Object.assign(new Error(sqlMessage), { code, errno, sqlMessage }));
     const duplicate = sqlError(
       "ER_DUP_ENTRY",
       1062,
-      `Duplicate entry 'O'Brien-${CANARY}' for key 'customers.customers_email_unique'`,
+      `Duplicate entry 'O'Brien-${CANARY}' for key 'customer_field_definitions.customer_field_definitions_store_key_unique'`,
     );
     assert.equal(duplicate.code, "ER_DUP_ENTRY");
     assert.equal(duplicate.errno, 1062);
     assert.deepEqual(duplicate.schemaObject, {
       kind: "key",
-      name: "customers.customers_email_unique",
+      name: "customer_field_definitions_store_key_unique",
     });
     assertNone(duplicate, [CANARY, "Brien"]);
+    assert.deepEqual(
+      sqlError("ER_DUP_ENTRY", 1062, "Duplicate entry '1' for key 'customers.PRIMARY'")
+        .schemaObject,
+      { kind: "key", name: "PRIMARY" },
+    );
     // A value that imitates the message's end: the name is read at the end only.
     const imitation = sqlError(
       "ER_DUP_ENTRY",
       1062,
-      `Duplicate entry 'v' for key '${CANARY}' x' for key 'customers.email'`,
+      `Duplicate entry 'v' for key '${CANARY}' x' for key 'customers.${CANARY}'`,
     );
-    assert.deepEqual(imitation.schemaObject, { kind: "key", name: "customers.email" });
+    assert.deepEqual(imitation.schemaObject, { kind: "key", name: "[schema object]" });
     assertNone(imitation, [CANARY]);
-    // A name not shaped as Louez's: none.
-    assert.equal(
-      sqlError("ER_BAD_NULL_ERROR", 1048, `Column '${PRIVATE}' cannot be null`).schemaObject,
-      undefined,
+    // A name Louez's schema does not write, however it is shaped: a placeholder.
+    for (const [code, errno, sqlMessage] of [
+      ["ER_BAD_NULL_ERROR", 1048, `Column '${PRIVATE}' cannot be null`],
+      ["ER_BAD_NULL_ERROR", 1048, "Column 'private_customer' cannot be null"],
+      ["ER_NO_SUCH_TABLE", 1146, "Table 'louez.private_customer_canary' doesn't exist"],
+      ["ER_DUP_ENTRY", 1062, "Duplicate entry 'x' for key 'customers.private_customer_canary'"],
+    ] as const) {
+      const facts = sqlError(code, errno, sqlMessage);
+      assert.equal(facts.schemaObject?.name, "[schema object]");
+      assertNone(facts, [PRIVATE, "private_customer"]);
+    }
+    assert.deepEqual(
+      sqlError("ER_NO_SUCH_TABLE", 1146, "Table 'louez_test.received_invoices' doesn't exist")
+        .schemaObject,
+      { kind: "table", name: "received_invoices" },
     );
     assert.deepEqual(
-      sqlError("ER_NO_SUCH_TABLE", 1146, "Table 'louez.received_invoices' doesn't exist")
-        .schemaObject,
-      { kind: "table", name: "louez.received_invoices" },
+      sqlError("ER_DATA_TOO_LONG", 1406, "Data too long for column 'phone' at row 1").schemaObject,
+      { kind: "column", name: "phone" },
     );
     assert.deepEqual(
       sqlError(
         "ER_NO_REFERENCED_ROW_2",
         1452,
-        "Cannot add or update a child row: a foreign key constraint fails (`louez`.`payments`, CONSTRAINT `payments_reservation_fk` FOREIGN KEY (`reservation_id`) REFERENCES `reservations` (`id`))",
+        "Cannot add or update a child row: a foreign key constraint fails (`louez`.`api_agent_grant_stores`, CONSTRAINT `api_agent_grant_stores_store_id_stores_id_fk` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`))",
       ).schemaObject,
-      { kind: "constraint", name: "payments_reservation_fk" },
+      { kind: "constraint", name: "api_agent_grant_stores_store_id_stores_id_fk" },
     );
     // As Drizzle throws it: no query, no parameter; the driver's facts as cause.
     const facts = sanitizeError(
@@ -376,6 +416,56 @@ describe("sanitizing errors: never a throw", () => {
     let depth = 0;
     for (let facts = sanitizeError(deep); facts.cause; facts = facts.cause) depth += 1;
     assert.equal(depth, 3);
+  });
+
+  test("lists are read by index, never through their own methods, and the result is plain JSON", () => {
+    class Hostile extends Array<unknown> {
+      override slice(): never {
+        throw new Error("FAKE_SLICE_CANARY");
+      }
+      override map(): never {
+        throw new Error("FAKE_MAP_CANARY");
+      }
+      toJSON(): never {
+        throw new Error("FAKE_TOJSON_CANARY");
+      }
+    }
+    const path = Hostile.from(["customer", CANARY, 0]) as Hostile;
+    const issue = {
+      code: "invalid_type",
+      path,
+      toJSON() {
+        throw new Error("FAKE_TOJSON_CANARY");
+      },
+    };
+    const issues = Hostile.from([issue, issue]) as Hostile;
+    const huge = Object.assign([issue], { length: 1e9 });
+    const lyingLength = new Proxy([issue], {
+      get(target, key) {
+        if (key === "length") throw new Error("FAKE_LENGTH_CANARY");
+        return Reflect.get(target, key);
+      },
+    });
+    for (const list of [issues, huge, lyingLength, Object.assign([issue], { length: "2" })]) {
+      const facts = sanitizeError(
+        Object.assign(new Error(CANARY), {
+          issues: list,
+          code: BigInt(10),
+          data: { code: { toJSON: () => CANARY } },
+          errno: { valueOf: () => 1 },
+          cause: Object.assign(new Error(CANARY), { issues: list }),
+        }),
+      );
+      const json = JSON.stringify(facts);
+      assertNone(json, [CANARY, "FAKE_SLICE_CANARY", "FAKE_MAP_CANARY", "FAKE_TOJSON_CANARY"]);
+      assert.deepEqual(JSON.parse(json), facts);
+    }
+    const first = sanitizeError(Object.assign(new Error("x"), { issues }));
+    assert.deepEqual(first.issues, [
+      { code: "invalid_type", path: "customer.[key].0" },
+      { code: "invalid_type", path: "customer.[key].0" },
+    ]);
+    assert.equal(sanitizeError(Object.assign(new Error("x"), { issues: huge })).issues?.length, 20);
   });
 
   test("a provider's log line names its class and codes only", () => {

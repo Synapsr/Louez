@@ -1,6 +1,10 @@
+import { existsSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
+
 import { ZodIssueCode } from "zod";
 
 import { LOUEZ_ERROR_CODES, LOUEZ_ERROR_I18N_KEYS } from "./error-registry";
+import { SCHEMA_NAMES } from "./schema-names";
 
 /**
  * Errors as facts safe to log or send to an error tracker: codes and code
@@ -111,6 +115,12 @@ export const KNOWN_CODES: ReadonlySet<string> = new Set([
     generic_decline do_not_honor lost_card stolen_card pickup_card`),
 ]);
 
+/** Codes that are numbers: MySQL's error numbers, which a driver may put in `code`. */
+const KNOWN_NUMERIC_CODES: ReadonlySet<number> = new Set([
+  1040, 1044, 1045, 1048, 1049, 1053, 1054, 1062, 1064, 1136, 1146, 1153, 1205, 1213, 1264, 1265,
+  1292, 1364, 1366, 1406, 1451, 1452, 1644, 3819,
+]);
+
 /** Zod's issue codes, from Zod itself. */
 const ZOD_ISSUE_CODES: ReadonlySet<string> = new Set(Object.values(ZodIssueCode));
 
@@ -129,11 +139,14 @@ const PATH_KEYS: ReadonlySet<string> = new Set(
 );
 
 /**
- * An error's code as a report may keep it: one from the known vocabularies
- * or a safe integer; any other code is `[code]`, and no code at all undefined.
+ * An error's code as a report may keep it: one from the known vocabularies,
+ * a number only when it is a known MySQL error number; any other code is
+ * `[code]`, and no code at all undefined.
  */
 export function sanitizeCode(value: unknown): string | undefined {
-  if (typeof value === "number") return Number.isSafeInteger(value) ? String(value) : UNKNOWN_CODE;
+  if (typeof value === "number") {
+    return KNOWN_NUMERIC_CODES.has(value) ? String(value) : UNKNOWN_CODE;
+  }
   if (typeof value !== "string" || value === "") return undefined;
   return KNOWN_CODES.has(value) ? value : UNKNOWN_CODE;
 }
@@ -160,15 +173,33 @@ function isError(value: unknown): value is Error {
   }
 }
 
+function isArray(value: unknown): boolean {
+  try {
+    return Array.isArray(value);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The items of a list the error holds, read by index up to `max`, never
+ * through its own methods (`slice`, `map`), into a fresh array.
+ */
+function itemsOf(list: unknown, max: number): unknown[] {
+  if (!isArray(list)) return [];
+  const length = read(list, "length");
+  if (typeof length !== "number" || !Number.isSafeInteger(length) || length <= 0) return [];
+  const items: unknown[] = [];
+  for (let index = 0; index < Math.min(length, max); index += 1) {
+    items.push(read(list, String(index)));
+  }
+  return items;
+}
+
 /** What was thrown, by `typeof` (and arrays), never by a tag the value sets itself. */
 function kindOf(value: unknown): string {
   if (value === null) return "null";
-  try {
-    if (Array.isArray(value)) return "array";
-  } catch {
-    // A revoked proxy: an object.
-  }
-  return typeof value;
+  return isArray(value) ? "array" : typeof value;
 }
 
 // --- Stack -------------------------------------------------------------------
@@ -177,10 +208,52 @@ function kindOf(value: unknown): string {
 const V8_FRAME =
   /^ {4}at (?:(?:async )?(?:new )?[^\s()][^()\n]{0,200} \(([^\n]{1,400}):(\d{1,7}):(\d{1,7})\)|([^\s(][^\n]{0,400}):(\d{1,7}):(\d{1,7}))$/;
 /** A source file of the repository's apps and packages, from its root. */
-const REPO_FILE =
-  /^(?:apps|packages)\/[\w.-]{1,60}\/(?![\w./-]*node_modules)[\w.@()[\]/-]{1,250}\.(?:[cm]?[jt]sx?)$/;
+const REPO_FILE = /^(?:apps|packages)\/[\w.@()[\]/-]{1,300}\.(?:[cm]?[jt]sx?)$/;
 
-/** A frame's place in the repository (`packages/…/x.ts:12:3`), or null when it is not one. */
+let repositoryRoot: string | undefined;
+
+/** The repository's root on this machine: where `pnpm-workspace.yaml` is, above the process. */
+function rootOfRepository(): string {
+  if (repositoryRoot !== undefined) return repositoryRoot;
+  // Without the workspace's file above it, the process's own folder.
+  repositoryRoot = process.cwd();
+  let directory = repositoryRoot;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(join(directory, "pnpm-workspace.yaml"))) {
+      repositoryRoot = directory;
+      break;
+    }
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  return repositoryRoot;
+}
+
+/** Whether a file exists, remembered for the most recent paths asked. */
+const FILES_REMEMBERED = 500;
+const existingFiles = new Map<string, boolean>();
+
+function isFile(path: string): boolean {
+  const known = existingFiles.get(path);
+  if (known !== undefined) return known;
+  let found = false;
+  try {
+    found = statSync(path, { throwIfNoEntry: false })?.isFile() === true;
+  } catch {
+    found = false;
+  }
+  if (existingFiles.size >= FILES_REMEMBERED) existingFiles.clear();
+  existingFiles.set(path, found);
+  return found;
+}
+
+/**
+ * A frame's place in the repository (`packages/…/x.ts:12:3`), or null. Its
+ * syntax says little, so its file must be one this machine holds: no
+ * `node_modules` anywhere in its path, and a file that exists under the
+ * repository's apps and packages. A message cannot create a file.
+ */
 function frameLocation(line: string): string | null {
   const match = V8_FRAME.exec(line);
   if (!match) return null;
@@ -189,35 +262,33 @@ function frameLocation(line: string): string | null {
   const row = match[2] ?? match[5];
   const column = match[3] ?? match[6];
   const path = file.startsWith("file://") ? file.slice("file://".length) : file;
-  const roots = [...path.matchAll(/[/\\](?=(?:apps|packages)[/\\])/g)];
-  const root = roots.at(-1);
-  if (!root || root.index === undefined) return null;
-  const relative = path.slice(root.index + 1).replaceAll("\\", "/");
-  return REPO_FILE.test(relative) ? `${relative}:${row}:${column}` : null;
+  if (/(?:^|[/\\])node_modules(?:[/\\]|$)/.test(path)) return null;
+  if (!path.startsWith("/") && !/^[A-Za-z]:[/\\]/.test(path)) return null;
+  const root = rootOfRepository();
+  const absolute = resolve(path);
+  if (!absolute.startsWith(`${root}${sep}`)) return null;
+  const inRepository = relative(root, absolute).replaceAll("\\", "/");
+  if (!REPO_FILE.test(inRepository) || !isFile(absolute)) return null;
+  return `${inRepository}:${row}:${column}`;
 }
 
 /**
- * The stack's places in the repository, read only after its first lines,
- * which repeat the message: the message is found at the stack's start,
- * after a class name, by its own length, and only what follows is read. A
- * stack whose start is not that message gives no frame.
+ * The stack's places in the repository. Read after the message the stack
+ * starts with when that message is the error's own, else after its first
+ * line; either way a frame is kept only when its file is the machine's
+ * (`frameLocation`), so a message that imitates frames adds none.
  */
 function framesOf(stack: string, message: string, max: number): string[] {
-  const head = stack.slice(0, 120);
-  const colon = head.indexOf(": ");
-  let rest: string;
-  if (message === "") {
-    const end = stack.indexOf("\n");
-    if (end < 0 || !/^[\w$.]{1,100}$/.test(stack.slice(0, end))) return [];
-    rest = stack.slice(end);
-  } else {
-    if (colon < 1 || !/^[\w$.]{1,100}$/.test(stack.slice(0, colon))) return [];
-    if (stack.slice(colon + 2, colon + 2 + message.length) !== message) return [];
-    rest = stack.slice(colon + 2 + message.length);
-  }
-  if (!rest.startsWith("\n")) return [];
+  const colon = stack.slice(0, 120).indexOf(": ");
+  const prelude =
+    message !== "" &&
+    colon > 0 &&
+    /^[\w$.]{1,100}$/.test(stack.slice(0, colon)) &&
+    stack.slice(colon + 2, colon + 2 + message.length) === message
+      ? colon + 2 + message.length
+      : Math.max(stack.indexOf("\n"), 0);
   const frames: string[] = [];
-  for (const line of rest.slice(1).split("\n", 200)) {
+  for (const line of stack.slice(prelude).split("\n", 200)) {
     const location = frameLocation(line.slice(0, 700));
     if (location) frames.push(location);
     if (frames.length >= max) break;
@@ -227,55 +298,53 @@ function framesOf(stack: string, message: string, max: number): string[] {
 
 // --- Structures -------------------------------------------------------------------
 
-/** A schema object's name as Louez writes them: lower snake case, a database's prefix allowed. */
-const SCHEMA_NAME = "[a-z][a-z0-9_]{0,63}";
-const QUALIFIED = `${SCHEMA_NAME}(?:\\.${SCHEMA_NAME})?`;
-
 type SchemaObjectKind = "key" | "column" | "constraint" | "table";
+
+/** A name as MySQL quotes it: up to its closing quote. */
+const QUOTED = "([^'\\n]{1,130})";
 
 /**
  * MySQL's messages, by code, each read whole and anchored: a name is taken
- * only where the message puts it, and only when it reads as a schema
- * object's name; never from the value it quotes.
+ * only where the message puts it, never from the value it quotes.
  */
 const SQL_PARSERS: Readonly<Record<string, readonly [SchemaObjectKind, RegExp]>> = {
-  ER_DUP_ENTRY: ["key", new RegExp(`^Duplicate entry '[\\s\\S]*' for key '(${QUALIFIED})'$`)],
+  ER_DUP_ENTRY: ["key", new RegExp(`^Duplicate entry '[\\s\\S]*' for key '${QUOTED}'$`)],
   ER_DATA_TOO_LONG: [
     "column",
-    new RegExp(`^Data too long for column '(${SCHEMA_NAME})' at row \\d{1,10}$`),
+    new RegExp(`^Data too long for column '${QUOTED}' at row \\d{1,10}$`),
   ],
-  ER_BAD_NULL_ERROR: ["column", new RegExp(`^Column '(${SCHEMA_NAME})' cannot be null$`)],
+  ER_BAD_NULL_ERROR: ["column", new RegExp(`^Column '${QUOTED}' cannot be null$`)],
   ER_NO_DEFAULT_FOR_FIELD: [
     "column",
-    new RegExp(`^Field '(${SCHEMA_NAME})' doesn't have a default value$`),
+    new RegExp(`^Field '${QUOTED}' doesn't have a default value$`),
   ],
   ER_TRUNCATED_WRONG_VALUE_FOR_FIELD: [
     "column",
     new RegExp(
-      `^Incorrect [a-z ]{1,40} value: '[\\s\\S]*' for column (?:\`${SCHEMA_NAME}\`\\.){0,2}'(${SCHEMA_NAME})' at row \\d{1,10}$`,
+      `^Incorrect [a-z ]{1,40} value: '[\\s\\S]*' for column (?:\`[^\`\\n]{1,64}\`\\.){0,2}'${QUOTED}' at row \\d{1,10}$`,
     ),
   ],
   WARN_DATA_TRUNCATED: [
     "column",
-    new RegExp(`^Data truncated for column '(${SCHEMA_NAME})' at row \\d{1,10}$`),
+    new RegExp(`^Data truncated for column '${QUOTED}' at row \\d{1,10}$`),
   ],
-  ER_BAD_FIELD_ERROR: ["column", new RegExp(`^Unknown column '(${QUALIFIED})' in '[a-z ]{1,40}'$`)],
-  ER_NO_SUCH_TABLE: ["table", new RegExp(`^Table '(${QUALIFIED})' doesn't exist$`)],
+  ER_BAD_FIELD_ERROR: ["column", new RegExp(`^Unknown column '${QUOTED}' in '[a-z ]{1,40}'$`)],
+  ER_NO_SUCH_TABLE: ["table", new RegExp(`^Table '${QUOTED}' doesn't exist$`)],
   ER_NO_REFERENCED_ROW_2: [
     "constraint",
-    new RegExp(
-      `^Cannot add or update a child row: a foreign key constraint fails \\(\`${SCHEMA_NAME}\`\\.\`${SCHEMA_NAME}\`, CONSTRAINT \`(${SCHEMA_NAME})\` FOREIGN KEY [^']{0,600}\\)$`,
-    ),
+    /^Cannot add or update a child row: a foreign key constraint fails \(`[^`\n]{1,64}`\.`[^`\n]{1,64}`, CONSTRAINT `([^`\n]{1,64})` FOREIGN KEY [^']{0,600}\)$/,
   ],
   ER_ROW_IS_REFERENCED_2: [
     "constraint",
-    new RegExp(
-      `^Cannot delete or update a parent row: a foreign key constraint fails \\(\`${SCHEMA_NAME}\`\\.\`${SCHEMA_NAME}\`, CONSTRAINT \`(${SCHEMA_NAME})\` FOREIGN KEY [^']{0,600}\\)$`,
-    ),
+    /^Cannot delete or update a parent row: a foreign key constraint fails \(`[^`\n]{1,64}`\.`[^`\n]{1,64}`, CONSTRAINT `([^`\n]{1,64})` FOREIGN KEY [^']{0,600}\)$/,
   ],
 };
 
-/** The schema object a MySQL error's message names at its known place, for its code. */
+/**
+ * The schema object a MySQL error's message names at its known place, for
+ * its code: kept only when Louez's schema authored that name (`SCHEMA_NAMES`,
+ * once a database's or a table's prefix is dropped), else `[schema object]`.
+ */
 function schemaObjectOf(error: object): { kind: SchemaObjectKind; name: string } | undefined {
   const code = read(error, "code");
   if (typeof code !== "string" || !Object.hasOwn(SQL_PARSERS, code)) return undefined;
@@ -285,29 +354,27 @@ function schemaObjectOf(error: object): { kind: SchemaObjectKind; name: string }
   const text =
     typeof sqlMessage === "string" ? sqlMessage : typeof message === "string" ? message : "";
   if (!parser || text.length > 4_000) return undefined;
-  const name = parser[1].exec(text)?.[1];
-  return name ? { kind: parser[0], name } : undefined;
+  const quoted = parser[1].exec(text)?.[1];
+  if (quoted === undefined) return undefined;
+  const [kind] = parser;
+  const name = quoted.slice(quoted.lastIndexOf(".") + 1);
+  return { kind, name: SCHEMA_NAMES[kind].has(name) ? name : "[schema object]" };
 }
 
 /** A validation error's issues (Zod's, also under oRPC's): each one's Zod code and path. */
-function issuesOf(issues: readonly unknown[]): Array<{ code: string; path: string }> {
-  return issues.slice(0, ISSUES_MAX).map((issue) => {
+function issuesOf(list: unknown): Array<{ code: string; path: string }> {
+  return itemsOf(list, ISSUES_MAX).map((issue) => {
     const code = read(issue, "code");
-    const path = read(issue, "path");
+    const parts = itemsOf(read(issue, "path"), 10).map((part) =>
+      typeof part === "number" && Number.isSafeInteger(part)
+        ? String(part)
+        : typeof part === "string" && PATH_KEYS.has(part)
+          ? part
+          : "[key]",
+    );
     return {
       code: typeof code === "string" && ZOD_ISSUE_CODES.has(code) ? code : UNKNOWN_CODE,
-      path: Array.isArray(path)
-        ? path
-            .slice(0, 10)
-            .map((part: unknown) =>
-              typeof part === "number" && Number.isSafeInteger(part)
-                ? String(part)
-                : typeof part === "string" && PATH_KEYS.has(part)
-                  ? part
-                  : "[key]",
-            )
-            .join(".")
-        : "",
+      path: parts.join("."),
     };
   });
 }
@@ -378,7 +445,7 @@ function sanitizeOne(
   const errno = read(error, "errno");
   const schemaObject = schemaObjectOf(error);
   const rawIssues = read(error, "issues");
-  const issues = Array.isArray(rawIssues) ? issuesOf(rawIssues) : undefined;
+  const issues = isArray(rawIssues) ? issuesOf(rawIssues) : undefined;
   const cause = read(error, "cause");
   let causeFacts: SanitizedError | undefined;
   if (cause !== undefined && cause !== null && depth < CAUSE_DEPTH) {

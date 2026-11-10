@@ -1222,7 +1222,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       assert.equal(cause?.code, "ER_NO_SUCH_TABLE");
       assert.equal(cause?.errno, 1146);
       assert.equal(cause?.schemaObject?.kind, "table");
-      assert.match(String(cause?.schemaObject?.name), /^[a-z0-9_]+\.received_invoices$/);
+      assert.equal(cause?.schemaObject?.name, "received_invoices");
       // Its frames are places in the repository.
       assert.ok(
         (event.error.frames as string[]).every((frame) =>
