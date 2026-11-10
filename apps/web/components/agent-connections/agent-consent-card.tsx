@@ -62,9 +62,13 @@ export const AgentConsentCard = ({ oauthQuery }: AgentConsentCardProps) => {
     );
   }
 
-  const { client, stores, offeredBundles } = authorization.data;
+  const { client, stores, offeredBundles, canCreateStores } = authorization.data;
   const clientName = client.name ?? t("unknownClient");
   const answerError = answer.error ? apiErrorKey(answer.error) : null;
+  // A client that may not create a store sends the user to Louez to create it.
+  const noStoreDescription = canCreateStores
+    ? "consent.noStoreDescription"
+    : "consent.noStoreDescriptionNoCreate";
 
   return (
     <Card>
@@ -81,7 +85,7 @@ export const AgentConsentCard = ({ oauthQuery }: AgentConsentCardProps) => {
           <Alert variant="info">
             <AlertTitle>{t("consent.noStoreTitle")}</AlertTitle>
             <AlertDescription>
-              {t("consent.noStoreDescription", { client: clientName })}
+              {t(noStoreDescription, { client: clientName })}
             </AlertDescription>
           </Alert>
         )}

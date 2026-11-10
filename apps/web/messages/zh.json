@@ -9563,6 +9563,7 @@
       "invalidDescription": "此连接请求已失效。请在您的智能体中重新发起连接。",
       "noStoreTitle": "还没有店铺",
       "noStoreDescription": "如果您授予“读取和修改”权限，{client} 可以替您创建店铺。店铺在您上线之前保持离线。此访问权限也适用于您之后创建的店铺。",
+      "noStoreDescriptionNoCreate": "{client} 无法创建店铺。请先在 Louez 中创建您的店铺；之后，{client} 即可凭您在此授予的访问权限完成其余工作。",
       "redirectNotice": "您同意后，访问权限将发送到 {host}。",
       "footer": "您可以随时在 设置、集成、MCP 中修改或撤销此访问权限。",
       "loopbackWarning": "访问权限将发送到这台电脑上的本地地址：其上运行的任何程序都可以冒充此应用。仅当您刚刚亲自发起连接时才允许。"

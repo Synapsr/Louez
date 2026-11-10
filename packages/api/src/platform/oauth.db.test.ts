@@ -371,7 +371,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     assert.equal(registered.client.loopbackRedirect, true);
   });
 
-  test("Claude's and ChatGPT's own documents are verified; Claude Code's loopback is not", async () => {
+  test("Claude's and ChatGPT's own documents are verified; Claude Code's loopback is not; ChatGPT may not create a store", async () => {
     const claude = "https://claude.ai/oauth/mcp-oauth-client-metadata";
     const claudeCode = "https://claude.ai/oauth/claude-code-client-metadata";
     const chatGpt = "https://chatgpt.com/oauth/client.json";
@@ -390,7 +390,10 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
       })),
     );
     const ask = (clientId: string, redirectUri: string) =>
-      call<{ client: { verified: boolean; redirectHost: string; loopbackRedirect: boolean } }>(
+      call<{
+        client: { verified: boolean; redirectHost: string; loopbackRedirect: boolean };
+        canCreateStores: boolean;
+      }>(
         connections.getAuthorization,
         {
           oauthQuery: new URLSearchParams({
@@ -404,9 +407,12 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
       );
 
     for (const [clientId, , redirectUri] of clients.slice(0, 3)) {
-      const { client } = await ask(clientId, redirectUri);
+      const { client, canCreateStores } = await ask(clientId, redirectUri);
       assert.equal(client.verified, true, clientId);
       assert.equal(client.loopbackRedirect, false, clientId);
+      // OpenAI's directory withholds stores_create (agent-clients.ts): the
+      // page asks the user to create the store in Louez instead.
+      assert.equal(canCreateStores, clientId !== chatGpt, clientId);
     }
     const local = await ask(claudeCode, "http://127.0.0.1:53682/callback");
     assert.equal(local.client.verified, false, "any local program can take its code");

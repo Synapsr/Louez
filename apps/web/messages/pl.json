@@ -9563,6 +9563,7 @@
       "invalidDescription": "Ta prośba o połączenie jest już nieważna. Rozpocznij połączenie ponownie w swoim agencie.",
       "noStoreTitle": "Nie masz jeszcze sklepu",
       "noStoreDescription": "{client} może utworzyć sklep za Ciebie, jeśli nadasz mu uprawnienia „Odczyt i edycja”. Sklep pozostanie offline, dopóki go nie uruchomisz. Ten dostęp obejmie też sklepy, które utworzysz później.",
+      "noStoreDescriptionNoCreate": "{client} nie może utworzyć sklepu. Najpierw utwórz sklep w Louez; potem {client} zajmie się resztą z dostępem, który tu nadajesz.",
       "redirectNotice": "Po Twojej zgodzie dostęp zostanie wysłany do {host}.",
       "footer": "Możesz zmienić lub cofnąć ten dostęp w dowolnym momencie w Ustawienia, Integracje, MCP.",
       "loopbackWarning": "Dostęp zostanie wysłany na lokalny adres tego komputera: każdy działający na nim program może podszyć się pod tę aplikację. Zezwól tylko, jeśli właśnie sam rozpocząłeś połączenie."

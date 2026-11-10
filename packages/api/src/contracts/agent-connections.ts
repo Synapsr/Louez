@@ -107,6 +107,12 @@ export const getAuthorizationOutput = z.object({
   stores: z.array(memberStoreSchema),
   /** The tool bundles the page offers: those that hold a tool today. */
   offeredBundles: z.array(agentBundleSchema),
+  /**
+   * Whether the client may create a store (`stores_create`): false for a
+   * client whose directory withholds the `stores` domain (`clientWithholding`),
+   * so the page asks a user with no store to create it in Louez first.
+   */
+  canCreateStores: z.boolean(),
   /** The connection already granted to this client, to start from its terms. */
   current: z
     .object({

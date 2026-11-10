@@ -11,6 +11,7 @@ import {
   agentConnectionSchema,
 } from "../../contracts/agent-connections";
 import { connectionStores, type AccountActor } from "../../platform/actor";
+import { clientWithholding } from "../../platform/agent-clients";
 import { accountProcedure } from "../../platform/procedures";
 import {
   currentTerms,
@@ -57,7 +58,10 @@ async function pendingRequest(oauthQuery: string) {
   return request;
 }
 
-/** What the consent page shows: who asks, the user's stores, the bundles it offers, and the terms granted before. */
+/**
+ * What the consent page shows: who asks, the user's stores, the bundles it
+ * offers, whether it may create a store, and the terms granted before.
+ */
 const getAuthorization = connections
   .meta({
     capability: "account.authorizeAgentConnection",
@@ -73,7 +77,13 @@ const getAuthorization = connections
       memberStores(context.actor),
       currentTerms({ userId, clientId }),
     ]);
-    return { client, stores, current, offeredBundles: await offeredBundles(client) };
+    return {
+      client,
+      stores,
+      current,
+      offeredBundles: await offeredBundles(client),
+      canCreateStores: !clientWithholding(client).domains.includes("stores"),
+    };
   });
 
 /**
