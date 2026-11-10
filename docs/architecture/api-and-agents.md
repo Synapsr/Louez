@@ -216,7 +216,7 @@ The spec (`/api/v1/openapi.json`) and a Scalar reference (`/api/v1/docs`) are ge
 A file goes up in three calls, the same on OpenAPI and MCP, or in one call that carries the file (below). The upload service (`services/uploads.ts`) serves every store-owned kind of image; `API_UPLOAD_KINDS` lists the kinds open to the API. Categories expose it as `categories_create_image_upload` and `categories_complete_image_upload`, products as `products_create_image_upload` and `products_complete_image_upload`, the storefront's logos and banner photos as `online_store_create_image_upload` and `online_store_complete_image_upload`.
 
 1. The create-upload procedure takes the type and the size. It refuses another type, a size over the kind's limit and a kind the API does not take. It mints a key in the store's folder for the kind (`<storeId>/categories/<id>.png`) and returns it with one HTTP request to send the bytes, valid ten minutes:
-   - a public bucket gives a presigned upload straight to the bucket (`PUT` with headers, or a multipart `POST` with fields), bound to the type and the size limit;
+   - a public bucket gives a presigned multipart `POST` straight to the bucket (its fields, then the file as `file`), bound to the type and the size limit;
    - a private bucket served through the app (`S3_PUBLIC_URL` is a path) gives `PUT /api/v1/uploads/<token>` (`platform/uploads.ts`). The signed token is the credential, as a presigned URL is: it names the key, the type, the limit and the expiry. The endpoint refuses another `Content-Type`, a body over the limit, and bytes that are not the declared image type.
 
    Its output holds a credential, so it declares `meta.secretOutput`: it is never stored for a replay.
