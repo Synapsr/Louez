@@ -1,4 +1,4 @@
-import { logProviderError } from "@louez/api/platform/redact";
+import { logProviderError } from "@louez/api/platform/sanitize-error";
 import type { McpRequestContext } from "../auth/context";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { ORPCError } from "@orpc/server";

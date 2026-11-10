@@ -79,6 +79,17 @@ export interface ApiPorts {
    * is sent (tests, scripts, an instance without error tracking).
    */
   reportError?: ReportServerError;
+  /**
+   * The app's structured logger, for what went wrong out of the caller's
+   * sight. Each event holds sanitized facts only (`sanitize-error.ts`).
+   * Absent: one JSON line on stderr.
+   */
+  log?: LogPort;
+}
+
+/** A structured log event: a name, then fields that hold no personal data. */
+export interface LogPort {
+  error: (event: { event: string } & Record<string, unknown>) => void;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */

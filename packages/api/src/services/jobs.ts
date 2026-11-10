@@ -5,7 +5,7 @@ import { dueJobIds, pruneJobs, readJob, type JobRow } from "../platform/jobs";
 import type { LinkStore } from "../platform/links";
 import type { ApiDomain } from "../platform/permissions";
 import type { ApiPorts } from "../platform/ports";
-import { logProviderError } from "../platform/redact";
+import { logProviderError } from "../platform/sanitize-error";
 import { imageJobView, jobProduct, runImageJob, type RunJobOptions } from "./product-images";
 
 /**

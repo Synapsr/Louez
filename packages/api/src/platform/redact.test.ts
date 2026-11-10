@@ -9,7 +9,8 @@ import { createTestUrls } from "./test-urls";
 const require = createRequire(import.meta.url);
 mock.module("@louez/utils", { namedExports: require("@louez/utils") });
 
-const { describeProviderError, redactHandoffSecrets } = await import("./redact");
+const { redactHandoffSecrets } = await import("./redact");
+const { describeProviderError } = await import("./sanitize-error");
 const { startConnectOnboarding } = await import("../services/stripe-connect");
 
 // A handoff's secrets never reach a log: the shared redactor, and a provider

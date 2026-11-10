@@ -26,7 +26,7 @@ import {
 } from "../contracts/handoffs";
 import { isApiError, platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
-import { logProviderError } from "../platform/redact";
+import { logProviderError } from "../platform/sanitize-error";
 import { dashboardPageLinks, type DashboardLinkStore } from "../platform/links";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
 import type { ApiDomain } from "../platform/permissions";

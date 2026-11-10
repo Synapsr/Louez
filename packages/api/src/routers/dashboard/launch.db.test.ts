@@ -447,6 +447,59 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal((await pickupOf())?.status, "done");
   });
 
+  test("hours saved before a day held several ranges read as the settings show them", async () => {
+    // Before 2026-02-25 each day held one openTime and closeTime, no `ranges`.
+    const legacyWeek = (isOpen: (day: number) => boolean) =>
+      Object.fromEntries(
+        [0, 1, 2, 3, 4, 5, 6].map((day) => [
+          day,
+          { isOpen: isOpen(day), openTime: "09:00", closeTime: "18:00" },
+        ]),
+      );
+    const withHours = (schedule: Record<string, unknown>) =>
+      setStore({
+        settings: {
+          ...SETTINGS,
+          businessHours: { enabled: true, schedule, closurePeriods: [] },
+        } as never,
+      });
+
+    await withHours(legacyWeek((day) => day !== 0));
+    assert.equal(statuses(await run("getLaunchChecklist", {}, session())).businessHours, "done");
+    await withHours(legacyWeek(() => false));
+    assert.equal(statuses(await run("getLaunchChecklist", {}, session())).businessHours, "missing");
+  });
+
+  test("an agent puts a store with hours saved before a day held several ranges online", async () => {
+    // As stores_go_live: a preview, then the call again with its token.
+    const legacyDay = (isOpen: boolean) => ({ isOpen, openTime: "09:00", closeTime: "18:00" });
+    await setStore({
+      settings: {
+        ...SETTINGS,
+        businessHours: {
+          enabled: true,
+          schedule: Object.fromEntries(
+            [0, 1, 2, 3, 4, 5, 6].map((day) => [day, legacyDay(day !== 0)]),
+          ),
+          closurePeriods: [],
+        },
+      } as never,
+    });
+    const key = await apiKey();
+    const refusal = await rejects(run("completeOnboarding", {}, key()), "CONFIRMATION_REQUIRED");
+    const { preview } = refusal.data.details as {
+      preview: { details: { stillMissing: Array<{ key: string }> } };
+    };
+    assert.ok(!preview.details.stillMissing.some((item) => item.key === "businessHours"));
+    const result = await run(
+      "completeOnboarding",
+      {},
+      key({ "louez-confirmation": tokenOf(refusal) }),
+    );
+    assert.equal(result.launched, true);
+    assert.equal((await storeRow())?.onboardingCompleted, true);
+  });
+
   test("a free consumable is a product for the home, not a priced one for the launch", async () => {
     // A fixed-price consumable at zero: a valid product (a free map, wax).
     await louezDb.db.insert(louezDb.products).values({
