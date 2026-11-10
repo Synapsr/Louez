@@ -323,3 +323,45 @@ describe("MCP tool hints", () => {
     );
   });
 });
+
+describe("published JSON Schema", () => {
+  let asJson: typeof import("./exposure").asJson;
+
+  before(async () => {
+    ({ asJson } = await import("./exposure"));
+  });
+
+  test("a const or an enum gets the type of its values", () => {
+    assert.deepEqual(asJson({ const: "member" }), { const: "member", type: "string" });
+    assert.deepEqual(asJson({ enum: [1, 2] }), { enum: [1, 2], type: "integer" });
+    assert.deepEqual(asJson({ const: null }), { const: null, type: "null" });
+    assert.deepEqual(asJson({ enum: ["a", 1] }), { enum: ["a", 1] });
+    assert.deepEqual(asJson({ type: "number", const: 2 }), { type: "number", const: 2 });
+    assert.deepEqual(asJson({ anyOf: [{ type: "string" }, { const: "" }] }), {
+      anyOf: [{ type: "string" }, { const: "", type: "string" }],
+    });
+  });
+
+  test("literal data is left as it is, and a parameter's name is never read as a keyword", () => {
+    const data = { const: "x" };
+    assert.deepEqual(asJson({ const: data }), { const: data });
+    assert.deepEqual(asJson({ enum: [data] }), { enum: [data] });
+    assert.deepEqual(asJson({ type: "object", default: data, examples: [data] }), {
+      type: "object",
+      default: data,
+      examples: [data],
+    });
+    assert.deepEqual(
+      asJson({
+        type: "object",
+        properties: { default: { const: "a" }, enum: { type: "string" } },
+        $defs: { const: { const: true } },
+      }),
+      {
+        type: "object",
+        properties: { default: { const: "a", type: "string" }, enum: { type: "string" } },
+        $defs: { const: { const: true, type: "boolean" } },
+      },
+    );
+  });
+});

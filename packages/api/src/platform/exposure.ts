@@ -149,7 +149,7 @@ const jsonSchemaConverter = new ZodToJsonSchemaConverter();
  * an `enum` (from z.literal) gets the `type` its values have, which the
  * converter leaves out and the Claude directory asks for on every parameter.
  */
-function asJson(schema: unknown): Record<string, unknown> {
+export function asJson(schema: unknown): Record<string, unknown> {
   return withValueTypes(JSON.parse(JSON.stringify(schema))) as Record<string, unknown>;
 }
 
@@ -160,12 +160,29 @@ function jsonTypeOf(value: unknown): string | undefined {
   return undefined;
 }
 
+/** Keywords whose value is data, not a schema: left as it is. */
+const LITERAL_KEYWORDS = new Set(["const", "enum", "default", "examples", "example"]);
+/** Keywords whose value maps names to schemas: each schema is walked, a name never read as a keyword. */
+const SCHEMA_MAP_KEYWORDS = new Set([
+  "properties",
+  "patternProperties",
+  "$defs",
+  "definitions",
+  "dependentSchemas",
+]);
+
 function withValueTypes(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(withValueTypes);
   if (!node || typeof node !== "object") return node;
-  const schema = Object.fromEntries(
-    Object.entries(node).map(([key, value]) => [key, withValueTypes(value)]),
-  ) as Record<string, unknown>;
+  const schema: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(node)) {
+    if (LITERAL_KEYWORDS.has(key)) schema[key] = value;
+    else if (SCHEMA_MAP_KEYWORDS.has(key) && value && typeof value === "object") {
+      schema[key] = Object.fromEntries(
+        Object.entries(value).map(([name, child]) => [name, withValueTypes(child)]),
+      );
+    } else schema[key] = withValueTypes(value);
+  }
   if (schema.type === undefined) {
     const values =
       "const" in schema ? [schema.const] : Array.isArray(schema.enum) ? schema.enum : [];
