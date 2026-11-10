@@ -14,6 +14,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { notifySmsCreditsTopup } from '@/lib/discord/platform-notifications'
 import { reconcilePayAsYouGoInvoice } from '@/lib/pay-as-you-go'
+import { collectUnpaidSmsCredits } from '@/lib/sms/delivery-record'
 import {
   handleSubscriptionCheckoutCompleted,
   handleSubscriptionDeleted,
@@ -190,6 +191,8 @@ async function handleSmsTopupCompleted(session: Stripe.Checkout.Session) {
         totalUsed: 0,
       })
     }
+    // SMS sent while the balance was empty take their credits first.
+    await collectUnpaidSmsCredits(tx, storeId)
 
     // Update transaction status
     await tx

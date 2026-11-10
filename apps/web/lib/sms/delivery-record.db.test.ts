@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import {
   createTestDatabase,
@@ -23,6 +23,7 @@ describe("SMS delivery records (database)", { skip: skipWithoutTestDatabase() },
   let louezDb: typeof import("@louez/db");
   let records: typeof import("./delivery-record");
   let smsEffects: typeof import("./sms-effects");
+  let planLimits: typeof import("@/lib/plan-limits");
   let sequence = 0;
 
   before(async () => {
@@ -30,6 +31,7 @@ describe("SMS delivery records (database)", { skip: skipWithoutTestDatabase() },
     louezDb = await import("@louez/db");
     records = await import("./delivery-record");
     smsEffects = await import("./sms-effects");
+    planLimits = await import("@/lib/plan-limits");
     await louezDb.db.insert(louezDb.users).values({ id: USER, email: "sms@record.test" });
     await louezDb.db
       .insert(louezDb.stores)
@@ -150,17 +152,107 @@ describe("SMS delivery records (database)", { skip: skipWithoutTestDatabase() },
     );
   });
 
-  test("two SMS racing for the last credit never drive the balance below zero", async () => {
+  test("two SMS racing for the last credit: one takes it, the other's stays owed", async () => {
     await setBalance(1);
     const first = acceptance();
     const second = acceptance();
+    // Both passed the quota check for the last credit, and went out.
     await records.recordSmsAcceptance(first);
     await records.recordSmsAcceptance(second);
     await raceOnLockedRow(database, { table: "sms_credits", id: await creditsRowId() }, [
       () => records.takePrepaidSmsCredit(first.id, STORE),
       () => records.takePrepaidSmsCredit(second.id, STORE),
     ]);
+    assert.deepEqual(await credits(), { balance: 0, totalUsed: 1 }, "never below zero");
+    assert.deepEqual(
+      (await logs()).map((row) => row.creditSource).sort(),
+      ["topup", "topup_unpaid"],
+      "the debt is kept, not cleared",
+    );
+    // Tried again, the unpaid one changes nothing: its debt waits for a top-up.
+    await records.takePrepaidSmsCredit(first.id, STORE);
+    await records.takePrepaidSmsCredit(second.id, STORE);
     assert.deepEqual(await credits(), { balance: 0, totalUsed: 1 });
+    assert.equal(await planLimits.getSmsPrepaidBalance(STORE), 0);
+
+    // The next top-up pays it first, in its own transaction.
+    await louezDb.db.transaction(async (tx) => {
+      await tx
+        .update(louezDb.smsCredits)
+        .set({ balance: sql`${louezDb.smsCredits.balance} + 3` })
+        .where(eq(louezDb.smsCredits.storeId, STORE));
+      assert.equal(await records.collectUnpaidSmsCredits(tx, STORE), 1);
+    });
+    assert.deepEqual(await credits(), { balance: 2, totalUsed: 2 });
+    assert.deepEqual(
+      (await logs()).map((row) => row.creditSource),
+      ["topup", "topup"],
+    );
+    assert.equal(await planLimits.getSmsPrepaidBalance(STORE), 2);
+  });
+
+  test("a top-up smaller than the debts pays the oldest, and keeps the rest owed", async () => {
+    await setBalance(0);
+    const owed = [acceptance(), acceptance(), acceptance()];
+    for (const sms of owed) {
+      await records.recordSmsAcceptance(sms);
+      await records.takePrepaidSmsCredit(sms.id, STORE);
+    }
+    await louezDb.db.transaction(async (tx) => {
+      await tx
+        .update(louezDb.smsCredits)
+        .set({ balance: 2 })
+        .where(eq(louezDb.smsCredits.storeId, STORE));
+      assert.equal(await records.collectUnpaidSmsCredits(tx, STORE), 2);
+    });
+    assert.deepEqual(await credits(), { balance: 0, totalUsed: 2 });
+    assert.deepEqual(
+      (await logs()).map((row) => [row.id, row.creditSource]),
+      [
+        [owed[0]?.id, "topup"],
+        [owed[1]?.id, "topup"],
+        [owed[2]?.id, "topup_unpaid"],
+      ],
+    );
+  });
+
+  test("the spendable balance counts the credits still owed as spent", async () => {
+    await records.recordSmsAcceptance(acceptance());
+    await records.recordSmsAcceptance(acceptance());
+    // Balance 5, two credits queued, not taken yet.
+    assert.deepEqual(await credits(), { balance: 5, totalUsed: 0 });
+    assert.equal(await planLimits.getSmsPrepaidBalance(STORE), 3);
+    await records.recordSmsAcceptance(acceptance({ creditSource: "plan" }));
+    assert.equal(await planLimits.getSmsPrepaidBalance(STORE), 3, "a plan SMS owes nothing");
+  });
+
+  test("the acceptance check never queues behind a write of the same id", async () => {
+    const sms = acceptance();
+    const holder = await database.connect();
+    try {
+      await holder.beginTransaction();
+      // An acceptance of that id, still being written.
+      await holder.query(
+        "INSERT INTO sms_logs (id, store_id, `to`, message, template_type, status, credit_source) VALUES (?, ?, ?, ?, ?, 'sent', 'plan')",
+        [sms.id, STORE, sms.to, sms.message, sms.templateType],
+      );
+      const started = Date.now();
+      await assert.rejects(records.isSmsAccepted(sms.id), (error: unknown) => {
+        // MySQL's refusal to wait, under drizzle's error.
+        const cause = (error as { cause?: { code?: string } }).cause;
+        return cause?.code === "ER_LOCK_NOWAIT";
+      });
+      const waited = Date.now() - started;
+      assert.ok(waited < 3_000, `bounded: ${waited} ms, far below the outbox's time`);
+
+      // Committed while the check looks again: it sees it.
+      const checking = records.isSmsAccepted(sms.id);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await holder.commit();
+      assert.equal(await checking, true);
+    } finally {
+      await holder.end();
+    }
   });
 
   test("an SMS of the plan's month queues no credit, and its acceptance happens once", async () => {

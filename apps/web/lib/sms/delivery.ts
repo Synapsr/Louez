@@ -7,13 +7,17 @@ import { isSmsAccepted, recordSmsAcceptance, recordSmsFailure } from "./delivery
 import { fitSmsSegments } from "./encoding";
 
 /**
- * Sends one SMS at most once per key, and records it. The provider's
- * acceptance is the delivery: from then on nothing turns it into a failure.
+ * Sends one SMS and records it. The provider's acceptance is the delivery:
+ * from then on nothing turns it into a failure.
  *
  * - An SMS an outbox row sends is keyed by the row's id, the same on every
- *   run of it. A run that finds that key accepted already answers that it
- *   went out, and never calls the provider again: a run that timed out after
- *   the provider accepted, then retried, sends nothing twice.
+ *   run of it. A run that finds that key accepted answers that it went out,
+ *   and never calls the provider again: a run that timed out after the
+ *   acceptance was written, then retried, sends nothing twice.
+ * - Delivery is still at least once: a provider answer lost on the way, or a
+ *   crash between the acceptance and its write, leaves nothing to find, and
+ *   the retry sends again. A send without a key (no outbox retries it) is
+ *   kept from nothing.
  * - Right after the acceptance, one short write records it: the log row,
  *   under that key, and for a prepaid SMS the outbox row that takes its
  *   credit (`sms.prepaidDebit`). The sender returns then; the credit is taken
