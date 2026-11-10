@@ -330,7 +330,7 @@ export async function startImageJob(
         balanceCredits: credits(
           (quote.credits.monthlyRemainingMicro ?? 0) + quote.credits.prepaidMicro,
         ),
-        // No purchase prompt where the client's directory forbids it (ChatGPT).
+        // No purchase prompt where the client's directory forbids it (`ClientWithholding.purchases`).
         rechargeUrl: actor.credential.withheld?.purchases
           ? null
           : dashboardPageLinks(ports.urls, store, "/dashboard/ai-credits?recharge=1").dashboard,

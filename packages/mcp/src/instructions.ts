@@ -34,8 +34,22 @@ const handoffHelp = (billing: boolean) =>
 /** The new store's address check, for a client that creates stores. */
 const STORE_SLUG_HELP = "stores_check_slug_availability before stores_create, ";
 
-/** The AI enhancement, for a client that may call it (not Claude: `ClientWithholding.capabilities`). */
-const ENHANCE_IMAGE_HELP = "products_enhance_image (AI) or ";
+/** The tools that improve a product photo, by capability, as the instructions name them. */
+const IMAGE_TOOLS = [
+  { capability: "products.enhanceImage", name: "products_enhance_image (AI)" },
+  { capability: "products.removeImageBackground", name: "products_remove_image_background" },
+] as const;
+
+/**
+ * How a product photo is improved, with the tools the client reaches
+ * (`ClientWithholding.capabilities`: Claude has no enhancement, ChatGPT
+ * neither tool); null when it reaches none.
+ */
+function imageHelp(reaches: (capability: string) => boolean): string | null {
+  const tools = IMAGE_TOOLS.filter((tool) => reaches(tool.capability));
+  if (tools.length === 0) return null;
+  return `To improve a product photo: ${tools.map((tool) => tool.name).join(" or ")}, with one of the product's images. A run spends AI credits, so a paid one first answers CONFIRMATION_REQUIRED with the price, for the user to approve. The photo is processed in the background: jobs_get with the job's id (waitSeconds up to ${JOB_WAIT_SECONDS_MAX}) says when it has succeeded or failed, and starting the same photo again while its job runs returns that job. Once it succeeds, the result has replaced the photo on the product; the job's source.url and result.url are the before and after images to show the user. To undo, products_use_image_version takes the original's id (the job's source.versionId). A photo's versions are in imageVersions of products_get.`;
+}
 
 /**
  * How the tools chain. Tool descriptions say what each tool does and never
@@ -52,15 +66,17 @@ const CHAINING_HELP = [
   "stores_get_launch_checklist says what a store lacks before stores_go_live, and which tool fixes each item; what no tool fixes is for the user.",
   "After inbox_acknowledge rejects items, inbox_list without a cursor gives what the inbox holds now.",
   "The team: team_invite_member creates nothing by itself. It answers with approval.url, a link for the user to open as it is: they approve the invitation from it, signed in as an owner of the store. handoffs_get with approval.handoff.id then says completed once approved, failed once declined. team_remove_member and team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED first, whatever the connection's setting, with a preview for the user to approve. Sending an invitation again or sharing its link is the user's, in Louez, on the team page whose link team_list_members returns.",
-  `To improve a product photo: ${ENHANCE_IMAGE_HELP}products_remove_image_background, with one of the product's images. A run spends AI credits, so a paid one first answers CONFIRMATION_REQUIRED with the price, for the user to approve. The photo is processed in the background: jobs_get with the job's id (waitSeconds up to ${JOB_WAIT_SECONDS_MAX}) says when it has succeeded or failed, and starting the same photo again while its job runs returns that job. Once it succeeds, the result has replaced the photo on the product; the job's source.url and result.url are the before and after images to show the user. To undo, products_use_image_version takes the original's id (the job's source.versionId). A photo's versions are in imageVersions of products_get.`,
 ].join(" ");
 
 /** How the tools chain, without those the client's directory forbids. */
-function chainingHelp(reach: { createsStores: boolean; enhancesImages: boolean }): string {
-  let help = CHAINING_HELP;
-  if (!reach.createsStores) help = help.replace(STORE_SLUG_HELP, "");
-  if (!reach.enhancesImages) help = help.replace(ENHANCE_IMAGE_HELP, "");
-  return help;
+function chainingHelp(reach: {
+  createsStores: boolean;
+  /** Whether the client reaches a procedure, by capability id. */
+  reaches: (capability: string) => boolean;
+}): string {
+  const help = reach.createsStores ? CHAINING_HELP : CHAINING_HELP.replace(STORE_SLUG_HELP, "");
+  const images = imageHelp(reach.reaches);
+  return images ? `${help} ${images}` : help;
 }
 
 /** How a new store goes live, for a model that just created one. */
@@ -165,7 +181,7 @@ export function serverInstructions(
     "Records come with `links`: absolute URLs to their page in the Louez dashboard and, when the public can see it, on the store's online store. When the user wants to see or open something, give them these URLs as they are. Without a link, name the record instead.",
     chainingHelp({
       createsStores: !createdByUser,
-      enhancesImages: !withheld?.capabilities.includes("products.enhanceImage"),
+      reaches: (capability) => !withheld?.capabilities.includes(capability),
     }),
   );
   return lines.join("\n");
