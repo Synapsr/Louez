@@ -4,10 +4,7 @@ import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 import type { Period } from "@/app/(dashboard)/dashboard/analytics/period";
 import type { RevenueChart } from "@/app/(dashboard)/dashboard/analytics/revenue-chart";
-import type {
-  PaymentMethodKey,
-  PaymentMethodTotal,
-} from "@/app/(dashboard)/dashboard/analytics/sales/payment-methods-breakdown";
+import type { PaymentMethodKey, PaymentMethodTotal } from "@louez/api/services/sales-analytics";
 import type { RevenueHero } from "@/app/(dashboard)/dashboard/analytics/sales/revenue-hero";
 import type { RentalActivitySection } from "@/app/(dashboard)/dashboard/analytics/sales/rental-activity-section";
 import type { SalesStatStripContent } from "@/app/(dashboard)/dashboard/analytics/sales/sales-stat-strip-content";
@@ -18,7 +15,7 @@ import {
   getSalesWindow,
   roundSalesAmount,
   type SalesWindow,
-} from "@/app/(dashboard)/dashboard/analytics/sales/util.sales-window";
+} from "@louez/api/services/sales-window";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import type { Locale } from "@/i18n/config";
 import { resolveFormatLocale } from "@/lib/i18n/format-locale";

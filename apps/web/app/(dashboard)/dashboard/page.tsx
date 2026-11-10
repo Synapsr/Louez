@@ -5,8 +5,10 @@ import { storeHasAgentConnection } from "@louez/api/services/agent-grants";
 import { db, users } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
 import { reservations } from "@louez/db";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
-import { getStoreMetrics, determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
+import { eq, and, gte, lt, desc } from "drizzle-orm";
+import { getStoreMetrics } from "@louez/api/services/store-metrics";
+import { getStoreCalendar, type StoreCalendar } from "@louez/api/services/sales-window";
+import { determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import { serverApi } from "@/lib/api/server-api";
 import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
@@ -40,19 +42,14 @@ export const instant = false;
 // Data Fetching Functions
 // =============================================================================
 
-async function getTodaysDeparturesList(storeId: string) {
-  const now = new Date();
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
+/** Today is the store's, as the home's counters read it (getStoreMetrics). */
+async function getTodaysDeparturesList(storeId: string, now: Date, calendar: StoreCalendar) {
   const rows = await db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       eq(reservations.status, "confirmed"),
-      gte(reservations.startDate, today),
-      lte(reservations.startDate, tomorrow),
+      gte(reservations.startDate, calendar.todayStart),
+      lt(reservations.startDate, calendar.tomorrowStart),
     ),
     with: {
       customer: true,
@@ -72,19 +69,13 @@ async function getTodaysDeparturesList(storeId: string) {
   return rows.map((row) => ({ ...row, isOverdue: row.startDate < now }));
 }
 
-async function getTodaysReturnsList(storeId: string) {
-  const now = new Date();
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
+async function getTodaysReturnsList(storeId: string, now: Date, calendar: StoreCalendar) {
   const rows = await db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       eq(reservations.status, "ongoing"),
-      gte(reservations.endDate, today),
-      lte(reservations.endDate, tomorrow),
+      gte(reservations.endDate, calendar.todayStart),
+      lt(reservations.endDate, calendar.tomorrowStart),
     ),
     with: {
       customer: true,
@@ -122,6 +113,8 @@ async function getPendingReservationsList(storeId: string) {
 interface DashboardContentProps {
   storeId: string;
   storeSlug: string;
+  /** The store's time zone, which sets today and the month. */
+  timezone: string | null;
   firstName: string;
   /** What the store still lacks, as agents read it (stores.getLaunchChecklist). */
   launchChecklist: LaunchChecklistView;
@@ -134,6 +127,7 @@ interface DashboardContentProps {
 async function DashboardContent({
   storeId,
   storeSlug,
+  timezone,
   firstName,
   launchChecklist,
   isFromReeent,
@@ -143,12 +137,14 @@ async function DashboardContent({
   // Stores that want online payments track the Stripe KYC left pending during
   // onboarding (payment mode degrades to request mode until Stripe can charge).
   const onlinePaymentsStep = onlinePaymentsStepOf(launchChecklist);
+  const now = new Date();
+  const calendar = getStoreCalendar(now, timezone);
   // Fetch all data in parallel
   const [metrics, departures, returns, pending, channelState, cohort, hasAgentConnection] =
     await Promise.all([
-      getStoreMetrics(storeId),
-      getTodaysDeparturesList(storeId),
-      getTodaysReturnsList(storeId),
+      getStoreMetrics(storeId, { timezone, now }),
+      getTodaysDeparturesList(storeId, now, calendar),
+      getTodaysReturnsList(storeId, now, calendar),
       getPendingReservationsList(storeId),
       getMarketplaceChannelState({ storeId }),
       getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
@@ -250,6 +246,7 @@ export default async function DashboardHomePage() {
     <DashboardContent
       storeId={store.id}
       storeSlug={store.slug}
+      timezone={store.settings?.timezone ?? null}
       firstName={firstName}
       launchChecklist={launchChecklist}
       isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}

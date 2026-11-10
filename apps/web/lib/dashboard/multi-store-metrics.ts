@@ -4,10 +4,10 @@ import {
   reservations,
   customers,
   subscriptions,
-  dailyStats,
 } from '@louez/db'
 import { eq, and, gte, lte, sql, count, inArray } from 'drizzle-orm'
-import { subDays, startOfDay, format, eachDayOfInterval } from 'date-fns'
+import { addDays, subDays, startOfDay, format, eachDayOfInterval } from 'date-fns'
+import { getReceiptsByBucket } from '@louez/api/services/sales-analytics'
 import type { Locale as DateFnsLocale } from 'date-fns'
 
 import { isBillingEnabled } from '@/lib/billing/mode'
@@ -474,29 +474,19 @@ export async function getMultiStoreRevenueTrend(
 
     const storeNameMap = new Map(storeInfo.map((s) => [s.id, s.name]))
 
-    // Get daily revenue by store from dailyStats
-    const dailyRevenue = await db
-      .select({
-        storeId: dailyStats.storeId,
-        date: dailyStats.date,
-        revenue: dailyStats.revenue,
-      })
-      .from(dailyStats)
-      .where(
-        and(
-          inArray(dailyStats.storeId, storeIds),
-          gte(dailyStats.date, startDate)
-        )
-      )
-      .orderBy(dailyStats.date)
+    // Rental payments received per store and day, as the sales page counts them
+    const buckets = allDays.map((day) => ({
+      start: day,
+      end: new Date(Math.min(addDays(day, 1).getTime(), now.getTime())),
+    }))
+    const receipts = await getReceiptsByBucket(storeIds, buckets)
 
     // Calculate total revenue per store to determine top stores
     const storeRevenueTotals = new Map<string, number>()
-    for (const row of dailyRevenue) {
-      const current = storeRevenueTotals.get(row.storeId) || 0
+    for (const [storeId, storeDays] of receipts) {
       storeRevenueTotals.set(
-        row.storeId,
-        current + parseFloat(row.revenue || '0')
+        storeId,
+        storeDays.reduce((total, day) => total + day.revenue, 0)
       )
     }
 
@@ -508,19 +498,8 @@ export async function getMultiStoreRevenueTrend(
 
     const storeNames = topStoreIds.map((id) => storeNameMap.get(id) || id)
 
-    // Create lookup map for daily revenue
-    const revenueMap = new Map<string, Map<string, number>>()
-    for (const row of dailyRevenue) {
-      if (!topStoreIds.includes(row.storeId)) continue
-      const dateKey = format(row.date, 'yyyy-MM-dd')
-      if (!revenueMap.has(dateKey)) {
-        revenueMap.set(dateKey, new Map())
-      }
-      revenueMap.get(dateKey)!.set(row.storeId, parseFloat(row.revenue || '0'))
-    }
-
     // Build trend data
-    const data: StoreRevenueTrend[] = allDays.map((day) => {
+    const data: StoreRevenueTrend[] = allDays.map((day, index) => {
       const dateKey = format(day, 'yyyy-MM-dd')
       const point: StoreRevenueTrend = {
         date: dateKey,
@@ -529,8 +508,7 @@ export async function getMultiStoreRevenueTrend(
 
       for (const storeId of topStoreIds) {
         const storeName = storeNameMap.get(storeId) || storeId
-        const dayData = revenueMap.get(dateKey)
-        point[storeName] = dayData?.get(storeId) || 0
+        point[storeName] = receipts.get(storeId)?.[index]?.revenue ?? 0
       }
 
       return point

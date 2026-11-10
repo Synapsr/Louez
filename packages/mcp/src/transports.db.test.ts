@@ -549,8 +549,13 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.match(text(denied), /needs customers:read/);
       assert.match(text(denied), /code: PERMISSION_DENIED/);
 
-      const allowed = await client.callTool({ name: "get_dashboard_stats", arguments: {} });
-      assert.notEqual(allowed.isError, true, text(allowed));
+      // Payments are still granted: the call reaches the tool, which finds no such reservation.
+      const allowed = await client.callTool({
+        name: "list_payments",
+        arguments: { reservationId: "missing" },
+      });
+      assert.match(text(allowed), /code: NOT_FOUND/);
+      assert.doesNotMatch(text(allowed), /PERMISSION_DENIED/);
     } finally {
       await client.close();
     }

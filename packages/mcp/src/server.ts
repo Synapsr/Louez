@@ -7,7 +7,6 @@ import type { McpServerDeps } from "./deps";
 import { serverInstructions } from "./instructions";
 import { registerCustomerTools } from "./tools/customers";
 import { registerPaymentTools } from "./tools/payments";
-import { registerAnalyticsTools } from "./tools/analytics";
 import { registerCalendarTools } from "./tools/calendar";
 import { registerResources } from "./resources/index";
 import { registerPrompts } from "./prompts/index";
@@ -45,7 +44,6 @@ export function createMcpServer(
   // Hand-written tools, moved to procedures domain by domain
   registerCustomerTools(server, ctx);
   registerPaymentTools(server, ctx, deps);
-  registerAnalyticsTools(server, ctx);
   registerCalendarTools(server, ctx);
 
   // Resources and prompts read one store. A connection over several stores

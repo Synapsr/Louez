@@ -3,10 +3,7 @@
 import { useTranslations } from "next-intl";
 import { cn, formatCurrency } from "@louez/utils";
 import { DASHBOARD_ACCENT_FILL } from "@/components/dashboard/shared/dashboard-accent";
-import type {
-  OccupancyStats,
-  UpcomingRevenueStats,
-} from "@/app/(dashboard)/dashboard/analytics/sales/rental-queries";
+import type { OccupancyStats, UpcomingRevenueStats } from "@louez/api/services/sales-analytics";
 
 interface RentalActivitySectionProps {
   occupancy: OccupancyStats;

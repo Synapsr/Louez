@@ -4,6 +4,7 @@ import { dashboardProcedure } from "../../procedures";
 import { dashboardAccountRouter } from "./account";
 import { dashboardAgentConnectionsRouter } from "./agent-connections";
 import { dashboardAiAdvisorRouter } from "./ai-advisor";
+import { dashboardAnalyticsRouter } from "./analytics";
 import { dashboardApiKeysRouter } from "./api-keys";
 import { dashboardBillingRouter } from "./billing";
 import { dashboardCategoriesRouter } from "./categories";
@@ -51,6 +52,7 @@ export const dashboardRouter = {
   account: dashboardAccountRouter,
   agentConnections: dashboardAgentConnectionsRouter,
   aiAdvisor: dashboardAiAdvisorRouter,
+  analytics: dashboardAnalyticsRouter,
   apiKeys: dashboardApiKeysRouter,
   billing: dashboardBillingRouter,
   categories: dashboardCategoriesRouter,

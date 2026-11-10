@@ -178,6 +178,14 @@ export async function POST(req: Request) {
     // The procedures, as this signed-in user, on this chat's store: the store
     // header is set to it, whatever the request sent.
     api: {
+      analytics: createRouterClient(appRouter.dashboard.analytics, {
+        context: {
+          headers: storeHeaders(req.headers, store.id),
+          transport: "rpc",
+          ports: apiPorts,
+        },
+        path: ["dashboard", "analytics"],
+      }),
       categories: createRouterClient(appRouter.dashboard.categories, {
         context: {
           headers: storeHeaders(req.headers, store.id),

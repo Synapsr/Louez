@@ -7,7 +7,7 @@ import { StatStripItem } from "@/app/(dashboard)/dashboard/analytics/sales/stat-
 import type {
   AverageRentalDurationStats,
   PeriodReservationStats,
-} from "@/app/(dashboard)/dashboard/analytics/sales/rental-queries";
+} from "@louez/api/services/sales-analytics";
 
 /** Below two days a rental reads better in hours than in fractions of a day. */
 const DURATION_DAYS_THRESHOLD_HOURS = 48;

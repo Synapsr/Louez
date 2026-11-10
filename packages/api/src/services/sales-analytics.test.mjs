@@ -7,11 +7,10 @@ import { runInNewContext } from "node:vm";
 import * as orm from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql-proxy";
-import { enUS } from "date-fns/locale";
 import { formatInTimeZone } from "date-fns-tz";
 import * as paymentReceipts from "@louez/db/payment-receipts";
 import * as schema from "@louez/db/schema";
-import windowUtils from "./util.sales-window.ts";
+import * as windowUtils from "./sales-window.ts";
 
 // Exercise the actual query builders without loading app auth or opening a live database.
 function loadQueries(file, db, extra = {}) {
@@ -46,13 +45,13 @@ function fixture() {
     CREATE TABLE reservations (id TEXT, store_id TEXT, customer_id TEXT, reservation_status TEXT, start_date TEXT, end_date TEXT, total_amount REAL, subtotal_amount REAL, deposit_amount REAL);
     CREATE TABLE reservation_items (id TEXT, reservation_id TEXT, product_id TEXT, quantity INTEGER, total_price REAL);
     CREATE TABLE payments (id TEXT, reservation_id TEXT, amount REAL, payment_status TEXT, payment_type TEXT, payment_method TEXT, paid_at TEXT, created_at TEXT, refund_of_payment_id TEXT, stripe_refund_id TEXT, stripe_payment_intent_id TEXT, stripe_checkout_session_id TEXT);
-    CREATE TABLE products (id TEXT, store_id TEXT, name TEXT, quantity INTEGER, track_units INTEGER, product_status TEXT, stock_kind TEXT);
+    CREATE TABLE products (id TEXT, store_id TEXT, name TEXT, slug TEXT, quantity INTEGER, track_units INTEGER, product_status TEXT, stock_kind TEXT);
     CREATE TABLE product_units (product_id TEXT, lifecycle_status TEXT);
     CREATE TABLE customers (id TEXT, first_name TEXT, last_name TEXT, company_name TEXT, customer_type TEXT);
     INSERT INTO customers VALUES ('customer', 'Test', 'Customer', NULL, 'individual');
     INSERT INTO reservations VALUES ('r', 'store', 'customer', 'confirmed', '2026-09-10 00:00:00', '2026-09-11 00:00:00', 291, 291, 100),
       ('foreign', 'other-store', 'customer', 'confirmed', '2026-09-10 00:00:00', '2026-09-11 00:00:00', 1000, 1000, 0);
-    INSERT INTO products VALUES ('bike', 'store', 'Bike', 1, 0, 'active', 'returnable'), ('free', 'store', 'Free', 1, 0, 'active', 'returnable');
+    INSERT INTO products VALUES ('bike', 'store', 'Bike', 'bike', 1, 0, 'active', 'returnable'), ('free', 'store', 'Free', NULL, 1, 0, 'active', 'returnable');
     INSERT INTO reservation_items VALUES ('a','r','bike',1,200), ('b','r','bike',1,35), ('c','r','free',1,0), ('d','r',NULL,1,28), ('e','r','deleted',1,28);
   `);
   const db = drizzle(async (sql, params) => {
@@ -64,10 +63,9 @@ function fixture() {
     return { rows: statement.all(...args) };
   });
   const quantity = orm.sql`CASE WHEN ${schema.products.trackUnits} THEN (SELECT COUNT(*) FROM ${schema.productUnits} WHERE ${schema.productUnits.productId}=${schema.products.id} AND ${schema.productUnits.lifecycleStatus}='active') ELSE ${schema.products.quantity} END`;
-  const queries = {
-    ...loadQueries("./queries.ts", db),
-    ...loadQueries("./rental-queries.ts", db, { effectiveProductQuantitySql: () => quantity }),
-  };
+  const queries = loadQueries("./sales-analytics.ts", db, {
+    effectiveProductQuantitySql: () => quantity,
+  });
   const pay = (
     id,
     amount,
@@ -121,7 +119,7 @@ test("all five periods reconcile headline, chart, methods and catalog plus exclu
       f.pay("other-store", 1000, window.start, { reservation: "foreign" });
       const [headline, chart, methods, products, customers] = await Promise.all([
         f.queries.getSalesPaymentStats("store", window),
-        f.queries.getRevenueTimeSeries("store", window, enUS),
+        f.queries.getRevenueTimeSeries("store", window),
         f.queries.getRevenueByPaymentMethod("store", window),
         f.queries.getTopProductsByRevenue("store", window),
         f.queries.getTopCustomersByRevenue("store", window),
@@ -214,7 +212,7 @@ test("a Stripe refund row is never a receipt, while the netted charge it refunds
     f.pay("legacy-charge", 40, window.start, { stripeRefund: "re_3", stripeIntent: "pi_3" });
     const [headline, chart, methods, products, customers] = await Promise.all([
       f.queries.getSalesPaymentStats("store", window),
-      f.queries.getRevenueTimeSeries("store", window, enUS),
+      f.queries.getRevenueTimeSeries("store", window),
       f.queries.getRevenueByPaymentMethod("store", window),
       f.queries.getTopProductsByRevenue("store", window),
       f.queries.getTopCustomersByRevenue("store", window),
@@ -256,7 +254,7 @@ test("occupancy uses only active returnable products and effective tracked stock
   try {
     f.sqlite.exec(`DELETE FROM reservation_items; DELETE FROM products;
       UPDATE reservations SET start_date='2026-09-05 00:00:00',end_date='2026-09-06 00:00:00',reservation_status='completed' WHERE id='r';
-      INSERT INTO products VALUES ('tracked','store','Bike',99,1,'active','returnable'),('archived','store','Old',50,0,'archived','returnable'),('service','store','Service',50,0,'active','untracked'),('sale','store','Sale',50,0,'active','consumable');
+      INSERT INTO products VALUES ('tracked','store','Bike',NULL,99,1,'active','returnable'),('archived','store','Old',NULL,50,0,'archived','returnable'),('service','store','Service',NULL,50,0,'active','untracked'),('sale','store','Sale',NULL,50,0,'active','consumable');
       INSERT INTO product_units VALUES ('tracked','active'),('tracked','active'),('tracked','retired');
       INSERT INTO reservation_items VALUES ('a','r','tracked',1,10),('b','r','archived',1,10),('c','r',NULL,100,10),('d','r','service',100,10),('e','r','sale',100,10);`);
     const window = windowUtils.getSalesWindow("7d", new Date("2026-09-06T00:00:00Z"));
@@ -299,7 +297,7 @@ test("top ten plus other products reconcile rounded receipts with many fractiona
     f.sqlite.exec("DELETE FROM reservation_items; DELETE FROM products");
     for (let i = 0; i < 13; i++) {
       f.sqlite
-        .prepare("INSERT INTO products VALUES (?, 'store', ?, 1, 0, 'active', 'returnable')")
+        .prepare("INSERT INTO products VALUES (?, 'store', ?, NULL, 1, 0, 'active', 'returnable')")
         .run(`p${i}`, `Product ${i}`);
       f.sqlite
         .prepare("INSERT INTO reservation_items VALUES (?, 'r', ?, 1, 1)")
@@ -349,7 +347,7 @@ test("empty receipts produce zeros and a complete empty chart", async () => {
     assert.equal(stats.periodRevenue, 0);
     assert.equal(stats.avgPaymentValue, 0);
     assert.equal(stats.revenueGrowth, 0);
-    const chart = await f.queries.getRevenueTimeSeries("store", window, enUS);
+    const chart = await f.queries.getRevenueTimeSeries("store", window);
     assert.equal(chart.length, 30);
     assert.ok(chart.every((row) => row.revenue === 0 && row.payments === 0));
     const products = await f.queries.getTopProductsByRevenue("store", window);

@@ -13,24 +13,24 @@ import { StatStrip } from "@/app/(dashboard)/dashboard/analytics/sales/stat-stri
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { getCurrentStore } from "@/lib/store-context";
 
-import { parsePeriod } from "../period";
-import { getSalesWindow, type SalesWindow } from "./util.sales-window";
-import { RevenueChart } from "../revenue-chart";
-import { TopProductsTable } from "../top-products-table";
-import { PaymentMethodsBreakdown } from "./payment-methods-breakdown";
-import {
-  getSalesPaymentStats,
-  getRevenueByPaymentMethod,
-  getRevenueTimeSeries,
-  getTopCustomersByRevenue,
-  getTopProductsByRevenue,
-} from "./queries";
 import {
   getAverageRentalDuration,
   getOccupancyStats,
   getPeriodReservationStats,
+  getRevenueByPaymentMethod,
+  getRevenueTimeSeries,
+  getSalesPaymentStats,
+  getTopCustomersByRevenue,
+  getTopProductsByRevenue,
   getUpcomingRevenue,
-} from "./rental-queries";
+} from "@louez/api/services/sales-analytics";
+import { getSalesWindow, type SalesWindow } from "@louez/api/services/sales-window";
+import { formatInTimeZone } from "date-fns-tz";
+
+import { parsePeriod } from "../period";
+import { RevenueChart } from "../revenue-chart";
+import { TopProductsTable } from "../top-products-table";
+import { PaymentMethodsBreakdown } from "./payment-methods-breakdown";
 import { TopCustomersTable } from "./top-customers-table";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -131,7 +131,17 @@ async function RentalActivityData({
 
 async function RevenueChartSection({ storeId, window }: { storeId: string; window: SalesWindow }) {
   const { dateFns } = await getRequestFormatLocale();
-  const data = await getRevenueTimeSeries(storeId, window, dateFns);
+  const buckets = await getRevenueTimeSeries(storeId, window);
+  const data = buckets.map((bucket) => ({
+    label: formatInTimeZone(
+      bucket.start,
+      window.timezone,
+      window.granularity === "month" ? "MMM yyyy" : "d MMM",
+      { locale: dateFns },
+    ),
+    revenue: bucket.revenue,
+    payments: bucket.payments,
+  }));
   return <RevenueChart data={data} />;
 }
 

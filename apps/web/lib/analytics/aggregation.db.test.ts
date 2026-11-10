@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-// Product revenue in product_stats (read by the get_product_performance MCP tool):
+// Product revenue in product_stats, which the nightly job rolls up:
 // each rental receipt counts on the day it was cashed in, at its current amount,
 // split across its reservation's items by price in whole cents, in the store's
 // currency, as the product page counts it. Every run recomputes the window, so a

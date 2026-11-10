@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { allocateSalesAmounts } from "./util.sales-window";
+import type { PaymentMethodKey, PaymentMethodTotal } from "@louez/api/services/sales-analytics";
+import { allocateSalesAmounts } from "@louez/api/services/sales-window";
 
 import { CreditCardSolidIcon } from "@louez/ui/icons";
 import { cn, formatCurrency } from "@louez/utils";
@@ -11,15 +12,6 @@ import {
   type DashboardAccent,
 } from "@/components/dashboard/shared/dashboard-accent";
 import { DashboardEmptyState } from "@/components/dashboard/shared/dashboard-empty-state";
-
-/** Mirrors the `payment_method` enum of the database. */
-export type PaymentMethodKey = "stripe" | "cash" | "card" | "transfer" | "check" | "other";
-
-export interface PaymentMethodTotal {
-  method: PaymentMethodKey;
-  amount: number;
-  count: number;
-}
 
 const METHOD_ACCENTS: Record<PaymentMethodKey, DashboardAccent> = {
   stripe: "primary",

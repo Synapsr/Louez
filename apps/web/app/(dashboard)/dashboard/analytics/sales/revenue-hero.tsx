@@ -3,8 +3,8 @@
 import { useTranslations } from "next-intl";
 import { formatCurrency } from "@louez/utils";
 import { DashboardTrendBadge } from "@/components/dashboard/shared/dashboard-trend-badge";
-import type { getSalesPaymentStats } from "@/app/(dashboard)/dashboard/analytics/sales/queries";
-import type { SalesWindow } from "@/app/(dashboard)/dashboard/analytics/sales/util.sales-window";
+import type { getSalesPaymentStats } from "@louez/api/services/sales-analytics";
+import type { SalesWindow } from "@louez/api/services/sales-window";
 
 interface RevenueHeroProps {
   stats: Awaited<ReturnType<typeof getSalesPaymentStats>>;

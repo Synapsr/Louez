@@ -1,10 +1,12 @@
 import { z } from 'zod'
-import { db, reservations, customers, dailyStats } from '@louez/db'
-import { and, eq, gte, lte, sql, sum } from 'drizzle-orm'
+import { db, reservations, customers } from '@louez/db'
+import { dashboardStats } from '@louez/api/services/analytics'
+import { and, eq, gte, lt, lte, sql } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/server'
 
 import type { McpRequestContext } from '../auth/context'
 import { requirePermission } from '../auth/context'
+import { analyticsStore } from '../resources/dashboard'
 import { formatCurrency, formatDate, formatStatus } from '../utils/formatting'
 
 export function registerPromptTemplates(server: McpServer, ctx: McpRequestContext) {
@@ -14,26 +16,10 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
     async () => {
       requirePermission(ctx, 'analytics', 'read')
 
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-
-      // Today's stats
-      const [todayStats] = await db
-        .select({
-          revenue: sum(dailyStats.revenue),
-          visitors: sum(dailyStats.uniqueVisitors),
-          reservationsCreated: sum(dailyStats.reservationsCreated),
-        })
-        .from(dailyStats)
-        .where(
-          and(
-            eq(dailyStats.storeId, ctx.storeId),
-            gte(dailyStats.date, today),
-            lte(dailyStats.date, tomorrow)
-          )
-        )
+      // Today, as the dashboard's home counts it: live, in the store's time zone.
+      const stats = await dashboardStats(await analyticsStore(ctx.storeId))
+      const today = stats.today.start
+      const tomorrow = stats.today.end
 
       // Pending reservations
       const [pendingCount] = await db
@@ -56,7 +42,7 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
             eq(reservations.storeId, ctx.storeId),
             eq(reservations.status, 'confirmed'),
             gte(reservations.startDate, today),
-            lte(reservations.startDate, tomorrow)
+            lt(reservations.startDate, tomorrow)
           )
         )
 
@@ -75,7 +61,7 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
             eq(reservations.storeId, ctx.storeId),
             eq(reservations.status, 'ongoing'),
             gte(reservations.endDate, today),
-            lte(reservations.endDate, tomorrow)
+            lt(reservations.endDate, tomorrow)
           )
         )
 
@@ -92,12 +78,11 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
         )
 
       const briefingData =
-        `Date: ${formatDate(today)}\n` +
+        `Date: ${today.toISOString()} (${stats.timezone})\n` +
         `Store: ${ctx.storeName}\n\n` +
         `Today's metrics:\n` +
-        `  Revenue: ${formatCurrency(todayStats?.revenue ?? '0')}\n` +
-        `  Visitors: ${todayStats?.visitors ?? 0}\n` +
-        `  New reservations: ${todayStats?.reservationsCreated ?? 0}\n\n` +
+        `  Revenue (rental payments received so far): ${stats.today.revenue} ${stats.currency}\n` +
+        `  Revenue this month: ${stats.revenue.monthToDate} ${stats.currency}\n\n` +
         `Pending actions: ${pendingCount?.count ?? 0} reservations to review\n` +
         `Overdue returns: ${overdueCount?.count ?? 0}\n\n` +
         `Today's pickups (${todaysPickups.length}):\n` +
