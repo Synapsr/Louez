@@ -688,7 +688,7 @@ async function checkSmsQuotaAndSource(
         error: "SMS limit reached",
         limitReached: true,
         limitInfo: {
-          current: quota.current,
+          current: quota.planUsed,
           limit: quota.planLimit ?? 0,
           planSlug: quota.planSlug,
         },

@@ -123,24 +123,28 @@ export function SmsContent({
     }
   }, [showCancelledAlert]);
 
-  // For current month, use live quota; for past months, show historical stats
-  const displayCurrent = isCurrentMonth ? quotaStatus.current : monthStats.sent;
+  // Every SMS sent in the selected month, from the plan and the prepaid balance alike.
+  const sentInMonth = monthStats.sent;
+  // The live quota (current month only): plan SMS count against the plan, prepaid ones
+  // only in the balance (lib/plan-limits.ts).
+  const planUsed = quotaStatus.planUsed;
   const planLimit = quotaStatus.planLimit;
   // What the store can still spend: credits SMS already sent still owe are not (lib/plan-limits.ts).
   const prepaidBalance = quotaStatus.prepaidBalance;
+  const prepaidUsedThisMonth = Math.max(0, sentInMonth - planUsed);
 
-  // Total available = plan limit + prepaid (for display only when viewing current month)
-  const totalAvailable = planLimit !== null ? planLimit + prepaidBalance : null;
+  // What this month allows: the SMS sent so far and those the store can still send.
+  const monthCapacity = planLimit !== null ? sentInMonth + quotaStatus.remaining : null;
 
   // Calculate percentage based on plan limit only (prepaid is bonus)
-  const percentUsed = planLimit ? Math.min(100, Math.round((displayCurrent / planLimit) * 100)) : 0;
+  const percentUsed = planLimit ? Math.min(100, Math.round((planUsed / planLimit) * 100)) : 0;
 
   const isNearLimit = isCurrentMonth && planLimit && percentUsed >= 80 && prepaidBalance === 0;
-  const isAtLimit = isCurrentMonth && totalAvailable !== null && displayCurrent >= totalAvailable;
+  const isAtLimit = isCurrentMonth && !quotaStatus.allowed;
 
   // Check if plan limit is exhausted but prepaid credits are available
   const usingPrepaid =
-    isCurrentMonth && planLimit !== null && displayCurrent >= planLimit && prepaidBalance > 0;
+    isCurrentMonth && planLimit !== null && planUsed >= planLimit && prepaidBalance > 0;
 
   // Format month for display
   const formatMonthYear = (year: number, month: number) => {
@@ -249,13 +253,13 @@ export function SmsContent({
           <div className="flex items-end justify-between">
             <div>
               <p className="text-4xl font-bold">
-                {displayCurrent}
-                {isCurrentMonth && totalAvailable !== null && (
+                {sentInMonth}
+                {isCurrentMonth && monthCapacity !== null && (
                   <span className="text-lg font-normal text-muted-foreground">
-                    /{totalAvailable}
+                    /{monthCapacity}
                   </span>
                 )}
-                {isCurrentMonth && totalAvailable === null && (
+                {isCurrentMonth && monthCapacity === null && (
                   <span className="text-lg font-normal text-muted-foreground">/∞</span>
                 )}
               </p>
@@ -278,7 +282,7 @@ export function SmsContent({
               <div className="flex-1 rounded-lg border bg-muted/30 px-3 py-2">
                 <p className="text-xs text-muted-foreground">{t("quota.planIncluded")}</p>
                 <p className="text-sm font-medium">
-                  {Math.min(displayCurrent, planLimit)}/{planLimit} SMS
+                  {Math.min(planUsed, planLimit)}/{planLimit} SMS
                 </p>
               </div>
               <div className="flex-1 rounded-lg border bg-muted/30 px-3 py-2">
@@ -288,9 +292,9 @@ export function SmsContent({
                 </div>
                 <p className="text-sm font-medium">
                   {prepaidBalance} SMS
-                  {usingPrepaid && (
+                  {usingPrepaid && prepaidUsedThisMonth > 0 && (
                     <span className="text-xs text-amber-600 ml-1">
-                      (-{displayCurrent - planLimit} {t("quota.used").toLowerCase()})
+                      (-{prepaidUsedThisMonth} {t("quota.used").toLowerCase()})
                     </span>
                   )}
                 </p>
@@ -334,7 +338,7 @@ export function SmsContent({
           {isNearLimit && !isAtLimit && (
             <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
               <p className="text-sm text-amber-700 dark:text-amber-400">
-                {t("quota.nearLimit", { count: planLimit ? planLimit - displayCurrent : 0 })}
+                {t("quota.nearLimit", { count: quotaStatus.remaining })}
               </p>
               <Button variant="ghost" onClick={() => setShowTopupModal(true)}>
                 {t("quota.topup")}
