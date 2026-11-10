@@ -530,6 +530,14 @@ What Anthropic's connector directory and OpenAI's plugins ask of the authorizati
 - The ranges are copied, not fetched: refresh `provider-egress.ts` from its two sources when they change. An address a platform stops using keeps the higher ceiling until then; a new one gets the usual limits.
 - A client that sends a DPoP proof to the token endpoint anyway gets a DPoP-bound token, which `/api/mcp` refuses. Neither Claude nor ChatGPT does.
 
+## Directory plugins
+
+The packages that list Louez in the assistants' directories (OpenAI's Plugin Directory for ChatGPT and Codex, Anthropic's connector directory, Cursor's marketplace for Grok) live in the public MIT repository [Synapsr/louez-assistant-plugins](https://github.com/Synapsr/louez-assistant-plugins), not here: manifests, texts, logos, skills, the reviewers' test cases and the script that builds each upload. They all point at `https://app.louez.io/api/mcp`; what a directory's client sees is decided here ([Billing](#billing), `platform/agent-clients.ts`), so a test case may only name a tool listed for that client.
+
+**OpenAI's domain check.** Before it connects the MCP server, OpenAI's plugin portal (platform.openai.com/plugins, MCPs > Connect) shows a token and reads it at `https://app.louez.io/.well-known/openai-apps-challenge`. `apps/web/app/.well-known/openai-apps-challenge/route.ts` serves `OPENAI_APPS_CHALLENGE` there: the token alone, trimmed, as `text/plain; charset=utf-8` with `Cache-Control: no-store`, read at request time (`connection()`), so setting it in the deployment's env needs no rebuild. Unset, empty, longer than 512 characters or holding whitespace, the route answers 404 (`apps/web/lib/openai-apps-challenge.ts`). The token is public, not a secret; set it in Infisical (`/web`, `prod`) and Easypanel, then press Verify in the portal. The proxy lets the path through untouched on every host (`apps/web/proxy.test.ts`).
+
+**A new review for each package.** OpenAI rescans the MCP server every day: a new or changed tool reaches users once its scan passes, with no new upload. Anything in the package (name, texts, logos, test cases, release notes, skills) is read only from the ZIP: changing it means a new ZIP with a higher `version`, and a new review. The MCP server's URL cannot change once submitted. Reviewer credentials go in the portal (Review details), never in the ZIP.
+
 ---
 
 ## Related
