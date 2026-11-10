@@ -520,6 +520,7 @@ export async function runImageJob(
       await fail(jobError(error.code, FAILURE_MESSAGES[error.code], error.retryable));
     } else {
       logProviderError("image_job.process_failed", error);
+      ports.reportError?.(error, { source: "job", job: input.operation, storeId });
       await fail(jobError("PROCESSING_ERROR", FAILURE_MESSAGES.PROCESSING_ERROR, true));
     }
     return;
@@ -646,6 +647,7 @@ export async function runImageJob(
     }, IMAGE_RESULT_TRANSACTION);
   } catch (error) {
     logProviderError("image_job.record_failed", error);
+    ports.reportError?.(error, { source: "job", job: input.operation, storeId });
     // The transaction may still commit, or have committed with its answer
     // lost: settle it under the job's lock before any file is deleted.
     const outcome = await settleUncertainResult(

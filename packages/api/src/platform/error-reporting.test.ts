@@ -13,17 +13,16 @@ import {
   messageTemplate,
   prepareServerError,
   reportUnexpectedErrors,
+  rootFault,
   type ServerErrorContext,
   type ServerErrorProperties,
 } from "./error-reporting";
 import { apiError, platformErrors } from "./errors";
 import { largeBodyBusy } from "./large-bodies";
+import { toORPCError } from "../utils/orpc-error";
 import type { ApiPorts } from "./ports";
 
 // What reaches error tracking: only faults, sanitized, a few per hour.
-
-/** Stands for the app's sanitizer: e-mails out. */
-const sanitize = (text: string) => text.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email]");
 
 function errorAt(message: string, frame: string, name = "Error"): Error {
   const error = new Error(message);
@@ -97,12 +96,12 @@ describe("the copy that is sent", () => {
     const error = errorAt("inbox failed for jane@example.com", "listInbox (/app/inbox.js:1:2)");
     error.cause = cause;
     error.stack += "\n    at handler (/app/handoffs/jane@example.com:9:9)";
-    const { error: copy } = prepareServerError(error, sanitize);
+    const { error: copy } = prepareServerError(error);
     const text = JSON.stringify([copy.message, copy.stack, (copy.cause as Error).message]);
     assert.doesNotMatch(text, /jane@example\.com/);
-    assert.equal(copy.message, "inbox failed for [email]");
-    assert.match(copy.stack ?? "", /^Error: inbox failed for \[email\]\n {4}at listInbox/);
-    assert.equal((copy.cause as Error).message, "no row for [email]");
+    assert.equal(copy.message, "inbox failed for [redacted]");
+    assert.match(copy.stack ?? "", /^Error: inbox failed for \[redacted\]\n {4}at listInbox/);
+    assert.equal((copy.cause as Error).message, "no row for [redacted]");
   });
 
   test("a failed query's parameters are left out", () => {
@@ -110,44 +109,117 @@ describe("the copy that is sent", () => {
       'Failed query: select "id" from "customers" where "email" = $1\nparams: jane@example.com',
       "find (/app/db.js:1:1)",
     );
-    const { error: copy } = prepareServerError(error, (text) => text);
-    assert.equal(copy.message, 'Failed query: select "id" from "customers" where "email" = $1');
+    const { error: copy } = prepareServerError(error);
+    assert.equal(
+      copy.message,
+      'Failed query: select "id" from "customers" where "email" = $1\nparams: [redacted]',
+    );
+  });
+
+  test("a driver's cause loses the row it echoes", () => {
+    const cause = Object.assign(
+      errorAt(
+        "Duplicate entry 'alice@example.invalid' for key 'customers.email_store'",
+        "query (/app/node_modules/mysql2/lib/conn.js:1:1)",
+      ),
+      { code: "ER_DUP_ENTRY" },
+    );
+    const error = errorAt("Failed to create customer", "create (/app/apps/web/lib/c.ts:1:1)");
+    error.cause = cause;
+    const prepared = prepareServerError(error);
+    assert.equal(
+      (prepared.error.cause as Error).message,
+      "Duplicate entry '[redacted]' for key 'customers.email_store'",
+    );
+  });
+
+  test("frames name paths relative to the repository", () => {
+    const error = errorAt(
+      "boom",
+      "load (/Users/someone/Louez/packages/api/src/services/inbox.ts:4:2)",
+    );
+    const { error: copy } = prepareServerError(error);
+    assert.match(copy.stack ?? "", /\n {4}at load \(packages\/api\/src\/services\/inbox\.ts:4:2\)/);
+    assert.doesNotMatch(copy.stack ?? "", /\/Users\/someone/);
+  });
+
+  test("a validation error says which fields, never the values it quotes", () => {
+    const error = Object.assign(new Error('[{"received":"jane@example.invalid"}]'), {
+      name: "ZodError",
+      issues: [
+        { code: "invalid_type", path: ["customer", "email"], input: "jane@example.invalid" },
+        { code: "too_small", path: ["items", 0, "quantity"] },
+      ],
+    });
+    const { error: copy } = prepareServerError(error);
+    assert.equal(
+      copy.message,
+      "2 issue(s): invalid_type at customer.email; too_small at items.0.quantity",
+    );
   });
 
   test("a thrown value that is no Error becomes one, sanitized", () => {
-    const { error: copy } = prepareServerError("token for jane@example.com", sanitize);
+    const { error: copy } = prepareServerError("no row for jane@example.com");
     assert.equal(copy.name, "NonErrorThrown");
-    assert.equal(copy.message, "token for [email]");
+    assert.equal(copy.message, "no row for [redacted]");
   });
 
   test("the copy keeps no property of the original (a request, a payload)", () => {
     const error = Object.assign(errorAt("boom", "a (/app/a.js:1:1)"), {
       request: { headers: { authorization: "Bearer secret" } },
     });
-    const { error: copy } = prepareServerError(error, sanitize);
+    const { error: copy } = prepareServerError(error);
     assert.equal(Reflect.get(copy, "request"), undefined);
   });
 });
 
 describe("one fingerprint per fault", () => {
+  test("a fault behind errors.internalServerError is reported as itself", () => {
+    const first = errorAt(
+      "Cannot read properties of undefined (reading 'ranges')",
+      "readHours (/app/a.js:1:1)",
+      "TypeError",
+    );
+    const second = errorAt(
+      "Connection lost: The server closed the connection.",
+      "query (/app/db.js:1:1)",
+    );
+    const wrapped = (cause: Error) =>
+      new ORPCError("INTERNAL_SERVER_ERROR", { message: "errors.internalServerError", cause });
+    const a = prepareServerError(wrapped(first));
+    const b = prepareServerError(wrapped(second));
+    assert.notEqual(a.fingerprint, b.fingerprint);
+    assert.equal(a.fingerprint, prepareServerError(first).fingerprint);
+    assert.equal(a.error.name, "TypeError");
+    assert.equal(rootFault(wrapped(first)), first);
+    // A refusal is not unwrapped: it is its own answer.
+    const refusal = new ORPCError("NOT_FOUND", { cause: first });
+    assert.equal(rootFault(refusal), refusal);
+  });
+
+  test("toORPCError keeps the fault as its cause", () => {
+    const fault = new Error("boom");
+    assert.equal(toORPCError(fault).cause, fault);
+  });
+
   test("ids and numbers in the message do not split a fault", () => {
     assert.equal(
       messageTemplate('Store "st_9f8e7d6c5b4a" has 3 rows at 7c9e6679-7425-40de-944b-e07fc1f90ae7'),
       "Store <value> has <n> rows at <uuid>",
     );
-    const a = prepareServerError(errorAt("row 12 missing", "f (/app/a.js:1:1)"), sanitize);
-    const b = prepareServerError(errorAt("row 98 missing", "f (/app/a.js:7:3)"), sanitize);
+    const a = prepareServerError(errorAt("row 12 missing", "f (/app/a.js:1:1)"));
+    const b = prepareServerError(errorAt("row 98 missing", "f (/app/a.js:7:3)"));
     assert.equal(a.fingerprint, b.fingerprint);
   });
 
   test("another type, message or place is another fault", () => {
-    const base = prepareServerError(errorAt("row missing", "f (/app/a.js:1:1)"), sanitize);
+    const base = prepareServerError(errorAt("row missing", "f (/app/a.js:1:1)"));
     for (const other of [
       errorAt("row missing", "f (/app/a.js:1:1)", "TypeError"),
       errorAt("column missing", "f (/app/a.js:1:1)"),
       errorAt("row missing", "g (/app/b.js:1:1)"),
     ]) {
-      assert.notEqual(prepareServerError(other, sanitize).fingerprint, base.fingerprint);
+      assert.notEqual(prepareServerError(other).fingerprint, base.fingerprint);
     }
   });
 });
@@ -208,11 +280,11 @@ describe("the reporter", () => {
 
   test("sends a fault with its safe context, nothing else", () => {
     const { sent, send } = recorder();
-    const report = createServerErrorReporter({ send, sanitize, throttle: createErrorThrottle() });
+    const report = createServerErrorReporter({ send, throttle: createErrorThrottle() });
     report(new ORPCError("NOT_FOUND"), context);
     report(errorAt("boom", "f (/app/a.js:1:1)"), context);
     assert.equal(sent.length, 1);
-    const { fingerprint } = prepareServerError(errorAt("boom", "f (/app/a.js:1:1)"), sanitize);
+    const { fingerprint } = prepareServerError(errorAt("boom", "f (/app/a.js:1:1)"));
     assert.deepEqual(sent[0]?.properties, {
       $exception_fingerprint: fingerprint,
       source: "procedure",
@@ -231,7 +303,6 @@ describe("the reporter", () => {
       send: () => {
         throw new Error("network down");
       },
-      sanitize,
       throttle: createErrorThrottle(),
     });
     assert.doesNotThrow(() => report(new Error("boom"), context));
@@ -241,7 +312,6 @@ describe("the reporter", () => {
     let notices = 0;
     const report = createServerErrorReporter({
       send: () => {},
-      sanitize,
       throttle: createErrorThrottle({ hourlyCap: 1 }),
       onCapReached: () => (notices += 1),
     });

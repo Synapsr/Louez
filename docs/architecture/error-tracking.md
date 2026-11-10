@@ -14,17 +14,19 @@ An error is sent when it is **unexpected**: an exception, or an HTTP status of 5
 | A hand-written MCP tool, or a tool that throws past its own handling                | `mcp_tool`  | `reportToolError` (`packages/mcp/src/utils/errors.ts`)                                                                                                   |
 | A route handler, a server component, a server action, the proxy                     | `request`   | `onRequestError` in `apps/web/instrumentation.ts`                                                                                                        |
 | A cron task, or the cron itself                                                     | `cron`      | `runIsolatedTasks` and the cron route's catch (`apps/web/app/api/cron/`)                                                                                 |
-| A background job (AI photos), or the job runner                                     | `job`       | `runJob` (`packages/api/src/services/jobs.ts`), `apps/web/lib/api/jobs.ts`                                                                               |
-| The dispatch of a write's effects                                                   | `effects`   | `apps/web/lib/api/effects.ts`                                                                                                                            |
+| A background job (AI photos): a processing crash, a result not recorded, the runner | `job`       | `runImageJob` (`packages/api/src/services/product-images.ts`), `runJob`, `apps/web/lib/api/jobs.ts`                                                      |
+| A write's effect: a sender that threw, a claim or an outcome not recorded           | `effects`   | `dispatchEffects` (`packages/api/src/platform/effects.ts`, its `report` option), `apps/web/lib/api/effects.ts`                                           |
 | A rejection or exception nothing caught                                             | `process`   | `unhandledRejection` and `uncaughtExceptionMonitor` listeners, set in `register()`                                                                       |
 
 **Never sent:** a refusal (4xx: validation, `NOT_FOUND`, `UNAUTHENTICATED`, `PERMISSION_DENIED`, `CONFIRMATION_REQUIRED`, `NOT_AVAILABLE_TO_THIS_AGENT`, `RATE_LIMITED`…), a 503 our code marks `retryable` (`LARGE_BODY_BUSY`), a caller that went away (`AbortError`), Next's control flow (`redirect()`, `notFound()`, dynamic bailouts) and React's postpone.
 
-An oRPC procedure's error is answered as a 500 by its handler: it reaches error tracking once, from the interceptor, never again from `onRequestError`.
+An oRPC procedure's error is answered as a 500 by its handler: it reaches error tracking once, from the interceptor, never again from `onRequestError`. An image job's expected failures (`ProductImageFailure`, a timeout) and an effect sender out of time (outcome unknown, the cron retries it) are not sent.
+
+A 5xx oRPC error that wraps another stands for its cause: `toORPCError` (`packages/api/src/utils/orpc-error.ts`) keeps the original as `cause`, which no transport sends, and `rootFault` reports it, so two faults behind `errors.internalServerError` stay two issues.
 
 ### What goes with an error
 
-A **copy** of the error: its name, its message, its stack frames, and up to two levels of `cause`. Never the error object itself, whose properties may hold a request or a payload. The message and every frame go through the sanitizer; a failed Drizzle query loses its `params:` (the query's values). Messages are cut at 1,000 characters, stacks at 30 frames.
+A **copy** of the error: its name, its message, its stack frames, and up to two levels of `cause`. Never the error object itself, whose properties may hold a request or a payload. The message and every frame go through the sanitizer; a validation error (Zod's `issues`) is sent as its issue codes and paths, never the values its message quotes. Messages are cut at 1,000 characters, stacks at 30 frames.
 
 The context is a fixed list of names and ids, nothing a caller sent:
 
@@ -45,7 +47,21 @@ The context is a fixed list of names and ids, nothing a caller sent:
 
 No body, no header, no token, no user or customer data, no person profile (the event is anonymous), no GeoIP.
 
-The sanitizer is given by the app (`TextSanitizer`). It is the logs' handoff redactor for now; it becomes the generic error sanitizer of `packages/api` (e-mails, bearer and basic tokens, API keys, JWTs, URL queries) when that lands, in `apps/web/lib/error-tracking.ts`. Keep `POSTHOG_ERROR_TRACKING_ENABLED` off until then.
+### The sanitizer
+
+The shared sanitizer of the logs and error tracking, `packages/api/src/platform/sanitize-error.ts`: the copy is built from `sanitizeError` (name, message, codes, frames and causes, each through `sanitizeText`; no other property of the error). `sanitizeText` replaces with `[redacted]`:
+
+- e-mails and international phone numbers;
+- bearer, basic, digest and token credentials; sensitive fields (`password=`, `"apiKey": "…"`, `x-api-key:`, cookies); JWTs; Louez API keys (`lz_`), Stripe `sk_`/`rk_`/`pk_` keys, client secrets and `whsec_`; PostHog, GitHub, Slack and AWS keys;
+- URL userinfo, query strings and fragments, and a bare path's query (`/api/files/source?…`);
+- what a database quotes back of the row: MySQL's `Duplicate entry '…'` and `Incorrect … value: '…'`, Postgres's `Key (…)=(…)` and `Failing row contains (…)`, Drizzle's `params: …`; table, column and key names stay;
+- long hex and base64 blobs, and a handoff's secrets (`platform/redact.ts`).
+
+The patterns err toward redacting; ids (`store_…`, nanoids), codes and numbers stay, so the text still says what broke. Frame paths are made relative to the repository (`platform/source-paths.ts`: `apps/…`, `packages/…`, `node_modules/…`, `.next/…`); a path outside it keeps only its file name.
+
+### The last gate
+
+posthog-node reads the source lines around each frame from disk (`pre_context`, `context_line`, `post_context`) after the copy is made. The client's `before_send` (`sanitizeExceptionEvent` in `apps/web/lib/error-tracking.ts`) drops them, makes every path relative and sanitizes the messages again on the event as sent, and refuses any event that is not an exception.
 
 ## How many
 
@@ -56,18 +72,20 @@ Per server process, in `error-reporting.ts`:
 - **500 faults remembered** (`MAX_TRACKED_FAULTS`), the oldest forgotten first.
 - **A sample rate**, optional: `POSTHOG_ERROR_TRACKING_SAMPLE_RATE` (0 to 1, default 1). A fault dropped by sampling is not counted.
 
-Sending never holds a request: the event leaves in the background as soon as it is captured (`flushAt: 1`), with one try of 3 seconds at most, and the client is shut down with 2 seconds to spare when the process exits. Reporting never throws.
+Sending never holds a request: the event leaves in the background as soon as it is captured (`flushAt: 1`), with one try of 3 seconds at most. Reporting never throws.
+
+When the process stops, the client is shut down with 2 seconds to send what is queued: on `beforeExit`, and on SIGTERM and SIGINT (`flushOnSignals`). Next's standalone server handles those signals itself (it stops accepting connections, finishes the requests, then exits): the flush starts alongside, never holds it, and never takes the signal away. With no other listener (`NEXT_MANUAL_SIG_HANDLE`), the signal is raised again once flushed, so it still stops the process.
 
 ## Configuration
 
-| Variable                             | Where                   | Value                                                  |
-| ------------------------------------ | ----------------------- | ------------------------------------------------------ |
-| `POSTHOG_ERROR_TRACKING_ENABLED`     | server                  | `true` to send; anything else, or unset, sends nothing |
-| `POSTHOG_ERROR_TRACKING_SAMPLE_RATE` | server, optional        | from `0` to `1`, default `1`                           |
-| `NEXT_PUBLIC_POSTHOG_KEY`            | already set (analytics) | the project's key, shared with analytics               |
-| `NEXT_PUBLIC_POSTHOG_HOST`           | already set (analytics) | the ingestion host, default `https://eu.i.posthog.com` |
+| Variable                             | Where                   | Value                                                                               |
+| ------------------------------------ | ----------------------- | ----------------------------------------------------------------------------------- |
+| `POSTHOG_ERROR_TRACKING_ENABLED`     | server                  | `true` or `1` to send; anything else (`false`, `0`, empty), or unset, sends nothing |
+| `POSTHOG_ERROR_TRACKING_SAMPLE_RATE` | server, optional        | from `0` to `1`, default `1`                                                        |
+| `NEXT_PUBLIC_POSTHOG_KEY`            | already set (analytics) | the project's key, shared with analytics                                            |
+| `NEXT_PUBLIC_POSTHOG_HOST`           | already set (analytics) | the ingestion host, default `https://eu.i.posthog.com`                              |
 
-Development and tests send nothing: the flag is off unless set, even where the analytics key is. `next build` sends nothing either.
+Development and tests send nothing: the flag is off unless set, even where the analytics key is. `next build` sends nothing either. The flag is parsed in `apps/web/lib/error-tracking.ts`, not by the env schema: with `SKIP_ENV_VALIDATION`, `env` hands over the raw string, and `"false"` must stay off.
 
 Error tracking has its own `posthog-node` client, not the analytics one (`apps/web/lib/posthog.ts`), which its callers shut down after each event.
 
@@ -78,10 +96,10 @@ Frames point at the compiled server chunks of the standalone build (`.next/serve
 ## Tests
 
 ```bash
-cd packages/api && SKIP_ENV_VALIDATION=true node --import tsx --test src/platform/error-reporting.test.ts
+cd packages/api && SKIP_ENV_VALIDATION=true node --import tsx --test src/platform/sanitize-error.test.ts src/platform/source-paths.test.ts src/platform/error-reporting.test.ts
 ```
 
-Filtering, the copy and its sanitizing, fingerprints, the repeat window, the hourly cap, sampling and the interceptor, without network. `apps/web/lib/error-tracking.test.ts` checks that it stays off without the flag, the key, or during the build; `packages/mcp/src/utils/errors.test.ts` and `apps/web/app/api/cron/isolated-tasks.test.ts` the MCP and cron hooks.
+Without network: `sanitize-error.test.ts` plants canaries (e-mails, keys, tokens, rows a database quotes, queries, phones, blobs) and checks they are gone, `source-paths.test.ts` the relative paths; `error-reporting.test.ts` the filtering, the copy, the root fault behind `errors.internalServerError`, fingerprints, the repeat window, the hourly cap, sampling and the interceptor. `apps/web/lib/error-tracking.test.ts` checks the flag (`"false"`, `"0"`, empty, unset stay off), the build, the final event through the real client with PostHog's network intercepted (the source lines it reads from disk do not leave), and the signal flush; `packages/mcp/src/utils/errors.test.ts` and `apps/web/app/api/cron/isolated-tasks.test.ts` the MCP and cron hooks.
 
 ## Related
 

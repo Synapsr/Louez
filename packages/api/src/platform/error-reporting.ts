@@ -5,6 +5,8 @@ import { ORPCError } from "@orpc/server";
 import type { BaseContext } from "../context";
 import type { CredentialKind, Transport } from "./actor";
 import type { ClientDirectory } from "./agent-clients";
+import { sanitizeError, sanitizeText, type SanitizedError } from "./sanitize-error";
+import { relativeFramePath } from "./source-paths";
 
 /**
  * Server errors sent to error tracking (the app sends them to PostHog,
@@ -48,16 +50,14 @@ export interface ServerErrorContext extends ErrorScope {
   routeType?: string;
   /** A cron task's name. */
   task?: string;
+  /** A background job's operation (`enhance`, `remove_background`…). */
+  job?: string;
+  /** An outbox effect's type (`reservation.customerMessage`…). */
+  effect?: string;
 }
 
 /** Sends an unexpected error with its context; ignores any other. Never throws. */
 export type ReportServerError = (error: unknown, context: ServerErrorContext) => void;
-
-/**
- * Takes out of a message or a stack frame what must not leave the server:
- * e-mails, tokens, keys, a URL's query, a handoff's secrets. Given by the app.
- */
-export type TextSanitizer = (text: string) => string;
 
 // --- Which errors -------------------------------------------------------------
 
@@ -110,9 +110,7 @@ export function isUnexpectedServerError(error: unknown): boolean {
 
 /** Frames kept per error: the top ones say where it broke. */
 const MAX_FRAMES = 30;
-/** A message longer than this is cut: the start says what broke. */
-const MAX_MESSAGE_LENGTH = 1_000;
-/** Causes followed below the error (a database error under a service's). */
+/** Generic 5xx errors unwrapped to reach the fault (`rootFault`). */
 const MAX_CAUSE_DEPTH = 2;
 
 const FRAME = /^\s+at /;
@@ -130,35 +128,40 @@ export function errorCode(error: unknown): string | undefined {
     : undefined;
 }
 
-/**
- * The message without what a driver appends: Drizzle's failed query ends with
- * `params: …`, the values of the query (a customer's e-mail, a name).
- */
-function ownMessage(message: string): string {
-  const params = message.indexOf("\nparams:");
-  return params === -1 ? message : message.slice(0, params);
+/** Issues of a validation error (Zod's) named, never their values. */
+const MAX_ISSUES = 5;
+
+/** A validation error's issues as codes and paths: its own message may quote the input. */
+function issuesMessage(error: unknown): string | undefined {
+  const issues: unknown = error instanceof Error ? Reflect.get(error, "issues") : undefined;
+  if (!Array.isArray(issues)) return undefined;
+  const named = issues.slice(0, MAX_ISSUES).map((issue: unknown) => {
+    const code = typeof issue === "object" && issue ? Reflect.get(issue, "code") : undefined;
+    const path = typeof issue === "object" && issue ? Reflect.get(issue, "path") : undefined;
+    const at = Array.isArray(path) ? path.map((part) => String(part)).join(".") : "";
+    return `${typeof code === "string" ? code : "invalid"}${at ? ` at ${at}` : ""}`;
+  });
+  const more = issues.length > MAX_ISSUES ? ` (+${issues.length - MAX_ISSUES})` : "";
+  return sanitizeText(`${issues.length} issue(s): ${named.join("; ")}${more}`);
 }
 
-function safeCopy(error: unknown, sanitize: TextSanitizer, depth: number): Error {
-  if (!(error instanceof Error)) {
-    const copy = new Error(sanitize(String(error)).slice(0, MAX_MESSAGE_LENGTH));
-    copy.name = "NonErrorThrown";
-    copy.stack = `${copy.name}: ${copy.message}`;
-    return copy;
-  }
-  const message = sanitize(ownMessage(error.message)).slice(0, MAX_MESSAGE_LENGTH);
+/** An Error built back from the sanitized facts, as posthog-node reads it. */
+function toError(facts: SanitizedError, message: string): Error {
   const copy = new Error(message);
-  copy.name = error.name;
-  const frames = (error.stack ?? "")
-    .split("\n")
-    .filter((line) => FRAME.test(line))
-    .slice(0, MAX_FRAMES)
-    .map(sanitize);
+  copy.name = facts.name === "NonError" ? "NonErrorThrown" : facts.name;
+  const frames = facts.frames.map((frame) => `    ${relativeFramePath(frame)}`);
   copy.stack = [`${copy.name}: ${message}`, ...frames].join("\n");
-  if (error.cause !== undefined && depth < MAX_CAUSE_DEPTH) {
-    copy.cause = safeCopy(error.cause, sanitize, depth + 1);
-  }
+  if (facts.cause) copy.cause = toError(facts.cause, facts.cause.message);
   return copy;
+}
+
+/**
+ * The copy that is sent: the allowlisted, sanitized facts of
+ * `sanitizeError` (name, message, frames, causes), never the error object.
+ */
+function safeCopy(error: unknown): Error {
+  const facts = sanitizeError(error, { frames: MAX_FRAMES });
+  return toError(facts, issuesMessage(error) ?? facts.message);
 }
 
 /**
@@ -181,6 +184,20 @@ function topFrame(stack: string | undefined): string {
   return (ours ?? frames[0] ?? "").trim().replace(/:\d+:\d+\)?$/, "");
 }
 
+/**
+ * The fault under a generic server error: a 5xx oRPC error that wraps
+ * another (`toORPCError` keeps it as `cause`) stands for its cause, so two
+ * different faults behind `errors.internalServerError` stay two.
+ */
+export function rootFault(error: unknown): unknown {
+  let fault = error;
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth += 1) {
+    if (!(fault instanceof ORPCError) || fault.status < 500 || fault.cause === undefined) break;
+    fault = fault.cause;
+  }
+  return fault;
+}
+
 export interface PreparedServerError {
   /** The copy to send: sanitized message and frames, causes included. */
   error: Error;
@@ -189,15 +206,14 @@ export interface PreparedServerError {
   code?: string;
 }
 
-export function prepareServerError(error: unknown, sanitize: TextSanitizer): PreparedServerError {
-  const copy = safeCopy(error, sanitize, 0);
-  const code = errorCode(error);
-  const key = [
-    copy.name,
-    code ?? "",
-    messageTemplate(copy.message),
-    topFrame(error instanceof Error ? error.stack : undefined),
-  ].join("|");
+/** The root fault's copy and fingerprint (`rootFault`). */
+export function prepareServerError(error: unknown): PreparedServerError {
+  const fault = rootFault(error);
+  const copy = safeCopy(fault);
+  const code = errorCode(fault);
+  const key = [copy.name, code ?? "", messageTemplate(copy.message), topFrame(copy.stack)].join(
+    "|",
+  );
   const fingerprint = createHash("sha256").update(key).digest("hex").slice(0, 32);
   return { error: copy, fingerprint, ...(code ? { code } : {}) };
 }
@@ -286,7 +302,6 @@ export type ServerErrorProperties = Record<string, string | number>;
  */
 export function createServerErrorReporter(options: {
   send: (error: Error, properties: ServerErrorProperties) => void;
-  sanitize: TextSanitizer;
   throttle: ErrorThrottle;
   /** Called once per hour at most, when the hourly cap starts dropping errors. */
   onCapReached?: () => void;
@@ -295,7 +310,7 @@ export function createServerErrorReporter(options: {
   return (error, context) => {
     try {
       if (!isUnexpectedServerError(error)) return;
-      const prepared = prepareServerError(error, options.sanitize);
+      const prepared = prepareServerError(error);
       const decision = options.throttle.admit(prepared.fingerprint);
       if (!decision.admitted) {
         if (decision.reason === "capped" && Date.now() - capNoticeAt >= HOUR_MS) {
@@ -318,6 +333,8 @@ export function createServerErrorReporter(options: {
         "route",
         "routeType",
         "task",
+        "job",
+        "effect",
         "storeId",
         "client",
         "directory",
@@ -342,6 +359,8 @@ const SNAKE = {
   route: "route",
   routeType: "route_type",
   task: "cron_task",
+  job: "job_operation",
+  effect: "effect_type",
   storeId: "store_id",
   client: "client_kind",
   directory: "client_directory",

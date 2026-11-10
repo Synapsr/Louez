@@ -4,10 +4,11 @@ import { REDACTED, redactHandoffSecrets } from "./redact";
  * Errors as facts safe to log or send to an error tracker. An error's
  * message may carry what a request held: a customer's e-mail in a duplicate
  * key, a token a provider echoes, a URL with its query, a failed query's
- * parameters. `sanitizeText` removes those; `sanitizeError` keeps only a
- * short list of fields (name, message, codes, stack frames, cause), each
- * sanitized, and never the error object itself, whose other properties
- * (Stripe's `raw`, a request's headers) are left out.
+ * parameters, a phone number, a long opaque blob. `sanitizeText` removes
+ * those; `sanitizeError` keeps only a short list of fields (name, message,
+ * codes, stack frames, cause), each sanitized, and never the error object
+ * itself, whose other properties (Stripe's `raw`, a request's headers) are
+ * left out.
  */
 
 /** Longest message kept: past it, the text is cut. */
@@ -27,10 +28,16 @@ const RULES: readonly Rule[] = [
   // A URL's user and password, then its query and fragment.
   [/\b([a-z][a-z0-9+.-]*:\/\/)[^\s/?#@"'<>]+@/gi, `$1${REDACTED}@`],
   [/(\b[a-z][a-z0-9+.-]*:\/\/[^\s?#"'<>]*)[?#][^\s"'<>]*/gi, `$1?${REDACTED}`],
+  // A bare path's query (`/api/files/source?key=…`), without a scheme.
+  [/(\/[A-Za-z0-9._~%/-]*)\?(?!\[redacted\])[^\s"'<>]+/g, `$1?${REDACTED}`],
   // A failed query's parameters (Drizzle: "params: a,b,c").
   [/(\bparams:\s*)[^\n]*/gi, `$1${REDACTED}`],
   // A value MySQL quotes back ("Duplicate entry 'x' for key").
   [/(\bDuplicate entry\s+)'[^']*'/gi, `$1'${REDACTED}'`],
+  // Other values a database quotes back: MySQL's bad value, Postgres's key and failing row.
+  [/(\bIncorrect [a-z ]+ value:?\s+)'[^']*'/gi, `$1'${REDACTED}'`],
+  [/(\bKey \([^)]*\)=)\((?:[^()]|\([^)]*\))*\)/g, `$1(${REDACTED})`],
+  [/(\bFailing row contains\s+)\(.*\)/g, `$1(${REDACTED})`],
   // An authorization scheme's credential.
   [/\b(Bearer|Basic|Digest|Token)\s+[A-Za-z0-9._~+/=:-]+/gi, `$1 ${REDACTED}`],
   // A sensitive field's value: a header, a form field, a JSON key.
@@ -42,11 +49,24 @@ const RULES: readonly Rule[] = [
   [/\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*/g, REDACTED],
   // Keys: Louez's API keys, Stripe's secret, restricted and webhook keys, a client secret.
   [/\blz_[A-Za-z0-9]{4}_[A-Za-z0-9]{8,}/g, REDACTED],
-  [/\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{8,}/g, REDACTED],
+  [/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}/g, REDACTED],
   [/\bwhsec_[A-Za-z0-9]{8,}/g, REDACTED],
   [/\b[a-z]{2,8}_[A-Za-z0-9]{8,}_secret_[A-Za-z0-9]{8,}/g, REDACTED],
+  // Other services' keys: PostHog, GitHub, Slack, AWS.
+  [/\bph[cxs]_[A-Za-z0-9]{8,}/g, REDACTED],
+  [/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{16,}/g, REDACTED],
+  [/\bxox[abposr]-[A-Za-z0-9-]{8,}/g, REDACTED],
+  [/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, REDACTED],
   // An e-mail address.
   [/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g, REDACTED],
+  // An international phone number (E.164, spaced or not).
+  [/(?<![\w+])\+\d{1,3}(?:[ .-]?\d){7,13}\b/g, REDACTED],
+  // Long opaque blobs: hex digests, base64 (without `/`, so paths keep their segments).
+  [/\b[0-9a-f]{32,}\b/gi, REDACTED],
+  [
+    /(?<![\w/-])(?=[A-Za-z0-9+_-]*\d)(?=[A-Za-z0-9+_-]*[A-Za-z])[A-Za-z0-9+_-]{40,}={0,2}/g,
+    REDACTED,
+  ],
 ];
 
 /** `text` without the personal data and secrets it may hold, cut to `max` characters. */

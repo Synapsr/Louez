@@ -143,3 +143,52 @@ describe("sanitizing errors", () => {
     assertClean(describeProviderError(new Error(`Authorization: Bearer ${BEARER}`)));
   });
 });
+
+// What error tracking adds to the list (docs/architecture/error-tracking.md).
+describe("sanitizing errors for error tracking", () => {
+  const canaries = {
+    publishable: "pk_live_51FakeCanaryPublishable",
+    posthog: "phc_FakeCanaryPostHog123",
+    github: "ghp_FakeCanaryGitHubToken1234",
+    slack: "xoxb-1234-FakeCanary-slack",
+    aws: "AKIAFAKECANARY123456",
+    path: "files-key-canary",
+    bad: "Jean Dupont",
+    pgKey: "bob@example.test",
+    pgRow: "Robert Durand",
+    phone: "+33 6 12 34 56 78",
+    hex: "a1".repeat(20),
+    base64: `Q2FuYXJ5${"QmxvYkNhbmFyeQ".repeat(4)}`,
+  };
+
+  test("other keys, a bare path's query, the values a database quotes, phones and blobs", () => {
+    const text = [
+      `${canaries.publishable} ${canaries.posthog} ${canaries.github} ${canaries.slack} ${canaries.aws}`,
+      `GET /api/files/source?key=${canaries.path} failed`,
+      `Incorrect integer value: '${canaries.bad}' for column 'quantity' at row 1`,
+      `Key (email)=(${canaries.pgKey}) already exists.`,
+      `Failing row contains (42, ${canaries.pgRow}, null).`,
+      `SMS to ${canaries.phone} failed`,
+      `digest ${canaries.hex} blob ${canaries.base64}`,
+    ].join("\n");
+    const clean = sanitizeText(text);
+    for (const [name, value] of Object.entries(canaries)) {
+      assert.ok(!clean.includes(value), `${name} survived in ${clean}`);
+    }
+    // What says what broke stays: the path, the column, the key's name.
+    assert.match(clean, /GET \/api\/files\/source\?\[redacted\] failed/);
+    assert.match(clean, /for column 'quantity' at row 1/);
+    assert.match(clean, /Key \(email\)=\(\[redacted\]\) already exists\./);
+  });
+
+  test("ids, tables, codes and numbers stay", () => {
+    const text =
+      "Store store_V1StGXR8_Z5jdHi6B-myT has no row in reservation_items (ER_NO_REFERENCED_ROW_2, 1452)";
+    assert.equal(sanitizeText(text), text);
+  });
+
+  test("a frame's path and position stay", () => {
+    const frame = "at listInbox (/app/packages/api/src/services/inbox.ts:1723:9)";
+    assert.equal(sanitizeText(frame), frame);
+  });
+});

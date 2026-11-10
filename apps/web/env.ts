@@ -160,12 +160,11 @@ export const env = createEnv({
     POSTHOG_PROJECT_ID: z.string().optional(),
     POSTHOG_PERSONAL_API_KEY: z.string().optional(),
     // Server errors to PostHog error tracking (lib/error-tracking.ts), with
-    // NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST. Off unless "true".
-    POSTHOG_ERROR_TRACKING_ENABLED: z
-      .string()
-      .default("false")
-      .transform((val) => val === "true"),
-    POSTHOG_ERROR_TRACKING_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1),
+    // NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST. On only for "true"
+    // or "1", which lib/error-tracking.ts parses: kept raw here, as
+    // SKIP_ENV_VALIDATION would hand over the raw string anyway.
+    POSTHOG_ERROR_TRACKING_ENABLED: z.string().optional(),
+    POSTHOG_ERROR_TRACKING_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
     GLEAP_API_TOKEN: z.string().optional(),
     OPENREPLAY_API_URL: z.url("OPENREPLAY_API_URL must be a valid URL").optional(),
     OPENREPLAY_ORGANIZATION_API_KEY: z.string().optional(),
