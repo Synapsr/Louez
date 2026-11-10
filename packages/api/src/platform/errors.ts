@@ -1,5 +1,7 @@
 import { ORPCError } from "@orpc/server";
 
+import { markTemplated } from "./sanitize-error";
+
 /**
  * Errors of the agent-ready API. Every transport sends the same thing:
  *
@@ -38,15 +40,18 @@ export function apiError(
     details?: Record<string, unknown>;
   },
 ): ORPCError<HttpCode, ApiErrorData> {
-  return new ORPCError(status, {
-    message: options.message,
-    data: {
-      code,
-      retryable: options.retryable ?? false,
-      ...(options.i18nKey ? { i18nKey: options.i18nKey } : {}),
-      ...(options.details ? { details: options.details } : {}),
-    },
-  });
+  // Its message is a template of Louez's own: logs and error reports keep it (`sanitizeError`).
+  return markTemplated(
+    new ORPCError(status, {
+      message: options.message,
+      data: {
+        code,
+        retryable: options.retryable ?? false,
+        ...(options.i18nKey ? { i18nKey: options.i18nKey } : {}),
+        ...(options.details ? { details: options.details } : {}),
+      },
+    }),
+  );
 }
 
 /** The platform's own errors: authentication, rights, limits, confirmation. */

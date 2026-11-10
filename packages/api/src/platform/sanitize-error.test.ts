@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
+import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
+import { ApiServiceError } from "../services/errors";
+import { apiError, platformErrors } from "./errors";
 import {
   describeProviderError,
   sanitizeCode,
@@ -93,10 +96,17 @@ describe("sanitizing free text: only its shape stays", () => {
       "ada@ib.test",
       "0612345678",
     ]);
-    assert.match(clean, /^Duplicate entry \[value\] for key \[value\]$/m);
-    assert.match(clean, /^request failed: Authorization: \[redacted\]$/m);
-    assert.match(clean, /^GET https:\/\/app\.louez\.test\[url\]$/m);
-    assert.match(clean, /^https:\/\/db\.louez\.test\[url\]$/m);
+    // The first key ends the text: all that follows it is gone.
+    assert.equal(clean, "Duplicate entry [value] for key [value]\nrequest failed: [redacted]");
+    // Each line alone keeps its own shape.
+    assert.equal(
+      sanitizeText("GET https://app.louez.test/api/oauth/callback?code=x#frag"),
+      "GET https://app.louez.test[url]",
+    );
+    assert.equal(
+      sanitizeText(`https://user:${PASSWORD}@db.louez.test/louez`),
+      "https://db.louez.test[url]",
+    );
   });
 
   test("a long message is cut before it is read, without the word the cut split", () => {
@@ -124,7 +134,7 @@ describe("sanitizing free text: what a denylist let through", () => {
     }
     assert.equal(
       sanitizeText(`{"cookie":"session=FAKE_SESSION; refresh=FAKE_REFRESH_SECRET"}`),
-      `{"cookie": [redacted]`,
+      `{[value]: [redacted]`,
     );
   });
 
@@ -142,10 +152,10 @@ describe("sanitizing free text: what a denylist let through", () => {
     ]) {
       assertNone(sanitizeText(text), ["FAKE_WS_TOKEN", "first", "second"]);
     }
-    // What follows the redacted line stays.
+    // All that follows the key goes, the lines after it included.
     assert.equal(
       sanitizeText("Authorization:\n   Bearer FAKE_WS_TOKEN\nthen it failed"),
-      "Authorization: [redacted]\nthen it failed",
+      "Authorization: [redacted]",
     );
   });
 
@@ -319,8 +329,8 @@ describe("sanitizing free text: what a denylist let through", () => {
       ]);
       assert.doesNotThrow(() => describeProviderError(error));
     }
-    assert.equal(sanitizeError(symbolMessage).message, "[value]");
-    assert.equal(sanitizeError(numberStack).name, "Error");
+    assert.equal(sanitizeError(symbolMessage).message, "[message withheld]");
+    assert.equal(sanitizeError(numberStack).name, "[name]");
     assert.deepEqual(sanitizeError(numberStack).frames, []);
     assert.equal(sanitizeError(cyclic).cause?.message, "[cause cycle]");
     // Causes stop after three levels.
@@ -355,11 +365,12 @@ describe("sanitizing structured errors", () => {
       "statusCode",
       "type",
     ]);
-    assert.equal(facts.message, "Authorization: [redacted]");
-    assert.equal(facts.code, "ER_SOMETHING");
+    assert.equal(facts.message, "[message withheld]");
+    assert.equal(facts.code, "[code]");
+    assert.equal(facts.type, "StripeInvalidRequestError");
     assert.equal(facts.statusCode, 400);
     assert.ok(facts.frames.length > 0 && facts.frames.every((frame) => frame.startsWith("at ")));
-    assert.equal(facts.cause?.message, "connect failed for [value]");
+    assert.equal(facts.cause?.message, "[message withheld]");
     assertNone(JSON.stringify(facts), [EMAIL, BEARER]);
   });
 
@@ -484,31 +495,55 @@ describe("sanitizing structured errors", () => {
     assertNone(JSON.stringify(wrapped), ["0612345678"]);
   });
 
-  test("a code is kept only when it is a short code", () => {
+  test("a code is kept only from a known vocabulary", () => {
     for (const code of [
       "ER_DUP_ENTRY",
       "ENOENT",
+      "ERR_INVALID_ARG_TYPE",
+      "UND_ERR_SOCKET",
+      "INTERNAL_SERVER_ERROR",
       "card_declined",
+      "card_error",
       "StripeCardError",
-      "auth.expired",
     ]) {
       assert.equal(sanitizeCode(code), code);
     }
     assert.equal(sanitizeCode(1062), "1062");
-    for (const code of ["", "has space", "a@b.test", "x".repeat(65), "Bearer abc", 1.5, null, {}]) {
-      assert.equal(sanitizeCode(code), undefined);
+    for (const code of [
+      "CANARY_PRIVATE",
+      "ER_CANARY_PRIVATE",
+      "has space",
+      "jane@example.test",
+      1.5,
+    ]) {
+      assert.equal(sanitizeCode(code), "[code]");
     }
-    const facts = sanitizeError(
-      Object.assign(new Error("boom"), { code: "jane@example.test", type: "a b" }),
-    );
-    assert.equal(facts.code, undefined);
-    assert.equal(facts.type, undefined);
+    for (const code of ["", null, undefined, {}]) assert.equal(sanitizeCode(code), undefined);
   });
 
-  test("a thrown value that is no error gives its kind, or its text's shape", () => {
+  test("a name, a code or a type outside the known ones is a placeholder", () => {
+    const facts = sanitizeError(
+      Object.assign(new Error("CANARY_PRIVATE"), {
+        name: "CANARY_PRIVATE",
+        code: "CANARY_PRIVATE",
+        type: "CANARY_PRIVATE",
+        errno: -2,
+        statusCode: 500,
+      }),
+    );
+    assert.equal(facts.name, "[name]");
+    assert.equal(facts.message, "[message withheld]");
+    assert.equal(facts.code, "[code]");
+    assert.equal(facts.type, "[code]");
+    assert.equal(facts.errno, -2);
+    assert.equal(facts.statusCode, 500);
+    assertNone(JSON.stringify(facts), ["CANARY_PRIVATE"]);
+  });
+
+  test("a thrown value that is no error gives its kind, never its text", () => {
     assert.deepEqual(sanitizeError(`token=${BEARER}`), {
       name: "NonError",
-      message: "token= [redacted]",
+      message: "[message withheld]",
       frames: [],
     });
     const thrown = sanitizeError({ email: EMAIL, token: BEARER });
@@ -523,7 +558,7 @@ describe("sanitizing structured errors", () => {
     });
     assert.equal(
       describeProviderError(error),
-      "Error: No such customer: [value] (type=StripeInvalidRequestError, statusCode=404)",
+      "Error: [message withheld] (type=StripeInvalidRequestError, statusCode=404)",
     );
     assertNone(describeProviderError(new Error(`Authorization: Bearer ${BEARER}`)), [BEARER]);
   });
@@ -556,20 +591,22 @@ describe("sanitizing errors for error tracking", () => {
       `SMS to ${canaries.phone} failed`,
       `digest ${canaries.hex} blob ${canaries.base64}`,
     ].join("\n");
-    const clean = sanitizeText(text);
-    assertNone(clean, Object.values(canaries));
+    // The text as a whole ends at its first key; each line alone keeps its shape.
     assert.equal(
-      clean,
-      [
-        "[value]",
-        "GET [path] failed",
-        "Incorrect integer value: [value] for column [value] at row [value]",
-        "Key (email)=([value]) already exists.",
-        "Failing row contains ([value], [value], null).",
-        "SMS to [value] failed",
-        "digest [value] blob [value]",
-      ].join("\n"),
+      sanitizeText(text),
+      "[value]\nGET [path] failed\nIncorrect integer value: [redacted]",
     );
+    const lines = text.split("\n").map((line) => sanitizeText(line));
+    assertNone(lines.join("\n"), Object.values(canaries));
+    assert.deepEqual(lines, [
+      "[value]",
+      "GET [path] failed",
+      "Incorrect integer value: [redacted]",
+      "Key (email)=([value]) already exists.",
+      "Failing row contains ([value], [value], null).",
+      "SMS to [value] failed",
+      "digest [value] blob [value]",
+    ]);
   });
 });
 
@@ -626,5 +663,103 @@ describe("sanitizing in linear time", () => {
       const elapsed = performance.now() - started;
       assert.ok(elapsed < 250, `${JSON.stringify(text.slice(0, 12))}…: ${elapsed.toFixed(1)} ms`);
     }
+  });
+});
+
+// No free text from outside Louez: messages are withheld unless Louez wrote them.
+describe("withholding messages", () => {
+  const CANARY = "qzmxvbnlkjhgfdsapoiu";
+  const canaries = [
+    `Rejected value ${CANARY}`,
+    `pass: ${CANARY}`,
+    `session: ${CANARY}`,
+    `client_secret: ${CANARY}`,
+    `https://example.test/callback#code=first,${CANARY}`,
+    `https://example.test/callback#code=first;${CANARY}`,
+  ];
+
+  test("a message from outside Louez is withheld, in a report and a provider's log line", () => {
+    for (const message of canaries) {
+      for (const error of [
+        new Error(message),
+        new TypeError(message),
+        Object.assign(new Error(message), { type: "StripeInvalidRequestError" }),
+        new ORPCError("BAD_REQUEST", { message }),
+        new Error("outer", { cause: new Error(message) }),
+      ]) {
+        const facts = sanitizeError(error);
+        assertNone(JSON.stringify(facts), [CANARY]);
+        assertNone(describeProviderError(error), [CANARY]);
+      }
+      assert.equal(sanitizeError(new Error(message)).message, "[message withheld]");
+    }
+  });
+
+  test("text a caller must log loses what follows a key, and a URL all but its host", () => {
+    for (const message of canaries.slice(1)) assertNone(sanitizeText(message), [CANARY]);
+    assert.equal(sanitizeText(`pass: ${CANARY}`), "pass: [redacted]");
+    assert.equal(sanitizeText(`session: ${CANARY}`), "session: [redacted]");
+    assert.equal(sanitizeText(`client_secret: ${CANARY}`), "[value]: [redacted]");
+    assert.equal(sanitizeText(canaries[4] ?? ""), "https://example.test[url]");
+    assert.equal(sanitizeText(canaries[5] ?? ""), "https://example.test[url]");
+    // A key spelled with a homoglyph or a zero-width character is still a key.
+    for (const key of ["p\u0430ssword", "pass\u200bword", "pa\u00adssword", "\uff50assword"]) {
+      for (const text of [`${key}: ${CANARY}`, `${key}=${CANARY}`, `"${key}": "${CANARY}"`]) {
+        assertNone(sanitizeText(text), [CANARY]);
+        assertNone(JSON.stringify(sanitizeError(new Error(text))), [CANARY]);
+      }
+    }
+    // Any key, not only a sensitive one.
+    assert.equal(sanitizeText(`note = ${CANARY}`), "note = [redacted]");
+    assert.equal(sanitizeText(`"label":"${CANARY}"`), "[value]: [redacted]");
+    // Best effort: a word of letters alone, outside any key, stays. Hence no message in errors.
+    assert.equal(sanitizeText(canaries[0] ?? ""), canaries[0]);
+  });
+
+  test("a Louez templated error keeps its message, a value put into it a placeholder", () => {
+    const noStore = sanitizeError(platformErrors.noStore());
+    assert.equal(noStore.message, "You have no access to this store, or to any store yet.");
+    assert.equal(noStore.apiCode, "NO_STORE_ACCESS");
+    assert.equal(noStore.code, "FORBIDDEN");
+    const member = sanitizeError(
+      apiError("CONFLICT", "TEAM_ALREADY_MEMBER", {
+        message: `${EMAIL} is already a member of this store.`,
+      }),
+    );
+    assert.equal(member.message, "[value] is already a member of this store.");
+    assert.equal(member.apiCode, "TEAM_ALREADY_MEMBER");
+    assert.equal(
+      describeProviderError(platformErrors.noStore()),
+      "Error: You have no access to this store, or to any store yet. (code=FORBIDDEN, apiCode=NO_STORE_ACCESS)",
+    );
+    // An older service names its translation key.
+    const service = sanitizeError(new ApiServiceError("NOT_FOUND", "errors.productNotFound"));
+    assert.equal(service.message, "errors.productNotFound");
+    assert.equal(service.code, "NOT_FOUND");
+    // The same class, not built by Louez's template: withheld.
+    assert.equal(
+      sanitizeError(new ORPCError("CONFLICT", { message: `${EMAIL} is taken` })).message,
+      "[message withheld]",
+    );
+  });
+
+  test("a failed query keeps no literal, name or number", () => {
+    const facts = sanitizeError(
+      new Error(
+        "Failed query: select `email`, \"FAKE_DQ\" from customers where note = 'FAKE_LITERAL\nFAKE_LINE' and age > 42 and id = $1 and slug = 'O''FAKE_ESCAPED' limit 10\nparams: FAKE_PARAM",
+      ),
+    );
+    assert.equal(
+      facts.message,
+      "Failed query: select [value], [value] from [value] where [value] = [value] and [value] > [value] and [value] = [value] and [value] = [value] limit [value]\nparams: [redacted]",
+    );
+    assertNone(facts.message, [
+      "FAKE_DQ",
+      "FAKE_LITERAL",
+      "FAKE_LINE",
+      "FAKE_ESCAPED",
+      "FAKE_PARAM",
+      "customers",
+    ]);
   });
 });
