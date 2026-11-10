@@ -1,14 +1,19 @@
 import assert from "node:assert/strict";
+import { createSocket } from "node:dgram";
+import type { AddressInfo } from "node:net";
 import { after, before, describe, test } from "node:test";
 
 import {
   MAX_RESPONSE_HEADER_BYTES,
+  bufferedTransport,
+  createDnsResolve,
   createPinnedTransport,
+  type ResolveHost,
   guardedGet,
   type GuardedFetch,
   type GuardedGetOptions,
 } from "./guarded-fetch";
-import { createLocalHostTransport } from "./testing";
+import { createLocalHostTransport, eventually } from "./testing";
 
 // The deadlines unref their timers, so a hung lookup never keeps a server
 // alive. A test that waits on one needs something else to hold the event loop
@@ -246,5 +251,155 @@ describe("the pinned transport", () => {
     await assert.rejects(async () => transport("https://cursor.com/oauth/mcp-client.json"), {
       message: /no DNS addresses/,
     });
+  });
+});
+
+/**
+ * How long `work` takes to settle, in milliseconds, and whether it rejected;
+ * after 3 seconds, unsettled.
+ */
+async function timed(work: () => unknown) {
+  const start = Date.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<"unsettled">((resolve) => {
+    timer = setTimeout(() => resolve("unsettled"), 3_000);
+  });
+  const settled = Promise.resolve()
+    .then(work)
+    .then(
+      () => "resolved" as const,
+      () => "rejected" as const,
+    );
+  const outcome = await Promise.race([settled, limit]).finally(() => clearTimeout(timer));
+  return { ms: Date.now() - start, rejected: outcome === "rejected" };
+}
+
+/** A resolver that never answers, and says whether it was told to stop. */
+const hangingResolver = () => {
+  const state = { aborted: false };
+  const resolve: ResolveHost = (_hostname, signal) =>
+    new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => {
+        state.aborted = true;
+        reject(signal.reason);
+      });
+    });
+  return { state, resolve };
+};
+
+describe("what a refused answer or a slow lookup leaves behind", () => {
+  // Each path answers its status and headers, part of a body, then stalls.
+  let local: Awaited<ReturnType<typeof createLocalHostTransport>>;
+  const at = (path: string) => `https://metadata.example.org${path}`;
+
+  before(async () => {
+    local = await createLocalHostTransport((request, response) => {
+      const path = request.url ?? "/";
+      if (path === "/redirect") {
+        response.writeHead(302, { location: at("/elsewhere") });
+      } else if (path === "/html") {
+        response.writeHead(200, { "content-type": "text/html" });
+      } else if (path === "/error") {
+        response.writeHead(500, { "content-type": "application/json" });
+      } else {
+        response.writeHead(200, { "content-type": "application/json" });
+        if (path === "/large") response.write("x".repeat(8 * 1024));
+      }
+      response.write("{");
+    });
+  });
+  after(() => local.close());
+
+  const closed = (what: string) =>
+    eventually(async () => (await local.openConnections()) === 0, 1_000, what);
+
+  test("the buffered transport closes the connection of every answer it hands on", async () => {
+    const transport = bufferedTransport(local.transport(), 5 * 1024);
+    for (const [path, status] of [
+      ["/redirect", 302],
+      ["/html", 200],
+      ["/error", 500],
+    ] as const) {
+      const response = await transport(at(path), { signal: AbortSignal.timeout(5_000) });
+      assert.equal(response.status, status, path);
+      assert.equal(response.body, null, `${path}: nothing of the body is read`);
+      await closed(path);
+    }
+    // Too large: the cap plus one byte, so the caller refuses it itself.
+    const large = await transport(at("/large"), { signal: AbortSignal.timeout(5_000) });
+    assert.equal((await large.arrayBuffer()).byteLength, 5 * 1024 + 1);
+    await closed("/large");
+    // A JSON body still coming when the caller gives up.
+    const stalled = await timed(() =>
+      transport(at("/stalled"), { signal: AbortSignal.timeout(150) }),
+    );
+    assert.ok(stalled.rejected);
+    assert.ok(stalled.ms < 1_000, `rejected after ${stalled.ms} ms`);
+    await closed("/stalled");
+  });
+
+  test("a guarded GET closes the connection of an answer it refuses or gives up on", async () => {
+    const get = (path: string) =>
+      guardedGet(at(path), {
+        accept: "application/json",
+        maxBytes: 5 * 1024,
+        timeoutMs: 150,
+        maxRedirects: 0,
+        fetchResource: local.transport(),
+      });
+    assert.deepEqual(await get("/redirect"), { ok: false, reason: "too_many_redirects" });
+    await closed("redirect");
+    assert.deepEqual(await get("/error"), { ok: false, reason: "status", status: 500 });
+    await closed("error");
+    assert.deepEqual(await get("/large"), { ok: false, reason: "too_large" });
+    await closed("too large");
+    assert.deepEqual(await get("/stalled"), { ok: false, reason: "timeout" });
+    await closed("timeout");
+  });
+
+  test("a lookup that never answers stops with the fetch, on time", async () => {
+    const direct = hangingResolver();
+    const transport = local.transport({ resolve: direct.resolve });
+    const call = await timed(() => transport(at("/x"), { signal: AbortSignal.timeout(100) }));
+    assert.ok(call.rejected);
+    assert.ok(call.ms < 1_000, `rejected after ${call.ms} ms`);
+    assert.ok(direct.state.aborted, "the lookup was told to stop");
+
+    // A guarded GET stops its lookup at its own deadline.
+    const viaGet = hangingResolver();
+    const result = await guardedGet(at("/x"), {
+      accept: "application/json",
+      maxBytes: 16,
+      timeoutMs: 100,
+      maxRedirects: 0,
+      fetchResource: local.transport({ resolve: viaGet.resolve }),
+    });
+    assert.deepEqual(result, { ok: false, reason: "timeout" });
+    await eventually(async () => viaGet.state.aborted, 1_000, "the lookup was told to stop");
+  });
+
+  test("the DNS resolver cancels its queries on abort and at its own deadline", async () => {
+    // A name server that never answers.
+    const silent = createSocket("udp4");
+    await new Promise<void>((resolve) => silent.bind(0, "127.0.0.1", resolve));
+    const servers = [`127.0.0.1:${(silent.address() as AddressInfo).port}`];
+    try {
+      const patient = createDnsResolve({ servers, timeoutMs: 30_000 });
+      const aborted = await timed(() => patient("cursor.com", AbortSignal.timeout(100)));
+      assert.ok(aborted.rejected);
+      assert.ok(aborted.ms < 1_000, `rejected after ${aborted.ms} ms`);
+
+      const bounded = createDnsResolve({ servers, timeoutMs: 200 });
+      const expired = await timed(() => bounded("cursor.com", new AbortController().signal));
+      assert.ok(expired.rejected);
+      assert.ok(expired.ms < 1_500, `rejected after ${expired.ms} ms`);
+
+      // An address needs no query.
+      assert.deepEqual(await bounded("93.184.215.14", new AbortController().signal), [
+        { address: "93.184.215.14", family: 4 },
+      ]);
+    } finally {
+      silent.close();
+    }
   });
 });

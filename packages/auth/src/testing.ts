@@ -54,15 +54,16 @@ export async function createTestAccessTokens(options: { issuer: string; audience
  * A local server standing in for every public host, and the guarded transport
  * pointed at it: each hostname resolves to it, over plain HTTP. The rest of
  * the transport is the real one, its header limit (`maxHeaderSize`) included.
+ * `openConnections` counts the connections the server still holds.
  */
 export async function createLocalHostTransport(handler: RequestListener) {
   const server = createServer(handler);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address() as AddressInfo;
-  const transport = (options: Pick<PinnedTransportOptions, "maxHeaderSize"> = {}) =>
+  const transport = (options: Pick<PinnedTransportOptions, "maxHeaderSize" | "resolve"> = {}) =>
     createPinnedTransport({
-      ...options,
       resolve: async () => [{ address: "127.0.0.1", family: 4 }],
+      ...options,
       isAllowedAddress: () => true,
       send: (requestOptions, onResponse) => request({ ...requestOptions, port }, onResponse),
     });
@@ -71,5 +72,18 @@ export async function createLocalHostTransport(handler: RequestListener) {
       server.closeAllConnections();
       server.close(() => resolve());
     });
-  return { transport, close };
+  const openConnections = () =>
+    new Promise<number>((resolve, reject) =>
+      server.getConnections((error, count) => (error ? reject(error) : resolve(count))),
+    );
+  return { transport, close, openConnections };
+}
+
+/** Resolves once `check` holds; throws after `ms`. */
+export async function eventually(check: () => Promise<boolean>, ms: number, what: string) {
+  const deadline = Date.now() + ms;
+  while (!(await check())) {
+    if (Date.now() > deadline) throw new Error(`${what}: still not true after ${ms} ms`);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
 }

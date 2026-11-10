@@ -24,7 +24,7 @@ import {
 import { MAX_RESPONSE_HEADER_BYTES } from "./guarded-fetch";
 import { createPasskeyOptions } from "./passkey";
 import { authTables } from "./tables";
-import { createLocalHostTransport } from "./testing";
+import { createLocalHostTransport, eventually } from "./testing";
 
 // The OAuth flow an MCP client runs against Louez, on a real Better Auth
 // instance with the app's plugins and an in-memory database: registration,
@@ -39,7 +39,8 @@ const SECRET = "oauth-test-secret-never-used-in-production-1234567890";
 
 // The metadata documents Claude, Claude Code and ChatGPT publish, as served
 // on 2026-11-09, with test keys behind their `jwks_uri`, and Cursor's, as
-// served on 2026-11-10: Cursor, its Bot and Grok (grok.com, Grok Bot) share it.
+// served on 2026-11-10 (with `client_ip_ranges_uri` since that afternoon):
+// Cursor, its Bot and Grok (grok.com, Grok Bot) share it.
 const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
 const CLAUDE_CONFIDENTIAL = `${CLAUDE}/confidential_client`;
 const CLAUDE_CODE = "https://claude.ai/oauth/claude-code-client-metadata";
@@ -126,6 +127,7 @@ const CLIENT_DOCUMENTS: Record<string, object> = {
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
     token_endpoint_auth_method: "none",
+    client_ip_ranges_uri: "https://cursor.com/oauth/mcp-client-ip-ranges.json",
   },
   "https://claude.ai/v1/mcp/jwks": {
     keys: [{ ...(await exportJWK(claudeKeys.publicKey)), kid: "claude", alg: "ES256" }],
@@ -844,6 +846,75 @@ test("Cursor's document is read with its long headers; past the transport's limi
     await local.close();
   }
 });
+
+test("a refused metadata answer is not left open: its connection closes at once", async () => {
+  // Answers its status and headers and a byte of body, then stalls.
+  let answer: [number, Record<string, string>] = [200, {}];
+  const local = await createLocalHostTransport((_request, response) => {
+    response.writeHead(...answer);
+    response.write("{");
+  });
+  try {
+    for (const refused of [
+      [302, { location: "https://cursor.com/elsewhere.json" }],
+      [200, { "content-type": "text/html" }],
+      [404, { "content-type": "application/json" }],
+    ] as Array<[number, Record<string, string>]>) {
+      answer = refused;
+      const fx = await fixture({ fetchClientMetadata: local.transport() });
+      const response = await startAuthorization(fx, {
+        clientId: CURSOR,
+        redirectUri: CURSOR_REDIRECTS[0],
+        challenge: pkce().challenge,
+      });
+      assert.equal(response.status, 400, String(refused[0]));
+      assert.equal(((await response.json()) as { error?: string }).error, "invalid_client");
+      // Long before the plugin's 5-second timeout.
+      await eventually(
+        async () => (await local.openConnections()) === 0,
+        1_000,
+        `${refused[0]}: the connection closed`,
+      );
+    }
+  } finally {
+    await local.close();
+  }
+});
+
+test(
+  "a lookup that never answers fails the authorization on time",
+  { timeout: 10_000 },
+  async () => {
+    let aborted = false;
+    const local = await createLocalHostTransport(() => {});
+    try {
+      const fx = await fixture({
+        fetchClientMetadata: local.transport({
+          resolve: (_hostname, signal) =>
+            new Promise((_resolve, reject) => {
+              signal.addEventListener("abort", () => {
+                aborted = true;
+                reject(signal.reason);
+              });
+            }),
+        }),
+      });
+      const start = Date.now();
+      const response = await startAuthorization(fx, {
+        clientId: CURSOR,
+        redirectUri: CURSOR_REDIRECTS[0],
+        challenge: pkce().challenge,
+      });
+      // The CIMD plugin gives a document 5 seconds.
+      assert.ok(Date.now() - start < 6_000, `answered after ${Date.now() - start} ms`);
+      assert.equal(response.status, 400);
+      assert.equal(((await response.json()) as { error?: string }).error, "invalid_client");
+      assert.ok(aborted, "the lookup was told to stop");
+    } finally {
+      await local.close();
+    }
+  },
+);
 
 test("a client that names the resource once, and no scope, gets tokens /api/mcp takes", async () => {
   // MCP clients must name the resource at both steps; one is enough here.
