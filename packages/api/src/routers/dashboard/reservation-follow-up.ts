@@ -405,7 +405,7 @@ export const globalSearchProcedure = storeProcedure
       name: "search_global",
       title: "Search Store",
       description:
-        "Search the store at once, as the dashboard's search bar does: up to 5 products by name, 5 reservations by number or customer name, and 5 customers by name, company, email, phone or a searchable custom field. Products need read access to products, customers to customers; a section the connection may not read comes back empty. Each hit has `links`, its dashboard page to give the user.",
+        "Search the store at once, as the dashboard's search bar does: up to 5 products by name, 5 reservations by number or customer name, and 5 customers by name, company, email, phone or a searchable custom field the store has not flagged sensitive. Products need read access to products, customers to customers; a section the connection may not read comes back empty. Each hit has `links`, its dashboard page to give the user.",
       bundle: "daily",
     },
   })
@@ -415,7 +415,12 @@ export const globalSearchProcedure = storeProcedure
   .handler(async ({ context, input }) => {
     const link = linker(context);
     const hits = await globalSearch(
-      { ...reader(context), products: mayRead(context, "products") },
+      {
+        ...reader(context),
+        products: mayRead(context, "products"),
+        // An API key or an agent's grant never searches sensitive fields.
+        sensitiveFields: context.actor.credential.kind === "session",
+      },
       input.query,
     );
     return {

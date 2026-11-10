@@ -318,11 +318,18 @@ export async function findCustomerFieldDuplicates(params: {
 
 /**
  * Customers whose searchable custom fields start with the query, as a
- * correlated EXISTS to plug into the customer list filter.
+ * correlated EXISTS to plug into the customer list filter. An agent's search
+ * passes `sensitive: false`: a field the store flagged sensitive (an identity
+ * document's number) would otherwise tell it whose number it typed.
  */
-export function customerFieldSearchCondition(storeId: string, query: string) {
+export function customerFieldSearchCondition(
+  storeId: string,
+  query: string,
+  options: { sensitive?: boolean } = {},
+) {
   const searchValue = toCustomerFieldSearchValue(query);
   if (searchValue.length < 3) return null;
+  const sensitive = options.sensitive ?? true;
 
   return sql`EXISTS (
     SELECT 1 FROM ${customerFieldValues}
@@ -334,5 +341,6 @@ export function customerFieldSearchCondition(storeId: string, query: string) {
       AND ${customerFieldDefinitions.isSearchable} = true
       AND ${customerFieldDefinitions.isActive} = true
       AND ${customerFieldDefinitions.scope} = 'customer'
+      ${sensitive ? sql`` : sql`AND ${customerFieldDefinitions.isSensitive} = false`}
   )`;
 }

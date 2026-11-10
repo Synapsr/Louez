@@ -704,6 +704,45 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.equal(limited.reservations[0]?.customerName, "Ada Lovelace");
   });
 
+  test("the global search matches a sensitive custom field for the dashboard only", async () => {
+    // A connection could otherwise learn whose identity number it typed.
+    const definitionId = nextId("rs_fld");
+    await louezDb.db.insert(louezDb.customerFieldDefinitions).values({
+      id: definitionId,
+      storeId: STORE,
+      key: `passport_${definitionId}`,
+      label: "Passport number",
+      type: "text",
+      section: "Identity",
+      isSensitive: true,
+      isSearchable: true,
+    });
+    await louezDb.db.insert(louezDb.customerFieldValues).values({
+      storeId: STORE,
+      customerId: CUSTOMER,
+      definitionId,
+      value: "P9876543",
+      searchValue: "p9876543",
+    });
+    try {
+      const dashboard = await search("P98765", session());
+      assert.deepEqual(
+        dashboard.customers.map((customer) => customer.id),
+        [CUSTOMER],
+      );
+      const key = await apiKey();
+      const connection = await search("P98765", key());
+      assert.deepEqual(connection.customers, []);
+    } finally {
+      await louezDb.db
+        .delete(louezDb.customerFieldValues)
+        .where(orm.eq(louezDb.customerFieldValues.definitionId, definitionId));
+      await louezDb.db
+        .delete(louezDb.customerFieldDefinitions)
+        .where(orm.eq(louezDb.customerFieldDefinitions.id, definitionId));
+    }
+  });
+
   // --- Links ----------------------------------------------------------------
 
   test("every reservation an answer holds links its dashboard page, and its customer's when shown", async () => {

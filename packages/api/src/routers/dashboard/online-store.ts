@@ -166,9 +166,10 @@ const completeImageUploadProcedure = storeProcedure
       name: "online_store_complete_image_upload",
       title: "Complete Storefront Image Upload",
       description:
-        "Finish a storefront image upload: checks the file just sent to the key and returns its public `url`, which online_store_update_appearance takes (logoUrl, darkLogoUrl, faviconUrl or heroImages). It changes no record. A file that is not a valid image of the declared type is refused, and the upload starts over with a new key.",
+        "Finish a storefront image upload: checks the file just sent to the key, makes it publicly readable and returns its `url`, which online_store_update_appearance takes (logoUrl, darkLogoUrl, faviconUrl or heroImages). It changes no record and deletes nothing. A file that is not a valid image of the declared type is refused and stays private; the upload starts over with a new key.",
       bundle: "settings",
       effect: "additive",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })

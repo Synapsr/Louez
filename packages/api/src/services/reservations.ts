@@ -1111,13 +1111,19 @@ export async function listOverdue(
  * by its customer's name needs customers too.
  */
 export async function globalSearch(
-  reader: ReservationReader & { products: boolean },
+  reader: ReservationReader & {
+    products: boolean;
+    /** Search fields the store flagged sensitive too: the dashboard's own session only. */
+    sensitiveFields: boolean;
+  },
   query: string,
 ): Promise<z.infer<typeof globalSearchSchema>> {
   const { storeId } = reader;
   const term = `%${query}%`;
-  // Searchable custom fields: an ID or licence number finds its customer.
-  const customFieldMatch = reader.customers ? customerFieldSearchCondition(storeId, query) : null;
+  // Searchable custom fields: a value the store keeps on file finds its customer.
+  const customFieldMatch = reader.customers
+    ? customerFieldSearchCondition(storeId, query, { sensitive: reader.sensitiveFields })
+    : null;
 
   const reservationMatch = reader.customers
     ? or(

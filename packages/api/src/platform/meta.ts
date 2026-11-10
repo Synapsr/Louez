@@ -64,7 +64,8 @@ export type McpEffect = (typeof MCP_EFFECTS)[number];
  * - `customer`: it sends a customer a message (e-mail, SMS);
  * - `provider`: it calls a third party (Stripe, the insurer, a public registry);
  * - `public`: it changes what visitors of the store's online store see once
- *   it is online (the catalog, prices, availability, texts, its address).
+ *   it is online (the catalog, prices, availability, texts, its address), or
+ *   makes a file publicly readable at a URL (a completed image upload).
  */
 export const MCP_REACHES = ["customer", "provider", "public"] as const;
 export type McpReach = (typeof MCP_REACHES)[number];
