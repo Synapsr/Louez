@@ -1005,6 +1005,17 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       "TEAM_LIMIT_REACHED",
     );
     assert.deepEqual(full.data.details, { current: 1, limit: 1 });
+    // Every client, an agent's included: no plan to change, nothing to buy.
+    const fromAgent = await rejects(
+      run("invite", { email: "another@tm.test" }, context()),
+      "TEAM_LIMIT_REACHED",
+    );
+    for (const refusal of [full, fromAgent]) {
+      assert.equal(
+        (refusal as unknown as { message: string }).message,
+        "This store has reached its team-member limit. No invitation was created.",
+      );
+    }
 
     assert.equal((await handoffs()).length, 0, "no approval was ever asked");
   });

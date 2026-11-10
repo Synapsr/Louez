@@ -67,13 +67,13 @@ export const teamInvitationSchema = z.object({
 });
 export type TeamInvitation = z.infer<typeof teamInvitationSchema>;
 
-/** The plan's collaborator seats: members other than owners. */
+/** The store's team-member allowance: members other than owners. */
 export const memberLimitSchema = z.object({
   /** Members with the `member` role. */
   current: z.number().int(),
-  /** Null: unlimited. 0: the plan has no collaborators at all. */
+  /** Null: unlimited. 0: the store may have no members at all. */
   limit: z.number().int().nullable(),
-  /** Whether one more member fits in the plan. */
+  /** Whether one more member fits in the allowance. */
   canAddMember: z.boolean(),
 });
 export type MemberLimit = z.infer<typeof memberLimitSchema>;
@@ -228,10 +228,8 @@ export const teamErrors = {
     }),
   limitReached: (limit: MemberLimit) =>
     apiError("CONFLICT", "TEAM_LIMIT_REACHED", {
-      message:
-        limit.limit === 0
-          ? "The store's plan has no team members. The user can change plans in the dashboard."
-          : `The store's plan allows ${limit.limit} team members, and it has ${limit.current}. The user can change plans in the dashboard.`,
+      // The same for every client: no plan, no way to buy more (OpenAI's guidelines).
+      message: "This store has reached its team-member limit. No invitation was created.",
       i18nKey: "dashboard.team.limitReached",
       details: { current: limit.current, limit: limit.limit },
     }),
