@@ -238,8 +238,7 @@ describe("createSiteIconCache", () => {
   });
 
   test("gives up at its budget, even when the transport never answers", async () => {
-    // The transport's abort signal does not cover its DNS lookup: a hung
-    // lookup must not hold the asker.
+    // A transport that ignores its abort signal must not hold the asker.
     const hung: IconFetch = () => new Promise<Response>(() => {});
     const siteIcon = createSiteIconCache({ fetchResource: hung, resolveBudgetMs: 20 });
     assert.equal(await siteIcon("https://slow.example.org"), null);

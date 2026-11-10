@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   ANTHROPIC_EGRESS_RANGES,
+  CURSOR_EGRESS_RANGES,
   OPENAI_CHATGPT_EGRESS_RANGES,
   egressProviderOf,
 } from "./provider-egress";
@@ -29,6 +30,20 @@ test("OpenAI's published ChatGPT connector ranges", () => {
     assert.equal(egressProviderOf(ip), "openai", ip);
   }
   for (const ip of ["9.130.0.1", "52.6.94.120", "52.6.94.122"]) {
+    assert.equal(egressProviderOf(ip), null, ip);
+  }
+});
+
+test("Cursor's three published addresses, each exactly", () => {
+  assert.deepEqual(CURSOR_EGRESS_RANGES, [
+    "3.209.66.12/32",
+    "52.44.113.131/32",
+    "184.73.225.134/32",
+  ]);
+  for (const ip of ["3.209.66.12", "52.44.113.131", "184.73.225.134"]) {
+    assert.equal(egressProviderOf(ip), "cursor", ip);
+  }
+  for (const ip of ["3.209.66.11", "3.209.66.13", "52.44.113.130", "184.73.225.135"]) {
     assert.equal(egressProviderOf(ip), null, ip);
   }
 });
