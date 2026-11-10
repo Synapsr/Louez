@@ -145,6 +145,8 @@
   --color-louez-purple: var(--louez-purple);
   --color-louez-pink: var(--louez-pink);
   --color-reeent: var(--reeent);
+  --color-reeent-ink: var(--reeent-ink);
+  --color-reeent-ink-foreground: var(--reeent-ink-foreground);
   --color-reservation-pending: var(--reservation-pending);
   --color-reservation-pending-hover: var(--reservation-pending-hover);
   --color-reservation-pending-foreground: var(--reservation-pending-foreground);
@@ -337,6 +339,10 @@
   /* reeent brand orange, copied verbatim from the marketplace's --primary so
      the two products cannot drift apart; lifted in dark like reeent does. */
   --reeent: #ff5533;
+  /* reeent's orange as text and button fill: the brand #ff5533 reaches only
+     3.2:1 with white, this deeper one 5.2:1. */
+  --reeent-ink: #c93716;
+  --reeent-ink-foreground: #ffffff;
   --ecume: oklch(0.839 0.115 198.7);
   --ecume-soft: oklch(0.964 0.022 196.8);
   /* Nav row icons at rest and lit (hover, active). Unthemed: the Nucleo
@@ -441,7 +447,9 @@
   --badge-expired-background: oklch(0.958 0 0);
   --badge-expired-foreground: oklch(0.573 0 0);
   --badge-warning-background: oklch(0.974 0.021 76.5);
-  --badge-warning-foreground: oklch(0.74 0.152 65);
+  /* Dark enough to read as text on its own background (5.1:1) and on white
+     (5.5:1); the former oklch(0.74 0.152 65) only reached 2.2:1. */
+  --badge-warning-foreground: oklch(0.53 0.14 60);
   --badge-gray-background: oklch(0.958 0 0);
   --badge-gray-foreground: oklch(0.573 0 0);
   --badge-promo-background: oklch(0.205 0 0);
@@ -450,6 +458,8 @@
 
 .dark {
   --reeent: #ff6b4a;
+  --reeent-ink: #ff6b4a;
+  --reeent-ink-foreground: #1b1f2c;
   --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 15%), 0 0 0 1px rgb(255 255 255 / 10%);
   /* Shadows vanish on a dark ground; the hairline ring carries the edge. */
   --shadow-card: 0 1px 2px oklch(0 0 0 / 24%), 0 0 0 1px oklch(1 0 0 / 8%);
