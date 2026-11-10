@@ -58,11 +58,13 @@ export function salesStore(store: {
 }
 
 /**
- * A receipt's currency: the payment's own, else the one frozen on its
- * reservation, else (rows from before either existed) the store's.
+ * A receipt's currency, as billing reads it (Q4): a Stripe payment's own,
+ * any other payment's its reservation's, since a manual payment's column only
+ * holds the "EUR" default. Rows from before reservations froze theirs take
+ * the store's.
  */
 const receiptCurrency = (store: SalesStore) =>
-  sql<string>`UPPER(COALESCE(NULLIF(${payments.currency}, ''), NULLIF(${reservations.currency}, ''), ${store.currency}))`;
+  sql<string>`UPPER(COALESCE(CASE WHEN ${payments.method} = 'stripe' THEN NULLIF(${payments.currency}, '') END, NULLIF(${reservations.currency}, ''), ${store.currency}))`;
 
 /** The store's rental receipts, all payment methods, in any currency. */
 const anyCurrencyReceiptConditions = (storeFilter: SQL) => [

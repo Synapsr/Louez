@@ -582,9 +582,9 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
       items: [{ productId: bike, total: "100.00" }],
       currency: "GBP",
     });
-    await payment(before, "100.00", { paidAt: ago(4 * DAY), currency: "GBP" });
-    // No currency on the payment: its reservation's, pounds.
-    await payment(before, "40.00", { paidAt: ago(4 * DAY), currency: null });
+    await payment(before, "100.00", { paidAt: ago(4 * DAY), method: "stripe", currency: "GBP" });
+    // A manual payment holds the column's "EUR" default: its reservation's, pounds.
+    await payment(before, "40.00", { paidAt: ago(4 * DAY), currency: "EUR" });
     // A reservation from before currencies were frozen: the store's.
     const legacy = await reservation("completed", {
       start: ago(3 * DAY),
@@ -593,7 +593,8 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
     });
     await payment(legacy, "25.00", { paidAt: ago(2 * DAY), currency: null });
     const swiss = await reservation("completed", { start: ago(DAY) });
-    await payment(swiss, "7.50", { currency: "CHF" });
+    // Stripe charged francs on a euro reservation: a Stripe payment keeps its own.
+    await payment(swiss, "7.50", { method: "stripe", currency: "CHF" });
     const euros = await reservation("completed", {
       start: ago(DAY),
       items: [{ productId: bike, total: "60.00" }],

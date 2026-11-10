@@ -80,6 +80,7 @@ function fixture() {
       stripeIntent = null,
       stripeSession = null,
       currency = null,
+      method = "card",
     } = {},
   ) => {
     const timestamp = formatInTimeZone(date, "UTC", "yyyy-MM-dd HH:mm:ss.SSS");
@@ -91,7 +92,7 @@ function fixture() {
         amount,
         status,
         type,
-        "card",
+        method,
         paidAt ? timestamp : null,
         timestamp,
         refund,
@@ -367,14 +368,15 @@ test("every block counts only the receipts in the store's current currency, and 
   const f = fixture();
   try {
     const window = windowUtils.getSalesWindow("30d", now, "Europe/Paris");
-    // Neither the payment nor its reservation has a currency: the store's.
-    f.pay("legacy", 10, window.start);
-    // A payment's own currency, whatever its case.
-    f.pay("euro", 20, window.start, { currency: "eur" });
+    // A card payment's column only holds the "EUR" default, so it is not read;
+    // without a currency on its reservation, the store's.
+    f.pay("legacy", 10, window.start, { currency: "GBP" });
+    // A Stripe payment's own currency, whatever its case.
+    f.pay("euro", 20, window.start, { currency: "eur", method: "stripe" });
     // Taken before the store changed currency.
-    f.pay("pound", 100, window.start, { currency: "GBP" });
-    f.pay("pound-2", 50, window.start, { currency: "GBP" });
-    f.pay("franc", 7, window.start, { currency: "CHF" });
+    f.pay("pound", 100, window.start, { currency: "GBP", method: "stripe" });
+    f.pay("pound-2", 50, window.start, { currency: "GBP", method: "stripe" });
+    f.pay("franc", 7, window.start, { currency: "CHF", method: "stripe" });
     const [headline, chart, methods, products, customers, others] = await Promise.all([
       f.queries.getSalesPaymentStats(STORE, window),
       f.queries.getRevenueTimeSeries(STORE, window),
@@ -401,7 +403,7 @@ test("every block counts only the receipts in the store's current currency, and 
       { currency: "GBP", amount: 150, paymentCount: 2 },
     ]);
 
-    // The currency frozen on the reservation stands for a payment without one.
+    // The currency frozen on the reservation is a manual payment's.
     f.sqlite.exec("UPDATE reservations SET currency = 'GBP' WHERE id = 'r'");
     assert.equal((await f.queries.getSalesPaymentStats(STORE, window)).periodRevenue, 20);
     // A store now in pounds counts the pounds.
