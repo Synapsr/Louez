@@ -6,7 +6,7 @@ Every action a store user can take in the dashboard is one oRPC procedure in `pa
 | --------- | ---------- | ------------------------------ | ------------------------------------- |
 | RPC       | `/api/rpc` | dashboard session cookie       | the dashboard, through TanStack Query |
 | OpenAPI   | `/api/v1`  | API key (`Bearer lz_…`)        | scripts, n8n, integrations            |
-| MCP       | `/api/mcp` | OAuth access token, or API key | Claude, ChatGPT and other agents      |
+| MCP       | `/api/mcp` | OAuth access token, or API key | Claude, ChatGPT, Cursor, Grok, others |
 
 `/api/rpc` also requires the header `x-csrf-token: orpc` on every call (oRPC's simple CSRF protection, `apps/web/lib/orpc/csrf.ts`): only script on the app's origin can add it, so no other site, same-site ones included, can call a procedure with the user's cookie. The app's link sends it; a call without it gets 403 `CSRF_TOKEN_MISMATCH`.
 
@@ -453,7 +453,7 @@ Nor does an OpenAI client create stores, not even through a link (product owner'
 
 ## OAuth for agents
 
-Claude.ai, ChatGPT and other MCP clients connect by signing in to Louez, without a key. Louez is the authorization server (Better Auth's `@better-auth/mcp` plugin over its OAuth 2.1 provider) and `/api/mcp` the protected resource. The plugins are set in `packages/auth/src/oauth.ts`.
+Claude.ai, ChatGPT, Cursor, Grok and other MCP clients connect by signing in to Louez, without a key. Louez is the authorization server (Better Auth's `@better-auth/mcp` plugin over its OAuth 2.1 provider) and `/api/mcp` the protected resource. The plugins are set in `packages/auth/src/oauth.ts`.
 
 ### The flow
 
@@ -489,9 +489,9 @@ Known limit, in Better Auth 1.7.18 itself: a refresh replay already in flight wh
 
 The credential is `kind: "oauth"`, its id the grant id, its client name the OAuth client's, its scopes the preset's, `confirmSensitive` the grant's. `storeId` is set when the grant covers one store; otherwise `stores` lists the granted ones (null for all) and the caller names one, as in [Stores, tool bundles and instructions](#stores-tool-bundles-and-instructions). The member's role in that store is read on every call, so a removed member is refused. A platform admin gets no staff powers through a token.
 
-### Connect from Claude, Claude Code and ChatGPT
+### Connect from Claude, Claude Code, ChatGPT, Cursor and Grok
 
-What Anthropic's connector directory and OpenAI's plugins ask of the authorization server (checked 2026-11-09), and the URLs each client uses. Better Auth 1.7.18 does all of it with the plugins above; `packages/auth/src/oauth.test.ts` runs the four published client documents through the flow and pins each point.
+What Anthropic's connector directory and OpenAI's plugins ask of the authorization server (checked 2026-11-09), what Cursor's clients use (checked 2026-11-10), and the URLs each client uses. Better Auth 1.7.18 does all of it with the plugins above; `packages/auth/src/oauth.test.ts` runs the five published client documents through the flow and pins each point.
 
 **The server, for every client**
 
@@ -500,7 +500,7 @@ What Anthropic's connector directory and OpenAI's plugins ask of the authorizati
 - [ ] That document lists one authorization server, `https://app.louez.io/api/auth` (Claude uses the first only). Its metadata is at `https://app.louez.io/.well-known/oauth-authorization-server/api/auth` and `https://app.louez.io/api/auth/.well-known/openid-configuration`.
 - [ ] The metadata says `code_challenge_methods_supported: ["S256"]` (PKCE is required, `plain` refused), `client_id_metadata_document_supported: true`, `none` and `private_key_jwt` (with the client secrets) in `token_endpoint_auth_methods_supported`, `offline_access` in `scopes_supported`, and `authorization_response_iss_parameter_supported: true`. No document offers DPoP: Better Auth always lists `dpop_signing_alg_values_supported`, and `withoutDpopMetadata` (`oauth.ts`) takes it out, as `/api/mcp` takes bearer tokens only.
 - [ ] Every redirect back to the client carries `iss=https://app.louez.io/api/auth` (RFC 9207): the code, `access_denied`, and the errors after the redirect URI is checked (`invalid_request`, `invalid_scope`, `invalid_target`, `login_required`). A request whose client or redirect URI is not known never goes back to it: its error stays on Louez.
-- [ ] The token endpoint takes `application/x-www-form-urlencoded`. The access token's `aud` holds the `resource` the client sent; another resource is `invalid_target`, and `/api/mcp` refuses a token for another audience or issuer.
+- [ ] The token endpoint takes `application/x-www-form-urlencoded`. The access token's `aud` holds the `resource` the client sent; another resource is `invalid_target`, and `/api/mcp` refuses a token for another audience or issuer. MCP clients name the resource at the authorization and at the token request; naming it at one of them is enough, and a refresh that does not name it keeps it. A client that never names it gets an opaque token, which `/api/mcp` refuses.
 - [ ] Requests from the ranges Anthropic and OpenAI publish (`packages/auth/src/provider-egress.ts`, with its sources: Anthropic's `160.79.104.0/21` and `153.61.208.0/20`, OpenAI's `chatgpt-connectors.json`) get higher ceilings per address: 600 a minute for the token endpoint and each discovery document, 300 for UserInfo, 60 for registration. Every other address keeps the usual ones: 20 token requests, 5 registrations, 60 UserInfo calls and 100 discovery fetches a minute. The authorization endpoint keeps its 30 for everyone, as the user's browser opens it. Only a declared ingress raises a ceiling: with `TRUSTED_PROXY=cloudflare`, a valid `cf-connecting-ip` decides, and nothing else does. Unset (the default), or with that header missing or malformed, every address keeps the usual limits, whatever `true-client-ip`, `x-real-ip` or `x-forwarded-for` say. Better Auth still counts under the first valid one of `cf-connecting-ip`, `true-client-ip`, `x-real-ip` and a single-address `x-forwarded-for` (`authIpAddressOptions`), so an elevated request is counted under the Cloudflare address it was elevated for.
 - [ ] Production sets `TRUSTED_PROXY=cloudflare`, and only once the origin accepts traffic from Cloudflare alone (Cloudflare's addresses, or an authenticated origin pull): any request that reaches it directly can write its own `cf-connecting-ip`. Self-hosted instances leave it unset.
 - [ ] A refresh rotates the refresh token. A retry within 30 seconds gets the same answer; after that, the spent token is `invalid_grant` and revokes its family. An unknown, altered or other client's token is `invalid_grant` too.
@@ -523,12 +523,22 @@ What Anthropic's connector directory and OpenAI's plugins ask of the authorizati
 - [ ] Redirect `https://chatgpt.com/connector_platform_oauth_redirect`: the stable one, as Louez returns `iss`. If the builder picks dynamic registration, ChatGPT registers its own client with `https://chatgpt.com/connector/oauth/{callback_id}`, accepted like any HTTPS redirect.
 - [ ] ChatGPT asks for the advertised scopes (`openid profile email offline_access`); the UserInfo endpoint gives the user's e-mail and `email_verified`, which an Enterprise workspace checks against its domains.
 
+**Cursor and Grok (Cursor's agents and Bot, Grok Bot, grok.com)**
+
+- [ ] Client id `https://cursor.com/oauth/mcp-client.json` (public, PKCE), one document for every surface. Its redirects: `https://www.cursor.com/agents/mcp/oauth/callback`, `https://www.cursor.com/bot/mcp/oauth/callback`, `https://grok.com/connectors-oauth-exchange-code/`, and `http://localhost:8787/callback` and `http://127.0.0.1:8787/callback`, which match on any port as Claude Code's do. The consent page does not show "Vérifié": the document also lists loopback redirects.
+- [ ] Cursor's desktop app may register dynamically instead, with `https://www.cursor.com/agents/mcp/oauth/callback` and `http://localhost:8787/callback` (Cursor's documentation), or with `cursor://anysphere.cursor-mcp/oauth/callback`. A private-use scheme or a loopback redirect makes the client native (`clientRegistrationDefaultApplicationType: "infer"`, RFC 8252), and each of its redirects is then checked by the native rules. Browser and script schemes (`javascript:`, `data:`, `file:`…) are refused, and so is a private-use scheme for a client registered as `web`. The consent page shows the scheme's host (`anysphere.cursor-mcp`).
+- [ ] Cursor reads `scopes_supported` and asks for those scopes, so `offline_access` gives it a refresh token.
+- [ ] `/api/mcp` answers a request without `MCP-Protocol-Version` with the specification's default version, which Grok relies on when it reuses a connection. It ignores an `Mcp-Session-Id`, as it keeps no session. A version it does not speak is 400 (`packages/mcp/src/transports.db.test.ts`).
+- [ ] Cursor and xAI publish no egress ranges: their requests get the usual limits per address.
+
 **Known limits**
 
 - Better Auth counts per address and has no option for another key, so the platform ceiling applies to each address of a range, not to the range as a whole, and a connection cannot be counted on its own `client_id`. A counter per range or per client needs a limiter of Louez's own in front of these routes.
 - Better Auth's counters read those headers as the visitor sent them when Cloudflare did not set the first one, so a request that reaches the origin directly can pick a new counter each time, on every limit of `/api/auth`, not only these. Only an origin closed to all but Cloudflare prevents it.
 - The ranges are copied, not fetched: refresh `provider-egress.ts` from its two sources when they change. An address a platform stops using keeps the higher ceiling until then; a new one gets the usual limits.
 - A client that sends a DPoP proof to the token endpoint anyway gets a DPoP-bound token, which `/api/mcp` refuses. Neither Claude nor ChatGPT does.
+- Cursor's metadata document comes with about 13.6 KB of response headers, most of it a content security policy (2026-11-10). The CIMD transport reads headers within Node's 16 KiB limit (`http.maxHeaderSize`), so if those headers grow by 2.7 KB, every Cursor and Grok sign-in fails at the fetch of the document. Raising the limit (`--max-http-header-size`) would also raise it for the requests the app serves.
+- No OAuth or MCP endpoint answers CORS. Claude and ChatGPT call them from their servers; a client that calls them from a browser page would be blocked.
 
 ## Directory plugins
 

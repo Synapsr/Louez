@@ -35,13 +35,22 @@ const CIMD_CLIENT_ID = "https://agent.example.org/oauth/client.json";
 const SECRET = "oauth-test-secret-never-used-in-production-1234567890";
 
 // The metadata documents Claude, Claude Code and ChatGPT publish, as served
-// on 2026-11-09, with test keys behind their `jwks_uri`.
+// on 2026-11-09, with test keys behind their `jwks_uri`, and Cursor's, as
+// served on 2026-11-10: Cursor, its Bot and Grok (grok.com, Grok Bot) share it.
 const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
 const CLAUDE_CONFIDENTIAL = `${CLAUDE}/confidential_client`;
 const CLAUDE_CODE = "https://claude.ai/oauth/claude-code-client-metadata";
 const CHATGPT = "https://chatgpt.com/oauth/client.json";
 const CLAUDE_CALLBACK = "https://claude.ai/api/mcp/auth_callback";
 const CHATGPT_CALLBACK = "https://chatgpt.com/connector_platform_oauth_redirect";
+const CURSOR = "https://cursor.com/oauth/mcp-client.json";
+const CURSOR_REDIRECTS = [
+  "https://www.cursor.com/agents/mcp/oauth/callback",
+  "https://www.cursor.com/bot/mcp/oauth/callback",
+  "https://grok.com/connectors-oauth-exchange-code/",
+  "http://localhost:8787/callback",
+  "http://127.0.0.1:8787/callback",
+];
 const claudeKeys = await generateKeyPair("ES256");
 const chatGptKeys = await generateKeyPair("RS256");
 const CLIENT_DOCUMENTS: Record<string, object> = {
@@ -103,6 +112,17 @@ const CLIENT_DOCUMENTS: Record<string, object> = {
     logo_uri: "https://persistent.oaistatic.com/sonic/misc/openai-logo.png",
     token_endpoint_auth_signing_alg: "RS256",
     jwks_uri: "https://chatgpt.com/oauth/jwks.json",
+  },
+  [CURSOR]: {
+    client_id: CURSOR,
+    client_name: "Cursor",
+    client_uri: "https://cursor.com",
+    logo_uri:
+      "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/cursorlogomcpv3.svg",
+    redirect_uris: CURSOR_REDIRECTS,
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
   },
   "https://claude.ai/v1/mcp/jwks": {
     keys: [{ ...(await exportJWK(claudeKeys.publicKey)), kid: "claude", alg: "ES256" }],
@@ -484,7 +504,7 @@ test("an authorization that started without a grant gets no token", async () => 
   assert.equal(((await refused.json()) as { error?: string }).error, "invalid_grant");
 });
 
-// --- What Claude, Claude Code and ChatGPT need ----------------------------------
+// --- What Claude, Claude Code, ChatGPT, Cursor and Grok need --------------------
 
 /** Starts an authorization for any client and redirect; PKCE when a challenge is given. */
 const startAuthorization = (
@@ -567,6 +587,9 @@ const tokenRequest = async (fx: Fixture, clientId: string, form: Record<string, 
 
 type Tokens = { access_token: string; refresh_token?: string; token_type: string };
 
+/** A redirect without its query: a custom scheme (`cursor://…`) has no origin to compare. */
+const withoutQuery = (url: URL) => url.href.slice(0, url.href.length - url.search.length);
+
 /** The whole flow for a client from its published document: consent, code, token. */
 const connectClient = async (fx: Fixture, clientId: string, redirectUri: string) => {
   const { verifier, challenge } = pkce();
@@ -574,7 +597,7 @@ const connectClient = async (fx: Fixture, clientId: string, redirectUri: string)
     fx,
     await startAuthorization(fx, { clientId, redirectUri, challenge }),
   );
-  assert.equal(`${back.origin}${back.pathname}`, redirectUri);
+  assert.equal(withoutQuery(back), redirectUri);
   assert.equal(
     back.searchParams.get("iss"),
     endpoints.issuer,
@@ -756,6 +779,119 @@ for (const [name, clientId, redirectUri] of [
     assert.equal(fx.data.oauthClient.length, 1, "no client registered per connection");
   });
 }
+
+test("Cursor and Grok connect with Cursor's document, through every redirect it lists", async () => {
+  // Cursor's agents and Bot, grok.com and Grok Bot, and its local callback.
+  for (const redirectUri of CURSOR_REDIRECTS) {
+    const fx = await fixture();
+    const tokens = await connectClient(fx, CURSOR, redirectUri);
+    assert.ok(audienceOf(tokens.access_token).includes(endpoints.resource), redirectUri);
+    assert.equal((await fx.verify(tokens.access_token))?.clientId, CURSOR, redirectUri);
+    assert.ok(tokens.refresh_token, redirectUri);
+    const [client, ...others] = fx.data.oauthClient;
+    assert.equal(others.length, 0, "known from its document, not registered");
+    assert.equal(client.name, "Cursor");
+    assert.ok(client.clientDiscoveryId);
+  }
+});
+
+test("a client that names the resource once, and no scope, gets tokens /api/mcp takes", async () => {
+  // MCP clients must name the resource at both steps; one is enough here.
+  // A client that never names it gets an opaque token, which /api/mcp refuses.
+  const [redirectUri] = CURSOR_REDIRECTS;
+  for (const namedAt of ["authorization", "token"] as const) {
+    const fx = await fixture();
+    const { verifier, challenge } = pkce();
+    const authorization = await fx.request(
+      `/api/auth/oauth2/authorize?${new URLSearchParams({
+        response_type: "code",
+        client_id: CURSOR,
+        redirect_uri: redirectUri,
+        state: "state-1",
+        code_challenge: challenge,
+        code_challenge_method: "S256",
+        ...(namedAt === "authorization" ? { resource: endpoints.resource } : {}),
+      })}`,
+    );
+    const back = await consent(fx, authorization);
+    const response = await tokenRequest(fx, CURSOR, {
+      grant_type: "authorization_code",
+      code: back.searchParams.get("code")!,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+      ...(namedAt === "token" ? { resource: endpoints.resource } : {}),
+    });
+    assert.equal(response.status, 200, await response.clone().text());
+    const tokens = (await response.json()) as Tokens;
+    assert.equal((await fx.verify(tokens.access_token))?.clientId, CURSOR, namedAt);
+    assert.ok(audienceOf(tokens.access_token).includes(endpoints.resource), namedAt);
+    if (!tokens.refresh_token) continue;
+    // A refresh that does not name it keeps the token's resource.
+    const refreshed = await tokenRequest(fx, CURSOR, {
+      grant_type: "refresh_token",
+      refresh_token: tokens.refresh_token,
+    });
+    assert.equal(refreshed.status, 200, await refreshed.clone().text());
+    const next = (await refreshed.json()) as Tokens;
+    assert.equal((await fx.verify(next.access_token))?.clientId, CURSOR, `${namedAt}, refreshed`);
+  }
+});
+
+test("Cursor's desktop app registers its redirects as a native client, cursor:// included", async () => {
+  const fx = await fixture();
+  const desktop = "cursor://anysphere.cursor-mcp/oauth/callback";
+  const registration = (body: object) =>
+    fx.request("/api/auth/oauth2/register", {
+      method: "POST",
+      anonymous: true,
+      body: JSON.stringify({
+        client_name: "Cursor",
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        ...body,
+      }),
+    });
+  const response = await registration({ redirect_uris: [desktop] });
+  assert.equal(response.status, 201, await response.clone().text());
+  const registered = (await response.json()) as { client_id: string; application_type?: string };
+  assert.equal(registered.application_type, "native", "a private-use scheme is a native app");
+  const tokens = await connectClient(fx, registered.client_id, desktop);
+  assert.equal((await fx.verify(tokens.access_token))?.clientId, registered.client_id);
+  // Its code goes to that exact URI only.
+  const other = await startAuthorization(fx, {
+    clientId: registered.client_id,
+    redirectUri: "cursor://anysphere.cursor-mcp/other",
+    challenge: pkce().challenge,
+  });
+  assert.equal(new URL(other.headers.get("location")!, ORIGIN).origin, ORIGIN);
+
+  // The pair Cursor's documentation says the desktop app registers.
+  const [web, , , loopback] = CURSOR_REDIRECTS;
+  const pair = await registration({ redirect_uris: [web, loopback] });
+  assert.equal(pair.status, 201, await pair.clone().text());
+  const pairClient = ((await pair.json()) as { client_id: string }).client_id;
+  const issued = await connectClient(fx, pairClient, web);
+  assert.equal((await fx.verify(issued.access_token))?.clientId, pairClient);
+  // Consented once, the client's other redirect gets its code straight away.
+  const local = await startAuthorization(fx, {
+    clientId: pairClient,
+    redirectUri: loopback,
+    challenge: pkce().challenge,
+  });
+  assert.ok(clientRedirect(local, loopback).searchParams.get("code"));
+
+  // A web client may not take one; no client may take a browser or script scheme.
+  const refused = async (body: object, why: string) => {
+    const answer = await registration(body);
+    assert.equal(answer.status, 400, why);
+    assert.equal(((await answer.json()) as { error?: string }).error, "invalid_redirect_uri", why);
+  };
+  await refused({ redirect_uris: [desktop], application_type: "web" }, "web");
+  for (const uri of ["javascript://cursor/%0aalert(1)", "data://cursor/x", "file://cursor/x"]) {
+    await refused({ redirect_uris: [uri] }, uri);
+  }
+});
 
 test("Claude Code's loopback redirect matches on any port, its hosts and path only", async () => {
   const fx = await fixture();
