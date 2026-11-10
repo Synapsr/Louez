@@ -13,11 +13,9 @@ import { PostHog, type EventMessage, type PostHogOptions } from "posthog-node";
 import {
   createErrorThrottle,
   createServerErrorReporter,
-  safeErrorCode,
+  reportableCode,
   type ReportServerError,
 } from "@louez/api/platform/error-reporting";
-import { sanitizeText } from "@louez/api/platform/sanitize-error";
-import { relativeSourcePath } from "@louez/api/platform/source-paths";
 
 import { env } from "@/env";
 import { log } from "@/lib/evlog";
@@ -72,71 +70,112 @@ export function errorTrackingConfig(source: {
   };
 }
 
-/** Source lines posthog-node reads from disk next to each frame: never sent. */
-const SOURCE_CONTEXT = ["pre_context", "context_line", "post_context"] as const;
+/** A source file of the repository, as `sanitizeError` writes a frame's location. */
+const REPO_FILE = /^(?:apps|packages)\/[\w.@()[\]/-]{1,300}\.(?:[cm]?[jt]sx?)$/;
 
-function sanitizeFrame(frame: unknown): void {
-  if (typeof frame !== "object" || frame === null) return;
-  for (const key of SOURCE_CONTEXT) Reflect.deleteProperty(frame, key);
-  for (const key of ["filename", "abs_path"]) {
-    const path = Reflect.get(frame, key);
-    if (typeof path === "string") Reflect.set(frame, key, relativeSourcePath(path));
+/**
+ * A frame as it may leave: a file of the repository, its position, and the
+ * SDK's flags. No function name, no module, and none of the source lines
+ * posthog-node reads from disk around it (`pre_context`, `context_line`,
+ * `post_context`). Any other frame (Node's own, an absolute path) is null.
+ */
+function safeFrame(frame: unknown): Record<string, unknown> | null {
+  if (typeof frame !== "object" || frame === null) return null;
+  const filename = Reflect.get(frame, "filename");
+  if (typeof filename !== "string" || !REPO_FILE.test(filename)) return null;
+  const kept: Record<string, unknown> = { filename, function: "?" };
+  for (const key of ["lineno", "colno"]) {
+    const value = Reflect.get(frame, key);
+    if (typeof value === "number" && Number.isSafeInteger(value)) kept[key] = value;
   }
-  for (const key of ["function", "module"]) {
-    const text = Reflect.get(frame, key);
-    if (typeof text === "string") Reflect.set(frame, key, sanitizeText(text));
-  }
+  const inApp = Reflect.get(frame, "in_app");
+  if (typeof inApp === "boolean") kept.in_app = inApp;
+  if (Reflect.get(frame, "platform") === "node:javascript") kept.platform = "node:javascript";
+  return kept;
 }
 
-function sanitizeExceptionList(exceptions: unknown): void {
-  if (!Array.isArray(exceptions)) return;
-  for (const exception of exceptions) {
-    if (typeof exception !== "object" || exception === null) continue;
-    for (const key of ["type", "value"]) {
-      const text = Reflect.get(exception, key);
-      if (typeof text === "string") Reflect.set(exception, key, sanitizeText(text));
-    }
-    const stacktrace: unknown = Reflect.get(exception, "stacktrace");
-    const frames =
-      typeof stacktrace === "object" && stacktrace ? Reflect.get(stacktrace, "frames") : [];
-    if (Array.isArray(frames)) frames.forEach(sanitizeFrame);
-  }
+/** An exception's class, as `sanitizeError` writes it. */
+const EXCEPTION_TYPE = /^(?:[A-Za-z]{1,60}|\[name\])$/;
+/** The only texts the reporter's copy writes: none, a withheld message, a validation error's issues. */
+const EXCEPTION_VALUE =
+  /^(?:|\[message withheld\]|a thrown [a-z]{1,20}|\[unreadable error\]|\[cause cycle\]|\d{1,3} issue\(s\): [\w[\]. ;]{0,2000})$/;
+
+function safeException(exception: unknown): Record<string, unknown> | null {
+  if (typeof exception !== "object" || exception === null) return null;
+  const type = Reflect.get(exception, "type");
+  const value = Reflect.get(exception, "value");
+  const stacktrace: unknown = Reflect.get(exception, "stacktrace");
+  const frames = typeof stacktrace === "object" && stacktrace ? Reflect.get(stacktrace, "frames") : [];
+  const mechanism: unknown = Reflect.get(exception, "mechanism");
+  const handled = typeof mechanism === "object" && mechanism ? Reflect.get(mechanism, "handled") : undefined;
+  return {
+    type: typeof type === "string" && EXCEPTION_TYPE.test(type) ? type : "[name]",
+    value: typeof value === "string" && EXCEPTION_VALUE.test(value) ? value : "[message withheld]",
+    mechanism: { type: "generic", handled: handled !== false, synthetic: false },
+    stacktrace: {
+      type: "raw",
+      frames: Array.isArray(frames) ? frames.map(safeFrame).filter((frame) => frame !== null) : [],
+    },
+  };
 }
 
 /** The reporter's fingerprint (`prepareServerError`): 32 hex characters, nothing else. */
 const FINGERPRINT = /^[0-9a-f]{32}$/;
+/** Names, ids, paths and versions the reporter sets: no space, nothing a caller wrote. */
+const TOKEN = /^[\w.\-/[\]@:+]{1,200}$/;
 
-/**
- * A property as it may leave: a number or a boolean as it is, the
- * fingerprint and the code only in their own format, any other string
- * sanitized. Anything else is dropped.
- */
-function safeProperty(key: string, value: unknown): unknown {
-  if (typeof value === "number" || typeof value === "boolean") return value;
-  if (typeof value !== "string") return undefined;
-  if (key === "$exception_fingerprint") return FINGERPRINT.test(value) ? value : undefined;
-  if (key === "error_code") return safeErrorCode(value);
-  return sanitizeText(value);
-}
+/** The properties an event may carry, each with the only form it may take. */
+const PROPERTIES: Readonly<Record<string, (value: unknown) => unknown>> = {
+  $exception_fingerprint: (value) =>
+    typeof value === "string" && FINGERPRINT.test(value) ? value : undefined,
+  $exception_level: (value) => (value === "error" ? value : undefined),
+  $process_person_profile: (value) => (value === false ? value : undefined),
+  error_code: (value) => reportableCode(value),
+  http_status: (value) => (typeof value === "number" && Number.isSafeInteger(value) ? value : undefined),
+  repeats_suppressed: (value) =>
+    typeof value === "number" && Number.isSafeInteger(value) ? value : undefined,
+  ...Object.fromEntries(
+    [
+      "source",
+      "transport",
+      "procedure",
+      "mcp_tool",
+      "route",
+      "route_type",
+      "cron_task",
+      "job_operation",
+      "effect_type",
+      "store_id",
+      "client_kind",
+      "client_directory",
+      "service",
+      "$app_version",
+    ].map((key) => [
+      key,
+      (value: unknown) => (typeof value === "string" && TOKEN.test(value) ? value : undefined),
+    ]),
+  ),
+};
 
 /**
  * The last gate, on the event as posthog-node sends it (`before_send`): the
- * reporter's copy is already sanitized, but the SDK adds the source lines
- * around each frame, read from the files after that. They are dropped,
- * paths made relative, and every string the event keeps sanitized again
- * (`safeProperty`). Any event but an exception is refused: this client
- * sends nothing else.
+ * reporter's copy holds no text, but the SDK adds to it, such as the source
+ * lines around each frame, read from the files. What leaves is rebuilt from
+ * allowlists: the exceptions' classes and the reporter's own texts, frames
+ * in the repository's files, and the reporter's properties in their own
+ * forms. Anything else is dropped; any event but an exception is refused.
  */
 export function sanitizeExceptionEvent(event: EventMessage | null): EventMessage | null {
   if (!event || event.event !== "$exception") return null;
   const properties: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(event.properties ?? {})) {
     if (key === "$exception_list") {
-      sanitizeExceptionList(value);
-      properties[key] = value;
+      properties[key] = Array.isArray(value)
+        ? value.map(safeException).filter((exception) => exception !== null)
+        : [];
       continue;
     }
-    const safe = safeProperty(key, value);
+    const safe = Object.hasOwn(PROPERTIES, key) ? PROPERTIES[key]?.(value) : undefined;
     if (safe !== undefined) properties[key] = safe;
   }
   return { ...event, properties };

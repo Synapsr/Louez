@@ -59,39 +59,73 @@ describe("error tracking configuration", () => {
 });
 
 describe("the event as sent", () => {
-  test("source lines are dropped, paths made relative, values sanitized", () => {
+  test("an exception keeps its class, the reporter's text and frames in the repository only", () => {
     const event = sanitizeExceptionEvent({
       event: "$exception",
       distinctId: "x",
       properties: {
         $exception_list: [
           {
-            type: "Error",
+            type: "Error jane-canary",
             value: "no customer jane@example.invalid",
+            mechanism: { type: "generic", handled: true, synthetic: false },
             stacktrace: {
+              type: "raw",
               frames: [
                 {
-                  filename: "/Users/someone/Louez/apps/web/lib/a.ts",
-                  abs_path: "/Users/someone/Louez/apps/web/lib/a.ts",
-                  function: "load",
+                  filename: "apps/web/lib/a.ts",
+                  module: "a.ts",
+                  function: "loadFor_jane",
+                  lineno: 3,
+                  colno: 7,
+                  in_app: true,
+                  platform: "node:javascript",
                   pre_context: ["const key = 'sk_live_canary'"],
                   context_line: "throw new Error(secret)",
                   post_context: ["}"],
                 },
+                { filename: "/Users/someone/tmp/x.ts", lineno: 1, colno: 1 },
+                { filename: "node:internal/process/task_queues", lineno: 1, colno: 1 },
               ],
             },
           },
+          { type: "ZodError", value: "1 issue(s): custom at customer.name" },
         ],
       },
     });
     const text = JSON.stringify(event);
-    for (const canary of ["jane@example.invalid", "sk_live_canary", "secret", "/Users/someone"]) {
+    for (const canary of ["jane", "sk_live_canary", "secret", "/Users/someone", "node:internal"]) {
       assert.doesNotMatch(text, new RegExp(canary));
     }
-    assert.match(text, /"filename":"apps\/web\/lib\/a\.ts"/);
+    assert.deepEqual(event?.properties?.$exception_list, [
+      {
+        type: "[name]",
+        value: "[message withheld]",
+        mechanism: { type: "generic", handled: true, synthetic: false },
+        stacktrace: {
+          type: "raw",
+          frames: [
+            {
+              filename: "apps/web/lib/a.ts",
+              function: "?",
+              lineno: 3,
+              colno: 7,
+              in_app: true,
+              platform: "node:javascript",
+            },
+          ],
+        },
+      },
+      {
+        type: "ZodError",
+        value: "1 issue(s): custom at customer.name",
+        mechanism: { type: "generic", handled: true, synthetic: false },
+        stacktrace: { type: "raw", frames: [] },
+      },
+    ]);
   });
 
-  test("every property kept is sanitized; a code or a fingerprint out of format is dropped", () => {
+  test("only the reporter's properties, each in its own form", () => {
     const event = sanitizeExceptionEvent({
       event: "$exception",
       distinctId: "x",
@@ -100,14 +134,16 @@ describe("the event as sent", () => {
         $exception_fingerprint: "not a fingerprint",
         error_code: "Bearer private-code-canary",
         procedure: "inbox.list for jane@example.invalid",
+        route: "/api/v1/[[...path]]",
         http_status: 500,
         $process_person_profile: false,
         nested: { email: "jane@example.invalid" },
+        unknown_property: "kept-canary",
       },
     });
     assert.deepEqual(event?.properties, {
       $exception_list: [],
-      procedure: "inbox.list for [redacted]",
+      route: "/api/v1/[[...path]]",
       http_status: 500,
       $process_person_profile: false,
     });

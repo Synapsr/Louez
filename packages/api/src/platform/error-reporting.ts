@@ -5,15 +5,16 @@ import { ORPCError } from "@orpc/server";
 import type { BaseContext } from "../context";
 import type { CredentialKind, Transport } from "./actor";
 import type { ClientDirectory } from "./agent-clients";
-import { sanitizeError, sanitizeText, type SanitizedError } from "./sanitize-error";
-import { relativeFramePath } from "./source-paths";
+import { LOUEZ_ERROR_CODES } from "./error-registry";
+import { sanitizeCode, sanitizeError, type SanitizedError } from "./sanitize-error";
 
 /**
  * Server errors sent to error tracking (the app sends them to PostHog,
  * apps/web lib/error-tracking.ts). Only what nobody expected: an exception, a
  * 5xx. A refusal (4xx: validation, not found, a confirmation to ask, a rate
- * limit…) is the API working, never sent. What is sent is a copy of the
- * error, its message and frames sanitized, with the safe context below:
+ * limit…) is the API working, never sent. What is sent is built from the
+ * error's sanitized facts (`sanitizeError`: classes, codes, the repository's
+ * code locations, never a message's text), with the safe context below:
  * never a body, a header, a token or a customer's data.
  */
 
@@ -113,91 +114,58 @@ const MAX_FRAMES = 30;
 /** Generic 5xx errors unwrapped to reach the fault (`rootFault`). */
 const MAX_CAUSE_DEPTH = 2;
 
-const FRAME = /^\s+at /;
+/** What `sanitizeCode` and the registry write for a code they do not know. */
+const UNKNOWN_CODE = "[code]";
 
 /**
- * What a code may look like to be sent: `INTERNAL_SERVER_ERROR`,
- * `ER_DUP_ENTRY`, Stripe's `card_declined`, a SQLSTATE. Anything else (a
- * code a provider filled with text, a token after a space) is dropped,
- * never sanitized and sent.
+ * A code as error tracking may send it: one of the known vocabularies
+ * (`sanitizeCode`) or one of Louez's own (`LOUEZ_ERROR_CODES`). Anything else,
+ * `[code]` included, is undefined: the field is left out rather than sent
+ * as `[code]`.
  */
-const SAFE_CODE = /^[A-Za-z0-9_.-]{1,64}$/;
-
-/** `value` when it is a code `SAFE_CODE` allows, else undefined. */
-export function safeErrorCode(value: unknown): string | undefined {
-  const code = typeof value === "number" ? String(value) : value;
-  return typeof code === "string" && SAFE_CODE.test(code) ? code : undefined;
+export function reportableCode(value: unknown): string | undefined {
+  if (typeof value === "string" && LOUEZ_ERROR_CODES.has(value)) return value;
+  const code = sanitizeCode(value);
+  return code === undefined || code === UNKNOWN_CODE ? undefined : code;
 }
 
-/** An error's code, when it has a safe one (oRPC's, ours, a driver's). */
-export function errorCode(error: unknown): string | undefined {
-  if (error instanceof ORPCError) {
-    const ours = (error.data as { code?: unknown } | undefined)?.code;
-    return safeErrorCode(typeof ours === "string" ? ours : error.code);
-  }
-  return error instanceof Error ? safeErrorCode(Reflect.get(error, "code")) : undefined;
+/** The code a report names: Louez's own (`apiCode`) first, else the error's. */
+function codeOf(facts: SanitizedError): string | undefined {
+  return reportableCode(facts.apiCode) ?? reportableCode(facts.code);
 }
 
-/** Issues of a validation error (Zod's) named, never their values. */
-const MAX_ISSUES = 5;
-
-/** A validation error's issues as codes and paths: its own message may quote the input. */
-function issuesMessage(error: unknown): string | undefined {
-  const issues: unknown = error instanceof Error ? Reflect.get(error, "issues") : undefined;
-  if (!Array.isArray(issues)) return undefined;
-  const named = issues.slice(0, MAX_ISSUES).map((issue: unknown) => {
-    const code = typeof issue === "object" && issue ? Reflect.get(issue, "code") : undefined;
-    const path = typeof issue === "object" && issue ? Reflect.get(issue, "path") : undefined;
-    const at = Array.isArray(path) ? path.map((part) => String(part)).join(".") : "";
-    return `${typeof code === "string" ? code : "invalid"}${at ? ` at ${at}` : ""}`;
-  });
-  const more = issues.length > MAX_ISSUES ? ` (+${issues.length - MAX_ISSUES})` : "";
-  return sanitizeText(`${issues.length} issue(s): ${named.join("; ")}${more}`);
+/** A validation error's issues as text: Zod codes and API field paths only. */
+function issuesText(issues: NonNullable<SanitizedError["issues"]>): string {
+  const named = issues.map(({ code, path }) => (path ? `${code} at ${path}` : code));
+  return `${issues.length} issue(s): ${named.join("; ")}`;
 }
 
 /**
- * An Error built back from the sanitized facts, as posthog-node reads it.
- * Each level of the cause chain goes through `issuesMessage` with its own
- * original: a validation error under a wrapper loses its message too.
+ * An Error built back from the sanitized facts, as posthog-node reads it:
+ * no text but what `sanitizeError` keeps (a withheld message, a validation
+ * error's issues), frames as the repository's locations, causes the same
+ * way at every level.
  */
-function toError(facts: SanitizedError, original: unknown): Error {
-  const message = issuesMessage(original) ?? facts.message;
+function toError(facts: SanitizedError): Error {
+  const message = facts.issues ? issuesText(facts.issues) : facts.message;
   const copy = new Error(message);
-  copy.name = facts.name === "NonError" ? "NonErrorThrown" : facts.name;
-  const frames = facts.frames.map((frame) => `    ${relativeFramePath(frame)}`);
-  copy.stack = [`${copy.name}: ${message}`, ...frames].join("\n");
-  if (facts.cause) {
-    copy.cause = toError(facts.cause, original instanceof Error ? original.cause : undefined);
-  }
+  copy.name = facts.name;
+  copy.stack = [`${copy.name}: ${message}`, ...facts.frames.map((frame) => `    at ${frame}`)].join(
+    "\n",
+  );
+  if (facts.cause) copy.cause = toError(facts.cause);
   return copy;
 }
 
 /**
- * The copy that is sent: the allowlisted, sanitized facts of
- * `sanitizeError` (name, message, frames, causes), never the error object.
+ * One fault's key: its class, its code, the schema object a database error
+ * names, and its top frame without the column. Never its message, which
+ * `sanitizeError` withholds.
  */
-function safeCopy(error: unknown): Error {
-  return toError(sanitizeError(error, { frames: MAX_FRAMES }), error);
-}
-
-/**
- * The message with what varies between two hits of the same fault replaced:
- * ids, numbers, quoted values.
- */
-export function messageTemplate(message: string): string {
-  return message
-    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<uuid>")
-    .replace(/(["'`])[^"'`\n]{0,200}\1/g, "<value>")
-    .replace(/\b[A-Za-z0-9_-]{12,}\b/g, (word) => (/\d/.test(word) ? "<id>" : word))
-    .replace(/\d+(?:\.\d+)?/g, "<n>")
-    .slice(0, 200);
-}
-
-/** The first frame in our code, without its line and column, which move with every release. */
-function topFrame(stack: string | undefined): string {
-  const frames = (stack ?? "").split("\n").filter((line) => FRAME.test(line));
-  const ours = frames.find((line) => !line.includes("node_modules") && !line.includes("node:"));
-  return (ours ?? frames[0] ?? "").trim().replace(/:\d+:\d+\)?$/, "");
+function faultKey(facts: SanitizedError): string {
+  const object = facts.schemaObject ? `${facts.schemaObject.kind}:${facts.schemaObject.name}` : "";
+  const top = facts.frames[0]?.replace(/:\d+$/, "") ?? "";
+  return [facts.name, codeOf(facts) ?? "", object, top].join("|");
 }
 
 /**
@@ -215,23 +183,19 @@ export function rootFault(error: unknown): unknown {
 }
 
 export interface PreparedServerError {
-  /** The copy to send: sanitized message and frames, causes included. */
+  /** The copy to send: the sanitized facts, causes included. */
   error: Error;
-  /** Type, message template and top frame, hashed: one per fault. */
+  /** Class, code, schema object and top frame, hashed: one per fault. */
   fingerprint: string;
   code?: string;
 }
 
 /** The root fault's copy and fingerprint (`rootFault`). */
 export function prepareServerError(error: unknown): PreparedServerError {
-  const fault = rootFault(error);
-  const copy = safeCopy(fault);
-  const code = errorCode(fault);
-  const key = [copy.name, code ?? "", messageTemplate(copy.message), topFrame(copy.stack)].join(
-    "|",
-  );
-  const fingerprint = createHash("sha256").update(key).digest("hex").slice(0, 32);
-  return { error: copy, fingerprint, ...(code ? { code } : {}) };
+  const facts = sanitizeError(rootFault(error), { frames: MAX_FRAMES });
+  const code = codeOf(facts);
+  const fingerprint = createHash("sha256").update(faultKey(facts)).digest("hex").slice(0, 32);
+  return { error: toError(facts), fingerprint, ...(code ? { code } : {}) };
 }
 
 // --- How many ------------------------------------------------------------------

@@ -53,10 +53,7 @@ export function isAnthropicClient(client: DirectoryClient): boolean {
 /** The directory an OAuth client is published in, as error tracking names it. */
 export type ClientDirectory = "openai" | "anthropic" | "other";
 
-export function clientDirectory(client: {
-  clientId: string;
-  name: string | null;
-}): ClientDirectory {
+export function clientDirectory(client: DirectoryClient): ClientDirectory {
   if (isOpenAiClient(client)) return "openai";
   if (isAnthropicClient(client)) return "anthropic";
   return "other";

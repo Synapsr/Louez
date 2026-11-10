@@ -26,7 +26,7 @@ A 5xx oRPC error that wraps another stands for its cause: `toORPCError` (`packag
 
 ### What goes with an error
 
-A **copy** of the error: its name, its message, its stack frames, and up to two levels of `cause`. Never the error object itself, whose properties may hold a request or a payload. The message and every frame go through the sanitizer; a validation error (Zod's `issues`), at any level of the cause chain, is sent as its issue codes and paths, never the values its message quotes. A code is sent only in its own format (`[A-Za-z0-9_.-]`, 64 characters at most: `ER_DUP_ENTRY`, Stripe's `card_declined`, a SQLSTATE; never a space); any other is dropped. Messages are cut at 1,000 characters, stacks at 30 frames.
+A **copy** built from the error's sanitized facts (`sanitizeError`, below), with up to three levels of `cause`, never the error object itself. It holds no message's text: a message is `[message withheld]`; a validation error (Zod's `issues`), at any level of the cause chain, is sent as its issues' codes and paths (`2 issue(s): invalid_type at customer.email; …`); a thrown value that is no error is `a thrown string` (or number…). Frames are the repository's code locations only (`packages/api/src/services/inbox.ts:1723:9`), at most 30. A code is sent only when it is a known one or one of Louez's (`reportableCode`); an unknown code is left out, never sent as `[code]`.
 
 The context is a fixed list of names and ids, nothing a caller sent:
 
@@ -49,25 +49,17 @@ No body, no header, no token, no user or customer data, no person profile (the e
 
 ### The sanitizer
 
-The shared sanitizer of the logs and error tracking, `packages/api/src/platform/sanitize-error.ts`: the copy is built from `sanitizeError` (name, message, codes, frames and causes, each through `sanitizeText`; no other property of the error). `sanitizeText` replaces with `[redacted]`:
-
-- e-mails and international phone numbers;
-- bearer, basic, digest and token credentials; sensitive fields (`password=`, `"apiKey": "…"`, `x-api-key:`, cookies); JWTs; Louez API keys (`lz_`), Stripe `sk_`/`rk_`/`pk_` keys, client secrets and `whsec_`; PostHog, GitHub, Slack and AWS keys;
-- URL userinfo, query strings and fragments, and a bare path's query (`/api/files/source?…`);
-- what a database quotes back of the row: MySQL's `Duplicate entry '…'` and `Incorrect … value: '…'`, Postgres's `Key (…)=(…)` and `Failing row contains (…)`, Drizzle's `params: …`; table, column and key names stay;
-- long hex and base64 blobs, and a handoff's secrets (`platform/redact.ts`).
-
-The patterns err toward redacting; ids (`store_…`, nanoids), codes and numbers stay, so the text still says what broke. Frame paths are made relative to the repository (`platform/source-paths.ts`: `apps/…`, `packages/…`, `node_modules/…`, `.next/…`); a path outside it keeps only its file name.
+The shared sanitizer of the logs and error tracking, `packages/api/src/platform/sanitize-error.ts`, keeps facts whose provenance it checks, never text: the error's class among known classes (else `[name]`); its codes from fixed vocabularies (HTTP and oRPC, MySQL, Node, undici, Stripe) and Louez's own codes and keys from `platform/error-registry.ts` (else `[code]`); a MySQL error's schema object when `platform/schema-names.ts` knows its name; a validation error's Zod codes and paths, a key outside the API's field names being `[key]`; and its stack's locations, without function names, kept only when the file exists under the repository's apps and packages, never in `node_modules`.
 
 ### The last gate
 
-posthog-node reads the source lines around each frame from disk (`pre_context`, `context_line`, `post_context`) after the copy is made. The client's `before_send` (`sanitizeExceptionEvent` in `apps/web/lib/error-tracking.ts`) drops them, makes every path relative and sanitizes again every string the event keeps: numbers and booleans stay, the fingerprint and `error_code` only in their own format, any other value is dropped. It refuses any event that is not an exception.
+posthog-node adds to the copy, such as the source lines around each frame, read from disk (`pre_context`, `context_line`, `post_context`). The client's `before_send` (`sanitizeExceptionEvent` in `apps/web/lib/error-tracking.ts`) rebuilds the event as sent from allowlists: each exception's class and only the texts the copy writes (else `[message withheld]`), frames in the repository's files with their position only, and the reporter's properties, each in its own form (names and ids without spaces, numbers, the fingerprint, a reportable code). Anything else is dropped, and any event that is not an exception is refused.
 
 ## How many
 
 Per server process, in `error-reporting.ts`:
 
-- **One fault, once per 10 minutes** (`ERROR_REPEAT_WINDOW_MS`). A fault is its fingerprint: the error's type and code, its message with ids, numbers and quoted values replaced, and its first frame in our code, without line and column. The repeats in between are counted and sent with the next one (`repeats_suppressed`). The fingerprint is also the PostHog issue's (`$exception_fingerprint`), so a fault stays one issue across releases.
+- **One fault, once per 10 minutes** (`ERROR_REPEAT_WINDOW_MS`). A fault is its fingerprint: the error's class, its code (Louez's own first), the schema object a database error names, and its top frame in the repository, without the column. Never the message. The repeats in between are counted and sent with the next one (`repeats_suppressed`). The fingerprint is also the PostHog issue's (`$exception_fingerprint`); a fault whose line moves in a release starts a new issue.
 - **20 errors per hour, all faults together** (`ERROR_HOURLY_CAP`): at worst 14,400 a month per process. Past it, errors are dropped until the hour ends, and one `errorTracking.hourly_cap_reached` warning is logged.
 - **500 faults remembered** (`MAX_TRACKED_FAULTS`), the oldest forgotten first.
 - **A sample rate**, optional: `POSTHOG_ERROR_TRACKING_SAMPLE_RATE` (0 to 1, default 1). A fault dropped by sampling is not counted.
@@ -96,10 +88,10 @@ Frames point at the compiled server chunks of the standalone build (`.next/serve
 ## Tests
 
 ```bash
-cd packages/api && SKIP_ENV_VALIDATION=true node --import tsx --test src/platform/sanitize-error.test.ts src/platform/source-paths.test.ts src/platform/error-reporting.test.ts
+cd packages/api && SKIP_ENV_VALIDATION=true node --import tsx --test src/platform/sanitize-error.test.ts src/platform/error-reporting.test.ts
 ```
 
-Without network: `sanitize-error.test.ts` plants canaries (e-mails, keys, tokens, rows a database quotes, queries, phones, blobs) and checks they are gone, `source-paths.test.ts` the relative paths; `error-reporting.test.ts` the filtering, the copy, the root fault behind `errors.internalServerError`, fingerprints, the repeat window, the hourly cap, sampling and the interceptor. `apps/web/lib/error-tracking.test.ts` checks the flag (`"false"`, `"0"`, empty, unset stay off), the build, the final event through the real client with PostHog's network intercepted (the source lines it reads from disk do not leave), and that no listener is set for SIGTERM, SIGINT, `beforeExit` or `exit`; `packages/api/src/services/product-images-failure.test.ts` an image job's failure the database did not record; `packages/mcp/src/utils/errors.test.ts` and `apps/web/app/api/cron/isolated-tasks.test.ts` the MCP and cron hooks.
+Without network: `sanitize-error.test.ts` the sanitizer; `error-reporting.test.ts` the filtering, the copy (no text, frames in the repository's files, nested validation errors), codes, the root fault behind `errors.internalServerError`, fingerprints (class, code, schema object, place), the repeat window, the hourly cap, sampling and the interceptor. `apps/web/lib/error-tracking.test.ts` checks the flag (`"false"`, `"0"`, empty, unset stay off), the build, the final event through the real client with PostHog's network intercepted (the source lines it reads from disk do not leave), and that no listener is set for SIGTERM, SIGINT, `beforeExit` or `exit`; `packages/api/src/services/product-images-failure.test.ts` an image job's failure the database did not record; `packages/mcp/src/utils/errors.test.ts` and `apps/web/app/api/cron/isolated-tasks.test.ts` the MCP and cron hooks.
 
 ## Related
 
