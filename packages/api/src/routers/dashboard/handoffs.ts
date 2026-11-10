@@ -88,7 +88,7 @@ const refresh = storeProcedure
     mcp: {
       name: "handoffs_refresh",
       title: "Refresh Handoff Status",
-      description: `Ask the provider again where a step handed to the user stands, and record it. It matters for a billing card the user came back from while Stripe had not confirmed it (\`confirming: true\`): once Stripe confirms, the billing service saves the card, replacing the one on file, and the step completes. At most one check per ${HANDOFF_CHECK_LEASE_SECONDS.min} seconds to ${HANDOFF_CHECK_LEASE_SECONDS.max / 60} minutes, longer after each; within that time, and for any other step, it answers as handoffs_get does. Takes the handoff's id. Needs write access to the step's domain: billing for the billing card, settings for Stripe.`,
+      description: `Ask the provider again where a step handed to the user stands, and record it. It matters for a billing card the user came back from while Stripe had not confirmed it (\`confirming: true\`): once Stripe confirms, the billing service saves the card, replacing the one on file, and the step completes. Louez asks the provider at most once in ${HANDOFF_CHECK_LEASE_SECONDS.min} seconds, a wait that grows after each check up to ${HANDOFF_CHECK_LEASE_SECONDS.max / 60} minutes; during that wait, and for any other step, it answers as handoffs_get does without asking. Takes the handoff's id. Needs write access to the step's domain: billing for the billing card, settings for Stripe.`,
       bundle: "daily",
       effect: "overwrite",
       reach: "provider",

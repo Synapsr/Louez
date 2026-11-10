@@ -4344,6 +4344,10 @@
             "label": "Rezerwacja potwierdzona",
             "description": "Po udanej płatności"
           },
+          "customer_reservation_cancelled": {
+            "label": "Rezerwacja anulowana",
+            "description": "Gdy anulujesz rezerwację"
+          },
           "customer_reminder_pickup": {
             "label": "Przypomnienie o odbiorze",
             "description": "Wysłane przed datą odbioru"
@@ -9644,7 +9648,10 @@
       "dismiss": "Ukryj"
     },
     "declaredBy": "Nazwa podana przez {origin}",
-    "declaredByItself": "Nazwa podana przez aplikację (rejestracja dynamiczna)"
+    "declaredByItself": "Nazwa podana przez aplikację (rejestracja dynamiczna)",
+    "verifiedDestination": "Zweryfikowano: przekierowuje do {domain}",
+    "declaredNameBy": "Nazwa podana przez {origin}: {name}",
+    "declaredNameByItself": "Nazwa podana przez aplikację: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Zmień sklep",

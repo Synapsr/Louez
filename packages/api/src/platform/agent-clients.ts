@@ -1,3 +1,4 @@
+import { registeredVendor } from "./agent-destinations";
 import type { McpBundle } from "./meta";
 import type { ApiDomain } from "./permissions";
 
@@ -10,25 +11,42 @@ import type { ApiDomain } from "./permissions";
 export const CHATGPT_CLIENT_ID = "https://chatgpt.com/oauth/client.json";
 
 /**
- * A client OpenAI publishes: ChatGPT's metadata document, or a client that
+ * An OAuth client as the directory rules read it: its id, the whole name it
+ * registered, and its registered redirect URIs (`registeredRedirectUris`).
+ */
+export interface DirectoryClient {
+  clientId: string;
+  name: string | null;
+  redirectUris: readonly string[];
+}
+
+/**
+ * A client OpenAI publishes: ChatGPT's metadata document, a client whose
+ * every redirect URI is on OpenAI's domains (chatgpt.com, openai.com:
+ * `registeredVendor`), as only OpenAI receives its codes, or a client that
  * registered itself under OpenAI's names (ChatGPT may use dynamic
  * registration). A name is only what the client declared, which another
  * client could copy; here it only takes tools away from that client.
  */
-export function isOpenAiClient(client: { clientId: string; name: string | null }): boolean {
+export function isOpenAiClient(client: DirectoryClient): boolean {
   return (
-    client.clientId === CHATGPT_CLIENT_ID || /\b(?:chatgpt|openai|codex)\b/i.test(client.name ?? "")
+    client.clientId === CHATGPT_CLIENT_ID ||
+    registeredVendor(client.redirectUris) === "chatgpt" ||
+    /\b(?:chatgpt|openai|codex)\b/i.test(client.name ?? "")
   );
 }
 
 /**
  * A client Anthropic publishes: Claude's metadata document (on claude.ai or
- * claude.com), or a client that registered itself under Claude's name. As
- * for OpenAI, a name only takes tools away from the client that declared it.
+ * claude.com), a client whose every redirect URI is on those domains, or a
+ * client that registered itself under Claude's name. As for OpenAI, a name
+ * only takes tools away from the client that declared it.
  */
-export function isAnthropicClient(client: { clientId: string; name: string | null }): boolean {
+export function isAnthropicClient(client: DirectoryClient): boolean {
   return (
-    /^https:\/\/claude\.(?:ai|com)\//.test(client.clientId) || /\bclaude\b/i.test(client.name ?? "")
+    /^https:\/\/claude\.(?:ai|com)\//.test(client.clientId) ||
+    registeredVendor(client.redirectUris) === "claude" ||
+    /\bclaude\b/i.test(client.name ?? "")
   );
 }
 
@@ -111,10 +129,7 @@ const ANTHROPIC_WITHHOLDING: ClientWithholding = {
  * compatibility (SHOULD). Claude's clients document nothing of the kind, so
  * their text keeps the JSON.
  */
-export function modelReadsStructuredContent(client: {
-  clientId: string;
-  name: string | null;
-}): boolean {
+export function modelReadsStructuredContent(client: DirectoryClient): boolean {
   return isOpenAiClient(client);
 }
 
@@ -122,10 +137,7 @@ export function modelReadsStructuredContent(client: {
  * What `client` never reaches, whatever its grant. A client that matches
  * several directories (a name copying both) gets every rule.
  */
-export function clientWithholding(client: {
-  clientId: string;
-  name: string | null;
-}): ClientWithholding {
+export function clientWithholding(client: DirectoryClient): ClientWithholding {
   const rules = [
     ...(isOpenAiClient(client) ? [OPENAI_WITHHOLDING] : []),
     ...(isAnthropicClient(client) ? [ANTHROPIC_WITHHOLDING] : []),

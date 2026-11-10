@@ -231,8 +231,8 @@ export function createSiteIconCache(options?: {
 
     running++;
     // The place is freed once the lookup and every request it started have
-    // settled: a request past its own deadline (a DNS lookup no signal
-    // cancels) still runs.
+    // settled: a request past its own deadline still runs if its transport
+    // ignores the abort signal.
     const started: Promise<unknown>[] = [];
     const lookup = fetchSiteIcon(origin, fetchResource, (work) => started.push(work)).catch(
       () => null,

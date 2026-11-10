@@ -661,7 +661,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(operation, undefined);
   });
 
-  test("a direct upload is checked on completion: bad bytes are deleted and refused", async () => {
+  test("a direct upload is checked on completion: bad bytes are refused and stay private", async () => {
     storage = createMemoryStorage({ direct: true });
     const context = await apiKey();
     const started = await run(
@@ -682,7 +682,8 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       run("completeImageUpload", { key: started.key }, context()),
       "UPLOAD_CONTENT_INVALID",
     );
-    assert.equal(storage.objects.has(started.key), false, "deleted");
+    // Nothing is deleted: the refused object stays unpublished, so private.
+    assert.equal(storage.objects.get(started.key)?.public, false, "kept private");
 
     storage.objects.set(started.key, { bytes: PNG, contentType: "image/png", public: false });
     const completed = await run("completeImageUpload", { key: started.key }, context());

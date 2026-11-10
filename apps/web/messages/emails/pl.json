@@ -279,7 +279,7 @@
     "title": "Rezerwacja anulowana",
     "body": "Twoja rezerwacja #{number} została anulowana.",
     "cancelledPeriod": "Anulowany okres",
-    "reasonLabel": "Powód",
+    "itemsLabel": "Pozycje",
     "contactForQuestions": "Jeśli masz pytania, skontaktuj się z nami.",
     "browseEquipment": "Przeglądaj nasz katalog",
     "thankYou": "Dziękujemy za zrozumienie."

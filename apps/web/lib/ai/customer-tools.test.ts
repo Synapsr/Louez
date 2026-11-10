@@ -5,7 +5,9 @@ import { describe, test } from "node:test";
 // package, and its named imports from `@louez/validations` only resolve under
 // the CommonJS scope `node --test` gets here.
 import {
+  agentCustomerFields,
   checkCustomerFieldEntries,
+  requiresSensitiveFields,
   resolveCustomerCompanyFields,
   toReadableCustomerFields,
 } from "@louez/api/services/customer-tools";
@@ -276,5 +278,74 @@ describe("resolveCustomerCompanyFields", () => {
       }),
       { companyNumber: null, companyNumberScheme: null, vatNumber: null },
     );
+  });
+});
+
+describe("agentCustomerFields", () => {
+  test("leaves out every field the store flagged sensitive", () => {
+    const visible = agentCustomerFields(definitions).map((field) => field.id);
+    assert.ok(!visible.includes("def_cpf"));
+    assert.equal(visible.length, definitions.length - 1);
+  });
+
+  test("an agent is neither asked for nor told about a sensitive field", () => {
+    const passport = definition({
+      id: "def_passport",
+      label: "Passport number",
+      isSensitive: true,
+      isRequired: true,
+    });
+    const fields = agentCustomerFields([passport, ...definitions]);
+
+    const created = checkCustomerFieldEntries({
+      definitions: fields,
+      entries: [],
+      customerType: "individual",
+      partial: false,
+    });
+    assert.equal(created.ok, true, "a required sensitive field does not block");
+    assert.ok(created.ok && !("def_passport" in created.values), "nor is it written");
+
+    const written = checkCustomerFieldEntries({
+      definitions: fields,
+      entries: [{ field: "Passport number", value: "X1234567" }],
+      customerType: "individual",
+      partial: true,
+    });
+    assert.equal(written.ok, false, "nor can it be written");
+    if (!written.ok) {
+      const available = written.error.slice(written.error.indexOf("Available fields:"));
+      assert.ok(!available.includes("Passport"), available);
+      assert.ok(!available.includes("CPF"), available);
+    }
+  });
+});
+
+describe("requiresSensitiveFields", () => {
+  const passport = (overrides: Partial<CustomerFieldDefinition> = {}) =>
+    definition({
+      id: "def_passport",
+      label: "Passport number",
+      isSensitive: true,
+      isRequired: true,
+      ...overrides,
+    });
+
+  test("a required sensitive field for this customer type is for Louez to fill", () => {
+    assert.equal(requiresSensitiveFields([passport()], "individual"), true);
+    assert.equal(
+      requiresSensitiveFields([passport({ appliesTo: "individual" })], "individual"),
+      true,
+    );
+  });
+
+  test("an optional, inactive, other-type or non-sensitive field is not", () => {
+    assert.equal(requiresSensitiveFields([passport({ isRequired: false })], "individual"), false);
+    assert.equal(requiresSensitiveFields([passport({ isActive: false })], "individual"), false);
+    assert.equal(
+      requiresSensitiveFields([passport({ appliesTo: "business" })], "individual"),
+      false,
+    );
+    assert.equal(requiresSensitiveFields([passport({ isSensitive: false })], "individual"), false);
   });
 });

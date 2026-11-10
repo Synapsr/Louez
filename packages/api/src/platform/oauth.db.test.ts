@@ -361,6 +361,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
         "/api/agent-connections/client-icon?client_id=https%3A%2F%2Fevil.oa.test%2Fclaude.json",
       redirectHost: "evil.oa.test",
       loopbackRedirect: false,
+      destination: null,
     });
 
     const registered = await ask("dcr-claude-lookalike", "http://127.0.0.1:53111/callback");
@@ -391,7 +392,12 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     );
     const ask = (clientId: string, redirectUri: string) =>
       call<{
-        client: { verified: boolean; redirectHost: string; loopbackRedirect: boolean };
+        client: {
+          verified: boolean;
+          redirectHost: string;
+          loopbackRedirect: boolean;
+          destination: unknown;
+        };
         canCreateStores: boolean;
       }>(
         connections.getAuthorization,
@@ -410,6 +416,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
       const { client, canCreateStores } = await ask(clientId, redirectUri);
       assert.equal(client.verified, true, clientId);
       assert.equal(client.loopbackRedirect, false, clientId);
+      assert.equal(client.destination, null, "a listed client keeps its own display");
       // OpenAI's directory withholds stores_create (agent-clients.ts): the
       // page asks the user to create the store in Louez instead.
       assert.equal(canCreateStores, clientId !== chatGpt, clientId);
@@ -417,7 +424,114 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     const local = await ask(claudeCode, "http://127.0.0.1:53682/callback");
     assert.equal(local.client.verified, false, "any local program can take its code");
     assert.equal(local.client.loopbackRedirect, true);
+    assert.equal(local.client.destination, null, "a loopback redirect is no vendor's");
     assert.equal(local.client.redirectHost, "127.0.0.1:53682");
+  });
+
+  test("a client whose codes all go to one vendor is shown as that vendor, whatever its name", async () => {
+    const cursorBot = "https://www.cursor.com/bot/mcp/oauth/callback";
+    await louezDb.db.insert(louezDb.oauthClients).values([
+      {
+        clientId: "dcr-cursor-bot",
+        name: "Cursor",
+        redirectUris: JSON.stringify([cursorBot]),
+      },
+      {
+        clientId: "dcr-cursor-evil-name",
+        name: "Evil",
+        redirectUris: JSON.stringify([
+          cursorBot,
+          "https://www.cursor.com/agents/mcp/oauth/callback",
+        ]),
+      },
+      {
+        clientId: "dcr-cursor-mixed",
+        name: "Cursor",
+        redirectUris: JSON.stringify([cursorBot, "http://127.0.0.1:8787/callback"]),
+      },
+      {
+        clientId: "dcr-cursor-lookalike",
+        name: "Cursor",
+        redirectUris: JSON.stringify(["https://cursor.com.evil.oa.test/callback"]),
+      },
+    ]);
+    const ask = (clientId: string, redirectUri: string) =>
+      call<{
+        client: {
+          name: string;
+          verified: boolean;
+          iconUrl: string | null;
+          redirectHost: string;
+          destination: { vendor: string; name: string; domain: string } | null;
+        };
+      }>(
+        connections.getAuthorization,
+        {
+          oauthQuery: new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            sig: "ok",
+          }).toString(),
+        },
+        session(),
+        ["dashboard", "agentConnections", "getAuthorization"],
+      );
+    const cursor = { vendor: "cursor", name: "Cursor", domain: "cursor.com" };
+
+    const bot = await ask("dcr-cursor-bot", cursorBot);
+    assert.deepEqual(bot.client.destination, cursor);
+    assert.equal(bot.client.verified, false, "the client id is on no list");
+    assert.equal(bot.client.iconUrl, null, "the vendor's mark is bundled, nothing fetched");
+    assert.equal(bot.client.redirectHost, "www.cursor.com");
+
+    // The name comes from the table: the code can reach Cursor alone.
+    const evil = await ask("dcr-cursor-evil-name", cursorBot);
+    assert.deepEqual(evil.client.destination, cursor);
+    assert.equal(evil.client.name, "Evil", "the declared name is still given");
+
+    // One registered URI elsewhere, even unused by this request: as today.
+    const mixed = await ask("dcr-cursor-mixed", cursorBot);
+    assert.equal(mixed.client.destination, null);
+    const lookalike = await ask("dcr-cursor-lookalike", "https://cursor.com.evil.oa.test/callback");
+    assert.equal(lookalike.client.destination, null);
+  });
+
+  test("a client recognised by its redirect URIs gets its vendor's rules on the consent page", async () => {
+    const chatGptOnly = "https://chatgpt.com/connector/oauth/oa1";
+    await louezDb.db.insert(louezDb.oauthClients).values([
+      { clientId: "dcr-evil-openai", name: "Evil", redirectUris: JSON.stringify([chatGptOnly]) },
+      {
+        clientId: "dcr-evil-mixed",
+        name: "Evil",
+        redirectUris: JSON.stringify([chatGptOnly, "http://127.0.0.1:8787/callback"]),
+      },
+    ]);
+    const ask = (clientId: string) =>
+      call<{
+        client: { destination: { vendor: string } | null };
+        offeredBundles: string[];
+        canCreateStores: boolean;
+      }>(
+        connections.getAuthorization,
+        {
+          oauthQuery: new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: chatGptOnly,
+            sig: "ok",
+          }).toString(),
+        },
+        session(),
+        ["dashboard", "agentConnections", "getAuthorization"],
+      );
+
+    const openAi = await ask("dcr-evil-openai");
+    assert.equal(openAi.client.destination?.vendor, "chatgpt");
+    assert.equal(openAi.canCreateStores, false, "OpenAI's directory withholds stores_create");
+    assert.ok(!openAi.offeredBundles.includes("billing"));
+
+    const mixed = await ask("dcr-evil-mixed");
+    assert.equal(mixed.client.destination, null);
+    assert.equal(mixed.canCreateStores, true);
   });
 
   test("refusing grants nothing; a bad query, a foreign store or an unknown client is refused", async () => {

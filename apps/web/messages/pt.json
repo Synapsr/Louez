@@ -4344,6 +4344,10 @@
             "label": "Reserva confirmada",
             "description": "Após pagamento bem-sucedido"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reserva cancelada",
+            "description": "Quando você cancela uma reserva"
+          },
           "customer_reminder_pickup": {
             "label": "Lembrete de retirada",
             "description": "Enviado antes da data de retirada"
@@ -9644,7 +9648,10 @@
       "dismiss": "Ocultar"
     },
     "declaredBy": "Nome declarado por {origin}",
-    "declaredByItself": "Nome declarado pelo aplicativo (registrado dinamicamente)"
+    "declaredByItself": "Nome declarado pelo aplicativo (registrado dinamicamente)",
+    "verifiedDestination": "Verificado: redireciona para {domain}",
+    "declaredNameBy": "Nome declarado por {origin}: {name}",
+    "declaredNameByItself": "Nome declarado pelo aplicativo: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Mudar de loja",

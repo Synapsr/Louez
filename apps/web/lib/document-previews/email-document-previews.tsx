@@ -346,7 +346,7 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
   customerEmail({
     id: "reservation-cancelled",
     title: "Réservation annulée",
-    description: "Annulation par le client ou le loueur, avec un motif.",
+    description: "Le loueur annule la réservation : dates, matériel et contact.",
     compose: (context) => ({
       subject: fromStore(
         withNumber(getEmailTranslations(context.locale).reservationCancelled.subject),
@@ -356,7 +356,7 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
         ...baseProps(context),
         startDate,
         endDate,
-        reason: "Annulation demandée par le client.",
+        items,
         storefrontUrl: url,
       }),
     }),

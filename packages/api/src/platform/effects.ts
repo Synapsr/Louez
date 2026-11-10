@@ -91,10 +91,16 @@ export const analyticsEventIdentity = (occurredAt: Date): AnalyticsEventIdentity
 });
 
 export interface ApiEffectPayloads {
-  /** The customer hears of the answer to their request or quote, on one channel. */
+  /**
+   * The customer hears of a status change the store made, on one channel: the
+   * answer to their request or quote, or the store's cancellation.
+   */
   "reservation.customerMessage": {
     channel: "email" | "sms";
-    notification: "customer_request_accepted" | "customer_request_rejected";
+    notification:
+      | "customer_request_accepted"
+      | "customer_request_rejected"
+      | "customer_reservation_cancelled";
     store: EffectStore;
     customer: {
       id: string;
@@ -242,6 +248,17 @@ export interface ApiEffectPayloads {
     fieldsCleared: string[];
     facts: SetupFacts;
   };
+  /**
+   * The prepaid credit an SMS used, taken once its provider accepted it
+   * (apps/web lib/sms/delivery.ts). Its log row, written at the acceptance,
+   * says the credit is owed until this takes it, so taking it again changes
+   * nothing. It sends nothing.
+   */
+  "sms.prepaidDebit": {
+    /** The SMS's log row (`sms_logs.id`). */
+    recordId: string;
+    storeId: string;
+  };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;
@@ -260,6 +277,11 @@ export type ApiEffect = {
 
 /** What a sender gets besides the payload. */
 export interface EffectSendContext {
+  /**
+   * The row's id, the same on every run of it: what a sender keys the
+   * record of what it did on, so a run after a lost outcome sees it.
+   */
+  effectId: string;
   /** Aborted at the sender's timeout: pass it to every provider call, and send nothing after it. */
   signal: AbortSignal;
   /**
@@ -664,6 +686,7 @@ export async function dispatchEffects(
       controller.signal.throwIfAborted();
     };
     const context: EffectSendContext = {
+      effectId: id,
       signal: controller.signal,
       throwIfAborted,
       assertClaim: async () => {

@@ -247,11 +247,19 @@ function decodeCursor(raw: string): Cursor {
     for (const group of b) {
       const [gt, gk, gr, types] = Array.isArray(group) ? group : [];
       const position = { t: gt, k: gk, r: gr };
-      if (!isPosition(position) || !Array.isArray(types) || types.length === 0) {
+      // A type stands behind the cursor's position, never at it or after, and once.
+      if (
+        !isPosition(position) ||
+        comparePositions(position, at) >= 0 ||
+        !Array.isArray(types) ||
+        types.length === 0
+      ) {
         throw inboxErrors.invalidCursor();
       }
       for (const type of types) {
-        if (typeof type !== "string" || !isItemType(type)) throw inboxErrors.invalidCursor();
+        if (typeof type !== "string" || !isItemType(type) || behind[type]) {
+          throw inboxErrors.invalidCursor();
+        }
         behind[type] = position;
       }
     }
@@ -1156,6 +1164,7 @@ const MESSAGE_TYPES = ["reservation.customerMessage", "reservation.storeNotifica
 const MESSAGE_LABELS: Record<string, string> = {
   customer_request_accepted: "acceptance message",
   customer_request_rejected: "rejection message",
+  customer_reservation_cancelled: "cancellation message",
 };
 
 /** A message to a customer, or a store notification, the outbox gave up on. */

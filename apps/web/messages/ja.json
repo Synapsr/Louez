@@ -4646,6 +4646,10 @@
             "label": "予約確認済み",
             "description": "支払いが成功した後"
           },
+          "customer_reservation_cancelled": {
+            "label": "予約キャンセル",
+            "description": "予約をキャンセルしたとき"
+          },
           "customer_reminder_pickup": {
             "label": "ピックアップリマインダー",
             "description": "集荷日より前に送信"
@@ -9644,7 +9648,10 @@
       "dismiss": "非表示"
     },
     "declaredBy": "名前の申告元：{origin}",
-    "declaredByItself": "名前はアプリ自身による申告です（動的登録）"
+    "declaredByItself": "名前はアプリ自身による申告です（動的登録）",
+    "verifiedDestination": "確認済み：{domain} に戻ります",
+    "declaredNameBy": "{origin} が申告した名前：{name}",
+    "declaredNameByItself": "アプリが申告した名前：{name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "店舗を切り替える",

@@ -512,7 +512,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "returnDeposit"),
       procedure("reservations", "returnDeposit"),
-      tool(MCP.payments, "return_deposit"),
+      tool(MCP.payments, "record_deposit_return"),
     ],
     kind: "write",
     sensitive: "money",

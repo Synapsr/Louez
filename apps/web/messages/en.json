@@ -4647,6 +4647,10 @@
             "label": "Reservation confirmed",
             "description": "After successful payment"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reservation cancelled",
+            "description": "When you cancel a reservation"
+          },
           "customer_reminder_pickup": {
             "label": "Pickup reminder",
             "description": "Sent before pickup date"
@@ -9644,7 +9648,10 @@
       "dismiss": "Hide"
     },
     "declaredBy": "Name declared by {origin}",
-    "declaredByItself": "Name declared by the app (registered dynamically)"
+    "declaredByItself": "Name declared by the app (registered dynamically)",
+    "verifiedDestination": "Verified: returns to {domain}",
+    "declaredNameBy": "Name declared by {origin}: {name}",
+    "declaredNameByItself": "Name declared by the app: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Switch store",

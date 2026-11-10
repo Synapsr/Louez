@@ -317,7 +317,7 @@ const updateStatus = storeProcedure
       name: "reservations_update_status",
       title: "Change Reservation Status",
       description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
+        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       effect: "overwrite",
       reach: "customer",
@@ -345,10 +345,10 @@ const cancel = storeProcedure
       name: "reservations_cancel",
       title: "Cancel Reservation",
       description:
-        "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled and the store's notifications follow. Nothing is refunded or released by itself, and the customer gets no message. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid). Returns the change and the reservation's `links`, its dashboard page to give the user.",
+        "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled, the customer gets the cancellation message on the channels the store set for it, and the store's notifications follow. Nothing is refunded or released by itself, and the message says nothing of a refund. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid, and the message the customer gets or that none goes). Returns the change and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       effect: "overwrite",
-      reach: "provider",
+      reach: "customer",
     },
   })
   .route({ method: "POST", path: "/reservations/{id}/cancel" })
@@ -405,7 +405,7 @@ export const globalSearchProcedure = storeProcedure
       name: "search_global",
       title: "Search Store",
       description:
-        "Search the store at once, as the dashboard's search bar does: up to 5 products by name, 5 reservations by number or customer name, and 5 customers by name, company, email, phone or a searchable custom field. Products need read access to products, customers to customers; a section the connection may not read comes back empty. Each hit has `links`, its dashboard page to give the user.",
+        "Search the store at once, as the dashboard's search bar does: up to 5 products by name, 5 reservations by number or customer name, and 5 customers by name, company, email, phone or a searchable custom field the store has not flagged sensitive. Products need read access to products, customers to customers; a section the connection may not read comes back empty. Each hit has `links`, its dashboard page to give the user.",
       bundle: "daily",
     },
   })
@@ -415,7 +415,12 @@ export const globalSearchProcedure = storeProcedure
   .handler(async ({ context, input }) => {
     const link = linker(context);
     const hits = await globalSearch(
-      { ...reader(context), products: mayRead(context, "products") },
+      {
+        ...reader(context),
+        products: mayRead(context, "products"),
+        // An API key or an agent's grant never searches sensitive fields.
+        sensitiveFields: context.actor.credential.kind === "session",
+      },
       input.query,
     );
     return {

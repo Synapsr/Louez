@@ -279,7 +279,7 @@
     "title": "Reservierung storniert",
     "body": "Ihre Reservierung #{number} wurde storniert.",
     "cancelledPeriod": "Stornierter Zeitraum",
-    "reasonLabel": "Grund",
+    "itemsLabel": "Artikel",
     "contactForQuestions": "Bei Fragen kontaktieren Sie uns gerne.",
     "browseEquipment": "Katalog durchsuchen",
     "thankYou": "Vielen Dank für Ihr Verständnis."

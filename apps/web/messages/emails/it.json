@@ -279,7 +279,7 @@
     "title": "Prenotazione annullata",
     "body": "La tua prenotazione #{number} è stata annullata.",
     "cancelledPeriod": "Periodo annullato",
-    "reasonLabel": "Motivo",
+    "itemsLabel": "Articoli",
     "contactForQuestions": "Per qualsiasi domanda, non esitare a contattarci.",
     "browseEquipment": "Sfoglia il nostro catalogo",
     "thankYou": "Grazie per la comprensione."

@@ -889,6 +889,18 @@ const purgeOwnedData = async (
             : eq(schema.reservationActivity.userId, context.user.id),
         );
       await transaction.delete(schema.emailLogs).where(inArray(schema.emailLogs.storeId, storeIds));
+      // The SMS rows in their lock order (apps/web lib/sms/delivery-record.ts): the
+      // top-ups, then the credits, before the logs, as a top-up being credited takes them.
+      await transaction
+        .select({ id: schema.smsTopupTransactions.id })
+        .from(schema.smsTopupTransactions)
+        .where(inArray(schema.smsTopupTransactions.storeId, storeIds))
+        .for("update");
+      await transaction
+        .select({ id: schema.smsCredits.id })
+        .from(schema.smsCredits)
+        .where(inArray(schema.smsCredits.storeId, storeIds))
+        .for("update");
       await transaction.delete(schema.smsLogs).where(inArray(schema.smsLogs.storeId, storeIds));
       await transaction
         .delete(schema.discordLogs)

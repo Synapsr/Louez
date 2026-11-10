@@ -34,6 +34,7 @@ describe("team invitation e-mail sender", () => {
   let pending: { email: string; token: string } | null = null;
 
   const context: EffectSendContext = {
+    effectId: "effect_test",
     signal: new AbortController().signal,
     throwIfAborted: () => {},
     assertClaim: async () => {

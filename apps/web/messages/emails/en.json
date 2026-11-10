@@ -298,7 +298,7 @@
     "title": "Reservation cancelled",
     "body": "Your reservation #{number} has been cancelled.",
     "cancelledPeriod": "Cancelled period",
-    "reasonLabel": "Reason",
+    "itemsLabel": "Items",
     "contactForQuestions": "If you have any questions, please don't hesitate to contact us.",
     "browseEquipment": "Browse our catalog",
     "thankYou": "Thank you for your understanding."

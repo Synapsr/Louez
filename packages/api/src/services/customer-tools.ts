@@ -43,6 +43,37 @@ export interface CustomerFieldEntry {
 
 const quote = (label: string) => `"${label}"`;
 
+/**
+ * The custom fields an agent connection (MCP) may name, check, write or read:
+ * never one the store flagged sensitive. Those hold what a store asks to see
+ * itself, such as an identity document's number, which the assistants'
+ * directories forbid collecting through a tool. They stay out of every list,
+ * error and check the agent gets, so it is never asked for one; the store
+ * fills them in Louez. The dashboard and the in-app assistant keep them.
+ */
+export function agentCustomerFields<T extends Pick<ToolFieldDefinition, "isSensitive">>(
+  definitions: readonly T[],
+): T[] {
+  return definitions.filter((definition) => !definition.isSensitive);
+}
+
+/**
+ * Whether a customer of this type misses a field only Louez fills: a required
+ * one the store flagged sensitive, which an agent neither sees nor sends.
+ */
+export function requiresSensitiveFields(
+  definitions: readonly ToolFieldDefinition[],
+  customerType: "individual" | "business",
+): boolean {
+  return definitions.some(
+    (definition) =>
+      definition.isActive &&
+      definition.isSensitive &&
+      definition.isRequired &&
+      (definition.appliesTo === "all" || definition.appliesTo === customerType),
+  );
+}
+
 /** Label first, then key, ignoring case; then ignoring accents and punctuation too. */
 function findDefinitions<T extends ToolFieldDefinition>(
   definitions: readonly T[],

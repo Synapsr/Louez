@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { ReviewBoosterSettings } from '@louez/types'
 
+import { smsTemplateTextSchema } from './notifications'
+
 export const reviewBoosterSettingsSchema = z.object({
   enabled: z.boolean(),
   // Google Place info
@@ -20,6 +22,13 @@ export const reviewBoosterSettingsSchema = z.object({
 })
 
 export type ReviewBoosterSettingsInput = z.infer<typeof reviewBoosterSettingsSchema>
+
+/** The texts of the review request a store saves. */
+export const reviewBoosterTemplateSchema = z.object({
+  subject: z.string().optional(),
+  emailMessage: z.string().optional(),
+  smsMessage: smsTemplateTextSchema.optional(),
+})
 
 export const googlePlaceSearchSchema = z.object({
   query: z.string().min(2).max(200),

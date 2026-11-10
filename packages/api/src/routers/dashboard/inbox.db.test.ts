@@ -1211,10 +1211,24 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       assert.equal(event.itemType, "supplier_invoice");
       assert.deepEqual(Object.keys(event).sort(), ["error", "event", "itemType", "storeId"]);
       const text = JSON.stringify(event.error);
-      assert.match(text, /received_invoices/);
-      // The failed query's parameters (the store id, the dates) are not kept.
-      assert.match(text, /params: \[redacted\]/);
-      assert.ok(!text.includes("superpdp"), text);
+      // No text: neither the query nor its parameters (the store id, the provider, the dates)…
+      assert.equal(event.error.message, "[message withheld]");
+      assert.ok(!text.includes("superpdp") && !text.includes(STORE.slice(3)), text);
+      assert.ok(!text.includes("select"), text);
+      // …and the driver's error as its code, its number and the table its message names.
+      const cause = event.error.cause as
+        | { code?: string; errno?: number; schemaObject?: { kind: string; name: string } }
+        | undefined;
+      assert.equal(cause?.code, "ER_NO_SUCH_TABLE");
+      assert.equal(cause?.errno, 1146);
+      assert.equal(cause?.schemaObject?.kind, "table");
+      assert.equal(cause?.schemaObject?.name, "received_invoices");
+      // Its frames are places in the repository.
+      assert.ok(
+        (event.error.frames as string[]).every((frame) =>
+          /^(?:apps|packages)\/[^:]+:\d+:\d+$/.test(frame),
+        ),
+      );
       assert.ok(Array.isArray(event.error.frames) && event.error.frames.length > 0);
 
       // The source's own error: the transport answers it as an internal error.
@@ -1263,7 +1277,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(decoded.b, undefined);
   });
 
-  test("a cursor whose types standing behind are not the inbox's is refused", async () => {
+  test("a cursor whose types standing behind are not the inbox's, not behind it, or twice, is refused", async () => {
     const forged = (body: unknown) => Buffer.from(JSON.stringify(body)).toString("base64url");
     const at = { t: Date.now(), k: "~", r: "" };
     for (const b of [
@@ -1271,6 +1285,15 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       [[0, "", "", []]],
       [[-1, "", "", ["supplier_invoice"]]],
       "supplier_invoice",
+      // At the cursor's position, or after it.
+      [[at.t, at.k, at.r, ["supplier_invoice"]]],
+      [[at.t + 1, "", "", ["supplier_invoice"]]],
+      // The same type twice, in one group or two.
+      [[0, "", "", ["supplier_invoice", "supplier_invoice"]]],
+      [
+        [0, "", "", ["supplier_invoice"]],
+        [1, "", "", ["supplier_invoice"]],
+      ],
     ]) {
       await rejects(list(session(), { cursor: forged({ ...at, b }) }), "INVALID_CURSOR");
     }
@@ -1543,7 +1566,11 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     const { CHATGPT_CLIENT_ID, clientWithholding } = await import("../../platform/agent-clients");
     const { withheldProcedurePaths } = await import("../../platform/withheld-procedures");
     const GRANT = "ib_grant_chatgpt";
-    const withheld = clientWithholding({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });
+    const withheld = clientWithholding({
+      clientId: CHATGPT_CLIENT_ID,
+      name: "ChatGPT",
+      redirectUris: [],
+    });
     const withheldProcedures = await withheldProcedurePaths(withheld);
     assert.ok(withheldProcedures.includes("dashboard.products.enhanceImage"));
     assert.ok(withheldProcedures.includes("dashboard.products.removeImageBackground"));

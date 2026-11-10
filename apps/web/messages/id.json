@@ -4646,6 +4646,10 @@
             "label": "Reservasi dikonfirmasi",
             "description": "Setelah pembayaran berhasil"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reservasi dibatalkan",
+            "description": "Saat Anda membatalkan reservasi"
+          },
           "customer_reminder_pickup": {
             "label": "Pengingat penjemputan",
             "description": "Dikirim sebelum tanggal pengambilan"
@@ -9644,7 +9648,10 @@
       "dismiss": "Sembunyikan"
     },
     "declaredBy": "Nama dinyatakan oleh {origin}",
-    "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)"
+    "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)",
+    "verifiedDestination": "Terverifikasi: kembali ke {domain}",
+    "declaredNameBy": "Nama yang dinyatakan oleh {origin}: {name}",
+    "declaredNameByItself": "Nama yang dinyatakan oleh aplikasi: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Ganti toko",

@@ -4646,6 +4646,10 @@
             "label": "预订已确认",
             "description": "付款成功后"
           },
+          "customer_reservation_cancelled": {
+            "label": "预订已取消",
+            "description": "当您取消预订时"
+          },
           "customer_reminder_pickup": {
             "label": "取件提醒",
             "description": "在取件日期之前发送"
@@ -9644,7 +9648,10 @@
       "dismiss": "隐藏"
     },
     "declaredBy": "名称由 {origin} 声明",
-    "declaredByItself": "名称由应用自行声明（动态注册）"
+    "declaredByItself": "名称由应用自行声明（动态注册）",
+    "verifiedDestination": "已验证：返回 {domain}",
+    "declaredNameBy": "{origin} 声明的名称：{name}",
+    "declaredNameByItself": "应用自行声明的名称：{name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "切换商店",

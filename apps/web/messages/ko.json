@@ -4646,6 +4646,10 @@
             "label": "예약이 확인되었습니다",
             "description": "성공적으로 결제한 후"
           },
+          "customer_reservation_cancelled": {
+            "label": "예약 취소됨",
+            "description": "예약을 취소할 때"
+          },
           "customer_reminder_pickup": {
             "label": "픽업 알림",
             "description": "픽업 날짜 이전에 전송됨"
@@ -9644,7 +9648,10 @@
       "dismiss": "숨기기"
     },
     "declaredBy": "{origin}에서 선언한 이름",
-    "declaredByItself": "앱이 직접 선언한 이름(동적 등록)"
+    "declaredByItself": "앱이 직접 선언한 이름(동적 등록)",
+    "verifiedDestination": "확인됨: {domain}(으)로 돌아갑니다",
+    "declaredNameBy": "{origin}에서 선언한 이름: {name}",
+    "declaredNameByItself": "앱이 직접 선언한 이름: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "매장 전환",

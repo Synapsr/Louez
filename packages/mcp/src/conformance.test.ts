@@ -28,8 +28,8 @@ const LEGACY_TOOLS = [
   "get_revenue_report",
   "list_customers",
   "list_payments",
+  "record_deposit_return",
   "record_payment",
-  "return_deposit",
   "update_customer",
 ];
 
@@ -119,8 +119,9 @@ describe("MCP directory conformance", () => {
   });
 
   test("every callable tool is listed: no former name is served", async () => {
-    // The names tools had before the bridge, once served as hidden aliases:
-    // a directory may read an operation it cannot see as unreviewed.
+    // The names tools had before the bridge, once served as hidden aliases,
+    // and return_deposit, now record_deposit_return: a directory may read an
+    // operation it cannot see as unreviewed.
     for (const name of [
       "archive_product",
       "calendar_overdue",
@@ -135,6 +136,7 @@ describe("MCP directory conformance", () => {
       "list_categories",
       "list_products",
       "list_reservations",
+      "return_deposit",
       "update_category",
       "update_product",
       "update_reservation_notes",
@@ -231,7 +233,7 @@ describe("MCP directory conformance", () => {
       account_get_profile: "read",
       billing_get_status: "read/provider",
       billing_start_card_setup: "overwrite/provider",
-      categories_complete_image_upload: "additive",
+      categories_complete_image_upload: "additive/public",
       categories_create: "additive/public",
       categories_create_image_upload: "additive",
       categories_delete: "delete/public",
@@ -247,7 +249,7 @@ describe("MCP directory conformance", () => {
       inbox_list: "read",
       jobs_get: "read",
       online_store_check_slug_availability: "read",
-      online_store_complete_image_upload: "additive",
+      online_store_complete_image_upload: "additive/public",
       online_store_create_image_upload: "additive",
       online_store_update: "overwrite/public",
       online_store_update_appearance: "overwrite/public",
@@ -257,7 +259,7 @@ describe("MCP directory conformance", () => {
       payments_start_stripe_onboarding: "overwrite/provider",
       payments_sync_stripe_status: "overwrite/provider",
       products_close_downtime: "overwrite/public",
-      products_complete_image_upload: "additive",
+      products_complete_image_upload: "additive/public",
       products_create: "additive/public",
       products_create_image_upload: "additive",
       products_create_seasonal_pricing: "additive/public",
@@ -343,8 +345,8 @@ describe("MCP directory conformance", () => {
       list_customers: "read",
       list_payments: "read",
       // A payment row added; nothing recorded before changes.
+      record_deposit_return: "additive",
       record_payment: "additive",
-      return_deposit: "additive",
       update_customer: "overwrite",
     };
     assert.deepEqual(tools.map((tool) => tool.name).sort(), Object.keys(EXPECTED).sort());
@@ -485,7 +487,11 @@ describe("MCP directory conformance", () => {
       ...base,
       actor: {
         ...base.actor,
-        credential: { ...base.actor.credential, kind: "oauth" as const, bundles: ["daily" as const] },
+        credential: {
+          ...base.actor.credential,
+          kind: "oauth" as const,
+          bundles: ["daily" as const],
+        },
       },
     };
     const named = (text: string) =>
@@ -506,21 +512,30 @@ describe("MCP directory conformance", () => {
     const { CHATGPT_CLIENT_ID, clientWithholding } =
       await import("@louez/api/platform/agent-clients");
     const { withheldProcedurePaths } = await import("@louez/api/platform/withheld-procedures");
-    const paths = async (client: { clientId: string; name: string | null }) =>
-      (await withheldProcedurePaths(clientWithholding(client))).sort();
-    // handoffs.refresh opens on billing or settings: it stays with settings.
-    assert.deepEqual(await paths({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }), [
+    const paths = async (
+      client: { clientId: string; name: string | null },
+      redirectUris: string[] = [],
+    ) => (await withheldProcedurePaths(clientWithholding({ ...client, redirectUris }))).sort();
+    const openAi = [
       "dashboard.billing.getStatus",
       "dashboard.billing.startCardSetup",
       "dashboard.jobs.get",
       "dashboard.products.enhanceImage",
       "dashboard.products.removeImageBackground",
       "dashboard.stores.create",
-    ]);
+    ];
+    // handoffs.refresh opens on billing or settings: it stays with settings.
+    assert.deepEqual(await paths({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }), openAi);
     assert.deepEqual(await paths({ clientId: "dcr_claude", name: "Claude" }), [
       "dashboard.products.enhanceImage",
     ]);
     assert.deepEqual(await paths({ clientId: "dcr_cursor", name: "Cursor" }), []);
+    // Recognised by its redirect URIs alone, whatever its name.
+    const evil = { clientId: "dcr_evil", name: "Evil" };
+    assert.deepEqual(await paths(evil, ["https://chatgpt.com/connector/oauth/1"]), openAi);
+    assert.deepEqual(await paths(evil, ["https://claude.ai/api/mcp/auth_callback"]), [
+      "dashboard.products.enhanceImage",
+    ]);
   });
 
   test("each directory's list and instructions leave out its AI photo tools; other clients keep them", async () => {
@@ -538,6 +553,7 @@ describe("MCP directory conformance", () => {
       permissions: { reservations: "write", products: "write" },
     });
     const listing = async (client: { clientId: string; name: string | null }) => {
+      const directory = { ...client, redirectUris: [] };
       const ctx = {
         ...base,
         actor: {
@@ -546,7 +562,7 @@ describe("MCP directory conformance", () => {
             ...base.actor.credential,
             kind: "oauth" as const,
             bundles: ["daily" as const, "catalog" as const],
-            withheld: clientWithholding(client),
+            withheld: clientWithholding(directory),
           },
         },
       };

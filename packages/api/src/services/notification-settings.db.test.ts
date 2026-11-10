@@ -108,6 +108,33 @@ describe("notification settings writes (database)", { skip: skipWithoutTestDatab
     assert.equal(customerNotificationSettings?.customer_reservation_confirmed.sms, true);
   });
 
+  test("an event the saved settings predate switches from its default", async () => {
+    const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } =
+      require("@louez/types") as typeof import("@louez/types");
+    // Saved before the store-cancellation message existed.
+    const { customer_reservation_cancelled: _missing, ...saved } =
+      DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ customerNotificationSettings: saved as never })
+      .where(orm.eq(louezDb.stores.id, STORE));
+
+    await service.updateCustomerNotificationPreference({
+      storeId: STORE,
+      input: { eventType: "customer_reservation_cancelled", channel: "email", enabled: false },
+    });
+    const { customerNotificationSettings } = (await stored()) ?? {};
+    assert.deepEqual(customerNotificationSettings?.customer_reservation_cancelled, {
+      enabled: true,
+      email: false,
+      sms: false,
+    });
+    assert.deepEqual(
+      customerNotificationSettings?.customer_request_accepted,
+      DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS.customer_request_accepted,
+    );
+  });
+
   test("an unknown store is not found", async () => {
     await assert.rejects(
       service.updateCustomerReminderSettings({

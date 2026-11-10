@@ -22,8 +22,11 @@ import type { StoragePort, UploadTarget } from "../platform/ports";
  *    (`/api/v1/uploads/<token>`, platform/uploads.ts) with a signed token.
  * 2. The caller sends the bytes there, without its API key.
  * 3. `completeImageUpload` checks what arrived (owner, size, type, the bytes
- *    themselves), deletes it when it is wrong, and returns the public URL to
- *    set on the record.
+ *    themselves), makes it publicly readable and returns its URL to set on
+ *    the record. It refuses a wrong file and deletes nothing: an unpublished
+ *    object stays private and unreferenced, as an upload never completed.
+ *
+ * Nothing sweeps those private objects yet, refused or never completed.
  *
  * A caller that cannot reach the upload URL (an agent in a sandbox whose
  * network allows only Louez) sends the bytes in the call instead, or a public
@@ -164,9 +167,12 @@ export async function createImageUpload(
 }
 
 /**
- * Checks an upload and makes it public. Only a key this store minted for this
- * kind passes; a wrong size, type or content is deleted and refused. Running
- * it again on a good upload returns the same answer.
+ * Checks an upload and makes it publicly readable. Only a key this store
+ * minted for this kind passes; a wrong size, type or content is refused and
+ * left unpublished, so it stays private: a presigned upload sets no ACL, and
+ * a proxied bucket (served by /files) refuses bad bytes at the app's upload
+ * endpoint before they are stored. Running it again on a good upload returns
+ * the same answer.
  */
 export async function completeImageUpload(
   storage: StoragePort,
@@ -195,10 +201,7 @@ export async function completeImageUpload(
       refusal = uploadErrors.contentInvalid(declared ?? contentType, found);
     }
   }
-  if (refusal) {
-    await storage.delete(input.key);
-    throw refusal;
-  }
+  if (refusal) throw refusal;
 
   const url = await storage.publish(input.key);
   return { key: input.key, url, contentType, size: stored.size };
@@ -212,7 +215,7 @@ const IMPORT_MAX_REDIRECTS = 3;
 /**
  * Imports downloading at once in this process; each holds up to the kind's
  * limit. An import keeps its place until its transport calls have settled,
- * past its own deadline: a DNS lookup that hangs is still running.
+ * past its own deadline: a transport that ignores its abort signal still runs.
  */
 export const MAX_IMPORTS_IN_FLIGHT = 4;
 let importsInFlight = 0;

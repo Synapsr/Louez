@@ -9,31 +9,12 @@
  */
 
 import type { SmsProvider, SendSmsOptions, SendSmsResult } from '../types'
+import { requiresUnicode } from '../encoding'
 import { validateAndNormalizePhone } from '../phone'
 import { env } from '@/env'
 import { providerSignal } from '@/lib/api/effect-signal'
 
 const API_ENDPOINT = 'https://api.smspartner.fr/v1/send'
-
-/**
- * GSM 7-bit character set (basic + extended)
- * Characters outside this set require Unicode encoding
- */
-const GSM_BASIC_CHARS = '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà'
-const GSM_EXTENDED_CHARS = '^{}\\[~]|€'
-
-/**
- * Check if message contains characters that require Unicode encoding
- */
-function requiresUnicode(message: string): boolean {
-  const allGsmChars = GSM_BASIC_CHARS + GSM_EXTENDED_CHARS
-  for (const char of message) {
-    if (!allGsmChars.includes(char)) {
-      return true
-    }
-  }
-  return false
-}
 
 interface SmsPartnerResponse {
   success: boolean

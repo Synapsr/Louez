@@ -13,8 +13,8 @@ import type { McpRecordedPayment } from "./payments";
 // a confirmation first, as sensitive procedures do, when the connection wants
 // one: the first call does nothing and answers CONFIRMATION_REQUIRED with a
 // preview and a token; the same call with the token runs once. The money tools
-// (record_payment, delete_payment, return_deposit) ask even a connection whose
-// confirmations are off.
+// (record_payment, delete_payment, record_deposit_return) ask even a
+// connection whose confirmations are off.
 
 process.env.LOUEZ_BILLING = "cloud";
 process.env.BILLING_SERVICE_URL = "http://localhost:3100";
@@ -219,7 +219,7 @@ describe(
           arguments: { reservationId: id, type: "rental", amount: "80.00", method: "cash" },
         },
         {
-          name: "return_deposit",
+          name: "record_deposit_return",
           arguments: { reservationId: id, amount: "50.00", method: "cash" },
         },
         { name: "delete_payment", arguments: { paymentId: deposit.id } },

@@ -4344,6 +4344,10 @@
             "label": "Reservierung bestätigt",
             "description": "Nach erfolgreicher Zahlung"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reservierung storniert",
+            "description": "Wenn Sie eine Reservierung stornieren"
+          },
           "customer_reminder_pickup": {
             "label": "Abholungserinnerung",
             "description": "Vor dem Abholdatum gesendet"
@@ -9644,7 +9648,10 @@
       "dismiss": "Ausblenden"
     },
     "declaredBy": "Name angegeben von {origin}",
-    "declaredByItself": "Name von der App angegeben (dynamisch registriert)"
+    "declaredByItself": "Name von der App angegeben (dynamisch registriert)",
+    "verifiedDestination": "Verifiziert: leitet zu {domain} zurück",
+    "declaredNameBy": "Name angegeben von {origin}: {name}",
+    "declaredNameByItself": "Name von der App angegeben: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Shop wechseln",

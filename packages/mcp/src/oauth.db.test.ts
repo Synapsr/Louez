@@ -297,7 +297,11 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     });
 
     // The consent page and the editor never offer it to ChatGPT.
-    const offered = await grants.offeredBundles({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });
+    const offered = await grants.offeredBundles({
+      clientId: CHATGPT_CLIENT_ID,
+      name: "ChatGPT",
+      redirectUris: ["https://chatgpt.com/connector_platform_oauth_redirect"],
+    });
     assert.ok(!offered.includes("billing"));
     assert.ok(offered.includes("daily"));
     const current = await grants.currentTerms({ userId: OWNER, clientId: CHATGPT_CLIENT_ID });
@@ -321,7 +325,11 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       confirmSensitive: true,
       bundles: ["daily" as const, "billing" as const],
     };
-    const offered = await grants.offeredBundles({ clientId: LONG_NAME_CLIENT, name });
+    const offered = await grants.offeredBundles({
+      clientId: LONG_NAME_CLIENT,
+      name,
+      redirectUris: ["https://long.mo.test/callback"],
+    });
     assert.ok(!offered.includes("billing"), "consent hides it");
     const { id: grantId } = await grants.saveGrant({
       userId: OWNER,
@@ -380,7 +388,12 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.ok(!names.includes("stores_create"), "not listed");
       const refused = await client.callTool({
         name: "stores_create",
-        arguments: { name: "Brest Paddle", slug: "mo-brest-paddle", country: "FR", currency: "EUR" },
+        arguments: {
+          name: "Brest Paddle",
+          slug: "mo-brest-paddle",
+          country: "FR",
+          currency: "EUR",
+        },
       });
       assert.equal(errorCode(refused), "NOT_AVAILABLE_TO_THIS_AGENT");
       const listed = await client.callTool({ name: "stores_list", arguments: {} });
@@ -399,7 +412,12 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.ok(names.includes("stores_create"));
       const preview = await client.callTool({
         name: "stores_create",
-        arguments: { name: "Brest Paddle", slug: "mo-brest-paddle", country: "FR", currency: "EUR" },
+        arguments: {
+          name: "Brest Paddle",
+          slug: "mo-brest-paddle",
+          country: "FR",
+          currency: "EUR",
+        },
       });
       assert.equal(errorCode(preview), "CONFIRMATION_REQUIRED");
     });

@@ -33,6 +33,7 @@ describe("store creation effect senders", () => {
   let failCapture = false;
 
   const context: EffectSendContext = {
+    effectId: "effect_test",
     signal: new AbortController().signal,
     throwIfAborted: () => {},
     assertClaim: async () => {},

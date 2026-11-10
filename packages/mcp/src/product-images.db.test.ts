@@ -229,7 +229,10 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     for (const name of ["products_enhance_image", "products_remove_image_background"]) {
       const description = tools.find((tool) => tool.name === name)?.description ?? "";
       assert.match(description, /the result replaces the photo on the product/);
-      assert.match(description, /products_use_image_version with the job's source\.versionId puts it back/);
+      assert.match(
+        description,
+        /products_use_image_version with the job's source\.versionId puts it back/,
+      );
       assert.match(description, /before \(source\.url\)[^.]*after \(result\.url\)/);
       assert.match(description, /always answers CONFIRMATION_REQUIRED/);
     }
@@ -312,7 +315,10 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const authorization = await key();
     const other = `${FILES}/${STORE}/products/other.png`;
     const viaMcp = await withClient(authorization, (mcp) =>
-      mcp.callTool({ name: "products_remove_image_background", arguments: { id, imageUrl: other } }),
+      mcp.callTool({
+        name: "products_remove_image_background",
+        arguments: { id, imageUrl: other },
+      }),
     );
     assert.equal(errorOf(viaMcp).code, "IMAGE_NOT_ON_PRODUCT");
     const viaOpenApi = await openApi(
@@ -395,9 +401,7 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
         { id, imageUrl: SOURCE, idempotencyKey },
         { id, imageUrl: SOURCE, idempotencyKey, confirmationToken: "pj-not-a-token" },
       ]) {
-        const refused = await withClient(chatgpt, (mcp) =>
-          mcp.callTool({ name, arguments: args }),
-        );
+        const refused = await withClient(chatgpt, (mcp) => mcp.callTool({ name, arguments: args }));
         const error = errorOf(refused);
         assert.equal(error.code, "NOT_AVAILABLE_TO_THIS_AGENT", name);
         assert.equal(error.details?.confirmationToken, undefined, name);
@@ -613,5 +617,78 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     };
     assert.deepEqual(await failedItemTools(claude), ["jobs_get"]);
     assert.deepEqual(await failedItemTools(apiKey), ["jobs_get", "products_enhance_image"]);
+  });
+
+  test("a client recognised by its redirect URIs gets its vendor's directory rules, whatever its name", async () => {
+    const grants = await import("@louez/api/services/agent-grants");
+    const { MCP_BUNDLES } = await import("@louez/api/platform/meta");
+    // Clients that registered themselves: every one named "Evil" but the
+    // neutral one, which says what an unrestricted grant lists.
+    const clients = {
+      neutral: ["https://agent.pj.test/callback"],
+      openAi: ["https://chatgpt.com/connector/oauth/pj1", "https://platform.openai.com/pj"],
+      anthropic: ["https://claude.ai/api/mcp/auth_callback"],
+      openAiAndLoopback: ["https://chatgpt.com/connector/oauth/pj2", "http://127.0.0.1:8787/cb"],
+      anthropicAndElsewhere: ["https://claude.ai/api/mcp/auth_callback", "https://evil.pj.test/cb"],
+    };
+    await louezDb.db.insert(louezDb.oauthClients).values(
+      Object.entries(clients).map(([key, redirectUris]) => ({
+        clientId: `pj_dcr_${key}`,
+        name: key === "neutral" ? "Desktop agent" : "Evil",
+        redirectUris: JSON.stringify(redirectUris),
+      })),
+    );
+    const listed = async (key: keyof typeof clients) => {
+      const clientId = `pj_dcr_${key}`;
+      const { id: grantId } = await grants.saveGrant({
+        userId: OWNER,
+        clientId,
+        terms: {
+          stores: { all: true },
+          preset: "write",
+          confirmSensitive: true,
+          bundles: [...MCP_BUNDLES],
+        },
+      });
+      const authorization = `Bearer ${await tokens.sign({ userId: OWNER, clientId, grantId })}`;
+      return withClient(authorization, async (mcp) => ({
+        names: (await mcp.listTools()).tools.map((tool) => tool.name),
+        instructions: mcp.getInstructions() ?? "",
+      }));
+    };
+    const neutral = await listed("neutral");
+    const missingFrom = async (key: keyof typeof clients) => {
+      const { names } = await listed(key);
+      return neutral.names.filter((name) => !names.includes(name)).sort();
+    };
+
+    // Only OpenAI receives its codes: OpenAI's set, exactly.
+    assert.deepEqual(await missingFrom("openAi"), [
+      "billing_get_status",
+      "billing_start_card_setup",
+      "jobs_get",
+      "products_enhance_image",
+      "products_remove_image_background",
+      "stores_create",
+    ]);
+    const openAi = await listed("openAi");
+    assert.doesNotMatch(openAi.instructions, /billing|stores_create|products_enhance_image/);
+    // Only Anthropic: the AI enhancement alone.
+    assert.deepEqual(await missingFrom("anthropic"), ["products_enhance_image"]);
+    // A redirect elsewhere: nothing from the redirects, as before.
+    assert.deepEqual(await missingFrom("openAiAndLoopback"), []);
+    assert.deepEqual(await missingFrom("anthropicAndElsewhere"), []);
+
+    // A call is refused too, as for ChatGPT's own client.
+    const { id: grantId } = await grants.saveGrant({
+      userId: OWNER,
+      clientId: "pj_dcr_openAi",
+      terms: { stores: { all: true }, preset: "write", confirmSensitive: true, bundles: ["daily"] },
+    });
+    const token = await tokens.sign({ userId: OWNER, clientId: "pj_dcr_openAi", grantId });
+    const refused = await withClient(`Bearer ${token}`, (mcp) =>
+      mcp.callTool({ name: "billing_get_status", arguments: {} }),
+    );
+    assert.equal(errorOf(refused).code, "NOT_AVAILABLE_TO_THIS_AGENT");
   });
 });

@@ -11,11 +11,13 @@ import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
  */
 
 import { db } from "@louez/db";
-import { stores, smsLogs, pushSubscriptions, storeMembers } from "@louez/db";
+import { stores, pushSubscriptions, storeMembers } from "@louez/db";
 import { eq } from "drizzle-orm";
 import { env } from "@/env";
-import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from "@/lib/plan-limits";
-import { sendSms, isSmsConfigured } from "@/lib/sms/client";
+import { getSmsQuotaStatus, determineSmsSource } from "@/lib/plan-limits";
+import { isSmsConfigured } from "@/lib/sms/client";
+import { deliverSms } from "@/lib/sms/delivery";
+import { isSmsAccepted } from "@/lib/sms/delivery-record";
 import { validateAndNormalizePhone } from "@/lib/sms/phone";
 import { formatCurrencyForSms } from "@louez/utils";
 import { getLocaleFromCountry, getEmailTranslations, type EmailLocale } from "@/lib/email/i18n";
@@ -710,7 +712,12 @@ async function sendAdminSms(
   eventType: string,
   message: string,
   reservationId?: string,
+  /** The outbox row that sends it: an SMS it already sent is not sent again (lib/sms/delivery.ts). */
+  deliveryKey?: string,
 ): Promise<{ success: boolean; error?: string; limitReached?: boolean }> {
+  // Sent by an earlier run of this row, which timed out after the provider accepted it.
+  if (deliveryKey && (await isSmsAccepted(deliveryKey))) return { success: true };
+
   // Check if SMS is configured
   if (!isSmsConfigured()) {
     return { success: false, error: "SMS not configured" };
@@ -736,30 +743,16 @@ async function sendAdminSms(
   // Determine credit source
   const creditSource = await determineSmsSource(storeId);
 
-  // Send SMS
-  const result = await sendSms({
-    to: formattedPhone,
-    message,
-  });
-
-  // Log the SMS
-  await db.insert(smsLogs).values({
+  // Once the provider accepts it, it is delivered: its record never makes it go out again.
+  return deliverSms({
     storeId,
     reservationId,
     to: formattedPhone,
     message,
     templateType: `admin_${eventType}`,
-    status: result.success ? "sent" : "failed",
-    error: result.error,
     creditSource,
+    deliveryKey,
   });
-
-  // Deduct prepaid credit if needed
-  if (result.success && creditSource === "topup") {
-    await deductPrepaidSmsCredit(storeId);
-  }
-
-  return result;
 }
 
 /**
@@ -872,6 +865,8 @@ export async function sendStoreNotificationChannel(
   ctx: NotificationContext,
   channel: "sms" | "push" | "discord",
   beforeSend: () => Promise<void>,
+  /** The outbox row's id, which keeps its SMS to one. */
+  deliveryKey?: string,
 ): Promise<{ skipped: string } | undefined> {
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
   const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
@@ -887,6 +882,7 @@ export async function sendStoreNotificationChannel(
       eventType,
       buildAdminSmsMessage(eventType, ctx, locale),
       ctx.reservation?.id,
+      deliveryKey,
     );
     if (smsResult.limitReached) return { skipped: "the store's SMS limit is reached" };
     if (!smsResult.success) throw new Error(smsResult.error || "The SMS was not sent.");

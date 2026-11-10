@@ -17,6 +17,7 @@ import {
 } from "@louez/ui";
 
 import { AgentTermsFields } from "./agent-terms-fields";
+import { shownClientName } from "./util.agent-client";
 import { defaultAgentTerms, isAgentTermsComplete, type AgentTerms } from "./util.agent-terms";
 
 interface AgentConnectionEditDialogProps {
@@ -52,7 +53,7 @@ export const AgentConnectionEditDialog = ({
       termsOf(connection),
     ),
   );
-  const clientName = connection.client.name ?? t("unknownClient");
+  const clientName = shownClientName(connection.client) ?? t("unknownClient");
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
