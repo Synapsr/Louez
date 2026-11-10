@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 
@@ -26,6 +28,10 @@ interface ActivityListItemProps {
   /** Show the rental period instead of the product names. */
   showPeriod?: boolean;
   showAmount?: boolean;
+  /** Extra marker after the number, e.g. how close a request's start is. */
+  badge?: ReactNode;
+  /** Replaces the period / products line. */
+  subtitle?: ReactNode;
   source: ReservationAnalyticsSource;
   onSelect?: () => void;
 }
@@ -35,6 +41,8 @@ export const ActivityListItem = ({
   accent,
   showPeriod = false,
   showAmount = false,
+  badge,
+  subtitle,
   source,
   onSelect,
 }: ActivityListItemProps) => {
@@ -69,10 +77,12 @@ export const ActivityListItem = ({
               {t("activity.overdue")}
             </Badge>
           )}
+          {badge}
         </>
       }
       subtitle={
-        showPeriod ? (
+        subtitle ??
+        (showPeriod ? (
           <>
             <ClockSolidIcon className="size-3.5 shrink-0" />
             <span className="truncate">
@@ -89,7 +99,7 @@ export const ActivityListItem = ({
               )}
             </span>
           </>
-        )
+        ))
       }
       meta={showAmount ? formatCurrency(parseFloat(reservation.totalAmount)) : undefined}
     />

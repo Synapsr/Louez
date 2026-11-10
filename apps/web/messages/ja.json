@@ -528,7 +528,9 @@
       "aiCreditsLow": "クレジット残高が少なくなっています",
       "sectionPages": "{section}のページ",
       "copyStoreLink": "ストアのリンクをコピー",
-      "storeLinkCopied": "リンクをコピーしました"
+      "storeLinkCopied": "リンクをコピーしました",
+      "shareStore": "ストアを共有",
+      "pendingRequests": "{count, plural, one {保留中のリクエスト # 件} other {保留中のリクエスト # 件}}"
     },
     "shortcuts": {
       "actions": {
@@ -999,7 +1001,8 @@
           "building": "{count,plural,one{# 作成された製品} other{# 生み出された製品}}。あなたのストアをシェアしましょう！",
           "pending": "{count,plural,one{# 保留中のリクエスト} other{# 保留中のリクエスト}}",
           "operations": "{count,plural,one{# 今日の作戦} other{# 今日の作戦}}",
-          "calm": "今日はみんな静かです。"
+          "calm": "今日はみんな静かです。",
+          "overdue": "{count, plural, one {# 件の延滞予約} other {# 件の延滞予約}}"
         },
         "cta": {
           "addFirstProduct": "最初の製品を追加する",
@@ -1009,12 +1012,7 @@
         }
       },
       "reeentStripe": {
-        "title": "あなたのストアはまだ <reeent>reeent</reeent> に表示されていません",
-        "description": "オンライン支払いが有効になるまで、reeent はストアを公開しません。ローンチ オファー (永久手数料 0 ユーロ) は、スポットが残っている限り、出版時から適用されます。",
-        "continueSetup": "Stripe セットアップを続行します",
-        "activate": "オンライン支払いを有効にする",
-        "paymentSettings": "支払い設定",
-        "status": "未公開"
+        "paymentSettings": "支払い設定"
       },
       "setup": {
         "title": "はじめに",
@@ -1072,7 +1070,14 @@
       "pending": {
         "title": "保留中のリクエスト",
         "description": "あなたの承認が必要な予約",
-        "empty": "保留中のリクエストはありません"
+        "empty": "保留中のリクエストはありません",
+        "urgency": {
+          "past": "日付経過",
+          "today": "本日開始",
+          "tomorrow": "明日開始",
+          "soon": "{count, plural, one {# 日後} other {# 日後}}"
+        },
+        "requested": "{relative}にリクエスト"
       },
       "storefront": {
         "title": "あなたのお店",
@@ -1089,27 +1094,28 @@
         "title": "ストアを共有する",
         "description": "ストアのリンクを顧客に送信します",
         "copyLink": "リンクをコピー",
-        "copyLinkDescription": "URLをクリップボードにコピー",
         "copied": "コピーしました！",
-        "whatsappDescription": "WhatsApp経由で送信する",
         "whatsappMessage": "レンタルストアをチェックしてください: {url}",
         "email": "電子メール",
-        "emailDescription": "電子メールで送信する",
         "emailSubject": "レンタルショップをご覧ください",
-        "emailBody": "こんにちは、\n\nぜひ当社のレンタルストアをご覧ください。\n{url}\n\nまた近いうちにお会いしましょう！",
-        "smsDescription": "SMSで送信",
-        "smsMessage": "レンタルストアをチェックしてください: {url}",
-        "showQR": "QRコードを表示",
-        "hideQR": "QRコードを隠す",
-        "qrDescription": "このコードをスキャンしてストアにアクセスします",
-        "downloadQR": "ダウンロード"
+        "copyShort": "コピー",
+        "messageLabel": "送信するメッセージ",
+        "copyMessage": "メッセージをコピー",
+        "messageCopied": "メッセージをコピーしました",
+        "qrHint": "カウンターやチラシ、ショーウィンドウ用に印刷できます。",
+        "downloadPng": "PNG でダウンロード",
+        "messageHint": "このテキストは WhatsApp、メール、SMS、コピーで使われます。",
+        "sendVia": "送信方法",
+        "nativeShareShort": "その他",
+        "customizeMessage": "メッセージをカスタマイズ"
       },
       "month": {
         "title": "今月",
         "revenue": "<strong>{amount}</strong> 入金済み",
-        "reservations": "{count, plural, other {累計 <strong>#</strong> 件の予約}}",
-        "customers": "{count, plural, other {<strong>#</strong> 人の顧客}}",
-        "seeAnalytics": "分析を見る"
+        "reservations": "{count, plural, one {<strong>#</strong> 件の予約} other {<strong>#</strong> 件の予約}}",
+        "customers": "{count, plural, one {<strong>#</strong> 人の新規顧客} other {<strong>#</strong> 人の新規顧客}}",
+        "seeAnalytics": "分析を見る",
+        "growthHint": "先月の同じ日付との比較"
       },
       "requestsEmpty": {
         "virginTitle": "お客様からのリクエストはここに届きます",
@@ -1123,14 +1129,144 @@
         "departures": "{count, plural, other {引き渡し # 件}}",
         "returns": "{count, plural, other {返却 # 件}}",
         "emptyTitle": "引き渡しと返却はここに表示されます",
-        "emptyText": "最初の予約から、引き渡すものと回収するものを時間ごとに確認できます。"
+        "emptyText": "最初の予約から、引き渡すものと回収するものを時間ごとに確認できます。",
+        "agenda": {
+          "departure": "受け渡し",
+          "return": "返却",
+          "now": "現在",
+          "moreProducts": "{count, plural, other {ほか # 点}}",
+          "productsCount": "{count, plural, other {# 点}}",
+          "allDone": "今日の作業はすべて完了です"
+        },
+        "quiet": {
+          "none": "今のところ予定されている予約はありません。",
+          "nextLine": "次の予定：{date}"
+        },
+        "createReservation": "予約を作成",
+        "week": {
+          "previous": "前の週",
+          "next": "次の週",
+          "label": "週の日付",
+          "more": "{count, plural, other {ほか # 件}}",
+          "clickToSee": "日付をクリックしてすべて表示"
+        },
+        "otherDay": {
+          "emptyTitle": "この日の予定はありません",
+          "error": "この日を読み込めませんでした。しばらくしてからもう一度お試しください。",
+          "backToToday": "今日に戻る",
+          "openCalendar": "カレンダーで開く",
+          "noneSoon": "この後 {weeks} 週間は予定がありません。"
+        },
+        "calendar": "カレンダー"
       },
       "upcoming": {
-        "title": "今後数日",
+        "title": "今後 7 日間",
         "tomorrow": "明日",
         "departures": "{count, plural, other {引き渡し # 件}}",
         "returns": "{count, plural, other {返却 # 件}}",
         "nothing": "予定なし"
+      },
+      "overdue": {
+        "title": "要対応",
+        "returnDue": "返却予定 {date}",
+        "departureDue": "受け渡し予定 {date}",
+        "returnsCount": "{count, plural, one {未返却 # 件} other {未返却 # 件}}",
+        "departuresCount": "{count, plural, one {未受け渡し # 件} other {未受け渡し # 件}}",
+        "lateMinutes": "{count} 分",
+        "lateHours": "{count} 時間",
+        "lateDays": "{count} 日",
+        "groupedNotReturned": "{count, plural, other {返却遅れ # 件}}",
+        "groupedToConfirm": "{count, plural, other {引き渡し確認待ち # 件}}",
+        "compact": "{count, plural, other {要対応の予約 # 件}}",
+        "oldestReturn": "最も古いもの {relative}",
+        "oldestDeparture": "最も古いもの {relative}",
+        "oldestMixed": "最も古いもの {relative}",
+        "dueReturn": "予定 {relative}",
+        "dueDeparture": "予定 {relative}"
+      },
+      "list": {
+        "more": "{count, plural, one {ほか # 件を表示} other {ほか # 件を表示}}"
+      },
+      "path": {
+        "title": "最初のリクエストを受け取るには",
+        "readyTitle": "準備完了",
+        "readyText": "お客様のリクエストはここに表示されます。",
+        "steps": {
+          "product": {
+            "title": "商品を追加",
+            "text": "お客様が予約するものです。名前、写真、価格があれば始められます。",
+            "manage": "商品を管理"
+          },
+          "share": {
+            "title": "ストアを共有",
+            "text": "リンクをお客様に送るか、Google ビジネスプロフィールや SNS に追加しましょう。"
+          },
+          "payments": {
+            "title": "オンライン決済を有効にする",
+            "resumeText": "残り 1 ステップ：本人確認（身分証明書と IBAN、5〜10 分）を行ってください。",
+            "verifyingText": "Stripe が本人確認中です。その後オンライン決済が自動で有効になります。",
+            "verifyingBadge": "確認中",
+            "done": "オンライン決済が有効",
+            "start": "Stripe を設定",
+            "modeTitle": "支払い方法",
+            "switchToOnline": "オンライン決済に切り替える"
+          }
+        }
+      },
+      "tips": {
+        "label": "次のステップ",
+        "dismiss": "このヒントを非表示",
+        "manualReservation": {
+          "title": "お客様が電話で予約しましたか？",
+          "text": "予約を入力すると、その日の予定とカレンダーに表示されます。",
+          "action": "予約を作成"
+        },
+        "reviewBooster": {
+          "title": "満足したお客様の声を広げましょう",
+          "text": "レンタルのたびに Google レビューの依頼を送ります。",
+          "action": "レビューを有効にする"
+        },
+        "onlinePayments": {
+          "title": "現地での集金から解放されましょう",
+          "text": "オンライン決済に切り替えると、お客様は予約時に支払います。事前決済で無断キャンセルが減り、保証金はカードの仮押さえで引き落としなし。",
+          "action": "Stripe を設定"
+        }
+      },
+      "paymentsStatus": {
+        "startTitle": "オンライン決済はまだ有効ではありません",
+        "resumeTitle": "オンライン決済：本人確認が必要です",
+        "verifyingTitle": "オンライン決済：Stripe の確認中",
+        "meanwhile": "Stripe の準備が整うまで、予約はリクエストとして届き、ご自身で承認します。"
+      },
+      "reeentBanner": {
+        "start": {
+          "text": "<b>オンライン決済を有効にして <reeent>reeent</reeent> に掲載しましょう</b>：掲載されるのはオンライン決済に対応したストアのみです。",
+          "action": "有効にする"
+        },
+        "resume": {
+          "text": "<b><reeent>reeent</reeent> まであと 1 ステップ</b>：身分証明書と IBAN で本人確認を行ってください（5〜10 分）。",
+          "action": "再開"
+        },
+        "verifying": {
+          "chip": "確認中",
+          "text": "<b>Stripe が本人確認を行っています</b>。完了すると、ストアは自動で <reeent>reeent</reeent> に掲載されます。",
+          "idle": "対応不要"
+        },
+        "seats": {
+          "text": "<b><reeent>reeent</reeent> で新しいお客様を見つけましょう</b>。レンタルのマーケットプレイスです：先着 {total, number} ストアは<em>手数料が永久に 0 円</em>。",
+          "action": "reeent を見る"
+        },
+        "member": {
+          "text": "<b>ストアは <reeent>reeent</reeent> で公開中です</b>。<em>reeent の手数料は永久に無料</em>：先着 {total, number} ストアの一員です。",
+          "textRank": "<b>ストアは <reeent>reeent</reeent> で公開中です</b>。<em>reeent の手数料は永久に無料</em>：先着 {total, number} ストアの一員です（{rank, number} 番目）。",
+          "action": "reeent のページを見る"
+        },
+        "dismiss": "非表示"
+      },
+      "shop": {
+        "copy": "リンクをコピー",
+        "copied": "リンクをコピーしました",
+        "share": "共有"
       }
     },
     "products": {
@@ -2381,7 +2517,8 @@
         "all": "すべて",
         "today": "今日",
         "thisWeek": "今週",
-        "thisMonth": "今月"
+        "thisMonth": "今月",
+        "overdue": "延滞"
       },
       "actions": {
         "accept": "受け入れる",
@@ -6526,6 +6663,13 @@
       "sourceHint": "ソースコードを参照する",
       "star": "スターを残す",
       "later": "たぶん後で"
+    },
+    "headerMenu": {
+      "create": "作成",
+      "more": "その他の操作",
+      "newProduct": "新しい商品",
+      "newCustomer": "新しい顧客",
+      "shareStore": "ストアを共有"
     }
   },
   "storefront": {

@@ -528,7 +528,9 @@
       "aiCreditsLow": "Tegoed raakt op",
       "sectionPages": "Pagina's van {section}",
       "copyStoreLink": "Winkellink kopiëren",
-      "storeLinkCopied": "Link gekopieerd"
+      "storeLinkCopied": "Link gekopieerd",
+      "shareStore": "Mijn winkel delen",
+      "pendingRequests": "{count, plural, one {# openstaande aanvraag} other {# openstaande aanvragen}}"
     },
     "shortcuts": {
       "actions": {
@@ -960,7 +962,8 @@
           "building": "{count, plural, one {# product aangemaakt} other {# producten aangemaakt}}. Deel uw winkel!",
           "pending": "{count, plural, one {# openstaande aanvraag} other {# openstaande aanvragen}}",
           "operations": "{count, plural, one {# operatie vandaag} other {# operaties vandaag}}",
-          "calm": "Alles rustig vandaag."
+          "calm": "Alles rustig vandaag.",
+          "overdue": "{count, plural, one {# te late reservering} other {# te late reserveringen}}"
         },
         "cta": {
           "addFirstProduct": "Mijn eerste product toevoegen",
@@ -970,12 +973,7 @@
         }
       },
       "reeentStripe": {
-        "title": "Je winkel is nog niet zichtbaar op <reeent>reeent</reeent>",
-        "description": "Zolang online betalingen niet actief zijn, publiceert reeent je winkel niet. De lanceeraanbieding (0 € reeent-commissie voor het leven) geldt vanaf de publicatie, zolang er plaatsen zijn.",
-        "continueSetup": "Stripe-configuratie voortzetten",
-        "activate": "Online betalingen activeren",
-        "paymentSettings": "Betalingsinstellingen",
-        "status": "Nog niet gepubliceerd"
+        "paymentSettings": "Betalingsinstellingen"
       },
       "setup": {
         "title": "Aan de slag",
@@ -1033,7 +1031,14 @@
       "pending": {
         "title": "Openstaande aanvragen",
         "description": "Reserveringen die uw goedkeuring nodig hebben",
-        "empty": "Geen openstaande aanvragen"
+        "empty": "Geen openstaande aanvragen",
+        "urgency": {
+          "past": "Datum verstreken",
+          "today": "Begint vandaag",
+          "tomorrow": "Begint morgen",
+          "soon": "{count, plural, one {Over # dag} other {Over # dagen}}"
+        },
+        "requested": "Aangevraagd {relative}"
       },
       "storefront": {
         "title": "Uw winkel",
@@ -1050,27 +1055,28 @@
         "title": "Deel uw winkel",
         "description": "Stuur uw winkellink naar uw klanten",
         "copyLink": "Link kopiëren",
-        "copyLinkDescription": "URL naar klembord kopiëren",
         "copied": "Gekopieerd!",
-        "whatsappDescription": "Verstuur via WhatsApp",
         "whatsappMessage": "Ontdek onze verhuurwinkel: {url}",
         "email": "E-mail",
-        "emailDescription": "Verstuur via e-mail",
         "emailSubject": "Ontdek onze verhuurwinkel",
-        "emailBody": "Hallo,\n\nIk nodig u uit om onze verhuurwinkel te ontdekken:\n{url}\n\nTot snel!",
-        "smsDescription": "Verstuur via SMS",
-        "smsMessage": "Ontdek onze verhuurwinkel: {url}",
-        "showQR": "QR-code tonen",
-        "hideQR": "QR-code verbergen",
-        "qrDescription": "Scan deze code om de winkel te bezoeken",
-        "downloadQR": "Downloaden"
+        "copyShort": "Kopiëren",
+        "messageLabel": "Te verzenden bericht",
+        "copyMessage": "Bericht kopiëren",
+        "messageCopied": "Bericht gekopieerd",
+        "qrHint": "Om te printen voor uw balie, flyers of etalage.",
+        "downloadPng": "Downloaden als PNG",
+        "messageHint": "Deze tekst gaat mee met WhatsApp, e-mail, sms en kopiëren.",
+        "sendVia": "Versturen via",
+        "nativeShareShort": "Meer",
+        "customizeMessage": "Bericht aanpassen"
       },
       "month": {
         "title": "Deze maand",
         "revenue": "<strong>{amount}</strong> ontvangen",
-        "reservations": "{count, plural, one {<strong>#</strong> reservering in totaal} other {<strong>#</strong> reserveringen in totaal}}",
-        "customers": "{count, plural, one {<strong>#</strong> klant} other {<strong>#</strong> klanten}}",
-        "seeAnalytics": "Bekijk de analyses"
+        "reservations": "{count, plural, one {<strong>#</strong> reservering} other {<strong>#</strong> reserveringen}}",
+        "customers": "{count, plural, one {<strong>#</strong> nieuwe klant} other {<strong>#</strong> nieuwe klanten}}",
+        "seeAnalytics": "Bekijk de analyses",
+        "growthHint": "Vergeleken met dezelfde datum vorige maand"
       },
       "requestsEmpty": {
         "virginTitle": "Hier komen de aanvragen van je klanten",
@@ -1084,14 +1090,144 @@
         "departures": "{count, plural, one {# uitgifte} other {# uitgiftes}}",
         "returns": "{count, plural, one {# retour} other {# retouren}}",
         "emptyTitle": "Hier verschijnen je uitgiftes en retouren",
-        "emptyText": "Vanaf de eerste reservering lees je de dag uur per uur: wat er mee moet en wat terugkomt."
+        "emptyText": "Vanaf de eerste reservering lees je de dag uur per uur: wat er mee moet en wat terugkomt.",
+        "agenda": {
+          "departure": "Afhalen",
+          "return": "Retour",
+          "now": "Nu",
+          "moreProducts": "{count, plural, one {+ # ander} other {+ # andere}}",
+          "productsCount": "{count, plural, one {# artikel} other {# artikelen}}",
+          "allDone": "Alles gedaan voor vandaag"
+        },
+        "quiet": {
+          "none": "Voorlopig geen komende reservering.",
+          "nextLine": "Volgende activiteit: {date}"
+        },
+        "createReservation": "Reservering aanmaken",
+        "week": {
+          "previous": "Vorige week",
+          "next": "Volgende week",
+          "label": "Dagen van de week",
+          "more": "{count, plural, one {+ # andere} other {+ # andere}}",
+          "clickToSee": "Klik op de dag om alles te zien"
+        },
+        "otherDay": {
+          "emptyTitle": "Niets gepland die dag",
+          "error": "Deze dag kon niet worden geladen. Probeer het zo opnieuw.",
+          "backToToday": "Terug naar vandaag",
+          "openCalendar": "Openen in de kalender",
+          "noneSoon": "Niets gepland in de {weeks} weken daarna."
+        },
+        "calendar": "Kalender"
       },
       "upcoming": {
-        "title": "De komende dagen",
+        "title": "De komende 7 dagen",
         "tomorrow": "Morgen",
         "departures": "{count, plural, one {# uitgifte} other {# uitgiftes}}",
         "returns": "{count, plural, one {# retour} other {# retouren}}",
         "nothing": "Niets gepland"
+      },
+      "overdue": {
+        "title": "Af te handelen",
+        "returnDue": "Retour gepland {date}",
+        "departureDue": "Ophalen gepland {date}",
+        "returnsCount": "{count, plural, one {# retour niet terug} other {# retouren niet terug}}",
+        "departuresCount": "{count, plural, one {# afhaling niet meegegeven} other {# afhalingen niet meegegeven}}",
+        "lateMinutes": "{count} min",
+        "lateHours": "{count} u",
+        "lateDays": "{count} d",
+        "groupedNotReturned": "{count, plural, one {# te late retour} other {# te late retouren}}",
+        "groupedToConfirm": "{count, plural, one {# uitgifte te bevestigen} other {# uitgiftes te bevestigen}}",
+        "compact": "{count, plural, one {# reservering te regelen} other {# reserveringen te regelen}}",
+        "oldestReturn": "de oudste {relative}",
+        "oldestDeparture": "de oudste {relative}",
+        "oldestMixed": "de oudste {relative}",
+        "dueReturn": "gepland {relative}",
+        "dueDeparture": "gepland {relative}"
+      },
+      "list": {
+        "more": "{count, plural, one {Nog # bekijken} other {Nog # bekijken}}"
+      },
+      "path": {
+        "title": "Om uw eerste aanvragen te ontvangen",
+        "readyTitle": "Alles klaar",
+        "readyText": "De aanvragen van uw klanten verschijnen hier.",
+        "steps": {
+          "product": {
+            "title": "Een product toevoegen",
+            "text": "Dit is wat uw klanten reserveren. Een naam, een foto en een prijs zijn genoeg om te beginnen.",
+            "manage": "Mijn producten beheren"
+          },
+          "share": {
+            "title": "Uw winkel delen",
+            "text": "Stuur uw link naar uw klanten of voeg hem toe aan uw Google-profiel en sociale media."
+          },
+          "payments": {
+            "title": "Online betalen inschakelen",
+            "resumeText": "Nog één stap: bevestig uw identiteit — identiteitsbewijs en IBAN, 5 tot 10 min.",
+            "verifyingText": "Stripe controleert uw identiteit: online betalen wordt daarna automatisch actief.",
+            "verifyingBadge": "Controle bezig",
+            "done": "Online betalen ingeschakeld",
+            "start": "Stripe instellen",
+            "modeTitle": "Betaalwijze",
+            "switchToOnline": "Overstappen op online betalen"
+          }
+        }
+      },
+      "tips": {
+        "label": "Volgende stap",
+        "dismiss": "Deze tip verbergen",
+        "manualReservation": {
+          "title": "Heeft een klant telefonisch gereserveerd?",
+          "text": "Voer de reservering in: die verschijnt in uw dag en in de agenda.",
+          "action": "Reservering aanmaken"
+        },
+        "reviewBooster": {
+          "title": "Laat tevreden klanten voor u spreken",
+          "text": "Stuur na elke verhuur een verzoek om een Google-review.",
+          "action": "Reviews inschakelen"
+        },
+        "onlinePayments": {
+          "title": "Geen betalingen meer innen",
+          "text": "Stap over op online betalen: uw klanten betalen bij het reserveren. Minder no-shows dankzij vooruitbetaling, en de borg als kaartreservering, zonder afschrijving.",
+          "action": "Stripe instellen"
+        }
+      },
+      "paymentsStatus": {
+        "startTitle": "Online betalen nog niet ingeschakeld",
+        "resumeTitle": "Online betalen: identiteit te bevestigen",
+        "verifyingTitle": "Online betalen: Stripe-controle bezig",
+        "meanwhile": "Tot Stripe klaar is, komen reserveringen binnen als aanvraag en keurt u ze zelf goed."
+      },
+      "reeentBanner": {
+        "start": {
+          "text": "<b>Schakel online betalen in om op <reeent>reeent</reeent> te verschijnen</b>: alleen winkels die online ontvangen, worden er gepubliceerd.",
+          "action": "Inschakelen"
+        },
+        "resume": {
+          "text": "<b>Nog één stap tot <reeent>reeent</reeent></b>: bevestig uw identiteit met een identiteitsbewijs en IBAN (5 tot 10 min).",
+          "action": "Hervatten"
+        },
+        "verifying": {
+          "chip": "Controle bezig",
+          "text": "<b>Stripe controleert uw identiteit</b>, daarna verschijnt uw winkel automatisch op <reeent>reeent</reeent>.",
+          "idle": "Niets te doen"
+        },
+        "seats": {
+          "text": "<b>Vind nieuwe klanten op <reeent>reeent</reeent></b>, de marktplaats voor verhuur: <em>0 € commissie voor altijd</em> voor de eerste {total, number} winkels.",
+          "action": "Ontdek reeent"
+        },
+        "member": {
+          "text": "<b>Uw winkel staat online op <reeent>reeent</reeent></b>, <em>voor altijd zonder reeent-commissie</em>: u hoort bij de eerste {total, number} winkels.",
+          "textRank": "<b>Uw winkel staat online op <reeent>reeent</reeent></b>, <em>voor altijd zonder reeent-commissie</em>: u hoort bij de eerste {total, number} winkels (nr. {rank, number}).",
+          "action": "Mijn reeent-pagina bekijken"
+        },
+        "dismiss": "Verbergen"
+      },
+      "shop": {
+        "copy": "Link kopiëren",
+        "copied": "Link gekopieerd",
+        "share": "Delen"
       }
     },
     "products": {
@@ -2342,7 +2478,8 @@
         "all": "Alle",
         "today": "Vandaag",
         "thisWeek": "Deze week",
-        "thisMonth": "Deze maand"
+        "thisMonth": "Deze maand",
+        "overdue": "Te laat"
       },
       "actions": {
         "accept": "Accepteren",
@@ -6526,6 +6663,13 @@
       "sourceHint": "Bekijk de broncode",
       "star": "Laat een ster achter",
       "later": "Later"
+    },
+    "headerMenu": {
+      "create": "Aanmaken",
+      "more": "Meer acties",
+      "newProduct": "Nieuw product",
+      "newCustomer": "Nieuwe klant",
+      "shareStore": "Mijn winkel delen"
     }
   },
   "storefront": {

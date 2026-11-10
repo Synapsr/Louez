@@ -528,7 +528,9 @@
       "aiCreditsLow": "Saldo kredit hampir habis",
       "sectionPages": "Halaman {section}",
       "copyStoreLink": "Salin tautan toko",
-      "storeLinkCopied": "Tautan disalin"
+      "storeLinkCopied": "Tautan disalin",
+      "shareStore": "Bagikan toko saya",
+      "pendingRequests": "{count, plural, one {# permintaan menunggu} other {# permintaan menunggu}}"
     },
     "shortcuts": {
       "actions": {
@@ -999,7 +1001,8 @@
           "building": "{count,plural,one{# produk yang dibuat} other{# produk yang diciptakan}}. Bagikan toko Anda!",
           "pending": "{count,plural,one{# permintaan tertunda} other{# permintaan yang tertunda}}",
           "operations": "{count,plural,one{# operasi hari ini} other{# operasi hari ini}}",
-          "calm": "Semua tenang hari ini."
+          "calm": "Semua tenang hari ini.",
+          "overdue": "{count, plural, one {# pemesanan terlambat} other {# pemesanan terlambat}}"
         },
         "cta": {
           "addFirstProduct": "Tambahkan produk pertama saya",
@@ -1009,12 +1012,7 @@
         }
       },
       "reeentStripe": {
-        "title": "Toko Anda belum terlihat di <reeent>reeent</reeent>",
-        "description": "Sampai pembayaran online aktif, reeent tidak mempublikasikan toko Anda. Penawaran peluncuran (komisi 0 € seumur hidup) berlaku sejak publikasi, selama masih ada tempat.",
-        "continueSetup": "Lanjutkan pengaturan Stripe",
-        "activate": "Aktifkan pembayaran online",
-        "paymentSettings": "Pengaturan pembayaran",
-        "status": "Belum dipublikasikan"
+        "paymentSettings": "Pengaturan pembayaran"
       },
       "setup": {
         "title": "Memulai",
@@ -1072,7 +1070,14 @@
       "pending": {
         "title": "Permintaan yang tertunda",
         "description": "Reservasi memerlukan persetujuan Anda",
-        "empty": "Tidak ada permintaan yang tertunda"
+        "empty": "Tidak ada permintaan yang tertunda",
+        "urgency": {
+          "past": "Tanggal lewat",
+          "today": "Mulai hari ini",
+          "tomorrow": "Mulai besok",
+          "soon": "{count, plural, one {Dalam # hari} other {Dalam # hari}}"
+        },
+        "requested": "Diminta {relative}"
       },
       "storefront": {
         "title": "Toko Anda",
@@ -1089,27 +1094,28 @@
         "title": "Bagikan toko Anda",
         "description": "Kirim tautan toko Anda ke pelanggan Anda",
         "copyLink": "Salin tautan",
-        "copyLinkDescription": "Salin URL ke papan klip",
         "copied": "Disalin!",
-        "whatsappDescription": "Kirim melalui WhatsApp",
         "whatsappMessage": "Kunjungi toko persewaan kami: {url}",
         "email": "Surel",
-        "emailDescription": "Kirim melalui email",
         "emailSubject": "Temukan toko persewaan kami",
-        "emailBody": "Halo,\n\nSaya mengundang Anda untuk menemukan toko persewaan kami:\n{url}\n\nSampai jumpa lagi!",
-        "smsDescription": "Kirim melalui SMS",
-        "smsMessage": "Kunjungi toko persewaan kami: {url}",
-        "showQR": "Tampilkan kode QR",
-        "hideQR": "Sembunyikan kode QR",
-        "qrDescription": "Pindai kode ini untuk mengakses toko",
-        "downloadQR": "Unduh"
+        "copyShort": "Salin",
+        "messageLabel": "Pesan yang dikirim",
+        "copyMessage": "Salin pesan",
+        "messageCopied": "Pesan disalin",
+        "qrHint": "Cetak untuk meja kasir, brosur, atau etalase Anda.",
+        "downloadPng": "Unduh PNG",
+        "messageHint": "Teks ini dipakai untuk WhatsApp, e-mail, SMS, dan salin.",
+        "sendVia": "Kirim lewat",
+        "nativeShareShort": "Lainnya",
+        "customizeMessage": "Sesuaikan pesan"
       },
       "month": {
         "title": "Bulan ini",
         "revenue": "<strong>{amount}</strong> diterima",
-        "reservations": "{count, plural, other {<strong>#</strong> pemesanan secara total}}",
-        "customers": "{count, plural, other {<strong>#</strong> pelanggan}}",
-        "seeAnalytics": "Lihat analitik"
+        "reservations": "{count, plural, one {<strong>#</strong> pemesanan} other {<strong>#</strong> pemesanan}}",
+        "customers": "{count, plural, one {<strong>#</strong> pelanggan baru} other {<strong>#</strong> pelanggan baru}}",
+        "seeAnalytics": "Lihat analitik",
+        "growthHint": "Dibandingkan dengan tanggal yang sama bulan lalu"
       },
       "requestsEmpty": {
         "virginTitle": "Permintaan pelanggan Anda akan muncul di sini",
@@ -1123,14 +1129,144 @@
         "departures": "{count, plural, other {# penyerahan}}",
         "returns": "{count, plural, other {# pengembalian}}",
         "emptyTitle": "Penyerahan dan pengembalian akan muncul di sini",
-        "emptyText": "Sejak pemesanan pertama, hari Anda terbaca jam demi jam: apa yang diserahkan dan apa yang diterima kembali."
+        "emptyText": "Sejak pemesanan pertama, hari Anda terbaca jam demi jam: apa yang diserahkan dan apa yang diterima kembali.",
+        "agenda": {
+          "departure": "Pengambilan",
+          "return": "Pengembalian",
+          "now": "Sekarang",
+          "moreProducts": "{count, plural, other {+ # lainnya}}",
+          "productsCount": "{count, plural, other {# barang}}",
+          "allDone": "Semua beres untuk hari ini"
+        },
+        "quiet": {
+          "none": "Belum ada pemesanan mendatang.",
+          "nextLine": "Aktivitas berikutnya: {date}"
+        },
+        "createReservation": "Buat pemesanan",
+        "week": {
+          "previous": "Minggu sebelumnya",
+          "next": "Minggu berikutnya",
+          "label": "Hari dalam minggu",
+          "more": "{count, plural, other {+ # lainnya}}",
+          "clickToSee": "Klik hari tersebut untuk melihat semuanya"
+        },
+        "otherDay": {
+          "emptyTitle": "Tidak ada yang dijadwalkan hari itu",
+          "error": "Hari ini tidak dapat dimuat. Coba lagi sebentar lagi.",
+          "backToToday": "Kembali ke hari ini",
+          "openCalendar": "Buka di kalender",
+          "noneSoon": "Tidak ada yang dijadwalkan dalam {weeks} minggu berikutnya."
+        },
+        "calendar": "Kalender"
       },
       "upcoming": {
-        "title": "Beberapa hari ke depan",
+        "title": "7 hari ke depan",
         "tomorrow": "Besok",
         "departures": "{count, plural, other {# penyerahan}}",
         "returns": "{count, plural, other {# pengembalian}}",
         "nothing": "Tidak ada rencana"
+      },
+      "overdue": {
+        "title": "Perlu diselesaikan",
+        "returnDue": "Pengembalian dijadwalkan {date}",
+        "departureDue": "Pengambilan dijadwalkan {date}",
+        "returnsCount": "{count, plural, one {# pengembalian belum kembali} other {# pengembalian belum kembali}}",
+        "departuresCount": "{count, plural, one {# pengambilan belum diserahkan} other {# pengambilan belum diserahkan}}",
+        "lateMinutes": "{count} mnt",
+        "lateHours": "{count} jam",
+        "lateDays": "{count} hr",
+        "groupedNotReturned": "{count, plural, other {# pengembalian terlambat}}",
+        "groupedToConfirm": "{count, plural, other {# serah terima perlu dikonfirmasi}}",
+        "compact": "{count, plural, other {# reservasi perlu ditangani}}",
+        "oldestReturn": "yang paling lama {relative}",
+        "oldestDeparture": "yang paling lama {relative}",
+        "oldestMixed": "yang paling lama {relative}",
+        "dueReturn": "jadwal {relative}",
+        "dueDeparture": "jadwal {relative}"
+      },
+      "list": {
+        "more": "{count, plural, one {Lihat # lainnya} other {Lihat # lainnya}}"
+      },
+      "path": {
+        "title": "Untuk menerima permintaan pertama",
+        "readyTitle": "Semua siap",
+        "readyText": "Permintaan pelanggan Anda akan muncul di sini.",
+        "steps": {
+          "product": {
+            "title": "Tambahkan produk",
+            "text": "Inilah yang dipesan pelanggan Anda. Nama, foto, dan harga sudah cukup untuk memulai.",
+            "manage": "Kelola produk saya"
+          },
+          "share": {
+            "title": "Bagikan toko Anda",
+            "text": "Kirim tautan ke pelanggan, atau tambahkan ke profil Google dan media sosial Anda."
+          },
+          "payments": {
+            "title": "Aktifkan pembayaran online",
+            "resumeText": "Tinggal satu langkah: verifikasi identitas Anda — kartu identitas dan IBAN, 5–10 menit.",
+            "verifyingText": "Stripe sedang memverifikasi identitas Anda: pembayaran online akan aktif otomatis setelahnya.",
+            "verifyingBadge": "Verifikasi berlangsung",
+            "done": "Pembayaran online aktif",
+            "start": "Atur Stripe",
+            "modeTitle": "Cara menerima pembayaran",
+            "switchToOnline": "Beralih ke pembayaran online"
+          }
+        }
+      },
+      "tips": {
+        "label": "Langkah berikutnya",
+        "dismiss": "Sembunyikan tips ini",
+        "manualReservation": {
+          "title": "Pelanggan memesan lewat telepon?",
+          "text": "Masukkan pemesanannya: akan muncul di hari Anda dan di kalender.",
+          "action": "Buat pemesanan"
+        },
+        "reviewBooster": {
+          "title": "Biarkan pelanggan puas bicara untuk Anda",
+          "text": "Kirim permintaan ulasan Google setelah setiap penyewaan.",
+          "action": "Aktifkan ulasan"
+        },
+        "onlinePayments": {
+          "title": "Bebaskan diri dari menagih pembayaran",
+          "text": "Beralih ke pembayaran online: pelanggan membayar saat memesan. Lebih sedikit pembatalan berkat prabayar, dan deposit sebagai penahanan kartu, tanpa penarikan.",
+          "action": "Atur Stripe"
+        }
+      },
+      "paymentsStatus": {
+        "startTitle": "Pembayaran online belum diaktifkan",
+        "resumeTitle": "Pembayaran online: identitas perlu diverifikasi",
+        "verifyingTitle": "Pembayaran online: verifikasi Stripe berlangsung",
+        "meanwhile": "Sampai Stripe siap, pemesanan masuk sebagai permintaan dan Anda menyetujuinya sendiri."
+      },
+      "reeentBanner": {
+        "start": {
+          "text": "<b>Aktifkan pembayaran online agar tampil di <reeent>reeent</reeent></b>: hanya toko yang menerima pembayaran online yang diterbitkan.",
+          "action": "Aktifkan"
+        },
+        "resume": {
+          "text": "<b>Tinggal satu langkah menuju <reeent>reeent</reeent></b>: verifikasi identitas dengan kartu identitas dan IBAN (5–10 menit).",
+          "action": "Lanjutkan"
+        },
+        "verifying": {
+          "chip": "Verifikasi berlangsung",
+          "text": "<b>Stripe sedang memverifikasi identitas Anda</b>, lalu toko Anda otomatis tampil di <reeent>reeent</reeent>.",
+          "idle": "Tidak perlu apa-apa"
+        },
+        "seats": {
+          "text": "<b>Dapatkan pelanggan baru di <reeent>reeent</reeent></b>, marketplace penyewaan: <em>komisi 0 € seumur hidup</em> untuk {total, number} toko pertama.",
+          "action": "Kenali reeent"
+        },
+        "member": {
+          "text": "<b>Toko Anda sudah tayang di <reeent>reeent</reeent></b>, <em>tanpa komisi reeent seumur hidup</em>: Anda termasuk {total, number} toko pertama.",
+          "textRank": "<b>Toko Anda sudah tayang di <reeent>reeent</reeent></b>, <em>tanpa komisi reeent seumur hidup</em>: Anda termasuk {total, number} toko pertama (no. {rank, number}).",
+          "action": "Lihat halaman reeent saya"
+        },
+        "dismiss": "Sembunyikan"
+      },
+      "shop": {
+        "copy": "Salin tautan",
+        "copied": "Tautan disalin",
+        "share": "Bagikan"
       }
     },
     "products": {
@@ -2381,7 +2517,8 @@
         "all": "Semua",
         "today": "Hari ini",
         "thisWeek": "Minggu ini",
-        "thisMonth": "Bulan ini"
+        "thisMonth": "Bulan ini",
+        "overdue": "Terlambat"
       },
       "actions": {
         "accept": "Terima",
@@ -6526,6 +6663,13 @@
       "sourceHint": "Jelajahi kode sumber",
       "star": "Tinggalkan bintang",
       "later": "Mungkin nanti"
+    },
+    "headerMenu": {
+      "create": "Buat",
+      "more": "Tindakan lain",
+      "newProduct": "Produk baru",
+      "newCustomer": "Pelanggan baru",
+      "shareStore": "Bagikan toko saya"
     }
   },
   "storefront": {

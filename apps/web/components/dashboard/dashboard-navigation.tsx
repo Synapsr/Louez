@@ -114,6 +114,8 @@ interface NavigationItem {
   activeHref?: string;
   /** Sub-entries listed under the item (hidden while the sidebar is collapsed). */
   items?: NavigationSubItem[];
+  /** A count the entry carries: requests waiting on the owner, on Réservations. */
+  badgeCount?: number;
   /**
    * Draws the discreet warning marker. The AI credit balance now lives on a
    * sub-entry, so the parent only ever relays its alert — the rail hides
@@ -323,6 +325,19 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
           />
         </button>
       )}
+      {item.badgeCount !== undefined && item.badgeCount > 0 && (
+        <>
+          <SidebarMenuBadge className="bg-primary text-primary-foreground peer-data-[size=default]/menu-button:top-2 rounded-full px-1.5 text-[11px] font-bold tabular-nums">
+            {item.badgeCount}
+            <span className="sr-only">{tSidebar("pendingRequests", { count: item.badgeCount })}</span>
+          </SidebarMenuBadge>
+          {/* Collapsed to the rail, the count becomes a dot on the icon. */}
+          <span
+            aria-hidden
+            className="bg-primary ring-sidebar absolute top-1 right-1.5 hidden size-2.5 rounded-full ring-2 group-data-[collapsible=icon]:block"
+          />
+        </>
+      )}
       {item.alert && (
         /* The vertical offset has to be restated under the same
            `peer-data-[size]` variant as the default it replaces, otherwise the
@@ -410,10 +425,13 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
 export const DashboardNavigation = ({
   pathname,
   aiCredits = null,
+  pendingRequestCount = 0,
   localNavigation,
 }: {
   pathname: string;
   aiCredits?: { low: boolean; credits: number | null; hasUsedCredits: boolean } | null;
+  /** Requests waiting on the owner, shown on Réservations. */
+  pendingRequestCount?: number;
   localNavigation?: LocalNavigation;
 }) => {
   return (
@@ -423,7 +441,13 @@ export const DashboardNavigation = ({
           <SidebarGroupContent>
             <SidebarMenu>
               {buildNavigationItems(aiCredits).map((item) => (
-                <DashboardNavItem key={item.href} item={item} pathname={pathname} />
+                <DashboardNavItem
+                  key={item.href}
+                  item={
+                    item.key === "reservations" ? { ...item, badgeCount: pendingRequestCount } : item
+                  }
+                  pathname={pathname}
+                />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

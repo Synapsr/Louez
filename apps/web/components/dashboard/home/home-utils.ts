@@ -1,10 +1,11 @@
 import type { HomeReservation } from "./home-types";
 
-/** Revenue growth in percent, or `null` when there is nothing to compare to. */
+/**
+ * Revenue growth in percent, or `null` when there is nothing to compare to: a
+ * first month with sales is not "+100 %", it has no trend yet.
+ */
 export const calculateGrowth = (current: number, previous: number): number | null => {
-  if (previous === 0) {
-    return current > 0 ? 100 : null;
-  }
+  if (previous === 0) return null;
 
   return Math.round(((current - previous) / previous) * 100);
 };

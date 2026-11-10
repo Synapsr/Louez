@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
-import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
+import { getMarketplaceChannelState } from "@louez/api/services";
 import { db, users } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 import { SidebarProvider } from "@louez/ui";
@@ -23,7 +23,6 @@ import { SettingsSearchFocus } from "@/components/dashboard/settings-search-focu
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { StarPrompt } from "@/components/dashboard/star-prompt";
 import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
-import { parseDismissedNotices } from "@/lib/dashboard/dismissed-notices";
 import { type OnlinePaymentsStep, getSetupProgressCounts } from "@/lib/dashboard/setup-progress";
 import { getIntendedReservationMode, isStripeChargeable } from "@/lib/reservation-mode";
 import { DashboardSaveShortcut } from "@/components/shared/dashboard-save-shortcut";
@@ -47,6 +46,7 @@ import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import { parseWhatsNewProgress } from "@/lib/whats-new.progress";
 
 import { StoreProvider } from "@/contexts/store-context";
+import { StoreShareProvider } from "@/contexts/store-share-context";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -134,8 +134,6 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     electronicInvoicingEnabled,
     legacyBillingEnabled,
     setupCounts,
-    channelState,
-    cohort,
   ] = await Promise.all([
     getCurrentPlanSlug(store.id),
     getStoreLimits(store.id),
@@ -144,7 +142,6 @@ export default async function DashboardMainLayout({ children }: { children: Reac
       columns: {
         keyboardShortcuts: true,
         whatsNewProgress: true,
-        dismissedNotices: true,
       },
       where: eq(users.id, session.user.id),
     }),
@@ -153,8 +150,6 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     isElectronicInvoicingEnabled(store.id),
     legacyBillingApplies(store.id, new Date()),
     getSetupProgressCounts(store.id),
-    getMarketplaceChannelState({ storeId: store.id }),
-    getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
   ]);
 
   // Stores that want online payments get a setup step tracking the Stripe KYC
@@ -166,7 +161,6 @@ export default async function DashboardMainLayout({ children }: { children: Reac
         : "todo"
       : "hidden";
   const isFromReeent = store.signupOrigin === REEENT_SIGNUP_ORIGIN;
-  const lifetimeFeeWaiverAt = channelState.channel?.lifetimeFeeWaiverAt ?? null;
   const billingAccess = await getBillingAccess(store, isPlatformAdmin);
 
   return (
@@ -184,6 +178,12 @@ export default async function DashboardMainLayout({ children }: { children: Reac
           storeName={store.name}
           timezone={settings.timezone}
         >
+          <StoreShareProvider
+            storeSlug={store.slug}
+            storeName={store.name}
+            isFromReeent={isFromReeent}
+            listingUrl={marketplaceListingUrl}
+          >
           <ReservationPollingProvider interval={30000}>
             <div className="dashboard relative h-svh overflow-hidden">
               <SidebarProvider className="h-full min-h-0 overflow-hidden">
@@ -204,20 +204,6 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                       counts: setupCounts,
                       onlinePaymentsStep,
                       onlinePaymentsContext: isFromReeent ? "reeent" : "default",
-                      // The launch offer rides with the setup list. A reeent
-                      // store that has not earned the waiver yet does not get
-                      // the seats pitch: the reeent banner carries the offer.
-                      cohort:
-                        lifetimeFeeWaiverAt !== null || !isFromReeent
-                          ? {
-                              lifetimeFeeWaiverAt,
-                              cohortRank: channelState.channel?.cohortRank ?? null,
-                              remaining: cohort.remaining,
-                              dismissedNoticeIds: parseDismissedNotices(
-                                userPreferences?.dismissedNotices,
-                              ),
-                            }
-                          : null,
                     }}
                     reservationsPaused={
                       billingAccess !== null && !billingAccess.policy.acceptsReservations
@@ -258,6 +244,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
               </Suspense>
             </div>
           </ReservationPollingProvider>
+          </StoreShareProvider>
         </StoreProvider>
       </WhatsNewProvider>
     </KeyboardShortcutsProvider>

@@ -528,7 +528,9 @@
       "aiCreditsLow": "信贷余额所剩无几",
       "sectionPages": "{section}的页面",
       "copyStoreLink": "复制店铺链接",
-      "storeLinkCopied": "链接已复制"
+      "storeLinkCopied": "链接已复制",
+      "shareStore": "分享我的店铺",
+      "pendingRequests": "{count, plural, one {# 个待处理请求} other {# 个待处理请求}}"
     },
     "shortcuts": {
       "actions": {
@@ -999,7 +1001,8 @@
           "building": "{count,plural,one{# 产品已创建} other{# 创造的产品}}。分享你的店铺！",
           "pending": "{count,plural,one{# 待处理的请求} other{# 待处理的请求}}",
           "operations": "{count,plural,one{# 今天操作} other{# 今天的运营}}",
-          "calm": "今天一切都很安静。"
+          "calm": "今天一切都很安静。",
+          "overdue": "{count, plural, one {# 个逾期预订} other {# 个逾期预订}}"
         },
         "cta": {
           "addFirstProduct": "添加我的第一个产品",
@@ -1009,12 +1012,7 @@
         }
       },
       "reeentStripe": {
-        "title": "您的商店在 <reeent>reeen</reeent> 上尚不可见",
-        "description": "在在线支付激活之前，reeen 不会发布您的商店。只要还有名额，启动优惠（终身 0 欧元佣金）自发布之日起适用。",
-        "continueSetup": "继续 Stripe 设置",
-        "activate": "激活在线支付",
-        "paymentSettings": "付款设置",
-        "status": "尚未发布"
+        "paymentSettings": "付款设置"
       },
       "setup": {
         "title": "开始使用",
@@ -1072,7 +1070,14 @@
       "pending": {
         "title": "待处理的请求",
         "description": "需要您批准的预订",
-        "empty": "没有待处理的请求"
+        "empty": "没有待处理的请求",
+        "urgency": {
+          "past": "日期已过",
+          "today": "今天开始",
+          "tomorrow": "明天开始",
+          "soon": "{count, plural, one {# 天后} other {# 天后}}"
+        },
+        "requested": "{relative}提交"
       },
       "storefront": {
         "title": "你的商店",
@@ -1089,27 +1094,28 @@
         "title": "分享您的商店",
         "description": "将您的商店链接发送给您的客户",
         "copyLink": "复制链接",
-        "copyLinkDescription": "将 URL 复制到剪贴板",
         "copied": "复制了！",
-        "whatsappDescription": "通过 WhatsApp 发送",
         "whatsappMessage": "查看我们的租赁店：{url}",
         "email": "电子邮件",
-        "emailDescription": "通过电子邮件发送",
         "emailSubject": "探索我们的租赁店",
-        "emailBody": "您好，\n\n我邀请您探索我们的租赁店：\n{url}\n\n再见！",
-        "smsDescription": "通过短信发送",
-        "smsMessage": "查看我们的租赁店：{url}",
-        "showQR": "显示二维码",
-        "hideQR": "隐藏二维码",
-        "qrDescription": "扫描此码即可进入店铺",
-        "downloadQR": "下载"
+        "copyShort": "复制",
+        "messageLabel": "要发送的消息",
+        "copyMessage": "复制消息",
+        "messageCopied": "消息已复制",
+        "qrHint": "可打印后放在柜台、传单或橱窗上。",
+        "downloadPng": "下载 PNG",
+        "messageHint": "此文本用于 WhatsApp、电子邮件、短信和复制。",
+        "sendVia": "发送方式",
+        "nativeShareShort": "更多",
+        "customizeMessage": "自定义消息"
       },
       "month": {
         "title": "本月",
         "revenue": "已收款 <strong>{amount}</strong>",
-        "reservations": "{count, plural, other {共 <strong>#</strong> 笔预订}}",
-        "customers": "{count, plural, other {<strong>#</strong> 位客户}}",
-        "seeAnalytics": "查看分析"
+        "reservations": "{count, plural, one {<strong>#</strong> 个预订} other {<strong>#</strong> 个预订}}",
+        "customers": "{count, plural, one {<strong>#</strong> 位新客户} other {<strong>#</strong> 位新客户}}",
+        "seeAnalytics": "查看分析",
+        "growthHint": "与上月同一日期相比"
       },
       "requestsEmpty": {
         "virginTitle": "客户的预订请求会显示在这里",
@@ -1123,14 +1129,144 @@
         "departures": "{count, plural, other {# 次交付}}",
         "returns": "{count, plural, other {# 次归还}}",
         "emptyTitle": "您的交付和归还会显示在这里",
-        "emptyText": "从第一笔预订起，您可以按小时查看当天需要交付和收回的物品。"
+        "emptyText": "从第一笔预订起，您可以按小时查看当天需要交付和收回的物品。",
+        "agenda": {
+          "departure": "取件",
+          "return": "归还",
+          "now": "现在",
+          "moreProducts": "{count, plural, other {另 # 件}}",
+          "productsCount": "{count, plural, other {# 件物品}}",
+          "allDone": "今天的事都办完了"
+        },
+        "quiet": {
+          "none": "目前没有即将到来的预订。",
+          "nextLine": "下一项活动：{date}"
+        },
+        "createReservation": "创建预订",
+        "week": {
+          "previous": "上一周",
+          "next": "下一周",
+          "label": "本周日期",
+          "more": "{count, plural, other {另有 # 项}}",
+          "clickToSee": "点击这一天查看全部"
+        },
+        "otherDay": {
+          "emptyTitle": "当天没有安排",
+          "error": "无法加载这一天，请稍后重试。",
+          "backToToday": "回到今天",
+          "openCalendar": "在日历中打开",
+          "noneSoon": "之后 {weeks} 周内没有安排。"
+        },
+        "calendar": "日历"
       },
       "upcoming": {
-        "title": "接下来几天",
+        "title": "未来 7 天",
         "tomorrow": "明天",
         "departures": "{count, plural, other {# 次交付}}",
         "returns": "{count, plural, other {# 次归还}}",
         "nothing": "暂无安排"
+      },
+      "overdue": {
+        "title": "待处理",
+        "returnDue": "应于 {date} 归还",
+        "departureDue": "应于 {date} 取件",
+        "returnsCount": "{count, plural, one {# 个归还未到} other {# 个归还未到}}",
+        "departuresCount": "{count, plural, one {# 个取件未交付} other {# 个取件未交付}}",
+        "lateMinutes": "{count} 分钟",
+        "lateHours": "{count} 小时",
+        "lateDays": "{count} 天",
+        "groupedNotReturned": "{count, plural, other {# 个逾期归还}}",
+        "groupedToConfirm": "{count, plural, other {# 个交付待确认}}",
+        "compact": "{count, plural, other {# 个预订待处理}}",
+        "oldestReturn": "最早的 {relative}",
+        "oldestDeparture": "最早的 {relative}",
+        "oldestMixed": "最早的 {relative}",
+        "dueReturn": "计划 {relative}",
+        "dueDeparture": "计划 {relative}"
+      },
+      "list": {
+        "more": "{count, plural, one {查看另外 # 个} other {查看另外 # 个}}"
+      },
+      "path": {
+        "title": "获得第一批请求",
+        "readyTitle": "一切就绪",
+        "readyText": "客户的请求将显示在这里。",
+        "steps": {
+          "product": {
+            "title": "添加产品",
+            "text": "这是客户要预订的内容。名称、照片和价格就足以开始。",
+            "manage": "管理我的产品"
+          },
+          "share": {
+            "title": "分享您的店铺",
+            "text": "将链接发送给客户，或添加到您的 Google 商家资料和社交媒体。"
+          },
+          "payments": {
+            "title": "启用在线支付",
+            "resumeText": "还差一步：验证您的身份——身份证件和 IBAN，5 到 10 分钟。",
+            "verifyingText": "Stripe 正在验证您的身份：之后在线支付将自动启用。",
+            "verifyingBadge": "验证中",
+            "done": "已启用在线支付",
+            "start": "设置 Stripe",
+            "modeTitle": "收款方式",
+            "switchToOnline": "改用在线支付"
+          }
+        }
+      },
+      "tips": {
+        "label": "下一步",
+        "dismiss": "隐藏此提示",
+        "manualReservation": {
+          "title": "客户通过电话预订了？",
+          "text": "录入其预订：它将显示在您的日程和日历中。",
+          "action": "创建预订"
+        },
+        "reviewBooster": {
+          "title": "让满意的客户为您发声",
+          "text": "每次租赁后发送 Google 评价请求。",
+          "action": "开启评价"
+        },
+        "onlinePayments": {
+          "title": "告别现场收款",
+          "text": "改用在线支付：客户在预订时付款。预付款减少爽约，押金以银行卡预授权方式冻结，不扣款。",
+          "action": "设置 Stripe"
+        }
+      },
+      "paymentsStatus": {
+        "startTitle": "在线支付尚未启用",
+        "resumeTitle": "在线支付：待验证身份",
+        "verifyingTitle": "在线支付：Stripe 验证中",
+        "meanwhile": "在 Stripe 就绪之前，预订会以请求形式到达，由您自行确认。"
+      },
+      "reeentBanner": {
+        "start": {
+          "text": "<b>启用在线支付即可出现在 <reeent>reeent</reeent> 上</b>：那里只发布支持在线收款的店铺。",
+          "action": "启用"
+        },
+        "resume": {
+          "text": "<b>距离 <reeent>reeent</reeent> 只差一步</b>：使用身份证件和 IBAN 验证身份（5 到 10 分钟）。",
+          "action": "继续"
+        },
+        "verifying": {
+          "chip": "验证中",
+          "text": "<b>Stripe 正在验证您的身份</b>，之后您的店铺将自动出现在 <reeent>reeent</reeent> 上。",
+          "idle": "无需操作"
+        },
+        "seats": {
+          "text": "<b>在 <reeent>reeent</reeent> 上获得新客户</b>，租赁交易平台：前 {total, number} 家店铺<em>终身 0 佣金</em>。",
+          "action": "了解 reeent"
+        },
+        "member": {
+          "text": "<b>您的店铺已在 <reeent>reeent</reeent> 上线</b>，<em>终身免 reeent 佣金</em>：您是前 {total, number} 家店铺之一。",
+          "textRank": "<b>您的店铺已在 <reeent>reeent</reeent> 上线</b>，<em>终身免 reeent 佣金</em>：您是前 {total, number} 家店铺之一（第 {rank, number} 家）。",
+          "action": "查看我的 reeent 页面"
+        },
+        "dismiss": "隐藏"
+      },
+      "shop": {
+        "copy": "复制链接",
+        "copied": "链接已复制",
+        "share": "分享"
       }
     },
     "products": {
@@ -2381,7 +2517,8 @@
         "all": "全部",
         "today": "今天",
         "thisWeek": "本周",
-        "thisMonth": "这个月"
+        "thisMonth": "这个月",
+        "overdue": "已逾期"
       },
       "actions": {
         "accept": "接受",
@@ -6526,6 +6663,13 @@
       "sourceHint": "浏览源代码",
       "star": "留下一颗星",
       "later": "也许稍后"
+    },
+    "headerMenu": {
+      "create": "创建",
+      "more": "更多操作",
+      "newProduct": "新产品",
+      "newCustomer": "新客户",
+      "shareStore": "分享我的店铺"
     }
   },
   "storefront": {

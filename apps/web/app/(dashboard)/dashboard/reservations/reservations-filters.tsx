@@ -33,7 +33,7 @@ interface ReservationsFiltersProps {
 }
 
 const STATUS_KEYS = ["all", "pending", "confirmed", "ongoing", "completed", "cancelled"] as const;
-const PERIOD_KEYS = ["all", "today", "thisWeek", "thisMonth"] as const;
+const PERIOD_KEYS = ["all", "today", "thisWeek", "thisMonth", "overdue"] as const;
 const PAYMENT_METHOD_KEYS = ["stripe", "cash", "card", "transfer", "check", "other"] as const;
 
 export const ReservationsFilters = ({
@@ -177,6 +177,7 @@ export const ReservationsFilters = ({
     today: "today",
     thisWeek: "week",
     thisMonth: "month",
+    overdue: "overdue",
   };
 
   // Map URL values back to keys for display
@@ -185,6 +186,7 @@ export const ReservationsFilters = ({
     today: "today",
     week: "thisWeek",
     month: "thisMonth",
+    overdue: "overdue",
   };
 
   return (

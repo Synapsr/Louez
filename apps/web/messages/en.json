@@ -528,7 +528,9 @@
       "aiCreditsLow": "Credit balance running low",
       "sectionPages": "{section} pages",
       "copyStoreLink": "Copy store link",
-      "storeLinkCopied": "Link copied"
+      "storeLinkCopied": "Link copied",
+      "shareStore": "Share my store",
+      "pendingRequests": "{count, plural, one {# pending request} other {# pending requests}}"
     },
     "shortcuts": {
       "actions": {
@@ -999,7 +1001,8 @@
           "building": "{count, plural, one {# product created} other {# products created}}. Share your store!",
           "pending": "{count, plural, one {# pending request} other {# pending requests}}",
           "operations": "{count, plural, one {# operation today} other {# operations today}}",
-          "calm": "All quiet today."
+          "calm": "All quiet today.",
+          "overdue": "{count, plural, one {# overdue booking} other {# overdue bookings}}"
         },
         "cta": {
           "addFirstProduct": "Add my first product",
@@ -1009,12 +1012,7 @@
         }
       },
       "reeentStripe": {
-        "title": "Your store isn't visible on <reeent>reeent</reeent> yet",
-        "description": "Until online payments are active, reeent does not publish your store. The launch offer (0 € reeent commission for life) applies from publication, as long as spots remain.",
-        "continueSetup": "Continue Stripe setup",
-        "activate": "Activate online payments",
-        "paymentSettings": "Payment settings",
-        "status": "Not published yet"
+        "paymentSettings": "Payment settings"
       },
       "setup": {
         "title": "Getting started",
@@ -1072,7 +1070,14 @@
       "pending": {
         "title": "Pending requests",
         "description": "Reservations requiring your approval",
-        "empty": "No pending requests"
+        "empty": "No pending requests",
+        "urgency": {
+          "past": "Date passed",
+          "today": "Starts today",
+          "tomorrow": "Starts tomorrow",
+          "soon": "{count, plural, one {In # day} other {In # days}}"
+        },
+        "requested": "Requested {relative}"
       },
       "storefront": {
         "title": "Your store",
@@ -1089,27 +1094,28 @@
         "title": "Share your store",
         "description": "Send your store link to your customers",
         "copyLink": "Copy link",
-        "copyLinkDescription": "Copy URL to clipboard",
         "copied": "Copied!",
-        "whatsappDescription": "Send via WhatsApp",
         "whatsappMessage": "Check out our rental store: {url}",
         "email": "Email",
-        "emailDescription": "Send via email",
         "emailSubject": "Discover our rental store",
-        "emailBody": "Hello,\n\nI invite you to discover our rental store:\n{url}\n\nSee you soon!",
-        "smsDescription": "Send via SMS",
-        "smsMessage": "Check out our rental store: {url}",
-        "showQR": "Show QR code",
-        "hideQR": "Hide QR code",
-        "qrDescription": "Scan this code to access the store",
-        "downloadQR": "Download"
+        "copyShort": "Copy",
+        "messageLabel": "Message to send",
+        "copyMessage": "Copy message",
+        "messageCopied": "Message copied",
+        "qrHint": "Print it for your counter, flyers or shop window.",
+        "downloadPng": "Download PNG",
+        "messageHint": "This text goes with WhatsApp, e-mail, SMS and copy.",
+        "sendVia": "Send by",
+        "nativeShareShort": "More",
+        "customizeMessage": "Customize the message"
       },
       "month": {
         "title": "This month",
         "revenue": "<strong>{amount}</strong> collected",
-        "reservations": "{count, plural, one {<strong>#</strong> booking in total} other {<strong>#</strong> bookings in total}}",
-        "customers": "{count, plural, one {<strong>#</strong> customer} other {<strong>#</strong> customers}}",
-        "seeAnalytics": "See analytics"
+        "reservations": "{count, plural, one {<strong>#</strong> booking} other {<strong>#</strong> bookings}}",
+        "customers": "{count, plural, one {<strong>#</strong> new customer} other {<strong>#</strong> new customers}}",
+        "seeAnalytics": "See analytics",
+        "growthHint": "Compared with the same date last month"
       },
       "requestsEmpty": {
         "virginTitle": "Your customers' requests will show up here",
@@ -1123,14 +1129,144 @@
         "departures": "{count, plural, one {# pickup} other {# pickups}}",
         "returns": "{count, plural, one {# return} other {# returns}}",
         "emptyTitle": "Your pickups and returns will show up here",
-        "emptyText": "From the first booking, the day will read hour by hour, with what to hand over and what to get back."
+        "emptyText": "From the first booking, the day will read hour by hour, with what to hand over and what to get back.",
+        "agenda": {
+          "departure": "Pickup",
+          "return": "Return",
+          "now": "Now",
+          "moreProducts": "{count, plural, one {+ # more} other {+ # more}}",
+          "productsCount": "{count, plural, one {# item} other {# items}}",
+          "allDone": "All done for today"
+        },
+        "quiet": {
+          "none": "No upcoming booking for now.",
+          "nextLine": "Next activity: {date}"
+        },
+        "createReservation": "Create a booking",
+        "week": {
+          "previous": "Previous week",
+          "next": "Next week",
+          "label": "Days of the week",
+          "more": "{count, plural, one {+ # more} other {+ # more}}",
+          "clickToSee": "Click the day to see everything"
+        },
+        "otherDay": {
+          "emptyTitle": "Nothing planned that day",
+          "error": "This day couldn't be loaded. Try again in a moment.",
+          "backToToday": "Back to today",
+          "openCalendar": "Open in the calendar",
+          "noneSoon": "Nothing planned in the next {weeks} weeks."
+        },
+        "calendar": "Calendar"
       },
       "upcoming": {
-        "title": "Coming days",
+        "title": "The next 7 days",
         "tomorrow": "Tomorrow",
         "departures": "{count, plural, one {# pickup} other {# pickups}}",
         "returns": "{count, plural, one {# return} other {# returns}}",
         "nothing": "Nothing planned"
+      },
+      "overdue": {
+        "title": "To settle",
+        "returnDue": "Return due {date}",
+        "departureDue": "Pickup due {date}",
+        "returnsCount": "{count, plural, one {# return not back} other {# returns not back}}",
+        "departuresCount": "{count, plural, one {# pickup not handed over} other {# pickups not handed over}}",
+        "lateMinutes": "{count} min",
+        "lateHours": "{count} h",
+        "lateDays": "{count} d",
+        "groupedNotReturned": "{count, plural, one {# late return} other {# late returns}}",
+        "groupedToConfirm": "{count, plural, one {# hand-over to confirm} other {# hand-overs to confirm}}",
+        "compact": "{count, plural, one {# reservation to settle} other {# reservations to settle}}",
+        "oldestReturn": "oldest {relative}",
+        "oldestDeparture": "oldest {relative}",
+        "oldestMixed": "oldest {relative}",
+        "dueReturn": "due {relative}",
+        "dueDeparture": "due {relative}"
+      },
+      "list": {
+        "more": "{count, plural, one {See # more} other {See # more}}"
+      },
+      "path": {
+        "title": "To get your first requests",
+        "readyTitle": "All set",
+        "readyText": "Your customers' requests will show up here.",
+        "steps": {
+          "product": {
+            "title": "Add a product",
+            "text": "It is what your customers book. A name, a photo and a price are enough to start.",
+            "manage": "Manage my products"
+          },
+          "share": {
+            "title": "Share your store",
+            "text": "Send your link to your customers, or add it to your Google profile and social media."
+          },
+          "payments": {
+            "title": "Turn on online payment",
+            "resumeText": "One step left: verify your identity — ID and IBAN, 5 to 10 min.",
+            "verifyingText": "Stripe is verifying your identity: online payment turns on automatically afterwards.",
+            "verifyingBadge": "Verification in progress",
+            "done": "Online payment enabled",
+            "start": "Set up Stripe",
+            "modeTitle": "How you get paid",
+            "switchToOnline": "Switch to online payment"
+          }
+        }
+      },
+      "tips": {
+        "label": "Next step",
+        "dismiss": "Hide this tip",
+        "manualReservation": {
+          "title": "A customer booked by phone?",
+          "text": "Enter their booking: it will show in your day and in the calendar.",
+          "action": "Create the booking"
+        },
+        "reviewBooster": {
+          "title": "Let happy customers speak for you",
+          "text": "Send a Google review request after each rental.",
+          "action": "Turn on reviews"
+        },
+        "onlinePayments": {
+          "title": "Stop chasing payments",
+          "text": "Switch to online payment: your customers pay when they book. Fewer no-shows thanks to prepayment, and the deposit as a card hold, with no charge.",
+          "action": "Set up Stripe"
+        }
+      },
+      "paymentsStatus": {
+        "startTitle": "Online payment not turned on yet",
+        "resumeTitle": "Online payment: identity to verify",
+        "verifyingTitle": "Online payment: Stripe verification in progress",
+        "meanwhile": "Until Stripe is ready, bookings arrive as requests and you approve them yourself."
+      },
+      "reeentBanner": {
+        "start": {
+          "text": "<b>Turn on online payment to appear on <reeent>reeent</reeent></b>: only stores that take payment online are listed there.",
+          "action": "Turn on"
+        },
+        "resume": {
+          "text": "<b>One step left before <reeent>reeent</reeent></b>: verify your identity with an ID and an IBAN (5 to 10 min).",
+          "action": "Resume"
+        },
+        "verifying": {
+          "chip": "Verification in progress",
+          "text": "<b>Stripe is verifying your identity</b>, then your store will appear on <reeent>reeent</reeent> automatically.",
+          "idle": "Nothing to do"
+        },
+        "seats": {
+          "text": "<b>Find new customers on <reeent>reeent</reeent></b>, the rental marketplace: <em>0 € commission for life</em> for the first {total, number} stores.",
+          "action": "Discover reeent"
+        },
+        "member": {
+          "text": "<b>Your store is live on <reeent>reeent</reeent></b>, <em>with no reeent commission for life</em>: you are among the first {total, number} stores.",
+          "textRank": "<b>Your store is live on <reeent>reeent</reeent></b>, <em>with no reeent commission for life</em>: you are among the first {total, number} stores (no. {rank, number}).",
+          "action": "See my reeent page"
+        },
+        "dismiss": "Hide"
+      },
+      "shop": {
+        "copy": "Copy link",
+        "copied": "Link copied",
+        "share": "Share"
       }
     },
     "products": {
@@ -2381,7 +2517,8 @@
         "all": "All",
         "today": "Today",
         "thisWeek": "This week",
-        "thisMonth": "This month"
+        "thisMonth": "This month",
+        "overdue": "Overdue"
       },
       "actions": {
         "accept": "Accept",
@@ -6526,6 +6663,13 @@
       "sourceHint": "Browse the source code",
       "star": "Leave a star",
       "later": "Maybe later"
+    },
+    "headerMenu": {
+      "create": "Create",
+      "more": "More actions",
+      "newProduct": "New product",
+      "newCustomer": "New customer",
+      "shareStore": "Share my store"
     }
   },
   "storefront": {

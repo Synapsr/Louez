@@ -76,7 +76,7 @@ function normalizeStatus(value: string | undefined) {
 }
 
 function normalizePeriod(value: string | undefined) {
-  if (value === "today" || value === "week" || value === "month") return value;
+  if (value === "today" || value === "week" || value === "month" || value === "overdue") return value;
   return undefined;
 }
 

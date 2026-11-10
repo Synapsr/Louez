@@ -41,11 +41,11 @@ export const ShareStoreActions = ({ storeSlug, storeName }: ShareStoreActionsPro
 
   return (
     <>
-      <Button onClick={handleCopy}>
+      <Button size="sm" onClick={handleCopy}>
         {copied ? <Check /> : <Copy />}
         {copied ? t("share.copied") : t("share.copyLink")}
       </Button>
-      <Button variant="outline" onClick={() => setShareOpen(true)}>
+      <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
         <Share2 />
         {t("storefront.share")}
       </Button>

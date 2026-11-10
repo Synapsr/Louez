@@ -121,15 +121,17 @@ export const PlanningScene = ({
                 customerCount: 24,
                 newCustomersThisMonth: 6,
                 totalReservations: 24,
+                reservationsThisMonth: 9,
                 completedReservations: 0,
                 pendingReservations: pendingCount,
                 confirmedReservations: 16,
                 ongoingReservations: 4,
                 todaysDepartures: 3,
                 todaysReturns: 2,
+                overdueDepartures: 0,
+                overdueReturns: 0,
                 monthlyRevenue: 1280,
-                lastMonthRevenue: 1080,
-                allTimeRevenue: 4680,
+                previousPeriodRevenue: 1080,
               }}
             />
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

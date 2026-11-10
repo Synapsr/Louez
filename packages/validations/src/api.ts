@@ -315,7 +315,7 @@ export const dashboardReservationsListInputSchema = z.object({
   status: z
     .enum(["all", "pending", "confirmed", "ongoing", "completed", "cancelled", "rejected", "quote"])
     .optional(),
-  period: z.enum(["today", "week", "month"]).optional(),
+  period: z.enum(["today", "week", "month", "overdue"]).optional(),
   operation: z.enum(["departure", "return"]).optional(),
   paymentMethod: z.enum(["stripe", "cash", "card", "transfer", "check", "other"]).optional(),
   limit: z.number().int().min(1).max(500).optional(),

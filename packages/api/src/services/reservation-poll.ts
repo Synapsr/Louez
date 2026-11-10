@@ -1,6 +1,6 @@
-import { customers, db, receivedInvoices, reservations, storeIntegrations } from '@louez/db'
+import { customers, db, payments, receivedInvoices, reservations, storeIntegrations } from '@louez/db'
 import type { ReservationPollResponse } from '@louez/types'
-import { and, count, desc, eq, sql } from 'drizzle-orm'
+import { and, count, desc, eq, notExists, sql } from 'drizzle-orm'
 
 interface GetReservationPollDataParams {
   storeId: string
@@ -11,10 +11,30 @@ export async function getReservationPollData(
 ): Promise<ReservationPollResponse> {
   const { storeId } = params
 
+  // A pending reservation waits on the owner unless its online checkout is
+  // underway: that one confirms itself when paid (same reading as the home).
+  const awaitsOwner = and(
+    eq(reservations.storeId, storeId),
+    eq(reservations.status, 'pending'),
+    notExists(
+      db
+        .select({ id: payments.id })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.reservationId, reservations.id),
+            eq(payments.method, 'stripe'),
+            eq(payments.type, 'rental'),
+            eq(payments.status, 'pending'),
+          ),
+        ),
+    ),
+  )
+
   const pendingResult = await db
     .select({ count: count() })
     .from(reservations)
-    .where(and(eq(reservations.storeId, storeId), eq(reservations.status, 'pending')))
+    .where(awaitsOwner)
 
   const latestReservation = await db.query.reservations.findFirst({
     where: and(
@@ -42,7 +62,7 @@ export async function getReservationPollData(
     })
     .from(reservations)
     .leftJoin(customers, eq(reservations.customerId, customers.id))
-    .where(and(eq(reservations.storeId, storeId), eq(reservations.status, 'pending')))
+    .where(awaitsOwner)
     .orderBy(desc(reservations.createdAt))
     .limit(5)
 

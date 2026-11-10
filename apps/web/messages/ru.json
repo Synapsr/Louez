@@ -528,7 +528,9 @@
       "aiCreditsLow": "Кредитный баланс на исходе",
       "sectionPages": "Страницы раздела «{section}»",
       "copyStoreLink": "Скопировать ссылку на магазин",
-      "storeLinkCopied": "Ссылка скопирована"
+      "storeLinkCopied": "Ссылка скопирована",
+      "shareStore": "Поделиться магазином",
+      "pendingRequests": "{count, plural, one {# заявка ожидает} few {# заявки ожидают} many {# заявок ожидают} other {# заявки ожидают}}"
     },
     "shortcuts": {
       "actions": {
@@ -999,7 +1001,8 @@
           "building": "{count,plural,one{создан # продукт} few{создано # продукта} many{создано # продуктов} other{Создано # продукта}}. Поделитесь своим магазином!",
           "pending": "{count,plural,one{# ожидающий запрос} few{# ожидающих запроса} many{# ожидающих запросов} other{# ожидающих запросов}}",
           "operations": "{count,plural,one{# операция сегодня} few{# операции сегодня} many{# операций сегодня} other{# операции сегодня}}",
-          "calm": "Сегодня все тихо."
+          "calm": "Сегодня все тихо.",
+          "overdue": "{count, plural, one {# просроченное бронирование} few {# просроченных бронирования} many {# просроченных бронирований} other {# просроченного бронирования}}"
         },
         "cta": {
           "addFirstProduct": "Добавить мой первый продукт",
@@ -1009,12 +1012,7 @@
         }
       },
       "reeentStripe": {
-        "title": "Ваш магазин пока не виден на <reeent>reeent</reeent>",
-        "description": "Пока онлайн-платежи не активны, reeent не публикует ваш магазин. Предложение по запуску (пожизненная комиссия в размере 0 евро) действует с момента публикации, пока остаются места.",
-        "continueSetup": "Продолжить настройку Stripe",
-        "activate": "Активируйте онлайн-платежи",
-        "paymentSettings": "Настройки оплаты",
-        "status": "Ещё не опубликован"
+        "paymentSettings": "Настройки оплаты"
       },
       "setup": {
         "title": "Начало работы",
@@ -1072,7 +1070,14 @@
       "pending": {
         "title": "Ожидающие запросы",
         "description": "Бронирование, требующее вашего одобрения",
-        "empty": "Нет ожидающих запросов"
+        "empty": "Нет ожидающих запросов",
+        "urgency": {
+          "past": "Дата прошла",
+          "today": "Начинается сегодня",
+          "tomorrow": "Начинается завтра",
+          "soon": "{count, plural, one {Через # день} few {Через # дня} many {Через # дней} other {Через # дня}}"
+        },
+        "requested": "Запрошено {relative}"
       },
       "storefront": {
         "title": "Ваш магазин",
@@ -1089,27 +1094,28 @@
         "title": "Поделитесь своим магазином",
         "description": "Отправьте ссылку на свой магазин своим клиентам",
         "copyLink": "Копировать ссылку",
-        "copyLinkDescription": "Скопировать URL в буфер обмена",
         "copied": "Скопировано!",
-        "whatsappDescription": "Отправить через WhatsApp",
         "whatsappMessage": "Посетите наш пункт проката: {url}",
         "email": "электронная почта",
-        "emailDescription": "Отправить по электронной почте",
         "emailSubject": "Откройте для себя наш пункт проката",
-        "emailBody": "Здравствуйте!\n\nПриглашаю вас в наш магазин проката:\n{url}\n\nДо встречи!",
-        "smsDescription": "Отправить по СМС",
-        "smsMessage": "Посетите наш пункт проката: {url}",
-        "showQR": "Показать QR-код",
-        "hideQR": "Скрыть QR-код",
-        "qrDescription": "Отсканируйте этот код, чтобы получить доступ к магазину",
-        "downloadQR": "Скачать"
+        "copyShort": "Копировать",
+        "messageLabel": "Сообщение для отправки",
+        "copyMessage": "Копировать сообщение",
+        "messageCopied": "Сообщение скопировано",
+        "qrHint": "Распечатайте для стойки, листовок или витрины.",
+        "downloadPng": "Скачать PNG",
+        "messageHint": "Этот текст уходит в WhatsApp, e-mail, SMS и при копировании.",
+        "sendVia": "Отправить через",
+        "nativeShareShort": "Ещё",
+        "customizeMessage": "Изменить сообщение"
       },
       "month": {
         "title": "В этом месяце",
         "revenue": "<strong>{amount}</strong> получено",
-        "reservations": "{count, plural, one {<strong>#</strong> бронирование всего} few {<strong>#</strong> бронирования всего} many {<strong>#</strong> бронирований всего} other {<strong>#</strong> бронирования всего}}",
-        "customers": "{count, plural, one {<strong>#</strong> клиент} few {<strong>#</strong> клиента} many {<strong>#</strong> клиентов} other {<strong>#</strong> клиента}}",
-        "seeAnalytics": "Открыть аналитику"
+        "reservations": "{count, plural, one {<strong>#</strong> бронирование} few {<strong>#</strong> бронирования} many {<strong>#</strong> бронирований} other {<strong>#</strong> бронирования}}",
+        "customers": "{count, plural, one {<strong>#</strong> новый клиент} few {<strong>#</strong> новых клиента} many {<strong>#</strong> новых клиентов} other {<strong>#</strong> нового клиента}}",
+        "seeAnalytics": "Открыть аналитику",
+        "growthHint": "По сравнению с той же датой прошлого месяца"
       },
       "requestsEmpty": {
         "virginTitle": "Здесь появятся заявки ваших клиентов",
@@ -1123,14 +1129,144 @@
         "departures": "{count, plural, one {# выдача} few {# выдачи} many {# выдач} other {# выдачи}}",
         "returns": "{count, plural, one {# возврат} few {# возврата} many {# возвратов} other {# возврата}}",
         "emptyTitle": "Здесь появятся выдачи и возвраты",
-        "emptyText": "С первого бронирования день будет виден по часам: что выдать и что принять."
+        "emptyText": "С первого бронирования день будет виден по часам: что выдать и что принять.",
+        "agenda": {
+          "departure": "Выдача",
+          "return": "Возврат",
+          "now": "Сейчас",
+          "moreProducts": "{count, plural, one {+ ещё #} few {+ ещё #} many {+ ещё #} other {+ ещё #}}",
+          "productsCount": "{count, plural, one {# товар} few {# товара} many {# товаров} other {# товара}}",
+          "allDone": "На сегодня всё сделано"
+        },
+        "quiet": {
+          "none": "Пока нет предстоящих бронирований.",
+          "nextLine": "Следующая активность: {date}"
+        },
+        "createReservation": "Создать бронирование",
+        "week": {
+          "previous": "Предыдущая неделя",
+          "next": "Следующая неделя",
+          "label": "Дни недели",
+          "more": "{count, plural, one {+ ещё #} few {+ ещё #} many {+ ещё #} other {+ ещё #}}",
+          "clickToSee": "Нажмите на день, чтобы увидеть всё"
+        },
+        "otherDay": {
+          "emptyTitle": "На этот день ничего не запланировано",
+          "error": "Не удалось загрузить этот день. Попробуйте ещё раз чуть позже.",
+          "backToToday": "Вернуться к сегодня",
+          "openCalendar": "Открыть в календаре",
+          "noneSoon": "В следующие {weeks} недели ничего не запланировано."
+        },
+        "calendar": "Календарь"
       },
       "upcoming": {
-        "title": "Ближайшие дни",
+        "title": "Ближайшие 7 дней",
         "tomorrow": "Завтра",
         "departures": "{count, plural, one {# выдача} few {# выдачи} many {# выдач} other {# выдачи}}",
         "returns": "{count, plural, one {# возврат} few {# возврата} many {# возвратов} other {# возврата}}",
         "nothing": "Ничего не запланировано"
+      },
+      "overdue": {
+        "title": "Требует внимания",
+        "returnDue": "Возврат ожидался {date}",
+        "departureDue": "Выдача ожидалась {date}",
+        "returnsCount": "{count, plural, one {# возврат не получен} few {# возврата не получены} many {# возвратов не получены} other {# возврата не получено}}",
+        "departuresCount": "{count, plural, one {# выдача не выполнена} few {# выдачи не выполнены} many {# выдач не выполнены} other {# выдачи не выполнено}}",
+        "lateMinutes": "{count} мин",
+        "lateHours": "{count} ч",
+        "lateDays": "{count} дн.",
+        "groupedNotReturned": "{count, plural, one {# просроченный возврат} few {# просроченных возврата} many {# просроченных возвратов} other {# просроченных возврата}}",
+        "groupedToConfirm": "{count, plural, one {# выдача к подтверждению} few {# выдачи к подтверждению} many {# выдач к подтверждению} other {# выдачи к подтверждению}}",
+        "compact": "{count, plural, one {# бронирование требует внимания} few {# бронирования требуют внимания} many {# бронирований требуют внимания} other {# бронирования требуют внимания}}",
+        "oldestReturn": "самый давний {relative}",
+        "oldestDeparture": "самая давняя {relative}",
+        "oldestMixed": "самое давнее {relative}",
+        "dueReturn": "по плану {relative}",
+        "dueDeparture": "по плану {relative}"
+      },
+      "list": {
+        "more": "{count, plural, one {Показать ещё #} few {Показать ещё #} many {Показать ещё #} other {Показать ещё #}}"
+      },
+      "path": {
+        "title": "Чтобы получить первые заявки",
+        "readyTitle": "Всё готово",
+        "readyText": "Заявки ваших клиентов появятся здесь.",
+        "steps": {
+          "product": {
+            "title": "Добавьте товар",
+            "text": "Именно его бронируют клиенты. Для начала достаточно названия, фото и цены.",
+            "manage": "Управлять товарами"
+          },
+          "share": {
+            "title": "Поделитесь магазином",
+            "text": "Отправьте ссылку клиентам или добавьте её в профиль Google и соцсети."
+          },
+          "payments": {
+            "title": "Включить онлайн-оплату",
+            "resumeText": "Остался один шаг: подтвердите личность — документ и IBAN, 5–10 мин.",
+            "verifyingText": "Stripe проверяет вашу личность: затем онлайн-оплата включится автоматически.",
+            "verifyingBadge": "Идёт проверка",
+            "done": "Онлайн-оплата включена",
+            "start": "Настроить Stripe",
+            "modeTitle": "Способ оплаты",
+            "switchToOnline": "Перейти на онлайн-оплату"
+          }
+        }
+      },
+      "tips": {
+        "label": "Следующий шаг",
+        "dismiss": "Скрыть совет",
+        "manualReservation": {
+          "title": "Клиент забронировал по телефону?",
+          "text": "Внесите его бронирование: оно появится в вашем дне и в календаре.",
+          "action": "Создать бронирование"
+        },
+        "reviewBooster": {
+          "title": "Пусть довольные клиенты говорят за вас",
+          "text": "Отправляйте запрос отзыва в Google после каждой аренды.",
+          "action": "Включить отзывы"
+        },
+        "onlinePayments": {
+          "title": "Забудьте о сборе оплаты",
+          "text": "Перейдите на онлайн-оплату: клиенты платят при бронировании. Меньше неявок благодаря предоплате, а залог — блокировка на карте без списания.",
+          "action": "Настроить Stripe"
+        }
+      },
+      "paymentsStatus": {
+        "startTitle": "Онлайн-оплата ещё не включена",
+        "resumeTitle": "Онлайн-оплата: нужно подтвердить личность",
+        "verifyingTitle": "Онлайн-оплата: идёт проверка Stripe",
+        "meanwhile": "Пока Stripe не готов, бронирования приходят как заявки, и вы подтверждаете их сами."
+      },
+      "reeentBanner": {
+        "start": {
+          "text": "<b>Включите онлайн-оплату, чтобы появиться на <reeent>reeent</reeent></b>: там публикуются только магазины с онлайн-оплатой.",
+          "action": "Включить"
+        },
+        "resume": {
+          "text": "<b>Остался один шаг до <reeent>reeent</reeent></b>: подтвердите личность документом и IBAN (5–10 мин).",
+          "action": "Продолжить"
+        },
+        "verifying": {
+          "chip": "Идёт проверка",
+          "text": "<b>Stripe проверяет вашу личность</b>, затем магазин автоматически появится на <reeent>reeent</reeent>.",
+          "idle": "Ничего делать не нужно"
+        },
+        "seats": {
+          "text": "<b>Находите новых клиентов на <reeent>reeent</reeent></b>, маркетплейсе аренды: <em>0 € комиссии навсегда</em> для первых {total, number} магазинов.",
+          "action": "Узнать о reeent"
+        },
+        "member": {
+          "text": "<b>Ваш магазин доступен на <reeent>reeent</reeent></b>, <em>без комиссии reeent навсегда</em>: вы среди первых {total, number} магазинов.",
+          "textRank": "<b>Ваш магазин доступен на <reeent>reeent</reeent></b>, <em>без комиссии reeent навсегда</em>: вы среди первых {total, number} магазинов (№ {rank, number}).",
+          "action": "Моя страница на reeent"
+        },
+        "dismiss": "Скрыть"
+      },
+      "shop": {
+        "copy": "Копировать ссылку",
+        "copied": "Ссылка скопирована",
+        "share": "Поделиться"
       }
     },
     "products": {
@@ -2381,7 +2517,8 @@
         "all": "Все",
         "today": "Сегодня",
         "thisWeek": "На этой неделе",
-        "thisMonth": "В этом месяце"
+        "thisMonth": "В этом месяце",
+        "overdue": "Просрочено"
       },
       "actions": {
         "accept": "Принять",
@@ -6526,6 +6663,13 @@
       "sourceHint": "Просмотрите исходный код",
       "star": "Оставить звезду",
       "later": "Может быть, позже"
+    },
+    "headerMenu": {
+      "create": "Создать",
+      "more": "Другие действия",
+      "newProduct": "Новый товар",
+      "newCustomer": "Новый клиент",
+      "shareStore": "Поделиться магазином"
     }
   },
   "storefront": {

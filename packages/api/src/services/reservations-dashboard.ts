@@ -10,6 +10,7 @@ import {
   gte,
   inArray,
   like,
+  lt,
   lte,
   not,
   or,
@@ -38,7 +39,8 @@ type ReservationStatus =
 export async function getDashboardReservationsList(params: {
   storeId: string;
   status?: "all" | ReservationStatus;
-  period?: "today" | "week" | "month";
+  /** `overdue`: a hand-over or return whose time has passed and was never recorded. */
+  period?: "today" | "week" | "month" | "overdue";
   operation?: "departure" | "return";
   paymentMethod?: "stripe" | "cash" | "card" | "transfer" | "check" | "other";
   limit: number;
@@ -106,7 +108,19 @@ export async function getDashboardReservationsList(params: {
 
   const now = new Date();
   const dateColumn = operation === "return" ? reservations.endDate : reservations.startDate;
-  if (period === "today") {
+  if (period === "overdue") {
+    // Still `confirmed` past its pickup time: never handed over. Still
+    // `ongoing` past its return time: the gear is not back.
+    const lateDeparture = and(eq(reservations.status, "confirmed"), lt(reservations.startDate, now))!;
+    const lateReturn = and(eq(reservations.status, "ongoing"), lt(reservations.endDate, now))!;
+    conditions.push(
+      operation === "departure"
+        ? lateDeparture
+        : operation === "return"
+          ? lateReturn
+          : or(lateDeparture, lateReturn)!,
+    );
+  } else if (period === "today") {
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(now);

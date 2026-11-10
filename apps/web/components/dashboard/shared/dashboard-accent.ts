@@ -14,7 +14,9 @@ export type DashboardAccent =
   | "submitted"
   | "review"
   | "neutral"
-  | "primary";
+  | "primary"
+  // Something that should have happened and did not: overdue hand-overs and returns.
+  | "failed";
 
 /** Background + foreground pair for an accented surface (icon tile, dot, …). */
 export const DASHBOARD_ACCENT_SURFACE: Record<DashboardAccent, string> = {
@@ -25,6 +27,7 @@ export const DASHBOARD_ACCENT_SURFACE: Record<DashboardAccent, string> = {
   review: "bg-badge-review-background text-badge-review-foreground",
   neutral: "bg-badge-expired-background text-badge-expired-foreground",
   primary: "bg-primary/10 text-primary",
+  failed: "bg-badge-failed-background text-badge-failed-foreground",
 };
 
 /** Solid fill for charts and progress bars — the accent's foreground colour. */
@@ -36,4 +39,5 @@ export const DASHBOARD_ACCENT_FILL: Record<DashboardAccent, string> = {
   review: "bg-badge-review-foreground",
   neutral: "bg-badge-expired-foreground",
   primary: "bg-primary",
+  failed: "bg-badge-failed-foreground",
 };

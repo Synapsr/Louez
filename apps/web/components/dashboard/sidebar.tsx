@@ -41,10 +41,6 @@ import { HelpGlassIcon } from "@louez/ui/icons/glass";
 import { UserAvatar } from "@/components/dashboard/shared/user-avatar";
 import { useInstanceConfig } from "@/components/instance-provider";
 import { InstallPrompt } from "@/components/dashboard/install-prompt";
-import {
-  MarketplaceCohortNotice,
-  type MarketplaceCohortNoticeProps,
-} from "@/components/dashboard/marketplace-cohort-notice";
 import { SidebarSetupChecklist } from "@/components/dashboard/setup/sidebar-setup-checklist";
 import type { OnlinePaymentsContext } from "@/components/dashboard/setup/use-setup-checklist-items";
 import type { OnlinePaymentsStep, SetupProgressCounts } from "@/lib/dashboard/setup-progress";
@@ -56,6 +52,7 @@ import { ThemeMenuSub } from "@/components/dashboard/theme-toggle";
 import { WhatsNewSidebarItem } from "@/components/dashboard/whats-new-sidebar-item";
 import { LanguageMenuSub } from "@/components/ui/language-switcher";
 
+import { useReservationPolling } from "@/contexts/reservation-polling-context";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import { aiCreditsQueries } from "@/lib/queries/ai-credits.queries";
 import { cn } from "@/lib/utils";
@@ -96,7 +93,6 @@ interface DashboardSidebarProps {
     counts: SetupProgressCounts;
     onlinePaymentsStep: OnlinePaymentsStep;
     onlinePaymentsContext: OnlinePaymentsContext;
-    cohort: Omit<MarketplaceCohortNoticeProps, "className"> | null;
   };
 }
 
@@ -318,6 +314,8 @@ export const DashboardSidebar = ({
   setup,
 }: DashboardSidebarProps) => {
   const pathname = usePathname();
+  // Requests waiting on the owner, refreshed with the reservations poll.
+  const { pendingCount } = useReservationPolling();
   const balanceQuery = useQuery({
     ...aiCreditsQueries.balance(),
     enabled: aiCredits !== null,
@@ -344,7 +342,11 @@ export const DashboardSidebar = ({
           isFromReeent={isFromReeent}
         />
 
-        <DashboardNavigation pathname={pathname} aiCredits={liveAiCredits} />
+        <DashboardNavigation
+          pathname={pathname}
+          aiCredits={liveAiCredits}
+          pendingRequestCount={pendingCount}
+        />
         <SidebarFooter>
           <SidebarMenu>
             {/* Nudges sit in the same menu as the utilities they resemble —
@@ -357,7 +359,6 @@ export const DashboardSidebar = ({
               storeSlug={storeSlug ?? ""}
               onlinePaymentsStep={setup.onlinePaymentsStep}
               onlinePaymentsContext={setup.onlinePaymentsContext}
-              footer={setup.cohort ? <MarketplaceCohortNotice {...setup.cohort} /> : null}
             />
             <WhatsNewSidebarItem />
             <HelpButton />

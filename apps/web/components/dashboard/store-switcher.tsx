@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
+import { Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -33,6 +34,7 @@ import { cn } from "@louez/utils";
 
 import { switchStore } from "@/app/(dashboard)/dashboard/actions";
 import { useInstanceConfig } from "@/components/instance-provider";
+import { useStoreShare } from "@/contexts/store-share-context";
 import { canOptimizeImage } from "@/lib/storage/image-optimizer";
 
 function StoreLogo({
@@ -158,6 +160,7 @@ export function StoreSwitcher({
 }: StoreSwitcherProps) {
   const t = useTranslations("dashboard.storeSwitcher");
   const tSidebar = useTranslations("dashboard.sidebar");
+  const share = useStoreShare();
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
@@ -327,6 +330,19 @@ export function StoreSwitcher({
                 )}
               </div>
             ))}
+            {share.url && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  share.open();
+                }}
+                className="text-foreground/85 hover:bg-accent hover:text-foreground focus-visible:ring-ring ease-lagon flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-medium transition-colors duration-100 outline-hidden focus-visible:ring-2"
+              >
+                <Share2 className="text-primary size-4 shrink-0" aria-hidden />
+                {tSidebar("shareStore")}
+              </button>
+            )}
           </div>
         )}
         <Command open filter={null} autoHighlight={false} keepHighlight={false}>

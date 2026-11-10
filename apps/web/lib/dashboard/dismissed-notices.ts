@@ -9,7 +9,14 @@ import { z } from "zod";
  * The two cohort states have their own id: closing the seats pitch must not
  * hide the badge the store earns later.
  */
-export const DISMISSIBLE_NOTICE_IDS = ["reeent-cohort-member", "reeent-cohort-seats"] as const;
+export const DISMISSIBLE_NOTICE_IDS = [
+  "reeent-cohort-member",
+  "reeent-cohort-seats",
+  // The home's "next step" tips (util.home-tip.ts).
+  "home-tip-online-payments",
+  "home-tip-manual-reservation",
+  "home-tip-review-booster",
+] as const;
 
 export type DismissibleNoticeId = (typeof DISMISSIBLE_NOTICE_IDS)[number];
 

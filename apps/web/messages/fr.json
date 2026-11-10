@@ -528,7 +528,9 @@
       "aiCreditsLow": "Solde de crédits bas",
       "sectionPages": "Pages de la section {section}",
       "copyStoreLink": "Copier le lien de la boutique",
-      "storeLinkCopied": "Lien copié"
+      "storeLinkCopied": "Lien copié",
+      "shareStore": "Partager ma boutique",
+      "pendingRequests": "{count, plural, one {# demande en attente} other {# demandes en attente}}"
     },
     "shortcuts": {
       "actions": {
@@ -999,7 +1001,8 @@
           "building": "{count, plural, one {# produit créé} other {# produits créés}}. Partagez votre boutique !",
           "pending": "{count, plural, one {# demande en attente} other {# demandes en attente}}",
           "operations": "{count, plural, one {# opération aujourd'hui} other {# opérations aujourd'hui}}",
-          "calm": "Tout roule aujourd'hui."
+          "calm": "Tout roule aujourd'hui.",
+          "overdue": "{count, plural, one {# réservation en retard} other {# réservations en retard}}"
         },
         "cta": {
           "addFirstProduct": "Ajouter mon premier produit",
@@ -1009,12 +1012,7 @@
         }
       },
       "reeentStripe": {
-        "title": "Votre boutique n'est pas encore visible sur <reeent>reeent</reeent>",
-        "description": "Tant que les paiements en ligne ne sont pas activés, reeent ne publie pas votre boutique. L'offre de lancement (0 € de commission reeent à vie) s'applique dès la publication, tant qu'il reste des places.",
-        "continueSetup": "Continuer la configuration Stripe",
-        "activate": "Activer les paiements en ligne",
-        "paymentSettings": "Paramètres de paiement",
-        "status": "Pas encore publiée"
+        "paymentSettings": "Paramètres de paiement"
       },
       "setup": {
         "title": "Mise en route",
@@ -1072,7 +1070,14 @@
       "pending": {
         "title": "Demandes en attente",
         "description": "Réservations nécessitant votre validation",
-        "empty": "Aucune demande en attente"
+        "empty": "Aucune demande en attente",
+        "urgency": {
+          "past": "Date passée",
+          "today": "Part aujourd'hui",
+          "tomorrow": "Part demain",
+          "soon": "{count, plural, one {Dans # jour} other {Dans # jours}}"
+        },
+        "requested": "Demandée {relative}"
       },
       "storefront": {
         "title": "Votre boutique",
@@ -1089,27 +1094,28 @@
         "title": "Partager votre boutique",
         "description": "Envoyez le lien de votre boutique à vos clients",
         "copyLink": "Copier le lien",
-        "copyLinkDescription": "Copier l'URL dans le presse-papier",
         "copied": "Copié !",
-        "whatsappDescription": "Envoyer par WhatsApp",
         "whatsappMessage": "Découvrez notre boutique de location : {url}",
         "email": "Email",
-        "emailDescription": "Envoyer par email",
         "emailSubject": "Découvrez notre boutique de location",
-        "emailBody": "Bonjour,\n\nJe vous invite à découvrir notre boutique de location :\n{url}\n\nÀ bientôt !",
-        "smsDescription": "Envoyer par SMS",
-        "smsMessage": "Découvrez notre boutique de location : {url}",
-        "showQR": "Afficher le QR code",
-        "hideQR": "Masquer le QR code",
-        "qrDescription": "Scannez ce code pour accéder à la boutique",
-        "downloadQR": "Télécharger"
+        "copyShort": "Copier",
+        "messageLabel": "Message à envoyer",
+        "copyMessage": "Copier le message",
+        "messageCopied": "Message copié",
+        "qrHint": "À imprimer pour votre comptoir, vos flyers ou votre vitrine.",
+        "downloadPng": "Télécharger en PNG",
+        "messageHint": "Ce texte part avec WhatsApp, l'e-mail, le SMS et la copie.",
+        "sendVia": "Envoyer par",
+        "nativeShareShort": "Plus",
+        "customizeMessage": "Personnaliser le message"
       },
       "month": {
         "title": "Ce mois-ci",
         "revenue": "<strong>{amount}</strong> encaissés",
-        "reservations": "{count, plural, one {<strong>#</strong> réservation au total} other {<strong>#</strong> réservations au total}}",
-        "customers": "{count, plural, one {<strong>#</strong> client} other {<strong>#</strong> clients}}",
-        "seeAnalytics": "Voir les analyses"
+        "reservations": "{count, plural, one {<strong>#</strong> réservation} other {<strong>#</strong> réservations}}",
+        "customers": "{count, plural, one {<strong>#</strong> nouveau client} other {<strong>#</strong> nouveaux clients}}",
+        "seeAnalytics": "Voir les analyses",
+        "growthHint": "Comparé à la même date le mois dernier"
       },
       "requestsEmpty": {
         "virginTitle": "Les demandes de vos clients arriveront ici",
@@ -1123,14 +1129,144 @@
         "departures": "{count, plural, one {# départ} other {# départs}}",
         "returns": "{count, plural, one {# retour} other {# retours}}",
         "emptyTitle": "Vos départs et retours s'afficheront ici",
-        "emptyText": "Dès la première réservation, la journée se lira heure par heure, avec ce qu'il faut remettre et récupérer."
+        "emptyText": "Dès la première réservation, la journée se lira heure par heure, avec ce qu'il faut remettre et récupérer.",
+        "agenda": {
+          "departure": "Départ",
+          "return": "Retour",
+          "now": "Maintenant",
+          "moreProducts": "{count, plural, one {+ # autre} other {+ # autres}}",
+          "productsCount": "{count, plural, one {# article} other {# articles}}",
+          "allDone": "Tout est fait pour aujourd'hui"
+        },
+        "quiet": {
+          "none": "Aucune réservation à venir pour l'instant.",
+          "nextLine": "Prochaine activité : {date}"
+        },
+        "createReservation": "Créer une réservation",
+        "week": {
+          "previous": "Semaine précédente",
+          "next": "Semaine suivante",
+          "label": "Jours de la semaine",
+          "more": "{count, plural, one {+ # autre} other {+ # autres}}",
+          "clickToSee": "Cliquez sur le jour pour tout voir"
+        },
+        "otherDay": {
+          "emptyTitle": "Rien de prévu ce jour-là",
+          "error": "Impossible de charger ce jour. Réessayez dans un instant.",
+          "backToToday": "Revenir à aujourd'hui",
+          "openCalendar": "Ouvrir dans le calendrier",
+          "noneSoon": "Rien de prévu dans les {weeks} semaines qui suivent."
+        },
+        "calendar": "Calendrier"
       },
       "upcoming": {
-        "title": "Les prochains jours",
+        "title": "Les 7 prochains jours",
         "tomorrow": "Demain",
         "departures": "{count, plural, one {# départ} other {# départs}}",
         "returns": "{count, plural, one {# retour} other {# retours}}",
         "nothing": "Rien de prévu"
+      },
+      "overdue": {
+        "title": "À régulariser",
+        "returnDue": "Retour prévu {date}",
+        "departureDue": "Départ prévu {date}",
+        "returnsCount": "{count, plural, one {# retour non rentré} other {# retours non rentrés}}",
+        "departuresCount": "{count, plural, one {# départ non remis} other {# départs non remis}}",
+        "lateMinutes": "{count} min",
+        "lateHours": "{count} h",
+        "lateDays": "{count} j",
+        "groupedNotReturned": "{count, plural, one {# retour en retard} other {# retours en retard}}",
+        "groupedToConfirm": "{count, plural, one {# remise à confirmer} other {# remises à confirmer}}",
+        "compact": "{count, plural, one {# réservation à régulariser} other {# réservations à régulariser}}",
+        "oldestReturn": "le plus ancien {relative}",
+        "oldestDeparture": "la plus ancienne {relative}",
+        "oldestMixed": "la plus ancienne {relative}",
+        "dueReturn": "prévu {relative}",
+        "dueDeparture": "prévue {relative}"
+      },
+      "list": {
+        "more": "{count, plural, one {Voir # autre} other {Voir les # autres}}"
+      },
+      "path": {
+        "title": "Pour recevoir vos premières demandes",
+        "readyTitle": "Tout est prêt",
+        "readyText": "Les demandes de vos clients arriveront ici.",
+        "steps": {
+          "product": {
+            "title": "Ajouter un produit",
+            "text": "C'est ce que vos clients réservent. Un nom, une photo et un prix suffisent pour commencer.",
+            "manage": "Gérer mes produits"
+          },
+          "share": {
+            "title": "Partager votre boutique",
+            "text": "Envoyez votre lien à vos clients, ou ajoutez-le à votre fiche Google et à vos réseaux."
+          },
+          "payments": {
+            "title": "Activer le paiement en ligne",
+            "resumeText": "Il reste à vérifier votre identité : pièce d'identité et IBAN, 5 à 10 min.",
+            "verifyingText": "Stripe vérifie votre identité : le paiement en ligne s'active automatiquement ensuite.",
+            "verifyingBadge": "Vérification en cours",
+            "done": "Paiement en ligne activé",
+            "start": "Configurer Stripe",
+            "modeTitle": "Mode d'encaissement",
+            "switchToOnline": "Passer au paiement en ligne"
+          }
+        }
+      },
+      "tips": {
+        "label": "Prochain pas",
+        "dismiss": "Masquer ce conseil",
+        "manualReservation": {
+          "title": "Un client vous a réservé par téléphone ?",
+          "text": "Saisissez sa réservation : elle apparaîtra dans la journée et le calendrier.",
+          "action": "Créer la réservation"
+        },
+        "reviewBooster": {
+          "title": "Faites parler vos clients satisfaits",
+          "text": "Envoyez une demande d'avis Google après chaque location.",
+          "action": "Activer les avis"
+        },
+        "onlinePayments": {
+          "title": "Libérez-vous des paiements",
+          "text": "Passez au paiement en ligne : vos clients paient au moment de la réservation. Moins de no-shows grâce au prépaiement, et la caution par empreinte bancaire, sans débit.",
+          "action": "Configurer Stripe"
+        }
+      },
+      "paymentsStatus": {
+        "startTitle": "Paiement en ligne pas encore activé",
+        "resumeTitle": "Paiement en ligne : identité à vérifier",
+        "verifyingTitle": "Paiement en ligne : vérification Stripe en cours",
+        "meanwhile": "En attendant Stripe, les réservations arrivent en demande et vous les validez vous-même."
+      },
+      "reeentBanner": {
+        "start": {
+          "text": "<b>Activez le paiement en ligne pour apparaître sur <reeent>reeent</reeent></b> : seules les boutiques qui encaissent en ligne y sont publiées.",
+          "action": "Activer"
+        },
+        "resume": {
+          "text": "<b>Plus qu'une étape avant <reeent>reeent</reeent></b> : vérifiez votre identité, avec une pièce d'identité et un IBAN (5 à 10 min).",
+          "action": "Reprendre"
+        },
+        "verifying": {
+          "chip": "Vérification en cours",
+          "text": "<b>Stripe vérifie votre identité</b>, votre boutique apparaîtra ensuite automatiquement sur <reeent>reeent</reeent>.",
+          "idle": "Rien à faire"
+        },
+        "seats": {
+          "text": "<b>Trouvez de nouveaux clients sur <reeent>reeent</reeent></b>, la place de marché de la location : <em>0 € de commission à vie</em> pour les {total, number} premières boutiques.",
+          "action": "Découvrir reeent"
+        },
+        "member": {
+          "text": "<b>Votre boutique est en ligne sur <reeent>reeent</reeent></b>, <em>sans commission reeent à vie</em> : vous êtes parmi les {total, number} premières boutiques.",
+          "textRank": "<b>Votre boutique est en ligne sur <reeent>reeent</reeent></b>, <em>sans commission reeent à vie</em> : vous êtes parmi les {total, number} premières boutiques (n°{rank, number}).",
+          "action": "Voir ma page reeent"
+        },
+        "dismiss": "Masquer"
+      },
+      "shop": {
+        "copy": "Copier le lien",
+        "copied": "Lien copié",
+        "share": "Partager"
       }
     },
     "products": {
@@ -2381,7 +2517,8 @@
         "all": "Toutes",
         "today": "Aujourd'hui",
         "thisWeek": "Cette semaine",
-        "thisMonth": "Ce mois"
+        "thisMonth": "Ce mois",
+        "overdue": "En retard"
       },
       "actions": {
         "accept": "Accepter",
@@ -6526,6 +6663,13 @@
       "sourceHint": "Parcourir le code source",
       "star": "Laisser une étoile",
       "later": "Plus tard"
+    },
+    "headerMenu": {
+      "create": "Créer",
+      "more": "Autres actions",
+      "newProduct": "Nouveau produit",
+      "newCustomer": "Nouveau client",
+      "shareStore": "Partager ma boutique"
     }
   },
   "storefront": {

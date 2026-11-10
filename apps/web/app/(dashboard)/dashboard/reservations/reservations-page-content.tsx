@@ -221,7 +221,10 @@ export function ReservationsPageContent({
           status === "quote"
             ? status
             : undefined,
-        period: period === "today" || period === "week" || period === "month" ? period : undefined,
+        period:
+          period === "today" || period === "week" || period === "month" || period === "overdue"
+            ? period
+            : undefined,
         operation: operation === "departure" || operation === "return" ? operation : undefined,
         paymentMethod:
           paymentMethod === "stripe" ||

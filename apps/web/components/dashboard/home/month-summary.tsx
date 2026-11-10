@@ -11,24 +11,38 @@ import type { StoreMetrics } from "./home-types";
 import { calculateGrowth } from "./home-utils";
 
 /**
- * A little of the month's figures on one quiet line, once the store has
- * activity: what came in and its trend, the reservations, the customers.
- * The full picture is one click away in the analytics.
+ * The month on one quiet line beside the greeting: what came in and its
+ * trend, the reservations and the new customers — this month only. The trend
+ * compares with the same stretch of last month, so the 10th is never measured
+ * against a full month. The full picture is one click away in the analytics.
  */
-export const MonthSummary = ({ metrics }: { metrics: StoreMetrics }) => {
+export const MonthSummary = ({
+  metrics,
+  className,
+}: {
+  metrics: StoreMetrics;
+  className?: string;
+}) => {
   const t = useTranslations("dashboard.home");
-  const growth = calculateGrowth(metrics.monthlyRevenue, metrics.lastMonthRevenue);
+  const growth = calculateGrowth(metrics.monthlyRevenue, metrics.previousPeriodRevenue);
+  const strong = (chunks: React.ReactNode) => (
+    <b className="text-foreground font-semibold tabular-nums">{chunks}</b>
+  );
 
   return (
-    <div className="bg-muted text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl px-4 py-2.5 text-sm">
+    <Link
+      href="/dashboard/analytics/sales"
+      className={cn(
+        "group text-muted-foreground hover:text-foreground inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-sm transition-colors",
+        className,
+      )}
+    >
       <span className="text-foreground font-bold">{t("month.title")}</span>
       <span>
-        {t.rich("month.revenue", {
-          amount: formatCurrency(metrics.monthlyRevenue),
-          strong: (chunks) => <b className="text-foreground tabular-nums">{chunks}</b>,
-        })}
+        {t.rich("month.revenue", { amount: formatCurrency(metrics.monthlyRevenue), strong })}
         {growth !== null && (
           <span
+            title={t("month.growthHint")}
             className={cn(
               "ms-1.5 text-xs font-bold tabular-nums",
               growth >= 0 ? "text-success" : "text-destructive",
@@ -39,25 +53,12 @@ export const MonthSummary = ({ metrics }: { metrics: StoreMetrics }) => {
           </span>
         )}
       </span>
-      <span>
-        {t.rich("month.reservations", {
-          count: metrics.totalReservations,
-          strong: (chunks) => <b className="text-foreground tabular-nums">{chunks}</b>,
-        })}
-      </span>
-      <span>
-        {t.rich("month.customers", {
-          count: metrics.customerCount,
-          strong: (chunks) => <b className="text-foreground tabular-nums">{chunks}</b>,
-        })}
-      </span>
-      <Link
-        href="/dashboard/analytics/sales"
-        className="text-primary ms-auto inline-flex items-center gap-1 font-semibold hover:underline"
-      >
-        {t("month.seeAnalytics")}
-        <ArrowRight className="size-3.5" />
-      </Link>
-    </div>
+      <span>{t.rich("month.reservations", { count: metrics.reservationsThisMonth, strong })}</span>
+      <span>{t.rich("month.customers", { count: metrics.newCustomersThisMonth, strong })}</span>
+      <ArrowRight
+        aria-label={t("month.seeAnalytics")}
+        className="text-primary size-3.5 transition-transform group-hover:translate-x-0.5"
+      />
+    </Link>
   );
 };
