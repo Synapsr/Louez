@@ -124,6 +124,12 @@ export const listInboxOutput = z.object({
     .string()
     .describe("Pass it as cursor on the next call to get only what came in since."),
   hasMore: z.boolean().describe("More items wait: call again at once with nextCursor."),
+  unavailable: z
+    .array(z.enum(INBOX_ITEM_TYPES))
+    .optional()
+    .describe(
+      "Present when Louez could not read some item types this time: the answer lacks their items. Tell the user the inbox is incomplete; a later call without cursor reads them again.",
+    ),
 });
 
 export const acknowledgeInboxInput = z.object({

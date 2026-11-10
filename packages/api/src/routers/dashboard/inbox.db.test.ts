@@ -1109,6 +1109,70 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(ofType((await list(session(OTHER_STORE))).items, "store_not_live").length, 0);
   });
 
+  test("a store not online yet, with hours saved before a day held several ranges, shows its launch", async () => {
+    // Hours saved before 2026-02-25: each day one openTime and closeTime, no `ranges`.
+    const legacyDay = (isOpen: boolean) => ({ isOpen, openTime: "09:00", closeTime: "18:00" });
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({
+        onboardingCompleted: false,
+        settings: {
+          ...SETTINGS,
+          businessHours: {
+            enabled: true,
+            schedule: {
+              0: legacyDay(false),
+              1: legacyDay(true),
+              2: legacyDay(true),
+              3: legacyDay(true),
+              4: legacyDay(true),
+              5: legacyDay(true),
+              6: legacyDay(true),
+            },
+            closurePeriods: [],
+          },
+        } as never,
+      })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const answer = await list();
+    const [item] = ofType(answer.items, "store_not_live");
+    assert.equal(item?.id, `store_not_live:${STORE}`);
+    assert.equal(answer.unavailable, undefined);
+  });
+
+  test("a source that fails costs only its own items, named in unavailable and logged; acknowledging fails", async () => {
+    const reservationId = await reservation("pending");
+    // A table the supplier invoices read is gone, as before its migration.
+    await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices TO received_invoices_away`);
+    const logged = mock.method(console, "error", () => {});
+    try {
+      const answer = await list();
+      assert.deepEqual(
+        answer.items.map((item) => item.id),
+        [`booking_request:${reservationId}`],
+      );
+      assert.deepEqual(answer.unavailable, ["supplier_invoice"]);
+      assert.equal(answer.hasMore, false);
+      assert.match(
+        String(logged.mock.calls[0]?.arguments[0]),
+        new RegExp(`could not read its supplier_invoice items for store ${STORE}`),
+      );
+
+      // The source's own error: the transport answers it as an internal error.
+      await assert.rejects(
+        run(
+          "acknowledge",
+          { items: [{ id: "supplier_invoice:ib_rin_x", occurredAt: ago(HOUR) }] },
+          session(),
+        ),
+        /received_invoices/,
+      );
+    } finally {
+      logged.mock.restore();
+      await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices_away TO received_invoices`);
+    }
+  });
+
   test("a customer message the outbox gave up on shows, without the customer's name to who may not read customers", async () => {
     const reservationId = await reservation("confirmed");
     const effectId = nextId("ib_eff");

@@ -51,6 +51,7 @@ import {
 } from "../contracts/inbox";
 import type { ResourceLinks } from "../contracts/links";
 import { platformErrors } from "../platform/errors";
+import { describeProviderError, redactHandoffSecrets } from "../platform/redact";
 import { OPERATION_LEASE_SECONDS } from "../platform/operations";
 import type { ApiDomain } from "../platform/permissions";
 import {
@@ -1639,21 +1640,31 @@ function shaperOf(reader: InboxReader): Shaper {
   };
 }
 
+interface SourceFailure {
+  type: InboxItemType;
+  error: unknown;
+}
+
 /**
- * The items of `types` in the window, in the inbox's order. The items read
- * in code are put in the window here; the others already are.
+ * The items of `types` in the window, in the inbox's order, and the sources
+ * that failed: each source is read on its own, so one that throws costs only
+ * its own items. The items read in code are put in the window here; the
+ * others already are.
  */
 async function readWindow(
   reader: InboxReader,
   types: readonly InboxItemType[],
   window: Window,
-): Promise<Candidate[]> {
+): Promise<{ entries: Candidate[]; failures: SourceFailure[] }> {
   const shaper = shaperOf(reader);
-  const read = await Promise.all(types.map((type) => SOURCES[type](window, shaper)));
+  const read = await Promise.allSettled(types.map((type) => SOURCES[type](window, shaper)));
   const inSqlWindow: Candidate[] = [];
   const computed: Candidate[] = [];
+  const failures: SourceFailure[] = [];
   types.forEach((type, index) => {
-    (COMPUTED.has(type) ? computed : inSqlWindow).push(...(read[index] ?? []));
+    const result = read[index];
+    if (result?.status === "rejected") failures.push({ type, error: result.reason });
+    else (COMPUTED.has(type) ? computed : inSqlWindow).push(...(result?.value ?? []));
   });
   const horizon = window.horizon.getTime();
   const { after, records } = window;
@@ -1668,7 +1679,25 @@ async function readWindow(
   const shown = records
     ? computedInWindow
     : await withoutAcknowledged(window.storeId, computedInWindow, occurrenceOfCandidate);
-  return [...inSqlWindow, ...shown].sort((a, b) => comparePositions(positionOf(a), positionOf(b)));
+  const entries = [...inSqlWindow, ...shown].sort((a, b) =>
+    comparePositions(positionOf(a), positionOf(b)),
+  );
+  return { entries, failures };
+}
+
+/** Logs a source that failed, with the store, the type and where it threw. */
+function logSourceFailure(storeId: string, { type, error }: SourceFailure) {
+  const frames =
+    error instanceof Error
+      ? (error.stack ?? "").split("\n").filter((line) => /^\s+at /.test(line))
+      : [];
+  console.error(
+    `The inbox could not read its ${type} items for store ${storeId}: ${describeProviderError(error)}` +
+      frames
+        .slice(0, 8)
+        .map((line) => `\n${redactHandoffSecrets(line)}`)
+        .join(""),
+  );
 }
 
 /**
@@ -1694,7 +1723,8 @@ export async function listInbox(
     take: limit + 1,
   };
   const types = INBOX_ITEM_TYPES.filter((type) => mayShow(reader.reads, type));
-  const merged = await readWindow(reader, types, window);
+  const { entries: merged, failures } = await readWindow(reader, types, window);
+  for (const failure of failures) logSourceFailure(reader.store.id, failure);
   const page = merged.slice(0, limit);
   const hasMore = merged.length > limit;
   const last = page.at(-1);
@@ -1705,7 +1735,12 @@ export async function listInbox(
     const atHorizon: Position = { t: window.horizon.getTime(), k: END_OF_INSTANT, r: "" };
     next = after && comparePositions(after, atHorizon) > 0 ? after : atHorizon;
   }
-  return { items: page.map((entry) => entry.item), nextCursor: encodeCursor(next), hasMore };
+  return {
+    items: page.map((entry) => entry.item),
+    nextCursor: encodeCursor(next),
+    hasMore,
+    ...(failures.length > 0 ? { unavailable: failures.map((failure) => failure.type) } : {}),
+  };
 }
 
 // --- Acknowledging -----------------------------------------------------------
@@ -1779,7 +1814,7 @@ export async function acknowledgeInbox(
   // The current occurrences of those records, as the list reads them.
   const now = options.now ?? (await databaseNow());
   const types = [...new Set(rows.map((row) => row.type))];
-  const current = await readWindow(reader, types, {
+  const { entries: current, failures } = await readWindow(reader, types, {
     storeId: actor.storeId,
     after: null,
     horizon: new Date(now.getTime() - INBOX_HOLD_BACK_MS),
@@ -1787,6 +1822,9 @@ export async function acknowledgeInbox(
     take: rows.length + 1,
     records: [...new Set(rows.map((row) => row.recordId))],
   });
+  // Without its source, an item cannot be told current: the call fails rather than reject it.
+  const [failure] = failures;
+  if (failure) throw failure.error;
   const currentKeys = new Set(current.map((entry) => occurrenceKey(occurrenceOfCandidate(entry))));
   const currentOf = new Map(
     current.map((entry) => [`${entry.item.type}:${entry.recordId}`, entry.item.occurredAt]),

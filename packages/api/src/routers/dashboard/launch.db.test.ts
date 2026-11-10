@@ -447,6 +447,29 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal((await pickupOf())?.status, "done");
   });
 
+  test("hours saved before a day held several ranges read as the settings show them", async () => {
+    // Before 2026-02-25 each day held one openTime and closeTime, no `ranges`.
+    const legacyWeek = (isOpen: (day: number) => boolean) =>
+      Object.fromEntries(
+        [0, 1, 2, 3, 4, 5, 6].map((day) => [
+          day,
+          { isOpen: isOpen(day), openTime: "09:00", closeTime: "18:00" },
+        ]),
+      );
+    const withHours = (schedule: Record<string, unknown>) =>
+      setStore({
+        settings: {
+          ...SETTINGS,
+          businessHours: { enabled: true, schedule, closurePeriods: [] },
+        } as never,
+      });
+
+    await withHours(legacyWeek((day) => day !== 0));
+    assert.equal(statuses(await run("getLaunchChecklist", {}, session())).businessHours, "done");
+    await withHours(legacyWeek(() => false));
+    assert.equal(statuses(await run("getLaunchChecklist", {}, session())).businessHours, "missing");
+  });
+
   test("a free consumable is a product for the home, not a priced one for the launch", async () => {
     // A fixed-price consumable at zero: a valid product (a free map, wax).
     await louezDb.db.insert(louezDb.products).values({
