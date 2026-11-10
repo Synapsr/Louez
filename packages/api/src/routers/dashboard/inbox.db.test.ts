@@ -1211,12 +1211,12 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       assert.equal(event.itemType, "supplier_invoice");
       assert.deepEqual(Object.keys(event).sort(), ["error", "event", "itemType", "storeId"]);
       const text = JSON.stringify(event.error);
-      // The failed query's SQL, not its parameters (the store id, the provider, the dates)…
+      // The failed query's shape, without its names, literals or parameters…
       assert.match(
         String(event.error.message),
-        /^Failed query: select [\s\S]*received_invoices[\s\S]*\nparams: \[redacted\]$/,
+        /^Failed query: select [\s\S]*\nparams: \[redacted\]$/,
       );
-      assert.ok(!text.includes("superpdp") && !text.includes(OTHER_STORE), text);
+      assert.ok(!text.includes("superpdp") && !text.includes(STORE.slice(3)), text);
       // …and the driver's error as its code and the table it names.
       assert.match(
         String((event.error.cause as { message?: string } | undefined)?.message),

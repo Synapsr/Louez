@@ -1,20 +1,20 @@
-import { REDACTED, redactHandoffSecrets } from "./redact";
+import { REDACTED } from "./redact";
 
 /**
  * Errors as facts safe to log or send to an error tracker. An error's
- * message may carry what a request held: a customer's e-mail in a duplicate
- * key, a token a provider echoes, a URL with its query, a failed query's
- * parameters, a phone number, a long opaque blob. `sanitizeText` removes
- * those; `sanitizeError` keeps only a short list of fields (name, message,
- * codes, stack frames, cause), each sanitized, and never the error object
- * itself, whose other properties (Stripe's `raw`, a request's headers, a
- * driver's `sql`) are left out. A database error keeps its code and the
- * names it gives (key, column, constraint, table), never the message that
- * quotes the values; a validation error keeps its issues' codes and paths.
+ * message may carry anything a request held, so free text is read by an
+ * allowlist: after it is cut, it is scanned once, and only plain words,
+ * punctuation and code-like words (`ER_DUP_ENTRY`) stay. Everything else
+ * becomes a typed placeholder: a quoted segment or an unknown token
+ * `[value]`, a file path `[path]`, a URL its scheme and host then `[url]`,
+ * and what follows a sensitive key (cookie, authorization, password,
+ * token…) up to its line's end `[redacted]`.
  *
- * An absolute file path is named from the repository's root, or `[path]`.
- * Every pattern runs in linear time, and the text is cut before any of them
- * runs, so a huge or crafted message costs no more than a short one.
+ * Structured errors keep more, read where the structure says: a MySQL
+ * error its code and the name its message gives at its known place, a
+ * validation error its issues' codes and paths (static keys only), a stack
+ * its frames' functions and repository paths. `sanitizeError` never throws
+ * and never returns the error object, nor a property outside its list.
  */
 
 /** Longest message kept: the text is cut to it before it is read. */
@@ -22,161 +22,255 @@ const MESSAGE_MAX = 1_000;
 /** Stack frames kept by default. */
 const FRAMES_MAX = 10;
 /** Causes followed at most. */
-const CAUSE_DEPTH = 2;
+const CAUSE_DEPTH = 3;
 /** Validation issues kept at most. */
 const ISSUES_MAX = 20;
 
-type Replacement = string | ((match: string, ...groups: string[]) => string);
-type Rule = readonly [RegExp, Replacement];
+const VALUE = "[value]";
+const PATH = "[path]";
+const URL_PLACEHOLDER = "[url]";
 
-/** The fields whose value is secret, as a header, a form field or a JSON key names them. */
-const SENSITIVE_KEY =
-  "(?:proxy-)?authorization|x-api-key|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|id[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key|session[_-]?(?:id|token)|secret|password|passwd|pwd|token|otp";
+// --- Free text ---------------------------------------------------------------
 
+/** A plain word: letters (accented included), an apostrophe inside, 24 at most. */
+const PLAIN_WORD = /^\p{L}(?:\p{L}|'(?=\p{L})){0,23}$/u;
 /**
- * In order: a later rule must not see what an earlier one already replaced
- * (a URL's user before an e-mail, a quoted value before its words). Each
- * starts only where its first characters stand and has bounded or
- * consuming repeats: none tries every position of a long run again.
+ * A code of a known family: MySQL's (`ER_DUP_ENTRY`, `WARN_DATA_TRUNCATED`),
+ * Node's (`ERR_INVALID_ARG_TYPE`, `ENOENT`) and the HTTP ones oRPC names.
+ * Any other capitals with underscores may be a value (`FAKE_TOKEN`).
  */
-const RULES: readonly Rule[] = [
-  // A URL's user and password.
-  [/(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,20}:\/\/)[^\s/?#@"'<>]{1,256}@/gi, `$1${REDACTED}@`],
-  // A query (and what follows it, a fragment included), after a URL or a bare path.
-  [/(?<=[A-Za-z0-9._~%/-])\?(?!\[redacted\])[^\s"'<>]+/g, `?${REDACTED}`],
-  // A failed query's parameters (Drizzle: "params: a,b,c").
-  [/(\bparams:[ \t]*)[^\n]*/gi, `$1${REDACTED}`],
-  // Values a database quotes back: up to the words that follow them, or the line's end.
-  [/(\bDuplicate entry\s)[^\n]*?(\sfor key\b|$)/gim, `$1'${REDACTED}'$2`],
-  [/(\bIncorrect [a-z ]{1,40} value:?\s)[^\n]*?(\sfor column\b|$)/gim, `$1'${REDACTED}'$2`],
-  [
-    /(\bKey \([^)\n]{1,200}\)=\()[^\n]*?(\)\s(?:already exists|is not present|conflicts with)|$)/gim,
-    `$1${REDACTED}$2`,
-  ],
-  [/(\bFailing row contains\s)[^\n]*/gi, `$1(${REDACTED})`],
-  // A sensitive field's quoted value, whole, in JSON or key=value form.
-  [
-    new RegExp(
-      `(["']?)\\b(${SENSITIVE_KEY})\\1([ \\t]{0,5}[:=][ \\t]{0,5})("(?:[^"\\\\\\n]|\\\\.){0,2000}(?:"|$)|'(?:[^'\\\\\\n]|\\\\.){0,2000}(?:'|$))`,
-      "gim",
-    ),
-    (_match, quote: string, key: string, separator: string, value: string) =>
-      `${quote}${key}${quote}${separator}${value.charAt(0)}${REDACTED}${value.charAt(0)}`,
-  ],
-  // A cookie or an authorization header: the whole value, to the line's end.
-  [
-    /\b(set-cookie|cookie|(?:proxy-)?authorization)\b([ \t]{0,5}[:=][ \t]{0,5})(?!["']\[redacted\])[^\n]*/gi,
-    `$1$2${REDACTED}`,
-  ],
-  // An authorization scheme's credential, outside a header.
-  [/\b(Bearer|Basic|Digest|Token)[ \t]{1,10}[A-Za-z0-9._~+/=:-]+/gi, `$1 ${REDACTED}`],
-  // Another sensitive field's unquoted value.
-  [
-    new RegExp(
-      `\\b(${SENSITIVE_KEY})([ \\t]{0,5}[:=][ \\t]{0,5})(?!\\[redacted\\])[^\\s,;&}\\]"']+`,
-      "gi",
-    ),
-    `$1$2${REDACTED}`,
-  ],
-  // A JSON Web Token.
-  [/\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*/g, REDACTED],
-  // Keys: Louez's API keys, Stripe's secret, restricted, publishable and webhook keys, a client secret.
-  [/\blz_[A-Za-z0-9]{4}_[A-Za-z0-9]{8,}/g, REDACTED],
-  [/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}/g, REDACTED],
-  [/\bwhsec_[A-Za-z0-9]{8,}/g, REDACTED],
-  [/\b[a-z]{2,8}_[A-Za-z0-9]{8,}_secret_[A-Za-z0-9]{8,}/g, REDACTED],
-  // Other services' keys: PostHog, GitHub, Slack, AWS.
-  [/\bph[cxs]_[A-Za-z0-9]{8,}/g, REDACTED],
-  [/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{16,}/g, REDACTED],
-  [/\bxox[abposr]-[A-Za-z0-9-]{8,}/g, REDACTED],
-  [/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, REDACTED],
-  // An e-mail address: tried only where its local part starts, each part bounded.
-  [
-    /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,8}\.[A-Za-z]{2,24}\b/g,
-    REDACTED,
-  ],
-  // An international phone number (E.164, spaced or not).
-  [/(?<![\w+])\+\d{1,3}(?:[ .-]?\d){7,13}\b/g, REDACTED],
-  // An absolute file path: from the repository's root, or none (`relativePath`).
-  [/(?<![^\s('"=,[])(?:file:\/\/)?(?:\/|[A-Za-z]:\\)[^\s'"()<>:,]*/g, (path) => relativePath(path)],
+const CODE_WORD =
+  /^(?:(?:ER|WARN|ERR)_[A-Z0-9]{1,20}(?:_[A-Z0-9]{1,20}){0,6}|E[A-Z]{3,15}|BAD_REQUEST|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|METHOD_NOT_SUPPORTED|NOT_ACCEPTABLE|TIMEOUT|CONFLICT|PRECONDITION_FAILED|PAYLOAD_TOO_LARGE|UNSUPPORTED_MEDIA_TYPE|UNPROCESSABLE_CONTENT|TOO_MANY_REQUESTS|CLIENT_CLOSED_REQUEST|INTERNAL_SERVER_ERROR|NOT_IMPLEMENTED|BAD_GATEWAY|SERVICE_UNAVAILABLE|GATEWAY_TIMEOUT)$/;
+/** A token made of punctuation only, which carries no value. */
+const PUNCTUATION_ONLY = /^[-–—*#|&=+~^.!?:]{1,3}$/;
+const SCHEME = /^[a-z][a-z0-9+.-]{0,15}$/i;
+const HOST = /^[A-Za-z0-9.-]{1,253}(?::\d{1,5})?$/;
+const PATH_START = /^(?:\/|~\/|\.\.?\/|[A-Za-z]:[\\/]|file:\/\/)/;
+
+/** Last words of a key whose value is secret, letters only and lower-cased (`x-api-key`: `xapikey`). */
+const SENSITIVE_ENDINGS = [
+  "cookie",
+  "cookies",
+  "authorization",
+  "password",
+  "passwd",
+  "pwd",
+  "passphrase",
+  "secret",
+  "secrets",
+  "token",
+  "tokens",
+  "apikey",
+  "bearer",
+  "privatekey",
+  "otp",
+  "sessionid",
+  "credential",
+  "credentials",
+  "signature",
+  "jwt",
 ];
 
-/** Where a path inside the repository starts: what precedes it is the machine's. */
-const REPO_ROOTS = /[/\\](apps|packages|node_modules|docs|scripts)[/\\]/;
-/** Roots of a machine's own files: a path under them, outside the repository, says nothing. */
-const MACHINE_ROOTS =
-  /^(?:\/(?:Users|home|root|private|var|tmp|opt|srv|mnt|app|workspace|builds?)(?:\/|$)|[A-Za-z]:\\)/;
-
-/**
- * An absolute path as the repository names it (`/app/apps/web/.next/x.js`:
- * `apps/web/.next/x.js`), `[path]` under a machine's root (a home folder
- * names its user), and a route (`/dashboard/settings`) as it is.
- */
-function relativePath(raw: string): string {
-  const path = raw.startsWith("file://") ? raw.slice("file://".length) : raw;
-  const root = REPO_ROOTS.exec(path);
-  if (root) return path.slice(root.index + 1).replaceAll("\\", "/");
-  return MACHINE_ROOTS.test(path) ? "[path]" : raw;
+function isSensitiveName(name: string): boolean {
+  if (name.length === 0 || name.length > 40) return false;
+  const letters = name.toLowerCase().replace(/[^a-z]/g, "");
+  return letters.length > 0 && SENSITIVE_ENDINGS.some((ending) => letters.endsWith(ending));
 }
 
-/** A run of the characters hex and base64 (URL-safe too) are written with. */
-const BLOB_RUN = /[A-Za-z0-9+_=-]{32,}/g;
+const isNewline = (ch: string) => ch === "\n" || ch === "\r";
+const isBlank = (ch: string) =>
+  ch === " " || ch === "\t" || ch === "\f" || ch === "\v" || ch === " ";
+const isLetterOrDigit = (ch: string) => ch !== "" && /[\p{L}\p{N}]/u.test(ch);
+/** Brackets and separators stand alone, as punctuation. */
+const STANDALONE = new Set(["(", ")", "[", "]", "{", "}", "<", ">", ",", ";"]);
 
-/**
- * Long opaque blobs, read run by run: a hex digest (32 characters or more),
- * or a base64 run of 40 or more with a digit and a letter, unless it is a
- * path's segment. Each run is read once, so a huge one costs its length.
- */
-function redactBlobs(text: string): string {
-  BLOB_RUN.lastIndex = 0;
-  return text.replace(BLOB_RUN, (run: string, offset: number) => {
-    let end = run.length;
-    while (end > 0 && run.charCodeAt(end - 1) === 61 /* = */) end -= 1;
-    const body = run.slice(0, end);
-    if (body.length >= 32 && /^[0-9a-f]+$/i.test(body)) return REDACTED;
-    if (body.length < 40 || text.charAt(offset - 1) === "/") return run;
-    return /\d/.test(body) && /[A-Za-z]/.test(body) ? REDACTED : run;
-  });
+/** Whether a quote opens a segment here: `'` only outside a word (`doesn't` stays a word). */
+function opensQuote(text: string, index: number): boolean {
+  const ch = text.charAt(index);
+  if (ch === '"' || ch === "`") return true;
+  return ch === "'" && !isLetterOrDigit(text.charAt(index - 1));
+}
+
+/** Where the segment a quote at `start` opens ends (its closing quote), or the text's end. */
+function closingQuote(text: string, start: number): number {
+  const quote = text.charAt(start);
+  for (let index = start + 1; index < text.length; index += 1) {
+    const ch = text.charAt(index);
+    if (ch === "\\") {
+      index += 1;
+      continue;
+    }
+    if (ch !== quote) continue;
+    // `'O'Brien'`: a quote between two letters is an apostrophe.
+    if (
+      quote === "'" &&
+      isLetterOrDigit(text.charAt(index - 1)) &&
+      /\p{L}/u.test(text.charAt(index + 1))
+    ) {
+      continue;
+    }
+    return index;
+  }
+  return text.length;
+}
+
+/** A URL as its scheme and host, the rest a placeholder; `file://` is a path. */
+function describeUrl(token: string): string {
+  const at = token.indexOf("://");
+  const scheme = token.slice(0, at);
+  if (!SCHEME.test(scheme)) return VALUE;
+  if (scheme.toLowerCase() === "file") return PATH;
+  const rest = token.slice(at + 3);
+  const end = rest.search(/[/?#]/);
+  const authority = end < 0 ? rest : rest.slice(0, end);
+  const host = authority.slice(authority.lastIndexOf("@") + 1);
+  return HOST.test(host)
+    ? `${scheme}://${host}${URL_PLACEHOLDER}`
+    : `${scheme}://${URL_PLACEHOLDER}`;
 }
 
 /**
- * `text` cut to `max` characters, without a word the cut split: what is
- * left of a token is no token any pattern knows.
+ * Past a sensitive key: the separator, blanks and line breaks, then its
+ * value, a quoted one whole (across lines), and what is left of that line.
+ * Returns where reading goes on, and whether anything was skipped.
  */
+function skipSecret(text: string, from: number): { next: number; skipped: boolean } {
+  let index = from;
+  while (index < text.length) {
+    const ch = text.charAt(index);
+    if (isBlank(ch) || isNewline(ch) || ch === ":" || ch === "=") index += 1;
+    else break;
+  }
+  if (index >= text.length) return { next: index, skipped: false };
+  if (opensQuote(text, index)) index = Math.min(closingQuote(text, index) + 1, text.length);
+  while (index < text.length && !isNewline(text.charAt(index))) index += 1;
+  return { next: index, skipped: true };
+}
+
+/** What a token stands for: itself when it is a plain word, a code or punctuation. */
+function describeToken(core: string): string {
+  if (core.includes("://")) return describeUrl(core);
+  if (PATH_START.test(core) || /[\\/]/.test(core)) return PATH;
+  if (PLAIN_WORD.test(core) || CODE_WORD.test(core) || PUNCTUATION_ONLY.test(core)) return core;
+  return VALUE;
+}
+
+/** `text` cut to `max`, without the word the cut split. */
 function cut(text: string, max: number): string {
   if (text.length <= max) return text;
   const head = text.slice(0, max);
   const space = Math.max(head.lastIndexOf(" "), head.lastIndexOf("\n"), head.lastIndexOf("\t"));
-  return `${space > 0 ? head.slice(0, space) : ""}…`;
+  return `${space > 0 ? head.slice(0, space) : ""} …`;
 }
 
-/** `text` without the personal data and secrets it may hold, cut to `max` characters first. */
+/**
+ * `text` as its shape: plain words, punctuation and codes as they are,
+ * everything else a placeholder (see the module's comment). Cut to `max`
+ * characters first, then read once.
+ */
 export function sanitizeText(text: string, max = MESSAGE_MAX): string {
-  const clean = redactBlobs(
-    RULES.reduce(
-      (result, [pattern, replacement]) => {
-        pattern.lastIndex = 0;
-        return result.replace(pattern, replacement as string);
-      },
-      redactHandoffSecrets(cut(text, max)),
-    ),
-  );
-  // A replacement can be longer than what it replaced.
-  return clean.length > max + REDACTED.length ? clean.slice(0, max) : clean;
+  if (typeof text !== "string") return VALUE;
+  const input = cut(text, max);
+  const pieces: string[] = [];
+  let gap: "" | " " | "\n" = "";
+  const emit = (piece: string, glued = false) => {
+    if (!piece) return;
+    // One placeholder for a run of them (a spaced phone number, a split blob).
+    if (gap !== "\n" && pieces.at(-1) === piece && /^\[[a-z]+\]$/.test(piece)) {
+      gap = "";
+      return;
+    }
+    if (pieces.length > 0 && gap && !glued) pieces.push(gap);
+    pieces.push(piece);
+    gap = "";
+  };
+
+  let index = 0;
+  while (index < input.length) {
+    const ch = input.charAt(index);
+    if (isNewline(ch)) {
+      gap = "\n";
+      index += 1;
+      continue;
+    }
+    if (isBlank(ch)) {
+      if (gap !== "\n") gap = " ";
+      index += 1;
+      continue;
+    }
+    if (opensQuote(input, index)) {
+      const close = closingQuote(input, index);
+      const content = input.slice(index + 1, close);
+      index = Math.min(close + 1, input.length);
+      if (/^[\w-]{1,40}$/.test(content) && isSensitiveName(content)) {
+        // `"cookie": "…"`: the key stays, its value and its line go.
+        emit(`${ch}${content}${ch}`);
+        const secret = skipSecret(input, index);
+        if (secret.skipped) emit(`: ${REDACTED}`, true);
+        index = secret.next;
+      } else {
+        emit(PATH_START.test(content) ? PATH : VALUE);
+      }
+      continue;
+    }
+    if (STANDALONE.has(ch)) {
+      emit(ch);
+      index += 1;
+      continue;
+    }
+    let end = index;
+    while (
+      end < input.length &&
+      !isBlank(input.charAt(end)) &&
+      !isNewline(input.charAt(end)) &&
+      !STANDALONE.has(input.charAt(end)) &&
+      !opensQuote(input, end)
+    ) {
+      end += 1;
+    }
+    const token = input.slice(index, end);
+    index = end;
+    // Trailing punctuation ends a sentence or names a field (`token:`).
+    let coreEnd = token.length;
+    while (coreEnd > 0 && ".:!?".includes(token.charAt(coreEnd - 1))) coreEnd -= 1;
+    const core = token.slice(0, coreEnd);
+    const trail = token.slice(coreEnd);
+    if (!core) {
+      emit(PUNCTUATION_ONLY.test(trail) ? trail : VALUE);
+      continue;
+    }
+    // `key=value`, `key:value`: a sensitive key hides the rest of its line.
+    const separator = core.includes("://") ? -1 : core.search(/[:=]/);
+    if (separator > 0 && isSensitiveName(core.slice(0, separator))) {
+      const key = core.slice(0, separator);
+      emit(PLAIN_WORD.test(key) || CODE_WORD.test(key) ? key : VALUE);
+      let next = index;
+      // The value after the separator, or past blanks and line breaks when the token ends there.
+      if (separator === core.length - 1 && !trail) next = skipSecret(input, index).next;
+      while (next < input.length && !isNewline(input.charAt(next))) next += 1;
+      emit(`${core.charAt(separator)} ${REDACTED}`, true);
+      index = next;
+      continue;
+    }
+    if (/^[A-Za-z-]{1,40}$/.test(core) && isSensitiveName(core)) {
+      // `Authorization: …`, `Bearer …`, `password\n…`.
+      emit(`${core}${trail}`);
+      const secret = skipSecret(input, index);
+      if (secret.skipped) {
+        gap = " ";
+        emit(REDACTED);
+      }
+      index = secret.next;
+      continue;
+    }
+    const described = describeToken(core);
+    emit(`${described}${trail}`);
+  }
+  const clean = pieces.join("");
+  return clean.length > max + 40 ? clean.slice(0, max) : clean;
 }
 
-/** An error as it may be logged or reported: allowlisted fields, each sanitized. */
-export interface SanitizedError {
-  name: string;
-  message: string;
-  /** A provider's or a driver's codes (`code`, Stripe's `type`, an HTTP `statusCode`). */
-  code?: string;
-  type?: string;
-  statusCode?: number;
-  /** The stack's frames, `at …` lines only, without the message the stack starts with. */
-  frames: string[];
-  cause?: SanitizedError;
-}
+// --- Codes and frames ---------------------------------------------------------
 
 /**
  * An error's code as it may be kept: a short code (`ER_DUP_ENTRY`, `ENOENT`,
@@ -187,62 +281,217 @@ export function sanitizeCode(value: unknown): string | undefined {
   return typeof value === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(value) ? value : undefined;
 }
 
-/** The names a MySQL message gives, each read where only a name stands (the values stay out). */
-const SQL_NAMES: ReadonlyArray<readonly [string, RegExp]> = [
-  ["key", /\bfor key '([\w.$-]{1,128})'$/],
-  ["column", /\bfor column '([\w$]{1,64})'(?: at row \d+)?$/],
-  ["column", /^Column '([\w$]{1,64})' cannot be null$/],
-  ["column", /^Field '([\w$]{1,64})' doesn't have a default value$/],
-  ["column", /^Unknown column '([\w$.]{1,128})' in '[\w ]{1,40}'$/],
-  ["constraint", /\bCONSTRAINT `([\w$]{1,64})`/],
-  ["table", /^Table '([\w$.]{1,128})' doesn't exist$/],
-];
+/** Where a path inside the repository starts: what precedes it is the machine's. */
+const REPO_ROOT = /[/\\](apps|packages|node_modules|docs|scripts)[/\\]/;
+const REPO_PATH = /^[\w@.+\-/()[\]]{1,300}$/;
+const FUNCTION_NAME = /^[\w$.<>[\] ]{1,120}$/;
 
-/**
- * A MySQL error (mysql2: `code` ER_…, `errno`, `sqlMessage`) as its code and
- * the names its message gives, never the message, which quotes values.
- */
-function sqlMessageOf(error: Error): string | null {
-  const code = Reflect.get(error, "code");
-  if (typeof code !== "string" || !/^(?:ER|WARN)_[A-Z0-9_]{1,60}$/.test(code)) return null;
-  // A message MySQL wrote: what it quotes is a value, so only the names it gives are kept.
-  const errno = Reflect.get(error, "errno");
-  const sqlMessage = Reflect.get(error, "sqlMessage");
-  if (typeof errno !== "number" && typeof sqlMessage !== "string") return null;
-  const text = cut(typeof sqlMessage === "string" ? sqlMessage : error.message, 2_000);
-  const names = SQL_NAMES.flatMap(([kind, pattern]) => {
-    const found = pattern.exec(text)?.[1];
-    return found ? [`${kind} ${found}`] : [];
-  });
-  return `${code}${typeof errno === "number" ? ` (${errno})` : ""}${names.length > 0 ? `: ${names.join(", ")}` : ""}`;
+/** A file in a frame, from the repository's root; `[path]` outside it or when it holds more than a path. */
+function framePath(raw: string): string {
+  if (/^(?:node:[\w/.-]{1,100}|index \d{1,6}|<anonymous>|native)$/.test(raw)) return raw;
+  const path = raw.startsWith("file://") ? raw.slice("file://".length) : raw;
+  const root = REPO_ROOT.exec(path);
+  if (!root) return PATH;
+  const relative = path.slice(root.index + 1).replaceAll("\\", "/");
+  return REPO_PATH.test(relative) ? relative : PATH;
 }
 
-/** Drizzle's failed query: its SQL with no literal, and its parameters' place, not their values. */
+/**
+ * A stack frame as its function and place: `at fn (packages/…/x.ts:12:3)`.
+ * Read by position, not by patterns over its text; what it cannot read is
+ * `[function]`, `[path]` or `at [frame]`.
+ */
+export function sanitizeFrame(line: string): string {
+  if (typeof line !== "string") return "at [frame]";
+  const frame = line.trim().slice(0, 600);
+  if (!frame.startsWith("at ")) return "at [frame]";
+  const body = frame.slice(3);
+  const open = body.indexOf(" (");
+  const withName = open > 0 && body.endsWith(")");
+  const name = withName ? body.slice(0, open) : "";
+  const location = withName ? body.slice(open + 2, -1) : body;
+  const column = location.lastIndexOf(":");
+  const row = column > 0 ? location.lastIndexOf(":", column - 1) : -1;
+  const numbered =
+    row > 0 &&
+    /^\d{1,7}$/.test(location.slice(row + 1, column)) &&
+    /^\d{1,7}$/.test(location.slice(column + 1));
+  const place = numbered
+    ? `${framePath(location.slice(0, row))}${location.slice(row)}`
+    : framePath(location);
+  if (!withName) return `at ${place}`;
+  return `at ${FUNCTION_NAME.test(name) ? name : "[function]"} (${place})`;
+}
+
+// --- Structured errors ----------------------------------------------------------
+
+/** A property, or undefined when reading it throws (a getter, a revoked proxy). */
+function read(target: unknown, key: string): unknown {
+  if ((typeof target !== "object" && typeof target !== "function") || target === null) {
+    return undefined;
+  }
+  try {
+    return Reflect.get(target, key);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * MySQL's messages, by code, each read whole and anchored: a name is taken
+ * only where the message puts it, never from the value it quotes.
+ */
+const SQL_PARSERS: Readonly<Record<string, readonly [string, RegExp]>> = {
+  ER_DUP_ENTRY: ["key", /^Duplicate entry '[\s\S]*' for key '([\w$]{1,64}(?:\.[\w$]{1,64})?)'$/],
+  ER_DATA_TOO_LONG: ["column", /^Data too long for column '([\w$]{1,64})' at row \d{1,10}$/],
+  ER_BAD_NULL_ERROR: ["column", /^Column '([\w$]{1,64})' cannot be null$/],
+  ER_NO_DEFAULT_FOR_FIELD: ["column", /^Field '([\w$]{1,64})' doesn't have a default value$/],
+  ER_TRUNCATED_WRONG_VALUE_FOR_FIELD: [
+    "column",
+    /^Incorrect [a-z ]{1,40} value: '[\s\S]*' for column (?:`[\w$]{1,64}`\.){0,2}'([\w$]{1,64})' at row \d{1,10}$/,
+  ],
+  WARN_DATA_TRUNCATED: ["column", /^Data truncated for column '([\w$]{1,64})' at row \d{1,10}$/],
+  ER_BAD_FIELD_ERROR: [
+    "column",
+    /^Unknown column '([\w$]{1,64}(?:\.[\w$]{1,64})?)' in '[a-z ]{1,40}'$/,
+  ],
+  ER_NO_SUCH_TABLE: ["table", /^Table '([\w$]{1,64}(?:\.[\w$]{1,64})?)' doesn't exist$/],
+  ER_NO_REFERENCED_ROW_2: [
+    "constraint",
+    /^Cannot add or update a child row: a foreign key constraint fails \(`[\w$]{1,64}`\.`[\w$]{1,64}`, CONSTRAINT `([\w$]{1,64})` FOREIGN KEY [^']{0,600}\)$/,
+  ],
+  ER_ROW_IS_REFERENCED_2: [
+    "constraint",
+    /^Cannot delete or update a parent row: a foreign key constraint fails \(`[\w$]{1,64}`\.`[\w$]{1,64}`, CONSTRAINT `([\w$]{1,64})` FOREIGN KEY [^']{0,600}\)$/,
+  ],
+};
+
+/**
+ * A MySQL error (mysql2: `code` ER_…, `errno`, `sqlMessage`) as its code,
+ * its number and the name its message gives at its known place; the
+ * message itself, which quotes values, never.
+ */
+function sqlMessageOf(error: object): string | null {
+  const code = read(error, "code");
+  if (typeof code !== "string" || !/^(?:ER|WARN)_[A-Z0-9_]{1,60}$/.test(code)) return null;
+  const errno = read(error, "errno");
+  const sqlMessage = read(error, "sqlMessage");
+  if (typeof errno !== "number" && typeof sqlMessage !== "string") return null;
+  const message = read(error, "message");
+  const number = typeof errno === "number" && Number.isSafeInteger(errno) ? ` (${errno})` : "";
+  const parser = Object.hasOwn(SQL_PARSERS, code) ? SQL_PARSERS[code] : undefined;
+  const text =
+    typeof sqlMessage === "string" ? sqlMessage : typeof message === "string" ? message : "";
+  const name = parser && text.length <= 4_000 ? parser[1].exec(text)?.[1] : undefined;
+  return `${code}${number}${parser && name ? `: ${parser[0]} ${name}` : ""}`;
+}
+
+/** Drizzle's failed query: its SQL as its shape, its parameters' place only. */
 function failedQueryOf(message: string): string | null {
   if (!message.startsWith("Failed query: ")) return null;
   const end = message.indexOf("\nparams:");
-  const query = cut(message.slice(0, end < 0 ? undefined : end), MESSAGE_MAX).replace(
-    /'(?:[^'\\\n]|\\.|''){0,2000}(?:'|$)/g,
-    `'${REDACTED}'`,
-  );
-  return `${sanitizeText(query)}${end < 0 ? "" : `\nparams: ${REDACTED}`}`;
+  const query = message.slice("Failed query: ".length, end < 0 ? undefined : end);
+  return `Failed query: ${sanitizeText(query)}${end < 0 ? "" : `\nparams: ${REDACTED}`}`;
 }
 
+/**
+ * The keys a validation path may name: the API's static field names. A key
+ * outside it (a record's own key, which a user or a caller chose) is `[key]`.
+ */
+const PATH_KEYS: ReadonlySet<string> = new Set([
+  "id",
+  "ids",
+  "storeId",
+  "store",
+  "items",
+  "item",
+  "input",
+  "cursor",
+  "limit",
+  "status",
+  "type",
+  "kind",
+  "mode",
+  "name",
+  "title",
+  "slug",
+  "description",
+  "email",
+  "phone",
+  "firstName",
+  "lastName",
+  "companyName",
+  "address",
+  "city",
+  "postalCode",
+  "country",
+  "customer",
+  "customerId",
+  "product",
+  "productId",
+  "products",
+  "reservation",
+  "reservationId",
+  "unit",
+  "unitId",
+  "units",
+  "variant",
+  "variants",
+  "values",
+  "value",
+  "price",
+  "prices",
+  "amount",
+  "currency",
+  "quantity",
+  "startDate",
+  "endDate",
+  "date",
+  "dates",
+  "notes",
+  "note",
+  "reason",
+  "message",
+  "settings",
+  "businessHours",
+  "schedule",
+  "ranges",
+  "openTime",
+  "closeTime",
+  "closurePeriods",
+  "delivery",
+  "locations",
+  "location",
+  "taxes",
+  "attributes",
+  "metadata",
+  "options",
+  "url",
+  "imageUrl",
+  "images",
+  "locale",
+  "timezone",
+  "permissions",
+  "role",
+  "occurredAt",
+  "confirmationToken",
+]);
+
 /** A validation error (Zod's `issues`, also under oRPC's): each issue's code and path only. */
-function issuesMessageOf(error: Error): string | null {
-  const issues = Reflect.get(error, "issues");
-  if (!Array.isArray(issues)) return null;
-  const described = issues.slice(0, ISSUES_MAX).map((issue: unknown) => {
-    const code = issue && typeof issue === "object" ? Reflect.get(issue, "code") : undefined;
-    const path = issue && typeof issue === "object" ? Reflect.get(issue, "path") : undefined;
+function issuesMessageOf(issues: readonly unknown[]): string {
+  const described = issues.slice(0, ISSUES_MAX).map((issue) => {
+    const code = read(issue, "code");
+    const path = read(issue, "path");
     const name = typeof code === "string" && /^[a-z_]{1,40}$/.test(code) ? code : "issue";
     const at = Array.isArray(path)
       ? path
           .slice(0, 10)
-          .map((part) =>
-            typeof part === "number" || (typeof part === "string" && /^[\w$-]{1,64}$/.test(part))
+          .map((part: unknown) =>
+            typeof part === "number" && Number.isSafeInteger(part)
               ? String(part)
-              : "[key]",
+              : typeof part === "string" && PATH_KEYS.has(part)
+                ? part
+                : "[key]",
           )
           .join(".")
       : "";
@@ -252,42 +501,104 @@ function issuesMessageOf(error: Error): string | null {
   return `Invalid input: ${described.join("; ") || "no issue"}${more}`;
 }
 
-/** `error` as a `SanitizedError`: never its own object, nor a property outside the list. */
-export function sanitizeError(
-  error: unknown,
-  options: { frames?: number } = {},
-  depth = 0,
-): SanitizedError {
-  if (!(error instanceof Error)) {
-    // Not `JSON.stringify`: a thrown object may hold anything.
-    const text = typeof error === "string" ? error : `a thrown ${typeof error}`;
-    return { name: "NonError", message: sanitizeText(text), frames: [] };
+/** An error as it may be logged or reported: allowlisted fields, each sanitized. */
+export interface SanitizedError {
+  name: string;
+  message: string;
+  /** A provider's or a driver's codes (`code`, Stripe's `type`, an HTTP `statusCode`). */
+  code?: string;
+  type?: string;
+  statusCode?: number;
+  /** The stack's frames (`sanitizeFrame`), without the message the stack starts with. */
+  frames: string[];
+  cause?: SanitizedError;
+}
+
+function isError(value: unknown): value is Error {
+  try {
+    return value instanceof Error;
+  } catch {
+    return false;
   }
-  const statusCode = Reflect.get(error, "statusCode");
-  const frames = (error.stack ?? "")
-    .split("\n", 200)
-    .filter((line) => /^\s+at /.test(line))
-    .slice(0, options.frames ?? FRAMES_MAX)
-    .map((line) => sanitizeText(line.trim(), 300));
-  const code = sanitizeCode(Reflect.get(error, "code"));
-  const type = sanitizeCode(Reflect.get(error, "type"));
-  const cause = Reflect.get(error, "cause");
+}
+
+function kindOf(value: unknown): string {
+  try {
+    const tag = Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
+    return /^[a-z]{1,20}$/.test(tag) ? tag : typeof value;
+  } catch {
+    return typeof value;
+  }
+}
+
+function sanitizeOne(
+  error: unknown,
+  options: { frames?: number },
+  depth: number,
+  seen: Set<object>,
+): SanitizedError {
+  if (typeof error === "string") {
+    return { name: "NonError", message: sanitizeText(error), frames: [] };
+  }
+  if (!isError(error)) {
+    return { name: "NonError", message: `a thrown ${kindOf(error)}`, frames: [] };
+  }
+  seen.add(error);
+  const rawName = read(error, "name");
+  const name =
+    typeof rawName === "string" && /^[A-Za-z][\w$.]{0,60}$/.test(rawName) ? rawName : "Error";
+  const rawMessage = read(error, "message");
+  const issues = read(error, "issues");
   const message =
     sqlMessageOf(error) ??
-    issuesMessageOf(error) ??
-    failedQueryOf(String(error.message)) ??
-    sanitizeText(String(error.message));
+    (Array.isArray(issues) ? issuesMessageOf(issues) : null) ??
+    (typeof rawMessage === "string"
+      ? (failedQueryOf(rawMessage) ?? sanitizeText(rawMessage))
+      : rawMessage === undefined
+        ? ""
+        : VALUE);
+  const stack = read(error, "stack");
+  const frames =
+    typeof stack === "string"
+      ? stack
+          .split("\n", 200)
+          .filter((line) => /^\s+at /.test(line))
+          .slice(0, options.frames ?? FRAMES_MAX)
+          .map(sanitizeFrame)
+      : [];
+  const code = sanitizeCode(read(error, "code"));
+  const type = sanitizeCode(read(error, "type"));
+  const statusCode = read(error, "statusCode");
+  const cause = read(error, "cause");
+  let causeFacts: SanitizedError | undefined;
+  if (cause !== undefined && cause !== null && depth < CAUSE_DEPTH) {
+    causeFacts =
+      typeof cause === "object" && seen.has(cause)
+        ? { name: "Error", message: "[cause cycle]", frames: [] }
+        : sanitizeOne(cause, options, depth + 1, seen);
+  }
   return {
-    name: sanitizeText(String(error.name), 100),
+    name,
     message,
     ...(code === undefined ? {} : { code }),
     ...(type === undefined ? {} : { type }),
-    ...(typeof statusCode === "number" ? { statusCode } : {}),
+    ...(typeof statusCode === "number" && Number.isSafeInteger(statusCode) ? { statusCode } : {}),
     frames,
-    ...(cause !== undefined && depth < CAUSE_DEPTH
-      ? { cause: sanitizeError(cause, options, depth + 1) }
-      : {}),
+    ...(causeFacts ? { cause: causeFacts } : {}),
   };
+}
+
+/**
+ * `error` as a `SanitizedError`: never its own object, nor a property
+ * outside the list, and never a throw: a field it cannot read is left out,
+ * and an error it cannot read at all is `[unreadable error]`.
+ */
+export function sanitizeError(error: unknown, options: { frames?: number } = {}): SanitizedError {
+  try {
+    return sanitizeOne(error, options, 0, new Set());
+  } catch {
+    return { name: "Error", message: "[unreadable error]", frames: [] };
+  }
 }
 
 /**

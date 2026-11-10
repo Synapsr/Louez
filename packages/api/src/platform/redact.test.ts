@@ -75,7 +75,8 @@ describe("handoff secrets in logs", () => {
     const line = describeProviderError(error);
     assert.ok(!line.includes(STATE), line);
     assert.match(line, /type=StripeInvalidRequestError, statusCode=400/);
-    assert.equal(describeProviderError(`/handoffs/${ID}${SECRET}`), `/handoffs/${ID}[redacted]`);
+    // A path is no plain word: none of it is kept.
+    assert.equal(describeProviderError(`/handoffs/${ID}${SECRET}`), "[path]");
   });
 
   test("Stripe's onboarding error echoing the return URL prints no state on stdout or stderr", async () => {
