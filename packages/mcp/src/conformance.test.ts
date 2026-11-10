@@ -166,6 +166,27 @@ describe("MCP directory conformance", () => {
     assert.deepEqual(problems, []);
   });
 
+  test("every parameter of every listed tool has a type", () => {
+    // The Claude directory flags a parameter whose schema has no `type`, such
+    // as a bare `const` from z.literal(). A union is typed through its branches.
+    const typed = (schema: Record<string, unknown>): boolean => {
+      if (typeof schema.type === "string" || Array.isArray(schema.type)) return true;
+      const branches = (schema.anyOf ?? schema.oneOf) as Record<string, unknown>[] | undefined;
+      return Array.isArray(branches) && branches.length > 0 && branches.every(typed);
+    };
+    const problems: string[] = [];
+    for (const tool of tools) {
+      const properties = (tool.inputSchema.properties ?? {}) as Record<
+        string,
+        Record<string, unknown>
+      >;
+      for (const [name, schema] of Object.entries(properties)) {
+        if (!typed(schema)) problems.push(`${tool.name}.${name}`);
+      }
+    }
+    assert.deepEqual(problems, []);
+  });
+
   test("no description tells the model what to call or do", () => {
     // Imperatives the Claude directory refuses in a description: an order of
     // calls ("list them first", "then call"), a call to another tool or to
