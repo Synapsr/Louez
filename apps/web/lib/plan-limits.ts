@@ -498,31 +498,6 @@ export async function determineSmsSource(storeId: string): Promise<'plan' | 'top
   return 'topup'
 }
 
-/**
- * Deduct one SMS credit from prepaid balance
- * Call this after successfully sending an SMS that used prepaid credits
- */
-export async function deductPrepaidSmsCredit(storeId: string): Promise<boolean> {
-  const credits = await db.query.smsCredits.findFirst({
-    where: eq(smsCredits.storeId, storeId),
-  })
-
-  if (!credits || credits.balance <= 0) {
-    return false
-  }
-
-  await db
-    .update(smsCredits)
-    .set({
-      balance: sql`${smsCredits.balance} - 1`,
-      totalUsed: sql`${smsCredits.totalUsed} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(eq(smsCredits.storeId, storeId))
-
-  return true
-}
-
 // ============================================================================
 // Display Limits (for list pages)
 // ============================================================================

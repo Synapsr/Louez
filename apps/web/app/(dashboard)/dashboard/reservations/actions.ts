@@ -4854,10 +4854,16 @@ export async function requestPayment(
             reservation: {
               id: reservationId,
               number: reservation.number,
+              startDate: reservation.startDate,
+              endDate: reservation.endDate,
             },
             depositAmount: amount,
             authorizationUrl: paymentUrl,
             currency,
+            // The store's own text for this message, as its notification settings hold it.
+            customMessage:
+              store.customerNotificationSettings?.templates?.customer_deposit_authorization_requested
+                ?.smsMessage,
           });
         } else {
           await sendPaymentRequestSms({
@@ -4875,10 +4881,14 @@ export async function requestPayment(
             reservation: {
               id: reservationId,
               number: reservation.number,
+              startDate: reservation.startDate,
+              endDate: reservation.endDate,
             },
             amount,
             paymentUrl,
             currency,
+            customMessage:
+              store.customerNotificationSettings?.templates?.customer_payment_requested?.smsMessage,
           });
         }
         notificationResults.sms = true;

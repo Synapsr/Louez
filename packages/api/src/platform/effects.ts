@@ -247,6 +247,27 @@ export interface ApiEffectPayloads {
     fieldsCleared: string[];
     facts: SetupFacts;
   };
+  /**
+   * An SMS the provider accepted whose record (its log row and, for a
+   * prepaid one, its credit) could not be written right after it went out:
+   * written here once, keyed by `id`, never sent again (apps/web
+   * lib/sms/delivery.ts).
+   */
+  "sms.deliveryRecord": {
+    /** The log row's id, chosen before the first try: the key that makes the record happen once. */
+    id: string;
+    storeId: string;
+    reservationId: string | null;
+    customerId: string | null;
+    to: string;
+    message: string;
+    templateType: string;
+    /** The provider's id of the message. */
+    messageId: string | null;
+    creditSource: "plan" | "topup";
+    /** ISO 8601: when the provider accepted it, the log row's time. */
+    sentAt: string;
+  };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;

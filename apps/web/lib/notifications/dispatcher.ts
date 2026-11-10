@@ -11,11 +11,12 @@ import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
  */
 
 import { db } from "@louez/db";
-import { stores, smsLogs, pushSubscriptions, storeMembers } from "@louez/db";
+import { stores, pushSubscriptions, storeMembers } from "@louez/db";
 import { eq } from "drizzle-orm";
 import { env } from "@/env";
-import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from "@/lib/plan-limits";
-import { sendSms, isSmsConfigured } from "@/lib/sms/client";
+import { getSmsQuotaStatus, determineSmsSource } from "@/lib/plan-limits";
+import { isSmsConfigured } from "@/lib/sms/client";
+import { deliverSms } from "@/lib/sms/delivery";
 import { validateAndNormalizePhone } from "@/lib/sms/phone";
 import { formatCurrencyForSms } from "@louez/utils";
 import { getLocaleFromCountry, getEmailTranslations, type EmailLocale } from "@/lib/email/i18n";
@@ -736,30 +737,15 @@ async function sendAdminSms(
   // Determine credit source
   const creditSource = await determineSmsSource(storeId);
 
-  // Send SMS
-  const result = await sendSms({
-    to: formattedPhone,
-    message,
-  });
-
-  // Log the SMS
-  await db.insert(smsLogs).values({
+  // Once the provider accepts it, it is delivered: its record never makes it go out again.
+  return deliverSms({
     storeId,
     reservationId,
     to: formattedPhone,
     message,
     templateType: `admin_${eventType}`,
-    status: result.success ? "sent" : "failed",
-    error: result.error,
     creditSource,
   });
-
-  // Deduct prepaid credit if needed
-  if (result.success && creditSource === "topup") {
-    await deductPrepaidSmsCredit(storeId);
-  }
-
-  return result;
 }
 
 /**

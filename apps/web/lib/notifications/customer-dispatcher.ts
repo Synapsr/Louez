@@ -488,10 +488,11 @@ async function sendCustomerEmail(
 async function sendCustomerSms(
   eventType: CustomerNotificationEventType,
   ctx: CustomerNotificationContext,
-  _locale: EmailLocale,
-  _customTemplate?: CustomerNotificationTemplate,
+  locale: EmailLocale,
+  customTemplate?: CustomerNotificationTemplate,
 ) {
-  // Only certain event types have SMS implementations
+  // Only certain event types have SMS implementations. In the reservation's
+  // language, as the email; the store's own text when it saved one.
   const smsParams = {
     store: ctx.store,
     customer: {
@@ -501,6 +502,8 @@ async function sendCustomerSms(
       phone: ctx.customer.phone,
     },
     reservation: ctx.reservation,
+    locale,
+    customMessage: customTemplate?.smsMessage,
   };
 
   switch (eventType) {
@@ -530,14 +533,7 @@ async function sendCustomerSms(
         throw new Error("Payment request context missing required fields");
       }
       return sendPaymentRequestSms({
-        store: ctx.store,
-        customer: {
-          id: ctx.customer.id,
-          firstName: ctx.customer.firstName,
-          lastName: ctx.customer.lastName,
-          phone: ctx.customer.phone,
-        },
-        reservation: ctx.reservation,
+        ...smsParams,
         amount: ctx.paymentRequestAmount,
         paymentUrl: ctx.paymentRequestUrl,
         currency: ctx.store.settings?.currency,
@@ -548,14 +544,7 @@ async function sendCustomerSms(
         throw new Error("Deposit authorization context missing required fields");
       }
       return sendDepositAuthorizationRequestSms({
-        store: ctx.store,
-        customer: {
-          id: ctx.customer.id,
-          firstName: ctx.customer.firstName,
-          lastName: ctx.customer.lastName,
-          phone: ctx.customer.phone,
-        },
-        reservation: ctx.reservation,
+        ...smsParams,
         depositAmount: ctx.depositAuthorizationAmount,
         authorizationUrl: ctx.depositAuthorizationUrl,
         currency: ctx.store.settings?.currency,

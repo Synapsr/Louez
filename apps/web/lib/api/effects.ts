@@ -9,6 +9,7 @@ import {
 
 import { log } from "@/lib/evlog";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
+import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
 import { createStoreLaunchEffectSenders } from "@/lib/stores/store-launch-effects";
 import { createStoreSetupEffectSenders } from "@/lib/stores/store-setup-effects";
@@ -20,6 +21,7 @@ import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-ef
  */
 export const apiEffectSenders: ApiEffectSenders = {
   ...createReservationEffectSenders(),
+  ...createSmsEffectSenders(),
   ...createStoreCreationEffectSenders(),
   ...createStoreLaunchEffectSenders(),
   ...createStoreSetupEffectSenders(),
