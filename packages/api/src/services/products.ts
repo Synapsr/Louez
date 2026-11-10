@@ -531,6 +531,16 @@ function categoryIdsOf(product: LoadedProduct) {
   return linked.length > 0 ? linked : product.categoryId ? [product.categoryId] : [];
 }
 
+/** A unit as products_get and products_list_units show it. */
+function toUnit(unit: LoadedProduct["units"][number]): Product["units"][number] {
+  return {
+    id: unit.id,
+    identifier: unit.identifier,
+    attributes: (unit.attributes as Record<string, string> | null) ?? {},
+    lifecycleStatus: unit.lifecycleStatus,
+  };
+}
+
 async function toProduct(product: LoadedProduct, currency: string): Promise<Product> {
   const quantity = product.trackUnits
     ? ((await getEffectiveProductQuantities(db, [product.id])).get(product.id) ?? 0)
@@ -557,12 +567,7 @@ async function toProduct(product: LoadedProduct, currency: string): Promise<Prod
     quantity,
     trackUnits: product.trackUnits,
     bookingAttributeAxes: getSortedAxes(product.bookingAttributeAxes),
-    units: product.units.map((unit) => ({
-      id: unit.id,
-      identifier: unit.identifier,
-      attributes: (unit.attributes as Record<string, string> | null) ?? {},
-      lifecycleStatus: unit.lifecycleStatus,
-    })),
+    units: product.units.map(toUnit),
     accessories: product.accessories.map((link) => ({
       accessoryId: link.accessoryId,
       name: link.accessory?.name ?? "",
@@ -627,6 +632,20 @@ export async function getProduct(actor: Pick<ProductActor, "storeId" | "store">,
   return toProduct(await loadProduct(db, actor.storeId, id), currencyOf(actor));
 }
 
+/**
+ * Every unit of one of the store's products, retired ones included, in
+ * products_get's order (by identifier, unique within a product).
+ */
+export async function listProductUnits(storeId: string, id: string) {
+  await assertOwnedProduct(storeId, id);
+  const rows = await db
+    .select()
+    .from(productUnits)
+    .where(eq(productUnits.productId, id))
+    .orderBy(asc(productUnits.identifier));
+  return rows.map(toUnit);
+}
+
 const listPosition = sql<number>`COALESCE(${products.displayOrder}, 0)`.mapWith(Number);
 
 /**
@@ -638,10 +657,7 @@ const listPosition = sql<number>`COALESCE(${products.displayOrder}, 0)`.mapWith(
  */
 export async function listProducts(
   actor: Pick<ProductActor, "storeId" | "store">,
-  input: z.infer<typeof listProductsInput> & {
-    /** Rows to skip, for the former `list_products` paging only, in place of a cursor. */
-    offset?: number;
-  },
+  input: z.infer<typeof listProductsInput>,
 ) {
   const { storeId } = actor;
   const limit = input.limit ?? PRODUCT_PAGE_DEFAULT;
@@ -693,8 +709,7 @@ export async function listProducts(
       .from(products)
       .where(and(...conditions))
       .orderBy(asc(listPosition), desc(products.createdAt), asc(products.id))
-      .limit(limit + 1)
-      .offset(input.offset ?? 0),
+      .limit(limit + 1),
     db
       .select({ status: products.status, count: count() })
       .from(products)
@@ -1005,14 +1020,54 @@ function canonicalPatch(patch: Patch): Patch {
   return canonical;
 }
 
+type SentUnit = NonNullable<UpdateProductInput["units"]>[number];
+
+/**
+ * The active units an update leaves the product with. The dashboard's form
+ * (`wholeList`) sends them all: its list is the result. Any other caller may
+ * hold only a page of them (an agent reads the first units of a product), so
+ * its units update and add over the stored ones, a unit left out stays, and
+ * only `removeUnitIds` deletes. Both refuse an id to remove that is not an
+ * active unit of the product, or that the call also sends.
+ */
+function unitsAfterUpdate(
+  stored: SentUnit[],
+  sent: SentUnit[] | undefined,
+  removeUnitIds: string[],
+  wholeList: boolean,
+): SentUnit[] {
+  const storedIds = new Set(stored.map((unit) => unit.id));
+  const unknown = removeUnitIds.filter((id) => !storedIds.has(id));
+  if (unknown.length > 0) throw productErrors.unitsToRemoveUnknown(unknown);
+  const removed = new Set(removeUnitIds);
+  const sentAndRemoved = (sent ?? []).flatMap((unit) =>
+    unit.id && removed.has(unit.id) ? [unit.id] : [],
+  );
+  if (sentAndRemoved.length > 0) throw productErrors.unitsSentAndRemoved(sentAndRemoved);
+
+  let units: SentUnit[];
+  if (wholeList && sent) {
+    units = sent;
+  } else {
+    const sentById = new Map(
+      (sent ?? []).flatMap((unit) => (unit.id ? [[unit.id, unit] as const] : [])),
+    );
+    const sentOther = (sent ?? []).filter((unit) => !unit.id || !storedIds.has(unit.id));
+    units = [...stored.map((unit) => sentById.get(unit.id as string) ?? unit), ...sentOther];
+  }
+  return units.filter((unit) => !(unit.id && removed.has(unit.id)));
+}
+
 /**
  * The update as a whole form: the stored product with the sent fields over
  * it. `price` alone on a duration product changes the base rate's price.
- * `syncUnits` is false when the call sends none of units, trackUnits and
- * bookingAttributeAxes: the units are then left as they are.
+ * `syncUnits` is false when the call sends none of units, removeUnitIds,
+ * trackUnits and bookingAttributeAxes: the units are then left as they are.
+ * `wholeUnitList`: the call's units are every active unit (the dashboard's
+ * form), see `unitsAfterUpdate`.
  */
-function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput) {
-  const { id: _id, ...sent } = patch;
+function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput, wholeUnitList: boolean) {
+  const { id: _id, removeUnitIds, ...sent } = patch;
   const defined = canonicalPatch(
     Object.fromEntries(Object.entries(sent).filter(([, value]) => value !== undefined)) as Patch,
   );
@@ -1025,6 +1080,14 @@ function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput) {
       product.units.filter((unit) => unit.lifecycleStatus !== "active").map((unit) => unit.id),
     );
     defined.units = defined.units.filter((unit) => !(unit.id && retired.has(unit.id)));
+  }
+  if (defined.units || removeUnitIds) {
+    defined.units = unitsAfterUpdate(
+      stored.units as SentUnit[],
+      defined.units,
+      removeUnitIds ?? [],
+      wholeUnitList,
+    );
   }
   assertListLimits(listLengths(defined), listLengths(stored as Parameters<typeof listLengths>[0]));
   const merged: Record<string, unknown> = { ...stored, ...defined };
@@ -1101,7 +1164,9 @@ export async function updateProduct(
       await lockProductUnits(tx, input.id);
 
       const product = await loadProduct(tx, storeId, input.id);
-      const { merged, syncUnits } = mergeUpdate(product, input);
+      // A dashboard session saves the whole form; any other caller may hold
+      // only a page of the units.
+      const { merged, syncUnits } = mergeUpdate(product, input, actor.transport === "rpc");
       const data = validateProduct(merged);
       savedName = data.name;
 

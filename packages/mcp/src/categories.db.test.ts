@@ -326,7 +326,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     });
   });
 
-  test("the tool list shows the categories tools the connection may call, and no legacy one listed", async () => {
+  test("the tool list shows the categories tools the connection may call", async () => {
     const writer = await mcpTools(await key());
     for (const name of [
       "categories_list",
@@ -341,47 +341,12 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     ]) {
       assert.ok(writer.includes(name), `${name} is listed`);
     }
-    for (const legacy of [
-      "list_categories",
-      "create_category",
-      "update_category",
-      "delete_category",
-    ]) {
-      assert.ok(!writer.includes(legacy), `${legacy} is not listed`);
-    }
 
     const reader = (await mcpTools(await key(readOnly))).filter((name) =>
       name.startsWith("categories_"),
     );
     assert.deepEqual(reader.sort(), ["categories_get", "categories_list"]);
   });
-  test("the former tool names still work, on the same procedures, with their old argument names", async () => {
-    const authorization = await key();
-    const created = await mcpCall(authorization, "create_category", { name: "Legacy name" });
-    assert.notEqual(created.isError, true, JSON.stringify(created.content));
-    const id = (created.structuredContent as { id: string }).id;
-
-    const renamed = await mcpCall(authorization, "update_category", {
-      categoryId: id,
-      name: "Renamed by alias",
-    });
-    assert.notEqual(renamed.isError, true, JSON.stringify(renamed.content));
-    assert.equal((renamed.structuredContent as { name: string }).name, "Renamed by alias");
-
-    const listed = await mcpCall(authorization, "list_categories", {});
-    const names = (listed.structuredContent as { items: Array<{ name: string }> }).items.map(
-      (category) => category.name,
-    );
-    assert.ok(names.includes("Renamed by alias"));
-
-    // Same rules as the new name: a confirmation first.
-    const removed = await mcpCall(authorization, "delete_category", { categoryId: id });
-    assert.equal(
-      (removed.structuredContent as { error?: { code?: string } }).error?.code,
-      "CONFIRMATION_REQUIRED",
-    );
-  });
-
   test("an image sent in the call goes up on RPC, OpenAPI and MCP, and MCP takes its larger body", async () => {
     const authorization = await key();
     const png = Buffer.alloc(9);

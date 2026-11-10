@@ -1,4 +1,4 @@
-import type { ExposedProcedure } from "@louez/api/platform/exposure";
+import { bundlesWithTools, type ExposedProcedure } from "@louez/api/platform/exposure";
 import { McpServer } from "@modelcontextprotocol/server";
 
 import type { McpRequestContext } from "./auth/context";
@@ -37,7 +37,7 @@ export function createMcpServer(
         { src: urls.dashboard("/apple-touch-icon.png"), mimeType: "image/png", sizes: ["180x180"] },
       ],
     },
-    { instructions: serverInstructions(ctx) },
+    { instructions: serverInstructions(ctx, bundlesWithTools(procedures)) },
   );
 
   registerExposedTools(server, ctx, procedures);

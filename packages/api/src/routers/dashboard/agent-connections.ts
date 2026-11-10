@@ -16,6 +16,7 @@ import {
   currentTerms,
   describeClient,
   listGrants,
+  offeredBundles,
   revokeGrant,
   saveGrant,
   updateGrant,
@@ -56,7 +57,7 @@ async function pendingRequest(oauthQuery: string) {
   return request;
 }
 
-/** What the consent page shows: who asks, the user's stores, and the terms granted before. */
+/** What the consent page shows: who asks, the user's stores, the bundles it offers, and the terms granted before. */
 const getAuthorization = connections
   .meta({
     capability: "account.authorizeAgentConnection",
@@ -72,7 +73,7 @@ const getAuthorization = connections
       memberStores(context.actor),
       currentTerms({ userId, clientId }),
     ]);
-    return { client, stores, current };
+    return { client, stores, current, offeredBundles: await offeredBundles(client) };
   });
 
 /**

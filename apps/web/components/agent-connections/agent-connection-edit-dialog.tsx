@@ -62,7 +62,13 @@ export const AgentConnectionEditDialog = ({
           <DialogDescription>{t("list.editDescription")}</DialogDescription>
         </DialogHeader>
         <DialogPanel>
-          <AgentTermsFields stores={stores} value={terms} onChange={setTerms} disabled={pending} />
+          <AgentTermsFields
+            stores={stores}
+            offeredBundles={connection.offeredBundles}
+            value={terms}
+            onChange={setTerms}
+            disabled={pending}
+          />
         </DialogPanel>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

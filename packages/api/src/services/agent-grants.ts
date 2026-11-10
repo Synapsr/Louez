@@ -17,6 +17,8 @@ import {
   type AgentClient,
   type AgentConnection,
 } from "../contracts/agent-connections";
+import { CHATGPT_CLIENT_ID, clientWithholding } from "../platform/agent-clients";
+import { bundlesWithTools, createExposure } from "../platform/exposure";
 import { MCP_BUNDLES, type McpBundle } from "../platform/meta";
 import { failCredentialHandoffs } from "./handoffs";
 import type { AgentPreset } from "../platform/permissions";
@@ -43,8 +45,13 @@ export interface ActiveGrant {
   userId: string;
   email: string | null;
   clientId: string;
-  /** The client's name, for the audit trail. */
+  /** The client's name, for the audit trail: cut to the audit column's 100 characters. */
   clientName: string;
+  /**
+   * The name the client registered, whole: what its directory's rules read
+   * (`clientWithholding`), as the consent page does, never the cut one.
+   */
+  registeredName: string | null;
   preset: AgentPreset;
   confirmSensitive: boolean;
   bundles: McpBundle[];
@@ -54,6 +61,44 @@ export interface ActiveGrant {
 
 const knownBundles = (raw: unknown): McpBundle[] =>
   Array.isArray(raw) ? MCP_BUNDLES.filter((bundle) => raw.includes(bundle)) : [];
+
+let appToolBundles: Promise<readonly McpBundle[]> | undefined;
+
+/**
+ * The bundles the consent page and the connection editor offer `client`:
+ * those that hold a tool today (`bundlesWithTools`, read once from the app's
+ * exposure; the router is loaded on first use, as it imports this module),
+ * without those its directory forbids it (`clientWithholding`).
+ */
+export async function offeredBundles(client: {
+  clientId: string;
+  name: string | null;
+}): Promise<McpBundle[]> {
+  appToolBundles ??= import("../router").then(({ appRouter }) =>
+    bundlesWithTools(createExposure(appRouter).procedures),
+  );
+  const withheld = clientWithholding(client).bundles;
+  return (await appToolBundles).filter((bundle) => !withheld.includes(bundle));
+}
+
+/**
+ * The bundles a save leaves the grant: the ones the user submitted, plus the
+ * ones it held that the page did not offer (a bundle with no tool yet, one
+ * the client's directory forbids), which the user could neither see nor
+ * deselect. An offered bundle left out is deselected.
+ */
+function savedBundles(
+  stored: readonly McpBundle[],
+  submitted: readonly McpBundle[],
+  offered: readonly McpBundle[],
+): McpBundle[] {
+  const kept = stored.filter((bundle) => !offered.includes(bundle));
+  return MCP_BUNDLES.filter((bundle) => submitted.includes(bundle) || kept.includes(bundle));
+}
+
+/** A grant's bundles, without those offered nowhere: they come back once they hold a tool. */
+const shownBundles = (bundles: readonly McpBundle[], offered: readonly McpBundle[]) =>
+  bundles.filter((bundle) => offered.includes(bundle));
 
 /** The grant of `userId` for `clientId`, when it exists and the client is still allowed. */
 export async function loadActiveGrant(input: {
@@ -98,6 +143,7 @@ export async function loadActiveGrant(input: {
     clientId: row.clientId,
     // The audit column holds 100 characters.
     clientName: (row.clientName ?? row.clientId).slice(0, 100),
+    registeredName: row.clientName,
     preset: row.preset,
     confirmSensitive: row.confirmSensitive,
     bundles: knownBundles(row.bundles),
@@ -155,7 +201,7 @@ export async function storeHasAgentConnection(storeId: string): Promise<boolean>
 const VERIFIED_CLIENT_IDS: ReadonlySet<string> = new Set([
   "https://claude.ai/oauth/mcp-oauth-client-metadata",
   "https://claude.ai/oauth/mcp-oauth-client-metadata/confidential_client",
-  "https://chatgpt.com/oauth/client.json",
+  CHATGPT_CLIENT_ID,
 ]);
 
 function hostOf(uri: string | null | undefined): string | null {
@@ -236,11 +282,12 @@ export async function currentTerms(input: {
 }): Promise<GrantTerms | null> {
   const grant = await loadActiveGrant(input);
   if (!grant) return null;
+  const offered = await offeredBundles({ clientId: grant.clientId, name: grant.registeredName });
   return {
     stores: grant.stores ? { all: false, ids: grant.stores } : { all: true },
     preset: grant.preset,
     confirmSensitive: grant.confirmSensitive,
-    bundles: grant.bundles,
+    bundles: shownBundles(grant.bundles, offered),
   };
 }
 
@@ -278,9 +325,22 @@ export async function saveGrant(input: {
 }): Promise<{ id: string }> {
   const { terms } = input;
   if (!terms.stores.all) await assertMemberOf(input.userId, terms.stores.ids);
-  await describeClient(input.clientId, null);
+  const client = await describeClient(input.clientId, null);
+  const offered = await offeredBundles(client);
 
   return db.transaction(async (tx) => {
+    // A new consent keeps the bundles the page could not offer.
+    const [existing] = await tx
+      .select({ bundles: apiAgentGrants.bundles })
+      .from(apiAgentGrants)
+      .where(
+        and(eq(apiAgentGrants.userId, input.userId), eq(apiAgentGrants.clientId, input.clientId)),
+      )
+      .for("update")
+      .limit(1);
+    const bundles = existing
+      ? savedBundles(knownBundles(existing.bundles), terms.bundles, offered)
+      : terms.bundles;
     await tx
       .insert(apiAgentGrants)
       .values({
@@ -289,14 +349,14 @@ export async function saveGrant(input: {
         allStores: terms.stores.all,
         preset: terms.preset,
         confirmSensitive: terms.confirmSensitive,
-        bundles: terms.bundles,
+        bundles,
       })
       .onDuplicateKeyUpdate({
         set: {
           allStores: terms.stores.all,
           preset: terms.preset,
           confirmSensitive: terms.confirmSensitive,
-          bundles: terms.bundles,
+          bundles,
         },
       });
     const [grant] = await tx
@@ -315,8 +375,14 @@ export async function saveGrant(input: {
 
 async function ownGrant(tx: Transaction, userId: string, id: string) {
   const [grant] = await tx
-    .select({ id: apiAgentGrants.id, clientId: apiAgentGrants.clientId })
+    .select({
+      id: apiAgentGrants.id,
+      clientId: apiAgentGrants.clientId,
+      bundles: apiAgentGrants.bundles,
+      clientName: oauthClients.name,
+    })
     .from(apiAgentGrants)
+    .innerJoin(oauthClients, eq(oauthClients.clientId, apiAgentGrants.clientId))
     .where(and(eq(apiAgentGrants.id, id), eq(apiAgentGrants.userId, userId)))
     .for("update")
     .limit(1);
@@ -334,12 +400,20 @@ export async function updateGrant(input: {
   if (patch.stores && !patch.stores.all) await assertMemberOf(input.userId, patch.stores.ids);
 
   await db.transaction(async (tx) => {
-    await ownGrant(tx, input.userId, input.id);
+    const grant = await ownGrant(tx, input.userId, input.id);
+    // The editor shows only the offered bundles: the others it held stay.
+    const bundles = patch.bundles
+      ? savedBundles(
+          knownBundles(grant.bundles),
+          patch.bundles,
+          await offeredBundles({ clientId: grant.clientId, name: grant.clientName }),
+        )
+      : undefined;
     const set = {
       ...(patch.stores ? { allStores: patch.stores.all } : {}),
       ...(patch.preset ? { preset: patch.preset } : {}),
       ...(patch.confirmSensitive !== undefined ? { confirmSensitive: patch.confirmSensitive } : {}),
-      ...(patch.bundles ? { bundles: patch.bundles } : {}),
+      ...(bundles ? { bundles } : {}),
     };
     if (Object.keys(set).length > 0) {
       await tx.update(apiAgentGrants).set(set).where(eq(apiAgentGrants.id, input.id));
@@ -415,7 +489,11 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
   ]);
   const lastAction = new Map(lastActions.map((row) => [row.grantId, row.at]));
 
-  return rows.map((row) => ({
+  const offered = await Promise.all(
+    rows.map((row) => offeredBundles({ clientId: row.clientId, name: row.name })),
+  );
+
+  return rows.map((row, index) => ({
     id: row.id,
     client: toAgentClient(row, null),
     stores: row.allStores
@@ -428,7 +506,8 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
         },
     preset: row.preset,
     confirmSensitive: row.confirmSensitive,
-    bundles: knownBundles(row.bundles),
+    bundles: shownBundles(knownBundles(row.bundles), offered[index]),
+    offeredBundles: offered[index],
     lastActionAt: lastAction.get(row.id) ?? null,
     createdAt: row.createdAt,
   }));

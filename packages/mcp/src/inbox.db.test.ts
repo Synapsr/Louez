@@ -192,7 +192,8 @@ describe("inbox tools (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.ok(!names.includes("inbox_acknowledge"), "a read-only key does not see the write");
     const description = tools.find((tool) => tool.name === "inbox_list")?.description ?? "";
     assert.match(description, /nextCursor/);
-    assert.match(instructions, /inbox_list[^\n]*every 5 to 15 minutes[^\n]*nextCursor/);
+    assert.match(instructions, /inbox_list[^\n]*nextCursor[^\n]*returns only what is new/);
+    assert.match(instructions, /If the user asks you to keep an eye on the store/);
 
     // Settings alone lists it; products alone does not.
     const settingsOnly = await withClient(

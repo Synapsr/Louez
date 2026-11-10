@@ -16,7 +16,7 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 
 // The reservation follow-up tools, through the app's real router and the
 // real MCP and OpenAPI handlers: what an agent sees in the daily bundle, the
-// former tool names kept as aliases, and the confirmation of a status change.
+// confirmation of a status change.
 
 const OWNER = "rt_owner_user_000001";
 const STORE = "rt_store_a_000000001";
@@ -196,7 +196,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       })
     )?.status;
 
-  test("every follow-up tool is in the daily bundle, and the former names are not listed", async () => {
+  test("every follow-up tool is in the daily bundle", async () => {
     const tools = exposure.procedures.filter(
       (entry) =>
         entry.path.startsWith("dashboard.reservations.") ||
@@ -216,24 +216,10 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       "search_global",
     ]);
     assert.deepEqual([...new Set(tools.map((entry) => entry.meta.mcp.bundle))], ["daily"]);
-    const aliases = tools.flatMap((entry) =>
-      (entry.meta.mcp.aliases ?? []).map((alias) => alias.name),
-    );
-    assert.deepEqual(aliases.sort(), [
-      "calendar_overdue",
-      "calendar_upcoming",
-      "get_reservation",
-      "get_reservation_poll",
-      "list_reservations",
-      "update_reservation_notes",
-      "update_reservation_status",
-    ]);
-
     const writer = await mcpTools(await key());
     for (const tool of tools) {
       assert.ok(writer.includes(tool.meta.mcp.name), `${tool.meta.mcp.name} is listed`);
     }
-    for (const alias of aliases) assert.ok(!writer.includes(alias), `${alias} is not listed`);
     // check_availability stays a hand-written tool until lot 2b.
     assert.ok(writer.includes("check_availability"));
 
@@ -245,52 +231,100 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     );
   });
 
-  test("the former tool names still work with their former arguments", async () => {
+  test("an agent lists, reads, polls, follows and updates the reservations", async () => {
     const authorization = await key();
     const pending = await reservation("pending");
     const late = await reservation("ongoing", new Date(Date.now() - 2 * 86_400_000));
 
-    const listed = output(await mcpCall(authorization, "list_reservations", { pageSize: 10 }));
+    const listed = output(await mcpCall(authorization, "reservations_list", { limit: 10 }));
     assert.ok((listed.items as Json[]).some((item) => item.id === pending));
 
-    const got = output(await mcpCall(authorization, "get_reservation", { reservationId: pending }));
+    const got = output(await mcpCall(authorization, "reservations_get", { id: pending }));
     assert.equal(got.id, pending);
     assert.equal((got.customer as Json).firstName, "Ada");
 
-    const poll = output(await mcpCall(authorization, "get_reservation_poll", {}));
+    const poll = output(await mcpCall(authorization, "reservations_poll", {}));
     assert.equal(poll.pendingCount, 1);
 
-    const overdue = output(await mcpCall(authorization, "calendar_overdue", {}));
+    const overdue = output(await mcpCall(authorization, "reservations_list_overdue", {}));
     assert.deepEqual(
       (overdue.items as Json[]).map((item) => item.id),
       [late],
     );
-    output(await mcpCall(authorization, "calendar_upcoming", { days: 7 }));
+    output(await mcpCall(authorization, "reservations_list_upcoming", { days: 7 }));
 
     const notes = output(
-      await mcpCall(authorization, "update_reservation_notes", {
-        reservationId: pending,
+      await mcpCall(authorization, "reservations_update_notes", {
+        id: pending,
         notes: "Call before",
       }),
     );
     assert.equal(notes.internalNotes, "Call before");
 
-    // A rejection emails the customer: it waits for the confirmation, under the old name too.
-    const first = await mcpCall(authorization, "update_reservation_status", {
-      reservationId: pending,
+    // A rejection emails the customer: it waits for the confirmation.
+    const first = await mcpCall(authorization, "reservations_update_status", {
+      id: pending,
       status: "rejected",
     });
     const token = tokenOf(first);
     assert.equal(await statusOf(pending), "pending");
     const rejected = output(
-      await mcpCall(authorization, "update_reservation_status", {
-        reservationId: pending,
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
         status: "rejected",
         confirmationToken: token,
       }),
     );
     assert.equal(rejected.to, "rejected");
     assert.equal(await statusOf(pending), "rejected");
+  });
+
+  test("a calendar window comes a page at a time with a cursor; the API gets it whole", async () => {
+    const authorization = await key();
+    const window = { from: "2030-06-01T00:00:00Z", to: "2030-06-30T00:00:00Z" };
+    for (let index = 0; index < 3; index++) await reservation("confirmed");
+    const all = output(
+      await mcpCall(authorization, "reservations_list_calendar_period", window),
+    ).items as Json[];
+    assert.ok(all.length >= 3);
+
+    // Pages of two, read on with each nextCursor, give every entry once, in order.
+    const read: string[] = [];
+    let cursor: unknown;
+    do {
+      const page = output(
+        await mcpCall(authorization, "reservations_list_calendar_period", {
+          ...window,
+          limit: 2,
+          ...(cursor ? { cursor } : {}),
+        }),
+      );
+      assert.ok((page.items as Json[]).length <= 2);
+      read.push(...(page.items as Json[]).map((item) => String(item.id)));
+      cursor = page.nextCursor;
+    } while (cursor);
+    assert.deepEqual(
+      read,
+      all.map((item) => String(item.id)),
+    );
+
+    const planning = output(
+      await mcpCall(authorization, "reservations_get_planning_timeline", { ...window, limit: 1 }),
+    );
+    // These fixtures have no lines to draw: one empty page, no cursor.
+    assert.deepEqual(planning.items, []);
+    assert.equal(planning.nextCursor, null);
+
+    const whole = (await (
+      await openApi(
+        "GET",
+        `/reservations/calendar?from=${window.from}&to=${window.to}`,
+        null,
+        { authorization },
+      )
+    ).json()) as Json;
+    assert.equal((whole.items as Json[]).length, all.length);
+    assert.equal(whole.nextCursor, null);
   });
 
   test("the follow-up is served at its REST paths", async () => {

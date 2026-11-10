@@ -41,9 +41,17 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
   let failNext = 0;
   let gate: Promise<void> | null = null;
   let checkClaim = true;
+  // Resolved when a sender starts, so its row is claimed: a barrier, not a delay.
+  let onSenderEntered: (() => void) | null = null;
+  const senderEntered = () =>
+    new Promise<void>((resolve) => {
+      onSenderEntered = resolve;
+    });
 
   const senders: ApiEffectSenders = {
     "reservation.platformNotification": async (payload, context: EffectSendContext) => {
+      onSenderEntered?.();
+      onSenderEntered = null;
       if (gate) await gate;
       if (failNext > 0) {
         failNext -= 1;
@@ -155,9 +163,10 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
       release = resolve;
     });
 
-    // A claims and stalls before it sends.
+    // A claims and stalls before it sends: its sender has started, so it holds the claim.
+    const aEntered = senderEntered();
     const a = effects.dispatchEffects([id], senders, { sendTimeoutMs: 60_000 });
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await aEntered;
     // B finds A's claim expired, takes the row over and sends it.
     gate = null;
     await elapse(effects.EFFECT_LEASE_MS + 1_000);
@@ -336,8 +345,9 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
       release = resolve;
     });
     // A claims and stalls; 60 seconds of its lease are left, in the database's time.
+    const aEntered = senderEntered();
     const a = effects.dispatchEffects([id], senders, { sendTimeoutMs: 60_000 });
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await aEntered;
     await elapse(effects.EFFECT_LEASE_MS - 60_000);
 
     // B's clock runs 61 seconds ahead, then an hour: it cannot take the row.

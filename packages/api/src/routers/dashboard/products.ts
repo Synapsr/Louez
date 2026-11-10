@@ -1,7 +1,6 @@
 import { currentApiOperation } from "@louez/db";
 
 import {
-  LEGACY_PAGE_MAX_OFFSET,
   createProductInput,
   createSeasonalPricingInput,
   deleteProductInput,
@@ -9,14 +8,14 @@ import {
   deleteSeasonalPricingOutput,
   duplicateProductInput,
   getProductInput,
-  legacyListProductsInput,
+  listProductUnitsInput,
+  listProductUnitsOutput,
   listProductsInput,
   listProductsOutput,
   listSeasonalPricingsInput,
   listSeasonalPricingsOutput,
   productActivityInput,
   productActivityOutput,
-  productErrors,
   productImageJobInput,
   productOutput,
   PRODUCT_WRITE_MAX_BODY_BYTES,
@@ -41,6 +40,7 @@ import {
   UPLOAD_IMAGE_MAX_BODY_BYTES,
   uploadImageInput,
 } from "../../contracts/uploads";
+import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { productLinks } from "../../platform/links";
 import type { ProductImageOperation } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
@@ -62,6 +62,7 @@ import {
   deleteProduct,
   duplicateProduct,
   getProduct,
+  listProductUnits,
   listProducts,
   reorderProducts,
   updateProduct,
@@ -120,6 +121,29 @@ const withLinks = <T extends { id: string; slug: string | null; status: string |
   product: T,
 ) => ({ ...product, links: productLinks(context.ports.urls, context.store, product) });
 
+/** A product's units by identifier (unique within it), then id: products_get's and products_list_units'. */
+const UNIT_ORDER = {
+  key: (unit: { identifier: string; id: string }) => `${unit.identifier}\u0000${unit.id}`,
+};
+
+/**
+ * A product as an agent's answer shows it (`meta.mcp.answer`): its first
+ * `ANSWER_PAGE_MCP_DEFAULT` units, `unitsTotal`, and `unitsNextCursor`, the
+ * cursor products_list_units reads on from. Applied by the MCP bridge after
+ * the call, a replay included: the procedure returns, and an idempotency key
+ * stores, the whole product, which the dashboard and the API get.
+ */
+const pageProductUnits = (answer: Record<string, unknown>): Record<string, unknown> => {
+  const all = (answer.units ?? []) as Array<{ identifier: string; id: string }>;
+  const units = answerPage(all, UNIT_ORDER, {}, { transport: "mcp", tool: "products_get" });
+  return {
+    ...answer,
+    units: units.items,
+    unitsTotal: all.length,
+    unitsNextCursor: units.nextCursor,
+  };
+};
+
 /** A page of products, each with its links. */
 const withItemLinks = async (
   context: ProductContext,
@@ -128,6 +152,8 @@ const withItemLinks = async (
   const result = await page;
   return { ...result, items: result.items.map((item) => withLinks(context, item)) };
 };
+
+const UNITS_PAGE_HELP = `On MCP, \`units\` holds the first ${ANSWER_PAGE_MCP_DEFAULT} units by identifier (the API, every unit); \`unitsTotal\` counts them all and, when \`unitsNextCursor\` is not null, products_list_units gives the others from that cursor. products_update keeps the units its \`units\` list leaves out, and deletes only those in removeUnitIds.`;
 
 const TIERS_HELP =
   'Pricing: a duration product has a base rate (basePriceDuration, e.g. { "price": "30", "duration": 1, "unit": "day" }) and optional rateTiers (prix dégressifs): each tier is the TOTAL price of a rental of exactly that duration, e.g. { "duration": 7, "unit": "day", "price": "150" } for a week. A fixed product has one price per item (pricingKind "fixed"). Seasons are set with products_create_seasonal_pricing.';
@@ -153,38 +179,6 @@ const list = storeProcedure
     withItemLinks(context, listProducts(productActor(context), input)),
   );
 
-// The former list_products tool, with its offset paging: one read, counted
-// once, bounded. No alias expresses a page number over a cursor.
-const listLegacyPage = storeProcedure
-  .meta({
-    capability: "products.list",
-    scope: { domain: "products", level: "read" },
-    mcp: {
-      name: "list_products",
-      title: "List Products by Page (Former Tool)",
-      description: `Former tool, kept for agents set up before; products_list replaces it. Lists the store's products by page (page, pageSize up to 100) within the first ${LEGACY_PAGE_MAX_OFFSET} products.`,
-      bundle: "catalog",
-      listed: false,
-    },
-  })
-  .input(legacyListProductsInput)
-  .output(listProductsOutput)
-  .handler(({ context, input }) => {
-    const pageSize = input.pageSize ?? 50;
-    const offset = ((input.page ?? 1) - 1) * pageSize;
-    if (offset >= LEGACY_PAGE_MAX_OFFSET) throw productErrors.legacyPageTooDeep();
-    return withItemLinks(
-      context,
-      listProducts(productActor(context), {
-        status: input.status,
-        categoryIds: input.categoryId ? [input.categoryId] : undefined,
-        search: input.search,
-        limit: Math.min(pageSize, LEGACY_PAGE_MAX_OFFSET - offset),
-        offset,
-      }),
-    );
-  });
-
 const get = storeProcedure
   .meta({
     capability: "products.get",
@@ -192,9 +186,9 @@ const get = storeProcedure
     mcp: {
       name: "products_get",
       title: "Get Product",
-      description: `Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update. ${LINKS_HELP}`,
+      description: `Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update. ${UNITS_PAGE_HELP} ${LINKS_HELP}`,
       bundle: "catalog",
-      aliases: [{ name: "get_product", renamedArgs: { productId: "id" } }],
+      answer: pageProductUnits,
     },
   })
   .route({ method: "GET", path: "/products/{id}" })
@@ -203,6 +197,29 @@ const get = storeProcedure
   .handler(async ({ context, input }) =>
     withLinks(context, await getProduct(productActor(context), input.id)),
   );
+
+const listUnits = storeProcedure
+  .meta({
+    capability: "products.listUnits",
+    scope: { domain: "products", level: "read" },
+    mcp: {
+      name: "products_list_units",
+      title: "List Product Units",
+      description: `List a product's units (serial numbers, asset tags), retired ones included, in products_get's order (by identifier): id, identifier, variant attributes and whether it is active or retired. Takes the product's id, and a cursor (products_get's unitsNextCursor, or this tool's nextCursor) to read on; nextCursor is null on the last page. Without a limit, an agent gets ${ANSWER_PAGE_MCP_DEFAULT} units a page.`,
+      bundle: "catalog",
+    },
+  })
+  .route({ method: "GET", path: "/products/{id}/units" })
+  .input(listProductUnitsInput)
+  .output(listProductUnitsOutput)
+  .handler(async ({ context, input }) => {
+    const units = await listProductUnits(context.actor.storeId, input.id);
+    const page = answerPage(units, UNIT_ORDER, input, {
+      transport: context.actor.transport,
+      tool: "products_list_units",
+    });
+    return { ...page, total: units.length };
+  });
 
 // --- Writes ------------------------------------------------------------------
 
@@ -215,9 +232,9 @@ const create = storeProcedure
       title: "Create Product",
       description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_upload_image, or products_complete_image_upload). Returns the product as products_get does, with its \`links\`, the URLs to give the user to see it. An idempotencyKey makes a retry safe.`,
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "additive",
       reach: "public",
-      aliases: [{ name: "create_product" }],
     },
     // A thousand units with their notes and photos is more than 2 MiB.
     maxBodyBytes: PRODUCT_WRITE_MAX_BODY_BYTES,
@@ -237,11 +254,11 @@ const update = storeProcedure
     mcp: {
       name: "products_update",
       title: "Update Product",
-      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview. Returns the product. ${LINKS_HELP}`,
+      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, categoryIds, images) replaces the stored one; \`units\` updates the units it holds and adds new ones, the others stay, and \`removeUnitIds\` deletes units. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "overwrite",
       reach: "public",
-      aliases: [{ name: "update_product", renamedArgs: { productId: "id" } }],
       annotations: { idempotentHint: true },
     },
     maxBodyBytes: PRODUCT_WRITE_MAX_BODY_BYTES,
@@ -301,13 +318,6 @@ const updateStatus = storeProcedure
       bundle: "catalog",
       effect: "overwrite",
       reach: "public",
-      aliases: [
-        {
-          name: "archive_product",
-          renamedArgs: { productId: "id" },
-          fixedArgs: { status: "archived" },
-        },
-      ],
       annotations: { idempotentHint: true },
     },
   })
@@ -382,6 +392,7 @@ const duplicate = storeProcedure
       description:
         'Copy a product as a draft named "<name> (copy)", with its pricing, tiers, deposit, taxes, images and categories. Units are not copied: the copy counts the same stock without tracking units. Returns the new product, with its `links` (a draft has its dashboard page only).',
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "additive",
     },
   })
@@ -563,6 +574,7 @@ const useImageVersionProcedure = storeProcedure
       title: "Use Product Photo Version",
       description: `Put one of a photo's versions in use on the product: its original, a crop, an AI enhancement or a background removal, as imageVersions of products_get lists them (or a job's source.versionId). It takes the photo's place in \`images\`, on the product and its online page. No version is deleted, so it also undoes an AI enhancement or a background removal, and can be reversed the same way. Takes the product's id and the version's id. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "overwrite",
       reach: "public",
       annotations: { idempotentHint: true },
@@ -622,18 +634,29 @@ const getReservationTimeline = storeProcedure
       name: "products_get_reservation_timeline",
       title: "Get Product Reservation Timeline",
       description:
-        "When a product is out: the reservations that hold it between `from` and `to` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.",
+        `When a product is out: the reservations that hold it between \`from\` and \`to\` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. An agent gets ${ANSWER_PAGE_MCP_DEFAULT} reservations a page without a limit (the API, every one); nextCursor, when not null, reads on, and every page holds the downtimes. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
       bundle: "catalog",
     },
   })
   .route({ method: "GET", path: "/products/{id}/reservation-timeline" })
   .input(productTimelineInput)
   .output(productTimelineOutput)
-  .handler(({ context, input }) => {
+  .handler(async ({ context, input }) => {
     // It shows reservations (numbers, dates, amounts) and their customers:
     // the connection must read those too, not only products.
     requireReservationsAndCustomers(context);
-    return getProductReservationTimeline(context.actor.storeId, input);
+    const { id, from, to } = input;
+    const timeline = await getProductReservationTimeline(context.actor.storeId, { id, from, to });
+    // By start date, then id: a total order, whatever order the grouping left.
+    const order = {
+      key: (reservation: (typeof timeline.reservations)[number]) =>
+        `${reservation.startDate.toISOString()}\u0000${reservation.id}`,
+    };
+    const page = answerPage(timeline.reservations, order, input, {
+      transport: context.actor.transport,
+      tool: "products_get_reservation_timeline",
+    });
+    return { ...timeline, reservations: page.items, nextCursor: page.nextCursor };
   });
 
 // --- Seasonal pricing --------------------------------------------------------
@@ -755,7 +778,6 @@ const deleteSeasonalPricingProcedure = storeProcedure
 
 export const dashboardProductsRouter = {
   list,
-  listLegacyPage,
   get,
   create,
   update,
@@ -776,6 +798,7 @@ export const dashboardProductsRouter = {
   updateSeasonalPricing: updateSeasonalPricingProcedure,
   duplicateSeasonalPricing: duplicateSeasonalPricingProcedure,
   deleteSeasonalPricing: deleteSeasonalPricingProcedure,
+  listUnits,
   // Units and downtimes (product-units.ts)
   getUnitHistory,
   declareDowntime,

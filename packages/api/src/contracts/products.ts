@@ -10,6 +10,7 @@ import {
 } from "@louez/validations";
 import { z } from "zod";
 
+import { answerPageInput } from "../platform/answer-pages";
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
 
@@ -51,9 +52,9 @@ export const PRODUCT_WRITE_LIMITS = {
  * Largest request body of a product write (`meta.maxBodyBytes`), read only
  * once the caller is known. It holds a large product (1,000 units with their
  * notes and photos), not every input the schema could take: a larger write
- * must be split. Create the product, then add units in further updates (the
- * saved units go back as their id and identifier only) or fill each unit's
- * details with products_update_unit_details.
+ * must be split. Create the product, then add units in further updates
+ * (the units left out stay) or fill each unit's details with
+ * products_update_unit_details.
  */
 export const PRODUCT_WRITE_MAX_BODY_BYTES = 32 * 1024 * 1024;
 
@@ -85,8 +86,6 @@ const TIERS_DESCRIPTION = [
 
 const UNITS_DESCRIPTION = [
   "Individual units (serial numbers, asset tags) when trackUnits is true: the stock is then the number of active units.",
-  "A unit with an `id` is an existing one, kept and updated; one without is created.",
-  "Sending the list replaces the product's active units: an active unit left out is deleted (refused while a reservation holds it).",
   "Each unit needs an identifier, and a value in `attributes` for every key of bookingAttributeAxes.",
 ].join(" ");
 
@@ -221,14 +220,36 @@ export const createProductInput = withFixedPricingIgnored(z.object(productWriteS
 export type CreateProductInput = z.infer<typeof createProductInput>;
 
 /**
+ * What an update does with `units`. An agent's answer holds only the first
+ * units of a product (`answerPage`), so a list sent back can miss some: for
+ * any caller but the dashboard, units are updated and added, never deleted
+ * for being left out; `removeUnitIds` names the ones to delete. The
+ * dashboard's form sends the whole list, which replaces the active units.
+ */
+const UPDATE_UNITS_DESCRIPTION = [
+  "Units to update (with their `id`) or add (without), when trackUnits is true.",
+  "Units left out stay as they are: removeUnitIds deletes units.",
+  "Each unit needs an identifier, and a value in `attributes` for every key of bookingAttributeAxes.",
+].join(" ");
+
+/**
  * Partial: a field left out is unchanged, `null` clears the description, the
  * AI context, the video, the tax settings or the promotion. A list sent
- * (rateTiers, accessories, units, categoryIds, images) replaces the stored one.
+ * (rateTiers, accessories, categoryIds, images) replaces the stored one;
+ * `units` and `removeUnitIds`: see `UPDATE_UNITS_DESCRIPTION`.
  */
 export const updateProductInput = withFixedPricingIgnored(
   z.object({
     id: idSchema,
     ...z.object(productWriteShape).partial().shape,
+    units: productWriteShape.units.describe(UPDATE_UNITS_DESCRIPTION),
+    removeUnitIds: z
+      .array(idSchema)
+      .max(PRODUCT_WRITE_LIMITS.units)
+      .optional()
+      .describe(
+        "Ids of active units to delete (refused while a reservation holds one). The first call answers CONFIRMATION_REQUIRED with the units it deletes.",
+      ),
     description: z.string().nullable().optional().describe("New description; null clears it."),
     aiContext: fields.aiContext.unwrap().nullable().optional().describe("Null clears it."),
     videoUrl: fields.videoUrl.nullable().describe("A YouTube URL; null or empty removes it."),
@@ -344,6 +365,31 @@ export type Product = z.infer<typeof productSchema>;
 export const productOutput = productSchema.extend({
   /** Its dashboard page, and its storefront page while it is active and the store online. */
   links: resourceLinksSchema,
+  /**
+   * Every unit of the product, retired ones included; `units` may hold fewer
+   * (an agent's answer). Optional: an answer stored before these fields, and
+   * replayed for its idempotency key, has neither.
+   */
+  unitsTotal: z.number().int().optional(),
+  /**
+   * Null when `units` holds them all. Otherwise (an agent's answer holds the
+   * first `ANSWER_PAGE_MCP_DEFAULT`), the cursor products_list_units takes for
+   * the next ones.
+   */
+  unitsNextCursor: z.string().nullable().optional(),
+});
+
+/** A product's units, by identifier, a page at a time. */
+export const listProductUnitsInput = z.object({
+  id: idSchema.describe("The product's id."),
+  ...answerPageInput,
+});
+export const listProductUnitsOutput = z.object({
+  items: productSchema.shape.units,
+  /** Null on the last page. */
+  nextCursor: z.string().nullable(),
+  /** Every unit of the product, retired ones included. */
+  total: z.number().int(),
 });
 
 export const productListItemSchema = z.object({
@@ -403,24 +449,6 @@ export const listProductsOutput = z.object({
     draft: z.number().int(),
     archived: z.number().int(),
   }),
-});
-
-/** Deepest row the former `list_products` paging reaches; past it, the cursor list. */
-export const LEGACY_PAGE_MAX_OFFSET = 10_000;
-
-/** The former `list_products` tool's arguments: offset paging, one category. */
-export const legacyListProductsInput = z.object({
-  status: listProductsInput.shape.status,
-  categoryId: idSchema.optional().describe("Only products in this category."),
-  search: listProductsInput.shape.search,
-  page: z.number().int().min(1).optional().describe("Page number (default 1)."),
-  pageSize: z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .optional()
-    .describe("Results per page (default 50, max 100)."),
 });
 
 export const getProductInput = z.object({ id: idSchema });
@@ -520,6 +548,8 @@ export const productTimelineInput = z.object({
   to: z.coerce
     .date()
     .describe(`End of the window, ISO 8601, at most ${PRODUCT_TIMELINE_MAX_DAYS} days after from.`),
+  /** Pages `reservations`; the downtimes come whole with every page. */
+  ...answerPageInput,
 });
 export const productTimelineOutput = z.object({
   /** Reservations holding the product that overlap the window, one per reservation. */
@@ -550,6 +580,8 @@ export const productTimelineOutput = z.object({
       ),
     }),
   ),
+  /** Null on the last page of `reservations` (`answerPage`). */
+  nextCursor: z.string().nullable(),
   /** Unit downtimes (maintenance, repair) that overlap the window. */
   downtimes: z.array(
     z.object({
@@ -693,10 +725,22 @@ export const productImageErrors = {
           : `This product already keeps the versions of ${max} photos, as many as it may hold, some of them for photos it no longer shows. The user can delete those photos' history in the dashboard.`,
       details: { reason, max },
     }),
-  creditsExhausted: (details: { priceCredits: number; balanceCredits: number | null; rechargeUrl: string }) =>
+  /**
+   * `rechargeUrl` null: the client's directory forbids a purchase prompt
+   * (`ClientWithholding.purchases`, ChatGPT): the answer only says so.
+   */
+  creditsExhausted: (details: {
+    priceCredits: number;
+    balanceCredits: number | null;
+    rechargeUrl: string | null;
+  }) =>
     apiError("PRECONDITION_FAILED", "AI_CREDITS_EXHAUSTED", {
-      message: `The store has no AI credits left (this costs ${details.priceCredits}). The user can buy more in Louez: ${details.rechargeUrl}`,
-      details,
+      message: details.rechargeUrl
+        ? `The store has no AI credits left (this costs ${details.priceCredits}). The user can buy more in Louez: ${details.rechargeUrl}`
+        : `The store has no AI credits left for this (it costs ${details.priceCredits}).`,
+      details: details.rechargeUrl
+        ? details
+        : { priceCredits: details.priceCredits, balanceCredits: details.balanceCredits },
     }),
   busy: (max: number) =>
     apiError("CONFLICT", "IMAGE_JOBS_BUSY", {
@@ -776,6 +820,20 @@ export const productErrors = {
         identifiers: units.map((unit) => unit.identifier),
       },
     }),
+  /** `removeUnitIds` names a unit that is not an active unit of the product. */
+  unitsToRemoveUnknown: (unitIds: string[]) =>
+    apiError("BAD_REQUEST", "PRODUCT_UNITS_TO_REMOVE_UNKNOWN", {
+      message: `removeUnitIds names units that are not active units of this product: ${unitIds.join(", ")}. A retired unit is already out of the stock.`,
+      i18nKey: "errors.invalidData",
+      details: { unitIds },
+    }),
+  /** A unit both sent in `units` and named in `removeUnitIds`. */
+  unitsSentAndRemoved: (unitIds: string[]) =>
+    apiError("BAD_REQUEST", "PRODUCT_UNITS_SENT_AND_REMOVED", {
+      message: `These units are both in units and in removeUnitIds: ${unitIds.join(", ")}. Keep each in one list.`,
+      i18nKey: "errors.invalidData",
+      details: { unitIds },
+    }),
   unitCapacityConflict: () =>
     apiError("CONFLICT", "PRODUCT_UNIT_CAPACITY_CONFLICT", {
       message:
@@ -793,12 +851,6 @@ export const productErrors = {
       message: `A product holds at most ${max} ${list}${stored > max ? `; this one already holds ${stored}, so it may keep them but not add more` : ""}.`,
       i18nKey: "errors.invalidData",
       details: { list, max, stored },
-    }),
-  legacyPageTooDeep: () =>
-    apiError("BAD_REQUEST", "LEGACY_PAGE_TOO_DEEP", {
-      message: `list_products pages through the first ${LEGACY_PAGE_MAX_OFFSET} products only. Use products_list and follow its nextCursor to read further.`,
-      i18nKey: "errors.invalidData",
-      details: { maxOffset: LEGACY_PAGE_MAX_OFFSET, tool: "products_list" },
     }),
   invalidCursor: (tool: string) =>
     apiError("BAD_REQUEST", "INVALID_CURSOR", {

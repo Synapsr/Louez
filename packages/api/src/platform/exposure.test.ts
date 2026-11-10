@@ -241,6 +241,45 @@ describe("exposure registry", () => {
       { type: "string", format: "date-time", "x-native-type": "date" },
     );
   });
+
+  test("a bundle is offered only while it holds a store tool", () => {
+    const { z } = zod;
+    const inBundle = (bundle: "team" | "integrations") =>
+      procedures.storeProcedure
+        .meta({
+          capability: "test.valid",
+          scope: { domain: "categories", level: "read" },
+          mcp: { ...mcp(`test_${bundle}`), bundle },
+        })
+        .input(z.object({ id: z.string() }))
+        .output(z.object({ id: z.string() }))
+        .handler(async ({ input }) => input);
+    const offered = (router: Record<string, unknown>) =>
+      exposure.bundlesWithTools(
+        exposure.createExposure(router as never, Object.keys(router)).procedures,
+      );
+
+    // No tool: not offered.
+    assert.deepEqual(offered({ a: valid() }), ["catalog"]);
+    // A listed tool brings it back, in the bundles' order.
+    assert.deepEqual(offered({ a: valid(), b: inBundle("team"), c: inBundle("integrations") }), [
+      "catalog",
+      "integrations",
+      "team",
+    ]);
+  });
+
+  test("the app offers exactly the bundles its store tools are in", async () => {
+    const { appRouter } = await import("../router");
+    const { MCP_BUNDLES } = await import("./meta");
+    const served = exposure.createExposure(appRouter).procedures;
+    const offered = exposure.bundlesWithTools(served);
+    for (const bundle of MCP_BUNDLES) {
+      const holds = served.some(({ meta }) => meta.mcp.bundle === bundle && !meta.account);
+      assert.equal(offered.includes(bundle), holds, bundle);
+    }
+    assert.ok(offered.includes("daily"));
+  });
 });
 
 describe("MCP tool hints", () => {

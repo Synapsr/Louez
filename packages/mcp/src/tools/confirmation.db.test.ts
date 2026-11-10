@@ -12,7 +12,9 @@ import type { McpRecordedPayment } from "./payments";
 // The hand-written tools that move money, delete or send to a customer ask for
 // a confirmation first, as sensitive procedures do, when the connection wants
 // one: the first call does nothing and answers CONFIRMATION_REQUIRED with a
-// preview and a token; the same call with the token runs once.
+// preview and a token; the same call with the token runs once. The money tools
+// (record_payment, delete_payment, return_deposit) ask even a connection whose
+// confirmations are off.
 
 process.env.LOUEZ_BILLING = "cloud";
 process.env.BILLING_SERVICE_URL = "http://localhost:3100";
@@ -199,14 +201,47 @@ describe(
       assert.ok(kept, "the payment is still there");
     });
 
-    test("a connection with confirmation off runs at once", async () => {
-      const id = await reservation();
-      const paid = await direct.callTool({
-        name: "record_payment",
-        arguments: { reservationId: id, type: "rental", amount: "80.00", method: "cash" },
+    test("a connection with confirmation off is still asked before any money tool", async () => {
+      const id = await reservation("confirmed");
+      const [deposit] = await louezDb.db
+        .insert(louezDb.payments)
+        .values({
+          reservationId: id,
+          amount: "50.00",
+          type: "deposit",
+          method: "cash",
+          status: "completed",
+        })
+        .$returningId();
+      const calls = [
+        {
+          name: "record_payment",
+          arguments: { reservationId: id, type: "rental", amount: "80.00", method: "cash" },
+        },
+        {
+          name: "return_deposit",
+          arguments: { reservationId: id, amount: "50.00", method: "cash" },
+        },
+        { name: "delete_payment", arguments: { paymentId: deposit.id } },
+      ];
+      for (const call of calls) {
+        const before = recorded.length;
+        const token = confirmationToken(await direct.callTool(call));
+        assert.equal(recorded.length, before, `${call.name} did nothing yet`);
+        const done = await direct.callTool({
+          ...call,
+          arguments: { ...call.arguments, confirmationToken: token },
+        });
+        assert.notEqual(done.isError, true, JSON.stringify(done.content));
+      }
+      assert.deepEqual(
+        recorded.map((payment) => payment.type),
+        ["rental", "deposit_return"],
+      );
+      const deleted = await louezDb.db.query.payments.findFirst({
+        where: eq(louezDb.payments.id, deposit.id),
       });
-      assert.notEqual(paid.isError, true, JSON.stringify(paid.content));
-      assert.equal(recorded.length, 1);
+      assert.equal(deleted, undefined, "the confirmed deletion ran");
     });
 
     test("a record the preview cannot find goes to the tool, which answers for it", async () => {

@@ -212,7 +212,6 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
     assert.ok(both.includes("categories_list"));
     assert.ok(both.includes("products_list"));
-    assert.ok(!both.includes("list_products"), "a former name is callable, never listed");
 
     const key = await apiKeys.createApiKey({
       db: louezDb.db,
@@ -233,6 +232,177 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       (await client.listTools()).tools.map((tool) => tool.name),
     );
     assert.ok(all.includes("categories_list") && all.includes("reservations_list"));
+  });
+
+  test("ChatGPT neither sees nor calls the billing tools, whatever its grant", async () => {
+    const { CHATGPT_CLIENT_ID } = await import("@louez/api/platform/agent-clients");
+    const REGISTERED = "mo_dcr_chatgpt_client";
+    await louezDb.db.insert(louezDb.oauthClients).values([
+      {
+        clientId: CHATGPT_CLIENT_ID,
+        name: "ChatGPT",
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify(["https://chatgpt.com/connector_platform_oauth_redirect"]),
+      },
+      // ChatGPT registering itself (dynamic registration) under its name.
+      {
+        clientId: REGISTERED,
+        name: "ChatGPT",
+        redirectUris: JSON.stringify(["https://chatgpt.com/connector/oauth/abc"]),
+      },
+    ]);
+    const terms = {
+      stores: { all: false as const, ids: [STORE_A] },
+      preset: "write" as const,
+      confirmSensitive: true,
+      bundles: ["daily" as const, "billing" as const],
+    };
+
+    // Claude, with the billing bundle, lists them.
+    await grant({ bundles: terms.bundles });
+    const claude = await withClient(await bearer(), async (client) =>
+      (await client.listTools()).tools.map((tool) => tool.name),
+    );
+    assert.ok(claude.includes("billing_get_status") && claude.includes("billing_start_card_setup"));
+
+    for (const clientId of [CHATGPT_CLIENT_ID, REGISTERED]) {
+      const { id: grantId } = await grants.saveGrant({ userId: OWNER, clientId, terms });
+      const token = await tokens.sign({ userId: OWNER, clientId, grantId });
+      await withClient({ authorization: `Bearer ${token}` }, async (client) => {
+        const names = (await client.listTools()).tools.map((tool) => tool.name);
+        assert.ok(names.includes("reservations_list"), clientId);
+        assert.deepEqual(
+          names.filter((name) => name.startsWith("billing_")),
+          [],
+          clientId,
+        );
+        const instructions = client.getInstructions() ?? "";
+        assert.doesNotMatch(instructions, /billing/i, clientId);
+        for (const name of ["billing_get_status", "billing_start_card_setup"]) {
+          const refused = await client.callTool({ name, arguments: {} });
+          assert.equal(errorCode(refused), "NOT_AVAILABLE_TO_THIS_AGENT", `${clientId} ${name}`);
+        }
+        // ChatGPT's model reads the structured content: the text does not repeat it.
+        const stores = await client.callTool({ name: "stores_list", arguments: {} });
+        const text = (stores.content as Array<{ text: string }>)[0].text;
+        assert.ok(stores.structuredContent, clientId);
+        assert.doesNotMatch(text, /"items":/, clientId);
+      });
+    }
+
+    // Claude's text keeps the JSON.
+    await withClient(await bearer(), async (client) => {
+      const stores = await client.callTool({ name: "stores_list", arguments: {} });
+      assert.match((stores.content as Array<{ text: string }>)[0].text, /"items":/);
+    });
+
+    // The consent page and the editor never offer it to ChatGPT.
+    const offered = await grants.offeredBundles({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });
+    assert.ok(!offered.includes("billing"));
+    assert.ok(offered.includes("daily"));
+    const current = await grants.currentTerms({ userId: OWNER, clientId: CHATGPT_CLIENT_ID });
+    assert.deepEqual(current?.bundles, ["daily"]);
+  });
+
+  test("a long registered name is read whole: the billing exclusion holds at consent and at run time", async () => {
+    // A client registered itself with a name past the audit column's 100
+    // characters, OpenAI's after them. The name is the client's own choice:
+    // this is the directory's policy, not a security boundary.
+    const LONG_NAME_CLIENT = "mo_dcr_long_name_client";
+    const name = `${"x".repeat(100)} ChatGPT`;
+    await louezDb.db.insert(louezDb.oauthClients).values({
+      clientId: LONG_NAME_CLIENT,
+      name,
+      redirectUris: JSON.stringify(["https://long.mo.test/callback"]),
+    });
+    const terms = {
+      stores: { all: false as const, ids: [STORE_A] },
+      preset: "write" as const,
+      confirmSensitive: true,
+      bundles: ["daily" as const, "billing" as const],
+    };
+    const offered = await grants.offeredBundles({ clientId: LONG_NAME_CLIENT, name });
+    assert.ok(!offered.includes("billing"), "consent hides it");
+    const { id: grantId } = await grants.saveGrant({
+      userId: OWNER,
+      clientId: LONG_NAME_CLIENT,
+      terms,
+    });
+    const saved = await grants.loadActiveGrant({ userId: OWNER, clientId: LONG_NAME_CLIENT });
+    assert.equal(saved?.clientName.length, 100, "the audit keeps 100 characters");
+    assert.equal(saved?.registeredName, name);
+    const token = await tokens.sign({ userId: OWNER, clientId: LONG_NAME_CLIENT, grantId });
+    await withClient({ authorization: `Bearer ${token}` }, async (client) => {
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      assert.deepEqual(
+        names.filter((tool) => tool.startsWith("billing_")),
+        [],
+      );
+      const refused = await client.callTool({ name: "billing_get_status", arguments: {} });
+      assert.equal(errorCode(refused), "NOT_AVAILABLE_TO_THIS_AGENT");
+    });
+  });
+
+  test("ChatGPT creates no store: the user does, in Louez", async () => {
+    const { CHATGPT_CLIENT_ID } = await import("@louez/api/platform/agent-clients");
+    const ASK = "This user has no store yet. Ask them to create it in Louez, then continue here.";
+    await louezDb.db
+      .insert(louezDb.oauthClients)
+      .values({
+        clientId: CHATGPT_CLIENT_ID,
+        name: "ChatGPT",
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify(["https://chatgpt.com/connector_platform_oauth_redirect"]),
+      })
+      .onDuplicateKeyUpdate({ set: { name: "ChatGPT" } });
+    // A user with no store yet, over all their stores, with every right.
+    const NO_STORE_USER = "mo_no_store_user_001";
+    await louezDb.db.insert(louezDb.users).values({ id: NO_STORE_USER, email: "ns@mo.test" });
+    const terms = {
+      stores: { all: true as const },
+      preset: "write" as const,
+      confirmSensitive: true,
+      bundles: ["daily" as const],
+    };
+    const signed = async (clientId: string) => {
+      const { id: grantId } = await grants.saveGrant({ userId: NO_STORE_USER, clientId, terms });
+      return {
+        authorization: `Bearer ${await tokens.sign({ userId: NO_STORE_USER, clientId, grantId })}`,
+      };
+    };
+
+    await withClient(await signed(CHATGPT_CLIENT_ID), async (client) => {
+      const instructions = client.getInstructions() ?? "";
+      assert.match(instructions, new RegExp(ASK.replace(/\./g, "\\.")));
+      assert.doesNotMatch(instructions, /stores_create|onboarding/);
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      assert.ok(names.includes("stores_list"));
+      assert.ok(!names.includes("stores_create"), "not listed");
+      const refused = await client.callTool({
+        name: "stores_create",
+        arguments: { name: "Brest Paddle", slug: "mo-brest-paddle", country: "FR", currency: "EUR" },
+      });
+      assert.equal(errorCode(refused), "NOT_AVAILABLE_TO_THIS_AGENT");
+      const listed = await client.callTool({ name: "stores_list", arguments: {} });
+      assert.equal((listed.structuredContent as { hint?: string }).hint, ASK);
+    });
+    const stores = await louezDb.db
+      .select({ id: louezDb.stores.id })
+      .from(louezDb.stores)
+      .where(eq(louezDb.stores.userId, NO_STORE_USER));
+    assert.deepEqual(stores, [], "nothing was created");
+
+    // Claude keeps stores_create, after its preview.
+    await withClient(await signed(CLIENT), async (client) => {
+      assert.match(client.getInstructions() ?? "", /stores_create makes one/);
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      assert.ok(names.includes("stores_create"));
+      const preview = await client.callTool({
+        name: "stores_create",
+        arguments: { name: "Brest Paddle", slug: "mo-brest-paddle", country: "FR", currency: "EUR" },
+      });
+      assert.equal(errorCode(preview), "CONFIRMATION_REQUIRED");
+    });
   });
 
   test("a grant over several stores names the store in each call", async () => {
@@ -262,8 +432,9 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
     assert.equal(unnamed.isError, true);
     assert.equal(errorCode(unnamed), "STORE_REQUIRED");
+    // A hand-written tool too.
     const legacy = await withClient(headers, (client) =>
-      client.callTool({ name: "list_reservations", arguments: {} }),
+      client.callTool({ name: "list_customers", arguments: {} }),
     );
     assert.equal(legacy.isError, true);
     assert.match(JSON.stringify(legacy.content), /STORE_REQUIRED/);
@@ -282,7 +453,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
 
     // The header works too, and then names the store of every call.
     const byHeader = await withClient({ ...headers, "louez-store": STORE_B }, (client) =>
-      client.callTool({ name: "list_reservations", arguments: {} }),
+      client.callTool({ name: "list_customers", arguments: {} }),
     );
     assert.equal(byHeader.isError, undefined, JSON.stringify(byHeader.content));
   });
@@ -367,7 +538,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.deepEqual((empty.structuredContent as { items: unknown[] }).items, []);
     assert.match(String((empty.structuredContent as { hint?: string }).hint), /stores_create/);
 
-    for (const name of ["reservations_list", "list_reservations"]) {
+    for (const name of ["reservations_list", "list_customers"]) {
       const refused = await withClient(headers, (client) =>
         client.callTool({ name, arguments: {} }),
       );

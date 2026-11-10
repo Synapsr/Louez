@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { answerPageInput } from "../platform/answer-pages";
 import { apiError } from "../platform/errors";
 
 /**
@@ -41,6 +42,8 @@ const excludeReservationItemIdsSchema = z
 
 export const unitHistoryInput = z.object({
   unitId: idSchema.describe("The unit's id, from products_get (units[].id)."),
+  /** Pages `timeline`; the downtimes come whole with every page. */
+  ...answerPageInput,
 });
 
 const unitTimelineEntrySchema = z.discriminatedUnion("kind", [
@@ -71,6 +74,8 @@ const unitTimelineEntrySchema = z.discriminatedUnion("kind", [
 export const unitHistoryOutput = z.object({
   /** Events and reservation assignments, newest first. */
   timeline: z.array(unitTimelineEntrySchema),
+  /** Null on the last page of `timeline` (`answerPage`). */
+  nextCursor: z.string().nullable(),
   /** Current first, then upcoming, then past. */
   downtimes: z.array(
     z.object({

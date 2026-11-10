@@ -1267,8 +1267,11 @@ const closedGate = async (window: Window, shaper: Shaper): Promise<Candidate[]> 
       reservation: null,
       details: { reason: gate.reason, effectiveFrom: gate.effectiveFrom?.toISOString() ?? null },
       // Only the owner adds the card, on Stripe's page: the agent hands them the link.
-      tools:
-        gate.reason === "suspended"
+      // A caller who may not read billing (an agent whose directory forbids it
+      // included) gets the page's link alone.
+      tools: !shaper.reader.reads.billing
+        ? []
+        : gate.reason === "suspended"
           ? ["billing_get_status"]
           : ["billing_get_status", "billing_start_card_setup"],
       links: dashboardPageLinks(urls, store, "/dashboard/settings/billing"),

@@ -118,6 +118,34 @@ describe("MCP directory conformance", () => {
     assert.ok(names.has("account_get_profile"));
   });
 
+  test("every callable tool is listed: no former name is served", async () => {
+    // The names tools had before the bridge, once served as hidden aliases:
+    // a directory may read an operation it cannot see as unreviewed.
+    for (const name of [
+      "archive_product",
+      "calendar_overdue",
+      "calendar_upcoming",
+      "create_category",
+      "create_product",
+      "delete_category",
+      "get_product",
+      "get_reservation",
+      "get_reservation_poll",
+      "get_store_settings",
+      "list_categories",
+      "list_products",
+      "list_reservations",
+      "update_category",
+      "update_product",
+      "update_reservation_notes",
+      "update_reservation_status",
+      "update_store_info",
+      "update_store_legal",
+    ]) {
+      await assert.rejects(client.callTool({ name, arguments: {} }), /not found/, name);
+    }
+  });
+
   test("every listed tool has a name, a title, a description and the three hints", () => {
     const problems: string[] = [];
     for (const tool of tools) {
@@ -231,6 +259,7 @@ describe("MCP directory conformance", () => {
       products_get_variant_usage: "read",
       products_list: "read",
       products_list_seasonal_pricings: "read",
+      products_list_units: "read",
       products_list_variants: "read",
       products_reinstate_unit: "overwrite/public",
       products_remove_image_background: "overwrite/public",
@@ -368,6 +397,20 @@ describe("MCP directory conformance", () => {
     assert.match(essentials, /CONFIRMATION_REQUIRED/);
   });
 
+  test("the instructions set no schedule and give the model no orders", () => {
+    // A reviewer reads a cadence or a "never" aimed at the model as prompt
+    // injection: the instructions say what tools do and what is enough.
+    for (const pattern of [
+      /\bevery \d+/i,
+      /\b\d+ (?:seconds|minutes) to \d+/i,
+      /\b(?:you must|you cannot|you should|make sure|always)\b/i,
+      /\bnever (?:open|start|call|ask)\b/i,
+    ]) {
+      assert.doesNotMatch(instructions, pattern);
+    }
+    assert.match(instructions, /If the user asks you to keep an eye on the store/);
+  });
+
   test("the essentials fit whatever the connection reaches", async () => {
     const { serverInstructions, INSTRUCTIONS_ESSENTIALS_MAX } = await import("./instructions");
     const { testRequestContext } = await import("./testing/request-context");
@@ -396,7 +439,7 @@ describe("MCP directory conformance", () => {
       noStore: { ...oauth, noStore: true, storeChosen: false, storeOnline: false },
     };
     for (const [name, ctx] of Object.entries(variants)) {
-      const essentials = serverInstructions(ctx).slice(0, INSTRUCTIONS_ESSENTIALS_MAX);
+      const essentials = serverInstructions(ctx, ["daily"]).slice(0, INSTRUCTIONS_ESSENTIALS_MAX);
       assert.match(essentials, /^Louez runs rental stores/, name);
       assert.match(essentials, /never build or guess a Louez URL/, name);
       assert.match(essentials, /confirmationToken only once they agree\./, name);
@@ -404,5 +447,37 @@ describe("MCP directory conformance", () => {
         assert.match(essentials, /call stores_list first/, name);
       }
     }
+  });
+
+  test("the instructions name only the bundles that hold a tool", async () => {
+    const { serverInstructions } = await import("./instructions");
+    const { testRequestContext } = await import("./testing/request-context");
+    const { appRouter } = await import("@louez/api/router");
+    const { bundlesWithTools, createExposure } = await import("@louez/api/platform/exposure");
+    const { MCP_BUNDLES } = await import("@louez/api/platform/meta");
+    const base = testRequestContext({
+      storeId: "store_bundles",
+      userId: "user_bundles",
+      permissions: { reservations: "write" },
+    });
+    const ctx = {
+      ...base,
+      actor: {
+        ...base.actor,
+        credential: { ...base.actor.credential, kind: "oauth" as const, bundles: ["daily" as const] },
+      },
+    };
+    const named = (text: string) =>
+      MCP_BUNDLES.filter((bundle) => new RegExp(`\\b${bundle} \\(`).test(text));
+
+    // The app's: a bundle without a tool is neither listed nor offered.
+    const withTools = bundlesWithTools(createExposure(appRouter).procedures);
+    assert.deepEqual(named(serverInstructions(ctx, withTools)), withTools);
+
+    // Once a bundle holds a tool, it is offered with the others.
+    const text = serverInstructions(ctx, ["daily", "integrations"]);
+    assert.match(text, /Tool bundles listed: daily \(/);
+    assert.match(text, /Not listed: integrations \(connected services\)\./);
+    assert.deepEqual(named(text), ["daily", "integrations"]);
   });
 });

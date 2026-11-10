@@ -15,8 +15,8 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 });
 
 // The settings tools, through the app's real router and the real MCP and
-// OpenAPI handlers: the settings bundle, the former tool names kept as
-// aliases, and a confirmation an agent goes through.
+// OpenAPI handlers: the settings bundle, and a confirmation an agent goes
+// through.
 
 const OWNER = "sx_owner_user_000001";
 const MEMBER = "sx_member_user_00001";
@@ -181,7 +181,7 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     return error.details?.confirmationToken ?? "";
   };
 
-  test("every settings tool is in the settings bundle, and the former names are not listed", async () => {
+  test("every settings tool is in the settings bundle", async () => {
     const settings = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.settings."),
     );
@@ -215,14 +215,6 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       "online_store_upload_image",
     ]);
     assert.deepEqual([...new Set(onlineStore.map((entry) => entry.meta.mcp.bundle))], ["settings"]);
-    const aliases = settings.flatMap((entry) =>
-      (entry.meta.mcp.aliases ?? []).map((alias) => alias.name),
-    );
-    assert.deepEqual(aliases.sort(), [
-      "get_store_settings",
-      "update_store_info",
-      "update_store_legal",
-    ]);
 
     // The instructions let the agent draft the legal texts, with the user's
     // agreement; the tool's description only says what it saves.
@@ -234,17 +226,16 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     for (const entry of [...settings, ...onlineStore]) {
       assert.ok(writer.includes(entry.meta.mcp.name), entry.meta.mcp.name);
     }
-    for (const alias of aliases) assert.ok(!writer.includes(alias), `${alias} is not listed`);
 
     const reader = await mcpTools(await key(readOnly));
     assert.ok(reader.includes("settings_get"));
     assert.ok(!reader.includes("settings_update_taxes"), "a read-only key does not see writes");
   });
 
-  test("the former tool names still work with their former arguments", async () => {
+  test("the store info and legal texts save, and a key or a member without the right is refused", async () => {
     const authorization = await key();
     const info = output(
-      await mcpCall(authorization, "update_store_info", {
+      await mcpCall(authorization, "settings_update_store_info", {
         name: "Brest Surf School",
         email: "hello@sx.test",
         description: "Boards and wetsuits.",
@@ -252,21 +243,21 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
     assert.equal((info.store as Json).name, "Brest Surf School");
     const legal = output(
-      await mcpCall(authorization, "update_store_legal", {
+      await mcpCall(authorization, "settings_update_legal", {
         cgv: "<p>Terms</p><script>x()</script>",
         legalNotice: "Brest Surf SAS",
         includeCgvInContract: true,
       }),
     );
-    // The former tool stored its HTML as sent; the script tag is gone now.
+    // The HTML is sanitised: the script tag is gone.
     const texts = legal.legal as Json;
     assert.doesNotMatch(String(texts.cgv), /<script/);
     assert.match(String(texts.cgv), /^<p>Terms<\/p>/);
     assert.equal(texts.legalNotice, "<p>Brest Surf SAS</p>");
     assert.equal(texts.includeCgvInContract, true);
-    const settings = output(await mcpCall(authorization, "get_store_settings", {}));
+    const settings = output(await mcpCall(authorization, "settings_get", {}));
     assert.equal((settings.store as Json).email, "hello@sx.test");
-    // The former tool's name shows the summary too: no text unless asked.
+    // The legal texts as a summary: no text unless asked.
     const summary = settings.legal as { cgv: Json; textsIncluded: boolean };
     assert.equal(summary.cgv.set, true);
     assert.equal(summary.cgv.text, undefined);
@@ -276,11 +267,13 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       `${TEST_APP_URL}/dashboard/settings?store=${STORE}`,
     );
 
-    const denied = await mcpCall(await key(readOnly), "update_store_info", { name: "No" });
+    const denied = await mcpCall(await key(readOnly), "settings_update_store_info", { name: "No" });
     assert.equal(toolError(denied)?.code, "PERMISSION_DENIED");
     // The dashboard lets only the owner change the store's settings; so does a member's key.
     const member = await key(undefined, MEMBER);
-    const memberDenied = await mcpCall(member, "update_store_info", { phone: "+41 22 345 67 89" });
+    const memberDenied = await mcpCall(member, "settings_update_store_info", {
+      phone: "+41 22 345 67 89",
+    });
     assert.equal(toolError(memberDenied)?.code, "PERMISSION_DENIED");
     assert.notEqual((await mcpCall(member, "settings_get", {})).isError, true);
   });

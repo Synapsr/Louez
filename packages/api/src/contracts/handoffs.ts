@@ -28,8 +28,6 @@ export type HandoffStatus = (typeof HANDOFF_STATUSES)[number];
 
 /** How long a link works. */
 export const HANDOFF_TTL_HOURS = 24;
-/** How often an agent may poll handoffs_get, in seconds. */
-export const HANDOFF_POLL_SECONDS = { min: 30, max: 300 } as const;
 
 export const handoffSchema = z.object({
   id: z.string(),

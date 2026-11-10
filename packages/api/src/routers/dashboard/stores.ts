@@ -11,6 +11,7 @@ import {
   createStoreOutput,
   listStoresInput,
   listStoresOutput,
+  NO_STORE_ASK_USER,
   storeErrors,
   STORE_CREATION_DAILY_LIMIT,
   STORE_PAGE_MAX,
@@ -84,15 +85,20 @@ const list = accountProcedure
       links: storeLinks(ports.urls, store),
     }));
     const last = page[page.length - 1];
-    const mayCreate = accountRefusal(context.actor.credential, CREATE_SCOPE) === null;
+    const { credential } = context.actor;
+    const mayCreate = accountRefusal(credential, CREATE_SCOPE) === null;
+    // An agent whose directory forbids creating stores (ChatGPT) asks the user.
+    const createdByUser = credential.withheld?.domains.includes("stores") === true;
     return {
       items,
       nextCursor: start + limit < all.length && last ? last.id : null,
       ...(all.length === 0
         ? {
-            hint: mayCreate
-              ? "No store yet. Create one with stores_create, after checking its web address with stores_check_slug_availability."
-              : "This connection reaches no store. The user can create one in Louez.",
+            hint: createdByUser
+              ? NO_STORE_ASK_USER
+              : mayCreate
+                ? "No store yet. Create one with stores_create, after checking its web address with stores_check_slug_availability."
+                : "This connection reaches no store. The user can create one in Louez.",
           }
         : {}),
     };
@@ -305,7 +311,7 @@ const getLaunchChecklistProcedure = storeProcedure
       name: "stores_get_launch_checklist",
       title: "Get Launch Checklist",
       description:
-        "What the store still lacks before customers can book, and whether it is online. Each item has a status: done; missing (customers will miss it; a `required` one stops stores_go_live); optional; blocked (Louez billing stops new bookings: only the user fixes it in Louez); unverified (in place, but Louez cannot read it: ask the user to check it, such as a legal notice's own text). `warnings` are for the user: what the law asks that is missing, and what to check. Each item says why it matters and lists the tools that fix it, or none when only the user can, from its dashboard link. Also says how customers book (payment or request; without Stripe a store takes requests) and the storefront's address.",
+        "What the store still lacks before customers can book, and whether it is online. Each item has a status: done; missing (customers will miss it; a `required` one stops stores_go_live); optional; blocked (Louez billing stops new bookings: only the user fixes it in Louez); unverified (in place, but Louez cannot read it, so only the user can check it, such as a legal notice's own text). `warnings` are for the user: what the law asks that is missing, and what to check. Each item says why it matters and lists the tools that fix it, or none when only the user can, from its dashboard link. Also says how customers book (payment or request; without Stripe a store takes requests) and the storefront's address.",
       bundle: "daily",
       annotations: { idempotentHint: true },
     },

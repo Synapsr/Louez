@@ -1,8 +1,7 @@
-import { HANDOFF_POLL_SECONDS } from "@louez/api/contracts/handoffs";
-import { INBOX_POLL_MINUTES } from "@louez/api/contracts/inbox";
 import { JOB_WAIT_SECONDS_MAX } from "@louez/api/contracts/jobs";
+import { NO_STORE_ASK_USER } from "@louez/api/contracts/stores";
 import { agentConnectionsLinks } from "@louez/api/platform/links";
-import { MCP_BUNDLES, type McpBundle } from "@louez/api/platform/meta";
+import type { McpBundle } from "@louez/api/platform/meta";
 import { accountRefusal } from "@louez/api/platform/permissions";
 
 import type { McpRequestContext } from "./auth/context";
@@ -17,11 +16,23 @@ const BUNDLE_SUMMARY: Record<McpBundle, string> = {
   billing: "what Louez bills the store, and its billing card",
 };
 
-/** Where an agent learns what needs the user, and how to poll it. */
-const INBOX_HELP = `What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. To keep an eye on the store, call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes with the nextCursor of your last call: you get only what is new. When hasMore is true, call it again at once with nextCursor.`;
+/**
+ * Where an agent learns what needs the user. Said as what the tool does and
+ * what is enough, never as a schedule to follow: the user decides whether the
+ * agent keeps watch.
+ */
+const INBOX_HELP =
+  "What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. Called with the nextCursor of an earlier call, it returns only what is new since; when hasMore is true, the rest is at nextCursor. If the user asks you to keep an eye on the store, a few minutes between calls is enough.";
 
-/** Steps only the user can take, handed over with a link (services/handoffs.ts). */
-const HANDOFF_HELP = `Some steps only the user can take (Stripe's identity checks, a billing card): their tool returns a link. Give the user that link as it is and never open it yourself, then poll handoffs_get with its id every ${HANDOFF_POLL_SECONDS.min} seconds to ${HANDOFF_POLL_SECONDS.max / 60} minutes (or watch inbox_list) until it is completed, rather than asking them to tell you; while it answers \`confirming: true\` (the user is back, the provider has not confirmed yet), poll handoffs_refresh instead, which asks the provider again. An expired or failed link is replaced by calling the same tool again. Once Stripe's onboarding completes, or when the user says Stripe asked them for something, payments_sync_stripe_status says whether charges are enabled; once a card is added, billing_get_status shows it.`;
+/**
+ * Steps only the user can take, handed over with a link (services/handoffs.ts).
+ * The billing card is named only to a connection that may reach billing.
+ */
+const handoffHelp = (billing: boolean) =>
+  `Some steps only the user can take (Stripe's identity checks${billing ? ", a billing card" : ""}): their tool returns a link for the user to open, as it is, in their own browser. handoffs_get with its id then says where the step stands, so the user need not report back; while they are on it, a call every minute or so is enough, and inbox_list also shows a step still waiting. While it answers \`confirming: true\` (the user is back, the provider has not confirmed yet), handoffs_refresh asks the provider again. Calling the same tool again replaces an expired or failed link. Once Stripe's onboarding completes, or when the user says Stripe asked them for something, payments_sync_stripe_status says whether charges are enabled${billing ? "; once a card is added, billing_get_status shows it" : ""}.`;
+
+/** The new store's address check, for a client that creates stores. */
+const STORE_SLUG_HELP = "stores_check_slug_availability before stores_create, ";
 
 /**
  * How the tools chain. Tool descriptions say what each tool does and never
@@ -31,14 +42,14 @@ const HANDOFF_HELP = `Some steps only the user can take (Stripe's identity check
 const CHAINING_HELP = [
   "To change a product, read it with products_get and send the fields to change to products_update; a product's units, with their ids, are in products_get.",
   "To give a category, a product or the storefront an image: the domain's *_create_image_upload, then the file sent as its upload says, then *_complete_image_upload with the key; set the url it returns on the record.",
-  "Check a web address before you use it: stores_check_slug_availability before stores_create, online_store_check_slug_availability before online_store_update_slug.",
+  `Check a web address before you use it: ${STORE_SLUG_HELP}online_store_check_slug_availability before online_store_update_slug.`,
   "A variant still used by products: products_get_variant_usage, then products_withdraw_variant, before products_delete_variant.",
   "The store's legal identity: settings_search_company_registry, show the matches to the user, then settings_update_legal_profile with the one they pick (ask them for it when the registry does not answer).",
   "The legal texts: you may draft the terms and the legal notice from the store's data (settings_get, settings_get_legal_profile, the products) and the user's answers to what it lacks (such as the publication director); show the draft to the user and save it with settings_update_legal once they agree. stores_get_launch_checklist says what the law asks of the store's country.",
-  "Before stores_go_live, read stores_get_launch_checklist and fix what is missing, or tell the user what is.",
-  "After inbox_acknowledge rejects items, call inbox_list without a cursor to start again from what the inbox holds.",
-  "The team: team_invite_member creates nothing by itself. It answers with approval.url: give the user that link as it is; the user approves the invitation from the link, signed in as an owner of the store. Then poll handoffs_get with approval.handoff.id: completed once approved, failed once declined. team_remove_member and team_cancel_invitation take access away and always answer CONFIRMATION_REQUIRED first, whatever the connection's setting, so show the user the preview and ask. Sending an invitation again or sharing its link is done by the user in Louez: give them the team page link that team_list_members returns.",
-  `To improve a product photo: products_enhance_image (AI) or products_remove_image_background, with one of the product's images. They spend AI credits, so a paid run always answers CONFIRMATION_REQUIRED first: show the user the price and ask. The photo is processed in the background: poll jobs_get with the job's id (waitSeconds up to ${JOB_WAIT_SECONDS_MAX}) until it is succeeded or failed, and never start the same photo again while its job runs. Once it succeeds, the result has replaced the photo on the product: show the user the before and after images (the job's source.url and result.url); to undo, products_use_image_version with the original's id (the job's source.versionId). A photo's versions are in imageVersions of products_get.`,
+  "stores_get_launch_checklist says what a store lacks before stores_go_live, and which tool fixes each item; what no tool fixes is for the user.",
+  "After inbox_acknowledge rejects items, inbox_list without a cursor gives what the inbox holds now.",
+  "The team: team_invite_member creates nothing by itself. It answers with approval.url, a link for the user to open as it is: they approve the invitation from it, signed in as an owner of the store. handoffs_get with approval.handoff.id then says completed once approved, failed once declined. team_remove_member and team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED first, whatever the connection's setting, with a preview for the user to approve. Sending an invitation again or sharing its link is the user's, in Louez, on the team page whose link team_list_members returns.",
+  `To improve a product photo: products_enhance_image (AI) or products_remove_image_background, with one of the product's images. They spend AI credits, so a paid run first answers CONFIRMATION_REQUIRED with the price, for the user to approve. The photo is processed in the background: jobs_get with the job's id (waitSeconds up to ${JOB_WAIT_SECONDS_MAX}) says when it has succeeded or failed, and starting the same photo again while its job runs returns that job. Once it succeeds, the result has replaced the photo on the product; the job's source.url and result.url are the before and after images to show the user. To undo, products_use_image_version takes the original's id (the job's source.versionId). A photo's versions are in imageVersions of products_get.`,
 ].join(" ");
 
 /** How a new store goes live, for a model that just created one. */
@@ -62,14 +73,24 @@ const CONFIRMATION_ESSENTIAL =
  * connection acts on (stores_list first when it covers several), the links,
  * the confirmations. Then the details: the store, how it goes live, the
  * inbox, the handoffs and the tool bundles. A bundle that is not listed is
- * enabled by the user in Louez, never by the agent.
+ * enabled by the user in Louez, never by the agent. `toolBundles` are the
+ * bundles that hold a tool (`bundlesWithTools`): a bundle without one is
+ * neither listed nor offered.
  */
-export function serverInstructions(ctx: McpRequestContext): string {
+export function serverInstructions(
+  ctx: McpRequestContext,
+  toolBundles: readonly McpBundle[],
+): string {
   const mayCreateStores =
     accountRefusal(ctx.actor.credential, { domain: "stores", level: "write" }) === null;
 
+  // ChatGPT creates no store (its directory withholds `stores`): the user does, in Louez.
+  const createdByUser = ctx.actor.credential.withheld?.domains.includes("stores") === true;
+
   let stores: string;
-  if (ctx.noStore) {
+  if (ctx.noStore && createdByUser) {
+    stores = NO_STORE_ASK_USER;
+  } else if (ctx.noStore) {
     stores = mayCreateStores
       ? "This account has no store yet: stores_create makes one."
       : "This connection reaches no store yet: the user creates one in Louez.";
@@ -86,7 +107,8 @@ export function serverInstructions(ctx: McpRequestContext): string {
     CONFIRMATION_ESSENTIAL,
   ];
 
-  if (ctx.noStore) {
+  // With no store and none to create, the essentials say it all: no URL to give.
+  if (ctx.noStore && !createdByUser) {
     lines.push(
       mayCreateStores
         ? `To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
@@ -107,25 +129,30 @@ export function serverInstructions(ctx: McpRequestContext): string {
     );
   }
 
-  if (!ctx.noStore) lines.push(INBOX_HELP, HANDOFF_HELP);
+  const { scopes, withheld } = ctx.actor.credential;
+  if (!ctx.noStore) lines.push(INBOX_HELP, handoffHelp(scopes === null || scopes.billing !== "none"));
 
   const { bundles } = ctx.actor.credential;
   if (bundles) {
-    const listed = MCP_BUNDLES.filter((bundle) => bundles.includes(bundle));
-    const others = MCP_BUNDLES.filter((bundle) => !bundles.includes(bundle));
-    lines.push(
-      `Tool bundles listed: ${listed.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}.`,
-    );
+    // A bundle the client's directory forbids is neither listed nor offered.
+    const offered = toolBundles.filter((bundle) => !withheld?.bundles.includes(bundle));
+    const listed = offered.filter((bundle) => bundles.includes(bundle));
+    const others = offered.filter((bundle) => !bundles.includes(bundle));
+    if (listed.length > 0) {
+      lines.push(
+        `Tool bundles listed: ${listed.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}.`,
+      );
+    }
     if (others.length > 0) {
       lines.push(
-        `Not listed: ${others.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}. When the user asks for one of these, tell them to enable the bundle in Louez: Settings > Integrations > MCP > Connected agents${ctx.noStore ? "" : ` (${agentConnectionsLinks(ctx.ports.urls, { id: ctx.storeId }).dashboard})`}. You cannot enable it yourself.`,
+        `Not listed: ${others.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}. Only the user can enable them, in Louez: Settings > Integrations > MCP > Connected agents${ctx.noStore ? "" : ` (${agentConnectionsLinks(ctx.ports.urls, { id: ctx.storeId }).dashboard})`}.`,
       );
     }
   }
 
   lines.push(
     "Records come with `links`: absolute URLs to their page in the Louez dashboard and, when the public can see it, on the store's online store. When the user wants to see or open something, give them these URLs as they are. Without a link, name the record instead.",
-    CHAINING_HELP,
+    createdByUser ? CHAINING_HELP.replace(STORE_SLUG_HELP, "") : CHAINING_HELP,
   );
   return lines.join("\n");
 }

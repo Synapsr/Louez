@@ -17,7 +17,8 @@ import {
   type productTimelineOutput,
 } from "../contracts/products";
 
-type Timeline = z.infer<typeof productTimelineOutput>;
+// One window whole: the procedure pages its reservations.
+type Timeline = Omit<z.infer<typeof productTimelineOutput>, "nextCursor">;
 type TimelineItem = Timeline["reservations"][number]["items"][number];
 
 const DAY_MS = 86_400_000;

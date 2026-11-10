@@ -9518,7 +9518,7 @@
     },
     "confirm": {
       "label": "Proś o potwierdzenie przed działaniami wrażliwymi",
-      "description": "Przed płatnością, zwrotem, usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić. Ma polecenie pokazać Ci ten podgląd i najpierw zapytać."
+      "description": "Przed usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić; ma polecenie najpierw Ci go pokazać. Zapisanie, zwrot lub usunięcie płatności, wydanie kredytów AI, usunięcie członka i anulowanie zaproszenia zawsze wymagają potwierdzenia, nawet gdy to jest wyłączone."
     },
     "bundlesTitle": "Wyświetlane narzędzia",
     "bundlesHint": "Agent widzi te zestawy narzędzi. Później możesz dodać kolejne.",

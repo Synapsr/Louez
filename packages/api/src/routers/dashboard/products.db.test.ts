@@ -564,7 +564,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(tombstones.length, 1, "it left the marketplace");
   });
 
-  test("deleting units through the form needs a confirmation from an agent", async () => {
+  test("an agent deletes units by id only, after a confirmation", async () => {
     const context = await apiKey();
     const created = await run(
       "create",
@@ -576,8 +576,18 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       },
       context(),
     );
-    const [kept] = created.units;
-    const input = { id: created.id, units: [{ id: kept.id, identifier: kept.identifier }] };
+    const [kept, removed] = created.units;
+    // A list that leaves a unit out deletes nothing: it may be a page.
+    const partial = await run(
+      "update",
+      { id: created.id, units: [{ id: kept.id, identifier: "D-1 bis" }] },
+      context(),
+    );
+    assert.deepEqual(
+      partial.units.map((unit) => unit.identifier),
+      ["D-1 bis", "D-2"],
+    );
+    const input = { id: created.id, removeUnitIds: [removed.id] };
     const asked = await rejects(run("update", input, context()), "CONFIRMATION_REQUIRED");
     assert.match(
       (asked.data.details as { preview: { summary: string } }).preview.summary,
@@ -586,7 +596,30 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     const done = await run("update", input, context({ "louez-confirmation": tokenOf(asked) }));
     assert.deepEqual(
       done.units.map((unit) => unit.identifier),
-      ["D-1"],
+      ["D-1 bis"],
+    );
+  });
+
+  test("the dashboard's form sends the whole list: a unit it leaves out is deleted", async () => {
+    const created = await run(
+      "create",
+      {
+        name: "Sander",
+        price: "15",
+        trackUnits: true,
+        units: [{ identifier: "SD-1" }, { identifier: "SD-2" }],
+      },
+      session(),
+    );
+    const [kept] = created.units;
+    const saved = await run(
+      "update",
+      { id: created.id, units: [{ id: kept.id, identifier: kept.identifier }] },
+      session(),
+    );
+    assert.deepEqual(
+      saved.units.map((unit) => unit.identifier),
+      ["SD-1"],
     );
   });
 
@@ -896,7 +929,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       },
       session(),
     );
-    assert.deepEqual(empty, { reservations: [], downtimes: [] });
+    assert.deepEqual(empty, { reservations: [], nextCursor: null, downtimes: [] });
     await rejects(
       run(
         "getReservationTimeline",
@@ -1022,10 +1055,12 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     const allowed = await apiKey();
     assert.deepEqual(await run("getReservationTimeline", window, allowed()), {
       reservations: [],
+      nextCursor: null,
       downtimes: [],
     });
     assert.deepEqual(await run("getReservationTimeline", window, session(MEMBER)), {
       reservations: [],
+      nextCursor: null,
       downtimes: [],
     });
   });
@@ -1246,10 +1281,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       session(),
     );
     const [first, second, third] = created.units;
-    const input = {
-      id: created.id,
-      units: [{ id: first.id, identifier: first.identifier, attributes: first.attributes }],
-    };
+    const input = { id: created.id, removeUnitIds: [second.id, third.id] };
     const asked = await rejects(run("update", input, context()), "CONFIRMATION_REQUIRED");
     const preview = (
       asked.data.details as {

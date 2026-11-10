@@ -142,6 +142,7 @@ describe("OpenAPI document", () => {
         "GET /products/{id}": "products_get",
         "PATCH /products/{id}": "products_update",
         "DELETE /products/{id}": "products_delete",
+        "GET /products/{id}/units": "products_list_units",
         "POST /products/{id}/status": "products_update_status",
         "POST /products/{id}/duplicate": "products_duplicate",
         "POST /products/reorder": "products_reorder",

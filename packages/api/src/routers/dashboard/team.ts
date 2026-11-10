@@ -114,7 +114,7 @@ const listMembersProcedure = storeProcedure
     mcp: {
       name: "team_list_members",
       title: "List Team Members",
-      description: `List the people who work in the store, the newest to join at the top: name, e-mail, role (owner or member) and when they joined. \`memberLimit\` gives the plan's seats for members. Returns up to \`limit\` members (default and maximum 100) and a nextCursor, null on the last page. ${TEAM_PAGE_HELP}`,
+      description: `List the people who work in the store, the newest to join at the top: name, e-mail, role (owner or member) and when they joined. \`memberLimit\` is the store's team-member allowance. Returns up to \`limit\` members (default and maximum 100) and a nextCursor, null on the last page. ${TEAM_PAGE_HELP}`,
       bundle: "team",
     },
   })
@@ -154,7 +154,7 @@ const invite = storeProcedure
     mcp: {
       name: "team_invite_member",
       title: "Invite Team Member",
-      description: `Ask to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Nothing is created yet: the answer (\`outcome: "approval_requested"\`) holds \`approval.url\`, a link to give the user as is, and the user approves the invitation from the link, signed in as an owner of the store, within 24 hours. handoffs_get with \`approval.handoff.id\` says when it is approved (completed: the invitation e-mail went out, or someone with a Louez account joined at once) or declined (failed). The same address asked again gets the same approval with a new link. Refused when the person is already a member, when an invitation of theirs is pending, when the plan's seats are full, when ${MAX_OPEN_INVITATION_APPROVALS} approvals are already open, or past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails a day. ${TEAM_PAGE_HELP}`,
+      description: `Ask to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Nothing is created yet: the answer (\`outcome: "approval_requested"\`) holds \`approval.url\`, a link to give the user as is, and the user approves the invitation from the link, signed in as an owner of the store, within 24 hours. handoffs_get with \`approval.handoff.id\` says when it is approved (completed: the invitation e-mail went out, or someone with a Louez account joined at once) or declined (failed). The same address asked again gets the same approval with a new link. Refused when the person is already a member, when an invitation of theirs is pending, when the store has reached its team-member limit, when ${MAX_OPEN_INVITATION_APPROVALS} approvals are already open, or past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails a day. ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "additive",
     },

@@ -5,6 +5,11 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { loadActiveGrant } from "../services/agent-grants";
 import { validateApiKey } from "../services/api-keys";
+import {
+  clientWithholding,
+  modelReadsStructuredContent,
+  type ClientWithholding,
+} from "./agent-clients";
 import { platformErrors } from "./errors";
 import type { McpBundle } from "./meta";
 import { normalizeScopes, presetScopes, type ConnectionScopes } from "./permissions";
@@ -50,6 +55,18 @@ export interface Credential {
   confirmSensitive: boolean;
   /** The tool bundles MCP lists for an OAuth grant; null lists them all (session, API key). */
   bundles: readonly McpBundle[] | null;
+  /**
+   * What the OAuth client never reaches, whatever the grant, as its
+   * directory forbids it (`clientWithholding`): its domains are `none` in
+   * `scopes` and its bundles left out of `bundles`. Absent: nothing.
+   */
+  withheld?: ClientWithholding;
+  /**
+   * The OAuth client gives its model a tool result's structured content
+   * (`modelReadsStructuredContent`): MCP answers leave its JSON out of the
+   * text block. Absent: the text repeats it.
+   */
+  structuredContentOnly?: boolean;
 }
 
 /** Someone authenticated, before any store is chosen. */
@@ -195,6 +212,13 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
       "This connection was revoked, or its client is no longer allowed. Connect again.",
     );
   }
+  // What the client's directory forbids is out of reach, whatever the grant.
+  // The client as it registered, as the consent page reads it: never the
+  // name cut for the audit trail.
+  const client = { clientId: grant.clientId, name: grant.registeredName };
+  const withheld = clientWithholding(client);
+  const scopes = presetScopes(grant.preset);
+  for (const domain of withheld.domains) scopes[domain] = "none";
   return {
     transport,
     // A connected agent acts for its user's memberships, never as platform staff.
@@ -207,9 +231,11 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
       email: grant.email,
       storeId: grant.stores?.length === 1 ? grant.stores[0] : null,
       stores: grant.stores,
-      scopes: presetScopes(grant.preset),
+      scopes,
       confirmSensitive: grant.confirmSensitive,
-      bundles: grant.bundles,
+      bundles: grant.bundles.filter((bundle) => !withheld.bundles.includes(bundle)),
+      withheld,
+      structuredContentOnly: modelReadsStructuredContent(client),
     },
   };
 }

@@ -57,8 +57,6 @@ export const INBOX_PAGE_DEFAULT = 50;
 export const INBOX_PAGE_MAX = 100;
 /** Items one acknowledge call takes. */
 export const INBOX_ACKNOWLEDGE_MAX = 100;
-/** The polling interval the tool's description recommends, in minutes. */
-export const INBOX_POLL_MINUTES = { min: 5, max: 15 } as const;
 
 const cursorInput = z
   .string()

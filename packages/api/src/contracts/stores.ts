@@ -174,6 +174,13 @@ export const createStoreOutput = z.object({
   nextSteps: z.array(z.string()),
 });
 
+/**
+ * What an agent that may not create stores (ChatGPT: `stores` withheld by
+ * its directory) tells a user with none: no link, no onboarding URL.
+ */
+export const NO_STORE_ASK_USER =
+  "This user has no store yet. Ask them to create it in Louez, then continue here.";
+
 export const storeErrors = {
   slugTaken: (slug: string, suggestions: string[]) =>
     apiError("CONFLICT", "STORE_SLUG_TAKEN", {
