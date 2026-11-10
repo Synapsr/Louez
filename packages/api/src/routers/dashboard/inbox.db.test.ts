@@ -1211,16 +1211,23 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       assert.equal(event.itemType, "supplier_invoice");
       assert.deepEqual(Object.keys(event).sort(), ["error", "event", "itemType", "storeId"]);
       const text = JSON.stringify(event.error);
-      // The failed query's shape, without its names, literals or parameters…
-      assert.match(
-        String(event.error.message),
-        /^Failed query: select [\s\S]*\nparams: \[redacted\]$/,
-      );
+      // No text: neither the query nor its parameters (the store id, the provider, the dates)…
+      assert.equal(event.error.message, "[message withheld]");
       assert.ok(!text.includes("superpdp") && !text.includes(STORE.slice(3)), text);
-      // …and the driver's error as its code and the table it names.
-      assert.match(
-        String((event.error.cause as { message?: string } | undefined)?.message),
-        /^ER_NO_SUCH_TABLE \(1146\): table [\w$]+\.received_invoices$/,
+      assert.ok(!text.includes("select"), text);
+      // …and the driver's error as its code, its number and the table its message names.
+      const cause = event.error.cause as
+        | { code?: string; errno?: number; schemaObject?: { kind: string; name: string } }
+        | undefined;
+      assert.equal(cause?.code, "ER_NO_SUCH_TABLE");
+      assert.equal(cause?.errno, 1146);
+      assert.equal(cause?.schemaObject?.kind, "table");
+      assert.match(String(cause?.schemaObject?.name), /^[a-z0-9_]+\.received_invoices$/);
+      // Its frames are places in the repository.
+      assert.ok(
+        (event.error.frames as string[]).every((frame) =>
+          /^(?:apps|packages)\/[^:]+:\d+:\d+$/.test(frame),
+        ),
       );
       assert.ok(Array.isArray(event.error.frames) && event.error.frames.length > 0);
 

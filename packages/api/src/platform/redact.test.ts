@@ -76,7 +76,7 @@ describe("handoff secrets in logs", () => {
     assert.ok(!line.includes(STATE), line);
     assert.match(line, /type=StripeInvalidRequestError, statusCode=400/);
     // A thrown text is never kept.
-    assert.equal(describeProviderError(`/handoffs/${ID}${SECRET}`), "NonError: [message withheld]");
+    assert.equal(describeProviderError(`/handoffs/${ID}${SECRET}`), "NonError: a thrown string");
   });
 
   test("Stripe's onboarding error echoing the return URL prints no state on stdout or stderr", async () => {

@@ -1,5 +1,3 @@
-import { markTemplated } from '../platform/sanitize-error'
-
 export type ApiServiceErrorCode =
   | 'BAD_REQUEST'
   | 'UNAUTHORIZED'
@@ -17,7 +15,5 @@ export class ApiServiceError extends Error {
     this.code = code
     this.key = key
     this.details = details
-    // Its message is a translation key of Louez's own: logs and error reports keep it.
-    markTemplated(this)
   }
 }
