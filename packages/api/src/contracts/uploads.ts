@@ -32,19 +32,13 @@ export const uploadTargetSchema = z.discriminatedUnion("method", [
 ]);
 
 export const createImageUploadOutput = z.object({
-  /** Staging key of the upload, never served; pass it to the matching complete procedure. */
+  /** Storage key of the upload; pass it to the matching complete procedure. */
   key: z.string(),
   /** One HTTP request that sends the bytes; no Authorization header needed. */
   upload: uploadTargetSchema,
   maxSize: z.number().int(),
   expiresAt: z.date(),
 });
-
-/**
- * Where API uploads wait for their check, outside every store's public
- * folders: no public URL points there and the app's /files route refuses it.
- */
-export const UPLOAD_STAGING_PREFIX = "uploads-staging/";
 
 export const completeImageUploadInput = z.object({
   key: z.string().min(1).max(256).describe("The key the create-upload call returned."),
@@ -141,7 +135,7 @@ export const uploadErrors = {
     }),
   contentInvalid: (declared: string, found: string | null) =>
     apiError("BAD_REQUEST", "UPLOAD_CONTENT_INVALID", {
-      message: `The uploaded bytes are not a ${declared} image, so nothing was published and no image changed. Start a new upload with the file.`,
+      message: `The uploaded bytes are not a ${declared} image. Nothing was kept; upload the file again.`,
       i18nKey: "errors.invalidData",
       details: { declared, found },
     }),

@@ -33,8 +33,7 @@
     "./services/stripe-connect": "./src/services/stripe-connect.ts",
     "./services/unit-availability": "./src/services/unit-availability.ts",
     "./services/unit-conflicts": "./src/services/unit-conflicts.ts",
-    "./services/unit-mutations": "./src/services/unit-mutations.ts",
-    "./services/uploads": "./src/services/uploads.ts"
+    "./services/unit-mutations": "./src/services/unit-mutations.ts"
   },
   "scripts": {
     "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --test \"src/**/*.test.{ts,mjs}\""

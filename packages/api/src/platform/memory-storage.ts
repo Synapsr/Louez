@@ -5,8 +5,6 @@ export interface MemoryObject {
   bytes: Uint8Array;
   contentType: string;
   public: boolean;
-  /** When it was written; now when a test leaves it out. */
-  lastModified?: Date;
 }
 
 export interface MemoryStorage extends StoragePort {
@@ -51,17 +49,6 @@ export function createMemoryStorage(
       if (object) object.public = true;
       return `${publicBaseUrl}/${key}`;
     },
-    copy: async (from, to) => {
-      const object = objects.get(from);
-      if (!object) throw new Error(`NotFound: ${from}`);
-      objects.set(to, { ...object, public: false, lastModified: new Date() });
-    },
-    list: async (prefix) => ({
-      items: [...objects]
-        .filter(([key]) => key.startsWith(prefix))
-        .map(([key, object]) => ({ key, lastModified: object.lastModified ?? new Date() })),
-      cursor: null,
-    }),
     delete: async (key) => {
       objects.delete(key);
     },

@@ -424,12 +424,5 @@ export interface StoragePort {
   readStart: (key: string, length: number) => Promise<Uint8Array>;
   /** Makes a stored object publicly readable; returns its public URL. */
   publish: (key: string) => Promise<string>;
-  /** Copies an object to another key, with its type; the copy is not public. */
-  copy: (from: string, to: string) => Promise<void>;
-  /** One page of the objects whose key starts with `prefix`, with when each was written. */
-  list: (
-    prefix: string,
-    cursor?: string,
-  ) => Promise<{ items: { key: string; lastModified: Date | null }[]; cursor: string | null }>;
   delete: (key: string) => Promise<void>;
 }
