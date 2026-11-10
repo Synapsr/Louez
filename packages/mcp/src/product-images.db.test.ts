@@ -11,10 +11,18 @@ import { createTestProductImages } from "@louez/api/platform/test-product-images
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import { createTestAccessTokens } from "@louez/auth/testing";
+
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
 
+// ChatGPT signs in with OAuth: its access tokens are signed with a test key.
+let tokens: Awaited<ReturnType<typeof createTestAccessTokens>>;
 mock.module(apiDependencyUrl("@louez/auth"), {
-  namedExports: { auth: {}, authInstance: { api: { getSession: async () => null } } },
+  namedExports: {
+    auth: {},
+    authInstance: { api: { getSession: async () => null } },
+    verifyMcpAccessToken: (token: string) => tokens.verify(token),
+  },
 });
 
 // The AI photo tools and jobs_get through the app's real router and the real
@@ -64,6 +72,10 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
   };
 
   before(async () => {
+    tokens = await createTestAccessTokens({
+      issuer: "https://app.louez.test/api/auth",
+      audience: "https://app.louez.test/api/mcp",
+    });
     database = await createTestDatabase("api_photo_tools");
     louezDb = await import("@louez/db");
     apiKeys = await import("@louez/api/services");
@@ -311,5 +323,50 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
     assert.equal(viaOpenApi.status, 400);
     assert.equal(((await viaOpenApi.json()) as { data: Json }).data.code, "IMAGE_NOT_ON_PRODUCT");
+  });
+
+  test("out of credits, ChatGPT is told so with no purchase prompt or recharge link", async () => {
+    const grants = await import("@louez/api/services/agent-grants");
+    const { CHATGPT_CLIENT_ID } = await import("@louez/api/platform/agent-clients");
+    await louezDb.db
+      .insert(louezDb.oauthClients)
+      .values({
+        clientId: CHATGPT_CLIENT_ID,
+        name: "ChatGPT",
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify(["https://chatgpt.com/connector_platform_oauth_redirect"]),
+      })
+      .onDuplicateKeyUpdate({ set: { name: "ChatGPT" } });
+    const { id: grantId } = await grants.saveGrant({
+      userId: OWNER,
+      clientId: CHATGPT_CLIENT_ID,
+      terms: {
+        stores: { all: false, ids: [STORE] },
+        preset: "write",
+        confirmSensitive: true,
+        bundles: ["daily", "catalog"],
+      },
+    });
+    const chatgpt = `Bearer ${await tokens.sign({ userId: OWNER, clientId: CHATGPT_CLIENT_ID, grantId })}`;
+    const id = await product();
+    fake.state.quote = {
+      ...fake.state.quote,
+      credits: { allowed: false, monthlyRemainingMicro: 0, prepaidMicro: 0 },
+    };
+    const PURCHASE = /buy|recharge|top.?up|upgrade|plan|ai-credits/i;
+
+    const refused = await withClient(chatgpt, (mcp) =>
+      mcp.callTool({ name: "products_enhance_image", arguments: { id, imageUrl: SOURCE } }),
+    );
+    const error = (refused.structuredContent as { error?: Json }).error;
+    assert.equal(error?.code, "AI_CREDITS_EXHAUSTED");
+    assert.match(String(error?.message), /no AI credits left for this/);
+    assert.doesNotMatch(JSON.stringify(refused), PURCHASE);
+
+    // Another agent still gets the way to buy more.
+    const other = await withClient(await key(), (mcp) =>
+      mcp.callTool({ name: "products_enhance_image", arguments: { id, imageUrl: SOURCE } }),
+    );
+    assert.match(JSON.stringify(other), /ai-credits\?recharge=1/);
   });
 });

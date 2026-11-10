@@ -330,8 +330,10 @@ export async function startImageJob(
         balanceCredits: credits(
           (quote.credits.monthlyRemainingMicro ?? 0) + quote.credits.prepaidMicro,
         ),
-        rechargeUrl: dashboardPageLinks(ports.urls, store, "/dashboard/ai-credits?recharge=1")
-          .dashboard,
+        // No purchase prompt where the client's directory forbids it (ChatGPT).
+        rechargeUrl: actor.credential.withheld?.purchases
+          ? null
+          : dashboardPageLinks(ports.urls, store, "/dashboard/ai-credits?recharge=1").dashboard,
       });
     }
 

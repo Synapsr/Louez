@@ -10,7 +10,11 @@ test("OpenAI's clients are told apart by their metadata document or their name",
     { clientId: "dcr_2", name: "OpenAI Codex" },
   ]) {
     assert.equal(isOpenAiClient(client), true, JSON.stringify(client));
-    assert.deepEqual(clientWithholding(client), { domains: ["billing"], bundles: ["billing"] });
+    assert.deepEqual(clientWithholding(client), {
+      domains: ["billing"],
+      bundles: ["billing"],
+      purchases: true,
+    });
   }
   for (const client of [
     { clientId: "https://claude.ai/oauth/mcp-oauth-client-metadata", name: "Claude" },
@@ -19,6 +23,6 @@ test("OpenAI's clients are told apart by their metadata document or their name",
     { clientId: "dcr_4", name: null },
   ]) {
     assert.equal(isOpenAiClient(client), false, JSON.stringify(client));
-    assert.deepEqual(clientWithholding(client), { domains: [], bundles: [] });
+    assert.deepEqual(clientWithholding(client), { domains: [], bundles: [], purchases: false });
   }
 });

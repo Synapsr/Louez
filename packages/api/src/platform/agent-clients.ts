@@ -40,6 +40,11 @@ export function agentDirectoryOf(client: {
 export interface ClientWithholding {
   domains: readonly ApiDomain[];
   bundles: readonly McpBundle[];
+  /**
+   * No prompt or link to buy anything from Louez (AI credits, a plan): an
+   * answer says what is missing, never where to pay for it.
+   */
+  purchases: boolean;
 }
 
 /**
@@ -50,9 +55,13 @@ export interface ClientWithholding {
  * fees and open the Checkout of the card Louez charges them on: an OpenAI
  * client neither sees nor calls them, and the user manages billing in Louez.
  */
-const OPENAI_WITHHOLDING: ClientWithholding = { domains: ["billing"], bundles: ["billing"] };
+const OPENAI_WITHHOLDING: ClientWithholding = {
+  domains: ["billing"],
+  bundles: ["billing"],
+  purchases: true,
+};
 
-const NOTHING_WITHHELD: ClientWithholding = { domains: [], bundles: [] };
+const NOTHING_WITHHELD: ClientWithholding = { domains: [], bundles: [], purchases: false };
 
 /**
  * Whether the client gives its model a tool result's `structuredContent`, so

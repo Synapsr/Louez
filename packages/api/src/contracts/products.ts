@@ -725,10 +725,22 @@ export const productImageErrors = {
           : `This product already keeps the versions of ${max} photos, as many as it may hold, some of them for photos it no longer shows. The user can delete those photos' history in the dashboard.`,
       details: { reason, max },
     }),
-  creditsExhausted: (details: { priceCredits: number; balanceCredits: number | null; rechargeUrl: string }) =>
+  /**
+   * `rechargeUrl` null: the client's directory forbids a purchase prompt
+   * (`ClientWithholding.purchases`, ChatGPT): the answer only says so.
+   */
+  creditsExhausted: (details: {
+    priceCredits: number;
+    balanceCredits: number | null;
+    rechargeUrl: string | null;
+  }) =>
     apiError("PRECONDITION_FAILED", "AI_CREDITS_EXHAUSTED", {
-      message: `The store has no AI credits left (this costs ${details.priceCredits}). The user can buy more in Louez: ${details.rechargeUrl}`,
-      details,
+      message: details.rechargeUrl
+        ? `The store has no AI credits left (this costs ${details.priceCredits}). The user can buy more in Louez: ${details.rechargeUrl}`
+        : `The store has no AI credits left for this (it costs ${details.priceCredits}).`,
+      details: details.rechargeUrl
+        ? details
+        : { priceCredits: details.priceCredits, balanceCredits: details.balanceCredits },
     }),
   busy: (max: number) =>
     apiError("CONFLICT", "IMAGE_JOBS_BUSY", {
