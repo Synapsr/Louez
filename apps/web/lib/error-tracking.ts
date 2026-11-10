@@ -13,6 +13,7 @@ import { PostHog, type EventMessage, type PostHogOptions } from "posthog-node";
 import {
   createErrorThrottle,
   createServerErrorReporter,
+  safeErrorCode,
   type ReportServerError,
 } from "@louez/api/platform/error-reporting";
 import { sanitizeText } from "@louez/api/platform/sanitize-error";
@@ -23,8 +24,6 @@ import { log } from "@/lib/evlog";
 
 /** Sending never holds a request up: one try, 3 seconds at most. */
 const REQUEST_TIMEOUT_MS = 3_000;
-/** When the process ends, the errors still queued get 2 seconds to leave. */
-const SHUTDOWN_TIMEOUT_MS = 2_000;
 
 export interface ErrorTrackingConfig {
   key: string;
@@ -83,32 +82,64 @@ function sanitizeFrame(frame: unknown): void {
     const path = Reflect.get(frame, key);
     if (typeof path === "string") Reflect.set(frame, key, relativeSourcePath(path));
   }
-  const name = Reflect.get(frame, "function");
-  if (typeof name === "string") Reflect.set(frame, "function", sanitizeText(name));
+  for (const key of ["function", "module"]) {
+    const text = Reflect.get(frame, key);
+    if (typeof text === "string") Reflect.set(frame, key, sanitizeText(text));
+  }
+}
+
+function sanitizeExceptionList(exceptions: unknown): void {
+  if (!Array.isArray(exceptions)) return;
+  for (const exception of exceptions) {
+    if (typeof exception !== "object" || exception === null) continue;
+    for (const key of ["type", "value"]) {
+      const text = Reflect.get(exception, key);
+      if (typeof text === "string") Reflect.set(exception, key, sanitizeText(text));
+    }
+    const stacktrace: unknown = Reflect.get(exception, "stacktrace");
+    const frames =
+      typeof stacktrace === "object" && stacktrace ? Reflect.get(stacktrace, "frames") : [];
+    if (Array.isArray(frames)) frames.forEach(sanitizeFrame);
+  }
+}
+
+/** The reporter's fingerprint (`prepareServerError`): 32 hex characters, nothing else. */
+const FINGERPRINT = /^[0-9a-f]{32}$/;
+
+/**
+ * A property as it may leave: a number or a boolean as it is, the
+ * fingerprint and the code only in their own format, any other string
+ * sanitized. Anything else is dropped.
+ */
+function safeProperty(key: string, value: unknown): unknown {
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+  if (key === "$exception_fingerprint") return FINGERPRINT.test(value) ? value : undefined;
+  if (key === "error_code") return safeErrorCode(value);
+  return sanitizeText(value);
 }
 
 /**
  * The last gate, on the event as posthog-node sends it (`before_send`): the
  * reporter's copy is already sanitized, but the SDK adds the source lines
  * around each frame, read from the files after that. They are dropped,
- * paths made relative, messages sanitized again. Any event but an exception
- * is refused: this client sends nothing else.
+ * paths made relative, and every string the event keeps sanitized again
+ * (`safeProperty`). Any event but an exception is refused: this client
+ * sends nothing else.
  */
 export function sanitizeExceptionEvent(event: EventMessage | null): EventMessage | null {
   if (!event || event.event !== "$exception") return null;
-  const exceptions: unknown = event.properties?.$exception_list;
-  if (Array.isArray(exceptions)) {
-    for (const exception of exceptions) {
-      if (typeof exception !== "object" || exception === null) continue;
-      const value = Reflect.get(exception, "value");
-      if (typeof value === "string") Reflect.set(exception, "value", sanitizeText(value));
-      const stacktrace: unknown = Reflect.get(exception, "stacktrace");
-      const frames =
-        typeof stacktrace === "object" && stacktrace ? Reflect.get(stacktrace, "frames") : [];
-      if (Array.isArray(frames)) frames.forEach(sanitizeFrame);
+  const properties: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(event.properties ?? {})) {
+    if (key === "$exception_list") {
+      sanitizeExceptionList(value);
+      properties[key] = value;
+      continue;
     }
+    const safe = safeProperty(key, value);
+    if (safe !== undefined) properties[key] = safe;
   }
-  return event;
+  return { ...event, properties };
 }
 
 /** The PostHog client of error tracking. `overrides` are for tests (a fake `fetch`). */
@@ -118,7 +149,8 @@ export function createErrorTrackingClient(
 ): PostHog {
   return new PostHog(config.key, {
     host: config.host,
-    // Each error leaves at once, in the background: nothing waits for a batch.
+    // Each error leaves at once, in the background: nothing waits in a buffer
+    // for a batch or for the process to stop.
     flushAt: 1,
     flushInterval: 0,
     requestTimeout: REQUEST_TIMEOUT_MS,
@@ -131,56 +163,17 @@ export function createErrorTrackingClient(
   });
 }
 
-/** What `flushOnSignals` needs of the process. */
-export interface SignalTarget {
-  pid: number;
-  on(signal: NodeJS.Signals, listener: () => void): unknown;
-  off(signal: NodeJS.Signals, listener: () => void): unknown;
-  listenerCount(signal: NodeJS.Signals): number;
-  kill(pid: number, signal: NodeJS.Signals): unknown;
-}
-
-const STOP_SIGNALS: readonly NodeJS.Signals[] = ["SIGTERM", "SIGINT"];
-
 /**
- * Starts `flush` when the process is told to stop. Next's server handles
- * SIGTERM and SIGINT itself (it drains the requests, then exits): this only
- * adds to it, never holds it. Without any other listener
- * (NEXT_MANUAL_SIG_HANDLE), the signal is raised again once flushed, so it
- * still stops the process.
+ * A reporter that sends through a client of `config`. Events leave as they
+ * are captured; nothing listens for the process to stop (SIGTERM, SIGINT,
+ * `beforeExit`): Next's server handles those signals. An event still in
+ * flight when the process exits is lost.
  */
-export function flushOnSignals(flush: () => Promise<unknown>, target: SignalTarget = process) {
-  const onSignal = (signal: NodeJS.Signals) => {
-    for (const other of STOP_SIGNALS) target.off(other, listeners[other]);
-    const alone = target.listenerCount(signal) === 0;
-    void flush()
-      .catch(() => undefined)
-      .finally(() => {
-        if (alone) target.kill(target.pid, signal);
-      });
-  };
-  const listeners = Object.fromEntries(
-    STOP_SIGNALS.map((signal) => [signal, () => onSignal(signal)]),
-  ) as Record<NodeJS.Signals, () => void>;
-  for (const signal of STOP_SIGNALS) target.on(signal, listeners[signal]);
-}
-
-function createReporter(): ReportServerError {
-  const config = errorTrackingConfig({
-    POSTHOG_ERROR_TRACKING_ENABLED: env.POSTHOG_ERROR_TRACKING_ENABLED,
-    POSTHOG_ERROR_TRACKING_SAMPLE_RATE: env.POSTHOG_ERROR_TRACKING_SAMPLE_RATE,
-    NEXT_PUBLIC_POSTHOG_KEY: env.NEXT_PUBLIC_POSTHOG_KEY,
-    NEXT_PUBLIC_POSTHOG_HOST: env.NEXT_PUBLIC_POSTHOG_HOST,
-    NEXT_PUBLIC_APP_VERSION: env.NEXT_PUBLIC_APP_VERSION,
-    NEXT_PHASE: process.env.NEXT_PHASE,
-  });
-  if (!config) return () => {};
-
-  const client = createErrorTrackingClient(config);
-  const shutdown = () => client.shutdown(SHUTDOWN_TIMEOUT_MS);
-  process.once("beforeExit", () => void shutdown().catch(() => undefined));
-  flushOnSignals(shutdown);
-
+export function createPostHogErrorReporter(
+  config: ErrorTrackingConfig,
+  overrides: Partial<PostHogOptions> = {},
+): ReportServerError {
+  const client = createErrorTrackingClient(config, overrides);
   return createServerErrorReporter({
     throttle: createErrorThrottle({ sampleRate: config.sampleRate }),
     send: (error, properties) => {
@@ -195,6 +188,18 @@ function createReporter(): ReportServerError {
       log.warn({ errorTracking: { event: "hourly_cap_reached" } });
     },
   });
+}
+
+function createReporter(): ReportServerError {
+  const config = errorTrackingConfig({
+    POSTHOG_ERROR_TRACKING_ENABLED: env.POSTHOG_ERROR_TRACKING_ENABLED,
+    POSTHOG_ERROR_TRACKING_SAMPLE_RATE: env.POSTHOG_ERROR_TRACKING_SAMPLE_RATE,
+    NEXT_PUBLIC_POSTHOG_KEY: env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_APP_VERSION: env.NEXT_PUBLIC_APP_VERSION,
+    NEXT_PHASE: process.env.NEXT_PHASE,
+  });
+  return config ? createPostHogErrorReporter(config) : () => {};
 }
 
 let reporter: ReportServerError | undefined;

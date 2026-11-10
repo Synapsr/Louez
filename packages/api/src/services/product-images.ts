@@ -473,7 +473,11 @@ export async function runImageJob(
   // claim it saw lost (or a job gone) under the job's lock.
   const key = imageJobKey(storeId, claimed.job.id, input.operation, claimed.job.attempts);
   const fail = async (error: ReturnType<typeof jobError>) => {
-    const recorded = await recordJobFailure(claimed, error).catch(() => false);
+    const recorded = await recordJobFailure(claimed, error).catch((caught: unknown) => {
+      // The database did not answer: unexpected, unlike a claim taken over.
+      ports.reportError?.(caught, { source: "job", job: input.operation, storeId });
+      return false;
+    });
     // Not written (the claim was taken over, or the database did not answer):
     // keep the file, an orphan rather than a result pointing at nothing.
     if (recorded) await discard([key]);

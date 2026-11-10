@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,13 +8,12 @@ import { PostHog, type PostHogOptions } from "posthog-node";
 
 import {
   createErrorTrackingClient,
+  createPostHogErrorReporter,
   errorTrackingConfig,
-  flushOnSignals,
   isFlagOn,
   parseSampleRate,
   sanitizeExceptionEvent,
   type ErrorTrackingConfig,
-  type SignalTarget,
 } from "./error-tracking";
 
 // Error tracking stays off unless production turns it on, and what leaves is
@@ -93,6 +91,40 @@ describe("the event as sent", () => {
     assert.match(text, /"filename":"apps\/web\/lib\/a\.ts"/);
   });
 
+  test("every property kept is sanitized; a code or a fingerprint out of format is dropped", () => {
+    const event = sanitizeExceptionEvent({
+      event: "$exception",
+      distinctId: "x",
+      properties: {
+        $exception_list: [],
+        $exception_fingerprint: "not a fingerprint",
+        error_code: "Bearer private-code-canary",
+        procedure: "inbox.list for jane@example.invalid",
+        http_status: 500,
+        $process_person_profile: false,
+        nested: { email: "jane@example.invalid" },
+      },
+    });
+    assert.deepEqual(event?.properties, {
+      $exception_list: [],
+      procedure: "inbox.list for [redacted]",
+      http_status: 500,
+      $process_person_profile: false,
+    });
+    const kept = sanitizeExceptionEvent({
+      event: "$exception",
+      distinctId: "x",
+      properties: {
+        $exception_fingerprint: "0123456789abcdef0123456789abcdef",
+        error_code: "ER_DUP_ENTRY",
+      },
+    });
+    assert.deepEqual(kept?.properties, {
+      $exception_fingerprint: "0123456789abcdef0123456789abcdef",
+      error_code: "ER_DUP_ENTRY",
+    });
+  });
+
   test("only exceptions leave through this client", () => {
     assert.equal(sanitizeExceptionEvent({ event: "pageview", distinctId: "x" }), null);
   });
@@ -102,8 +134,18 @@ describe("the client, with PostHog's network intercepted", () => {
   const directory = mkdtempSync(join(tmpdir(), "louez-error-tracking-"));
   after(() => rmSync(directory, { recursive: true }));
   const file = join(directory, "handler.js");
-  writeFileSync(file, ["function handler() {", "  const card = 'CANARY_SOURCE_LINE';", "  throw boom;", "}"].join("\n"));
-  const config: ErrorTrackingConfig = { key: "phc_test", host: "https://ph.test", sampleRate: 1, release: undefined };
+  writeFileSync(
+    file,
+    ["function handler() {", "  const card = 'CANARY_SOURCE_LINE';", "  throw boom;", "}"].join(
+      "\n",
+    ),
+  );
+  const config: ErrorTrackingConfig = {
+    key: "phc_test",
+    host: "https://ph.test",
+    sampleRate: 1,
+    release: undefined,
+  };
 
   /** A thrown error whose frame points at the file holding the canary. */
   function thrownAtFile() {
@@ -149,40 +191,53 @@ describe("the client, with PostHog's network intercepted", () => {
   });
 });
 
-describe("flushing when the process is told to stop", () => {
-  function target(others: number) {
-    const emitter = new EventEmitter();
-    const kills: string[] = [];
-    for (let index = 0; index < others; index += 1) emitter.on("SIGTERM", () => {});
-    const fake: SignalTarget = {
-      pid: 1,
-      on: (signal, listener) => emitter.on(signal, listener),
-      off: (signal, listener) => emitter.off(signal, listener),
-      listenerCount: (signal) => emitter.listenerCount(signal),
-      kill: (_pid, signal) => kills.push(signal),
+describe("the reporter, with PostHog's network intercepted", () => {
+  const config: ErrorTrackingConfig = {
+    key: "phc_test",
+    host: "https://ph.test",
+    sampleRate: 1,
+    release: undefined,
+  };
+
+  /** A reporter on the real client, and the next body it sends. */
+  function intercepted() {
+    let resolve: (body: string) => void = () => {};
+    const body = new Promise<string>((done) => (resolve = done));
+    const fetch: PostHogOptions["fetch"] = async (_url, options) => {
+      resolve(String(options.body));
+      return { status: 200, text: async () => "{}", json: async () => ({}) };
     };
-    return { emitter, kills, fake };
+    return {
+      report: createPostHogErrorReporter(config, { disableCompression: true, fetch }),
+      body,
+    };
   }
 
-  test("flushes once, and leaves the exit to Next's own listener", async () => {
-    const { emitter, kills, fake } = target(1);
-    let flushes = 0;
-    flushOnSignals(async () => (flushes += 1), fake);
-    emitter.emit("SIGTERM");
-    emitter.emit("SIGINT");
-    await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(flushes, 1);
-    assert.deepEqual(kills, []);
-    assert.equal(emitter.listenerCount("SIGINT"), 0);
+  test("a validation error under a wrapper loses its message; an unsafe code is dropped", async () => {
+    const { report, body } = intercepted();
+    const zod = Object.assign(new Error("custom message jane-canary"), {
+      name: "ZodError",
+      issues: [{ code: "custom", path: ["customer", "name"], message: "jane-canary" }],
+    });
+    const error = Object.assign(new Error("wrapper", { cause: zod }), {
+      code: "Bearer private-code-canary",
+    });
+    report(error, { source: "procedure", procedure: "customers.create" });
+    const sent = await body;
+    assert.doesNotMatch(sent, /jane-canary|private-code-canary/);
+    assert.match(sent, /1 issue\(s\): custom at customer\.name/);
+    assert.match(sent, /"procedure":"customers\.create"/);
+    assert.doesNotMatch(sent, /"error_code"/);
   });
 
-  test("alone, raises the signal again once flushed, so the process still stops", async () => {
-    const { emitter, kills, fake } = target(0);
-    flushOnSignals(async () => {
-      throw new Error("network down");
-    }, fake);
-    emitter.emit("SIGTERM");
-    await new Promise((resolve) => setImmediate(resolve));
-    assert.deepEqual(kills, ["SIGTERM"]);
+  test("nothing listens for the process to stop: events leave as they are captured", () => {
+    const events = ["SIGTERM", "SIGINT", "beforeExit", "exit"] as const;
+    const before = events.map((name) => process.listenerCount(name));
+    const { report } = intercepted();
+    report(new Error("boom"), { source: "request" });
+    assert.deepEqual(
+      events.map((name) => process.listenerCount(name)),
+      before,
+    );
   });
 });

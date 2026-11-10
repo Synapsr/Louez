@@ -8,15 +8,15 @@ The logs (evlog, `.evlog/logs` in the container) still get every error, as befor
 
 An error is sent when it is **unexpected**: an exception, or an HTTP status of 500 or more.
 
-| Where it is caught                                                                  | `source`    | How                                                                                                                                                      |
-| ----------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A procedure, on every transport (RPC `/api/rpc`, OpenAPI `/api/v1`, MCP `/api/mcp`) | `procedure` | oRPC client interceptor `reportUnexpectedErrors` (`packages/api/src/platform/error-reporting.ts`), in the RPC and OpenAPI handlers and in MCP's `call()` |
-| A hand-written MCP tool, or a tool that throws past its own handling                | `mcp_tool`  | `reportToolError` (`packages/mcp/src/utils/errors.ts`)                                                                                                   |
-| A route handler, a server component, a server action, the proxy                     | `request`   | `onRequestError` in `apps/web/instrumentation.ts`                                                                                                        |
-| A cron task, or the cron itself                                                     | `cron`      | `runIsolatedTasks` and the cron route's catch (`apps/web/app/api/cron/`)                                                                                 |
-| A background job (AI photos): a processing crash, a result not recorded, the runner | `job`       | `runImageJob` (`packages/api/src/services/product-images.ts`), `runJob`, `apps/web/lib/api/jobs.ts`                                                      |
-| A write's effect: a sender that threw, a claim or an outcome not recorded           | `effects`   | `dispatchEffects` (`packages/api/src/platform/effects.ts`, its `report` option), `apps/web/lib/api/effects.ts`                                           |
-| A rejection or exception nothing caught                                             | `process`   | `unhandledRejection` and `uncaughtExceptionMonitor` listeners, set in `register()`                                                                       |
+| Where it is caught                                                                               | `source`    | How                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A procedure, on every transport (RPC `/api/rpc`, OpenAPI `/api/v1`, MCP `/api/mcp`)              | `procedure` | oRPC client interceptor `reportUnexpectedErrors` (`packages/api/src/platform/error-reporting.ts`), in the RPC and OpenAPI handlers and in MCP's `call()` |
+| A hand-written MCP tool, or a tool that throws past its own handling                             | `mcp_tool`  | `reportToolError` (`packages/mcp/src/utils/errors.ts`)                                                                                                   |
+| A route handler, a server component, a server action, the proxy                                  | `request`   | `onRequestError` in `apps/web/instrumentation.ts`                                                                                                        |
+| A cron task, or the cron itself                                                                  | `cron`      | `runIsolatedTasks` and the cron route's catch (`apps/web/app/api/cron/`)                                                                                 |
+| A background job (AI photos): a processing crash, a result or a failure not recorded, the runner | `job`       | `runImageJob` (`packages/api/src/services/product-images.ts`), `runJob`, `apps/web/lib/api/jobs.ts`                                                      |
+| A write's effect: a sender that threw, a claim or an outcome not recorded                        | `effects`   | `dispatchEffects` (`packages/api/src/platform/effects.ts`, its `report` option), `apps/web/lib/api/effects.ts`                                           |
+| A rejection or exception nothing caught                                                          | `process`   | `unhandledRejection` and `uncaughtExceptionMonitor` listeners, set in `register()`                                                                       |
 
 **Never sent:** a refusal (4xx: validation, `NOT_FOUND`, `UNAUTHENTICATED`, `PERMISSION_DENIED`, `CONFIRMATION_REQUIRED`, `NOT_AVAILABLE_TO_THIS_AGENT`, `RATE_LIMITED`…), a 503 our code marks `retryable` (`LARGE_BODY_BUSY`), a caller that went away (`AbortError`), Next's control flow (`redirect()`, `notFound()`, dynamic bailouts) and React's postpone.
 
@@ -26,7 +26,7 @@ A 5xx oRPC error that wraps another stands for its cause: `toORPCError` (`packag
 
 ### What goes with an error
 
-A **copy** of the error: its name, its message, its stack frames, and up to two levels of `cause`. Never the error object itself, whose properties may hold a request or a payload. The message and every frame go through the sanitizer; a validation error (Zod's `issues`) is sent as its issue codes and paths, never the values its message quotes. Messages are cut at 1,000 characters, stacks at 30 frames.
+A **copy** of the error: its name, its message, its stack frames, and up to two levels of `cause`. Never the error object itself, whose properties may hold a request or a payload. The message and every frame go through the sanitizer; a validation error (Zod's `issues`), at any level of the cause chain, is sent as its issue codes and paths, never the values its message quotes. A code is sent only in its own format (`[A-Z0-9_.-]`, 64 characters at most: `ER_DUP_ENTRY`, `ECONNREFUSED`, a SQLSTATE); any other is dropped. Messages are cut at 1,000 characters, stacks at 30 frames.
 
 The context is a fixed list of names and ids, nothing a caller sent:
 
@@ -61,7 +61,7 @@ The patterns err toward redacting; ids (`store_…`, nanoids), codes and numbers
 
 ### The last gate
 
-posthog-node reads the source lines around each frame from disk (`pre_context`, `context_line`, `post_context`) after the copy is made. The client's `before_send` (`sanitizeExceptionEvent` in `apps/web/lib/error-tracking.ts`) drops them, makes every path relative and sanitizes the messages again on the event as sent, and refuses any event that is not an exception.
+posthog-node reads the source lines around each frame from disk (`pre_context`, `context_line`, `post_context`) after the copy is made. The client's `before_send` (`sanitizeExceptionEvent` in `apps/web/lib/error-tracking.ts`) drops them, makes every path relative and sanitizes again every string the event keeps: numbers and booleans stay, the fingerprint and `error_code` only in their own format, any other value is dropped. It refuses any event that is not an exception.
 
 ## How many
 
@@ -74,7 +74,7 @@ Per server process, in `error-reporting.ts`:
 
 Sending never holds a request: the event leaves in the background as soon as it is captured (`flushAt: 1`), with one try of 3 seconds at most. Reporting never throws.
 
-When the process stops, the client is shut down with 2 seconds to send what is queued: on `beforeExit`, and on SIGTERM and SIGINT (`flushOnSignals`). Next's standalone server handles those signals itself (it stops accepting connections, finishes the requests, then exits): the flush starts alongside, never holds it, and never takes the signal away. With no other listener (`NEXT_MANUAL_SIG_HANDLE`), the signal is raised again once flushed, so it still stops the process.
+Nothing waits in a buffer: each event is sent as soon as it is captured, so error tracking listens for no signal and no `beforeExit`. Next's standalone server handles SIGTERM and SIGINT on its own (it stops accepting connections, finishes the requests, then exits); a handler beside it could neither delay that exit nor, as PID 1 in Docker, re-raise the signal safely. The remaining risk: an event still in flight when the process exits, such as an error caught a moment before a deploy stops the container, is lost.
 
 ## Configuration
 
@@ -99,7 +99,7 @@ Frames point at the compiled server chunks of the standalone build (`.next/serve
 cd packages/api && SKIP_ENV_VALIDATION=true node --import tsx --test src/platform/sanitize-error.test.ts src/platform/source-paths.test.ts src/platform/error-reporting.test.ts
 ```
 
-Without network: `sanitize-error.test.ts` plants canaries (e-mails, keys, tokens, rows a database quotes, queries, phones, blobs) and checks they are gone, `source-paths.test.ts` the relative paths; `error-reporting.test.ts` the filtering, the copy, the root fault behind `errors.internalServerError`, fingerprints, the repeat window, the hourly cap, sampling and the interceptor. `apps/web/lib/error-tracking.test.ts` checks the flag (`"false"`, `"0"`, empty, unset stay off), the build, the final event through the real client with PostHog's network intercepted (the source lines it reads from disk do not leave), and the signal flush; `packages/mcp/src/utils/errors.test.ts` and `apps/web/app/api/cron/isolated-tasks.test.ts` the MCP and cron hooks.
+Without network: `sanitize-error.test.ts` plants canaries (e-mails, keys, tokens, rows a database quotes, queries, phones, blobs) and checks they are gone, `source-paths.test.ts` the relative paths; `error-reporting.test.ts` the filtering, the copy, the root fault behind `errors.internalServerError`, fingerprints, the repeat window, the hourly cap, sampling and the interceptor. `apps/web/lib/error-tracking.test.ts` checks the flag (`"false"`, `"0"`, empty, unset stay off), the build, the final event through the real client with PostHog's network intercepted (the source lines it reads from disk do not leave), and that no listener is set for SIGTERM, SIGINT, `beforeExit` or `exit`; `packages/api/src/services/product-images-failure.test.ts` an image job's failure the database did not record; `packages/mcp/src/utils/errors.test.ts` and `apps/web/app/api/cron/isolated-tasks.test.ts` the MCP and cron hooks.
 
 ## Related
 

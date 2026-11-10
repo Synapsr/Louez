@@ -115,17 +115,26 @@ const MAX_CAUSE_DEPTH = 2;
 
 const FRAME = /^\s+at /;
 
-/** An error's code, when it has a short one (oRPC's, ours, a driver's SQLSTATE). */
+/**
+ * What a code may look like to be sent: `INTERNAL_SERVER_ERROR`,
+ * `ER_DUP_ENTRY`, `ECONNREFUSED`, a SQLSTATE. Anything else (a code a
+ * provider filled with text, a token) is dropped, never sanitized and sent.
+ */
+const SAFE_CODE = /^[A-Z0-9_.-]{1,64}$/;
+
+/** `value` when it is a code `SAFE_CODE` allows, else undefined. */
+export function safeErrorCode(value: unknown): string | undefined {
+  const code = typeof value === "number" ? String(value) : value;
+  return typeof code === "string" && SAFE_CODE.test(code) ? code : undefined;
+}
+
+/** An error's code, when it has a safe one (oRPC's, ours, a driver's). */
 export function errorCode(error: unknown): string | undefined {
   if (error instanceof ORPCError) {
     const ours = (error.data as { code?: unknown } | undefined)?.code;
-    return typeof ours === "string" ? ours : error.code;
+    return safeErrorCode(typeof ours === "string" ? ours : error.code);
   }
-  if (!(error instanceof Error)) return undefined;
-  const code = Reflect.get(error, "code");
-  return typeof code === "string" || typeof code === "number"
-    ? String(code).slice(0, 64)
-    : undefined;
+  return error instanceof Error ? safeErrorCode(Reflect.get(error, "code")) : undefined;
 }
 
 /** Issues of a validation error (Zod's) named, never their values. */
@@ -145,13 +154,20 @@ function issuesMessage(error: unknown): string | undefined {
   return sanitizeText(`${issues.length} issue(s): ${named.join("; ")}${more}`);
 }
 
-/** An Error built back from the sanitized facts, as posthog-node reads it. */
-function toError(facts: SanitizedError, message: string): Error {
+/**
+ * An Error built back from the sanitized facts, as posthog-node reads it.
+ * Each level of the cause chain goes through `issuesMessage` with its own
+ * original: a validation error under a wrapper loses its message too.
+ */
+function toError(facts: SanitizedError, original: unknown): Error {
+  const message = issuesMessage(original) ?? facts.message;
   const copy = new Error(message);
   copy.name = facts.name === "NonError" ? "NonErrorThrown" : facts.name;
   const frames = facts.frames.map((frame) => `    ${relativeFramePath(frame)}`);
   copy.stack = [`${copy.name}: ${message}`, ...frames].join("\n");
-  if (facts.cause) copy.cause = toError(facts.cause, facts.cause.message);
+  if (facts.cause) {
+    copy.cause = toError(facts.cause, original instanceof Error ? original.cause : undefined);
+  }
   return copy;
 }
 
@@ -160,8 +176,7 @@ function toError(facts: SanitizedError, message: string): Error {
  * `sanitizeError` (name, message, frames, causes), never the error object.
  */
 function safeCopy(error: unknown): Error {
-  const facts = sanitizeError(error, { frames: MAX_FRAMES });
-  return toError(facts, issuesMessage(error) ?? facts.message);
+  return toError(sanitizeError(error, { frames: MAX_FRAMES }), error);
 }
 
 /**

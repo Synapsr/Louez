@@ -8,12 +8,14 @@ import {
   createErrorThrottle,
   createServerErrorReporter,
   ERROR_HOURLY_CAP,
+  errorCode,
   ERROR_REPEAT_WINDOW_MS,
   isUnexpectedServerError,
   messageTemplate,
   prepareServerError,
   reportUnexpectedErrors,
   rootFault,
+  safeErrorCode,
   type ServerErrorContext,
   type ServerErrorProperties,
 } from "./error-reporting";
@@ -170,6 +172,35 @@ describe("the copy that is sent", () => {
     });
     const { error: copy } = prepareServerError(error);
     assert.equal(Reflect.get(copy, "request"), undefined);
+  });
+});
+
+describe("nested and coded errors", () => {
+  test("a validation error deep in the cause chain loses its message too", () => {
+    const zod = Object.assign(new Error("custom message jane-canary"), {
+      name: "ZodError",
+      issues: [{ code: "custom", path: ["name"], message: "jane-canary" }],
+    });
+    const middle = new Error("service failed", { cause: zod });
+    const { error: copy } = prepareServerError(new Error("wrapper", { cause: middle }));
+    const deepest = (copy.cause as Error).cause as Error;
+    assert.equal(deepest.message, "1 issue(s): custom at name");
+    assert.doesNotMatch(
+      JSON.stringify([copy.message, (copy.cause as Error).message, deepest.message]),
+      /jane-canary/,
+    );
+  });
+
+  test("only a short code in its own format is sent", () => {
+    assert.equal(safeErrorCode("ER_DUP_ENTRY"), "ER_DUP_ENTRY");
+    assert.equal(safeErrorCode(1452), "1452");
+    assert.equal(safeErrorCode("23505"), "23505");
+    for (const code of ["Bearer private-code-canary", "card_declined", "", "A".repeat(65), {}]) {
+      assert.equal(safeErrorCode(code), undefined, String(code));
+    }
+    const coded = Object.assign(new Error("boom"), { code: "Bearer private-code-canary" });
+    assert.equal(errorCode(coded), undefined);
+    assert.equal(prepareServerError(coded).code, undefined);
   });
 });
 
