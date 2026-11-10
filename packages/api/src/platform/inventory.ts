@@ -172,6 +172,7 @@ const ORPC = {
   account: `${ROUTERS}/account.ts`,
   agentConnections: `${ROUTERS}/agent-connections.ts`,
   aiAdvisor: `${ROUTERS}/ai-advisor.ts`,
+  analytics: `${ROUTERS}/analytics.ts`,
   apiKeys: `${ROUTERS}/api-keys.ts`,
   billing: `${ROUTERS}/billing.ts`,
   categories: `${ROUTERS}/categories.ts`,
@@ -196,7 +197,6 @@ const ORPC = {
 } as const;
 
 const MCP = {
-  analytics: `${TOOLS}/analytics.ts`,
   calendar: `${TOOLS}/calendar.ts`,
   customers: `${TOOLS}/customers.ts`,
   payments: `${TOOLS}/payments.ts`,
@@ -1225,21 +1225,24 @@ export const capabilities = [
   // --- Statistics and exports (5) ----------------------------------------
   {
     id: "analytics.getDashboardStats",
-    sources: [tool(MCP.analytics, "get_dashboard_stats")],
+    sources: [procedure("analytics", "getDashboardStats")],
     kind: "read",
     plan: { lot: "5" },
+    migrated: true,
   },
   {
     id: "analytics.getRevenueReport",
-    sources: [tool(MCP.analytics, "get_revenue_report")],
+    sources: [procedure("analytics", "getRevenueReport")],
     kind: "read",
     plan: { lot: "5" },
+    migrated: true,
   },
   {
     id: "analytics.getProductPerformance",
-    sources: [tool(MCP.analytics, "get_product_performance")],
+    sources: [procedure("analytics", "getProductPerformance")],
     kind: "read",
     plan: { lot: "5" },
+    migrated: true,
   },
   {
     id: "analytics.export",

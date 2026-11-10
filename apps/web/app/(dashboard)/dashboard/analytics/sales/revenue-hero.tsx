@@ -3,16 +3,18 @@
 import { useTranslations } from "next-intl";
 import { formatCurrency } from "@louez/utils";
 import { DashboardTrendBadge } from "@/components/dashboard/shared/dashboard-trend-badge";
-import type { getSalesPaymentStats } from "@/app/(dashboard)/dashboard/analytics/sales/queries";
-import type { SalesWindow } from "@/app/(dashboard)/dashboard/analytics/sales/util.sales-window";
+import type { getSalesPaymentStats } from "@louez/api/services/sales-analytics";
+import type { SalesWindow } from "@louez/api/services/sales-window";
 
 interface RevenueHeroProps {
   stats: Awaited<ReturnType<typeof getSalesPaymentStats>>;
   window: SalesWindow;
+  /** The store's current currency, the one these figures are counted in. */
+  currency: string;
   formatLocale: string;
 }
 
-export const RevenueHero = ({ stats, window, formatLocale }: RevenueHeroProps) => {
+export const RevenueHero = ({ stats, window, currency, formatLocale }: RevenueHeroProps) => {
   const t = useTranslations("dashboard.statistics");
   const periodDateFormat = new Intl.DateTimeFormat(formatLocale, {
     dateStyle: "medium",
@@ -24,7 +26,7 @@ export const RevenueHero = ({ stats, window, formatLocale }: RevenueHeroProps) =
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-2xl leading-tight font-bold tracking-tight tabular-nums sm:text-3xl">
-          {formatCurrency(stats.periodRevenue, "EUR", formatLocale)}
+          {formatCurrency(stats.periodRevenue, currency, formatLocale)}
         </span>
         <DashboardTrendBadge trend={stats.revenueGrowth} />
         {stats.revenueGrowth !== null && (
@@ -38,7 +40,7 @@ export const RevenueHero = ({ stats, window, formatLocale }: RevenueHeroProps) =
       <p className="text-muted-foreground text-sm">
         {t("paymentsCount", { count: stats.periodPaymentCount })} ·{" "}
         {t("avgPaymentInline", {
-          amount: formatCurrency(stats.avgPaymentValue, "EUR", formatLocale),
+          amount: formatCurrency(stats.avgPaymentValue, currency, formatLocale),
         })}
       </p>
     </div>

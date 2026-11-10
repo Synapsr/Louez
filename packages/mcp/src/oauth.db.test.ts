@@ -196,7 +196,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       (await client.listTools()).tools.map((tool) => tool.name),
     );
     assert.ok(daily.includes("stores_list"));
-    assert.ok(daily.includes("get_dashboard_stats"), "a daily hand-written tool");
+    assert.ok(daily.includes("list_payments"), "a daily hand-written tool");
     assert.ok(!daily.includes("categories_list"), "the catalog bundle is not listed");
     assert.ok(!daily.includes("products_list"));
 

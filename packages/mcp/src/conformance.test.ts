@@ -23,9 +23,6 @@ const LEGACY_TOOLS = [
   "create_customer",
   "delete_payment",
   "get_customer",
-  "get_dashboard_stats",
-  "get_product_performance",
-  "get_revenue_report",
   "list_customers",
   "list_payments",
   "record_deposit_return",
@@ -310,6 +307,10 @@ describe("MCP directory conformance", () => {
       reservations_update_notes: "overwrite",
       reservations_update_status: "overwrite/customer",
       search_global: "read",
+      // Statistics procedures, under the names they had as hand-written tools.
+      get_dashboard_stats: "read",
+      get_product_performance: "read",
+      get_revenue_report: "read",
       settings_create_location: "additive/public",
       settings_get: "read",
       settings_get_legal_profile: "read",
@@ -339,9 +340,6 @@ describe("MCP directory conformance", () => {
       create_customer: "additive",
       delete_payment: "delete",
       get_customer: "read",
-      get_dashboard_stats: "read",
-      get_product_performance: "read",
-      get_revenue_report: "read",
       list_customers: "read",
       list_payments: "read",
       // A payment row added; nothing recorded before changes.
@@ -550,7 +548,7 @@ describe("MCP directory conformance", () => {
     const base = testRequestContext({
       storeId: "store_withheld",
       userId: "user_withheld",
-      permissions: { reservations: "write", products: "write" },
+      permissions: { reservations: "write", products: "write", analytics: "read" },
     });
     const listing = async (client: { clientId: string; name: string | null }) => {
       const directory = { ...client, redirectUris: [] };
@@ -625,6 +623,11 @@ describe("MCP directory conformance", () => {
     );
     // The rest of the chaining help stays.
     assert.match(chatgpt.instructions, /returns\.$/);
+
+    // The store's figures stay with every directory.
+    for (const name of ["get_dashboard_stats", "get_revenue_report", "get_product_performance"]) {
+      for (const listed of [claude, chatgpt, cursor]) assert.ok(listed.names.has(name), name);
+    }
 
     // Every other client keeps both tools.
     assert.ok(cursor.names.has("products_enhance_image"));

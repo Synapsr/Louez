@@ -170,7 +170,6 @@ export async function getTrafficStats(storeId: string, period: Period) {
             uniqueVisitors: sql<number>`COALESCE(SUM(${dailyStats.uniqueVisitors}), 0)`,
             cartAdditions: sql<number>`COALESCE(SUM(${dailyStats.cartAdditions}), 0)`,
             checkoutCompleted: sql<number>`COALESCE(SUM(${dailyStats.checkoutCompleted}), 0)`,
-            revenue: sql<string>`COALESCE(SUM(${dailyStats.revenue}), 0)`,
             mobileVisitors: sql<number>`COALESCE(SUM(${dailyStats.mobileVisitors}), 0)`,
             tabletVisitors: sql<number>`COALESCE(SUM(${dailyStats.tabletVisitors}), 0)`,
             desktopVisitors: sql<number>`COALESCE(SUM(${dailyStats.desktopVisitors}), 0)`,
@@ -187,7 +186,6 @@ export async function getTrafficStats(storeId: string, period: Period) {
           .select({
             uniqueVisitors: sql<number>`COALESCE(SUM(${dailyStats.uniqueVisitors}), 0)`,
             checkoutCompleted: sql<number>`COALESCE(SUM(${dailyStats.checkoutCompleted}), 0)`,
-            revenue: sql<string>`COALESCE(SUM(${dailyStats.revenue}), 0)`,
           })
           .from(dailyStats)
           .where(
@@ -217,12 +215,6 @@ export async function getTrafficStats(storeId: string, period: Period) {
       prevProductViews > 0 ? ((productViews - prevProductViews) / prevProductViews) * 100 : 0;
     const conversionsChange =
       prevConversions > 0 ? ((conversions - prevConversions) / prevConversions) * 100 : 0;
-    const revenueChange =
-      parseFloat(prev?.revenue || "0") > 0
-        ? ((parseFloat(current?.revenue || "0") - parseFloat(prev?.revenue || "0")) /
-            parseFloat(prev?.revenue || "0")) *
-          100
-        : 0;
 
     // Calculate conversion rate
     const conversionRate = visitors > 0 ? (conversions / visitors) * 100 : 0;
@@ -238,8 +230,6 @@ export async function getTrafficStats(storeId: string, period: Period) {
       conversionsChange,
       conversionRate,
       conversionRateChange,
-      revenue: parseFloat(current?.revenue || "0"),
-      revenueChange,
       devices: {
         mobile: toNumber(current?.mobileVisitors) + todayStats.mobileVisitors,
         tablet: toNumber(current?.tabletVisitors) + todayStats.tabletVisitors,
@@ -264,8 +254,6 @@ export async function getTrafficStats(storeId: string, period: Period) {
       conversionsChange: 0,
       conversionRate: 0,
       conversionRateChange: 0,
-      revenue: 0,
-      revenueChange: 0,
       devices: { mobile: 0, tablet: 0, desktop: 0 } as DeviceStats,
       funnel: [
         { label: "Visiteurs", value: 0 },
@@ -518,8 +506,6 @@ export async function getRawEventStats(storeId: string, period: Period) {
       conversionsChange: 0,
       conversionRate,
       conversionRateChange: 0,
-      revenue: 0,
-      revenueChange: 0,
       devices: {
         mobile: rawStats.mobileVisitors,
         tablet: rawStats.tabletVisitors,
@@ -543,8 +529,6 @@ export async function getRawEventStats(storeId: string, period: Period) {
       conversionsChange: 0,
       conversionRate: 0,
       conversionRateChange: 0,
-      revenue: 0,
-      revenueChange: 0,
       devices: { mobile: 0, tablet: 0, desktop: 0 } as DeviceStats,
       funnel: [
         { label: "Visiteurs", value: 0 },

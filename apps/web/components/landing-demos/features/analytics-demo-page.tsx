@@ -45,17 +45,27 @@ export const AnalyticsDemoPage = ({ period }: Pick<FeatureSceneProps, "period">)
       >
         <SalesAnalyticsContent
           revenueHero={
-            <RevenueHero stats={data.stats} window={data.window} formatLocale={formatLocale} />
+            <RevenueHero
+              stats={data.stats}
+              window={data.window}
+              currency={data.currency}
+              formatLocale={formatLocale}
+            />
           }
           revenueChart={
-            <RevenueChart data={data.revenue} initialDimension={{ width: 640, height: 288 }} />
+            <RevenueChart
+              data={data.revenue}
+              currency={data.currency}
+              initialDimension={{ width: 640, height: 288 }}
+            />
           }
-          paymentMethods={<PaymentMethodsBreakdown data={data.methods} />}
+          paymentMethods={<PaymentMethodsBreakdown data={data.methods} currency={data.currency} />}
           stats={
             <SalesStatStripContent
               reservationStats={data.reservationStats}
               duration={data.duration}
               totalRevenue={data.stats.totalRevenue}
+              currency={data.currency}
               formatLocale={formatLocale}
             />
           }
@@ -63,11 +73,14 @@ export const AnalyticsDemoPage = ({ period }: Pick<FeatureSceneProps, "period">)
             <RentalActivitySection
               occupancy={data.occupancy}
               upcoming={data.upcoming}
+              currency={data.currency}
               formatLocale={formatLocale}
             />
           }
-          topProducts={<TopProductsTable {...data.topProducts} readOnly />}
-          topCustomers={<TopCustomersTable customers={data.customers} readOnly />}
+          topProducts={<TopProductsTable {...data.topProducts} currency={data.currency} readOnly />}
+          topCustomers={
+            <TopCustomersTable customers={data.customers} currency={data.currency} readOnly />
+          }
         />
       </AnalyticsLayoutContent>
     </DashboardSceneFrame>

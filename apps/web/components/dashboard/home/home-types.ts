@@ -1,9 +1,10 @@
 /**
- * Client-side mirrors of the types produced by `@/lib/dashboard/metrics`.
+ * Client-side mirrors of the types produced by `getStoreMetrics`
+ * (`@louez/api/services/store-metrics`) and `@/lib/dashboard/metrics`.
  *
- * That module is server-only (it touches the database), so the home widgets —
- * which are client components — redeclare the shapes they render instead of
- * importing it. Keep in sync with `StoreMetrics` / `StoreState` there.
+ * Those modules are server-only (they touch the database), so the home
+ * widgets — which are client components — redeclare the shapes they render
+ * instead of importing them. Keep in sync with `StoreMetrics` / `StoreState`.
  */
 export interface StoreMetrics {
   productCount: number;

@@ -3,20 +3,20 @@
 import { useTranslations } from "next-intl";
 import { cn, formatCurrency } from "@louez/utils";
 import { DASHBOARD_ACCENT_FILL } from "@/components/dashboard/shared/dashboard-accent";
-import type {
-  OccupancyStats,
-  UpcomingRevenueStats,
-} from "@/app/(dashboard)/dashboard/analytics/sales/rental-queries";
+import type { OccupancyStats, UpcomingRevenueStats } from "@louez/api/services/sales-analytics";
 
 interface RentalActivitySectionProps {
   occupancy: OccupancyStats;
   upcoming: UpcomingRevenueStats;
+  /** The store's current currency, the one these figures are counted in. */
+  currency: string;
   formatLocale: string;
 }
 
 export const RentalActivitySection = ({
   occupancy,
   upcoming,
+  currency,
   formatLocale,
 }: RentalActivitySectionProps) => {
   const t = useTranslations("dashboard.statistics");
@@ -46,7 +46,7 @@ export const RentalActivitySection = ({
           </p>
         </div>
         <span className="shrink-0 text-sm font-semibold tabular-nums">
-          {formatCurrency(upcoming.revenue, "EUR", formatLocale)}
+          {formatCurrency(upcoming.revenue, currency, formatLocale)}
         </span>
       </div>
     </div>

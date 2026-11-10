@@ -13,6 +13,7 @@ import {
 import { formatCurrency } from "@louez/utils";
 
 import { DashboardStatCard } from "@/components/dashboard/shared/dashboard-stat-card";
+import { useStoreCurrency } from "@/contexts/store-context";
 import type { StoreMetrics, StoreState } from "./home-types";
 import { calculateGrowth } from "./home-utils";
 import { ReservationCalendarPrefetchBoundary } from "./reservation-calendar-prefetch-boundary";
@@ -31,6 +32,7 @@ const TODAY_RETURNS_HREF =
 
 export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
   const t = useTranslations("dashboard.home");
+  const currency = useStoreCurrency();
 
   // Catalog-focused stats while the store is still being set up.
   if (storeState === "virgin" || storeState === "building") {
@@ -136,7 +138,7 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
       />
       <DashboardStatCard
         title={t("stats.monthlyRevenue")}
-        value={formatCurrency(metrics.monthlyRevenue)}
+        value={formatCurrency(metrics.monthlyRevenue, currency)}
         icon={CreditCardSolidIcon}
         accent="submitted"
         href="/dashboard/analytics/sales"

@@ -2607,14 +2607,11 @@ async function main(): Promise<void> {
     const pageViewRows: Array<typeof schema.pageViews.$inferInsert> = [];
     const eventRows: Array<typeof schema.storefrontEvents.$inferInsert> = [];
 
-    const revenueByDay = new Map<string, { revenue: number; count: number }>();
+    const reservationsByDay = new Map<string, number>();
     for (const reservation of reservationRows) {
       if (!['confirmed', 'ongoing', 'completed'].includes(reservation.status as string)) continue;
       const key = toDateOnly(reservation.createdAt as Date);
-      const entry = revenueByDay.get(key) ?? { revenue: 0, count: 0 };
-      entry.revenue += Number.parseFloat(reservation.totalAmount as string);
-      entry.count += 1;
-      revenueByDay.set(key, entry);
+      reservationsByDay.set(key, (reservationsByDay.get(key) ?? 0) + 1);
     }
 
     const REFERRERS = [
@@ -2646,8 +2643,8 @@ async function main(): Promise<void> {
       const productViews = Math.round(traffic * 0.45);
       const cartAdditions = Math.round(productViews * 0.22);
       const checkoutStarted = Math.round(cartAdditions * 0.42);
-      const dayRevenue = revenueByDay.get(dayKey);
-      const checkoutCompleted = Math.min(checkoutStarted, dayRevenue?.count ?? 0);
+      const dayReservations = reservationsByDay.get(dayKey) ?? 0;
+      const checkoutCompleted = Math.min(checkoutStarted, dayReservations);
 
       const mobile = Math.round(uniqueVisitors * 0.61);
       const tablet = Math.round(uniqueVisitors * 0.08);
@@ -2662,12 +2659,8 @@ async function main(): Promise<void> {
         cartAdditions,
         checkoutStarted,
         checkoutCompleted,
-        reservationsCreated: dayRevenue?.count ?? 0,
-        reservationsConfirmed: Math.round((dayRevenue?.count ?? 0) * 0.9),
-        revenue: money(dayRevenue?.revenue ?? 0),
-        averageCartValue: money(
-          dayRevenue && dayRevenue.count > 0 ? dayRevenue.revenue / dayRevenue.count : 0,
-        ),
+        reservationsCreated: dayReservations,
+        reservationsConfirmed: Math.round(dayReservations * 0.9),
         mobileVisitors: mobile,
         tabletVisitors: tablet,
         desktopVisitors: Math.max(0, uniqueVisitors - mobile - tablet),
@@ -2675,8 +2668,8 @@ async function main(): Promise<void> {
         updatedAt: startOfDay(cursor),
       });
 
-      // Per-product stats for the top of the catalog only — that is what the
-      // dashboard's "best sellers" panel reads.
+      // Per-product traffic for the top of the catalog only — that is what the
+      // traffic page's most viewed products read.
       for (const product of activeProducts) {
         if (product.spec.popularity < 4) continue;
         const views = Math.round(
@@ -2690,8 +2683,6 @@ async function main(): Promise<void> {
           date: startOfDay(cursor),
           views,
           cartAdditions: Math.round(views * 0.2),
-          reservations: Math.round(views * 0.06),
-          revenue: money(Math.round(views * 0.06) * product.spec.price),
           createdAt: startOfDay(cursor),
           updatedAt: startOfDay(cursor),
         });

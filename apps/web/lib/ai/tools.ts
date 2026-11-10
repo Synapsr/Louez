@@ -1,18 +1,16 @@
 import { tool } from "ai";
-import { and, desc, eq, exists, gte, inArray, lte, or, sql, sum } from "drizzle-orm";
+import { and, desc, eq, exists, gte, inArray, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
   customers,
-  dailyStats,
   db,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
   loadConsumableReservedQuantities,
   payments,
-  productStats,
   productUnits,
   products,
   reservationItems,
@@ -20,6 +18,7 @@ import {
   stores,
 } from "@louez/db";
 import type { AppRouter, UrlsPort } from "@louez/api";
+import { ANALYTICS_PERIODS } from "@louez/api/contracts/analytics";
 import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import type { RouterClient } from "@orpc/server";
@@ -65,6 +64,7 @@ export type AIChatContext = {
 
 /** The procedures the assistant calls, through a server-side client bound to the user's session. */
 export type AssistantApi = {
+  analytics: RouterClient<AppRouter["dashboard"]["analytics"]>;
   categories: RouterClient<AppRouter["dashboard"]["categories"]>;
   products: RouterClient<AppRouter["dashboard"]["products"]>;
   reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
@@ -856,164 +856,38 @@ export function createAITools(ctx: AIChatContext) {
     // ── Analytics ─────────────────────────────────────────────────────────
 
     get_dashboard_stats: tool({
-      description: "Get key dashboard metrics (revenue, reservations, visitors) for a given period",
-      inputSchema: z.object({
-        period: z
-          .enum(["7d", "30d", "90d", "12m"])
-          .optional()
-          .describe("Time period (default 30d)"),
-      }),
-      execute: async ({ period }) => {
-        requirePermission(ctx, "analytics", "read");
-
-        const end = new Date();
-        const start = new Date();
-        switch (period ?? "30d") {
-          case "7d":
-            start.setDate(start.getDate() - 7);
-            break;
-          case "30d":
-            start.setDate(start.getDate() - 30);
-            break;
-          case "90d":
-            start.setDate(start.getDate() - 90);
-            break;
-          case "12m":
-            start.setMonth(start.getMonth() - 12);
-            break;
-        }
-
-        const stats = await db
-          .select({
-            totalRevenue: sum(dailyStats.revenue),
-            totalReservationsCreated: sum(dailyStats.reservationsCreated),
-            totalReservationsConfirmed: sum(dailyStats.reservationsConfirmed),
-            totalVisitors: sum(dailyStats.uniqueVisitors),
-            totalPageViews: sum(dailyStats.pageViews),
-          })
-          .from(dailyStats)
-          .where(
-            and(
-              eq(dailyStats.storeId, ctx.storeId),
-              gte(dailyStats.date, start),
-              lte(dailyStats.date, end),
-            ),
-          );
-
-        const [activeCount] = await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(reservations)
-          .where(
-            and(
-              eq(reservations.storeId, ctx.storeId),
-              sql`${reservations.status} IN ('pending', 'confirmed', 'ongoing')`,
-            ),
-          );
-
-        return {
-          period: period ?? "30d",
-          startDate: start.toISOString(),
-          endDate: end.toISOString(),
-          ...stats[0],
-          activeReservations: activeCount?.count ?? 0,
-        };
-      },
+      description:
+        "Get the figures of the dashboard home, live: today's revenue, departures and returns; the revenue this month, last month and since the store opened; the reservations by status; the products and customers. Revenue is the rental payments received (every method), on the day they were cashed in, in the store's time zone and currency. Payments in another currency are left out of the amounts and listed in otherCurrencies.",
+      inputSchema: z.object({}),
+      execute: async () => assistantApi(ctx).analytics.getDashboardStats({}),
     }),
 
     get_product_performance: tool({
-      description: "Get top-performing products by revenue",
+      description:
+        "Rank the products by their share of the rental payments received over a period, as the sales page's top products table does, with the units booked and the reservations behind it. Payments in another currency than the store's are left out and listed in otherCurrencies.",
       inputSchema: z.object({
-        period: z.enum(["7d", "30d", "90d", "12m"]).optional(),
-        limit: z.number().optional().describe("Number of products (default 10)"),
+        period: z
+          .enum(ANALYTICS_PERIODS)
+          .optional()
+          .describe("Rolling period ending now (default 30d)"),
+        limit: z.number().optional().describe("Number of products (default 10, at most 50)"),
       }),
-      execute: async ({ period, limit: maxResults }) => {
-        requirePermission(ctx, "analytics", "read");
-
-        const end = new Date();
-        const start = new Date();
-        switch (period ?? "30d") {
-          case "7d":
-            start.setDate(start.getDate() - 7);
-            break;
-          case "30d":
-            start.setDate(start.getDate() - 30);
-            break;
-          case "90d":
-            start.setDate(start.getDate() - 90);
-            break;
-          case "12m":
-            start.setMonth(start.getMonth() - 12);
-            break;
-        }
-        const lim = Math.min(maxResults ?? 10, 50);
-
-        const rows = await db
-          .select({
-            productId: productStats.productId,
-            productName: products.name,
-            totalViews: sum(productStats.views),
-            totalReservations: sum(productStats.reservations),
-            totalRevenue: sum(productStats.revenue),
-          })
-          .from(productStats)
-          .innerJoin(products, eq(productStats.productId, products.id))
-          .where(
-            and(
-              eq(productStats.storeId, ctx.storeId),
-              gte(productStats.date, start),
-              lte(productStats.date, end),
-            ),
-          )
-          .groupBy(productStats.productId, products.name)
-          .orderBy(desc(sum(productStats.revenue)))
-          .limit(lim);
-
-        return { products: rows, period: period ?? "30d" };
-      },
+      execute: async ({ period, limit }) =>
+        assistantApi(ctx).analytics.getProductPerformance({
+          period,
+          limit: limit === undefined ? undefined : Math.min(Math.max(Math.trunc(limit), 1), 50),
+        }),
     }),
 
     get_revenue_report: tool({
-      description: "Get a day-by-day revenue breakdown over a custom date range",
+      description:
+        "Get the revenue over a custom date range, as the sales page counts it: rental payments received, every method, on the day they were cashed in, per day (per month past 92 days), by payment method, plus the reservations that start in the range. Payments in another currency than the store's are left out and listed in otherCurrencies.",
       inputSchema: z.object({
-        startDate: z.string().describe("Start date (YYYY-MM-DD)"),
-        endDate: z.string().describe("End date (YYYY-MM-DD)"),
+        startDate: z.string().describe("Start date (YYYY-MM-DD), in the store's time zone"),
+        endDate: z.string().describe("End date (YYYY-MM-DD), included"),
       }),
-      execute: async ({ startDate, endDate }) => {
-        requirePermission(ctx, "analytics", "read");
-
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        const rows = await db
-          .select({
-            date: dailyStats.date,
-            revenue: dailyStats.revenue,
-            reservationsCreated: dailyStats.reservationsCreated,
-            reservationsConfirmed: dailyStats.reservationsConfirmed,
-            uniqueVisitors: dailyStats.uniqueVisitors,
-          })
-          .from(dailyStats)
-          .where(
-            and(
-              eq(dailyStats.storeId, ctx.storeId),
-              gte(dailyStats.date, start),
-              lte(dailyStats.date, end),
-            ),
-          )
-          .orderBy(dailyStats.date);
-
-        const totalRevenue = rows.reduce((acc, r) => acc + parseFloat(r.revenue ?? "0"), 0);
-        const totalReservations = rows.reduce((acc, r) => acc + (r.reservationsCreated ?? 0), 0);
-
-        return {
-          startDate,
-          endDate,
-          totalRevenue: totalRevenue.toFixed(2),
-          totalReservations,
-          daysWithData: rows.length,
-          daily: rows,
-        };
-      },
+      execute: async ({ startDate, endDate }) =>
+        assistantApi(ctx).analytics.getRevenueReport({ startDate, endDate }),
     }),
 
     // ── Calendar ──────────────────────────────────────────────────────────

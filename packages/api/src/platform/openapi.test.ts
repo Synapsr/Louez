@@ -107,7 +107,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations, the settings, the online store, the stores, the inbox, Stripe, billing, handoffs and jobs at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations, the statistics, the settings, the online store, the stores, the inbox, Stripe, billing, handoffs and jobs at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -195,6 +195,9 @@ describe("OpenAPI document", () => {
         "POST /online-store/image-uploads/complete": "online_store_complete_image_upload",
         "POST /online-store/images": "online_store_upload_image",
         "GET /search": "search_global",
+        "GET /analytics/dashboard": "get_dashboard_stats",
+        "GET /analytics/revenue": "get_revenue_report",
+        "GET /analytics/products": "get_product_performance",
         "GET /settings": "settings_get",
         "PATCH /settings/store-info": "settings_update_store_info",
         "PATCH /settings/company": "settings_update_company",
