@@ -11,6 +11,7 @@ import {
 import { eq, count, and, gte, sql } from 'drizzle-orm'
 import { isBillingEnabled } from '@/lib/billing/mode'
 import { getPlan, getDefaultPlan, getPayAsYouGoPlan, SMS_TOPUP_PRICING, type Plan } from '@/lib/plans'
+import { owesPrepaidCredit } from '@/lib/sms/credit-source'
 
 // ============================================================================
 // Types
@@ -352,31 +353,21 @@ export async function getSmsUsageThisMonth(storeId: string): Promise<number> {
 }
 
 /**
- * Get the prepaid SMS credit balance for a store
+ * The prepaid SMS credits a store can still spend: its balance less the
+ * credits SMS already sent still owe (a credit not taken yet, or one the
+ * empty balance could not give: lib/sms/credit-source.ts).
  */
 export async function getSmsPrepaidBalance(storeId: string): Promise<number> {
-  const credits = await db.query.smsCredits.findFirst({
-    where: eq(smsCredits.storeId, storeId),
-  })
-  return credits?.balance ?? 0
-}
-
-/**
- * Get full SMS credits info for a store
- */
-export async function getSmsCreditsInfo(storeId: string): Promise<{
-  balance: number
-  totalPurchased: number
-  totalUsed: number
-}> {
-  const credits = await db.query.smsCredits.findFirst({
-    where: eq(smsCredits.storeId, storeId),
-  })
-  return {
-    balance: credits?.balance ?? 0,
-    totalPurchased: credits?.totalPurchased ?? 0,
-    totalUsed: credits?.totalUsed ?? 0,
-  }
+  const [credits, [owed]] = await Promise.all([
+    db.query.smsCredits.findFirst({
+      where: eq(smsCredits.storeId, storeId),
+    }),
+    db
+      .select({ count: count() })
+      .from(smsLogs)
+      .where(and(eq(smsLogs.storeId, storeId), owesPrepaidCredit())),
+  ])
+  return Math.max(0, (credits?.balance ?? 0) - (owed?.count ?? 0))
 }
 
 /**
@@ -496,31 +487,6 @@ export async function determineSmsSource(storeId: string): Promise<'plan' | 'top
 
   // Otherwise, use prepaid credits
   return 'topup'
-}
-
-/**
- * Deduct one SMS credit from prepaid balance
- * Call this after successfully sending an SMS that used prepaid credits
- */
-export async function deductPrepaidSmsCredit(storeId: string): Promise<boolean> {
-  const credits = await db.query.smsCredits.findFirst({
-    where: eq(smsCredits.storeId, storeId),
-  })
-
-  if (!credits || credits.balance <= 0) {
-    return false
-  }
-
-  await db
-    .update(smsCredits)
-    .set({
-      balance: sql`${smsCredits.balance} - 1`,
-      totalUsed: sql`${smsCredits.totalUsed} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(eq(smsCredits.storeId, storeId))
-
-  return true
 }
 
 // ============================================================================

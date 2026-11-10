@@ -19,6 +19,7 @@ import {
   sendRequestAcceptedEmail,
   sendRequestRejectedEmail,
   sendReservationConfirmationEmail,
+  sendReservationCancelledEmail,
   sendReminderPickupEmail,
   sendReminderReturnEmail,
   sendPaymentRequestEmail,
@@ -32,15 +33,18 @@ import {
   sendRequestReceivedSms,
   sendRequestAcceptedSms,
   sendRequestRejectedSms,
+  sendReservationCancelledSms,
   sendPaymentRequestSms,
   sendDepositAuthorizationRequestSms,
 } from "@/lib/sms/send";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
+import { isSmsAccepted } from "@/lib/sms/delivery-record";
 import type { EmailAttachment } from "@/lib/email/client";
-import type {
-  CustomerNotificationEventType,
-  CustomerNotificationSettings,
-  CustomerNotificationTemplate,
+import {
+  withCustomerNotificationDefaults,
+  type CustomerNotificationEventType,
+  type CustomerNotificationSettings,
+  type CustomerNotificationTemplate,
 } from "@louez/types";
 
 export interface CustomerNotificationStore {
@@ -127,6 +131,8 @@ export interface CustomerNotificationContext {
   reservation: CustomerNotificationReservation;
   items?: Array<{ name: string; quantity: number; unitPrice: number; totalPrice: number }>;
   reservationUrl?: string;
+  /** The online store's home page, linked from a cancellation. */
+  storefrontUrl?: string;
   contractUrl?: string;
   termsUrl?: string | null;
   paymentUrl?: string | null;
@@ -165,6 +171,7 @@ function mergeTemplateWithLegacy(
     customer_request_accepted: "requestAcceptedContent",
     customer_request_rejected: "rejectionContent",
     customer_reservation_confirmed: "confirmationContent",
+    customer_reservation_cancelled: null, // No legacy mapping
     customer_reminder_pickup: "pickupReminderContent",
     customer_reminder_return: "returnReminderContent",
     customer_payment_requested: null, // No legacy mapping
@@ -200,12 +207,9 @@ export async function dispatchCustomerNotification(
     sms: { sent: false },
   };
 
-  // Import defaults dynamically to avoid circular dependency
-  const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
-
-  // Get preferences (use defaults if not set, with per-key fallback for new event types)
-  const settings = ctx.store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
-  const prefs = settings[eventType] ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS[eventType];
+  // Preferences, with the default of an event the saved settings predate
+  const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
+  const prefs = settings[eventType];
 
   // Skip if notification type is disabled
   if (!prefs?.enabled) {
@@ -291,9 +295,10 @@ export async function sendCustomerNotificationChannel(
   ctx: CustomerNotificationContext,
   channel: "email" | "sms",
   beforeSend: () => Promise<void>,
+  /** The outbox row's id: an SMS it already sent is not sent again (lib/sms/delivery.ts). */
+  deliveryKey?: string,
 ): Promise<{ skipped: string } | undefined> {
-  const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
-  const settings = ctx.store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+  const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
   const locale = resolveReservationEmailLocale(
     ctx.reservation.locale ?? null,
     ctx.store.settings?.country,
@@ -313,10 +318,18 @@ export async function sendCustomerNotificationChannel(
   }
 
   if (!ctx.customer.phone) return { skipped: "the customer has no phone" };
+  // Sent by an earlier run of this row, which timed out after the provider accepted it.
+  if (deliveryKey && (await isSmsAccepted(deliveryKey))) return undefined;
   const quota = await getSmsQuotaStatus(ctx.store.id);
   if (!quota.allowed) return { skipped: "the store's SMS limit is reached" };
   await beforeSend();
-  const result: unknown = await sendCustomerSms(eventType, ctx, locale, customTemplate);
+  const result: unknown = await sendCustomerSms(
+    eventType,
+    ctx,
+    locale,
+    customTemplate,
+    deliveryKey,
+  );
   if (result && typeof result === "object" && "success" in result && result.success === false) {
     const error = "error" in result && typeof result.error === "string" ? result.error : "";
     throw new Error(error || "The SMS was not sent.");
@@ -392,6 +405,14 @@ async function sendCustomerEmail(
         reservationUrl: ctx.reservationUrl || "",
         documentAttachments: ctx.documentAttachments,
         contractSignatureUrl: ctx.contractSignatureUrl,
+      });
+
+    case "customer_reservation_cancelled":
+      return sendReservationCancelledEmail({
+        ...emailParams,
+        items: ctx.items || [],
+        storefrontUrl: ctx.storefrontUrl,
+        customContent,
       });
 
     case "customer_reminder_pickup":
@@ -478,10 +499,12 @@ async function sendCustomerEmail(
 async function sendCustomerSms(
   eventType: CustomerNotificationEventType,
   ctx: CustomerNotificationContext,
-  _locale: EmailLocale,
-  _customTemplate?: CustomerNotificationTemplate,
+  locale: EmailLocale,
+  customTemplate?: CustomerNotificationTemplate,
+  deliveryKey?: string,
 ) {
-  // Only certain event types have SMS implementations
+  // Only certain event types have SMS implementations. In the reservation's
+  // language, as the email; the store's own text when it saved one.
   const smsParams = {
     store: ctx.store,
     customer: {
@@ -491,6 +514,9 @@ async function sendCustomerSms(
       phone: ctx.customer.phone,
     },
     reservation: ctx.reservation,
+    locale,
+    customMessage: customTemplate?.smsMessage,
+    deliveryKey,
   };
 
   switch (eventType) {
@@ -506,6 +532,9 @@ async function sendCustomerSms(
     case "customer_reservation_confirmed":
       return sendReservationConfirmationSms(smsParams);
 
+    case "customer_reservation_cancelled":
+      return sendReservationCancelledSms(smsParams);
+
     case "customer_reminder_pickup":
       return sendReminderPickupSms(smsParams);
 
@@ -517,14 +546,7 @@ async function sendCustomerSms(
         throw new Error("Payment request context missing required fields");
       }
       return sendPaymentRequestSms({
-        store: ctx.store,
-        customer: {
-          id: ctx.customer.id,
-          firstName: ctx.customer.firstName,
-          lastName: ctx.customer.lastName,
-          phone: ctx.customer.phone,
-        },
-        reservation: ctx.reservation,
+        ...smsParams,
         amount: ctx.paymentRequestAmount,
         paymentUrl: ctx.paymentRequestUrl,
         currency: ctx.store.settings?.currency,
@@ -535,14 +557,7 @@ async function sendCustomerSms(
         throw new Error("Deposit authorization context missing required fields");
       }
       return sendDepositAuthorizationRequestSms({
-        store: ctx.store,
-        customer: {
-          id: ctx.customer.id,
-          firstName: ctx.customer.firstName,
-          lastName: ctx.customer.lastName,
-          phone: ctx.customer.phone,
-        },
-        reservation: ctx.reservation,
+        ...smsParams,
         depositAmount: ctx.depositAuthorizationAmount,
         authorizationUrl: ctx.depositAuthorizationUrl,
         currency: ctx.store.settings?.currency,
@@ -573,6 +588,7 @@ export function shouldSendCustomerNotification(
     customer_request_accepted: { enabled: true, email: true, sms: false },
     customer_request_rejected: { enabled: true, email: true, sms: false },
     customer_reservation_confirmed: { enabled: true, email: true, sms: false },
+    customer_reservation_cancelled: { enabled: true, email: true, sms: false },
     customer_reminder_pickup: { enabled: true, email: true, sms: false },
     customer_reminder_return: { enabled: true, email: true, sms: false },
     customer_payment_requested: { enabled: true, email: true, sms: false },

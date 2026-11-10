@@ -288,7 +288,7 @@
     "title": "Reserva cancelada",
     "body": "Su reserva #{number} ha sido cancelada.",
     "cancelledPeriod": "Período cancelado",
-    "reasonLabel": "Motivo",
+    "itemsLabel": "Artículos",
     "contactForQuestions": "Si tiene alguna pregunta, no dude en contactarnos.",
     "browseEquipment": "Ver nuestro catálogo",
     "thankYou": "Gracias por su comprensión."

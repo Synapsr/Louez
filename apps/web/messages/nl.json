@@ -4344,6 +4344,10 @@
             "label": "Reservering bevestigd",
             "description": "Na succesvolle betaling"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reservering geannuleerd",
+            "description": "Wanneer u een reservering annuleert"
+          },
           "customer_reminder_pickup": {
             "label": "Ophaalherinnering",
             "description": "Verzonden voor de ophaaldatum"

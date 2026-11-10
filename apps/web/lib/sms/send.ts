@@ -2,15 +2,16 @@ import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
 /**
  * SMS Sending Functions
  *
- * High-level functions for sending SMS messages with automatic logging.
- * Mirrors the pattern from src/lib/email/send.ts for consistency.
+ * The SMS a store sends its customers: each checks the phone, the
+ * configuration and the quota, builds its text (the store's own when it saved
+ * one, else the default of its language), then goes out once through
+ * `deliverSms`, which records it and its prepaid credit (lib/sms/delivery.ts).
  */
 
-import { db } from "@louez/db";
-import { smsLogs } from "@louez/db";
-import { sendSms, isSmsConfigured } from "./client";
+import { isSmsConfigured } from "./client";
+import { deliverSms } from "./delivery";
 import { validateAndNormalizePhone } from "./phone";
-import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from "@/lib/plan-limits";
+import { getSmsQuotaStatus, determineSmsSource } from "@/lib/plan-limits";
 import { getEmailMessages, getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 
@@ -32,6 +33,7 @@ const SMS_TEMPLATES: Record<
     request_received: (vars: { storeName: string; number: string }) => string;
     request_accepted: (vars: { storeName: string; number: string }) => string;
     request_rejected: (vars: { storeName: string; number: string }) => string;
+    reservation_cancelled: (vars: { storeName: string; number: string }) => string;
     instant_access: (vars: { storeName: string; number: string; url: string }) => string;
     payment_request: (vars: {
       storeName: string;
@@ -60,6 +62,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nDemande #${number} acceptée! Consultez vos emails.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nDemande #${number} non disponible. Contactez-nous.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nRéservation #${number} annulée. Contactez-nous pour toute question.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nVotre réservation #${number}\nAccès: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -80,6 +84,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nRequest #${number} accepted! Check your email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nRequest #${number} unavailable. Contact us.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReservation #${number} cancelled. Contact us with any questions.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nYour reservation #${number}\nAccess: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -100,6 +106,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nAnfrage #${number} akzeptiert! E-Mail pruefen.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nAnfrage #${number} nicht verfuegbar. Kontaktieren Sie uns.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReservierung #${number} storniert. Bei Fragen kontaktieren Sie uns.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nIhre Reservierung #${number}\nZugang: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -120,6 +128,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nSolicitud #${number} aceptada! Revisa tu email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nSolicitud #${number} no disponible. Contactenos.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReserva #${number} cancelada. Contactenos si tiene preguntas.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nTu reserva #${number}\nAcceso: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -140,6 +150,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nRichiesta #${number} accettata! Controlla email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nRichiesta #${number} non disponibile. Contattaci.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nPrenotazione #${number} annullata. Contattaci per qualsiasi domanda.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nLa tua prenotazione #${number}\nAccesso: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -160,6 +172,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nAanvraag #${number} geaccepteerd! Check je email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nAanvraag #${number} niet beschikbaar. Neem contact op.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReservering #${number} geannuleerd. Neem contact op bij vragen.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nUw reservering #${number}\nToegang: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -180,6 +194,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nZamowienie #${number} zaakceptowane! Sprawdz email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nZamowienie #${number} niedostepne. Skontaktuj sie.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nRezerwacja #${number} anulowana. Skontaktuj sie z nami w razie pytan.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nTwoja rezerwacja #${number}\nDostep: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -200,6 +216,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nPedido #${number} aceito! Verifique seu email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nPedido #${number} indisponivel. Entre em contato.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReserva #${number} cancelada. Entre em contato se tiver duvidas.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nSua reserva #${number}\nAcesso: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -240,6 +258,11 @@ const SMS_TEMPLATES: Record<
       }),
     request_rejected: ({ storeName, number }) =>
       formatSupplementalMessage("zh", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_reservation_cancelled", {
         value0: String(storeName),
         value1: String(number),
       }),
@@ -299,6 +322,11 @@ const SMS_TEMPLATES: Record<
         value0: String(storeName),
         value1: String(number),
       }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
     instant_access: ({ storeName, number, url }) =>
       formatSupplementalMessage("ja", "send_SMS_TEMPLATES_instant_access", {
         value0: String(storeName),
@@ -352,6 +380,11 @@ const SMS_TEMPLATES: Record<
       }),
     request_rejected: ({ storeName, number }) =>
       formatSupplementalMessage("ru", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_reservation_cancelled", {
         value0: String(storeName),
         value1: String(number),
       }),
@@ -411,6 +444,11 @@ const SMS_TEMPLATES: Record<
         value0: String(storeName),
         value1: String(number),
       }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
     instant_access: ({ storeName, number, url }) =>
       formatSupplementalMessage("id", "send_SMS_TEMPLATES_instant_access", {
         value0: String(storeName),
@@ -467,6 +505,11 @@ const SMS_TEMPLATES: Record<
         value0: String(storeName),
         value1: String(number),
       }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
     instant_access: ({ storeName, number, url }) =>
       formatSupplementalMessage("ko", "send_SMS_TEMPLATES_instant_access", {
         value0: String(storeName),
@@ -512,12 +555,20 @@ function formatSmsDate(
   });
 }
 
+const formatSmsAmount = (amount: number, currency: string, locale: EmailLocale) =>
+  new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
+    style: "currency",
+    currency,
+  }).format(amount);
+
 /**
  * SMS send result with optional limit info for UI handling
  */
 export interface SmsSendResult {
   success: boolean;
   error?: string;
+  /** The provider's id of a message it accepted. */
+  messageId?: string;
   limitReached?: boolean;
   limitInfo?: {
     current: number;
@@ -540,65 +591,98 @@ interface Customer {
   phone?: string | null;
 }
 
+/** The reservation a customer notification SMS is about. */
+interface SmsReservation {
+  id: string;
+  number: string;
+  startDate: Date;
+  endDate: Date;
+}
+
+/** What every customer notification SMS takes. */
+interface CustomerNotificationSmsParams {
+  store: Store;
+  customer: Customer & { id: string };
+  reservation: SmsReservation;
+  /** The reservation's language; the store's country's when not given. */
+  locale?: EmailLocale;
+  /** The store's own text for this message (its customer notification settings). */
+  customMessage?: string | null;
+  /** The outbox row that sends it: it keeps a retry from sending it twice (lib/sms/delivery.ts). */
+  deliveryKey?: string;
+}
+
 /**
- * Log SMS in database with credit source tracking
+ * The variables a store's own SMS text may hold: those the dashboard lists
+ * ({storeName}, {number}, {startDate}, {endDate}), the customer's first name
+ * as the custom email text has it ({name}), and the links and amounts of the
+ * messages that carry them ({amount}, {paymentUrl}, {reviewUrl}).
  */
-async function logSms({
-  storeId,
-  reservationId,
-  customerId,
-  to,
-  message,
-  templateType,
-  status,
-  messageId,
-  error,
-  creditSource = "plan",
-}: {
-  storeId: string;
-  reservationId?: string;
-  customerId?: string;
-  to: string;
-  message: string;
-  templateType: string;
-  status: "sent" | "failed";
-  messageId?: string;
-  error?: string;
-  creditSource?: "plan" | "topup";
-}) {
-  try {
-    await db.insert(smsLogs).values({
-      storeId,
-      reservationId: reservationId || null,
-      customerId: customerId || null,
-      to,
-      message,
-      templateType,
-      status,
-      messageId: messageId || null,
-      error: error || null,
-      creditSource,
-    });
-  } catch (e) {
-    console.error("Failed to log SMS:", e);
-  }
+export type StoreSmsVariables = Partial<
+  Record<
+    | "storeName"
+    | "name"
+    | "number"
+    | "startDate"
+    | "endDate"
+    | "amount"
+    | "paymentUrl"
+    | "reviewUrl",
+    string
+  >
+>;
+
+/**
+ * The store's own SMS text with its variables filled in, or null when it saved
+ * none (the default text then goes). A variable the message does not have is
+ * left as written. Like the default texts, it is sent whole: the provider
+ * splits a long one into segments, and it counts as one SMS of the quota.
+ */
+export function renderStoreSmsText(
+  text: string | null | undefined,
+  values: StoreSmsVariables,
+): string | null {
+  const trimmed = text?.trim();
+  if (!trimmed) return null;
+  const known: Record<string, string | undefined> = values;
+  // Own values only: `{constructor}` or `{toString}` is text, not an object's property.
+  return trimmed.replace(/\{(\w+)\}/g, (placeholder, name: string) =>
+    Object.hasOwn(known, name) ? (known[name] ?? placeholder) : placeholder,
+  );
+}
+
+/** The language of a customer notification SMS: the reservation's, else the store's country's. */
+const smsLocale = (store: Store, locale?: EmailLocale) =>
+  locale ?? getLocaleFromCountry(store.settings?.country);
+
+/** The variables every customer notification SMS has. */
+function reservationSmsVariables(
+  { store, customer, reservation }: CustomerNotificationSmsParams,
+  locale: EmailLocale,
+): StoreSmsVariables {
+  return {
+    storeName: store.name,
+    name: customer.firstName,
+    number: reservation.number,
+    startDate: formatSmsDate(reservation.startDate, locale),
+    endDate: formatSmsDate(reservation.endDate, locale),
+  };
 }
 
 /**
  * Check SMS quota and determine credit source
  * Returns error result if quota exceeded
  */
-async function checkSmsQuotaAndSource(storeId: string): Promise<{
-  allowed: boolean;
-  creditSource: "plan" | "topup";
-  error?: SmsSendResult;
-}> {
+async function checkSmsQuotaAndSource(
+  storeId: string,
+): Promise<
+  { allowed: true; creditSource: "plan" | "topup" } | { allowed: false; error: SmsSendResult }
+> {
   const quota = await getSmsQuotaStatus(storeId);
 
   if (!quota.allowed) {
     return {
       allowed: false,
-      creditSource: "plan",
       error: {
         success: false,
         error: "SMS limit reached",
@@ -617,15 +701,6 @@ async function checkSmsQuotaAndSource(storeId: string): Promise<{
 }
 
 /**
- * Handle post-send operations (deduct prepaid credit if needed)
- */
-async function handlePostSend(storeId: string, creditSource: "plan" | "topup", success: boolean) {
-  if (success && creditSource === "topup") {
-    await deductPrepaidSmsCredit(storeId);
-  }
-}
-
-/**
  * Build SMS message with character limit awareness
  * Standard SMS: 160 chars, concatenated SMS: 153 chars per segment
  */
@@ -634,11 +709,89 @@ function buildSmsMessage(lines: string[]): string {
 }
 
 /**
+ * What every SMS to a customer does: the phone, the configuration and the
+ * quota, then one delivery. `compose` builds the text once the checks pass.
+ */
+async function sendToCustomer({
+  store,
+  customer,
+  reservationId,
+  templateType,
+  compose,
+  deliveryKey,
+}: {
+  store: Store;
+  customer: Customer & { id: string };
+  reservationId?: string;
+  templateType: string;
+  compose: () => string;
+  deliveryKey?: string;
+}): Promise<SmsSendResult> {
+  if (!customer.phone) {
+    return { success: false, error: "Customer has no phone number" };
+  }
+
+  if (!isSmsConfigured()) {
+    return { success: false, error: "SMS not configured" };
+  }
+
+  // Check SMS quota (includes plan limit + prepaid credits)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
+  if (!quotaCheck.allowed) return quotaCheck.error;
+
+  // Validate and normalize phone number
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
+  if (!phoneValidation.valid || !phoneValidation.normalized) {
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
+  }
+
+  return deliverSms({
+    storeId: store.id,
+    reservationId,
+    customerId: customer.id,
+    to: phoneValidation.normalized,
+    message: compose(),
+    templateType,
+    creditSource: quotaCheck.creditSource,
+    sender: "Louez",
+    deliveryKey,
+  });
+}
+
+/**
+ * A customer notification SMS: the store's own text when it saved one, else
+ * the default of the message's language.
+ */
+function sendCustomerNotificationSms(
+  params: CustomerNotificationSmsParams,
+  templateType: string,
+  defaultText: (templates: ReturnType<typeof getSmsTemplate>, locale: EmailLocale) => string,
+  extraVariables: StoreSmsVariables = {},
+): Promise<SmsSendResult> {
+  return sendToCustomer({
+    store: params.store,
+    customer: params.customer,
+    reservationId: params.reservation.id,
+    templateType,
+    deliveryKey: params.deliveryKey,
+    compose: () => {
+      const locale = smsLocale(params.store, params.locale);
+      return (
+        renderStoreSmsText(params.customMessage, {
+          ...reservationSmsVariables(params, locale),
+          ...extraVariables,
+        }) ?? defaultText(getSmsTemplate(locale), locale)
+      );
+    },
+  });
+}
+
+/**
  * Send instant access link SMS to customer
  *
  * Sends a short SMS with a direct link to access the reservation.
  */
-export async function sendAccessLinkSms({
+export function sendAccessLinkSms({
   store,
   customer,
   reservation,
@@ -652,667 +805,125 @@ export async function sendAccessLinkSms({
   };
   accessUrl: string;
 }): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  // Build localized message (SMS are limited to 160 chars for single segment)
-  const message = templates.instant_access({
-    storeName: store.name,
-    number: reservation.number,
-    url: accessUrl,
+  return sendToCustomer({
+    store,
+    customer,
+    reservationId: reservation.id,
+    templateType: "instant_access",
+    // The store's own action from the dashboard: the language of its country.
+    compose: () =>
+      getSmsTemplate(getLocaleFromCountry(store.settings?.country)).instant_access({
+        storeName: store.name,
+        number: reservation.number,
+        url: accessUrl,
+      }),
   });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "instant_access",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "instant_access",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
 }
 
 /**
  * Send reservation confirmation SMS
  */
-export async function sendReservationConfirmationSms({
-  store,
-  customer,
-  reservation,
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-    startDate: Date;
-    endDate: Date;
-  };
-}): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  // Format dates for locale
-  const startDateStr = formatSmsDate(reservation.startDate, locale);
-  const endDateStr = formatSmsDate(reservation.endDate, locale);
-
-  const message = templates.reservation_confirmation({
-    storeName: store.name,
-    number: reservation.number,
-    startDate: startDateStr,
-    endDate: endDateStr,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "reservation_confirmation",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "reservation_confirmation",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+export function sendReservationConfirmationSms(
+  params: CustomerNotificationSmsParams,
+): Promise<SmsSendResult> {
+  const { store, reservation } = params;
+  return sendCustomerNotificationSms(params, "reservation_confirmation", (templates, locale) =>
+    templates.reservation_confirmation({
+      storeName: store.name,
+      number: reservation.number,
+      startDate: formatSmsDate(reservation.startDate, locale),
+      endDate: formatSmsDate(reservation.endDate, locale),
+    }),
+  );
 }
 
 /**
  * Send pickup reminder SMS
  */
-export async function sendReminderPickupSms({
-  store,
-  customer,
-  reservation,
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-    startDate: Date;
-  };
-}): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  // Format date for locale (with weekday for reminders)
-  const startDateStr = formatSmsDate(reservation.startDate, locale, { weekday: "short" });
-
-  const message = templates.reminder_pickup({
-    storeName: store.name,
-    number: reservation.number,
-    date: startDateStr,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "reminder_pickup",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "reminder_pickup",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+export function sendReminderPickupSms(
+  params: CustomerNotificationSmsParams,
+): Promise<SmsSendResult> {
+  const { store, reservation } = params;
+  return sendCustomerNotificationSms(params, "reminder_pickup", (templates, locale) =>
+    templates.reminder_pickup({
+      storeName: store.name,
+      number: reservation.number,
+      // With the weekday, for a reminder.
+      date: formatSmsDate(reservation.startDate, locale, { weekday: "short" }),
+    }),
+  );
 }
 
 /**
  * Send return reminder SMS
  */
-export async function sendReminderReturnSms({
-  store,
-  customer,
-  reservation,
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-    endDate: Date;
-  };
-}): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  // Format date for locale (with weekday for reminders)
-  const endDateStr = formatSmsDate(reservation.endDate, locale, { weekday: "short" });
-
-  const message = templates.reminder_return({
-    storeName: store.name,
-    number: reservation.number,
-    date: endDateStr,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "reminder_return",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "reminder_return",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+export function sendReminderReturnSms(
+  params: CustomerNotificationSmsParams,
+): Promise<SmsSendResult> {
+  const { store, reservation } = params;
+  return sendCustomerNotificationSms(params, "reminder_return", (templates, locale) =>
+    templates.reminder_return({
+      storeName: store.name,
+      number: reservation.number,
+      date: formatSmsDate(reservation.endDate, locale, { weekday: "short" }),
+    }),
+  );
 }
 
 /**
- * Send request received SMS to customer
+ * Send request received SMS
  */
-export async function sendRequestReceivedSms({
-  store,
-  customer,
-  reservation,
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-  };
-}): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  const message = templates.request_received({
-    storeName: store.name,
-    number: reservation.number,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "request_received",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "request_received",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+export function sendRequestReceivedSms(
+  params: CustomerNotificationSmsParams,
+): Promise<SmsSendResult> {
+  const { store, reservation } = params;
+  return sendCustomerNotificationSms(params, "request_received", (templates) =>
+    templates.request_received({ storeName: store.name, number: reservation.number }),
+  );
 }
 
 /**
- * Send request accepted SMS to customer
+ * Send request accepted SMS
  */
-export async function sendRequestAcceptedSms({
-  store,
-  customer,
-  reservation,
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-  };
-}): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  const message = templates.request_accepted({
-    storeName: store.name,
-    number: reservation.number,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "request_accepted",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "request_accepted",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+export function sendRequestAcceptedSms(
+  params: CustomerNotificationSmsParams,
+): Promise<SmsSendResult> {
+  const { store, reservation } = params;
+  return sendCustomerNotificationSms(params, "request_accepted", (templates) =>
+    templates.request_accepted({ storeName: store.name, number: reservation.number }),
+  );
 }
 
 /**
- * Send request rejected SMS to customer
+ * Send request rejected SMS
  */
-export async function sendRequestRejectedSms({
-  store,
-  customer,
-  reservation,
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-  };
-}): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
+export function sendRequestRejectedSms(
+  params: CustomerNotificationSmsParams,
+): Promise<SmsSendResult> {
+  const { store, reservation } = params;
+  return sendCustomerNotificationSms(params, "request_rejected", (templates) =>
+    templates.request_rejected({ storeName: store.name, number: reservation.number }),
+  );
+}
 
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  const message = templates.request_rejected({
-    storeName: store.name,
-    number: reservation.number,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "request_rejected",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "request_rejected",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+/** The store cancelled the reservation: the customer hears of it (never of a refund). */
+export function sendReservationCancelledSms(
+  params: CustomerNotificationSmsParams,
+): Promise<SmsSendResult> {
+  const { store, reservation } = params;
+  return sendCustomerNotificationSms(params, "reservation_cancelled", (templates) =>
+    templates.reservation_cancelled({ storeName: store.name, number: reservation.number }),
+  );
 }
 
 /**
  * Send custom SMS message
  */
-export async function sendCustomSms({
+export function sendCustomSms({
   store,
   customer,
   reservation,
-  message: customMessage,
+  message,
 }: {
   store: Store;
   customer: Customer & { id: string };
@@ -1322,85 +933,25 @@ export async function sendCustomSms({
   };
   message: string;
 }): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  const message = buildSmsMessage([`${store.name}`, customMessage]);
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation?.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "custom",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation?.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "custom",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+  return sendToCustomer({
+    store,
+    customer,
+    reservationId: reservation?.id,
+    templateType: "custom",
+    compose: () => buildSmsMessage([`${store.name}`, message]),
+  });
 }
 
 /**
- * Send thank you review SMS with Google review link
+ * Send thank you review request SMS: the store's own text (Review Booster's
+ * template) when it saved one.
  */
-export async function sendThankYouReviewSms({
+export function sendThankYouReviewSms({
   store,
   customer,
   reservation,
   reviewUrl,
+  customMessage,
   locale = "fr",
 }: {
   store: Store;
@@ -1410,296 +961,86 @@ export async function sendThankYouReviewSms({
     number: string;
   };
   reviewUrl: string;
+  customMessage?: string | null;
   locale?: EmailLocale;
 }): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get localized messages
-  const messages = getEmailMessages(locale);
-  const smsThankYou = messages.emails.thankYouReview.smsThankYou;
-  const smsReview = messages.emails.thankYouReview.smsReview;
-
-  // Keep message short - SMS are limited to 160 chars
-  const message = buildSmsMessage([`${store.name}`, smsThankYou, `${smsReview} ${reviewUrl}`]);
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "thank_you_review",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "thank_you_review",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+  return sendToCustomer({
+    store,
+    customer,
+    reservationId: reservation.id,
+    templateType: "thank_you_review",
+    compose: () => {
+      const own = renderStoreSmsText(customMessage, {
+        storeName: store.name,
+        name: customer.firstName,
+        number: reservation.number,
+        reviewUrl,
+      });
+      if (own) return own;
+      const { smsThankYou, smsReview } = getEmailMessages(locale).emails.thankYouReview;
+      // Keep message short - SMS are limited to 160 chars
+      return buildSmsMessage([`${store.name}`, smsThankYou, `${smsReview} ${reviewUrl}`]);
+    },
+  });
 }
 
 /**
  * Send payment request SMS
  */
-export async function sendPaymentRequestSms({
-  store,
-  customer,
-  reservation,
+export function sendPaymentRequestSms({
   amount,
   paymentUrl,
   currency = "EUR",
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-  };
+  ...params
+}: CustomerNotificationSmsParams & {
   amount: number;
   paymentUrl: string;
   currency?: string;
 }): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  // Format amount
-  const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
-    style: "currency",
-    currency,
-  }).format(amount);
-
-  const message = templates.payment_request({
-    storeName: store.name,
-    number: reservation.number,
-    amount: formattedAmount,
-    url: paymentUrl,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "payment_request",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "payment_request",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+  const { store, reservation } = params;
+  const locale = smsLocale(store, params.locale);
+  const formattedAmount = formatSmsAmount(amount, currency, locale);
+  return sendCustomerNotificationSms(
+    params,
+    "payment_request",
+    (templates) =>
+      templates.payment_request({
+        storeName: store.name,
+        number: reservation.number,
+        amount: formattedAmount,
+        url: paymentUrl,
+      }),
+    { amount: formattedAmount, paymentUrl },
+  );
 }
 
 /**
  * Send deposit authorization request SMS
  */
-export async function sendDepositAuthorizationRequestSms({
-  store,
-  customer,
-  reservation,
+export function sendDepositAuthorizationRequestSms({
   depositAmount,
   authorizationUrl,
   currency = "EUR",
-}: {
-  store: Store;
-  customer: Customer & { id: string };
-  reservation: {
-    id: string;
-    number: string;
-  };
+  ...params
+}: CustomerNotificationSmsParams & {
   depositAmount: number;
   authorizationUrl: string;
   currency?: string;
 }): Promise<SmsSendResult> {
-  if (!customer.phone) {
-    return { success: false, error: "Customer has no phone number" };
-  }
-
-  if (!isSmsConfigured()) {
-    return { success: false, error: "SMS not configured" };
-  }
-
-  // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id);
-  if (!quotaCheck.allowed) {
-    return quotaCheck.error!;
-  }
-  const { creditSource } = quotaCheck;
-
-  // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone);
-  if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
-  }
-  const normalizedPhone = phoneValidation.normalized;
-
-  // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country);
-  const templates = getSmsTemplate(locale);
-
-  // Format amount
-  const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
-    style: "currency",
-    currency,
-  }).format(depositAmount);
-
-  const message = templates.deposit_authorization_request({
-    storeName: store.name,
-    number: reservation.number,
-    amount: formattedAmount,
-    url: authorizationUrl,
-  });
-
-  try {
-    const result = await sendSms({
-      to: normalizedPhone,
-      message,
-      sender: "Louez",
-    });
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "deposit_authorization_request",
-      status: result.success ? "sent" : "failed",
-      messageId: result.messageId,
-      error: result.error,
-      creditSource,
-    });
-
-    await handlePostSend(store.id, creditSource, result.success);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    await logSms({
-      storeId: store.id,
-      reservationId: reservation.id,
-      customerId: customer.id,
-      to: normalizedPhone,
-      message,
-      templateType: "deposit_authorization_request",
-      status: "failed",
-      error: errorMessage,
-      creditSource,
-    });
-
-    return { success: false, error: errorMessage };
-  }
+  const { store, reservation } = params;
+  const locale = smsLocale(store, params.locale);
+  const formattedAmount = formatSmsAmount(depositAmount, currency, locale);
+  return sendCustomerNotificationSms(
+    params,
+    "deposit_authorization_request",
+    (templates) =>
+      templates.deposit_authorization_request({
+        storeName: store.name,
+        number: reservation.number,
+        amount: formattedAmount,
+        url: authorizationUrl,
+      }),
+    // The dashboard's default text names the link {paymentUrl}, as the payment request's.
+    { amount: formattedAmount, paymentUrl: authorizationUrl },
+  );
 }
-
-// Re-export client functions for convenience
-export { isSmsConfigured, getSmsConfigStatus } from "./client";

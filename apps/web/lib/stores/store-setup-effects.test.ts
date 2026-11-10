@@ -135,6 +135,7 @@ describe("store setup analytics senders", () => {
   let claims = 0;
 
   const context: EffectSendContext = {
+    effectId: "effect_test",
     signal: new AbortController().signal,
     throwIfAborted: () => {},
     assertClaim: async () => {

@@ -1103,6 +1103,7 @@ const MESSAGE_TYPES = ["reservation.customerMessage", "reservation.storeNotifica
 const MESSAGE_LABELS: Record<string, string> = {
   customer_request_accepted: "acceptance message",
   customer_request_rejected: "rejection message",
+  customer_reservation_cancelled: "cancellation message",
 };
 
 /** A message to a customer, or a store notification, the outbox gave up on. */

@@ -12,10 +12,7 @@ import { discordWebhookSchema } from "@louez/validations";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
 import { notifyNotificationSettingsUpdated } from "@/lib/discord/platform-notifications";
 import { validateAndNormalizePhone } from "@/lib/sms/phone";
-import {
-  DEFAULT_NOTIFICATION_SETTINGS,
-  DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
-} from "@louez/types";
+import { DEFAULT_NOTIFICATION_SETTINGS, withCustomerNotificationDefaults } from "@louez/types";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 
 // Language name mapping for display
@@ -45,7 +42,7 @@ export async function getNotificationSettings() {
       totalAvailable: smsQuota.totalAvailable,
     },
     // Customer notification settings
-    customerSettings: store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
+    customerSettings: withCustomerNotificationDefaults(store.customerNotificationSettings),
     storeLocale: locale,
     storeLanguageName: languageName,
   };

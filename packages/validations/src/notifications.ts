@@ -91,6 +91,17 @@ export const updateCustomerPreferenceInputSchema = z.object({
 
 export type UpdateCustomerPreferenceInput = z.infer<typeof updateCustomerPreferenceInputSchema>;
 
+/**
+ * The longest SMS text a store may save: about three SMS. The text sent,
+ * its variables filled in, is held to three segments too (apps/web
+ * lib/sms/encoding.ts).
+ */
+export const SMS_TEMPLATE_MAX_LENGTH = 480;
+
+/** An SMS text a store saves. */
+export const smsTemplateTextSchema = z.string().max(SMS_TEMPLATE_MAX_LENGTH);
+
+/** A template as stored. Saved before the SMS bound, one may be longer: it is read as it is. */
 export const customerNotificationTemplateSchema = z.object({
   subject: z.string().optional(),
   emailMessage: z.string().optional(),
@@ -105,7 +116,9 @@ export type GetCustomerTemplateInput = z.infer<typeof getCustomerTemplateInputSc
 
 export const updateCustomerTemplateInputSchema = z.object({
   eventType: customerNotificationEventTypeSchema,
-  template: customerNotificationTemplateSchema,
+  template: customerNotificationTemplateSchema.extend({
+    smsMessage: smsTemplateTextSchema.optional(),
+  }),
 });
 
 export type UpdateCustomerTemplateInput = z.infer<typeof updateCustomerTemplateInputSchema>;

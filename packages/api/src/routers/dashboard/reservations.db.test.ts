@@ -1198,8 +1198,13 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     const messages = (await outbox()).filter((row) => row.type === "reservation.customerMessage");
     assert.deepEqual(
       messages.map((row) => row.status),
-      ["superseded"],
+      ["superseded", "pending"],
       "the acceptance email speaks of a status no longer true",
+    );
+    assert.equal(
+      messages[1]?.payload.notification,
+      "customer_reservation_cancelled",
+      "the cancellation goes out after it",
     );
     const storeRows = (await outbox()).filter(
       (row) => row.type === "reservation.storeNotification",
@@ -1343,7 +1348,13 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     const preview = previewOf(refusal);
     assert.equal(preview.details.money?.rentalPaid, "20.00");
     assert.equal(preview.details.money?.refundedAutomatically, false);
-    assert.deepEqual(preview.details.messages, []);
+    assert.deepEqual(preview.details.messages, [
+      { message: "reservation_cancelled", channel: "email" },
+    ]);
+    assert.match(
+      preview.summary,
+      /Ada Lovelace \(ada@rs\.test\) gets the "reservation cancelled" message by email\./,
+    );
     assert.match(preview.summary, /Nothing is refunded/);
     assert.match(preview.summary, /The insurance contract is cancelled/);
     assert.equal(await statusOf(id), "confirmed");
@@ -1379,6 +1390,163 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     const change = await run("updateStatus", { id, status: "cancelled" }, session());
     assert.equal(change.to, "cancelled");
     assert.deepEqual(contracts, [`cancel:${id}`]);
+  });
+
+  /** The customer messages queued, as [notification, channel]. */
+  const customerMessagesOf = async (reservationId: string) =>
+    (await outbox())
+      .filter(
+        (row) =>
+          row.type === "reservation.customerMessage" &&
+          (row.payload.reservation as { id: string }).id === reservationId,
+      )
+      .map((row) => [row.payload.notification, row.payload.channel]);
+
+  test("every cancellation the store makes tells the customer, through the outbox", async () => {
+    const key = await apiKey();
+    // The dashboard's cancel button and status menu.
+    const byButton = await reservation("confirmed", { productId: await product() });
+    await run("cancel", { id: byButton }, session());
+    const byMenu = await reservation("pending");
+    await run("updateStatus", { id: byMenu, status: "cancelled" }, session());
+    // An agent's reservations_cancel and reservations_update_status, once confirmed.
+    const byAgentCancel = await reservation("quote");
+    await run(
+      "cancel",
+      { id: byAgentCancel },
+      key({
+        "louez-confirmation": tokenOf(
+          await rejects(run("cancel", { id: byAgentCancel }, key()), "CONFIRMATION_REQUIRED"),
+        ),
+      }),
+    );
+    const byAgentStatus = await reservation("ongoing");
+    await run(
+      "updateStatus",
+      { id: byAgentStatus, status: "cancelled" },
+      key({
+        "louez-confirmation": tokenOf(
+          await rejects(
+            run("updateStatus", { id: byAgentStatus, status: "cancelled" }, key()),
+            "CONFIRMATION_REQUIRED",
+          ),
+        ),
+      }),
+    );
+
+    for (const id of [byButton, byMenu, byAgentCancel, byAgentStatus]) {
+      assert.deepEqual(await customerMessagesOf(id), [["customer_reservation_cancelled", "email"]]);
+    }
+    const message = (await outbox()).find(
+      (row) =>
+        row.type === "reservation.customerMessage" &&
+        (row.payload.reservation as { id: string }).id === byButton,
+    );
+    const payload = message?.payload as {
+      customer: { email: string };
+      reservation: { number: string };
+      items: Array<{ name: string; quantity: number }>;
+      rejectionReason: string | null;
+    };
+    assert.equal(payload.customer.email, "ada@rs.test");
+    assert.equal(payload.reservation.number, byButton);
+    assert.deepEqual(
+      payload.items.map((item) => [item.name, item.quantity]),
+      [["Kayak", 1]],
+    );
+    assert.equal(payload.rejectionReason, null);
+    assert.ok(dispatched.includes(message?.id ?? ""), "dispatched once committed, never inline");
+  });
+
+  test("a cancellation sends what the store's settings give its message, and nothing when off", async () => {
+    const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
+    const setCancellation = (prefs: { enabled: boolean; email: boolean; sms: boolean }) =>
+      louezDb.db
+        .update(louezDb.stores)
+        .set({
+          customerNotificationSettings: {
+            ...DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
+            customer_reservation_cancelled: prefs,
+          },
+        })
+        .where(orm.eq(louezDb.stores.id, STORE));
+    const key = await apiKey();
+    const previewFor = async (id: string) =>
+      previewOf(await rejects(run("cancel", { id }, key()), "CONFIRMATION_REQUIRED"));
+
+    await louezDb.db
+      .update(louezDb.customers)
+      .set({ phone: "+33600000004" })
+      .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    try {
+      await setCancellation({ enabled: true, email: true, sms: true });
+      const both = await reservation("confirmed");
+      const preview = await previewFor(both);
+      assert.deepEqual(
+        preview.details.messages.map((entry) => entry.channel),
+        ["email", "sms"],
+      );
+      assert.match(preview.summary, /gets the "reservation cancelled" message by email and sms\./);
+      await run("cancel", { id: both }, session());
+      assert.deepEqual(await customerMessagesOf(both), [
+        ["customer_reservation_cancelled", "email"],
+        ["customer_reservation_cancelled", "sms"],
+      ]);
+
+      // Turned off: the preview says so, and nothing is queued for the customer.
+      await setCancellation({ enabled: false, email: true, sms: true });
+      const off = await reservation("confirmed");
+      const offPreview = await previewFor(off);
+      assert.deepEqual(offPreview.details.messages, []);
+      assert.match(offPreview.summary, /No message goes to the customer\./);
+      await run("cancel", { id: off }, session());
+      assert.deepEqual(await customerMessagesOf(off), []);
+      const storeRows = (await outbox()).filter(
+        (row) =>
+          row.type === "reservation.storeNotification" &&
+          (row.payload.reservation as { id: string }).id === off,
+      );
+      assert.equal(storeRows.length, 3, "the store's own notifications still go out");
+    } finally {
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: null })
+        .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    }
+  });
+
+  test("a cancellation sends nothing on a channel the customer has no address for", async () => {
+    const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({
+        customerNotificationSettings: {
+          ...DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
+          customer_reservation_cancelled: { enabled: true, email: false, sms: true },
+        },
+      })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const id = await reservation("confirmed");
+    const key = await apiKey();
+    // SMS only, and the customer has no phone.
+    const preview = previewOf(await rejects(run("cancel", { id }, key()), "CONFIRMATION_REQUIRED"));
+    assert.deepEqual(preview.details.messages, []);
+    assert.match(preview.summary, /No message goes to the customer\./);
+    await run("cancel", { id }, session());
+    assert.deepEqual(await customerMessagesOf(id), []);
+  });
+
+  test("a store whose settings predate the cancellation message gets it by email", async () => {
+    // Saved before the event existed: no customer_reservation_cancelled key.
+    const { customer_reservation_cancelled: _missing, ...saved } = (await import("@louez/types"))
+      .DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ customerNotificationSettings: saved as never })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const id = await reservation("confirmed");
+    await run("cancel", { id }, session());
+    assert.deepEqual(await customerMessagesOf(id), [["customer_reservation_cancelled", "email"]]);
   });
 
   // --- Notes ----------------------------------------------------------------

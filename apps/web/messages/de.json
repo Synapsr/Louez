@@ -4344,6 +4344,10 @@
             "label": "Reservierung bestätigt",
             "description": "Nach erfolgreicher Zahlung"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reservierung storniert",
+            "description": "Wenn Sie eine Reservierung stornieren"
+          },
           "customer_reminder_pickup": {
             "label": "Abholungserinnerung",
             "description": "Vor dem Abholdatum gesendet"

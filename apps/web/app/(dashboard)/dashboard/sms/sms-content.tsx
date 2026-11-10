@@ -52,11 +52,6 @@ import { TopupHistory } from "./topup-history";
 
 interface SmsContentProps {
   quotaStatus: SmsQuotaStatus;
-  creditsInfo: {
-    balance: number;
-    totalPurchased: number;
-    totalUsed: number;
-  };
   smsLogs: SmsLog[];
   monthStats: SmsMonthStats;
   selectedYear: number;
@@ -81,7 +76,6 @@ const TEMPLATE_TYPE_LABELS: Record<string, string> = {
 
 export function SmsContent({
   quotaStatus,
-  creditsInfo,
   smsLogs,
   monthStats,
   selectedYear,
@@ -132,7 +126,8 @@ export function SmsContent({
   // For current month, use live quota; for past months, show historical stats
   const displayCurrent = isCurrentMonth ? quotaStatus.current : monthStats.sent;
   const planLimit = quotaStatus.planLimit;
-  const prepaidBalance = creditsInfo.balance;
+  // What the store can still spend: credits SMS already sent still owe are not (lib/plan-limits.ts).
+  const prepaidBalance = quotaStatus.prepaidBalance;
 
   // Total available = plan limit + prepaid (for display only when viewing current month)
   const totalAvailable = planLimit !== null ? planLimit + prepaidBalance : null;

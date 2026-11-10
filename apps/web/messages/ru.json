@@ -4646,6 +4646,10 @@
             "label": "Бронирование подтверждено",
             "description": "После успешной оплаты"
           },
+          "customer_reservation_cancelled": {
+            "label": "Бронирование отменено",
+            "description": "Когда вы отменяете бронирование"
+          },
           "customer_reminder_pickup": {
             "label": "Напоминание о самовывозе",
             "description": "Отправлено до даты получения"

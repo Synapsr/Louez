@@ -8,6 +8,7 @@ import { getStorePlan } from "@/lib/plan-limits";
 import { searchPlaces, getPlaceDetails } from "@/lib/google-places";
 import {
   reviewBoosterSettingsSchema,
+  reviewBoosterTemplateSchema,
   googlePlaceSearchSchema,
   type ReviewBoosterSettingsInput,
 } from "@louez/validations";
@@ -83,11 +84,17 @@ export async function getReviewBoosterTemplate() {
   return { template };
 }
 
-export async function updateReviewBoosterTemplate(template: {
+export async function updateReviewBoosterTemplate(input: {
   subject?: string;
   emailMessage?: string;
   smsMessage?: string;
 }) {
+  const parsed = reviewBoosterTemplateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "errors.invalidData" };
+  }
+  const template = parsed.data;
+
   const store = await getCurrentStore();
   if (!store) {
     return { error: "errors.unauthorized" };

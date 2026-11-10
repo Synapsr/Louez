@@ -530,6 +530,7 @@ function buildCustomerNotificationSettings(): CustomerNotificationSettings {
     customer_request_accepted: emailOnly,
     customer_request_rejected: emailOnly,
     customer_reservation_confirmed: emailAndSms,
+    customer_reservation_cancelled: emailOnly,
     customer_reminder_pickup: emailAndSms,
     customer_reminder_return: emailOnly,
     customer_payment_requested: emailOnly,

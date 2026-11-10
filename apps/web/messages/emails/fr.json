@@ -293,7 +293,7 @@
     "title": "Réservation annulée",
     "body": "Votre réservation #{number} a été annulée.",
     "cancelledPeriod": "Période annulée",
-    "reasonLabel": "Motif",
+    "itemsLabel": "Matériel",
     "contactForQuestions": "Si vous avez des questions, n'hésitez pas à nous contacter.",
     "browseEquipment": "Voir notre catalogue",
     "thankYou": "Merci de votre compréhension."

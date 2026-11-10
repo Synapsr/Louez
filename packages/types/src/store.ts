@@ -897,6 +897,7 @@ export type CustomerNotificationEventType =
   | "customer_request_accepted"
   | "customer_request_rejected"
   | "customer_reservation_confirmed"
+  | "customer_reservation_cancelled"
   | "customer_reminder_pickup"
   | "customer_reminder_return"
   | "customer_payment_requested"
@@ -909,6 +910,7 @@ export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] 
   "customer_request_accepted",
   "customer_request_rejected",
   "customer_reservation_confirmed",
+  "customer_reservation_cancelled",
   "customer_reminder_pickup",
   "customer_reminder_return",
   "customer_payment_requested",
@@ -935,6 +937,8 @@ export interface CustomerNotificationSettings {
   customer_request_accepted: CustomerNotificationChannelConfig;
   customer_request_rejected: CustomerNotificationChannelConfig;
   customer_reservation_confirmed: CustomerNotificationChannelConfig;
+  /** The store cancelled the reservation (never sent when the customer cancels it). */
+  customer_reservation_cancelled: CustomerNotificationChannelConfig;
   customer_reminder_pickup: CustomerNotificationChannelConfig;
   customer_reminder_return: CustomerNotificationChannelConfig;
   customer_payment_requested: CustomerNotificationChannelConfig;
@@ -948,6 +952,7 @@ export interface CustomerNotificationSettings {
     customer_request_accepted?: CustomerNotificationTemplate;
     customer_request_rejected?: CustomerNotificationTemplate;
     customer_reservation_confirmed?: CustomerNotificationTemplate;
+    customer_reservation_cancelled?: CustomerNotificationTemplate;
     customer_reminder_pickup?: CustomerNotificationTemplate;
     customer_reminder_return?: CustomerNotificationTemplate;
     customer_payment_requested?: CustomerNotificationTemplate;
@@ -971,6 +976,7 @@ export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSetting
   customer_request_accepted: { enabled: true, email: true, sms: false },
   customer_request_rejected: { enabled: true, email: true, sms: false },
   customer_reservation_confirmed: { enabled: true, email: true, sms: false },
+  customer_reservation_cancelled: { enabled: true, email: true, sms: false },
 
   // Reminders - email enabled by default (SMS disabled due to cost)
   customer_reminder_pickup: { enabled: true, email: true, sms: false },
@@ -997,3 +1003,18 @@ export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSetting
     returnReminderHours: 24,
   },
 };
+
+/**
+ * A store's customer notification settings, with the default of every event
+ * its saved settings do not list: a store saved them before the event existed.
+ */
+export function withCustomerNotificationDefaults(
+  settings: CustomerNotificationSettings | null | undefined,
+): CustomerNotificationSettings {
+  if (!settings) return DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+  const merged: CustomerNotificationSettings = { ...settings, templates: settings.templates ?? {} };
+  for (const event of CUSTOMER_NOTIFICATION_EVENT_TYPES) {
+    merged[event] = settings[event] ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS[event];
+  }
+  return merged;
+}

@@ -1,12 +1,15 @@
+import { Fragment } from "react";
 import { Link } from "@react-email/components";
+import type { EmailCustomContent } from "@louez/types";
 import { BaseLayout } from "./base-layout";
 import {
   EmailHeading,
   EmailText,
-  FooterNote,
   InfoCard,
   InfoCardItem,
+  Signature,
   emailTheme,
+  resolveCustomContent,
 } from "./components";
 import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from "../i18n";
 import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
@@ -24,11 +27,18 @@ interface ReservationCancelledEmailProps {
   reservationNumber: string;
   startDate: Date;
   endDate: Date;
-  reason?: string | null;
+  items: Array<{ name: string; quantity: number }>;
   storefrontUrl?: string;
+  /** The store's own subject, greeting and message (notification settings). */
+  customContent?: EmailCustomContent;
   locale?: EmailLocale;
 }
 
+/**
+ * The store cancelled the reservation: its number, dates and items, and how
+ * to reach the store. It says nothing of a refund: a cancellation refunds
+ * nothing by itself, and a refund is its own step.
+ */
 export function ReservationCancelledEmail({
   storeName,
   logoUrl,
@@ -42,8 +52,9 @@ export function ReservationCancelledEmail({
   reservationNumber,
   startDate,
   endDate,
-  reason,
+  items,
   storefrontUrl,
+  customContent,
   locale = "fr",
 }: ReservationCancelledEmailProps) {
   const t = getEmailTranslations(locale);
@@ -59,9 +70,21 @@ export function ReservationCancelledEmail({
   const formatDate = (date: Date) =>
     formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry);
 
+  const { greeting, message, signature } = resolveCustomContent(
+    customContent,
+    {
+      greeting: tc.greeting,
+      signature: `${tc.regards}\n${tc.team.replace("{storeName}", storeName)}`,
+    },
+    { name: customerFirstName, number: reservationNumber },
+  );
+
   return (
     <BaseLayout
-      preview={messages.subject.replace("{number}", reservationNumber)}
+      preview={
+        customContent?.subject?.replace("{number}", reservationNumber) ||
+        messages.subject.replace("{number}", reservationNumber)
+      }
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -72,9 +95,12 @@ export function ReservationCancelledEmail({
     >
       <EmailHeading>{messages.title}</EmailHeading>
 
-      <EmailText>{tc.greeting.replace("{name}", customerFirstName)}</EmailText>
+      <EmailText>{greeting}</EmailText>
 
       <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
+
+      {/* Custom message from store settings */}
+      {message && <EmailText>{message}</EmailText>}
 
       <InfoCard
         label={messages.cancelledPeriod}
@@ -87,10 +113,34 @@ export function ReservationCancelledEmail({
         }
         footnote={timezoneLine}
       >
-        {reason && <InfoCardItem label={messages.reasonLabel} value={reason} />}
+        {items.length > 0 && (
+          <InfoCardItem
+            label={messages.itemsLabel}
+            value={items.map((item, index) => (
+              <Fragment key={index}>
+                {index > 0 && <br />}
+                {item.name}
+                {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+              </Fragment>
+            ))}
+          />
+        )}
       </InfoCard>
 
       <EmailText>{messages.contactForQuestions}</EmailText>
+
+      {(storeEmail || storePhone) && (
+        <InfoCard
+          label={tc.contactUs}
+          value={
+            <>
+              {storeEmail}
+              {storeEmail && storePhone && <br />}
+              {storePhone}
+            </>
+          }
+        />
+      )}
 
       {/* Quiet link to the storefront */}
       {storefrontUrl && (
@@ -101,7 +151,9 @@ export function ReservationCancelledEmail({
         </EmailText>
       )}
 
-      <FooterNote>{messages.thankYou}</FooterNote>
+      <EmailText>{messages.thankYou}</EmailText>
+
+      <Signature text={signature} />
     </BaseLayout>
   );
 }

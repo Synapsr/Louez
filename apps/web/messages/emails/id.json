@@ -298,7 +298,7 @@
     "title": "Reservasi dibatalkan",
     "body": "Reservasi Anda #{number} telah dibatalkan.",
     "cancelledPeriod": "Periode dibatalkan",
-    "reasonLabel": "Alasan",
+    "itemsLabel": "Barang",
     "contactForQuestions": "Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.",
     "browseEquipment": "Telusuri katalog kami",
     "thankYou": "Terima kasih atas pengertian Anda."

@@ -106,6 +106,7 @@ const CUSTOMER_NOTIFICATION_EVENTS: CustomerNotificationEvent[] = [
   { type: "customer_request_accepted", category: "reservation" },
   { type: "customer_request_rejected", category: "reservation" },
   { type: "customer_reservation_confirmed", category: "reservation" },
+  { type: "customer_reservation_cancelled", category: "reservation" },
   { type: "customer_reminder_pickup", category: "reminder" },
   { type: "customer_reminder_return", category: "reminder" },
 ];

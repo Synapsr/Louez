@@ -252,6 +252,7 @@ async function processSmsRequests(
         },
         reservation: { id: reservation.id, number: reservation.number },
         reviewUrl,
+        customMessage: settings.template?.smsMessage,
         locale,
       });
 
@@ -352,6 +353,7 @@ export async function sendManualReviewRequest(
         },
         reservation: { id: reservation.id, number: reservation.number },
         reviewUrl,
+        customMessage: settings.template?.smsMessage,
         locale,
       });
 

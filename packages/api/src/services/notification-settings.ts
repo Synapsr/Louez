@@ -1,7 +1,7 @@
 import { db, mergeStoreRow, stores, type StoreJson, type StoreRowUpdate } from "@louez/db";
 import {
-  DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
   DEFAULT_NOTIFICATION_SETTINGS,
+  withCustomerNotificationDefaults,
   type AdminReminderMode,
   type CustomerNotificationSettings,
   type NotificationSettings,
@@ -103,8 +103,9 @@ export const updateCustomerNotificationPreference = async ({
   input,
 }: UpdateCustomerPreferenceParams) => {
   return mergeNotificationSettings(storeId, (store) => {
-    const currentSettings: CustomerNotificationSettings =
-      store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    const currentSettings: CustomerNotificationSettings = withCustomerNotificationDefaults(
+      store.customerNotificationSettings,
+    );
     const currentEventSettings = currentSettings[input.eventType];
     const updatedSettings: CustomerNotificationSettings = {
       ...currentSettings,
@@ -124,7 +125,7 @@ export const getCustomerNotificationTemplate = async ({
   input,
 }: CustomerTemplateParams) => {
   const store = await getNotificationSettings(storeId);
-  const settings = store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+  const settings = withCustomerNotificationDefaults(store.customerNotificationSettings);
 
   return { template: settings.templates?.[input.eventType] ?? {} };
 };
@@ -134,8 +135,9 @@ export const updateCustomerNotificationTemplate = async ({
   input,
 }: UpdateCustomerTemplateParams) => {
   return mergeNotificationSettings(storeId, (store) => {
-    const currentSettings: CustomerNotificationSettings =
-      store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    const currentSettings: CustomerNotificationSettings = withCustomerNotificationDefaults(
+      store.customerNotificationSettings,
+    );
     const updatedSettings: CustomerNotificationSettings = {
       ...currentSettings,
       templates: {
@@ -153,8 +155,9 @@ export const updateCustomerReminderSettings = async ({
   input,
 }: UpdateReminderSettingsParams) => {
   return mergeNotificationSettings(storeId, (store) => {
-    const currentSettings: CustomerNotificationSettings =
-      store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    const currentSettings: CustomerNotificationSettings = withCustomerNotificationDefaults(
+      store.customerNotificationSettings,
+    );
     const updatedSettings: CustomerNotificationSettings = {
       ...currentSettings,
       reminderSettings: {

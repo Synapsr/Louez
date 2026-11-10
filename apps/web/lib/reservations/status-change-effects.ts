@@ -132,13 +132,29 @@ export function createReservationEffectSenders(
           reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservation.id}`),
         };
         const beforeSend = () => context.assertClaim();
+        const items = payload.items.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          totalPrice: parseFloat(item.totalPrice),
+        }));
 
+        if (payload.notification === "customer_reservation_cancelled") {
+          return deps.sendCustomerNotificationChannel(
+            "customer_reservation_cancelled",
+            { ...ctx, items, storefrontUrl: getStorefrontUrl(store.slug) },
+            payload.channel,
+            beforeSend,
+            context.effectId,
+          );
+        }
         if (payload.notification === "customer_request_rejected") {
           return deps.sendCustomerNotificationChannel(
             "customer_request_rejected",
             { ...ctx, reason: payload.rejectionReason ?? undefined },
             payload.channel,
             beforeSend,
+            context.effectId,
           );
         }
         // The email links to the contract; an SMS sends the account link only.
@@ -156,18 +172,14 @@ export function createReservationEffectSenders(
           "customer_request_accepted",
           {
             ...ctx,
-            items: payload.items.map((item) => ({
-              name: item.name,
-              quantity: item.quantity,
-              unitPrice: parseFloat(item.unitPrice),
-              totalPrice: parseFloat(item.totalPrice),
-            })),
+            items,
             contractUrl,
             termsUrl: store.hasTerms ? getStorefrontUrl(store.slug, "/terms") : null,
             paymentUrl: null,
           },
           payload.channel,
           beforeSend,
+          context.effectId,
         );
       },
     ),
@@ -195,6 +207,7 @@ export function createReservationEffectSenders(
           },
           payload.channel,
           () => context.assertClaim(),
+          context.effectId,
         );
       },
     ),

@@ -13,6 +13,8 @@ import { Input } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Label } from "@louez/ui";
 import { cn } from "@louez/utils";
+import { SMS_TEMPLATE_MAX_LENGTH } from "@louez/validations";
+
 import { replaceSmsVariables } from "./sms-preview";
 import type { CustomerNotificationEventType, CustomerNotificationTemplate } from "@louez/types";
 import type { EmailLocale } from "@/lib/email/i18n";
@@ -114,6 +116,27 @@ const EVENT_LABELS: Record<string, Record<EmailLocale, string>> = {
       .notification_template_sheet_EVENT_LABELS_customer_reservation_confirmed,
     ko: supplementalMessages.ko
       .notification_template_sheet_EVENT_LABELS_customer_reservation_confirmed,
+  },
+  customer_reservation_cancelled: {
+    fr: "Réservation annulée",
+    en: "Reservation cancelled",
+    de: "Reservierung storniert",
+    es: "Reserva cancelada",
+    it: "Prenotazione annullata",
+    nl: "Reservering geannuleerd",
+    pl: "Rezerwacja anulowana",
+    pt: "Reserva cancelada",
+
+    zh: supplementalMessages.zh
+      .notification_template_sheet_EVENT_LABELS_customer_reservation_cancelled,
+    ja: supplementalMessages.ja
+      .notification_template_sheet_EVENT_LABELS_customer_reservation_cancelled,
+    ru: supplementalMessages.ru
+      .notification_template_sheet_EVENT_LABELS_customer_reservation_cancelled,
+    id: supplementalMessages.id
+      .notification_template_sheet_EVENT_LABELS_customer_reservation_cancelled,
+    ko: supplementalMessages.ko
+      .notification_template_sheet_EVENT_LABELS_customer_reservation_cancelled,
   },
   customer_reminder_pickup: {
     fr: "Rappel de retrait",
@@ -235,6 +258,27 @@ const EMAIL_TITLES: Record<string, Record<EmailLocale, string>> = {
       .notification_template_sheet_EMAIL_TITLES_customer_reservation_confirmed,
     ko: supplementalMessages.ko
       .notification_template_sheet_EMAIL_TITLES_customer_reservation_confirmed,
+  },
+  customer_reservation_cancelled: {
+    fr: "Réservation annulée",
+    en: "Reservation cancelled",
+    de: "Reservierung storniert",
+    es: "Reserva cancelada",
+    it: "Prenotazione annullata",
+    nl: "Reservering geannuleerd",
+    pl: "Rezerwacja anulowana",
+    pt: "Reserva cancelada",
+
+    zh: supplementalMessages.zh
+      .notification_template_sheet_EMAIL_TITLES_customer_reservation_cancelled,
+    ja: supplementalMessages.ja
+      .notification_template_sheet_EMAIL_TITLES_customer_reservation_cancelled,
+    ru: supplementalMessages.ru
+      .notification_template_sheet_EMAIL_TITLES_customer_reservation_cancelled,
+    id: supplementalMessages.id
+      .notification_template_sheet_EMAIL_TITLES_customer_reservation_cancelled,
+    ko: supplementalMessages.ko
+      .notification_template_sheet_EMAIL_TITLES_customer_reservation_cancelled,
   },
   customer_reminder_pickup: {
     fr: "Rappel: retrait demain",
@@ -371,6 +415,27 @@ const EMAIL_BODY_DESCRIPTIONS: Record<string, Record<EmailLocale, string>> = {
       .notification_template_sheet_EMAIL_BODY_DESCRIPTIONS_customer_reservation_confirmed,
     ko: supplementalMessages.ko
       .notification_template_sheet_EMAIL_BODY_DESCRIPTIONS_customer_reservation_confirmed,
+  },
+  customer_reservation_cancelled: {
+    fr: "Votre réservation a été annulée. Retrouvez ci-dessous ses dates et le matériel concerné.",
+    en: "Your reservation has been cancelled. Below are its dates and the items it included.",
+    de: "Ihre Reservierung wurde storniert. Nachfolgend finden Sie die Daten und die betroffenen Artikel.",
+    es: "Su reserva ha sido cancelada. A continuación encontrará sus fechas y los artículos incluidos.",
+    it: "La tua prenotazione è stata annullata. Di seguito trovi le date e gli articoli inclusi.",
+    nl: "Uw reservering is geannuleerd. Hieronder vindt u de data en de betreffende artikelen.",
+    pl: "Twoja rezerwacja została anulowana. Poniżej znajdziesz jej daty i pozycje.",
+    pt: "Sua reserva foi cancelada. Abaixo você encontrará as datas e os itens incluídos.",
+
+    zh: supplementalMessages.zh
+      .notification_template_sheet_EMAIL_BODY_DESCRIPTIONS_customer_reservation_cancelled,
+    ja: supplementalMessages.ja
+      .notification_template_sheet_EMAIL_BODY_DESCRIPTIONS_customer_reservation_cancelled,
+    ru: supplementalMessages.ru
+      .notification_template_sheet_EMAIL_BODY_DESCRIPTIONS_customer_reservation_cancelled,
+    id: supplementalMessages.id
+      .notification_template_sheet_EMAIL_BODY_DESCRIPTIONS_customer_reservation_cancelled,
+    ko: supplementalMessages.ko
+      .notification_template_sheet_EMAIL_BODY_DESCRIPTIONS_customer_reservation_cancelled,
   },
   customer_reminder_pickup: {
     fr: "N'oubliez pas ! Votre retrait est prévu pour demain. Pensez à vous munir de votre pièce d'identité.",
@@ -763,6 +828,7 @@ export function NotificationTemplateSheet({
                     id="smsMessage"
                     value={smsMessage}
                     onChange={(e) => setSmsMessage(e.target.value)}
+                    maxLength={SMS_TEMPLATE_MAX_LENGTH}
                     rows={6}
                     className="font-mono text-sm resize-none"
                   />

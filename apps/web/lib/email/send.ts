@@ -11,7 +11,7 @@ import {
   composeReminderPickupEmail,
   composeReminderReturnEmail,
 } from './compose'
-import type { ReservationLocationSnapshot } from '@louez/types'
+import type { EmailCustomContent, ReservationLocationSnapshot } from '@louez/types'
 import {
   VerificationCodeEmail,
   ReservationConfirmationEmail,
@@ -1736,13 +1736,15 @@ export async function sendThankYouReviewEmail({
 }
 
 // Reservation Cancelled Email
+/** The store cancelled the reservation: the customer hears of it (never of a refund). */
 export async function sendReservationCancelledEmail({
   to,
   store,
   customer,
   reservation,
-  reason,
+  items,
   storefrontUrl,
+  customContent,
   locale = 'fr',
 }: {
   to: string
@@ -1754,12 +1756,16 @@ export async function sendReservationCancelledEmail({
     startDate: Date
     endDate: Date
   }
-  reason?: string | null
+  items: Array<{ name: string; quantity: number }>
   storefrontUrl?: string
+  /** The store's own subject, greeting and message (notification settings). */
+  customContent?: EmailCustomContent
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
-  const subject = `${t.reservationCancelled.subject.replace('{number}', reservation.number)} - ${store.name}`
+  const subject = customContent?.subject
+    ? customContent.subject.replace('{number}', reservation.number)
+    : `${t.reservationCancelled.subject.replace('{number}', reservation.number)} - ${store.name}`
 
   const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
@@ -1776,8 +1782,9 @@ export async function sendReservationCancelledEmail({
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
       endDate: reservation.endDate,
-      reason,
+      items,
       storefrontUrl,
+      customContent,
       locale,
     })
   )

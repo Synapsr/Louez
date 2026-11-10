@@ -288,7 +288,7 @@
     "title": "Reservering geannuleerd",
     "body": "Uw reservering #{number} is geannuleerd.",
     "cancelledPeriod": "Geannuleerde periode",
-    "reasonLabel": "Reden",
+    "itemsLabel": "Artikelen",
     "contactForQuestions": "Als u vragen heeft, neem dan gerust contact met ons op.",
     "browseEquipment": "Bekijk onze catalogus",
     "thankYou": "Bedankt voor uw begrip."

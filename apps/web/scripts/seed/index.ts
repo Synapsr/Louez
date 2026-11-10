@@ -265,6 +265,7 @@ function generateCustomerNotificationSettings(): CustomerNotificationSettings {
     customer_request_accepted: { enabled: true, email: true, sms: false },
     customer_request_rejected: { enabled: true, email: true, sms: false },
     customer_reservation_confirmed: { enabled: true, email: true, sms: false },
+    customer_reservation_cancelled: { enabled: true, email: true, sms: false },
     customer_reminder_pickup: { enabled: true, email: true, sms: false },
     customer_reminder_return: { enabled: true, email: true, sms: false },
     customer_payment_requested: { enabled: true, email: true, sms: false },
