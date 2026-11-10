@@ -11,7 +11,7 @@ import {
 import { eq, count, and, gte, sql } from 'drizzle-orm'
 import { isBillingEnabled } from '@/lib/billing/mode'
 import { getPlan, getDefaultPlan, getPayAsYouGoPlan, SMS_TOPUP_PRICING, type Plan } from '@/lib/plans'
-import { owesPrepaidCredit } from '@/lib/sms/credit-source'
+import { owesPrepaidCredit, paidByPlan } from '@/lib/sms/credit-source'
 
 // ============================================================================
 // Types
@@ -331,9 +331,11 @@ export async function canAddTeamMember(storeId: string): Promise<{
 }
 
 /**
- * Get the number of SMS sent this month for a store
+ * The SMS a store sent this month that count against its plan's monthly quota:
+ * those the plan paid for. A prepaid SMS counts only in the prepaid balance
+ * (getSmsPrepaidBalance), never here as well.
  */
-export async function getSmsUsageThisMonth(storeId: string): Promise<number> {
+export async function getPlanSmsUsageThisMonth(storeId: string): Promise<number> {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
@@ -345,7 +347,8 @@ export async function getSmsUsageThisMonth(storeId: string): Promise<number> {
         eq(smsLogs.storeId, storeId),
         gte(smsLogs.sentAt, startOfMonth),
         // Only count successfully sent SMS
-        sql`${smsLogs.status} = 'sent'`
+        sql`${smsLogs.status} = 'sent'`,
+        paidByPlan()
       )
     )
 
@@ -375,9 +378,10 @@ export async function getSmsPrepaidBalance(storeId: string): Promise<number> {
  */
 export interface SmsQuotaStatus {
   allowed: boolean
-  current: number // SMS sent this month
+  planUsed: number // Plan SMS sent this month: what counts against planLimit (prepaid SMS do not)
   planLimit: number | null // Monthly limit from plan
   prepaidBalance: number // Available prepaid credits
+  remaining: number // SMS the store can still send: plan SMS left this month + prepaidBalance
   totalAvailable: number // planLimit + prepaidBalance
   planSlug: string
   canTopup: boolean // Whether the plan allows top-ups
@@ -398,7 +402,7 @@ export async function canSendSms(storeId: string): Promise<{
 
   return {
     allowed: status.allowed,
-    current: status.current,
+    current: status.planUsed,
     limit: status.planLimit,
     planSlug: status.planSlug,
   }
@@ -409,9 +413,9 @@ export async function canSendSms(storeId: string): Promise<{
  * This is the main function to use for the SMS page UI
  */
 export async function getSmsQuotaStatus(storeId: string): Promise<SmsQuotaStatus> {
-  const [plan, smsCount, prepaidBalance] = await Promise.all([
+  const [plan, planUsed, prepaidBalance] = await Promise.all([
     getStorePlan(storeId),
-    getSmsUsageThisMonth(storeId),
+    getPlanSmsUsageThisMonth(storeId),
     getSmsPrepaidBalance(storeId),
   ])
 
@@ -420,9 +424,10 @@ export async function getSmsQuotaStatus(storeId: string): Promise<SmsQuotaStatus
   if (!isBillingEnabled()) {
     return {
       allowed: true,
-      current: smsCount,
+      planUsed,
       planLimit: null,
       prepaidBalance,
+      remaining: Infinity,
       totalAvailable: Infinity,
       planSlug: plan.slug,
       canTopup: false,
@@ -439,9 +444,10 @@ export async function getSmsQuotaStatus(storeId: string): Promise<SmsQuotaStatus
   if (planLimit === null) {
     return {
       allowed: true,
-      current: smsCount,
+      planUsed,
       planLimit: null,
       prepaidBalance,
+      remaining: Infinity,
       totalAvailable: Infinity,
       planSlug: plan.slug,
       canTopup,
@@ -449,16 +455,16 @@ export async function getSmsQuotaStatus(storeId: string): Promise<SmsQuotaStatus
     }
   }
 
-  // Total available = plan monthly limit + prepaid balance
-  const totalAvailable = planLimit + prepaidBalance
-  const allowed = smsCount < totalAvailable
+  // The plan's SMS left this month, then the prepaid balance: each SMS counts in one of them.
+  const remaining = Math.max(0, planLimit - planUsed) + prepaidBalance
 
   return {
-    allowed,
-    current: smsCount,
+    allowed: remaining > 0,
+    planUsed,
     planLimit,
     prepaidBalance,
-    totalAvailable,
+    remaining,
+    totalAvailable: planLimit + prepaidBalance,
     planSlug: plan.slug,
     canTopup,
     topupPriceCents,
@@ -473,15 +479,15 @@ export async function determineSmsSource(storeId: string): Promise<'plan' | 'top
   // No quota without platform billing, so prepaid credits are never drawn.
   if (!isBillingEnabled()) return 'plan'
 
-  const [plan, smsCount] = await Promise.all([
+  const [plan, planUsed] = await Promise.all([
     getStorePlan(storeId),
-    getSmsUsageThisMonth(storeId),
+    getPlanSmsUsageThisMonth(storeId),
   ])
 
   const planLimit = plan.features.maxSmsPerMonth
 
   // If unlimited plan or still within plan limit, use plan
-  if (planLimit === null || smsCount < planLimit) {
+  if (planLimit === null || planUsed < planLimit) {
     return 'plan'
   }
 

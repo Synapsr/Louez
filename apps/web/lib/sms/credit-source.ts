@@ -1,5 +1,5 @@
 import { smsLogs } from "@louez/db";
-import { inArray } from "drizzle-orm";
+import { eq, inArray, isNull, or } from "drizzle-orm";
 
 /**
  * Where an SMS's log row says its cost went (`sms_logs.credit_source`):
@@ -17,6 +17,13 @@ export const SMS_CREDIT_SOURCE = {
   topupUnpaid: "topup_unpaid",
   topup: "topup",
 } as const;
+
+/**
+ * The log rows the plan paid for: what the monthly quota counts. Rows written
+ * before the credit source was recorded have none, and were plan SMS.
+ */
+export const paidByPlan = () =>
+  or(isNull(smsLogs.creditSource), eq(smsLogs.creditSource, SMS_CREDIT_SOURCE.plan));
 
 /** The log rows whose prepaid credit is still owed: what the balance cannot spend again. */
 export const owesPrepaidCredit = () =>

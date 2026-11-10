@@ -55,11 +55,13 @@ interface NotificationsFormProps {
   settings: NotificationSettings;
   discordWebhookUrl: string | null;
   ownerPhone: string | null;
+  /** lib/plan-limits.ts SmsQuotaStatus, with `limit` its planLimit. */
   smsQuota: {
-    current: number;
+    planUsed: number;
     limit: number | null;
     prepaidBalance: number;
     allowed: boolean;
+    remaining: number;
     totalAvailable: number;
   };
   customerSettings: CustomerNotificationSettings;
@@ -189,7 +191,11 @@ export const NotificationsForm = ({
     initialSettings.reminderSettings?.digestHour ?? 8,
   );
   const smsLimitReached = !smsQuota.allowed;
-  const smsLow = smsQuota.limit !== null && smsQuota.current >= smsQuota.limit * 0.8;
+  // Most of the plan's SMS spent, and no prepaid credit behind them.
+  const smsLow =
+    smsQuota.limit !== null &&
+    smsQuota.prepaidBalance === 0 &&
+    smsQuota.planUsed >= smsQuota.limit * 0.8;
   const isTogglePending =
     updateSinglePreferenceMutation.isPending || updateCustomerPreferenceMutation.isPending;
 
@@ -529,7 +535,7 @@ export const NotificationsForm = ({
                     <div className="rounded-lg border bg-muted/30 p-3">
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl font-bold">
-                          {smsQuota.totalAvailable - smsQuota.current}
+                          {smsQuota.remaining}
                         </span>
                         <span className="text-sm text-muted-foreground">
                           / {smsQuota.totalAvailable}
@@ -1110,7 +1116,7 @@ export const NotificationsForm = ({
                 {smsLimitReached
                   ? t("sms.limitReachedMessage")
                   : t("sms.lowCredits", {
-                      current: smsQuota.current,
+                      current: smsQuota.remaining,
                       limit: smsQuota.limit ?? 0,
                     })}
               </span>

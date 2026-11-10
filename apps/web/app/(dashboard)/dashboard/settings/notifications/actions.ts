@@ -35,10 +35,11 @@ export async function getNotificationSettings() {
     discordWebhookUrl: store.discordWebhookUrl,
     ownerPhone: store.ownerPhone,
     smsQuota: {
-      current: smsQuota.current,
+      planUsed: smsQuota.planUsed,
       limit: smsQuota.planLimit,
       prepaidBalance: smsQuota.prepaidBalance,
       allowed: smsQuota.allowed,
+      remaining: smsQuota.remaining,
       totalAvailable: smsQuota.totalAvailable,
     },
     // Customer notification settings

@@ -71,7 +71,7 @@ mock.module("@/lib/api/effects", {
 });
 mock.module("@/lib/plan-limits", {
   namedExports: {
-    getSmsQuotaStatus: async () => ({ allowed: true, current: 0, planLimit: 10, planSlug: "pro" }),
+    getSmsQuotaStatus: async () => ({ allowed: true, planUsed: 0, planLimit: 10, planSlug: "pro" }),
     // Past the month's included SMS: each one is paid from the prepaid balance.
     determineSmsSource: async () => "topup",
   },

@@ -50,7 +50,7 @@ mock.module("@/lib/sms/client", {
 });
 mock.module("@/lib/plan-limits", {
   namedExports: {
-    getSmsQuotaStatus: async () => ({ allowed: true, current: 0, planLimit: 10, planSlug: "pro" }),
+    getSmsQuotaStatus: async () => ({ allowed: true, planUsed: 0, planLimit: 10, planSlug: "pro" }),
     determineSmsSource: async () => "topup",
   },
 });
