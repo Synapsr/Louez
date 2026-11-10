@@ -1,5 +1,4 @@
 import { cimd } from "@better-auth/cimd";
-import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import {
   getOAuthProviderState,
@@ -10,6 +9,8 @@ import type { BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
 import { jwt } from "better-auth/plugins";
 import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
+
+import { bufferedTransport, guardedTransport } from "./guarded-fetch";
 
 /**
  * OAuth for MCP clients (Claude.ai, ChatGPT, Claude Code…): Louez is the
@@ -43,6 +44,13 @@ export const AUTH_DISABLED_PATHS = [
   "/oauth2/update-consent",
   "/oauth2/delete-consent",
 ];
+
+/**
+ * The most the CIMD fetch reads of an answer: the provider's cap on a client's
+ * JWKS (64 KiB, 1.7.18), which it fetches the same way; the CIMD plugin
+ * itself refuses a metadata document past 5 KB.
+ */
+const CLIENT_METADATA_MAX_BYTES = 64 * 1024;
 
 const AUTH_BASE_PATH = "/api/auth";
 const MCP_PATH = "/api/mcp";
@@ -224,7 +232,12 @@ export function mcpOAuthPlugins(
       ],
     }),
     cimd({
-      fetchClientMetadataResource: options.fetchClientMetadata ?? fetchClientMetadataResource,
+      // Read whole before the plugin sees it: it refuses some answers without
+      // reading or cancelling their body, which would keep the connection.
+      fetchClientMetadataResource: bufferedTransport(
+        options.fetchClientMetadata ?? guardedTransport,
+        CLIENT_METADATA_MAX_BYTES,
+      ),
       metadataProfile: "mcp-2026-07-28",
     }),
   ];

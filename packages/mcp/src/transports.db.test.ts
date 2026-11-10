@@ -569,4 +569,46 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       await member.close();
     }
   });
+
+  test("over HTTP, a request without MCP-Protocol-Version, or with a stale session, is served", async () => {
+    // Grok reuses a connection without the header and with the id of a
+    // session the server never kept: the spec's default version applies.
+    const { authorization } = await key();
+    const post = (message: object, extra: Record<string, string> = {}) =>
+      handleMcpRequest(
+        new Request("http://louez.test/api/mcp", {
+          method: "POST",
+          headers: {
+            authorization,
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            ...extra,
+          },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, ...message }),
+        }),
+        httpOptions,
+      );
+    const result = async (response: Response) => {
+      assert.equal(response.status, 200);
+      const data = (await response.text()).match(/^data: (.*)$/m)?.[1];
+      return (JSON.parse(data ?? "{}") as { result?: Record<string, unknown> }).result;
+    };
+    const sessions: Record<string, string>[] = [{}, { "mcp-session-id": "stale-session-0001" }];
+    for (const extra of sessions) {
+      const listed = await result(await post({ method: "tools/list" }, extra));
+      const names = ((listed?.tools ?? []) as Array<{ name: string }>).map((tool) => tool.name);
+      assert.ok(names.includes("fixture_notes_list"));
+      const called = await result(
+        await post(
+          { method: "tools/call", params: { name: "fixture_notes_list", arguments: {} } },
+          extra,
+        ),
+      );
+      assert.notEqual(called?.isError, true);
+      assert.match(JSON.stringify(called?.content), /note_1/);
+    }
+    // A version the server does not speak is still refused.
+    const unknown = await post({ method: "tools/list" }, { "mcp-protocol-version": "1999-01-01" });
+    assert.equal(unknown.status, 400);
+  });
 });

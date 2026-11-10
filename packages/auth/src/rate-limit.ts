@@ -18,7 +18,7 @@ const SEND_RULE = { window: 60, max: 3 };
 /**
  * Higher ceilings for the OAuth requests an AI platform's servers make for all
  * of its users at once: discovery, registration, token and UserInfo, from the
- * ranges Anthropic and OpenAI publish (`provider-egress.ts`). Any other
+ * addresses Anthropic, OpenAI and Cursor publish (`provider-egress.ts`). Any other
  * address keeps the endpoint's usual limit (Better Auth's OAuth provider sets
  * 20 token requests, 5 registrations and 60 UserInfo calls a minute; the
  * discovery documents have the default 100).

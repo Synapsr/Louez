@@ -164,6 +164,10 @@ test("behind Cloudflare, a platform address in cf-connecting-ip gets the platfor
   assert.equal(await passed(auth, TOKEN, { "cf-connecting-ip": "9.129.3.4" }, 30), 30);
   assert.equal(await passed(auth, REGISTER, { "cf-connecting-ip": "52.6.94.121" }, 70), 60);
   assert.equal(await passed(auth, DISCOVERY, { "cf-connecting-ip": "160.79.104.12" }, 610), 600);
+  // Cursor's three addresses (each used once per path in this file: counters are shared).
+  assert.equal(await passed(auth, TOKEN, { "cf-connecting-ip": "3.209.66.12" }, 610), 600);
+  assert.equal(await passed(auth, REGISTER, { "cf-connecting-ip": "52.44.113.131" }, 70), 60);
+  assert.equal(await passed(auth, DISCOVERY, { "cf-connecting-ip": "184.73.225.134" }, 610), 600);
 });
 
 /**
@@ -195,6 +199,9 @@ test("without TRUSTED_PROXY no header raises a ceiling, Cloudflare's included", 
   }
   await chainStaysOrdinary(auth);
   assert.equal(await passed(auth, REGISTER, { "true-client-ip": "160.79.104.75" }, 10), 5);
+  // A Cursor address, claimed or even from Cloudflare's header, is ordinary here.
+  assert.equal(await passed(auth, TOKEN, { "x-forwarded-for": "52.44.113.131" }, 30), 20);
+  assert.equal(await passed(auth, TOKEN, { "cf-connecting-ip": "184.73.225.134" }, 30), 20);
 });
 
 test("behind Cloudflare, only a valid cf-connecting-ip decides: the other headers never do", async () => {
@@ -212,6 +219,8 @@ test("behind Cloudflare, only a valid cf-connecting-ip decides: the other header
     const headers = { "cf-connecting-ip": value, "true-client-ip": `160.79.106.${index}` };
     assert.equal(await passed(auth, TOKEN, headers, 30), 20, value);
   }
+  // A Cursor address claimed without Cloudflare's header.
+  assert.equal(await passed(auth, REGISTER, { "x-forwarded-for": "3.209.66.12" }, 10), 5);
   // Cloudflare's address is ordinary: a platform address claimed in a later header is not read.
   const claimed = { "cf-connecting-ip": "203.0.113.4", "x-real-ip": "160.79.104.79" };
   assert.equal(await passed(auth, TOKEN, claimed, 30), 20);

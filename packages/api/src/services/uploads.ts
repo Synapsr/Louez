@@ -212,7 +212,7 @@ const IMPORT_MAX_REDIRECTS = 3;
 /**
  * Imports downloading at once in this process; each holds up to the kind's
  * limit. An import keeps its place until its transport calls have settled,
- * past its own deadline: a DNS lookup that hangs is still running.
+ * past its own deadline: a transport that ignores its abort signal still runs.
  */
 export const MAX_IMPORTS_IN_FLIGHT = 4;
 let importsInFlight = 0;

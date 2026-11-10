@@ -6,7 +6,9 @@ import { BlockList, isIP } from "node:net";
  * these addresses, for every one of their users at once. The auth rate limit
  * gives these addresses a higher ceiling (`rate-limit.ts`).
  *
- * Both lists change: refresh them from their source.
+ * The lists change: refresh them from their source. They are copied, never
+ * read at run time: a client's metadata document may name a ranges file
+ * (`client_ip_ranges_uri`), and an address it names gets nothing from that.
  */
 
 /**
@@ -315,7 +317,19 @@ export const OPENAI_CHATGPT_EGRESS_RANGES: readonly string[] = [
   "98.87.72.221/32",
 ];
 
-export type EgressProvider = "anthropic" | "openai";
+/**
+ * Cursor's MCP client addresses (Cursor's web agents and Bot, Grok Bot), from
+ * https://cursor.com/oauth/mcp-client-ip-ranges.json, the file named by
+ * `client_ip_ranges_uri` in Cursor's metadata document
+ * (https://cursor.com/oauth/mcp-client.json), read 2026-11-10.
+ */
+export const CURSOR_EGRESS_RANGES: readonly string[] = [
+  "3.209.66.12/32",
+  "52.44.113.131/32",
+  "184.73.225.134/32",
+];
+
+export type EgressProvider = "anthropic" | "openai" | "cursor";
 
 function blockListOf(ranges: readonly string[]): BlockList {
   const list = new BlockList();
@@ -329,6 +343,7 @@ function blockListOf(ranges: readonly string[]): BlockList {
 const EGRESS: ReadonlyArray<[EgressProvider, BlockList]> = [
   ["anthropic", blockListOf(ANTHROPIC_EGRESS_RANGES)],
   ["openai", blockListOf(OPENAI_CHATGPT_EGRESS_RANGES)],
+  ["cursor", blockListOf(CURSOR_EGRESS_RANGES)],
 ];
 
 /** The platform whose published egress `ip` belongs to, or null. */
