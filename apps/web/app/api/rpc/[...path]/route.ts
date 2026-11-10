@@ -2,6 +2,7 @@ import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 
+import { reportUnexpectedErrors } from "@louez/api/platform/error-reporting";
 import { appRouter } from "@louez/api/router";
 
 import { apiPorts } from "@/lib/api/ports";
@@ -61,6 +62,8 @@ const handler = new RPCHandler(appRouter, {
   // answer's headers (`context.resHeaders`): the onboarding's store step sets
   // its cookies.
   plugins: [rpcCsrfHandlerPlugin(), new ResponseHeadersPlugin()],
+  // An unexpected error reaches error tracking through `ports.reportError`.
+  clientInterceptors: [reportUnexpectedErrors],
   interceptors: [
     onError((error) => {
       const rpcError = error instanceof Error ? error : new Error("Unknown oRPC error");

@@ -159,6 +159,13 @@ export const env = createEnv({
       .default("https://eu.posthog.com"),
     POSTHOG_PROJECT_ID: z.string().optional(),
     POSTHOG_PERSONAL_API_KEY: z.string().optional(),
+    // Server errors to PostHog error tracking (lib/error-tracking.ts), with
+    // NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST. Off unless "true".
+    POSTHOG_ERROR_TRACKING_ENABLED: z
+      .string()
+      .default("false")
+      .transform((val) => val === "true"),
+    POSTHOG_ERROR_TRACKING_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1),
     GLEAP_API_TOKEN: z.string().optional(),
     OPENREPLAY_API_URL: z.url("OPENREPLAY_API_URL must be a valid URL").optional(),
     OPENREPLAY_ORGANIZATION_API_KEY: z.string().optional(),
@@ -444,6 +451,8 @@ export const env = createEnv({
     POSTHOG_API_HOST: process.env.POSTHOG_API_HOST,
     POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
     POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
+    POSTHOG_ERROR_TRACKING_ENABLED: process.env.POSTHOG_ERROR_TRACKING_ENABLED,
+    POSTHOG_ERROR_TRACKING_SAMPLE_RATE: process.env.POSTHOG_ERROR_TRACKING_SAMPLE_RATE,
     GLEAP_API_TOKEN: process.env.GLEAP_API_TOKEN,
     OPENREPLAY_API_URL: process.env.OPENREPLAY_API_URL,
     OPENREPLAY_ORGANIZATION_API_KEY: process.env.OPENREPLAY_ORGANIZATION_API_KEY,

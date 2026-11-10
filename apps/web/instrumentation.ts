@@ -10,6 +10,17 @@ export async function register() {
 
   // Only run on the Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    // An error nothing caught, outside any request, reaches error tracking
+    // (lib/error-tracking.ts). Next keeps its own listeners, which log and keep
+    // the server up; these only report.
+    const { reportServerError } = await import('./lib/error-tracking');
+    process.on('unhandledRejection', (reason) => {
+      reportServerError(reason, { source: 'process' });
+    });
+    process.on('uncaughtExceptionMonitor', (error) => {
+      reportServerError(error, { source: 'process' });
+    });
+
     // Warn when billing looks forgotten on the cloud. A log, never a reason to stop.
     await import('./lib/billing/startup-check')
       .then(({ reportBillingModeAtStartup }) => reportBillingModeAtStartup())
@@ -39,4 +50,18 @@ export async function register() {
   }
 }
 
-export const onRequestError = evlogInstrumentation.onRequestError;
+export const onRequestError: typeof evlogInstrumentation.onRequestError = async (
+  error,
+  request,
+  context,
+) => {
+  await evlogInstrumentation.onRequestError(error, request, context);
+  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  // The route as declared, never the requested path (it may hold a secret).
+  const { reportServerError } = await import('./lib/error-tracking');
+  reportServerError(error, {
+    source: 'request',
+    route: context.routePath,
+    routeType: context.routeType,
+  });
+};

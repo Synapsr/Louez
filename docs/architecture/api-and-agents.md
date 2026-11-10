@@ -545,6 +545,7 @@ The packages that list Louez in the assistants' directories (OpenAI's Plugin Dir
 
 - [../analytics/store-setup.md](../analytics/store-setup.md)
 - [module-ownership.md](module-ownership.md)
+- [error-tracking.md](error-tracking.md) — unexpected server errors to PostHog
 - [../code-review/04-data-layer.md](../code-review/04-data-layer.md)
 - [../code-review/06-security.md](../code-review/06-security.md)
 - [../from-scratch/04-backend.md](../from-scratch/04-backend.md)

@@ -5,6 +5,7 @@ import { runMarketplaceDefaultPublication } from "@louez/api/services";
 
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytics/aggregation";
 import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retention-cleanup";
+import { reportServerError } from "@/lib/error-tracking";
 import { createError, log, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
 import { reconcileVoiceSessions } from "@/lib/ai/phone/live-reconciliation";
@@ -97,6 +98,12 @@ async function handleCron(request: Request) {
     },
   });
 
+  const taskLogs = {
+    request: logger,
+    event: log,
+    report: (error: Error, task: string) => reportServerError(error, { source: "cron", task }),
+  };
+
   // Pay-as-you-go billing, on an instance that bills its stores (LOUEZ_BILLING=cloud),
   // and the billing service sync: started first and awaited last, so a long run never
   // delays the other tasks and a failing task never stops them.
@@ -109,18 +116,18 @@ async function handleCron(request: Request) {
             run: () => runMonthlyBillingCatchUp(now),
           },
         ],
-        { request: logger, event: log },
+        taskLogs,
       )
     : null;
   const billingSync = isBillingSyncEnabled()
-    ? runIsolatedTasks(billingSyncTasks(now), { request: logger, event: log })
+    ? runIsolatedTasks(billingSyncTasks(now), taskLogs)
     : null;
   // The agent-ready API's outbox: started with the billing tasks and awaited
   // last, so a task that keeps failing before it never holds back the
   // customer messages, notifications and analytics events it retries. The
   // background jobs and the purges past their retention go with it, each on
   // its own (api-tasks.ts).
-  const apiEffects = runIsolatedTasks(apiTasks(), { request: logger, event: log });
+  const apiEffects = runIsolatedTasks(apiTasks(), taskLogs);
 
   try {
     // Legacy fee report and billable_at check: daily at 4:45 AM UTC, only on an
@@ -132,7 +139,7 @@ async function handleCron(request: Request) {
           { task: "legacy-fee-report", key: "legacyFeeReport", run: () => reportLegacyFees(now) },
           { task: "billable-at-check", key: "billableAtCheck", run: () => checkBillableAt() },
         ],
-        { request: logger, event: log },
+        taskLogs,
       );
       tasks.push(...nightly.tasks);
       Object.assign(results, nightly.results);
@@ -257,6 +264,7 @@ async function handleCron(request: Request) {
     const cronError = error instanceof Error ? error : new Error("Unknown cron error");
 
     logger.error(cronError, { tasks });
+    reportServerError(cronError, { source: "cron" });
     logger.set({
       cron: {
         tasks,

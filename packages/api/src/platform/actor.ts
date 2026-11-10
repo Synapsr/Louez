@@ -6,8 +6,10 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { loadActiveGrant } from "../services/agent-grants";
 import { validateApiKey } from "../services/api-keys";
 import {
+  clientDirectory,
   clientWithholding,
   modelReadsStructuredContent,
+  type ClientDirectory,
   type ClientWithholding,
 } from "./agent-clients";
 import { platformErrors } from "./errors";
@@ -67,6 +69,8 @@ export interface Credential {
    * text block. Absent: the text repeats it.
    */
   structuredContentOnly?: boolean;
+  /** The OAuth client's directory (`clientDirectory`), for error tracking. Absent: not OAuth. */
+  directory?: ClientDirectory;
 }
 
 /** Someone authenticated, before any store is chosen. */
@@ -236,6 +240,7 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
       bundles: grant.bundles.filter((bundle) => !withheld.bundles.includes(bundle)),
       withheld,
       structuredContentOnly: modelReadsStructuredContent(client),
+      directory: clientDirectory(client),
     },
   };
 }

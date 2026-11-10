@@ -3,6 +3,7 @@ import type { ReservationEffectRunner, ReservationGateReason, Transaction } from
 import type { StripeConnectClient } from "../adapters/stripe-connect";
 import type { BillingStatus } from "../contracts/billing";
 import type { Transport } from "./actor";
+import type { ReportServerError } from "./error-reporting";
 
 /**
  * What the agent-ready API takes from the app that serves it: only what is
@@ -72,6 +73,12 @@ export interface ApiPorts {
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
   team?: TeamPort;
+  /**
+   * Sends an unexpected server error to the app's error tracking
+   * (platform/error-reporting.ts). Never throws, never waits. Absent: nothing
+   * is sent (tests, scripts, an instance without error tracking).
+   */
+  reportError?: ReportServerError;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */

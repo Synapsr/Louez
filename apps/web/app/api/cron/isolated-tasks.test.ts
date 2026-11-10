@@ -6,9 +6,11 @@ import { runIsolatedTasks, type IsolatedTaskLogs } from "./isolated-tasks";
 test("a failed task is logged on its own and the next tasks still run", async () => {
   const requestErrors: { message: string; context: Record<string, unknown> }[] = [];
   const events: Record<string, unknown>[] = [];
+  const reported: { message: string; task: string }[] = [];
   const logs: IsolatedTaskLogs = {
     request: { error: (error, context) => requestErrors.push({ message: error.message, context }) },
     event: { error: (event) => events.push(event) },
+    report: (error, task) => reported.push({ message: error.message, task }),
   };
   const reportError = new Error("report failed");
   const ran: string[] = [];
@@ -53,6 +55,12 @@ test("a failed task is logged on its own and the next tasks still run", async ()
   assert.deepEqual(requestErrors, [
     { message: "report failed", context: { cron: { failedTasks: ["report"] } } },
     { message: "not an error", context: { cron: { failedTasks: ["other"] } } },
+  ]);
+
+  // Each failure reaches error tracking, with its task.
+  assert.deepEqual(reported, [
+    { message: "report failed", task: "report" },
+    { message: "not an error", task: "other" },
   ]);
 
   // Each failure has its own event, with its own message and stack.

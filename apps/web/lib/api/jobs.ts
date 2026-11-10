@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { jobsCronPass, runJob } from "@louez/api/services/jobs";
 
 import { apiPorts } from "@/lib/api/ports";
+import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
 
 /**
@@ -27,9 +28,10 @@ function runInBackground(ids: readonly string[]) {
     }
   };
   const guarded = () =>
-    run().catch((error: unknown) =>
-      log.error({ apiJobs: { event: "dispatch_failed", ids, error: String(error) } }),
-    );
+    run().catch((error: unknown) => {
+      log.error({ apiJobs: { event: "dispatch_failed", ids, error: String(error) } });
+      reportServerError(error, { source: "job" });
+    });
   try {
     after(guarded);
   } catch {

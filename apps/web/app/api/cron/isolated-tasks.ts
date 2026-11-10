@@ -7,6 +7,8 @@ export interface IsolatedTaskLogs {
   request: { error(error: Error, context: Record<string, unknown>): void };
   /** One event per failure, which keeps its own message and stack. */
   event: { error(event: Record<string, unknown>): void };
+  /** Error tracking (lib/error-tracking.ts), which never throws. */
+  report?: (error: Error, task: string) => void;
 }
 
 export interface IsolatedTask {
@@ -42,6 +44,7 @@ export async function runIsolatedTasks(
       });
       // evlog appends arrays when it merges, so this list keeps every failed task.
       logs.request.error(error, { cron: { failedTasks: [task] } });
+      logs.report?.(error, task);
       results[key] = { failed: true };
     }
   }

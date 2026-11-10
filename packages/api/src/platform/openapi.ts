@@ -6,6 +6,7 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
 import type { BaseContext } from "../context";
 import { resolveAccountActor } from "./actor";
+import { reportUnexpectedErrors } from "./error-reporting";
 import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
 import type { ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
@@ -246,6 +247,8 @@ export function createOpenApiHandler(
         ]
       : [],
     interceptors: options.onError ? [onError(options.onError)] : [],
+    // An unexpected error reaches error tracking through `ports.reportError`.
+    clientInterceptors: [reportUnexpectedErrors],
   });
 }
 

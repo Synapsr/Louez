@@ -74,6 +74,10 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
     transport: context.transport,
     headers: context.headers,
   });
+  if (context.errorScope) {
+    context.errorScope.client = actor.credential.kind;
+    if (actor.credential.directory) context.errorScope.directory = actor.credential.directory;
+  }
   // A procedure the client's directory forbids is refused first, before any
   // confirmation or idempotency key: a replay never reaches it either.
   if (meta.capability && actor.credential.withheld?.capabilities.includes(meta.capability)) {
@@ -229,6 +233,7 @@ export const storeProcedure = authenticated.use(
       headers: context.headers,
       requestedStoreId: context.headers.get(STORE_HEADER) ?? undefined,
     });
+    if (context.errorScope) context.errorScope.storeId = storeActor.storeId;
 
     if (!allows(storeActor.role, credential.scopes, meta.scope)) {
       throw scopeRefusal(credential, meta.scope);

@@ -8,6 +8,7 @@ import { productImagesPort } from "@/lib/api/product-images";
 import { apiUrls } from "@/lib/api/urls";
 import { billingPort } from "@/lib/billing/billing-port";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { reportServerError } from "@/lib/error-tracking";
 import { getHostedBy } from "@/lib/hosting";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
@@ -40,4 +41,5 @@ export const apiPorts: ApiPorts = {
     collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
     emailConfigured: isEmailConfigured,
   },
+  reportError: reportServerError,
 };

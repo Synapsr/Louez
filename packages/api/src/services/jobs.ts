@@ -63,6 +63,7 @@ export async function runJob(id: string, ports: ApiPorts, options: RunJobOptions
     await runImageJob(id, ports, options);
   } catch (error) {
     logProviderError("api_job.run_failed", error);
+    ports.reportError?.(error, { source: "job" });
   }
 }
 
