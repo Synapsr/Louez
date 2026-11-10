@@ -255,12 +255,14 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'write' },
-    { name: 'return_deposit', title: 'Return Deposit', effect: 'additive' },
-    "Record a deposit return for a reservation. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
+    { name: 'record_deposit_return', title: 'Record Deposit Return', effect: 'additive' },
+    "Record a deposit return the store has already made: adds it to the reservation's payments, as the amount given back and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused above the deposit collected and not yet returned. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
-      amount: z.string().describe('Amount to return'),
-      method: z.enum(['cash', 'card', 'transfer', 'check', 'other']).describe('Return method'),
+      amount: z.string().describe('Amount given back'),
+      method: z
+        .enum(['cash', 'card', 'transfer', 'check', 'other'])
+        .describe('How the deposit was given back'),
       notes: z.string().optional().describe('Optional notes'),
     },
     async ({ reservationId, amount, method, notes }) => {
@@ -312,7 +314,7 @@ export function registerPaymentTools(
       )
 
       return toolResult(
-        `Deposit returned for reservation #${reservation.number}.\n` +
+        `Deposit return recorded for reservation #${reservation.number}.\n` +
           `- Amount: ${formatCurrency(amount)}\n` +
           `- Method: ${method}` +
           reservationLinkLine(ctx, reservation)
@@ -336,7 +338,7 @@ export function registerPaymentTools(
           const returnable = completed('deposit') - completed('deposit_return')
           return {
             preview: {
-              summary: `Return ${formatCurrency(amount)} of deposit (${method}) on reservation #${reservation.number}.`,
+              summary: `Record a deposit return of ${formatCurrency(amount)} (${method}) on reservation #${reservation.number}.`,
               details: {
                 reservationId,
                 number: reservation.number,

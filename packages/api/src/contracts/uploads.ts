@@ -135,7 +135,7 @@ export const uploadErrors = {
     }),
   contentInvalid: (declared: string, found: string | null) =>
     apiError("BAD_REQUEST", "UPLOAD_CONTENT_INVALID", {
-      message: `The uploaded bytes are not a ${declared} image. Nothing was kept; upload the file again.`,
+      message: `The uploaded bytes are not a ${declared} image. The file was refused and not published; start a new upload with it.`,
       i18nKey: "errors.invalidData",
       details: { declared, found },
     }),

@@ -9,7 +9,9 @@ import {
   saveCustomerFieldValues,
 } from '@louez/api/services/customer-fields';
 import {
+  agentCustomerFields,
   checkCustomerFieldEntries,
+  requiresSensitiveFields,
   resolveCustomerCompanyFields,
   toReadableCustomerFields,
 } from '@louez/api/services/customer-tools';
@@ -42,7 +44,7 @@ const customFieldEntriesParam = z
   )
   .optional()
   .describe(
-    'Custom fields defined by the store (ID numbers, licence, sizes…). An unknown field name returns the list of available fields.',
+    "The store's own custom fields, such as sizes or preferences, except those it flagged sensitive, which only Louez fills. An unknown field name returns the list of available fields.",
   );
 
 const countryParam = z
@@ -66,7 +68,7 @@ export function registerCustomerTools(
         .string()
         .optional()
         .describe(
-          'Search by name, email, or the start of a searchable custom field (an ID or licence number)',
+          "Search by name, email, or the start of a value in one of the store's searchable custom fields, except those it flagged sensitive",
         ),
       type: z
         .enum(['individual', 'business'])
@@ -86,7 +88,9 @@ export function registerCustomerTools(
       if (search) {
         const s = `%${search.toLowerCase()}%`;
         const nativeMatch = sql`(LOWER(${customers.firstName}) LIKE ${s} OR LOWER(${customers.lastName}) LIKE ${s} OR LOWER(${customers.email}) LIKE ${s})`;
-        const customMatch = customerFieldSearchCondition(ctx.storeId, search);
+        const customMatch = customerFieldSearchCondition(ctx.storeId, search, {
+          sensitive: false,
+        });
         conditions.push(
           customMatch ? sql`(${nativeMatch} OR ${customMatch})` : nativeMatch,
         );
@@ -126,7 +130,7 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'read' },
     { name: 'get_customer', title: 'Get Customer' },
-    "Get detailed customer profile with the store's custom fields and, when the connection may read reservations, the reservation history, with the link to the customer's dashboard page and each reservation's, the URLs to give the user to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
+    "Get detailed customer profile with the store's custom fields and, when the connection may read reservations, the reservation history, with the link to the customer's dashboard page and each reservation's, the URLs to give the user to open them. Custom fields the store flagged as sensitive are never returned nor named: when the record holds some, the answer says other details are kept in Louez, on the customer's dashboard page.",
     {
       customerId: z.string().describe('The customer ID'),
     },
@@ -161,16 +165,17 @@ export function registerCustomerTools(
         listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: 'customer' }),
         getCustomerFieldValues(ctx.storeId, customer.id),
       ]);
+      // A sensitive field is neither shown nor named: only that some exist.
       const { fields, withheld } = toReadableCustomerFields(definitions, values);
 
-      if (Object.keys(fields).length > 0 || withheld.length > 0) {
+      if (Object.keys(fields).length > 0) {
         text += `\n### Custom fields\n`;
         for (const [label, value] of Object.entries(fields)) {
           text += `- **${label}**: ${value}\n`;
         }
-        for (const label of withheld) {
-          text += `- **${label}**: on file, withheld (sensitive)\n`;
-        }
+      }
+      if (withheld.length > 0) {
+        text += `\nOther details are kept in Louez only, on the customer's dashboard page.\n`;
       }
 
       if (customer.notes) {
@@ -204,7 +209,7 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'write' },
     { name: 'create_customer', title: 'Create Customer', effect: 'additive' },
-    'Create a new customer. Answers with the link to its dashboard page, to give the user.',
+    "Create a new customer. Answers with the link to its dashboard page, to give the user. Custom fields the store flagged sensitive are not set here: when the store requires one, the customer is still created and the answer says those details are completed in Louez.",
     {
       email: z.email().describe('Customer email'),
       firstName: z.string().min(1).describe('First name'),
@@ -278,8 +283,10 @@ export function registerCustomerTools(
           columns: { settings: true },
         }),
       ]);
+      // Sensitive fields are Louez's alone: not checked, not written, not named.
+      const fieldsForAgent = agentCustomerFields(definitions);
       const checked = checkCustomerFieldEntries({
-        definitions,
+        definitions: fieldsForAgent,
         entries: customFields,
         customerType: type,
         partial: false,
@@ -319,16 +326,20 @@ export function registerCustomerTools(
           storeId: ctx.storeId,
           customerId: created.id,
           values: checked.values,
-          definitions,
+          definitions: fieldsForAgent,
         });
         return created.id;
       });
 
+      const completeInLouez = requiresSensitiveFields(definitions, type)
+        ? `Some details the store requires must be completed in Louez, on the customer's dashboard page.\n\n`
+        : '';
       return toolResult(
         `Customer created successfully.\n\n` +
           `- **Name**: ${firstName} ${lastName}\n` +
           `- **ID**: ${createdId}\n` +
           `- **Email**: ${email}\n\n` +
+          completeInLouez +
           linksLine(customerLinks(ctx.ports.urls, { id: ctx.storeId }, { id: createdId })),
       );
     },
@@ -444,10 +455,13 @@ export function registerCustomerTools(
         return toolError('No fields to update.');
       }
 
-      const definitions = await listCustomerFieldDefinitions(ctx.storeId, {
-        activeOnly: true,
-        scope: 'customer',
-      });
+      // Sensitive fields are Louez's alone: not checked, not written, not named.
+      const definitions = agentCustomerFields(
+        await listCustomerFieldDefinitions(ctx.storeId, {
+          activeOnly: true,
+          scope: 'customer',
+        }),
+      );
       const checked = checkCustomerFieldEntries({
         definitions,
         entries: customFields,
