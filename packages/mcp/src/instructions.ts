@@ -22,7 +22,7 @@ const BUNDLE_SUMMARY: Record<McpBundle, string> = {
  * agent keeps watch.
  */
 const INBOX_HELP =
-  "What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. Called with the nextCursor of an earlier call, it returns only what is new since; when hasMore is true, the rest is at nextCursor. If the user asks you to keep an eye on the store, a few minutes between calls is enough.";
+  "What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. Called with the nextCursor of an earlier call, it returns only what is new since; when hasMore is true, the rest is at nextCursor; `unavailable` names types Louez could not read this time: say the inbox is incomplete, and their items come with a later call at nextCursor. If the user asks you to keep an eye on the store, a few minutes between calls is enough.";
 
 /**
  * Steps only the user can take, handed over with a link (services/handoffs.ts).
@@ -157,7 +157,8 @@ export function serverInstructions(
   }
 
   const { scopes, withheld } = ctx.actor.credential;
-  if (!ctx.noStore) lines.push(INBOX_HELP, handoffHelp(scopes === null || scopes.billing !== "none"));
+  if (!ctx.noStore)
+    lines.push(INBOX_HELP, handoffHelp(scopes === null || scopes.billing !== "none"));
 
   const { bundles } = ctx.actor.credential;
   if (bundles) {

@@ -52,7 +52,7 @@ import {
 } from "../contracts/inbox";
 import type { ResourceLinks } from "../contracts/links";
 import { platformErrors } from "../platform/errors";
-import { describeProviderError, redactHandoffSecrets } from "../platform/redact";
+import { sanitizeError } from "../platform/sanitize-error";
 import { OPERATION_LEASE_SECONDS } from "../platform/operations";
 import type { ApiDomain } from "../platform/permissions";
 import {
@@ -62,7 +62,7 @@ import {
   storeLinks,
   type LinkStore,
 } from "../platform/links";
-import type { ProductImageOperation, UrlsPort } from "../platform/ports";
+import type { LogPort, ProductImageOperation, UrlsPort } from "../platform/ports";
 import { HANDOFF_KINDS } from "../contracts/handoffs";
 import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
@@ -161,6 +161,8 @@ export interface InboxReader {
    * agent can neither check nor retry it. Absent: none.
    */
   withheldProcedures?: readonly string[];
+  /** Where a source that failed is logged (`ApiPorts.log`). Absent: stderr. */
+  log?: LogPort;
 }
 
 export const mayShow = (reads: InboxRights, type: InboxItemType) =>
@@ -185,28 +187,76 @@ function comparePositions(a: Position, b: Position) {
   return 0;
 }
 
-const encodeCursor = (position: Position) =>
-  Buffer.from(JSON.stringify(position)).toString("base64url");
+/** Before every item: where a type that never read anything stands. */
+const START: Position = { t: 0, k: "", r: "" };
 
-function decodeCursor(raw: string): Position {
+/**
+ * Where a poller stands: the last position read, and the types that stand
+ * earlier (`behind`) because their source failed, or has not caught up
+ * since, so their items still come with a later call.
+ */
+interface Cursor {
+  at: Position;
+  behind: Partial<Record<InboxItemType, Position>>;
+}
+
+const maxPosition = (a: Position, b: Position) => (comparePositions(a, b) >= 0 ? a : b);
+
+/**
+ * `{ t, k, r }`, and `b` when types stand behind: each position once, with
+ * its types (`[t, k, r, [types]]`), so a cursor stays short.
+ */
+function encodeCursor({ at, behind }: Cursor) {
+  const groups = new Map<string, [number, string, string, InboxItemType[]]>();
+  for (const [type, position] of Object.entries(behind) as [InboxItemType, Position][]) {
+    const key = JSON.stringify([position.t, position.k, position.r]);
+    const group = groups.get(key) ?? [position.t, position.k, position.r, []];
+    group[3].push(type);
+    groups.set(key, group);
+  }
+  const body = groups.size > 0 ? { ...at, b: [...groups.values()] } : at;
+  return Buffer.from(JSON.stringify(body)).toString("base64url");
+}
+
+function isPosition(value: Partial<Position>): value is Position {
+  const { t, k, r } = value;
+  return (
+    typeof t === "number" &&
+    Number.isSafeInteger(t) &&
+    t >= 0 &&
+    typeof k === "string" &&
+    k.length <= 40 &&
+    typeof r === "string" &&
+    r.length <= 64
+  );
+}
+
+function decodeCursor(raw: string): Cursor {
   let parsed: unknown;
   try {
     parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
   } catch {
     throw inboxErrors.invalidCursor();
   }
-  const { t, k, r } = (parsed ?? {}) as Partial<Position>;
-  if (
-    typeof t !== "number" ||
-    !Number.isSafeInteger(t) ||
-    typeof k !== "string" ||
-    k.length > 40 ||
-    typeof r !== "string" ||
-    r.length > 64
-  ) {
-    throw inboxErrors.invalidCursor();
+  const { t, k, r, b } = (parsed ?? {}) as Partial<Position> & { b?: unknown };
+  const at = { t, k, r };
+  if (!isPosition(at)) throw inboxErrors.invalidCursor();
+  const behind: Cursor["behind"] = {};
+  if (b !== undefined) {
+    if (!Array.isArray(b) || b.length > INBOX_ITEM_TYPES.length) throw inboxErrors.invalidCursor();
+    for (const group of b) {
+      const [gt, gk, gr, types] = Array.isArray(group) ? group : [];
+      const position = { t: gt, k: gk, r: gr };
+      if (!isPosition(position) || !Array.isArray(types) || types.length === 0) {
+        throw inboxErrors.invalidCursor();
+      }
+      for (const type of types) {
+        if (typeof type !== "string" || !isItemType(type)) throw inboxErrors.invalidCursor();
+        behind[type] = position;
+      }
+    }
   }
-  return { t, k, r };
+  return { at, behind };
 }
 
 // --- SQL helpers -------------------------------------------------------------
@@ -220,6 +270,8 @@ interface Window {
   storeId: string;
   /** The last position read; null from the start. */
   after: Position | null;
+  /** Types that read from an earlier position than `after` (`Cursor.behind`). */
+  behind?: Cursor["behind"];
   /** Nothing later shows yet. */
   horizon: Date;
   now: Date;
@@ -1686,7 +1738,10 @@ async function readWindow(
   window: Window,
 ): Promise<{ entries: Candidate[]; failures: SourceFailure[] }> {
   const shaper = shaperOf(reader);
-  const read = await Promise.allSettled(types.map((type) => SOURCES[type](window, shaper)));
+  const afterOf = (type: InboxItemType) => window.behind?.[type] ?? window.after;
+  const read = await Promise.allSettled(
+    types.map((type) => SOURCES[type]({ ...window, after: afterOf(type) }, shaper)),
+  );
   const inSqlWindow: Candidate[] = [];
   const computed: Candidate[] = [];
   const failures: SourceFailure[] = [];
@@ -1696,9 +1751,10 @@ async function readWindow(
     else (COMPUTED.has(type) ? computed : inSqlWindow).push(...(result?.value ?? []));
   });
   const horizon = window.horizon.getTime();
-  const { after, records } = window;
+  const { records } = window;
   const computedInWindow = computed.filter((entry) => {
     const position = positionOf(entry);
+    const after = afterOf(entry.item.type);
     return (
       position.t <= horizon &&
       (!after || comparePositions(position, after) > 0) &&
@@ -1714,19 +1770,19 @@ async function readWindow(
   return { entries, failures };
 }
 
-/** Logs a source that failed, with the store, the type and where it threw. */
-function logSourceFailure(storeId: string, { type, error }: SourceFailure) {
-  const frames =
-    error instanceof Error
-      ? (error.stack ?? "").split("\n").filter((line) => /^\s+at /.test(line))
-      : [];
-  console.error(
-    `The inbox could not read its ${type} items for store ${storeId}: ${describeProviderError(error)}` +
-      frames
-        .slice(0, 8)
-        .map((line) => `\n${redactHandoffSecrets(line)}`)
-        .join(""),
-  );
+/**
+ * Logs a source that failed: the store, the type, and the error's
+ * sanitized facts (`sanitizeError`), never the error object.
+ */
+function logSourceFailure(reader: InboxReader, { type, error }: SourceFailure) {
+  const event = {
+    event: "inbox.source_failed",
+    storeId: reader.store.id,
+    itemType: type,
+    error: sanitizeError(error),
+  };
+  if (reader.log) reader.log.error(event);
+  else console.error(JSON.stringify(event));
 }
 
 /**
@@ -1734,6 +1790,11 @@ function logSourceFailure(storeId: string, { type, error }: SourceFailure) {
  * most a page and one row, in the inbox's order, so the merged page is exact.
  * Without more to read, the next cursor stands at the horizon: everything up
  * to it was read, and the next call returns only what entered after.
+ *
+ * Each type moves on only through what it gave: a source that fails stays
+ * where it stood, in the cursor's `behind`, and reads from there once it
+ * works again, so its items come late rather than never, and the other
+ * types' items are not given twice.
  */
 export async function listInbox(
   reader: InboxReader,
@@ -1742,31 +1803,45 @@ export async function listInbox(
   options: { now?: Date } = {},
 ) {
   const limit = input.limit ?? INBOX_PAGE_DEFAULT;
-  const after = input.cursor ? decodeCursor(input.cursor) : null;
+  const cursor = input.cursor ? decodeCursor(input.cursor) : null;
+  const after = cursor?.at ?? null;
   const now = options.now ?? (await databaseNow());
   const window: Window = {
     storeId: reader.store.id,
     after,
+    behind: cursor?.behind,
     horizon: new Date(now.getTime() - INBOX_HOLD_BACK_MS),
     now,
     take: limit + 1,
   };
   const types = INBOX_ITEM_TYPES.filter((type) => mayShow(reader.reads, type));
   const { entries: merged, failures } = await readWindow(reader, types, window);
-  for (const failure of failures) logSourceFailure(reader.store.id, failure);
+  for (const failure of failures) logSourceFailure(reader, failure);
   const page = merged.slice(0, limit);
   const hasMore = merged.length > limit;
   const last = page.at(-1);
 
-  let next: Position;
-  if (hasMore && last) next = positionOf(last);
-  else {
-    const atHorizon: Position = { t: window.horizon.getTime(), k: END_OF_INSTANT, r: "" };
-    next = after && comparePositions(after, atHorizon) > 0 ? after : atHorizon;
+  // Where each type stands now: through the page's last item, or the
+  // horizon when every source gave all it had; a failed one where it stood.
+  const failed = new Set(failures.map((failure) => failure.type));
+  const atHorizon: Position = { t: window.horizon.getTime(), k: END_OF_INSTANT, r: "" };
+  const through = hasMore && last ? positionOf(last) : atHorizon;
+  const reached = new Map<InboxItemType, Position>();
+  for (const type of types) {
+    const from = window.behind?.[type] ?? after ?? START;
+    reached.set(type, failed.has(type) ? from : maxPosition(from, through));
+  }
+  let next = after ?? START;
+  for (const [type, position] of reached) {
+    if (!failed.has(type)) next = maxPosition(next, position);
+  }
+  const behind: Cursor["behind"] = {};
+  for (const [type, position] of reached) {
+    if (comparePositions(position, next) < 0) behind[type] = position;
   }
   return {
     items: page.map((entry) => entry.item),
-    nextCursor: encodeCursor(next),
+    nextCursor: encodeCursor({ at: next, behind }),
     hasMore,
     ...(failures.length > 0 ? { unavailable: failures.map((failure) => failure.type) } : {}),
   };

@@ -45,7 +45,7 @@ import {
   type ProductImagesPort,
   type ProductImageQuote,
 } from "../platform/ports";
-import { logProviderError } from "../platform/redact";
+import { logProviderError } from "../platform/sanitize-error";
 
 /**
  * AI photo operations on a product's photo, for agents and the API: GPT

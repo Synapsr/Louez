@@ -29,6 +29,7 @@ export type {
   ApiPorts,
   BillingPort,
   InsurancePort,
+  LogPort,
   ProductImagesPort,
   StoragePort,
   UrlsPort,

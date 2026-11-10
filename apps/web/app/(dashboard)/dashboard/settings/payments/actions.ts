@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { isApiError } from '@louez/api/platform/errors'
-import { logProviderError } from '@louez/api/platform/redact'
+import { logProviderError } from '@louez/api/platform/sanitize-error'
 import { createDashboardUrl } from '@louez/api/adapters/stripe-connect'
 import {
   requireConnectClient,

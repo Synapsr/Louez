@@ -9,7 +9,7 @@ import {
   type StripeConnectClient,
 } from "../adapters/stripe-connect";
 import { apiError, isApiError } from "../platform/errors";
-import { logProviderError } from "../platform/redact";
+import { logProviderError } from "../platform/sanitize-error";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
 
 /**

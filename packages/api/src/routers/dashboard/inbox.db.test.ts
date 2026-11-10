@@ -95,7 +95,10 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     urls: createTestUrls(),
     afterCommit: (_event: ApiEvent) => {},
     hostedBy: (): "lumycloud" | null => null,
+    log: { error: (event: Record<string, unknown>) => void logged.push(event) },
   };
+  /** What the inbox logged through the app's logger (`ApiPorts.log`). */
+  const logged: Record<string, unknown>[] = [];
 
   let sequence = 0;
   const nextId = (prefix: string) => `${prefix}_${String(++sequence).padStart(12, "0")}`;
@@ -138,6 +141,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   });
 
   beforeEach(async () => {
+    logged.length = 0;
     const { db } = louezDb;
     for (const table of [
       louezDb.inboxAcknowledgements,
@@ -1141,12 +1145,54 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(answer.unavailable, undefined);
   });
 
+  /** A supplier invoice not handled yet, with Super PDP connected. */
+  async function supplierInvoice(createdAt: Date) {
+    const connected = await louezDb.db.query.storeIntegrations.findFirst({
+      where: orm.eq(louezDb.storeIntegrations.storeId, STORE),
+    });
+    if (!connected) {
+      await louezDb.db.insert(louezDb.storeIntegrations).values({
+        id: nextId("ib_int"),
+        storeId: STORE,
+        providerKey: "superpdp",
+        category: "invoicing",
+        enabled: true,
+        status: "active",
+      });
+    }
+    const id = nextId("ib_rin");
+    await louezDb.db.insert(louezDb.receivedInvoices).values({
+      id,
+      storeId: STORE,
+      superPdpInvoiceId: `spdp_${id}`,
+      sellerName: "Wetsuit Supply",
+      sellerIdentifier: "12345678900011",
+      number: `F-${id}`,
+      issueDate: "2026-11-01",
+      totalExclTax: "100.00",
+      totalTax: "20.00",
+      totalInclTax: "120.00",
+      currency: "EUR",
+      latestStatus: "fr:200",
+      createdAt,
+      updatedAt: createdAt,
+    });
+    return id;
+  }
+
+  /** The supplier invoices' table gone while `run` runs, as before its migration. */
+  async function withoutInvoicesTable<T>(run: () => Promise<T>): Promise<T> {
+    await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices TO received_invoices_away`);
+    try {
+      return await run();
+    } finally {
+      await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices_away TO received_invoices`);
+    }
+  }
+
   test("a source that fails costs only its own items, named in unavailable and logged; acknowledging fails", async () => {
     const reservationId = await reservation("pending");
-    // A table the supplier invoices read is gone, as before its migration.
-    await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices TO received_invoices_away`);
-    const logged = mock.method(console, "error", () => {});
-    try {
+    await withoutInvoicesTable(async () => {
       const answer = await list();
       assert.deepEqual(
         answer.items.map((item) => item.id),
@@ -1154,10 +1200,22 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       );
       assert.deepEqual(answer.unavailable, ["supplier_invoice"]);
       assert.equal(answer.hasMore, false);
-      assert.match(
-        String(logged.mock.calls[0]?.arguments[0]),
-        new RegExp(`could not read its supplier_invoice items for store ${STORE}`),
-      );
+
+      // One structured event: the store, the type, the error's sanitized facts.
+      assert.equal(logged.length, 1);
+      const [event] = logged as [
+        { event: string; storeId: string; itemType: string; error: Record<string, unknown> },
+      ];
+      assert.equal(event.event, "inbox.source_failed");
+      assert.equal(event.storeId, STORE);
+      assert.equal(event.itemType, "supplier_invoice");
+      assert.deepEqual(Object.keys(event).sort(), ["error", "event", "itemType", "storeId"]);
+      const text = JSON.stringify(event.error);
+      assert.match(text, /received_invoices/);
+      // The failed query's parameters (the store id, the dates) are not kept.
+      assert.match(text, /params: \[redacted\]/);
+      assert.ok(!text.includes("superpdp"), text);
+      assert.ok(Array.isArray(event.error.frames) && event.error.frames.length > 0);
 
       // The source's own error: the transport answers it as an internal error.
       await assert.rejects(
@@ -1168,9 +1226,53 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
         ),
         /received_invoices/,
       );
-    } finally {
-      logged.mock.restore();
-      await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices_away TO received_invoices`);
+    });
+  });
+
+  test("items of a source that failed come once it works again, at the cursor, and the others only once", async () => {
+    const request = await reservation("pending", { createdAt: ago(3 * HOUR) });
+    const first = await supplierInvoice(ago(2 * HOUR));
+    const second = await supplierInvoice(ago(HOUR));
+    const ids = (items: InboxItem[]) => items.map((item) => item.id);
+
+    // The outage: the request comes, the invoices cannot be read.
+    const outage = await withoutInvoicesTable(() => list());
+    assert.deepEqual(ids(outage.items), [`booking_request:${request}`]);
+    assert.deepEqual(outage.unavailable, ["supplier_invoice"]);
+
+    // Still down: nothing new, the request is not given again, the place is kept.
+    const stillDown = await withoutInvoicesTable(() =>
+      list(session(), { cursor: outage.nextCursor }),
+    );
+    assert.deepEqual(ids(stillDown.items), []);
+    assert.deepEqual(stillDown.unavailable, ["supplier_invoice"]);
+
+    // Back: the invoices come with the cursor, a page at a time, earlier than it.
+    const back = await list(session(), { cursor: stillDown.nextCursor, limit: 1 });
+    assert.deepEqual(ids(back.items), [`supplier_invoice:${first}`]);
+    assert.equal(back.hasMore, true);
+    assert.equal(back.unavailable, undefined);
+    const rest = await list(session(), { cursor: back.nextCursor, limit: 1 });
+    assert.deepEqual(ids(rest.items), [`supplier_invoice:${second}`]);
+    assert.equal(rest.hasMore, false);
+
+    // Caught up: nothing more, and the cursor holds one position again.
+    const after = await list(session(), { cursor: rest.nextCursor });
+    assert.deepEqual(ids(after.items), []);
+    const decoded = JSON.parse(Buffer.from(after.nextCursor, "base64url").toString("utf8"));
+    assert.equal(decoded.b, undefined);
+  });
+
+  test("a cursor whose types standing behind are not the inbox's is refused", async () => {
+    const forged = (body: unknown) => Buffer.from(JSON.stringify(body)).toString("base64url");
+    const at = { t: Date.now(), k: "~", r: "" };
+    for (const b of [
+      [[0, "", "", ["no_such_type"]]],
+      [[0, "", "", []]],
+      [[-1, "", "", ["supplier_invoice"]]],
+      "supplier_invoice",
+    ]) {
+      await rejects(list(session(), { cursor: forged({ ...at, b }) }), "INVALID_CURSOR");
     }
   });
 

@@ -61,7 +61,8 @@ export const INBOX_ACKNOWLEDGE_MAX = 100;
 const cursorInput = z
   .string()
   .min(1)
-  .max(500)
+  // Longer while some types stand behind (a source that failed): at most one position per type.
+  .max(4_000)
   .describe(
     "The nextCursor of the previous call. Leave it out to read the whole inbox from the oldest item.",
   );
@@ -128,7 +129,7 @@ export const listInboxOutput = z.object({
     .array(z.enum(INBOX_ITEM_TYPES))
     .optional()
     .describe(
-      "Present when Louez could not read some item types this time: the answer lacks their items. Tell the user the inbox is incomplete; a later call without cursor reads them again.",
+      "Present when Louez could not read some item types this time: the answer lacks their items, so tell the user the inbox is incomplete. nextCursor keeps their place: a later call with it brings them once Louez reads them again, with their own, earlier occurredAt.",
     ),
 });
 
