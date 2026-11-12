@@ -63,6 +63,7 @@ Load only the `code-review/` docs that match what you're touching — not the fu
 | Forms (TanStack Form, `useAppForm`)  | [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) (Forms section)                                                                  |
 | DB queries, oRPC routes, React Query | [docs/code-review/04-data-layer.md](docs/code-review/04-data-layer.md) + [docs/from-scratch/04-backend.md](docs/from-scratch/04-backend.md)           |
 | Dashboard actions, API, MCP tools    | [docs/architecture/api-and-agents.md](docs/architecture/api-and-agents.md) — every user action is one `storeProcedure`, never a server action         |
+| Reservation, stock or payment writes | [docs/domain/reservation-invariants.md](docs/domain/reservation-invariants.md) — the rules every writer holds, and which are still open               |
 | Tailwind / styling                   | [docs/code-review/05-styling.md](docs/code-review/05-styling.md)                                                                                      |
 | Translations / i18n                  | [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) (Internationalization section)                                                   |
 | Auth, security, user input           | [docs/code-review/06-security.md](docs/code-review/06-security.md)                                                                                    |
