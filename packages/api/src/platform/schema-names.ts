@@ -987,6 +987,7 @@ export const SCHEMA_NAMES = {
     "payment_requests_store_idx",
     "payment_requests_token_idx",
     "payment_requests_token_unique",
+    "payments_payment_intent_idx",
     "payments_refund_of_payment_idx",
     "payments_reservation_checkout_session_unique",
     "payments_reservation_idx",

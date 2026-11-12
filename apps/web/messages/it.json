@@ -2216,15 +2216,11 @@
         "unconfirmed": {
           "open": "Risolvi con Stripe",
           "title": "Autorizzazione non confermata",
-          "description": "Stripe non ha mai confermato questa richiesta di autorizzazione. Cercala nella dashboard di Stripe dell'account su cui è stata richiesta, alla voce Pagamenti, poi indica a Louez cosa hai trovato.",
-          "nothingTitle": "Niente in Stripe",
-          "nothingDescription": "Sceglilo solo dopo aver controllato quella dashboard di Stripe. Chiudere la richiesta non annulla nulla su Stripe; potrai poi creare una nuova autorizzazione. Se in seguito compare un'autorizzazione, Louez la registra: diventa la cauzione di questa prenotazione se non ne ha una, e viene rilasciata se un'altra preautorizzazione la garantisce già. Un errore può quindi lasciare per un po' una preautorizzazione in più sulla carta del cliente.",
-          "nothingAction": "Chiudi la richiesta",
-          "foundTitle": "L'ho trovata in Stripe",
-          "foundDescription": "Incolla l'ID del pagamento i cui metadati in Stripe indicano questa prenotazione (inizia con pi_). Louez verifica che corrisponda a questa richiesta prima di registrarlo. Qualsiasi altra autorizzazione si gestisce da Stripe.",
-          "foundAction": "Registra questo pagamento",
+          "description": "Stripe non ha mai confermato questa richiesta di autorizzazione. Controlla Pagamenti nella dashboard di Stripe dell'account su cui è stata richiesta.",
+          "explanation": "Chiudere la richiesta non annulla nulla su Stripe. Louez cerca prima l'autorizzazione da sé e la registra se esiste. Se in seguito compare un'autorizzazione, Louez la registra quando Stripe la segnala: diventa la cauzione di questa prenotazione se non ne ha una, e viene rilasciata se un'altra preautorizzazione la garantisce già. Chiudere la richiesta mentre esiste una preautorizzazione può quindi lasciare per un po' una preautorizzazione in più sulla carta del cliente. Un'autorizzazione che vedi su Stripe e che Louez non trova si gestisce su Stripe: rilasciala o incassala lì.",
+          "confirm": "Chiudi la richiesta",
           "closed": "Richiesta chiusa. Puoi creare una nuova autorizzazione.",
-          "recorded": "L'autorizzazione di Stripe è registrata."
+          "recorded": "Louez ha trovato l'autorizzazione su Stripe e l'ha registrata."
         }
       },
       "subtotal": "Subtotale",
@@ -9427,11 +9423,7 @@
     "stripeRequiredForPaymentMode": "La modalità di pagamento online richiede un account Stripe collegato. Collega Stripe in Impostazioni > Pagamenti.",
     "locationLimitReached": "Un negozio può avere al massimo 50 punti di ritiro. Disattivane uno o riutilizzalo.",
     "depositAttempt": {
-      "none": "Questa prenotazione non ha più autorizzazioni non confermate.",
-      "foundAtStripe": "Stripe ha questa autorizzazione: Louez l'ha registrata invece di chiudere la richiesta.",
-      "intentNotFound": "Stripe non ha alcun pagamento con questo ID sull'account su cui è stata richiesta l'autorizzazione.",
-      "intentMismatch": "Questo pagamento non è l'autorizzazione richiesta per questa prenotazione: i suoi metadati Stripe non la indicano, oppure importo, valuta, carta o cliente sono diversi. Non è stato registrato nulla: gestisci questa autorizzazione da Stripe.",
-      "stripeUnavailable": "Impossibile raggiungere Stripe. Non è stato registrato nulla. Riprova tra qualche minuto."
+      "none": "Questa prenotazione non ha più autorizzazioni non confermate."
     }
   },
   "welcome": {

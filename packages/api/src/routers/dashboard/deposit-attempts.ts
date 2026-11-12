@@ -9,11 +9,10 @@ import { storeProcedure } from "../../platform/procedures";
 
 /**
  * The store gets out of a deposit hold Stripe has not confirmed and nothing else can
- * settle: it declares it found no authorization in its Stripe dashboard, or it names
- * the PaymentIntent, which is recorded only when its Stripe metadata names this
- * reservation and this attempt. The logic is the app's (`ports.depositHolds`, apps/web
- * lib/reservations/deposit-hold.ts); this holds the contract, the rights and the
- * errors.
+ * settle, after it checked its Stripe dashboard: Louez looks the attempt up first and
+ * records the PaymentIntent it finds, else closes the attempt on the store's word. The
+ * logic is the app's (`ports.depositHolds`, apps/web lib/reservations/deposit-hold.ts);
+ * this holds the contract, the rights and the errors.
  *
  * A session only: it decides, on the store's word, about money held on a customer's
  * card. A closure that was wrong can leave an extra hold on the card: Louez records it
@@ -45,7 +44,6 @@ export const resolveDepositAttempt = storeProcedure
       reservationId,
       storeId: context.actor.storeId,
       actorUserId: context.actor.credential.userId,
-      resolution: input.resolution,
     });
     if (resolved.ok) {
       return {
@@ -61,24 +59,5 @@ export const resolveDepositAttempt = storeProcedure
         throw depositAttemptErrors.none(reservationId);
       case "attempt_in_progress":
         throw depositAttemptErrors.inProgress(reservationId);
-      case "intent_not_found":
-        throw depositAttemptErrors.intentNotFound(
-          reservationId,
-          input.resolution.kind === "payment_intent" ? input.resolution.paymentIntentId : "",
-        );
-      case "stripe_unavailable":
-        throw depositAttemptErrors.stripeUnavailable(reservationId);
-      case "found_at_stripe":
-        throw depositAttemptErrors.foundAtStripe(
-          reservationId,
-          resolved.paymentIntentId,
-          resolved.outcome,
-        );
-      case "intent_mismatch":
-        throw depositAttemptErrors.intentMismatch(
-          reservationId,
-          input.resolution.kind === "payment_intent" ? input.resolution.paymentIntentId : "",
-          resolved.mismatches,
-        );
     }
   });

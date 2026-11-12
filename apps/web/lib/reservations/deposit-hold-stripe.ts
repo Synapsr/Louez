@@ -74,11 +74,6 @@ export type DepositHoldStripe = {
   ): Promise<DepositAuthorizationAnswer>;
   /** The PaymentIntent as it is now, on that account. */
   readIntent(accountId: string, paymentIntentId: string): Promise<DepositIntent>;
-  /**
-   * The PaymentIntent as it is now, on that account, or null when Stripe has no such
-   * PaymentIntent there. Throws when Stripe could not answer.
-   */
-  findIntent(accountId: string, paymentIntentId: string): Promise<DepositIntent | null>;
   /** The customer a saved card belongs to on that account; null once detached. */
   cardCustomer(accountId: string, paymentMethodId: string): Promise<string | null>;
   /** One page of a customer's PaymentIntents on that account, newest first. */
@@ -223,20 +218,6 @@ export const stripeDepositHold: DepositHoldStripe = {
       { stripeAccount: accountId, timeout: REQUEST_TIMEOUT_MS },
     );
     return depositIntentFromStripe(paymentIntent);
-  },
-
-  async findIntent(accountId, paymentIntentId) {
-    try {
-      return await stripeDepositHold.readIntent(accountId, paymentIntentId);
-    } catch (error) {
-      if (
-        error instanceof Stripe.errors.StripeInvalidRequestError &&
-        error.code === "resource_missing"
-      ) {
-        return null;
-      }
-      throw error;
-    }
   },
 
   async cardCustomer(accountId, paymentMethodId) {

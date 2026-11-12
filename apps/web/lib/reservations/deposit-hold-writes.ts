@@ -252,6 +252,7 @@ async function writeHoldRow(
         releaseOwedAt: write.releaseOwed ? sql`COALESCE(${payments.releaseOwedAt}, NOW())` : null,
         // A request that still asks about a pending attempt keeps its claim.
         claimedUntil: write.status === "pending" ? undefined : null,
+        claimToken: write.status === "pending" ? undefined : null,
         // Holds recorded before the billing facts existed get them with their capture.
         ...(write.status === "completed"
           ? {
@@ -372,29 +373,41 @@ async function writeReservationDeposit(
 }
 
 /**
- * A request's claim on the store's attempt: the instant, in seconds on the database's
- * clock, it set the attempt's `claimed_until` to. Another request sets another, so it
- * names the claim and its owner: only that request renews it, releases it, or writes
- * for the attempt under it. Renewing it moves the instant, here too.
+ * A request's claim on the store's attempt: the random token it wrote in the attempt's
+ * `claim_token` when it claimed it. No other request writes the same, so the token
+ * names the claim and its owner: only that request renews it, gives it back, or writes
+ * for the attempt under it. Renewing moves `claimed_until`, never the token.
  */
-export type AttemptClaim = { readonly attemptId: string; token: number };
-
-/** `claimed_until` as an `AttemptClaim` holds it, whatever the session's time zone. */
-export const claimTokenOf = sql<number | null>`UNIX_TIMESTAMP(${payments.claimedUntil})`;
+export type AttemptClaim = {
+  readonly attemptId: string;
+  readonly reservationId: string;
+  readonly token: string;
+};
 
 /**
- * Whether the request that holds `claim` may write for its attempt, read under the
- * reservation's lock: the attempt is still pending under that very claim, or it is
- * pending no more (the webhook settled it), which no request claims. A pending attempt
- * under another claim, or under none, was taken over or given back meanwhile: its
- * writer is another request.
+ * Whether the request that holds `claim` holds it still. Called under the
+ * reservation's row lock, which every writer of the claim takes first; it then locks
+ * the attempt's row. Held only while the attempt is pending under that very token: one
+ * another request claimed, gave back or settled meanwhile (the webhook clears the
+ * token when it records the attempt's PaymentIntent) is not this request's any more.
  */
-async function holdsClaim(tx: Transaction, claim: AttemptClaim): Promise<boolean> {
+export async function holdsClaim(tx: Transaction, claim: AttemptClaim): Promise<boolean> {
   const [row] = await tx
-    .select({ status: payments.status, token: claimTokenOf })
+    .select({ status: payments.status, token: payments.claimToken })
     .from(payments)
-    .where(eq(payments.id, claim.attemptId));
-  return !row || row.status !== "pending" || Number(row.token) === claim.token;
+    .where(eq(payments.id, claim.attemptId))
+    .for("update");
+  return row?.status === "pending" && row.token === claim.token;
+}
+
+/** Locks the reservation's row: the first lock of every write about a claim. */
+export async function lockReservationRow(tx: Transaction, reservationId: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: reservations.id })
+    .from(reservations)
+    .where(eq(reservations.id, reservationId))
+    .for("update");
+  return row !== undefined;
 }
 
 export type SettledDepositIntent =
@@ -439,7 +452,9 @@ export async function settleDepositIntent(
 /**
  * `settleDepositIntent` for the request that claimed the store's attempt and read the
  * PaymentIntent from Stripe: it writes only while it still holds its claim
- * (`holdsClaim`), and else writes nothing and answers `claim_lost`.
+ * (`holdsClaim`), and else writes nothing and answers `claim_lost`. What it read
+ * before it lost the claim is never written: the attempt's state is then what another
+ * request, or the webhook, recorded from its own read of Stripe.
  */
 export async function settleClaimedIntent(
   database: Database,
@@ -548,10 +563,10 @@ export type AttemptClosure =
  * `failed`, so no request asks about it again and the next attempt has a new key,
  * while a PaymentIntent Stripe makes of it after all still finds its row
  * (`bindDepositIntent`). A refusal fails the deposit; the store's declaration is
- * recorded with who made it. Only while the row is still that attempt, pending and
- * without a PaymentIntent, under the claim of the request that closes it: one the
- * webhook settled meanwhile is left as it is (`settled_meanwhile`), and one another
- * request claimed meanwhile is left to it (`claim_lost`).
+ * recorded with who made it. Only while the request that closes it still holds its
+ * claim (`holdsClaim`), else `claim_lost`, and while the row has no PaymentIntent: one
+ * the webhook wrote meanwhile on the pending row is left as it is
+ * (`settled_meanwhile`).
  */
 export async function closeAbsentAttempt(
   database: Database,
@@ -567,18 +582,16 @@ export async function closeAbsentAttempt(
   const attemptId = input.claim.attemptId;
   return database.transaction(async (tx) => {
     const deposit = await lockDeposit(tx, input);
-    const row = deposit?.holds.find((hold) => hold.id === attemptId);
-    if (!deposit || !row || row.status !== "pending" || row.paymentIntentId !== null) {
-      return "settled_meanwhile";
-    }
-    if (!(await holdsClaim(tx, input.claim))) return "claim_lost";
+    if (!deposit || !(await holdsClaim(tx, input.claim))) return "claim_lost";
+    const row = deposit.holds.find((hold) => hold.id === attemptId);
+    if (!row || row.paymentIntentId !== null) return "settled_meanwhile";
     const writes = absentAttemptTransition({
       refused: closure.kind === "refused",
       reservationHolds: isHeld(deposit.depositStatus),
     });
     await tx
       .update(payments)
-      .set({ status: "failed", claimedUntil: null, updatedAt: sql`NOW()` })
+      .set({ status: "failed", claimedUntil: null, claimToken: null, updatedAt: sql`NOW()` })
       .where(
         and(
           eq(payments.id, attemptId),

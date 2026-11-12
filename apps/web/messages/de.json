@@ -2255,15 +2255,11 @@
         "unconfirmed": {
           "open": "Mit Stripe klären",
           "title": "Unbestätigte Autorisierung",
-          "description": "Stripe hat diese Autorisierungsanfrage nie bestätigt. Suchen Sie sie im Stripe-Dashboard des Kontos, für das sie angefragt wurde, unter Zahlungen und teilen Sie Louez mit, was Sie gefunden haben.",
-          "nothingTitle": "Nichts in Stripe",
-          "nothingDescription": "Wählen Sie dies erst, nachdem Sie dieses Stripe-Dashboard geprüft haben. Das Schließen der Anfrage storniert bei Stripe nichts; danach können Sie eine neue Autorisierung erstellen. Erscheint später doch eine Autorisierung, erfasst Louez sie: Sie wird zur Kaution dieser Reservierung, wenn diese noch keine hat, und wird freigegeben, wenn bereits eine andere Kautionsreservierung sie absichert. Eine falsche Angabe kann also vorübergehend eine zusätzliche Kautionsreservierung auf der Karte des Kunden belassen.",
-          "nothingAction": "Anfrage schließen",
-          "foundTitle": "Ich habe sie in Stripe gefunden",
-          "foundDescription": "Fügen Sie die ID der Zahlung ein, deren Metadaten in Stripe diese Reservierung nennen (sie beginnt mit pi_). Louez prüft, ob sie zu dieser Anfrage passt, bevor sie erfasst wird. Jede andere Autorisierung bearbeiten Sie in Stripe.",
-          "foundAction": "Diese Zahlung erfassen",
+          "description": "Stripe hat diese Autorisierungsanfrage nie bestätigt. Prüfen Sie den Bereich Zahlungen im Stripe-Dashboard des Kontos, auf dem sie angefragt wurde.",
+          "explanation": "Das Schließen der Anfrage storniert bei Stripe nichts. Louez sucht zuerst selbst nach der Autorisierung und erfasst sie, wenn es sie gibt. Taucht später eine Autorisierung auf, erfasst Louez sie, sobald Stripe sie meldet: Sie wird zur Kaution dieser Reservierung, wenn diese noch keine hat, und wird freigegeben, wenn bereits eine andere Kautionsreservierung sie absichert. Wird die Anfrage geschlossen, obwohl eine Autorisierung besteht, kann deshalb eine Zeit lang eine zusätzliche Reservierung auf der Karte des Kunden bleiben. Eine Autorisierung, die Sie in Stripe sehen und die Louez nicht findet, wird in Stripe bearbeitet: Geben Sie sie dort frei oder ziehen Sie sie dort ein.",
+          "confirm": "Anfrage schließen",
           "closed": "Anfrage geschlossen. Sie können eine neue Autorisierung erstellen.",
-          "recorded": "Die Autorisierung aus Stripe ist erfasst."
+          "recorded": "Louez hat die Autorisierung bei Stripe gefunden und erfasst."
         }
       },
       "subtotal": "Zwischensumme",
@@ -9427,11 +9423,7 @@
     "stripeRequiredForPaymentMode": "Der Online-Zahlungsmodus erfordert ein verbundenes Stripe-Konto. Verbinden Sie Stripe unter Einstellungen > Zahlungen.",
     "locationLimitReached": "Ein Shop kann höchstens 50 Abholorte haben. Deaktivieren Sie einen oder verwenden Sie ihn erneut.",
     "depositAttempt": {
-      "none": "Diese Reservierung hat keine unbestätigte Autorisierung mehr.",
-      "foundAtStripe": "Stripe hat diese Autorisierung: Louez hat sie erfasst, statt die Anfrage zu schließen.",
-      "intentNotFound": "Stripe hat keine Zahlung mit dieser ID auf dem Konto, auf dem die Autorisierung angefragt wurde.",
-      "intentMismatch": "Diese Zahlung ist nicht die für diese Reservierung angefragte Autorisierung: Ihre Stripe-Metadaten nennen diese Reservierung nicht, oder Betrag, Währung, Karte oder Kunde weichen ab. Es wurde nichts erfasst: Bearbeiten Sie diese Autorisierung in Stripe.",
-      "stripeUnavailable": "Stripe ist nicht erreichbar. Es wurde nichts erfasst. Versuchen Sie es in einigen Minuten erneut."
+      "none": "Diese Reservierung hat keine unbestätigte Autorisierung mehr."
     }
   },
   "welcome": {

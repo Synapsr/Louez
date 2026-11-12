@@ -93,11 +93,11 @@ export interface ApiPorts {
   log?: LogPort;
 }
 
-/** What the store's resolution of an unconfirmed deposit hold came to. */
+/** What the store's closing of an unconfirmed deposit hold came to. */
 export type DepositAttemptResolution =
   | {
       ok: true;
-      /** `closed`, or what the named PaymentIntent was recorded as. */
+      /** `closed`, or what the PaymentIntent Louez found at Stripe was recorded as. */
       outcome:
         | "closed"
         | "authorized"
@@ -110,27 +110,20 @@ export type DepositAttemptResolution =
     }
   | {
       ok: false;
-      error:
-        | "reservation_not_found"
-        | "no_unconfirmed_attempt"
-        | "attempt_in_progress"
-        | "intent_not_found"
-        | "stripe_unavailable";
-    }
-  | { ok: false; error: "found_at_stripe"; paymentIntentId: string; outcome: string }
-  | { ok: false; error: "intent_mismatch"; mismatches: readonly string[] };
+      error: "reservation_not_found" | "no_unconfirmed_attempt" | "attempt_in_progress";
+    };
 
 /** The store's deposit holds, lent by the app (apps/web lib/api/deposit-holds-port.ts). */
 export interface DepositHoldsPort {
   /**
-   * Resolves the reservation's deposit hold attempt Stripe has not confirmed, on the
-   * store's word: it found nothing at Stripe, or it names the PaymentIntent.
+   * Closes the reservation's deposit hold attempt Stripe has not confirmed, on the
+   * store's word, once Louez's own lookup, when it can make one, found nothing; what it
+   * finds is recorded instead.
    */
   resolveUnconfirmedAttempt: (input: {
     reservationId: string;
     storeId: string;
     actorUserId: string;
-    resolution: { kind: "nothing_at_stripe" } | { kind: "payment_intent"; paymentIntentId: string };
   }) => Promise<DepositAttemptResolution>;
 }
 

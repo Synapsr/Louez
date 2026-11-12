@@ -25,7 +25,7 @@ import { type DepositIntent, intentStateOf } from "./util.deposit-hold-transitio
 // or does not, each webhook comes in any order and more than once, a process dies
 // between two steps, a writer acts on what it read from Stripe earlier, the store
 // captures and releases from Louez or from Stripe, the store changes connected
-// accounts, the store resolves an attempt Stripe never confirmed (rightly or not),
+// accounts, the store closes an attempt Stripe never confirmed (rightly or not),
 // time passes, and Stripe makes a PaymentIntent of a request it answered 500 to, a
 // day later or more. After every step the rows are checked
 // against what the fake Stripe holds; at the end of each walk every event is delivered
@@ -102,12 +102,8 @@ const coverage = {
   closedThenRecorded: 0,
   /** The same, on an account the store had left by then. */
   closedThenRecordedOnLeftAccount: 0,
-  /** The store said it found nothing at Stripe, and the attempt was closed. */
+  /** The store closed an attempt, and Louez's lookup found nothing: it was closed. */
   storeClosed: 0,
-  /** The store named the attempt's PaymentIntent, and it was recorded. */
-  storeNamed: 0,
-  /** The store named a PaymentIntent that is not the attempt's, and was refused. */
-  storeRefused: 0,
   /** A capture or a release Stripe made whose answer was lost. */
   answersLost: 0,
   accountMoves: 0,
@@ -544,37 +540,17 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
       {
         weight: 1.2,
         run: async () => {
-          // The store resolves an attempt Stripe has not confirmed, from what its Stripe
-          // dashboard shows: it names the attempt's PaymentIntent, or a wrong one, or
-          // says it found nothing, rightly or because Stripe has not made it yet.
+          // The store closes an attempt Stripe has not confirmed, rightly or because
+          // Stripe has not made its PaymentIntent yet: Louez looks it up first.
           const rows = await readRows();
           const pending = rows.find((row) => row.type === "deposit_hold" && row.status === "pending");
-          if (!pending) return "no attempt to resolve";
-          const made = stripe.intents.find((intent) => intent.attemptId === pending.id);
-          const other = ofReservation().find((intent) => intent.attemptId !== pending.id);
-          const choice = random.pick(["nothing", "its own", "its own", "a wrong one"] as const);
-          // A wrong one: another PaymentIntent of the reservation, or a mistyped id.
-          const wrong = other?.id ?? "pi_mistyped";
-          const resolution =
-            choice === "nothing" || (choice === "its own" && !made)
-              ? ({ kind: "nothing_at_stripe" } as const)
-              : ({
-                  kind: "payment_intent",
-                  paymentIntentId: choice === "its own" && made ? made.id : wrong,
-                } as const);
+          if (!pending) return "no attempt to close";
           const result = await hold.resolveUnconfirmedAttempt(
-            { reservationId, storeId: STORE, actorUserId: "user_model", resolution },
+            { reservationId, storeId: STORE, actorUserId: "user_model" },
             holdDeps(),
           );
-          if (resolution.kind === "payment_intent" && choice === "a wrong one") {
-            assert.equal(result.ok, false, `${resolution.paymentIntentId} was taken for the attempt`);
-            coverage.storeRefused += 1;
-          }
           if (result.ok && result.outcome === "closed") coverage.storeClosed += 1;
-          if (result.ok && resolution.kind === "payment_intent") coverage.storeNamed += 1;
-          const said =
-            resolution.kind === "nothing_at_stripe" ? "nothing at Stripe" : resolution.paymentIntentId;
-          return `the store resolves ${pending.id} (${said}): ${result.ok ? result.outcome : result.error}`;
+          return `the store closes ${pending.id}: ${result.ok ? result.outcome : result.error}`;
         },
       },
       {

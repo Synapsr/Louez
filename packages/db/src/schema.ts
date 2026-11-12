@@ -2076,6 +2076,9 @@ export const payments = mysqlTable(
     // A request of Louez is settling that attempt with the provider until then, on the
     // database's clock. Null when none is.
     claimedUntil: timestamp("claimed_until", { mode: "date" }),
+    // The request that holds that claim: a random value it wrote when it claimed the
+    // attempt, which no other request writes. Null when no request holds it.
+    claimToken: varchar("claim_token", { length: 21 }),
     // A deposit hold the store asked for: the provider's customer the request was sent
     // with, so the attempt can still be looked up once the card is detached. Null on
     // every other row, and on attempts claimed before the column.
@@ -2099,6 +2102,7 @@ export const payments = mysqlTable(
       table.stripeCheckoutSessionId,
     ),
     refundOfPaymentIdx: index("payments_refund_of_payment_idx").on(table.refundOfPaymentId),
+    paymentIntentIdx: index("payments_payment_intent_idx").on(table.stripePaymentIntentId),
   }),
 );
 

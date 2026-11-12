@@ -2216,15 +2216,11 @@
         "unconfirmed": {
           "open": "Oplossen met Stripe",
           "title": "Onbevestigde autorisatie",
-          "description": "Stripe heeft dit autorisatieverzoek nooit bevestigd. Zoek het op in het Stripe-dashboard van het account waarop het werd aangevraagd, onder Betalingen, en laat Louez weten wat u vond.",
-          "nothingTitle": "Niets in Stripe",
-          "nothingDescription": "Kies dit pas nadat u dat Stripe-dashboard hebt gecontroleerd. Het verzoek sluiten annuleert niets bij Stripe; daarna kunt u een nieuwe autorisatie aanmaken. Verschijnt er later toch een autorisatie, dan registreert Louez die: ze wordt de borg van deze reservering als die er nog geen heeft, en wordt vrijgegeven als een andere borgreservering de reservering al dekt. Een verkeerd antwoord kan dus een tijd een extra borgreservering op de kaart van de klant laten staan.",
-          "nothingAction": "Verzoek sluiten",
-          "foundTitle": "Ik heb hem in Stripe gevonden",
-          "foundDescription": "Plak de ID van de betaling waarvan de metadata in Stripe deze reservering vermelden (die begint met pi_). Louez controleert of hij bij dit verzoek hoort voordat hij wordt geregistreerd. Elke andere autorisatie handelt u af in Stripe.",
-          "foundAction": "Deze betaling registreren",
+          "description": "Stripe heeft dit autorisatieverzoek nooit bevestigd. Controleer Betalingen in het Stripe-dashboard van het account waarop het is aangevraagd.",
+          "explanation": "Het verzoek sluiten annuleert niets bij Stripe. Louez zoekt eerst zelf naar de autorisatie en registreert die als ze bestaat. Verschijnt er later een autorisatie, dan registreert Louez die zodra Stripe ze meldt: ze wordt de borg van deze reservering als die er nog geen heeft, en wordt vrijgegeven als een andere borgreservering de reservering al dekt. Het verzoek sluiten terwijl er een borgreservering bestaat, kan dus een tijdlang een extra borgreservering op de kaart van de klant laten staan. Een autorisatie die u in Stripe ziet maar die Louez niet vindt, handelt u af in Stripe: geef ze daar vrij of int ze daar.",
+          "confirm": "Verzoek sluiten",
           "closed": "Verzoek gesloten. U kunt een nieuwe autorisatie aanmaken.",
-          "recorded": "De autorisatie uit Stripe is geregistreerd."
+          "recorded": "Louez heeft de autorisatie bij Stripe gevonden en geregistreerd."
         }
       },
       "subtotal": "Subtotaal",
@@ -9427,11 +9423,7 @@
     "stripeRequiredForPaymentMode": "Online betalen vereist een gekoppeld Stripe-account. Koppel Stripe via Instellingen > Betalingen.",
     "locationLimitReached": "Een winkel kan maximaal 50 afhaalpunten hebben. Deactiveer er een of gebruik er een opnieuw.",
     "depositAttempt": {
-      "none": "Deze reservering heeft geen onbevestigde autorisatie meer.",
-      "foundAtStripe": "Stripe heeft deze autorisatie wel: Louez heeft hem geregistreerd in plaats van het verzoek te sluiten.",
-      "intentNotFound": "Stripe heeft geen betaling met deze ID op het account waarop de autorisatie werd aangevraagd.",
-      "intentMismatch": "Deze betaling is niet de autorisatie die voor deze reservering werd aangevraagd: de Stripe-metadata vermelden deze reservering niet, of bedrag, valuta, kaart of klant verschillen. Er is niets geregistreerd: handel deze autorisatie af in Stripe.",
-      "stripeUnavailable": "Stripe is niet bereikbaar. Er is niets geregistreerd. Probeer het over enkele minuten opnieuw."
+      "none": "Deze reservering heeft geen onbevestigde autorisatie meer."
     }
   },
   "welcome": {

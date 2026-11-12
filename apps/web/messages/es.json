@@ -2255,15 +2255,11 @@
         "unconfirmed": {
           "open": "Resolver con Stripe",
           "title": "Autorización sin confirmar",
-          "description": "Stripe nunca confirmó esta solicitud de autorización. Búsquela en el panel de Stripe de la cuenta en la que se solicitó, en Pagos, y luego indique a Louez lo que encontró.",
-          "nothingTitle": "Nada en Stripe",
-          "nothingDescription": "Elija esta opción solo después de revisar ese panel de Stripe. Cerrar la solicitud no cancela nada en Stripe; después podrá crear una nueva autorización. Si más adelante aparece una autorización, Louez la registra: pasa a ser la fianza de esta reserva si no tiene ninguna, y se libera si otra retención ya la garantiza. Un error puede, por tanto, dejar durante un tiempo una retención de más en la tarjeta del cliente.",
-          "nothingAction": "Cerrar la solicitud",
-          "foundTitle": "La encontré en Stripe",
-          "foundDescription": "Pegue el ID del pago cuyos metadatos en Stripe indican esta reserva (empieza por pi_). Louez comprueba que corresponde a esta solicitud antes de registrarlo. Cualquier otra autorización se gestiona desde Stripe.",
-          "foundAction": "Registrar este pago",
+          "description": "Stripe nunca confirmó esta solicitud de autorización. Revise Pagos en el panel de Stripe de la cuenta en la que se solicitó.",
+          "explanation": "Cerrar la solicitud no cancela nada en Stripe. Louez busca primero la autorización por sí mismo y la registra si existe. Si más adelante aparece una autorización, Louez la registra cuando Stripe la notifica: pasa a ser la fianza de esta reserva si no tiene ninguna, y se libera si otra retención ya la garantiza. Por eso, cerrar la solicitud mientras existe una retención puede dejar durante un tiempo una retención de más en la tarjeta del cliente. Una autorización que usted ve en Stripe y que Louez no encuentra se gestiona en Stripe: libérela o cóbrela allí.",
+          "confirm": "Cerrar la solicitud",
           "closed": "Solicitud cerrada. Puede crear una nueva autorización.",
-          "recorded": "La autorización de Stripe está registrada."
+          "recorded": "Louez encontró la autorización en Stripe y la registró."
         }
       },
       "subtotal": "Subtotal",
@@ -9427,11 +9423,7 @@
     "stripeRequiredForPaymentMode": "El modo de pago en línea requiere una cuenta de Stripe conectada. Conecta Stripe en Ajustes > Pagos.",
     "locationLimitReached": "Una tienda puede tener 50 puntos de recogida como máximo. Desactiva uno o reutilízalo.",
     "depositAttempt": {
-      "none": "Esta reserva ya no tiene ninguna autorización sin confirmar.",
-      "foundAtStripe": "Stripe sí tiene esta autorización: Louez la registró en lugar de cerrar la solicitud.",
-      "intentNotFound": "Stripe no tiene ningún pago con este ID en la cuenta donde se solicitó la autorización.",
-      "intentMismatch": "Este pago no es la autorización solicitada para esta reserva: sus metadatos de Stripe no la mencionan, o el importe, la moneda, la tarjeta o el cliente son distintos. No se registró nada: gestione esta autorización desde Stripe.",
-      "stripeUnavailable": "No se pudo contactar con Stripe. No se registró nada. Vuelva a intentarlo en unos minutos."
+      "none": "Esta reserva ya no tiene ninguna autorización sin confirmar."
     }
   },
   "welcome": {

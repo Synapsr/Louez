@@ -40,7 +40,7 @@ mock.module("@louez/auth", {
   },
 });
 
-// The store's resolution of a deposit hold Stripe has not confirmed: the contract, the
+// The store's closing of a deposit hold Stripe has not confirmed: the contract, the
 // rights and the errors. What it does to the hold is the app's (apps/web
 // lib/reservations/deposit-hold.db.test.ts); here the port is a fake that answers what
 // it is told and records what it was asked.
@@ -137,10 +137,9 @@ describe("resolveDepositAttempt (database)", { skip: skipWithoutTestDatabase() }
     return data;
   }
 
-  test("a session resolves the store's attempt, as the signed-in user", async () => {
+  test("a session closes the store's attempt, as the signed-in user", async () => {
     const result = await client(session()).reservations.resolveDepositAttempt({
       reservationId: RESERVATION,
-      resolution: { kind: "nothing_at_stripe" },
     });
 
     assert.deepEqual(result, {
@@ -148,14 +147,20 @@ describe("resolveDepositAttempt (database)", { skip: skipWithoutTestDatabase() }
       outcome: "closed",
       paymentIntentId: null,
     });
-    assert.deepEqual(asked, [
-      {
-        reservationId: RESERVATION,
-        storeId: STORE,
-        actorUserId: OWNER,
-        resolution: { kind: "nothing_at_stripe" },
-      },
-    ]);
+    assert.deepEqual(asked, [{ reservationId: RESERVATION, storeId: STORE, actorUserId: OWNER }]);
+  });
+
+  test("what Louez found at Stripe instead is a success that says what was recorded", async () => {
+    answer = { ok: true, outcome: "authorized", paymentIntentId: "pi_found" };
+    const result = await client(session()).reservations.resolveDepositAttempt({
+      reservationId: RESERVATION,
+    });
+
+    assert.deepEqual(result, {
+      reservationId: RESERVATION,
+      outcome: "authorized",
+      paymentIntentId: "pi_found",
+    });
   });
 
   test("no API key or agent may call it, whatever its rights", async () => {
@@ -183,21 +188,8 @@ describe("resolveDepositAttempt (database)", { skip: skipWithoutTestDatabase() }
     };
 
     await rejects(
-      client(agent).reservations.resolveDepositAttempt({
-        reservationId: RESERVATION,
-        resolution: { kind: "nothing_at_stripe" },
-      }),
+      client(agent).reservations.resolveDepositAttempt({ reservationId: RESERVATION }),
       "SESSION_ONLY",
-    );
-    assert.deepEqual(asked, []);
-  });
-
-  test("a PaymentIntent id that is not one is refused before anything is asked", async () => {
-    await assert.rejects(
-      client(session()).reservations.resolveDepositAttempt({
-        reservationId: RESERVATION,
-        resolution: { kind: "payment_intent", paymentIntentId: "ch_123" },
-      }),
     );
     assert.deepEqual(asked, []);
   });
@@ -219,34 +211,11 @@ describe("resolveDepositAttempt (database)", { skip: skipWithoutTestDatabase() }
         "DEPOSIT_ATTEMPT_IN_PROGRESS",
         "errors.stripe.authorizationInProgress",
       ],
-      [
-        { ok: false, error: "intent_not_found" },
-        "PAYMENT_INTENT_NOT_FOUND",
-        "errors.depositAttempt.intentNotFound",
-      ],
-      [
-        { ok: false, error: "stripe_unavailable" },
-        "STRIPE_UNAVAILABLE",
-        "errors.depositAttempt.stripeUnavailable",
-      ],
-      [
-        { ok: false, error: "found_at_stripe", paymentIntentId: "pi_found", outcome: "authorized" },
-        "DEPOSIT_ATTEMPT_FOUND_AT_STRIPE",
-        "errors.depositAttempt.foundAtStripe",
-      ],
-      [
-        { ok: false, error: "intent_mismatch", mismatches: ["amount", "card"] },
-        "PAYMENT_INTENT_MISMATCH",
-        "errors.depositAttempt.intentMismatch",
-      ],
     ];
     for (const [refusal, code, i18nKey] of cases) {
       answer = refusal;
       const data = await rejects(
-        client(session()).reservations.resolveDepositAttempt({
-          reservationId: RESERVATION,
-          resolution: { kind: "payment_intent", paymentIntentId: "pi_named" },
-        }),
+        client(session()).reservations.resolveDepositAttempt({ reservationId: RESERVATION }),
         code,
       );
       assert.equal(data?.i18nKey, i18nKey, code);

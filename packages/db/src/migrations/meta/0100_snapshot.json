@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "c0023565-c573-4aa8-974a-a5fa93e32dc1",
+  "id": "5b1be5af-c3ac-4814-84b8-25237fd8dffc",
   "prevId": "fc0f1534-4915-4ac9-8521-e600af5af515",
   "tables": {
     "account_departure_reason_counters": {
@@ -7977,6 +7977,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "claim_token": {
+          "name": "claim_token",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "stripe_customer_id": {
           "name": "stripe_customer_id",
           "type": "varchar(255)",
@@ -8035,6 +8042,13 @@
           "name": "payments_refund_of_payment_idx",
           "columns": [
             "refund_of_payment_id"
+          ],
+          "isUnique": false
+        },
+        "payments_payment_intent_idx": {
+          "name": "payments_payment_intent_idx",
+          "columns": [
+            "stripe_payment_intent_id"
           ],
           "isUnique": false
         }
