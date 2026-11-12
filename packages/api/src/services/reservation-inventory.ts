@@ -29,7 +29,6 @@ import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
 import {
   allocateStock,
   combinationsServing,
-  demandInstants,
   type StockCombination,
   type StockLineAllocation,
 } from "./stock-allocation";
@@ -153,12 +152,12 @@ type InventoryReserved = { ok: true; inventory: ReservedInventory };
  * turnover buffer applied, consumables shared across lines) and give each
  * tracked line its units. Nothing is written; the caller inserts.
  *
- * The lines of a tracked product fit when, at every instant of the window,
- * they and the other bookings can all be given a unit of a combination they
- * accept (`allocateStock`): another booking that left a size or a colour open
- * is counted on every combination that can serve it, not on the product
- * alone. A line resolves to a deterministic combination, or keeps its pooled
- * key when any matching unit serves it.
+ * The lines of a tracked product are allocated by the rule of
+ * `allocateStock` (S1): another booking that left a size or a colour open is
+ * counted on every combination that can serve it, not on the product alone.
+ * A line with an exact combination, or a checkout line, is placed whole on
+ * the first combination of the deterministic order that fits; a line with no
+ * exact combination keeps its pooled key and is served by any matching unit.
  *
  * A line the stock cannot cover stops the check with
  * `errors.productNoLongerAvailable`. With `onShortfall: "collect"` it is
@@ -414,7 +413,7 @@ export async function reserveInventory({
 
     const allocations = allocateStock({
       capacity,
-      instants: demandInstants(spans),
+      bookings: spans,
       lines: productLines.map(({ line, pooled, selectedAttributes }) => ({
         quantity: line.quantity,
         candidates: combinations
@@ -500,11 +499,10 @@ export async function reserveInventory({
       });
       continue;
     }
-    const [resolvedKey] = allocation.byCombination.keys();
     const resolved =
-      resolvedKey === undefined
+      allocation.combinationKey === null
         ? undefined
-        : combinationsByProduct.get(product.id)?.get(resolvedKey);
+        : combinationsByProduct.get(product.id)?.get(allocation.combinationKey);
     if (!resolved) continue;
     resolvedCombinationByLineKey.set(lineKey, {
       combinationKey: resolved.combinationKey,

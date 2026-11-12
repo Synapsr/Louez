@@ -4,16 +4,45 @@
  * rentable units; a demand asks for units from any of the combinations it
  * accepts (one for an exact choice, several for an open one).
  *
- * A request fits when, at every instant of its window, the other bookings
- * and the request's own lines can all be given a unit at once, the request
- * keeping the same units throughout. Other bookings come first: at each
- * instant they get as many units as the stock can give them, and the request
- * may not lower that number. What they lack because the store booked them
- * over its stock is not held against the request.
+ * The rule (docs/domain/reservation-invariants.md, S1):
  *
- * The other bookings are placed afresh at each instant. A booking that left a
- * choice open is not followed from one instant to the next: the rule does not
- * see that it would have to change units between two of them.
+ * - Fits: at an instant, the request fits when the most units the stock can
+ *   give the other bookings and the request together is the most it can give
+ *   the other bookings alone, plus everything the request asks. The others
+ *   are served first; what they lack because the store booked them over its
+ *   stock is not held against the request. The request fits when it fits at
+ *   every instant of its window.
+ * - The units a spread line already holds are granted first, each on its own
+ *   combination, one by one, each only if it fits.
+ * - Then the lines, in their order. A spread line (one booked with no exact
+ *   combination) is a demand like the others' and gets the most that fits
+ *   next to what was granted before it. A single line (a checkout line, or
+ *   any line with an exact combination) is placed whole on its first candidate where
+ *   what was granted, the spread lines after it and the other bookings still
+ *   fit, or failing that on its first candidate where what was granted still
+ *   fits. A placement is never revisited.
+ * - A line that does not fit whole takes the most that fits: a single line
+ *   the most one candidate gives, the first of them on a tie.
+ *
+ * What the rule does not see:
+ *
+ * - A cart of several single lines that only another placement of an earlier
+ *   line would fit is refused: no placement is revisited. The rule is exact
+ *   for everything else.
+ * - It fixes quantities per combination, not physical units: two units of a
+ *   combination each out for half of the window serve a request for the
+ *   whole window on paper, with a swap in the middle.
+ * - The other bookings that left a choice open, and the request's spread
+ *   lines, are placed afresh at each instant: one may be given a unit on
+ *   Monday and another on Tuesday.
+ *
+ * Cost: an exact demand (one candidate) is folded into the room each
+ * combination has left at each instant, and an instant another one
+ * dominates (less room, more open demands) is dropped; a flow is solved only
+ * for the open demands left. When no demand is open, a line fits exactly when
+ * every combination it takes keeps enough room at its tightest instant, and
+ * no flow is built. No search, no budget: the work is bounded by the
+ * instants, the combinations and the lines.
  */
 
 import type { BookingAttributeAxis, UnitAttributes } from "@louez/types";
@@ -61,6 +90,13 @@ export interface StockDemand {
   quantity: number;
 }
 
+/** What another booking asks, from `start` to `end` (excluded). */
+export interface StockBooking {
+  start: number;
+  end: number;
+  demand: StockDemand;
+}
+
 /** A line of the request being checked. */
 export interface StockLine {
   quantity: number;
@@ -70,7 +106,7 @@ export interface StockLine {
   single: boolean;
   /**
    * The combination of each unit a spread line already holds. They are
-   * counted there, before any line takes a unit it does not hold yet.
+   * granted there, before any line takes a unit it does not hold yet.
    */
   held?: readonly string[];
 }
@@ -78,18 +114,341 @@ export interface StockLine {
 export interface StockLineAllocation {
   /** How many of the line's units the stock covers. */
   served: number;
-  /** Where they are taken. A single line names its combination even when it gets none. */
-  byCombination: Map<string, number>;
+  /**
+   * A single line: the combination it is placed on, also when it is short.
+   * Null for a spread line, which no combination has to cover alone, and for
+   * a line with no candidate.
+   */
+  combinationKey: string | null;
+}
+
+// --- Flows on combination indices ---------------------------------------------
+
+/** Units asked from any of the combinations at these indices. */
+interface Demand {
+  combinations: readonly number[];
+  quantity: number;
 }
 
 /**
- * Arrangements tried and abandoned before the search gives up and answers
- * that the request does not fit. Lines that spread never abandon one on a
- * single instant; only single lines and windows of many instants can.
+ * The most units of `demands` the combinations serve at once, each holding
+ * `room[c]` units, and how many each combination gives: a maximum flow, grown
+ * one augmenting path at a time.
  */
-export const STOCK_SEARCH_BUDGET = 2_000;
+const solveFlow = (
+  demands: readonly Demand[],
+  room: ArrayLike<number>,
+  size: number,
+): { total: number; used: Int32Array } => {
+  const used = new Int32Array(size);
+  const taken = demands.map(() => new Int32Array(size));
 
-class SearchExhausted extends Error {}
+  /** Serves up to `want` more units of a demand along one path; returns how many. */
+  const serve = (demand: number, want: number, visited: Uint8Array): number => {
+    const combinations = demands[demand]?.combinations ?? [];
+    const mine = taken[demand];
+    if (!mine) return 0;
+    for (const combination of combinations) {
+      const free = (room[combination] ?? 0) - (used[combination] ?? 0);
+      if (free > 0) {
+        const served = Math.min(want, free);
+        mine[combination] = (mine[combination] ?? 0) + served;
+        used[combination] = (used[combination] ?? 0) + served;
+        return served;
+      }
+    }
+    // Every combination it accepts is full: a demand served there may move elsewhere.
+    for (const combination of combinations) {
+      if (visited[combination]) continue;
+      visited[combination] = 1;
+      for (const [other, theirs] of taken.entries()) {
+        const there = theirs[combination] ?? 0;
+        if (other === demand || there <= 0) continue;
+        const moved = serve(other, Math.min(want, there), visited);
+        if (moved > 0) {
+          theirs[combination] = there - moved;
+          mine[combination] = (mine[combination] ?? 0) + moved;
+          return moved;
+        }
+      }
+    }
+    return 0;
+  };
+
+  let total = 0;
+  for (const [index, demand] of demands.entries()) {
+    let unserved = demand.quantity;
+    while (unserved > 0) {
+      const served = serve(index, unserved, new Uint8Array(size));
+      if (served === 0) break;
+      unserved -= served;
+      total += served;
+    }
+  }
+  return { total, used };
+};
+
+/**
+ * How many of the units asked the combinations can serve at once: a maximum
+ * flow from the demands to the combinations.
+ */
+export const maxServed = (
+  demands: readonly StockDemand[],
+  capacityOf: (combinationKey: string) => number,
+): number => {
+  const keys = [...new Set(demands.flatMap((demand) => demand.combinationKeys))];
+  const indexOf = new Map(keys.map((key, index) => [key, index]));
+  return solveFlow(
+    demands.map((demand) => ({
+      combinations: [...new Set(demand.combinationKeys)].flatMap((key) => {
+        const index = indexOf.get(key);
+        return index === undefined ? [] : [index];
+      }),
+      quantity: demand.quantity,
+    })),
+    keys.map((key) => Math.max(0, capacityOf(key))),
+    keys.length,
+  ).total;
+};
+
+// --- Instants --------------------------------------------------------------------
+
+/** The demands held together at an instant where the other bookings peak. */
+interface Instant {
+  /** Units each combination has left once the exact demands are served; below zero when overbooked. */
+  room: Int32Array;
+  /** The open demands, one per set of combinations. */
+  open: Demand[];
+  /** Every demand, exact ones included: kept for the literal check only. */
+  all: Demand[];
+}
+
+const signatureOf = (combinations: readonly number[]) => combinations.join(",");
+
+/** Adds a demand to those that accept the same combinations. */
+const addTo = (bySignature: Map<string, Demand>, demand: Demand, sign: 1 | -1) => {
+  const signature = signatureOf(demand.combinations);
+  const quantity = (bySignature.get(signature)?.quantity ?? 0) + sign * demand.quantity;
+  if (quantity > 0) bySignature.set(signature, { combinations: demand.combinations, quantity });
+  else bySignature.delete(signature);
+};
+
+/**
+ * The instants that can bind: each time a booking ends after others started,
+ * what is held at that moment. A set of bookings held together that a later
+ * set contains is never taken alone.
+ */
+const instantsOf = (
+  bookings: ReadonlyArray<{ start: number; end: number; demand: Demand }>,
+  capacity: Int32Array,
+  keepAll: boolean,
+): Instant[] => {
+  const size = capacity.length;
+  const events = bookings
+    .flatMap((booking, index) =>
+      booking.start < booking.end
+        ? [
+            { at: booking.start, opens: true, index },
+            { at: booking.end, opens: false, index },
+          ]
+        : [],
+    )
+    // A booking that ends when another starts does not meet it.
+    .sort((a, b) => a.at - b.at || Number(a.opens) - Number(b.opens) || a.index - b.index);
+
+  const load = new Int32Array(size);
+  const open = new Map<string, Demand>();
+  const all = new Map<string, Demand>();
+  const instants: Instant[] = [];
+  let grew = false;
+  for (const event of events) {
+    const booking = bookings[event.index];
+    if (!booking) continue;
+    const { demand } = booking;
+    const [only] = demand.combinations;
+    if (event.opens) grew = true;
+    else if (grew) {
+      instants.push({
+        room: capacity.map((units, combination) => units - (load[combination] ?? 0)),
+        open: [...open.values()],
+        all: keepAll ? [...all.values()] : [],
+      });
+      grew = false;
+    }
+    const sign = event.opens ? 1 : -1;
+    if (keepAll) addTo(all, demand, sign);
+    if (demand.combinations.length > 1) addTo(open, demand, sign);
+    else if (only !== undefined) load[only] = (load[only] ?? 0) + sign * demand.quantity;
+  }
+  return instants.length > 0 ? instants : [{ room: capacity.slice(), open: [], all: [] }];
+};
+
+interface FlowInstant {
+  /** Room left, never below zero. */
+  room: Int32Array;
+  open: Demand[];
+  /** The combinations the open demands accept: only they matter to the flow. */
+  openCombinations: number[];
+  /** What the other bookings get there, and where. */
+  baseline: { total: number; used: Int32Array };
+}
+
+/**
+ * Drops the instants another one dominates. Room only helps and fewer open
+ * demands only help (a request that fits next to more demands, in less room,
+ * fits next to fewer, in more): of two instants, one with less room on the
+ * combinations a flow can reach and at least the same open demands is the
+ * only one to check.
+ */
+const bindingInstants = (
+  instants: readonly FlowInstant[],
+  requestCombinations: readonly number[],
+): FlowInstant[] => {
+  // Each set of combinations an open demand accepts, numbered once.
+  const numbered = new Map<string, number>();
+  for (const instant of instants) {
+    for (const demand of instant.open) {
+      const signature = signatureOf(demand.combinations);
+      if (!numbered.has(signature)) numbered.set(signature, numbered.size);
+    }
+  }
+  const described = instants.map((instant) => {
+    const combinations = Int32Array.from(
+      new Set([...instant.openCombinations, ...requestCombinations]),
+    ).sort();
+    const open = instant.open
+      .map((demand) => ({
+        index: numbered.get(signatureOf(demand.combinations)) ?? 0,
+        quantity: demand.quantity,
+      }))
+      .sort((a, b) => a.index - b.index);
+    let roomTotal = 0;
+    for (const combination of combinations) roomTotal += instant.room[combination] ?? 0;
+    return {
+      instant,
+      combinations,
+      open,
+      key: [
+        open.map((demand) => `${demand.index}x${demand.quantity}`).join(","),
+        [...combinations].map((combination) => instant.room[combination] ?? 0).join(","),
+      ].join("|"),
+      openQuantity: open.reduce((sum, demand) => sum + demand.quantity, 0),
+      roomTotal,
+    };
+  });
+  // The most open demands and the least room first: they dominate the others.
+  const unique = [...new Map(described.map((entry) => [entry.key, entry])).values()].sort(
+    (a, b) => b.openQuantity - a.openQuantity || a.roomTotal - b.roomTotal,
+  );
+
+  const kept: Array<{ entry: (typeof unique)[number]; openByIndex: Int32Array }> = [];
+  for (const candidate of unique) {
+    const { room } = candidate.instant;
+    const dominated = kept.some(({ entry, openByIndex }) => {
+      if (entry.openQuantity < candidate.openQuantity) return false;
+      for (const combination of entry.combinations) {
+        if ((entry.instant.room[combination] ?? 0) > (room[combination] ?? 0)) return false;
+      }
+      for (const { index, quantity } of candidate.open) {
+        if ((openByIndex[index] ?? 0) < quantity) return false;
+      }
+      return true;
+    });
+    if (dominated) continue;
+    const openByIndex = new Int32Array(numbered.size);
+    for (const { index, quantity } of candidate.open) openByIndex[index] = quantity;
+    kept.push({ entry: candidate, openByIndex });
+  }
+  return kept.map(({ entry }) => entry.instant);
+};
+
+/**
+ * Whether a request fits, at every instant, next to the other bookings: the
+ * test of the rule, built once per product.
+ */
+const fitTest = (
+  instants: readonly Instant[],
+  capacity: Int32Array,
+  requestCombinations: readonly number[],
+  check: "folded" | "literal",
+): ((request: readonly Demand[]) => boolean) => {
+  const size = capacity.length;
+  if (check === "literal") {
+    // The rule as written: a flow per instant over every demand.
+    const baselines = instants.map((instant) => solveFlow(instant.all, capacity, size).total);
+    return (request) => {
+      const asked = request.reduce((sum, demand) => sum + demand.quantity, 0);
+      return instants.every(
+        (instant, index) =>
+          solveFlow([...instant.all, ...request], capacity, size).total ===
+          (baselines[index] ?? 0) + asked,
+      );
+    };
+  }
+
+  // The room each combination keeps at its tightest instant.
+  const tightest = Int32Array.from(capacity);
+  for (const instant of instants) {
+    for (let combination = 0; combination < size; combination += 1) {
+      tightest[combination] = Math.min(
+        tightest[combination] ?? 0,
+        Math.max(0, instant.room[combination] ?? 0),
+      );
+    }
+  }
+  // An instant needs a flow when another booking left a choice open there,
+  // or when the request may leave one open.
+  const flowInstants = bindingInstants(
+    instants
+      .filter((instant) => instant.open.length > 0 || requestCombinations.length > 0)
+      .map((instant) => {
+        const room = instant.room.map((units) => Math.max(0, units));
+        return {
+          room,
+          open: instant.open,
+          openCombinations: [...new Set(instant.open.flatMap((demand) => demand.combinations))],
+          baseline: solveFlow(instant.open, room, size),
+        };
+      }),
+    requestCombinations,
+  );
+
+  return (request) => {
+    const exact = new Int32Array(size);
+    const open: Demand[] = [];
+    let openAsked = 0;
+    for (const demand of request) {
+      if (demand.quantity <= 0) continue;
+      const [only, ...others] = demand.combinations;
+      if (only === undefined) return false;
+      if (others.length === 0) exact[only] = (exact[only] ?? 0) + demand.quantity;
+      else {
+        open.push(demand);
+        openAsked += demand.quantity;
+      }
+    }
+    // Exact demands: enough room at the tightest instant.
+    for (let combination = 0; combination < size; combination += 1) {
+      if ((exact[combination] ?? 0) > (tightest[combination] ?? 0)) return false;
+    }
+    return flowInstants.every((instant) => {
+      if (open.length === 0) {
+        // The others keep their flow when it still fits in the room the request leaves.
+        const keepsBaseline = instant.openCombinations.every(
+          (combination) =>
+            (exact[combination] ?? 0) <=
+            (instant.room[combination] ?? 0) - (instant.baseline.used[combination] ?? 0),
+        );
+        if (keepsBaseline) return true;
+      }
+      const room = instant.room.map((units, combination) => units - (exact[combination] ?? 0));
+      return (
+        solveFlow([...instant.open, ...open], room, size).total ===
+        instant.baseline.total + openAsked
+      );
+    });
+  };
+};
 
 /** The largest n in 0..max that holds, for a rule that holds up to some n and never beyond. */
 const largestWhere = (max: number, holds: (n: number) => boolean): number => {
@@ -104,355 +463,130 @@ const largestWhere = (max: number, holds: (n: number) => boolean): number => {
   return low;
 };
 
-/** Demands that accept the same combinations ask together. */
-const mergeDemands = (demands: readonly StockDemand[]): StockDemand[] => {
-  const merged = new Map<string, StockDemand>();
-  for (const demand of demands) {
-    if (demand.quantity <= 0) continue;
-    const combinationKeys = [...new Set(demand.combinationKeys)].sort();
-    const signature = JSON.stringify(combinationKeys);
-    merged.set(signature, {
-      combinationKeys,
-      quantity: (merged.get(signature)?.quantity ?? 0) + demand.quantity,
-    });
-  }
-  return [...merged.values()];
-};
-
-/**
- * How many of the units asked the combinations can serve at once: a maximum
- * flow from the demands to the combinations, grown one augmenting path at a
- * time.
- */
-export const maxServed = (
-  demands: readonly StockDemand[],
-  capacityOf: (combinationKey: string) => number,
-): number => {
-  /** Per combination, the units each demand takes there. */
-  const takers = new Map<string, Map<number, number>>();
-  const load = new Map<string, number>();
-  const roomOn = (combinationKey: string) =>
-    capacityOf(combinationKey) - (load.get(combinationKey) ?? 0);
-  const move = (demand: number, combinationKey: string, quantity: number) => {
-    const there = takers.get(combinationKey) ?? new Map<number, number>();
-    const taken = (there.get(demand) ?? 0) + quantity;
-    if (taken > 0) there.set(demand, taken);
-    else there.delete(demand);
-    takers.set(combinationKey, there);
-    load.set(combinationKey, (load.get(combinationKey) ?? 0) + quantity);
-  };
-
-  /** Serves up to `quantity` more units of a demand along one path; returns how many. */
-  const serve = (demand: number, quantity: number, visited: Set<string>): number => {
-    const combinationKeys = demands[demand]?.combinationKeys ?? [];
-    for (const combinationKey of combinationKeys) {
-      const served = Math.min(quantity, roomOn(combinationKey));
-      if (served > 0) {
-        move(demand, combinationKey, served);
-        return served;
-      }
-    }
-    // Every combination it accepts is full: a demand served there may move elsewhere.
-    for (const combinationKey of combinationKeys) {
-      if (visited.has(combinationKey)) continue;
-      visited.add(combinationKey);
-      for (const [other, there] of takers.get(combinationKey) ?? []) {
-        if (other === demand) continue;
-        const moved = serve(other, Math.min(quantity, there), visited);
-        if (moved > 0) {
-          move(other, combinationKey, -moved);
-          move(demand, combinationKey, moved);
-          return moved;
-        }
-      }
-    }
-    return 0;
-  };
-
-  let total = 0;
-  for (const [index, demand] of demands.entries()) {
-    let unserved = demand.quantity;
-    while (unserved > 0) {
-      const served = serve(index, unserved, new Set());
-      if (served === 0) break;
-      unserved -= served;
-      total += served;
-    }
-  }
-  return total;
-};
-
-/**
- * The sets of demands held together at some instant, from the span each
- * booking holds its units (`end` excluded). Only the sets no other contains
- * are kept: a stock that serves a set serves any part of it.
- */
-export const demandInstants = <T>(
-  spans: ReadonlyArray<{ start: number; end: number; demand: T }>,
-): T[][] => {
-  const events = spans
-    .flatMap((span, index) =>
-      span.start < span.end
-        ? [
-            { at: span.start, opens: true, index },
-            { at: span.end, opens: false, index },
-          ]
-        : [],
-    )
-    // A span that ends when another starts does not meet it.
-    .sort((a, b) => a.at - b.at || Number(a.opens) - Number(b.opens) || a.index - b.index);
-
-  const instants: T[][] = [];
-  const open = new Set<number>();
-  let grew = false;
-  for (const event of events) {
-    if (event.opens) {
-      open.add(event.index);
-      grew = true;
-      continue;
-    }
-    if (grew) {
-      const together: T[] = [];
-      for (const index of [...open].sort((a, b) => a - b)) {
-        const span = spans[index];
-        if (span) together.push(span.demand);
-      }
-      instants.push(together);
-      grew = false;
-    }
-    open.delete(event.index);
-  }
-  return instants;
-};
-
-interface Part {
-  line: number;
-  candidates: readonly string[];
-  quantity: number;
-  single: boolean;
-}
-
 /**
  * Gives each line of a request the largest quantity the stock covers, next
- * to what the other bookings ask at each instant of the window.
- *
- * The units lines already hold are granted first, then the lines in their
- * order: a line gets the most that still fits with what was granted before
- * it, whatever combinations those earlier lines end on. The request fits
- * whole exactly when every line is served its full quantity.
- *
- * Which combinations are taken is deterministic: single lines first, each on
- * its first candidate that leaves a place for everything else, then the
- * spread lines, each filling its candidates in their order.
+ * to what the other bookings ask at each instant of the window, by the rule
+ * stated at the top of this file. The request fits whole exactly when every
+ * line is served its full quantity.
  */
 export const allocateStock = (input: {
   /** Rentable units per combination. */
   capacity: ReadonlyMap<string, number>;
-  /** What the other bookings ask at each instant of the window (`demandInstants`). */
-  instants: ReadonlyArray<readonly StockDemand[]>;
+  /** What the other bookings ask, and when. */
+  bookings: readonly StockBooking[];
   lines: readonly StockLine[];
-  /** In place of `STOCK_SEARCH_BUDGET`. */
-  searchBudget?: number;
+  /**
+   * `literal` checks the rule as written, a flow per instant over every
+   * demand, with no folding and no instant dropped. For tests that compare
+   * it with the default.
+   */
+  check?: "folded" | "literal";
 }): StockLineAllocation[] => {
-  const { capacity, lines } = input;
-  const capacityOf = (combinationKey: string) => capacity.get(combinationKey) ?? 0;
-  // With no other booking, the request is still checked against the stock.
-  const instants = input.instants.length > 0 ? input.instants.map(mergeDemands) : [[]];
-  // What the other bookings get of the whole stock: all they ask, or less
-  // when the store booked them over it.
-  const othersServed = instants.map((demands) => maxServed(demands, capacityOf));
+  const keys = [...input.capacity.keys()];
+  const indexOf = new Map(keys.map((key, index) => [key, index]));
+  const capacity = Int32Array.from(keys, (key) => Math.max(0, input.capacity.get(key) ?? 0));
+  /** The combinations at these keys that hold a unit, once each, in their order. */
+  const usable = (combinationKeys: readonly string[]) => [
+    ...new Set(
+      combinationKeys.flatMap((key) => {
+        const index = indexOf.get(key);
+        return index !== undefined && (capacity[index] ?? 0) > 0 ? [index] : [];
+      }),
+    ),
+  ];
 
-  /**
-   * Whether, at every instant, the stock less the pinned units still serves
-   * the other bookings as well as before, and `flexible` in full.
-   */
-  const fits = (pinned: ReadonlyMap<string, number>, flexible: readonly StockDemand[]): boolean => {
-    for (const [combinationKey, quantity] of pinned) {
-      if (quantity > capacityOf(combinationKey)) return false;
-    }
-    const asked = flexible.reduce((sum, demand) => sum + demand.quantity, 0);
-    const left = (combinationKey: string) =>
-      capacityOf(combinationKey) - (pinned.get(combinationKey) ?? 0);
-    return instants.every(
-      (demands, index) =>
-        maxServed([...demands, ...flexible], left) === (othersServed[index] ?? 0) + asked,
-    );
-  };
-
-  /**
-   * How many more units `combinationKeys` can give at every instant, once
-   * the pinned units are taken and the other bookings and `flexible` are
-   * served, which they must be (`fits`). A served set of demands can always
-   * be kept served while more is taken, so one flow per instant tells.
-   */
-  const room = (
-    pinned: ReadonlyMap<string, number>,
-    flexible: readonly StockDemand[],
-    combinationKeys: readonly string[],
-  ): number => {
-    const asked = flexible.reduce((sum, demand) => sum + demand.quantity, 0);
-    const left = (combinationKey: string) =>
-      capacityOf(combinationKey) - (pinned.get(combinationKey) ?? 0);
-    const everything = { combinationKeys, quantity: Number.POSITIVE_INFINITY };
-    return Math.min(
-      ...instants.map(
-        (demands, index) =>
-          maxServed([...demands, ...flexible, everything], left) -
-          (othersServed[index] ?? 0) -
-          asked,
-      ),
-    );
-  };
-
-  const pin = (pinned: ReadonlyMap<string, number>, combinationKey: string, quantity: number) =>
-    new Map(pinned).set(combinationKey, (pinned.get(combinationKey) ?? 0) + quantity);
-  const asDemand = (part: Part): StockDemand => ({
-    combinationKeys: part.candidates,
-    quantity: part.quantity,
+  const bookings = input.bookings.flatMap((booking) => {
+    const combinations = usable(booking.demand.combinationKeys).sort((a, b) => a - b);
+    // A booking no unit can serve lacks it whatever the request takes.
+    return combinations.length > 0 && booking.demand.quantity > 0
+      ? [{ ...booking, demand: { combinations, quantity: booking.demand.quantity } }]
+      : [];
   });
-
-  let abandoned = 0;
-  const abandon = () => {
-    abandoned += 1;
-    if (abandoned > (input.searchBudget ?? STOCK_SEARCH_BUDGET)) throw new SearchExhausted();
-  };
-
-  /**
-   * Places every part, in order, on top of the pinned units: the first
-   * arrangement found, as one map per part, or null when there is none. A
-   * choice is kept only while each instant can still place the parts after
-   * it; when they cannot all agree later, the choice is abandoned.
-   */
-  const place = (
-    parts: readonly Part[],
-    pinned: ReadonlyMap<string, number>,
-  ): Array<Map<string, number>> | null => {
-    const [part, ...rest] = parts;
-    if (!part) return [];
-    if (part.quantity === 0) {
-      const placed = place(rest, pinned);
-      return placed && [new Map(), ...placed];
-    }
-    const later = rest.map(asDemand);
-
-    if (part.single) {
-      for (const combinationKey of part.candidates) {
-        const next = pin(pinned, combinationKey, part.quantity);
-        if (!fits(next, later)) continue;
-        const placed = place(rest, next);
-        if (placed) return [new Map([[combinationKey, part.quantity]]), ...placed];
-        abandon();
-      }
-      return null;
-    }
-
-    const [combinationKey, ...otherCandidates] = part.candidates;
-    if (combinationKey === undefined) return null;
-    // The first candidate takes all it can; the remainder goes to the next ones.
-    const most = Math.min(part.quantity, room(pinned, later, [combinationKey]));
-    for (let quantity = most; quantity >= 0; quantity -= 1) {
-      const next = pin(pinned, combinationKey, quantity);
-      const remainder = {
-        ...part,
-        candidates: otherCandidates,
-        quantity: part.quantity - quantity,
-      };
-      // Taking less here only asks more of the next candidates.
-      if (!fits(next, [asDemand(remainder), ...later])) return null;
-      const placed = place([remainder, ...rest], next);
-      const [remainderPlaced, ...restPlaced] = placed ?? [];
-      if (remainderPlaced) {
-        if (quantity > 0) remainderPlaced.set(combinationKey, quantity);
-        return [remainderPlaced, ...restPlaced];
-      }
-      abandon();
-    }
-    return null;
-  };
-
-  const granted: Array<{ held: string[]; free: number }> = lines.map(() => ({
-    held: [],
-    free: 0,
-  }));
-
-  /** What is granted so far: the held units, pinned, and the rest of each line, single lines first. */
-  const grantedParts = () => {
-    let pinned: ReadonlyMap<string, number> = new Map();
-    for (const { held } of granted) {
-      for (const combinationKey of held) pinned = pin(pinned, combinationKey, 1);
-    }
-    const parts = lines.map((line, index) => ({
-      line: index,
-      candidates: line.candidates,
-      quantity: granted[index]?.free ?? 0,
+  const lines = input.lines.map((line) => {
+    const candidates = usable(line.candidates);
+    const held = (line.held ?? []).slice(0, line.quantity);
+    return {
+      line,
+      candidates,
+      held,
+      // A held unit that does not fit is not replaced by another one.
+      free: line.quantity - held.length,
       single: line.single,
-    }));
-    const ordered = [
-      ...parts.filter((part) => part.single),
-      ...parts.filter((part) => !part.single),
-    ];
-    return { pinned, ordered };
-  };
+    };
+  });
+  // The combinations a spread line of the request may leave open.
+  const requestCombinations = [
+    ...new Set(
+      lines.flatMap((entry) =>
+        entry.single || entry.candidates.length < 2 ? [] : entry.candidates,
+      ),
+    ),
+  ];
+  const check = input.check ?? "folded";
+  const fits = fitTest(
+    instantsOf(bookings, capacity, check === "literal"),
+    capacity,
+    requestCombinations,
+    check,
+  );
 
-  /** Where every line is taken for what is granted so far, or null when that cannot be placed. */
-  const arrange = (): Array<Map<string, number>> | null => {
-    const { pinned, ordered } = grantedParts();
-
-    abandoned = 0;
-    let placed: Array<Map<string, number>> | null;
-    try {
-      placed = fits(pinned, ordered.map(asDemand)) ? place(ordered, pinned) : null;
-    } catch (error) {
-      if (!(error instanceof SearchExhausted)) throw error;
-      placed = null;
-    }
-    if (!placed) return null;
-
-    const byLine = lines.map(() => new Map<string, number>());
-    for (const [position, part] of ordered.entries()) {
-      byLine[part.line] = placed[position] ?? new Map();
-    }
-    return byLine;
-  };
-
-  const heldOf = (line: StockLine) => (line.held ?? []).slice(0, line.quantity);
-  for (const [index, line] of lines.entries()) {
-    const grant = granted[index];
-    if (!grant) continue;
-    for (const combinationKey of heldOf(line)) {
-      grant.held.push(combinationKey);
-      if (!arrange()) grant.held.pop();
+  const granted: Demand[] = [];
+  const fitsWith = (...more: Demand[]) => fits([...granted, ...more]);
+  const servedHeld = lines.map(() => 0);
+  for (const [index, entry] of lines.entries()) {
+    for (const key of entry.held) {
+      const combination = indexOf.get(key);
+      if (combination === undefined) continue;
+      const unit = { combinations: [combination], quantity: 1 };
+      if (fitsWith(unit)) {
+        granted.push(unit);
+        servedHeld[index] = (servedHeld[index] ?? 0) + 1;
+      }
     }
   }
-  for (const [index, line] of lines.entries()) {
-    const grant = granted[index];
-    if (!grant) continue;
-    // No more than its candidates can still give next to what is granted,
-    // which is what the line gets unless the arrangement says otherwise.
-    const { pinned, ordered } = grantedParts();
-    const others = ordered.map(asDemand);
-    const mostLeft = line.single
-      ? Math.max(0, ...line.candidates.map((candidate) => room(pinned, others, [candidate])))
-      : room(pinned, others, line.candidates);
-    // A held unit that does not fit is not replaced by another one.
-    const wanted = line.quantity - heldOf(line).length;
-    grant.free = largestWhere(Math.min(wanted, mostLeft), (quantity) => {
-      grant.free = quantity;
-      return arrange() !== null;
+
+  return lines.map((entry, index): StockLineAllocation => {
+    const { line, candidates, free } = entry;
+    const held = servedHeld[index] ?? 0;
+    if (!entry.single) {
+      const asked = (quantity: number) => ({ combinations: candidates, quantity });
+      const served = largestWhere(free, (quantity) => fitsWith(asked(quantity)));
+      granted.push(asked(served));
+      return { served: held + served, combinationKey: null };
+    }
+
+    const on = (combination: number, quantity: number) => ({
+      combinations: [combination],
+      quantity,
     });
-  }
-
-  const arranged = arrange() ?? [];
-  return lines.map((line, index) => {
-    const byCombination = new Map(arranged[index]);
-    const grant = granted[index] ?? { held: [], free: 0 };
-    for (const combinationKey of grant.held) {
-      byCombination.set(combinationKey, (byCombination.get(combinationKey) ?? 0) + 1);
+    // The spread lines after this one, whole: a single line leaves them their place.
+    const later = lines
+      .slice(index + 1)
+      .flatMap((next) =>
+        next.single ? [] : [{ combinations: next.candidates, quantity: next.free }],
+      );
+    const placed =
+      candidates.find((combination) => fitsWith(on(combination, free), ...later)) ??
+      candidates.find((combination) => fitsWith(on(combination, free)));
+    let combination = placed;
+    let served = free;
+    if (combination === undefined) {
+      // Short: the most one candidate gives, the first of them on a tie.
+      served = -1;
+      for (const candidate of candidates) {
+        const most = largestWhere(free - 1, (quantity) => fitsWith(on(candidate, quantity)));
+        if (most > served) {
+          served = most;
+          combination = candidate;
+        }
+      }
+      served = Math.max(0, served);
     }
-    const [firstCandidate] = line.candidates;
-    if (line.single && byCombination.size === 0 && firstCandidate !== undefined) {
-      byCombination.set(firstCandidate, 0);
-    }
-    return { served: grant.held.length + grant.free, byCombination };
+    if (combination !== undefined) granted.push(on(combination, served));
+    return {
+      served: held + served,
+      combinationKey:
+        combination !== undefined ? (keys[combination] ?? null) : (line.candidates[0] ?? null),
+    };
   });
 };

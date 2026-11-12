@@ -683,13 +683,15 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
     const shortfalls = await shortfallsOf(storeId, lines);
     t.diagnostic(`collect mode: ${Math.round(performance.now() - startedAt)} ms`);
 
-    // The blue units run out, then the product: each line takes what is left.
-    assert.deepEqual(shortfalls, [short(productId, null, 25, 15), short(productId, null, 200, 55)]);
+    // The blue units run out, then the product: each line takes what is left,
+    // in the order of the lines. The L line fits whole but not with every
+    // later line, so it takes the first L that fits next to the lines before it.
+    assert.deepEqual(shortfalls, [short(productId, null, 25, 17), short(productId, null, 200, 53)]);
     // What they took fits whole, and one more unit of any kind does not.
     const fitting = [
       ...lines.slice(0, 3),
-      { ...lines[3], productId, quantity: 15 },
-      { ...lines[4], productId, quantity: 55 },
+      { ...lines[3], productId, quantity: 17 },
+      { ...lines[4], productId, quantity: 53 },
     ];
     const fittedAt = performance.now();
     assert.equal((await check(storeId, fitting, "fail")).ok, true);
