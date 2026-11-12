@@ -642,6 +642,9 @@ export const checkExistingReservationInventory = async (
             assignedUnitIds: item.assignedUnits.flatMap((unit) =>
               unit.productUnitId ? [unit.productUnitId] : [],
             ),
+            // A line booked with no exact combination is served by any unit
+            // that matches what it chose, as when it was created or edited.
+            pooled: item.combinationKey === null,
           },
         ]
       : [],

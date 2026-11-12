@@ -292,4 +292,68 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.deepEqual(await check(storeId, lines, "fail"), notFound);
     assert.deepEqual(await check(storeId, lines, "collect"), notFound);
   });
+
+  describe("an existing reservation checked before it takes its stock", () => {
+    /** A quote of one line of the product, in a store that has its row. */
+    async function quoteOf(
+      storeId: string,
+      line: { productId: string; quantity: number; combinationKey: string | null },
+    ) {
+      await louezDb.db
+        .insert(louezDb.stores)
+        .values({ id: storeId, userId: storeId, name: storeId, slug: storeId });
+      const id = nextId("res");
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId,
+        customerId: "customer",
+        number: id,
+        status: "quote",
+        startDate: START,
+        endDate: END,
+        subtotalAmount: "10.00",
+        depositAmount: "0.00",
+        totalAmount: "10.00",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: nextId("itm"),
+        reservationId: id,
+        productId: line.productId,
+        quantity: line.quantity,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: "10.00",
+        combinationKey: line.combinationKey,
+        productSnapshot: { name: "Line", description: null, images: [] },
+      });
+      return id;
+    }
+
+    const checkExisting = (storeId: string, reservationId: string) =>
+      louezDb.db.transaction((tx) =>
+        inventory.checkExistingReservationInventory(tx, reservationId, storeId),
+      );
+
+    test("a line of no size is served by units of every size", async () => {
+      // Two S and one L cover three units of any size, as when the line was booked.
+      const { storeId, productId } = await sizedProduct(["S", "S", "L"]);
+      const quote = await quoteOf(storeId, { productId, quantity: 3, combinationKey: null });
+
+      await checkExisting(storeId, quote);
+    });
+
+    test("a line of no size past every unit is refused", async () => {
+      const { storeId, productId } = await sizedProduct(["S", "S", "L"]);
+      const quote = await quoteOf(storeId, { productId, quantity: 4, combinationKey: null });
+
+      await assert.rejects(checkExisting(storeId, quote), /errors\.productNoLongerAvailable/);
+    });
+
+    test("a line that chose a size is held to that size", async () => {
+      const { storeId, productId } = await sizedProduct(["S", "S", "L"]);
+      const quote = await quoteOf(storeId, { productId, quantity: 2, combinationKey: "size:L" });
+
+      await assert.rejects(checkExisting(storeId, quote), /errors\.productNoLongerAvailable/);
+    });
+  });
 });
