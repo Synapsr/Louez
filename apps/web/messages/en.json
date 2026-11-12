@@ -2949,6 +2949,8 @@
         "statusAuthorized": "Authorized",
         "statusRefunded": "Refunded",
         "statusCancelled": "Cancelled",
+        "statusFailed": "Failed",
+        "statusReleasePending": "Being released",
         "requestPayment": "Request payment",
         "invoiceGenerated": "Invoice {number} generated"
       },

@@ -2949,6 +2949,8 @@
         "statusAuthorized": "Resmi",
         "statusRefunded": "Dikembalikan",
         "statusCancelled": "Dibatalkan",
+        "statusFailed": "Gagal",
+        "statusReleasePending": "Sedang dilepaskan",
         "requestPayment": "Minta pembayaran",
         "invoiceGenerated": "Faktur {number} dibuat"
       },

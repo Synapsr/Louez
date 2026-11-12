@@ -23,6 +23,10 @@ export const INBOX_ITEM_TYPES = [
   "deposit_expiring",
   /** An online payment or a deposit hold that failed, not made good since. */
   "payment_failed",
+  /** A deposit authorization the store asked for, which Stripe has not confirmed after 15 minutes. */
+  "deposit_unconfirmed",
+  /** A second deposit authorization Louez could not cancel at Stripe: the card is still held. */
+  "deposit_release_failed",
   /** A Stripe dispute (chargeback) still open. */
   "dispute_open",
   /** A booking holds a unit that is retired or out of service over its dates. */

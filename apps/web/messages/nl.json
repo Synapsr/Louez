@@ -2910,6 +2910,8 @@
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
         "statusCancelled": "Geannuleerd",
+        "statusFailed": "Mislukt",
+        "statusReleasePending": "Wordt vrijgegeven",
         "requestPayment": "Betaling aanvragen",
         "invoiceGenerated": "Factuur {number} aangemaakt"
       },

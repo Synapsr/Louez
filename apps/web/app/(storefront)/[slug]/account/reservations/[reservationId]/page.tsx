@@ -521,7 +521,10 @@ export default async function ReservationDetailPage({
             : null,
         }}
         payments={{
-          payments: getCustomerPaymentRows(reservation.payments).map((payment) => ({
+          payments: getCustomerPaymentRows(
+            reservation.payments,
+            reservation.depositPaymentIntentId,
+          ).map((payment) => ({
             id: payment.id,
             type: payment.type,
             method: payment.method,

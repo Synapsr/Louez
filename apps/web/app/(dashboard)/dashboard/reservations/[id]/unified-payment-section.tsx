@@ -55,7 +55,7 @@ import { Label } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Progress } from "@louez/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
-import { cn, getCurrencySymbol } from "@louez/utils";
+import { cn, depositHoldRowKind, getCurrencySymbol } from "@louez/utils";
 
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { useStoreTimezone } from "@/contexts/store-context";
@@ -99,7 +99,19 @@ interface Payment {
   stripeCheckoutSessionId?: string | null;
   stripeRefundId?: string | null;
   refundOfPaymentId: string | null;
+  /** On a deposit hold the reservation does not keep, until Stripe released it. */
+  releaseOwedAt?: Date | string | null;
 }
+
+/** The errors of a deposit hold request that tell the store what to do next. */
+const HOLD_REQUEST_ERRORS = new Set([
+  "errors.stripe.authorizationInProgress",
+  "errors.stripe.authorizationUnconfirmed",
+  "errors.stripe.authorizationFailed",
+  "errors.stripe.invalidDepositStatus",
+  "errors.stripe.noSavedCard",
+  "errors.stripe.noDepositRequired",
+]);
 
 interface PaymentMethodInfo {
   id: string;
@@ -291,6 +303,12 @@ export function UnifiedPaymentSection({
       p.type === "rental" &&
       p.status === "pending" &&
       new Date(p.createdAt).getTime() + CHECKOUT_SESSION_TTL_MS > Date.now(),
+  );
+
+  // An authorization the store asked for, which Stripe has not confirmed: asking again
+  // asks about that one, never for a second.
+  const holdUnconfirmed = payments.some(
+    (payment) => depositHoldRowKind(payment) === "unconfirmed",
   );
 
   // Authorization expiration
@@ -592,14 +610,23 @@ export function UnifiedPaymentSection({
     try {
       await createHoldMutation.mutateAsync({ reservationId });
       toastManager.add({ title: t("deposit.holdCreated"), type: "success" });
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.createDepositHold,
         properties: { error_code: "create_deposit_hold_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // A refusal changes what the page shows: the deposit failed, the customer
+      // authorized it meanwhile, or Stripe has not confirmed the request yet.
+      await invalidateReservationAll(queryClient, reservationId);
+      toastManager.add({
+        title:
+          error instanceof Error && HOLD_REQUEST_ERRORS.has(error.message)
+            ? tErrors(error.message.replace("errors.", ""))
+            : tErrors("generic"),
+        type: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -992,6 +1019,12 @@ export function UnifiedPaymentSection({
                     </div>
                   )}
 
+                  {depositStatusVal === "card_saved" && holdUnconfirmed && (
+                    <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">
+                      {tErrors("stripe.authorizationUnconfirmed")}
+                    </p>
+                  )}
+
                   <div className="flex gap-2">
                     {depositStatusVal === "card_saved" && (
                       <Button
@@ -1149,9 +1182,20 @@ export function UnifiedPaymentSection({
                                 Stripe
                               </Badge>
                             )}
-                            {payment.status === "authorized" && (
-                              <Badge variant="pending" className="h-4 px-1 text-[9px] border-0">
-                                {t("payment.statusAuthorized")}
+                            {payment.status === "authorized" &&
+                              depositHoldRowKind(payment) !== "release_pending" && (
+                                <Badge variant="pending" className="h-4 px-1 text-[9px] border-0">
+                                  {t("payment.statusAuthorized")}
+                                </Badge>
+                              )}
+                            {depositHoldRowKind(payment) === "release_pending" && (
+                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                {t("payment.statusReleasePending")}
+                              </Badge>
+                            )}
+                            {depositHoldRowKind(payment) === "failed" && (
+                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                {t("payment.statusFailed")}
                               </Badge>
                             )}
                             {payment.status === "refunded" && (
@@ -1195,7 +1239,11 @@ export function UnifiedPaymentSection({
                             payment.type === "adjustment" &&
                               parseFloat(payment.amount) > 0 &&
                               "text-emerald-600 dark:text-emerald-400",
-                            payment.status === "cancelled" && "text-muted-foreground line-through",
+                            (payment.status === "cancelled" ||
+                              depositHoldRowKind(payment) === "failed") &&
+                              "text-muted-foreground line-through",
+                            depositHoldRowKind(payment) === "release_pending" &&
+                              "text-muted-foreground",
                           )}
                         >
                           {isRefundRow(payment)

@@ -2949,6 +2949,8 @@
         "statusAuthorized": "Авторизованный",
         "statusRefunded": "Возвращено",
         "statusCancelled": "Отменено",
+        "statusFailed": "Не удалось",
+        "statusReleasePending": "Снимается",
         "requestPayment": "Запросить оплату",
         "invoiceGenerated": "Счет {number} создан."
       },

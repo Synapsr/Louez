@@ -2949,6 +2949,8 @@
         "statusAuthorized": "認可された",
         "statusRefunded": "返金されました",
         "statusCancelled": "キャンセルされました",
+        "statusFailed": "失敗",
+        "statusReleasePending": "解除中",
         "requestPayment": "支払いを要求する",
         "invoiceGenerated": "請求書 {number} が生成されました"
       },

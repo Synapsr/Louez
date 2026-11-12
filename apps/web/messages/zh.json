@@ -2949,6 +2949,8 @@
         "statusAuthorized": "授权",
         "statusRefunded": "已退款",
         "statusCancelled": "取消",
+        "statusFailed": "失败",
+        "statusReleasePending": "正在释放",
         "requestPayment": "请求付款",
         "invoiceGenerated": "生成发票 {number}"
       },

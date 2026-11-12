@@ -2949,6 +2949,8 @@
         "statusAuthorized": "Autorisiert",
         "statusRefunded": "Erstattet",
         "statusCancelled": "Storniert",
+        "statusFailed": "Fehlgeschlagen",
+        "statusReleasePending": "Wird freigegeben",
         "requestPayment": "Zahlung anfordern",
         "invoiceGenerated": "Rechnung {number} erstellt"
       },

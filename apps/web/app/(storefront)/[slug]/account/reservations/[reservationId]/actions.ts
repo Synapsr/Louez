@@ -527,13 +527,19 @@ export async function cancelReservationRequest(
         if (locked.status !== "pending") return { error: "requestCancellationStatusChanged" };
 
         const paymentRows = await tx
-          .select({ status: payments.status, method: payments.method })
+          .select({ status: payments.status, method: payments.method, type: payments.type })
           .from(payments)
           .where(eq(payments.reservationId, reservation.id))
           .for("update");
-        // A checkout can still settle asynchronously. Leave its reservation intact.
+        // A checkout can still settle asynchronously. Leave its reservation intact. A
+        // deposit hold the store asked for and Stripe has not confirmed is no checkout.
         if (
-          paymentRows.some((payment) => payment.method === "stripe" && payment.status === "pending")
+          paymentRows.some(
+            (payment) =>
+              payment.method === "stripe" &&
+              payment.status === "pending" &&
+              payment.type !== "deposit_hold",
+          )
         ) {
           return { error: "requestCancellationPaymentPending" };
         }

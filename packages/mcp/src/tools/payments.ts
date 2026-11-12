@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { reservationLinks } from '@louez/api/platform/links'
 import { db, markReservation, payments, reservations, stores, type Transaction } from '@louez/db'
 import type { StoreSettings } from '@louez/types'
+import { depositHoldRowKind, describeDepositHoldRow } from '@louez/utils'
 import { and, eq } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/server'
 
@@ -10,6 +11,20 @@ import { formatCurrency, formatDateTime } from '../utils/formatting'
 import { toolError, toolResult } from '../utils/errors'
 import { legacyTool } from '../utils/legacy-tool'
 import { linksLine } from '../utils/links'
+
+/**
+ * A payment row's status as an agent reads it. A deposit hold's own status follows
+ * Stripe, and says neither that an authorization was never confirmed nor that it is a
+ * second one being released: its kind does.
+ */
+export const paymentStatusLine = (row: {
+  type: string
+  status: string
+  releaseOwedAt?: Date | string | null
+}): string => {
+  const kind = depositHoldRowKind(row)
+  return kind ? describeDepositHoldRow(kind) : row.status
+}
 
 /** A payment the store records by hand, as the app's writer takes it. */
 export interface McpRecordedPayment {
@@ -90,7 +105,7 @@ export function registerPaymentTools(
       const lines = rows.map(
         (p) =>
           `- **${p.type}** — ${formatCurrency(p.amount)}\n` +
-          `  Method: ${p.method} | Status: ${p.status}\n` +
+          `  Method: ${p.method} | Status: ${paymentStatusLine(p)}\n` +
           `  ${p.paidAt ? `Paid: ${formatDateTime(p.paidAt)}` : `Created: ${formatDateTime(p.createdAt)}`}` +
           (p.notes ? `\n  Note: ${p.notes}` : '')
       )

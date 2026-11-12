@@ -2949,6 +2949,8 @@
         "statusAuthorized": "승인됨",
         "statusRefunded": "환불됨",
         "statusCancelled": "취소됨",
+        "statusFailed": "실패",
+        "statusReleasePending": "해제 중",
         "requestPayment": "결제 요청",
         "invoiceGenerated": "송장 {number}가 생성되었습니다."
       },

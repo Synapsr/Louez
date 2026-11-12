@@ -118,6 +118,7 @@ An effect that must not be lost (a customer's email, a store notification, an an
   A cancellation queues its own message after the acceptance it supersedes, so the customer hears of the cancellation only. The store's and the platform's notifications are records of each change, and all go out, in order.
 
 - **Gone.** A row whose store or reservation no longer exists is `cancelled` and its payload cleared, never sent. Deleting an account deletes its stores' rows, and deleting a customer deletes theirs.
+- **Work that is not a message.** `deposit.holdRelease` cancels at Stripe a deposit authorization Louez decided against, because the reservation holds another (apps/web `lib/reservations/deposit-hold-writes.ts`). Its row is added in the transaction that marks the release as owed on the hold's payment row (`payments.release_owed_at`), one per release owed, and carries no `reservation_id`, so the card is released even when the reservation is gone. A release Stripe already made, or a capture made meanwhile, is recorded and ends it; the sender throws while Stripe has not answered, so it is retried as any row is, and an abandoned one is the inbox's `deposit_release_failed` while the release stays owed.
 - **Retention.** The cron deletes done rows (sent, abandoned, cancelled, superseded) 30 days after they were added; superseded and cancelled rows lose their payload at once.
 - **Delivery** is at least once: a sender that dies, or times out, between sending and recording leaves its claim to the end of the lease, and the row runs again. An idempotent replay returns the stored result; the first run's rows are already there, and the cron finishes them.
 - **Truthful outcomes.** Each sender awaits the real send and throws when it did not go out: analytics go to PostHog's capture API, whose answer is checked (the SDK's flush swallowed failures); an instance without analytics skips the row.
@@ -125,7 +126,7 @@ An effect that must not be lost (a customer's email, a store notification, an an
 
 Where the store's own notifications go (the owner's phone, the webhook, the members' devices) and whether the store still wants each channel are read when they go out, not frozen: a webhook or a phone changed since is the one that counts, and the table holds no copy of them.
 
-An effect type is a type and its payload in `ApiEffectPayloads`, and a sender in the app. Reservation status changes, an agent's notes change, an SMS's prepaid credit ([The outbox](#the-outbox)), a store's creation, its launch, an agent's setup actions ([Setup analytics](#setup-analytics)) and a team invitation's e-mail ([The team](#the-team)) use it; the products' notifications and analytics still go through `afterCommit` (lot 9 moves them).
+An effect type is a type and its payload in `ApiEffectPayloads`, and a sender in the app. Reservation status changes, an agent's notes change, an SMS's prepaid credit ([The outbox](#the-outbox)), a store's creation, its launch, an agent's setup actions ([Setup analytics](#setup-analytics)), a team invitation's e-mail ([The team](#the-team)) and the release of a deposit authorization use it; the products' notifications and analytics still go through `afterCommit` (lot 9 moves them).
 
 ## Background jobs
 
@@ -405,6 +406,8 @@ PostHog says who set a store up, an agent or a human, what an agent filled and w
   | `pickup_overdue`, `return_overdue` | confirmed past its start, ongoing past its end                                                | the status stays; a pickup on a rental ended more than 30 days ago is left out |
   | `deposit_expiring`                 | `deposit_authorization_expires_at` of an authorized hold, from two days before                | the hold stays authorized on an open reservation                               |
   | `payment_failed`                   | the latest `payment_failed` or `deposit_failed` activity of an open reservation, 30 days back | no rental payment completed since; the deposit still failed                    |
+  | `deposit_unconfirmed`              | a `deposit_hold` payment still `pending`, 15 minutes after the store asked for it             | Stripe has neither confirmed nor refused the authorization; no age removes it  |
+  | `deposit_release_failed`           | `api_effects` abandoned, `deposit.holdRelease`, whose hold row still has `release_owed_at`    | Stripe has not said the second authorization is cancelled or captured          |
   | `dispute_open`                     | `payment_disputes` open                                                                       | open                                                                           |
   | `unit_conflict`                    | `findConflictingAssignments`, the product page's check, turnover buffer included              | the booking holds that unit                                                    |
   | `overbooking`                      | the `created` activity of a booking made over the stock (`overbooked`)                        | the booking is not over                                                        |

@@ -93,6 +93,11 @@ const PAYMENT_FAILURE_DAYS = 30;
 const STALE_PICKUP_DAYS = 30;
 /** A deposit hold shows this long before it expires. */
 const DEPOSIT_NOTICE_HOURS = 48;
+/**
+ * A deposit authorization Stripe has not confirmed shows once it is this old: a
+ * request and its webhook settle one within seconds. It never leaves by age.
+ */
+const DEPOSIT_UNCONFIRMED_MINUTES = 15;
 /** Rejected e-invoices older than this are left out. */
 const EINVOICE_DAYS = 90;
 /** Operations older than this are left out. */
@@ -110,6 +115,8 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   return_overdue: ["reservations"],
   deposit_expiring: ["payments", "reservations"],
   payment_failed: ["payments", "reservations"],
+  deposit_unconfirmed: ["payments", "reservations"],
+  deposit_release_failed: ["payments", "reservations"],
   dispute_open: ["payments", "reservations"],
   unit_conflict: ["reservations", "products"],
   overbooking: ["reservations"],
@@ -696,6 +703,129 @@ const expiringDeposits: Source = async (window, shaper) => {
         links: about.links,
       }),
     ];
+  });
+};
+
+/**
+ * A deposit authorization the store asked for, which Stripe has neither confirmed nor
+ * refused (apps/web lib/reservations/deposit-hold.ts): its attempt is still pending.
+ * Louez takes no other authorization for the reservation until Stripe settles this
+ * one, so the store is told to look at it, whatever the reservation's status: the
+ * card may be held.
+ */
+const unconfirmedDeposits: Source = async (window, shaper) => {
+  const occurred =
+    sql<Date>`(${payments.createdAt} + INTERVAL ${sql.raw(String(DEPOSIT_UNCONFIRMED_MINUTES))} MINUTE)`.mapWith(
+      payments.createdAt,
+    );
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      paymentId: payments.id,
+      occurredAt: occurred,
+      askedAt: payments.createdAt,
+      amount: payments.amount,
+      currency: payments.currency,
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(reservations.storeId, window.storeId),
+        eq(payments.type, "deposit_hold"),
+        eq(payments.status, "pending"),
+        inWindow(window, "deposit_unconfirmed", occurred, payments.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, payments.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const amount = money(row.amount, row.currency ?? shaper.currency);
+    return candidate("deposit_unconfirmed", row.paymentId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: `Stripe has not confirmed the deposit hold${amount ? ` of ${amount}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}: check the payment in Stripe. Asking again in Louez asks for the same hold, never a second one, and no other hold is taken until Stripe settles this one.`,
+      reservation: about.reservation,
+      details: {
+        reservationId: row.id,
+        reservationNumber: row.number,
+        paymentId: row.paymentId,
+        amount: row.amount,
+        currency: row.currency ?? shaper.currency,
+        askedAt: row.askedAt.toISOString(),
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
+/**
+ * A second deposit authorization the outbox gave up cancelling at Stripe
+ * (`deposit.holdRelease`), while its row still says the release is owed: the
+ * customer's card carries it on top of the reservation's hold. It leaves once Stripe
+ * says the authorization is cancelled or captured.
+ */
+const unreleasedDeposits: Source = async (window, shaper) => {
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      effectId: apiEffects.id,
+      // An abandoned row's next attempt is the time it was abandoned (platform/effects.ts).
+      occurredAt: apiEffects.nextAttemptAt,
+      paymentId: payments.id,
+      paymentIntentId: payments.stripePaymentIntentId,
+      amount: payments.amount,
+      currency: payments.currency,
+    })
+    .from(apiEffects)
+    .innerJoin(
+      payments,
+      and(
+        eq(payments.id, sql`JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.paymentId'))`),
+        eq(payments.type, "deposit_hold"),
+        isNotNull(payments.releaseOwedAt),
+      ),
+    )
+    .innerJoin(
+      reservations,
+      and(eq(reservations.id, payments.reservationId), eq(reservations.storeId, window.storeId)),
+    )
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(apiEffects.storeId, window.storeId),
+        eq(apiEffects.status, "abandoned"),
+        eq(apiEffects.type, "deposit.holdRelease"),
+        inWindow(window, "deposit_release_failed", apiEffects.nextAttemptAt, apiEffects.id),
+      ),
+    )
+    .orderBy(...inOrder(apiEffects.nextAttemptAt, apiEffects.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const amount = money(row.amount, row.currency ?? shaper.currency);
+    return candidate("deposit_release_failed", row.effectId, {
+      severity: "critical",
+      occurredAt: row.occurredAt,
+      summary: `A second deposit hold${amount ? ` of ${amount}` : ""} on ${about.name} could not be cancelled at Stripe after every try: the customer's card is held twice. Cancel the payment${row.paymentIntentId ? ` ${row.paymentIntentId}` : ""} in Stripe.`,
+      reservation: about.reservation,
+      details: {
+        effectId: row.effectId,
+        reservationId: row.id,
+        reservationNumber: row.number,
+        paymentId: row.paymentId,
+        paymentIntentId: row.paymentIntentId,
+        amount: row.amount,
+        currency: row.currency ?? shaper.currency,
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
   });
 };
 
@@ -1656,6 +1786,8 @@ const SOURCES: Record<InboxItemType, Source> = {
   return_overdue: lateReturns,
   deposit_expiring: expiringDeposits,
   payment_failed: failedPayments,
+  deposit_unconfirmed: unconfirmedDeposits,
+  deposit_release_failed: unreleasedDeposits,
   dispute_open: openDisputes,
   unit_conflict: unitConflicts,
   overbooking: overbookings,

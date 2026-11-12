@@ -2910,6 +2910,8 @@
         "statusAuthorized": "Autoryzowana",
         "statusRefunded": "Zwrócona",
         "statusCancelled": "Anulowana",
+        "statusFailed": "Nieudana",
+        "statusReleasePending": "Zwalnianie w toku",
         "requestPayment": "Poproś o płatność",
         "invoiceGenerated": "Faktura {number} wygenerowana"
       },
