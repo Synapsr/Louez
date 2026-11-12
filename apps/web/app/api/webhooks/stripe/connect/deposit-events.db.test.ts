@@ -884,6 +884,46 @@ describe("deposit hold events (database)", { skip: skipWithoutTestDatabase() }, 
       assert.deepEqual(await readActivity(authorized), ["deposit_authorized"]);
       assert.deepEqual(await readActivity(captured), ["deposit_captured"]);
     });
+
+    test("of a PaymentIntent that failed while another holds the deposit tells nobody", async () => {
+      const authorized = await createReservation({ depositStatus: "pending" });
+      const captured = await createReservation({ depositStatus: "pending" });
+      const stripe = stripeWithCard();
+      // A first PaymentIntent fails; a second authorizes the deposit, captured on one
+      // reservation; the first one's failure arrives last.
+      const failedOf = (reservationId: string) =>
+        stripe.createIntent({
+          accountId: ACCOUNT,
+          customerId: null,
+          paymentMethodId: "pm_declined",
+          amountMinor: 5000,
+          currency: "EUR",
+          status: "requires_payment_method",
+          attemptId: null,
+          reservationId,
+        });
+      const firstOfAuthorized = failedOf(authorized);
+      const firstOfCaptured = failedOf(captured);
+      assert.equal((await customerAuthorizes(authorized, stripe)).outcome, "authorized");
+      const taken = await customerAuthorizes(captured, stripe);
+      stripe.captureAtStripe(ACCOUNT, taken.id);
+      assert.equal(await deliver("payment_intent.succeeded", stripe, taken.id), "captured");
+      alerts.length = 0;
+
+      assert.equal(
+        await deliver("payment_intent.payment_failed", stripe, firstOfAuthorized.id),
+        "failed",
+      );
+      assert.equal(
+        await deliver("payment_intent.payment_failed", stripe, firstOfCaptured.id),
+        "failed",
+      );
+
+      assert.deepEqual(alerts, []);
+      assert.equal((await readDeposit(authorized))?.status, "authorized");
+      assert.equal((await readDeposit(captured))?.status, "captured");
+      assert.deepEqual(await readActivity(authorized), ["deposit_authorized"]);
+    });
   });
 
   test("a capture of a PaymentIntent the reservation does not reference records the money and leaves its hold", async () => {

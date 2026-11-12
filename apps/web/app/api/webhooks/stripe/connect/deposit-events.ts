@@ -138,7 +138,9 @@ export async function handleDepositEvent(
     const state = intentStateOf(intent.status);
     if (state === "held" || state === "captured") {
       // The failure was one try of a PaymentIntent that went through since: nobody is
-      // told of a failed deposit that Stripe holds.
+      // told of a failed deposit that Stripe holds. Nor of one whose reservation holds
+      // another PaymentIntent: `recordPaymentFailure` reads that under the
+      // reservation's lock, after the settlement above, and sends nothing then.
       log.info({
         stripeWebhook: {
           event: event.type,
