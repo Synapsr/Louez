@@ -117,7 +117,7 @@ Drizzle writes a `Date` into a timestamp column as a UTC string. A `Date` bound 
 
 Keep it so:
 
-- Every connection that reads or writes application rows comes from that pool, or sets `timezone: "Z"` itself (`createTestDatabase` does for its own connections).
+- A connection that reads or writes application rows comes from that pool, or sets `timezone: "Z"` itself: the billing relay's snapshot pool, the store-cloning script and `createTestDatabase` do. The one-off scripts under `apps/web/scripts` and `packages/db/src/scripts` open their own connections without it; one that binds a `Date` must set it.
 - The database session runs in UTC: MySQL stores a timestamp column from the session's time zone, and `NOW()` answers in it. The pool does not set the session's time zone, because changing it on an instance that ran otherwise would shift how its existing rows read.
 - A comparison with the database's clock stays in SQL (`NOW(3)`), as the outbox and the jobs do; do not compare a column with `new Date()` from an application server to decide a lease.
 

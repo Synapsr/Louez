@@ -451,6 +451,8 @@ function openSnapshotDatabase(): { readonly db: Database; close(): Promise<void>
     connectionLimit: 1,
     waitForConnections: true,
     enableKeepAlive: true,
+    // Dates in UTC, as the shared pool sends them (DL-14).
+    timezone: "Z",
   });
   return { db: drizzle(pool, { schema, mode: "default" }), close: () => pool.end() };
 }

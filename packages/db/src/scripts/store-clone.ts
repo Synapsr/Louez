@@ -1689,8 +1689,11 @@ async function main(): Promise<void> {
   ) {
     throw new Error('Refusing to clone into the known production database')
   }
-  const sourceConnection = await mysql.createConnection(sourceDbUrl)
-  const targetConnection = await mysql.createConnection(targetDbUrl)
+  // Dates in UTC on both sides (DL-14): a date read from the source is written
+  // back as the same instant, and a date the clone creates is not written in the
+  // local time of the machine that runs it.
+  const sourceConnection = await mysql.createConnection({ uri: sourceDbUrl, timezone: 'Z' })
+  const targetConnection = await mysql.createConnection({ uri: targetDbUrl, timezone: 'Z' })
 
   try {
     const [sourceIdentity] = await fetchRows(
