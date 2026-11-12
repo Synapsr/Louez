@@ -1,12 +1,9 @@
 /**
  * The status change's refusal when units the reservation holds cannot serve
- * it over its dates (`RESERVATION_UNITS_UNAVAILABLE`): the units' names, and
- * whether only the turnover buffer stands in the way. Null for any other
- * error. No server import.
+ * it over its dates (`RESERVATION_UNITS_UNAVAILABLE`): the units' names. Null
+ * for any other error. No server import.
  */
-export const readUnitConflictRefusal = (
-  error: unknown,
-): { identifiers: string; bufferOnly: boolean } | null => {
+export const readUnitConflictRefusal = (error: unknown): { identifiers: string } | null => {
   if (!(error instanceof Error)) return null;
   const data: unknown = "data" in error ? error.data : undefined;
   if (!data || typeof data !== "object" || !("code" in data) || !("details" in data)) return null;
@@ -24,8 +21,5 @@ export const readUnitConflictRefusal = (
       ? [conflict.identifier]
       : [],
   );
-  return {
-    identifiers: [...new Set(identifiers)].join(", "),
-    bufferOnly: "bufferOnly" in details && details.bufferOnly === true,
-  };
+  return { identifiers: [...new Set(identifiers)].join(", ") };
 };

@@ -15,22 +15,10 @@ test("names the units of a unit conflict, each once", () => {
     readUnitConflictRefusal(
       refusal({
         code: "RESERVATION_UNITS_UNAVAILABLE",
-        details: { conflicts: [conflict("S1"), conflict("L2"), conflict("S1")], bufferOnly: false },
+        details: { conflicts: [conflict("S1"), conflict("L2"), conflict("S1")] },
       }),
     ),
-    { identifiers: "S1, L2", bufferOnly: false },
-  );
-});
-
-test("says when only the turnover buffer stands in the way", () => {
-  assert.deepEqual(
-    readUnitConflictRefusal(
-      refusal({
-        code: "RESERVATION_UNITS_UNAVAILABLE",
-        details: { conflicts: [conflict("S1")], bufferOnly: true },
-      }),
-    ),
-    { identifiers: "S1", bufferOnly: true },
+    { identifiers: "S1, L2" },
   );
 });
 

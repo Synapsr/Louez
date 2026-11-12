@@ -785,7 +785,7 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
         // The message is what a customer may read: it names no unit.
         assert.equal(error.message, "errors.productNoLongerAvailable");
         assert.ok(error instanceof inventory.ReservationInventoryError);
-        return { key: error.key, conflicts: error.conflicts };
+        return { conflicts: error.conflicts };
       }
     }
 
@@ -838,7 +838,7 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
       test("nobody else holds is confirmed", async () => {
         const { storeId, quote } = await quoteHoldingSmall();
 
-        assert.equal(await unitRefusal(storeId, quote.id), null);
+        assert.deepEqual(await checkExisting(storeId, quote.id), { activityMetadata: {} });
       });
 
       test("since given to a confirmed booking is refused, though the stock covers its lines", async () => {
@@ -848,7 +848,6 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
         await otherBooking(storeId, { productId, quantity: 1, assignedUnitId: small });
 
         assert.deepEqual(await unitRefusal(storeId, quote.id), {
-          key: "errors.assignedUnitsConflict",
           conflicts: [conflictOn(quote, small)],
         });
       });
@@ -879,8 +878,9 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
         assert.equal(await unitRefusal(storeId, quote.id), null);
       });
 
-      test("that another booking returns within the turnover buffer is refused as a buffer conflict", async () => {
-        // Returned an hour before the start, with two hours asked between rentals.
+      test("that another booking returns within the turnover buffer is confirmed, and named", async () => {
+        // Returned an hour before the start, with two hours asked between
+        // rentals: the store may have assigned it over the buffer on purpose.
         const { storeId, productId, small, quote } = await quoteHoldingSmall({
           turnoverBufferMinutes: 120,
         });
@@ -890,9 +890,8 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
           { start: new Date(START.getTime() - 24 * HOUR), end: new Date(START.getTime() - HOUR) },
         );
 
-        assert.deepEqual(await unitRefusal(storeId, quote.id), {
-          key: "errors.turnoverBufferConflict",
-          conflicts: [conflictOn(quote, small)],
+        assert.deepEqual(await checkExisting(storeId, quote.id), {
+          activityMetadata: { turnoverBufferOnlyUnitIds: [small] },
         });
       });
 
@@ -920,7 +919,6 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
           .where(eq(louezDb.productUnits.id, small));
 
         assert.deepEqual(await unitRefusal(storeId, quote.id), {
-          key: "errors.assignedUnitsConflict",
           conflicts: [conflictOn(quote, small)],
         });
       });
@@ -937,7 +935,6 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
         });
 
         assert.deepEqual(await unitRefusal(storeId, quote.id), {
-          key: "errors.assignedUnitsConflict",
           conflicts: [conflictOn(quote, small)],
         });
       });

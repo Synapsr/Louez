@@ -841,14 +841,7 @@ export const reservationErrors = {
     apiError("CONFLICT", "RESERVATION_UNITS_UNAVAILABLE", {
       message: `Not confirmed: units assigned to this reservation cannot serve it for its dates (${conflicts.map((conflict) => conflict.identifier).join(", ")}). Another booking holds them over these dates, or they are retired or in downtime. Assign other units, then confirm.`,
       i18nKey: "errors.assignedUnitsConflict",
-      details: { conflicts, bufferOnly: false },
-    }),
-  /** The same, when only the store's turnover buffer around another booking reaches the units. */
-  unitsWithinTurnoverBuffer: (conflicts: ReservationUnitConflict[]) =>
-    apiError("CONFLICT", "RESERVATION_UNITS_UNAVAILABLE", {
-      message: `Not confirmed: units assigned to this reservation are within the turnover buffer of another booking (${conflicts.map((conflict) => conflict.identifier).join(", ")}). Assign other units, then confirm.`,
-      i18nKey: "errors.turnoverBufferConflict",
-      details: { conflicts, bufferOnly: true },
+      details: { conflicts },
     }),
   storeNotAccepting: (i18nKey: string) =>
     apiError("CONFLICT", "STORE_NOT_ACCEPTING_RESERVATIONS", {

@@ -1661,10 +1661,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         code: "RESERVATION_UNITS_UNAVAILABLE",
         retryable: false,
         i18nKey: "errors.assignedUnitsConflict",
-        details: {
-          conflicts: [{ reservationItemId: itemId, unitId, identifier: "S1" }],
-          bufferOnly: false,
-        },
+        details: { conflicts: [{ reservationItemId: itemId, unitId, identifier: "S1" }] },
       });
       assert.equal(await statusOf(quoteId), "quote", "nothing was written");
       assert.equal(feeEffects.length, 0);
@@ -1678,13 +1675,12 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         .set({ lifecycleStatus: "retired" })
         .where(orm.eq(louezDb.productUnits.id, unitId));
 
-      const refusal = await rejects(confirm(quoteId), "RESERVATION_UNITS_UNAVAILABLE");
+      await rejects(confirm(quoteId), "RESERVATION_UNITS_UNAVAILABLE");
 
-      assert.equal(refusal.data.details?.bufferOnly, false);
       assert.equal(await statusOf(quoteId), "quote");
     });
 
-    test("that another booking returns within the turnover buffer is refused as a buffer conflict", async () => {
+    test("that another booking returns within the turnover buffer confirms it, and records the unit", async () => {
       const { productId, unitId, quoteId } = await quoteHoldingUnit();
       // Returned an hour before the start, with two hours asked between rentals.
       await lineHolding(
@@ -1702,14 +1698,17 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         .set({ settings: { ...settings, turnoverBufferMinutes: 120 } })
         .where(orm.eq(louezDb.stores.id, STORE));
 
-      const refusal = await rejects(confirm(quoteId), "RESERVATION_UNITS_UNAVAILABLE");
-
-      assert.equal(refusal.data.details?.bufferOnly, true);
-      assert.equal(
-        "i18nKey" in refusal.data && refusal.data.i18nKey,
-        "errors.turnoverBufferConflict",
-      );
-      assert.equal(await statusOf(quoteId), "quote");
+      assert.equal((await confirm(quoteId)).to, "confirmed");
+      const [activity] = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(
+          orm.and(
+            orm.eq(louezDb.reservationActivity.reservationId, quoteId),
+            orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
+          ),
+        );
+      assert.deepEqual(activity?.metadata?.turnoverBufferOnlyUnitIds, [unitId]);
     });
   });
 

@@ -503,9 +503,9 @@ export async function changeStoreReservationStatus(
             if (requiresReservationGate(from, to, actor)) {
               await assertStoreCanTakeReservations(tx, storeId);
             }
-            if (takesStock(from, to)) {
-              await checkExistingReservationInventory(tx, id, storeId);
-            }
+            const inventory = takesStock(from, to)
+              ? await checkExistingReservationInventory(tx, id, storeId)
+              : null;
 
             // The preview, its confirmation and the queued messages share one snapshot.
             const preview = await buildPreview(tx, caller, locked, to);
@@ -540,6 +540,7 @@ export async function changeStoreReservationStatus(
                   ...(warnings.length > 0
                     ? { validationWarnings: warnings, validationWarningsCount: warnings.length }
                     : {}),
+                  ...inventory?.activityMetadata,
                 },
               },
             });
@@ -586,9 +587,7 @@ export async function changeStoreReservationStatus(
   } catch (error) {
     if (isConflict(error)) throw reservationErrors.busy(id);
     if (error instanceof ReservationUnitConflictError) {
-      throw error.key === "errors.turnoverBufferConflict"
-        ? reservationErrors.unitsWithinTurnoverBuffer(error.conflicts)
-        : reservationErrors.unitsUnavailable(error.conflicts);
+      throw reservationErrors.unitsUnavailable(error.conflicts);
     }
     if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
       throw error.message === "errors.reservationNotFound"

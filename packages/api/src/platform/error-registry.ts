@@ -189,7 +189,6 @@ export const LOUEZ_ERROR_I18N_KEYS: ReadonlySet<string> = new Set([
   "errors.stripeNotConfigured",
   "errors.stripeRequiredForPaymentMode",
   "errors.tooManyRequests",
-  "errors.turnoverBufferConflict",
   "errors.unauthenticated",
   "errors.unauthorized",
   "errors.unitAlreadyRetired",

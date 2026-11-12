@@ -250,11 +250,9 @@ export function useReservationActions(): UseReservationActionsReturn {
         // Units the reservation holds cannot serve it: the store is told which.
         const unitConflict = readUnitConflictRefusal(error);
         toastManager.add({
-          title: !unitConflict
-            ? tErrors("generic")
-            : unitConflict.bufferOnly
-              ? tErrors("turnoverBufferConflict")
-              : tErrors("assignedUnitsConflict", { identifiers: unitConflict.identifiers }),
+          title: unitConflict
+            ? tErrors("assignedUnitsConflict", { identifiers: unitConflict.identifiers })
+            : tErrors("generic"),
           type: "error",
         });
       }

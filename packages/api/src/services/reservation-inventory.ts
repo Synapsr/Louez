@@ -566,14 +566,10 @@ export class ReservationInventoryError extends Error {}
 /**
  * Units the reservation holds cannot serve it. Its message is the stock
  * refusal, which any caller may show: a customer never reads which units.
- * `key` and `conflicts` name them, for the store alone.
+ * `conflicts` names them, for the store alone.
  */
 export class ReservationUnitConflictError extends ReservationInventoryError {
-  constructor(
-    /** `errors.turnoverBufferConflict` when only the turnover buffer makes the conflict. */
-    readonly key: "errors.assignedUnitsConflict" | "errors.turnoverBufferConflict",
-    readonly conflicts: ReservationUnitConflict[],
-  ) {
+  constructor(readonly conflicts: ReservationUnitConflict[]) {
     super("errors.productNoLongerAvailable");
   }
 }
@@ -662,14 +658,16 @@ const findReservationUnitConflicts = async (
  * are checked by id.
  *
  * Throws `ReservationUnitConflictError` for a unit that cannot serve, before
- * the stock refusal; a conflict the turnover buffer alone makes comes last,
- * and is refused too, as the change has no way to pass the buffer.
+ * the stock refusal. A unit only the turnover buffer around another booking
+ * reaches does not refuse: the store may have assigned it on purpose, with
+ * `overrideTurnoverBuffer`, and none of the status changes can carry that
+ * flag. It is named in `activityMetadata`, for the status change's row.
  */
 export const checkExistingReservationInventory = async (
   tx: Transaction,
   reservationId: string,
   storeId: string,
-) => {
+): Promise<{ activityMetadata: Record<string, unknown> }> => {
   const reservation = await tx.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
     with: {
@@ -724,10 +722,18 @@ export const checkExistingReservationInventory = async (
     turnoverBufferMinutes,
   });
   if (unitConflicts.hard.length > 0) {
-    throw new ReservationUnitConflictError("errors.assignedUnitsConflict", unitConflicts.hard);
+    throw new ReservationUnitConflictError(unitConflicts.hard);
   }
   if (!result.ok) throw new ReservationInventoryError("errors.productNoLongerAvailable");
-  if (unitConflicts.buffer.length > 0) {
-    throw new ReservationUnitConflictError("errors.turnoverBufferConflict", unitConflicts.buffer);
-  }
+  return {
+    activityMetadata:
+      unitConflicts.buffer.length > 0
+        ? {
+            // Confirmed with units the turnover buffer alone reaches: traceable.
+            turnoverBufferOnlyUnitIds: [
+              ...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId)),
+            ],
+          }
+        : {},
+  };
 };

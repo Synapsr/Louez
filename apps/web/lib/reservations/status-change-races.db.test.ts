@@ -8,6 +8,8 @@ import { after, before, beforeEach, describe, test } from "node:test";
 
 import { and, eq } from "drizzle-orm";
 
+import type { StoreSettings } from "@louez/types";
+
 import {
   createTestDatabase,
   skipWithoutTestDatabase,
@@ -22,7 +24,9 @@ import {
 // back, and each change and its effects happen once.
 //
 // The same two paths, alone, when the reservation they confirm holds a unit
-// that went to another booking meanwhile: neither confirms it (S4).
+// that went to another booking meanwhile: neither confirms it (S4). And the
+// three confirmations of a reservation holding a unit that only the turnover
+// buffer around another booking reaches: each confirms it.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-status-races-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -353,13 +357,12 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
           depositStatus: "none",
           activityMetadata: { source: "unit conflict" },
         }),
-        (error: Error & { key?: string; conflicts?: Array<{ unitId: string }> }) => {
+        (error: Error & { conflicts?: Array<{ unitId: string }> }) => {
           // A stock refusal, which the payment's completion keeps pending. Read
           // by name: this file loads the service's module a second time.
           assert.equal(error.constructor.name, "ReservationUnitConflictError");
           assert.equal(Object.getPrototypeOf(error.constructor).name, "ReservationInventoryError");
           assert.equal(error.message, "errors.productNoLongerAvailable");
-          assert.equal(error.key, "errors.assignedUnitsConflict");
           assert.deepEqual(
             error.conflicts?.map((conflict) => conflict.unitId),
             [contested],
@@ -406,6 +409,205 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
       });
       assert.equal(change.to, "confirmed");
     });
+  });
+
+  describe("a reservation that holds a unit only the turnover buffer reaches", () => {
+    // Two interchangeable units. Another booking returns unit U at noon; the
+    // reservation starts at noon, in a store that asks an hour between
+    // rentals, and holds U: the store assigned it over the buffer on purpose.
+    const NOON = new Date("2030-07-01T12:00:00Z");
+    const HOUR = 3_600_000;
+    let settings: StoreSettings | null = null;
+
+    before(async () => {
+      const [store] = await louezDb.db
+        .select({ settings: louezDb.stores.settings })
+        .from(louezDb.stores)
+        .where(eq(louezDb.stores.id, STORE));
+      assert.ok(store?.settings);
+      settings = store.settings;
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: { ...settings, turnoverBufferMinutes: 60 } })
+        .where(eq(louezDb.stores.id, STORE));
+    });
+    after(async () => {
+      await louezDb.db.update(louezDb.stores).set({ settings }).where(eq(louezDb.stores.id, STORE));
+    });
+
+    type Case = "buffer only" | "overlap" | "retired" | "downtime";
+
+    async function holdingReturnedUnit(status: "pending" | "quote", situation: Case) {
+      const productId = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: productId,
+        storeId: STORE,
+        name: productId,
+        price: "1.00",
+        pricingMode: "day",
+        trackUnits: true,
+        quantity: 2,
+      });
+      const [returned = "", other = ""] = [nextId("unt"), nextId("unt")];
+      for (const unitId of [returned, other]) {
+        await louezDb.db.insert(louezDb.productUnits).values({
+          id: unitId,
+          productId,
+          identifier: `SECRET-${unitId}`,
+          lifecycleStatus: situation === "retired" && unitId === returned ? "retired" : "active",
+        });
+      }
+      if (situation === "downtime") {
+        await louezDb.db.insert(louezDb.productUnitDowntimes).values({
+          id: nextId("dwn"),
+          productUnitId: returned,
+          storeId: STORE,
+          reason: "maintenance",
+          startsAt: new Date(NOON.getTime() + 2 * HOUR),
+          endsAt: null,
+        });
+      }
+      const line = async (
+        lineStatus: "pending" | "quote" | "confirmed",
+        window: { start: Date; end: Date },
+      ) => {
+        const id = nextId("res");
+        const itemId = nextId("itm");
+        // A fixture, so it may start in any status.
+        await louezDb.db.insert(louezDb.reservations).values({
+          id,
+          storeId: STORE,
+          customerId: CUSTOMER,
+          number: id,
+          status: lineStatus,
+          startDate: window.start,
+          endDate: window.end,
+          subtotalAmount: "1.00",
+          depositAmount: "0.00",
+          totalAmount: "1.00",
+          source: "online",
+        });
+        await louezDb.db.insert(louezDb.reservationItems).values({
+          id: itemId,
+          reservationId: id,
+          productId,
+          quantity: 1,
+          unitPrice: "1.00",
+          depositPerUnit: "0.00",
+          totalPrice: "1.00",
+          productSnapshot: { name: productId, description: null, images: [] },
+        });
+        await louezDb.db.insert(louezDb.reservationItemUnits).values({
+          id: nextId("asg"),
+          reservationItemId: itemId,
+          productUnitId: returned,
+          identifierSnapshot: `SECRET-${returned}`,
+        });
+        return id;
+      };
+      // Back at noon; an hour later, for a hard overlap.
+      const returnedAt = new Date(NOON.getTime() + (situation === "overlap" ? HOUR : 0));
+      await line("confirmed", { start: new Date(NOON.getTime() - 48 * HOUR), end: returnedAt });
+      const id = await line(status, { start: NOON, end: new Date(NOON.getTime() + 48 * HOUR) });
+      return { id, returned };
+    }
+
+    /** The reservation's status, and what its confirmation row recorded. */
+    async function confirmationOf(id: string) {
+      const [row] = await louezDb.db
+        .select({ status: louezDb.reservations.status })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, id));
+      const activity = await louezDb.db
+        .select({
+          type: louezDb.reservationActivity.activityType,
+          metadata: louezDb.reservationActivity.metadata,
+        })
+        .from(louezDb.reservationActivity)
+        .where(eq(louezDb.reservationActivity.reservationId, id));
+      const confirmation = activity.find(
+        (entry) => entry.type === "confirmed" || entry.type === "quote_accepted",
+      );
+      return {
+        status: row?.status,
+        bufferOnlyUnitIds: confirmation?.metadata?.turnoverBufferOnlyUnitIds,
+      };
+    }
+
+    const paths = {
+      "the store's change": {
+        from: "quote" as const,
+        confirm: async (id: string) => {
+          try {
+            await statusChange.changeStoreReservationStatus(caller(), { id, to: "confirmed" });
+            return "confirmed";
+          } catch (error) {
+            const data = error && typeof error === "object" && "data" in error ? error.data : null;
+            assert.equal(
+              data && typeof data === "object" && "code" in data ? data.code : undefined,
+              "RESERVATION_UNITS_UNAVAILABLE",
+            );
+            return "refused";
+          }
+        },
+      },
+      "the customer's acceptance": {
+        from: "quote" as const,
+        confirm: async (id: string) => {
+          const result = await quotes.acceptQuote(STORE_SLUG, id);
+          if (!("error" in result) || !result.error) return "confirmed";
+          assert.equal(result.error, "errors.productNoLongerAvailable");
+          return "refused";
+        },
+      },
+      "the payment's confirmation": {
+        from: "pending" as const,
+        confirm: async (id: string) => {
+          try {
+            await payment.confirmPaidReservationOrThrow({
+              reservationId: id,
+              storeId: STORE,
+              stripeCustomerId: null,
+              stripePaymentMethodId: null,
+              depositStatus: "none",
+              activityMetadata: { source: "buffer" },
+            });
+            return "confirmed";
+          } catch (error) {
+            // Read by name: this file loads the service's module a second time.
+            assert.equal(
+              error instanceof Error && error.constructor.name,
+              "ReservationUnitConflictError",
+            );
+            return "refused";
+          }
+        },
+      },
+    };
+
+    for (const [path, { from, confirm }] of Object.entries(paths)) {
+      test(`is confirmed by ${path}, which records the unit`, async () => {
+        const { id, returned } = await holdingReturnedUnit(from, "buffer only");
+
+        assert.equal(await confirm(id), "confirmed");
+        assert.deepEqual(await confirmationOf(id), {
+          status: "confirmed",
+          bufferOnlyUnitIds: [returned],
+        });
+      });
+
+      for (const situation of ["overlap", "retired", "downtime"] as const) {
+        const state = { overlap: "still out", retired: "retired", downtime: "in downtime" }[
+          situation
+        ];
+        test(`is not confirmed by ${path} when the unit is ${state}`, async () => {
+          const { id } = await holdingReturnedUnit(from, situation);
+
+          assert.equal(await confirm(id), "refused");
+          assert.equal((await confirmationOf(id)).status, from);
+        });
+      }
+    }
   });
 
   test("a store cancellation racing a paid checkout's confirmation", async () => {
