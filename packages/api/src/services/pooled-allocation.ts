@@ -8,14 +8,14 @@ export interface AllocatableCombination {
 
 /**
  * Spreads a quantity over combinations in the given order, taking from each
- * what it has left. Returns the quantity taken per combination key, or null
- * when the combinations cannot cover the whole quantity together.
+ * what it has left. Returns the quantity taken per combination key, and what
+ * the combinations could not cover together.
  */
-export const allocateAcrossCombinations = (
+export const spreadAcrossCombinations = (
   candidates: readonly AllocatableCombination[],
   reservedByCombinationKey: (combinationKey: string) => number,
   quantity: number,
-): Map<string, number> | null => {
+): { taken: Map<string, number>; missing: number } => {
   const taken = new Map<string, number>();
   let remaining = quantity;
 
@@ -31,5 +31,5 @@ export const allocateAcrossCombinations = (
     remaining -= take;
   }
 
-  return remaining === 0 ? taken : null;
+  return { taken, missing: remaining };
 };
