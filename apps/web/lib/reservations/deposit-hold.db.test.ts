@@ -1871,7 +1871,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       );
     });
 
-    describe("an authorization found altered blocks every closing of its attempt until Stripe shows it holds nothing", () => {
+    describe("an authorization found altered blocks the closing of its attempt as absent until Stripe shows it holds nothing", () => {
       const unavailable = async (): Promise<never> => {
         throw new Error("Stripe is down");
       };
