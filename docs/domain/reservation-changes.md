@@ -161,24 +161,24 @@ Each rule below is what the code does today. Every slice preserves it unless the
 
 Each is one named function or one existing setting. None becomes a new setting in this lot.
 
-| Rule                                   | Lives in                                                                                            | Behaviour                                                                                                                                                                         | Changed by                                         |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Transition graph                       | `packages/db/src/consumable-stock.ts:36`                                                            | T2                                                                                                                                                                                | —                                                  |
-| Card gate                              | `requiresReservationGate`, `packages/db/src/reservation-status.ts:155`                              | asked for an entry into the billable set, except by `payment`                                                                                                                     | —                                                  |
-| Blocking statuses                      | setting `pendingBlocksAvailability` (exists)                                                        | `confirmed`, `ongoing`, and `pending` unless turned off                                                                                                                           | —                                                  |
-| Marketplace hold validity              | `buildReservationAvailabilityPredicate`, `packages/db/src/unit-availability.ts:113`                 | a pending marketplace booking whose hold expired blocks nothing. It depends on the persisted source and attempt, not on the actor: a store actor can act on a marketplace booking | —                                                  |
-| Live extension hold                    | `reservationAvailabilityEndSql`, `unit-availability.ts:46`                                          | a reservation blocks to the end that a live extension checkout holds. It depends on the persisted attempt, not on the actor                                                       | —                                                  |
-| Turnover buffer                        | setting `turnoverBufferMinutes` (exists)                                                            | `0` by default                                                                                                                                                                    | —                                                  |
-| Capacity override (`allowOverbooking`) | one function per actor                                                                              | store session: on creation and edit. Refused for customer, payment, marketplace and system                                                                                        | slice 4 (store confirmation); D2 (keys and agents) |
-| Buffer approval                        | stored approval, per unit or per line                                                               | store-side only, per call; never a setting                                                                                                                                        | slices 5a, 5b                                      |
-| Physical conflicts                     | `findReservationUnitConflicts`; consumable stock; the assignment's strict check (`actions.ts:4879`) | never overridden                                                                                                                                                                  | —                                                  |
-| Edit's demand rule                     | `compareReservationDemand`, `actions.ts:2878`                                                       | only a shortfall on a product whose demand the edit raised refuses the edit; every shortfall is recorded                                                                          | —                                                  |
-| Editable statuses                      | the edit's guard and the edit context                                                               | today: inconsistent (section 1)                                                                                                                                                   | slice 8a                                           |
-| Customer cancellation                  | `cancelReservationRequest`                                                                          | `pending` only. Refused while a non-deposit-hold Stripe payment is pending, and without acknowledgment when a payment completed or is authorized                                  | —                                                  |
-| Required accessories                   | `checkExistingReservationInventory`                                                                 | checked at every confirmation                                                                                                                                                     | slice 3: checked where a cart is composed          |
-| Stock on cancellation                  | `stockAction`, `reservation-status.ts:180`                                                          | consumables come back from `confirmed` and `ongoing`                                                                                                                              | — (section 4)                                      |
-| Money on cancellation                  | `reservation-status.ts:105`                                                                         | refunds and releases nothing (`refundedAutomatically: false`)                                                                                                                     | —                                                  |
-| Signature before pickup                | setting `contractSignatureMode` (exists)                                                            | as set; enforced by the only path that picks up                                                                                                                                   | —                                                  |
+| Rule                                   | Lives in                                                                                            | Behaviour                                                                                                                                                                                                                             | Changed by                                         |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Transition graph                       | `packages/db/src/consumable-stock.ts:36`                                                            | T2                                                                                                                                                                                                                                    | —                                                  |
+| Card gate                              | `requiresReservationGate`, `packages/db/src/reservation-status.ts:155`                              | asked for an entry into the billable set, except by `payment`                                                                                                                                                                         | —                                                  |
+| Blocking statuses                      | setting `pendingBlocksAvailability` (exists)                                                        | `confirmed`, `ongoing`, and `pending` unless turned off                                                                                                                                                                               | —                                                  |
+| Marketplace hold validity              | `buildReservationAvailabilityPredicate`, `packages/db/src/unit-availability.ts:113`                 | a pending marketplace booking whose hold expired blocks nothing. It depends on the persisted source and attempt, not on the actor: a store actor can act on a marketplace booking                                                     | —                                                  |
+| Live extension hold                    | `reservationAvailabilityEndSql`, `unit-availability.ts:46`                                          | a reservation blocks to the end that a live extension checkout holds. It depends on the persisted attempt, not on the actor                                                                                                           | —                                                  |
+| Turnover buffer                        | setting `turnoverBufferMinutes` (exists)                                                            | `0` by default                                                                                                                                                                                                                        | —                                                  |
+| Capacity override (`allowOverbooking`) | one function per actor                                                                              | store session: on creation and edit. Refused for customer, payment, marketplace and system                                                                                                                                            | slice 4 (store confirmation); D2 (keys and agents) |
+| Buffer approval                        | stored approval, per unit or per line                                                               | store-side only, per call; never a setting                                                                                                                                                                                            | slices 5a, 5b                                      |
+| Physical conflicts                     | `findReservationUnitConflicts`; consumable stock; the assignment's strict check (`actions.ts:4879`) | never overridden                                                                                                                                                                                                                      | —                                                  |
+| Edit's demand rule                     | `compareReservationDemand`, `actions.ts:2878`                                                       | only a shortfall on a product whose demand the edit raised refuses the edit; every shortfall is recorded                                                                                                                              | —                                                  |
+| Editable statuses                      | the edit's guard and the edit context                                                               | today: inconsistent (section 1)                                                                                                                                                                                                       | slice 8a                                           |
+| Customer cancellation                  | `cancelReservationRequest`                                                                          | `pending` only. Refused while a non-deposit-hold Stripe payment is pending, and without acknowledgment when a payment completed or is authorized                                                                                      | —                                                  |
+| Required accessories                   | `checkExistingReservationInventory`                                                                 | checked at every confirmation                                                                                                                                                                                                         | slice 3: checked where a cart is composed          |
+| Stock on cancellation                  | `stockAction`, `reservation-status.ts:180`                                                          | consumables come back from `confirmed` and `ongoing`                                                                                                                                                                                  | — (section 4)                                      |
+| Money on cancellation                  | `reservation-status.ts:105`                                                                         | The store's status cancellation itself neither refunds nor releases money (`refundedAutomatically: false`); the marketplace's cancellation additionally releases pending payments through its adapter (`marketplace-booking.ts:1102`) | —                                                  |
+| Signature before pickup                | setting `contractSignatureMode` (exists)                                                            | as set; enforced by the only path that picks up                                                                                                                                                                                       | —                                                  |
 
 No channel-scoped rule is proposed. Every rule that seems to depend on the channel depends on persisted facts (source, attempt) or on the actor.
 
@@ -230,13 +230,24 @@ Do not bundle:
 
 No test fails when a new path inverts the order.
 
-**Proposed rule.** One function, `lockReservationForChange(tx, reservationId, storeId)`, in `packages/db` next to `changeReservationStatus`: `packages/db` callers need it (`failed-checkout.ts`), and `packages/db` must not import `packages/api`. The function:
+**Today.** The store's change retries the whole transaction on a lost deadlock and on `ReservationProductsChangedError`, three runs in all (`packages/api/src/services/reservation-status.ts:154`). The other callers retry deadlocks only. The failed checkout sets no isolation level and does not retry (`packages/db/src/failed-checkout.ts:35`).
 
-- throws unless the transaction runs at READ COMMITTED;
-- locks the reservation's products by id, then the reservation, then reads the product set again and asks for a restart when it changed;
-- returns a token bound to the transaction, the store and the reservation.
+**Proposed rule.** One lock with two entries. Both live in `packages/db`, next to `changeReservationStatus`, with the token types and the restart signal (`ReservationProductsChangedError` moves there from `packages/api`): `packages/db` callers need them (`failed-checkout.ts`), and `packages/db` must not import `packages/api`. `packages/api` and `apps/web` call them. No `packages/db → packages/api` dependency is added.
 
-`changeReservationStatus` requires the token for a change that moves stock or runs a check (`consume`, `restore` or a `beforeWrite`). Without one, it throws.
+- **The owner entry**, `runReservationChange(reservationId, storeId, work)`. It opens the transaction itself at READ COMMITTED. It locks the reservation's products by id, then the reservation, then reads the product set again, and calls `work(tx, token)`. On a lost deadlock or a changed product set it rolls back and runs the whole transaction again, three runs in all, as the store's change does today. No caller can take the lock at another isolation level or without the retry. `work` holds no outside effect, since it may run three times: messages go to the outbox, and Stripe, the insurer and revalidation come after the commit.
+- **The transaction-level entry**, `lockReservationInTransaction(ownerToken, reservationId)`, for an operation composed inside a larger transaction (the checkout's composed operations). It takes a token that only the owner entry creates (a branded type), so it cannot be called in a transaction the owner entry did not open. It locks in the same order, and on a changed product set it throws the restart signal, which propagates to its owner; the owner runs the whole transaction again.
+- **A reservation-only token** has its own constructor, available from both entries, for a change that locks no product: cancelling a pending checkout, and the failed or abandoned checkout. It locks the reservation alone and permits only transitions that take no stock.
+
+Every token is bound to the transaction, the store and the reservation. `changeReservationStatus` requires a product token for a change that moves stock or runs a check (`consume`, `restore` or a `beforeWrite`); without one, or with a reservation-only token, it throws. `consumeReservationStock` requires the same token, so the already-confirmed paid repair branch's direct call (`apps/web/lib/reservations/complete-checkout-payment.ts:190`) goes through it.
+
+**When the runs are exhausted**, per caller:
+
+| Caller                     | Answer                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| the store's procedures     | `RESERVATION_BUSY` (retryable), as today                                                                 |
+| the customer's actions     | their existing retryable "try again" error; nothing is written                                           |
+| the payment's confirmation | throws, so the webhook answers non-2xx and Stripe redelivers. The payment claim, committed before, stays |
+| a cron or a system change  | skips the reservation, and takes it on its next run                                                      |
 
 Every status writer moves to it, and so does the paid confirmation's repair branch:
 
@@ -246,12 +257,14 @@ Every status writer moves to it, and so does the paid confirmation's repair bran
 
 A checkout that supersedes its own pending booking keeps a transaction-level entry: it has locked its cart's products already, and it must not take an earlier product lock after the superseded reservation's lock. It uses a reservation-only token, which permits no stock move.
 
-The bounded deadlock retries stay. Two paths still invert the order after this slice, and C1 stays Partial for them until their own lots move them, outside this one: the extension (`extension-quote.ts:53`, `:176`) and the unit assignment (`actions.ts:4701`, `:5038`).
+The bounded retries move into the owner entry. Two paths still invert the order after this slice, and C1 stays Partial for them until their own lots move them, outside this one: the extension (`extension-quote.ts:53`, `:176`) and the unit assignment (`actions.ts:4701`, `:5038`).
 
 **Test.**
 
 - `scripts/reservation-writes.test.mjs` fails on a stock-moving call of `changeReservationStatus` without a token.
-- A test fails on a token used in another transaction.
+- A test fails on a token used in another transaction, and on a reservation-only token passed to a transition that takes stock.
+- A product added to the reservation while a customer's acceptance waits for its lock restarts the acceptance, which then locks the new product.
+- Exhaustion, per caller: the store's procedure answers `RESERVATION_BUSY`, the customer's action answers its retryable error and writes nothing, the payment's confirmation throws and keeps the payment claim, and a cron skips the reservation.
 - The status-change races (`status-change-races.db.test.ts:613`, `:641`) count their retries. Zero is evidence, not enforcement.
 - The fee race of section 4 (confirm, then cancel before the fee is recorded) ends with the fee voided.
 
@@ -321,25 +334,48 @@ A unit's hard conflict and consumable stock below zero still refuse, whatever th
 
 **Proposed rule.** An approval waives the turnover buffer for one named demand, never for the reservation as a whole.
 
-| Approval of                    | Waives                                                                                                                                                  | For                                                      |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| an assigned unit (line + unit) | that unit's buffer-only conflicts with other bookings, in the unit check; and that line's buffered capacity, when every unit the line holds is approved | products with tracked units                              |
-| a line (no unit)               | the buffer on that line's demand in the buffered capacity check                                                                                         | quantity-only products, and lines without assigned units |
+| Approval of                    | Waives                                                                                                                                              | For                                                      |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| an assigned unit (line + unit) | that unit's buffer-only conflicts with other bookings, in the unit check; and, in the buffered capacity check, only the demand that unit represents | products with tracked units                              |
+| a line (no unit)               | the buffer on that line's demand in the buffered capacity check                                                                                     | quantity-only products, and lines without assigned units |
+
+Unit approvals waive only the demand represented by those units; any remaining quantity keeps its buffer unless separately approved. Approving every assigned unit does not approve the unassigned remainder. A line's assignments are loaded apart from its quantity (`packages/api/src/services/reservation-inventory.ts:683`): a quantity-two line holding one approved unit still has one unit of demand under the buffer.
 
 Each approval holds:
 
 - **who**: actor, user and credential;
 - **when**;
-- **its basis**: the reservation's window, the line's product, quantity and choice (combination or chosen attributes), the unit for a unit approval, and the store's `turnoverBufferMinutes` at approval.
+- **its basis**: the reservation's window, the line's product, quantity and choice (combination or chosen attributes), the unit for a unit approval, and the store's `turnoverBufferMinutes` at approval;
+- **its generation**: the reservation's `stock_basis_version` it was given for.
 
-**Invalidation.** An approval is valid only while its basis matches what is read under the locks, and the comparison is made at read time. A writer that changes the basis therefore needs no extra step for the approval to lapse. A lapsed approval is cleared, and the conflict must be approved again. An approval lapses when:
+**Invalidation.** Approval authority is bound to a durable generation that changes whenever its basis changes; returning to an earlier value never restores it. Storage keeps the approval and its invalidation history independently of an assignment being replaced or deleted.
+
+The generation is a column `reservations.stock_basis_version`, an integer that only grows. Every writer that changes what an approval is about increments it in the transaction that makes the change. An approval is valid only while its stored version equals the reservation's version read under the locks. A window edited from A to B and back to A has moved the version twice, so the approval given for A stays lapsed.
+
+The store's `turnoverBufferMinutes` is not part of the version. The approval records it, and the read compares it by value. A setting changed and changed back with no change to the reservation keeps the approval: it was given for that very margin, and the conflict in front of the reader is the one the store accepted. If the reservation also changed meanwhile, the version moved and a new approval is needed.
+
+The writer that increments the version marks the reservation's approvals still in force as lapsed, with the new version and why, in the same transaction. Authority never rests on that mark: the version comparison alone decides. A lapsed approval stays in storage, and the conflict must be approved again. An approval lapses when:
 
 - **the unit is replaced:** an approval never moves to another unit;
 - **the dates change;**
 - **the line's demand changes:** quantity, choice or product, including a rekeying by `syncProductCombinationKeys`;
-- **the buffer setting changes.**
+- **the buffer setting differs from the one the approval recorded.**
 
-The assignment's rewrite keeps the approval of a unit it keeps with an unchanged basis. Today it deletes and reinserts every row (`actions.ts:5019`).
+The writers that increment the version:
+
+| Writer                                                     | Changes                                             | Where                                                                                                              |
+| ---------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `updateReservation`                                        | the window, lines, and the assignments it drops     | `apps/web/app/(dashboard)/dashboard/reservations/actions.ts:1780` (`:2907`, `:2921`, `:2924`, `:2969`, `:2981`)    |
+| `assignUnitsToReservationItem`                             | assignments added, replaced or removed              | `actions.ts:4637` (`:5019`, `:5023`)                                                                               |
+| `reassignReservationItemUnit`, the move to another unit    | an assignment replaced                              | `apps/web/app/(dashboard)/dashboard/products/[id]/actions.ts:83` (`:430`, `:433`)                                  |
+| the extension's `applyExtension`                           | the end date and the lines                          | `apps/web/lib/reservations/extension-service.ts:61` (`:71`, `:80`)                                                 |
+| `syncProductCombinationKeys`, rekeying booked combinations | a line's choice                                     | `packages/api/src/services/variant-axes.ts:152` (`:191`), called from `variant-axes.ts:265` and `products.ts:1317` |
+| the variant-axes backfill's restore                        | a line's choice                                     | `apps/web/scripts/run-variant-axes-backfill.ts:187`                                                                |
+| `deleteUnits`                                              | an assignment's unit set to null (`schema.ts:3321`) | `packages/api/src/services/unit-mutations.ts:103` (`:120`)                                                         |
+
+`scripts/reservation-writes.test.mjs` fails on a write to a reservation's window, a line's quantity or choice, or an assignment, in a function that does not increment the version. A new booking starts at version 0 with no approval.
+
+The assignment's rewrite increments the version only when the set of assigned units changes. Today it deletes and reinserts every row (`actions.ts:5019`); writing the same units back must keep their approvals.
 
 **Unit deletion.** The assignment's unit becomes null (`schema.ts:3321`). The approval's history stays (who, when, the unit's identifier snapshot), and its authority goes: an approval with no unit waives nothing.
 
@@ -357,16 +393,16 @@ The assignment's rewrite keeps the approval of a unit it keeps with an unchanged
 
 How `reserveInventory` takes a buffer per line is left to 5b's PR.
 
-**Storage (5a).** The exact columns are left to the PR. Candidate shapes:
+**Storage (5a).** The exact columns are left to the PR, within this shape:
 
-- **(a) Columns on the rows.** Approval columns on `reservation_item_units` for a unit approval, and on `reservation_items` for a line approval. The fewest joins, but history goes with the row, and invalidation history is lost.
-- **(b) One table `turnover_buffer_approvals`.** Columns: reservation, line, unit nullable, basis, actor, credential, approved at, lapsed at and why. History is kept after a unit's deletion and after invalidation, and one read covers both scopes.
-- **(c) Activity rows only.** Authority derived from the latest row. Rejected unless it meets the first criterion below.
+- **One table `turnover_buffer_approvals`**, and the column `reservations.stock_basis_version` (integer, default 0). Table columns: reservation, line, unit nullable, the unit's identifier snapshot, basis, the version given for, the buffer setting at approval, actor, credential, approved at, lapsed at, the version that ended it and why. History is kept after a unit's deletion and after invalidation, and one read covers both scopes.
 
-Criteria for choosing:
+Two shapes were dropped. Approval columns on `reservation_item_units` and `reservation_items` lose their history with the row, against criterion 3. Activity rows alone derive authority from the latest of many rows, against criterion 1.
+
+Criteria the shape meets:
 
 1. Authority is read under the locks in one indexed query.
-2. Invalidation needs no cooperation from other writers.
+2. Invalidation is a version comparison: no value returning to an earlier one restores an approval.
 3. History survives a unit's deletion and a lapse.
 4. An approval cannot be copied onto a replacement unit.
 5. The migration is additive.
@@ -378,6 +414,8 @@ The unit event of an assignment also records `overrideTurnoverBuffer: true`.
 - One unit, assigned over the buffer with the override, then confirmed by the store, the customer and the payment: each confirmation passes, and its row names the unit as approved.
 - Assigned while free, then a booking placed in its buffer: confirmed (D3) and listed in the inbox. `approveTurnoverBuffer` then removes the item.
 - Dates moved: the approval lapses, and the inbox lists the conflict again.
+- Dates moved and moved back before any confirmation: the approval stays lapsed. The buffer setting changed and changed back, with the reservation untouched: the approval holds.
+- A quantity-two line holding one approved unit: the unassigned remainder's buffer-only shortfall still refuses.
 - Unit deleted: the history stays, and the approval waives nothing.
 - The breaking sequence above, both halves.
 
@@ -413,7 +451,7 @@ Two rules of section 4 change here:
 The payload **freezes**, from what was read under the locks:
 
 - the kind, the actor, and the transition with the reservation's revision;
-- the recipients and the language;
+- the customer's recipients and the language (the store's destinations are read at send time, below);
 - the currency, the dates, the lines, and the tax and money facts;
 - the previous period, for a modification;
 - references to the documents to attach, such as the invoice by id. The sender attaches the stored document and never generates it again.
@@ -432,7 +470,16 @@ The payload **freezes**, from what was read under the locks:
 - payment received, with its amount and currency;
 - `customer_quote_accepted` and `customer_reservation_confirmed` in `reservation.customerMessage`.
 
-**Ordering and supersession.** A later status change supersedes the unsent messages of an earlier one for the same reservation, as the store's path does (`reservation-status.ts:556`). If a quote is accepted and then cancelled before dispatch, no acceptance is sent. Payment received belongs to the durable payment claim: it is queued in the claim's commit, and it goes out even when the status confirmation then fails. Delivery stays at least once.
+**Ordering and supersession.** An explicit transition × message matrix (`SUPERSEDED_CUSTOMER_MESSAGES`, extended) says which unsent customer status messages a later change makes false; only rows `pending` or `failed` are superseded, a claimed message finishes before the next of its key. A payment-received message is never superseded by a status change. Today the matrix holds the first column only (`packages/api/src/services/reservation-effects.ts:81`), applied by the store's path (`packages/api/src/services/reservation-status.ts:554`) through `supersedeEffects` (`packages/api/src/platform/effects.ts:382`).
+
+| Later change                          | `customer_request_accepted` | `customer_quote_accepted` (new) | `customer_reservation_confirmed` (new) |
+| ------------------------------------- | --------------------------- | ------------------------------- | -------------------------------------- |
+| → `cancelled`                         | superseded (today)          | superseded                      | superseded                             |
+| → `rejected`                          | superseded (today)          | — (cannot precede it)           | — (cannot precede it)                  |
+| → `declined`                          | — (cannot precede it)       | — (cannot precede it)           | — (cannot precede it)                  |
+| → `confirmed`, `ongoing`, `completed` | kept                        | kept                            | kept                                   |
+
+"Cannot precede it" follows the transition graph: `rejected` comes only from `pending` and `declined` only from `quote`, so neither follows an acceptance or a confirmation. If a quote is accepted and then cancelled before dispatch, no acceptance is sent. Payment received belongs to the durable payment claim: it is queued in the claim's commit, and it goes out even when the status confirmation then fails. Delivery stays at least once.
 
 The new booking's messages belong to the creation lot.
 
@@ -556,6 +603,7 @@ External quotes and routing (insurance quote, route distance) run outside the re
 - `id`;
 - optional `startDate` and `endDate` (ISO with offset);
 - `lines`;
+- `removeLineIds`;
 - `delivery`;
 - `insurance: boolean`;
 - `notifyCustomer`, `allowOverbooking`, `overrideTurnoverBuffer`.
@@ -584,19 +632,19 @@ Errors, each with a stable code:
 
 **Patch semantics.** This is the rule products already follow: an agent never deletes by omission (`products_update` and `removeUnitIds`, [API and agents](../architecture/api-and-agents.md)).
 
-| Input                                          | Meaning                                                                                 |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `lines` absent                                 | lines unchanged                                                                         |
-| `lines: []`                                    | lines unchanged (as today's empty-list branch, `actions.ts:1898`)                       |
-| `lines` with items                             | updates the lines it names by `id`, and adds those without one; the lines left out stay |
-| `removeLineIds`                                | the only way to delete a line                                                           |
-| an `id` not on this reservation, or sent twice | `RESERVATION_LINES_UNKNOWN`                                                             |
-| an `id` both sent and removed                  | `RESERVATION_LINES_SENT_AND_REMOVED`                                                    |
-| a field absent on a line                       | that field unchanged                                                                    |
-| a field `null` on a line                       | cleared, where the field may be null (`depositPerUnit` may not)                         |
-| `delivery: null`                               | delivery removed                                                                        |
+| Input                                          | Meaning                                                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `lines` absent                                 | lines unchanged                                                                                           |
+| `lines: []`                                    | lines unchanged (as today's empty-list branch, `actions.ts:1898`)                                         |
+| `lines` with items                             | updates the lines it names by `id`, and adds those without one; the lines left out stay, for every caller |
+| `removeLineIds`                                | the only way to delete a line, for every caller, the dashboard included                                   |
+| an `id` not on this reservation, or sent twice | `RESERVATION_LINES_UNKNOWN`                                                                               |
+| an `id` both sent and removed                  | `RESERVATION_LINES_SENT_AND_REMOVED`                                                                      |
+| a field absent on a line                       | that field unchanged                                                                                      |
+| a field `null` on a line                       | cleared, where the field may be null (`depositPerUnit` may not)                                           |
+| `delivery: null`                               | delivery removed                                                                                          |
 
-The dashboard's form keeps sending the whole list, which replaces the lines, as today.
+Omission never deletes a line, for any caller. The dashboard's form still edits the whole list; its adapter compares the list with the reservation's lines and sends the ones it dropped as `removeLineIds`.
 
 **Confirmation.** An edit asks for confirmation when it changes stock demand, the total, the tax, the deposit, the delivery or the insurance, when it sends a message, or when it carries an override. This holds even when the total does not change.
 
