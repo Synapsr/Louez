@@ -1580,6 +1580,139 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.equal((await outbox()).length, 1);
   });
 
+  // --- Units a reservation holds, checked when it takes its stock (S4) ---------
+
+  describe("confirming a quote that holds a unit", () => {
+    /**
+     * Two S and two L. A quote of three units of any size holds the first S;
+     * a quote does not block, so that S may since have gone to another booking.
+     */
+    async function quoteHoldingUnit() {
+      const productId = nextId("rs_prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: productId,
+        storeId: STORE,
+        name: `Wetsuit ${productId}`,
+        price: "10.00",
+        pricingMode: "day",
+        trackUnits: true,
+        bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+        quantity: 4,
+      });
+      const unitIds: string[] = [];
+      for (const [index, size] of ["S", "S", "L", "L"].entries()) {
+        const unitId = nextId("rs_unt");
+        unitIds.push(unitId);
+        await louezDb.db.insert(louezDb.productUnits).values({
+          id: unitId,
+          productId,
+          identifier: `${size}${index + 1}`,
+          attributes: { size },
+          combinationKey: `size:${size}`,
+        });
+      }
+      const [unitId = ""] = unitIds;
+      const quoteId = await reservation("quote");
+      const itemId = await lineHolding(quoteId, productId, 3, unitId);
+      return { productId, unitId, quoteId, itemId };
+    }
+
+    async function lineHolding(
+      reservationId: string,
+      productId: string,
+      quantity: number,
+      unitId: string,
+    ) {
+      const itemId = nextId("rs_itm");
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: itemId,
+        reservationId,
+        productId,
+        quantity,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        productSnapshot: { name: "Wetsuit", description: null, images: [] },
+      });
+      await louezDb.db.insert(louezDb.reservationItemUnits).values({
+        id: nextId("rs_asg"),
+        reservationItemId: itemId,
+        productUnitId: unitId,
+        identifierSnapshot: "S1",
+      });
+      return itemId;
+    }
+
+    const confirm = (id: string) => run("updateStatus", { id, status: "confirmed" }, session());
+
+    test("nobody else holds confirms it", async () => {
+      const { quoteId } = await quoteHoldingUnit();
+
+      assert.equal((await confirm(quoteId)).to, "confirmed");
+    });
+
+    test("since given to a confirmed booking is refused, and names the unit to the store", async () => {
+      const { productId, unitId, quoteId, itemId } = await quoteHoldingUnit();
+      await lineHolding(await reservation("confirmed"), productId, 1, unitId);
+
+      const refusal = await rejects(confirm(quoteId), "RESERVATION_UNITS_UNAVAILABLE");
+
+      assert.deepEqual(refusal.data, {
+        code: "RESERVATION_UNITS_UNAVAILABLE",
+        retryable: false,
+        i18nKey: "errors.assignedUnitsConflict",
+        details: {
+          conflicts: [{ reservationItemId: itemId, unitId, identifier: "S1" }],
+          bufferOnly: false,
+        },
+      });
+      assert.equal(await statusOf(quoteId), "quote", "nothing was written");
+      assert.equal(feeEffects.length, 0);
+      assert.equal((await outbox()).length, 0, "a refused change queues no message");
+    });
+
+    test("that is retired is refused", async () => {
+      const { unitId, quoteId } = await quoteHoldingUnit();
+      await louezDb.db
+        .update(louezDb.productUnits)
+        .set({ lifecycleStatus: "retired" })
+        .where(orm.eq(louezDb.productUnits.id, unitId));
+
+      const refusal = await rejects(confirm(quoteId), "RESERVATION_UNITS_UNAVAILABLE");
+
+      assert.equal(refusal.data.details?.bufferOnly, false);
+      assert.equal(await statusOf(quoteId), "quote");
+    });
+
+    test("that another booking returns within the turnover buffer is refused as a buffer conflict", async () => {
+      const { productId, unitId, quoteId } = await quoteHoldingUnit();
+      // Returned an hour before the start, with two hours asked between rentals.
+      await lineHolding(
+        await reservation("confirmed", {
+          start: new Date(START.getTime() - 24 * 3_600_000),
+          end: new Date(START.getTime() - 3_600_000),
+        }),
+        productId,
+        1,
+        unitId,
+      );
+      // Put back before each test.
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: { ...settings, turnoverBufferMinutes: 120 } })
+        .where(orm.eq(louezDb.stores.id, STORE));
+
+      const refusal = await rejects(confirm(quoteId), "RESERVATION_UNITS_UNAVAILABLE");
+
+      assert.equal(refusal.data.details?.bufferOnly, true);
+      assert.equal(
+        "i18nKey" in refusal.data && refusal.data.i18nKey,
+        "errors.turnoverBufferConflict",
+      );
+      assert.equal(await statusOf(quoteId), "quote");
+    });
+  });
+
   // --- Concurrency (lock order: products, then the reservation) ---------------
 
   test("a confirmation waits for a write that holds the product, then sees it", async () => {

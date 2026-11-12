@@ -45,6 +45,7 @@ import {
 import { validateReservationContract } from "./reservation-contract-validation";
 import {
   ReservationInventoryError,
+  ReservationUnitConflictError,
   checkExistingReservationInventory,
 } from "./reservation-inventory";
 
@@ -584,6 +585,11 @@ export async function changeStoreReservationStatus(
     );
   } catch (error) {
     if (isConflict(error)) throw reservationErrors.busy(id);
+    if (error instanceof ReservationUnitConflictError) {
+      throw error.key === "errors.turnoverBufferConflict"
+        ? reservationErrors.unitsWithinTurnoverBuffer(error.conflicts)
+        : reservationErrors.unitsUnavailable(error.conflicts);
+    }
     if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
       throw error.message === "errors.reservationNotFound"
         ? reservationErrors.notFound(id)

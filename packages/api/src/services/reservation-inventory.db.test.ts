@@ -773,6 +773,20 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
         inventory.checkExistingReservationInventory(tx, reservationId, storeId),
       );
 
+    /** What the check refused the units of a reservation with, or null when it went through. */
+    async function unitRefusal(storeId: string, reservationId: string) {
+      try {
+        await checkExisting(storeId, reservationId);
+        return null;
+      } catch (error) {
+        if (!(error instanceof inventory.ReservationUnitConflictError)) throw error;
+        // The message is what a customer may read: it names no unit.
+        assert.equal(error.message, "errors.productNoLongerAvailable");
+        assert.ok(error instanceof inventory.ReservationInventoryError);
+        return { key: error.key, conflicts: error.conflicts };
+      }
+    }
+
     test("a line of no size is served by units of every size", async () => {
       // Two S and one L cover three units of any size, as when the line was booked.
       const { storeId, productId } = await sizedProduct(["S", "S", "L"]);
@@ -793,6 +807,145 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
       const quote = await quoteOf(storeId, { productId, quantity: 2, combinationKey: "size:L" });
 
       await assert.rejects(checkExisting(storeId, quote.id), /errors\.productNoLongerAvailable/);
+    });
+
+    describe("that holds a unit", () => {
+      /** Two S and two L; a quote of three units of any size holds the first S. */
+      async function quoteHoldingSmall(settings: { turnoverBufferMinutes?: number } = {}) {
+        const product = await sizedProduct(["S", "S", "L", "L"]);
+        const [small] = product.unitIds;
+        assert.ok(small);
+        const quote = await quoteOf(
+          product.storeId,
+          {
+            productId: product.productId,
+            quantity: 3,
+            combinationKey: null,
+            assignedUnitIds: [small],
+          },
+          settings,
+        );
+        return { ...product, small, quote };
+      }
+      const conflictOn = (quote: { itemId: string }, unitId: string) => ({
+        reservationItemId: quote.itemId,
+        unitId,
+        identifier: "W-1",
+      });
+
+      test("nobody else holds is confirmed", async () => {
+        const { storeId, quote } = await quoteHoldingSmall();
+
+        assert.equal(await unitRefusal(storeId, quote.id), null);
+      });
+
+      test("since given to a confirmed booking is refused, though the stock covers its lines", async () => {
+        // A quote does not block, so the same S went to a confirmed booking.
+        // One S is still free and two L float: the count alone would pass.
+        const { storeId, productId, small, quote } = await quoteHoldingSmall();
+        await otherBooking(storeId, { productId, quantity: 1, assignedUnitId: small });
+
+        assert.deepEqual(await unitRefusal(storeId, quote.id), {
+          key: "errors.assignedUnitsConflict",
+          conflicts: [conflictOn(quote, small)],
+        });
+      });
+
+      test("held by a booking of other dates is confirmed", async () => {
+        const { storeId, productId, small, quote } = await quoteHoldingSmall();
+        await otherBooking(
+          storeId,
+          { productId, quantity: 1, assignedUnitId: small },
+          { start: new Date(END.getTime() + 24 * HOUR), end: new Date(END.getTime() + 48 * HOUR) },
+        );
+
+        assert.equal(await unitRefusal(storeId, quote.id), null);
+      });
+
+      test("held by a quote or a cancelled booking is confirmed", async () => {
+        const { storeId, productId, small, quote } = await quoteHoldingSmall();
+        const other = await otherBooking(storeId, {
+          productId,
+          quantity: 1,
+          assignedUnitId: small,
+        });
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ status: "cancelled" })
+          .where(eq(louezDb.reservations.id, other.id));
+
+        assert.equal(await unitRefusal(storeId, quote.id), null);
+      });
+
+      test("that another booking returns within the turnover buffer is refused as a buffer conflict", async () => {
+        // Returned an hour before the start, with two hours asked between rentals.
+        const { storeId, productId, small, quote } = await quoteHoldingSmall({
+          turnoverBufferMinutes: 120,
+        });
+        await otherBooking(
+          storeId,
+          { productId, quantity: 1, assignedUnitId: small },
+          { start: new Date(START.getTime() - 24 * HOUR), end: new Date(START.getTime() - HOUR) },
+        );
+
+        assert.deepEqual(await unitRefusal(storeId, quote.id), {
+          key: "errors.turnoverBufferConflict",
+          conflicts: [conflictOn(quote, small)],
+        });
+      });
+
+      test("that another booking returned before the turnover buffer is confirmed", async () => {
+        const { storeId, productId, small, quote } = await quoteHoldingSmall({
+          turnoverBufferMinutes: 120,
+        });
+        await otherBooking(
+          storeId,
+          { productId, quantity: 1, assignedUnitId: small },
+          {
+            start: new Date(START.getTime() - 24 * HOUR),
+            end: new Date(START.getTime() - 3 * HOUR),
+          },
+        );
+
+        assert.equal(await unitRefusal(storeId, quote.id), null);
+      });
+
+      test("retired since is refused", async () => {
+        const { storeId, small, quote } = await quoteHoldingSmall();
+        await louezDb.db
+          .update(louezDb.productUnits)
+          .set({ lifecycleStatus: "retired" })
+          .where(eq(louezDb.productUnits.id, small));
+
+        assert.deepEqual(await unitRefusal(storeId, quote.id), {
+          key: "errors.assignedUnitsConflict",
+          conflicts: [conflictOn(quote, small)],
+        });
+      });
+
+      test("in downtime over its dates is refused", async () => {
+        const { storeId, small, quote } = await quoteHoldingSmall();
+        await louezDb.db.insert(louezDb.productUnitDowntimes).values({
+          id: nextId("dwn"),
+          productUnitId: small,
+          storeId,
+          reason: "maintenance",
+          startsAt: new Date(START.getTime() + HOUR),
+          endsAt: null,
+        });
+
+        assert.deepEqual(await unitRefusal(storeId, quote.id), {
+          key: "errors.assignedUnitsConflict",
+          conflicts: [conflictOn(quote, small)],
+        });
+      });
+
+      test("deleted since keeps its name on the line and blocks nothing", async () => {
+        const { storeId, small, quote } = await quoteHoldingSmall();
+        await louezDb.db.delete(louezDb.productUnits).where(eq(louezDb.productUnits.id, small));
+
+        assert.equal(await unitRefusal(storeId, quote.id), null);
+      });
     });
   });
 });

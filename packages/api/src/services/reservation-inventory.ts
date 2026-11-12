@@ -7,6 +7,7 @@ import {
   buildReservationAvailabilityPredicate,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
+  findBusyUnitIds,
   productAccessories,
   productUnits,
   products,
@@ -21,6 +22,8 @@ import {
   isPooledCombinationKey,
   matchesSelectedAttributes,
 } from "@louez/utils";
+
+import type { ReservationUnitConflict } from "../contracts/reservations";
 
 import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
 import {
@@ -562,7 +565,108 @@ export const preflightStock = async (
 
 export class ReservationInventoryError extends Error {}
 
-/** Check an existing draft under the same product locks as a new checkout. */
+/**
+ * Units the reservation holds cannot serve it. Its message is the stock
+ * refusal, which any caller may show: a customer never reads which units.
+ * `key` and `conflicts` name them, for the store alone.
+ */
+export class ReservationUnitConflictError extends ReservationInventoryError {
+  constructor(
+    /** `errors.turnoverBufferConflict` when only the turnover buffer makes the conflict. */
+    readonly key: "errors.assignedUnitsConflict" | "errors.turnoverBufferConflict",
+    readonly conflicts: ReservationUnitConflict[],
+  ) {
+    super("errors.productNoLongerAvailable");
+  }
+}
+
+/**
+ * The units a reservation holds, each checked by id over its window (S4):
+ * `hard` when the unit is retired or in downtime, or held by another blocking
+ * booking whose dates overlap; `buffer` when only the turnover buffer around
+ * another booking reaches it. The units are locked, after the products and
+ * the reservation.
+ */
+const findReservationUnitConflicts = async (
+  tx: Transaction,
+  params: {
+    items: Array<{
+      id: string;
+      assignedUnits: Array<{ productUnitId: string | null; identifierSnapshot: string }>;
+    }>;
+    window: { start: Date; end: Date };
+    blockingStatuses: BlockingReservationStatus[];
+    turnoverBufferMinutes: number;
+  },
+): Promise<{ hard: ReservationUnitConflict[]; buffer: ReservationUnitConflict[] }> => {
+  const hard: ReservationUnitConflict[] = [];
+  const buffer: ReservationUnitConflict[] = [];
+  // A unit deleted since keeps its name on the line and holds nothing.
+  const heldByItem = params.items.map((item) => ({
+    reservationItemId: item.id,
+    units: item.assignedUnits.flatMap((unit) =>
+      unit.productUnitId
+        ? [{ unitId: unit.productUnitId, identifier: unit.identifierSnapshot }]
+        : [],
+    ),
+  }));
+  const unitIds = [...new Set(heldByItem.flatMap((item) => item.units.map((unit) => unit.unitId)))];
+  if (unitIds.length === 0) return { hard, buffer };
+
+  const lockedUnits = await tx
+    .select({ id: productUnits.id, identifier: productUnits.identifier })
+    .from(productUnits)
+    .where(inArray(productUnits.id, unitIds))
+    .orderBy(productUnits.id)
+    .for("update");
+  const identifierById = new Map(lockedUnits.map((unit) => [unit.id, unit.identifier]));
+  const rentableUnits = await tx
+    .select({ id: productUnits.id })
+    .from(productUnits)
+    .where(
+      and(
+        inArray(productUnits.id, unitIds),
+        buildUnitRentableDuringPredicate(tx, params.window.start, params.window.end),
+      ),
+    );
+  const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
+
+  for (const { reservationItemId, units } of heldByItem) {
+    if (units.length === 0) continue;
+    const busyUnitIds = await findBusyUnitIds(tx, {
+      unitIds: units.map((unit) => unit.unitId),
+      start: params.window.start,
+      end: params.window.end,
+      blockingStatuses: params.blockingStatuses,
+      turnoverBufferMinutes: params.turnoverBufferMinutes,
+      excludeReservationItemId: reservationItemId,
+    });
+    for (const unit of units) {
+      const conflict = {
+        reservationItemId,
+        unitId: unit.unitId,
+        identifier: identifierById.get(unit.unitId) || unit.identifier || unit.unitId,
+      };
+      const busy = busyUnitIds.get(unit.unitId);
+      if (!rentableUnitIds.has(unit.unitId) || busy === "overlap") hard.push(conflict);
+      else if (busy === "buffer") buffer.push(conflict);
+    }
+  }
+  return { hard, buffer };
+};
+
+/**
+ * Check an existing reservation before it takes its stock, under the same
+ * product locks as a new checkout: the stock covers its lines, and each unit
+ * it holds is free for it. A reservation that did not block yet (a quote, or
+ * a request when requests do not block) may hold a unit that was since given
+ * to another booking: the stock would still count enough units, so the units
+ * are checked by id.
+ *
+ * Throws `ReservationUnitConflictError` for a unit that cannot serve, before
+ * the stock refusal; a conflict the turnover buffer alone makes comes last,
+ * and is refused too, as the change has no way to pass the buffer.
+ */
 export const checkExistingReservationInventory = async (
   tx: Transaction,
   reservationId: string,
@@ -599,18 +703,33 @@ export const checkExistingReservationInventory = async (
     storeId,
     lines.map((line) => line.productId),
   );
+  const window = { start: reservation.startDate, end: reservation.endDate };
+  const turnoverBufferMinutes = reservation.store.settings?.turnoverBufferMinutes ?? 0;
+  const blockingStatuses = getBlockingReservationStatuses(
+    reservation.store.settings?.pendingBlocksAvailability ?? true,
+  );
   const result = await reserveInventory({
     tx,
     storeId,
     lines,
     lockedProductsById,
-    window: { start: reservation.startDate, end: reservation.endDate },
-    turnoverBufferMinutes: reservation.store.settings?.turnoverBufferMinutes ?? 0,
-    blockingStatuses: getBlockingReservationStatuses(
-      reservation.store.settings?.pendingBlocksAvailability ?? true,
-    ),
+    window,
+    turnoverBufferMinutes,
+    blockingStatuses,
     excludeReservationId: reservationId,
     skipConsumableCheck: true,
   });
+  const unitConflicts = await findReservationUnitConflicts(tx, {
+    items: reservation.items,
+    window,
+    blockingStatuses,
+    turnoverBufferMinutes,
+  });
+  if (unitConflicts.hard.length > 0) {
+    throw new ReservationUnitConflictError("errors.assignedUnitsConflict", unitConflicts.hard);
+  }
   if (!result.ok) throw new ReservationInventoryError("errors.productNoLongerAvailable");
+  if (unitConflicts.buffer.length > 0) {
+    throw new ReservationUnitConflictError("errors.turnoverBufferConflict", unitConflicts.buffer);
+  }
 };

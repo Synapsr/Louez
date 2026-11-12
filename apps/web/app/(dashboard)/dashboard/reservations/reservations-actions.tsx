@@ -20,6 +20,7 @@ import {
 import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { isContractSignatureRequiredRefusal } from "@/lib/reservations/contract-signature-refusal";
+import { readUnitConflictRefusal } from "@/lib/reservations/unit-conflict-refusal";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
@@ -245,7 +246,18 @@ export function useReservationActions(): UseReservationActionsReturn {
       if (isReservationGateRefusal(error)) setGateDialogOpen(true);
       else if (isContractSignatureRequiredRefusal(error))
         toastManager.add({ title: tErrors("contractSignatureRequired"), type: "error" });
-      else toastManager.add({ title: tErrors("generic"), type: "error" });
+      else {
+        // Units the reservation holds cannot serve it: the store is told which.
+        const unitConflict = readUnitConflictRefusal(error);
+        toastManager.add({
+          title: !unitConflict
+            ? tErrors("generic")
+            : unitConflict.bufferOnly
+              ? tErrors("turnoverBufferConflict")
+              : tErrors("assignedUnitsConflict", { identifiers: unitConflict.identifiers }),
+          type: "error",
+        });
+      }
     } finally {
       setLoadingAction(null);
     }
