@@ -2251,7 +2251,20 @@
         "confirmRelease": "释放押金",
         "invalidCaptureAmount": "金额无效",
         "captureExceedsDeposit": "金额超过存款",
-        "reasonRequired": "请给出理由"
+        "reasonRequired": "请给出理由",
+        "unconfirmed": {
+          "open": "在 Stripe 中处理",
+          "title": "未确认的授权",
+          "description": "Stripe 从未确认此授权请求。请在 Stripe 控制台的“付款”中查找，然后告诉 Louez 您的发现。",
+          "nothingTitle": "Stripe 中没有",
+          "nothingDescription": "Stripe 未显示此预订的任何授权。Louez 会关闭该请求，您可以创建新的授权。如果 Stripe 之后显示了授权，Louez 会记录并释放它。",
+          "nothingAction": "关闭请求",
+          "foundTitle": "我在 Stripe 中找到了",
+          "foundDescription": "粘贴 Stripe 中显示的付款 ID（以 pi_ 开头）。Louez 会在记录前核对它是否与此请求一致。",
+          "foundAction": "记录此付款",
+          "closed": "请求已关闭。您可以创建新的授权。",
+          "recorded": "已记录 Stripe 的授权。"
+        }
       },
       "subtotal": "小计",
       "source": "来源",
@@ -2787,7 +2800,8 @@
             "incorrectCvc": "卡安全码 (CVC) 对于本次存款授权无效。",
             "processingError": "由于临时处理问题，存款授权失败。几分钟后重试。",
             "doNotHonor": "银行拒绝了存款授权，但未提供详细信息。请客户联系他们的银行或使用其他卡。",
-            "generic": "存款授权失败。请客户重试或使用另一张卡。"
+            "generic": "存款授权失败。请客户重试或使用另一张卡。",
+            "closedByStore": "店铺已关闭请求：在 Stripe 中未找到授权。"
           }
         }
       },
@@ -9411,7 +9425,14 @@
     "agentConnectionNotFound": "此已连接的智能体已不存在。",
     "oauthRequestInvalid": "此连接请求已失效。请在您的智能体中重新发起。",
     "stripeRequiredForPaymentMode": "在线支付模式需要已连接的 Stripe 账户。请在“设置 > 付款”中连接 Stripe。",
-    "locationLimitReached": "每家店铺最多可设置 50 个取货点。请停用一个或重新使用已有的取货点。"
+    "locationLimitReached": "每家店铺最多可设置 50 个取货点。请停用一个或重新使用已有的取货点。",
+    "depositAttempt": {
+      "none": "此预订已没有未确认的授权。",
+      "foundAtStripe": "Stripe 确实有此授权：Louez 已将其记录，而不是关闭请求。",
+      "intentNotFound": "在申请授权的账户上，Stripe 没有此 ID 的付款。",
+      "intentMismatch": "此付款不是此预订所申请的授权（金额、币种、卡片或客户不一致）。未记录任何内容。",
+      "stripeUnavailable": "无法连接 Stripe。未记录任何内容。请几分钟后重试。"
+    }
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

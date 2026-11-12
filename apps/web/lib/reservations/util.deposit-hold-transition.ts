@@ -5,12 +5,19 @@
 // write through one writer (`settleDepositIntent`, deposit-hold-writes.ts).
 //
 // A hold row says what the provider last said of its PaymentIntent, and only moves
-// forward: `pending` (asked, not known held), `failed` (the provider refused), then
-// `authorized` (the provider holds the funds), then `completed` (captured) or
-// `cancelled` (the provider holds nothing any more). Both ends are final. An
-// authorization Louez decided against, because the reservation holds another, stays
-// `authorized` with its release owed (`payments.release_owed_at`) until the provider
-// confirms its cancellation: it is never the reservation's hold.
+// forward: `pending` (asked, not known held), `failed` (the provider refused, or the
+// attempt was closed with nothing found), then `authorized` (the provider holds the
+// funds), then `completed` (captured) or `cancelled` (the provider holds nothing any
+// more). Both ends are final. An authorization Louez decided against, because the
+// reservation holds another, stays `authorized` with its release owed
+// (`payments.release_owed_at`) until the provider confirms its cancellation: it is
+// never the reservation's hold.
+//
+// A store's attempt row is never deleted. Closing an attempt sets it `failed`: no new
+// request asks about it, and it keeps its reservation, account, amount, currency, card
+// and id. A closed attempt still reconciles: when its PaymentIntent shows up later,
+// held or captured, it is settled from `failed` like any other, so a wrong verdict of
+// absence at worst records a second hold and releases it.
 
 /** A deposit PaymentIntent as the provider has it, on one connected account. */
 export type DepositIntent = {
@@ -137,12 +144,12 @@ export type HoldOutcome =
 export type HoldWrites = {
   /**
    * The hold row's status, written with the PaymentIntent's facts, on the row or on a
-   * new one; `delete` removes an attempt the provider never made anything for; null
-   * leaves the row, or the absence of one, as it is.
+   * new one; `close` sets `failed` an attempt no PaymentIntent was found for, and keeps
+   * the row; null leaves the row, or the absence of one, as it is.
    */
   readonly row:
     | null
-    | "delete"
+    | "close"
     | {
         readonly status: "pending" | "failed" | "authorized" | "completed" | "cancelled";
         readonly releaseOwed: boolean;
@@ -268,10 +275,12 @@ export function depositHoldTransition(
 }
 
 /**
- * The writes for a store's attempt the provider is proven never to have made a
- * PaymentIntent for: its row goes, so the next attempt has a new key. `refused` when
- * the provider said no (a card it does not know, an invalid request): the deposit then
- * failed, unless the reservation holds one.
+ * The writes for a store's attempt closed with no PaymentIntent found: the provider
+ * refused the request, a complete listing past the life of its key holds none, or the
+ * store declared it found none at the provider. Its row is kept, `failed`, so the next
+ * attempt has a new key and a PaymentIntent that shows up later still finds its row.
+ * `refused` when the provider said no (a card it does not know, an invalid request):
+ * the deposit then failed, unless the reservation holds one.
  */
 export function absentAttemptTransition(input: {
   readonly refused: boolean;
@@ -280,11 +289,15 @@ export function absentAttemptTransition(input: {
 }): HoldWrites {
   return {
     ...nothing("failed"),
-    row: "delete",
+    row: "close",
     reservation: input.refused && !input.reservationHolds ? "failed" : null,
     activity: input.refused ? "deposit_failed" : null,
   };
 }
+
+/** An attempt row that has no PaymentIntent yet, open or closed: one may still show up. */
+export const awaitsIntent = (hold: HoldRow): boolean =>
+  hold.paymentIntentId === null && (hold.status === "pending" || hold.status === "failed");
 
 export type IntentRefusal =
   /** Its metadata names another reservation, or none. */
@@ -295,7 +308,7 @@ export type IntentRefusal =
   | "other_account"
   /** It comes from an account that is not the store's and has no row naming it. */
   | "unknown_on_account"
-  /** The attempt it names already has its PaymentIntent, or is over. */
+  /** The attempt it names already has its PaymentIntent. */
   | "attempt_bound"
   /** Its amount, currency or card is not what the attempt was sent with. */
   | "facts_mismatch";
@@ -311,10 +324,11 @@ const refuse = (reason: IntentRefusal): IntentBinding => ({ ok: false, reason })
  * of an event is trusted here but what the provider answered for it.
  *
  * - A row that names the PaymentIntent is its row, on the account the row names.
- * - Else the store's attempt it answers, while that attempt is pending, has no
- *   PaymentIntent yet, was sent to that account, and was sent with what the
+ * - Else the store's attempt it answers, while that attempt has no PaymentIntent yet,
+ *   open or closed, was sent to that account, and was sent with what the
  *   PaymentIntent holds: the amount, the currency and the card. The card pins the
- *   customer: a saved card belongs to one customer for good.
+ *   customer: a saved card belongs to one customer for good. A closed attempt binds
+ *   as an open one does: what Stripe made of it is recorded, whenever it shows up.
  * - Else none, which only the store's connected account of today is believed for:
  *   the customer's own authorization. An account the store left is believed for
  *   the rows that name it, and for nothing else.
@@ -341,9 +355,7 @@ export function bindDepositIntent(input: {
 
   const attempt = intent.attemptId ? holds.find((hold) => hold.id === intent.attemptId) : null;
   if (attempt) {
-    if (attempt.paymentIntentId !== null || attempt.status !== "pending") {
-      return refuse("attempt_bound");
-    }
+    if (!awaitsIntent(attempt)) return refuse("attempt_bound");
     if (attempt.accountId !== accountId) return refuse("other_account");
     const asSent =
       attempt.amountMinor === intent.amountMinor &&
@@ -359,8 +371,8 @@ export function bindDepositIntent(input: {
 
 /**
  * Whether a hold row gives a connected account a say about a PaymentIntent: the row
- * that names both, or a pending attempt sent to that account that has no
- * PaymentIntent yet. Asked before an account the store left is read at all;
+ * that names both, or an attempt sent to that account that has no PaymentIntent yet,
+ * open or closed. Asked before an account the store left is read at all;
  * `bindDepositIntent` then decides on what the provider answers.
  */
 export const holdsNameIntentOnAccount = (
@@ -375,5 +387,64 @@ export const holdsNameIntentOnAccount = (
     (hold) =>
       hold.accountId === claim.accountId &&
       (hold.paymentIntentId === claim.paymentIntentId ||
-        (hold.id === claim.attemptId && hold.paymentIntentId === null && hold.status === "pending")),
+        (hold.id === claim.attemptId && awaitsIntent(hold))),
   );
+
+/** What makes a PaymentIntent the store names not the one its attempt asked for. */
+export type PastedIntentMismatch =
+  /** Its metadata names another reservation. */
+  | "reservation"
+  /** Its metadata names another attempt. */
+  | "attempt"
+  /** It is not an authorization captured later. */
+  | "capture_method"
+  | "amount"
+  | "currency"
+  /** It is not on the card the attempt was sent with. */
+  | "card"
+  /** It is not for the customer the attempt was sent with, or for none. */
+  | "customer"
+  /** A hold row of the reservation already names it: it is not the attempt's. */
+  | "recorded";
+
+/**
+ * Why a PaymentIntent the store names, read on the attempt's account, is not the
+ * attempt's; empty when it is. Its metadata is compared when it has any; the amount,
+ * the currency, the card and the customer always, against what the attempt was sent
+ * with. An attempt claimed before its customer was stored only asks for one.
+ */
+export function pastedIntentMismatches(input: {
+  readonly reservationId: string;
+  readonly attempt: {
+    readonly id: string;
+    readonly amountMinor: number;
+    readonly currency: string;
+    readonly paymentMethodId: string;
+    readonly customerId: string | null;
+  };
+  readonly intent: DepositIntent;
+  readonly holds: readonly HoldRow[];
+}): PastedIntentMismatch[] {
+  const { attempt, intent } = input;
+  const mismatches: PastedIntentMismatch[] = [];
+  if (intent.reservationId !== null && intent.reservationId !== input.reservationId) {
+    mismatches.push("reservation");
+  }
+  if (intent.attemptId !== null && intent.attemptId !== attempt.id) mismatches.push("attempt");
+  if (intent.captureMethod !== "manual") mismatches.push("capture_method");
+  if (intent.amountMinor !== attempt.amountMinor) mismatches.push("amount");
+  if (intent.currency.toUpperCase() !== attempt.currency.toUpperCase()) {
+    mismatches.push("currency");
+  }
+  if (intent.paymentMethodId !== attempt.paymentMethodId) mismatches.push("card");
+  if (
+    intent.customerId === null ||
+    (attempt.customerId !== null && intent.customerId !== attempt.customerId)
+  ) {
+    mismatches.push("customer");
+  }
+  if (input.holds.some((hold) => hold.paymentIntentId === intent.paymentIntentId)) {
+    mismatches.push("recorded");
+  }
+  return mismatches;
+}

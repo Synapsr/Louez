@@ -55,7 +55,12 @@ import { Label } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Progress } from "@louez/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
-import { cn, depositHoldRowKind, getCurrencySymbol } from "@louez/utils";
+import {
+  cn,
+  depositHoldRowKind,
+  getCurrencySymbol,
+  withLatestFailedHoldOnly,
+} from "@louez/utils";
 
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { useStoreTimezone } from "@/contexts/store-context";
@@ -68,6 +73,7 @@ import {
   captureReservationActionFailed,
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
+import { DepositAttemptDialog } from "./deposit-attempt-dialog";
 import { ManualPaymentRefundDialog } from "./manual-payment-refund-dialog";
 import { RequestPaymentModal } from "./request-payment-modal";
 import {
@@ -238,6 +244,7 @@ export function UnifiedPaymentSection({
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [captureModalOpen, setCaptureModalOpen] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [attemptDialogOpen, setAttemptDialogOpen] = useState(false);
   const [requestPaymentModalOpen, setRequestPaymentModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null);
 
@@ -402,8 +409,9 @@ export function UnifiedPaymentSection({
     }),
   );
 
-  // Filter history payments (exclude pending Stripe)
-  const historyPayments = payments.filter(
+  // Filter history payments (exclude pending Stripe, and all but the latest refused or
+  // closed deposit hold: every new try leaves one, and none holds money)
+  const historyPayments = withLatestFailedHoldOnly(payments).filter(
     (p) => !(p.method === "stripe" && p.status === "pending"),
   );
   const visiblePayments = historyExpanded
@@ -1020,9 +1028,24 @@ export function UnifiedPaymentSection({
                   )}
 
                   {depositStatusVal === "card_saved" && holdUnconfirmed && (
-                    <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">
-                      {tErrors("stripe.authorizationUnconfirmed")}
-                    </p>
+                    <div className="mb-3 space-y-2">
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        {tErrors("stripe.authorizationUnconfirmed")}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={readOnly}
+                        onClick={() => setAttemptDialogOpen(true)}
+                      >
+                        {t("deposit.unconfirmed.open")}
+                      </Button>
+                      <DepositAttemptDialog
+                        reservationId={reservationId}
+                        open={attemptDialogOpen}
+                        onOpenChange={setAttemptDialogOpen}
+                      />
+                    </div>
                   )}
 
                   <div className="flex gap-2">

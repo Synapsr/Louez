@@ -127,6 +127,7 @@ describe("Docker migrator after the app's runner (database)", { skip: skipWithou
       ["payments", "release_owed_at"],
       ["payments", "provider_requested_at"],
       ["payments", "claimed_until"],
+      ["payments", "stripe_customer_id"],
     ] as const) {
       assert.ok(await columnExists(table, column), `${table}.${column} exists`);
     }

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "81ae21f2-64c7-4b18-88cb-81d353423f3c",
+  "id": "c0023565-c573-4aa8-974a-a5fa93e32dc1",
   "prevId": "fc0f1534-4915-4ac9-8521-e600af5af515",
   "tables": {
     "account_departure_reason_counters": {
@@ -7973,6 +7973,13 @@
         "claimed_until": {
           "name": "claimed_until",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

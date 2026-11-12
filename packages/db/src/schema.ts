@@ -2076,6 +2076,10 @@ export const payments = mysqlTable(
     // A request of Louez is settling that attempt with the provider until then, on the
     // database's clock. Null when none is.
     claimedUntil: timestamp("claimed_until", { mode: "date" }),
+    // A deposit hold the store asked for: the provider's customer the request was sent
+    // with, so the attempt can still be looked up once the card is detached. Null on
+    // every other row, and on attempts claimed before the column.
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
 
     // Currency (for multi-currency support)
     currency: varchar("currency", { length: 3 }).default("EUR"),

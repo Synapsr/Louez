@@ -213,7 +213,13 @@ describe("depositIntentFromStripe", () => {
 
 describe("findAttemptIntent", () => {
   const ACCOUNT = "acct_lookup";
-  const attempt = { id: "attempt_1", accountId: ACCOUNT, paymentMethodId: "pm_card" };
+  // An attempt older than the column that stores its customer: its card names it.
+  const attempt = {
+    id: "attempt_1",
+    accountId: ACCOUNT,
+    paymentMethodId: "pm_card",
+    customerId: null,
+  };
 
   const stripeWith = (pageSize: number, older: number, options: { attempt?: boolean } = {}) => {
     const stripe = fakeDepositStripe({ pageSize });
@@ -273,6 +279,26 @@ describe("findAttemptIntent", () => {
 
     assert.deepEqual(await findAttemptIntent(stripe.port, attempt), { kind: "unknown" });
     assert.deepEqual(stripe.pagesRead, []);
+  });
+
+  test("the customer the attempt stored is searched, its card detached or not", async () => {
+    const stripe = stripeWith(2, 1);
+    stripe.saveCard(ACCOUNT, "pm_card", "");
+
+    const found = await findAttemptIntent(stripe.port, { ...attempt, customerId: "cus_1" });
+
+    assert.equal(found.kind, "found");
+    assert.deepEqual(stripe.pagesRead, [{ accountId: ACCOUNT, customerId: "cus_1" }]);
+  });
+
+  test("an empty page Stripe says more follow is no complete listing", async () => {
+    const stripe = stripeWith(2, 0, { attempt: false });
+    const port = {
+      ...stripe.port,
+      listCustomerIntents: async () => ({ intents: [], hasMore: true }),
+    };
+
+    assert.deepEqual(await findAttemptIntent(port, attempt), { kind: "unknown" });
   });
 
   test("only the attempt's account is read", async () => {

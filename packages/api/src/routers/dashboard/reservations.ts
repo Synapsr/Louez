@@ -38,6 +38,7 @@ import {
 } from "@louez/validations";
 
 import { dashboardProcedure, requirePermission } from "../../procedures";
+import { resolveDepositAttempt } from "./deposit-attempts";
 import { getDashboardReservationEditContext, signReservationInStore } from "../../services";
 import { toORPCError } from "../../utils/orpc-error";
 import {
@@ -742,6 +743,8 @@ export const dashboardReservationsRouter = {
   createDepositHold,
   captureDepositHold,
   releaseDepositHold,
+  // A deposit hold Stripe has not confirmed (deposit-attempts.ts): the dashboard only.
+  resolveDepositAttempt,
   assignUnitsToItem,
   sendReservationEmail,
   getEmailRenderContext,

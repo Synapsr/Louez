@@ -180,6 +180,12 @@ export function fakeDepositStripe(options: { readonly pageSize?: number } = {}) 
     async readIntent(accountId, paymentIntentId) {
       return toIntent(intentOf(accountId, paymentIntentId));
     },
+    async findIntent(accountId, paymentIntentId) {
+      const intent = intents.find(
+        (candidate) => candidate.id === paymentIntentId && candidate.accountId === accountId,
+      );
+      return intent ? toIntent(intent) : null;
+    },
     async cardCustomer(accountId, paymentMethodId) {
       const customerId = cards.get(scope(accountId, paymentMethodId));
       assert.ok(customerId !== undefined, `No such PaymentMethod on ${accountId}`);

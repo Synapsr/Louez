@@ -2251,7 +2251,20 @@
         "confirmRelease": "Libérer la caution",
         "invalidCaptureAmount": "Montant invalide",
         "captureExceedsDeposit": "Le montant dépasse la caution",
-        "reasonRequired": "Veuillez indiquer un motif"
+        "reasonRequired": "Veuillez indiquer un motif",
+        "unconfirmed": {
+          "open": "Régler avec Stripe",
+          "title": "Empreinte non confirmée",
+          "description": "Stripe n'a jamais confirmé cette demande d'empreinte. Cherchez-la dans votre tableau de bord Stripe, rubrique Paiements, puis indiquez à Louez ce que vous avez trouvé.",
+          "nothingTitle": "Rien dans Stripe",
+          "nothingDescription": "Stripe n'affiche aucune autorisation pour cette réservation. Louez clôt la demande et vous pouvez créer une nouvelle empreinte. Si Stripe en affiche une plus tard, Louez l'enregistre et la libère.",
+          "nothingAction": "Clore la demande",
+          "foundTitle": "Je l'ai trouvée dans Stripe",
+          "foundDescription": "Collez l'identifiant du paiement affiché dans Stripe (il commence par pi_). Louez vérifie qu'il correspond à cette demande avant de l'enregistrer.",
+          "foundAction": "Enregistrer ce paiement",
+          "closed": "Demande close. Vous pouvez créer une nouvelle empreinte.",
+          "recorded": "L'empreinte de Stripe est enregistrée."
+        }
       },
       "subtotal": "Sous-total",
       "source": "Source",
@@ -2796,7 +2809,8 @@
             "incorrectCvc": "Le code de sécurité (CVC) est invalide pour cette empreinte de caution.",
             "processingError": "L'empreinte de caution a échoué à cause d'un problème temporaire. Réessayez dans quelques minutes.",
             "doNotHonor": "La banque a refusé l'empreinte de caution sans précision. Demandez au client de contacter sa banque ou d'utiliser une autre carte.",
-            "generic": "L'empreinte de caution a échoué. Demandez au client de réessayer ou d'utiliser une autre carte."
+            "generic": "L'empreinte de caution a échoué. Demandez au client de réessayer ou d'utiliser une autre carte.",
+            "closedByStore": "Demande close par la boutique : aucune autorisation trouvée dans Stripe."
           }
         }
       },
@@ -9411,7 +9425,14 @@
     "agentConnectionNotFound": "Cet agent connecté n’existe plus.",
     "oauthRequestInvalid": "Cette demande de connexion n’est plus valide. Relancez-la depuis votre agent.",
     "stripeRequiredForPaymentMode": "Le mode paiement en ligne nécessite un compte Stripe connecté. Connectez Stripe dans Paramètres > Paiements.",
-    "locationLimitReached": "Une boutique peut avoir 50 points de retrait au maximum. Désactivez-en un ou réutilisez-le."
+    "locationLimitReached": "Une boutique peut avoir 50 points de retrait au maximum. Désactivez-en un ou réutilisez-le.",
+    "depositAttempt": {
+      "none": "Cette réservation n'a plus d'empreinte non confirmée.",
+      "foundAtStripe": "Stripe a bien cette empreinte : Louez l'a enregistrée au lieu de clore la demande.",
+      "intentNotFound": "Stripe n'a aucun paiement avec cet identifiant sur le compte où l'empreinte a été demandée.",
+      "intentMismatch": "Ce paiement n'est pas l'empreinte demandée pour cette réservation (montant, devise, carte ou client différents). Rien n'a été enregistré.",
+      "stripeUnavailable": "Stripe est injoignable. Rien n'a été enregistré. Réessayez dans quelques minutes."
+    }
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

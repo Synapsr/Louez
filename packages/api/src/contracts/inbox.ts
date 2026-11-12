@@ -25,7 +25,7 @@ export const INBOX_ITEM_TYPES = [
   "payment_failed",
   /** A deposit authorization the store asked for, which Stripe has not confirmed after 15 minutes. */
   "deposit_unconfirmed",
-  /** A second deposit authorization Louez could not cancel at Stripe: the card is still held. */
+  /** A second deposit authorization whose release Stripe has not confirmed: the card may still carry it. */
   "deposit_release_failed",
   /** A Stripe dispute (chargeback) still open. */
   "dispute_open",

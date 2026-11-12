@@ -2212,7 +2212,20 @@
         "confirmRelease": "Liberar caução",
         "invalidCaptureAmount": "Valor inválido",
         "captureExceedsDeposit": "O valor excede a caução",
-        "reasonRequired": "Por favor, forneça um motivo"
+        "reasonRequired": "Por favor, forneça um motivo",
+        "unconfirmed": {
+          "open": "Resolver com o Stripe",
+          "title": "Autorização não confirmada",
+          "description": "O Stripe nunca confirmou este pedido de autorização. Procure-o no seu painel do Stripe, em Pagamentos, e indique ao Louez o que encontrou.",
+          "nothingTitle": "Nada no Stripe",
+          "nothingDescription": "O Stripe não mostra nenhuma autorização para esta reserva. O Louez fecha o pedido e pode criar uma nova autorização. Se o Stripe mostrar uma mais tarde, o Louez regista-a e liberta-a.",
+          "nothingAction": "Fechar o pedido",
+          "foundTitle": "Encontrei-a no Stripe",
+          "foundDescription": "Cole o ID do pagamento mostrado no Stripe (começa por pi_). O Louez verifica se corresponde a este pedido antes de o registar.",
+          "foundAction": "Registar este pagamento",
+          "closed": "Pedido fechado. Pode criar uma nova autorização.",
+          "recorded": "A autorização do Stripe está registada."
+        }
       },
       "subtotal": "Subtotal",
       "source": "Origem",
@@ -2748,7 +2761,8 @@
             "incorrectCvc": "O código de segurança do cartão (CVC) é inválido para esta autorização de depósito.",
             "processingError": "A autorização de depósito falhou devido a um problema de processamento temporário. Tente novamente em alguns minutos.",
             "doNotHonor": "O banco recusou a autorização de depósito sem detalhes. Peça ao cliente para contactar o banco ou usar outro cartão.",
-            "generic": "A autorização de depósito falhou. Peça ao cliente para tentar novamente ou usar outro cartão."
+            "generic": "A autorização de depósito falhou. Peça ao cliente para tentar novamente ou usar outro cartão.",
+            "closedByStore": "Pedido fechado pela loja: nenhuma autorização encontrada no Stripe."
           }
         }
       },
@@ -9411,7 +9425,14 @@
     "agentConnectionNotFound": "Este agente conectado não existe mais.",
     "oauthRequestInvalid": "Este pedido de conexão não é mais válido. Inicie-o novamente no seu agente.",
     "stripeRequiredForPaymentMode": "O modo de pagamento online exige uma conta Stripe conectada. Conecte o Stripe em Configurações > Pagamentos.",
-    "locationLimitReached": "Uma loja pode ter no máximo 50 pontos de retirada. Desative um ou reutilize-o."
+    "locationLimitReached": "Uma loja pode ter no máximo 50 pontos de retirada. Desative um ou reutilize-o.",
+    "depositAttempt": {
+      "none": "Esta reserva já não tem nenhuma autorização por confirmar.",
+      "foundAtStripe": "O Stripe tem esta autorização: o Louez registou-a em vez de fechar o pedido.",
+      "intentNotFound": "O Stripe não tem nenhum pagamento com este ID na conta onde a autorização foi pedida.",
+      "intentMismatch": "Este pagamento não é a autorização pedida para esta reserva (montante, moeda, cartão ou cliente diferentes). Nada foi registado.",
+      "stripeUnavailable": "Não foi possível contactar o Stripe. Nada foi registado. Tente novamente dentro de alguns minutos."
+    }
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

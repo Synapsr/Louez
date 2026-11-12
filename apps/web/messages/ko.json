@@ -2251,7 +2251,20 @@
         "confirmRelease": "보증금 해제",
         "invalidCaptureAmount": "잘못된 금액",
         "captureExceedsDeposit": "금액이 입금액을 초과합니다.",
-        "reasonRequired": "이유를 입력하세요."
+        "reasonRequired": "이유를 입력하세요.",
+        "unconfirmed": {
+          "open": "Stripe에서 해결",
+          "title": "확인되지 않은 승인",
+          "description": "Stripe가 이 승인 요청을 확인하지 않았습니다. Stripe 대시보드의 결제 메뉴에서 찾아본 뒤 확인한 내용을 Louez에 알려 주세요.",
+          "nothingTitle": "Stripe에 없음",
+          "nothingDescription": "Stripe에 이 예약의 승인이 표시되지 않습니다. Louez가 요청을 닫으면 새 승인을 만들 수 있습니다. 나중에 Stripe에 승인이 표시되면 Louez가 기록하고 해제합니다.",
+          "nothingAction": "요청 닫기",
+          "foundTitle": "Stripe에서 찾았습니다",
+          "foundDescription": "Stripe에 표시된 결제 ID(pi_로 시작)를 붙여 넣으세요. Louez가 기록하기 전에 이 요청과 일치하는지 확인합니다.",
+          "foundAction": "이 결제 기록",
+          "closed": "요청을 닫았습니다. 새 승인을 만들 수 있습니다.",
+          "recorded": "Stripe의 승인이 기록되었습니다."
+        }
       },
       "subtotal": "소계",
       "source": "소스",
@@ -2787,7 +2800,8 @@
             "incorrectCvc": "이 입금 승인에 카드 보안 코드(CVC)가 유효하지 않습니다.",
             "processingError": "일시적인 처리 문제로 인해 입금 승인이 실패했습니다. 몇 분 후에 다시 시도하세요.",
             "doNotHonor": "은행은 세부사항 없이 입금 승인을 거부했습니다. 고객에게 은행에 문의하거나 다른 카드를 사용하도록 요청하세요.",
-            "generic": "입금 승인에 실패했습니다. 고객에게 다시 시도하거나 다른 카드를 사용하도록 요청하세요."
+            "generic": "입금 승인에 실패했습니다. 고객에게 다시 시도하거나 다른 카드를 사용하도록 요청하세요.",
+            "closedByStore": "매장에서 요청을 닫음: Stripe에서 승인을 찾지 못했습니다."
           }
         }
       },
@@ -9411,7 +9425,14 @@
     "agentConnectionNotFound": "이 연결된 에이전트는 더 이상 존재하지 않습니다.",
     "oauthRequestInvalid": "이 연결 요청은 더 이상 유효하지 않습니다. 에이전트에서 다시 시작하세요.",
     "stripeRequiredForPaymentMode": "온라인 결제 모드를 사용하려면 Stripe 계정을 연결해야 합니다. 설정 > 결제에서 Stripe를 연결하세요.",
-    "locationLimitReached": "매장 한 곳에는 픽업 장소를 최대 50개까지 둘 수 있습니다. 하나를 비활성화하거나 다시 사용하세요."
+    "locationLimitReached": "매장 한 곳에는 픽업 장소를 최대 50개까지 둘 수 있습니다. 하나를 비활성화하거나 다시 사용하세요.",
+    "depositAttempt": {
+      "none": "이 예약에는 더 이상 확인되지 않은 승인이 없습니다.",
+      "foundAtStripe": "Stripe에 이 승인이 있습니다. Louez가 요청을 닫는 대신 기록했습니다.",
+      "intentNotFound": "승인을 요청한 계정에 이 ID의 결제가 Stripe에 없습니다.",
+      "intentMismatch": "이 결제는 이 예약에서 요청한 승인이 아닙니다(금액, 통화, 카드 또는 고객이 다름). 아무것도 기록되지 않았습니다.",
+      "stripeUnavailable": "Stripe에 연결할 수 없습니다. 아무것도 기록되지 않았습니다. 몇 분 후 다시 시도하세요."
+    }
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",

@@ -69,6 +69,12 @@ export interface ApiPorts {
   /** Louez's billing of the store, owned by the app and the billing service. */
   billing?: BillingPort;
   /**
+   * The store's deposit holds (apps/web lib/reservations/deposit-hold.ts): its Stripe
+   * calls and its one writer, until the deposit hold moves into the package. Absent
+   * where no procedure needs it.
+   */
+  depositHolds?: DepositHoldsPort;
+  /**
    * What the team procedures read from the app (services/team.ts). Absent
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
@@ -85,6 +91,47 @@ export interface ApiPorts {
    * Absent: one JSON line on stderr.
    */
   log?: LogPort;
+}
+
+/** What the store's resolution of an unconfirmed deposit hold came to. */
+export type DepositAttemptResolution =
+  | {
+      ok: true;
+      /** `closed`, or what the named PaymentIntent was recorded as. */
+      outcome:
+        | "closed"
+        | "authorized"
+        | "superseded"
+        | "captured"
+        | "released"
+        | "failed"
+        | "pending";
+      paymentIntentId: string | null;
+    }
+  | {
+      ok: false;
+      error:
+        | "reservation_not_found"
+        | "no_unconfirmed_attempt"
+        | "attempt_in_progress"
+        | "intent_not_found"
+        | "stripe_unavailable";
+    }
+  | { ok: false; error: "found_at_stripe"; paymentIntentId: string; outcome: string }
+  | { ok: false; error: "intent_mismatch"; mismatches: readonly string[] };
+
+/** The store's deposit holds, lent by the app (apps/web lib/api/deposit-holds-port.ts). */
+export interface DepositHoldsPort {
+  /**
+   * Resolves the reservation's deposit hold attempt Stripe has not confirmed, on the
+   * store's word: it found nothing at Stripe, or it names the PaymentIntent.
+   */
+  resolveUnconfirmedAttempt: (input: {
+    reservationId: string;
+    storeId: string;
+    actorUserId: string;
+    resolution: { kind: "nothing_at_stripe" } | { kind: "payment_intent"; paymentIntentId: string };
+  }) => Promise<DepositAttemptResolution>;
 }
 
 /** A structured log event: a name, then fields that hold no personal data. */

@@ -38,8 +38,8 @@ const show = (writes: HoldWrites) =>
   [
     writes.row === null
       ? "-"
-      : writes.row === "delete"
-        ? "delete"
+      : writes.row === "close"
+        ? "close"
         : `${writes.row.status}${writes.row.releaseOwed ? "+owed" : ""}`,
     writes.reservation ?? "-",
     [
@@ -86,6 +86,8 @@ const TABLE: Record<IntentState, Record<HoldRowState, Cells>> = {
   held: {
     none: HELD_UNRECORDED,
     pending: HELD_UNRECORDED,
+    // A closed attempt whose PaymentIntent shows up held: the hold when the
+    // reservation has none, a release owed when it has another.
     failed: HELD_UNRECORDED,
     authorized: [
       "- | - | - | authorized",
@@ -188,8 +190,9 @@ describe("depositHoldTransition", () => {
         for (const relation of RELATIONS) {
           const writes = depositHoldTransition(row, intent, relation);
           const cell = `${row} / ${intent} / ${relation}`;
-          assert.notEqual(writes.row, "delete", cell);
-          if (writes.row && writes.row !== "delete") {
+          // Only a lookup that found nothing closes an attempt.
+          assert.notEqual(writes.row, "close", cell);
+          if (writes.row && writes.row !== "close") {
             const next = writes.row.releaseOwed ? "release_owed" : writes.row.status;
             assert.ok(RANK[next] >= RANK[row], `${cell} moves the row backward`);
             assert.ok(RANK[row] < 4, `${cell} rewrites a final row`);
@@ -224,22 +227,69 @@ describe("depositHoldTransition", () => {
 });
 
 describe("absentAttemptTransition", () => {
-  test("an attempt the provider never made anything for loses its row", () => {
+  test("an attempt no PaymentIntent was found for is closed, and keeps its row", () => {
     assert.equal(
       show(absentAttemptTransition({ refused: false, reservationHolds: false })),
-      "delete | - | - | failed",
+      "close | - | - | failed",
     );
   });
 
   test("a refusal fails the deposit, unless the reservation holds one", () => {
     assert.equal(
       show(absentAttemptTransition({ refused: true, reservationHolds: false })),
-      "delete | failed | deposit_failed | failed",
+      "close | failed | deposit_failed | failed",
     );
     assert.equal(
       show(absentAttemptTransition({ refused: true, reservationHolds: true })),
-      "delete | - | deposit_failed | failed",
+      "close | - | deposit_failed | failed",
     );
+  });
+});
+
+describe("a closed attempt, against every state the provider may give its PaymentIntent", () => {
+  // A `failed` row is closed for new requests, never for the provider: whatever it
+  // made of the attempt is settled from there, the reservation deciding whether a
+  // late authorization is its hold or a release owed.
+  const CLOSED: Record<IntentState, Cells> = {
+    unconfirmed: all("- | - | - | failed"),
+    processing: all("- | - | - | pending"),
+    held: [
+      "authorized | - | - | authorized",
+      STALE,
+      "authorized+owed | - | release | superseded",
+      "authorized | authorized | deposit_authorized | authorized",
+    ],
+    canceled: [
+      "cancelled | released | deposit_released | released",
+      "cancelled | - | - | released",
+      "cancelled | - | - | released",
+      "cancelled | - | - | released",
+    ],
+    captured: [
+      "completed | captured | capture,deposit_captured | captured",
+      "completed | captured | capture,deposit_captured | captured",
+      "completed | - | capture,deposit_captured | captured",
+      "completed | captured | capture,deposit_captured | captured",
+    ],
+  };
+
+  for (const intent of INTENTS) {
+    test(`its PaymentIntent ${intent}`, () => {
+      assert.deepEqual(
+        RELATIONS.map((relation) => show(depositHoldTransition("failed", intent, relation))),
+        [...CLOSED[intent]],
+      );
+    });
+  }
+
+  test("no provider state leaves a held or captured PaymentIntent unrecorded", () => {
+    for (const intent of ["held", "captured"] as const) {
+      for (const relation of RELATIONS) {
+        const writes = depositHoldTransition("failed", intent, relation);
+        if (relation === "this_done" && intent === "held") continue;
+        assert.ok(writes.row && writes.row !== "close", `${intent} / ${relation}`);
+      }
+    }
   });
 });
 
@@ -399,6 +449,30 @@ describe("bindDepositIntent", () => {
     );
   });
 
+  test("a closed attempt with no PaymentIntent still takes the one it was sent for, on its account", () => {
+    const closed = rowOf({ status: "failed" });
+    assert.deepEqual(bind([closed], intentOf({ attemptId: "attempt_1" })), {
+      ok: true,
+      row: closed,
+    });
+    const left = rowOf({ status: "failed", accountId: OLD_ACCOUNT });
+    assert.deepEqual(
+      bind([left], intentOf({ attemptId: "attempt_1" }), { id: OLD_ACCOUNT, current: false }),
+      { ok: true, row: left },
+    );
+    // Its facts still decide.
+    assert.deepEqual(bind([closed], intentOf({ attemptId: "attempt_1", amountMinor: 1 })), {
+      ok: false,
+      reason: "facts_mismatch",
+    });
+    // A refusal that named its PaymentIntent is that PaymentIntent's row only.
+    const declined = rowOf({ status: "failed", paymentIntentId: "pi_declined" });
+    assert.deepEqual(bind([declined], intentOf({ attemptId: "attempt_1" })), {
+      ok: false,
+      reason: "attempt_bound",
+    });
+  });
+
   test("an attempt that has its PaymentIntent takes no other, from any account", () => {
     const bound = rowOf({ status: "authorized", paymentIntentId: "pi_first" });
     const second = intentOf({ paymentIntentId: "pi_second", attemptId: "attempt_1" });
@@ -457,5 +531,15 @@ describe("bindDepositIntent", () => {
     assert.equal(claim("pi_new", null), false);
     assert.equal(claim("pi_held", null, "acct_third"), false);
     assert.equal(claim("pi_new", "attempt_2", "acct_third"), false);
+    // A closed attempt keeps its account's say about the PaymentIntent it was sent for.
+    const closed = rowOf({ id: "attempt_3", status: "failed", accountId: OLD_ACCOUNT });
+    assert.equal(
+      holdsNameIntentOnAccount([closed], {
+        accountId: OLD_ACCOUNT,
+        paymentIntentId: "pi_late",
+        attemptId: "attempt_3",
+      }),
+      true,
+    );
   });
 });

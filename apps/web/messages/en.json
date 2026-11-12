@@ -2251,7 +2251,20 @@
         "confirmRelease": "Release deposit",
         "invalidCaptureAmount": "Invalid amount",
         "captureExceedsDeposit": "Amount exceeds deposit",
-        "reasonRequired": "Please provide a reason"
+        "reasonRequired": "Please provide a reason",
+        "unconfirmed": {
+          "open": "Resolve with Stripe",
+          "title": "Unconfirmed authorization",
+          "description": "Stripe never confirmed this authorization request. Look for it in your Stripe dashboard, under Payments, then tell Louez what you found.",
+          "nothingTitle": "Nothing in Stripe",
+          "nothingDescription": "Stripe shows no authorization for this reservation. Louez closes the request and you can create a new authorization. If Stripe shows one later, Louez records it and releases it.",
+          "nothingAction": "Close the request",
+          "foundTitle": "I found it in Stripe",
+          "foundDescription": "Paste the payment ID shown in Stripe (it starts with pi_). Louez checks it matches this request before recording it.",
+          "foundAction": "Record this payment",
+          "closed": "Request closed. You can create a new authorization.",
+          "recorded": "The authorization from Stripe is recorded."
+        }
       },
       "subtotal": "Subtotal",
       "source": "Source",
@@ -2787,7 +2800,8 @@
             "incorrectCvc": "The card security code (CVC) is invalid for this deposit authorization.",
             "processingError": "The deposit authorization failed due to a temporary processing issue. Retry in a few minutes.",
             "doNotHonor": "The bank refused the deposit authorization without details. Ask the customer to contact their bank or use another card.",
-            "generic": "Deposit authorization failed. Ask the customer to retry or use another card."
+            "generic": "Deposit authorization failed. Ask the customer to retry or use another card.",
+            "closedByStore": "Request closed by the store: no authorization found in Stripe."
           }
         }
       },
@@ -9411,7 +9425,14 @@
     "agentConnectionNotFound": "This connected agent no longer exists.",
     "oauthRequestInvalid": "This connection request is no longer valid. Start it again from your agent.",
     "stripeRequiredForPaymentMode": "Online payment mode needs a connected Stripe account. Connect Stripe in Settings > Payments.",
-    "locationLimitReached": "A store can have 50 pickup points at most. Deactivate or reuse one instead."
+    "locationLimitReached": "A store can have 50 pickup points at most. Deactivate or reuse one instead.",
+    "depositAttempt": {
+      "none": "This reservation has no unconfirmed authorization left.",
+      "foundAtStripe": "Stripe does have this authorization: Louez recorded it instead of closing the request.",
+      "intentNotFound": "Stripe has no payment with this ID on the account the authorization was requested on.",
+      "intentMismatch": "This payment is not the authorization this reservation requested (amount, currency, card or customer differ). Nothing was recorded.",
+      "stripeUnavailable": "Stripe could not be reached. Nothing was recorded. Try again in a few minutes."
+    }
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

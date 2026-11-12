@@ -2251,7 +2251,20 @@
         "confirmRelease": "Rilis setoran",
         "invalidCaptureAmount": "Jumlah tidak valid",
         "captureExceedsDeposit": "Jumlah melebihi deposit",
-        "reasonRequired": "Harap berikan alasannya"
+        "reasonRequired": "Harap berikan alasannya",
+        "unconfirmed": {
+          "open": "Selesaikan dengan Stripe",
+          "title": "Otorisasi belum dikonfirmasi",
+          "description": "Stripe tidak pernah mengonfirmasi permintaan otorisasi ini. Cari di dasbor Stripe Anda, di bagian Pembayaran, lalu beri tahu Louez apa yang Anda temukan.",
+          "nothingTitle": "Tidak ada di Stripe",
+          "nothingDescription": "Stripe tidak menampilkan otorisasi untuk reservasi ini. Louez menutup permintaan dan Anda dapat membuat otorisasi baru. Jika Stripe menampilkannya nanti, Louez mencatat dan melepaskannya.",
+          "nothingAction": "Tutup permintaan",
+          "foundTitle": "Saya menemukannya di Stripe",
+          "foundDescription": "Tempel ID pembayaran yang ditampilkan di Stripe (diawali pi_). Louez memeriksa bahwa ID itu cocok dengan permintaan ini sebelum mencatatnya.",
+          "foundAction": "Catat pembayaran ini",
+          "closed": "Permintaan ditutup. Anda dapat membuat otorisasi baru.",
+          "recorded": "Otorisasi dari Stripe sudah dicatat."
+        }
       },
       "subtotal": "Subtotal",
       "source": "Sumber",
@@ -2787,7 +2800,8 @@
             "incorrectCvc": "Kode keamanan kartu (CVC) tidak valid untuk otorisasi deposit ini.",
             "processingError": "Otorisasi setoran gagal karena masalah pemrosesan sementara. Coba lagi dalam beberapa menit.",
             "doNotHonor": "Bank menolak otorisasi setoran tanpa rincian. Minta pelanggan untuk menghubungi banknya atau menggunakan kartu lain.",
-            "generic": "Otorisasi setoran gagal. Minta pelanggan untuk mencoba lagi atau menggunakan kartu lain."
+            "generic": "Otorisasi setoran gagal. Minta pelanggan untuk mencoba lagi atau menggunakan kartu lain.",
+            "closedByStore": "Permintaan ditutup oleh toko: tidak ada otorisasi yang ditemukan di Stripe."
           }
         }
       },
@@ -9411,7 +9425,14 @@
     "agentConnectionNotFound": "Agen terhubung ini sudah tidak ada.",
     "oauthRequestInvalid": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang dari agen Anda.",
     "stripeRequiredForPaymentMode": "Mode pembayaran online memerlukan akun Stripe yang terhubung. Hubungkan Stripe di Pengaturan > Pembayaran.",
-    "locationLimitReached": "Satu toko dapat memiliki paling banyak 50 titik pengambilan. Nonaktifkan salah satu atau gunakan kembali."
+    "locationLimitReached": "Satu toko dapat memiliki paling banyak 50 titik pengambilan. Nonaktifkan salah satu atau gunakan kembali.",
+    "depositAttempt": {
+      "none": "Reservasi ini tidak lagi memiliki otorisasi yang belum dikonfirmasi.",
+      "foundAtStripe": "Stripe memiliki otorisasi ini: Louez mencatatnya alih-alih menutup permintaan.",
+      "intentNotFound": "Stripe tidak memiliki pembayaran dengan ID ini di akun tempat otorisasi diminta.",
+      "intentMismatch": "Pembayaran ini bukan otorisasi yang diminta untuk reservasi ini (jumlah, mata uang, kartu, atau pelanggan berbeda). Tidak ada yang dicatat.",
+      "stripeUnavailable": "Stripe tidak dapat dihubungi. Tidak ada yang dicatat. Coba lagi dalam beberapa menit."
+    }
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

@@ -8,7 +8,7 @@
 export type DepositHoldRowKind =
   /** The store asked for the authorization; the provider has not confirmed it. */
   | "unconfirmed"
-  /** The provider refused: nothing is held. */
+  /** The provider refused, or the attempt was closed with nothing found: nothing is held. */
   | "failed"
   /** The amount is held on the card: the reservation's hold. */
   | "held"
@@ -53,8 +53,8 @@ export const paymentRowStatus = (row: DepositHoldRowLike): string => {
 
 const HOLD_ROW_DESCRIPTIONS: Record<DepositHoldRowKind, string> = {
   unconfirmed:
-    "authorization asked, not confirmed by Stripe: no hold is confirmed, and no other can be asked until Stripe settles this one",
-  failed: "authorization refused: nothing is held",
+    "authorization asked, not confirmed by Stripe: no hold is confirmed, and no other is asked until Stripe settles this one or the store resolves it from the dashboard",
+  failed: "authorization refused by Stripe, or closed with none found: nothing is held",
   held: "authorized: the amount is held on the card, not charged",
   release_pending:
     "a second authorization, not the reservation's hold: it is being released, and may still show on the card",
@@ -83,4 +83,22 @@ export const isCustomerDepositHoldRow = (
     Boolean(row.stripePaymentIntentId) &&
     row.stripePaymentIntentId === reservationHoldPaymentIntentId
   );
+};
+
+/**
+ * A payment list as the store's history shows it: of the hold rows that hold nothing
+ * because Stripe refused them or their attempt was closed, only the latest, which says
+ * why the deposit is not held. Every new try leaves one, and Louez keeps them all.
+ */
+export const withLatestFailedHoldOnly = <
+  T extends DepositHoldRowLike & { createdAt: Date | string },
+>(
+  rows: readonly T[],
+): T[] => {
+  let latest: T | null = null;
+  for (const row of rows) {
+    if (depositHoldRowKind(row) !== "failed") continue;
+    if (!latest || new Date(row.createdAt) > new Date(latest.createdAt)) latest = row;
+  }
+  return rows.filter((row) => depositHoldRowKind(row) !== "failed" || row === latest);
 };

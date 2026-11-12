@@ -1,10 +1,11 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { type SQL, and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { enqueueEffects } from "@louez/api/platform/effects";
 import {
   type Database,
   type Transaction,
+  apiEffects,
   markReservationIds,
   payments,
   reservationActivity,
@@ -37,7 +38,10 @@ import {
 // decide, and writes in one transaction: the hold's row, the reservation's deposit, the
 // capture, the activity line and the outbox row of a release that became owed. Nothing
 // else writes a `deposit_hold` or `deposit_capture` row, or a reservation's deposit
-// status once a hold is asked for; deposit-hold.ts only inserts the attempt it claims.
+// status once a hold is asked for; deposit-hold.ts only inserts the attempt it claims,
+// and `closeAbsentAttempt` closes one no PaymentIntent was found for. No hold row is
+// ever deleted: a closed attempt keeps its row, so its PaymentIntent, should Stripe
+// make it after all, is still recorded.
 
 const isHeld = (status: string | null) => status === "authorized" || status === "captured";
 
@@ -205,7 +209,7 @@ async function writeHoldRow(
     readonly accountId: string;
     readonly intent: DepositIntent;
     readonly row: HoldRow | null;
-    readonly write: Exclude<HoldWrites["row"], null | "delete">;
+    readonly write: Exclude<HoldWrites["row"], null | "close">;
     readonly context: SettleContext;
   },
 ): Promise<string> {
@@ -427,7 +431,7 @@ export async function settleDepositIntent(
     }
 
     const rowId =
-      writes.row && writes.row !== "delete"
+      writes.row && writes.row !== "close"
         ? await writeHoldRow(tx, {
             reservationId,
             accountId,
@@ -480,23 +484,35 @@ export async function settleDepositIntent(
   });
 }
 
+/** Why an attempt is closed with no PaymentIntent found. */
+export type AttemptClosure =
+  /** Stripe refused the request, saying why. */
+  | { readonly kind: "refused"; readonly message: string }
+  /** A complete listing, past the life of the key, holds none. */
+  | { readonly kind: "not_found" }
+  /** The store checked its Stripe dashboard and declared it found none. */
+  | { readonly kind: "declared_by_store" };
+
 /**
- * Ends a store's attempt Stripe is proven never to have made a PaymentIntent for: its
- * row goes, so the next attempt has a new key, and a refusal fails the deposit. Only
- * while the row is still that attempt, pending and without a PaymentIntent: one the
- * webhook settled meanwhile is left as it is, and `false` is answered.
+ * Closes a store's attempt no PaymentIntent was found for: its row is kept and set
+ * `failed`, so no request asks about it again and the next attempt has a new key,
+ * while a PaymentIntent Stripe makes of it after all still finds its row
+ * (`bindDepositIntent`). A refusal fails the deposit; the store's declaration is
+ * recorded with who made it. Only while the row is still that attempt, pending and
+ * without a PaymentIntent: one the webhook settled meanwhile is left as it is, and
+ * `false` is answered.
  */
-export async function settleAbsentAttempt(
+export async function closeAbsentAttempt(
   database: Database,
   input: {
     readonly reservationId: string;
     readonly storeId: string;
     readonly attemptId: string;
-    /** What Stripe said when it refused the request; null when it never saw it. */
-    readonly refusedBecause: string | null;
+    readonly closure: AttemptClosure;
     readonly actorUserId: string | null;
   },
 ): Promise<boolean> {
+  const { closure } = input;
   return database.transaction(async (tx) => {
     const deposit = await lockDeposit(tx, input);
     const row = deposit?.holds.find((hold) => hold.id === input.attemptId);
@@ -504,11 +520,12 @@ export async function settleAbsentAttempt(
       return false;
     }
     const writes = absentAttemptTransition({
-      refused: input.refusedBecause !== null,
+      refused: closure.kind === "refused",
       reservationHolds: isHeld(deposit.depositStatus),
     });
     await tx
-      .delete(payments)
+      .update(payments)
+      .set({ status: "failed", claimedUntil: null, updatedAt: sql`NOW()` })
       .where(
         and(
           eq(payments.id, input.attemptId),
@@ -521,17 +538,122 @@ export async function settleAbsentAttempt(
     if (writes.reservation) {
       await writeReservationDeposit(tx, input.reservationId, writes.reservation, null);
     }
-    if (writes.activity && input.refusedBecause !== null) {
-      const reason = `Échec de l'empreinte: ${input.refusedBecause}`;
+    const context = { actorUserId: input.actorUserId };
+    if (writes.activity && closure.kind === "refused") {
+      const reason = `Échec de l'empreinte: ${closure.message}`;
       await writeHoldActivity(tx, {
         reservationId: input.reservationId,
         type: writes.activity,
         paymentIntentId: null,
-        metadata: { paymentIntentId: null, error: reason },
-        context: { actorUserId: input.actorUserId, descriptions: { deposit_failed: reason } },
+        metadata: { paymentIntentId: null, attemptId: input.attemptId, error: reason },
+        context: { ...context, descriptions: { deposit_failed: reason } },
+      });
+    }
+    if (closure.kind === "declared_by_store") {
+      // Who closed it, and when: the line's author and date.
+      const description =
+        "Empreinte non confirmée close: la boutique n'a trouvé aucune autorisation chez Stripe";
+      await writeHoldActivity(tx, {
+        reservationId: input.reservationId,
+        type: "deposit_failed",
+        paymentIntentId: null,
+        metadata: {
+          paymentIntentId: null,
+          attemptId: input.attemptId,
+          closedBy: "store",
+          amount:
+            row.amountMinor !== null && row.currency
+              ? fromStripeCents(row.amountMinor, row.currency)
+              : null,
+          currency: row.currency,
+        },
+        context: { ...context, descriptions: { deposit_failed: description } },
       });
     }
     await markReservationIds(tx, [input.reservationId]);
     return true;
   });
+}
+
+/** How long after an outbox row was added for a debt before the cron adds another. */
+const RELEASE_REQUEUE_HOURS = 24;
+
+/**
+ * An outbox row that is still to run for a hold's release, or one added less than a
+ * day ago, whatever became of it: a debt that has neither gets a new row.
+ */
+const releaseInFlight = (paymentId: SQL | string) =>
+  sql`EXISTS (
+    SELECT 1 FROM ${apiEffects}
+    WHERE ${apiEffects.type} = 'deposit.holdRelease'
+      AND JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.paymentId')) = ${paymentId}
+      AND (
+        ${apiEffects.status} IN ('pending', 'running', 'failed')
+        OR ${apiEffects.createdAt} > NOW() - INTERVAL ${sql.raw(String(RELEASE_REQUEUE_HOURS))} HOUR
+      )
+  )`;
+
+/**
+ * The debt, not its outbox row, says what Louez owes: every hold row whose release is
+ * owed (`release_owed_at`) has a `deposit.holdRelease` row still to run. One the outbox
+ * abandoned (Stripe down for hours, or an instance still running code that had no
+ * sender for it) or deleted with its retention gets a new one, a day at most after
+ * the last was added, on the database's clock. Bounded per run; the oldest debts
+ * first. The new rows' ids, for the dispatcher.
+ */
+export async function requeueOwedReleases(database: Database, limit = 50): Promise<string[]> {
+  const owed = await database
+    .select({ id: payments.id, reservationId: payments.reservationId })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.type, "deposit_hold"),
+        isNotNull(payments.releaseOwedAt),
+        sql`NOT ${releaseInFlight(sql`${payments.id}`)}`,
+      ),
+    )
+    .orderBy(asc(payments.releaseOwedAt), asc(payments.id))
+    .limit(limit);
+
+  const enqueued: string[] = [];
+  for (const debt of owed) {
+    const ids = await database.transaction(async (tx) => {
+      // Under the lock every writer of a hold row takes, the debt is read again: one
+      // Stripe settled meanwhile, or a row another run added, adds nothing.
+      const [reservation] = await tx
+        .select({ storeId: reservations.storeId })
+        .from(reservations)
+        .where(eq(reservations.id, debt.reservationId))
+        .for("update");
+      if (!reservation) return [];
+      const [row] = await tx
+        .select({
+          paymentIntentId: payments.stripePaymentIntentId,
+          accountId: payments.stripeAccountId,
+          inFlight: sql<number>`${releaseInFlight(debt.id)}`,
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.id, debt.id),
+            eq(payments.type, "deposit_hold"),
+            isNotNull(payments.releaseOwedAt),
+          ),
+        );
+      if (!row?.paymentIntentId || !row.accountId || Number(row.inFlight) === 1) return [];
+      return enqueueEffects(tx, reservation.storeId, [
+        {
+          type: "deposit.holdRelease",
+          payload: {
+            reservationId: debt.reservationId,
+            paymentId: debt.id,
+            accountId: row.accountId,
+            paymentIntentId: row.paymentIntentId,
+          },
+        },
+      ]);
+    });
+    enqueued.push(...ids);
+  }
+  return enqueued;
 }

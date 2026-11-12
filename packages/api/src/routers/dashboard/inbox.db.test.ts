@@ -587,8 +587,8 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     );
   });
 
-  test("a second deposit hold the outbox gave up releasing shows while its release is owed", async () => {
-    const owed = async (paymentIntentId: string) => {
+  test("a second deposit hold shows while its release is owed, whatever became of the outbox row", async () => {
+    const owed = async (paymentIntentId: string, since: Date) => {
       const reservationId = await reservation("confirmed", { depositStatus: "authorized" });
       const id = nextId("ib_pay");
       await louezDb.db.insert(louezDb.payments).values({
@@ -600,7 +600,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
         status: "authorized",
         stripePaymentIntentId: paymentIntentId,
         stripeAccountId: "acct_inbox",
-        releaseOwedAt: ago(3 * HOUR),
+        releaseOwedAt: since,
         currency: "EUR",
       });
       return { reservationId, paymentId: id, paymentIntentId };
@@ -609,9 +609,8 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       hold: Awaited<ReturnType<typeof owed>>,
       status: "abandoned" | "failed",
     ) => {
-      const id = nextId("ib_eff");
       await louezDb.db.insert(louezDb.apiEffects).values({
-        id,
+        id: nextId("ib_eff"),
         storeId: STORE,
         type: "deposit.holdRelease",
         payload: { ...hold, accountId: "acct_inbox" },
@@ -620,29 +619,42 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
         nextAttemptAt: ago(HOUR),
         createdAt: ago(3 * HOUR),
       });
-      return id;
     };
-    const stuck = await owed("pi_second_stuck");
-    const effectId = await release(stuck, "abandoned");
-    // Still being tried: the outbox has not given up.
-    await release(await owed("pi_second_trying"), "failed");
+    // Its outbox row abandoned, still being tried, or deleted by the retention: the
+    // debt is what counts.
+    const abandoned = await owed("pi_second_abandoned", ago(3 * HOUR));
+    await release(abandoned, "abandoned");
+    const trying = await owed("pi_second_trying", ago(3 * HOUR));
+    await release(trying, "failed");
+    const pruned = await owed("pi_second_pruned", ago(40 * DAY));
+    // Owed a few minutes ago: the outbox's first tries may still release it.
+    await owed("pi_second_recent", ago(5 * 60_000));
 
     const items = ofType((await list()).items, "deposit_release_failed");
     assert.deepEqual(
-      items.map((item) => item.id),
-      [`deposit_release_failed:${effectId}`],
+      items.map((item) => item.id).sort(),
+      [abandoned, trying, pruned].map((hold) => `deposit_release_failed:${hold.paymentId}`).sort(),
     );
-    assert.equal(items[0]?.severity, "critical");
-    assert.equal(items[0]?.reservation?.id, stuck.reservationId);
-    assert.match(items[0]?.summary ?? "", /held twice/);
-    assert.match(items[0]?.summary ?? "", /pi_second_stuck/);
+    const item = items.find(
+      (entry) => entry.id === `deposit_release_failed:${abandoned.paymentId}`,
+    );
+    assert.equal(item?.severity, "warning");
+    assert.equal(item?.reservation?.id, abandoned.reservationId);
+    assert.match(item?.summary ?? "", /has not confirmed the release/);
+    assert.doesNotMatch(item?.summary ?? "", /held twice/);
+    assert.match(item?.summary ?? "", /pi_second_abandoned/);
 
     // Stripe says the authorization is cancelled: nothing is owed any more.
     await louezDb.db
       .update(louezDb.payments)
       .set({ status: "cancelled", releaseOwedAt: null })
-      .where(orm.eq(louezDb.payments.id, stuck.paymentId));
-    assert.deepEqual(ofType((await list()).items, "deposit_release_failed"), []);
+      .where(orm.eq(louezDb.payments.id, abandoned.paymentId));
+    assert.deepEqual(
+      ofType((await list()).items, "deposit_release_failed")
+        .map((entry) => entry.id)
+        .sort(),
+      [trying, pruned].map((hold) => `deposit_release_failed:${hold.paymentId}`).sort(),
+    );
   });
 
   test("a failed payment shows once per reservation, until a payment comes in; a failed deposit while it stays failed", async () => {

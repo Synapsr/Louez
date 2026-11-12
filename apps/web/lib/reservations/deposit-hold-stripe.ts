@@ -69,6 +69,11 @@ export type DepositHoldStripe = {
   ): Promise<DepositAuthorizationAnswer>;
   /** The PaymentIntent as it is now, on that account. */
   readIntent(accountId: string, paymentIntentId: string): Promise<DepositIntent>;
+  /**
+   * The PaymentIntent as it is now, on that account, or null when Stripe has no such
+   * PaymentIntent there. Throws when Stripe could not answer.
+   */
+  findIntent(accountId: string, paymentIntentId: string): Promise<DepositIntent | null>;
   /** The customer a saved card belongs to on that account; null once detached. */
   cardCustomer(accountId: string, paymentMethodId: string): Promise<string | null>;
   /** One page of a customer's PaymentIntents on that account, newest first. */
@@ -215,6 +220,20 @@ export const stripeDepositHold: DepositHoldStripe = {
     return depositIntentFromStripe(paymentIntent);
   },
 
+  async findIntent(accountId, paymentIntentId) {
+    try {
+      return await stripeDepositHold.readIntent(accountId, paymentIntentId);
+    } catch (error) {
+      if (
+        error instanceof Stripe.errors.StripeInvalidRequestError &&
+        error.code === "resource_missing"
+      ) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
   async cardCustomer(accountId, paymentMethodId) {
     const paymentMethod = await stripe.paymentMethods.retrieve(
       paymentMethodId,
@@ -283,12 +302,14 @@ export type AttemptLookup =
   | { readonly kind: "unknown" };
 
 /**
- * The attempt's PaymentIntent, among those of the customer its card belongs to, on the
- * account the attempt was sent to. A saved card belongs to one customer for good, and
- * Stripe refuses a request that names another: so that customer is the one the attempt
- * was sent with, whatever customer the reservation names now, and no date bounds the
- * search. `absent` only when the listing was read to its end: a search stopped at its
- * page bound, or one that cannot name the customer, is `unknown`.
+ * The attempt's PaymentIntent, among those of the customer it was sent with, on the
+ * account the attempt was sent to. That customer is the one the attempt row stored
+ * when it was claimed, so a card detached since does not stop the search; an attempt
+ * older than that column reads it from its card, which belongs to one customer for
+ * good (Stripe refuses a request that names another), and is lost once the card is
+ * detached. No date bounds the search. `absent` only when the listing was read to its
+ * end: a search stopped at its page bound, a page that comes back empty while Stripe
+ * says more follow, or one that cannot name the customer, is `unknown`.
  */
 export async function findAttemptIntent(
   port: DepositHoldStripe,
@@ -296,10 +317,13 @@ export async function findAttemptIntent(
     readonly id: string;
     readonly accountId: string;
     readonly paymentMethodId: string;
+    /** The customer the attempt was sent with; null on an attempt older than the column. */
+    readonly customerId: string | null;
   },
 ): Promise<AttemptLookup> {
   const { accountId } = attempt;
-  const customerId = await port.cardCustomer(accountId, attempt.paymentMethodId);
+  const customerId =
+    attempt.customerId ?? (await port.cardCustomer(accountId, attempt.paymentMethodId));
   if (!customerId) return { kind: "unknown" };
 
   let startingAfter: string | null = null;
@@ -311,8 +335,10 @@ export async function findAttemptIntent(
     });
     const intent = intents.find((candidate) => candidate.attemptId === attempt.id);
     if (intent) return { kind: "found", intent };
+    if (!hasMore) return { kind: "absent" };
+    // More follow, and nothing to start the next page after: the listing is not complete.
     const last = intents.at(-1);
-    if (!hasMore || !last) return { kind: "absent" };
+    if (!last) return { kind: "unknown" };
     startingAfter = last.paymentIntentId;
   }
   return { kind: "unknown" };

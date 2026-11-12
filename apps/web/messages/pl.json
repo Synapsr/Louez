@@ -2212,7 +2212,20 @@
         "confirmRelease": "Zwolnij kaucję",
         "invalidCaptureAmount": "Nieprawidłowa kwota",
         "captureExceedsDeposit": "Kwota przekracza kaucję",
-        "reasonRequired": "Proszę podać powód"
+        "reasonRequired": "Proszę podać powód",
+        "unconfirmed": {
+          "open": "Rozwiąż w Stripe",
+          "title": "Niepotwierdzona autoryzacja",
+          "description": "Stripe nigdy nie potwierdził tej prośby o autoryzację. Znajdź ją w panelu Stripe, w sekcji Płatności, a potem przekaż Louez, co znalazłeś.",
+          "nothingTitle": "Nic w Stripe",
+          "nothingDescription": "Stripe nie pokazuje żadnej autoryzacji dla tej rezerwacji. Louez zamyka prośbę i możesz utworzyć nową autoryzację. Jeśli Stripe pokaże ją później, Louez ją zapisze i zwolni.",
+          "nothingAction": "Zamknij prośbę",
+          "foundTitle": "Znalazłem ją w Stripe",
+          "foundDescription": "Wklej identyfikator płatności widoczny w Stripe (zaczyna się od pi_). Louez sprawdzi, czy pasuje do tej prośby, zanim go zapisze.",
+          "foundAction": "Zapisz tę płatność",
+          "closed": "Prośba zamknięta. Możesz utworzyć nową autoryzację.",
+          "recorded": "Autoryzacja ze Stripe została zapisana."
+        }
       },
       "subtotal": "Suma częściowa",
       "source": "Źródło",
@@ -2748,7 +2761,8 @@
             "incorrectCvc": "Kod bezpieczeństwa karty (CVC) jest nieprawidłowy dla tej autoryzacji kaucji.",
             "processingError": "Autoryzacja kaucji nie powiodła się z powodu tymczasowego problemu przetwarzania. Spróbuj ponownie za kilka minut.",
             "doNotHonor": "Bank odrzucił autoryzację kaucji bez podania szczegółów. Poproś klienta o kontakt z bankiem.",
-            "generic": "Autoryzacja kaucji nie powiodła się. Poproś klienta o ponowienie próby lub użycie innej karty."
+            "generic": "Autoryzacja kaucji nie powiodła się. Poproś klienta o ponowienie próby lub użycie innej karty.",
+            "closedByStore": "Prośba zamknięta przez sklep: w Stripe nie znaleziono autoryzacji."
           }
         }
       },
@@ -9411,7 +9425,14 @@
     "agentConnectionNotFound": "Ten połączony agent już nie istnieje.",
     "oauthRequestInvalid": "Ta prośba o połączenie jest już nieważna. Rozpocznij ją ponownie w swoim agencie.",
     "stripeRequiredForPaymentMode": "Tryb płatności online wymaga połączonego konta Stripe. Połącz Stripe w Ustawienia > Płatności.",
-    "locationLimitReached": "Sklep może mieć maksymalnie 50 punktów odbioru. Dezaktywuj jeden lub użyj go ponownie."
+    "locationLimitReached": "Sklep może mieć maksymalnie 50 punktów odbioru. Dezaktywuj jeden lub użyj go ponownie.",
+    "depositAttempt": {
+      "none": "Ta rezerwacja nie ma już niepotwierdzonej autoryzacji.",
+      "foundAtStripe": "Stripe ma tę autoryzację: Louez ją zapisał zamiast zamknąć prośbę.",
+      "intentNotFound": "Stripe nie ma płatności o tym identyfikatorze na koncie, na którym poproszono o autoryzację.",
+      "intentMismatch": "Ta płatność nie jest autoryzacją, o którą poproszono dla tej rezerwacji (różni się kwota, waluta, karta lub klient). Nic nie zostało zapisane.",
+      "stripeUnavailable": "Nie można połączyć się ze Stripe. Nic nie zostało zapisane. Spróbuj ponownie za kilka minut."
+    }
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

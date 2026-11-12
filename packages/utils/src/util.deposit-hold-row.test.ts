@@ -6,6 +6,7 @@ import {
   describeDepositHoldRow,
   isCustomerDepositHoldRow,
   paymentRowStatus,
+  withLatestFailedHoldOnly,
 } from "./util.deposit-hold-row";
 
 const hold = (status: string, values: Record<string, unknown> = {}) => ({
@@ -74,5 +75,29 @@ describe("a deposit hold row, as a reader states it", () => {
     assert.equal(shown(hold("authorized", { releaseOwedAt: new Date() })), false);
     // Not a hold: not this function's to show.
     assert.equal(isCustomerDepositHoldRow({ type: "rental", status: "completed" }, null), false);
+  });
+
+  test("the store's history keeps the latest refused or closed hold only", () => {
+    const failed = (id: string, createdAt: string) => ({
+      id,
+      type: "deposit_hold",
+      status: "failed",
+      createdAt: new Date(createdAt),
+    });
+    const rows = [
+      failed("closed_first", "2026-03-01T10:00:00Z"),
+      { id: "rental", type: "rental", status: "completed", createdAt: new Date("2026-03-01T09:00:00Z") },
+      failed("refused_last", "2026-03-03T10:00:00Z"),
+      { id: "held", type: "deposit_hold", status: "authorized", createdAt: new Date("2026-03-04T10:00:00Z") },
+      failed("closed_between", "2026-03-02T10:00:00Z"),
+    ];
+
+    assert.deepEqual(
+      withLatestFailedHoldOnly(rows).map((row) => row.id),
+      ["rental", "refused_last", "held"],
+    );
+    // A failed rental payment is not a hold: it stays.
+    const rentalFailed = { id: "r", type: "rental", status: "failed", createdAt: new Date() };
+    assert.deepEqual(withLatestFailedHoldOnly([rentalFailed, ...rows]).length, 4);
   });
 });

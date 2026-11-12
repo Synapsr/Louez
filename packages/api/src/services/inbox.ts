@@ -98,6 +98,11 @@ const DEPOSIT_NOTICE_HOURS = 48;
  * request and its webhook settle one within seconds. It never leaves by age.
  */
 const DEPOSIT_UNCONFIRMED_MINUTES = 15;
+/**
+ * A release Louez owes shows once it is this old: the outbox asks Stripe at once, and
+ * again after 1, 2, 4… minutes. It never leaves by age.
+ */
+const DEPOSIT_RELEASE_GRACE_MINUTES = 30;
 /** Rejected e-invoices older than this are left out. */
 const EINVOICE_DAYS = 90;
 /** Operations older than this are left out. */
@@ -747,7 +752,7 @@ const unconfirmedDeposits: Source = async (window, shaper) => {
     return candidate("deposit_unconfirmed", row.paymentId, {
       severity: "warning",
       occurredAt: row.occurredAt,
-      summary: `Stripe has not confirmed the deposit hold${amount ? ` of ${amount}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}: check the payment in Stripe. Asking again in Louez asks for the same hold, never a second one, and no other hold is taken until Stripe settles this one.`,
+      summary: `Stripe has not confirmed the deposit hold${amount ? ` of ${amount}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}: check the payment in Stripe. Asking again in Louez asks for the same hold, never a second one, and no other hold is taken until Stripe settles this one or the store, in the reservation's deposit section, says what Stripe shows.`,
       reservation: about.reservation,
       details: {
         reservationId: row.id,
@@ -764,64 +769,59 @@ const unconfirmedDeposits: Source = async (window, shaper) => {
 };
 
 /**
- * A second deposit authorization the outbox gave up cancelling at Stripe
- * (`deposit.holdRelease`), while its row still says the release is owed: the
- * customer's card carries it on top of the reservation's hold. It leaves once Stripe
- * says the authorization is cancelled or captured.
+ * A second deposit authorization Louez decided against (apps/web
+ * lib/reservations/deposit-hold-writes.ts), whose release Stripe has not confirmed
+ * this long after it became owed. The debt on the hold's row
+ * (`payments.release_owed_at`) is what is read, not the outbox row that works on it:
+ * that row may be abandoned, or deleted by the outbox's retention, while the debt
+ * stands, and the cron then adds another (deposit-hold-debts.ts). It leaves once
+ * Stripe says the authorization is cancelled or captured.
  */
 const unreleasedDeposits: Source = async (window, shaper) => {
+  const occurred =
+    sql<Date>`(${payments.releaseOwedAt} + INTERVAL ${sql.raw(String(DEPOSIT_RELEASE_GRACE_MINUTES))} MINUTE)`.mapWith(
+      payments.createdAt,
+    );
   const rows = await db
     .select({
       ...reservationColumns,
-      effectId: apiEffects.id,
-      // An abandoned row's next attempt is the time it was abandoned (platform/effects.ts).
-      occurredAt: apiEffects.nextAttemptAt,
       paymentId: payments.id,
+      occurredAt: occurred,
+      owedSince: payments.releaseOwedAt,
       paymentIntentId: payments.stripePaymentIntentId,
       amount: payments.amount,
       currency: payments.currency,
     })
-    .from(apiEffects)
-    .innerJoin(
-      payments,
-      and(
-        eq(payments.id, sql`JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.paymentId'))`),
-        eq(payments.type, "deposit_hold"),
-        isNotNull(payments.releaseOwedAt),
-      ),
-    )
-    .innerJoin(
-      reservations,
-      and(eq(reservations.id, payments.reservationId), eq(reservations.storeId, window.storeId)),
-    )
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
     .leftJoin(customers, eq(customers.id, reservations.customerId))
     .where(
       and(
-        eq(apiEffects.storeId, window.storeId),
-        eq(apiEffects.status, "abandoned"),
-        eq(apiEffects.type, "deposit.holdRelease"),
-        inWindow(window, "deposit_release_failed", apiEffects.nextAttemptAt, apiEffects.id),
+        eq(reservations.storeId, window.storeId),
+        eq(payments.type, "deposit_hold"),
+        isNotNull(payments.releaseOwedAt),
+        inWindow(window, "deposit_release_failed", occurred, payments.id),
       ),
     )
-    .orderBy(...inOrder(apiEffects.nextAttemptAt, apiEffects.id))
+    .orderBy(...inOrder(occurred, payments.id))
     .limit(window.take);
 
   return rows.map((row) => {
     const about = aboutReservation(shaper, row);
     const amount = money(row.amount, row.currency ?? shaper.currency);
-    return candidate("deposit_release_failed", row.effectId, {
-      severity: "critical",
+    return candidate("deposit_release_failed", row.paymentId, {
+      severity: "warning",
       occurredAt: row.occurredAt,
-      summary: `A second deposit hold${amount ? ` of ${amount}` : ""} on ${about.name} could not be cancelled at Stripe after every try: the customer's card is held twice. Cancel the payment${row.paymentIntentId ? ` ${row.paymentIntentId}` : ""} in Stripe.`,
+      summary: `Stripe has not confirmed the release of a second deposit hold${amount ? ` of ${amount}` : ""} on ${about.name}, which is not the reservation's hold: the customer's card may still carry it. Louez keeps asking Stripe to cancel it; check the payment${row.paymentIntentId ? ` ${row.paymentIntentId}` : ""} in Stripe and cancel it there if it is still held.`,
       reservation: about.reservation,
       details: {
-        effectId: row.effectId,
         reservationId: row.id,
         reservationNumber: row.number,
         paymentId: row.paymentId,
         paymentIntentId: row.paymentIntentId,
         amount: row.amount,
         currency: row.currency ?? shaper.currency,
+        owedSince: row.owedSince?.toISOString() ?? null,
       },
       tools: RESERVATION_TOOLS,
       links: about.links,

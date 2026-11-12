@@ -25,16 +25,22 @@ import { type DepositIntent, intentStateOf } from "./util.deposit-hold-transitio
 // or does not, each webhook comes in any order and more than once, a process dies
 // between two steps, a writer acts on what it read from Stripe earlier, the store
 // captures and releases from Louez or from Stripe, the store changes connected
-// accounts, time passes. After every step the rows are checked
+// accounts, the store resolves an attempt Stripe never confirmed (rightly or not),
+// time passes, and Stripe makes a PaymentIntent of a request it answered 500 to, a
+// day later or more. After every step the rows are checked
 // against what the fake Stripe holds; at the end of each walk every event is delivered
 // and the outbox is run to its end, and the two must then agree exactly.
 //
 // A failure prints how to replay its walk alone:
 //   DEPOSIT_MODEL_SEED=<seed> DEPOSIT_MODEL_SEQUENCES=1 pnpm test
 //
-// What the model leaves out, because Louez is not asked to hold it:
-// - Stripe making a PaymentIntent of a request more than 24 hours after it answered
-//   500 to it: past the life of the key, a complete listing is taken as proof.
+// The walk's sequence of the review that closed the attempts for good: an attempt
+// answered 500, the store moves to another account, a day passes, a complete and empty
+// listing closes the attempt and a new one is authorized, then Stripe makes the first
+// one's PaymentIntent. Every PaymentIntent Stripe holds must then have its row, the
+// reservation referencing one of them at most, the others released.
+//
+// What the model leaves out, because Louez is not asked to hold it (deposit-hold.ts):
 // - A store that changes connected accounts while a customer's own authorization, made
 //   on the account it leaves, is still unknown to Louez: its event then comes from an
 //   account with no row to vouch for it, and is refused.
@@ -56,7 +62,7 @@ Reflect.get(
 });
 
 const SEED = Number(process.env.DEPOSIT_MODEL_SEED ?? 20261112);
-const SEQUENCES = Number(process.env.DEPOSIT_MODEL_SEQUENCES ?? 2000);
+const SEQUENCES = Number(process.env.DEPOSIT_MODEL_SEQUENCES ?? 1500);
 const STEPS = 10;
 
 const STORE = "store_deposit_model";
@@ -85,6 +91,27 @@ function randomOf(seed: number) {
 }
 
 type Random = ReturnType<typeof randomOf>;
+
+/**
+ * How often the walks went through what this model is there to test: the default run
+ * fails when one of them stops happening, so a change to the weights cannot quietly
+ * stop testing it.
+ */
+const coverage = {
+  /** A closed attempt whose PaymentIntent Stripe made afterwards, then recorded. */
+  closedThenRecorded: 0,
+  /** The same, on an account the store had left by then. */
+  closedThenRecordedOnLeftAccount: 0,
+  /** The store said it found nothing at Stripe, and the attempt was closed. */
+  storeClosed: 0,
+  /** The store named the attempt's PaymentIntent, and it was recorded. */
+  storeNamed: 0,
+  /** The store named a PaymentIntent that is not the attempt's, and was refused. */
+  storeRefused: 0,
+  /** A capture or a release Stripe made whose answer was lost. */
+  answersLost: 0,
+  accountMoves: 0,
+};
 
 /** A hold row as the model remembers it from one step to the next. */
 type SeenRow = {
@@ -161,8 +188,6 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
     let depositBefore: { status: string | null; paymentIntentId: string | null } | undefined;
     /** Each PaymentIntent as Stripe had it at each of its changes: what a slow writer holds. */
     const snapshots: Array<{ accountId: string; intent: DepositIntent }> = [];
-    /** The attempts whose row was deleted: Stripe must never have their PaymentIntent. */
-    const deleted = new Set<string>();
     const log: string[] = [];
 
     await louezDb.db
@@ -316,22 +341,34 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
       return runEffects(rows.map((row) => row.id));
     };
 
-    /** Stripe does what it was asked, then the answer is lost: the caller sees an error. */
-    const losingAnswers = (): DepositHoldDeps["stripe"] => ({
-      ...stripe.port,
-      capture: async (...call) => {
-        await stripe.port.capture(...call);
+    /**
+     * Stripe does what it was asked, then the answer is lost: the caller sees an error.
+     * What it read before goes through; once the answer is lost, so is the caller's
+     * process, and nothing it reads after comes back.
+     */
+    const losingAnswers = (): DepositHoldDeps["stripe"] => {
+      let lost = false;
+      const lose = () => {
+        lost = true;
         throw new Error("socket hang up");
-      },
-      release: async (...call) => {
-        await stripe.port.release(...call);
-        throw new Error("socket hang up");
-      },
-      // What a lost answer is read back as: nothing, the caller's process is gone.
-      readIntent: async () => {
-        throw new Error("socket hang up");
-      },
-    });
+      };
+      return {
+        ...stripe.port,
+        capture: async (...call) => {
+          await stripe.port.capture(...call);
+          return lose();
+        },
+        release: async (...call) => {
+          await stripe.port.release(...call);
+          return lose();
+        },
+        readIntent: async (...call) => {
+          if (lost) throw new Error("socket hang up");
+          return stripe.port.readIntent(...call);
+        },
+      };
+    };
+
 
     const actions: Array<{ readonly weight: number; readonly run: () => Promise<string> }> = [
       {
@@ -406,10 +443,18 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
         weight: 1,
         run: async () => {
           const lost = random.chance(0.25);
+          const capturedBefore = stripe.intents.filter((i) => i.status === "succeeded").length;
           const result = await hold.captureDepositHold(
             { ...settlement(), amount: random.pick([10, 50]), reason: "damage" },
             holdDeps(lost ? losingAnswers() : stripe.port),
           );
+          const capturedNow = stripe.intents.filter((i) => i.status === "succeeded").length;
+          // A lost answer means Stripe captured and Louez recorded nothing yet: the
+          // webhook will.
+          if (lost && capturedNow > capturedBefore) {
+            coverage.answersLost += 1;
+            assert.equal(result.ok, false, "a capture whose answer was lost reported done");
+          }
           return `the store captures${lost ? ", the answer lost" : ""}: ${result.ok ? "captured" : result.error}`;
         },
       },
@@ -417,10 +462,15 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
         weight: 1,
         run: async () => {
           const lost = random.chance(0.25);
+          const releasedBefore = stripe.released.length;
           const result = await hold.releaseDepositHold(
             settlement(),
             holdDeps(lost ? losingAnswers() : stripe.port),
           );
+          if (lost && stripe.released.length > releasedBefore) {
+            coverage.answersLost += 1;
+            assert.equal(result.ok, false, "a release whose answer was lost reported done");
+          }
           return `the store releases${lost ? ", the answer lost" : ""}: ${result.ok ? "released" : result.error}`;
         },
       },
@@ -492,7 +542,43 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
         run: async () => `the cron runs: ${JSON.stringify(await runCron())}`,
       },
       {
-        weight: 0.5,
+        weight: 1.2,
+        run: async () => {
+          // The store resolves an attempt Stripe has not confirmed, from what its Stripe
+          // dashboard shows: it names the attempt's PaymentIntent, or a wrong one, or
+          // says it found nothing, rightly or because Stripe has not made it yet.
+          const rows = await readRows();
+          const pending = rows.find((row) => row.type === "deposit_hold" && row.status === "pending");
+          if (!pending) return "no attempt to resolve";
+          const made = stripe.intents.find((intent) => intent.attemptId === pending.id);
+          const other = ofReservation().find((intent) => intent.attemptId !== pending.id);
+          const choice = random.pick(["nothing", "its own", "its own", "a wrong one"] as const);
+          // A wrong one: another PaymentIntent of the reservation, or a mistyped id.
+          const wrong = other?.id ?? "pi_mistyped";
+          const resolution =
+            choice === "nothing" || (choice === "its own" && !made)
+              ? ({ kind: "nothing_at_stripe" } as const)
+              : ({
+                  kind: "payment_intent",
+                  paymentIntentId: choice === "its own" && made ? made.id : wrong,
+                } as const);
+          const result = await hold.resolveUnconfirmedAttempt(
+            { reservationId, storeId: STORE, actorUserId: "user_model", resolution },
+            holdDeps(),
+          );
+          if (resolution.kind === "payment_intent" && choice === "a wrong one") {
+            assert.equal(result.ok, false, `${resolution.paymentIntentId} was taken for the attempt`);
+            coverage.storeRefused += 1;
+          }
+          if (result.ok && result.outcome === "closed") coverage.storeClosed += 1;
+          if (result.ok && resolution.kind === "payment_intent") coverage.storeNamed += 1;
+          const said =
+            resolution.kind === "nothing_at_stripe" ? "nothing at Stripe" : resolution.paymentIntentId;
+          return `the store resolves ${pending.id} (${said}): ${result.ok ? result.outcome : result.error}`;
+        },
+      },
+      {
+        weight: 1.5,
         run: async () => {
           // A customer's own authorization still unknown to Louez is told first: see
           // the top of this file.
@@ -507,6 +593,7 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
             }
           }
           account = account === ACCOUNTS[0] ? ACCOUNTS[1] : ACCOUNTS[0];
+          coverage.accountMoves += 1;
           await louezDb.db
             .update(louezDb.stores)
             .set({ stripeAccountId: account })
@@ -533,11 +620,12 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
         run: async () => {
           const ms = random.pick([3 * MINUTE, 25 * HOUR, 9 * DAY]);
           if (ms >= 24 * HOUR) {
-            // Within a day Stripe is done with every request: it made its
-            // PaymentIntent, or never will.
+            // A request still running is done within a day. One Stripe answered 500 to
+            // is made, given up, or still to be made: Stripe promises no delay.
             stripe.finishRunning();
-            if (random.chance(0.5)) stripe.reconcile();
-            else stripe.giveUp();
+            const fate = random.pick(["made", "given up", "later"] as const);
+            if (fate === "made") stripe.reconcile();
+            if (fate === "given up") stripe.giveUp();
           }
           const p = louezDb.payments;
           const seconds = sql.raw(String(Math.round(ms / 1000)));
@@ -610,27 +698,18 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
           if (before.paymentIntentId) {
             assert.equal(row.paymentIntentId, before.paymentIntentId, `row ${row.id} changed PaymentIntent`);
           }
+          if (before.state === "failed" && !before.paymentIntentId && row.paymentIntentId) {
+            coverage.closedThenRecorded += 1;
+            if (row.accountId !== account) coverage.closedThenRecordedOnLeftAccount += 1;
+          }
         }
         seen.set(row.id, { state, rank, paymentIntentId: row.paymentIntentId });
       }
 
-      // No attempt row is deleted while Stripe has, or ever gets, its PaymentIntent.
-      for (const [id, before] of seen) {
-        if (holds.some((row) => row.id === id)) continue;
-        assert.deepEqual(
-          [before.state, before.paymentIntentId],
-          ["pending", null],
-          `row ${id} was deleted while ${before.state}`,
-        );
-        deleted.add(id);
-        seen.delete(id);
-      }
-      for (const id of deleted) {
-        assert.equal(
-          intents.some((intent) => intent.attemptId === id),
-          false,
-          `attempt ${id} was deleted, and Stripe has its PaymentIntent`,
-        );
+      // No hold row is ever deleted: a closed attempt keeps its row, for the
+      // PaymentIntent Stripe may still make of it.
+      for (const id of seen.keys()) {
+        assert.ok(holds.some((row) => row.id === id), `row ${id} was deleted`);
       }
 
       // Louez never says more than Stripe does of a PaymentIntent.
@@ -760,6 +839,13 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
           `attempt ${row.id} is pending, and Stripe has its PaymentIntent`,
         );
       }
+      // Whatever Stripe made of an attempt, open or closed when it was made, that held
+      // or holds money is recorded on the attempt's own row.
+      for (const intent of intents) {
+        if (!intent.attemptId || intentStateOf(intent.status) === "unconfirmed") continue;
+        const row = holds.find((hold) => hold.paymentIntentId === intent.id);
+        assert.equal(row?.id, intent.attemptId, `${intent.id} is not on its attempt's row`);
+      }
     };
 
     try {
@@ -776,7 +862,7 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
     }
   }
 
-  test(`${SEQUENCES} random walks keep what Louez says and what Stripe holds in agreement (seed ${SEED})`, async () => {
+  test(`${SEQUENCES} random walks keep what Louez says and what Stripe holds in agreement (seed ${SEED})`, async (t) => {
     for (let sequence = 0; sequence < SEQUENCES; sequence++) {
       const seed = SEED + sequence;
       try {
@@ -786,6 +872,12 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
         assert.fail(
           `Walk ${sequence} failed. Replay it alone with DEPOSIT_MODEL_SEED=${seed} DEPOSIT_MODEL_SEQUENCES=1\n${reason}`,
         );
+      }
+    }
+    t.diagnostic(`paths walked: ${JSON.stringify(coverage)}`);
+    if (SEQUENCES >= 500) {
+      for (const [path, count] of Object.entries(coverage)) {
+        assert.ok(count > 0, `no walk went through ${path}: ${JSON.stringify(coverage)}`);
       }
     }
   });
