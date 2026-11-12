@@ -2216,12 +2216,12 @@
         "unconfirmed": {
           "open": "Oplossen met Stripe",
           "title": "Onbevestigde autorisatie",
-          "description": "Stripe heeft dit autorisatieverzoek nooit bevestigd. Zoek het op in uw Stripe-dashboard, onder Betalingen, en laat Louez weten wat u vond.",
+          "description": "Stripe heeft dit autorisatieverzoek nooit bevestigd. Zoek het op in het Stripe-dashboard van het account waarop het werd aangevraagd, onder Betalingen, en laat Louez weten wat u vond.",
           "nothingTitle": "Niets in Stripe",
-          "nothingDescription": "Stripe toont geen autorisatie voor deze reservering. Louez sluit het verzoek en u kunt een nieuwe autorisatie aanmaken. Toont Stripe er later toch een, dan registreert Louez die en geeft hem vrij.",
+          "nothingDescription": "Kies dit pas nadat u dat Stripe-dashboard hebt gecontroleerd. Het verzoek sluiten annuleert niets bij Stripe; daarna kunt u een nieuwe autorisatie aanmaken. Verschijnt er later toch een autorisatie, dan registreert Louez die: ze wordt de borg van deze reservering als die er nog geen heeft, en wordt vrijgegeven als een andere borgreservering de reservering al dekt. Een verkeerd antwoord kan dus een tijd een extra borgreservering op de kaart van de klant laten staan.",
           "nothingAction": "Verzoek sluiten",
           "foundTitle": "Ik heb hem in Stripe gevonden",
-          "foundDescription": "Plak de betalings-ID die Stripe toont (die begint met pi_). Louez controleert of hij bij dit verzoek hoort voordat hij wordt geregistreerd.",
+          "foundDescription": "Plak de ID van de betaling waarvan de metadata in Stripe deze reservering vermelden (die begint met pi_). Louez controleert of hij bij dit verzoek hoort voordat hij wordt geregistreerd. Elke andere autorisatie handelt u af in Stripe.",
           "foundAction": "Deze betaling registreren",
           "closed": "Verzoek gesloten. U kunt een nieuwe autorisatie aanmaken.",
           "recorded": "De autorisatie uit Stripe is geregistreerd."
@@ -9430,7 +9430,7 @@
       "none": "Deze reservering heeft geen onbevestigde autorisatie meer.",
       "foundAtStripe": "Stripe heeft deze autorisatie wel: Louez heeft hem geregistreerd in plaats van het verzoek te sluiten.",
       "intentNotFound": "Stripe heeft geen betaling met deze ID op het account waarop de autorisatie werd aangevraagd.",
-      "intentMismatch": "Deze betaling is niet de autorisatie die voor deze reservering werd aangevraagd (bedrag, valuta, kaart of klant verschillen). Er is niets geregistreerd.",
+      "intentMismatch": "Deze betaling is niet de autorisatie die voor deze reservering werd aangevraagd: de Stripe-metadata vermelden deze reservering niet, of bedrag, valuta, kaart of klant verschillen. Er is niets geregistreerd: handel deze autorisatie af in Stripe.",
       "stripeUnavailable": "Stripe is niet bereikbaar. Er is niets geregistreerd. Probeer het over enkele minuten opnieuw."
     }
   },

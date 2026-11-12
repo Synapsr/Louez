@@ -2216,12 +2216,12 @@
         "unconfirmed": {
           "open": "Risolvi con Stripe",
           "title": "Autorizzazione non confermata",
-          "description": "Stripe non ha mai confermato questa richiesta di autorizzazione. Cercala nella dashboard di Stripe, alla voce Pagamenti, poi indica a Louez cosa hai trovato.",
+          "description": "Stripe non ha mai confermato questa richiesta di autorizzazione. Cercala nella dashboard di Stripe dell'account su cui è stata richiesta, alla voce Pagamenti, poi indica a Louez cosa hai trovato.",
           "nothingTitle": "Niente in Stripe",
-          "nothingDescription": "Stripe non mostra alcuna autorizzazione per questa prenotazione. Louez chiude la richiesta e puoi creare una nuova autorizzazione. Se Stripe ne mostra una in seguito, Louez la registra e la rilascia.",
+          "nothingDescription": "Sceglilo solo dopo aver controllato quella dashboard di Stripe. Chiudere la richiesta non annulla nulla su Stripe; potrai poi creare una nuova autorizzazione. Se in seguito compare un'autorizzazione, Louez la registra: diventa la cauzione di questa prenotazione se non ne ha una, e viene rilasciata se un'altra preautorizzazione la garantisce già. Un errore può quindi lasciare per un po' una preautorizzazione in più sulla carta del cliente.",
           "nothingAction": "Chiudi la richiesta",
           "foundTitle": "L'ho trovata in Stripe",
-          "foundDescription": "Incolla l'ID del pagamento mostrato in Stripe (inizia con pi_). Louez verifica che corrisponda a questa richiesta prima di registrarlo.",
+          "foundDescription": "Incolla l'ID del pagamento i cui metadati in Stripe indicano questa prenotazione (inizia con pi_). Louez verifica che corrisponda a questa richiesta prima di registrarlo. Qualsiasi altra autorizzazione si gestisce da Stripe.",
           "foundAction": "Registra questo pagamento",
           "closed": "Richiesta chiusa. Puoi creare una nuova autorizzazione.",
           "recorded": "L'autorizzazione di Stripe è registrata."
@@ -9430,7 +9430,7 @@
       "none": "Questa prenotazione non ha più autorizzazioni non confermate.",
       "foundAtStripe": "Stripe ha questa autorizzazione: Louez l'ha registrata invece di chiudere la richiesta.",
       "intentNotFound": "Stripe non ha alcun pagamento con questo ID sull'account su cui è stata richiesta l'autorizzazione.",
-      "intentMismatch": "Questo pagamento non è l'autorizzazione richiesta per questa prenotazione (importo, valuta, carta o cliente diversi). Non è stato registrato nulla.",
+      "intentMismatch": "Questo pagamento non è l'autorizzazione richiesta per questa prenotazione: i suoi metadati Stripe non la indicano, oppure importo, valuta, carta o cliente sono diversi. Non è stato registrato nulla: gestisci questa autorizzazione da Stripe.",
       "stripeUnavailable": "Impossibile raggiungere Stripe. Non è stato registrato nulla. Riprova tra qualche minuto."
     }
   },

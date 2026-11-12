@@ -12,7 +12,11 @@ import {
 } from "@louez/db/testing";
 
 import type { DepositHoldDeps } from "./deposit-hold";
-import { ATTEMPT_LOOKUP_MAX_PAGES, depositHoldIdempotencyKey } from "./deposit-hold-stripe";
+import {
+  ATTEMPT_LOOKUP_MAX_PAGES,
+  type DepositHoldStripe,
+  depositHoldIdempotencyKey,
+} from "./deposit-hold-stripe";
 import {
   type FakeDepositStripe,
   type FakeIntent,
@@ -505,7 +509,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(early, { ok: false, error: "errors.stripe.authorizationInProgress" });
     assert.equal(stripe.calls.length, 1);
 
-    await ageAttempt(reservationId, 2 * MINUTE);
+    await ageAttempt(reservationId, hold.DEPOSIT_HOLD_CLAIM_SECONDS * 1000);
     const takeover = await request(reservationId, stripe);
     assert.equal(takeover.ok, true);
     assert.equal(stripe.calls.length, 2);
@@ -1639,7 +1643,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       });
     });
 
-    test("a PaymentIntent that is not the attempt's is refused, and nothing is written", async () => {
+    test("a PaymentIntent that is not the attempt's own is refused, and nothing is written", async () => {
       const stripe = stripeWithCard();
       const reservationId = await stuckAttempt(stripe);
       const [attempt] = await readHolds(reservationId);
@@ -1651,35 +1655,162 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
           amountMinor: 5000,
           currency: "EUR",
           status: "requires_capture",
-          attemptId: null,
+          attemptId: attempt.id,
           reservationId,
           ...values,
         });
       const cases: Array<[Partial<FakeIntent>, string[]]> = [
+        // Everything the attempt was sent with, and no reference to it: the customer's
+        // own authorization, or one made outside Louez.
+        [{ attemptId: null, reservationId: null }, ["reservation", "attempt"]],
+        // Another reservation's, on the same card.
+        [
+          { attemptId: "attempt_another", reservationId: "res_another_one_000000" },
+          ["reservation", "attempt"],
+        ],
+        // This reservation's, but not this attempt's, or no attempt's.
+        [{ attemptId: "attempt_another" }, ["attempt"]],
+        [{ attemptId: null }, ["attempt"]],
+        [{ reservationId: null }, ["reservation"]],
         [{ amountMinor: 9000 }, ["amount"]],
         [{ currency: "USD" }, ["currency"]],
         [{ paymentMethodId: "pm_customer", customerId: null }, ["card", "customer"]],
-        [{ reservationId: "res_another_one_000000" }, ["reservation"]],
-        [{ attemptId: "attempt_another" }, ["attempt"]],
         [{ captureMethod: "automatic" }, ["capture_method"]],
       ];
       for (const [values, mismatches] of cases) {
         const intent = intentWith(values);
         assert.deepEqual(
-          await resolve(reservationId, stripe, { kind: "payment_intent", paymentIntentId: intent.id }),
+          await resolve(reservationId, stripe, {
+            kind: "payment_intent",
+            paymentIntentId: intent.id,
+          }),
           { ok: false, error: "intent_mismatch", mismatches },
           JSON.stringify(values),
         );
       }
       // Not on the attempt's account.
       assert.deepEqual(
-        await resolve(reservationId, stripe, { kind: "payment_intent", paymentIntentId: "pi_nowhere" }),
+        await resolve(reservationId, stripe, {
+          kind: "payment_intent",
+          paymentIntentId: "pi_nowhere",
+        }),
         { ok: false, error: "intent_not_found" },
       );
       assert.deepEqual(await holdStates(reservationId), [["pending", null]]);
       assert.equal((await readHolds(reservationId))[0].id, attempt.id);
       assert.equal((await readDeposit(reservationId))?.status, "card_saved");
       assert.deepEqual(await readActivity(reservationId), []);
+    });
+
+    /** What Stripe made of the reservation's stuck attempt, which no lookup could reach. */
+    async function madeOfAttempt(stripe: FakeDepositStripe, reservationId: string) {
+      const [attempt] = await readHolds(reservationId);
+      return stripe.createIntent({
+        accountId: ACCOUNT,
+        customerId: "cus_stripe",
+        paymentMethodId: "pm_card",
+        amountMinor: 5000,
+        currency: "EUR",
+        status: "requires_capture",
+        attemptId: attempt.id,
+        reservationId,
+      });
+    }
+
+    test("the attempt's own PaymentIntent, once recorded, is captured and released as any hold", async () => {
+      const stripe = stripeWithCard();
+      const captured = await stuckAttempt(stripe);
+      const released = await stuckAttempt(stripe);
+      const forCapture = await madeOfAttempt(stripe, captured);
+      const forRelease = await madeOfAttempt(stripe, released);
+      for (const [reservationId, intent] of [
+        [captured, forCapture],
+        [released, forRelease],
+      ] as const) {
+        assert.deepEqual(
+          await resolve(reservationId, stripe, {
+            kind: "payment_intent",
+            paymentIntentId: intent.id,
+          }),
+          { ok: true, outcome: "authorized", paymentIntentId: intent.id },
+        );
+      }
+
+      // Part of it is captured: Stripe and Louez agree on what was taken.
+      const capture = await hold.captureDepositHold(
+        { ...settlement(captured), amount: 20, reason: "Scratched frame" },
+        depsOf(stripe),
+      );
+      assert.equal(capture.ok, true);
+      assert.equal(stripe.intentOf(ACCOUNT, forCapture.id).capturedMinor, 2000);
+      assert.deepEqual(await readCaptures(captured), [
+        { paymentIntentId: forCapture.id, amount: "20.00", status: "completed" },
+      ]);
+      assert.deepEqual(await holdStates(captured), [["completed", forCapture.id]]);
+      assert.equal((await readDeposit(captured))?.status, "captured");
+
+      assert.deepEqual(await hold.releaseDepositHold(settlement(released), depsOf(stripe)), {
+        ok: true,
+        amount: 50,
+      });
+      assert.deepEqual(stripe.released, [forRelease.id]);
+      assert.deepEqual(await holdStates(released), [["cancelled", forRelease.id]]);
+      assert.equal((await readDeposit(released))?.status, "released");
+    });
+
+    test("one authorization is never the hold of two reservations", async () => {
+      const stripe = stripeWithCard();
+      // Two reservations of the same customer, on the same card, for the same deposit.
+      const first = await stuckAttempt(stripe);
+      const second = await stuckAttempt(stripe);
+      const [secondAttempt] = await readHolds(second);
+
+      // An authorization without any attempt's reference is neither's.
+      const anonymous = stripe.createIntent({
+        accountId: ACCOUNT,
+        customerId: "cus_stripe",
+        paymentMethodId: "pm_card",
+        amountMinor: 5000,
+        currency: "EUR",
+        status: "requires_capture",
+        attemptId: null,
+        reservationId: null,
+      });
+      for (const reservationId of [first, second]) {
+        assert.deepEqual(
+          await resolve(reservationId, stripe, {
+            kind: "payment_intent",
+            paymentIntentId: anonymous.id,
+          }),
+          { ok: false, error: "intent_mismatch", mismatches: ["reservation", "attempt"] },
+        );
+      }
+
+      // The first reservation's own is the first's, and only the first's.
+      const own = await madeOfAttempt(stripe, first);
+      assert.deepEqual(
+        await resolve(second, stripe, { kind: "payment_intent", paymentIntentId: own.id }),
+        { ok: false, error: "intent_mismatch", mismatches: ["reservation", "attempt"] },
+      );
+      assert.equal(
+        (await resolve(first, stripe, { kind: "payment_intent", paymentIntentId: own.id })).ok,
+        true,
+      );
+      assert.deepEqual(
+        await resolve(second, stripe, { kind: "payment_intent", paymentIntentId: own.id }),
+        { ok: false, error: "intent_mismatch", mismatches: ["reservation", "attempt", "recorded"] },
+      );
+
+      assert.deepEqual(await holdStates(first), [["authorized", own.id]]);
+      assert.deepEqual(await holdStates(second), [["pending", null]]);
+      assert.equal((await readHolds(second))[0].id, secondAttempt.id);
+      assert.equal((await readDeposit(second))?.status, "card_saved");
+      const p = louezDb.payments;
+      const naming = await louezDb.db
+        .select({ reservationId: p.reservationId })
+        .from(p)
+        .where(eq(p.stripePaymentIntentId, own.id));
+      assert.deepEqual(naming, [{ reservationId: first }]);
     });
 
     test("an attempt a request is asking Stripe about is left to it", async () => {
@@ -1697,6 +1828,236 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
         error: "attempt_in_progress",
       });
       assert.deepEqual(await holdStates(reservationId), [["pending", null]]);
+    });
+  });
+
+  describe("a claim is the request's that made it", () => {
+    const STORE_USER = "user_store_owner";
+
+    /**
+     * The fake Stripe, whose reads each wait for the test: `entered(n)` once the n-th
+     * read is waiting, `letGo(n)` to let it answer.
+     */
+    function stalling(stripe: FakeDepositStripe) {
+      const gates: Array<{
+        arrived: Promise<void>;
+        enter: () => void;
+        go: Promise<void>;
+        letGo: () => void;
+      }> = [];
+      const gate = (index: number) => {
+        while (gates.length <= index) {
+          let enter = () => {};
+          let letGo = () => {};
+          const arrived = new Promise<void>((resolve) => {
+            enter = resolve;
+          });
+          const go = new Promise<void>((resolve) => {
+            letGo = resolve;
+          });
+          gates.push({ arrived, enter, go, letGo });
+        }
+        return gates[index];
+      };
+      let reads = 0;
+      const pass = async () => {
+        const current = gate(reads++);
+        current.enter();
+        await current.go;
+      };
+      const port: DepositHoldStripe = {
+        ...stripe.port,
+        async findIntent(accountId, paymentIntentId) {
+          await pass();
+          return stripe.port.findIntent(accountId, paymentIntentId);
+        },
+        async listCustomerIntents(input) {
+          await pass();
+          return stripe.port.listCustomerIntents(input);
+        },
+      };
+      return {
+        deps: { ...depsOf(stripe), stripe: port },
+        entered: (index: number) => gate(index).arrived,
+        letGo: (index: number) => gate(index).letGo(),
+      };
+    }
+
+    const resolveWith = (
+      reservationId: string,
+      deps: DepositHoldDeps,
+      resolution: Parameters<typeof hold.resolveUnconfirmedAttempt>[0]["resolution"],
+    ) =>
+      hold.resolveUnconfirmedAttempt(
+        { reservationId, storeId: STORE, actorUserId: STORE_USER, resolution },
+        deps,
+      );
+
+    /** An attempt whose request never reached Stripe, with the customer it stored. */
+    async function unansweredAttempt(stripe: FakeDepositStripe) {
+      const reservationId = await createReservation();
+      stripe.next.push(stripe.neverArrives);
+      assert.equal((await request(reservationId, stripe)).ok, false);
+      return reservationId;
+    }
+
+    /** Two PaymentIntents of the card's customer, for other reservations. */
+    const otherIntentsOfCustomer = (stripe: FakeDepositStripe) => {
+      for (const reservationId of ["res_other_1", "res_other_2"]) {
+        stripe.createIntent({
+          accountId: ACCOUNT,
+          customerId: "cus_stripe",
+          paymentMethodId: "pm_card",
+          amountMinor: 1000,
+          currency: "EUR",
+          status: "canceled",
+          attemptId: null,
+          reservationId,
+        });
+      }
+    };
+
+    /**
+     * The claim's lease runs out while its request still waits for Stripe. A lease
+     * ends only once the database's clock has passed it, so the next claim is set a
+     * later second: the clock moves on to another second first.
+     */
+    const expireClaim = async (reservationId: string) => {
+      await new Promise((resolve) => setTimeout(resolve, 1_100));
+      await louezDb.db
+        .update(louezDb.payments)
+        .set({ claimedUntil: sql`NOW() - INTERVAL 1 SECOND` })
+        .where(eq(louezDb.payments.reservationId, reservationId));
+    };
+
+    const readClaim = async (reservationId: string) => {
+      const p = louezDb.payments;
+      const [row] = await louezDb.db
+        .select({ token: sql<number | null>`UNIX_TIMESTAMP(${p.claimedUntil})` })
+        .from(p)
+        .where(and(eq(p.reservationId, reservationId), eq(p.type, "deposit_hold")));
+      return row?.token === null || row?.token === undefined ? null : Number(row.token);
+    };
+
+    test("a request whose lease ran out gives back nothing it no longer holds: no third request calls Stripe", async () => {
+      const stripe = stripeWithCard();
+      const reservationId = await unansweredAttempt(stripe);
+      const slow = stalling(stripe);
+      const named = { kind: "payment_intent", paymentIntentId: "pi_missing" } as const;
+
+      const first = resolveWith(reservationId, slow.deps, named);
+      await slow.entered(0);
+      await expireClaim(reservationId);
+      const second = resolveWith(reservationId, slow.deps, named);
+      await slow.entered(1);
+      const secondClaim = await readClaim(reservationId);
+      assert.ok(secondClaim !== null);
+
+      // The first ends, with Stripe's answer, after the second took the attempt over.
+      slow.letGo(0);
+      assert.deepEqual(await first, { ok: false, error: "intent_not_found" });
+      assert.equal(await readClaim(reservationId), secondClaim);
+
+      // A third request finds the attempt claimed, and calls nobody.
+      const calls = stripe.calls.length;
+      assert.deepEqual(await request(reservationId, stripe), {
+        ok: false,
+        error: "errors.stripe.authorizationInProgress",
+      });
+      assert.equal(stripe.calls.length, calls);
+
+      slow.letGo(1);
+      assert.deepEqual(await second, { ok: false, error: "intent_not_found" });
+      assert.equal(await readClaim(reservationId), null);
+    });
+
+    test("a request that lost its claim closes nothing, and asks Stripe no more", async () => {
+      const stripe = stripeWithCard({ pageSize: 1 });
+      const reservationId = await unansweredAttempt(stripe);
+      // Two older PaymentIntents of the customer: the lookup has two pages to read.
+      otherIntentsOfCustomer(stripe);
+      stripe.pagesRead.length = 0;
+      const slow = stalling(stripe);
+
+      const declared = resolveWith(reservationId, slow.deps, { kind: "nothing_at_stripe" });
+      await slow.entered(0);
+      await expireClaim(reservationId);
+      const named = resolveWith(reservationId, slow.deps, {
+        kind: "payment_intent",
+        paymentIntentId: "pi_missing",
+      });
+      await slow.entered(1);
+
+      slow.letGo(0);
+      assert.deepEqual(await declared, { ok: false, error: "attempt_in_progress" });
+      // Its first page only: the second was not asked for once the claim was lost.
+      assert.equal(stripe.pagesRead.length, 1);
+      assert.deepEqual(await holdStates(reservationId), [["pending", null]]);
+      assert.deepEqual(await readActivity(reservationId), []);
+
+      slow.letGo(1);
+      assert.deepEqual(await named, { ok: false, error: "intent_not_found" });
+    });
+
+    test("a request that lost its claim records nothing of what Stripe told it; the claim's owner does", async () => {
+      const stripe = stripeWithCard();
+      const reservationId = await unansweredAttempt(stripe);
+      const [attempt] = await readHolds(reservationId);
+      const own = stripe.createIntent({
+        accountId: ACCOUNT,
+        customerId: "cus_stripe",
+        paymentMethodId: "pm_card",
+        amountMinor: 5000,
+        currency: "EUR",
+        status: "requires_capture",
+        attemptId: attempt.id,
+        reservationId,
+      });
+      const slow = stalling(stripe);
+
+      const named = resolveWith(reservationId, slow.deps, {
+        kind: "payment_intent",
+        paymentIntentId: own.id,
+      });
+      await slow.entered(0);
+      await expireClaim(reservationId);
+      const declared = resolveWith(reservationId, slow.deps, { kind: "nothing_at_stripe" });
+      await slow.entered(1);
+
+      slow.letGo(0);
+      assert.deepEqual(await named, { ok: false, error: "attempt_in_progress" });
+      assert.deepEqual(await holdStates(reservationId), [["pending", null]]);
+      assert.equal((await readDeposit(reservationId))?.status, "card_saved");
+      assert.deepEqual(await readActivity(reservationId), []);
+
+      slow.letGo(1);
+      assert.deepEqual(await declared, {
+        ok: false,
+        error: "found_at_stripe",
+        paymentIntentId: own.id,
+        outcome: "authorized",
+      });
+      assert.deepEqual(await holdStates(reservationId), [["authorized", own.id]]);
+    });
+
+    test("the claim is renewed before each call to Stripe: a long lookup keeps it", async () => {
+      const stripe = stripeWithCard({ pageSize: 1 });
+      const reservationId = await unansweredAttempt(stripe);
+      otherIntentsOfCustomer(stripe);
+      const slow = stalling(stripe);
+
+      const declared = resolveWith(reservationId, slow.deps, { kind: "nothing_at_stripe" });
+      await slow.entered(0);
+      const before = await readClaim(reservationId);
+      // The database's clock moves on to another second.
+      await new Promise((resolve) => setTimeout(resolve, 1_100));
+      slow.letGo(0);
+      await slow.entered(1);
+      const renewed = await readClaim(reservationId);
+      assert.ok(before !== null && renewed !== null && renewed > before, `${before} -> ${renewed}`);
+
+      slow.letGo(1);
+      assert.deepEqual(await declared, { ok: true, outcome: "closed", paymentIntentId: null });
     });
   });
 

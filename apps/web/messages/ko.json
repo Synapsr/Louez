@@ -2255,12 +2255,12 @@
         "unconfirmed": {
           "open": "Stripe에서 해결",
           "title": "확인되지 않은 승인",
-          "description": "Stripe가 이 승인 요청을 확인하지 않았습니다. Stripe 대시보드의 결제 메뉴에서 찾아본 뒤 확인한 내용을 Louez에 알려 주세요.",
+          "description": "Stripe가 이 승인 요청을 확인하지 않았습니다. 요청한 계정의 Stripe 대시보드에서 결제 메뉴를 찾아본 뒤 확인한 내용을 Louez에 알려 주세요.",
           "nothingTitle": "Stripe에 없음",
-          "nothingDescription": "Stripe에 이 예약의 승인이 표시되지 않습니다. Louez가 요청을 닫으면 새 승인을 만들 수 있습니다. 나중에 Stripe에 승인이 표시되면 Louez가 기록하고 해제합니다.",
+          "nothingDescription": "해당 Stripe 대시보드를 확인한 뒤에만 선택하세요. 요청을 닫아도 Stripe에서는 아무것도 취소되지 않으며, 이후 새 승인을 만들 수 있습니다. 나중에 승인이 나타나면 Louez가 기록합니다. 이 예약에 보증금이 없으면 그 승인이 보증금이 되고, 다른 보류가 이미 예약을 보장하고 있으면 해제됩니다. 따라서 잘못 선택하면 고객 카드에 추가 보류가 한동안 남을 수 있습니다.",
           "nothingAction": "요청 닫기",
           "foundTitle": "Stripe에서 찾았습니다",
-          "foundDescription": "Stripe에 표시된 결제 ID(pi_로 시작)를 붙여 넣으세요. Louez가 기록하기 전에 이 요청과 일치하는지 확인합니다.",
+          "foundDescription": "Stripe 메타데이터에 이 예약이 표시된 결제의 ID(pi_로 시작)를 붙여 넣으세요. Louez가 기록하기 전에 이 요청과 일치하는지 확인합니다. 그 밖의 승인은 Stripe에서 처리하세요.",
           "foundAction": "이 결제 기록",
           "closed": "요청을 닫았습니다. 새 승인을 만들 수 있습니다.",
           "recorded": "Stripe의 승인이 기록되었습니다."
@@ -9430,7 +9430,7 @@
       "none": "이 예약에는 더 이상 확인되지 않은 승인이 없습니다.",
       "foundAtStripe": "Stripe에 이 승인이 있습니다. Louez가 요청을 닫는 대신 기록했습니다.",
       "intentNotFound": "승인을 요청한 계정에 이 ID의 결제가 Stripe에 없습니다.",
-      "intentMismatch": "이 결제는 이 예약에서 요청한 승인이 아닙니다(금액, 통화, 카드 또는 고객이 다름). 아무것도 기록되지 않았습니다.",
+      "intentMismatch": "이 결제는 이 예약에서 요청한 승인이 아닙니다. Stripe 메타데이터에 이 예약이 표시되지 않거나 금액, 통화, 카드 또는 고객이 다릅니다. 아무것도 기록되지 않았습니다. 이 승인은 Stripe에서 처리하세요.",
       "stripeUnavailable": "Stripe에 연결할 수 없습니다. 아무것도 기록되지 않았습니다. 몇 분 후 다시 시도하세요."
     }
   },

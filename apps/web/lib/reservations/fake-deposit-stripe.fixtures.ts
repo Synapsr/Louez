@@ -14,6 +14,9 @@ import type { DepositIntent } from "./util.deposit-hold-transition";
 
 const DAY = 24 * 3_600_000;
 
+/** Stripe's ids are unique: two fakes of one test run never make the same one. */
+let madeIntents = 0;
+
 type Authorize = (
   request: DepositAuthorizationRequest,
   key: string,
@@ -98,7 +101,7 @@ export function fakeDepositStripe(options: { readonly pageSize?: number } = {}) 
         authorizationDays === null ? null : new Date(createdAt.getTime() + authorizationDays * DAY),
       captureMethod: "manual",
       ...values,
-      id: `pi_${intents.length + 1}_${values.accountId.slice(-4)}`,
+      id: `pi_${++madeIntents}_${values.accountId.slice(-4)}`,
       capturedMinor: 0,
       createdAt,
     };

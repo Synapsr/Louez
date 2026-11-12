@@ -2216,12 +2216,12 @@
         "unconfirmed": {
           "open": "Resolver com o Stripe",
           "title": "Autorização não confirmada",
-          "description": "O Stripe nunca confirmou este pedido de autorização. Procure-o no seu painel do Stripe, em Pagamentos, e indique ao Louez o que encontrou.",
+          "description": "O Stripe nunca confirmou este pedido de autorização. Procure-o no painel do Stripe da conta em que foi pedido, em Pagamentos, e indique ao Louez o que encontrou.",
           "nothingTitle": "Nada no Stripe",
-          "nothingDescription": "O Stripe não mostra nenhuma autorização para esta reserva. O Louez fecha o pedido e pode criar uma nova autorização. Se o Stripe mostrar uma mais tarde, o Louez regista-a e liberta-a.",
+          "nothingDescription": "Escolha esta opção só depois de verificar esse painel do Stripe. Fechar o pedido não cancela nada no Stripe; depois pode criar uma nova autorização. Se uma autorização aparecer mais tarde, o Louez regista-a: passa a ser a caução desta reserva se esta não tiver nenhuma, e é libertada se outra retenção já a garantir. Um erro pode, assim, deixar durante algum tempo uma retenção a mais no cartão do cliente.",
           "nothingAction": "Fechar o pedido",
           "foundTitle": "Encontrei-a no Stripe",
-          "foundDescription": "Cole o ID do pagamento mostrado no Stripe (começa por pi_). O Louez verifica se corresponde a este pedido antes de o registar.",
+          "foundDescription": "Cole o ID do pagamento cujos metadados no Stripe indicam esta reserva (começa por pi_). O Louez verifica se corresponde a este pedido antes de o registar. Qualquer outra autorização trata-se no Stripe.",
           "foundAction": "Registar este pagamento",
           "closed": "Pedido fechado. Pode criar uma nova autorização.",
           "recorded": "A autorização do Stripe está registada."
@@ -9430,7 +9430,7 @@
       "none": "Esta reserva já não tem nenhuma autorização por confirmar.",
       "foundAtStripe": "O Stripe tem esta autorização: o Louez registou-a em vez de fechar o pedido.",
       "intentNotFound": "O Stripe não tem nenhum pagamento com este ID na conta onde a autorização foi pedida.",
-      "intentMismatch": "Este pagamento não é a autorização pedida para esta reserva (montante, moeda, cartão ou cliente diferentes). Nada foi registado.",
+      "intentMismatch": "Este pagamento não é a autorização pedida para esta reserva: os metadados no Stripe não a indicam, ou o montante, a moeda, o cartão ou o cliente são diferentes. Nada foi registado: trate esta autorização no Stripe.",
       "stripeUnavailable": "Não foi possível contactar o Stripe. Nada foi registado. Tente novamente dentro de alguns minutos."
     }
   },

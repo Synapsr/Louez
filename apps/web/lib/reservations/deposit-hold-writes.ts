@@ -371,6 +371,32 @@ async function writeReservationDeposit(
     .where(eq(reservations.id, reservationId));
 }
 
+/**
+ * A request's claim on the store's attempt: the instant, in seconds on the database's
+ * clock, it set the attempt's `claimed_until` to. Another request sets another, so it
+ * names the claim and its owner: only that request renews it, releases it, or writes
+ * for the attempt under it. Renewing it moves the instant, here too.
+ */
+export type AttemptClaim = { readonly attemptId: string; token: number };
+
+/** `claimed_until` as an `AttemptClaim` holds it, whatever the session's time zone. */
+export const claimTokenOf = sql<number | null>`UNIX_TIMESTAMP(${payments.claimedUntil})`;
+
+/**
+ * Whether the request that holds `claim` may write for its attempt, read under the
+ * reservation's lock: the attempt is still pending under that very claim, or it is
+ * pending no more (the webhook settled it), which no request claims. A pending attempt
+ * under another claim, or under none, was taken over or given back meanwhile: its
+ * writer is another request.
+ */
+async function holdsClaim(tx: Transaction, claim: AttemptClaim): Promise<boolean> {
+  const [row] = await tx
+    .select({ status: payments.status, token: claimTokenOf })
+    .from(payments)
+    .where(eq(payments.id, claim.attemptId));
+  return !row || row.status !== "pending" || Number(row.token) === claim.token;
+}
+
 export type SettledDepositIntent =
   | { readonly status: "reservation_not_found" }
   /** The PaymentIntent is not written on this reservation: nothing was. */
@@ -403,85 +429,109 @@ export async function settleDepositIntent(
     readonly intent: DepositIntent;
   } & SettleContext,
 ): Promise<SettledDepositIntent> {
-  const { intent, accountId, reservationId } = input;
   return database.transaction(async (tx) => {
     const deposit = await lockDeposit(tx, input);
     if (!deposit) return { status: "reservation_not_found" };
+    return writeDepositIntent(tx, deposit, input);
+  });
+}
 
-    const binding = bindDepositIntent({
-      reservationId,
-      holds: deposit.holds,
-      intent,
-      accountId,
-      currentAccount: deposit.currentAccountId === accountId,
-    });
-    if (!binding.ok) return { status: "refused", reason: binding.reason };
+/**
+ * `settleDepositIntent` for the request that claimed the store's attempt and read the
+ * PaymentIntent from Stripe: it writes only while it still holds its claim
+ * (`holdsClaim`), and else writes nothing and answers `claim_lost`.
+ */
+export async function settleClaimedIntent(
+  database: Database,
+  input: Parameters<typeof settleDepositIntent>[1] & { readonly claim: AttemptClaim },
+): Promise<SettledDepositIntent | { readonly status: "claim_lost" }> {
+  return database.transaction(async (tx) => {
+    const deposit = await lockDeposit(tx, input);
+    if (!deposit) return { status: "reservation_not_found" };
+    if (!(await holdsClaim(tx, input.claim))) return { status: "claim_lost" };
+    return writeDepositIntent(tx, deposit, input);
+  });
+}
 
-    const rowState = holdRowStateOf(binding.row);
-    const writes = depositHoldTransition(
-      rowState,
-      intentStateOf(intent.status),
-      reservationRelationOf(deposit, intent.paymentIntentId),
+async function writeDepositIntent(
+  tx: Transaction,
+  deposit: LockedDeposit,
+  input: Parameters<typeof settleDepositIntent>[1],
+): Promise<SettledDepositIntent> {
+  const { intent, accountId, reservationId } = input;
+  const binding = bindDepositIntent({
+    reservationId,
+    holds: deposit.holds,
+    intent,
+    accountId,
+    currentAccount: deposit.currentAccountId === accountId,
+  });
+  if (!binding.ok) return { status: "refused", reason: binding.reason };
+
+  const rowState = holdRowStateOf(binding.row);
+  const writes = depositHoldTransition(
+    rowState,
+    intentStateOf(intent.status),
+    reservationRelationOf(deposit, intent.paymentIntentId),
+  );
+  if (writes.outcome === "stale") {
+    log.info(
+      "deposit-hold",
+      `${intent.paymentIntentId} read ${intent.status} on reservation ${reservationId}, whose row is ${rowState}: nothing written`,
     );
-    if (writes.outcome === "stale") {
-      log.info(
-        "deposit-hold",
-        `${intent.paymentIntentId} read ${intent.status} on reservation ${reservationId}, whose row is ${rowState}: nothing written`,
-      );
-    }
+  }
 
-    const rowId =
-      writes.row && writes.row !== "close"
-        ? await writeHoldRow(tx, {
-            reservationId,
-            accountId,
-            intent,
-            row: binding.row,
-            write: writes.row,
-            context: input,
-          })
-        : (binding.row?.id ?? null);
-    if (writes.reservation) {
-      await writeReservationDeposit(tx, reservationId, writes.reservation, intent);
-    }
-    const capturePaymentId = writes.capture
-      ? await ensureCaptureRow(tx, {
+  const rowId =
+    writes.row && writes.row !== "close"
+      ? await writeHoldRow(tx, {
           reservationId,
           accountId,
           intent,
-          reason: input.captureReason ?? null,
+          row: binding.row,
+          write: writes.row,
+          context: input,
         })
-      : null;
-    if (writes.activity) {
-      await writeHoldActivity(tx, {
+      : (binding.row?.id ?? null);
+  if (writes.reservation) {
+    await writeReservationDeposit(tx, reservationId, writes.reservation, intent);
+  }
+  const capturePaymentId = writes.capture
+    ? await ensureCaptureRow(tx, {
         reservationId,
-        type: writes.activity,
-        paymentIntentId: intent.paymentIntentId,
-        metadata: activityMetadata(writes.activity, intent, input),
-        context: input,
-      });
-    }
-    // The debt and the work that pays it are one write: a crash after it leaves the
-    // outbox row, which the cron runs.
-    const effectIds =
-      writes.owesRelease && rowId
-        ? await enqueueEffects(tx, deposit.storeId, [
-            {
-              type: "deposit.holdRelease",
-              payload: {
-                reservationId,
-                paymentId: rowId,
-                accountId,
-                paymentIntentId: intent.paymentIntentId,
-              },
+        accountId,
+        intent,
+        reason: input.captureReason ?? null,
+      })
+    : null;
+  if (writes.activity) {
+    await writeHoldActivity(tx, {
+      reservationId,
+      type: writes.activity,
+      paymentIntentId: intent.paymentIntentId,
+      metadata: activityMetadata(writes.activity, intent, input),
+      context: input,
+    });
+  }
+  // The debt and the work that pays it are one write: a crash after it leaves the
+  // outbox row, which the cron runs.
+  const effectIds =
+    writes.owesRelease && rowId
+      ? await enqueueEffects(tx, deposit.storeId, [
+          {
+            type: "deposit.holdRelease",
+            payload: {
+              reservationId,
+              paymentId: rowId,
+              accountId,
+              paymentIntentId: intent.paymentIntentId,
             },
-          ])
-        : [];
-    if (writes.row || writes.reservation || writes.capture) {
-      await markReservationIds(tx, [reservationId]);
-    }
-    return { status: "settled", outcome: writes.outcome, capturePaymentId, effectIds };
-  });
+          },
+        ])
+      : [];
+  if (writes.row || writes.reservation || writes.capture) {
+    await markReservationIds(tx, [reservationId]);
+  }
+  return { status: "settled", outcome: writes.outcome, capturePaymentId, effectIds };
 }
 
 /** Why an attempt is closed with no PaymentIntent found. */
@@ -499,26 +549,29 @@ export type AttemptClosure =
  * while a PaymentIntent Stripe makes of it after all still finds its row
  * (`bindDepositIntent`). A refusal fails the deposit; the store's declaration is
  * recorded with who made it. Only while the row is still that attempt, pending and
- * without a PaymentIntent: one the webhook settled meanwhile is left as it is, and
- * `false` is answered.
+ * without a PaymentIntent, under the claim of the request that closes it: one the
+ * webhook settled meanwhile is left as it is (`settled_meanwhile`), and one another
+ * request claimed meanwhile is left to it (`claim_lost`).
  */
 export async function closeAbsentAttempt(
   database: Database,
   input: {
     readonly reservationId: string;
     readonly storeId: string;
-    readonly attemptId: string;
+    readonly claim: AttemptClaim;
     readonly closure: AttemptClosure;
     readonly actorUserId: string | null;
   },
-): Promise<boolean> {
+): Promise<"closed" | "settled_meanwhile" | "claim_lost"> {
   const { closure } = input;
+  const attemptId = input.claim.attemptId;
   return database.transaction(async (tx) => {
     const deposit = await lockDeposit(tx, input);
-    const row = deposit?.holds.find((hold) => hold.id === input.attemptId);
+    const row = deposit?.holds.find((hold) => hold.id === attemptId);
     if (!deposit || !row || row.status !== "pending" || row.paymentIntentId !== null) {
-      return false;
+      return "settled_meanwhile";
     }
+    if (!(await holdsClaim(tx, input.claim))) return "claim_lost";
     const writes = absentAttemptTransition({
       refused: closure.kind === "refused",
       reservationHolds: isHeld(deposit.depositStatus),
@@ -528,7 +581,7 @@ export async function closeAbsentAttempt(
       .set({ status: "failed", claimedUntil: null, updatedAt: sql`NOW()` })
       .where(
         and(
-          eq(payments.id, input.attemptId),
+          eq(payments.id, attemptId),
           eq(payments.reservationId, input.reservationId),
           eq(payments.type, "deposit_hold"),
           eq(payments.status, "pending"),
@@ -545,7 +598,7 @@ export async function closeAbsentAttempt(
         reservationId: input.reservationId,
         type: writes.activity,
         paymentIntentId: null,
-        metadata: { paymentIntentId: null, attemptId: input.attemptId, error: reason },
+        metadata: { paymentIntentId: null, attemptId, error: reason },
         context: { ...context, descriptions: { deposit_failed: reason } },
       });
     }
@@ -559,7 +612,7 @@ export async function closeAbsentAttempt(
         paymentIntentId: null,
         metadata: {
           paymentIntentId: null,
-          attemptId: input.attemptId,
+          attemptId,
           closedBy: "store",
           amount:
             row.amountMinor !== null && row.currency
@@ -571,7 +624,7 @@ export async function closeAbsentAttempt(
       });
     }
     await markReservationIds(tx, [input.reservationId]);
-    return true;
+    return "closed";
   });
 }
 

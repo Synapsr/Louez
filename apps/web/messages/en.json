@@ -2255,12 +2255,12 @@
         "unconfirmed": {
           "open": "Resolve with Stripe",
           "title": "Unconfirmed authorization",
-          "description": "Stripe never confirmed this authorization request. Look for it in your Stripe dashboard, under Payments, then tell Louez what you found.",
+          "description": "Stripe never confirmed this authorization request. Look for it in the Stripe dashboard of the account it was requested on, under Payments, then tell Louez what you found.",
           "nothingTitle": "Nothing in Stripe",
-          "nothingDescription": "Stripe shows no authorization for this reservation. Louez closes the request and you can create a new authorization. If Stripe shows one later, Louez records it and releases it.",
+          "nothingDescription": "Choose this only after checking that Stripe dashboard. Closing the request cancels nothing at Stripe; you can then create a new authorization. If an authorization appears later, Louez records it: it becomes this reservation's deposit if it has none, and it is released if another hold already secures it. A wrong answer can therefore leave an extra hold on the customer's card for a while.",
           "nothingAction": "Close the request",
           "foundTitle": "I found it in Stripe",
-          "foundDescription": "Paste the payment ID shown in Stripe (it starts with pi_). Louez checks it matches this request before recording it.",
+          "foundDescription": "Paste the ID of the payment whose Stripe metadata shows this reservation (it starts with pi_). Louez checks it matches this request before recording it. Any other authorization is handled from Stripe.",
           "foundAction": "Record this payment",
           "closed": "Request closed. You can create a new authorization.",
           "recorded": "The authorization from Stripe is recorded."
@@ -9430,7 +9430,7 @@
       "none": "This reservation has no unconfirmed authorization left.",
       "foundAtStripe": "Stripe does have this authorization: Louez recorded it instead of closing the request.",
       "intentNotFound": "Stripe has no payment with this ID on the account the authorization was requested on.",
-      "intentMismatch": "This payment is not the authorization this reservation requested (amount, currency, card or customer differ). Nothing was recorded.",
+      "intentMismatch": "This payment is not the authorization this reservation requested: its Stripe metadata does not name this reservation, or the amount, currency, card or customer differ. Nothing was recorded: handle this authorization from Stripe.",
       "stripeUnavailable": "Stripe could not be reached. Nothing was recorded. Try again in a few minutes."
     }
   },

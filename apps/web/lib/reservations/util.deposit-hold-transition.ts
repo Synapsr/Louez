@@ -392,9 +392,9 @@ export const holdsNameIntentOnAccount = (
 
 /** What makes a PaymentIntent the store names not the one its attempt asked for. */
 export type PastedIntentMismatch =
-  /** Its metadata names another reservation. */
+  /** Its metadata names another reservation, or none. */
   | "reservation"
-  /** Its metadata names another attempt. */
+  /** Its metadata names another attempt, or none: Louez did not make it for this one. */
   | "attempt"
   /** It is not an authorization captured later. */
   | "capture_method"
@@ -404,14 +404,18 @@ export type PastedIntentMismatch =
   | "card"
   /** It is not for the customer the attempt was sent with, or for none. */
   | "customer"
-  /** A hold row of the reservation already names it: it is not the attempt's. */
+  /** A payment row already names it, of this reservation or another: it is not the attempt's. */
   | "recorded";
 
 /**
  * Why a PaymentIntent the store names, read on the attempt's account, is not the
- * attempt's; empty when it is. Its metadata is compared when it has any; the amount,
- * the currency, the card and the customer always, against what the attempt was sent
- * with. An attempt claimed before its customer was stored only asks for one.
+ * attempt's; empty when it is. Every PaymentIntent Louez makes for an attempt carries
+ * its reservation and the attempt's id in its metadata: both must be there and name
+ * this reservation and this attempt. A PaymentIntent without them is not the attempt,
+ * whatever else it shares with it (the customer's own authorization, or another
+ * reservation's on the same card), and is handled from Stripe. The amount, the
+ * currency, the card and the customer are compared too, against what the attempt was
+ * sent with; an attempt claimed before its customer was stored only asks for one.
  */
 export function pastedIntentMismatches(input: {
   readonly reservationId: string;
@@ -423,14 +427,13 @@ export function pastedIntentMismatches(input: {
     readonly customerId: string | null;
   };
   readonly intent: DepositIntent;
-  readonly holds: readonly HoldRow[];
+  /** Whether a payment row other than the attempt's already names the PaymentIntent. */
+  readonly recorded: boolean;
 }): PastedIntentMismatch[] {
   const { attempt, intent } = input;
   const mismatches: PastedIntentMismatch[] = [];
-  if (intent.reservationId !== null && intent.reservationId !== input.reservationId) {
-    mismatches.push("reservation");
-  }
-  if (intent.attemptId !== null && intent.attemptId !== attempt.id) mismatches.push("attempt");
+  if (intent.reservationId !== input.reservationId) mismatches.push("reservation");
+  if (intent.attemptId !== attempt.id) mismatches.push("attempt");
   if (intent.captureMethod !== "manual") mismatches.push("capture_method");
   if (intent.amountMinor !== attempt.amountMinor) mismatches.push("amount");
   if (intent.currency.toUpperCase() !== attempt.currency.toUpperCase()) {
@@ -443,8 +446,6 @@ export function pastedIntentMismatches(input: {
   ) {
     mismatches.push("customer");
   }
-  if (input.holds.some((hold) => hold.paymentIntentId === intent.paymentIntentId)) {
-    mismatches.push("recorded");
-  }
+  if (input.recorded) mismatches.push("recorded");
   return mismatches;
 }

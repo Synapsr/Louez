@@ -2255,12 +2255,12 @@
         "unconfirmed": {
           "open": "Régler avec Stripe",
           "title": "Empreinte non confirmée",
-          "description": "Stripe n'a jamais confirmé cette demande d'empreinte. Cherchez-la dans votre tableau de bord Stripe, rubrique Paiements, puis indiquez à Louez ce que vous avez trouvé.",
+          "description": "Stripe n'a jamais confirmé cette demande d'empreinte. Cherchez-la dans le tableau de bord Stripe du compte sur lequel elle a été demandée, rubrique Paiements, puis indiquez à Louez ce que vous avez trouvé.",
           "nothingTitle": "Rien dans Stripe",
-          "nothingDescription": "Stripe n'affiche aucune autorisation pour cette réservation. Louez clôt la demande et vous pouvez créer une nouvelle empreinte. Si Stripe en affiche une plus tard, Louez l'enregistre et la libère.",
+          "nothingDescription": "À choisir seulement après avoir vérifié ce tableau de bord Stripe. Clore la demande n'annule rien chez Stripe ; vous pourrez ensuite créer une nouvelle empreinte. Si une autorisation apparaît plus tard, Louez l'enregistre : elle devient la caution de cette réservation si celle-ci n'en a pas, et elle est libérée si une autre empreinte la garantit déjà. Une erreur peut donc laisser un temps une empreinte en trop sur la carte du client.",
           "nothingAction": "Clore la demande",
           "foundTitle": "Je l'ai trouvée dans Stripe",
-          "foundDescription": "Collez l'identifiant du paiement affiché dans Stripe (il commence par pi_). Louez vérifie qu'il correspond à cette demande avant de l'enregistrer.",
+          "foundDescription": "Collez l'identifiant du paiement dont les métadonnées, dans Stripe, indiquent cette réservation (il commence par pi_). Louez vérifie qu'il correspond à cette demande avant de l'enregistrer. Toute autre autorisation se gère depuis Stripe.",
           "foundAction": "Enregistrer ce paiement",
           "closed": "Demande close. Vous pouvez créer une nouvelle empreinte.",
           "recorded": "L'empreinte de Stripe est enregistrée."
@@ -9430,7 +9430,7 @@
       "none": "Cette réservation n'a plus d'empreinte non confirmée.",
       "foundAtStripe": "Stripe a bien cette empreinte : Louez l'a enregistrée au lieu de clore la demande.",
       "intentNotFound": "Stripe n'a aucun paiement avec cet identifiant sur le compte où l'empreinte a été demandée.",
-      "intentMismatch": "Ce paiement n'est pas l'empreinte demandée pour cette réservation (montant, devise, carte ou client différents). Rien n'a été enregistré.",
+      "intentMismatch": "Ce paiement n'est pas l'empreinte demandée pour cette réservation : ses métadonnées Stripe ne la mentionnent pas, ou le montant, la devise, la carte ou le client diffèrent. Rien n'a été enregistré : gérez cette autorisation depuis Stripe.",
       "stripeUnavailable": "Stripe est injoignable. Rien n'a été enregistré. Réessayez dans quelques minutes."
     }
   },

@@ -2255,12 +2255,12 @@
         "unconfirmed": {
           "open": "Selesaikan dengan Stripe",
           "title": "Otorisasi belum dikonfirmasi",
-          "description": "Stripe tidak pernah mengonfirmasi permintaan otorisasi ini. Cari di dasbor Stripe Anda, di bagian Pembayaran, lalu beri tahu Louez apa yang Anda temukan.",
+          "description": "Stripe tidak pernah mengonfirmasi permintaan otorisasi ini. Cari di dasbor Stripe milik akun tempat otorisasi diminta, di bagian Pembayaran, lalu beri tahu Louez apa yang Anda temukan.",
           "nothingTitle": "Tidak ada di Stripe",
-          "nothingDescription": "Stripe tidak menampilkan otorisasi untuk reservasi ini. Louez menutup permintaan dan Anda dapat membuat otorisasi baru. Jika Stripe menampilkannya nanti, Louez mencatat dan melepaskannya.",
+          "nothingDescription": "Pilih ini hanya setelah memeriksa dasbor Stripe tersebut. Menutup permintaan tidak membatalkan apa pun di Stripe; setelah itu Anda dapat membuat otorisasi baru. Jika otorisasi muncul kemudian, Louez mencatatnya: otorisasi itu menjadi deposit reservasi ini jika belum ada, dan dilepaskan jika penahanan lain sudah menjaminnya. Jadi, jawaban yang keliru dapat menyisakan penahanan tambahan di kartu pelanggan untuk sementara.",
           "nothingAction": "Tutup permintaan",
           "foundTitle": "Saya menemukannya di Stripe",
-          "foundDescription": "Tempel ID pembayaran yang ditampilkan di Stripe (diawali pi_). Louez memeriksa bahwa ID itu cocok dengan permintaan ini sebelum mencatatnya.",
+          "foundDescription": "Tempel ID pembayaran yang metadatanya di Stripe menyebut reservasi ini (diawali pi_). Louez memeriksa bahwa ID itu cocok dengan permintaan ini sebelum mencatatnya. Otorisasi lain dikelola dari Stripe.",
           "foundAction": "Catat pembayaran ini",
           "closed": "Permintaan ditutup. Anda dapat membuat otorisasi baru.",
           "recorded": "Otorisasi dari Stripe sudah dicatat."
@@ -9430,7 +9430,7 @@
       "none": "Reservasi ini tidak lagi memiliki otorisasi yang belum dikonfirmasi.",
       "foundAtStripe": "Stripe memiliki otorisasi ini: Louez mencatatnya alih-alih menutup permintaan.",
       "intentNotFound": "Stripe tidak memiliki pembayaran dengan ID ini di akun tempat otorisasi diminta.",
-      "intentMismatch": "Pembayaran ini bukan otorisasi yang diminta untuk reservasi ini (jumlah, mata uang, kartu, atau pelanggan berbeda). Tidak ada yang dicatat.",
+      "intentMismatch": "Pembayaran ini bukan otorisasi yang diminta untuk reservasi ini: metadata Stripe-nya tidak menyebut reservasi ini, atau jumlah, mata uang, kartu, atau pelanggannya berbeda. Tidak ada yang dicatat: kelola otorisasi ini dari Stripe.",
       "stripeUnavailable": "Stripe tidak dapat dihubungi. Tidak ada yang dicatat. Coba lagi dalam beberapa menit."
     }
   },

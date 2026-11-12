@@ -16,13 +16,18 @@ export const DEPOSIT_HOLD_ATTEMPT_METADATA = "depositHoldAttemptId";
 /** The attempt's id is its idempotency key: sent again, Stripe answers for the first. */
 export const depositHoldIdempotencyKey = (attemptId: string) => `deposit-hold:${attemptId}`;
 
-/**
- * The longest one Stripe request of a deposit attempt may take. The request that
- * creates the authorization is sent twice at most, which the time an attempt stays
- * claimed must cover (`DEPOSIT_HOLD_CLAIM_SECONDS`): once the claim is over, no such
- * request of Louez still runs.
- */
+/** The longest one try of a Stripe request of a deposit hold may take. */
 const REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * The longest one Stripe call of a deposit hold may take: three tries at most (the
+ * client retries twice by default; the authorization, once), each bounded by the
+ * timeout, and the two waits between them, which Stripe may ask to last up to a
+ * minute. A claimed attempt is renewed before each call, for at least this long
+ * (`DEPOSIT_HOLD_CLAIM_SECONDS`): while its claim lasts, no call of a request that
+ * lost it still runs.
+ */
+export const STRIPE_CALL_MAX_SECONDS = 3 * (REQUEST_TIMEOUT_MS / 1000) + 2 * 60;
 
 /** How many pages of a customer's PaymentIntents a lookup reads before it gives up. */
 export const ATTEMPT_LOOKUP_MAX_PAGES = 5;

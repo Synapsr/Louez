@@ -2216,12 +2216,12 @@
         "unconfirmed": {
           "open": "Rozwiąż w Stripe",
           "title": "Niepotwierdzona autoryzacja",
-          "description": "Stripe nigdy nie potwierdził tej prośby o autoryzację. Znajdź ją w panelu Stripe, w sekcji Płatności, a potem przekaż Louez, co znalazłeś.",
+          "description": "Stripe nigdy nie potwierdził tej prośby o autoryzację. Znajdź ją w panelu Stripe konta, na którym o nią poproszono, w sekcji Płatności, a potem przekaż Louez, co znalazłeś.",
           "nothingTitle": "Nic w Stripe",
-          "nothingDescription": "Stripe nie pokazuje żadnej autoryzacji dla tej rezerwacji. Louez zamyka prośbę i możesz utworzyć nową autoryzację. Jeśli Stripe pokaże ją później, Louez ją zapisze i zwolni.",
+          "nothingDescription": "Wybierz to dopiero po sprawdzeniu tego panelu Stripe. Zamknięcie prośby niczego nie anuluje w Stripe; potem możesz utworzyć nową autoryzację. Jeśli autoryzacja pojawi się później, Louez ją zapisze: stanie się kaucją tej rezerwacji, jeśli ta jej nie ma, a zostanie zwolniona, jeśli inna blokada już ją zabezpiecza. Błędna odpowiedź może więc na jakiś czas zostawić dodatkową blokadę na karcie klienta.",
           "nothingAction": "Zamknij prośbę",
           "foundTitle": "Znalazłem ją w Stripe",
-          "foundDescription": "Wklej identyfikator płatności widoczny w Stripe (zaczyna się od pi_). Louez sprawdzi, czy pasuje do tej prośby, zanim go zapisze.",
+          "foundDescription": "Wklej identyfikator płatności, której metadane w Stripe wskazują tę rezerwację (zaczyna się od pi_). Louez sprawdzi, czy pasuje do tej prośby, zanim go zapisze. Każdą inną autoryzację obsłuż w Stripe.",
           "foundAction": "Zapisz tę płatność",
           "closed": "Prośba zamknięta. Możesz utworzyć nową autoryzację.",
           "recorded": "Autoryzacja ze Stripe została zapisana."
@@ -9430,7 +9430,7 @@
       "none": "Ta rezerwacja nie ma już niepotwierdzonej autoryzacji.",
       "foundAtStripe": "Stripe ma tę autoryzację: Louez ją zapisał zamiast zamknąć prośbę.",
       "intentNotFound": "Stripe nie ma płatności o tym identyfikatorze na koncie, na którym poproszono o autoryzację.",
-      "intentMismatch": "Ta płatność nie jest autoryzacją, o którą poproszono dla tej rezerwacji (różni się kwota, waluta, karta lub klient). Nic nie zostało zapisane.",
+      "intentMismatch": "Ta płatność nie jest autoryzacją, o którą poproszono dla tej rezerwacji: jej metadane w Stripe nie wskazują tej rezerwacji albo różni się kwota, waluta, karta lub klient. Nic nie zostało zapisane: obsłuż tę autoryzację w Stripe.",
       "stripeUnavailable": "Nie można połączyć się ze Stripe. Nic nie zostało zapisane. Spróbuj ponownie za kilka minut."
     }
   },

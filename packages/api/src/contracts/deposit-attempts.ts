@@ -79,7 +79,7 @@ export const depositAttemptErrors = {
     }),
   intentMismatch: (reservationId: string, paymentIntentId: string, mismatches: readonly string[]) =>
     apiError("CONFLICT", "PAYMENT_INTENT_MISMATCH", {
-      message: `Not recorded: ${paymentIntentId} is not the deposit hold this reservation asked for (${mismatches.join(", ")} differ). Nothing was written.`,
+      message: `Not recorded: ${paymentIntentId} is not the deposit hold this reservation asked for (${mismatches.join(", ")} do not match; its metadata must name this reservation and its depositHoldAttemptId). Nothing was written: handle that authorization from Stripe.`,
       i18nKey: "errors.depositAttempt.intentMismatch",
       details: { reservationId, paymentIntentId, mismatches },
     }),

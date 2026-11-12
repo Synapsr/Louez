@@ -2255,12 +2255,12 @@
         "unconfirmed": {
           "open": "在 Stripe 中处理",
           "title": "未确认的授权",
-          "description": "Stripe 从未确认此授权请求。请在 Stripe 控制台的“付款”中查找，然后告诉 Louez 您的发现。",
+          "description": "Stripe 从未确认此授权请求。请在发起该请求的账户的 Stripe 控制台“付款”中查找，然后告诉 Louez 您的发现。",
           "nothingTitle": "Stripe 中没有",
-          "nothingDescription": "Stripe 未显示此预订的任何授权。Louez 会关闭该请求，您可以创建新的授权。如果 Stripe 之后显示了授权，Louez 会记录并释放它。",
+          "nothingDescription": "请先检查该 Stripe 控制台再选择此项。关闭请求不会在 Stripe 取消任何内容；之后您可以创建新的授权。如果之后出现授权，Louez 会记录它：若此预订尚无押金，它将成为此预订的押金；若已有其他预授权担保此预订，它将被释放。因此，错误的选择可能会让客户卡上暂时多出一笔预授权。",
           "nothingAction": "关闭请求",
           "foundTitle": "我在 Stripe 中找到了",
-          "foundDescription": "粘贴 Stripe 中显示的付款 ID（以 pi_ 开头）。Louez 会在记录前核对它是否与此请求一致。",
+          "foundDescription": "粘贴 Stripe 元数据中显示此预订的付款 ID（以 pi_ 开头）。Louez 会在记录前核对它是否与此请求一致。其他授权请在 Stripe 中处理。",
           "foundAction": "记录此付款",
           "closed": "请求已关闭。您可以创建新的授权。",
           "recorded": "已记录 Stripe 的授权。"
@@ -9430,7 +9430,7 @@
       "none": "此预订已没有未确认的授权。",
       "foundAtStripe": "Stripe 确实有此授权：Louez 已将其记录，而不是关闭请求。",
       "intentNotFound": "在申请授权的账户上，Stripe 没有此 ID 的付款。",
-      "intentMismatch": "此付款不是此预订所申请的授权（金额、币种、卡片或客户不一致）。未记录任何内容。",
+      "intentMismatch": "此付款不是此预订所申请的授权：其 Stripe 元数据未指明此预订，或金额、币种、卡片或客户不一致。未记录任何内容：请在 Stripe 中处理此授权。",
       "stripeUnavailable": "无法连接 Stripe。未记录任何内容。请几分钟后重试。"
     }
   },
