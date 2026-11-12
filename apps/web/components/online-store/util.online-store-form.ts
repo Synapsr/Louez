@@ -60,6 +60,8 @@ export interface OnlineStoreHomeValues {
   showMap: boolean;
   showReviews: boolean;
   showReassurance: boolean;
+  showStatus: boolean; 
+  
 }
 
 /** The contact page: what the inputs hold, strings where the API takes `string | null`. */
@@ -175,6 +177,7 @@ export const onlineStoreFormSchema = z.object({
     showMap: z.boolean(),
     showReviews: z.boolean(),
     showReassurance: z.boolean(),
+     showStatus: z.boolean(),
   }),
   contact: z.object({
     email: z
@@ -272,6 +275,7 @@ export const buildOnlineStoreDefaults = (store: OnlineStoreEditorStore): OnlineS
       showMap: homeSections.map,
       showReviews: homeSections.reviews,
       showReassurance: homeSections.reassurance,
+      showStatus: homeSections.status,
     },
     contact: {
       email: store.email ?? "",
@@ -417,6 +421,7 @@ export const buildOnlineStorePayload = ({
         map: home.showMap,
         reviews: home.showReviews,
         reassurance: home.showReassurance,
+        status: home.showStatus,
       },
       ...(keepsLegacyHero ? {} : { heroImages: home.heroImages }),
     };
