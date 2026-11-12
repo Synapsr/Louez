@@ -3047,13 +3047,24 @@ export async function updateReservation(
                     selectedAttributes: item.selectedAttributes ?? undefined,
                     combinationKey: item.combinationKey,
                     assignedUnitIds: assignedUnitIdsByItemId.get(item.id) ?? [],
+                    // A booked line with no exact combination is served by any
+                    // unit that matches what it chose (resolveUnitAssignmentScope):
+                    // the units it holds count on their own combinations.
+                    pooled: item.combinationKey === null,
                   },
                 ]
               : [],
           ),
+          // A line the edit adds chooses no combination: any unit serves it.
           ...itemWrites.flatMap((itemWrite) =>
             itemWrite.type === "insert" && itemWrite.values.productId
-              ? [{ productId: itemWrite.values.productId, quantity: itemWrite.values.quantity }]
+              ? [
+                  {
+                    productId: itemWrite.values.productId,
+                    quantity: itemWrite.values.quantity,
+                    pooled: true,
+                  },
+                ]
               : [],
           ),
         ];

@@ -1,4 +1,4 @@
-import type { PricingBreakdown } from "@louez/types";
+import type { PricingBreakdown, UnitAttributes } from "@louez/types";
 
 /**
  * An edit of a reservation is computed from a plain read, then written under
@@ -70,44 +70,80 @@ export const fingerprintReservationEdit = (
 interface ReservationDemand {
   start: Date;
   end: Date;
-  lines: ReadonlyArray<{ productId: string | null; quantity: number }>;
+  lines: ReadonlyArray<{
+    productId: string | null;
+    quantity: number;
+    combinationKey?: string | null;
+    selectedAttributes?: UnitAttributes | null;
+  }>;
 }
 
-const quantityByProduct = (lines: ReservationDemand["lines"]): Map<string, number> => {
+type DemandLine = ReservationDemand["lines"][number];
+
+/** What a line chose of its product: its combination and its attributes. */
+const choiceOf = (line: DemandLine): string =>
+  JSON.stringify([
+    line.combinationKey ?? null,
+    Object.entries(line.selectedAttributes ?? {}).sort(([a], [b]) => a.localeCompare(b, "en")),
+  ]);
+
+const sumQuantities = (
+  lines: ReservationDemand["lines"],
+  keyOf: (line: DemandLine & { productId: string }) => string,
+): Map<string, number> => {
   const quantities = new Map<string, number>();
   for (const line of lines) {
     if (!line.productId) continue;
-    quantities.set(line.productId, (quantities.get(line.productId) ?? 0) + line.quantity);
+    const key = keyOf({ ...line, productId: line.productId });
+    quantities.set(key, (quantities.get(key) ?? 0) + line.quantity);
   }
   return quantities;
 };
 
+const sameQuantities = (a: Map<string, number>, b: Map<string, number>): boolean =>
+  a.size === b.size && [...a].every(([key, quantity]) => b.get(key) === quantity);
+
 /**
- * What an edit changes in the stock a reservation asks for. `changed`: its
- * window or a product's quantity moved, either way. `raisedProductIds`: the
- * products it asks more of, which is every product once the window reaches
- * outside the previous one, and else those whose quantity grows. A shorter
- * window or a lower quantity never asks for more.
+ * What an edit changes in the stock a reservation asks for, counted per
+ * product and per choice within it (a size, a combination), as units of one
+ * size do not serve a line that chose another. `changed`: its window or a
+ * quantity moved, either way. `raisedProductIds`: the products it asks more
+ * of, which is every product once the window reaches outside the previous
+ * one, and else those of which it asks more in all or more of one choice: two
+ * units moved from size S to size L ask more of L. A shorter window or a lower
+ * quantity never asks for more.
  */
 export const compareReservationDemand = (
   previous: ReservationDemand,
   next: ReservationDemand,
 ): { changed: boolean; raisedProductIds: Set<string> } => {
-  const before = quantityByProduct(previous.lines);
-  const after = quantityByProduct(next.lines);
   const windowChanged =
     next.start.getTime() !== previous.start.getTime() ||
     next.end.getTime() !== previous.end.getTime();
   const windowExtended =
     next.start.getTime() < previous.start.getTime() || next.end.getTime() > previous.end.getTime();
 
+  const byProduct = (line: { productId: string }) => line.productId;
+  // The product id is repeated in front of the choice, so two products never share a key.
+  const byChoice = (line: DemandLine & { productId: string }) =>
+    JSON.stringify([line.productId, choiceOf(line)]);
+  const productOfChoice = (key: string): string => (JSON.parse(key) as [string, string])[0];
+
+  const before = sumQuantities(previous.lines, byProduct);
+  const after = sumQuantities(next.lines, byProduct);
+  const choicesBefore = sumQuantities(previous.lines, byChoice);
+  const choicesAfter = sumQuantities(next.lines, byChoice);
+
   const raisedProductIds = new Set<string>();
   for (const [productId, quantity] of after) {
     if (windowExtended || quantity > (before.get(productId) ?? 0)) raisedProductIds.add(productId);
   }
-  const quantitiesChanged =
-    before.size !== after.size ||
-    [...after].some(([productId, quantity]) => before.get(productId) !== quantity);
+  for (const [choice, quantity] of choicesAfter) {
+    if (quantity > (choicesBefore.get(choice) ?? 0)) raisedProductIds.add(productOfChoice(choice));
+  }
 
-  return { changed: windowChanged || quantitiesChanged, raisedProductIds };
+  return {
+    changed: windowChanged || !sameQuantities(choicesBefore, choicesAfter),
+    raisedProductIds,
+  };
 };

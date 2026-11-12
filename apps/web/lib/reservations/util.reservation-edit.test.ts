@@ -149,6 +149,36 @@ describe("compareReservationDemand", () => {
     assert.deepEqual(demand, { changed: false, raisedProductIds: new Set() });
   });
 
+  test("quantity moved from one size to another asks more of that product", () => {
+    const sized = (size: string, quantity: number) => ({
+      productId: "wetsuit",
+      quantity,
+      combinationKey: `size:${size}`,
+      selectedAttributes: { size },
+    });
+    const demand = compareReservationDemand(
+      { start: START, end: END, lines: [sized("S", 2), sized("L", 1), helmets] },
+      { start: START, end: END, lines: [sized("S", 1), sized("L", 2), helmets] },
+    );
+    assert.equal(demand.changed, true);
+    assert.deepEqual([...demand.raisedProductIds], ["wetsuit"]);
+  });
+
+  test("a size lowered with nothing raised asks for no more", () => {
+    const sized = (size: string, quantity: number) => ({
+      productId: "wetsuit",
+      quantity,
+      combinationKey: `size:${size}`,
+      selectedAttributes: { size },
+    });
+    const demand = compareReservationDemand(
+      { start: START, end: END, lines: [sized("S", 2), sized("L", 1)] },
+      { start: START, end: END, lines: [sized("S", 1), sized("L", 1)] },
+    );
+    assert.equal(demand.changed, true);
+    assert.equal(demand.raisedProductIds.size, 0);
+  });
+
   test("a lower quantity or a removed line changes the demand without raising it", () => {
     const demand = compareReservationDemand(previous, {
       ...previous,

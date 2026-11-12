@@ -89,6 +89,88 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     return id;
   }
 
+  /** A product sold by size, with one tracked unit per given size. */
+  async function sizedProduct(sizes: string[]) {
+    const id = nextId("prd");
+    await louezDb.db.insert(louezDb.products).values({
+      id,
+      storeId: STORE,
+      name: "Wetsuit",
+      price: "10.00",
+      pricingMode: "day",
+      trackUnits: true,
+      bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+      quantity: sizes.length,
+    });
+    const unitIds: string[] = [];
+    for (const [index, size] of sizes.entries()) {
+      const unitId = nextId("unt");
+      unitIds.push(unitId);
+      await louezDb.db.insert(louezDb.productUnits).values({
+        id: unitId,
+        productId: id,
+        identifier: `W-${index + 1}`,
+        attributes: { size },
+        combinationKey: `size:${size}`,
+      });
+    }
+    return { id, unitIds };
+  }
+
+  /**
+   * A confirmed reservation of several lines of one sized product. A line with
+   * a size chose that combination; one without is served by any unit, and may
+   * hold one already.
+   */
+  async function sizedReservation(
+    productId: string,
+    lines: Array<{ size?: string; quantity: number; assignedUnitId?: string }>,
+  ) {
+    const id = nextId("res");
+    const total = lines.reduce((sum, line) => sum + line.quantity * 20, 0);
+    await louezDb.db.insert(louezDb.reservations).values({
+      id,
+      storeId: STORE,
+      customerId: "customer_edits",
+      number: id,
+      status: "confirmed",
+      startDate: START,
+      endDate: END,
+      subtotalAmount: total.toFixed(2),
+      depositAmount: "0.00",
+      totalAmount: total.toFixed(2),
+      deliveryFee: "0.00",
+      discountAmount: "0.00",
+      source: "manual",
+    });
+    const items: Array<{ itemId: string; productId: string }> = [];
+    for (const line of lines) {
+      const itemId = nextId("itm");
+      items.push({ itemId, productId });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: itemId,
+        reservationId: id,
+        productId,
+        quantity: line.quantity,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: (line.quantity * 20).toFixed(2),
+        productSnapshot: { name: "Wetsuit", description: null, images: [] },
+        combinationKey: line.size ? `size:${line.size}` : null,
+        selectedAttributes: line.size ? { size: line.size } : null,
+      });
+      if (line.assignedUnitId) {
+        await louezDb.db.insert(louezDb.reservationItemUnits).values({
+          id: nextId("asg"),
+          reservationItemId: itemId,
+          productUnitId: line.assignedUnitId,
+          identifierSnapshot: "W",
+        });
+      }
+    }
+    return { id, items };
+  }
+
   /** A reservation of one line, priced as the action prices it: 10.00 a day and a unit. */
   async function reservation(
     line: { productId: string; quantity: number },
@@ -631,5 +713,89 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       2,
       "the two bikes are booked once each",
     );
+  });
+  describe("a product sold by size", () => {
+    test("quantity moved to a size that is short is refused, then written with the override", async () => {
+      // Two S and one L: the product's total stays three, the L asked twice.
+      const wetsuits = await sizedProduct(["S", "S", "L"]);
+      const booking = await sizedReservation(wetsuits.id, [
+        { size: "S", quantity: 2 },
+        { size: "L", quantity: 1 },
+      ]);
+      const [small, large] = booking.items;
+      assert.ok(small && large);
+      const before = await rowsOf(booking.id);
+      const moved = {
+        items: [submitted(small, 1, "Wetsuit"), submitted(large, 2, "Wetsuit")],
+      };
+
+      const refused = await actions.updateReservation(booking.id, moved);
+
+      assert.deepEqual(refused, {
+        error: "errors.insufficientCapacity",
+        shortfalls: [
+          {
+            productId: wetsuits.id,
+            productName: "Wetsuit",
+            combinationKey: "size:L",
+            requested: 2,
+            available: 1,
+          },
+        ],
+      });
+      assert.deepEqual(await rowsOf(booking.id), before);
+
+      const forced = await actions.updateReservation(booking.id, {
+        ...moved,
+        allowOverbooking: true,
+      });
+
+      assert.equal(forced.error, undefined);
+      const [verdict] = await activityOf(booking.id);
+      assert.equal(verdict?.overbooked, true);
+    });
+
+    test("a unit held by a line of no size is not promised again to a line of that size", async () => {
+      // Two M and two L. The line of no size holds one M: one M is left.
+      const wetsuits = await sizedProduct(["M", "M", "L", "L"]);
+      const booking = await sizedReservation(wetsuits.id, [
+        { quantity: 1, assignedUnitId: wetsuits.unitIds[0] },
+        { size: "M", quantity: 1 },
+      ]);
+      const [anySize, medium] = booking.items;
+      assert.ok(anySize && medium);
+
+      const result = await actions.updateReservation(booking.id, {
+        items: [submitted(anySize, 1, "Wetsuit"), submitted(medium, 2, "Wetsuit")],
+      });
+
+      assert.deepEqual(result, {
+        error: "errors.insufficientCapacity",
+        shortfalls: [
+          {
+            productId: wetsuits.id,
+            productName: "Wetsuit",
+            combinationKey: "size:M",
+            requested: 2,
+            available: 1,
+          },
+        ],
+      });
+    });
+
+    test("a line added with no size is served by units of every size", async () => {
+      // Two S and one L cover three units of any size: no override is asked.
+      const wetsuits = await sizedProduct(["S", "S", "L"]);
+      const helmets = await product("Helmet", 5);
+      const booking = await reservation({ productId: helmets, quantity: 1 });
+
+      const result = await actions.updateReservation(booking.id, {
+        items: [submitted(booking, 1, "Helmet"), added(wetsuits.id, 3, "Wetsuit")],
+      });
+
+      assert.equal(result.error, undefined);
+      const [verdict] = await activityOf(booking.id);
+      assert.equal(verdict?.overbooked, false);
+    });
   });
 });
