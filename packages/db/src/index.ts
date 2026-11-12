@@ -30,6 +30,12 @@ const pool =
     // Docker Swarm's ingress, a client that comes through a published port shows the
     // ingress's address, not its own.
     connectAttributes: { program_name: `louez@${hostname()}` },
+    // A `Date` bound to a raw SQL expression has no column to encode it, so mysql2
+    // writes it itself, by default in the process's local time. Drizzle writes every
+    // timestamp column in UTC: on a server whose TZ is not UTC, a comparison between
+    // the two was off by the offset (the overlap predicate compares a booking's end
+    // with such a `Date`). "Z" makes mysql2 write and read dates in UTC too.
+    timezone: "Z",
   });
 
 // In development, cache the pool to avoid "Too many connections" errors
