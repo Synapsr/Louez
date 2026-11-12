@@ -187,7 +187,8 @@ describe(
 
       await assert.rejects(extend(await booking([bike])), (error: unknown) => {
         assert.ok(error instanceof extension.ExtensionError);
-        assert.equal(error.message, "unavailable");
+        // Not "unavailable", which tells the customer to pick another date.
+        assert.equal(error.message, "manualRequired");
         return true;
       });
       await extend(await booking([bike, helmet]));

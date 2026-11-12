@@ -204,7 +204,12 @@ export const checkExtensionInventory = async (
     excludeReservationId: reservation.id,
     skipConsumableCheck: true,
   });
-  if (!stock.ok) throw new ExtensionError("unavailable");
+  // A booking the store composed without a product's required accessory cannot
+  // be extended as a cart: another date changes nothing, the store has to look.
+  if (!stock.ok)
+    throw new ExtensionError(
+      stock.details?.code === "required_accessories_missing" ? "manualRequired" : "unavailable",
+    );
   for (const item of reservation.items) {
     const ids = item.assignedUnits.flatMap((unit) =>
       unit.productUnitId ? [unit.productUnitId] : [],
