@@ -60,7 +60,7 @@ export const depositAttemptErrors = {
   ) =>
     apiError("CONFLICT", "DEPOSIT_ATTEMPT_NEEDS_STRIPE", {
       message:
-        "Louez found an authorization at Stripe for this deposit hold request, but it does not match what was asked (its amount, card or reference changed): it was not recorded, and the request stays open. Cancel it from the Stripe dashboard, then close the request again. If you capture it in Stripe instead, Louez does not record that money and the request stays open: record the amount by hand as a deposit payment and contact support to close the request.",
+        "Louez found an authorization at Stripe for this deposit hold request, but it does not match what was asked (its amount, card or reference changed): it was not recorded, and the request stays open. Cancel it from the Stripe dashboard, then close the request again. If you capture it in Stripe instead, Louez does not record that amount and the request stays open: contact Louez support.",
       i18nKey: "errors.depositAttempt.needsStripe",
       details: {
         reservationId,

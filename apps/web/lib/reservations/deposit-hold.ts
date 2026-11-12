@@ -103,12 +103,14 @@ import {
 // altered at Stripe), never closes or replaces the attempt while Stripe may hold funds
 // on it: the attempt stays pending, an activity line records it for that attempt
 // (`recordUnmatchedIntent`), and the store is told to cancel it in Stripe
-// (`errors.depositAttempt.needsStripe`). That line blocks every closing of the attempt
-// (`closeAbsentAttempt`), whatever a later lookup says or fails to say: the closing
-// is made only once that PaymentIntent, read again by its id on the attempt's account
-// (`readUnmatchedAgain`), holds nothing (`intentHoldsNothing`). A captured one never
-// holds nothing: Louez does not record money captured on a PaymentIntent it refused,
-// and the attempt stays open.
+// (`errors.depositAttempt.needsStripe`). That line blocks the attempt's closing as
+// absent (`closeAbsentAttempt`, the only closure of an attempt as absent, and the one
+// this guard protects), whatever a later lookup says or fails to say: that closing is
+// made only once that PaymentIntent, read again by its id on the attempt's account
+// (`readUnmatchedAgain`), holds nothing (`intentHoldsNothing`). An attempt also ends
+// when the writer settles its own PaymentIntent (authorized, captured, cancelled,
+// failed). A captured one never holds nothing: Louez does not record money captured on
+// a PaymentIntent it refused, and the attempt stays open.
 //
 // An attempt nothing can settle (its customer cannot be listed, it has more
 // PaymentIntents than a lookup reads, its request never reached Stripe) is the
@@ -122,14 +124,21 @@ import {
 // - One attempt makes at most one PaymentIntent (its key), and every PaymentIntent
 //   Stripe makes of it that matches it is recorded on its row once Louez reads it: by
 //   the request, a lookup, the store's closing, or, for a closed attempt, Stripe's
-//   event alone. One that does not match keeps the attempt open while it may hold
-//   funds, as above.
-// - Not closed here, and each starts with a PaymentIntent altered by hand in the
-//   store's Stripe account (its amount, card or metadata changed, or confirmed again or
-//   captured there). One Louez had not found when its attempt was closed, or one that
-//   held nothing then and was confirmed again since, is refused when its event
-//   arrives, and only the logs say so. One captured there keeps its attempt open, and
-//   Louez does not record its money: the store records it by hand.
+//   event alone. One that does not match blocks its closing as absent while it may
+//   hold funds, as above.
+// - Not closed here: Louez itself creates exactly one PaymentIntent per attempt, under
+//   one idempotency key; each of these starts from a PaymentIntent altered or created
+//   by hand in the store's Stripe account:
+//   1. one Louez had not found when its attempt was closed is refused when its event
+//      arrives, and only the logs say so;
+//   2. one that read empty at the closure and was confirmed again afterwards is
+//      refused the same way;
+//   3. one captured there keeps its attempt open; Louez does not record that money (a
+//      manual deposit payment is capped at the deposit still to collect);
+//   4. a second PaymentIntent given by hand the same reservation and attempt reference
+//      as an attempt, with matching amount, currency and card, settles that attempt
+//      when Louez finds it, whatever evidence exists about another unmatched
+//      PaymentIntent of that attempt, which then stays at Stripe untracked.
 // - The reservation references one hold at most; any other authorization Louez learns
 //   of is recorded with its release owed, and the outbox, then the cron
 //   (deposit-hold-debts.ts), ask Stripe for it until Stripe confirms.

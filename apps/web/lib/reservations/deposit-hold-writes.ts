@@ -42,9 +42,25 @@ import {
 // capture, the activity line and the outbox row of a release that became owed. Nothing
 // else writes a `deposit_hold` or `deposit_capture` row, or a reservation's deposit
 // status once a hold is asked for; deposit-hold.ts only inserts the attempt it claims,
-// and `closeAbsentAttempt`, the one closing of an attempt, closes one Stripe holds
-// nothing for. No hold row is ever deleted: a closed attempt keeps its row, so its
-// PaymentIntent, should Stripe make it after all, is still recorded.
+// and `closeAbsentAttempt`, the only closure of an attempt as absent, closes one Stripe
+// holds nothing for. An attempt also ends when its own PaymentIntent is settled here
+// (authorized, captured, cancelled, failed). No hold row is ever deleted: a closed
+// attempt keeps its row, so its PaymentIntent, should Stripe make it after all, is
+// still recorded.
+//
+// Louez itself creates exactly one PaymentIntent per attempt, under one idempotency
+// key; what is left open each starts from a PaymentIntent altered or created by hand
+// in the store's Stripe account:
+//   1. one Louez had not found when its attempt was closed is refused when its event
+//      arrives, and only the logs say so;
+//   2. one that read empty at the closure and was confirmed again afterwards is
+//      refused the same way;
+//   3. one captured there keeps its attempt open; Louez does not record that money (a
+//      manual deposit payment is capped at the deposit still to collect);
+//   4. a second PaymentIntent given by hand the same reservation and attempt reference
+//      as an attempt, with matching amount, currency and card, settles that attempt
+//      when Louez finds it, whatever evidence exists about another unmatched
+//      PaymentIntent of that attempt, which then stays at Stripe untracked.
 
 const isHeld = (status: string | null) => status === "authorized" || status === "captured";
 
@@ -574,7 +590,8 @@ export type AttemptClosure =
 /**
  * The activity line of a PaymentIntent found for an attempt and refused: its
  * `metadata.kind`, which the inbox's `deposit_unconfirmed` item reads (packages/api
- * services/inbox.ts), and which blocks the attempt's closing (`closeAbsentAttempt`).
+ * services/inbox.ts), and which blocks the attempt's closing as absent
+ * (`closeAbsentAttempt`).
  */
 const UNMATCHED_INTENT_ACTIVITY = "deposit_unmatched";
 
@@ -657,12 +674,13 @@ export async function readUnmatchedIntents(
  * has no PaymentIntent: one the webhook wrote meanwhile on the pending row is left as
  * it is (`settled_meanwhile`).
  *
- * Every closing of an attempt comes here, and a PaymentIntent found for it and refused
- * (`readUnmatchedIntents`) blocks it: the attempt is closed only when the caller brings,
- * for each, a read of it by its id on the attempt's account that holds nothing
- * (`intentHoldsNothing`). Else nothing is written and the first one without that proof
- * is answered: the attempt stays pending, and the store settles it at Stripe. One line
- * per PaymentIntent proven empty records it with the closing.
+ * Every closing of an attempt as absent comes here (an attempt also ends when
+ * `settleDepositIntent` settles its own PaymentIntent), and a PaymentIntent found for
+ * it and refused (`readUnmatchedIntents`) blocks it: the attempt is closed only when
+ * the caller brings, for each, a read of it by its id on the attempt's account that
+ * holds nothing (`intentHoldsNothing`). Else nothing is written and the first one
+ * without that proof is answered: the attempt stays pending, and the store settles it
+ * at Stripe. One line per PaymentIntent proven empty records it with the closing.
  */
 export async function closeAbsentAttempt(
   database: Database,
@@ -789,7 +807,7 @@ export async function closeAbsentAttempt(
  * PaymentIntent and why it was refused. A dashboard line only (`payment_updated`): the
  * customer's page shows none. One line per attempt and PaymentIntent, its first
  * finding; only while the request still holds its claim, else `claim_lost`. The line
- * blocks the attempt's closing until that PaymentIntent is read empty
+ * blocks the attempt's closing as absent until that PaymentIntent is read empty
  * (`closeAbsentAttempt`).
  */
 export async function recordUnmatchedIntent(
@@ -820,7 +838,7 @@ export async function recordUnmatchedIntent(
       reservationId: input.reservationId,
       userId: input.actorUserId,
       activityType: "payment_updated",
-      description: `Autorisation trouvée chez Stripe (${intent.paymentIntentId}) pour la demande d'empreinte, mais différente de la demande: non enregistrée. Annulez-la dans Stripe, puis clôturez la demande. Si vous la prélevez dans Stripe, Louez n'enregistre pas ce montant et la demande reste ouverte.`,
+      description: `Autorisation trouvée chez Stripe (${intent.paymentIntentId}) pour la demande d'empreinte, mais différente de la demande: non enregistrée. Annulez-la dans Stripe, puis clôturez la demande. Si vous la prélevez dans Stripe à la place, Louez n'enregistre pas ce montant et la demande reste ouverte: contactez le support Louez.`,
       metadata: {
         kind: UNMATCHED_INTENT_ACTIVITY,
         attemptId: input.claim.attemptId,
