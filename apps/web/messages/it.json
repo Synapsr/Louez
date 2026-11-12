@@ -2217,7 +2217,7 @@
           "open": "Risolvi con Stripe",
           "title": "Autorizzazione non confermata",
           "description": "Stripe non ha mai confermato questa richiesta di autorizzazione. Controlla Pagamenti nella dashboard di Stripe dell'account su cui è stata richiesta.",
-          "explanation": "Chiudere la richiesta non annulla nulla su Stripe. Louez cerca prima l'autorizzazione da sé e la registra se esiste. Se in seguito compare un'autorizzazione, Louez la registra quando Stripe la segnala: diventa la cauzione di questa prenotazione se non ne ha una, e viene rilasciata se un'altra preautorizzazione la garantisce già. Chiudere la richiesta mentre esiste una preautorizzazione può quindi lasciare per un po' una preautorizzazione in più sulla carta del cliente. Un'autorizzazione che vedi su Stripe e che Louez non trova si gestisce su Stripe: rilasciala o incassala lì.",
+          "explanation": "Chiudere la richiesta non annulla nulla su Stripe. Louez cerca prima l'autorizzazione da sé e la registra se corrisponde alla richiesta. Se ne trova una che non corrisponde (importo, carta o riferimento modificati), la richiesta resta aperta e Louez te lo segnala: rilascia o incassa quell'autorizzazione su Stripe, poi chiudi di nuovo la richiesta. Se in seguito compare un'autorizzazione, Louez la registra quando Stripe la segnala, se corrisponde alla richiesta: diventa la cauzione di questa prenotazione se non ne ha una, e viene rilasciata se un'altra preautorizzazione la garantisce già. Chiudere la richiesta mentre esiste una preautorizzazione può quindi lasciare per un po' una preautorizzazione in più sulla carta del cliente. Un'autorizzazione che vedi su Stripe e che Louez non ha registrato si gestisce su Stripe: rilasciala o incassala lì.",
           "confirm": "Chiudi la richiesta",
           "closed": "Richiesta chiusa. Puoi creare una nuova autorizzazione.",
           "recorded": "Louez ha trovato l'autorizzazione su Stripe e l'ha registrata."
@@ -9423,6 +9423,7 @@
     "stripeRequiredForPaymentMode": "La modalità di pagamento online richiede un account Stripe collegato. Collega Stripe in Impostazioni > Pagamenti.",
     "locationLimitReached": "Un negozio può avere al massimo 50 punti di ritiro. Disattivane uno o riutilizzalo.",
     "depositAttempt": {
+      "needsStripe": "Louez ha trovato su Stripe un'autorizzazione per questa richiesta, ma non corrisponde a quanto richiesto (importo, carta o riferimento modificati): Louez non l'ha registrata e la richiesta resta aperta. Rilasciala o incassala dalla dashboard di Stripe, poi fai clic su «Chiudi la richiesta».",
       "none": "Questa prenotazione non ha più autorizzazioni non confermate."
     }
   },

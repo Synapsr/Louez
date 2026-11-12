@@ -117,6 +117,7 @@ const HOLD_REQUEST_ERRORS = new Set([
   "errors.stripe.invalidDepositStatus",
   "errors.stripe.noSavedCard",
   "errors.stripe.noDepositRequired",
+  "errors.depositAttempt.needsStripe",
 ]);
 
 interface PaymentMethodInfo {

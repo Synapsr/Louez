@@ -17,6 +17,7 @@ import { log } from "@/lib/evlog";
 import { fromStripeCents } from "@/lib/stripe";
 
 import {
+  type AttemptFact,
   type DepositIntent,
   type HoldActivity,
   type HoldOutcome,
@@ -39,9 +40,9 @@ import {
 // capture, the activity line and the outbox row of a release that became owed. Nothing
 // else writes a `deposit_hold` or `deposit_capture` row, or a reservation's deposit
 // status once a hold is asked for; deposit-hold.ts only inserts the attempt it claims,
-// and `closeAbsentAttempt` closes one no PaymentIntent was found for. No hold row is
-// ever deleted: a closed attempt keeps its row, so its PaymentIntent, should Stripe
-// make it after all, is still recorded.
+// and `closeAbsentAttempt` closes one Stripe holds nothing for. No hold row is ever
+// deleted: a closed attempt keeps its row, so its PaymentIntent, should Stripe make it
+// after all, is still recorded.
 
 const isHeld = (status: string | null) => status === "authorized" || status === "captured";
 
@@ -549,24 +550,36 @@ async function writeDepositIntent(
   return { status: "settled", outcome: writes.outcome, capturePaymentId, effectIds };
 }
 
-/** Why an attempt is closed with no PaymentIntent found. */
+/** Why an attempt is closed with nothing held for it at Stripe. */
 export type AttemptClosure =
   /** Stripe refused the request, saying why. */
   | { readonly kind: "refused"; readonly message: string }
   /** A complete listing, past the life of the key, holds none. */
   | { readonly kind: "not_found" }
   /** The store checked its Stripe dashboard and declared it found none. */
-  | { readonly kind: "declared_by_store" };
+  | { readonly kind: "declared_by_store" }
+  /**
+   * The store closes it, and the PaymentIntent Louez found for it, which the writer
+   * refused, provably holds nothing (`intentHoldsNothing`): cancelled, or declined.
+   */
+  | {
+      readonly kind: "unmatched_empty";
+      readonly paymentIntentId: string;
+      readonly status: string;
+      readonly reason: IntentRefusal;
+    };
 
 /**
- * Closes a store's attempt no PaymentIntent was found for: its row is kept and set
- * `failed`, so no request asks about it again and the next attempt has a new key,
- * while a PaymentIntent Stripe makes of it after all still finds its row
- * (`bindDepositIntent`). A refusal fails the deposit; the store's declaration is
- * recorded with who made it. Only while the request that closes it still holds its
- * claim (`holdsClaim`), else `claim_lost`, and while the row has no PaymentIntent: one
- * the webhook wrote meanwhile on the pending row is left as it is
- * (`settled_meanwhile`).
+ * Closes a store's attempt Stripe holds nothing for: its row is kept and set `failed`,
+ * so no request asks about it again and the next attempt has a new key, while a
+ * PaymentIntent Stripe makes of it after all still finds its row (`bindDepositIntent`).
+ * A refusal fails the deposit; the store's closing is recorded with who made it, and,
+ * for an `unmatched_empty` one, the PaymentIntent found on the activity line only: the
+ * row does not name it, so it is never taken for the row's own PaymentIntent, which
+ * `bindDepositIntent` binds without comparing its facts. Only while the request that
+ * closes it still holds its claim (`holdsClaim`), else `claim_lost`, and while the row
+ * has no PaymentIntent: one the webhook wrote meanwhile on the pending row is left as
+ * it is (`settled_meanwhile`).
  */
 export async function closeAbsentAttempt(
   database: Database,
@@ -615,10 +628,12 @@ export async function closeAbsentAttempt(
         context: { ...context, descriptions: { deposit_failed: reason } },
       });
     }
-    if (closure.kind === "declared_by_store") {
+    if (closure.kind === "declared_by_store" || closure.kind === "unmatched_empty") {
       // Who closed it, and when: the line's author and date.
       const description =
-        "Empreinte non confirmée close: la boutique n'a trouvé aucune autorisation chez Stripe";
+        closure.kind === "declared_by_store"
+          ? "Empreinte non confirmée close: la boutique n'a trouvé aucune autorisation chez Stripe"
+          : `Empreinte non confirmée close: l'autorisation trouvée chez Stripe (${closure.paymentIntentId}) ne correspondait pas à la demande et ne bloque plus rien`;
       await writeHoldActivity(tx, {
         reservationId: input.reservationId,
         type: "deposit_failed",
@@ -632,12 +647,87 @@ export async function closeAbsentAttempt(
               ? fromStripeCents(row.amountMinor, row.currency)
               : null,
           currency: row.currency,
+          ...(closure.kind === "unmatched_empty"
+            ? {
+                unmatchedPaymentIntentId: closure.paymentIntentId,
+                unmatchedStatus: closure.status,
+                refusal: closure.reason,
+              }
+            : {}),
         },
         context: { ...context, descriptions: { deposit_failed: description } },
       });
     }
     await markReservationIds(tx, [input.reservationId]);
     return "closed";
+  });
+}
+
+/**
+ * The activity line of a PaymentIntent found for an attempt and refused: its
+ * `metadata.kind`, which the inbox's `deposit_unconfirmed` item reads (packages/api
+ * services/inbox.ts).
+ */
+const UNMATCHED_INTENT_ACTIVITY = "deposit_unmatched";
+
+/**
+ * Leaves a trace of a PaymentIntent found at Stripe for the store's attempt that the
+ * writer refused (its facts are not the attempt's, or its metadata names another
+ * reservation) while Stripe may hold funds on it: nothing of it is written on a hold
+ * row, the attempt stays pending, and an activity line says who found it, when, which
+ * PaymentIntent and why it was refused. A dashboard line only (`payment_updated`): the
+ * customer's page shows none. One line per PaymentIntent, its first finding; only
+ * while the request still holds its claim, else `claim_lost`.
+ */
+export async function recordUnmatchedIntent(
+  database: Database,
+  input: {
+    readonly reservationId: string;
+    readonly storeId: string;
+    readonly claim: AttemptClaim;
+    readonly intent: DepositIntent;
+    readonly reason: IntentRefusal;
+    readonly unmatchedFacts: readonly AttemptFact[];
+    readonly actorUserId: string | null;
+  },
+): Promise<"recorded" | "claim_lost"> {
+  const { intent } = input;
+  return database.transaction(async (tx) => {
+    const deposit = await lockDeposit(tx, input);
+    if (!deposit || !(await holdsClaim(tx, input.claim))) return "claim_lost";
+    const a = reservationActivity;
+    const [line] = await tx
+      .select({ id: a.id })
+      .from(a)
+      .where(
+        and(
+          eq(a.reservationId, input.reservationId),
+          eq(a.activityType, "payment_updated"),
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${a.metadata}, '$.kind')) = ${UNMATCHED_INTENT_ACTIVITY}`,
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${a.metadata}, '$.unmatchedPaymentIntentId')) = ${intent.paymentIntentId}`,
+        ),
+      )
+      .limit(1);
+    if (line) return "recorded";
+    await tx.insert(a).values({
+      id: nanoid(),
+      reservationId: input.reservationId,
+      userId: input.actorUserId,
+      activityType: "payment_updated",
+      description: `Autorisation trouvée chez Stripe (${intent.paymentIntentId}) pour la demande d'empreinte, mais différente de la demande: non enregistrée. À libérer ou prélever depuis Stripe, puis clore la demande.`,
+      metadata: {
+        kind: UNMATCHED_INTENT_ACTIVITY,
+        attemptId: input.claim.attemptId,
+        unmatchedPaymentIntentId: intent.paymentIntentId,
+        status: intent.status,
+        refusal: input.reason,
+        unmatchedFacts: input.unmatchedFacts,
+        intentAmount: fromStripeCents(intent.amountMinor, intent.currency),
+        intentCurrency: intent.currency,
+      },
+      createdAt: new Date(),
+    });
+    return "recorded";
   });
 }
 

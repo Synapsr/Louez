@@ -10,14 +10,17 @@ import { storeProcedure } from "../../platform/procedures";
 /**
  * The store gets out of a deposit hold Stripe has not confirmed and nothing else can
  * settle, after it checked its Stripe dashboard: Louez looks the attempt up first and
- * records the PaymentIntent it finds, else closes the attempt on the store's word. The
+ * records the PaymentIntent it finds, else closes the attempt on the store's word. A
+ * PaymentIntent it finds that does not match the attempt keeps the attempt open while
+ * Stripe may hold funds on it (`DEPOSIT_ATTEMPT_NEEDS_STRIPE`). The
  * logic is the app's (`ports.depositHolds`, apps/web lib/reservations/deposit-hold.ts);
  * this holds the contract, the rights and the errors.
  *
  * A session only: it decides, on the store's word, about money held on a customer's
  * card. A closure that was wrong can leave an extra hold on the card: Louez records it
- * when Stripe's event about it arrives, as the reservation's deposit when it has none,
- * and releases it when another hold secures it. An agent does not make that call.
+ * when Stripe's event about it arrives and it matches the attempt, as the
+ * reservation's deposit when it has none, and releases it when another hold secures
+ * it. An agent does not make that call.
  */
 export const resolveDepositAttempt = storeProcedure
   .meta({
@@ -51,6 +54,9 @@ export const resolveDepositAttempt = storeProcedure
         outcome: resolved.outcome,
         paymentIntentId: resolved.paymentIntentId,
       };
+    }
+    if (resolved.error === "attempt_needs_stripe") {
+      throw depositAttemptErrors.needsStripe(reservationId, resolved);
     }
     switch (resolved.error) {
       case "reservation_not_found":

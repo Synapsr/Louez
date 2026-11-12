@@ -18,7 +18,11 @@ import {
   type DepositHoldStripe,
   depositHoldIdempotencyKey,
 } from "./deposit-hold-stripe";
-import { type FakeDepositStripe, fakeDepositStripe } from "./fake-deposit-stripe.fixtures";
+import {
+  type FakeDepositStripe,
+  type FakeIntent,
+  fakeDepositStripe,
+} from "./fake-deposit-stripe.fixtures";
 
 // The store's deposit hold on a migrated database, with Stripe faked: whatever the
 // interleaving of two requests, a retry, the customer's own authorization, a capture
@@ -1443,6 +1447,48 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       });
     });
 
+    for (const listing of ["comes back empty", "fails"] as const) {
+      test(`the webhook records the hold while the request's lookup ${listing}: the request answers the recorded hold`, async () => {
+        const reservationId = await createReservation();
+        const stripe = stripeWithCard();
+        stripe.next.push(stripe.lostAnswer);
+        let pages = 0;
+        const port: DepositHoldStripe = {
+          ...stripe.port,
+          listCustomerIntents: async () => {
+            pages++;
+            const [made] = stripe.intents;
+            assert.equal(await settle(reservationId, stripe, made.id), "authorized");
+            if (listing === "fails") throw new Error("Stripe is down");
+            return { intents: [], hasMore: false };
+          },
+        };
+
+        const answer = await hold.authorizeDepositHold(
+          {
+            reservationId,
+            storeId: STORE,
+            stripeAccountId: ACCOUNT,
+            storeSettings: { currency: "EUR" },
+            actorUserId: null,
+          },
+          { ...depsOf(stripe), stripe: port },
+        );
+
+        const [made] = stripe.intents;
+        assert.deepEqual(answer, {
+          ok: true,
+          paymentIntentId: made.id,
+          amount: 50,
+          currency: "EUR",
+        });
+        // No call to Stripe beyond the request and its one page.
+        assert.equal(stripe.calls.length, 1);
+        assert.equal(pages, 1);
+        assert.deepEqual(await holdStates(reservationId), [["authorized", made.id]]);
+      });
+    }
+
     test("a Stripe 500 that authorized all the same: the hold is found and recorded", async () => {
       const reservationId = await createReservation();
       const stripe = stripeWithCard();
@@ -1659,6 +1705,158 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       assert.deepEqual(stripe.released, [forRelease.id]);
       assert.deepEqual(await holdStates(released), [["cancelled", forRelease.id]]);
       assert.equal((await readDeposit(released))?.status, "released");
+    });
+
+    /**
+     * Stripe authorizes the attempt and the answer is lost; the authorization is then
+     * altered at Stripe, and the request's lookup cannot be made: the attempt waits.
+     */
+    async function alteredAttempt(stripe: FakeDepositStripe, alter: (intent: FakeIntent) => void) {
+      const reservationId = await createReservation();
+      stripe.next.push(async (asked, key) => {
+        const answer = await stripe.lostAnswer(asked, key);
+        const made = stripe.intents.at(-1);
+        assert.ok(made);
+        alter(made);
+        return answer;
+      });
+      const blind: DepositHoldDeps = {
+        ...depsOf(stripe),
+        stripe: {
+          ...stripe.port,
+          listCustomerIntents: async () => {
+            throw new Error("Stripe is down");
+          },
+        },
+      };
+      assert.deepEqual(
+        await hold.authorizeDepositHold(
+          {
+            reservationId,
+            storeId: STORE,
+            stripeAccountId: ACCOUNT,
+            storeSettings: { currency: "EUR" },
+            actorUserId: null,
+          },
+          blind,
+        ),
+        { ok: false, error: "errors.stripe.authorizationUnconfirmed" },
+      );
+      const intent = stripe.intents.at(-1);
+      assert.ok(intent);
+      return { reservationId, intent };
+    }
+
+    const unmatchedLines = async (reservationId: string) => {
+      const a = louezDb.reservationActivity;
+      const lines = await louezDb.db
+        .select({ type: a.activityType, userId: a.userId, metadata: a.metadata })
+        .from(a)
+        .where(eq(a.reservationId, reservationId));
+      return lines
+        .filter((line) => line.metadata?.kind === "deposit_unmatched")
+        .map((line) => [
+          line.type,
+          line.userId,
+          line.metadata?.unmatchedPaymentIntentId,
+          line.metadata?.refusal,
+        ]);
+    };
+
+    for (const [altered, alter, reason, unmatchedFacts] of [
+      [
+        "its amount",
+        (intent: FakeIntent) => (intent.amountMinor = 6000),
+        "facts_mismatch",
+        ["amount"],
+      ],
+      [
+        "its reservation metadata removed",
+        (intent: FakeIntent) => (intent.reservationId = null),
+        "other_reservation",
+        [],
+      ],
+    ] as const) {
+      test(`an authorization found for the attempt but altered at Stripe (${altered}) is never taken for absent: the store releases it there, then closes the request`, async () => {
+        const stripe = stripeWithCard();
+        const { reservationId, intent } = await alteredAttempt(stripe, alter);
+        const needsStripe = {
+          ok: false,
+          error: "attempt_needs_stripe",
+          paymentIntentId: intent.id,
+          status: "requires_capture",
+          reason,
+          unmatchedFacts,
+        };
+
+        // Found, and Stripe holds funds on it: the attempt is not closed.
+        assert.deepEqual(await resolve(reservationId, stripe), needsStripe);
+        assert.deepEqual(await holdStates(reservationId), [["pending", null]]);
+        assert.deepEqual(await unmatchedLines(reservationId), [
+          ["payment_updated", STORE_USER, intent.id, reason],
+        ]);
+        // A new request is refused and authorizes nothing: Stripe holds one authorization.
+        assert.deepEqual(await request(reservationId, stripe), {
+          ok: false,
+          error: "errors.depositAttempt.needsStripe",
+        });
+        assert.deepEqual(
+          stripe.intents.map((made) => made.id),
+          [intent.id],
+        );
+        assert.deepEqual(
+          stripe.held().map((made) => made.id),
+          [intent.id],
+        );
+        // Asked again, the same answer, and one line for the PaymentIntent.
+        assert.deepEqual(await resolve(reservationId, stripe), needsStripe);
+        assert.equal((await unmatchedLines(reservationId)).length, 1);
+
+        // The store cancels it in Stripe, then closes the request again.
+        stripe.cancel(ACCOUNT, intent.id);
+        assert.deepEqual(await resolve(reservationId, stripe), {
+          ok: true,
+          outcome: "closed",
+          paymentIntentId: null,
+        });
+        assert.deepEqual(await holdStates(reservationId), [["failed", null]]);
+        const a = louezDb.reservationActivity;
+        const [closing] = await louezDb.db
+          .select({ userId: a.userId, metadata: a.metadata })
+          .from(a)
+          .where(and(eq(a.reservationId, reservationId), eq(a.activityType, "deposit_failed")));
+        assert.equal(closing?.userId, STORE_USER);
+        assert.equal(closing?.metadata?.unmatchedPaymentIntentId, intent.id);
+
+        // A new hold can be asked: Stripe ends with exactly that one.
+        const next = await request(reservationId, stripe);
+        assert.equal(next.ok, true);
+        assert.deepEqual(
+          stripe.held().map((made) => made.id),
+          [next.ok && next.paymentIntentId],
+        );
+      });
+    }
+
+    test("the automatic closure, a day after the last request, does not close an attempt whose authorization was found altered", async () => {
+      const stripe = stripeWithCard();
+      const { reservationId, intent } = await alteredAttempt(stripe, (made) => {
+        made.amountMinor = 6000;
+      });
+      // Past the key's life: the request only looks the attempt up, and a complete
+      // listing without it would close it.
+      await ageAttempt(reservationId, 2 * DAY);
+
+      assert.deepEqual(await request(reservationId, stripe), {
+        ok: false,
+        error: "errors.depositAttempt.needsStripe",
+      });
+      assert.equal(stripe.calls.length, 1);
+      assert.deepEqual(await holdStates(reservationId), [["pending", null]]);
+      assert.deepEqual(
+        stripe.held().map((made) => made.id),
+        [intent.id],
+      );
     });
 
     test("an attempt a request is asking Stripe about is left to it", async () => {

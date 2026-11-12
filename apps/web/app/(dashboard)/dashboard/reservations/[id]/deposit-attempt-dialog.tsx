@@ -22,7 +22,8 @@ import { orpc } from "@/lib/orpc/react";
 /**
  * The way out of a deposit hold Stripe never confirmed: the store closes it, after it
  * checked its Stripe dashboard. Louez looks the attempt up first, and records what it
- * finds instead (packages/api routers/dashboard/deposit-attempts.ts).
+ * finds instead; what it finds and cannot match keeps the request open, and the error
+ * says so (packages/api routers/dashboard/deposit-attempts.ts).
  */
 export const DepositAttemptDialog = ({
   reservationId,

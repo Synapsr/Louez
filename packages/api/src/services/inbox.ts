@@ -711,14 +711,22 @@ const expiringDeposits: Source = async (window, shaper) => {
   });
 };
 
+const UNMATCHED_ACTIVITY = "inbox_unmatched_activity";
+const unmatchedActivity = alias(reservationActivity, UNMATCHED_ACTIVITY);
+
 /**
  * A deposit authorization the store asked for, which Stripe has neither confirmed nor
  * refused (apps/web lib/reservations/deposit-hold.ts): its attempt is still pending.
  * Louez takes no other authorization for the reservation until Stripe settles this
  * one, so the store is told to look at it, whatever the reservation's status: the
- * card may be held.
+ * card may be held. When Louez found a PaymentIntent for it that does not match the
+ * request (the activity line `recordUnmatchedIntent` writes, apps/web
+ * lib/reservations/deposit-hold-writes.ts), the item says so, and names it.
  */
 const unconfirmedDeposits: Source = async (window, shaper) => {
+  const unmatchedIntent = sql<
+    string | null
+  >`(SELECT JSON_UNQUOTE(JSON_EXTRACT(${unmatchedActivity.metadata}, '$.unmatchedPaymentIntentId')) FROM ${reservationActivity} AS ${sql.identifier(UNMATCHED_ACTIVITY)} WHERE ${unmatchedActivity.reservationId} = ${payments.reservationId} AND ${unmatchedActivity.activityType} = 'payment_updated' AND JSON_UNQUOTE(JSON_EXTRACT(${unmatchedActivity.metadata}, '$.kind')) = 'deposit_unmatched' AND JSON_UNQUOTE(JSON_EXTRACT(${unmatchedActivity.metadata}, '$.attemptId')) = ${payments.id} ORDER BY ${unmatchedActivity.createdAt} DESC LIMIT 1)`;
   const occurred =
     sql<Date>`(${payments.createdAt} + INTERVAL ${sql.raw(String(DEPOSIT_UNCONFIRMED_MINUTES))} MINUTE)`.mapWith(
       payments.createdAt,
@@ -731,6 +739,7 @@ const unconfirmedDeposits: Source = async (window, shaper) => {
       askedAt: payments.createdAt,
       amount: payments.amount,
       currency: payments.currency,
+      unmatchedPaymentIntentId: unmatchedIntent,
     })
     .from(payments)
     .innerJoin(reservations, eq(reservations.id, payments.reservationId))
@@ -749,10 +758,13 @@ const unconfirmedDeposits: Source = async (window, shaper) => {
   return rows.map((row) => {
     const about = aboutReservation(shaper, row);
     const amount = money(row.amount, row.currency ?? shaper.currency);
+    const asked = `the deposit hold${amount ? ` of ${amount}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}`;
     return candidate("deposit_unconfirmed", row.paymentId, {
       severity: "warning",
       occurredAt: row.occurredAt,
-      summary: `Stripe has not confirmed the deposit hold${amount ? ` of ${amount}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}: check the payment in Stripe. Asking again in Louez asks for the same hold, never a second one, and no other hold is taken until Stripe settles this one or the store, in the reservation's deposit section, says what Stripe shows.`,
+      summary: row.unmatchedPaymentIntentId
+        ? `Louez found an authorization at Stripe (${row.unmatchedPaymentIntentId}) for ${asked}, but it does not match the request (its amount, card or reference changed), so Louez did not record it: release or capture it in Stripe, then close the request in the reservation's deposit section. No other hold is taken until then.`
+        : `Stripe has not confirmed ${asked}: check the payment in Stripe. Asking again in Louez asks for the same hold, never a second one, and no other hold is taken until Stripe settles this one or the store, in the reservation's deposit section, says what Stripe shows.`,
       reservation: about.reservation,
       details: {
         reservationId: row.id,
@@ -761,6 +773,7 @@ const unconfirmedDeposits: Source = async (window, shaper) => {
         amount: row.amount,
         currency: row.currency ?? shaper.currency,
         askedAt: row.askedAt.toISOString(),
+        unmatchedPaymentIntentId: row.unmatchedPaymentIntentId,
       },
       tools: RESERVATION_TOOLS,
       links: about.links,

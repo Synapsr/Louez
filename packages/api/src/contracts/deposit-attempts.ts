@@ -13,9 +13,9 @@ export const resolveDepositAttemptInput = z.object({
 export type ResolveDepositAttemptInput = z.infer<typeof resolveDepositAttemptInput>;
 
 /**
- * `closed`: Louez found nothing at Stripe, the attempt is closed with nothing held, and
- * a new hold may be asked for. Otherwise Louez found the attempt's PaymentIntent at
- * Stripe and recorded it, as: `authorized` (the reservation's hold), `superseded` (the
+ * `closed`: Louez found nothing at Stripe, or a PaymentIntent that holds nothing, the
+ * attempt is closed with nothing held, and a new hold may be asked for. Otherwise Louez
+ * found the attempt's PaymentIntent at Stripe and recorded it, as: `authorized` (the reservation's hold), `superseded` (the
  * reservation holds another: it is released), `captured`, `released`, `failed` (it
  * holds nothing), `pending` (Stripe has not decided yet).
  */
@@ -43,6 +43,31 @@ export const depositAttemptErrors = {
         "This reservation has no deposit hold waiting for Stripe's confirmation: there is nothing to resolve. Read the reservation again.",
       i18nKey: "errors.depositAttempt.none",
       details: { reservationId },
+    }),
+  /**
+   * Not retryable as it is: the store releases or captures the authorization from
+   * Stripe first. Once Stripe holds nothing on it, closing the request again closes it.
+   */
+  needsStripe: (
+    reservationId: string,
+    found: {
+      paymentIntentId: string;
+      status: string;
+      reason: string;
+      unmatchedFacts: readonly string[];
+    },
+  ) =>
+    apiError("CONFLICT", "DEPOSIT_ATTEMPT_NEEDS_STRIPE", {
+      message:
+        "Louez found an authorization at Stripe for this deposit hold request, but it does not match what was asked (its amount, card or reference changed): it was not recorded, and the request stays open. Release or capture it from the Stripe dashboard, then close the request again.",
+      i18nKey: "errors.depositAttempt.needsStripe",
+      details: {
+        reservationId,
+        paymentIntentId: found.paymentIntentId,
+        status: found.status,
+        reason: found.reason,
+        unmatchedFacts: [...found.unmatchedFacts],
+      },
     }),
   inProgress: (reservationId: string) =>
     apiError("CONFLICT", "DEPOSIT_ATTEMPT_IN_PROGRESS", {

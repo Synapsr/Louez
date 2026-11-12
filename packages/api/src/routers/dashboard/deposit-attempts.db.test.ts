@@ -221,4 +221,29 @@ describe("resolveDepositAttempt (database)", { skip: skipWithoutTestDatabase() }
       assert.equal(data?.i18nKey, i18nKey, code);
     }
   });
+
+  test("an authorization found at Stripe that does not match the request: the store settles it there, told which one and why", async () => {
+    answer = {
+      ok: false,
+      error: "attempt_needs_stripe",
+      paymentIntentId: "pi_altered",
+      status: "requires_capture",
+      reason: "facts_mismatch",
+      unmatchedFacts: ["amount"],
+    };
+    const data = (await rejects(
+      client(session()).reservations.resolveDepositAttempt({ reservationId: RESERVATION }),
+      "DEPOSIT_ATTEMPT_NEEDS_STRIPE",
+    )) as { i18nKey?: string; retryable?: boolean; details?: unknown };
+    assert.equal(data.i18nKey, "errors.depositAttempt.needsStripe");
+    // Asking again changes nothing until the store acts in Stripe.
+    assert.equal(data.retryable, false);
+    assert.deepEqual(data.details, {
+      reservationId: RESERVATION,
+      paymentIntentId: "pi_altered",
+      status: "requires_capture",
+      reason: "facts_mismatch",
+      unmatchedFacts: ["amount"],
+    });
+  });
 });

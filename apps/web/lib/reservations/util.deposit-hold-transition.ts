@@ -16,8 +16,9 @@
 // A store's attempt row is never deleted. Closing an attempt sets it `failed`: no new
 // request asks about it, and it keeps its reservation, account, amount, currency, card
 // and id. A closed attempt still reconciles: when its PaymentIntent shows up later,
-// held or captured, it is settled from `failed` like any other, so a wrong verdict of
-// absence at worst records a second hold and releases it.
+// held or captured, and matches it (`bindDepositIntent`), it is settled from `failed`
+// like any other, so a wrong verdict of absence at worst records a second hold and
+// releases it.
 
 /** A deposit PaymentIntent as the provider has it, on one connected account. */
 export type DepositIntent = {
@@ -62,6 +63,15 @@ export const intentStateOf = (status: string): IntentState => {
   if (status === "succeeded") return "captured";
   return UNCONFIRMED.has(status) ? "unconfirmed" : "processing";
 };
+
+/**
+ * Whether the provider provably holds nothing on the PaymentIntent: it was cancelled,
+ * or it failed (the card was declined) with nothing captured. Any other state, one
+ * this code does not know included, may hold funds or come to hold them.
+ */
+export const intentHoldsNothing = (intent: DepositIntent): boolean =>
+  intentStateOf(intent.status) === "canceled" ||
+  (intent.status === "requires_payment_method" && intent.capturedMinor === 0);
 
 /** A `deposit_hold` payment row, as far as a decision reads it. */
 export type HoldRow = {
@@ -319,6 +329,32 @@ export type IntentBinding =
 
 const refuse = (reason: IntentRefusal): IntentBinding => ({ ok: false, reason });
 
+/** A fact a PaymentIntent must share with the attempt it answers. */
+export type AttemptFact = "amount" | "currency" | "card" | "customer";
+
+/**
+ * What a PaymentIntent does not share with the attempt it answers, of what the attempt
+ * was sent with: the amount, the currency and the card, and a customer. Empty when it
+ * is the attempt's as sent (`facts_mismatch` otherwise).
+ */
+export const unmatchedAttemptFacts = (
+  sent: {
+    readonly amountMinor: number | null;
+    readonly currency: string | null;
+    readonly paymentMethodId: string | null;
+  },
+  intent: DepositIntent,
+): AttemptFact[] => {
+  const unmatched: AttemptFact[] = [];
+  if (sent.amountMinor !== intent.amountMinor) unmatched.push("amount");
+  if (sent.currency?.toUpperCase() !== intent.currency.toUpperCase()) unmatched.push("currency");
+  if (sent.paymentMethodId === null || sent.paymentMethodId !== intent.paymentMethodId) {
+    unmatched.push("card");
+  }
+  if (intent.customerId === null) unmatched.push("customer");
+  return unmatched;
+};
+
 /**
  * The hold row a PaymentIntent is written on, or why it is written on none. Nothing
  * of an event is trusted here but what the provider answered for it.
@@ -357,13 +393,9 @@ export function bindDepositIntent(input: {
   if (attempt) {
     if (!awaitsIntent(attempt)) return refuse("attempt_bound");
     if (attempt.accountId !== accountId) return refuse("other_account");
-    const asSent =
-      attempt.amountMinor === intent.amountMinor &&
-      attempt.currency?.toUpperCase() === intent.currency.toUpperCase() &&
-      attempt.paymentMethodId !== null &&
-      attempt.paymentMethodId === intent.paymentMethodId &&
-      intent.customerId !== null;
-    return asSent ? { ok: true, row: attempt } : refuse("facts_mismatch");
+    return unmatchedAttemptFacts(attempt, intent).length === 0
+      ? { ok: true, row: attempt }
+      : refuse("facts_mismatch");
   }
 
   return input.currentAccount ? { ok: true, row: null } : refuse("unknown_on_account");

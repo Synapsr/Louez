@@ -1,7 +1,14 @@
 import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { type Database, customers, markReservationIds, payments, reservations } from "@louez/db";
+import {
+  type Database,
+  type Transaction,
+  customers,
+  markReservationIds,
+  payments,
+  reservations,
+} from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 import { getCurrencySymbol } from "@louez/utils";
 
@@ -18,16 +25,22 @@ import {
 } from "./deposit-hold-stripe";
 import {
   type AttemptClaim,
+  type AttemptClosure,
   closeAbsentAttempt,
   holdsClaim,
   lockReservationRow,
+  recordUnmatchedIntent,
   settleClaimedIntent,
   settleDepositIntent,
 } from "./deposit-hold-writes";
 import {
+  type AttemptFact,
   type DepositIntent,
   type HoldOutcome,
+  type IntentRefusal,
+  intentHoldsNothing,
   intentStateOf,
+  unmatchedAttemptFacts,
 } from "./util.deposit-hold-transition";
 
 // A deposit hold (empreinte bancaire) is an authorization on the customer's card. The
@@ -64,7 +77,9 @@ import {
 // webhook, which clears the token), has lost the claim. A request that lost it writes
 // nothing of what it read from Stripe, calls Stripe no more, and answers from the
 // attempt's row: in progress while the row names no PaymentIntent, else what was
-// recorded there by whoever settled it.
+// recorded there by whoever settled it. A request that learned nothing certain reads
+// the row too, under the reservation's lock, as it gives the attempt back: the webhook
+// may have recorded it meanwhile, and its answer is then what was recorded.
 //
 // An attempt whose outcome is not known is not replaced while Stripe may still answer
 // for it. It stays `pending`, is asked again with the same key, and is settled by a
@@ -73,23 +88,39 @@ import {
 // hours after its last request, holds none. Then it is closed: its row is kept,
 // `failed`, and a new attempt may be asked for. Stripe does not promise to have
 // reconciled a request it answered 500 to within 24 hours, so a closed attempt still
-// reconciles: its PaymentIntent, when Stripe's event about it arrives, is recorded on
-// its row, as the reservation's hold when it has none, or as a release owed (the
-// outbox releases it) when it has another. No background lookup reads a closed attempt
-// again: that rests on the event's delivery. A wrong verdict of absence thus costs at
-// most, until that event arrives, a hold Louez does not know of yet.
+// reconciles: its PaymentIntent, when Stripe's event about it arrives and it matches
+// the attempt, is recorded on its row, as the reservation's hold when it has none, or
+// as a release owed (the outbox releases it) when it has another. No background lookup
+// reads a closed attempt again: that rests on the event's delivery. A wrong verdict of
+// absence thus costs at most, until that event arrives, a hold Louez does not know of
+// yet.
+//
+// Found is never absent. A PaymentIntent Louez finds for the attempt (by its id, or by
+// the attempt's id in its metadata) that the writer refuses, because its amount,
+// currency, card, customer, capture method or reservation are not the attempt's (it was
+// altered at Stripe), never closes or replaces the attempt while Stripe may hold funds
+// on it: the attempt stays pending, an activity line records it
+// (`recordUnmatchedIntent`), and the store is told to release or capture it from
+// Stripe (`errors.depositAttempt.needsStripe`). Once Stripe provably holds nothing on
+// it (`intentHoldsNothing`), the store's closing closes the attempt.
 //
 // An attempt nothing can settle (its customer cannot be listed, it has more
 // PaymentIntents than a lookup reads, its request never reached Stripe) is the
 // store's to close (`resolveUnconfirmedAttempt`). Louez looks the attempt up first,
-// when it can, and records the PaymentIntent it finds; else the attempt is closed on
-// the store's word. An authorization the store sees at Stripe and Louez does not find
-// for the attempt is the store's to release or capture from Stripe.
+// when it can, and records the PaymentIntent it finds when it matches the attempt;
+// else the attempt is closed on the store's word. An authorization the store sees at
+// Stripe that Louez has not recorded for the attempt is the store's to release or
+// capture from Stripe.
 //
 // What is guaranteed, and what is not:
 // - One attempt makes at most one PaymentIntent (its key), and every PaymentIntent
-//   Stripe makes of it is recorded on its row once Louez reads it: by the request, a
-//   lookup, the store's closing, or, for a closed attempt, Stripe's event alone.
+//   Stripe makes of it that matches it is recorded on its row once Louez reads it: by
+//   the request, a lookup, the store's closing, or, for a closed attempt, Stripe's
+//   event alone. One that does not match keeps the attempt open while it may hold
+//   funds, as above.
+// - Not closed here: a PaymentIntent altered at Stripe after the attempt was closed
+//   (a lookup that found nothing, or the store's word) is refused when its event
+//   arrives, and only the logs say so.
 // - The reservation references one hold at most; any other authorization Louez learns
 //   of is recorded with its release owed, and the outbox, then the cron
 //   (deposit-hold-debts.ts), ask Stripe for it until Stripe confirms.
@@ -216,7 +247,14 @@ export type DepositHoldError =
   /** What Stripe did is unknown. The attempt is kept: a retry asks about the same one. */
   | "errors.stripe.authorizationUnconfirmed"
   /** Stripe holds nothing: the card was declined or needs the customer. */
-  | "errors.stripe.authorizationFailed";
+  | "errors.stripe.authorizationFailed"
+  /**
+   * Louez found the attempt's PaymentIntent at Stripe, but it does not match the
+   * attempt, and Stripe may hold funds on it: nothing was recorded, the attempt stays,
+   * and no other hold is asked for. The store releases or captures it from Stripe,
+   * then closes the request.
+   */
+  | "errors.depositAttempt.needsStripe";
 
 export type DepositHoldResult =
   | {
@@ -601,7 +639,7 @@ async function askStripe(
  * while the row records no settled PaymentIntent: another request is on it.
  */
 async function recordedAfterLoss(
-  database: Database,
+  database: Database | Transaction,
   attemptId: string,
 ): Promise<{
   readonly paymentIntentId: string;
@@ -632,12 +670,39 @@ async function recordedAfterLoss(
   }
 }
 
+/**
+ * Gives the attempt back, as `releaseClaim` does, and reads its row under the same
+ * lock: what was recorded of it meanwhile (`recordedAfterLoss`), by the webhook
+ * whose write cleared the claim, or null while it is still pending.
+ */
+async function giveBackAndRead(
+  database: Database,
+  claim: AttemptClaim,
+): Promise<Awaited<ReturnType<typeof recordedAfterLoss>>> {
+  return database.transaction(async (tx) => {
+    await lockReservationRow(tx, claim.reservationId);
+    await tx
+      .update(payments)
+      .set({ claimedUntil: null, claimToken: null })
+      .where(and(eq(payments.id, claim.attemptId), eq(payments.claimToken, claim.token)));
+    return recordedAfterLoss(tx, claim.attemptId);
+  });
+}
+
 /** What a request of the store that lost its claim answers: see `recordedAfterLoss`. */
 async function answerAfterLoss(database: Database, attempt: Attempt): Promise<DepositHoldResult> {
   const recorded = await recordedAfterLoss(database, attempt.id);
-  switch (recorded?.outcome) {
-    case undefined:
-      return refusal("errors.stripe.authorizationInProgress");
+  return recorded
+    ? answerRecorded(recorded, attempt)
+    : refusal("errors.stripe.authorizationInProgress");
+}
+
+/** What a request of the store answers from what the attempt's row records. */
+function answerRecorded(
+  recorded: NonNullable<Awaited<ReturnType<typeof recordedAfterLoss>>>,
+  attempt: Attempt,
+): DepositHoldResult {
+  switch (recorded.outcome) {
     case "authorized":
       return {
         ok: true,
@@ -654,6 +719,17 @@ async function answerAfterLoss(database: Database, attempt: Attempt): Promise<De
   }
 }
 
+/** The facts of a refused PaymentIntent that are not the attempt's, for a `facts_mismatch`. */
+const unmatchedFactsOf = (
+  reason: IntentRefusal,
+  attempt: {
+    readonly amountMinor: number;
+    readonly currency: string;
+    readonly paymentMethodId: string;
+  },
+  intent: DepositIntent,
+): AttemptFact[] => (reason === "facts_mismatch" ? unmatchedAttemptFacts(attempt, intent) : []);
+
 async function runAttempt(
   input: DepositHoldInput,
   deps: DepositHoldDeps,
@@ -666,9 +742,12 @@ async function runAttempt(
   const stripe = underClaim(deps.stripe, database, claim);
 
   const unconfirmed = async () => {
-    // The attempt stays, and its key with it.
-    await releaseClaim(database, claim);
-    return refusal("errors.stripe.authorizationUnconfirmed");
+    // The attempt stays, and its key with it, unless the webhook recorded it while
+    // this request was asking: then its row says what Stripe holds.
+    const recorded = await giveBackAndRead(database, claim);
+    return recorded
+      ? answerRecorded(recorded, attempt)
+      : refusal("errors.stripe.authorizationUnconfirmed");
   };
   const lost = () => answerAfterLoss(database, attempt);
 
@@ -717,7 +796,21 @@ async function runAttempt(
         "deposit-hold",
         `${intent.paymentIntentId} is not written on attempt ${attempt.id} of reservation ${input.reservationId}: ${settled.reason}`,
       );
-      return await unconfirmed();
+      // Found, so not absent: the attempt is never closed or replaced here. While
+      // Stripe may hold funds on it, the store settles it at Stripe first.
+      if (intentHoldsNothing(intent)) return await unconfirmed();
+      const traced = await recordUnmatchedIntent(database, {
+        reservationId: input.reservationId,
+        storeId: input.storeId,
+        claim,
+        intent,
+        reason: settled.reason,
+        unmatchedFacts: unmatchedFactsOf(settled.reason, attempt, intent),
+        actorUserId: input.actorUserId,
+      });
+      if (traced === "claim_lost") return await lost();
+      await releaseClaim(database, claim);
+      return refusal("errors.depositAttempt.needsStripe");
     }
     deps.dispatchEffects(settled.effectIds);
 
@@ -773,7 +866,10 @@ export async function authorizeDepositHold(
 }
 
 export type AttemptResolutionResult =
-  /** Nothing was found at Stripe: the attempt is closed, and a new hold may be asked for. */
+  /**
+   * Louez found nothing at Stripe for the attempt, or a PaymentIntent that holds
+   * nothing: the attempt is closed, and a new hold may be asked for.
+   */
   | { readonly ok: true; readonly outcome: "closed"; readonly paymentIntentId: null }
   /** Louez's own lookup found the attempt's PaymentIntent: it was recorded as Stripe has it. */
   | {
@@ -789,6 +885,22 @@ export type AttemptResolutionResult =
         | "no_unconfirmed_attempt"
         /** A request is asking Stripe about the attempt right now. */
         | "attempt_in_progress";
+    }
+  /**
+   * Louez found the attempt's PaymentIntent, which is not the attempt's to record (its
+   * facts or its reservation are not the attempt's), and Stripe may hold funds on it:
+   * the attempt is not closed, and no other hold is asked for, until the store
+   * releases or captures it from Stripe.
+   */
+  | {
+      readonly ok: false;
+      readonly error: "attempt_needs_stripe";
+      readonly paymentIntentId: string;
+      /** Its status at Stripe. */
+      readonly status: string;
+      readonly reason: IntentRefusal;
+      /** For a `facts_mismatch`, the facts that differ. */
+      readonly unmatchedFacts: readonly AttemptFact[];
     };
 
 type ClaimedForResolution = {
@@ -797,6 +909,7 @@ type ClaimedForResolution = {
   readonly accountId: string;
   readonly paymentIntentId: string | null;
   readonly amount: string;
+  readonly amountMinor: number;
   readonly currency: string;
   readonly paymentMethodId: string;
   readonly customerId: string | null;
@@ -857,6 +970,7 @@ async function claimForResolution(
       accountId,
       paymentIntentId: pending.paymentIntentId,
       amount: pending.amount,
+      amountMinor,
       currency,
       paymentMethodId,
       customerId: pending.customerId,
@@ -872,12 +986,18 @@ async function claimForResolution(
  * Louez looks the attempt up first, when it can: by the PaymentIntent it knows, or
  * among the PaymentIntents of the customer the attempt was sent with, by the attempt's
  * id in their metadata. A PaymentIntent found is recorded as Stripe has it, and the
- * answer says what it was recorded as. A lookup that finds nothing, cannot conclude or
- * cannot be made leaves the store's word: the attempt is closed, its row kept `failed`
- * with who closed it, and a new hold may be asked for. Nothing is cancelled at
- * Stripe. Were Stripe to hold it after all, its PaymentIntent is recorded on that row
- * when Stripe's event about it arrives: as the reservation's deposit when it has none,
- * with its release owed when another hold secures it.
+ * answer says what it was recorded as. One found that the writer refuses (its amount,
+ * currency, card, capture method or reservation are not the attempt's: altered at
+ * Stripe) is never taken for absent: while Stripe may hold funds on it, the attempt
+ * stays pending, an activity line records it, and the answer is `attempt_needs_stripe`,
+ * for the store to release or capture it from Stripe and close the request again; once
+ * it provably holds nothing (`intentHoldsNothing`), the attempt is closed. A lookup that
+ * finds nothing, cannot conclude or cannot be made leaves the store's word: the attempt
+ * is closed, its row kept `failed` with who closed it, and a new hold may be asked for.
+ * Nothing is cancelled at Stripe. Were Stripe to hold it after all, its PaymentIntent
+ * is recorded on that row when Stripe's event about it arrives, if it matches the
+ * attempt: as the reservation's deposit when it has none, with its release owed when
+ * another hold secures it.
  *
  * The resolution holds the attempt's claim as a request does: it renews it before each
  * Stripe call, and writes only while it holds it. One that lost it writes nothing, and
@@ -921,6 +1041,7 @@ export async function resolveUnconfirmedAttempt(
       );
     }
 
+    let closure: AttemptClosure = { kind: "declared_by_store" };
     if (found) {
       const symbol = getCurrencySymbol(attempt.currency);
       const settled = await settleClaimedIntent(database, {
@@ -946,19 +1067,48 @@ export async function resolveUnconfirmedAttempt(
           paymentIntentId: found.paymentIntentId,
         };
       }
-      // Not the attempt's to record: the store handles it from Stripe, and its word
-      // closes the attempt.
+      // Not the attempt's to record, and found all the same: never absent.
+      const { reason } = settled;
       log.error(
         "deposit-hold",
-        `${found.paymentIntentId} is not written on attempt ${attempt.id} of reservation ${input.reservationId}: ${settled.reason}`,
+        `${found.paymentIntentId} is not written on attempt ${attempt.id} of reservation ${input.reservationId}: ${reason}`,
       );
+      if (!intentHoldsNothing(found)) {
+        // Stripe may hold funds on it: the attempt stays until the store settles it there.
+        const unmatchedFacts = unmatchedFactsOf(reason, attempt, found);
+        const traced = await recordUnmatchedIntent(database, {
+          reservationId: input.reservationId,
+          storeId: input.storeId,
+          claim,
+          intent: found,
+          reason,
+          unmatchedFacts,
+          actorUserId: input.actorUserId,
+        });
+        if (traced === "claim_lost") return await lost();
+        return {
+          ok: false,
+          error: "attempt_needs_stripe",
+          paymentIntentId: found.paymentIntentId,
+          status: found.status,
+          reason,
+          unmatchedFacts,
+        };
+      }
+      // It holds nothing: what it differs in no longer matters.
+      closure = {
+        kind: "unmatched_empty",
+        paymentIntentId: found.paymentIntentId,
+        status: found.status,
+        reason,
+      };
     }
 
     const closed = await closeAbsentAttempt(database, {
       reservationId: input.reservationId,
       storeId: input.storeId,
       claim,
-      closure: { kind: "declared_by_store" },
+      closure,
       actorUserId: input.actorUserId,
     });
     if (closed === "claim_lost") return await lost();

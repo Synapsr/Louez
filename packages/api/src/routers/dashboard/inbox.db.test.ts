@@ -575,6 +575,32 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(item?.severity, "warning");
     assert.match(item?.summary ?? "", /300\.00 EUR/);
     assert.match(item?.summary ?? "", /never a second one/);
+    assert.equal(item?.details?.unmatchedPaymentIntentId, null);
+
+    // Louez found an authorization for it at Stripe that does not match the request
+    // (deposit-hold-writes.ts, `recordUnmatchedIntent`): the item stays, and says so.
+    const [{ reservationId: waitingReservation }] = await louezDb.db
+      .select({ reservationId: louezDb.payments.reservationId })
+      .from(louezDb.payments)
+      .where(orm.eq(louezDb.payments.id, waiting));
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("ib_act"),
+      reservationId: waitingReservation,
+      activityType: "payment_updated",
+      metadata: {
+        kind: "deposit_unmatched",
+        attemptId: waiting,
+        unmatchedPaymentIntentId: "pi_unmatched",
+        refusal: "facts_mismatch",
+      },
+      createdAt: new Date(),
+    });
+    const unmatched = ofType((await list()).items, "deposit_unconfirmed").find(
+      (entry) => entry.id === `deposit_unconfirmed:${waiting}`,
+    );
+    assert.equal(unmatched?.details?.unmatchedPaymentIntentId, "pi_unmatched");
+    assert.match(unmatched?.summary ?? "", /found an authorization at Stripe \(pi_unmatched\)/);
+    assert.match(unmatched?.summary ?? "", /does not match the request/);
 
     // Stripe confirms it: the attempt's row becomes the hold.
     await louezDb.db

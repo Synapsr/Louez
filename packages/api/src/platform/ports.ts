@@ -111,6 +111,21 @@ export type DepositAttemptResolution =
   | {
       ok: false;
       error: "reservation_not_found" | "no_unconfirmed_attempt" | "attempt_in_progress";
+    }
+  | {
+      ok: false;
+      /**
+       * Louez found the attempt's PaymentIntent, which does not match the attempt, and
+       * Stripe may hold funds on it: the attempt is not closed.
+       */
+      error: "attempt_needs_stripe";
+      paymentIntentId: string;
+      /** Its status at Stripe. */
+      status: string;
+      /** Why it is not the attempt's: `facts_mismatch`, `other_reservation`… */
+      reason: string;
+      /** For a `facts_mismatch`, what differs: `amount`, `currency`, `card`, `customer`. */
+      unmatchedFacts: readonly string[];
     };
 
 /** The store's deposit holds, lent by the app (apps/web lib/api/deposit-holds-port.ts). */
@@ -118,7 +133,8 @@ export interface DepositHoldsPort {
   /**
    * Closes the reservation's deposit hold attempt Stripe has not confirmed, on the
    * store's word, once Louez's own lookup, when it can make one, found nothing; what it
-   * finds is recorded instead.
+   * finds is recorded instead, and what it finds but cannot record keeps the attempt
+   * open while Stripe may hold funds on it.
    */
   resolveUnconfirmedAttempt: (input: {
     reservationId: string;
