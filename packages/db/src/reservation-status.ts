@@ -78,12 +78,15 @@ export interface ChangeReservationStatusInput {
   /**
    * Runs after the lock and the checks, before stock and the update. Errors
    * propagate. What it returns in `activityMetadata` is added to the
-   * activity row's metadata.
+   * activity row's metadata. `activityAt` dates that row, and that row only:
+   * a capacity verdict is dated after every earlier row of its reservation
+   * (`nextCapacityVerdictDate`, packages/api), while the status's own dates
+   * stay the change's.
    */
   beforeWrite?: (
     tx: Transaction,
     change: { from: ReservationStatus; to: ReservationStatus },
-  ) => Promise<void | { activityMetadata?: Record<string, unknown> }>;
+  ) => Promise<void | { activityMetadata?: Record<string, unknown>; activityAt?: Date }>;
   /** The activity row, written in the same transaction. */
   activity?: {
     type?: ReservationActivityType;
@@ -346,6 +349,7 @@ export async function changeReservationStatus(
     reservationId: input.reservationId,
     ...plan.activity,
     metadata: { ...plan.activity.metadata, ...checked?.activityMetadata },
+    ...(checked?.activityAt ? { createdAt: toWholeSeconds(checked.activityAt) } : {}),
   });
   await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
 

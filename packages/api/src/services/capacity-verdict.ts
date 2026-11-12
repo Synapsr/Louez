@@ -6,12 +6,19 @@ import type { CapacityShortfall } from "./reservation-inventory";
 
 /**
  * A capacity verdict: what a stock check said of a reservation when it was
- * created or edited, kept on that activity row. `overbooked: true` with its
- * shortfalls when the team booked over the stock, `overbooked: false` when an
- * edit was checked and fits. A reservation's latest verdict is the one that
- * counts: the inbox shows an overbooking until a later edit fits.
+ * created, edited or confirmed, kept on that activity row. `overbooked: true`
+ * with its shortfalls when the team booked over the stock, `overbooked: false`
+ * when the check found that it fits. A reservation's latest verdict is the one
+ * that counts: the inbox shows an overbooking until a later edit or
+ * confirmation fits. A confirmation's row is `confirmed`, or `quote_accepted`
+ * for the customer's.
  */
-export const CAPACITY_VERDICT_ACTIVITY_TYPES = ["created", "modified"] as const;
+export const CAPACITY_VERDICT_ACTIVITY_TYPES = [
+  "created",
+  "modified",
+  "confirmed",
+  "quote_accepted",
+] as const;
 
 export const capacityVerdictMetadata = (
   shortfalls: readonly CapacityShortfall[],

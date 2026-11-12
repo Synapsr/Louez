@@ -26,6 +26,7 @@ import {
 import type { ReservationUnitConflict } from "../contracts/reservations";
 
 import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
+import { capacityVerdictMetadata, nextCapacityVerdictDate } from "./capacity-verdict";
 import {
   allocateStock,
   combinationsServing,
@@ -662,16 +663,26 @@ const findReservationUnitConflicts = async (
  * reaches does not refuse: the store may have assigned it on purpose, with
  * `overrideTurnoverBuffer`, and none of the status changes can carry that
  * flag. It is named in `activityMetadata`, for the status change's row.
+ *
+ * What it returns is for the status change's activity row, through
+ * `beforeWrite`: the capacity verdict of the demand it checked, and the
+ * row's date (`nextCapacityVerdictDate`), so that verdict is the
+ * reservation's latest (services/capacity-verdict.ts).
  */
 export const checkExistingReservationInventory = async (
   tx: Transaction,
   reservationId: string,
   storeId: string,
-): Promise<{ activityMetadata: Record<string, unknown> }> => {
+): Promise<{ activityMetadata: Record<string, unknown>; activityAt: Date }> => {
   const reservation = await tx.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
     with: {
-      items: { with: { assignedUnits: true } },
+      // The lines in a fixed order: the allocation places them in turn, so
+      // the verdict is the same whichever order the rows are read in.
+      items: {
+        with: { assignedUnits: true },
+        orderBy: (item, { asc }) => [asc(item.createdAt), asc(item.id)],
+      },
       store: { columns: { settings: true } },
     },
   });
@@ -714,6 +725,8 @@ export const checkExistingReservationInventory = async (
     blockingStatuses,
     excludeReservationId: reservationId,
     skipConsumableCheck: true,
+    // Every shortfall of the demand, for the verdict; any one refuses below.
+    onShortfall: "collect",
   });
   const unitConflicts = await findReservationUnitConflicts(tx, {
     items: reservation.items,
@@ -724,16 +737,26 @@ export const checkExistingReservationInventory = async (
   if (unitConflicts.hard.length > 0) {
     throw new ReservationUnitConflictError(unitConflicts.hard);
   }
-  if (!result.ok) throw new ReservationInventoryError("errors.productNoLongerAvailable");
+  // No status change may book over the stock: a shortfall refuses as before.
+  if (!result.ok || result.shortfalls.length > 0) {
+    throw new ReservationInventoryError("errors.productNoLongerAvailable");
+  }
   return {
-    activityMetadata:
-      unitConflicts.buffer.length > 0
+    activityMetadata: {
+      // What this check observed of the stock, and nothing more: `overbooked:
+      // false` says the demand fits now, not that the store approved anything.
+      // The latest verdict counts, so an overbooking flagged earlier leaves
+      // the inbox once a confirmation finds that the stock fits.
+      ...capacityVerdictMetadata(result.shortfalls),
+      ...(unitConflicts.buffer.length > 0
         ? {
             // Confirmed with units the turnover buffer alone reaches: traceable.
             turnoverBufferOnlyUnitIds: [
               ...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId)),
             ],
           }
-        : {},
+        : {}),
+    },
+    activityAt: await nextCapacityVerdictDate(tx, reservationId),
   };
 };

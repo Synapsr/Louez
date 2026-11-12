@@ -453,6 +453,8 @@ export async function changeStoreReservationStatus(
         if (requiresReservationGate(from, to, actor)) {
           await assertStoreCanTakeReservations(tx, storeId);
         }
+        // A change that takes stock is checked here, before the preview; its
+        // verdict goes on the change's activity row, through `beforeWrite`.
         const inventory = takesStock(from, to)
           ? await checkExistingReservationInventory(tx, id, storeId)
           : null;
@@ -481,6 +483,7 @@ export async function changeStoreReservationStatus(
           actor,
           actorUserId: caller.userId,
           expectedFrom: from,
+          beforeWrite: inventory ? async () => inventory : undefined,
           activity: {
             metadata: {
               ...(to === "rejected" && request.rejectionReason
@@ -491,7 +494,6 @@ export async function changeStoreReservationStatus(
               ...(warnings.length > 0
                 ? { validationWarnings: warnings, validationWarningsCount: warnings.length }
                 : {}),
-              ...inventory?.activityMetadata,
             },
           },
         });

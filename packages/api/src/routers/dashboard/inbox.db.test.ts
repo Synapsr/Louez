@@ -84,6 +84,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   let apiKeys: typeof import("../../services/api-keys");
   let inbox: typeof import("../../services/inbox");
   let router: typeof import("./inbox").dashboardInboxRouter;
+  let reservationsRouter: typeof import("./reservations").dashboardReservationsRouter;
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -111,6 +112,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     apiKeys = await import("../../services/api-keys");
     inbox = await import("../../services/inbox");
     ({ dashboardInboxRouter: router } = await import("./inbox"));
+    ({ dashboardReservationsRouter: reservationsRouter } = await import("./reservations"));
 
     await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@ib.test" });
     await louezDb.db.insert(louezDb.storeMembers).values([
@@ -253,6 +255,15 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     const call = client[name] as (input: Parameters<Client[K]>[0]) => ReturnType<Client[K]>;
     return call(input);
   }
+
+  /** The store's confirmation, from the dashboard (`reservations.updateStatus`). */
+  const confirmFromDashboard = (id: string) =>
+    (
+      orpc.createRouterClient(reservationsRouter, {
+        context: session(),
+        path: ["dashboard", "reservations"],
+      }) as RouterClient<typeof reservationsRouter>
+    ).updateStatus({ id, status: "confirmed" });
 
   const list = (
     context: BaseContext = session(),
@@ -1140,6 +1151,125 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       [[`overbooking:${id}`, 2]],
     );
     assert.ok(Math.abs((items[0]?.occurredAt.getTime() ?? 0) - ago(HOUR).getTime()) < 5_000);
+  });
+
+  // --- A confirmation's capacity verdict --------------------------------------
+
+  /** A kayak of one, and a reservation of `status` asking for it. */
+  async function kayakBooking(
+    status: "pending" | "quote" | "confirmed",
+    productId?: string,
+  ): Promise<{ productId: string; reservationId: string }> {
+    const id = productId ?? nextId("ib_prd");
+    if (!productId) {
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Kayak",
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 1,
+      });
+    }
+    const reservationId = await reservation(status);
+    await louezDb.db.insert(louezDb.reservationItems).values({
+      id: nextId("ib_itm"),
+      reservationId,
+      productId: id,
+      quantity: 1,
+      unitPrice: "10.00",
+      depositPerUnit: "0.00",
+      totalPrice: "20.00",
+      productSnapshot: { name: "Kayak", description: null, images: [] },
+    });
+    return { productId: id, reservationId };
+  }
+
+  async function activityOf(reservationId: string) {
+    return louezDb.db
+      .select({
+        type: louezDb.reservationActivity.activityType,
+        metadata: louezDb.reservationActivity.metadata,
+        createdAt: louezDb.reservationActivity.createdAt,
+      })
+      .from(louezDb.reservationActivity)
+      .where(orm.eq(louezDb.reservationActivity.reservationId, reservationId))
+      .orderBy(louezDb.reservationActivity.createdAt, louezDb.reservationActivity.activityType);
+  }
+
+  const overbookingIds = async () =>
+    ofType((await list()).items, "overbooking").map((item) => item.reservation?.id);
+
+  test("a quote created over the stock leaves the inbox once the store confirms it, the stock freed", async () => {
+    const other = await kayakBooking("confirmed");
+    const { reservationId: quote } = await kayakBooking("quote", other.productId);
+    await activity(
+      quote,
+      "created",
+      {
+        source: "manual",
+        overbooked: true,
+        overbookingShortfalls: [{ productId: other.productId, requested: 1, available: 0 }],
+      },
+      ago(HOUR),
+    );
+    assert.deepEqual(await overbookingIds(), [quote]);
+
+    // Still short: refused, and nothing is recorded.
+    await rejects(confirmFromDashboard(quote), "RESERVATION_ITEMS_UNAVAILABLE");
+    assert.deepEqual(await overbookingIds(), [quote]);
+
+    await setStatus(other.reservationId, "cancelled");
+    assert.equal((await confirmFromDashboard(quote)).to, "confirmed");
+
+    const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
+    assert.equal(confirmed?.metadata?.overbooked, false);
+    assert.equal(confirmed?.metadata?.overbookingShortfalls, undefined);
+    assert.deepEqual(await overbookingIds(), []);
+  });
+
+  test("a confirmation of a booking never overbooked records that it fits, and shows nothing", async () => {
+    const { reservationId } = await kayakBooking("pending");
+    await activity(reservationId, "created", { source: "online" }, ago(HOUR));
+
+    await confirmFromDashboard(reservationId);
+
+    const confirmed = (await activityOf(reservationId)).find((row) => row.type === "confirmed");
+    assert.deepEqual(
+      { overbooked: confirmed?.metadata?.overbooked, actor: confirmed?.metadata?.actor },
+      { overbooked: false, actor: "store_user" },
+    );
+    assert.deepEqual(await overbookingIds(), []);
+  });
+
+  test("a confirmation's verdict comes after a creation and an edit of the same second", async () => {
+    const { reservationId: quote } = await kayakBooking("quote");
+    // The creation and an edit fall in one second that the confirmation's
+    // clock has not reached: its row must still come after them, or the
+    // inbox, which takes the strictly latest verdict, would keep the edit's.
+    const second = new Date(Math.floor(ahead(60_000).getTime() / 1000) * 1000);
+    await activity(quote, "created", { source: "manual", overbooked: true }, second);
+    await activity(quote, "modified", { overbooked: true }, second);
+
+    await confirmFromDashboard(quote);
+
+    const rows = await activityOf(quote);
+    const verdicts = rows.filter((row) => row.metadata && "overbooked" in row.metadata);
+    assert.deepEqual(
+      verdicts.map((row) => [row.type, row.createdAt.getTime() - second.getTime()]),
+      [
+        ["created", 0],
+        ["modified", 0],
+        ["confirmed", 1000],
+      ],
+    );
+    assert.equal(verdicts.at(-1)?.metadata?.overbooked, false);
+    // Only the row is dated so: the status's own dates are the change's.
+    const [locked] = await louezDb.db
+      .select({ billableAt: louezDb.reservations.billableAt })
+      .from(louezDb.reservations)
+      .where(orm.eq(louezDb.reservations.id, quote));
+    assert.ok(locked?.billableAt && locked.billableAt < second);
   });
 
   test("a supplier invoice shows until it is handled, to who may read integrations", async () => {

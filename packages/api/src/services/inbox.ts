@@ -1152,7 +1152,8 @@ const unitConflicts: Source = async (window, shaper) => {
 /**
  * A booking the team created or edited over the available stock, not over
  * yet. A reservation's latest capacity verdict decides (services/
- * capacity-verdict.ts): the item leaves once a later edit fits the stock.
+ * capacity-verdict.ts): the item leaves once a later edit or confirmation
+ * fits the stock.
  */
 const overbookings: Source = async (window, shaper) => {
   const later = alias(reservationActivity, "inbox_later_verdict");
