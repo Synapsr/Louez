@@ -40,6 +40,10 @@ import {
 // And each confirmation records the capacity verdict it checked: a booking
 // flagged over the stock leaves the inbox once a confirmation finds that the
 // stock fits.
+//
+// And a reservation whose lines lack a required accessory: each confirmation
+// confirms the lines as they are, since accessories are checked where a cart
+// is composed.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-status-races-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -770,6 +774,100 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         assert.deepEqual(await overbookings(), []);
       });
     }
+  });
+
+  describe("a reservation without its product's required accessory", () => {
+    /**
+     * A bike that requires a helmet, both in stock, and a reservation of the
+     * bike alone: a quote the store typed, or a request booked before the
+     * bike required its helmet. The link is written after the booking.
+     */
+    async function withoutAccessory(status: "pending" | "quote") {
+      const product = async (name: string) => {
+        const id = nextId("prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id,
+          storeId: STORE,
+          name,
+          price: "1.00",
+          pricingMode: "day",
+          quantity: 5,
+        });
+        return id;
+      };
+      const bike = await product("Bike");
+      const helmet = await product("Helmet");
+      const id = nextId("res");
+      // A fixture, so it may start in any status.
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId: CUSTOMER,
+        number: id,
+        status,
+        startDate: new Date("2030-06-01T09:00:00Z"),
+        endDate: new Date("2030-06-03T09:00:00Z"),
+        subtotalAmount: "1.00",
+        depositAmount: "0.00",
+        totalAmount: "1.00",
+        source: status === "quote" ? "manual" : "online",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: nextId("itm"),
+        reservationId: id,
+        productId: bike,
+        quantity: 1,
+        unitPrice: "1.00",
+        depositPerUnit: "0.00",
+        totalPrice: "1.00",
+        productSnapshot: { name: "Bike", description: null, images: [] },
+      });
+      await louezDb.db.insert(louezDb.productAccessories).values({
+        id: nextId("acc"),
+        productId: bike,
+        accessoryId: helmet,
+        required: true,
+        quantity: 1,
+      });
+      return id;
+    }
+
+    async function statusOf(id: string) {
+      const [row] = await louezDb.db
+        .select({ status: louezDb.reservations.status })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, id));
+      return row?.status;
+    }
+
+    test("is confirmed by the store's change", async () => {
+      const id = await withoutAccessory("quote");
+
+      const change = await statusChange.changeStoreReservationStatus(caller(), {
+        id,
+        to: "confirmed",
+      });
+
+      assert.equal(change.to, "confirmed");
+      assert.equal(await statusOf(id), "confirmed");
+    });
+
+    test("is accepted by the customer", async () => {
+      const id = await withoutAccessory("quote");
+
+      assert.deepEqual(await quotes.acceptQuote(STORE_SLUG, id), {
+        success: true,
+        paymentUrl: null,
+      });
+      assert.equal(await statusOf(id), "confirmed");
+    });
+
+    test("is confirmed by its payment, the accessory required since the booking", async () => {
+      const id = await withoutAccessory("pending");
+
+      assert.equal(await paidConfirmation(id), true);
+      assert.equal(await statusOf(id), "confirmed");
+    });
   });
 
   test("a store cancellation racing a paid checkout's confirmation", async () => {
