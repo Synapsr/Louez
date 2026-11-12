@@ -5,6 +5,7 @@ import {
   db,
   payments,
   reservations,
+  runReservationOnlyChange,
   type ChangeReservationStatusResult,
   type ReservationEffectRunner,
 } from "@louez/db";
@@ -18,6 +19,13 @@ class CheckoutStillPayableError extends Error {}
  * stock and the owner does not keep a "payment in progress" that never ends.
  * Anything already confirmed, paid, or paid through another open session is
  * left alone. The fee effects run through `runReservationEffects` after commit.
+ * It locks the reservation alone: a pending checkout gives back no stock. Still
+ * busy after the owner entry's runs, it throws and the webhook answers non-2xx,
+ * as a lost deadlock did before. Stripe sends the event again, but nothing runs
+ * this cancellation again: the first delivery committed the session's payment
+ * as cancelled, so the redelivery reads the checkout as not abandoned and skips
+ * it, and the reservation stays pending (docs/domain/reservation-changes.md,
+ * "Open, not in this lot").
  */
 export const cancelAbandonedCheckout = async (
   { reservationId, checkoutSessionId }: { reservationId: string; checkoutSessionId: string },
@@ -33,33 +41,35 @@ export const cancelAbandonedCheckout = async (
 
   let change: ChangeReservationStatusResult;
   try {
-    change = await db.transaction((tx) =>
-      changeReservationStatus(tx, {
-        reservationId,
-        storeId: reservation.storeId,
-        to: "cancelled",
-        actor: "system",
-        actorUserId: null,
-        expectedFrom: "pending",
+    change = await runReservationOnlyChange(
+      { reservationId, storeId: reservation.storeId },
+      async (tx, lock) => {
         // Under the lock, with a locking read: a payment claimed or a session
         // opened since the read above is seen.
-        beforeWrite: async (lockedTx) => {
-          const [payment] = await lockedTx
-            .select({ id: payments.id })
-            .from(payments)
-            .where(
-              and(
-                eq(payments.reservationId, reservationId),
-                eq(payments.type, "rental"),
-                inArray(payments.status, ["pending", "completed"]),
-              ),
-            )
-            .limit(1)
-            .for("share");
-          if (payment) throw new CheckoutStillPayableError();
-        },
-        activity: { metadata: { reason: "payment_expired", checkoutSessionId } },
-      }),
+        const [payment] = await tx
+          .select({ id: payments.id })
+          .from(payments)
+          .where(
+            and(
+              eq(payments.reservationId, reservationId),
+              eq(payments.type, "rental"),
+              inArray(payments.status, ["pending", "completed"]),
+            ),
+          )
+          .limit(1)
+          .for("share");
+        if (payment) throw new CheckoutStillPayableError();
+        return changeReservationStatus(tx, {
+          lock,
+          reservationId,
+          storeId: reservation.storeId,
+          to: "cancelled",
+          actor: "system",
+          actorUserId: null,
+          expectedFrom: "pending",
+          activity: { metadata: { reason: "payment_expired", checkoutSessionId } },
+        });
+      },
     );
   } catch (error) {
     if (error instanceof CheckoutStillPayableError) return false;

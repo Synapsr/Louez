@@ -27,6 +27,10 @@ import mysql from "mysql2/promise";
 
 import type { RunMigrationsOptions } from "../migrate";
 
+// The owner entry's restart count and lock hook (packages/db reservation-change.ts):
+// the races assert no run started over, the exhaustion tests force restarts.
+export { reservationChangeTestHooks, type ReservationChangeTestHooks } from "../reservation-lock";
+
 export interface TestDatabase {
   /** The database name, `louez_<suite>_<random>`. */
   name: string;

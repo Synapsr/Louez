@@ -258,16 +258,15 @@ const writeFixture = ({ supersede }) => {
   const events = [];
   const tx = { insert: () => ({ values: async () => {} }) };
   const write = runInNewContext(`${writeSource}; writeReservation`, {
-    db: {
-      transaction: async (work) => {
-        const result = await work(tx);
-        events.push("commit");
-        return result;
-      },
+    // The owner entry: one run, then its commit.
+    runReservationTransaction: async (work) => {
+      const result = await work(tx, {});
+      events.push("commit");
+      return result;
     },
     getBlockingReservationStatuses: () => [],
     lockReservationProducts: async () => new Map(),
-    lockResumableCheckout: async (_tx, _storeId, resumable) => resumable,
+    lockResumableCheckout: async (_tx, _owner, _storeId, resumable) => resumable,
     reserveInventory: async () => ({
       ok: true,
       inventory: { resolvedCombinationByLineKey: new Map() },

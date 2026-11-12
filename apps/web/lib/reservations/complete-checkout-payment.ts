@@ -11,7 +11,7 @@ import {
   changeReservationStatus,
   consumeReservationStock,
   db,
-  retryTransactionOnDeadlock,
+  runReservationChangeByStatus,
   toWholeSeconds,
   type ReservationBillingEffect,
 } from "@louez/db";
@@ -136,7 +136,9 @@ const insuranceShareAtClaim = async (
 /**
  * Confirms a paid pending reservation as the `payment` actor, with its
  * `confirmed` activity row. Returns false when it was not pending. Exported for
- * its database test.
+ * its database test. A reservation still busy after the owner entry's runs
+ * throws `ReservationChangeBusyError`: the webhook answers non-2xx and Stripe
+ * sends the event again; the payment's claim, committed before, stays.
  */
 export const confirmPaidReservationOrThrow = async (params: {
   reservationId: string;
@@ -165,51 +167,53 @@ export const confirmPaidReservationOrThrow = async (params: {
       ),
     );
 
-  // The confirmation locks the reservation, then its products: a lost
-  // deadlock runs the whole transaction again (DL-12). It records no payment,
-  // so a new run cannot record one twice; the effects run once, after it.
-  const result = await retryTransactionOnDeadlock(() =>
-    db.transaction(
-      async (tx): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
-        const change = await changeReservationStatus(tx, {
-          reservationId: params.reservationId,
-          storeId: params.storeId,
-          to: "confirmed",
-          actor: "payment",
-          actorUserId: null,
-          expectedFrom: "pending",
-          beforeWrite: (lockedTx) =>
-            checkExistingReservationInventory(lockedTx, params.reservationId, params.storeId),
-          activity: { metadata: params.activityMetadata },
-        });
+  // A pending reservation is checked and takes its stock, a confirmed one is
+  // repaired below: the owner entry locks their products, then the
+  // reservation (DL-12). Any other status is left as it is, under the
+  // reservation's lock alone. A lost deadlock, a product added or the status
+  // changed meanwhile runs the whole transaction again. It records no
+  // payment, so a new run cannot record one twice; the effects run once,
+  // after it.
+  const result = await runReservationChangeByStatus(
+    { reservationId: params.reservationId, storeId: params.storeId },
+    (status) => status === "pending" || status === "confirmed",
+    async (tx, lock): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
+      const change = await changeReservationStatus(tx, {
+        lock,
+        reservationId: params.reservationId,
+        storeId: params.storeId,
+        to: "confirmed",
+        actor: "payment",
+        actorUserId: null,
+        expectedFrom: "pending",
+        beforeWrite: (lockedTx) =>
+          checkExistingReservationInventory(lockedTx, params.reservationId, params.storeId),
+        activity: { metadata: params.activityMetadata },
+      });
 
-        if (!change.changed) {
-          // Already confirmed, by the other completion path or the merchant: make
-          // sure its consumables were taken. Consuming twice changes nothing.
-          if (change.from === "confirmed") {
-            await consumeReservationStock(tx, params.reservationId, params.storeId);
-          }
-          return { confirmed: false, effects: [] };
+      if (!change.changed) {
+        // Already confirmed, by the other completion path or the merchant: make
+        // sure its consumables were taken. Consuming twice changes nothing. Read
+        // as confirmed under its lock, so the lock is the products'.
+        if (change.from === "confirmed" && lock.kind === "products") {
+          await consumeReservationStock(tx, lock);
         }
+        return { confirmed: false, effects: [] };
+      }
 
-        await tx
-          .update(reservations)
-          .set({
-            stripeCustomerId: params.stripeCustomerId,
-            stripePaymentMethodId: params.stripePaymentMethodId,
-            depositStatus: params.depositStatus,
-          })
-          .where(
-            and(
-              eq(reservations.id, params.reservationId),
-              eq(reservations.storeId, params.storeId),
-            ),
-          );
+      await tx
+        .update(reservations)
+        .set({
+          stripeCustomerId: params.stripeCustomerId,
+          stripePaymentMethodId: params.stripePaymentMethodId,
+          depositStatus: params.depositStatus,
+        })
+        .where(
+          and(eq(reservations.id, params.reservationId), eq(reservations.storeId, params.storeId)),
+        );
 
-        return { confirmed: true, effects: change.effects };
-      },
-      { isolationLevel: "read committed" },
-    ),
+      return { confirmed: true, effects: change.effects };
+    },
   );
 
   // The webhook records a paid checkout's fee itself, so this is empty today.

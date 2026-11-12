@@ -12,6 +12,7 @@ const compiled = stripTypeScriptTypes(
 );
 
 const VOID_EFFECT = { type: "legacy_fee.void", storeId: "store", reservationId: "booking" };
+const LOCK = { kind: "reservation", reservationId: "booking", storeId: "store" };
 
 const fixture = ({ status = "pending", source = "online", paid = false, amount = "0.10" } = {}) => {
   const changes = [];
@@ -35,12 +36,12 @@ const fixture = ({ status = "pending", source = "online", paid = false, amount =
     insert: () => ({ values: async (value) => changes.push(value) }),
   };
   const cancel = runInNewContext(`${compiled}; cancelFailedCheckoutReservation`, {
-    db: {
-      transaction: async (callback) => {
-        const result = await callback(tx);
-        events.push("commit");
-        return result;
-      },
+    // The owner entry: the reservation's lock, the transaction, its commit.
+    runReservationOnlyChange: async (scope, work) => {
+      assert.deepEqual({ ...scope }, { reservationId: "booking", storeId: "store" });
+      const result = await work(tx, LOCK);
+      events.push("commit");
+      return result;
     },
     reservations: { id: "reservation-id", storeId: "store-id" },
     payments: { reservationId: "payment-reservation-id" },
@@ -86,6 +87,7 @@ test("cleanup scopes by store and records the payment failure, then the cancella
   assert.equal(f.changes[0].metadata.minimumAmount, 0.5);
   assert.equal(f.statusChanges.length, 1);
   const [change] = f.statusChanges;
+  assert.equal(change.lock, LOCK);
   assert.equal(change.reservationId, "booking");
   assert.equal(change.storeId, "store");
   assert.equal(change.to, "cancelled");

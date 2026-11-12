@@ -1,6 +1,11 @@
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 
 import type { Database, Transaction } from './index'
+import {
+  assertReservationLock,
+  type ReservationProductsLock,
+  type ReservationStockLock,
+} from './reservation-lock'
 import { products, reservationItems, reservations } from './schema'
 import {
   buildReservationAvailabilityPredicate,
@@ -285,20 +290,27 @@ async function mutateReservationStock(
   }
 }
 
+/**
+ * Takes the reservation's consumables, under its products' lock: a lock from
+ * the owner entry (`runReservationChange`), or the one `insertReservation`
+ * gives for the row it inserted after locking its products, which this use
+ * spends. The reservation is the one the lock was issued for.
+ */
 export async function consumeReservationStock(
   tx: Transaction,
-  reservationId: string,
-  storeId: string,
+  lock: ReservationStockLock,
 ): Promise<void> {
-  await mutateReservationStock(tx, reservationId, storeId, 'consume')
+  const grant = assertReservationLock(tx, lock, ['products', 'inserted'])
+  await mutateReservationStock(tx, grant.reservationId, grant.storeId, 'consume')
 }
 
+/** Gives the reservation's consumables back, under its products' lock (`runReservationChange`). */
 export async function restoreReservationStock(
   tx: Transaction,
-  reservationId: string,
-  storeId: string,
+  lock: ReservationProductsLock,
 ): Promise<void> {
-  await mutateReservationStock(tx, reservationId, storeId, 'restore')
+  const grant = assertReservationLock(tx, lock, ['products'])
+  await mutateReservationStock(tx, grant.reservationId, grant.storeId, 'restore')
 }
 
 export async function reconcileReservationStock(
