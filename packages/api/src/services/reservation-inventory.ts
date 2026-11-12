@@ -134,7 +134,11 @@ interface ReserveInventoryInput {
   /** Booked lines being re-checked themselves, left out of the overlap. */
   excludeReservationItemIds?: string[];
   skipConsumableCheck?: boolean;
-  /** For a single booked line re-checked on its own, outside its reservation. */
+  /**
+   * For lines not composed by this write: a booking the store typed, a
+   * confirmation of the lines as they are, a single booked line re-checked on
+   * its own. A cart a customer composes always checks them.
+   */
   skipRequiredAccessoryCheck?: boolean;
   storeId: string;
   lockedProductsById: Map<string, LockedProduct>;
@@ -658,6 +662,11 @@ const findReservationUnitConflicts = async (
  * to another booking: the stock would still count enough units, so the units
  * are checked by id.
  *
+ * It confirms the lines as they are: required accessories are checked where
+ * a cart is composed (the checkout, the extension), never here, so a quote
+ * the store typed without one, or a request whose product gained one since,
+ * is not refused for it.
+ *
  * Throws `ReservationUnitConflictError` for a unit that cannot serve, before
  * the stock refusal. A unit only the turnover buffer around another booking
  * reaches does not refuse: the store may have assigned it on purpose, with
@@ -727,6 +736,7 @@ export const checkExistingReservationInventory = async (
     skipConsumableCheck: true,
     // Every shortfall of the demand, for the verdict; any one refuses below.
     onShortfall: "collect",
+    skipRequiredAccessoryCheck: true,
   });
   const unitConflicts = await findReservationUnitConflicts(tx, {
     items: reservation.items,
