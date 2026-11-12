@@ -78,7 +78,6 @@ import {
   billingFromCustomer,
   canonicalizeAttributes,
   getCurrencySymbol,
-  normalizeCurrency,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   hasCompleteAttributes,
@@ -3982,29 +3981,6 @@ export async function createDepositHold(reservationId: string) {
 }
 
 /**
- * The currency of a reservation's deposit hold, the PaymentIntent's own: its
- * payment row records it, else Stripe is asked.
- */
-async function depositHoldCurrency(
-  stripeAccountId: string,
-  reservationId: string,
-  paymentIntentId: string,
-): Promise<string> {
-  const hold = await db.query.payments.findFirst({
-    columns: { currency: true },
-    where: and(
-      eq(payments.reservationId, reservationId),
-      eq(payments.type, "deposit_hold"),
-      eq(payments.stripePaymentIntentId, paymentIntentId),
-    ),
-  });
-  const recorded = normalizeCurrency(hold?.currency, "");
-  if (recorded) return recorded;
-  const intent = await getDepositAuthorizationStatus(stripeAccountId, paymentIntentId);
-  return intent.currency;
-}
-
-/**
  * Capture deposit from authorization hold (for damage/loss)
  */
 export async function captureDepositHold(
@@ -4045,9 +4021,10 @@ export async function captureDepositHold(
     // An amount sent against the hold is counted in the hold's own currency. A hold
     // authorized in another one (before the store changed its own) cannot be read
     // in the reservation's: the store captures it from Stripe.
-    const holdCurrency = await depositHoldCurrency(
+    // Stripe says which: a payment row may hold the column's default, or two rows
+    // may disagree.
+    const { currency: holdCurrency } = await getDepositAuthorizationStatus(
       store.stripeAccountId,
-      reservationId,
       reservation.depositPaymentIntentId,
     );
     if (holdCurrency !== currency) {
@@ -4258,12 +4235,15 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
       amount: refundAmountCents,
     });
 
+    // What is recorded, credited and logged is what Stripe refunded: an amount
+    // typed with more decimals than the currency has was rounded on its way.
+    const refundedAmount = fromStripeCents(refund.amount, refund.currency);
     const refundPaidAt = new Date();
     const paymentId = await tryEnsureRefundPaymentRecord(
       {
         originalPaymentId: stripePayment.id,
         stripeRefundId: refund.refundId,
-        amount: data.amount,
+        amount: refundedAmount,
         grossMinor: refund.amount,
         type: data.type === "deposit_return" ? "deposit_return" : "rental",
         currency: refund.currency,
@@ -4276,7 +4256,7 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
     if (data.type === "rental_refund" && paymentId) {
       await tryGenerateCreditNoteForRefund(
         { originalPaymentId: stripePayment.id, refundPaymentId: paymentId },
-        data.amount,
+        refundedAmount,
         "dashboard_process_stripe_refund",
       );
     }
@@ -4285,7 +4265,7 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
     await logReservationActivity(reservationId, "payment_updated", {
       paymentId,
       refundId: refund.refundId,
-      amount: data.amount,
+      amount: refundedAmount,
       type: data.type,
     });
 

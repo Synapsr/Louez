@@ -251,10 +251,13 @@ describe(
       ]);
     });
 
-    /** A hold authorized on Stripe in `currency`, and its payment row unless `recorded` is false. */
+    /**
+     * A hold authorized on Stripe in `currency`, and its payment row unless
+     * `recorded` is false. `rowCurrency` is what the row says when it disagrees.
+     */
     async function holdDeposit(
       reservationId: string,
-      options: { currency: string; grossMinor: number; recorded?: boolean },
+      options: { currency: string; grossMinor: number; recorded?: boolean; rowCurrency?: string },
     ) {
       const intent = `pi_${reservationId}`;
       intentCurrencies.set(intent, options.currency.toLowerCase());
@@ -267,7 +270,7 @@ describe(
         method: "stripe",
         status: "authorized",
         stripePaymentIntentId: intent,
-        currency: options.currency,
+        currency: options.rowCurrency ?? options.currency,
         grossMinor: options.grossMinor,
         origin: "deposit",
       });
@@ -289,9 +292,12 @@ describe(
 
       const result = await capture(reservationId);
 
-      // 12 000 typed against a hold in euros would take 120 euros: refused.
+      // 12 000 typed against a hold in euros would take 120 euros: refused, once
+      // Stripe has said which currency it holds.
       assert.equal(result.error, "errors.stripe.captureFailed");
-      assert.deepEqual(calls, []);
+      assert.deepEqual(calls, [
+        { method: "paymentIntents.retrieve", intent: `pi_${reservationId}`, account: ACCOUNT },
+      ]);
       assert.deepEqual(await readPayments(reservationId), before);
       const [reservation] = await louezDb.db
         .select({ depositStatus: louezDb.reservations.depositStatus })
@@ -315,6 +321,7 @@ describe(
       assert.equal(result.error, undefined);
       // 12 000 yen, not the 1 200 000 a two-decimal currency would send.
       assert.deepEqual(calls, [
+        { method: "paymentIntents.retrieve", intent: `pi_${reservationId}`, account: ACCOUNT },
         {
           method: "paymentIntents.capture",
           intent: `pi_${reservationId}`,
@@ -341,6 +348,48 @@ describe(
           },
         ],
       );
+    });
+
+    test("Stripe says the hold's currency, not a payment row that kept the column's default", async () => {
+      const held = async (reservationCurrency: string) => {
+        const reservationId = await createReservation({
+          currency: reservationCurrency,
+          depositAmount: "30000.00",
+          depositStatus: "authorized",
+        });
+        // Held in yen at Stripe; the row says EUR.
+        await holdDeposit(reservationId, {
+          currency: "JPY",
+          rowCurrency: "EUR",
+          grossMinor: 30_000,
+        });
+        calls.length = 0;
+        return { reservationId, result: await capture(reservationId) };
+      };
+
+      // A store that always counted in yen: its hold is captured, in yen.
+      useStore("JPY");
+      const yen = await held("JPY");
+      assert.equal(yen.result.error, undefined);
+      assert.deepEqual(calls.at(-1), {
+        method: "paymentIntents.capture",
+        intent: `pi_${yen.reservationId}`,
+        amount: 12_000,
+        account: ACCOUNT,
+      });
+
+      // A reservation in euros whose hold is in yen: the row agreeing with the
+      // reservation does not make it capturable (12 000 would be sent as 1 200 000).
+      useStore("EUR");
+      const euros = await held("EUR");
+      assert.equal(euros.result.error, "errors.stripe.captureFailed");
+      assert.deepEqual(calls, [
+        {
+          method: "paymentIntents.retrieve",
+          intent: `pi_${euros.reservationId}`,
+          account: ACCOUNT,
+        },
+      ]);
     });
 
     test("a hold with no payment row is counted in the currency Stripe holds it in", async () => {
@@ -417,6 +466,36 @@ describe(
       assert.equal(await refund("EUR", "JPY"), 12_000);
       // A payment with no currency stored, on a reservation in euros: still the charge's.
       assert.equal(await refund(null, "EUR"), 12_000);
+    });
+
+    test("a refund is recorded as Stripe refunded it", async () => {
+      useStore("JPY");
+      const reservationId = await createReservation({ currency: "JPY", depositAmount: "0.00" });
+      await louezDb.db.insert(louezDb.payments).values({
+        id: `pay_${reservationId}`,
+        reservationId,
+        amount: "30000.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripeChargeId: `ch_${reservationId}`,
+        stripePaymentIntentId: `pi_charge_${reservationId}`,
+        currency: "JPY",
+      });
+      charge = { amount: 30_000, currency: "jpy" };
+
+      // Yen have no decimals: 100.5 goes out as 101.
+      const result = await actions.processStripeRefund(reservationId, {
+        type: "rental_refund",
+        amount: 100.5,
+      });
+
+      assert.equal(result.error, undefined);
+      const [call] = calls;
+      assert.equal(call?.method === "refunds.create" ? call.amount : null, 101);
+      const refundRow = (await readPayments(reservationId)).find((row) => row.grossMinor === 101);
+      assert.equal(refundRow?.amount, "101.00");
+      assert.equal(refundRow?.currency, "JPY");
     });
   },
 );
