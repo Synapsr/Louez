@@ -184,6 +184,18 @@ export function toWholeSeconds(date: Date): Date {
   return new Date(Math.floor(date.getTime() / 1000) * 1000);
 }
 
+/**
+ * Whether a change from `from` to `to` takes or gives back consumable stock:
+ * such a change needs the products' lock (`runReservationChange`), any other
+ * can take the reservation's alone.
+ */
+export function reservationStatusChangeMovesStock(
+  from: ReservationStatus,
+  to: ReservationStatus,
+): boolean {
+  return stockAction(from, to) !== null;
+}
+
 function stockAction(from: ReservationStatus, to: ReservationStatus): "consume" | "restore" | null {
   if (to === "confirmed" && (from === "pending" || from === "quote")) return "consume";
   if ((to === "cancelled" || to === "rejected") && (from === "confirmed" || from === "ongoing")) {
@@ -278,7 +290,7 @@ export async function changeReservationStatus(
   tx: Transaction,
   input: ChangeReservationStatusInput,
 ): Promise<ChangeReservationStatusResult> {
-  assertReservationLock(tx, input.lock, input, ["products", "reservation"]);
+  const grant = assertReservationLock(tx, input.lock, ["products", "reservation"], input);
   const scope = and(
     eq(reservations.id, input.reservationId),
     eq(reservations.storeId, input.storeId),
@@ -298,7 +310,7 @@ export async function changeReservationStatus(
   const plan = planReservationStatusChange(locked, { ...input, now });
   if (!plan.changed) return { changed: false, from: locked.status, reason: plan.reason };
   if (plan.stock !== null || input.beforeWrite) {
-    assertReservationLock(tx, input.lock, input, ["products"]);
+    assertReservationLock(tx, input.lock, ["products"], input);
   }
   if (requiresReservationGate(locked.status, input.to, input.actor)) {
     await assertStoreCanTakeReservations(tx, input.storeId, now);
@@ -307,8 +319,9 @@ export async function changeReservationStatus(
   const change = { from: locked.status, to: input.to };
   const checked = await input.beforeWrite?.(tx, change);
 
-  // A stock move with any other lock was refused above, before the gate.
-  if (input.lock.kind === "products") {
+  // A stock move with any other lock was refused above, before the gate. The
+  // grant is what was checked; the frozen token's kind only narrows its type.
+  if (grant.kind === "products" && input.lock.kind === "products") {
     if (plan.stock === "consume") await consumeReservationStock(tx, input.lock);
     else if (plan.stock === "restore") await restoreReservationStock(tx, input.lock);
   }

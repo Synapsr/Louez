@@ -293,14 +293,15 @@ async function mutateReservationStock(
 /**
  * Takes the reservation's consumables, under its products' lock: a lock from
  * the owner entry (`runReservationChange`), or the one `insertReservation`
- * gives for the row it inserted after locking its products.
+ * gives for the row it inserted after locking its products, which this use
+ * spends. The reservation is the one the lock was issued for.
  */
 export async function consumeReservationStock(
   tx: Transaction,
   lock: ReservationStockLock,
 ): Promise<void> {
-  assertReservationLock(tx, lock, lock, ['products', 'inserted'])
-  await mutateReservationStock(tx, lock.reservationId, lock.storeId, 'consume')
+  const grant = assertReservationLock(tx, lock, ['products', 'inserted'])
+  await mutateReservationStock(tx, grant.reservationId, grant.storeId, 'consume')
 }
 
 /** Gives the reservation's consumables back, under its products' lock (`runReservationChange`). */
@@ -308,8 +309,8 @@ export async function restoreReservationStock(
   tx: Transaction,
   lock: ReservationProductsLock,
 ): Promise<void> {
-  assertReservationLock(tx, lock, lock, ['products'])
-  await mutateReservationStock(tx, lock.reservationId, lock.storeId, 'restore')
+  const grant = assertReservationLock(tx, lock, ['products'])
+  await mutateReservationStock(tx, grant.reservationId, grant.storeId, 'restore')
 }
 
 export async function reconcileReservationStock(

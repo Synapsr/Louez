@@ -408,8 +408,8 @@ describe("reservation change owner entry (database)", { skip: skipWithoutTestDat
     assert.equal((await readState(other, productId)).status, "pending");
   });
 
-  test("the lock of an inserted reservation takes its stock, and allows no status change", async () => {
-    const id = nextId("res");
+  /** A consumable product with 5 in stock, on no reservation yet. */
+  async function createConsumable() {
     const productId = nextId("prd");
     await louezDb.db.insert(louezDb.products).values({
       id: productId,
@@ -420,62 +420,182 @@ describe("reservation change owner entry (database)", { skip: skipWithoutTestDat
       stockKind: "consumable",
       quantity: 5,
     });
+    return productId;
+  }
 
+  /** Inserts a quote and its line of 2 of `productId`, as a creation does after locking the product. */
+  async function insertWithLine(tx: import("./index").Transaction, id: string, productId: string) {
+    const { lock } = await louezDb.insertReservation(tx, {
+      id,
+      storeId: STORE,
+      customerId: "customer",
+      number: id,
+      status: "quote",
+      startDate: new Date("2026-02-01T09:00:00Z"),
+      endDate: new Date("2026-02-03T09:00:00Z"),
+      subtotalAmount: "10.00",
+      depositAmount: "0.00",
+      totalAmount: "10.00",
+      source: "manual",
+    });
+    await tx.insert(louezDb.reservationItems).values({
+      id: nextId("itm"),
+      reservationId: id,
+      productId,
+      quantity: 2,
+      unitPrice: "1.00",
+      depositPerUnit: "0.00",
+      totalPrice: "1.00",
+      productSnapshot: { name: productId, description: null, images: [] },
+    });
+    return lock;
+  }
+
+  test("an inserted reservation's lock takes its stock once, and allows nothing else", async () => {
+    const id = nextId("res");
+    const other = await createReservation("quote");
+    const productId = await createConsumable();
+
+    // A transaction the owner entry did not open, as the dashboard's creation's.
     await louezDb.db.transaction(async (tx) => {
       await tx.execute(sql`SELECT id FROM products WHERE id = ${productId} FOR UPDATE`);
-      const { lock } = await louezDb.insertReservation(tx, {
-        id,
-        storeId: STORE,
-        customerId: "customer",
-        number: id,
-        status: "quote",
-        startDate: new Date("2026-02-01T09:00:00Z"),
-        endDate: new Date("2026-02-03T09:00:00Z"),
-        subtotalAmount: "10.00",
-        depositAmount: "0.00",
-        totalAmount: "10.00",
-        source: "manual",
-      });
-      await tx.insert(louezDb.reservationItems).values({
-        id: nextId("itm"),
-        reservationId: id,
-        productId,
-        quantity: 2,
-        unitPrice: "1.00",
-        depositPerUnit: "0.00",
-        totalPrice: "1.00",
-        productSnapshot: { name: productId, description: null, images: [] },
-      });
+      const lock = await insertWithLine(tx, id, productId);
       await assert.rejects(
         louezDb.changeReservationStatus(tx, {
           ...input(id, "cancelled"),
           // @ts-expect-error An inserted reservation's lock is not a status change's.
           lock,
         }),
-        { name: "ReservationLockError" },
+        { name: "ReservationLockError", message: /does not allow/ },
+      );
+      await assert.rejects(
+        louezDb.changeReservationStatus(tx, {
+          ...input(other, "cancelled"),
+          // @ts-expect-error An inserted reservation's lock is not a status change's.
+          lock,
+        }),
+        { name: "ReservationLockError", message: /another reservation/ },
       );
       await louezDb.consumeReservationStock(tx, lock);
+      await assert.rejects(louezDb.consumeReservationStock(tx, lock), {
+        name: "ReservationLockError",
+        message: /already used/,
+      });
     });
 
-    assert.equal((await readState(id, productId)).stock, 3);
+    assert.equal((await readState(id, productId)).stock, 3, "taken once");
+    assert.equal((await readState(other, productId)).status, "quote");
   });
 
-  test("a failed checkout left busy is skipped, for the next cleanup", async () => {
-    const id = await createReservation("pending");
-    hooks.beforeReservationLock = async () => {
-      throw deadlock();
-    };
-    const runs: unknown[] = [];
+  test("an inserted reservation's lock dies with the owner entry's transaction, committed or rolled back", async () => {
+    for (const outcome of ["committed", "rolled back"] as const) {
+      const id = nextId("res");
+      const productId = await createConsumable();
+      let kept: import("./index").InsertedReservationLock | undefined;
+      let keptTx: import("./index").Transaction | undefined;
 
-    const cancelled = await louezDb.cancelFailedCheckoutReservation(
-      { storeId: STORE, reservationId: id, reason: "session_creation_failed" },
-      async (effects) => {
-        runs.push(effects);
+      const run = louezDb.runReservationTransaction(async (tx) => {
+        await tx.execute(sql`SELECT id FROM products WHERE id = ${productId} FOR UPDATE`);
+        kept = await insertWithLine(tx, id, productId);
+        keptTx = tx;
+        if (outcome === "rolled back") throw new Error("the checkout failed");
+      });
+      if (outcome === "committed") await run;
+      else await assert.rejects(run, { message: "the checkout failed" });
+
+      assert.ok(kept && keptTx);
+      await assert.rejects(louezDb.consumeReservationStock(keptTx, kept), {
+        name: "ReservationLockError",
+        message: /has ended/,
+      });
+      assert.equal((await readState(id, productId)).stock, 5, `${outcome}: nothing taken`);
+    }
+  });
+
+  test("a token cannot be retargeted or upgraded: it allows what it was issued for", async () => {
+    const id = await createReservation("confirmed");
+    const other = await createReservation("confirmed");
+    const productId = await addConsumable(id);
+    const otherProduct = await addConsumable(other);
+
+    await louezDb.runReservationOnlyChange(
+      { reservationId: id, storeId: STORE },
+      async (tx, lock) => {
+        // Strict mode: writing a frozen token's field, or defining one, throws.
+        assert.ok(Object.isFrozen(lock));
+        assert.throws(
+          () => Object.assign(lock, { kind: "products", reservationId: other }),
+          TypeError,
+        );
+        assert.throws(() => Object.defineProperty(lock, "kind", { value: "products" }), TypeError);
+        assert.equal(Reflect.set(lock, "reservationId", other), false);
+        assert.deepEqual(
+          { kind: lock.kind, reservationId: lock.reservationId },
+          { kind: "reservation", reservationId: id },
+        );
+
+        // A copy of the token, with its class and the fields wanted, is not one the module issued.
+        const lookalike: unknown = Object.assign(Object.create(Object.getPrototypeOf(lock)), {
+          kind: "products",
+          reservationId: other,
+          storeId: STORE,
+        });
+        for (const attempt of [lock, lookalike]) {
+          await assert.rejects(
+            louezDb.changeReservationStatus(tx, {
+              ...input(other, "cancelled"),
+              // @ts-expect-error The lookalike is no token, and the type says so too.
+              lock: attempt,
+            }),
+            { name: "ReservationLockError" },
+          );
+          await assert.rejects(
+            louezDb.restoreReservationStock(
+              tx,
+              // @ts-expect-error Neither is a stock lock, and the type says so too.
+              attempt,
+            ),
+            { name: "ReservationLockError" },
+          );
+        }
       },
     );
 
-    assert.equal(cancelled, false);
-    assert.deepEqual(runs, []);
+    assert.deepEqual(await readState(id, productId), {
+      status: "confirmed",
+      stock: 5,
+      activity: 0,
+    });
+    assert.deepEqual(await readState(other, otherProduct), {
+      status: "confirmed",
+      stock: 5,
+      activity: 0,
+    });
+  });
+
+  test("a failed checkout still busy after three runs throws, and writes nothing", async () => {
+    const id = await createReservation("pending");
+    let runs = 0;
+    hooks.beforeReservationLock = async () => {
+      runs += 1;
+      throw deadlock();
+    };
+    const effects: unknown[] = [];
+
+    // Nothing runs this cancellation again: its caller must see the failure.
+    await assert.rejects(
+      louezDb.cancelFailedCheckoutReservation(
+        { storeId: STORE, reservationId: id, reason: "session_creation_failed" },
+        async (ran) => {
+          effects.push(ran);
+        },
+      ),
+      (error: unknown) =>
+        louezDb.isReservationChangeBusyError(error) && louezDb.isDatabaseDeadlock(error.cause),
+    );
+
+    assert.equal(runs, 3);
+    assert.deepEqual(effects, []);
     const [row] = await louezDb.db
       .select({ status: louezDb.reservations.status })
       .from(louezDb.reservations)
@@ -486,15 +606,5 @@ describe("reservation change owner entry (database)", { skip: skipWithoutTestDat
       .from(louezDb.reservationActivity)
       .where(eq(louezDb.reservationActivity.reservationId, id));
     assert.equal(activity.length, 0, "not even its payment_failed row");
-
-    hooks.beforeReservationLock = null;
-    assert.equal(
-      await louezDb.cancelFailedCheckoutReservation(
-        { storeId: STORE, reservationId: id, reason: "session_creation_failed" },
-        async () => {},
-      ),
-      true,
-      "the next run takes it",
-    );
   });
 });

@@ -43,7 +43,6 @@ const fixture = ({ status = "pending", source = "online", paid = false, amount =
       events.push("commit");
       return result;
     },
-    isReservationChangeBusyError: () => false,
     reservations: { id: "reservation-id", storeId: "store-id" },
     payments: { reservationId: "payment-reservation-id" },
     reservationCalendarEvents: { reservationId: "calendar-reservation-id" },

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import * as nodeModule from "node:module";
 import { after, before, describe, test } from "node:test";
+import { runInNewContext } from "node:vm";
 
 import { eq } from "drizzle-orm";
 
@@ -553,6 +555,97 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
 
     assert.equal(cancelled, false);
     assert.equal(runs, 0);
+    assert.equal((await readReservation(id))?.status, "pending");
+    assert.deepEqual(await readActivity(id), []);
+  });
+  test("a failed payment session whose cancellation stays busy answers and logs as a lost deadlock did", async () => {
+    const id = await createReservation("pending");
+    const hooks = reservationChangeTestHooks();
+    let runs = 0;
+    hooks.beforeReservationLock = async () => {
+      runs += 1;
+      throw Object.assign(new Error("Deadlock found when trying to get lock"), {
+        code: "ER_LOCK_DEADLOCK",
+        errno: 1213,
+      });
+    };
+
+    // The checkout's interactive path, its session failed: the real cancellation,
+    // the rest replaced. Before the owner entry, the lost deadlock propagated
+    // there, was logged, and the checkout answered errors.createReservationError.
+    const source = readFileSync(new URL("./create-reservation.ts", import.meta.url), "utf8");
+    const stripTypes: (code: string) => string = Reflect.get(nodeModule, "stripTypeScriptTypes");
+    const compiled = stripTypes(
+      source.slice(source.indexOf("export const createReservation =")).replace("export ", ""),
+    );
+    const logged: unknown[][] = [];
+    const effects: unknown[] = [];
+    const store = { id: STORE, slug: "checkout-status", settings: { currency: "EUR" } };
+    const checkout = runInNewContext(`${compiled}; createReservation`, {
+      checkMarketplaceCapability: async () => null,
+      prepareReservation: async () => ({
+        ok: true,
+        prepared: {
+          store,
+          totals: { total: 10 },
+          insurance: { amount: 0, appliedOptIn: false },
+          promo: null,
+          delivery: {},
+          cart: { lines: [] },
+          window: { start: new Date(), end: new Date() },
+          customerPhone: null,
+        },
+      }),
+      checkReservationGate: async () => ({ accepts: true }),
+      getEffectiveReservationMode: () => "payment",
+      getCheckoutChargeAmount: () => ({ finalChargeAmount: 10 }),
+      validateStripePaymentAmount: () => ({ ok: true }),
+      writeReservation: async () => ({
+        ok: true,
+        replay: false,
+        reused: false,
+        reservationId: id,
+        reservationNumber: id,
+        customerId: "customer",
+        customerEmail: "guest@example.test",
+        currency: "EUR",
+      }),
+      runPostCreationEffects: async () => {},
+      startCheckoutPayment: async () => null,
+      cancelFailedCheckoutReservation: louezDb.cancelFailedCheckoutReservation,
+      runReservationEffects: async (ran: unknown) => {
+        effects.push(ran);
+      },
+      failReservation: (error: string, params?: unknown) => ({ ok: false, error, params }),
+      describeError: (error: unknown) => (error instanceof Error ? error.message : String(error)),
+      log: {
+        error: (...args: unknown[]) => {
+          logged.push(args);
+        },
+      },
+    });
+
+    let result: unknown;
+    try {
+      result = await checkout({
+        source: "online",
+        items: [{ quantity: 1 }],
+        customer: { email: "guest@example.test", firstName: "Test", lastName: "Guest" },
+      });
+    } finally {
+      hooks.beforeReservationLock = null;
+    }
+
+    assert.deepEqual(result, {
+      ok: false,
+      error: "errors.createReservationError",
+      params: undefined,
+    });
+    assert.equal(runs, 3, "three runs of the owner entry");
+    assert.equal(logged.length, 1);
+    assert.equal(logged[0]?.[0], "reservation");
+    assert.match(String(logged[0]?.[1]), /^creation failed: /);
+    assert.deepEqual(effects, []);
     assert.equal((await readReservation(id))?.status, "pending");
     assert.deepEqual(await readActivity(id), []);
   });

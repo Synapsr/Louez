@@ -13,7 +13,8 @@ import {
   reservationItems,
   reservations,
   isReservationChangeBusyError,
-  runReservationChange,
+  reservationStatusChangeMovesStock,
+  runReservationChangeByStatus,
   runReservationOnlyChange,
   stores,
 } from "@louez/db";
@@ -647,7 +648,9 @@ export async function holdMarketplaceBooking(params: {
     if (replay.expiresAt <= new Date()) {
       if (replay.holdId) {
         const expired = { reservationId: replay.holdId, storeId: replay.storeId };
-        // Still busy after every run: a later read, quote or list expires it.
+        // Still busy after every run: the attempt stays live and lapsed, so the
+        // expiry pass of the next marketplace quote for the store, read of the
+        // booking or list of bookings expires it. Nothing else runs it.
         const effects = await runReservationOnlyChange(expired, expireAttempt).catch(
           (error: unknown) => {
             if (isReservationChangeBusyError(error)) return [];
@@ -1138,12 +1141,17 @@ export async function cancelMarketplaceBooking(params: {
     throw notCancellable();
   }
 
-  // The owner entry locks the booking's products, then the booking (DL-12): the
-  // helper restocks a confirmed or ongoing booking and logs the activity. The
-  // effects run once, after it.
-  const effects = await runReservationChange(
+  // A confirmed or ongoing booking gets its stock back: the owner entry locks
+  // its products, then the booking (DL-12). A pending one gives back nothing
+  // and takes the booking's lock alone, as before the owner entry: a hold
+  // retry holds the attempt row while its checkout waits for the products,
+  // and this cancellation, which then waits for that row, must not hold them.
+  // The status under the lock is the one the lock was chosen for; the helper
+  // restocks and logs the activity. The effects run once, after it.
+  const effects = await runReservationChangeByStatus(
     { reservationId: reservation.id, storeId: reservation.storeId },
-    async (tx, lock) => {
+    (status) => reservationStatusChangeMovesStock(status, "cancelled"),
+    async (tx, lock, status) => {
       const change = await changeReservationStatus(tx, {
         lock,
         reservationId: reservation.id,
@@ -1151,6 +1159,7 @@ export async function cancelMarketplaceBooking(params: {
         to: "cancelled",
         actor: "marketplace",
         actorUserId: null,
+        expectedFrom: status ?? undefined,
         activity: { metadata: { source: "marketplace" } },
       });
       if (!change.changed) {
@@ -1242,7 +1251,9 @@ export async function expireMarketplaceBookingAttempts(params: {
     try {
       effects = await runReservationOnlyChange({ reservationId, storeId }, expireAttempt);
     } catch (error) {
-      // Still busy after every run: the next read, quote or list expires it.
+      // Still busy after every run: the attempt stays live and lapsed, so the
+      // next marketplace quote for the store, read of the booking or list of
+      // bookings runs this pass again and expires it. Nothing else runs it.
       if (isReservationChangeBusyError(error)) continue;
       throw error;
     }
@@ -1268,7 +1279,8 @@ export async function failMarketplaceBookingAttempt(
   });
   if (!scope) return;
   // Still busy after every run: it throws, the webhook answers non-2xx, and
-  // Stripe sends the event again.
+  // Stripe sends the event again, whose delivery runs this again: the attempt
+  // is still `checkout_pending`.
   const effects = await runReservationOnlyChange(
     { reservationId, storeId: scope.storeId },
     async (tx, lock) => {

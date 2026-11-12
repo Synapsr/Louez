@@ -108,6 +108,7 @@ export {
   isBillableReservationStatus,
   isFeeVoidingReservationStatus,
   requiresReservationGate,
+  reservationStatusChangeMovesStock,
   toWholeSeconds,
 } from "./reservation-status";
 export {
@@ -131,6 +132,7 @@ export {
   ReservationChangeBusyError,
   isReservationChangeBusyError,
   runReservationChange,
+  runReservationChangeByStatus,
   runReservationOnlyChange,
   runReservationTransaction,
 } from "./reservation-change";

@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { isReservationChangeBusyError, runReservationOnlyChange } from "./reservation-change";
+import { runReservationOnlyChange } from "./reservation-change";
 import {
   changeReservationStatus,
   toWholeSeconds,
@@ -13,8 +13,10 @@ import { payments, reservationActivity, reservationCalendarEvents, reservations 
  * Cancel only an unpaid online checkout; never override a payment or decision.
  * The fee effects run through `runReservationEffects` after commit. It locks
  * the reservation alone: a pending checkout gives back no stock. A
- * reservation still busy after the owner entry's runs is left as it is, for
- * the next cleanup, and the answer is false.
+ * reservation still busy after the owner entry's runs throws
+ * `ReservationChangeBusyError`, as a lost deadlock threw before: nothing runs
+ * this cancellation again, so its caller answers the failure (the checkout
+ * logs it and answers `errors.createReservationError`).
  */
 export const cancelFailedCheckoutReservation = async (
   {
@@ -34,7 +36,7 @@ export const cancelFailedCheckoutReservation = async (
   },
   runReservationEffects: ReservationEffectRunner,
 ): Promise<boolean> => {
-  const cancel = runReservationOnlyChange({ reservationId, storeId }, async (tx, lock) => {
+  const effects = await runReservationOnlyChange({ reservationId, storeId }, async (tx, lock) => {
     const [reservation] = await tx
       .select({
         id: reservations.id,
@@ -99,10 +101,6 @@ export const cancelFailedCheckoutReservation = async (
       })
       .where(eq(reservationCalendarEvents.reservationId, reservationId));
     return change.effects;
-  });
-  const effects = await cancel.catch((error: unknown) => {
-    if (isReservationChangeBusyError(error)) return null;
-    throw error;
   });
   if (!effects) return false;
 

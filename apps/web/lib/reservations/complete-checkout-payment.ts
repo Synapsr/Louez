@@ -11,7 +11,7 @@ import {
   changeReservationStatus,
   consumeReservationStock,
   db,
-  runReservationChange,
+  runReservationChangeByStatus,
   toWholeSeconds,
   type ReservationBillingEffect,
 } from "@louez/db";
@@ -167,12 +167,16 @@ export const confirmPaidReservationOrThrow = async (params: {
       ),
     );
 
-  // The owner entry locks the reservation's products, then the reservation
-  // (DL-12); a lost deadlock or a product added meanwhile runs the whole
-  // transaction again. It records no payment, so a new run cannot record one
-  // twice; the effects run once, after it.
-  const result = await runReservationChange(
+  // A pending reservation is checked and takes its stock, a confirmed one is
+  // repaired below: the owner entry locks their products, then the
+  // reservation (DL-12). Any other status is left as it is, under the
+  // reservation's lock alone. A lost deadlock, a product added or the status
+  // changed meanwhile runs the whole transaction again. It records no
+  // payment, so a new run cannot record one twice; the effects run once,
+  // after it.
+  const result = await runReservationChangeByStatus(
     { reservationId: params.reservationId, storeId: params.storeId },
+    (status) => status === "pending" || status === "confirmed",
     async (tx, lock): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
       const change = await changeReservationStatus(tx, {
         lock,
@@ -189,8 +193,9 @@ export const confirmPaidReservationOrThrow = async (params: {
 
       if (!change.changed) {
         // Already confirmed, by the other completion path or the merchant: make
-        // sure its consumables were taken. Consuming twice changes nothing.
-        if (change.from === "confirmed") {
+        // sure its consumables were taken. Consuming twice changes nothing. Read
+        // as confirmed under its lock, so the lock is the products'.
+        if (change.from === "confirmed" && lock.kind === "products") {
           await consumeReservationStock(tx, lock);
         }
         return { confirmed: false, effects: [] };

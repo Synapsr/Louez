@@ -10,6 +10,11 @@ import { products, reservationItems, reservations } from "./schema";
  * helpers refuse to run without one, so a status change cannot be written
  * without its locks. Only the owner entry (`runReservationTransaction` in
  * `reservation-change.ts`) opens a transaction that can take one.
+ *
+ * What a token allows is what this module recorded when it issued it: its
+ * transaction, store, reservation and kind are read from the registry, never
+ * from the token's own fields. An issued token is frozen, so its fields cannot
+ * be changed either; they are there to be read.
  */
 
 export interface ReservationScope {
@@ -22,7 +27,8 @@ export interface ReservationScope {
  * - `reservation`: the reservation alone. Only a change that takes or gives
  *   back no stock and runs no check (`beforeWrite`).
  * - `inserted`: a reservation this transaction inserted (`insertReservation`).
- *   Its caller locked the products before the insert; only stock may be taken.
+ *   Its caller locked the products before the insert. It allows one thing,
+ *   once: `consumeReservationStock` for that reservation, then it is spent.
  */
 export type ReservationLockKind = "products" | "reservation" | "inserted";
 
@@ -76,7 +82,10 @@ export class ReservationTransaction {
   static {
     createOwner = (tx) => {
       const owner = new ReservationTransaction();
-      registry().owners.set(owner, { tx, open: true });
+      Object.freeze(owner);
+      const state: OwnerState = { tx, open: true };
+      registry().owners.set(owner, state);
+      registry().ownerOfTransaction.set(tx, state);
       return owner;
     };
   }
@@ -92,7 +101,11 @@ export class ReservationLock<Kind extends ReservationLockKind = ReservationLockK
     readonly storeId: string,
   ) {}
   static {
-    createLock = (kind, scope) => new ReservationLock(kind, scope.reservationId, scope.storeId);
+    createLock = (kind, scope) => {
+      const lock = new ReservationLock(kind, scope.reservationId, scope.storeId);
+      Object.freeze(lock);
+      return lock;
+    };
   }
 }
 
@@ -104,15 +117,33 @@ export type ReservationStatusLock = ReservationProductsLock | ReservationOnlyLoc
 /** What taking consumable stock accepts. */
 export type ReservationStockLock = ReservationProductsLock | InsertedReservationLock;
 
+/** What a token was issued for: the only thing the checks read. */
+interface IssuedLock {
+  tx: Transaction;
+  /** Null for an inserted token whose transaction the owner entry did not open. */
+  owner: OwnerState | null;
+  kind: ReservationLockKind;
+  reservationId: string;
+  storeId: string;
+  /** An inserted token, once used. */
+  spent: boolean;
+}
+
 interface Registry {
   owners: WeakMap<ReservationTransaction, OwnerState>;
-  locks: WeakMap<ReservationLock, { tx: Transaction; owner: OwnerState | null }>;
+  /** The owner of each transaction the owner entry opened. */
+  ownerOfTransaction: WeakMap<Transaction, OwnerState>;
+  locks: WeakMap<ReservationLock, IssuedLock>;
 }
 
 const REGISTRY = Symbol.for("louez.reservationLock.registry");
 
 const isRegistry = (value: unknown): value is Registry =>
-  typeof value === "object" && value !== null && "owners" in value && "locks" in value;
+  typeof value === "object" &&
+  value !== null &&
+  "owners" in value &&
+  "ownerOfTransaction" in value &&
+  "locks" in value;
 
 /**
  * What this module issued. On globalThis, so a token issued by one copy of the
@@ -123,7 +154,11 @@ const isRegistry = (value: unknown): value is Registry =>
 function registry(): Registry {
   const existing: unknown = Reflect.get(globalThis, REGISTRY);
   if (isRegistry(existing)) return existing;
-  const created: Registry = { owners: new WeakMap(), locks: new WeakMap() };
+  const created: Registry = {
+    owners: new WeakMap(),
+    ownerOfTransaction: new WeakMap(),
+    locks: new WeakMap(),
+  };
   Reflect.set(globalThis, REGISTRY, created);
   return created;
 }
@@ -152,8 +187,9 @@ function issue<Kind extends ReservationLockKind>(
   tx: Transaction,
   owner: OwnerState | null,
 ): ReservationLock<Kind> {
-  const lock = createLock(kind, scope);
-  registry().locks.set(lock, { tx, owner });
+  const { reservationId, storeId } = scope;
+  const lock = createLock(kind, { reservationId, storeId });
+  registry().locks.set(lock, { tx, owner, kind, reservationId, storeId, spent: false });
   return lock;
 }
 
@@ -226,41 +262,67 @@ export async function lockReservationOnlyInTransaction(
   return issue("reservation", scope, state.tx, state);
 }
 
-/** For `insertReservation` only: the row it inserted is this transaction's alone until commit. */
+/**
+ * For `insertReservation` only: the row it inserted is this transaction's
+ * alone until commit.
+ *
+ * In a transaction the owner entry opened (the checkout's), the token is bound
+ * to that owner and stops working when its transaction ends, committed or
+ * rolled back. In a transaction the owner entry did not open (the dashboard's
+ * creation opens its own), nothing tells this module when it ends: the token
+ * is valid for that transaction only by convention. Either way it is spent by
+ * its single use, the stock taken right after the lines are inserted, so a
+ * token kept past it allows nothing.
+ */
 export function insertedReservationLock(
   tx: Transaction,
   scope: ReservationScope,
 ): InsertedReservationLock {
-  return issue("inserted", scope, tx, null);
+  const owner = registry().ownerOfTransaction.get(tx) ?? null;
+  return issue("inserted", scope, tx, owner);
+}
+
+/** What an accepted token was issued for, read from the registry. */
+export interface ReservationLockGrant {
+  kind: ReservationLockKind;
+  reservationId: string;
+  storeId: string;
 }
 
 /**
- * Throws unless `lock` was issued by this module, in `tx`, for this
- * reservation of this store, while its owner's transaction is open, and is
- * of one of `kinds`.
+ * Throws unless `lock` was issued by this module, in `tx`, while its owner's
+ * transaction is open, is of one of `kinds`, and, when `scope` is given, was
+ * issued for that reservation of that store. Everything is read from what was
+ * recorded at issue, never from the token. An inserted token is spent by the
+ * first use it allows. Returns what the token was issued for.
  */
 export function assertReservationLock(
   tx: Transaction,
   lock: ReservationLock,
-  scope: ReservationScope,
   kinds: readonly ReservationLockKind[],
-): void {
-  const state = registry().locks.get(lock);
-  if (!state) throw new ReservationLockError("Not a reservation lock.");
-  if (state.tx !== tx) {
+  scope?: ReservationScope,
+): ReservationLockGrant {
+  const issued = registry().locks.get(lock);
+  if (!issued) throw new ReservationLockError("Not a reservation lock.");
+  if (issued.tx !== tx) {
     throw new ReservationLockError("The reservation lock belongs to another transaction.");
   }
-  if (state.owner && !state.owner.open) {
+  if (issued.owner && !issued.owner.open) {
     throw new ReservationLockError("The reservation lock's transaction has ended.");
   }
-  if (lock.reservationId !== scope.reservationId || lock.storeId !== scope.storeId) {
+  if (scope && (issued.reservationId !== scope.reservationId || issued.storeId !== scope.storeId)) {
     throw new ReservationLockError("The reservation lock is for another reservation.");
   }
-  if (!kinds.includes(lock.kind)) {
+  if (!kinds.includes(issued.kind)) {
     throw new ReservationLockError(
-      `A ${lock.kind} lock does not allow this change: it needs ${kinds.join(" or ")}.`,
+      `A ${issued.kind} lock does not allow this change: it needs ${kinds.join(" or ")}.`,
     );
   }
+  if (issued.spent) {
+    throw new ReservationLockError("The inserted reservation's lock was already used.");
+  }
+  if (issued.kind === "inserted") issued.spent = true;
+  return { kind: issued.kind, reservationId: issued.reservationId, storeId: issued.storeId };
 }
 
 /** What the database tests watch and steer. Production never sets the hook. */
