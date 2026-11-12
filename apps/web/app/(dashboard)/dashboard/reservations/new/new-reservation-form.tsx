@@ -18,6 +18,7 @@ import {
 import { useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
 
+import type { CapacityShortfall } from "@louez/api/services/reservation-inventory";
 import type { PricingMode, UnitAttributes } from "@louez/types";
 import { toastManager } from "@louez/ui";
 import { Button } from "@louez/ui";
@@ -39,7 +40,9 @@ import { Label } from "@louez/ui";
 import { cn, formatCurrency } from "@louez/utils";
 
 import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
+import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
+import { isInsufficientCapacityResult } from "@/lib/reservations/util.insufficient-capacity";
 import { invalidateReservationList } from "@/lib/orpc/invalidation";
 import { trackOpenReplayEvent } from "@/lib/openreplay/client";
 import { openReplayEvents } from "@/lib/openreplay/events";
@@ -100,30 +103,6 @@ function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
 }
 
 type PriceOverrideMode = "unit" | "total" | "percent";
-
-type ManualReservationShortfall = {
-  productId: string;
-  productName: string;
-  combinationKey: string | null;
-  requested: number;
-  available: number;
-};
-
-function isInsufficientCapacityResult(result: unknown): result is {
-  error: "errors.insufficientCapacity";
-  shortfalls: ManualReservationShortfall[];
-} {
-  if (!result || typeof result !== "object") {
-    return false;
-  }
-
-  return (
-    "error" in result &&
-    result.error === "errors.insufficientCapacity" &&
-    "shortfalls" in result &&
-    Array.isArray(result.shortfalls)
-  );
-}
 
 export function NewReservationForm({
   onReservationCreated,
@@ -211,7 +190,7 @@ export function NewReservationForm({
   );
   const [overbookingDialog, setOverbookingDialog] = useState<{
     isOpen: boolean;
-    shortfalls: ManualReservationShortfall[];
+    shortfalls: CapacityShortfall[];
   }>({
     isOpen: false,
     shortfalls: [],
@@ -2061,77 +2040,24 @@ export function NewReservationForm({
         </DialogPopup>
       </Dialog>
 
-      <Dialog
+      <ReservationOverbookingDialog
         open={overbookingDialog.isOpen}
-        onOpenChange={(open) =>
-          setOverbookingDialog((current) => ({
-            ...current,
-            isOpen: open,
-          }))
-        }
-      >
-        <DialogPopup className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="text-destructive h-5 w-5" />
-              {t("overbooking.title")}
-            </DialogTitle>
-            <DialogDescription>{t("overbooking.description")}</DialogDescription>
-          </DialogHeader>
-          <DialogPanel>
-            <div className="space-y-2">
-              {overbookingDialog.shortfalls.map((shortfall) => (
-                <div
-                  key={`${shortfall.productId}:${shortfall.combinationKey || "product"}`}
-                  className="rounded-md border p-3"
-                >
-                  <p className="text-sm font-medium">{shortfall.productName}</p>
-                  {shortfall.combinationKey && (
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      {t("overbooking.combination", {
-                        combination: shortfall.combinationKey,
-                      })}
-                    </p>
-                  )}
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    {t("overbooking.shortfall", {
-                      requested: shortfall.requested,
-                      available: shortfall.available,
-                    })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </DialogPanel>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOverbookingDialog({ isOpen: false, shortfalls: [] })}
-            >
-              {tCommon("cancel")}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              isPending={isSaving}
-              onClick={async () => {
-                posthog.capture(productAnalyticsEvents.dashboardReservationOverbookingConfirmed, {
-                  ...dashboardReservationAnalyticsBaseProperties,
-                  shortfall_count: overbookingDialog.shortfalls.length,
-                  source: openReplaySource,
-                });
-                setOverbookingDialog({ isOpen: false, shortfalls: [] });
-                await submitManualReservation(watchedValues, {
-                  allowOverbooking: true,
-                });
-              }}
-            >
-              {t("overbooking.createAnyway")}
-            </Button>
-          </DialogFooter>
-        </DialogPopup>
-      </Dialog>
+        onOpenChange={(open) => setOverbookingDialog((current) => ({ ...current, isOpen: open }))}
+        shortfalls={overbookingDialog.shortfalls}
+        intent="create"
+        isPending={isSaving}
+        onConfirm={async () => {
+          posthog.capture(productAnalyticsEvents.dashboardReservationOverbookingConfirmed, {
+            ...dashboardReservationAnalyticsBaseProperties,
+            shortfall_count: overbookingDialog.shortfalls.length,
+            source: openReplaySource,
+          });
+          setOverbookingDialog({ isOpen: false, shortfalls: [] });
+          await submitManualReservation(watchedValues, {
+            allowOverbooking: true,
+          });
+        }}
+      />
 
       <ReservationGateDialog open={gateDialogOpen} onOpenChange={setGateDialogOpen} />
     </>

@@ -2707,7 +2707,9 @@
           "description": "一部の製品は、選択した期間では利用できなくなります。予約を作成し、タイムラインでオーバーライドを追跡することもできます。",
           "combination": "組み合わせ：{combination}",
           "shortfall": "リクエスト済み: {requested} · 入手可能: {available}",
-          "createAnyway": "とにかく作成する"
+          "createAnyway": "とにかく作成する",
+          "editDescription": "一部の製品は、この期間に十分な数量を確保できません。変更を保存し、タイムラインでオーバーライドを追跡することもできます。",
+          "saveAnyway": "とにかく保存する"
         },
         "addUnavailable": {
           "title": "製品が利用できません",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "この予約はキャンセルできません",
     "cannotEditCompletedReservation": "完了した予約は編集できません",
     "reservationStatusChanged": "編集中に予約状況が変更されました。ページをリロードして、もう一度お試しください。",
+    "reservationChangedMeanwhile": "編集中に予約が変更されました。ページをリロードして、もう一度お試しください。",
     "endDateBeforeStart": "終了日は開始日以降である必要があります",
     "negativeAmountOnlyForAdjustment": "マイナスの金額は調整の場合にのみ許可されます",
     "productRequired": "必要な製品",

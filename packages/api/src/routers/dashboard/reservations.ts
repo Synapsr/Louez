@@ -178,6 +178,7 @@ const updateReservation = requirePermission("write")
             ? { failedUnitIds: result.failedUnitIds }
             : {}),
           ...("conflicts" in result && result.conflicts ? { conflicts: result.conflicts } : {}),
+          ...("shortfalls" in result && result.shortfalls ? { shortfalls: result.shortfalls } : {}),
           ...("reservationItemId" in result && result.reservationItemId
             ? { reservationItemId: result.reservationItemId }
             : {}),

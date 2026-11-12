@@ -28,6 +28,12 @@ identifié (`user.id`), le même que l'événement serveur `dashboard_reservatio
 | `dashboard_reservation_creation_failed`                | Erreur serveur à la soumission                                    | `error_code`, `source`                                                  |
 | `dashboard_reservation_created` (serveur, préexistant) | Réservation créée                                                 | voir `reservations/actions.ts`                                          |
 
+La page de modification d'une réservation
+(`apps/web/app/(dashboard)/dashboard/reservations/[id]/edit/edit-reservation-form.tsx`) émet les
+deux mêmes événements de capacité quand le serveur refuse une modification faute de stock, puis
+quand l'admin l'enregistre quand même. Ils portent alors `feature: reservation_management`,
+`reservation_id` et `source: reservation_edit`.
+
 > `dashboard_reservation_step_viewed` a existé brièvement (wizard à étapes, jamais déployé)
 > et a été retiré avec le passage en page unique. L'insight PostHog « Funnel creation
 > reservation (dashboard) » doit être redéfini en `creation_started` → `created`.

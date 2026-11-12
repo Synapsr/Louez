@@ -64,6 +64,7 @@ import {
 } from "../platform/links";
 import type { LogPort, ProductImageOperation, UrlsPort } from "../platform/ports";
 import { HANDOFF_KINDS } from "../contracts/handoffs";
+import { CAPACITY_VERDICT_ACTIVITY_TYPES } from "./capacity-verdict";
 import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
@@ -1005,8 +1006,13 @@ const unitConflicts: Source = async (window, shaper) => {
   });
 };
 
-/** A booking the team created over the available stock, not over yet. */
+/**
+ * A booking the team created or edited over the available stock, not over
+ * yet. A reservation's latest capacity verdict decides (services/
+ * capacity-verdict.ts): the item leaves once a later edit fits the stock.
+ */
 const overbookings: Source = async (window, shaper) => {
+  const later = alias(reservationActivity, "inbox_later_verdict");
   const rows = await db
     .select({
       ...reservationColumns,
@@ -1021,8 +1027,21 @@ const overbookings: Source = async (window, shaper) => {
         eq(reservations.storeId, window.storeId),
         inArray(reservations.status, ["pending", "quote", "confirmed", "ongoing"]),
         gt(reservations.endDate, window.now),
-        eq(reservationActivity.activityType, "created"),
+        inArray(reservationActivity.activityType, CAPACITY_VERDICT_ACTIVITY_TYPES),
         sql`JSON_EXTRACT(${reservationActivity.metadata}, '$.overbooked') = CAST('true' AS JSON)`,
+        notExists(
+          db
+            .select({ id: later.id })
+            .from(later)
+            .where(
+              and(
+                eq(later.reservationId, reservations.id),
+                inArray(later.activityType, CAPACITY_VERDICT_ACTIVITY_TYPES),
+                sql`JSON_CONTAINS_PATH(${later.metadata}, 'one', '$.overbooked')`,
+                gt(later.createdAt, reservationActivity.createdAt),
+              ),
+            ),
+        ),
         inWindow(window, "overbooking", reservationActivity.createdAt, reservations.id),
       ),
     )

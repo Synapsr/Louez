@@ -2707,7 +2707,9 @@
           "description": "Algunos productos ya no están disponibles para el periodo seleccionado. Puedes crear la reserva de todos modos y el override quedará visible en el historial.",
           "combination": "Combinación: {combination}",
           "shortfall": "Solicitado: {requested} · Disponible: {available}",
-          "createAnyway": "Crear de todos modos"
+          "createAnyway": "Crear de todos modos",
+          "editDescription": "Algunos productos no están disponibles en cantidad suficiente para el periodo. Puedes guardar los cambios de todos modos y el override quedará visible en el historial.",
+          "saveAnyway": "Guardar de todos modos"
         },
         "addUnavailable": {
           "title": "Producto no disponible",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "Esta reserva no puede ser cancelada",
     "cannotEditCompletedReservation": "Las reservas completadas no se pueden editar",
     "reservationStatusChanged": "El estado de la reserva cambió durante la edición. Recarga la página e inténtalo de nuevo.",
+    "reservationChangedMeanwhile": "La reserva se modificó entretanto. Recarga la página e inténtalo de nuevo.",
     "endDateBeforeStart": "La fecha de fin debe ser posterior o igual a la de inicio",
     "negativeAmountOnlyForAdjustment": "Los importes negativos solo están permitidos para ajustes",
     "productRequired": "Producto requerido",

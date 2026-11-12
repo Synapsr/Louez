@@ -2668,7 +2668,9 @@
           "description": "Część produktów nie jest już dostępna w wybranym okresie. Możesz mimo to utworzyć rezerwację; override będzie widoczny w historii.",
           "combination": "Kombinacja: {combination}",
           "shortfall": "Żądane: {requested} · Dostępne: {available}",
-          "createAnyway": "Utwórz mimo to"
+          "createAnyway": "Utwórz mimo to",
+          "editDescription": "Część produktów nie jest dostępna w wystarczającej liczbie w tym okresie. Możesz mimo to zapisać zmianę; override będzie widoczny w historii.",
+          "saveAnyway": "Zapisz mimo to"
         },
         "addUnavailable": {
           "title": "Produkt niedostępny",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "Tej rezerwacji nie można anulować",
     "cannotEditCompletedReservation": "Zakończone rezerwacje nie mogą być edytowane",
     "reservationStatusChanged": "Status rezerwacji zmienił się podczas edycji. Odśwież stronę i spróbuj ponownie.",
+    "reservationChangedMeanwhile": "Rezerwacja została w międzyczasie zmieniona. Odśwież stronę i spróbuj ponownie.",
     "endDateBeforeStart": "Data zakończenia musi być po lub równa dacie rozpoczęcia",
     "negativeAmountOnlyForAdjustment": "Ujemne kwoty są dozwolone tylko dla korekt",
     "productRequired": "Produkt wymagany",

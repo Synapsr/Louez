@@ -324,7 +324,8 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       | "payment_received"
       | "payment_added"
       | "note_updated"
-      | "created",
+      | "created"
+      | "modified",
     metadata: Record<string, unknown>,
     createdAt: Date,
   ) {
@@ -950,6 +951,49 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(items[0]?.details.productsShort, 1);
     await setStatus(id, "cancelled");
     assert.equal(ofType((await list()).items, "overbooking").length, 0);
+  });
+
+  test("an edit forced over the stock shows, until a later edit fits", async () => {
+    const shortfalls = [{ productId: "p", requested: 3, available: 2 }];
+    const id = await reservation("confirmed");
+    await activity(id, "created", { source: "manual" }, ago(3 * HOUR));
+    await activity(
+      id,
+      "modified",
+      { overbooked: true, overbookingShortfalls: shortfalls },
+      ago(2 * HOUR),
+    );
+    // An edit that changes no stock carries no verdict: the item stays.
+    await activity(id, "modified", { difference: 0 }, ago(90 * 60_000));
+
+    const forced = ofType((await list()).items, "overbooking");
+    assert.deepEqual(
+      forced.map((item) => [item.reservation?.id, item.details.productsShort]),
+      [[id, 1]],
+    );
+    assert.ok(Math.abs((forced[0]?.occurredAt.getTime() ?? 0) - ago(2 * HOUR).getTime()) < 5_000);
+
+    await activity(id, "modified", { overbooked: false }, ago(HOUR));
+    assert.equal(ofType((await list()).items, "overbooking").length, 0);
+  });
+
+  test("a booking overbooked twice is one item, dated from its latest verdict", async () => {
+    const id = await reservation("confirmed");
+    await activity(id, "created", { source: "manual", overbooked: true }, ago(3 * HOUR));
+    await activity(id, "modified", { overbooked: false }, ago(2 * HOUR));
+    await activity(
+      id,
+      "modified",
+      { overbooked: true, overbookingShortfalls: [{ productId: "p" }, { productId: "q" }] },
+      ago(HOUR),
+    );
+
+    const items = ofType((await list()).items, "overbooking");
+    assert.deepEqual(
+      items.map((item) => [item.id, item.details.productsShort]),
+      [[`overbooking:${id}`, 2]],
+    );
+    assert.ok(Math.abs((items[0]?.occurredAt.getTime() ?? 0) - ago(HOUR).getTime()) < 5_000);
   });
 
   test("a supplier invoice shows until it is handled, to who may read integrations", async () => {

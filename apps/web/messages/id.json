@@ -2707,7 +2707,9 @@
           "description": "Beberapa produk tidak lagi tersedia untuk periode yang dipilih. Anda masih dapat membuat reservasi dan melacak penggantian di timeline.",
           "combination": "Kombinasi: {combination}",
           "shortfall": "Diminta: {requested} · Tersedia: {available}",
-          "createAnyway": "Tetap buat"
+          "createAnyway": "Tetap buat",
+          "editDescription": "Beberapa produk tidak tersedia dalam jumlah yang cukup untuk periode ini. Anda masih dapat menyimpan perubahan dan melacak penggantian di timeline.",
+          "saveAnyway": "Tetap simpan"
         },
         "addUnavailable": {
           "title": "Produk tidak tersedia",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "Reservasi ini tidak dapat dibatalkan",
     "cannotEditCompletedReservation": "Reservasi yang sudah selesai tidak dapat diedit",
     "reservationStatusChanged": "Status reservasi berubah saat Anda mengedit. Muat ulang halaman dan coba lagi.",
+    "reservationChangedMeanwhile": "Reservasi diubah sementara Anda mengedit. Muat ulang halaman dan coba lagi.",
     "endDateBeforeStart": "Tanggal akhir harus setelah atau sama dengan tanggal mulai",
     "negativeAmountOnlyForAdjustment": "Jumlah negatif hanya diperbolehkan untuk penyesuaian",
     "productRequired": "Produk diperlukan",

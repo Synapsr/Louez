@@ -6,6 +6,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { usePostHog } from "posthog-js/react";
 import { toastManager } from "@louez/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Plus, PenLine, AlertTriangle, Check, Mail } from "lucide-react";
@@ -30,6 +31,7 @@ import {
 import { TooltipProvider } from "@louez/ui";
 import { Alert, AlertDescription } from "@louez/ui";
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
+import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
 import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from "@louez/utils";
 import { useFormatLocale } from "@/hooks/use-format-locale";
@@ -40,11 +42,17 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 import { isLegacyTulipInsuranceItem } from "@/lib/integrations/tulip/contracts-insurance";
 import { orpc } from "@/lib/orpc/react";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
-import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
+import {
+  productAnalyticsEvents,
+  reservationAnalyticsActions,
+  reservationManagementAnalyticsBaseProperties,
+} from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
+import { isInsufficientCapacityResult } from "@/lib/reservations/util.insufficient-capacity";
+import type { CapacityShortfall } from "@louez/api/services/reservation-inventory";
 import type { PricingMode } from "@louez/types";
 import { EditReservationItemsSection } from "./components/edit-reservation-items-section";
 import { EditReservationSummarySection } from "./components/edit-reservation-summary-section";
@@ -262,6 +270,7 @@ export function EditReservationForm({
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const tValidation = useTranslations("validation");
+  const posthog = usePostHog();
   const { intl: formatLocale } = useFormatLocale();
   const timezone = useStoreTimezone();
   const currencySymbol = getCurrencySymbol(currency);
@@ -352,6 +361,12 @@ export function EditReservationForm({
     ReservationValidationWarning[]
   >([]);
   const [showValidationConfirmDialog, setShowValidationConfirmDialog] = useState(false);
+  // The server's refusal for lack of stock, with the save it answered: confirming sends it again.
+  const [overbookingDialog, setOverbookingDialog] = useState<{
+    isOpen: boolean;
+    shortfalls: CapacityShortfall[];
+    overrideTurnoverBuffer: boolean;
+  }>({ isOpen: false, shortfalls: [], overrideTurnoverBuffer: false });
   const [notifyCustomerByEmail, setNotifyCustomerByEmail] = useState(false);
   const [emailRetryWarning, setEmailRetryWarning] = useState<string | null>(null);
   const initialTulipInsuranceOptIn =
@@ -746,7 +761,10 @@ export function EditReservationForm({
     [tErrors],
   );
 
-  const saveReservation = async (overrideTurnoverBuffer = false) => {
+  const saveReservation = async ({
+    overrideTurnoverBuffer = false,
+    allowOverbooking = false,
+  }: { overrideTurnoverBuffer?: boolean; allowOverbooking?: boolean } = {}) => {
     if (!startDate || !endDate) return;
 
     if (items.length === 0) {
@@ -762,6 +780,7 @@ export function EditReservationForm({
         item_count: items.length,
         notify_customer: notifyCustomerByEmail,
         override_turnover_buffer: overrideTurnoverBuffer,
+        allow_overbooking: allowOverbooking,
       },
     });
     setIsLoading(true);
@@ -810,6 +829,7 @@ export function EditReservationForm({
           notifyCustomerByEmail,
           tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
           overrideTurnoverBuffer,
+          allowOverbooking,
           delivery: deliveryPayload,
           items: items.map(toReservationItemPayload),
         },
@@ -826,8 +846,38 @@ export function EditReservationForm({
         if (isBufferConflictResult(result)) {
           const shouldOverride = window.confirm(tErrors("turnoverBufferConflict"));
           if (shouldOverride) {
-            await saveReservation(true);
+            await saveReservation({ overrideTurnoverBuffer: true, allowOverbooking });
           }
+          return;
+        }
+
+        if (isInsufficientCapacityResult(result)) {
+          posthog.capture(productAnalyticsEvents.dashboardReservationCapacityBlocked, {
+            ...reservationManagementAnalyticsBaseProperties,
+            reservation_id: reservation.id,
+            shortfall_count: result.shortfalls.length,
+            shortfall_product_ids: result.shortfalls.map((shortfall) => shortfall.productId),
+            source: "reservation_edit",
+          });
+          setOverbookingDialog({
+            isOpen: true,
+            shortfalls: result.shortfalls,
+            overrideTurnoverBuffer,
+          });
+          return;
+        }
+
+        if (result.error === "errors.reservationChangedMeanwhile") {
+          // The form holds what was read before the other change: only a
+          // reload brings the reservation as it is now.
+          toastManager.add({
+            title: tErrors("reservationChangedMeanwhile"),
+            type: "error",
+            actionProps: {
+              children: tCommon("refresh"),
+              onClick: () => window.location.reload(),
+            },
+          });
           return;
         }
 
@@ -953,6 +1003,18 @@ export function EditReservationForm({
     }
 
     await saveReservation();
+  };
+
+  const handleConfirmOverbooking = async () => {
+    posthog.capture(productAnalyticsEvents.dashboardReservationOverbookingConfirmed, {
+      ...reservationManagementAnalyticsBaseProperties,
+      reservation_id: reservation.id,
+      shortfall_count: overbookingDialog.shortfalls.length,
+      source: "reservation_edit",
+    });
+    const { overrideTurnoverBuffer } = overbookingDialog;
+    setOverbookingDialog({ isOpen: false, shortfalls: [], overrideTurnoverBuffer: false });
+    await saveReservation({ overrideTurnoverBuffer, allowOverbooking: true });
   };
 
   const handleConfirmWarningSave = async () => {
@@ -1608,6 +1670,15 @@ export function EditReservationForm({
           </DialogFooter>
         </DialogPopup>
       </Dialog>
+
+      <ReservationOverbookingDialog
+        open={overbookingDialog.isOpen}
+        onOpenChange={(open) => setOverbookingDialog((current) => ({ ...current, isOpen: open }))}
+        shortfalls={overbookingDialog.shortfalls}
+        intent="edit"
+        isPending={isLoading}
+        onConfirm={handleConfirmOverbooking}
+      />
     </TooltipProvider>
   );
 }

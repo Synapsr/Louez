@@ -451,8 +451,10 @@ export function ActivityTimelineV2({
     const activitySource = isCreationEvent
       ? (activity.metadata?.source as string) || reservationSource
       : undefined
-    const isOverbookedCreation =
-      isCreationEvent && activity.metadata?.overbooked === true
+    // A capacity verdict: the booking was created or edited over the stock.
+    const isOverbooked =
+      (isCreationEvent || activity.activityType === 'modified') &&
+      activity.metadata?.overbooked === true
 
     const Icon = isCreationEvent
       ? activitySource === 'manual'
@@ -543,7 +545,7 @@ export function ActivityTimelineV2({
                   )}
                 </Badge>
               )}
-              {isOverbookedCreation && (
+              {isOverbooked && (
                 <Badge variant="failed" className="text-[10px] px-1.5 py-0 h-4 border-0">
                   {t('activity.overbooked')}
                 </Badge>

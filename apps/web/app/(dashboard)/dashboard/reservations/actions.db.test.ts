@@ -1,88 +1,17 @@
 import assert from "node:assert/strict";
-import * as nodeModule from "node:module";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 
 import { and, eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import { SENT_KEY, STORE_KEY } from "./actions-test-stubs";
+
 // The dashboard's reservation actions on a migrated database: the payment rows
 // they write, with their billing facts, and the reservation's mark for the billing
 // service in the same transaction (louez-billing docs/api, README §5.2, Q3, Q4, Q7).
 // The deposit actions call Stripe first; their writes are tested in
 // lib/reservations/dashboard-payment-writes.db.test.ts.
-
-interface ResolveContext {
-  parentURL?: string;
-}
-interface LoadContext {
-  format?: string;
-}
-type NextResolve = (specifier: string, context: ResolveContext) => { url: string };
-type NextLoad = (url: string, context: LoadContext) => { format?: string; source?: unknown };
-
-const STORE_KEY = "__louezActionsTestStore";
-const SENT_KEY = "__louezActionsTestSent";
-/** A module whose functions note their call (channel, name, params) and answer success. */
-const messageStub = (channel: string, names: string[]) =>
-  names
-    .map(
-      (name) =>
-        `export async function ${name}(params) { (globalThis[${JSON.stringify(SENT_KEY)}] ??= []).push({ channel: ${JSON.stringify(channel)}, name: ${JSON.stringify(name)}, params }); return { success: true }; }\n`,
-    )
-    .join("");
-const STUB_SCHEME = "louez-actions-test:";
-// The request context of a server action, which a test has no Next.js runtime for.
-const STUBS: Record<string, string> = {
-  "next/cache": "export function revalidatePath() {}\n",
-  "@/lib/auth": "export async function auth() { return null; }\n",
-  "@/lib/store-context": `export async function getCurrentStore() { return globalThis[${JSON.stringify(STORE_KEY)}] ?? null; }\n`,
-  // A quote's email is sent without being awaited, and would outlive the database.
-  "@/lib/notifications/customer-dispatcher":
-    "export async function dispatchCustomerNotification() {}\n",
-  // The messages to the customer: what they were asked to send, never sent.
-  "@/lib/email/send": messageStub("email", [
-    "logEmail",
-    "sendDepositAuthorizationRequestEmail",
-    "sendPaymentRequestEmail",
-    "sendReservationConfirmationEmail",
-    "sendReservationModifiedEmail",
-  ]),
-  "@/lib/sms": `${messageStub("sms", [
-    "sendAccessLinkSms",
-    "sendDepositAuthorizationRequestSms",
-    "sendPaymentRequestSms",
-  ])}export function isSmsConfigured() { return true; }\n`,
-};
-const ACTIONS_FILE = "/dashboard/reservations/actions.ts";
-const FILES_SDK = new URL("../../../../node_modules/files-sdk/dist/", import.meta.url);
-
-const registerHooks = Reflect.get(nodeModule, "registerHooks");
-if (typeof registerHooks !== "function") {
-  throw new Error("This test requires node:module registerHooks");
-}
-registerHooks({
-  resolve(specifier: string, context: ResolveContext, nextResolve: NextResolve) {
-    // A module that imports "server-only" throws outside Next.
-    if (specifier === "server-only") return { shortCircuit: true, url: "node:module" };
-    // files-sdk exports ESM only, through an "import" condition the test's require misses.
-    if (specifier === "files-sdk" || specifier.startsWith("files-sdk/")) {
-      const entry = specifier === "files-sdk" ? "index.js" : `${specifier.slice(10)}/index.js`;
-      return { shortCircuit: true, url: new URL(entry, FILES_SDK).href };
-    }
-    const parent = context.parentURL ? decodeURIComponent(context.parentURL) : "";
-    if (parent.endsWith(ACTIONS_FILE) && specifier in STUBS) {
-      return { shortCircuit: true, url: `${STUB_SCHEME}${specifier}` };
-    }
-    return nextResolve(specifier, context);
-  },
-  load(url: string, context: LoadContext, nextLoad: NextLoad) {
-    if (url.startsWith(STUB_SCHEME)) {
-      return { shortCircuit: true, format: "module", source: STUBS[url.slice(STUB_SCHEME.length)] };
-    }
-    return nextLoad(url, context);
-  },
-});
 
 const STORE = "store_actions";
 const START = new Date("2026-04-10T09:00:00.000Z");

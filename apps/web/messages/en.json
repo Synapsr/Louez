@@ -2707,7 +2707,9 @@
           "description": "Some products are no longer available for the selected period. You can still create the reservation and track the override in the timeline.",
           "combination": "Combination: {combination}",
           "shortfall": "Requested: {requested} · Available: {available}",
-          "createAnyway": "Create anyway"
+          "createAnyway": "Create anyway",
+          "editDescription": "Some products are not available in sufficient quantity for the period. You can still save the changes and track the override in the timeline.",
+          "saveAnyway": "Save anyway"
         },
         "addUnavailable": {
           "title": "Product unavailable",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "This reservation cannot be cancelled",
     "cannotEditCompletedReservation": "Completed reservations cannot be edited",
     "reservationStatusChanged": "The reservation status changed while you were editing. Reload the page and try again.",
+    "reservationChangedMeanwhile": "The reservation was changed in the meantime. Reload the page and try again.",
     "endDateBeforeStart": "End date must be after or equal to start date",
     "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
     "productRequired": "Product required",
