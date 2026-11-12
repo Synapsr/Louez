@@ -68,11 +68,15 @@ export interface ChangeReservationStatusInput {
   actorUserId: string | null;
   /** Refuse unless the locked status is one of these (stale-read and compare-and-set guards). */
   expectedFrom?: ReservationStatus | readonly ReservationStatus[];
-  /** Runs after the lock and the checks, before stock and the update. Errors propagate. */
+  /**
+   * Runs after the lock and the checks, before stock and the update. Errors
+   * propagate. What it returns in `activityMetadata` is added to the
+   * activity row's metadata.
+   */
   beforeWrite?: (
     tx: Transaction,
     change: { from: ReservationStatus; to: ReservationStatus },
-  ) => Promise<void>;
+  ) => Promise<void | { activityMetadata?: Record<string, unknown> }>;
   /** The activity row, written in the same transaction. */
   activity?: {
     type?: ReservationActivityType;
@@ -284,7 +288,7 @@ export async function changeReservationStatus(
   }
 
   const change = { from: locked.status, to: input.to };
-  await input.beforeWrite?.(tx, change);
+  const checked = await input.beforeWrite?.(tx, change);
 
   if (plan.stock === "consume") {
     await consumeReservationStock(tx, input.reservationId, input.storeId);
@@ -311,6 +315,7 @@ export async function changeReservationStatus(
     id: nanoid(),
     reservationId: input.reservationId,
     ...plan.activity,
+    metadata: { ...plan.activity.metadata, ...checked?.activityMetadata },
   });
   await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
 

@@ -18,12 +18,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, gte, inArray, not, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import {
-  computeReservedNetOfExcludedUnits,
-  getRouteDistance,
-  getStorefrontAvailability,
-  loadExcludedUnitInfo,
-} from "@louez/api/services";
+import { getRouteDistance, getStorefrontAvailability } from "@louez/api/services";
 import {
   ConsumableStockError,
   consumeReservationStock,
@@ -32,7 +27,6 @@ import {
   insertReservation,
   isStoreNotAcceptingReservationsError,
   isStripeRefundPaymentSql,
-  loadConsumableReservedQuantities,
   markReservation,
   reconcileReservationStock,
   reservationStatusConsumesStock,
@@ -41,7 +35,6 @@ import {
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
-  buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   customers,
   findBusyUnitIds,
@@ -60,6 +53,7 @@ import {
   reservationItemUnits,
   reservationItems,
   reservations,
+  stores,
   verificationCodes,
 } from "@louez/db";
 import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, type Rate } from "@louez/types";
@@ -78,8 +72,6 @@ import {
   billingFromCustomer,
   canonicalizeAttributes,
   getCurrencySymbol,
-  getDeterministicCombinationSortValue,
-  getProductCombinationAvailabilityKey,
   hasCompleteAttributes,
   matchesSelectedAttributes,
   resolveReservationBilling,
@@ -442,8 +434,14 @@ async function generateReservationNumber(storeId: string): Promise<string> {
   return `${year}-${String(nextNumber).padStart(4, "0")}`;
 }
 
-/** The answer to a booking the card gate refused inside its transaction. */
-function refuseClosedGate(error: unknown) {
+/**
+ * The answer to a booking its transaction refused: consumable stock that no
+ * override takes below zero, or the card gate.
+ */
+function refuseCreation(error: unknown) {
+  if (error instanceof ConsumableStockError) {
+    return { ok: false as const, error: error.message, shortfalls: [] };
+  }
   if (!isStoreNotAcceptingReservationsError(error)) throw error;
   logReservationGateRefusal(error, "dashboard");
   return { ok: false as const, error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, shortfalls: [] };
@@ -508,16 +506,26 @@ interface CreateReservationData {
   allowOverbooking?: boolean;
 }
 
-function normalizeUnitAttributes(attributes: unknown): UnitAttributes {
-  if (!attributes || typeof attributes !== "object" || Array.isArray(attributes)) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    Object.entries(attributes).filter(
-      (entry): entry is [string, string] => typeof entry[1] === "string",
-    ),
-  );
+/**
+ * What a line typed in the dashboard chose, read against the product as it is
+ * under its lock: its exact combination when every axis has a value, none when
+ * it left a choice open (any unit that matches what it did choose serves it).
+ */
+function resolveManualLineChoice(
+  product: { trackUnits: boolean; bookingAttributeAxes: BookingAttributeAxis[] | null },
+  requestedAttributes: UnitAttributes | undefined,
+): { combinationKey: string | null; selectedAttributes: UnitAttributes | null } {
+  const axes = product.bookingAttributeAxes ?? [];
+  const chosen = canonicalizeAttributes(axes, requestedAttributes);
+  const combinationKey =
+    axes.length > 0
+      ? hasCompleteAttributes(axes, chosen)
+        ? buildCombinationKey(axes, chosen)
+        : null
+      : product.trackUnits
+        ? DEFAULT_COMBINATION_KEY
+        : null;
+  return { combinationKey, selectedAttributes: Object.keys(chosen).length > 0 ? chosen : null };
 }
 
 export async function createManualReservation(data: CreateReservationData) {
@@ -595,25 +603,6 @@ export async function createManualReservation(data: CreateReservationData) {
       if (!product) {
         throw new Error(`errors.productNotFound`);
       }
-
-      const bookingAttributeAxes = (product.bookingAttributeAxes || []) as BookingAttributeAxis[];
-      const normalizedSelectedAttributes = canonicalizeAttributes(
-        bookingAttributeAxes,
-        item.selectedAttributes,
-      );
-      const hasSelectedAttributes = Object.keys(normalizedSelectedAttributes).length > 0;
-      const hasCompleteSelection = hasCompleteAttributes(
-        bookingAttributeAxes,
-        normalizedSelectedAttributes,
-      );
-      const combinationKey =
-        bookingAttributeAxes.length > 0
-          ? hasCompleteSelection
-            ? buildCombinationKey(bookingAttributeAxes, normalizedSelectedAttributes)
-            : null
-          : product.trackUnits
-            ? DEFAULT_COMBINATION_KEY
-            : null;
 
       // Get effective pricing mode for this product
       const effectivePricingMode = toPricingMode(product.pricingMode);
@@ -708,8 +697,8 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: product.deposit || "0",
         totalPrice: effectiveSubtotal.toFixed(2),
         pricingBreakdown,
-        combinationKey,
-        selectedAttributes: hasSelectedAttributes ? normalizedSelectedAttributes : null,
+        // What the line chose, as submitted: read against the product under its lock.
+        requestedAttributes: item.selectedAttributes,
         isCustomItem: false,
       };
     }),
@@ -900,288 +889,70 @@ export async function createManualReservation(data: CreateReservationData) {
 
   // Create reservation. Created as confirmed, insertReservation asks the card gate.
   const reservationId = nanoid();
+  const reservationStatus = data.sendAsQuote ? "quote" : "confirmed";
+  const actorUserId = await getActorUserId();
   const reservationWriteResult = await db.transaction(async (tx) => {
-    const requestedProductIds = [...new Set(productDetails.map((detail) => detail.product.id))];
-
-    if (requestedProductIds.length > 0) {
-      const requestedProductIdSql = sql.join(
-        requestedProductIds.map((productId) => sql`${productId}`),
-        sql`, `,
-      );
-      await tx.execute(
-        sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${store.id} FOR UPDATE`,
-      );
-    }
-
-    const lockedProducts =
-      requestedProductIds.length > 0
-        ? await tx.query.products.findMany({
-            where: and(eq(products.storeId, store.id), inArray(products.id, requestedProductIds)),
-          })
-        : [];
-    const productsById = new Map(lockedProducts.map((product) => [product.id, product]));
-    const blockingStatuses = getBlockingReservationStatuses(
-      store.settings?.pendingBlocksAvailability ?? true,
+    // The product locks first. Everything the stock decision reads comes
+    // after them: the products, the store's availability rules, the other
+    // bookings, and which combination each line chose.
+    const lockedProductsById = await lockReservationProducts(
+      tx,
+      store.id,
+      productDetails.map((detail) => detail.product.id),
     );
-    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
-    const overlappingReservations = await tx.query.reservations.findMany({
-      where: and(
-        eq(reservations.storeId, store.id),
-        inArray(reservations.status, blockingStatuses),
-        buildReservationOverlapPredicate({
-          start: data.startDate,
-          end: data.endDate,
-          turnoverBufferMinutes,
-        }),
-      ),
-      with: {
-        activity: { columns: { metadata: true } },
-        items: {
-          with: {
-            assignedUnits: true,
-          },
-        },
-      },
-    });
+    const [availabilityRules] = await tx
+      .select({ settings: stores.settings })
+      .from(stores)
+      .where(eq(stores.id, store.id));
 
-    const trackedProductIds = lockedProducts
-      .filter((product) => product.trackUnits)
-      .map((product) => product.id);
-    const trackedUnits =
-      trackedProductIds.length > 0
-        ? await tx
-            .select({
-              id: productUnits.id,
-            })
-            .from(productUnits)
-            .where(inArray(productUnits.productId, trackedProductIds))
-        : [];
-    const availableUnits =
-      trackedProductIds.length > 0
-        ? await tx
-            .select({
-              id: productUnits.id,
-              productId: productUnits.productId,
-              combinationKey: productUnits.combinationKey,
-              attributes: productUnits.attributes,
-            })
-            .from(productUnits)
-            .where(
-              and(
-                inArray(productUnits.productId, trackedProductIds),
-                buildUnitRentableDuringPredicate(tx, data.startDate, data.endDate),
-              ),
-            )
-        : [];
-    const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
-    const excludedProductUnitIds = new Set(
-      trackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
-    );
-    const excludedUnitInfo = await loadExcludedUnitInfo(tx, excludedProductUnitIds);
-    const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
-      reservations: overlappingReservations,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      turnoverBufferMinutes,
-      excludedProductUnitIds,
-      excludedUnitInfo,
-      consumableProductIds: new Set(
-        lockedProducts
-          .filter((product) => product.stockKind === "consumable")
-          .map((product) => product.id),
-      ),
-      combinationKeyByUnitId: new Map(availableUnits.map((unit) => [unit.id, unit.combinationKey])),
-    });
-    const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
-      storeId: store.id,
-      productIds: lockedProducts
-        .filter((product) => product.stockKind === "consumable")
-        .map((product) => product.id),
-      blockingStatuses,
-    });
-    for (const [productId, reservedQuantity] of consumableReservedByProduct) {
-      reservedByProduct.set(productId, reservedQuantity);
-    }
-    const combinationsByProduct = new Map<
-      string,
-      Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
-    >();
-
-    for (const unit of availableUnits) {
-      const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
-      const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
-      const current = productCombinations.get(combinationKey);
-      const selectedAttributes = normalizeUnitAttributes(unit.attributes);
-
-      if (!current) {
-        productCombinations.set(combinationKey, {
-          totalQuantity: 1,
-          selectedAttributes,
-        });
-      } else {
-        current.totalQuantity += 1;
-        if (
-          Object.keys(current.selectedAttributes).length === 0 &&
-          Object.keys(selectedAttributes).length > 0
-        ) {
-          current.selectedAttributes = selectedAttributes;
-        }
-        productCombinations.set(combinationKey, current);
-      }
-
-      combinationsByProduct.set(unit.productId, productCombinations);
-    }
-
-    const remainingByProduct = new Map<string, number>();
-    const remainingByProductCombination = new Map<string, number>();
-
-    for (const product of lockedProducts) {
-      if (!product.trackUnits) {
-        if (product.stockKind === "untracked") {
-          continue;
-        }
-
-        const reserved = reservedByProduct.get(product.id) || 0;
-        remainingByProduct.set(product.id, Math.max(0, product.quantity - reserved));
-        continue;
-      }
-
-      const productCombinations = combinationsByProduct.get(product.id) || new Map();
-      let totalUnits = 0;
-      for (const [combinationKey, combination] of productCombinations) {
-        const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
-        const reserved = reservedByProductCombination.get(key) || 0;
-        remainingByProductCombination.set(key, Math.max(0, combination.totalQuantity - reserved));
-        totalUnits += combination.totalQuantity;
-      }
-      // Lines booked without a choice only count on the product, so the
-      // product total caps every combination (same rule as availability).
-      remainingByProduct.set(
-        product.id,
-        Math.max(0, totalUnits - (reservedByProduct.get(product.id) || 0)),
-      );
-    }
-
-    const shortfalls: CapacityShortfall[] = [];
-
+    const lines: Array<{
+      detail: (typeof productDetails)[number];
+      choice: ReturnType<typeof resolveManualLineChoice>;
+    }> = [];
     for (const detail of productDetails) {
-      const product = productsById.get(detail.product.id);
+      const product = lockedProductsById.get(detail.product.id);
       if (!product) {
-        return {
-          ok: false as const,
-          error: "errors.productNotFound" as const,
-          shortfalls: [],
-        };
+        return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
       }
-
-      if (!product.trackUnits) {
-        if (product.stockKind === "untracked") {
-          continue;
-        }
-
-        const available = remainingByProduct.get(product.id) || 0;
-        if (detail.quantity > available) {
-          shortfalls.push({
-            productId: product.id,
-            productName: product.name,
-            combinationKey: null,
-            requested: detail.quantity,
-            available,
-          });
-          remainingByProduct.set(product.id, 0);
-          continue;
-        }
-
-        remainingByProduct.set(product.id, available - detail.quantity);
-        continue;
-      }
-
-      const productCombinations = combinationsByProduct.get(product.id) || new Map();
-      const selectedAttributes = detail.selectedAttributes || {};
-      const productRemaining = remainingByProduct.get(product.id) || 0;
-
-      if (detail.combinationKey) {
-        const key = getProductCombinationAvailabilityKey(product.id, detail.combinationKey);
-        const available = Math.min(remainingByProductCombination.get(key) || 0, productRemaining);
-        if (detail.quantity > available) {
-          shortfalls.push({
-            productId: product.id,
-            productName: product.name,
-            combinationKey: detail.combinationKey,
-            requested: detail.quantity,
-            available,
-          });
-          remainingByProductCombination.set(key, 0);
-          continue;
-        }
-
-        remainingByProductCombination.set(key, available - detail.quantity);
-        remainingByProduct.set(product.id, productRemaining - detail.quantity);
-        continue;
-      }
-
-      const candidates = [...productCombinations.entries()]
-        .map(([combinationKey, combination]) => ({
-          combinationKey,
-          ...combination,
-        }))
-        .filter((combination) =>
-          matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
-        )
-        .sort((a, b) => {
-          const sortA = getDeterministicCombinationSortValue(
-            product.bookingAttributeAxes,
-            a.selectedAttributes,
-          );
-          const sortB = getDeterministicCombinationSortValue(
-            product.bookingAttributeAxes,
-            b.selectedAttributes,
-          );
-          return sortA.localeCompare(sortB, "en");
-        });
-      const resolvedCombination =
-        detail.quantity <= productRemaining
-          ? candidates.find((candidate) => {
-              const key = getProductCombinationAvailabilityKey(
-                product.id,
-                candidate.combinationKey,
-              );
-              return (remainingByProductCombination.get(key) || 0) >= detail.quantity;
-            })
-          : undefined;
-
-      if (!resolvedCombination) {
-        const available = Math.min(
-          productRemaining,
-          candidates.reduce((sum, candidate) => {
-            const key = getProductCombinationAvailabilityKey(product.id, candidate.combinationKey);
-            return sum + (remainingByProductCombination.get(key) || 0);
-          }, 0),
-        );
-        shortfalls.push({
-          productId: product.id,
-          productName: product.name,
-          combinationKey: null,
-          requested: detail.quantity,
-          available,
-        });
-        continue;
-      }
-
-      const key = getProductCombinationAvailabilityKey(
-        product.id,
-        resolvedCombination.combinationKey,
-      );
-      const available = remainingByProductCombination.get(key) || 0;
-      remainingByProductCombination.set(key, available - detail.quantity);
-      remainingByProduct.set(product.id, productRemaining - detail.quantity);
+      lines.push({
+        detail,
+        choice: resolveManualLineChoice(product, detail.requestedAttributes),
+      });
     }
 
-    if (shortfalls.length > 0 && !data.allowOverbooking) {
+    // The stock rule every booking is checked against. Each shortfall is
+    // listed, for the store to book over on purpose. Consumables are checked
+    // here against what other bookings hold, and again when they are taken.
+    const inventory = await reserveInventory({
+      tx,
+      storeId: store.id,
+      lockedProductsById,
+      lines: lines.map(({ detail, choice }) => ({
+        productId: detail.product.id,
+        quantity: detail.quantity,
+        selectedAttributes: choice.selectedAttributes ?? undefined,
+        combinationKey: choice.combinationKey,
+        // A line with no exact combination is served by any unit that
+        // matches what it chose (resolveUnitAssignmentScope).
+        pooled: choice.combinationKey === null,
+      })),
+      window: { start: data.startDate, end: data.endDate },
+      blockingStatuses: getBlockingReservationStatuses(
+        availabilityRules?.settings?.pendingBlocksAvailability ?? true,
+      ),
+      turnoverBufferMinutes: availabilityRules?.settings?.turnoverBufferMinutes ?? 0,
+      // A booking the team types does not ask for the required accessories.
+      skipRequiredAccessoryCheck: true,
+      onShortfall: "collect",
+    });
+    if (!inventory.ok) {
+      return { ok: false as const, error: inventory.error, shortfalls: [] };
+    }
+    if (inventory.shortfalls.length > 0 && !data.allowOverbooking) {
       return {
         ok: false as const,
-        error: "errors.insufficientCapacity" as const,
-        shortfalls,
+        error: "errors.insufficientCapacity",
+        shortfalls: inventory.shortfalls,
       };
     }
 
@@ -1190,7 +961,7 @@ export async function createManualReservation(data: CreateReservationData) {
       storeId: store.id,
       customerId,
       number: reservationNumber,
-      status: data.sendAsQuote ? "quote" : "confirmed",
+      status: reservationStatus,
       // Frozen at creation: the store can change its currency later (billing contract Q4).
       currency: reservationCurrency(null, store.settings),
       startDate: data.startDate,
@@ -1235,8 +1006,9 @@ export async function createManualReservation(data: CreateReservationData) {
       returnLocationSnapshot: returnLocation?.snapshot ?? null,
     });
 
-    // Create reservation items for catalog products
-    for (const detail of productDetails) {
+    // Create reservation items for catalog products. A line keeps the
+    // combination it chose, also when it was booked over the stock.
+    for (const { detail, choice } of lines) {
       await tx.insert(reservationItems).values({
         reservationId,
         productId: detail.product.id,
@@ -1246,14 +1018,14 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: detail.depositPerUnit,
         totalPrice: detail.totalPrice,
         pricingBreakdown: detail.pricingBreakdown,
-        combinationKey: detail.combinationKey,
-        selectedAttributes: detail.selectedAttributes,
+        combinationKey: choice.combinationKey,
+        selectedAttributes: choice.selectedAttributes,
         productSnapshot: {
           name: detail.product.name,
           description: detail.product.description,
           images: detail.product.images || [],
-          combinationKey: detail.combinationKey,
-          selectedAttributes: detail.selectedAttributes,
+          combinationKey: choice.combinationKey,
+          selectedAttributes: choice.selectedAttributes,
         },
       });
     }
@@ -1294,17 +1066,30 @@ export async function createManualReservation(data: CreateReservationData) {
       });
     }
 
+    // Written with the booking: its history, and its capacity verdict for the inbox.
+    await tx.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      userId: actorUserId,
+      activityType: "created",
+      metadata: {
+        source: "manual",
+        status: reservationStatus,
+        tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
+        tulipInsuranceAmount,
+        ...capacityVerdictMetadata(inventory.shortfalls),
+        ...(tulipQuoteError && { tulipQuoteError }),
+      },
+    });
+
     if (!data.sendAsQuote) {
+      // Consumable stock is physical: the override never takes it below zero.
       await consumeReservationStock(tx, reservationId, store.id);
       await validateReservationContract(tx, reservationId, store.id, "confirmation");
     }
 
-    return {
-      ok: true as const,
-      overbookingShortfalls: shortfalls,
-      effects,
-    };
-  }).catch(refuseClosedGate);
+    return { ok: true as const, effects };
+  }).catch(refuseCreation);
 
   if (!reservationWriteResult.ok) {
     return {
@@ -1316,24 +1101,6 @@ export async function createManualReservation(data: CreateReservationData) {
   // Right after commit: a reservation created as confirmed records its
   // pay-as-you-go fee. A quote records it when it is accepted.
   await runReservationEffects(reservationWriteResult.effects);
-
-  const overbookingShortfalls =
-    reservationWriteResult.overbookingShortfalls.length > 0
-      ? reservationWriteResult.overbookingShortfalls
-      : null;
-
-  // Log activity for manual reservation creation
-  await logReservationActivity(reservationId, "created", {
-    source: "manual",
-    status: data.sendAsQuote ? "quote" : "confirmed",
-    tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
-    tulipInsuranceAmount,
-    ...(overbookingShortfalls && {
-      overbooked: true,
-      overbookingShortfalls,
-    }),
-    ...(tulipQuoteError && { tulipQuoteError }),
-  });
 
   const catalogQuantity = productDetails.reduce((total, detail) => total + detail.quantity, 0);
   const customQuantity = customItemDetails.reduce((total, detail) => total + detail.quantity, 0);
@@ -1349,7 +1116,7 @@ export async function createManualReservation(data: CreateReservationData) {
       reservation_id: reservationId,
       customer_id: customerId,
       source: "dashboard_manual",
-      reservation_status: data.sendAsQuote ? "quote" : "confirmed",
+      reservation_status: reservationStatus,
       catalog_line_count: productDetails.length,
       custom_line_count: customItemDetails.length,
       total_line_count:
@@ -5317,7 +5084,8 @@ export async function assignUnitsToReservationItem(
           });
         const strictStock = await checkStock(0);
         if (!strictStock.ok) {
-          return { error: "errors.invalidUnits", failedUnitIds: addedUnitIds };
+          // The units are valid; the stock is short: another booking needs them.
+          return { error: "errors.insufficientCapacity", failedUnitIds: addedUnitIds };
         }
         if (!overrideTurnoverBuffer && turnoverBufferMinutes > 0) {
           const bufferedStock = await checkStock(turnoverBufferMinutes);
