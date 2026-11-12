@@ -9,8 +9,9 @@ const requireModule = createRequire(import.meta.url);
 const { renterGateRefusalParams } = requireModule(
   "../../../../../../lib/billing/reservation-gate-error.ts",
 );
-// The real retry: these actions lock a reservation, then its products (DL-12).
-const { retryTransactionOnDeadlock } = requireModule(
+// The real retry rule of the owner entry (packages/db reservation-change.ts):
+// the whole transaction again on a lost deadlock, three runs in all.
+const { isDatabaseDeadlock, retryTransactionOnDeadlock } = requireModule(
   "../../../../../../../../packages/db/src/deadlock.ts",
 );
 
@@ -29,6 +30,21 @@ const reservations = table("reservations");
 const sideEffectsOf = (calls) =>
   calls.filter((call) => ["session", "effects", "analytics", "notify"].includes(call));
 
+class ReservationChangeBusyError extends Error {
+  name = "ReservationChangeBusyError";
+}
+
+/** The owner entry: three runs, then busy. `kind` names the lock its work gets. */
+const ownerEntry = (kind, tx, scopes) => (scope, work) => {
+  scopes.push({ kind, ...scope });
+  return retryTransactionOnDeadlock(() => work(tx, { kind, ...scope }), {
+    sleep: async () => {},
+  }).catch((error) => {
+    if (isDatabaseDeadlock(error)) throw new ReservationChangeBusyError();
+    throw error;
+  });
+};
+
 /** The three actions with fake dependencies. `calls` records the order of side effects. */
 class StoreNotAcceptingReservationsError extends Error {
   storeId = "store";
@@ -44,6 +60,8 @@ const setup = ({
   let deadlocksLeft = deadlocks;
   const calls = [];
   const changes = [];
+  /** The lock each transaction took, as `{ kind, reservationId, storeId }`. */
+  const scopes = [];
   /** Every owner notification, as [event, context]. */
   const notifications = [];
   const effectRuns = [];
@@ -107,10 +125,11 @@ const setup = ({
           stores: { findFirst: async () => store },
           reservations: { findFirst: async () => reservation },
         },
-        transaction: async (run) => run(tx),
       },
       getCustomerSession: async () => ({ customerId: "customer", customer }),
-      retryTransactionOnDeadlock,
+      runReservationChange: ownerEntry("products", tx, scopes),
+      runReservationOnlyChange: ownerEntry("reservation", tx, scopes),
+      isReservationChangeBusyError: (error) => error instanceof ReservationChangeBusyError,
       changeReservationStatus: async (_tx, input) => {
         calls.push("change");
         changes.push(input);
@@ -165,7 +184,7 @@ const setup = ({
     },
   );
   const order = (...names) => calls.filter((call) => names.includes(call));
-  return { actions, calls, changes, effectRuns, effects, notifications, order };
+  return { actions, calls, changes, effectRuns, effects, notifications, order, scopes };
 };
 
 test("acceptQuote opens the payment session before it records the fee", async () => {
@@ -202,6 +221,31 @@ test("declineQuote runs again when it loses a deadlock", async () => {
   assert.equal((await decline.actions.declineQuote("shop", reservationId)).success, true);
   assert.equal(decline.effectRuns.length, 1);
 });
+
+test("each action takes its lock through the owner entry", async () => {
+  const scope = { reservationId, storeId: "store" };
+  for (const [action, kind] of [
+    ["acceptQuote", "products"],
+    ["declineQuote", "reservation"],
+    ["cancelReservationRequest", "reservation"],
+  ]) {
+    const { actions, changes, scopes } = setup();
+    await actions[action]("shop", reservationId);
+    assert.deepEqual({ ...scopes[0] }, { kind, ...scope }, action);
+    assert.deepEqual({ ...changes[0].lock }, { kind, ...scope }, action);
+  }
+});
+
+for (const action of ["acceptQuote", "declineQuote", "cancelReservationRequest"]) {
+  test(`${action} answers its retryable error after three lost deadlocks, and does nothing else`, async () => {
+    const { actions, calls, changes } = setup({ deadlocks: 3 });
+    const result = await actions[action]("shop", reservationId);
+
+    assert.equal(result.error, "tryAgain");
+    assert.equal(changes.length, 3, "three runs in all");
+    assert.deepEqual(sideEffectsOf(calls), []);
+  });
+}
 
 test("acceptQuote tells the owner the customer confirmed, in the quote's currency", async () => {
   const { actions, notifications } = setup();

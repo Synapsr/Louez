@@ -13,16 +13,20 @@ import {
   db,
   getBlockingReservationStatuses,
   insertReservation,
+  lockReservationOnlyInTransaction,
   payments,
   productAccessories,
   products,
   reservationActivity,
   reservationItems,
   reservations,
+  runReservationTransaction,
   stores,
   toWholeSeconds,
   type ReservationBillingEffect,
   type ReservationInsertValues,
+  type ReservationOnlyLock,
+  type ReservationTransaction,
   type Transaction,
 } from "@louez/db";
 import {
@@ -814,14 +818,22 @@ const buildReservationItemValues = (
  * Locks the checkout being resumed and checks it again: still pending, nothing
  * paid. It was read before the transaction, and the webhook may have paid it
  * since. Then this is a fresh booking, and the stock check counts the paid one.
- * A payment claimed later waits for this write. Exported for its database test.
+ * A payment claimed later waits for this write. The checkout's products are
+ * locked already: the resumed reservation takes the reservation-only lock,
+ * which allows no stock move, and none of its own products. Exported for its
+ * database test.
  */
 export const lockResumableCheckout = async <Checkout extends { id: string }>(
   tx: Transaction,
+  owner: ReservationTransaction,
   storeId: string,
   resumable: Checkout | null,
-): Promise<Checkout | null> => {
+): Promise<(Checkout & { lock: ReservationOnlyLock }) | null> => {
   if (!resumable) return null;
+  const lock = await lockReservationOnlyInTransaction(owner, {
+    reservationId: resumable.id,
+    storeId,
+  });
   const [locked] = await tx
     .select({ status: reservations.status })
     .from(reservations)
@@ -841,7 +853,7 @@ export const lockResumableCheckout = async <Checkout extends { id: string }>(
     )
     .limit(1)
     .for("share");
-  return paid ? null : resumable;
+  return paid ? null : { ...resumable, lock };
 };
 
 /**
@@ -855,13 +867,13 @@ export const lockResumableCheckout = async <Checkout extends { id: string }>(
  */
 export const supersedePendingCheckout = async (
   tx: Transaction,
-  storeId: string,
-  superseded: Pick<ResumableCheckout, "id">,
+  lock: ReservationOnlyLock,
   replacementId: string,
 ): Promise<{ sessionIds: string[]; effects: ReservationBillingEffect[] }> => {
   const change = await changeReservationStatus(tx, {
-    reservationId: superseded.id,
-    storeId,
+    lock,
+    reservationId: lock.reservationId,
+    storeId: lock.storeId,
     to: "cancelled",
     actor: "customer",
     actorUserId: null,
@@ -871,7 +883,7 @@ export const supersedePendingCheckout = async (
     },
   });
   if (!change.changed) {
-    throw new Error(`Could not supersede checkout ${superseded.id}: ${change.reason}`);
+    throw new Error(`Could not supersede checkout ${lock.reservationId}: ${change.reason}`);
   }
 
   const openPayments = await tx
@@ -879,7 +891,7 @@ export const supersedePendingCheckout = async (
     .from(payments)
     .where(
       and(
-        eq(payments.reservationId, superseded.id),
+        eq(payments.reservationId, lock.reservationId),
         eq(payments.type, "rental"),
         eq(payments.status, "pending"),
       ),
@@ -963,7 +975,13 @@ const writeReservation = async (
   const supersededSessions: string[] = [];
   const effects: ReservationBillingEffect[] = [];
 
-  const written = await db.transaction(async (tx): Promise<WriteResult> => {
+  // The owner entry: READ COMMITTED, and the whole write again on a lost
+  // deadlock. It holds no effect: the fees run and the superseded sessions
+  // expire after it, once.
+  const written = await runReservationTransaction(async (tx, owner): Promise<WriteResult> => {
+    // A run that rolled back keeps nothing of what it gathered.
+    supersededSessions.length = 0;
+    effects.length = 0;
     // Product locks first: a marketplace retry then waits for the attempt it
     // races with, and reads its reservation as a replay instead of colliding.
     const lockedProductsById = await lockReservationProducts(
@@ -979,7 +997,7 @@ const writeReservation = async (
 
     // Locked before the stock check: the resumed reservation is either reused
     // or replaced below, so its own hold must not count against this checkout.
-    const resumed = await lockResumableCheckout(tx, store.id, resumable);
+    const resumed = await lockResumableCheckout(tx, owner, store.id, resumable);
     const inventoryResult = await reserveInventory({
       tx,
       storeId: store.id,
@@ -1114,7 +1132,7 @@ const writeReservation = async (
     });
 
     if (resumed) {
-      const replaced = await supersedePendingCheckout(tx, store.id, resumed, reservationId);
+      const replaced = await supersedePendingCheckout(tx, resumed.lock, reservationId);
       supersededSessions.push(...replaced.sessionIds);
       effects.push(...replaced.effects);
     }

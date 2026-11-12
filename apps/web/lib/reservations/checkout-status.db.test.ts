@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import type { ReservationBillingEffect, ReservationStatus } from "@louez/db";
 import {
   createTestDatabase,
+  reservationChangeTestHooks,
   skipWithoutTestDatabase,
   waitForLockWaits,
   type TestDatabase,
@@ -197,44 +198,65 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
   const confirmPaid = (reservationId: string) =>
     payment.confirmPaidReservationOrThrow({ reservationId, storeId: STORE, ...PAID });
 
-  test("a paid confirmation that loses a deadlock to a product update runs again and confirms", async () => {
-    const id = await createReservation("pending");
-    const item = await addConsumable(id, { stock: 5, quantity: 2 });
-
-    // A product update: the product's row first, with writes behind it, then
-    // the product's reservations. The confirmation takes the reservation,
-    // then the product, so one of the two must lose.
+  /**
+   * A product update, which locks the product's row first, with writes behind
+   * it, then the product's reservations, racing `confirm`. Before the owner
+   * entry, the confirmation took the reservation, then the product, and one of
+   * the two lost a deadlock. Now it waits for the product, holding nothing.
+   */
+  async function raceProductUpdate(id: string, productId: string, confirm: () => Promise<boolean>) {
     const update = await database.connect();
     let confirmed: Promise<unknown> | undefined;
     try {
       await update.beginTransaction();
-      await update.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [item.productId]);
+      await update.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [productId]);
       for (let index = 0; index < 5; index += 1) {
         await update.query(
           "INSERT INTO product_units (id, product_id, identifier) VALUES (?, ?, ?)",
-          [nextId("unt"), item.productId, `PAID-${index}`],
+          [nextId("unt"), productId, `PAID-${index}`],
         );
       }
-      confirmed = confirmPaid(id).then(
+      confirmed = confirm().then(
         (result) => result,
         (error: unknown) => ({ thrown: String(error) }),
       );
       await waitForLockWaits(update, database.name, 1);
-      // The confirmation holds the reservation and waits for the product:
-      // asking for the reservation makes MySQL roll the lighter one back.
-      await update.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      // The reservation is free: the confirmation has not taken it yet.
+      await update.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE NOWAIT", [id]);
       await update.rollback();
     } finally {
       await update.end();
     }
+    return confirmed;
+  }
 
-    assert.equal(await confirmed, true);
+  test("a paid confirmation waits behind a product update, takes no lock before it, and confirms once", async () => {
+    const hooks = reservationChangeTestHooks();
+    hooks.restarts = 0;
+    const id = await createReservation("pending");
+    const item = await addConsumable(id, { stock: 5, quantity: 2 });
+
+    assert.equal(await raceProductUpdate(id, item.productId, () => confirmPaid(id)), true);
+
+    assert.equal(hooks.restarts, 0, "no deadlock: no run started over");
     assert.equal((await readReservation(id))?.status, "confirmed");
     assert.deepEqual(await readStock(item), { stock: 3, consumed: 2 });
     const confirmations = (await readActivity(id)).filter(
       (row) => row.activityType === "confirmed",
     );
     assert.equal(confirmations.length, 1, "one confirmation, recorded once");
+  });
+
+  test("the paid confirmation's repair of a confirmed checkout waits behind a product update, then takes its stock", async () => {
+    const hooks = reservationChangeTestHooks();
+    hooks.restarts = 0;
+    const id = await createReservation("confirmed");
+    const item = await addConsumable(id, { stock: 5, quantity: 2 });
+
+    assert.equal(await raceProductUpdate(id, item.productId, () => confirmPaid(id)), false);
+
+    assert.equal(hooks.restarts, 0, "no deadlock: no run started over");
+    assert.deepEqual(await readStock(item), { stock: 3, consumed: 2 });
   });
 
   test("a paid pending checkout is confirmed, with its stock and its activity row", async () => {
@@ -312,8 +334,9 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     const id = await createReservation("pending");
     const open = await addPayment(id, { status: "pending", stripeCheckoutSessionId: "cs_open" });
 
-    const result = await louezDb.db.transaction((tx) =>
-      creation.supersedePendingCheckout(tx, STORE, { id }, "replacement"),
+    const result = await louezDb.runReservationOnlyChange(
+      { reservationId: id, storeId: STORE },
+      (tx, lock) => creation.supersedePendingCheckout(tx, lock, "replacement"),
     );
 
     assert.deepEqual(result, {
@@ -345,8 +368,8 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     const open = await addPayment(id, { status: "pending", stripeCheckoutSessionId: "cs_kept" });
 
     await assert.rejects(
-      louezDb.db.transaction((tx) =>
-        creation.supersedePendingCheckout(tx, STORE, { id }, "replacement"),
+      louezDb.runReservationOnlyChange({ reservationId: id, storeId: STORE }, (tx, lock) =>
+        creation.supersedePendingCheckout(tx, lock, "replacement"),
       ),
       /unexpected_status/,
     );
@@ -356,8 +379,13 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     assert.deepEqual(await readActivity(id), []);
   });
 
+  // The checkout as the write keeps it; its reservation-only lock is left out.
   const lockResumable = (id: string) =>
-    louezDb.db.transaction((tx) => creation.lockResumableCheckout(tx, STORE, { id }));
+    louezDb
+      .runReservationTransaction((tx, owner) =>
+        creation.lockResumableCheckout(tx, owner, STORE, { id }),
+      )
+      .then((resumed) => resumed && { id: resumed.id });
 
   test("a resumed checkout still pending and unpaid is kept for the write", async () => {
     const id = await createReservation("pending");

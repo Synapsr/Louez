@@ -6,7 +6,13 @@ import { after, before, describe, mock, test } from "node:test";
 import { eq } from "drizzle-orm";
 
 import type { ReservationBillingEffect, ReservationStatus } from "@louez/db";
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  reservationChangeTestHooks,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import { ApiServiceError } from "./errors";
 import type { MarketplaceCancellationAdapter } from "./marketplace-booking";
@@ -353,6 +359,82 @@ describe(
         ["runCancellationSideEffects", id],
       ]);
       assert.deepEqual(runs[0]?.committed, ["cancelled"]);
+    });
+
+    test("a cancel queued before a product's writer restocks first, with no deadlock", async () => {
+      const hooks = reservationChangeTestHooks();
+      hooks.restarts = 0;
+      const store = await createStore();
+      const id = await createBooking(store, "confirmed", {
+        status: "confirmed",
+        expiresAt: PAST(),
+      });
+      const stock = await addConsumedItem(store.storeId, id, { stock: 3, quantity: 2 });
+      const { adapter } = fakeCancellationAdapter();
+
+      // A holder keeps the booking while the cancel queues for it, then a
+      // writer that locks the product, then the booking, as the store's
+      // status change does. Before the owner entry, the cancel took the
+      // booking first, then the product the writer held: a deadlock.
+      const holder = await database.connect();
+      const writer = await database.connect();
+      try {
+        await holder.beginTransaction();
+        await holder.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+        const cancelling = cancel(adapter, id);
+        await waitForLockWaits(holder, database.name, 1);
+        await writer.beginTransaction();
+        const writing = writer
+          .query("SELECT id FROM products WHERE id = ? FOR UPDATE", [stock.productId])
+          .then(() => writer.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]));
+        await waitForLockWaits(holder, database.name, 2);
+        await holder.commit();
+
+        assert.equal((await cancelling).status, "cancelled");
+        await writing;
+        await writer.rollback();
+      } finally {
+        await holder.end();
+        await writer.end();
+      }
+
+      assert.equal(hooks.restarts, 0, "no deadlock: no run started over");
+      assert.equal((await readBooking(id)).status, "cancelled");
+      assert.deepEqual(await readStock(stock), { stock: 5, consumed: 0 });
+    });
+
+    test("an expiry still busy after three runs is skipped, and the next one takes it", async () => {
+      const hooks = reservationChangeTestHooks();
+      const store = await createStore();
+      const id = await createBooking(store, "pending", { status: "holding", expiresAt: PAST() });
+      const runner = recordingRunner();
+      hooks.beforeReservationLock = async () => {
+        throw Object.assign(new Error("Deadlock found when trying to get lock"), {
+          code: "ER_LOCK_DEADLOCK",
+          errno: 1213,
+        });
+      };
+      try {
+        await booking.expireMarketplaceBookingAttempts({
+          reservationId: id,
+          runReservationEffects: runner.run,
+        });
+      } finally {
+        hooks.beforeReservationLock = null;
+      }
+      assert.deepEqual(await readBooking(id), {
+        status: "pending",
+        withdrawn: false,
+        attempt: "holding",
+        activity: [],
+      });
+      assert.deepEqual(runner.runs, []);
+
+      await booking.expireMarketplaceBookingAttempts({
+        reservationId: id,
+        runReservationEffects: runner.run,
+      });
+      assert.equal((await readBooking(id)).status, "cancelled");
     });
 
     test("a booking completed after the read is refused and left as it is", async () => {

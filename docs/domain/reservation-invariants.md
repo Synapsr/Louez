@@ -86,7 +86,7 @@ _Partial._ A hold, its capture and its release have one writer (`settleDepositIn
 
 ## Status
 
-**T1. One function changes a status, one inserts.** `changeReservationStatus` locks the row, checks the transition, moves consumable stock, dates `billableAt` and `withdrawnAt`, and writes the activity row. `insertReservation` is the application's only insert. `scripts/reservation-writes.test.mjs` fails on a write in another form ([Data layer, DL-12](../code-review/04-data-layer.md)); it reads syntax, exempts the seeds, and does not see the store-cloning script, the billing-date backfill or dynamic SQL.
+**T1. One function changes a status, one inserts.** `changeReservationStatus` locks the row, checks the transition, moves consumable stock, dates `billableAt` and `withdrawnAt`, and writes the activity row, under the lock token of the owner entry (C1). `insertReservation` is the application's only insert. `scripts/reservation-writes.test.mjs` fails on a write in another form ([Data layer, DL-12](../code-review/04-data-layer.md)); it reads syntax, exempts the seeds, and does not see the store-cloning script, the billing-date backfill or dynamic SQL.
 _Held_ for application code.
 
 **T2. The transitions are a fixed graph.** `pending` goes to `confirmed`, `rejected` or `cancelled`; `quote` to `confirmed`, `declined` or `cancelled`; `confirmed` to `ongoing` or `cancelled`; `ongoing` to `completed` or `cancelled`. Nothing leaves `completed`, `cancelled`, `rejected` or `declined`, and nothing enters `pending` or `quote` (`packages/db/src/consumable-stock.ts`).
@@ -116,14 +116,14 @@ _Partial._ The extension service does it; its tests replace the transaction with
 
 ## Concurrency
 
-**C1. Locks are taken in one order.** The store row, then products by id, then reservations, then units by id ([Data layer, Lock order](../code-review/04-data-layer.md)). A path that still takes the reservation first retries a lost deadlock: `retryTransactionOnDeadlock` for the customer's and the payment's status changes, `retryOnceOnDeadlock` for the extensions and the unit assignment.
-_Partial._ Every known path follows the order or retries. No test fails when a new path inverts it.
+**C1. Locks are taken in one order.** The store row, then products by id, then reservations, then units by id ([Data layer, Lock order](../code-review/04-data-layer.md)). Every status change takes its locks through the owner entry of `@louez/db` (`runReservationChange`, `packages/db/src/reservation-change.ts`): the reservation's products, then the reservation, READ COMMITTED, and the whole transaction again on a lost deadlock or a product added meanwhile, three runs in all. A path that still takes the reservation first retries a lost deadlock once (`retryOnceOnDeadlock`): the extension and the unit assignment.
+_Held_ for status changes: `changeReservationStatus` and the consumable stock helpers run only under a lock token the owner entry issues for the transaction, the store and the reservation, so a status change cannot be written without its locks. A call without the token does not compile, throws at run time, and fails `scripts/reservation-writes.test.mjs` (R6); `packages/db/src/reservation-change.db.test.ts` fails when the entry stops locking the products before the reservation, or accepts another transaction's token; `apps/web/lib/reservations/status-change-races.db.test.ts` fails when a status writer racing the store's change starts a run over. _Partial_ for the rest: the extension and the unit assignment invert the order and retry, and the dashboard's edit follows it through its own code, with no test that fails when a new path inverts it.
 
 **C2. A write decides on what it reads under its locks.** Whatever it read before them it reads again, or it proves nothing changed, before its first write.
 _Partial._ The checkout rechecks stock and required accessories under the product locks, and the store's status changes read everything under theirs. The manual creation decides its stock on what it reads under the product locks: the products, the store's availability rules and the combination each line chose. The checkout still takes those rules from a read made before its locks, and both still write the prices they read before locking. `updateReservation` computes before its locks too, then proves under them that nothing it read has changed (`fingerprintReservationEdit`), or refuses the edit. The recorded payments and deposit returns check their limits before their transaction (M7).
 
 **C3. No effect runs inside a transaction that may run again.** A fee, an email, a notification or a provider call runs after the commit, once.
-_Held_ for the paths listed under the lock order.
+_Held_ for the paths listed under the lock order: the work each status writer gives the owner entry writes rows only (the store's messages go to the outbox in it), and its fees, messages, Stripe calls, insurance and revalidation run after it returns. Established by reading: no test can see an effect inside a transaction.
 
 ## Effects
 

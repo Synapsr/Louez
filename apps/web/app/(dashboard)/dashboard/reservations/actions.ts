@@ -953,7 +953,7 @@ export async function createManualReservation(data: CreateReservationData) {
       };
     }
 
-    const { effects } = await insertReservation(tx, {
+    const { effects, lock } = await insertReservation(tx, {
       id: reservationId,
       storeId: store.id,
       customerId,
@@ -1081,7 +1081,7 @@ export async function createManualReservation(data: CreateReservationData) {
 
     if (!data.sendAsQuote) {
       // Consumable stock is physical: the override never takes it below zero.
-      await consumeReservationStock(tx, reservationId, store.id);
+      await consumeReservationStock(tx, lock);
       await validateReservationContract(tx, reservationId, store.id, "confirmation");
     }
 

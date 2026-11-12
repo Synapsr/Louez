@@ -12,16 +12,25 @@ import type { StoreSettings } from "@louez/types";
 
 import {
   createTestDatabase,
+  reservationChangeTestHooks,
   skipWithoutTestDatabase,
   waitForLockWaits,
   type TestDatabase,
 } from "@louez/db/testing";
 
-// The store's status change (products, then the reservation) racing the
-// paths that still lock the reservation first and retry a lost deadlock: a
-// paid checkout's confirmation and a customer's quote acceptance. Whichever
-// order the database picks, the reservation ends cancelled, its stock comes
-// back, and each change and its effects happen once.
+// The store's status change (products, then the reservation) racing every
+// other status writer, which all lock through the same owner entry
+// (`runReservationChange` of packages/db), in the same order: none of them
+// loses a deadlock, so no run starts over (the owner entry counts its
+// restarts). Whichever order the database picks, each change and its effects
+// happen once. Before that entry, the customer's acceptance and the paid
+// confirmation locked the reservation first: the ordered races below were
+// deadlocks then.
+//
+// A product added to a quote while its acceptance waits starts the acceptance
+// over, under the new product's lock. A reservation still busy after three
+// runs gets each caller's answer: RESERVATION_BUSY for the store, a retryable
+// error for the customer, a throw for the payment, which keeps its claim.
 //
 // The same two paths, alone, when the reservation they confirm holds a unit
 // that went to another booking meanwhile: neither confirms it (S4). And the
@@ -87,10 +96,12 @@ const OWNER = "user_status_races";
 const CUSTOMER = "cus_status_races";
 
 describe("status change races (database)", { skip: skipWithoutTestDatabase() }, () => {
+  const hooks = reservationChangeTestHooks();
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let statusChange: typeof import("@louez/api/services/reservation-status");
   let payment: typeof import("./complete-checkout-payment");
+  let abandoned: typeof import("./cancel-abandoned-checkout");
   let quotes: typeof import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions");
   let dispatched: string[] = [];
   let counter = 0;
@@ -99,6 +110,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     database = await createTestDatabase("status_races");
     louezDb = await import("@louez/db");
     payment = await import("./complete-checkout-payment");
+    abandoned = await import("./cancel-abandoned-checkout");
     quotes = await import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions");
     // packages/api is ES modules: its services need the CommonJS packages'
     // names by hand. Loaded last, as the mocks change how later modules load.
@@ -127,6 +139,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   });
 
   after(async () => {
+    hooks.beforeReservationLock = null;
     await louezDb?.db.$client.end();
     await database?.drop();
   });
@@ -134,6 +147,8 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   beforeEach(() => {
     dispatched = [];
     quoteMessages.length = 0;
+    hooks.restarts = 0;
+    hooks.beforeReservationLock = null;
   });
 
   // 21 characters, as nanoid ids: the quote action checks their shape.
@@ -141,7 +156,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     `${prefix}_${String(++counter).padStart(20 - prefix.length, "0")}`;
 
   /** A reservation of one consumable whose whole stock it takes once confirmed. */
-  async function reservationOfLastUnit(status: "pending" | "quote") {
+  async function reservationOfLastUnit(status: "pending" | "quote" | "confirmed") {
     const productId = nextId("prd");
     const id = nextId("res");
     await louezDb.db.insert(louezDb.products).values({
@@ -636,6 +651,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(state.cancelled, 1);
     assert.equal(state.confirmed, paid ? 1 : 0, "a confirmation, when it won, happened once");
     assert.equal(state.storeEffects, 1, "the cancellation's effects were queued once");
+    assert.equal(hooks.restarts, 0, "no deadlock: both lock the product first");
   });
 
   test("a store cancellation racing a customer's quote acceptance", async () => {
@@ -658,5 +674,252 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(state.confirmed, won ? 1 : 0);
     assert.equal(quoteMessages.length, won ? 1 : 0, "the customer heard of it once, or not at all");
     assert.equal(state.storeEffects, 1);
+    assert.equal(hooks.restarts, 0, "no deadlock: both lock the product first");
+  });
+
+  /** What a call ended with, without an unhandled rejection while it waits. */
+  const settle = <T>(call: Promise<T>) =>
+    call.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+
+  /**
+   * Holds the reservation while `first` waits for its lock, then while
+   * `second` waits too, then lets them go: `first` was queued first. Before
+   * the owner entry, a writer that locked the reservation first got it, then
+   * asked for the product `second` held: a deadlock.
+   */
+  async function raceInOrder<A, B>(id: string, first: () => Promise<A>, second: () => Promise<B>) {
+    const holder = await database.connect();
+    try {
+      await holder.beginTransaction();
+      await holder.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      const firstRun = settle(first());
+      await waitForLockWaits(holder, database.name, 1);
+      const secondRun = settle(second());
+      await waitForLockWaits(holder, database.name, 2);
+      await holder.commit();
+      return { first: await firstRun, second: await secondRun };
+    } finally {
+      await holder.end();
+    }
+  }
+
+  const storeChange = (id: string, to: "cancelled" | "rejected") => () =>
+    statusChange.changeStoreReservationStatus(caller(), { id, to }).then((change) => change.to);
+
+  const busyCode = (error: unknown) =>
+    error &&
+    typeof error === "object" &&
+    "data" in error &&
+    error.data &&
+    typeof error.data === "object" &&
+    "code" in error.data
+      ? error.data.code
+      : undefined;
+
+  const paidConfirmation = (id: string) =>
+    payment.confirmPaidReservationOrThrow({
+      reservationId: id,
+      storeId: STORE,
+      stripeCustomerId: null,
+      stripePaymentMethodId: null,
+      depositStatus: "none",
+      activityMetadata: { source: "race" },
+    });
+
+  // The paid confirmation writes the payment's details on the pending row
+  // before its transaction, so it cannot be queued first this way: the
+  // checkout's suite races it against a product's writer instead.
+  describe("every status writer against the store's change, in one lock order", () => {
+    const writers: Array<{
+      writer: string;
+      from: "pending" | "quote";
+      run: (id: string) => Promise<unknown>;
+      store: "cancelled" | "rejected";
+      end: { status: string; stock: number; storeRefused: boolean };
+    }> = [
+      {
+        writer: "the customer's acceptance",
+        from: "quote",
+        run: (id: string) => quotes.acceptQuote(STORE_SLUG, id),
+        store: "cancelled",
+        // Accepted, then cancelled by the store: the unit comes back.
+        end: { status: "cancelled", stock: 1, storeRefused: false },
+      },
+      {
+        writer: "the customer's decline",
+        from: "quote",
+        run: (id: string) => quotes.declineQuote(STORE_SLUG, id),
+        store: "cancelled",
+        end: { status: "declined", stock: 1, storeRefused: true },
+      },
+      {
+        writer: "the customer's cancellation",
+        from: "pending",
+        run: (id: string) => quotes.cancelReservationRequest(STORE_SLUG, id),
+        store: "rejected",
+        end: { status: "cancelled", stock: 1, storeRefused: true },
+      },
+      {
+        writer: "the failed checkout",
+        from: "pending",
+        run: (id: string) =>
+          louezDb.cancelFailedCheckoutReservation(
+            { storeId: STORE, reservationId: id, reason: "session_creation_failed" },
+            async () => {},
+          ),
+        store: "rejected",
+        end: { status: "cancelled", stock: 1, storeRefused: true },
+      },
+      {
+        writer: "the abandoned checkout",
+        from: "pending",
+        run: (id: string) =>
+          abandoned.cancelAbandonedCheckout(
+            { reservationId: id, checkoutSessionId: "cs_expired" },
+            async () => {},
+          ),
+        store: "rejected",
+        end: { status: "cancelled", stock: 1, storeRefused: true },
+      },
+    ];
+
+    for (const { writer, from, run, store, end } of writers) {
+      test(`${writer}, queued first, finishes before the store's change, with no restart`, async () => {
+        const { id, productId } = await reservationOfLastUnit(from);
+
+        const raced = await raceInOrder(id, () => run(id), storeChange(id, store));
+
+        assert.ok(
+          "value" in raced.first,
+          `${writer} failed: ${String("error" in raced.first && raced.first.error)}`,
+        );
+        assert.equal("error" in raced.second, end.storeRefused, "the store's change");
+        if ("error" in raced.second)
+          assert.notEqual(busyCode(raced.second.error), "RESERVATION_BUSY");
+        const state = await endState(id, productId);
+        assert.equal(state.status, end.status);
+        assert.equal(state.stock, end.stock);
+        assert.equal(hooks.restarts, 0, "no deadlock, no product changed: no run started over");
+      });
+    }
+  });
+
+  test("a product added to a quote while its acceptance waits starts it over, and it takes the new product too", async () => {
+    const { id, productId } = await reservationOfLastUnit("quote");
+    const added = nextId("prd");
+    await louezDb.db.insert(louezDb.products).values({
+      id: added,
+      storeId: STORE,
+      name: added,
+      price: "1.00",
+      pricingMode: "day",
+      stockKind: "consumable",
+      quantity: 1,
+    });
+
+    // The store's edit holds the quote while the acceptance waits, and adds a line.
+    const holder = await database.connect();
+    let accepted: Promise<unknown> | undefined;
+    try {
+      await holder.beginTransaction();
+      await holder.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      accepted = settle(quotes.acceptQuote(STORE_SLUG, id));
+      await waitForLockWaits(holder, database.name, 1);
+      await holder.query(
+        `INSERT INTO reservation_items
+           (id, reservation_id, product_id, quantity, unit_price, deposit_per_unit, total_price, product_snapshot)
+         VALUES (?, ?, ?, 1, '1.00', '0.00', '1.00', '{"name":"added","description":null,"images":[]}')`,
+        [nextId("itm"), id, added],
+      );
+      await holder.commit();
+    } finally {
+      await holder.end();
+    }
+
+    assert.deepEqual(await accepted, { value: { success: true, paymentUrl: null } });
+    assert.equal(hooks.restarts, 1, "the acceptance started over once, for the added product");
+    const state = await endState(id, productId);
+    assert.equal(state.status, "confirmed");
+    assert.equal(state.stock, 0);
+    assert.equal(state.confirmed, 1);
+    assert.equal((await endState(id, added)).stock, 0, "the added line's stock is taken");
+  });
+
+  describe("a reservation still busy after three runs", () => {
+    beforeEach(() => {
+      // Each run loses a deadlock before it gets the reservation.
+      hooks.beforeReservationLock = async () => {
+        throw Object.assign(new Error("Deadlock found when trying to get lock"), {
+          code: "ER_LOCK_DEADLOCK",
+          errno: 1213,
+        });
+      };
+    });
+
+    test("the store's change answers RESERVATION_BUSY and writes nothing", async () => {
+      const { id, productId } = await reservationOfLastUnit("quote");
+      await louezDb.db.delete(louezDb.apiEffects);
+
+      await assert.rejects(
+        statusChange.changeStoreReservationStatus(caller(), { id, to: "confirmed" }),
+        (error: unknown) => busyCode(error) === "RESERVATION_BUSY",
+      );
+      assert.equal(hooks.restarts, 2, "three runs in all");
+      const state = await endState(id, productId);
+      assert.deepEqual(
+        {
+          status: state.status,
+          stock: state.stock,
+          confirmed: state.confirmed,
+          storeEffects: state.storeEffects,
+        },
+        { status: "quote", stock: 1, confirmed: 0, storeEffects: 0 },
+      );
+      assert.deepEqual(dispatched, []);
+    });
+
+    test("the customer's acceptance answers its retryable error and writes nothing", async () => {
+      const { id, productId } = await reservationOfLastUnit("quote");
+
+      assert.deepEqual(await quotes.acceptQuote(STORE_SLUG, id), { error: "tryAgain" });
+      assert.equal(hooks.restarts, 2);
+      const state = await endState(id, productId);
+      assert.deepEqual(
+        { status: state.status, stock: state.stock, confirmed: state.confirmed },
+        { status: "quote", stock: 1, confirmed: 0 },
+      );
+      assert.equal(quoteMessages.length, 0, "the customer is told nothing");
+    });
+
+    test("the paid confirmation throws, so Stripe sends the event again, and its claim stays", async () => {
+      const { id, productId } = await reservationOfLastUnit("pending");
+      // The claim, committed before the confirmation (claimCompletedCheckoutPayment).
+      const claim = nextId("pay");
+      await louezDb.db.insert(louezDb.payments).values({
+        id: claim,
+        reservationId: id,
+        amount: "1.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripeCheckoutSessionId: "cs_paid",
+      });
+
+      await assert.rejects(paidConfirmation(id), { name: "ReservationChangeBusyError" });
+      assert.equal(hooks.restarts, 2);
+      const state = await endState(id, productId);
+      assert.deepEqual(
+        { status: state.status, stock: state.stock, confirmed: state.confirmed },
+        { status: "pending", stock: 1, confirmed: 0 },
+      );
+      const [kept] = await louezDb.db
+        .select({ status: louezDb.payments.status })
+        .from(louezDb.payments)
+        .where(eq(louezDb.payments.id, claim));
+      assert.equal(kept?.status, "completed");
+    });
   });
 });

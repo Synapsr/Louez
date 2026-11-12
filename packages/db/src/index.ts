@@ -111,6 +111,30 @@ export {
   toWholeSeconds,
 } from "./reservation-status";
 export {
+  ReservationLockError,
+  ReservationProductsChangedError,
+  isReservationProductsChangedError,
+  lockReservationInTransaction,
+  lockReservationOnlyInTransaction,
+} from "./reservation-lock";
+export type {
+  InsertedReservationLock,
+  ReservationLock,
+  ReservationOnlyLock,
+  ReservationProductsLock,
+  ReservationScope,
+  ReservationStatusLock,
+  ReservationStockLock,
+  ReservationTransaction,
+} from "./reservation-lock";
+export {
+  ReservationChangeBusyError,
+  isReservationChangeBusyError,
+  runReservationChange,
+  runReservationOnlyChange,
+  runReservationTransaction,
+} from "./reservation-change";
+export {
   STORE_NOT_ACCEPTING_RESERVATIONS,
   StoreNotAcceptingReservationsError,
   assertStoreCanTakeReservations,

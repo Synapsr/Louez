@@ -12,10 +12,17 @@ import {
   payments,
   reservationItems,
   reservations,
-  retryTransactionOnDeadlock,
+  isReservationChangeBusyError,
+  runReservationChange,
+  runReservationOnlyChange,
   stores,
 } from "@louez/db";
-import type { ReservationBillingEffect, ReservationEffectRunner } from "@louez/db";
+import type {
+  ReservationBillingEffect,
+  ReservationEffectRunner,
+  ReservationOnlyLock,
+  Transaction,
+} from "@louez/db";
 import type { Rate, StoreSettings } from "@louez/types";
 import {
   calculateSeasonalAwarePrice,
@@ -640,7 +647,13 @@ export async function holdMarketplaceBooking(params: {
     if (replay.expiresAt <= new Date()) {
       if (replay.holdId) {
         const expired = { reservationId: replay.holdId, storeId: replay.storeId };
-        const effects = await db.transaction((tx) => expireAttempt(tx, expired));
+        // Still busy after every run: a later read, quote or list expires it.
+        const effects = await runReservationOnlyChange(expired, expireAttempt).catch(
+          (error: unknown) => {
+            if (isReservationChangeBusyError(error)) return [];
+            throw error;
+          },
+        );
         await params.runReservationEffects(effects);
       }
       throw new ApiServiceError("BAD_REQUEST", "hold_expired");
@@ -1125,12 +1138,14 @@ export async function cancelMarketplaceBooking(params: {
     throw notCancellable();
   }
 
-  // The helper locks the row, restocks a confirmed or ongoing booking and logs the activity.
-  // It locks the reservation, then the products: a lost deadlock runs the whole
-  // transaction again (DL-12); the effects run once, after it.
-  const effects = await retryTransactionOnDeadlock(() =>
-    db.transaction(async (tx) => {
+  // The owner entry locks the booking's products, then the booking (DL-12): the
+  // helper restocks a confirmed or ongoing booking and logs the activity. The
+  // effects run once, after it.
+  const effects = await runReservationChange(
+    { reservationId: reservation.id, storeId: reservation.storeId },
+    async (tx, lock) => {
       const change = await changeReservationStatus(tx, {
+        lock,
         reservationId: reservation.id,
         storeId: reservation.storeId,
         to: "cancelled",
@@ -1150,7 +1165,7 @@ export async function cancelMarketplaceBooking(params: {
         .set({ status: "cancelled", updatedAt: new Date() })
         .where(eq(marketplaceBookingAttempts.reservationId, reservation.id));
       return change.effects;
-    }),
+    },
   );
 
   await params.adapter.runReservationEffects(effects);
@@ -1168,21 +1183,21 @@ export async function cancelMarketplaceBooking(params: {
   });
 }
 
-type MarketplaceAttemptTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 /**
  * Expires the attempt and cancels its booking while it is still pending. Returns
  * the fee effects; the caller runs them after commit.
  */
 async function expireAttempt(
-  tx: MarketplaceAttemptTransaction,
-  attempt: { reservationId: string; storeId: string },
+  tx: Transaction,
+  lock: ReservationOnlyLock,
 ): Promise<ReservationBillingEffect[]> {
   // The reservation lock first, then the attempt row, as the cancel takes them.
   // Hold and checkout never take the reservation lock while holding the attempt.
+  // A pending booking gives back no stock: the reservation's lock is enough.
   const change = await changeReservationStatus(tx, {
-    reservationId: attempt.reservationId,
-    storeId: attempt.storeId,
+    lock,
+    reservationId: lock.reservationId,
+    storeId: lock.storeId,
     to: "cancelled",
     actor: "system",
     actorUserId: null,
@@ -1194,7 +1209,7 @@ async function expireAttempt(
   await tx
     .update(marketplaceBookingAttempts)
     .set({ status: "expired", expiresAt: now, updatedAt: now })
-    .where(eq(marketplaceBookingAttempts.reservationId, attempt.reservationId));
+    .where(eq(marketplaceBookingAttempts.reservationId, lock.reservationId));
   return change.changed ? change.effects : [];
 }
 
@@ -1223,7 +1238,14 @@ export async function expireMarketplaceBookingAttempts(params: {
 
   for (const { reservationId, storeId } of expired) {
     if (!reservationId) continue;
-    const effects = await db.transaction((tx) => expireAttempt(tx, { reservationId, storeId }));
+    let effects: ReservationBillingEffect[];
+    try {
+      effects = await runReservationOnlyChange({ reservationId, storeId }, expireAttempt);
+    } catch (error) {
+      // Still busy after every run: the next read, quote or list expires it.
+      if (isReservationChangeBusyError(error)) continue;
+      throw error;
+    }
     await params.runReservationEffects(effects);
   }
 }
@@ -1239,24 +1261,35 @@ export async function failMarketplaceBookingAttempt(
   reservationId: string,
   runReservationEffects: ReservationEffectRunner,
 ): Promise<void> {
-  const effects = await db.transaction(async (tx) => {
-    const attempt = await tx.query.marketplaceBookingAttempts.findFirst({
-      where: eq(marketplaceBookingAttempts.reservationId, reservationId),
-      columns: { reservationId: true, status: true, storeId: true },
-    });
-    const reservation = await tx.query.reservations.findFirst({
-      where: and(
-        eq(reservations.id, reservationId),
-        eq(reservations.source, "marketplace"),
-        eq(reservations.status, "pending"),
-      ),
-      columns: { id: true },
-    });
-    if (attempt?.reservationId && attempt.status === "checkout_pending" && reservation) {
-      return expireAttempt(tx, { reservationId: attempt.reservationId, storeId: attempt.storeId });
-    }
-    return [];
+  // The store scopes the lock; the attempt and the booking are read again under it.
+  const scope = await db.query.marketplaceBookingAttempts.findFirst({
+    where: eq(marketplaceBookingAttempts.reservationId, reservationId),
+    columns: { storeId: true },
   });
+  if (!scope) return;
+  // Still busy after every run: it throws, the webhook answers non-2xx, and
+  // Stripe sends the event again.
+  const effects = await runReservationOnlyChange(
+    { reservationId, storeId: scope.storeId },
+    async (tx, lock) => {
+      const attempt = await tx.query.marketplaceBookingAttempts.findFirst({
+        where: eq(marketplaceBookingAttempts.reservationId, reservationId),
+        columns: { reservationId: true, status: true },
+      });
+      const reservation = await tx.query.reservations.findFirst({
+        where: and(
+          eq(reservations.id, reservationId),
+          eq(reservations.source, "marketplace"),
+          eq(reservations.status, "pending"),
+        ),
+        columns: { id: true },
+      });
+      if (attempt?.reservationId && attempt.status === "checkout_pending" && reservation) {
+        return expireAttempt(tx, lock);
+      }
+      return [];
+    },
+  );
   await runReservationEffects(effects);
 }
 

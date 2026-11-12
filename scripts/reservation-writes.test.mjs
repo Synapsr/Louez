@@ -4,6 +4,13 @@
  * the pay-as-you-go fee effects, and a write that skips them skips the fee.
  * The rule is DL-12 in docs/code-review/04-data-layer.md.
  *
+ * A status change and a consumable stock move also run under the
+ * reservation's lock token (`lock`), which only the owner entry of
+ * packages/db (`runReservationChange`) issues: the types already require it in
+ * TypeScript, and the helpers refuse a missing or forged token at run time.
+ * R6 adds what the syntax shows, for JavaScript files and casts: the token is
+ * passed by name.
+ *
  * The test parses every source file under apps/ and packages/ and looks for
  * the forms in RULES. It reads syntax only, with no types and no tsconfig.
  * A table counts when the file binds it: an import of a schema table, a
@@ -45,10 +52,17 @@ const RULES = {
   R3: "inserts or updates a table that is not named directly",
   R4: "writes reservations in raw SQL",
   R5: "calls a reservation helper but never runs its effects with runReservationEffects",
+  R6: "changes a status or moves consumable stock without passing the reservation's lock",
 };
 
 const FORBIDDEN_KEYS = new Set(["status", "billableAt", "withdrawnAt"]);
 const STATUS_HELPERS = new Set(["changeReservationStatus", "insertReservation"]);
+// Helper → how its call names the lock: a `lock` key in its input, or a second argument.
+const LOCKED_HELPERS = new Map([
+  ["changeReservationStatus", "inputKey"],
+  ["consumeReservationStock", "argument"],
+  ["restoreReservationStock", "argument"],
+]);
 // A Drizzle write method → the call it chains on, which receives the table.
 const WRITE_CHAINS = new Map([
   ["set", "update"],
@@ -61,6 +75,18 @@ const HELPER_FILES = {
   R1: "packages/db/src/reservation-insert.ts",
   R2: "packages/db/src/reservation-status.ts",
 };
+
+/** Whether a helper call passes the lock as its form requires. */
+function passesLock(call, form) {
+  if (form === "argument") return call.arguments.length >= 2;
+  const input = unwrap(call.arguments[1]);
+  return (
+    input?.type === "ObjectExpression" &&
+    input.properties.some(
+      (property) => property.type !== "SpreadElement" && propertyKey(property) === "lock",
+    )
+  );
+}
 
 /**
  * Each entry allows `count` violations of one rule, in one file, on one
@@ -145,6 +171,8 @@ function findViolations(code, file, tables) {
   // `.update(t)` call → the `.set(…)` call chained on it.
   const setCalls = new Map();
   const helperNames = new Set(STATUS_HELPERS);
+  // Local name → the locked helper it imports.
+  const lockedHelperOf = new Map([...LOCKED_HELPERS.keys()].map((name) => [name, name]));
   const calls = [];
   let runsEffects = false;
 
@@ -176,6 +204,7 @@ function findViolations(code, file, tables) {
         if (specifier.type !== "ImportSpecifier") continue;
         const imported = specifier.imported.name ?? specifier.imported.value;
         if (STATUS_HELPERS.has(imported)) helperNames.add(specifier.local.name);
+        if (LOCKED_HELPERS.has(imported)) lockedHelperOf.set(specifier.local.name, imported);
       }
     }
 
@@ -221,6 +250,20 @@ function findViolations(code, file, tables) {
     return isMember(callee) && isNamespace(callee.object) && STATUS_HELPERS.has(memberName(callee));
   });
   if (helperCall && !runsEffects) report("R5", helperCall, text(helperCall.callee));
+
+  // R6: a status change or a stock move names its lock.
+  for (const call of calls) {
+    const callee = unwrap(call.callee);
+    const helper =
+      callee.type === "Identifier"
+        ? lockedHelperOf.get(callee.name)
+        : isMember(callee) && isNamespace(callee.object) && LOCKED_HELPERS.has(memberName(callee))
+          ? memberName(callee)
+          : undefined;
+    if (helper && !passesLock(call, LOCKED_HELPERS.get(helper))) {
+      report("R6", call, text(call.callee));
+    }
+  }
 
   return violations;
 }
@@ -397,12 +440,38 @@ test("each forbidden form gives exactly one violation", () => {
     aliasedHelperWithoutEffects: [
       "R5",
       `import { changeReservationStatus as change } from "@louez/db";
-       await change(tx, { reservationId, storeId, to: "confirmed", actor: "store_user" });`,
+       await change(tx, { lock, reservationId, storeId, to: "confirmed", actor: "store_user" });`,
     ],
     namespacedHelperWithoutEffects: [
       "R5",
       `import * as db from "@louez/db";
-       await db.changeReservationStatus(tx, input);`,
+       await db.changeReservationStatus(tx, { ...input, lock });`,
+    ],
+    statusChangeWithoutLock: [
+      "R6",
+      `import { changeReservationStatus } from "@louez/db";
+       import { runReservationEffects } from "@/lib/billing/reservation-effects";
+       const change = await db.transaction((tx) =>
+         changeReservationStatus(tx, { reservationId, storeId, to: "confirmed", actor }),
+       );
+       await runReservationEffects(change.effects);`,
+    ],
+    statusChangeWithLockInSpread: [
+      "R6",
+      `import * as louez from "@louez/db";
+       import { runReservationEffects } from "@/lib/billing/reservation-effects";
+       await louez.changeReservationStatus(tx, { ...input });
+       await runReservationEffects([]);`,
+    ],
+    stockMoveWithoutLock: [
+      "R6",
+      `import { consumeReservationStock as take } from "@louez/db";
+       await take(tx);`,
+    ],
+    stockRestoreWithoutLock: [
+      "R6",
+      `import * as louez from "@louez/db";
+       await louez.restoreReservationStock(tx);`,
     ],
   };
   for (const [name, [rule, code]] of Object.entries(forbidden)) {
@@ -429,10 +498,14 @@ test("each allowed form gives no violation", () => {
     proseInsert: `const prompt = "Insert reservations into the calendar (one per line)";`,
     otherTableSql: "await db.execute(sql`UPDATE reservation_items SET quantity = 0`);",
     readInSubquery: `const s = "UPDATE products SET stock = (SELECT COUNT(*) FROM reservations)";`,
-    helperWithEffects: `import { changeReservationStatus } from "@louez/db";
+    helperWithEffects: `import { changeReservationStatus, runReservationChange } from "@louez/db";
       import { runReservationEffects } from "@/lib/billing/reservation-effects";
-      const change = await db.transaction((tx) => changeReservationStatus(tx, input));
+      const change = await runReservationChange(scope, (tx, lock) =>
+        changeReservationStatus(tx, { ...input, lock }),
+      );
       if (change.changed) await runReservationEffects(change.effects);`,
+    stockMoveWithLock: `import { consumeReservationStock } from "@louez/db";
+      await consumeReservationStock(tx, lock);`,
     injectedWrapper: `const result = await deps.changeReservationStatus({ reservationId, to });`,
   };
   for (const [name, code] of Object.entries(allowed)) {

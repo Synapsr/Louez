@@ -9,6 +9,7 @@ import {
 import { markReservation } from "./billing-queue";
 import type { Transaction } from "./index";
 import { assertStoreCanTakeReservations } from "./reservation-gate";
+import { assertReservationLock, type ReservationStatusLock } from "./reservation-lock";
 import { reservationActivity, reservations } from "./schema";
 
 export type ReservationStatus = (typeof reservations.$inferSelect)["status"];
@@ -60,6 +61,12 @@ export type ReservationEffectRunner = (
 ) => Promise<void>;
 
 export interface ChangeReservationStatusInput {
+  /**
+   * The reservation's lock, from `runReservationChange` (or
+   * `lockReservationInTransaction`), in this transaction. A reservation-only
+   * lock allows only a change that moves no stock and has no `beforeWrite`.
+   */
+  lock: ReservationStatusLock;
   reservationId: string;
   storeId: string;
   to: ReservationStatus;
@@ -108,7 +115,7 @@ export interface LockedReservation {
 
 export type PlanReservationStatusChangeInput = Omit<
   ChangeReservationStatusInput,
-  "beforeWrite" | "now"
+  "lock" | "beforeWrite" | "now"
 > & { now: Date };
 
 export type ReservationStatusChangePlan =
@@ -258,6 +265,12 @@ export function planReservationStatusChange(
  * activity, all in the caller's transaction. It returns the fee effects; the
  * caller runs them after commit.
  *
+ * It runs only under the lock `input.lock`, taken in this transaction by the
+ * owner entry (`runReservationChange`, packages/db `reservation-change.ts`):
+ * the reservation's products, then the reservation. A reservation-only lock
+ * throws `ReservationLockError` on a change that moves stock or runs
+ * `beforeWrite`, before anything is written.
+ *
  * A change into the billable set throws StoreNotAcceptingReservationsError when the
  * store's card gate is closed (requiresReservationGate), before anything is written.
  */
@@ -265,6 +278,7 @@ export async function changeReservationStatus(
   tx: Transaction,
   input: ChangeReservationStatusInput,
 ): Promise<ChangeReservationStatusResult> {
+  assertReservationLock(tx, input.lock, input, ["products", "reservation"]);
   const scope = and(
     eq(reservations.id, input.reservationId),
     eq(reservations.storeId, input.storeId),
@@ -283,6 +297,9 @@ export async function changeReservationStatus(
   const now = input.now ?? new Date();
   const plan = planReservationStatusChange(locked, { ...input, now });
   if (!plan.changed) return { changed: false, from: locked.status, reason: plan.reason };
+  if (plan.stock !== null || input.beforeWrite) {
+    assertReservationLock(tx, input.lock, input, ["products"]);
+  }
   if (requiresReservationGate(locked.status, input.to, input.actor)) {
     await assertStoreCanTakeReservations(tx, input.storeId, now);
   }
@@ -290,10 +307,10 @@ export async function changeReservationStatus(
   const change = { from: locked.status, to: input.to };
   const checked = await input.beforeWrite?.(tx, change);
 
-  if (plan.stock === "consume") {
-    await consumeReservationStock(tx, input.reservationId, input.storeId);
-  } else if (plan.stock === "restore") {
-    await restoreReservationStock(tx, input.reservationId, input.storeId);
+  // A stock move with any other lock was refused above, before the gate.
+  if (input.lock.kind === "products") {
+    if (plan.stock === "consume") await consumeReservationStock(tx, input.lock);
+    else if (plan.stock === "restore") await restoreReservationStock(tx, input.lock);
   }
 
   // drizzle leaves out undefined keys, so absent dates stay as they are.

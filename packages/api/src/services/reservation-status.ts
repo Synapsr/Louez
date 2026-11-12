@@ -3,16 +3,14 @@ import {
   assertStoreCanTakeReservations,
   canTransitionReservationStatus,
   changeReservationStatus,
-  db,
   getAllowedReservationStatusTransitions,
-  isDatabaseDeadlock,
+  isReservationChangeBusyError,
   isStoreNotAcceptingReservationsError,
   payments,
-  products,
   requiresReservationGate,
   reservationItems,
   reservations,
-  retryTransactionOnDeadlock,
+  runReservationChange,
   customers,
   stores,
   type ReservationActor,
@@ -26,7 +24,7 @@ import {
   type CustomerNotificationSettings,
 } from "@louez/types";
 import { evaluateReservationRules, getSettledPaymentAmount } from "@louez/utils";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { reservationErrors, type StatusChangeOutput } from "../contracts/reservations";
 import type { Transport } from "../platform/actor";
@@ -57,12 +55,13 @@ import {
  * notification settings give each; a cancellation the customer makes from
  * the online store never comes here.
  *
- * Lock order (docs/code-review/04-data-layer.md, DL-12): the reservation's
- * products by id, then the reservation, before any check. The transaction
- * runs READ COMMITTED, so every read sees what committed before its lock. A
- * product added to the reservation while the change waited for the
- * reservation was never locked: the transaction rolls back and starts over,
- * up to three runs, then answers RESERVATION_BUSY.
+ * Lock order (docs/code-review/04-data-layer.md, DL-12): the owner entry
+ * `runReservationChange` (packages/db) locks the reservation's products by
+ * id, then the reservation, before any check, in a READ COMMITTED
+ * transaction, so every read sees what committed before its lock. A product
+ * added to the reservation while the change waited for the reservation, or a
+ * lost deadlock, rolls the transaction back and starts it over, up to three
+ * runs, then this answers RESERVATION_BUSY.
  */
 
 /** Who changes the status, on which store, and where the effects go. */
@@ -136,57 +135,15 @@ export function statusChangeIsSensitive(from: ReservationStatus, to: Reservation
 const takesStock = (from: ReservationStatus, to: ReservationStatus) =>
   to === "confirmed" && (from === "pending" || from === "quote");
 
-/**
- * The reservation got a product while its status change waited for its lock
- * (an edit added a line): that product is not locked, and locking it now,
- * behind the reservation, would invert the lock order. The transaction rolls
- * back and starts over.
- */
-export class ReservationProductsChangedError extends Error {
-  constructor(readonly reservationId: string) {
-    super("The reservation's products changed while its status change waited for it.");
-    this.name = "ReservationProductsChangedError";
-  }
-}
-
-/** Most runs of a status change: a deadlock or new products start it over. */
-const STATUS_CHANGE_ATTEMPTS = 3;
-
-const isConflict = (error: unknown) =>
-  isDatabaseDeadlock(error) || error instanceof ReservationProductsChangedError;
-
 /** The activity's actor: who asked, as the reservation's history shows it. */
 const activityActor = (transport: Transport): ReservationActor =>
   transport === "rpc" ? "store_user" : transport === "mcp" ? "mcp" : "api";
 
-/** The ids of the reservation's products, sorted. A plain read: the transaction runs READ COMMITTED. */
-async function reservationProductIds(tx: Transaction, reservationId: string, storeId: string) {
-  const lines = await tx
-    .selectDistinct({ productId: reservationItems.productId })
-    .from(reservationItems)
-    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-    .where(
-      and(eq(reservationItems.reservationId, reservationId), eq(reservations.storeId, storeId)),
-    );
-  return lines.flatMap((line) => (line.productId ? [line.productId] : [])).sort();
-}
-
 /**
- * Locks the reservation's products, by id, then the reservation, and reads
- * what the change and its preview need under those locks. Restarts when a
- * product joined the reservation in between.
+ * Reads what the change and its preview need, under the locks the owner
+ * entry took: the reservation's products, then the reservation.
  */
-async function lockReservation(tx: Transaction, reservationId: string, storeId: string) {
-  const productIds = await reservationProductIds(tx, reservationId, storeId);
-  if (productIds.length > 0) {
-    await tx
-      .select({ id: products.id })
-      .from(products)
-      .where(and(eq(products.storeId, storeId), inArray(products.id, productIds)))
-      .orderBy(asc(products.id))
-      .for("update");
-  }
-
+async function readLockedReservation(tx: Transaction, reservationId: string, storeId: string) {
   const [row] = await tx
     .select({
       id: reservations.id,
@@ -209,14 +166,8 @@ async function lockReservation(tx: Transaction, reservationId: string, storeId: 
       signedAt: reservations.signedAt,
     })
     .from(reservations)
-    .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
-    .for("update");
+    .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)));
   if (!row) return null;
-
-  const current = await reservationProductIds(tx, reservationId, storeId);
-  if (current.some((productId) => !productIds.includes(productId))) {
-    throw new ReservationProductsChangedError(reservationId);
-  }
 
   // What the preview, its confirmation and the messages all show: read once
   // here, under the locks, and reused, so they cannot disagree. The customer
@@ -294,7 +245,7 @@ async function lockReservation(tx: Transaction, reservationId: string, storeId: 
   return { ...row, customer: customer ?? null, snapshot };
 }
 
-type LockedReservation = NonNullable<Awaited<ReturnType<typeof lockReservation>>>;
+type LockedReservation = NonNullable<Awaited<ReturnType<typeof readLockedReservation>>>;
 
 /** The channels a customer message goes out on, as the store's notification settings say. */
 function customerMessages(
@@ -480,112 +431,109 @@ export async function changeStoreReservationStatus(
 
   let outcome: TransactionOutcome;
   try {
-    outcome = await retryTransactionOnDeadlock(
-      () =>
-        db.transaction(
-          async (tx): Promise<TransactionOutcome> => {
-            const locked = await lockReservation(tx, id, storeId);
-            if (!locked) return { kind: "not_found" };
-            const from = locked.status;
-            if (from === to || !canTransitionReservationStatus(from, to)) {
-              return { kind: "refused", error: refusalError(locked, to) };
-            }
-            const pickedUpUnsigned = to === "ongoing" && !locked.signedAt;
-            if (
-              pickedUpUnsigned &&
-              locked.snapshot.store.settings?.contractSignatureMode === "required"
-            ) {
-              return { kind: "refused", error: reservationErrors.contractUnsigned(id) };
-            }
+    outcome = await runReservationChange(
+      { reservationId: id, storeId },
+      async (tx, lock): Promise<TransactionOutcome> => {
+        const locked = await readLockedReservation(tx, id, storeId);
+        if (!locked) return { kind: "not_found" };
+        const from = locked.status;
+        if (from === to || !canTransitionReservationStatus(from, to)) {
+          return { kind: "refused", error: refusalError(locked, to) };
+        }
+        const pickedUpUnsigned = to === "ongoing" && !locked.signedAt;
+        if (
+          pickedUpUnsigned &&
+          locked.snapshot.store.settings?.contractSignatureMode === "required"
+        ) {
+          return { kind: "refused", error: reservationErrors.contractUnsigned(id) };
+        }
 
-            // Checks before the confirmation, so a caller is never asked to
-            // confirm what cannot happen: the card gate, then the stock.
-            if (requiresReservationGate(from, to, actor)) {
-              await assertStoreCanTakeReservations(tx, storeId);
-            }
-            const inventory = takesStock(from, to)
-              ? await checkExistingReservationInventory(tx, id, storeId)
-              : null;
+        // Checks before the confirmation, so a caller is never asked to
+        // confirm what cannot happen: the card gate, then the stock.
+        if (requiresReservationGate(from, to, actor)) {
+          await assertStoreCanTakeReservations(tx, storeId);
+        }
+        const inventory = takesStock(from, to)
+          ? await checkExistingReservationInventory(tx, id, storeId)
+          : null;
 
-            // The preview, its confirmation and the queued messages share one snapshot.
-            const preview = await buildPreview(tx, caller, locked, to);
-            if (options.confirm && statusChangeIsSensitive(from, to)) {
-              const refusal = await options.confirm(preview, tx);
-              // Committed: the new preview stays recorded for its token.
-              if (refusal) return { kind: "confirm", error: refusal };
-            }
+        // The preview, its confirmation and the queued messages share one snapshot.
+        const preview = await buildPreview(tx, caller, locked, to);
+        if (options.confirm && statusChangeIsSensitive(from, to)) {
+          const refusal = await options.confirm(preview, tx);
+          // Committed: the new preview stays recorded for its token.
+          if (refusal) return { kind: "confirm", error: refusal };
+        }
 
-            const warnings =
-              to === "confirmed"
-                ? evaluateReservationRules({
-                    startDate: locked.startDate,
-                    endDate: locked.endDate,
-                    storeSettings: locked.snapshot.store.settings,
-                  })
-                : [];
-            const change = await changeReservationStatus(tx, {
-              reservationId: id,
-              storeId,
-              to,
-              actor,
-              actorUserId: caller.userId,
-              expectedFrom: from,
-              activity: {
-                metadata: {
-                  ...(to === "rejected" && request.rejectionReason
-                    ? { rejectionReason: request.rejectionReason }
-                    : {}),
-                  // Handed over before the customer accepted the contract: kept in the history.
-                  ...(pickedUpUnsigned ? { contractUnsigned: true } : {}),
-                  ...(warnings.length > 0
-                    ? { validationWarnings: warnings, validationWarningsCount: warnings.length }
-                    : {}),
-                  ...inventory?.activityMetadata,
-                },
-              },
-            });
-            // The reservation is locked since lockReservation: it cannot have moved.
-            if (!change.changed) return { kind: "refused", error: refusalError(locked, to) };
-
-            // It does nothing unless the reservation is now billable and not yet signed.
-            await validateReservationContract(tx, id, storeId, "confirmation");
-            await resolveDateChangeRequests(tx, id, locked.startDate, locked.endDate, change.to);
-            // An earlier change's unsent customer messages this one makes false.
-            const superseded = SUPERSEDED_CUSTOMER_MESSAGES[change.to];
-            if (superseded) {
-              await supersedeEffects(tx, storeId, customerMessageKeyPrefix(id), {
-                field: "notification",
-                values: superseded,
-              });
-            }
-            const effectIds = await enqueueEffects(
-              tx,
-              storeId,
-              buildStatusChangeEffects(locked.snapshot, {
-                from: change.from,
-                to: change.to,
-                transport: caller.transport,
-                rejectionReason: request.rejectionReason ?? null,
-                warningCount: warnings.length,
-                messages: preview.messages,
-              }),
-            );
-            return {
-              kind: "changed",
-              locked,
-              from: change.from,
-              to: change.to,
-              effects: change.effects,
-              warnings: warnings.map(({ key, params }) => ({ key, ...(params ? { params } : {}) })),
-              effectIds,
-            };
+        const warnings =
+          to === "confirmed"
+            ? evaluateReservationRules({
+                startDate: locked.startDate,
+                endDate: locked.endDate,
+                storeSettings: locked.snapshot.store.settings,
+              })
+            : [];
+        const change = await changeReservationStatus(tx, {
+          lock,
+          reservationId: id,
+          storeId,
+          to,
+          actor,
+          actorUserId: caller.userId,
+          expectedFrom: from,
+          activity: {
+            metadata: {
+              ...(to === "rejected" && request.rejectionReason
+                ? { rejectionReason: request.rejectionReason }
+                : {}),
+              // Handed over before the customer accepted the contract: kept in the history.
+              ...(pickedUpUnsigned ? { contractUnsigned: true } : {}),
+              ...(warnings.length > 0
+                ? { validationWarnings: warnings, validationWarningsCount: warnings.length }
+                : {}),
+              ...inventory?.activityMetadata,
+            },
           },
-          { isolationLevel: "read committed" },
-        ),
-      { attempts: STATUS_CHANGE_ATTEMPTS, retryOn: isConflict },
+        });
+        // The reservation is locked since the owner entry took it: it cannot have moved.
+        if (!change.changed) return { kind: "refused", error: refusalError(locked, to) };
+
+        // It does nothing unless the reservation is now billable and not yet signed.
+        await validateReservationContract(tx, id, storeId, "confirmation");
+        await resolveDateChangeRequests(tx, id, locked.startDate, locked.endDate, change.to);
+        // An earlier change's unsent customer messages this one makes false.
+        const superseded = SUPERSEDED_CUSTOMER_MESSAGES[change.to];
+        if (superseded) {
+          await supersedeEffects(tx, storeId, customerMessageKeyPrefix(id), {
+            field: "notification",
+            values: superseded,
+          });
+        }
+        const effectIds = await enqueueEffects(
+          tx,
+          storeId,
+          buildStatusChangeEffects(locked.snapshot, {
+            from: change.from,
+            to: change.to,
+            transport: caller.transport,
+            rejectionReason: request.rejectionReason ?? null,
+            warningCount: warnings.length,
+            messages: preview.messages,
+          }),
+        );
+        return {
+          kind: "changed",
+          locked,
+          from: change.from,
+          to: change.to,
+          effects: change.effects,
+          warnings: warnings.map(({ key, params }) => ({ key, ...(params ? { params } : {}) })),
+          effectIds,
+        };
+      },
     );
   } catch (error) {
-    if (isConflict(error)) throw reservationErrors.busy(id);
+    if (isReservationChangeBusyError(error)) throw reservationErrors.busy(id);
     if (error instanceof ReservationUnitConflictError) {
       throw reservationErrors.unitsUnavailable(error.conflicts);
     }
