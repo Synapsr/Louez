@@ -10,7 +10,7 @@ import type { AgentClient, SetupActor, SetupFacts, StoreSetupSummary } from "./s
 /**
  * The outbox of the agent-ready API: the effects of a committed write that
  * must not be lost (a customer's email, a store notification, an analytics
- * event). A service adds them in its transaction (`enqueueEffects`), one row
+ * event, the release of a deposit authorization). A service adds them in its transaction (`enqueueEffects`), one row
  * per effect and channel, with everything they need, so a rollback leaves
  * none and a later edit changes none. Once committed it hands their ids to
  * `ports.dispatchEffects`; the app sends them with its senders
@@ -264,6 +264,22 @@ export interface ApiEffectPayloads {
     /** The SMS's log row (`sms_logs.id`). */
     recordId: string;
     storeId: string;
+  };
+  /**
+   * The release, at the payment provider, of a deposit authorization Louez decided
+   * against because the reservation holds another (apps/web
+   * lib/reservations/deposit-hold-writes.ts). Added in the write that records the release as
+   * owed on the hold's row (`payments.release_owed_at`); a release already made is
+   * success. It carries no `reservationId` on its row: the card is released even when
+   * the reservation is gone. It sends nothing.
+   */
+  "deposit.holdRelease": {
+    reservationId: string;
+    /** The hold's payment row (`payments.id`). */
+    paymentId: string;
+    /** The connected account that holds the authorization. */
+    accountId: string;
+    paymentIntentId: string;
   };
 }
 

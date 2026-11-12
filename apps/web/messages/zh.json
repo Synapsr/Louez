@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "充值状态不允许此操作",
       "noDepositRequired": "此预订无需支付押金",
       "authorizationFailed": "无法创建授权保留",
+      "authorizationInProgress": "此预订的押金预授权正在创建中。请稍后重试。",
+      "authorizationUnconfirmed": "Stripe 未确认押金预授权。请重试：请求的是同一笔预授权，不会产生第二笔。",
       "noActiveAuthorization": "此预订没有有效授权",
       "captureFailed": "无法提取存款",
       "releaseFailed": "无法释放押金"

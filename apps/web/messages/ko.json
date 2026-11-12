@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "입금 상태가 해당 작업을 허용하지 않습니다.",
       "noDepositRequired": "이 예약에는 보증금이 필요하지 않습니다.",
       "authorizationFailed": "승인 보류를 생성할 수 없습니다.",
+      "authorizationInProgress": "이 예약의 보증금 승인 보류가 이미 생성되는 중입니다. 잠시 후 다시 시도하세요.",
+      "authorizationUnconfirmed": "Stripe가 보증금 승인 보류를 확인하지 않았습니다. 다시 시도하세요. 같은 보류가 요청되며 두 번째 보류는 생성되지 않습니다.",
       "noActiveAuthorization": "이 예약에 대한 활성 승인이 없습니다.",
       "captureFailed": "보증금을 회수할 수 없습니다.",
       "releaseFailed": "보증금을 해제할 수 없습니다."

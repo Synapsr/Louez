@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "Der Kautionsstatus erlaubt diesen Vorgang nicht",
       "noDepositRequired": "Für diese Reservierung ist keine Kaution erforderlich",
       "authorizationFailed": "Autorisierung konnte nicht erstellt werden",
+      "authorizationInProgress": "Für diese Reservierung wird bereits eine Kautionsreservierung erstellt. Versuchen Sie es gleich noch einmal.",
+      "authorizationUnconfirmed": "Stripe hat die Kautionsreservierung nicht bestätigt. Versuchen Sie es erneut: Es wird dieselbe Reservierung angefragt, nie eine zweite.",
       "noActiveAuthorization": "Keine aktive Autorisierung für diese Reservierung",
       "captureFailed": "Kaution konnte nicht eingezogen werden",
       "releaseFailed": "Kaution konnte nicht freigegeben werden"

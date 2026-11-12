@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "Status deposit tidak mengizinkan operasi ini",
       "noDepositRequired": "Tidak diperlukan deposit untuk reservasi ini",
       "authorizationFailed": "Tidak dapat membuat penangguhan otorisasi",
+      "authorizationInProgress": "Penahanan deposit untuk reservasi ini sedang dibuat. Coba lagi sebentar lagi.",
+      "authorizationUnconfirmed": "Stripe tidak mengonfirmasi penahanan deposit. Coba lagi: penahanan yang sama yang diminta, bukan yang kedua.",
       "noActiveAuthorization": "Tidak ada otorisasi aktif untuk reservasi ini",
       "captureFailed": "Tidak dapat mengambil setoran",
       "releaseFailed": "Tidak dapat melepaskan deposit"

@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "Le statut de la caution ne permet pas cette opération",
       "noDepositRequired": "Aucune caution n'est requise pour cette réservation",
       "authorizationFailed": "Impossible de créer l'empreinte bancaire",
+      "authorizationInProgress": "Une empreinte bancaire est déjà en cours de création pour cette réservation. Réessayez dans un instant.",
+      "authorizationUnconfirmed": "Stripe n'a pas confirmé l'empreinte bancaire. Réessayez : la même empreinte est demandée, jamais une seconde.",
       "noActiveAuthorization": "Aucune empreinte active pour cette réservation",
       "captureFailed": "Impossible de prélever la caution",
       "releaseFailed": "Impossible de libérer la caution"

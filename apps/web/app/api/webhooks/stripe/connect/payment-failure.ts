@@ -91,12 +91,9 @@ export async function recordPaymentFailure(input: {
     if (seen) return false;
 
     if (kind === "deposit_hold") {
-      // No payment changes, so no billing mark: the deposit status is not part of
-      // the reservation snapshot.
-      await tx
-        .update(reservations)
-        .set({ depositStatus: "failed", updatedAt: new Date() })
-        .where(eq(reservations.id, reservationId));
+      // The hold's row and the reservation's deposit are written by the deposit events,
+      // from the PaymentIntent as Stripe has it (deposit-events.ts): this is the line
+      // of the event, which tells the store why the try failed.
       await tx.insert(reservationActivity).values({
         id: nanoid(),
         reservationId,

@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "O estado do depósito não permite esta operação",
       "noDepositRequired": "Nenhum depósito necessário para esta reserva",
       "authorizationFailed": "Não foi possível criar a autorização",
+      "authorizationInProgress": "Já está a ser criada uma retenção de caução para esta reserva. Tente novamente dentro de momentos.",
+      "authorizationUnconfirmed": "A Stripe não confirmou a retenção de caução. Tente novamente: é pedida a mesma retenção, nunca uma segunda.",
       "noActiveAuthorization": "Nenhuma autorização ativa para esta reserva",
       "captureFailed": "Não foi possível cobrar o depósito",
       "releaseFailed": "Não foi possível liberar o depósito"

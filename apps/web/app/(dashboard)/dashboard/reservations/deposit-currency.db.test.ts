@@ -42,8 +42,31 @@ describe(
     const calls: StripeCall[] = [];
     /** What the fake charge of a refund still holds, and in which currency. */
     let charge = { amount: 0, currency: "eur" };
-    /** The currency of each PaymentIntent the fake Stripe holds, as Stripe writes it. */
-    const intentCurrencies = new Map<string, string>();
+    /**
+     * Each PaymentIntent the fake Stripe holds: its amount, and its currency as Stripe
+     * writes it.
+     */
+    const intents = new Map<
+      string,
+      { amount: number; currency: string; metadata: Record<string, string> }
+    >();
+    /** A PaymentIntent of the fake Stripe, as the deposit hold reads one. */
+    const stripeIntent = (id: string, status: string, amountReceived = 0) => {
+      const intent = intents.get(id);
+      if (!intent) throw new Error(`No such PaymentIntent: ${id}`);
+      return {
+        id,
+        status,
+        amount: intent.amount,
+        amount_received: amountReceived,
+        currency: intent.currency,
+        capture_method: "manual",
+        customer: "cus_deposit",
+        payment_method: "pm_deposit",
+        latest_charge: amountReceived > 0 ? "ch_capture" : null,
+        metadata: intent.metadata,
+      };
+    };
 
     /** The store has moved to this currency since its reservations were booked. */
     const useStore = (currency: string) =>
@@ -76,23 +99,29 @@ describe(
             currency: params.currency,
             account: options?.stripeAccount,
           });
-          const id = `pi_hold_${calls.length}`;
-          intentCurrencies.set(id, params.currency);
-          return { id, status: "requires_capture" };
+          const id = `pi_hold_${intents.size + 1}`;
+          // The metadata names the reservation and the store's attempt.
+          const metadata = Object.fromEntries(
+            Object.entries(params.metadata ?? {}).map(([key, value]) => [key, String(value)]),
+          );
+          intents.set(id, { amount: params.amount, currency: params.currency, metadata });
+          return stripeIntent(id, "requires_capture");
         },
       );
       Reflect.set(
         stripe.paymentIntents,
         "retrieve",
-        async (intent: string, options?: Stripe.RequestOptions) => {
+        async (
+          intent: string,
+          _params: Stripe.PaymentIntentRetrieveParams,
+          options?: Stripe.RequestOptions,
+        ) => {
           calls.push({
             method: "paymentIntents.retrieve",
             intent,
             account: options?.stripeAccount,
           });
-          const currency = intentCurrencies.get(intent);
-          if (!currency) throw new Error(`No such PaymentIntent: ${intent}`);
-          return { id: intent, status: "requires_capture", currency, metadata: {} };
+          return stripeIntent(intent, "requires_capture");
         },
       );
       Reflect.set(
@@ -109,15 +138,7 @@ describe(
             amount: params.amount_to_capture,
             account: options?.stripeAccount,
           });
-          const currency = intentCurrencies.get(intent);
-          if (!currency) throw new Error(`No such PaymentIntent: ${intent}`);
-          return {
-            id: intent,
-            status: "succeeded",
-            amount_received: params.amount_to_capture,
-            currency,
-            latest_charge: "ch_capture",
-          };
+          return stripeIntent(intent, "succeeded", params.amount_to_capture);
         },
       );
       Reflect.set(stripe.charges, "retrieve", async () => ({
@@ -145,9 +166,14 @@ describe(
         },
       );
 
-      await louezDb.db
-        .insert(louezDb.stores)
-        .values({ id: STORE, userId: "owner_deposit", name: "Deposit currency", slug: "deposit" });
+      // The connected account a hold with no row of its own is written from.
+      await louezDb.db.insert(louezDb.stores).values({
+        id: STORE,
+        userId: "owner_deposit",
+        name: "Deposit currency",
+        slug: "deposit",
+        stripeAccountId: ACCOUNT,
+      });
       await louezDb.db.insert(louezDb.customers).values({
         id: "customer_deposit",
         storeId: STORE,
@@ -252,15 +278,19 @@ describe(
     });
 
     /**
-     * A hold authorized on Stripe in `currency`, and its payment row unless
-     * `recorded` is false. `rowCurrency` is what the row says when it disagrees.
+     * A hold of `grossMinor` authorized on Stripe in `currency`, and its payment row
+     * unless `recorded` is false. `rowCurrency` is what the row says when it disagrees.
      */
     async function holdDeposit(
       reservationId: string,
       options: { currency: string; grossMinor: number; recorded?: boolean; rowCurrency?: string },
     ) {
       const intent = `pi_${reservationId}`;
-      intentCurrencies.set(intent, options.currency.toLowerCase());
+      intents.set(intent, {
+        amount: options.grossMinor,
+        currency: options.currency.toLowerCase(),
+        metadata: { reservationId },
+      });
       if (options.recorded === false) return;
       await louezDb.db.insert(louezDb.payments).values({
         id: `hold_${reservationId}`,
@@ -400,7 +430,9 @@ describe(
           depositAmount: "30000.00",
           depositStatus: "authorized",
         });
-        await holdDeposit(reservationId, { currency, grossMinor: 0, recorded: false });
+        // 30 000 yen, or 30 000 euros.
+        const grossMinor = currency === "JPY" ? 30_000 : 3_000_000;
+        await holdDeposit(reservationId, { currency, grossMinor, recorded: false });
         calls.length = 0;
         return { reservationId, result: await capture(reservationId) };
       };

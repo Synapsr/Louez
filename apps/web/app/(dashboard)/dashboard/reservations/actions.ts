@@ -71,7 +71,6 @@ import {
   buildCombinationKey,
   billingFromCustomer,
   canonicalizeAttributes,
-  getCurrencySymbol,
   hasCompleteAttributes,
   matchesSelectedAttributes,
   resolveReservationBilling,
@@ -135,10 +134,13 @@ import {
   deleteRecordedPayment,
   insertManualRefund,
   insertRecordedPayment,
-  recordDepositCapture,
-  recordDepositHold,
-  recordDepositRelease,
 } from "@/lib/reservations/dashboard-payment-writes";
+import {
+  authorizeDepositHold,
+  captureDepositHold as captureReferencedDepositHold,
+  releaseDepositHold as releaseReferencedDepositHold,
+} from "@/lib/reservations/deposit-hold";
+import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import {
@@ -165,20 +167,15 @@ import {
   tryGenerateInvoiceForPayment,
 } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
-import { log } from "@/lib/evlog";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
 
 import {
-  captureDeposit,
-  createDepositAuthorization,
   createRefund,
   fromStripeCents,
   getChargeRefundableAmount,
-  getDepositAuthorizationStatus,
   getPaymentMethodDetails,
-  releaseDeposit,
   toStripeCents,
 } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
@@ -3592,33 +3589,10 @@ export async function recordDamage(
   return { success: true, paymentId };
 }
 
-type DepositActivityType =
-  | "deposit_authorized"
-  | "deposit_captured"
-  | "deposit_released"
-  | "deposit_failed";
-
-async function logDepositActivity(
-  reservationId: string,
-  activityType: DepositActivityType,
-  description?: string,
-  metadata?: Record<string, unknown>,
-) {
-  const session = await auth();
-  const userId = session?.user?.id || null;
-
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId,
-    userId,
-    activityType,
-    description,
-    metadata,
-  });
-}
-
 /**
- * Create a deposit authorization hold (empreinte bancaire)
+ * Create a deposit authorization hold (empreinte bancaire). At most one
+ * authorization per attempt, whoever asks at the same time: see
+ * lib/reservations/deposit-hold.ts.
  */
 export async function createDepositHold(reservationId: string) {
   const store = await getStoreForUser();
@@ -3626,293 +3600,113 @@ export async function createDepositHold(reservationId: string) {
     return { error: "errors.noStripeAccount" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
+  const result = await authorizeDepositHold(
+    {
+      reservationId,
+      storeId: store.id,
+      stripeAccountId: store.stripeAccountId,
+      storeSettings: store.settings,
+      actorUserId: await getActorUserId(),
     },
+    depositHoldDeps,
+  );
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  if (!result.ok) {
+    return { error: result.error };
+  }
+
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.createDepositHold,
+    properties: { amount_cents: toAnalyticsAmountCents(result.amount) },
   });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  // Check prerequisites
-  if (!reservation.stripeCustomerId || !reservation.stripePaymentMethodId) {
-    return { error: "errors.stripe.noSavedCard" };
-  }
-
-  if (reservation.depositStatus !== "card_saved") {
-    return { error: "errors.stripe.invalidDepositStatus" };
-  }
-
-  const depositAmount = parseFloat(reservation.depositAmount);
-  if (depositAmount <= 0) {
-    return { error: "errors.stripe.noDepositRequired" };
-  }
-
-  // The deposit was agreed in the reservation's currency, whatever the store's is now.
-  const currency = reservationCurrency(reservation.currency, store.settings);
-  const amountMinor = toStripeCents(depositAmount, currency);
-
-  try {
-    const result = await createDepositAuthorization({
-      stripeAccountId: store.stripeAccountId,
-      customerId: reservation.stripeCustomerId,
-      paymentMethodId: reservation.stripePaymentMethodId,
-      amount: amountMinor,
-      currency,
-      reservationId,
-      reservationNumber: reservation.number,
-      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
-    });
-
-    // An off-session confirmation only yields a usable hold when it reaches
-    // requires_capture. Any other status (requires_action, processing, …) means no funds
-    // are actually held — do not mark the deposit authorized; surface it as failed so the
-    // owner can re-request via the on-storefront card flow.
-    if (result.status !== "requires_capture") {
-      await db
-        .update(reservations)
-        .set({ depositStatus: "failed", updatedAt: new Date() })
-        .where(eq(reservations.id, reservationId));
-
-      await logDepositActivity(
-        reservationId,
-        "deposit_failed",
-        `Empreinte non capturable (statut Stripe: ${result.status})`,
-        { paymentIntentId: result.paymentIntentId, status: result.status },
-      );
-
-      return { error: "errors.stripe.authorizationFailed" };
-    }
-
-    await recordDepositHold(db, {
-      paymentId: nanoid(),
-      reservationId,
-      storeId: store.id,
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: result.paymentIntentId,
-      paymentMethodId: reservation.stripePaymentMethodId,
-      expiresAt: result.expiresAt,
-      amount: depositAmount.toFixed(2),
-      amountMinor,
-      currency,
-      now: new Date(),
-    });
-
-    // Log activity
-    const currencySymbol = getCurrencySymbol(currency);
-    await logDepositActivity(
-      reservationId,
-      "deposit_authorized",
-      `Empreinte de ${depositAmount.toFixed(2)}${currencySymbol} créée`,
-      {
-        paymentIntentId: result.paymentIntentId,
-        amount: depositAmount,
-        expiresAt: result.expiresAt.toISOString(),
-      },
-    );
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.createDepositHold,
-      properties: { amount_cents: toAnalyticsAmountCents(depositAmount) },
-    });
-    return { success: true, paymentIntentId: result.paymentIntentId };
-  } catch (error) {
-    console.error("Failed to create deposit hold:", error);
-
-    // Update status to failed
-    await db
-      .update(reservations)
-      .set({
-        depositStatus: "failed",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    await logDepositActivity(
-      reservationId,
-      "deposit_failed",
-      `Échec de l'empreinte: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { error: error instanceof Error ? error.message : "Unknown error" },
-    );
-
-    return { error: "errors.stripe.authorizationFailed" };
-  }
+  return { success: true, paymentIntentId: result.paymentIntentId };
 }
 
 /**
- * Capture deposit from authorization hold (for damage/loss)
+ * Capture deposit from authorization hold (for damage/loss). The capture is asked and
+ * recorded on the hold the reservation references, on the connected account that holds
+ * it: see lib/reservations/deposit-hold.ts.
  */
 export async function captureDepositHold(
   reservationId: string,
   data: { amount: number; reason: string },
 ) {
   const store = await getStoreForUser();
-  if (!store || !store.stripeAccountId) {
+  if (!store) {
     return { error: "errors.noStripeAccount" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  if (reservation.depositStatus !== "authorized" || !reservation.depositPaymentIntentId) {
-    return { error: "errors.stripe.noActiveAuthorization" };
-  }
-
-  const depositAmount = parseFloat(reservation.depositAmount);
-  if (data.amount <= 0 || data.amount > depositAmount) {
-    return { error: "errors.invalidAmount" };
-  }
-
-  if (!data.reason.trim()) {
-    return { error: "errors.reasonRequired" };
-  }
-
-  // The deposit the store sees, and the amount it typed, are in the reservation's
-  // currency, whatever the store's is now.
-  const currency = reservationCurrency(reservation.currency, store.settings);
-
-  try {
-    // An amount sent against the hold is counted in the hold's own currency. A hold
-    // authorized in another one (before the store changed its own) cannot be read
-    // in the reservation's: the store captures it from Stripe.
-    // Stripe says which: a payment row may hold the column's default, or two rows
-    // may disagree.
-    const { currency: holdCurrency } = await getDepositAuthorizationStatus(
-      store.stripeAccountId,
-      reservation.depositPaymentIntentId,
-    );
-    if (holdCurrency !== currency) {
-      log.warn(
-        "deposit-capture",
-        `refused for reservation ${reservationId}: its hold ${reservation.depositPaymentIntentId} is in ${holdCurrency}, its deposit in ${currency}; capture it from Stripe`,
-      );
-      return { error: "errors.stripe.captureFailed" };
-    }
-
-    const result = await captureDeposit({
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: reservation.depositPaymentIntentId,
-      amountToCapture: toStripeCents(data.amount, holdCurrency),
-    });
-    // What is recorded is what Stripe captured, in the currency it captured it in.
-    const capturedAmount = fromStripeCents(result.amountCaptured, result.currency);
-
-    const capturePaymentId = nanoid();
-    await recordDepositCapture(db, {
-      capturePaymentId,
+  const result = await captureReferencedDepositHold(
+    {
       reservationId,
       storeId: store.id,
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: reservation.depositPaymentIntentId,
-      stripeChargeId: result.chargeId,
-      amount: capturedAmount.toFixed(2),
-      capturedMinor: result.amountCaptured,
-      currency: result.currency,
+      fallbackAccountId: store.stripeAccountId,
+      storeSettings: store.settings,
+      actorUserId: await getActorUserId(),
+      amount: data.amount,
       reason: data.reason,
-      now: new Date(),
-    });
-
-    await tryGenerateInvoiceForPayment(capturePaymentId, "dashboard_capture_deposit_hold");
-
-    // Log activity
-    const currencySymbol = getCurrencySymbol(result.currency);
-    await logDepositActivity(
-      reservationId,
-      "deposit_captured",
-      `Caution capturée: ${capturedAmount.toFixed(2)}${currencySymbol} - ${data.reason}`,
-      {
-        paymentIntentId: reservation.depositPaymentIntentId,
-        amount: capturedAmount,
-        reason: data.reason,
-      },
-    );
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.captureDepositHold,
-      properties: { amount_cents: toAnalyticsAmountCents(data.amount) },
-    });
-    return { success: true, amountCaptured: result.amountCaptured };
-  } catch (error) {
-    console.error("Failed to capture deposit:", error);
-    return { error: "errors.stripe.captureFailed" };
+    },
+    depositHoldDeps,
+  );
+  if (!result.ok) {
+    return { error: result.error };
   }
+
+  if (result.capturePaymentId) {
+    await tryGenerateInvoiceForPayment(result.capturePaymentId, "dashboard_capture_deposit_hold");
+  }
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.captureDepositHold,
+    properties: { amount_cents: toAnalyticsAmountCents(data.amount) },
+  });
+  return { success: true, amountCaptured: result.amountCapturedMinor };
 }
 
 /**
- * Release deposit authorization (no damage)
+ * Release deposit authorization (no damage). Recorded on the hold that was cancelled:
+ * see lib/reservations/deposit-hold.ts.
  */
 export async function releaseDepositHold(reservationId: string) {
   const store = await getStoreForUser();
-  if (!store || !store.stripeAccountId) {
+  if (!store) {
     return { error: "errors.noStripeAccount" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  if (reservation.depositStatus !== "authorized" || !reservation.depositPaymentIntentId) {
-    return { error: "errors.stripe.noActiveAuthorization" };
-  }
-
-  try {
-    await releaseDeposit({
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: reservation.depositPaymentIntentId,
-    });
-
-    await recordDepositRelease(db, { reservationId, storeId: store.id, now: new Date() });
-
-    // Log activity
-    const currency = reservationCurrency(reservation.currency, store.settings);
-    const currencySymbol = getCurrencySymbol(currency);
-    const depositAmount = parseFloat(reservation.depositAmount);
-    await logDepositActivity(
+  const result = await releaseReferencedDepositHold(
+    {
       reservationId,
-      "deposit_released",
-      `Caution de ${depositAmount.toFixed(2)}${currencySymbol} libérée`,
-      {
-        paymentIntentId: reservation.depositPaymentIntentId,
-        amount: depositAmount,
-      },
-    );
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
       storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.releaseDepositHold,
-      properties: { amount_cents: toAnalyticsAmountCents(depositAmount) },
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to release deposit:", error);
-    return { error: "errors.stripe.releaseFailed" };
+      fallbackAccountId: store.stripeAccountId,
+      storeSettings: store.settings,
+      actorUserId: await getActorUserId(),
+    },
+    depositHoldDeps,
+  );
+  if (!result.ok) {
+    return { error: result.error };
   }
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.releaseDepositHold,
+    properties: { amount_cents: toAnalyticsAmountCents(result.amount) },
+  });
+  return { success: true };
 }
 
 /**

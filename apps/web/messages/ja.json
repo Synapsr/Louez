@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "入金ステータスではこの操作は許可されていません",
       "noDepositRequired": "この予約にはデポジットは必要ありません",
       "authorizationFailed": "承認保留を作成できません",
+      "authorizationInProgress": "この予約のデポジットのオーソリはすでに作成中です。しばらくしてからもう一度お試しください。",
+      "authorizationUnconfirmed": "Stripe がデポジットのオーソリを確認しませんでした。もう一度お試しください。同じオーソリが要求され、2 件目が作成されることはありません。",
       "noActiveAuthorization": "この予約にはアクティブな承認がありません",
       "captureFailed": "デポジットを回収できません",
       "releaseFailed": "デポジットを解放できません"

@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "De borgstatus staat deze bewerking niet toe",
       "noDepositRequired": "Geen borg vereist voor deze reservering",
       "authorizationFailed": "Kan autorisatie niet aanmaken",
+      "authorizationInProgress": "Er wordt al een borgreservering aangemaakt voor deze reservering. Probeer het zo opnieuw.",
+      "authorizationUnconfirmed": "Stripe heeft de borgreservering niet bevestigd. Probeer het opnieuw: dezelfde reservering wordt aangevraagd, nooit een tweede.",
       "noActiveAuthorization": "Geen actieve autorisatie voor deze reservering",
       "captureFailed": "Kan borg niet innen",
       "releaseFailed": "Kan borg niet vrijgeven"

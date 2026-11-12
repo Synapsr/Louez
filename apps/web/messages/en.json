@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "The deposit status does not allow this operation",
       "noDepositRequired": "No deposit required for this reservation",
       "authorizationFailed": "Unable to create authorization hold",
+      "authorizationInProgress": "An authorization hold is already being created for this reservation. Try again in a moment.",
+      "authorizationUnconfirmed": "Stripe did not confirm the authorization hold. Try again: the same hold is asked for, never a second one.",
       "noActiveAuthorization": "No active authorization for this reservation",
       "captureFailed": "Unable to capture deposit",
       "releaseFailed": "Unable to release deposit"

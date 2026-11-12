@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "El estado del depósito no permite esta operación",
       "noDepositRequired": "No se requiere depósito para esta reserva",
       "authorizationFailed": "No se pudo crear la autorización",
+      "authorizationInProgress": "Ya se está creando una retención de fianza para esta reserva. Inténtalo de nuevo en un momento.",
+      "authorizationUnconfirmed": "Stripe no ha confirmado la retención de fianza. Inténtalo de nuevo: se pide la misma retención, nunca una segunda.",
       "noActiveAuthorization": "No hay autorización activa para esta reserva",
       "captureFailed": "No se pudo cobrar el depósito",
       "releaseFailed": "No se pudo liberar el depósito"

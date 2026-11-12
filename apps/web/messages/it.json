@@ -9292,6 +9292,8 @@
       "invalidDepositStatus": "Lo stato del deposito non consente questa operazione",
       "noDepositRequired": "Nessun deposito richiesto per questa prenotazione",
       "authorizationFailed": "Impossibile creare l'autorizzazione",
+      "authorizationInProgress": "Una preautorizzazione della cauzione è già in corso per questa prenotazione. Riprova tra un momento.",
+      "authorizationUnconfirmed": "Stripe non ha confermato la preautorizzazione della cauzione. Riprova: viene richiesta la stessa preautorizzazione, mai una seconda.",
       "noActiveAuthorization": "Nessuna autorizzazione attiva per questa prenotazione",
       "captureFailed": "Impossibile incassare il deposito",
       "releaseFailed": "Impossibile rilasciare il deposito"

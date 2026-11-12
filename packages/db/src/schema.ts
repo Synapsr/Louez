@@ -2060,10 +2060,22 @@ export const payments = mysqlTable(
     appFeeMetadataVersion: int("app_fee_metadata_version"),
 
     // Authorization hold (empreinte)
+    // Until when the provider keeps this authorization, as the provider states it; null
+    // when it states none. It means nothing else.
     authorizationExpiresAt: timestamp("authorization_expires_at", {
       mode: "date",
     }),
     capturedAmount: decimal("captured_amount", { precision: 10, scale: 2 }),
+    // A deposit hold Louez decided against (the reservation holds another) while the
+    // provider still keeps it: when that was decided. Null once the provider confirmed
+    // its cancellation or its capture, and on every other row.
+    releaseOwedAt: timestamp("release_owed_at", { mode: "date" }),
+    // A deposit hold the store asked for: when the request that creates its
+    // authorization was last sent to the provider. Null when none was sent.
+    providerRequestedAt: timestamp("provider_requested_at", { mode: "date" }),
+    // A request of Louez is settling that attempt with the provider until then, on the
+    // database's clock. Null when none is.
+    claimedUntil: timestamp("claimed_until", { mode: "date" }),
 
     // Currency (for multi-currency support)
     currency: varchar("currency", { length: 3 }).default("EUR"),

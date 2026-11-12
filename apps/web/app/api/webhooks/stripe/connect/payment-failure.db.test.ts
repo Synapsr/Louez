@@ -246,10 +246,14 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     assert.equal((await activities(reservation.id)).length, 0);
   });
 
-  test("a failed deposit hold is recorded and notified once", async () => {
+  test("a failed deposit hold has its line and its alert once; its rows are the deposit events'", async () => {
     const reservation = await createReservation();
     const paymentIntent = intent(reservation.id, `pi_pf_${counter}`, "deposit_hold");
     const { deps, sent } = fakeDeps();
+    const [before] = await louezDb.db
+      .select({ depositStatus: louezDb.reservations.depositStatus })
+      .from(louezDb.reservations)
+      .where(eq(louezDb.reservations.id, reservation.id));
     for (const _delivery of [1, 2]) {
       await failure.handlePaymentFailure(
         { reservation, stripeEventId: "evt_deposit", paymentIntent },
@@ -260,7 +264,9 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
       .select({ depositStatus: louezDb.reservations.depositStatus })
       .from(louezDb.reservations)
       .where(eq(louezDb.reservations.id, reservation.id));
-    assert.equal(row?.depositStatus, "failed");
+    // The hold's row and the deposit's status are written from the PaymentIntent as
+    // Stripe has it, before this is called (deposit-events.ts).
+    assert.equal(row?.depositStatus, before?.depositStatus);
     assert.deepEqual(await activities(reservation.id), [{ type: "deposit_failed" }]);
     assert.equal(sent.owner, 1);
   });
