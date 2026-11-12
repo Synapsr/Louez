@@ -542,5 +542,70 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
           .where(eq(louezDb.customers.id, "customer_actions"));
       }
     });
+
+    test("a request is in the reservation's currency, not the store's of today, on every channel", async () => {
+      const store = Reflect.get(globalThis, STORE_KEY);
+      // The store has moved to dollars since the reservation was booked in pounds.
+      Reflect.set(globalThis, STORE_KEY, {
+        ...store,
+        settings: { currency: "usd", country: "GB" },
+        stripeAccountId: "acct_actions",
+        stripeChargesEnabled: true,
+      });
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: "+447700900123" })
+        .where(eq(louezDb.customers.id, "customer_actions"));
+      try {
+        const reservationId = await createReservation({ withItems: true });
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ currency: "GBP" })
+          .where(eq(louezDb.reservations.id, reservationId));
+        Reflect.set(globalThis, SENT_KEY, []);
+
+        for (const type of ["rental", "deposit"] as const) {
+          const result = await actions.requestPayment(reservationId, {
+            type,
+            channels: { email: true, sms: true },
+          });
+          assert.equal(result.error, undefined, type);
+        }
+
+        const sent = Reflect.get(globalThis, SENT_KEY) as Array<{
+          channel: string;
+          name: string;
+          params: { currency?: string; reservation?: { currency?: string } };
+        }>;
+        assert.deepEqual(
+          sent.map(({ channel, name, params }) => [
+            name,
+            channel === "email" ? params.reservation?.currency : params.currency,
+          ]),
+          [
+            ["sendPaymentRequestEmail", "GBP"],
+            ["sendPaymentRequestSms", "GBP"],
+            ["sendDepositAuthorizationRequestEmail", "GBP"],
+            ["sendDepositAuthorizationRequestSms", "GBP"],
+          ],
+        );
+        // What the customer's payment page will charge.
+        const requests = await louezDb.db
+          .select({
+            amount: louezDb.paymentRequests.amount,
+            currency: louezDb.paymentRequests.currency,
+          })
+          .from(louezDb.paymentRequests)
+          .where(eq(louezDb.paymentRequests.reservationId, reservationId));
+        assert.deepEqual(requests, [{ amount: "110.00", currency: "GBP" }]);
+      } finally {
+        Reflect.set(globalThis, STORE_KEY, store);
+        Reflect.deleteProperty(globalThis, SENT_KEY);
+        await louezDb.db
+          .update(louezDb.customers)
+          .set({ phone: null })
+          .where(eq(louezDb.customers.id, "customer_actions"));
+      }
+    });
   });
 });

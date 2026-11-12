@@ -87,6 +87,8 @@ const checkoutFixture = ({
   paymentUrl = "https://stripe.example.test/pay",
   gate = { accepts: true },
   contact = { phone: "+33 6 12 34 56 78", email: "shop@example.test" },
+  // What the write says it stored: a reused pending checkout keeps its own.
+  writtenCurrency = "EUR",
 } = {}) => {
   const writes = [];
   const cancellations = [];
@@ -129,11 +131,12 @@ const checkoutFixture = ({
         reservationId: "booking",
         reservationNumber: "TEST",
         customerId: "customer",
+        currency: writtenCurrency,
       };
     },
     runPostCreationEffects: async () => {},
-    notifyRequestReceived: async () => {
-      notifications.push(true);
+    notifyRequestReceived: async (input) => {
+      notifications.push(input);
     },
     startCheckoutPayment: async () => paymentUrl,
     cancelFailedCheckoutReservation: async (input, runner) => {
@@ -193,6 +196,14 @@ for (const options of [{ mode: "request" }, { source: "phone" }]) {
     assert.equal(fixture.notifications.length, 1);
   });
 }
+
+test("a request's messages get the currency written on the reservation, not the store's", async () => {
+  // The store is on euros now; the pending checkout this one reuses was written in francs.
+  const fixture = checkoutFixture({ mode: "request", writtenCurrency: "CHF" });
+  assert.equal((await fixture.submit()).ok, true);
+  assert.equal(fixture.notifications.length, 1);
+  assert.equal(fixture.notifications[0].reservation.currency, "CHF");
+});
 
 for (const source of ["online", "marketplace", "phone"]) {
   test(`${source}: a closed card gate refuses the booking before anything is written`, async () => {

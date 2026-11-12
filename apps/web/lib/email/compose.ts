@@ -8,6 +8,7 @@ import {
   type EmailLocale,
 } from './i18n'
 import { formatEmailDateInStoreTimezone } from './date-time'
+import { reservationCurrency } from '@/lib/reservations/payment-billing-facts'
 import { DEFAULT_PRIMARY_COLOR } from './templates/components/theme'
 import { ContractEmail } from './templates/contract'
 import { CustomMessageEmail } from './templates/custom-message'
@@ -157,6 +158,8 @@ interface ComposeInstantAccessParams {
     startDate: Date
     endDate: Date
     totalAmount: number
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
   }
   items: { name: string; quantity: number; totalPrice: number }[]
   accessUrl: string
@@ -199,7 +202,7 @@ export function composeInstantAccessEmail({
     showPaymentCta,
     additionalMessage,
     locale,
-    currency: store.settings?.currency || 'EUR',
+    currency: reservationCurrency(reservation.currency ?? null, store.settings ?? null),
   })
 
   return { subject, element }
@@ -256,6 +259,8 @@ interface ComposeManualPaymentRequestParams {
   customer: ComposeCustomer
   reservationNumber: string
   amount: number
+  /** The reservation's currency; null or absent for one older than its own currency. */
+  currency?: string | null
   reservationUrl: string
   additionalMessage?: string | null
   customSubject?: string | null
@@ -268,6 +273,7 @@ export function composeManualPaymentRequestEmail({
   customer,
   reservationNumber,
   amount,
+  currency,
   reservationUrl,
   additionalMessage,
   customSubject,
@@ -293,7 +299,7 @@ export function composeManualPaymentRequestEmail({
     paymentUrl: reservationUrl,
     customMessage: additionalMessage,
     locale,
-    currency: store.settings?.currency || 'EUR',
+    currency: reservationCurrency(currency ?? null, store.settings ?? null),
   })
 
   return { subject, element }

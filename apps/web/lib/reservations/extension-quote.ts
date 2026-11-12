@@ -26,6 +26,7 @@ import {
   type ExtensionPreview,
   type ExtensionReason,
 } from "./extension.types";
+import { reservationCurrency } from "./payment-billing-facts";
 import { getRentalPaid } from "./util.payment-status";
 
 export class ExtensionError extends Error {}
@@ -149,8 +150,12 @@ export const extensionManualReason = (
     return "manualPrice";
   // The shared reading of "paid": a manual refund is subtracted once, and a
   // Stripe refund row never is, even linked to its charge — that charge is
-  // already net.
-  if (cents(getRentalPaid(reservation.payments)) < cents(reservation.totalAmount)) return "unpaid";
+  // already net. Only what was paid in the reservation's currency has paid it.
+  const paid = getRentalPaid(
+    reservation.payments,
+    reservationCurrency(reservation.currency, reservation.store.settings ?? null),
+  );
+  if (cents(paid) < cents(reservation.totalAmount)) return "unpaid";
   if (
     Number(reservation.depositAmount) > 0 &&
     (["released", "captured", "failed"].includes(reservation.depositStatus ?? "") ||
@@ -392,7 +397,8 @@ export const quoteExtension = async (
       mode: "automatic",
       supplement,
       total: next.total,
-      currency: settings?.currency ?? "EUR",
+      // The supplement is charged in the reservation's currency, whatever the store's is now.
+      currency: reservationCurrency(reservation.currency, settings ?? null),
       endDate: end.toISOString(),
     },
     plan,

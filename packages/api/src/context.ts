@@ -428,6 +428,7 @@ export interface BaseContext {
             endDate: string;
             totalAmount: string;
             depositAmount: string;
+            currency?: string | null;
             items: { name: string; quantity: number; totalPrice: string }[];
           };
           reservationUrl: string;

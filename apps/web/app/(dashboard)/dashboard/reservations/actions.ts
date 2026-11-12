@@ -78,6 +78,7 @@ import {
   billingFromCustomer,
   canonicalizeAttributes,
   getCurrencySymbol,
+  normalizeCurrency,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   hasCompleteAttributes,
@@ -149,6 +150,10 @@ import {
 } from "@/lib/reservations/dashboard-payment-writes";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import {
+  getReservationRentalAmount,
+  paymentRequestTerms,
+} from "@/lib/reservations/util.payment-request";
 import {
   compareReservationDemand,
   fingerprintReservationEdit,
@@ -3386,23 +3391,6 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function getReservationRentalAmount(reservation: {
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-}) {
-  const subtotal = parseFloat(reservation.subtotalAmount || "0");
-  const deposit = parseFloat(reservation.depositAmount || "0");
-  const total = parseFloat(reservation.totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
-
 export async function recordPayment(reservationId: string, data: RecordPaymentData) {
   const store = await getStoreForUser();
   if (!store) {
@@ -3497,7 +3485,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     { id: store.id, name: store.name, slug: store.slug },
     reservation.number,
     data.amount,
-    store.settings?.currency,
+    reservationCurrency(reservation.currency, store.settings),
   ).catch(() => {});
 
   revalidatePath("/dashboard/reservations");
@@ -3894,7 +3882,8 @@ export async function createDepositHold(reservationId: string) {
     return { error: "errors.stripe.noDepositRequired" };
   }
 
-  const currency = store.settings?.currency || "EUR";
+  // The deposit was agreed in the reservation's currency, whatever the store's is now.
+  const currency = reservationCurrency(reservation.currency, store.settings);
   const amountMinor = toStripeCents(depositAmount, currency);
 
   try {
@@ -4022,7 +4011,8 @@ export async function captureDepositHold(
     return { error: "errors.reasonRequired" };
   }
 
-  const currency = store.settings?.currency || "EUR";
+  // The hold was authorized in the reservation's currency, whatever the store's is now.
+  const currency = reservationCurrency(reservation.currency, store.settings);
 
   try {
     const result = await captureDeposit({
@@ -4107,7 +4097,7 @@ export async function releaseDepositHold(reservationId: string) {
     await recordDepositRelease(db, { reservationId, storeId: store.id, now: new Date() });
 
     // Log activity
-    const currency = store.settings?.currency || "EUR";
+    const currency = reservationCurrency(reservation.currency, store.settings);
     const currencySymbol = getCurrencySymbol(currency);
     const depositAmount = parseFloat(reservation.depositAmount);
     await logDepositActivity(
@@ -4197,7 +4187,12 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
     return { error: "errors.stripe.noChargeToRefund" };
   }
 
-  const currency = store.settings?.currency || "EUR";
+  // A Stripe charge is refunded in its own currency: the payment's, else the
+  // reservation's, whatever the store's is now.
+  const currency = normalizeCurrency(
+    stripePayment.currency,
+    reservationCurrency(reservation.currency, store.settings),
+  );
 
   try {
     // Check refundable amount
@@ -4804,39 +4799,20 @@ export async function requestPayment(
       return { error: "errors.customerNoPhone" };
     }
 
-    const currency = store.settings?.currency || "EUR";
     // The reservation's language, as the other messages about it.
     const locale = resolveReservationEmailLocale(reservation.locale, store.settings?.country);
 
-    // Calculate amount based on type
-    let amount: number;
-    let description: string;
-
-    if (data.type === "custom") {
-      if (!data.amount || data.amount < 0.5) {
-        return { error: "errors.invalidAmount" };
-      }
-      amount = data.amount;
-      description = "Payment";
-    } else if (data.type === "rental") {
-      // Calculate remaining amount for rental from payments
-      const paidAmount = reservation.payments
-        .filter((p) => p.type === "rental" && p.status === "completed")
-        .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-      amount = getReservationRentalAmount(reservation) - paidAmount;
-
-      if (amount < 0.5) {
-        return { error: "errors.noAmountDue" };
-      }
-      description = "Rental";
-    } else {
-      // deposit type
-      amount = parseFloat(reservation.depositAmount || "0");
-      if (amount < 0.5) {
-        return { error: "errors.noDepositRequired" };
-      }
-      description = "Deposit";
+    // The amount, in the reservation's currency, whatever the store's is now.
+    const terms = paymentRequestTerms({
+      type: data.type,
+      customAmount: data.amount,
+      reservation,
+      storeSettings: store.settings,
+    });
+    if (!terms.ok) {
+      return { error: terms.error };
     }
+    const { amount, description, currency } = terms;
 
     // Build URLs
     const baseUrl = getStorefrontUrl(store.slug);
@@ -4912,6 +4888,7 @@ export async function requestPayment(
             reservation: {
               id: reservationId,
               number: reservation.number,
+              currency,
             },
             depositAmount: amount,
             authorizationUrl: paymentUrl,
@@ -4939,6 +4916,7 @@ export async function requestPayment(
             reservation: {
               id: reservationId,
               number: reservation.number,
+              currency,
             },
             amount,
             description,

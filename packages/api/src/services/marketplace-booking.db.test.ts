@@ -74,13 +74,19 @@ describe(
     const nextId = (prefix: string) => `${prefix}_${++counter}`;
 
     /** A store and its customer, so the booking snapshot's joins find them. */
-    async function createStore() {
+    async function createStore(currency?: string) {
       // 21 characters, as a quote token's store id.
       const storeId = nextId("store").padEnd(21, "x");
       const customerId = nextId("cus");
-      await louezDb.db
-        .insert(louezDb.stores)
-        .values({ id: storeId, userId: "user", name: storeId, slug: storeId });
+      await louezDb.db.insert(louezDb.stores).values({
+        id: storeId,
+        userId: "user",
+        name: storeId,
+        slug: storeId,
+        ...(currency && {
+          settings: { reservationMode: "payment", advanceNoticeMinutes: 0, currency },
+        }),
+      });
       await louezDb.db.insert(louezDb.customers).values({
         id: customerId,
         storeId,
@@ -525,6 +531,32 @@ describe(
         runner.runs.flatMap((run) => run.effects),
         [voidOf(store.storeId, id)],
       );
+    });
+
+    test("a booking is shown in its own currency, not the store's of today", async () => {
+      // The store has moved to dollars since these were booked.
+      const store = await createStore("USD");
+      const attempt = { status: "confirmed", expiresAt: FUTURE() } as const;
+      const frozen = await createBooking(store, "confirmed", attempt);
+      await louezDb.db
+        .update(louezDb.reservations)
+        .set({ currency: "GBP" })
+        .where(eq(louezDb.reservations.id, frozen));
+      // Booked before a reservation had its own currency: the store's.
+      const legacy = await createBooking(store, "confirmed", attempt);
+
+      const currencyOf = async (reservationId: string) => {
+        const snapshot = await booking.getMarketplaceBooking({
+          reservationId,
+          getCanonicalUrl: (slug, path) => `https://louez.test/${slug}${path}`,
+          mediaBaseUrl: "https://louez.test",
+          runReservationEffects: recordingRunner().run,
+        });
+        return snapshot.currency;
+      };
+
+      assert.equal(await currencyOf(frozen), "GBP");
+      assert.equal(await currencyOf(legacy), "USD");
     });
 
     test("a hold replayed after its expiry cancels the booking; its void runs after commit", async () => {

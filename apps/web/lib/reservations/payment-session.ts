@@ -23,6 +23,7 @@ import {
   toAnalyticsAmountCents,
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
@@ -100,11 +101,13 @@ export async function createReservationPaymentSessionForCustomer(
       return { error: "errors.invalidStatus" };
     }
 
-    if (isRentalPaid(reservation.payments)) {
+    // The reservation is paid in its own currency, whatever the store's is now, and
+    // only a payment in that currency has paid it.
+    const currency = reservationCurrency(reservation.currency, store.settings);
+    if (isRentalPaid(reservation.payments, currency)) {
       return { error: "errors.alreadyPaid" };
     }
 
-    const currency = store.settings?.currency || "EUR";
     const chargeAmount =
       isTrustedCaller && options?.chargeAmount !== undefined
         ? options.chargeAmount

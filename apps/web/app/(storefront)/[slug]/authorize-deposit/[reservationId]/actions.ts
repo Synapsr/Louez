@@ -18,6 +18,7 @@ import {
   INSTANT_ACCESS_SHORT_TTL_MS,
   createReservationInstantAccessUrl,
 } from "@/lib/customer-auth/instant-access";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { createDepositAuthorizationIntent, toStripeCents } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
@@ -117,7 +118,8 @@ const loadDepositContext = async ({
     return { ok: false as const, error: "stripe_not_configured" as const };
   }
 
-  const currency = store.settings?.currency || "EUR";
+  // The deposit was agreed in the reservation's currency, whatever the store's is now.
+  const currency = reservationCurrency(reservation.currency, store.settings);
   const depositAmount = Number.parseFloat(reservation.depositAmount || "0");
   if (!(depositAmount > 0)) {
     return { ok: false as const, error: "no_deposit_required" as const };

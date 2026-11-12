@@ -52,6 +52,8 @@ export interface ManualEmailRenderContext {
     endDate: string
     totalAmount: string
     depositAmount: string
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     items: { name: string; quantity: number; totalPrice: string }[]
   }
   reservationUrl: string
@@ -130,6 +132,7 @@ export async function buildManualReservationEmailFromContext(
         customer,
         reservationNumber: reservation.number,
         amount,
+        currency: reservation.currency,
         reservationUrl: context.reservationUrl,
         additionalMessage,
         customSubject,
@@ -183,6 +186,7 @@ export async function buildManualReservationEmailFromContext(
           startDate: new Date(reservation.startDate),
           endDate: new Date(reservation.endDate),
           totalAmount: Number.parseFloat(reservation.totalAmount),
+          currency: reservation.currency,
         },
         items: reservation.items.map((item) => ({
           name: item.name,

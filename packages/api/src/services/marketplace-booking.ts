@@ -17,7 +17,12 @@ import {
 } from "@louez/db";
 import type { ReservationBillingEffect, ReservationEffectRunner } from "@louez/db";
 import type { Rate, StoreSettings } from "@louez/types";
-import { calculateSeasonalAwarePrice, toAbsoluteUrl, type PricingMode } from "@louez/utils";
+import {
+  calculateSeasonalAwarePrice,
+  normalizeCurrency,
+  toAbsoluteUrl,
+  type PricingMode,
+} from "@louez/utils";
 import type { BookingCheckoutInput, BookingHoldInput, BookingQuoteInput } from "@louez/validations";
 
 import { getStorefrontAvailability } from "./availability";
@@ -917,6 +922,8 @@ type BookingRow = {
   attemptStatus: string;
   bookingAttemptId: string;
   bookingNumber: string;
+  /** The reservation's currency; null for one made before it had its own. */
+  currency: string | null;
   customerEmail: string;
   depositAmount: string;
   endAt: Date;
@@ -979,7 +986,8 @@ async function snapshotsFromRows(
     bookingNumber: row.bookingNumber,
     startAt: row.startAt.toISOString(),
     endAt: row.endAt.toISOString(),
-    currency: row.storeSettings?.currency ?? "EUR",
+    // The booking's own currency, frozen when it was made; the store's for an older one.
+    currency: normalizeCurrency(row.currency ?? row.storeSettings?.currency),
     totalAmount: row.totalAmount,
     depositAmount: row.depositAmount,
     customerEmail: row.customerEmail,
@@ -1004,6 +1012,7 @@ function bookingSelection() {
     attemptStatus: marketplaceBookingAttempts.status,
     bookingAttemptId: marketplaceBookingAttempts.bookingAttemptId,
     bookingNumber: reservations.number,
+    currency: reservations.currency,
     customerEmail: customers.email,
     depositAmount: reservations.depositAmount,
     endAt: reservations.endDate,

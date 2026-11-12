@@ -43,6 +43,8 @@ interface ManualReservationEmailReservation {
   endDate: Date;
   totalAmount: string;
   depositAmount: string;
+  /** Frozen at creation; null for a reservation older than its own currency. */
+  currency?: string | null;
   customer: { firstName: string; lastName: string; email: string };
   items: { productSnapshot: { name: string }; quantity: number; totalPrice: string }[];
   payments?: { type: string; status: string }[];
@@ -109,6 +111,7 @@ export async function toManualEmailRenderContext(
       endDate: reservation.endDate.toISOString(),
       totalAmount: reservation.totalAmount,
       depositAmount: reservation.depositAmount,
+      currency: reservation.currency,
       items: reservation.items.map((item) => ({
         name: item.productSnapshot.name,
         quantity: item.quantity,

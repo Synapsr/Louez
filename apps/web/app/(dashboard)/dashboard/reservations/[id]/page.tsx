@@ -58,7 +58,8 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
   });
   if (!reservation) notFound();
 
-  const currency = store.settings?.currency || "EUR";
+  // The reservation's own currency, frozen when it was made; the store's for an older one.
+  const currency = reservation.currency;
   const storeTimezone = store.settings?.timezone;
   const smsConfigured = isSmsConfigured();
   const stripeConfigured = Boolean(store.stripeAccountId);

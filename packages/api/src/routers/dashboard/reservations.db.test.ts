@@ -1189,6 +1189,14 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     );
     const platform = rows.filter((row) => row.type === "reservation.platformNotification");
     assert.ok(platform.length > 0 && platform.every((row) => row.payload.currency === "GBP"));
+    // The customer's acceptance states its amounts in that currency too.
+    const customerRows = rows.filter((row) => row.type === "reservation.customerMessage");
+    assert.ok(
+      customerRows.length > 0 &&
+        customerRows.every(
+          (row) => (row.payload.reservation as { currency?: string }).currency === "GBP",
+        ),
+    );
   });
 
   test("a later status change supersedes the earlier customer message still unsent", async () => {

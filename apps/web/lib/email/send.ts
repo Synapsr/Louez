@@ -6,6 +6,7 @@ import { emailLogs } from '@louez/db'
 import { getEmailTranslations, type EmailLocale } from './i18n'
 import { getLogoForLightBackground } from '@louez/utils'
 import { resolveEmailLogo } from './logo'
+import { reservationCurrency as currencyOfReservation } from '@/lib/reservations/payment-billing-facts'
 import {
   composeInstantAccessEmail,
   composeReminderPickupEmail,
@@ -89,6 +90,13 @@ interface Customer {
   lastName: string
   email: string
 }
+
+/**
+ * The currency of a reservation's amounts: its own, frozen when it was created, else
+ * the store's (contract Q4). A store may have changed currency since.
+ */
+const currencyOf = (store: Store, reservation: { currency?: string | null }) =>
+  currencyOfReservation(reservation.currency ?? null, store.settings ?? null)
 
 interface ReservationItem {
   name: string
@@ -203,6 +211,8 @@ export async function sendReservationConfirmationEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
     startDate: Date
@@ -255,7 +265,7 @@ export async function sendReservationConfirmationEmail({
       contractSignatureUrl,
       customContent,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
       taxEnabled: reservation.taxEnabled,
       taxRate: reservation.taxRate,
       subtotalExclTax: reservation.subtotalExclTax,
@@ -464,6 +474,8 @@ export async function sendRequestAcceptedEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
     startDate: Date
@@ -510,7 +522,7 @@ export async function sendRequestAcceptedEmail({
       paymentUrl,
       customContent,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
     })
   )
 
@@ -793,6 +805,8 @@ export async function sendReminderPickupAdminEmail({
   store: Store
   customer: { firstName: string; lastName: string; email: string; phone?: string | null }
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
     startDate: Date
@@ -822,7 +836,7 @@ export async function sendReminderPickupAdminEmail({
       startDate: reservation.startDate,
       total: reservation.totalAmount,
       dashboardUrl,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
       locale,
     })
   )
@@ -866,6 +880,8 @@ export async function sendReminderReturnAdminEmail({
   store: Store
   customer: { firstName: string; lastName: string; email: string; phone?: string | null }
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
     endDate: Date
@@ -895,7 +911,7 @@ export async function sendReminderReturnAdminEmail({
       endDate: reservation.endDate,
       total: reservation.totalAmount,
       dashboardUrl,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
       locale,
     })
   )
@@ -1000,6 +1016,8 @@ export async function sendNewRequestLandlordEmail({
   store: StoreWithEmailDateSettings
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
     startDate: Date
@@ -1028,7 +1046,7 @@ export async function sendNewRequestLandlordEmail({
       customerNotes: reservation.customerNotes,
       dashboardUrl,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
       storeTimezone: store.settings?.timezone,
       storeCountryCode: store.settings?.country,
     })
@@ -1565,6 +1583,8 @@ interface InstantAccessEmailParams {
     startDate: Date
     endDate: Date
     totalAmount: number
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
   }
   items: { name: string; quantity: number; totalPrice: number }[]
   accessUrl: string
@@ -1592,6 +1612,7 @@ export async function renderInstantAccessEmail({
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       totalAmount: reservation.totalAmount,
+      currency: reservation.currency,
     },
     items,
     accessUrl,
@@ -1830,6 +1851,8 @@ export async function sendReservationCompletedEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
     startDate: Date
@@ -1862,7 +1885,7 @@ export async function sendReservationCompletedEmail({
       depositReturned,
       storefrontUrl,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
     })
   )
 
@@ -1910,6 +1933,8 @@ export async function sendPaymentConfirmationEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
   }
@@ -1943,7 +1968,7 @@ export async function sendPaymentConfirmationEmail({
       reservationUrl,
       contractSignatureUrl,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
     })
   )
 
@@ -1994,6 +2019,8 @@ export async function sendPaymentFailedEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
   }
@@ -2020,7 +2047,7 @@ export async function sendPaymentFailedEmail({
       errorMessage,
       paymentUrl,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
     })
   )
 
@@ -2066,6 +2093,8 @@ export async function sendPaymentRequestEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
   }
@@ -2094,7 +2123,7 @@ export async function sendPaymentRequestEmail({
       paymentUrl,
       customMessage,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
     })
   )
 
@@ -2139,6 +2168,8 @@ export async function sendDepositAuthorizationRequestEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
   }
@@ -2165,7 +2196,7 @@ export async function sendDepositAuthorizationRequestEmail({
       authorizationUrl,
       customMessage,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
     })
   )
 
@@ -2209,6 +2240,8 @@ export async function sendQuoteSentEmail({
   store: Store
   customer: Customer
   reservation: {
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null
     id: string
     number: string
     startDate: Date
@@ -2241,7 +2274,7 @@ export async function sendQuoteSentEmail({
       total: reservation.totalAmount,
       reservationUrl,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency: currencyOf(store, reservation),
     })
   )
 

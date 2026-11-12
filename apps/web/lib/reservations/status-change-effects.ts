@@ -128,6 +128,7 @@ export function createReservationEffectSenders(
               : null,
             taxAmount: reservation.taxAmount ? parseFloat(reservation.taxAmount) : null,
             locale: reservation.locale,
+            currency: reservation.currency,
           },
           reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservation.id}`),
         };

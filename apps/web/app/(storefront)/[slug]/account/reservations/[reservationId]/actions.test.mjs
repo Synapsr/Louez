@@ -150,6 +150,7 @@ const setup = ({
       },
       captureProductServerEvent: step("analytics"),
       toAnalyticsAmountCents: () => 0,
+      reservationCurrency: (currency, settings) => currency ?? settings?.currency ?? "EUR",
       productAnalyticsEvents: { quoteAccepted: "accepted", quoteDeclined: "declined" },
       cancelTulipContractForReservation: step("tulip"),
       dispatchNotification: async (event, ctx) => {
