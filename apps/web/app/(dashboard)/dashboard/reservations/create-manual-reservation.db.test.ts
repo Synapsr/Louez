@@ -1299,6 +1299,26 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
 
       assert.equal(written.created.overbooked, false);
     });
+
+    test("that is live holds the consumable it has not taken yet", async () => {
+      const gas = await product("Gas", 5, "consumable");
+      await hold(gas, new Date(Date.now() + 30 * MINUTE), 3);
+
+      assert.deepEqual(
+        await create([{ productId: gas, quantity: 4 }]),
+        refusedWith(shortfall(gas, "Gas", 4, 2)),
+      );
+    });
+
+    test("that expired holds no consumable either", async () => {
+      const gas = await product("Gas", 5, "consumable");
+      await hold(gas, new Date(Date.now() - 30 * MINUTE), 3);
+
+      const written = await writtenBy(await create([{ productId: gas, quantity: 4 }]));
+
+      assert.equal(written.created.overbooked, false);
+      assert.equal(await stockOf(gas), 1);
+    });
   });
 
   describe("an extension checkout on another reservation", () => {

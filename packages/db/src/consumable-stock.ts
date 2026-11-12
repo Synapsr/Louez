@@ -2,7 +2,10 @@ import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 
 import type { Database, Transaction } from './index'
 import { products, reservationItems, reservations } from './schema'
-import type { BlockingReservationStatus } from './unit-availability'
+import {
+  buildReservationAvailabilityPredicate,
+  type BlockingReservationStatus,
+} from './unit-availability'
 
 export interface ConsumableStockItem {
   itemId: string
@@ -319,16 +322,14 @@ export async function loadConsumableReservedQuantities(
     return new Map()
   }
 
-  const reservationPredicate = params.excludeReservationId
-    ? and(
-        eq(reservations.storeId, params.storeId),
-        inArray(reservations.status, params.blockingStatuses),
-        ne(reservations.id, params.excludeReservationId),
-      )
-    : and(
-        eq(reservations.storeId, params.storeId),
-        inArray(reservations.status, params.blockingStatuses),
-      )
+  // The same reservations as returnable stock counts: a pending marketplace
+  // booking whose hold expired holds nothing.
+  const reservationPredicate = and(
+    eq(reservations.storeId, params.storeId),
+    inArray(reservations.status, params.blockingStatuses),
+    buildReservationAvailabilityPredicate(database),
+    params.excludeReservationId ? ne(reservations.id, params.excludeReservationId) : undefined,
+  )
   const rows = await database
     .select({
       productId: reservationItems.productId,
