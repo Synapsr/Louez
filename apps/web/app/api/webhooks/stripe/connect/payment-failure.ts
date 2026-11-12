@@ -33,9 +33,11 @@ export type PaymentFailureRecord =
       readonly recorded: false;
       /**
        * `duplicate_event`: Stripe delivered this event again. `completed_payment`:
-       * the payment went through on a later attempt.
+       * the payment went through on a later attempt. `deposit_held`: the reservation's
+       * deposit is authorized or captured by another PaymentIntent, so the failure of
+       * this one is no news.
        */
-      readonly reason: "duplicate_event" | "completed_payment";
+      readonly reason: "duplicate_event" | "completed_payment" | "deposit_held";
     };
 
 /**
@@ -72,11 +74,24 @@ export async function recordPaymentFailure(input: {
 
   const recorded = await db.transaction(async (tx) => {
     // Two deliveries of one event queue here, so only one finds it unrecorded.
-    await tx
-      .select({ id: reservations.id })
+    const [reservation] = await tx
+      .select({
+        depositStatus: reservations.depositStatus,
+        depositPaymentIntentId: reservations.depositPaymentIntentId,
+      })
       .from(reservations)
       .where(eq(reservations.id, reservationId))
       .for("update");
+    // A deposit another PaymentIntent holds, read under the lock its writer takes: a
+    // failure of this one, however late it arrives, tells nobody anything true.
+    if (
+      kind === "deposit_hold" &&
+      (reservation?.depositStatus === "authorized" || reservation?.depositStatus === "captured") &&
+      reservation.depositPaymentIntentId !== null &&
+      reservation.depositPaymentIntentId !== paymentIntent.id
+    ) {
+      return "deposit_held" as const;
+    }
     const [seen] = await tx
       .select({ id: reservationActivity.id })
       .from(reservationActivity)
@@ -88,15 +103,12 @@ export async function recordPaymentFailure(input: {
         ),
       )
       .limit(1);
-    if (seen) return false;
+    if (seen) return "duplicate_event" as const;
 
     if (kind === "deposit_hold") {
-      // No payment changes, so no billing mark: the deposit status is not part of
-      // the reservation snapshot.
-      await tx
-        .update(reservations)
-        .set({ depositStatus: "failed", updatedAt: new Date() })
-        .where(eq(reservations.id, reservationId));
+      // The hold's row and the reservation's deposit are written by the deposit events,
+      // from the PaymentIntent as Stripe has it (deposit-events.ts): this is the line
+      // of the event, which tells the store why the try failed.
       await tx.insert(reservationActivity).values({
         id: nanoid(),
         reservationId,
@@ -111,7 +123,7 @@ export async function recordPaymentFailure(input: {
         },
         createdAt: new Date(),
       });
-      return true;
+      return "recorded" as const;
     }
 
     if (existingPayment && existingPayment.status !== "failed") {
@@ -137,12 +149,12 @@ export async function recordPaymentFailure(input: {
       },
       createdAt: new Date(),
     });
-    return true;
+    return "recorded" as const;
   });
 
-  return recorded
+  return recorded === "recorded"
     ? { recorded: true, kind, amount, currency, errorCode, declineCode }
-    : { recorded: false, reason: "duplicate_event" };
+    : { recorded: false, reason: recorded };
 }
 
 /** The reservation a failed payment belongs to, as the webhook loaded it. */
@@ -216,7 +228,9 @@ export async function handlePaymentFailure(
         issue:
           failure.reason === "completed_payment"
             ? "stale_event_for_completed_payment"
-            : "duplicate_event",
+            : failure.reason === "deposit_held"
+              ? "stale_failure_deposit_held"
+              : "duplicate_event",
         reservationId: reservation.id,
         paymentIntentId: paymentIntent.id,
       },

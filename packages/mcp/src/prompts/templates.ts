@@ -7,6 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import type { McpRequestContext } from '../auth/context'
 import { requirePermission } from '../auth/context'
 import { analyticsStore, otherCurrenciesLine } from '../resources/dashboard'
+import { paymentStatusLine } from '../tools/payments'
 import { formatCurrency, formatDate, formatStatus } from '../utils/formatting'
 
 export function registerPromptTemplates(server: McpServer, ctx: McpRequestContext) {
@@ -152,7 +153,7 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
         .map((i) => `  - ${i.product?.name ?? 'Custom item'} x ${i.quantity} — ${formatCurrency(i.totalPrice)}`)
         .join('\n')
       const paymentLines = reservation.payments
-        .map((p) => `  - ${p.type}: ${formatCurrency(p.amount)} (${p.method}, ${p.status})`)
+        .map((p) => `  - ${p.type}: ${formatCurrency(p.amount)} (${p.method}, ${paymentStatusLine(p)})`)
         .join('\n')
 
       const data =

@@ -11,6 +11,9 @@ const fake = (name: string) => async () => {
 mock.module("@/lib/api/effects", {
   namedExports: { runApiEffectsCron: fake("runApiEffectsCron") },
 });
+mock.module("@/lib/reservations/deposit-hold-debts", {
+  namedExports: { runDepositReleaseDebtsCron: fake("runDepositReleaseDebtsCron") },
+});
 mock.module("@/lib/api/jobs", {
   namedExports: { runApiJobsCron: fake("runApiJobsCron") },
 });
@@ -27,12 +30,17 @@ mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
 
-test("every cron call runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
+test("every cron call requeues the deposit releases owed, runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
   const { apiTasks } = await import("./api-tasks");
   const tasks = apiTasks();
   const results = [];
   for (const { task, key, run } of tasks) results.push({ task, key, runs: await run() });
   assert.deepEqual(results, [
+    {
+      task: "deposit-release-debts",
+      key: "depositReleaseDebts",
+      runs: "runDepositReleaseDebtsCron",
+    },
     { task: "api-effects", key: "apiEffects", runs: "runApiEffectsCron" },
     {
       task: "inbox-acknowledgements",

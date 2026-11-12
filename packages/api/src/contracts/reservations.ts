@@ -76,6 +76,17 @@ const paymentStatusSchema = z.enum([
   "authorized",
   "cancelled",
 ]);
+/**
+ * On a `deposit_hold` row, since when its release is owed: the reservation holds
+ * another authorization, and Louez asked Stripe to cancel this one. A hold row's
+ * `status` follows Stripe: `pending` is an authorization the store asked for and
+ * Stripe has not confirmed, `failed` one it refused, `authorized` one it holds (the
+ * reservation's, unless its release is owed), `completed` one that was captured,
+ * `cancelled` one that holds nothing. None of them is money: a capture is its own
+ * `deposit_capture` row. The reservation's hold is its `depositStatus` and
+ * `depositPaymentIntentId`.
+ */
+const releaseOwedAtSchema = z.date().nullable();
 const attributesSchema = z.record(z.string(), z.string());
 /** A JSON column kept as stored (pricing breakdowns, snapshots, activity details). */
 const jsonObjectSchema = z.record(z.string(), z.unknown());
@@ -214,6 +225,7 @@ const reservationListItemSchema = z.object({
       type: paymentTypeSchema,
       method: paymentMethodSchema,
       status: paymentStatusSchema,
+      releaseOwedAt: releaseOwedAtSchema,
       refundOfPaymentId: z.string().nullable(),
       // Together they tell a Stripe refund row from the charge it refunds.
       stripeRefundId: z.string().nullable(),
@@ -430,6 +442,7 @@ export const reservationSchema = z.object({
       refundOfPaymentId: z.string().nullable(),
       capturedAmount: moneySchema.nullable(),
       authorizationExpiresAt: z.date().nullable(),
+      releaseOwedAt: releaseOwedAtSchema,
       stripeRefundId: z.string().nullable(),
       stripePaymentIntentId: z.string().nullable(),
       stripeCheckoutSessionId: z.string().nullable(),

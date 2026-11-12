@@ -2251,7 +2251,16 @@
         "confirmRelease": "Liberar depósito",
         "invalidCaptureAmount": "Monto inválido",
         "captureExceedsDeposit": "El monto excede el depósito",
-        "reasonRequired": "Por favor proporcione una razón"
+        "reasonRequired": "Por favor proporcione una razón",
+        "unconfirmed": {
+          "open": "Resolver con Stripe",
+          "title": "Autorización sin confirmar",
+          "description": "Stripe nunca confirmó esta solicitud de autorización. Revise Pagos en el panel de Stripe de la cuenta en la que se solicitó.",
+          "explanation": "Cerrar la solicitud no cancela nada en Stripe. Louez busca primero la autorización por sí mismo y la registra si corresponde a la solicitud. Si encuentra una que no corresponde (importe, tarjeta o referencia modificados), la solicitud sigue abierta y Louez se lo indica: cancele esa autorización en Stripe, lo que libera el importe retenido, y luego vuelva a cerrar la solicitud. Si en su lugar la cobra en Stripe, Louez no registra ese importe y la solicitud sigue abierta: contacte con el soporte de Louez. Si más adelante aparece una autorización, Louez la registra cuando Stripe la notifica, si corresponde a la solicitud: pasa a ser la fianza de esta reserva si no tiene ninguna, y se libera si otra retención ya la garantiza. Por eso, cerrar la solicitud mientras existe una retención puede dejar durante un tiempo una retención de más en la tarjeta del cliente. Una autorización que usted ve en Stripe y que Louez no ha registrado se gestiona en Stripe: cancélela allí.",
+          "confirm": "Cerrar la solicitud",
+          "closed": "Solicitud cerrada. Puede crear una nueva autorización.",
+          "recorded": "Louez encontró la autorización en Stripe y la registró."
+        }
       },
       "subtotal": "Subtotal",
       "source": "Origen",
@@ -2787,7 +2796,8 @@
             "incorrectCvc": "El código de seguridad de la tarjeta (CVC) es inválido para esta autorización de depósito.",
             "processingError": "La autorización del depósito falló por un problema temporal de procesamiento. Reintente en unos minutos.",
             "doNotHonor": "El banco rechazó la autorización del depósito sin detalles. Pida al cliente que contacte a su banco o utilice otra tarjeta.",
-            "generic": "La autorización del depósito falló. Pida al cliente que reintente o utilice otra tarjeta."
+            "generic": "La autorización del depósito falló. Pida al cliente que reintente o utilice otra tarjeta.",
+            "closedByStore": "Solicitud cerrada por la tienda: no se encontró ninguna autorización en Stripe."
           }
         }
       },
@@ -2949,6 +2959,8 @@
         "statusAuthorized": "Autorizado",
         "statusRefunded": "Reembolsado",
         "statusCancelled": "Cancelado",
+        "statusFailed": "Fallido",
+        "statusReleasePending": "Liberación en curso",
         "requestPayment": "Solicitar pago",
         "invoiceGenerated": "Factura {number} generada"
       },
@@ -9292,6 +9304,8 @@
       "invalidDepositStatus": "El estado del depósito no permite esta operación",
       "noDepositRequired": "No se requiere depósito para esta reserva",
       "authorizationFailed": "No se pudo crear la autorización",
+      "authorizationInProgress": "Ya se está creando una retención de fianza para esta reserva. Inténtalo de nuevo en un momento.",
+      "authorizationUnconfirmed": "Stripe no ha confirmado la retención de fianza. Inténtalo de nuevo: se pide la misma retención, nunca una segunda.",
       "noActiveAuthorization": "No hay autorización activa para esta reserva",
       "captureFailed": "No se pudo cobrar el depósito",
       "releaseFailed": "No se pudo liberar el depósito"
@@ -9407,7 +9421,11 @@
     "agentConnectionNotFound": "Este agente conectado ya no existe.",
     "oauthRequestInvalid": "Esta solicitud de conexión ya no es válida. Iníciela de nuevo desde su agente.",
     "stripeRequiredForPaymentMode": "El modo de pago en línea requiere una cuenta de Stripe conectada. Conecta Stripe en Ajustes > Pagos.",
-    "locationLimitReached": "Una tienda puede tener 50 puntos de recogida como máximo. Desactiva uno o reutilízalo."
+    "locationLimitReached": "Una tienda puede tener 50 puntos de recogida como máximo. Desactiva uno o reutilízalo.",
+    "depositAttempt": {
+      "needsStripe": "Louez encontró en Stripe una autorización para esta solicitud, pero no corresponde a lo que se pidió (importe, tarjeta o referencia modificados): Louez no la registró y la solicitud sigue abierta. Cancélela desde el panel de Stripe y luego haga clic en «Cerrar la solicitud». Si en su lugar la cobra en Stripe, Louez no registra ese importe y la solicitud sigue abierta: contacte con el soporte de Louez.",
+      "none": "Esta reserva ya no tiene ninguna autorización sin confirmar."
+    }
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

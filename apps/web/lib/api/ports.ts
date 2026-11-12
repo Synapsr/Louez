@@ -2,6 +2,7 @@ import type { ApiPorts } from "@louez/api";
 import { isEmailConfigured } from "@louez/email";
 
 import { runAfterCommit } from "@/lib/api/after-commit";
+import { depositHoldsPort } from "@/lib/api/deposit-holds-port";
 import { dispatchApiEffects } from "@/lib/api/effects";
 import { dispatchApiJobs } from "@/lib/api/jobs";
 import { log } from "@/lib/evlog";
@@ -38,6 +39,7 @@ export const apiPorts: ApiPorts = {
   hostedBy: getHostedBy,
   stripeConnect: () => (isConnectConfigured() ? getStripe() : null),
   billing: billingPort,
+  depositHolds: depositHoldsPort,
   team: {
     collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
     emailConfigured: isEmailConfigured,

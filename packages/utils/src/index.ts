@@ -72,6 +72,7 @@ export * from "./pricing/product-promotion";
 export { beforeTaxRateBps, normalizeCurrency } from "./billing-money";
 
 // Payment rows: a Stripe refund told apart from the charge it refunds
+export * from "./util.deposit-hold-row";
 export * from "./util.payment-movement";
 export * from "./util.stripe-payment-amount";
 

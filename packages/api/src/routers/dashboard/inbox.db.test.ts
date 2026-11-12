@@ -538,6 +538,152 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     );
   });
 
+  test("a deposit hold Stripe has not confirmed shows after 15 minutes, whatever its age, until it is settled", async () => {
+    const attempt = async (
+      reservationId: string,
+      createdAt: Date,
+      status: "pending" | "failed" = "pending",
+    ) => {
+      const id = nextId("ib_pay");
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId,
+        amount: "300.00",
+        type: "deposit_hold",
+        method: "stripe",
+        status,
+        currency: "EUR",
+        createdAt,
+        updatedAt: createdAt,
+      });
+      return id;
+    };
+    const waiting = await attempt(await reservation("confirmed"), ago(HOUR));
+    // No age removes it, nor does the end of the rental: the card may be held.
+    const old = await attempt(await reservation("completed"), ago(40 * DAY));
+    // Five minutes old: its webhook may still settle it.
+    await attempt(await reservation("confirmed"), ago(5 * 60_000));
+    // Refused by Stripe: settled, as failed.
+    await attempt(await reservation("confirmed"), ago(HOUR), "failed");
+
+    const items = ofType((await list()).items, "deposit_unconfirmed");
+    assert.deepEqual(
+      items.map((item) => item.id).sort(),
+      [`deposit_unconfirmed:${old}`, `deposit_unconfirmed:${waiting}`].sort(),
+    );
+    const item = items.find((entry) => entry.id === `deposit_unconfirmed:${waiting}`);
+    assert.equal(item?.severity, "warning");
+    assert.match(item?.summary ?? "", /300\.00 EUR/);
+    assert.match(item?.summary ?? "", /never a second one/);
+    assert.equal(item?.details?.unmatchedPaymentIntentId, null);
+
+    // Louez found an authorization for it at Stripe that does not match the request
+    // (deposit-hold-writes.ts, `recordUnmatchedIntent`): the item stays, and says so.
+    const [{ reservationId: waitingReservation }] = await louezDb.db
+      .select({ reservationId: louezDb.payments.reservationId })
+      .from(louezDb.payments)
+      .where(orm.eq(louezDb.payments.id, waiting));
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("ib_act"),
+      reservationId: waitingReservation,
+      activityType: "payment_updated",
+      metadata: {
+        kind: "deposit_unmatched",
+        attemptId: waiting,
+        unmatchedPaymentIntentId: "pi_unmatched",
+        refusal: "facts_mismatch",
+      },
+      createdAt: new Date(),
+    });
+    const unmatched = ofType((await list()).items, "deposit_unconfirmed").find(
+      (entry) => entry.id === `deposit_unconfirmed:${waiting}`,
+    );
+    assert.equal(unmatched?.details?.unmatchedPaymentIntentId, "pi_unmatched");
+    assert.match(unmatched?.summary ?? "", /found an authorization at Stripe \(pi_unmatched\)/);
+    assert.match(unmatched?.summary ?? "", /does not match the request/);
+    assert.match(unmatched?.summary ?? "", /cancel it in Stripe/);
+
+    // Stripe confirms it: the attempt's row becomes the hold.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ status: "authorized", stripePaymentIntentId: "pi_confirmed" })
+      .where(orm.eq(louezDb.payments.id, waiting));
+    assert.deepEqual(
+      ofType((await list()).items, "deposit_unconfirmed").map((entry) => entry.id),
+      [`deposit_unconfirmed:${old}`],
+    );
+  });
+
+  test("a second deposit hold shows while its release is owed, whatever became of the outbox row", async () => {
+    const owed = async (paymentIntentId: string, since: Date) => {
+      const reservationId = await reservation("confirmed", { depositStatus: "authorized" });
+      const id = nextId("ib_pay");
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId,
+        amount: "300.00",
+        type: "deposit_hold",
+        method: "stripe",
+        status: "authorized",
+        stripePaymentIntentId: paymentIntentId,
+        stripeAccountId: "acct_inbox",
+        releaseOwedAt: since,
+        currency: "EUR",
+      });
+      return { reservationId, paymentId: id, paymentIntentId };
+    };
+    const release = async (
+      hold: Awaited<ReturnType<typeof owed>>,
+      status: "abandoned" | "failed",
+    ) => {
+      await louezDb.db.insert(louezDb.apiEffects).values({
+        id: nextId("ib_eff"),
+        storeId: STORE,
+        type: "deposit.holdRelease",
+        payload: { ...hold, accountId: "acct_inbox" },
+        status,
+        attempts: status === "abandoned" ? 8 : 2,
+        nextAttemptAt: ago(HOUR),
+        createdAt: ago(3 * HOUR),
+      });
+    };
+    // Its outbox row abandoned, still being tried, or deleted by the retention: the
+    // debt is what counts.
+    const abandoned = await owed("pi_second_abandoned", ago(3 * HOUR));
+    await release(abandoned, "abandoned");
+    const trying = await owed("pi_second_trying", ago(3 * HOUR));
+    await release(trying, "failed");
+    const pruned = await owed("pi_second_pruned", ago(40 * DAY));
+    // Owed a few minutes ago: the outbox's first tries may still release it.
+    await owed("pi_second_recent", ago(5 * 60_000));
+
+    const items = ofType((await list()).items, "deposit_release_failed");
+    assert.deepEqual(
+      items.map((item) => item.id).sort(),
+      [abandoned, trying, pruned].map((hold) => `deposit_release_failed:${hold.paymentId}`).sort(),
+    );
+    const item = items.find(
+      (entry) => entry.id === `deposit_release_failed:${abandoned.paymentId}`,
+    );
+    assert.equal(item?.severity, "warning");
+    assert.equal(item?.reservation?.id, abandoned.reservationId);
+    assert.match(item?.summary ?? "", /has not confirmed the release/);
+    assert.doesNotMatch(item?.summary ?? "", /held twice/);
+    assert.match(item?.summary ?? "", /pi_second_abandoned/);
+
+    // Stripe says the authorization is cancelled: nothing is owed any more.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ status: "cancelled", releaseOwedAt: null })
+      .where(orm.eq(louezDb.payments.id, abandoned.paymentId));
+    assert.deepEqual(
+      ofType((await list()).items, "deposit_release_failed")
+        .map((entry) => entry.id)
+        .sort(),
+      [trying, pruned].map((hold) => `deposit_release_failed:${hold.paymentId}`).sort(),
+    );
+  });
+
   test("a failed payment shows once per reservation, until a payment comes in; a failed deposit while it stays failed", async () => {
     const id = await reservation("confirmed");
     await activity(

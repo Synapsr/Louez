@@ -2,14 +2,14 @@ import { completeExtensionPayment } from "@/lib/reservations/extension-service";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
 import { failMarketplaceBookingAttempt } from "@louez/api/services";
 import { completeActiveHandoff } from "@louez/api/services/handoffs";
 import { writeConnectColumns } from "@louez/api/services/stripe-connect";
-import { type Transaction, db, markReservationIds, toWholeSeconds } from "@louez/db";
+import { db, markReservationIds, toWholeSeconds } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
@@ -28,11 +28,13 @@ import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
 import { cancelAbandonedCheckout } from "@/lib/reservations/cancel-abandoned-checkout";
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
+import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
 import { env } from "@/env";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded } from "./charge-refund";
+import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
 import { handlePaymentFailure } from "./payment-failure";
 
 // ===== TYPE DEFINITIONS =====
@@ -87,9 +89,12 @@ type ReservationWithRelations = {
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-/** The id of a Stripe reference, expanded or not. */
-const stripeRefId = (value: string | { id: string } | null | undefined): string | null =>
-  typeof value === "string" ? value : (value?.id ?? null);
+/** What the deposit events run on: the app's database, Stripe, outbox and invoicing. */
+const depositEventDeps: DepositEventDeps = {
+  ...depositHoldDeps,
+  generateInvoice: (capturePaymentId) =>
+    tryGenerateInvoiceForPayment(capturePaymentId, "stripe_deposit_captured_webhook"),
+};
 
 // ===== VALIDATION HELPERS =====
 // Validates Stripe metadata to prevent manipulation attacks
@@ -190,28 +195,24 @@ export async function POST(request: Request) {
         await handleCheckoutExpired(event.data.object as Stripe.Checkout.Session);
         break;
 
-      // Deposit authorization hold events
+      // Deposit authorization hold events: `handleDepositEvent` ignores a
+      // PaymentIntent that is not a deposit hold's.
       case "payment_intent.amount_capturable_updated":
-        await handleDepositAuthorized(
-          event.data.object as Stripe.PaymentIntent,
-          connectedAccountId,
-        );
-        break;
-
       case "payment_intent.canceled":
-        await handleDepositReleased(event.data.object as Stripe.PaymentIntent, connectedAccountId);
-        break;
-
       case "payment_intent.succeeded":
-        await handleDepositCaptured(event.data.object as Stripe.PaymentIntent, connectedAccountId);
+        await handleDepositEvent(
+          {
+            type: event.type,
+            stripeEventId: event.id,
+            accountId: connectedAccountId,
+            paymentIntent: event.data.object,
+          },
+          depositEventDeps,
+        );
         break;
 
       case "payment_intent.payment_failed":
-        await handleDepositFailed(
-          event.data.object as Stripe.PaymentIntent,
-          connectedAccountId,
-          event.id,
-        );
+        await handlePaymentFailed(event.data.object, connectedAccountId, event.id);
         break;
 
       // Refund events
@@ -632,375 +633,30 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
   });
 }
 
-// ============================================================================
-// Deposit Authorization Hold Event Handlers
-// ============================================================================
-
-/**
- * Locks the reservation, first in a deposit event's transaction: rows are locked
- * reservation first, then its payments, as the dashboard's deposit writes do.
- * Stripe sends these events for the dashboard's own capture or release, so both
- * run at once for the same PaymentIntent, and the opposite order deadlocks.
- */
-async function lockDepositReservation(tx: Transaction, reservationId: string) {
-  await tx
-    .select({ id: reservations.id })
-    .from(reservations)
-    .where(eq(reservations.id, reservationId))
-    .for("update");
-}
-
-/**
- * Handles successful deposit authorization (empreinte created)
- * Triggered when PaymentIntent status becomes requires_capture
- */
-async function handleDepositAuthorized(
-  paymentIntent: Stripe.PaymentIntent,
-  connectedAccountId?: string,
-) {
-  // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== "deposit_hold") return;
-
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
-    log.error({
-      stripeWebhook: {
-        event: "deposit_authorized",
-        issue: "invalid_reservation_id",
-        reservationId,
-      },
-    });
-    return;
-  }
-
-  // SECURITY: Validate connected account matches store
-  const { valid, reservation } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "deposit_authorized",
-  );
-  if (!valid) return;
-
-  // Check idempotence
-  const existingPayment = await db.query.payments.findFirst({
-    where: eq(payments.stripePaymentIntentId, paymentIntent.id),
-  });
-
-  if (existingPayment) {
-    log.info({
-      stripeWebhook: {
-        event: "deposit_authorized",
-        issue: "already_recorded",
-        reservationId,
-        paymentIntentId: paymentIntent.id,
-      },
-    });
-    return;
-  }
-
-  const currency = paymentIntent.currency.toUpperCase();
-  const amount = fromStripeCents(paymentIntent.amount, currency);
-  const paymentMethodId = stripeRefId(paymentIntent.payment_method);
-
-  // Authorization expires after 7 days
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  await db.transaction(async (tx) => {
-    await lockDepositReservation(tx, reservationId);
-
-    // Create payment record for the authorization hold. A hold is not paid and
-    // carries no charge id: its capture row does (deposit_capture).
-    await tx.insert(payments).values({
-      id: nanoid(),
-      reservationId,
-      amount: amount.toFixed(2),
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-      stripePaymentIntentId: paymentIntent.id,
-      stripePaymentMethodId: paymentMethodId,
-      grossMinor: paymentIntent.amount,
-      insuranceShareMinor: 0,
-      origin: "deposit",
-      stripeAccountId: connectedAccountId ?? reservation?.store.stripeAccountId ?? null,
-      authorizationExpiresAt: expiresAt,
-      currency,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Update reservation deposit status
-    await tx
-      .update(reservations)
-      .set({
-        depositStatus: "authorized",
-        depositPaymentIntentId: paymentIntent.id,
-        depositAuthorizationExpiresAt: expiresAt,
-        stripePaymentMethodId: paymentMethodId,
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Log activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "deposit_authorized",
-      metadata: {
-        paymentIntentId: paymentIntent.id,
-        amount,
-        expiresAt: expiresAt.toISOString(),
-      },
-      createdAt: new Date(),
-    });
-
-    await markReservationIds(tx, [reservationId]);
-  });
-
-  log.info({
-    stripeWebhook: {
-      event: "deposit_authorized",
-      reservationId,
-      paymentIntentId: paymentIntent.id,
-    },
-  });
-}
-
-/**
- * Handles deposit release (authorization cancelled)
- * Triggered when PaymentIntent is cancelled
- */
-async function handleDepositReleased(
-  paymentIntent: Stripe.PaymentIntent,
-  connectedAccountId?: string,
-) {
-  // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== "deposit_hold") return;
-
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
-    log.error({
-      stripeWebhook: { event: "deposit_released", issue: "invalid_reservation_id", reservationId },
-    });
-    return;
-  }
-
-  // SECURITY: Validate connected account matches store
-  const { valid } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "deposit_released",
-  );
-  if (!valid) return;
-
-  const currency = paymentIntent.currency.toUpperCase();
-  const amount = fromStripeCents(paymentIntent.amount, currency);
-
-  await db.transaction(async (tx) => {
-    await lockDepositReservation(tx, reservationId);
-
-    // Find and update the deposit hold payment
-    const depositPayment = await tx.query.payments.findFirst({
-      where: eq(payments.stripePaymentIntentId, paymentIntent.id),
-    });
-
-    if (depositPayment) {
-      await tx
-        .update(payments)
-        .set({
-          status: "cancelled",
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, depositPayment.id));
-      await markReservationIds(tx, [depositPayment.reservationId]);
-    }
-
-    // Update reservation deposit status
-    await tx
-      .update(reservations)
-      .set({
-        depositStatus: "released",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Log activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "deposit_released",
-      metadata: {
-        paymentIntentId: paymentIntent.id,
-        amount,
-      },
-      createdAt: new Date(),
-    });
-  });
-
-  log.info({
-    stripeWebhook: { event: "deposit_released", reservationId, paymentIntentId: paymentIntent.id },
-  });
-}
-
-/**
- * Handles deposit capture (partial or full)
- * Triggered when PaymentIntent succeeds after capture
- */
-async function handleDepositCaptured(
-  paymentIntent: Stripe.PaymentIntent,
-  connectedAccountId?: string,
-) {
-  // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== "deposit_hold") return;
-
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
-    log.error({
-      stripeWebhook: { event: "deposit_captured", issue: "invalid_reservation_id", reservationId },
-    });
-    return;
-  }
-
-  // SECURITY: Validate connected account matches store
-  const { valid, reservation } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "deposit_captured",
-  );
-  if (!valid) return;
-
-  const currency = paymentIntent.currency.toUpperCase();
-  const capturedAmount = fromStripeCents(paymentIntent.amount_received, currency);
-  const originalAmount = fromStripeCents(paymentIntent.amount, currency);
-  const stripeAccountId = connectedAccountId ?? reservation?.store.stripeAccountId ?? null;
-  // A capture is paid when captured: the charge itself dates from the authorization.
-  const paidAt = new Date();
-
-  const capturePaymentId = await db.transaction(async (tx) => {
-    // Locked before the first read below, so that read sees a capture the
-    // dashboard committed while this event waited.
-    await lockDepositReservation(tx, reservationId);
-
-    // Find and update the deposit hold payment. The capture row shares its
-    // PaymentIntent, so match the type.
-    const depositPayment = await tx.query.payments.findFirst({
-      where: and(
-        eq(payments.stripePaymentIntentId, paymentIntent.id),
-        eq(payments.type, "deposit_hold"),
-      ),
-    });
-
-    if (depositPayment) {
-      await tx
-        .update(payments)
-        .set({
-          status: "completed",
-          capturedAmount: capturedAmount.toFixed(2),
-          paidAt,
-          // Holds recorded before the billing facts existed get them now.
-          grossMinor: sql`COALESCE(${payments.grossMinor}, ${paymentIntent.amount})`,
-          insuranceShareMinor: sql`COALESCE(${payments.insuranceShareMinor}, 0)`,
-          origin: sql`COALESCE(${payments.origin}, 'deposit')`,
-          stripeAccountId: sql`COALESCE(${payments.stripeAccountId}, ${stripeAccountId})`,
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, depositPayment.id));
-    }
-
-    // Create a deposit_capture payment record. Guard against duplicates: the dashboard
-    // capture action inserts this row synchronously, and Stripe may re-deliver
-    // payment_intent.succeeded — only insert when no deposit_capture row exists yet for
-    // this PaymentIntent.
-    let captureId: string | null = null;
-    if (capturedAmount > 0) {
-      const existingCapture = await tx.query.payments.findFirst({
-        where: and(
-          eq(payments.stripePaymentIntentId, paymentIntent.id),
-          eq(payments.type, "deposit_capture"),
-        ),
-      });
-      captureId = existingCapture?.id ?? nanoid();
-      if (!existingCapture) {
-        await tx.insert(payments).values({
-          id: captureId,
-          reservationId,
-          amount: capturedAmount.toFixed(2),
-          type: "deposit_capture",
-          method: "stripe",
-          status: "completed",
-          stripePaymentIntentId: paymentIntent.id,
-          stripeChargeId: stripeRefId(paymentIntent.latest_charge),
-          grossMinor: paymentIntent.amount_received,
-          insuranceShareMinor: 0,
-          origin: "deposit",
-          stripeAccountId,
-          currency,
-          paidAt,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-    }
-
-    // Update reservation deposit status
-    await tx
-      .update(reservations)
-      .set({
-        depositStatus: "captured",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Log activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "deposit_captured",
-      metadata: {
-        paymentIntentId: paymentIntent.id,
-        capturedAmount,
-        originalAmount,
-        reason: paymentIntent.metadata?.captureReason || null,
-      },
-      createdAt: new Date(),
-    });
-
-    await markReservationIds(tx, [reservationId]);
-    return captureId;
-  });
-
-  if (capturePaymentId) {
-    await tryGenerateInvoiceForPayment(capturePaymentId, "stripe_deposit_captured_webhook");
-  }
-
-  log.info({
-    stripeWebhook: {
-      event: "deposit_captured",
-      reservationId,
-      paymentIntentId: paymentIntent.id,
-      capturedAmount,
-      currency,
-    },
-  });
-}
-
 /**
  * Handles payment failure
  * Triggered when card is declined or payment fails. The owner is told once per
  * event: a redelivered event is recognised and notifies nobody again.
  */
-async function handleDepositFailed(
+async function handlePaymentFailed(
   paymentIntent: Stripe.PaymentIntent,
   connectedAccountId: string | undefined,
   stripeEventId: string,
 ) {
+  // A deposit hold's failure is read against Stripe, as its other events are.
+  if (paymentIntent.metadata?.type === "deposit_hold") {
+    await handleDepositEvent(
+      {
+        type: "payment_intent.payment_failed",
+        stripeEventId,
+        accountId: connectedAccountId,
+        paymentIntent,
+      },
+      depositEventDeps,
+    );
+    return;
+  }
+
   const reservationId = paymentIntent.metadata?.reservationId;
 
   // SECURITY: Validate reservationId format

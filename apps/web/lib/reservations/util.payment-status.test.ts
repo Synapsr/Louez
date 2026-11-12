@@ -185,10 +185,41 @@ describe("getCustomerPaymentRows", () => {
   test("drops a captured hold once the capture row exists", () => {
     const hold = { id: "h", type: "deposit_hold", status: "completed", amount: "100" };
     const capture = { id: "c", type: "deposit_capture", status: "completed", amount: "40" };
-    assert.deepEqual(getCustomerPaymentRows([hold, capture]), [capture]);
-    assert.deepEqual(getCustomerPaymentRows([hold]), [hold]);
+    assert.deepEqual(getCustomerPaymentRows([hold, capture], "pi_hold"), [capture]);
+    assert.deepEqual(getCustomerPaymentRows([hold], "pi_hold"), [hold]);
     const live = { id: "h", type: "deposit_hold", status: "authorized", amount: "100" };
-    assert.deepEqual(getCustomerPaymentRows([live]), [live]);
+    assert.deepEqual(getCustomerPaymentRows([live], "pi_hold"), [live]);
+  });
+
+  test("of the deposit holds, the customer reads the one their card carries, and its release", () => {
+    const row = (id: string, status: string, values: Record<string, unknown> = {}) => ({
+      id,
+      type: "deposit_hold",
+      status,
+      amount: "100",
+      stripePaymentIntentId: `pi_${id}`,
+      ...values,
+    });
+    const rental = { id: "r", type: "rental", status: "completed", amount: "80" };
+    const held = row("held", "authorized");
+    const released = row("released", "cancelled");
+    const rows = [
+      rental,
+      // Asked by the store, never confirmed by Stripe.
+      row("attempt", "pending", { stripePaymentIntentId: null }),
+      row("refused", "failed"),
+      // A second authorization, being released.
+      row("second", "authorized", { releaseOwedAt: new Date() }),
+      // A PaymentIntent that never was the reservation's hold.
+      row("never", "cancelled"),
+    ];
+
+    assert.deepEqual(getCustomerPaymentRows([...rows, held], "pi_held"), [rental, held]);
+    assert.deepEqual(getCustomerPaymentRows([...rows, released], "pi_released"), [
+      rental,
+      released,
+    ]);
+    assert.deepEqual(getCustomerPaymentRows(rows, null), [rental]);
   });
 
   test("a refund is any row pointing at another, or a deposit return", () => {

@@ -2212,7 +2212,16 @@
         "confirmRelease": "Rilascia deposito",
         "invalidCaptureAmount": "Importo non valido",
         "captureExceedsDeposit": "L'importo supera il deposito",
-        "reasonRequired": "Fornisci un motivo"
+        "reasonRequired": "Fornisci un motivo",
+        "unconfirmed": {
+          "open": "Risolvi con Stripe",
+          "title": "Autorizzazione non confermata",
+          "description": "Stripe non ha mai confermato questa richiesta di autorizzazione. Controlla Pagamenti nella dashboard di Stripe dell'account su cui è stata richiesta.",
+          "explanation": "Chiudere la richiesta non annulla nulla su Stripe. Louez cerca prima l'autorizzazione da sé e la registra se corrisponde alla richiesta. Se ne trova una che non corrisponde (importo, carta o riferimento modificati), la richiesta resta aperta e Louez te lo segnala: annulla quell'autorizzazione su Stripe, il che sblocca l'importo trattenuto, poi chiudi di nuovo la richiesta. Se invece la incassi su Stripe, Louez non registra quell'importo e la richiesta resta aperta: contatta l'assistenza Louez. Se in seguito compare un'autorizzazione, Louez la registra quando Stripe la segnala, se corrisponde alla richiesta: diventa la cauzione di questa prenotazione se non ne ha una, e viene rilasciata se un'altra preautorizzazione la garantisce già. Chiudere la richiesta mentre esiste una preautorizzazione può quindi lasciare per un po' una preautorizzazione in più sulla carta del cliente. Un'autorizzazione che vedi su Stripe e che Louez non ha registrato si gestisce su Stripe: annullala lì.",
+          "confirm": "Chiudi la richiesta",
+          "closed": "Richiesta chiusa. Puoi creare una nuova autorizzazione.",
+          "recorded": "Louez ha trovato l'autorizzazione su Stripe e l'ha registrata."
+        }
       },
       "subtotal": "Subtotale",
       "source": "Fonte",
@@ -2748,7 +2757,8 @@
             "incorrectCvc": "Il codice di sicurezza della carta (CVC) non è valido per questa autorizzazione di deposito.",
             "processingError": "L'autorizzazione del deposito è fallita a causa di un problema di elaborazione temporaneo. Riprovare tra qualche minuto.",
             "doNotHonor": "La banca ha rifiutato l'autorizzazione del deposito senza fornire dettagli. Chieda al cliente di contattare la propria banca o di utilizzare un'altra carta.",
-            "generic": "Autorizzazione del deposito fallita. Chieda al cliente di riprovare o di utilizzare un'altra carta."
+            "generic": "Autorizzazione del deposito fallita. Chieda al cliente di riprovare o di utilizzare un'altra carta.",
+            "closedByStore": "Richiesta chiusa dal negozio: nessuna autorizzazione trovata in Stripe."
           }
         }
       },
@@ -2910,6 +2920,8 @@
         "statusAuthorized": "Autorizzato",
         "statusRefunded": "Rimborsato",
         "statusCancelled": "Annullato",
+        "statusFailed": "Non riuscito",
+        "statusReleasePending": "Rilascio in corso",
         "requestPayment": "Richiedi pagamento",
         "invoiceGenerated": "Fattura {number} generata"
       },
@@ -9292,6 +9304,8 @@
       "invalidDepositStatus": "Lo stato del deposito non consente questa operazione",
       "noDepositRequired": "Nessun deposito richiesto per questa prenotazione",
       "authorizationFailed": "Impossibile creare l'autorizzazione",
+      "authorizationInProgress": "Una preautorizzazione della cauzione è già in corso per questa prenotazione. Riprova tra un momento.",
+      "authorizationUnconfirmed": "Stripe non ha confermato la preautorizzazione della cauzione. Riprova: viene richiesta la stessa preautorizzazione, mai una seconda.",
       "noActiveAuthorization": "Nessuna autorizzazione attiva per questa prenotazione",
       "captureFailed": "Impossibile incassare il deposito",
       "releaseFailed": "Impossibile rilasciare il deposito"
@@ -9407,7 +9421,11 @@
     "agentConnectionNotFound": "Questo agente collegato non esiste più.",
     "oauthRequestInvalid": "Questa richiesta di connessione non è più valida. La riavvii dal suo agente.",
     "stripeRequiredForPaymentMode": "La modalità di pagamento online richiede un account Stripe collegato. Collega Stripe in Impostazioni > Pagamenti.",
-    "locationLimitReached": "Un negozio può avere al massimo 50 punti di ritiro. Disattivane uno o riutilizzalo."
+    "locationLimitReached": "Un negozio può avere al massimo 50 punti di ritiro. Disattivane uno o riutilizzalo.",
+    "depositAttempt": {
+      "needsStripe": "Louez ha trovato su Stripe un'autorizzazione per questa richiesta, ma non corrisponde a quanto richiesto (importo, carta o riferimento modificati): Louez non l'ha registrata e la richiesta resta aperta. Annullala dalla dashboard di Stripe, poi fai clic su «Chiudi la richiesta». Se invece la incassi su Stripe, Louez non registra quell'importo e la richiesta resta aperta: contatta l'assistenza Louez.",
+      "none": "Questa prenotazione non ha più autorizzazioni non confermate."
+    }
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

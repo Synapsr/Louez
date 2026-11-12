@@ -2251,7 +2251,16 @@
         "confirmRelease": "デポジットのリリース",
         "invalidCaptureAmount": "無効な金額です",
         "captureExceedsDeposit": "金額がデポジットを超えています",
-        "reasonRequired": "理由を教えてください"
+        "reasonRequired": "理由を教えてください",
+        "unconfirmed": {
+          "open": "Stripe で解決",
+          "title": "未確認のオーソリ",
+          "description": "Stripe はこのオーソリ要求を一度も確認していません。要求先アカウントの Stripe ダッシュボードの「支払い」を確認してください。",
+          "explanation": "要求を閉じても Stripe 側では何も取り消されません。Louez はまず自らオーソリを探し、要求と一致すれば記録します。一致しないオーソリ（金額、カード、または参照が変更されたもの）が見つかった場合、要求は開いたままとなり、Louez がその旨をお知らせします。Stripe でそのオーソリをキャンセルして（確保された金額が解放されます）から、もう一度要求を閉じてください。代わりに Stripe で回収した場合、Louez はその金額を記録せず、要求は開いたままになります。Louez サポートにお問い合わせください。後からオーソリが現れた場合、要求と一致していれば、Stripe から通知があった時点で Louez が記録します。この予約にデポジットがなければそれがデポジットになり、別のオーソリですでに確保されていれば解放されます。そのため、オーソリが存在する状態で要求を閉じると、お客様のカードに余分なオーソリがしばらく残ることがあります。Stripe で確認できても Louez が記録していないオーソリは、Stripe 側でキャンセルしてください。",
+          "confirm": "要求を閉じる",
+          "closed": "要求を閉じました。新しいオーソリを作成できます。",
+          "recorded": "Louez が Stripe でオーソリを見つけ、記録しました。"
+        }
       },
       "subtotal": "小計",
       "source": "ソース",
@@ -2787,7 +2796,8 @@
             "incorrectCvc": "カード セキュリティ コード (CVC) は、この入金承認には無効です。",
             "processingError": "一時的な処理の問題により、入金の承認が失敗しました。数分後に再試行してください。",
             "doNotHonor": "銀行は詳細を示さずに預金承認を拒否した。銀行に連絡するか、別のカードを使用するようお客様に依頼します。",
-            "generic": "入金の承認に失敗しました。再試行するか、別のカードを使用するようお客様に依頼します。"
+            "generic": "入金の承認に失敗しました。再試行するか、別のカードを使用するようお客様に依頼します。",
+            "closedByStore": "ストアが要求を閉じました：Stripe にオーソリは見つかりませんでした。"
           }
         }
       },
@@ -2949,6 +2959,8 @@
         "statusAuthorized": "認可された",
         "statusRefunded": "返金されました",
         "statusCancelled": "キャンセルされました",
+        "statusFailed": "失敗",
+        "statusReleasePending": "解除中",
         "requestPayment": "支払いを要求する",
         "invoiceGenerated": "請求書 {number} が生成されました"
       },
@@ -9292,6 +9304,8 @@
       "invalidDepositStatus": "入金ステータスではこの操作は許可されていません",
       "noDepositRequired": "この予約にはデポジットは必要ありません",
       "authorizationFailed": "承認保留を作成できません",
+      "authorizationInProgress": "この予約のデポジットのオーソリはすでに作成中です。しばらくしてからもう一度お試しください。",
+      "authorizationUnconfirmed": "Stripe がデポジットのオーソリを確認しませんでした。もう一度お試しください。同じオーソリが要求され、2 件目が作成されることはありません。",
       "noActiveAuthorization": "この予約にはアクティブな承認がありません",
       "captureFailed": "デポジットを回収できません",
       "releaseFailed": "デポジットを解放できません"
@@ -9407,7 +9421,11 @@
     "agentConnectionNotFound": "この接続済みのエージェントは存在しません。",
     "oauthRequestInvalid": "この接続リクエストは無効になりました。エージェントからやり直してください。",
     "stripeRequiredForPaymentMode": "オンライン決済モードには Stripe アカウントの接続が必要です。設定 > 支払いで Stripe を接続してください。",
-    "locationLimitReached": "1 つのストアに設定できる受け取り場所は最大 50 件です。いずれかを無効にするか、再利用してください。"
+    "locationLimitReached": "1 つのストアに設定できる受け取り場所は最大 50 件です。いずれかを無効にするか、再利用してください。",
+    "depositAttempt": {
+      "needsStripe": "Louez はこの要求に対するオーソリを Stripe で見つけましたが、要求した内容と一致しません（金額、カード、または参照が変更されています）。Louez はこれを記録しておらず、要求は開いたままです。Stripe ダッシュボードでキャンセルしてから、「要求を閉じる」をクリックしてください。代わりに Stripe で回収した場合、Louez はその金額を記録せず、要求は開いたままになります。Louez サポートにお問い合わせください。",
+      "none": "この予約には未確認のオーソリはもうありません。"
+    }
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

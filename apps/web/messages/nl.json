@@ -2212,7 +2212,16 @@
         "confirmRelease": "Borg vrijgeven",
         "invalidCaptureAmount": "Ongeldig bedrag",
         "captureExceedsDeposit": "Bedrag overschrijdt borg",
-        "reasonRequired": "Geef een reden op"
+        "reasonRequired": "Geef een reden op",
+        "unconfirmed": {
+          "open": "Oplossen met Stripe",
+          "title": "Onbevestigde autorisatie",
+          "description": "Stripe heeft dit autorisatieverzoek nooit bevestigd. Controleer Betalingen in het Stripe-dashboard van het account waarop het is aangevraagd.",
+          "explanation": "Het verzoek sluiten annuleert niets bij Stripe. Louez zoekt eerst zelf naar de autorisatie en registreert die als ze overeenkomt met het verzoek. Vindt Louez er een die niet overeenkomt (bedrag, kaart of referentie gewijzigd), dan blijft het verzoek open en meldt Louez u dat: annuleer die autorisatie in Stripe, waardoor het geblokkeerde bedrag vrijkomt, en sluit daarna het verzoek opnieuw. Int u ze in plaats daarvan in Stripe, dan registreert Louez dat bedrag niet en blijft het verzoek open: neem contact op met Louez-support. Verschijnt er later een autorisatie, dan registreert Louez die zodra Stripe ze meldt, als ze overeenkomt met het verzoek: ze wordt de borg van deze reservering als die er nog geen heeft, en wordt vrijgegeven als een andere borgreservering de reservering al dekt. Het verzoek sluiten terwijl er een borgreservering bestaat, kan dus een tijdlang een extra borgreservering op de kaart van de klant laten staan. Een autorisatie die u in Stripe ziet maar die Louez niet heeft geregistreerd, handelt u af in Stripe: annuleer ze daar.",
+          "confirm": "Verzoek sluiten",
+          "closed": "Verzoek gesloten. U kunt een nieuwe autorisatie aanmaken.",
+          "recorded": "Louez heeft de autorisatie bij Stripe gevonden en geregistreerd."
+        }
       },
       "subtotal": "Subtotaal",
       "source": "Bron",
@@ -2748,7 +2757,8 @@
             "incorrectCvc": "De beveiligingscode (CVC) is ongeldig voor deze borgautorisatie.",
             "processingError": "De borgautorisatie is mislukt door een tijdelijk verwerkingsprobleem. Probeer het over enkele minuten opnieuw.",
             "doNotHonor": "De bank heeft de borgautorisatie zonder details geweigerd. Vraag de klant contact op te nemen met de bank of een andere kaart te gebruiken.",
-            "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken."
+            "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken.",
+            "closedByStore": "Verzoek gesloten door de winkel: geen autorisatie gevonden in Stripe."
           }
         }
       },
@@ -2910,6 +2920,8 @@
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
         "statusCancelled": "Geannuleerd",
+        "statusFailed": "Mislukt",
+        "statusReleasePending": "Wordt vrijgegeven",
         "requestPayment": "Betaling aanvragen",
         "invoiceGenerated": "Factuur {number} aangemaakt"
       },
@@ -9292,6 +9304,8 @@
       "invalidDepositStatus": "De borgstatus staat deze bewerking niet toe",
       "noDepositRequired": "Geen borg vereist voor deze reservering",
       "authorizationFailed": "Kan autorisatie niet aanmaken",
+      "authorizationInProgress": "Er wordt al een borgreservering aangemaakt voor deze reservering. Probeer het zo opnieuw.",
+      "authorizationUnconfirmed": "Stripe heeft de borgreservering niet bevestigd. Probeer het opnieuw: dezelfde reservering wordt aangevraagd, nooit een tweede.",
       "noActiveAuthorization": "Geen actieve autorisatie voor deze reservering",
       "captureFailed": "Kan borg niet innen",
       "releaseFailed": "Kan borg niet vrijgeven"
@@ -9407,7 +9421,11 @@
     "agentConnectionNotFound": "Deze gekoppelde agent bestaat niet meer.",
     "oauthRequestInvalid": "Dit koppelverzoek is niet meer geldig. Start het opnieuw vanuit uw agent.",
     "stripeRequiredForPaymentMode": "Online betalen vereist een gekoppeld Stripe-account. Koppel Stripe via Instellingen > Betalingen.",
-    "locationLimitReached": "Een winkel kan maximaal 50 afhaalpunten hebben. Deactiveer er een of gebruik er een opnieuw."
+    "locationLimitReached": "Een winkel kan maximaal 50 afhaalpunten hebben. Deactiveer er een of gebruik er een opnieuw.",
+    "depositAttempt": {
+      "needsStripe": "Louez heeft bij Stripe een autorisatie voor dit verzoek gevonden, maar die komt niet overeen met wat werd gevraagd (bedrag, kaart of referentie gewijzigd): Louez heeft ze niet geregistreerd en het verzoek blijft open. Annuleer ze via het Stripe-dashboard en klik daarna op ‘Verzoek sluiten’. Int u ze in plaats daarvan in Stripe, dan registreert Louez dat bedrag niet en blijft het verzoek open: neem contact op met Louez-support.",
+      "none": "Deze reservering heeft geen onbevestigde autorisatie meer."
+    }
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

@@ -2212,7 +2212,16 @@
         "confirmRelease": "Zwolnij kaucję",
         "invalidCaptureAmount": "Nieprawidłowa kwota",
         "captureExceedsDeposit": "Kwota przekracza kaucję",
-        "reasonRequired": "Proszę podać powód"
+        "reasonRequired": "Proszę podać powód",
+        "unconfirmed": {
+          "open": "Rozwiąż w Stripe",
+          "title": "Niepotwierdzona autoryzacja",
+          "description": "Stripe nigdy nie potwierdził tej prośby o autoryzację. Sprawdź Płatności w panelu Stripe konta, na którym o nią poproszono.",
+          "explanation": "Zamknięcie prośby niczego nie anuluje w Stripe. Louez najpierw sam szuka autoryzacji i zapisuje ją, jeśli odpowiada prośbie. Jeśli znajdzie taką, która nie odpowiada (zmieniona kwota, karta lub referencja), prośba pozostaje otwarta, a Louez cię o tym informuje: anuluj tę autoryzację w Stripe, co zwolni zablokowaną kwotę, a następnie ponownie zamknij prośbę. Jeśli zamiast tego pobierzesz ją w Stripe, Louez nie zapisze tej kwoty, a prośba pozostanie otwarta: skontaktuj się z pomocą techniczną Louez. Jeśli autoryzacja pojawi się później, Louez zapisze ją, gdy Stripe ją zgłosi, o ile odpowiada prośbie: stanie się kaucją tej rezerwacji, jeśli ta jej nie ma, a zostanie zwolniona, jeśli inna blokada już ją zabezpiecza. Zamknięcie prośby, gdy blokada istnieje, może więc na jakiś czas zostawić dodatkową blokadę na karcie klienta. Autoryzację, którą widzisz w Stripe, a której Louez nie zapisał, obsługuje się w Stripe: tam ją anuluj.",
+          "confirm": "Zamknij prośbę",
+          "closed": "Prośba zamknięta. Możesz utworzyć nową autoryzację.",
+          "recorded": "Louez znalazł autoryzację w Stripe i ją zapisał."
+        }
       },
       "subtotal": "Suma częściowa",
       "source": "Źródło",
@@ -2748,7 +2757,8 @@
             "incorrectCvc": "Kod bezpieczeństwa karty (CVC) jest nieprawidłowy dla tej autoryzacji kaucji.",
             "processingError": "Autoryzacja kaucji nie powiodła się z powodu tymczasowego problemu przetwarzania. Spróbuj ponownie za kilka minut.",
             "doNotHonor": "Bank odrzucił autoryzację kaucji bez podania szczegółów. Poproś klienta o kontakt z bankiem.",
-            "generic": "Autoryzacja kaucji nie powiodła się. Poproś klienta o ponowienie próby lub użycie innej karty."
+            "generic": "Autoryzacja kaucji nie powiodła się. Poproś klienta o ponowienie próby lub użycie innej karty.",
+            "closedByStore": "Prośba zamknięta przez sklep: w Stripe nie znaleziono autoryzacji."
           }
         }
       },
@@ -2910,6 +2920,8 @@
         "statusAuthorized": "Autoryzowana",
         "statusRefunded": "Zwrócona",
         "statusCancelled": "Anulowana",
+        "statusFailed": "Nieudana",
+        "statusReleasePending": "Zwalnianie w toku",
         "requestPayment": "Poproś o płatność",
         "invoiceGenerated": "Faktura {number} wygenerowana"
       },
@@ -9292,6 +9304,8 @@
       "invalidDepositStatus": "Status kaucji nie pozwala na tę operację",
       "noDepositRequired": "Kaucja nie jest wymagana dla tej rezerwacji",
       "authorizationFailed": "Nie udało się utworzyć autoryzacji",
+      "authorizationInProgress": "Blokada kaucji dla tej rezerwacji jest już tworzona. Spróbuj ponownie za chwilę.",
+      "authorizationUnconfirmed": "Stripe nie potwierdził blokady kaucji. Spróbuj ponownie: żądana jest ta sama blokada, nigdy druga.",
       "noActiveAuthorization": "Brak aktywnej autoryzacji dla tej rezerwacji",
       "captureFailed": "Nie udało się pobrać kaucji",
       "releaseFailed": "Nie udało się zwolnić kaucji"
@@ -9407,7 +9421,11 @@
     "agentConnectionNotFound": "Ten połączony agent już nie istnieje.",
     "oauthRequestInvalid": "Ta prośba o połączenie jest już nieważna. Rozpocznij ją ponownie w swoim agencie.",
     "stripeRequiredForPaymentMode": "Tryb płatności online wymaga połączonego konta Stripe. Połącz Stripe w Ustawienia > Płatności.",
-    "locationLimitReached": "Sklep może mieć maksymalnie 50 punktów odbioru. Dezaktywuj jeden lub użyj go ponownie."
+    "locationLimitReached": "Sklep może mieć maksymalnie 50 punktów odbioru. Dezaktywuj jeden lub użyj go ponownie.",
+    "depositAttempt": {
+      "needsStripe": "Louez znalazł w Stripe autoryzację dla tej prośby, ale nie odpowiada ona temu, o co proszono (zmieniona kwota, karta lub referencja): Louez jej nie zapisał, a prośba pozostaje otwarta. Anuluj ją w panelu Stripe, a następnie kliknij „Zamknij prośbę”. Jeśli zamiast tego pobierzesz ją w Stripe, Louez nie zapisze tej kwoty, a prośba pozostanie otwarta: skontaktuj się z pomocą techniczną Louez.",
+      "none": "Ta rezerwacja nie ma już niepotwierdzonej autoryzacji."
+    }
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

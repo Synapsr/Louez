@@ -4,7 +4,12 @@
  * completed `rental` payment. Deposits, holds and refunds never count.
  */
 
-import { getSettledPaymentAmount, isPaymentInCurrency, isStripeRefundRow } from "@louez/utils";
+import {
+  getSettledPaymentAmount,
+  isCustomerDepositHoldRow,
+  isPaymentInCurrency,
+  isStripeRefundRow,
+} from "@louez/utils";
 
 export interface PaymentLike {
   id?: string;
@@ -20,6 +25,8 @@ export interface PaymentLike {
   /** With `currency`, tells a Stripe payment, whose currency is its own. */
   method?: string;
   currency?: string | null;
+  /** On a hold Louez decided against, until the provider released it. */
+  releaseOwedAt?: Date | string | null;
 }
 
 export type ReservationPaymentStatus = "paid" | "processing" | "unpaid";
@@ -67,15 +74,24 @@ export const getDamageFees = (payments: readonly PaymentLike[]): number =>
   getSettledPaymentAmount(payments, "damage");
 
 /**
- * The payment rows worth listing to the customer: a hold that was captured
- * is dropped, since the capture row carries the amount actually taken and
- * the hold row would show the full deposit as "taken".
+ * The payment rows worth listing to the customer. Of the deposit holds, only the
+ * one their card carries for the reservation, `depositPaymentIntentId`, with its
+ * release: an authorization the store asked for and Stripe never confirmed, a
+ * refused one and a second one on its way out are not theirs to read
+ * (`isCustomerDepositHoldRow`). A hold that was captured is dropped, since the
+ * capture row carries the amount actually taken and the hold row would show the
+ * full deposit as "taken".
  */
-export const getCustomerPaymentRows = <T extends PaymentLike>(payments: readonly T[]): T[] => {
+export const getCustomerPaymentRows = <T extends PaymentLike>(
+  payments: readonly T[],
+  depositPaymentIntentId: string | null | undefined,
+): T[] => {
   const captured = payments.some(
     (payment) => payment.type === "deposit_capture" && payment.status === "completed",
   );
-  return payments.filter(
-    (payment) => !(captured && payment.type === "deposit_hold" && payment.status === "completed"),
-  );
+  return payments.filter((payment) => {
+    if (payment.type !== "deposit_hold") return true;
+    if (!isCustomerDepositHoldRow(payment, depositPaymentIntentId)) return false;
+    return !(captured && payment.status === "completed");
+  });
 };

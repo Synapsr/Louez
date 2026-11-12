@@ -15,6 +15,7 @@ import { getContractCustomerFieldLines } from "./util.contract-customer-fields";
 import { getContractItemDetailLines } from "./util.contract-item-details";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import { getCustomerPaymentRows } from "@/lib/reservations/util.payment-status";
 import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
 import { getContractTranslations } from "./contract-i18n";
@@ -251,7 +252,12 @@ export async function generateContract({
           insured: item.productId !== null && insuredProductIds.has(item.productId),
           detailLines: itemDetailLines.get(item.id) ?? [],
         })),
-        payments: reservation.payments.map((payment) => ({
+        // Of the deposit holds, the contract states the one on the customer's card, held
+        // or captured: an attempt, a refusal, a second authorization and a released
+        // hold are no payment of the contract.
+        payments: getCustomerPaymentRows(reservation.payments, reservation.depositPaymentIntentId)
+          .filter((payment) => !(payment.type === "deposit_hold" && payment.status === "cancelled"))
+          .map((payment) => ({
           id: payment.id,
           amount: payment.amount,
           type: payment.type as "rental" | "deposit" | "deposit_return" | "damage",

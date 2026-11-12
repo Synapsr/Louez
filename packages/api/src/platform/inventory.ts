@@ -556,6 +556,16 @@ export const capabilities = [
     plan: { lot: "2c" },
   },
   {
+    // The store resolves a deposit hold Stripe has not confirmed, on its word: a session
+    // only (the procedure says why).
+    id: "reservations.resolveDepositAttempt",
+    sources: [procedure("reservations", "resolveDepositAttempt")],
+    kind: "write",
+    sensitive: "money",
+    plan: { lot: "2c" },
+    actors: ["session"],
+  },
+  {
     id: "reservations.requestPayment",
     sources: [
       action(SA.reservations, "requestPayment"),

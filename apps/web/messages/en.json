@@ -2251,7 +2251,16 @@
         "confirmRelease": "Release deposit",
         "invalidCaptureAmount": "Invalid amount",
         "captureExceedsDeposit": "Amount exceeds deposit",
-        "reasonRequired": "Please provide a reason"
+        "reasonRequired": "Please provide a reason",
+        "unconfirmed": {
+          "open": "Resolve with Stripe",
+          "title": "Unconfirmed authorization",
+          "description": "Stripe never confirmed this authorization request. Check Payments in the Stripe dashboard of the account it was requested on.",
+          "explanation": "Closing the request cancels nothing at Stripe. Louez first looks for the authorization itself and records it if it matches the request. If it finds one that does not match (amount, card or reference changed), the request stays open and Louez tells you: cancel that authorization in Stripe, which releases the held amount, then close the request again. If you capture it in Stripe instead, Louez does not record that amount and the request stays open: contact Louez support. If an authorization appears later, Louez records it when Stripe reports it, if it matches the request: it becomes this reservation's deposit if it has none, and it is released if another hold already secures it. Closing the request while a hold exists can therefore leave an extra hold on the customer's card for a while. An authorization you see in Stripe that Louez has not recorded is handled in Stripe: cancel it there.",
+          "confirm": "Close the request",
+          "closed": "Request closed. You can create a new authorization.",
+          "recorded": "Louez found the authorization at Stripe and recorded it."
+        }
       },
       "subtotal": "Subtotal",
       "source": "Source",
@@ -2787,7 +2796,8 @@
             "incorrectCvc": "The card security code (CVC) is invalid for this deposit authorization.",
             "processingError": "The deposit authorization failed due to a temporary processing issue. Retry in a few minutes.",
             "doNotHonor": "The bank refused the deposit authorization without details. Ask the customer to contact their bank or use another card.",
-            "generic": "Deposit authorization failed. Ask the customer to retry or use another card."
+            "generic": "Deposit authorization failed. Ask the customer to retry or use another card.",
+            "closedByStore": "Request closed by the store: no authorization found in Stripe."
           }
         }
       },
@@ -2949,6 +2959,8 @@
         "statusAuthorized": "Authorized",
         "statusRefunded": "Refunded",
         "statusCancelled": "Cancelled",
+        "statusFailed": "Failed",
+        "statusReleasePending": "Being released",
         "requestPayment": "Request payment",
         "invoiceGenerated": "Invoice {number} generated"
       },
@@ -9292,6 +9304,8 @@
       "invalidDepositStatus": "The deposit status does not allow this operation",
       "noDepositRequired": "No deposit required for this reservation",
       "authorizationFailed": "Unable to create authorization hold",
+      "authorizationInProgress": "An authorization hold is already being created for this reservation. Try again in a moment.",
+      "authorizationUnconfirmed": "Stripe did not confirm the authorization hold. Try again: the same hold is asked for, never a second one.",
       "noActiveAuthorization": "No active authorization for this reservation",
       "captureFailed": "Unable to capture deposit",
       "releaseFailed": "Unable to release deposit"
@@ -9407,7 +9421,11 @@
     "agentConnectionNotFound": "This connected agent no longer exists.",
     "oauthRequestInvalid": "This connection request is no longer valid. Start it again from your agent.",
     "stripeRequiredForPaymentMode": "Online payment mode needs a connected Stripe account. Connect Stripe in Settings > Payments.",
-    "locationLimitReached": "A store can have 50 pickup points at most. Deactivate or reuse one instead."
+    "locationLimitReached": "A store can have 50 pickup points at most. Deactivate or reuse one instead.",
+    "depositAttempt": {
+      "needsStripe": "Louez found an authorization at Stripe for this hold request, but it does not match what was asked (amount, card or reference changed): Louez did not record it, and the request stays open. Cancel it from the Stripe dashboard, then click “Close the request”. If you capture it in Stripe instead, Louez does not record that amount and the request stays open: contact Louez support.",
+      "none": "This reservation has no unconfirmed authorization left."
+    }
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

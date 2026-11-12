@@ -9,6 +9,7 @@ import {
 
 import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
+import { createDepositHoldEffectSenders } from "@/lib/reservations/deposit-hold-effects";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
 import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
@@ -21,6 +22,7 @@ import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-ef
  * effect type. A domain that adds an effect type adds its sender here.
  */
 export const apiEffectSenders: ApiEffectSenders = {
+  ...createDepositHoldEffectSenders(),
   ...createReservationEffectSenders(),
   ...createSmsEffectSenders(),
   ...createStoreCreationEffectSenders(),

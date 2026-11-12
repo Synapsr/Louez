@@ -23,6 +23,7 @@ import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import type { RouterClient } from "@orpc/server";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
+import { depositHoldRowKind, describeDepositHoldRow } from "@louez/utils";
 import {
   customerFieldSearchCondition,
   getCustomerFieldValues,
@@ -696,7 +697,16 @@ export function createAITools(ctx: AIChatContext) {
           orderBy: [payments.createdAt],
         });
 
-        return { payments: rows, reservationNumber: reservation.number };
+        return {
+          // A deposit hold's status follows Stripe: what it is for the reservation
+          // (not confirmed, refused, the hold, a second one being released) is said
+          // next to it.
+          payments: rows.map((row) => {
+            const kind = depositHoldRowKind(row);
+            return kind ? { ...row, depositHold: describeDepositHoldRow(kind) } : row;
+          }),
+          reservationNumber: reservation.number,
+        };
       },
     }),
 

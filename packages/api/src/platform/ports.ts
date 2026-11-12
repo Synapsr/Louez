@@ -69,6 +69,12 @@ export interface ApiPorts {
   /** Louez's billing of the store, owned by the app and the billing service. */
   billing?: BillingPort;
   /**
+   * The store's deposit holds (apps/web lib/reservations/deposit-hold.ts): its Stripe
+   * calls and its one writer, until the deposit hold moves into the package. Absent
+   * where no procedure needs it.
+   */
+  depositHolds?: DepositHoldsPort;
+  /**
    * What the team procedures read from the app (services/team.ts). Absent
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
@@ -85,6 +91,56 @@ export interface ApiPorts {
    * Absent: one JSON line on stderr.
    */
   log?: LogPort;
+}
+
+/** What the store's closing of an unconfirmed deposit hold came to. */
+export type DepositAttemptResolution =
+  | {
+      ok: true;
+      /** `closed`, or what the PaymentIntent Louez found at Stripe was recorded as. */
+      outcome:
+        | "closed"
+        | "authorized"
+        | "superseded"
+        | "captured"
+        | "released"
+        | "failed"
+        | "pending";
+      paymentIntentId: string | null;
+    }
+  | {
+      ok: false;
+      error: "reservation_not_found" | "no_unconfirmed_attempt" | "attempt_in_progress";
+    }
+  | {
+      ok: false;
+      /**
+       * Louez found the attempt's PaymentIntent, which does not match the attempt, and
+       * Stripe may hold funds on it: the attempt is not closed.
+       */
+      error: "attempt_needs_stripe";
+      paymentIntentId: string;
+      /** Its status at Stripe. */
+      status: string;
+      /** Why it is not the attempt's: `facts_mismatch`, `other_reservation`… */
+      reason: string;
+      /** For a `facts_mismatch`, what differs: `amount`, `currency`, `card`, `customer`. */
+      unmatchedFacts: readonly string[];
+    };
+
+/** The store's deposit holds, lent by the app (apps/web lib/api/deposit-holds-port.ts). */
+export interface DepositHoldsPort {
+  /**
+   * Closes the reservation's deposit hold attempt Stripe has not confirmed, on the
+   * store's word, once Louez's own lookup, when it can make one, found nothing; what it
+   * finds is recorded instead, and what it finds but cannot record keeps the attempt
+   * open while Stripe may hold funds on it.
+   */
+  resolveUnconfirmedAttempt: (input: {
+    reservationId: string;
+    storeId: string;
+    actorUserId: string;
+  }) => Promise<DepositAttemptResolution>;
 }
 
 /** A structured log event: a name, then fields that hold no personal data. */
