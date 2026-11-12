@@ -37,10 +37,10 @@ Two implementations create a booking, a third reshapes one, and payments are rec
 _Partial._ `createManualReservation` computes capacity with its own code, and its overlap query leaves out the test that tells a live marketplace hold from an expired one.
 
 **S2. A write that can raise demand checks capacity under the product locks.** A new booking, a line added, a quantity raised, dates moved, and a change into a blocking status all read the free stock after `SELECT … FOR UPDATE` on the products, in the transaction that writes.
-_Partial._ `updateReservation` checks returnable capacity only when the dates change and the status is `confirmed` or `ongoing`: a line added or a quantity raised with the same dates, or any edit of a `pending` reservation, is written unchecked. Consumable stock is reconciled, and refuses to go below zero, on an edit of a `confirmed` or `ongoing` reservation only.
+_Partial._ Returnable stock: every writer checks. `updateReservation` does whenever the edit moves what a stock-holding reservation asks for, per product and per size or combination chosen (`compareReservationDemand`). Consumable stock is reconciled, and refuses to go below zero, on an edit of a `confirmed` or `ongoing` reservation only: an edit of a `pending` one is not checked against it.
 
 **S3. The store may book over its returnable stock, and only on purpose.** Louez never leaves a renter unable to record what they decided. When stock is short, the dashboard write is refused with the list of shortfalls (product, quantity asked, quantity free); sent again with `allowOverbooking`, it is written, its activity row records `overbooked` and the shortfalls, and the inbox shows it until it is over. A customer, the marketplace and the phone assistant never get that choice: their booking is refused. Consumable stock is physical: no override takes it below zero.
-_Partial._ Creation follows it. An edit either skips the check (S2) or, on a date change, refuses with no way to go on.
+_Held._ Creation and edits follow it, with the same answer, the same trace and the same inbox item, which leaves once a later edit fits the stock (`services/capacity-verdict.ts`).
 
 **S4. A unit serves one reservation at a time.** A unit assigned to a line is never assigned to another line whose reservation blocks the same window. This one is not for the store to override: two customers cannot leave with the same bike. Only a conflict that comes from the turnover buffer alone can be passed, with `overrideTurnoverBuffer`.
 _Partial._ Assignment and the dashboard's date changes refuse a hard conflict. A unit can be assigned to a reservation that does not block yet (a quote, or a request when requests do not block), then to a confirmed one; confirming the first checks the product's capacity (`checkExistingReservationInventory`), not its assigned units. No test covers assignment conflicts.
@@ -54,7 +54,7 @@ _Open._ Either lines keep their own period, or the checkout stops accepting one.
 ## Money
 
 **M1. The totals are the sum of their parts.** The subtotal is the sum of the lines' totals, plus the insurance when it is not carried as a line. The total is what the tax engine gives for the lines, the delivery fee and the discount, tax included (`calculateTaxBreakdown`): with prices that include tax it is the subtotal plus delivery less the discount; with prices before tax, the tax comes on top. The deposit is never part of it.
-_Open._ `updateReservation` computes the new totals from a read made before its transaction and compares only the status once it holds the lock, so two edits at once can leave the lines of one and the total of the other.
+_Partial._ `updateReservation` still computes the new totals from a read made before its transaction, and refuses the edit when that read no longer holds under its locks (C2): two edits at once no longer leave the lines of one and the total of the other. It builds its total apart from the pricing the checkout uses (M3).
 
 **M2. A reservation has one currency, fixed when it is created.** `reservations.currency` holds it. Every amount stated, asked, held, captured or refunded on that reservation is in it, whatever the store's settings say later (`reservationCurrency`, `apps/web/lib/reservations/payment-billing-facts.ts`).
 _Partial._ The customer's payment session, the payment request, the deposit authorization and its capture, the dashboard's Stripe refund and the extension quote read the store's current currency. So do the contract (`apps/web/lib/pdf/generate.ts`) and the dashboard's reservation pages when they state the amounts of an existing reservation. Rows created before the column existed hold null and fall back to the store's current currency: a store that changes currency would restate all of them, until a backfill writes the currency they were made in.
@@ -107,10 +107,10 @@ _Partial._ The extension service does it; its tests replace the transaction with
 ## Concurrency
 
 **C1. Locks are taken in one order.** The store row, then products by id, then reservations, then units by id ([Data layer, Lock order](../code-review/04-data-layer.md)). A path that still takes the reservation first retries a lost deadlock: `retryTransactionOnDeadlock` for the customer's and the payment's status changes, `retryOnceOnDeadlock` for the extensions and the unit assignment.
-_Partial._ `updateReservation` locks the reservation and its units, then the products, with no retry.
+_Partial._ Every known path follows the order or retries. No test fails when a new path inverts it.
 
 **C2. A write decides on what it reads under its locks.** Whatever it read before them it reads again, or it proves nothing changed, before its first write.
-_Partial._ The checkout rechecks stock and required accessories under the product locks, and the store's status changes read everything under theirs. The checkout and the manual creation still write the prices and settings they read before locking. `updateReservation` does the same with the totals (M1), and the recorded payments and deposit returns with their limits (M7).
+_Partial._ The checkout rechecks stock and required accessories under the product locks, and the store's status changes read everything under theirs. The checkout and the manual creation still write the prices and settings they read before locking. `updateReservation` computes before its locks too, then proves under them that nothing it read has changed (`fingerprintReservationEdit`), or refuses the edit. The recorded payments and deposit returns check their limits before their transaction (M7).
 
 **C3. No effect runs inside a transaction that may run again.** A fee, an email, a notification or a provider call runs after the commit, once.
 _Held_ for the paths listed under the lock order.
