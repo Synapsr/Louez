@@ -322,6 +322,7 @@ _Avoid_: infinite stock, unlimited capacity, service product type
 ## Related
 
 - [Architecture Reference](../ARCHITECTURE.md) — Stack and core domain model
+- [Reservation invariants](reservation-invariants.md) — the rules of stock, money and status every reservation writer holds
 - [Integrations Architecture](../integrations/architecture.md) — Provider, integration, connection, and workflow boundaries
 - [ADR 0002](../adr/0002-referral-attribution-shared-cookie.md) — Referral attribution through the shared `.louez.io` cookie
 - [ADR 0003](../adr/0003-referral-reward-non-cash.md) — Referral rewards as non-cash account value
