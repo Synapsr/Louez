@@ -1708,7 +1708,14 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
             orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
           ),
         );
-      assert.deepEqual(activity?.metadata?.turnoverBufferOnlyUnitIds, [unitId]);
+      // The units the buffer alone reaches, next to the verdict of the check.
+      assert.deepEqual(
+        {
+          turnoverBufferOnlyUnitIds: activity?.metadata?.turnoverBufferOnlyUnitIds,
+          overbooked: activity?.metadata?.overbooked,
+        },
+        { turnoverBufferOnlyUnitIds: [unitId], overbooked: false },
+      );
     });
   });
 

@@ -36,6 +36,10 @@ import {
 // that went to another booking meanwhile: neither confirms it (S4). And the
 // three confirmations of a reservation holding a unit that only the turnover
 // buffer around another booking reaches: each confirms it.
+//
+// And each confirmation records the capacity verdict it checked: a booking
+// flagged over the stock leaves the inbox once a confirmation finds that the
+// stock fits.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-status-races-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -103,6 +107,8 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   let payment: typeof import("./complete-checkout-payment");
   let abandoned: typeof import("./cancel-abandoned-checkout");
   let quotes: typeof import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions");
+  let inbox: typeof import("@louez/api/services/inbox");
+  let testUrls: typeof import("@louez/api/platform/test-urls");
   let dispatched: string[] = [];
   let counter = 0;
 
@@ -116,6 +122,8 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
     statusChange = await import("@louez/api/services/reservation-status");
+    inbox = await import("@louez/api/services/inbox");
+    testUrls = await import("@louez/api/platform/test-urls");
 
     await louezDb.db.insert(louezDb.stores).values({
       id: STORE,
@@ -546,6 +554,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
       return {
         status: row?.status,
         bufferOnlyUnitIds: confirmation?.metadata?.turnoverBufferOnlyUnitIds,
+        overbooked: confirmation?.metadata?.overbooked,
       };
     }
 
@@ -605,9 +614,11 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         const { id, returned } = await holdingReturnedUnit(from, "buffer only");
 
         assert.equal(await confirm(id), "confirmed");
+        // The unit, next to the verdict of the capacity check.
         assert.deepEqual(await confirmationOf(id), {
           status: "confirmed",
           bufferOnlyUnitIds: [returned],
+          overbooked: false,
         });
       });
 
@@ -622,6 +633,142 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
           assert.equal((await confirmationOf(id)).status, from);
         });
       }
+    }
+  });
+
+  describe("a booking flagged over the stock, the stock freed since", () => {
+    /**
+     * A kayak of one, held by a confirmed booking of the same dates. The
+     * reservation asks for it too, and its creation recorded the overbooking.
+     */
+    async function overbooked(status: "pending" | "quote") {
+      const productId = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: productId,
+        storeId: STORE,
+        name: productId,
+        price: "1.00",
+        pricingMode: "day",
+        quantity: 1,
+      });
+      const booking = async (bookingStatus: "pending" | "quote" | "confirmed") => {
+        const id = nextId("res");
+        // A fixture, so it may start in any status.
+        await louezDb.db.insert(louezDb.reservations).values({
+          id,
+          storeId: STORE,
+          customerId: CUSTOMER,
+          number: id,
+          status: bookingStatus,
+          startDate: new Date("2030-06-01T09:00:00Z"),
+          endDate: new Date("2030-06-03T09:00:00Z"),
+          subtotalAmount: "1.00",
+          depositAmount: "0.00",
+          totalAmount: "1.00",
+          source: "online",
+        });
+        await louezDb.db.insert(louezDb.reservationItems).values({
+          id: nextId("itm"),
+          reservationId: id,
+          productId,
+          quantity: 1,
+          unitPrice: "1.00",
+          depositPerUnit: "0.00",
+          totalPrice: "1.00",
+          productSnapshot: { name: productId, description: null, images: [] },
+        });
+        return id;
+      };
+      const holder = await booking("confirmed");
+      const id = await booking(status);
+      await louezDb.db.insert(louezDb.reservationActivity).values({
+        id: nextId("act"),
+        reservationId: id,
+        activityType: "created",
+        metadata: {
+          overbooked: true,
+          overbookingShortfalls: [{ productId, requested: 1, available: 0 }],
+        },
+        createdAt: new Date(Date.now() - 3_600_000),
+      });
+      return { id, holder };
+    }
+
+    /** The reservations the store's inbox lists as overbooked. */
+    async function overbookings() {
+      const [store] = await louezDb.db
+        .select()
+        .from(louezDb.stores)
+        .where(eq(louezDb.stores.id, STORE));
+      assert.ok(store);
+      const { items } = await inbox.listInbox(
+        {
+          store,
+          urls: testUrls.createTestUrls(),
+          hostedBy: null,
+          reads: { reservations: true },
+          operationsOf: null,
+        },
+        {},
+      );
+      return items.flatMap((item) =>
+        item.type === "overbooking" && item.reservation ? [item.reservation.id] : [],
+      );
+    }
+
+    async function verdictOf(id: string) {
+      const activity = await louezDb.db
+        .select({
+          type: louezDb.reservationActivity.activityType,
+          metadata: louezDb.reservationActivity.metadata,
+        })
+        .from(louezDb.reservationActivity)
+        .where(eq(louezDb.reservationActivity.reservationId, id));
+      const confirmation = activity.find(
+        (entry) => entry.type === "confirmed" || entry.type === "quote_accepted",
+      );
+      return (
+        confirmation && { type: confirmation.type, overbooked: confirmation.metadata?.overbooked }
+      );
+    }
+
+    const paths = {
+      "the store's change": {
+        from: "quote" as const,
+        type: "confirmed",
+        confirm: (id: string) =>
+          statusChange.changeStoreReservationStatus(caller(), { id, to: "confirmed" }),
+      },
+      "the customer's acceptance": {
+        from: "quote" as const,
+        type: "quote_accepted",
+        confirm: async (id: string) =>
+          assert.deepEqual(await quotes.acceptQuote(STORE_SLUG, id), {
+            success: true,
+            paymentUrl: null,
+          }),
+      },
+      "the payment's confirmation": {
+        from: "pending" as const,
+        type: "confirmed",
+        confirm: (id: string) => paidConfirmation(id),
+      },
+    };
+
+    for (const [path, { from, type, confirm }] of Object.entries(paths)) {
+      test(`leaves the inbox once ${path} finds that the stock fits`, async () => {
+        const { id, holder } = await overbooked(from);
+        assert.deepEqual(await overbookings(), [id]);
+
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ status: "cancelled" })
+          .where(eq(louezDb.reservations.id, holder));
+        await confirm(id);
+
+        assert.deepEqual(await verdictOf(id), { type, overbooked: false });
+        assert.deepEqual(await overbookings(), []);
+      });
     }
   });
 

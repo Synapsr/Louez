@@ -283,6 +283,8 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
           newStatus: "confirmed",
           actor: "payment",
           ...PAID.activityMetadata,
+          // The verdict of the stock check it passed.
+          overbooked: false,
         },
       },
     ]);

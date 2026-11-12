@@ -838,7 +838,11 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
       test("nobody else holds is confirmed", async () => {
         const { storeId, quote } = await quoteHoldingSmall();
 
-        assert.deepEqual(await checkExisting(storeId, quote.id), { activityMetadata: {} });
+        const checked = await checkExisting(storeId, quote.id);
+
+        // The verdict of the check, for the confirmation's row, which it dates.
+        assert.deepEqual(checked.activityMetadata, { overbooked: false });
+        assert.ok(checked.activityAt instanceof Date);
       });
 
       test("since given to a confirmed booking is refused, though the stock covers its lines", async () => {
@@ -890,8 +894,9 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
           { start: new Date(START.getTime() - 24 * HOUR), end: new Date(START.getTime() - HOUR) },
         );
 
-        assert.deepEqual(await checkExisting(storeId, quote.id), {
-          activityMetadata: { turnoverBufferOnlyUnitIds: [small] },
+        assert.deepEqual((await checkExisting(storeId, quote.id)).activityMetadata, {
+          overbooked: false,
+          turnoverBufferOnlyUnitIds: [small],
         });
       });
 
