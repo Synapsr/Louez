@@ -150,9 +150,11 @@ async function readReservationStatus(
  * plainly, then takes the products' lock (as `runReservationChange`) when
  * `needsProducts(status)`, else the reservation's alone (as
  * `runReservationOnlyChange`): a change that moves no stock takes no product
- * lock. `work` gets the status as read under the lock. When the reservation's
- * lock finds another status than the one read, the run starts over from the
- * read, within the owner entry's three runs. A reservation that does not exist
+ * lock. `work` gets the status as read under the lock. When the run took the
+ * reservation's lock alone and finds, under it, another status than the one
+ * read, it starts over from the read, within the owner entry's three runs; a
+ * run that took the products' lock goes on with the status it finds, as that
+ * lock covers every change. A reservation that does not exist
  * in the store gets the reservation-only lock and the status null.
  */
 export function runReservationChangeByStatus<T>(
