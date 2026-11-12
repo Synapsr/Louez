@@ -37,7 +37,7 @@
  *   Monday and another on Tuesday.
  *
  * Cost: an exact demand (one candidate) is folded into the room each
- * combination has left at each instant, and an instant another one
+ * combination has left at each instant, and an instant a neighbour in time
  * dominates (less room, more open demands) is dropped; a flow is solved only
  * for the open demands left. When no demand is open, a line fits exactly when
  * every combination it takes keeps enough room at its tightest instant, and
@@ -289,77 +289,94 @@ interface FlowInstant {
   open: Demand[];
   /** The combinations the open demands accept: only they matter to the flow. */
   openCombinations: number[];
-  /** What the other bookings get there, and where. */
-  baseline: { total: number; used: Int32Array };
 }
 
 /**
- * Drops the instants another one dominates. Room only helps and fewer open
+ * How many instants on each side, in time, an instant is compared with to
+ * find one that dominates it. Two instants far apart share few bookings and
+ * seldom dominate one another; comparing every pair costs more than the flows
+ * it saves.
+ */
+const DOMINANCE_NEIGHBOURS = 16;
+
+/**
+ * Drops instants another one dominates. Room only helps and fewer open
  * demands only help (a request that fits next to more demands, in less room,
  * fits next to fewer, in more): of two instants, one with less room on the
  * combinations a flow can reach and at least the same open demands is the
  * only one to check.
+ *
+ * Dropping is only a saving: an instant kept is checked like the others, so
+ * an instant dominated but kept changes no answer. Exact duplicates go first,
+ * by key; then each instant is compared with its neighbours in time, dropped
+ * or not. Two distinct instants never dominate each other, even through
+ * others (each step reaches no fewer combinations, and on the same ones no
+ * less open demand in no more room): following dominance from a dropped
+ * instant ends on a kept one, and a request that fits there fits at every
+ * instant on the way.
  */
 const bindingInstants = (
   instants: readonly FlowInstant[],
   requestCombinations: readonly number[],
 ): FlowInstant[] => {
-  // Each set of combinations an open demand accepts, numbered once.
-  const numbered = new Map<string, number>();
-  for (const instant of instants) {
-    for (const demand of instant.open) {
-      const signature = signatureOf(demand.combinations);
-      if (!numbered.has(signature)) numbered.set(signature, numbered.size);
-    }
-  }
+  // Each set of combinations an open demand accepts, numbered once: bookings
+  // that accept the same set share one list.
+  const numbered = new Map<readonly number[], number>();
   const described = instants.map((instant) => {
     const combinations = Int32Array.from(
       new Set([...instant.openCombinations, ...requestCombinations]),
     ).sort();
     const open = instant.open
-      .map((demand) => ({
-        index: numbered.get(signatureOf(demand.combinations)) ?? 0,
-        quantity: demand.quantity,
-      }))
+      .map((demand) => {
+        let index = numbered.get(demand.combinations);
+        if (index === undefined) {
+          index = numbered.size;
+          numbered.set(demand.combinations, index);
+        }
+        return { index, quantity: demand.quantity };
+      })
       .sort((a, b) => a.index - b.index);
-    let roomTotal = 0;
-    for (const combination of combinations) roomTotal += instant.room[combination] ?? 0;
     return {
       instant,
       combinations,
       open,
       key: [
         open.map((demand) => `${demand.index}x${demand.quantity}`).join(","),
-        [...combinations].map((combination) => instant.room[combination] ?? 0).join(","),
+        Array.from(combinations, (combination) => instant.room[combination] ?? 0).join(","),
       ].join("|"),
-      openQuantity: open.reduce((sum, demand) => sum + demand.quantity, 0),
-      roomTotal,
     };
   });
-  // The most open demands and the least room first: they dominate the others.
-  const unique = [...new Map(described.map((entry) => [entry.key, entry])).values()].sort(
-    (a, b) => b.openQuantity - a.openQuantity || a.roomTotal - b.roomTotal,
-  );
+  // Exact duplicates: the first in time stands for the others.
+  const firsts = new Map<string, (typeof described)[number]>();
+  for (const entry of described) if (!firsts.has(entry.key)) firsts.set(entry.key, entry);
+  const unique = [...firsts.values()];
 
-  const kept: Array<{ entry: (typeof unique)[number]; openByIndex: Int32Array }> = [];
-  for (const candidate of unique) {
-    const { room } = candidate.instant;
-    const dominated = kept.some(({ entry, openByIndex }) => {
-      if (entry.openQuantity < candidate.openQuantity) return false;
-      for (const combination of entry.combinations) {
-        if ((entry.instant.room[combination] ?? 0) > (room[combination] ?? 0)) return false;
+  type Entry = (typeof unique)[number];
+  const dominates = (entry: Entry, candidate: Entry) => {
+    for (const combination of entry.combinations) {
+      if ((entry.instant.room[combination] ?? 0) > (candidate.instant.room[combination] ?? 0)) {
+        return false;
       }
-      for (const { index, quantity } of candidate.open) {
-        if ((openByIndex[index] ?? 0) < quantity) return false;
+    }
+    // Both lists are sorted by index: each open demand of the candidate, no smaller in the entry.
+    let at = 0;
+    for (const { index, quantity } of candidate.open) {
+      while ((entry.open[at]?.index ?? Infinity) < index) at += 1;
+      const theirs = entry.open[at];
+      if (!theirs || theirs.index !== index || theirs.quantity < quantity) return false;
+    }
+    return true;
+  };
+  return unique
+    .filter((candidate, position) => {
+      const last = Math.min(unique.length - 1, position + DOMINANCE_NEIGHBOURS);
+      for (let other = Math.max(0, position - DOMINANCE_NEIGHBOURS); other <= last; other += 1) {
+        const entry = unique[other];
+        if (other !== position && entry && dominates(entry, candidate)) return false;
       }
       return true;
-    });
-    if (dominated) continue;
-    const openByIndex = new Int32Array(numbered.size);
-    for (const { index, quantity } of candidate.open) openByIndex[index] = quantity;
-    kept.push({ entry: candidate, openByIndex });
-  }
-  return kept.map(({ entry }) => entry.instant);
+    })
+    .map(({ instant }) => instant);
 };
 
 /**
@@ -401,17 +418,20 @@ const fitTest = (
   const flowInstants = bindingInstants(
     instants
       .filter((instant) => instant.open.length > 0 || requestCombinations.length > 0)
-      .map((instant) => {
-        const room = instant.room.map((units) => Math.max(0, units));
-        return {
-          room,
-          open: instant.open,
-          openCombinations: [...new Set(instant.open.flatMap((demand) => demand.combinations))],
-          baseline: solveFlow(instant.open, room, size),
-        };
-      }),
+      .map((instant) => ({
+        room: instant.room.map((units) => Math.max(0, units)),
+        open: instant.open,
+        openCombinations: [...new Set(instant.open.flatMap((demand) => demand.combinations))],
+      })),
     requestCombinations,
-  );
+  ).map((instant) => ({
+    ...instant,
+    // What the other bookings get there, and where: the same for every request.
+    baseline: solveFlow(instant.open, instant.room, size),
+  }));
+  // The instant that refused the last request is asked first: the next request
+  // of a search or of a line's candidates is often refused there too.
+  let lastRefusal = 0;
 
   return (request) => {
     const exact = new Int32Array(size);
@@ -431,7 +451,7 @@ const fitTest = (
     for (let combination = 0; combination < size; combination += 1) {
       if ((exact[combination] ?? 0) > (tightest[combination] ?? 0)) return false;
     }
-    return flowInstants.every((instant) => {
+    const fitsAt = (instant: (typeof flowInstants)[number]) => {
       if (open.length === 0) {
         // The others keep their flow when it still fits in the room the request leaves.
         const keepsBaseline = instant.openCombinations.every(
@@ -446,7 +466,15 @@ const fitTest = (
         solveFlow([...instant.open, ...open], room, size).total ===
         instant.baseline.total + openAsked
       );
-    });
+    };
+    const first = flowInstants[lastRefusal];
+    if (first && !fitsAt(first)) return false;
+    for (const [index, instant] of flowInstants.entries()) {
+      if (index === lastRefusal || fitsAt(instant)) continue;
+      lastRefusal = index;
+      return false;
+    }
+    return true;
   };
 };
 
@@ -495,8 +523,13 @@ export const allocateStock = (input: {
     ),
   ];
 
+  // Bookings that accept the same combinations share one list of them.
+  const lists = new Map<string, number[]>();
   const bookings = input.bookings.flatMap((booking) => {
-    const combinations = usable(booking.demand.combinationKeys).sort((a, b) => a - b);
+    const accepted = usable(booking.demand.combinationKeys).sort((a, b) => a - b);
+    const signature = signatureOf(accepted);
+    const combinations = lists.get(signature) ?? accepted;
+    lists.set(signature, combinations);
     // A booking no unit can serve lacks it whatever the request takes.
     return combinations.length > 0 && booking.demand.quantity > 0
       ? [{ ...booking, demand: { combinations, quantity: booking.demand.quantity } }]

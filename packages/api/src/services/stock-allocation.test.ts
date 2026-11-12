@@ -294,6 +294,106 @@ describe("allocateStock against the rule read by brute force", () => {
   });
 });
 
+// --- Long timelines -----------------------------------------------------------------
+
+/** How many instants can bind: each time a booking ends after others started. */
+const instantsIn = (bookings: readonly StockBooking[]) => {
+  const events = bookings
+    .flatMap((booking) => [
+      { at: booking.start, opens: true },
+      { at: booking.end, opens: false },
+    ])
+    .sort((a, b) => a.at - b.at || Number(a.opens) - Number(b.opens));
+  let count = 0;
+  let grew = false;
+  for (const event of events) {
+    if (event.opens) grew = true;
+    else if (grew) {
+      count += 1;
+      grew = false;
+    }
+  }
+  return count;
+};
+
+/** Every combination of the axes' values, one value index per axis. */
+const combinationsOf = (axes: readonly number[]) =>
+  axes.reduce<number[][]>(
+    (all, values) =>
+      all.flatMap((combination) =>
+        Array.from({ length: values }, (_, value) => [...combination, value]),
+      ),
+    [[]],
+  );
+const keyOf = (combination: readonly number[]) => combination.join("/");
+
+/**
+ * Two or three axes of two or three values each, up to three units per
+ * combination, some combinations empty. Other bookings choose some axes and
+ * leave the others open, or choose them all, staggered until 50 to about
+ * 200 instants can bind; up to four lines, single and spread, some holding units.
+ */
+const longInstanceOf = (seed: number) => {
+  const { random, upTo, someOf } = generatorOf(seed);
+  const axes = Array.from({ length: 2 + upTo(1) }, () => 2 + upTo(1));
+  const combinations = combinationsOf(axes);
+  const keys = combinations.map(keyOf);
+  const capacity = new Map(keys.map((key) => [key, upTo(3)]));
+  /** The combinations matching a random one on some of the axes. */
+  const choice = () => {
+    const chosen = combinations[upTo(combinations.length - 1)] ?? [];
+    const fixed = axes.map(() => random() < 0.5);
+    return combinations
+      .filter((combination) =>
+        combination.every((value, axis) => !fixed[axis] || value === chosen[axis]),
+      )
+      .map(keyOf);
+  };
+
+  const target = 50 + upTo(150);
+  const bookings: StockBooking[] = [];
+  let at = 0;
+  while (instantsIn(bookings) < target) {
+    for (let more = 0; more < 10; more += 1) {
+      at += upTo(2);
+      bookings.push({
+        start: at,
+        end: at + 1 + upTo(10),
+        demand: { combinationKeys: choice(), quantity: 1 + upTo(1) },
+      });
+    }
+  }
+  const lines = Array.from({ length: 1 + upTo(3) }, (): StockLine => {
+    const single = random() < 0.5;
+    const quantity = 1 + upTo(2);
+    return {
+      quantity,
+      single,
+      candidates: random() < 0.5 ? choice() : someOf(keys, 1),
+      held: single || random() < 0.6 ? [] : someOf(keys, 1).slice(0, 1 + upTo(quantity - 1)),
+    };
+  });
+  return { capacity, bookings, lines };
+};
+
+describe("allocateStock on long timelines", () => {
+  test("the folded check, with instants dropped, answers as a flow per instant over every demand", () => {
+    let instants = 0;
+    for (let seed = 1; seed <= 300; seed += 1) {
+      const instance = longInstanceOf(seed * 104_729);
+      const count = instantsIn(instance.bookings);
+      assert.ok(count >= 50, `seed ${seed * 104_729}: ${count} instants`);
+      instants += count;
+      assert.deepEqual(
+        allocateStock(instance),
+        allocateStock({ ...instance, check: "literal" }),
+        `seed ${seed * 104_729}`,
+      );
+    }
+    assert.ok(instants / 300 >= 100, `${instants / 300} instants on average`);
+  });
+});
+
 // --- Physical units ---------------------------------------------------------------
 
 /**
@@ -760,7 +860,7 @@ describe("allocateStock cost", () => {
       lines: keys.map((key) => ({ quantity: 1, candidates: [key], single: true })),
     };
   };
-  const fastestOf = (input: ReturnType<typeof fixture>) => {
+  const fastestOf = (input: Parameters<typeof allocateStock>[0]) => {
     let fastest = Number.POSITIVE_INFINITY;
     for (let run = 0; run < 3; run += 1) {
       const started = performance.now();
@@ -786,5 +886,54 @@ describe("allocateStock cost", () => {
     );
     const elapsed = fastestOf(input);
     assert.ok(elapsed < 300, `${elapsed.toFixed(1)} ms`);
+  });
+
+  /**
+   * Ten units of each combination of the axes' values. Each booking takes
+   * one unit and chooses a combination on some axes, never all, leaving the
+   * others open; one starts each step and lasts about `duration` steps. A
+   * cart of one unit of any combination. Few instants dominate another here:
+   * comparing every pair of them is what made this slow.
+   */
+  const wideFixture = (axes: readonly number[], bookings: number, duration: number) => {
+    const { upTo } = generatorOf(0x15_21_82);
+    const combinations = combinationsOf(axes);
+    const keys = combinations.map(keyOf);
+    return {
+      capacity: new Map(keys.map((key) => [key, 10])),
+      bookings: Array.from({ length: bookings }, (_, index) => {
+        const chosen = combinations[upTo(combinations.length - 1)] ?? [];
+        // A bit per axis: the axes it chose, at least one and never all.
+        const mask = 1 + upTo(2 ** axes.length - 3);
+        return {
+          start: index,
+          end: index + duration - 30 + upTo(60),
+          demand: {
+            combinationKeys: combinations
+              .filter((combination) =>
+                combination.every((value, axis) => !(mask & (1 << axis)) || value === chosen[axis]),
+              )
+              .map(keyOf),
+            quantity: 1,
+          },
+        };
+      }),
+      lines: [{ quantity: 1, candidates: keys, single: true }],
+    };
+  };
+
+  test("6,000 bookings on three axes, each leaving a choice open: under 1 s", () => {
+    const elapsed = fastestOf(wideFixture([5, 4, 3], 6_000, 400));
+    assert.ok(elapsed < 1_000, `${elapsed.toFixed(1)} ms`);
+  });
+
+  test("12,000 bookings on three axes: under 2.5 s", () => {
+    const elapsed = fastestOf(wideFixture([5, 4, 3], 12_000, 400));
+    assert.ok(elapsed < 2_500, `${elapsed.toFixed(1)} ms`);
+  });
+
+  test("12,000 bookings on two axes, 200 units: under 800 ms", () => {
+    const elapsed = fastestOf(wideFixture([5, 4], 12_000, 140));
+    assert.ok(elapsed < 800, `${elapsed.toFixed(1)} ms`);
   });
 });
