@@ -763,7 +763,7 @@ const unconfirmedDeposits: Source = async (window, shaper) => {
       severity: "warning",
       occurredAt: row.occurredAt,
       summary: row.unmatchedPaymentIntentId
-        ? `Louez found an authorization at Stripe (${row.unmatchedPaymentIntentId}) for ${asked}, but it does not match the request (its amount, card or reference changed), so Louez did not record it: release or capture it in Stripe, then close the request in the reservation's deposit section. No other hold is taken until then.`
+        ? `Louez found an authorization at Stripe (${row.unmatchedPaymentIntentId}) for ${asked}, but it does not match the request (its amount, card or reference changed), so Louez did not record it: cancel it in Stripe, then close the request in the reservation's deposit section. No other hold is taken until then. If it is captured in Stripe instead, Louez does not record that money and the request stays open: record the amount by hand as a deposit payment and contact support to close the request.`
         : `Stripe has not confirmed ${asked}: check the payment in Stripe. Asking again in Louez asks for the same hold, never a second one, and no other hold is taken until Stripe settles this one or the store, in the reservation's deposit section, says what Stripe shows.`,
       reservation: about.reservation,
       details: {

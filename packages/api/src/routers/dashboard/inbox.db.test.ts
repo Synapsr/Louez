@@ -601,6 +601,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(unmatched?.details?.unmatchedPaymentIntentId, "pi_unmatched");
     assert.match(unmatched?.summary ?? "", /found an authorization at Stripe \(pi_unmatched\)/);
     assert.match(unmatched?.summary ?? "", /does not match the request/);
+    assert.match(unmatched?.summary ?? "", /cancel it in Stripe/);
 
     // Stripe confirms it: the attempt's row becomes the hold.
     await louezDb.db

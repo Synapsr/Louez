@@ -2217,7 +2217,7 @@
           "open": "Rozwiąż w Stripe",
           "title": "Niepotwierdzona autoryzacja",
           "description": "Stripe nigdy nie potwierdził tej prośby o autoryzację. Sprawdź Płatności w panelu Stripe konta, na którym o nią poproszono.",
-          "explanation": "Zamknięcie prośby niczego nie anuluje w Stripe. Louez najpierw sam szuka autoryzacji i zapisuje ją, jeśli odpowiada prośbie. Jeśli znajdzie taką, która nie odpowiada (zmieniona kwota, karta lub referencja), prośba pozostaje otwarta, a Louez cię o tym informuje: zwolnij lub pobierz tę autoryzację w Stripe, a następnie ponownie zamknij prośbę. Jeśli autoryzacja pojawi się później, Louez zapisze ją, gdy Stripe ją zgłosi, o ile odpowiada prośbie: stanie się kaucją tej rezerwacji, jeśli ta jej nie ma, a zostanie zwolniona, jeśli inna blokada już ją zabezpiecza. Zamknięcie prośby, gdy blokada istnieje, może więc na jakiś czas zostawić dodatkową blokadę na karcie klienta. Autoryzację, którą widzisz w Stripe, a której Louez nie zapisał, obsługuje się w Stripe: tam ją zwolnij lub pobierz.",
+          "explanation": "Zamknięcie prośby niczego nie anuluje w Stripe. Louez najpierw sam szuka autoryzacji i zapisuje ją, jeśli odpowiada prośbie. Jeśli znajdzie taką, która nie odpowiada (zmieniona kwota, karta lub referencja), prośba pozostaje otwarta, a Louez cię o tym informuje: anuluj tę autoryzację w Stripe, co zwolni zablokowaną kwotę, a następnie ponownie zamknij prośbę. Jeśli zamiast tego pobierzesz ją w Stripe, Louez nie zapisze tej kwoty, a prośba pozostanie otwarta: zapisz kwotę ręcznie jako płatność kaucji i skontaktuj się z pomocą techniczną, aby zamknąć prośbę. Jeśli autoryzacja pojawi się później, Louez zapisze ją, gdy Stripe ją zgłosi, o ile odpowiada prośbie: stanie się kaucją tej rezerwacji, jeśli ta jej nie ma, a zostanie zwolniona, jeśli inna blokada już ją zabezpiecza. Zamknięcie prośby, gdy blokada istnieje, może więc na jakiś czas zostawić dodatkową blokadę na karcie klienta. Autoryzację, którą widzisz w Stripe, a której Louez nie zapisał, obsługuje się w Stripe: tam ją anuluj.",
           "confirm": "Zamknij prośbę",
           "closed": "Prośba zamknięta. Możesz utworzyć nową autoryzację.",
           "recorded": "Louez znalazł autoryzację w Stripe i ją zapisał."
@@ -9423,7 +9423,7 @@
     "stripeRequiredForPaymentMode": "Tryb płatności online wymaga połączonego konta Stripe. Połącz Stripe w Ustawienia > Płatności.",
     "locationLimitReached": "Sklep może mieć maksymalnie 50 punktów odbioru. Dezaktywuj jeden lub użyj go ponownie.",
     "depositAttempt": {
-      "needsStripe": "Louez znalazł w Stripe autoryzację dla tej prośby, ale nie odpowiada ona temu, o co proszono (zmieniona kwota, karta lub referencja): Louez jej nie zapisał, a prośba pozostaje otwarta. Zwolnij ją lub pobierz w panelu Stripe, a następnie kliknij „Zamknij prośbę”.",
+      "needsStripe": "Louez znalazł w Stripe autoryzację dla tej prośby, ale nie odpowiada ona temu, o co proszono (zmieniona kwota, karta lub referencja): Louez jej nie zapisał, a prośba pozostaje otwarta. Anuluj ją w panelu Stripe, a następnie kliknij „Zamknij prośbę”. Jeśli zamiast tego pobierzesz ją w Stripe, Louez nie zapisze tej kwoty, a prośba pozostanie otwarta: zapisz kwotę ręcznie jako płatność kaucji i skontaktuj się z pomocą techniczną, aby zamknąć prośbę.",
       "none": "Ta rezerwacja nie ma już niepotwierdzonej autoryzacji."
     }
   },

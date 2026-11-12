@@ -2256,7 +2256,7 @@
           "open": "Resolve with Stripe",
           "title": "Unconfirmed authorization",
           "description": "Stripe never confirmed this authorization request. Check Payments in the Stripe dashboard of the account it was requested on.",
-          "explanation": "Closing the request cancels nothing at Stripe. Louez first looks for the authorization itself and records it if it matches the request. If it finds one that does not match (amount, card or reference changed), the request stays open and Louez tells you: release or capture that authorization in Stripe, then close the request again. If an authorization appears later, Louez records it when Stripe reports it, if it matches the request: it becomes this reservation's deposit if it has none, and it is released if another hold already secures it. Closing the request while a hold exists can therefore leave an extra hold on the customer's card for a while. An authorization you see in Stripe that Louez has not recorded is handled in Stripe: release or capture it there.",
+          "explanation": "Closing the request cancels nothing at Stripe. Louez first looks for the authorization itself and records it if it matches the request. If it finds one that does not match (amount, card or reference changed), the request stays open and Louez tells you: cancel that authorization in Stripe, which releases the held amount, then close the request again. If you capture it in Stripe instead, Louez does not record that money and the request stays open: record the amount by hand as a deposit payment and contact support to close the request. If an authorization appears later, Louez records it when Stripe reports it, if it matches the request: it becomes this reservation's deposit if it has none, and it is released if another hold already secures it. Closing the request while a hold exists can therefore leave an extra hold on the customer's card for a while. An authorization you see in Stripe that Louez has not recorded is handled in Stripe: cancel it there.",
           "confirm": "Close the request",
           "closed": "Request closed. You can create a new authorization.",
           "recorded": "Louez found the authorization at Stripe and recorded it."
@@ -9423,7 +9423,7 @@
     "stripeRequiredForPaymentMode": "Online payment mode needs a connected Stripe account. Connect Stripe in Settings > Payments.",
     "locationLimitReached": "A store can have 50 pickup points at most. Deactivate or reuse one instead.",
     "depositAttempt": {
-      "needsStripe": "Louez found an authorization at Stripe for this hold request, but it does not match what was asked (amount, card or reference changed): Louez did not record it, and the request stays open. Release or capture it from the Stripe dashboard, then click “Close the request”.",
+      "needsStripe": "Louez found an authorization at Stripe for this hold request, but it does not match what was asked (amount, card or reference changed): Louez did not record it, and the request stays open. Cancel it from the Stripe dashboard, then click “Close the request”. If you capture it in Stripe instead, Louez does not record that money and the request stays open: record the amount by hand as a deposit payment and contact support to close the request.",
       "none": "This reservation has no unconfirmed authorization left."
     }
   },

@@ -26,9 +26,11 @@ import {
 import {
   type AttemptClaim,
   type AttemptClosure,
+  type UnmatchedIntent,
   closeAbsentAttempt,
   holdsClaim,
   lockReservationRow,
+  readUnmatchedIntents,
   recordUnmatchedIntent,
   settleClaimedIntent,
   settleDepositIntent,
@@ -99,18 +101,22 @@ import {
 // the attempt's id in its metadata) that the writer refuses, because its amount,
 // currency, card, customer, capture method or reservation are not the attempt's (it was
 // altered at Stripe), never closes or replaces the attempt while Stripe may hold funds
-// on it: the attempt stays pending, an activity line records it
-// (`recordUnmatchedIntent`), and the store is told to release or capture it from
-// Stripe (`errors.depositAttempt.needsStripe`). Once Stripe provably holds nothing on
-// it (`intentHoldsNothing`), the store's closing closes the attempt.
+// on it: the attempt stays pending, an activity line records it for that attempt
+// (`recordUnmatchedIntent`), and the store is told to cancel it in Stripe
+// (`errors.depositAttempt.needsStripe`). That line blocks every closing of the attempt
+// (`closeAbsentAttempt`), whatever a later lookup says or fails to say: the closing
+// is made only once that PaymentIntent, read again by its id on the attempt's account
+// (`readUnmatchedAgain`), holds nothing (`intentHoldsNothing`). A captured one never
+// holds nothing: Louez does not record money captured on a PaymentIntent it refused,
+// and the attempt stays open.
 //
 // An attempt nothing can settle (its customer cannot be listed, it has more
 // PaymentIntents than a lookup reads, its request never reached Stripe) is the
 // store's to close (`resolveUnconfirmedAttempt`). Louez looks the attempt up first,
 // when it can, and records the PaymentIntent it finds when it matches the attempt;
 // else the attempt is closed on the store's word. An authorization the store sees at
-// Stripe that Louez has not recorded for the attempt is the store's to release or
-// capture from Stripe.
+// Stripe that Louez has not recorded for the attempt is the store's to cancel in
+// Stripe.
 //
 // What is guaranteed, and what is not:
 // - One attempt makes at most one PaymentIntent (its key), and every PaymentIntent
@@ -118,9 +124,12 @@ import {
 //   the request, a lookup, the store's closing, or, for a closed attempt, Stripe's
 //   event alone. One that does not match keeps the attempt open while it may hold
 //   funds, as above.
-// - Not closed here: a PaymentIntent altered at Stripe after the attempt was closed
-//   (a lookup that found nothing, or the store's word) is refused when its event
-//   arrives, and only the logs say so.
+// - Not closed here, and each starts with a PaymentIntent altered by hand in the
+//   store's Stripe account (its amount, card or metadata changed, or confirmed again or
+//   captured there). One Louez had not found when its attempt was closed, or one that
+//   held nothing then and was confirmed again since, is refused when its event
+//   arrives, and only the logs say so. One captured there keeps its attempt open, and
+//   Louez does not record its money: the store records it by hand.
 // - The reservation references one hold at most; any other authorization Louez learns
 //   of is recorded with its release owed, and the outbox, then the cron
 //   (deposit-hold-debts.ts), ask Stripe for it until Stripe confirms.
@@ -251,8 +260,8 @@ export type DepositHoldError =
   /**
    * Louez found the attempt's PaymentIntent at Stripe, but it does not match the
    * attempt, and Stripe may hold funds on it: nothing was recorded, the attempt stays,
-   * and no other hold is asked for. The store releases or captures it from Stripe,
-   * then closes the request.
+   * and no other hold is asked for. The store cancels it in Stripe, then closes the
+   * request.
    */
   | "errors.depositAttempt.needsStripe";
 
@@ -730,6 +739,42 @@ const unmatchedFactsOf = (
   intent: DepositIntent,
 ): AttemptFact[] => (reason === "facts_mismatch" ? unmatchedAttemptFacts(attempt, intent) : []);
 
+/**
+ * What the attempt's closing needs (`closeAbsentAttempt`): each PaymentIntent found for
+ * it and refused (`readUnmatchedIntents`), read again by its id on the account the
+ * attempt was sent to. Outside any transaction, under the claim (`stripe` is
+ * `underClaim`'s). A read that fails proves nothing: it is left out, and the closing is
+ * then refused.
+ */
+async function readUnmatchedAgain(
+  database: Database,
+  stripe: DepositHoldStripe,
+  attempt: { readonly id: string; readonly accountId: string },
+  reservationId: string,
+): Promise<DepositIntent[]> {
+  const unmatched = await readUnmatchedIntents(database, { reservationId, attemptId: attempt.id });
+  const reads: DepositIntent[] = [];
+  for (const { paymentIntentId } of unmatched) {
+    try {
+      reads.push(await stripe.readIntent(attempt.accountId, paymentIntentId));
+    } catch (error) {
+      if (error instanceof AttemptClaimLost) throw error;
+      log.warn(
+        "deposit-hold",
+        `${paymentIntentId}, found for attempt ${attempt.id} of reservation ${reservationId} and refused, could not be read again: ${describeError(error)}`,
+      );
+    }
+  }
+  return reads;
+}
+
+/** Logs a closing refused because a PaymentIntent found for the attempt may hold funds. */
+const logUnmatchedBlocks = (attemptId: string, reservationId: string, found: UnmatchedIntent) =>
+  log.error(
+    "deposit-hold",
+    `attempt ${attemptId} of reservation ${reservationId} is not closed: ${found.paymentIntentId}, found for it and refused, may hold funds (${found.status})`,
+  );
+
 async function runAttempt(
   input: DepositHoldInput,
   deps: DepositHoldDeps,
@@ -764,10 +809,17 @@ async function runAttempt(
           verdict.refusal === null
             ? { kind: "not_found" }
             : { kind: "refused", message: verdict.refusal },
+        unmatchedReads: await readUnmatchedAgain(database, stripe, attempt, input.reservationId),
         actorUserId: input.actorUserId,
       });
       if (closed === "claim_lost") return await lost();
       if (closed === "settled_meanwhile") return await unconfirmed();
+      if (typeof closed === "object") {
+        // Found once, so not absent: nothing closes it while it may hold funds.
+        logUnmatchedBlocks(attempt.id, input.reservationId, closed);
+        await releaseClaim(database, claim);
+        return refusal("errors.depositAttempt.needsStripe");
+      }
       return verdict.refusal === null ? "start_over" : refusal("errors.stripe.authorizationFailed");
     }
 
@@ -887,10 +939,10 @@ export type AttemptResolutionResult =
         | "attempt_in_progress";
     }
   /**
-   * Louez found the attempt's PaymentIntent, which is not the attempt's to record (its
-   * facts or its reservation are not the attempt's), and Stripe may hold funds on it:
-   * the attempt is not closed, and no other hold is asked for, until the store
-   * releases or captures it from Stripe.
+   * Louez found the attempt's PaymentIntent, now or before, which is not the attempt's
+   * to record (its facts or its reservation are not the attempt's), and Stripe may
+   * hold funds on it, or it could not be read again: the attempt is not closed, and no
+   * other hold is asked for, until it is read cancelled.
    */
   | {
       readonly ok: false;
@@ -990,10 +1042,12 @@ async function claimForResolution(
  * currency, card, capture method or reservation are not the attempt's: altered at
  * Stripe) is never taken for absent: while Stripe may hold funds on it, the attempt
  * stays pending, an activity line records it, and the answer is `attempt_needs_stripe`,
- * for the store to release or capture it from Stripe and close the request again; once
- * it provably holds nothing (`intentHoldsNothing`), the attempt is closed. A lookup that
- * finds nothing, cannot conclude or cannot be made leaves the store's word: the attempt
- * is closed, its row kept `failed` with who closed it, and a new hold may be asked for.
+ * for the store to cancel it in Stripe and close the request again. A lookup that finds
+ * nothing, cannot conclude or cannot be made leaves the store's word: the attempt is
+ * closed, its row kept `failed` with who closed it, and a new hold may be asked for;
+ * but not while a PaymentIntent found for it before may hold funds: each is read again
+ * by its id first, and the closing is made only once all of them hold nothing
+ * (`closeAbsentAttempt`), else the answer is `attempt_needs_stripe` again.
  * Nothing is cancelled at Stripe. Were Stripe to hold it after all, its PaymentIntent
  * is recorded on that row when Stripe's event about it arrives, if it matches the
  * attempt: as the reservation's deposit when it has none, with its release owed when
@@ -1109,9 +1163,14 @@ export async function resolveUnconfirmedAttempt(
       storeId: input.storeId,
       claim,
       closure,
+      unmatchedReads: await readUnmatchedAgain(database, stripe, attempt, input.reservationId),
       actorUserId: input.actorUserId,
     });
     if (closed === "claim_lost") return await lost();
+    if (typeof closed === "object") {
+      logUnmatchedBlocks(attempt.id, input.reservationId, closed);
+      return { ok: false, error: "attempt_needs_stripe", ...closed };
+    }
     return closed === "closed"
       ? { ok: true, outcome: "closed", paymentIntentId: null }
       : { ok: false, error: "no_unconfirmed_attempt" };
