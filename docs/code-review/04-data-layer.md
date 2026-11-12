@@ -111,6 +111,18 @@ A write through `mergeStoreRow` (`@louez/db`) marks in its `merge` callback, whi
 
 A write that starts, changes or ends the plan in force on a `subscriptions` row (`planInForceSlug` in `apps/web/lib/plan-limits.ts`) also calls `syncPlanSoon` from `apps/web/lib/billing-sync/plan-sync-soon.ts` once it has committed. For a store the billing service bills, the plan then reaches the service and its policy version comes back within seconds, not the cron's 1 to 3 minutes, during which a payment keeps the old fee (louez-billing `docs/plans/plans-for-new-stores.md` decision 8). Any other write, such as a renewal or a status change that keeps the plan in force, does not call it: the service issues no version for it, and each call costs a relay and four heartbeats. To tell them apart, read `lockPlanInForce` before and after the write in its transaction. `updateStoreSubscription` and `updateSubscriptionRow` in `apps/web/lib/stripe/subscriptions.ts` do it for every write that goes through them.
 
+### [DL-14] Dates reach MySQL in UTC
+
+Drizzle writes a `Date` into a timestamp column as a UTC string. A `Date` bound to a raw SQL expression has no column to encode it (`gt(someSqlExpression, date)`, or `${date}` inside a `sql` template): mysql2 writes it itself. The pool in `packages/db/src/index.ts` sets `timezone: "Z"`, so mysql2 writes it in UTC too, whatever the time zone of the process. Before that option, a server whose `TZ` was not UTC compared the two an offset apart: the overlap predicate missed a booking ending within the offset, or kept one that was over.
+
+Keep it so:
+
+- Every connection that reads or writes application rows comes from that pool, or sets `timezone: "Z"` itself (`createTestDatabase` does for its own connections).
+- The database session runs in UTC: MySQL stores a timestamp column from the session's time zone, and `NOW()` answers in it. The pool does not set the session's time zone, because changing it on an instance that ran otherwise would shift how its existing rows read.
+- A comparison with the database's clock stays in SQL (`NOW(3)`), as the outbox and the jobs do; do not compare a column with `new Date()` from an application server to decide a lease.
+
+`packages/db/src/raw-date-bindings.db.test.ts` runs the overlap predicate with the process in four time zones.
+
 ---
 
 ## Related
