@@ -544,6 +544,12 @@ describe(
         .where(eq(louezDb.reservations.id, frozen));
       // Booked before a reservation had its own currency: the store's.
       const legacy = await createBooking(store, "confirmed", attempt);
+      // A stored value that is no currency code is not one either: the store's.
+      const malformed = await createBooking(store, "confirmed", attempt);
+      await louezDb.db
+        .update(louezDb.reservations)
+        .set({ currency: "JP" })
+        .where(eq(louezDb.reservations.id, malformed));
 
       const currencyOf = async (reservationId: string) => {
         const snapshot = await booking.getMarketplaceBooking({
@@ -557,6 +563,7 @@ describe(
 
       assert.equal(await currencyOf(frozen), "GBP");
       assert.equal(await currencyOf(legacy), "USD");
+      assert.equal(await currencyOf(malformed), "USD");
     });
 
     test("a hold replayed after its expiry cancels the booking; its void runs after commit", async () => {

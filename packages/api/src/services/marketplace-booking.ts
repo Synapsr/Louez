@@ -987,7 +987,7 @@ async function snapshotsFromRows(
     startAt: row.startAt.toISOString(),
     endAt: row.endAt.toISOString(),
     // The booking's own currency, frozen when it was made; the store's for an older one.
-    currency: normalizeCurrency(row.currency ?? row.storeSettings?.currency),
+    currency: normalizeCurrency(row.currency, normalizeCurrency(row.storeSettings?.currency)),
     totalAmount: row.totalAmount,
     depositAmount: row.depositAmount,
     customerEmail: row.customerEmail,
