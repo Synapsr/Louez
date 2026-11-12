@@ -5,6 +5,7 @@ import type { ErrorScope } from "./platform/error-reporting";
 import type { OperationReceipt } from "./platform/operations";
 import type { ApiPorts } from "./platform/ports";
 import type { AvailabilityMemo } from "./services/availability";
+import type { CapacityShortfall } from "./services/reservation-inventory";
 
 /**
  * Store-configured overrides of an email's wording ({name}/{number}
@@ -173,6 +174,7 @@ export interface BaseContext {
         notifyCustomerByEmail?: boolean;
         tulipInsuranceOptIn?: boolean;
         overrideTurnoverBuffer?: boolean;
+        allowOverbooking?: boolean;
         delivery?: {
           outbound: {
             method: "store" | "address";
@@ -304,13 +306,7 @@ export interface BaseContext {
       success?: boolean;
       reservationId?: string;
       error?: string;
-      shortfalls?: Array<{
-        productId: string;
-        productName: string;
-        combinationKey: string | null;
-        requested: number;
-        available: number;
-      }>;
+      shortfalls?: CapacityShortfall[];
     }>;
     getAvailableUnitsForReservationItem?: (reservationItemId: string) => Promise<{
       units?: Array<{ id: string; identifier: string; notes: string | null }>;

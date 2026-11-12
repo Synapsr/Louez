@@ -2707,7 +2707,9 @@
           "description": "某些产品在选定的时间段内不再可用。您仍然可以创建预订并在时间线中跟踪覆盖情况。",
           "combination": "组合：{combination}",
           "shortfall": "请求：{requested} · 可用：{available}",
-          "createAnyway": "无论如何创建"
+          "createAnyway": "无论如何创建",
+          "editDescription": "某些产品在该时间段内数量不足。您仍然可以保存更改并在时间线中跟踪覆盖情况。",
+          "saveAnyway": "无论如何保存"
         },
         "addUnavailable": {
           "title": "产品不可用",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "此预订无法取消",
     "cannotEditCompletedReservation": "已完成的预订无法编辑",
     "reservationStatusChanged": "当您编辑时，预订状态发生了变化。重新加载页面并重试。",
+    "reservationChangedMeanwhile": "当您编辑时，预订已被修改。重新加载页面并重试。",
     "endDateBeforeStart": "结束日期必须晚于或等于开始日期",
     "negativeAmountOnlyForAdjustment": "负数仅允许用于调整",
     "productRequired": "所需产品",

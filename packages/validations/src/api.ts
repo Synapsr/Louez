@@ -360,6 +360,7 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
     notifyCustomerByEmail: z.boolean().optional(),
     tulipInsuranceOptIn: z.boolean().optional(),
     overrideTurnoverBuffer: z.boolean().optional(),
+    allowOverbooking: z.boolean().optional(),
     delivery: z
       .object({
         outbound: z.object({

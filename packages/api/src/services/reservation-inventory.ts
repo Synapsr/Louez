@@ -23,7 +23,7 @@ import {
 } from "@louez/utils";
 
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "./availability";
-import { allocateAcrossCombinations } from "./pooled-allocation";
+import { spreadAcrossCombinations } from "./pooled-allocation";
 import type { PricingCatalog } from "./pricing-catalog";
 import { validateRequiredAccessoryLines } from "./required-accessories";
 import { failReservation, type ReservationFailure } from "./reservation-failure";
@@ -59,6 +59,19 @@ export interface ResolvedLineCombination {
 }
 
 type LockedProduct = typeof products.$inferSelect;
+
+/**
+ * A line the stock cannot cover whole: how many units it asks for, and how
+ * many of them are left next to the other bookings and the lines before it.
+ */
+export interface CapacityShortfall {
+  productId: string;
+  productName: string;
+  /** The combination the line chose; null for a counted product or a line served by any unit. */
+  combinationKey: string | null;
+  requested: number;
+  available: number;
+}
 
 export interface ReservedInventory {
   lockedProductsById: Map<string, LockedProduct>;
@@ -106,27 +119,7 @@ export const lockReservationProducts = async (
   return new Map(lockedProducts.map((product) => [product.id, product]));
 };
 
-/**
- * Inside the reservation transaction, after `lockReservationProducts`:
- * re-check required accessories against the current links, recompute what is
- * reserved during the window (pending blocks unless the store says otherwise,
- * turnover buffer applied, consumables shared across lines) and allocate each
- * tracked line to a deterministic unit combination. Nothing is written; the
- * caller inserts.
- */
-export const reserveInventory = async ({
-  tx,
-  storeId,
-  lockedProductsById,
-  lines,
-  window,
-  turnoverBufferMinutes,
-  blockingStatuses,
-  excludeReservationId,
-  excludeReservationItemIds,
-  skipConsumableCheck = false,
-  skipRequiredAccessoryCheck = false,
-}: {
+interface ReserveInventoryInput {
   tx: Transaction;
   excludeReservationId?: string;
   /** Booked lines being re-checked themselves, left out of the overlap. */
@@ -140,13 +133,77 @@ export const reserveInventory = async ({
   window: { start: Date; end: Date };
   turnoverBufferMinutes: number;
   blockingStatuses: BlockingReservationStatus[];
-}): Promise<{ ok: true; inventory: ReservedInventory } | ReservationFailure> => {
+}
+
+type InventoryReserved = { ok: true; inventory: ReservedInventory };
+
+/**
+ * Inside the reservation transaction, after `lockReservationProducts`:
+ * re-check required accessories against the current links, recompute what is
+ * reserved during the window (pending blocks unless the store says otherwise,
+ * turnover buffer applied, consumables shared across lines) and allocate each
+ * tracked line to a deterministic unit combination. Nothing is written; the
+ * caller inserts.
+ *
+ * A line the stock cannot cover stops the check with
+ * `errors.productNoLongerAvailable`. With `onShortfall: "collect"` it is
+ * recorded instead, takes what is left, and the other lines are still checked:
+ * the answer then lists every shortfall, in the order of the lines, for a
+ * caller that may book over the stock.
+ */
+export function reserveInventory(
+  input: ReserveInventoryInput & { onShortfall: "collect" },
+): Promise<(InventoryReserved & { shortfalls: CapacityShortfall[] }) | ReservationFailure>;
+export function reserveInventory(
+  input: ReserveInventoryInput & { onShortfall?: "fail" },
+): Promise<InventoryReserved | ReservationFailure>;
+export async function reserveInventory({
+  tx,
+  storeId,
+  lockedProductsById,
+  lines,
+  window,
+  turnoverBufferMinutes,
+  blockingStatuses,
+  excludeReservationId,
+  excludeReservationItemIds,
+  skipConsumableCheck = false,
+  skipRequiredAccessoryCheck = false,
+  onShortfall = "fail",
+}: ReserveInventoryInput & { onShortfall?: "fail" | "collect" }): Promise<
+  (InventoryReserved & { shortfalls?: CapacityShortfall[] }) | ReservationFailure
+> {
+  const collect = onShortfall === "collect";
+  const shortfallByLineIndex = new Map<number, CapacityShortfall>();
+  const recordShortfall = (
+    index: number,
+    line: ReserveInventoryLine,
+    product: LockedProduct,
+    combinationKey: string | null,
+    available: number,
+  ) => {
+    shortfallByLineIndex.set(index, {
+      productId: product.id,
+      productName: product.name,
+      combinationKey,
+      requested: line.quantity,
+      available,
+    });
+  };
+  const succeed = (inventory: ReservedInventory) =>
+    collect
+      ? {
+          ok: true as const,
+          inventory,
+          shortfalls: [...shortfallByLineIndex.entries()]
+            .sort(([a], [b]) => a - b)
+            .map(([, shortfall]) => shortfall),
+        }
+      : { ok: true as const, inventory };
+
   const requestedProductIds = [...new Set(lines.map((line) => line.productId))];
   if (requestedProductIds.length === 0) {
-    return {
-      ok: true,
-      inventory: { lockedProductsById, resolvedCombinationByLineKey: new Map() },
-    };
+    return succeed({ lockedProductsById, resolvedCombinationByLineKey: new Map() });
   }
   const lockedProducts = [...lockedProductsById.values()];
 
@@ -296,25 +353,34 @@ export const reserveInventory = async ({
   // so a floating line never takes a unit another line of the booking holds.
   // Each held unit must still fit its combination next to the other bookings.
   const heldCountByLineKey = new Map<string, number>();
+  // Collect mode only: held units whose combination is already full.
+  const unfitHeldCountByLineKey = new Map<string, number>();
   for (const [index, line] of lines.entries()) {
     const product = lockedProductsById.get(line.productId);
     if (!product?.trackUnits || !line.assignedUnitIds?.length) continue;
     if (!isPooledLine(line, product.bookingAttributeAxes)) continue;
     const productCombinations = combinationsByProduct.get(product.id) || new Map();
     let held = 0;
+    let unfit = 0;
     for (const unitId of line.assignedUnitIds) {
-      if (held >= line.quantity) break;
+      if (held + unfit >= line.quantity) break;
       const combinationKey = combinationKeyByUnitId.get(unitId);
       if (!combinationKey) continue;
       const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
       const total = productCombinations.get(combinationKey)?.totalQuantity ?? 0;
       if (total - (reservedByProductCombination.get(key) || 0) < 1) {
-        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+        if (!collect) {
+          return failReservation("errors.productNoLongerAvailable", { name: product.name });
+        }
+        unfit += 1;
+        continue;
       }
       reservedByProductCombination.set(key, (reservedByProductCombination.get(key) || 0) + 1);
       held += 1;
     }
-    heldCountByLineKey.set(getReservationLineKey(line, index), held);
+    const lineKey = getReservationLineKey(line, index);
+    heldCountByLineKey.set(lineKey, held);
+    unfitHeldCountByLineKey.set(lineKey, unfit);
   }
 
   // Lines that chose a combination keep their order; pooled lines come last,
@@ -344,7 +410,12 @@ export const reserveInventory = async ({
       const reserved = reservedByProduct.get(line.productId) || 0;
       const available = Math.max(0, product.quantity - reserved);
       if (line.quantity > available) {
-        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+        if (!collect) {
+          return failReservation("errors.productNoLongerAvailable", { name: product.name });
+        }
+        recordShortfall(index, line, product, null, available);
+        reservedByProduct.set(line.productId, reserved + available);
+        continue;
       }
 
       reservedByProduct.set(line.productId, reserved + line.quantity);
@@ -366,7 +437,8 @@ export const reserveInventory = async ({
       0,
     );
     const productReservedQuantity = reservedByProduct.get(line.productId) || 0;
-    if (line.quantity > Math.max(0, productTotalQuantity - productReservedQuantity)) {
+    const productFreeQuantity = Math.max(0, productTotalQuantity - productReservedQuantity);
+    if (line.quantity > productFreeQuantity && !collect) {
       return failReservation("errors.productNoLongerAvailable", { name: product.name });
     }
 
@@ -384,63 +456,104 @@ export const reserveInventory = async ({
         const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes);
         return sortA.localeCompare(sortB, "en");
       });
+    const freeInCombination = (combinationKey: string, totalQuantity: number) =>
+      Math.max(
+        0,
+        totalQuantity -
+          (reservedByProductCombination.get(
+            getProductCombinationAvailabilityKey(product.id, combinationKey),
+          ) || 0),
+      );
 
     if (pooledLine) {
       // No single combination has to cover a pooled line. Its held units were
       // charged above; the rest is taken wherever units are left, and the
       // line keeps its pooled key.
-      const held = heldCountByLineKey.get(getReservationLineKey(line, index)) ?? 0;
-      const floating = allocateAcrossCombinations(
+      const lineKey = getReservationLineKey(line, index);
+      const held = heldCountByLineKey.get(lineKey) ?? 0;
+      const unfitHeld = unfitHeldCountByLineKey.get(lineKey) ?? 0;
+      const wanted = line.quantity - held - unfitHeld;
+      const floating = spreadAcrossCombinations(
         candidates,
         (combinationKey) =>
           reservedByProductCombination.get(
             getProductCombinationAvailabilityKey(product.id, combinationKey),
           ) || 0,
-        line.quantity - held,
+        // Collect mode only: a line the product cannot cover takes what it has left.
+        Math.max(0, Math.min(wanted, productFreeQuantity - held)),
       );
-      if (!floating) {
-        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+      const served = Math.min(
+        productFreeQuantity,
+        held + [...floating.taken.values()].reduce((sum, quantity) => sum + quantity, 0),
+      );
+      if (served < line.quantity) {
+        if (!collect) {
+          return failReservation("errors.productNoLongerAvailable", { name: product.name });
+        }
+        recordShortfall(index, line, product, null, served);
       }
-      for (const [combinationKey, quantity] of floating) {
+      for (const [combinationKey, quantity] of floating.taken) {
         const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
         reservedByProductCombination.set(
           key,
           (reservedByProductCombination.get(key) || 0) + quantity,
         );
       }
-      reservedByProduct.set(
-        line.productId,
-        (reservedByProduct.get(line.productId) || 0) + line.quantity,
-      );
-      resolvedCombinationByLineKey.set(getReservationLineKey(line, index), {
+      reservedByProduct.set(line.productId, (reservedByProduct.get(line.productId) || 0) + served);
+      resolvedCombinationByLineKey.set(lineKey, {
         combinationKey: line.combinationKey ?? DEFAULT_COMBINATION_KEY,
         selectedAttributes,
       });
       continue;
     }
 
-    const resolvedCombination = candidates.find((candidate) => {
-      const key = getProductCombinationAvailabilityKey(product.id, candidate.combinationKey);
-      const reserved = reservedByProductCombination.get(key) || 0;
-      return Math.max(0, candidate.totalQuantity - reserved) >= line.quantity;
-    });
+    let resolvedCombination = candidates.find(
+      (candidate) =>
+        freeInCombination(candidate.combinationKey, candidate.totalQuantity) >= line.quantity,
+    );
+    let served = line.quantity;
 
-    if (!resolvedCombination) {
-      return failReservation("errors.productNoLongerAvailable", { name: product.name });
+    if (!resolvedCombination || line.quantity > productFreeQuantity) {
+      if (!collect) {
+        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+      }
+      // The line takes what is left of the combination that has the most, the
+      // first of them in the deterministic order.
+      resolvedCombination ??= candidates.reduce<(typeof candidates)[number] | undefined>(
+        (best, candidate) =>
+          best &&
+          freeInCombination(best.combinationKey, best.totalQuantity) >=
+            freeInCombination(candidate.combinationKey, candidate.totalQuantity)
+            ? best
+            : candidate,
+        undefined,
+      );
+      served = Math.min(
+        line.quantity,
+        productFreeQuantity,
+        resolvedCombination
+          ? freeInCombination(resolvedCombination.combinationKey, resolvedCombination.totalQuantity)
+          : 0,
+      );
+      recordShortfall(
+        index,
+        line,
+        product,
+        line.combinationKey && line.combinationKey !== DEFAULT_COMBINATION_KEY
+          ? line.combinationKey
+          : null,
+        served,
+      );
     }
+
+    reservedByProduct.set(line.productId, (reservedByProduct.get(line.productId) || 0) + served);
+    if (!resolvedCombination) continue;
 
     const key = getProductCombinationAvailabilityKey(
       product.id,
       resolvedCombination.combinationKey,
     );
-    reservedByProductCombination.set(
-      key,
-      (reservedByProductCombination.get(key) || 0) + line.quantity,
-    );
-    reservedByProduct.set(
-      line.productId,
-      (reservedByProduct.get(line.productId) || 0) + line.quantity,
-    );
+    reservedByProductCombination.set(key, (reservedByProductCombination.get(key) || 0) + served);
 
     resolvedCombinationByLineKey.set(getReservationLineKey(line, index), {
       combinationKey: resolvedCombination.combinationKey,
@@ -451,8 +564,8 @@ export const reserveInventory = async ({
     });
   }
 
-  return { ok: true, inventory: { lockedProductsById, resolvedCombinationByLineKey } };
-};
+  return succeed({ lockedProductsById, resolvedCombinationByLineKey });
+}
 
 /**
  * Pre-transaction stock check per line, on the catalog snapshot: tracked

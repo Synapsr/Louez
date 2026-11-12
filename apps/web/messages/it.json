@@ -2668,7 +2668,9 @@
           "description": "Alcuni prodotti non sono più disponibili per il periodo selezionato. Puoi comunque creare la prenotazione e l'override sarà visibile nella cronologia.",
           "combination": "Combinazione: {combination}",
           "shortfall": "Richiesto: {requested} · Disponibile: {available}",
-          "createAnyway": "Crea comunque"
+          "createAnyway": "Crea comunque",
+          "editDescription": "Alcuni prodotti non sono disponibili in quantità sufficiente per il periodo. Puoi comunque salvare la modifica e l'override sarà visibile nella cronologia.",
+          "saveAnyway": "Salva comunque"
         },
         "addUnavailable": {
           "title": "Prodotto non disponibile",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "Questa prenotazione non può essere annullata",
     "cannotEditCompletedReservation": "Le prenotazioni completate non possono essere modificate",
     "reservationStatusChanged": "Lo stato della prenotazione è cambiato durante la modifica. Ricarica la pagina e riprova.",
+    "reservationChangedMeanwhile": "La prenotazione è stata modificata nel frattempo. Ricarica la pagina e riprova.",
     "endDateBeforeStart": "La data di fine deve essere uguale o successiva alla data di inizio",
     "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per gli aggiustamenti",
     "productRequired": "Prodotto richiesto",

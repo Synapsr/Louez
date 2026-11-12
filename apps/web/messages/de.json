@@ -2707,7 +2707,9 @@
           "description": "Einige Produkte sind für den gewählten Zeitraum nicht mehr verfügbar. Sie können die Reservierung trotzdem erstellen; die Überbuchung wird im Verlauf sichtbar.",
           "combination": "Kombination: {combination}",
           "shortfall": "Angefragt: {requested} · Verfügbar: {available}",
-          "createAnyway": "Trotzdem erstellen"
+          "createAnyway": "Trotzdem erstellen",
+          "editDescription": "Einige Produkte sind für den Zeitraum nicht in ausreichender Menge verfügbar. Sie können die Änderung trotzdem speichern; die Überbuchung wird im Verlauf sichtbar.",
+          "saveAnyway": "Trotzdem speichern"
         },
         "addUnavailable": {
           "title": "Produkt nicht verfügbar",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "Diese Reservierung kann nicht storniert werden",
     "cannotEditCompletedReservation": "Abgeschlossene Reservierungen können nicht bearbeitet werden",
     "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "reservationChangedMeanwhile": "Die Reservierung wurde in der Zwischenzeit geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "endDateBeforeStart": "Enddatum muss nach oder gleich dem Startdatum sein",
     "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",

@@ -2668,7 +2668,9 @@
           "description": "Sommige producten zijn niet meer beschikbaar voor de geselecteerde periode. Je kunt de reservering toch aanmaken; de override wordt zichtbaar in de tijdlijn.",
           "combination": "Combinatie: {combination}",
           "shortfall": "Gevraagd: {requested} · Beschikbaar: {available}",
-          "createAnyway": "Toch aanmaken"
+          "createAnyway": "Toch aanmaken",
+          "editDescription": "Sommige producten zijn voor de periode niet in voldoende aantal beschikbaar. Je kunt de wijziging toch opslaan; de override wordt zichtbaar in de tijdlijn.",
+          "saveAnyway": "Toch opslaan"
         },
         "addUnavailable": {
           "title": "Product niet beschikbaar",
@@ -9223,6 +9225,7 @@
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
     "cannotEditCompletedReservation": "Voltooide reserveringen kunnen niet worden bewerkt",
     "reservationStatusChanged": "De reserveringsstatus is gewijzigd tijdens het bewerken. Laad de pagina opnieuw en probeer het nogmaals.",
+    "reservationChangedMeanwhile": "De reservering is in de tussentijd gewijzigd. Laad de pagina opnieuw en probeer het nogmaals.",
     "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",

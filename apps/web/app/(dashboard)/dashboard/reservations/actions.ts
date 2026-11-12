@@ -1,6 +1,11 @@
 "use server";
 
 import {
+  capacityVerdictMetadata,
+  nextCapacityVerdictDate,
+} from "@louez/api/services/capacity-verdict";
+import {
+  type CapacityShortfall,
   lockReservationProducts,
   reserveInventory,
 } from "@louez/api/services/reservation-inventory";
@@ -32,6 +37,7 @@ import {
   reconcileReservationStock,
   reservationStatusConsumesStock,
   retryOnceOnDeadlock,
+  retryTransactionOnDeadlock,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
@@ -143,6 +149,10 @@ import {
 } from "@/lib/reservations/dashboard-payment-writes";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import {
+  compareReservationDemand,
+  fingerprintReservationEdit,
+} from "@/lib/reservations/util.reservation-edit";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
@@ -490,14 +500,6 @@ interface CreateReservationData {
   sendAsQuote?: boolean;
   allowOverbooking?: boolean;
 }
-
-type ManualReservationCapacityShortfall = {
-  productId: string;
-  productName: string;
-  combinationKey: string | null;
-  requested: number;
-  available: number;
-};
 
 function normalizeUnitAttributes(attributes: unknown): UnitAttributes {
   if (!attributes || typeof attributes !== "object" || Array.isArray(attributes)) {
@@ -1053,7 +1055,7 @@ export async function createManualReservation(data: CreateReservationData) {
       );
     }
 
-    const shortfalls: ManualReservationCapacityShortfall[] = [];
+    const shortfalls: CapacityShortfall[] = [];
 
     for (const detail of productDetails) {
       const product = productsById.get(detail.product.id);
@@ -1586,6 +1588,8 @@ interface UpdateReservationData {
   notifyCustomerByEmail?: boolean;
   tulipInsuranceOptIn?: boolean;
   overrideTurnoverBuffer?: boolean;
+  /** Write the edit although it asks more stock than is free; the history keeps the shortfalls. */
+  allowOverbooking?: boolean;
   delivery?: {
     outbound: UpdateDeliveryLeg;
     return: UpdateDeliveryLeg;
@@ -1605,6 +1609,8 @@ type UpdateReservationResult = {
   bufferConflict?: boolean;
   failedUnitIds?: string[];
   conflicts?: UpdateReservationConflict[];
+  /** With `errors.insufficientCapacity`: every line the stock would not cover after the edit. */
+  shortfalls?: CapacityShortfall[];
   reservationItemId?: string;
   assignedCount?: number;
   warnings?: Array<{
@@ -2757,12 +2763,38 @@ export async function updateReservation(
   const overrideTurnoverBuffer = data.overrideTurnoverBuffer ?? false;
   const session = await auth();
   const actorUserId = session?.user?.id ?? null;
+  // What every figure above was computed from, compared again under the locks.
+  const editBasis = fingerprintReservationEdit(reservation, reservation.items);
+  // The products of the existing and submitted lines, locked before the reservation.
+  const editedProductIds = [
+    ...new Set(
+      [...reservation.items, ...(data.items ?? [])].flatMap((item) =>
+        item.productId ? [item.productId] : [],
+      ),
+    ),
+  ];
 
-  const transactionResult = await db
-    .transaction(
+  // The transaction holds no outside effect, so a lost deadlock runs it again.
+  const transactionResult = await retryTransactionOnDeadlock(() =>
+    db.transaction(
       async (tx) => {
+        // Lock order (DL-12): the products, the reservation, then its units.
+        const lockedProductsById = await lockReservationProducts(tx, store.id, editedProductIds);
+
         const [lockedReservation] = await tx
-          .select({ id: reservations.id, status: reservations.status })
+          .select({
+            id: reservations.id,
+            status: reservations.status,
+            startDate: reservations.startDate,
+            endDate: reservations.endDate,
+            subtotalAmount: reservations.subtotalAmount,
+            depositAmount: reservations.depositAmount,
+            totalAmount: reservations.totalAmount,
+            deliveryFee: reservations.deliveryFee,
+            discountAmount: reservations.discountAmount,
+            tulipInsuranceOptIn: reservations.tulipInsuranceOptIn,
+            tulipInsuranceAmount: reservations.tulipInsuranceAmount,
+          })
           .from(reservations)
           .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
           .for("update");
@@ -2771,12 +2803,37 @@ export async function updateReservation(
           return { error: "errors.reservationNotFound" };
         }
 
-        if (lockedReservation.status !== reservation.status) {
-          return { error: "errors.reservationStatusChanged" };
+        const lockedItems = await tx
+          .select({
+            id: reservationItems.id,
+            productId: reservationItems.productId,
+            quantity: reservationItems.quantity,
+            unitPrice: reservationItems.unitPrice,
+            totalPrice: reservationItems.totalPrice,
+            depositPerUnit: reservationItems.depositPerUnit,
+            pricingBreakdown: reservationItems.pricingBreakdown,
+            combinationKey: reservationItems.combinationKey,
+            selectedAttributes: reservationItems.selectedAttributes,
+          })
+          .from(reservationItems)
+          .where(eq(reservationItems.reservationId, reservationId));
+
+        // Another write landed between the read and the locks: the totals and
+        // the item writes computed above no longer describe this reservation.
+        // A line added meanwhile is caught here too, before its product would
+        // have to be locked after the reservation.
+        if (fingerprintReservationEdit(lockedReservation, lockedItems) !== editBasis) {
+          return { error: "errors.reservationChangedMeanwhile" };
         }
 
-        if (lockedReservation.status === "completed") {
-          return { error: "errors.cannotEditCompletedReservation" };
+        for (const itemWrite of itemWrites) {
+          if (
+            itemWrite.type === "insert" &&
+            itemWrite.values.productId &&
+            !lockedProductsById.has(itemWrite.values.productId)
+          ) {
+            return { error: "errors.productNotFound" };
+          }
         }
 
         await tx
@@ -2965,6 +3022,99 @@ export async function updateReservation(
           }
         }
 
+        // The lines as the edit leaves them, with the units they keep.
+        const assignedUnitIdsByItemId = new Map<string, string[]>();
+        for (const assignment of assignmentsToKeep) {
+          if (!assignment.productUnitId) continue;
+          assignedUnitIdsByItemId.set(assignment.reservationItemId, [
+            ...(assignedUnitIdsByItemId.get(assignment.reservationItemId) ?? []),
+            assignment.productUnitId,
+          ]);
+        }
+        const quantityByUpdatedItemId = new Map<string, number>();
+        for (const itemWrite of itemWrites) {
+          if (itemWrite.type === "update") {
+            quantityByUpdatedItemId.set(itemWrite.id, itemWrite.values.quantity);
+          }
+        }
+        const finalLines = [
+          ...lockedItems.flatMap((item) =>
+            item.productId && !itemIdsToDeleteSet.has(item.id)
+              ? [
+                  {
+                    productId: item.productId,
+                    quantity: quantityByUpdatedItemId.get(item.id) ?? item.quantity,
+                    selectedAttributes: item.selectedAttributes ?? undefined,
+                    combinationKey: item.combinationKey,
+                    assignedUnitIds: assignedUnitIdsByItemId.get(item.id) ?? [],
+                    // A booked line with no exact combination is served by any
+                    // unit that matches what it chose (resolveUnitAssignmentScope):
+                    // the units it holds count on their own combinations.
+                    pooled: item.combinationKey === null,
+                  },
+                ]
+              : [],
+          ),
+          // A line the edit adds chooses no combination: any unit serves it.
+          ...itemWrites.flatMap((itemWrite) =>
+            itemWrite.type === "insert" && itemWrite.values.productId
+              ? [
+                  {
+                    productId: itemWrite.values.productId,
+                    quantity: itemWrite.values.quantity,
+                    pooled: true,
+                  },
+                ]
+              : [],
+          ),
+        ];
+
+        // A reservation that holds stock is checked whenever the edit moves
+        // what it asks for, before anything is written. Stock short on a
+        // product the edit asks more of refuses the edit, unless the caller
+        // books over it; either way the activity row keeps the verdict.
+        const demand = compareReservationDemand(
+          {
+            start: lockedReservation.startDate,
+            end: lockedReservation.endDate,
+            lines: lockedItems,
+          },
+          { start: newStartDate, end: newEndDate, lines: finalLines },
+          (productId) => lockedProductsById.get(productId)?.bookingAttributeAxes,
+        );
+        const holdsStock = blockingStatuses.some((status) => status === lockedReservation.status);
+        let capacityVerdict: ReturnType<typeof capacityVerdictMetadata> | null = null;
+        if (holdsStock && demand.changed) {
+          const inventory = await reserveInventory({
+            tx,
+            storeId: store.id,
+            lockedProductsById,
+            // A line whose product was deleted since has no stock to check.
+            lines: finalLines.filter((line) => lockedProductsById.has(line.productId)),
+            window: { start: newStartDate, end: newEndDate },
+            blockingStatuses,
+            turnoverBufferMinutes: overrideTurnoverBuffer ? 0 : turnoverBufferMinutes,
+            excludeReservationId: reservationId,
+            // Consumable stock is reconciled below; like a booking the team
+            // creates, an edit does not ask for the required accessories.
+            skipConsumableCheck: true,
+            skipRequiredAccessoryCheck: true,
+            onShortfall: "collect",
+          });
+          if (!inventory.ok) {
+            return { error: inventory.error };
+          }
+          if (
+            !data.allowOverbooking &&
+            inventory.shortfalls.some((shortfall) =>
+              demand.raisedProductIds.has(shortfall.productId),
+            )
+          ) {
+            return { error: "errors.insufficientCapacity", shortfalls: inventory.shortfalls };
+          }
+          capacityVerdict = capacityVerdictMetadata(inventory.shortfalls);
+        }
+
         const unitEvents: Array<typeof productUnitEvents.$inferInsert> = assignmentsToRemove.map(
           (assignment) => ({
             id: nanoid(),
@@ -3054,45 +3204,6 @@ export async function updateReservation(
             );
         }
 
-        if (dateChanged && ["confirmed", "ongoing"].includes(lockedReservation.status)) {
-          const currentItems = await tx.query.reservationItems.findMany({
-            where: eq(reservationItems.reservationId, reservationId),
-            with: { assignedUnits: true },
-          });
-          const lines = currentItems.flatMap((item) =>
-            item.productId
-              ? [
-                  {
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    selectedAttributes: item.selectedAttributes ?? undefined,
-                    combinationKey: item.combinationKey,
-                    assignedUnitIds: item.assignedUnits.flatMap((unit) =>
-                      unit.productUnitId ? [unit.productUnitId] : [],
-                    ),
-                  },
-                ]
-              : [],
-          );
-          const lockedProductsById = await lockReservationProducts(
-            tx,
-            store.id,
-            lines.map((line) => line.productId),
-          );
-          const inventory = await reserveInventory({
-            tx,
-            storeId: store.id,
-            lockedProductsById,
-            lines,
-            window: { start: newStartDate, end: newEndDate },
-            blockingStatuses,
-            turnoverBufferMinutes: overrideTurnoverBuffer ? 0 : turnoverBufferMinutes,
-            excludeReservationId: reservationId,
-            skipConsumableCheck: true,
-          });
-          if (!inventory.ok) throw new Error("errors.productNoLongerAvailable");
-        }
-
         await tx
           .update(reservations)
           .set({
@@ -3123,18 +3234,45 @@ export async function updateReservation(
           newEndDate,
           lockedReservation.status,
         );
+
+        // Written with the edit: its history, and its capacity verdict for the inbox.
+        await tx.insert(reservationActivity).values({
+          id: nanoid(),
+          reservationId,
+          userId: actorUserId,
+          activityType: "modified",
+          metadata: {
+            previous: {
+              startDate: previousState.startDate,
+              endDate: previousState.endDate,
+              subtotalAmount: previousState.subtotalAmount,
+              depositAmount: previousState.depositAmount,
+            },
+            updated: {
+              startDate: newStartDate,
+              endDate: newEndDate,
+              subtotalAmount: newSubtotalAmount,
+              depositAmount: newDepositAmount,
+            },
+            difference,
+            ...capacityVerdict,
+            ...(validationWarnings.length > 0 && {
+              validationWarnings,
+              validationWarningsCount: validationWarnings.length,
+            }),
+          },
+          createdAt: capacityVerdict ? await nextCapacityVerdictDate(tx, reservationId) : undefined,
+        });
         return { success: true, reservationStatus: lockedReservation.status };
       },
       { isolationLevel: "read committed" },
-    )
-    .catch((error: unknown) => {
-      if (error instanceof Error && error.message === "errors.productNoLongerAvailable")
-        return { error: error.message };
-      if (error instanceof ConsumableStockError) {
-        return { error: error.message };
-      }
-      throw error;
-    });
+    ),
+  ).catch((error: unknown) => {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
+  });
 
   if ("error" in transactionResult) {
     return transactionResult;
@@ -3157,27 +3295,6 @@ export async function updateReservation(
       });
     }
   }
-
-  // Log activity
-  await logReservationActivity(reservationId, "modified", {
-    previous: {
-      startDate: previousState.startDate,
-      endDate: previousState.endDate,
-      subtotalAmount: previousState.subtotalAmount,
-      depositAmount: previousState.depositAmount,
-    },
-    updated: {
-      startDate: newStartDate,
-      endDate: newEndDate,
-      subtotalAmount: newSubtotalAmount,
-      depositAmount: newDepositAmount,
-    },
-    difference,
-    ...(validationWarnings.length > 0 && {
-      validationWarnings,
-      validationWarningsCount: validationWarnings.length,
-    }),
-  });
 
   revalidatePath(`/${store.slug}/account`);
   revalidatePath("/dashboard/reservations");
