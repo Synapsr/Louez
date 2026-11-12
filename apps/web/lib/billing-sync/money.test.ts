@@ -111,6 +111,27 @@ describe("reservationTotalsMinor", () => {
     });
   });
 
+  test("a stored currency that is no code falls back to the store's, like null", () => {
+    // A store in yen: 12 000 yen, not 1 200 000 euro cents.
+    const yen = { ...base.storeSettings, currency: "jpy" };
+    const amounts = {
+      totalAmount: "12000.00",
+      subtotalAmount: "12000.00",
+      subtotalExclTax: "10000.00",
+      taxAmount: "2000.00",
+    };
+    for (const currency of ["JP", "", null]) {
+      const totals = reservationTotalsMinor({
+        ...base,
+        reservation: { ...base.reservation, ...amounts, currency },
+        storeSettings: yen,
+        items: [{ productId: "p1", taxRate: "20.00", totalPrice: "12000.00" }],
+      });
+      assert.equal(totals.currency, "JPY", JSON.stringify(currency));
+      assert.equal(totals.totalInclTaxMinor, 12000, JSON.stringify(currency));
+    }
+  });
+
   test("adds the default rate to a dashboard total in a store that prices before tax, insurance excluded", () => {
     const totals = reservationTotalsMinor({
       reservation: {

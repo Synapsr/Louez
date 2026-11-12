@@ -150,6 +150,10 @@ import {
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import {
+  getReservationRentalAmount,
+  paymentRequestTerms,
+} from "@/lib/reservations/util.payment-request";
+import {
   compareReservationDemand,
   fingerprintReservationEdit,
 } from "@/lib/reservations/util.reservation-edit";
@@ -169,6 +173,7 @@ import {
   tryGenerateInvoiceForPayment,
 } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
+import { log } from "@/lib/evlog";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
@@ -177,7 +182,9 @@ import {
   captureDeposit,
   createDepositAuthorization,
   createRefund,
+  fromStripeCents,
   getChargeRefundableAmount,
+  getDepositAuthorizationStatus,
   getPaymentMethodDetails,
   releaseDeposit,
   toStripeCents,
@@ -3386,23 +3393,6 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function getReservationRentalAmount(reservation: {
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-}) {
-  const subtotal = parseFloat(reservation.subtotalAmount || "0");
-  const deposit = parseFloat(reservation.depositAmount || "0");
-  const total = parseFloat(reservation.totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
-
 export async function recordPayment(reservationId: string, data: RecordPaymentData) {
   const store = await getStoreForUser();
   if (!store) {
@@ -3497,7 +3487,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     { id: store.id, name: store.name, slug: store.slug },
     reservation.number,
     data.amount,
-    store.settings?.currency,
+    reservationCurrency(reservation.currency, store.settings),
   ).catch(() => {});
 
   revalidatePath("/dashboard/reservations");
@@ -3894,7 +3884,8 @@ export async function createDepositHold(reservationId: string) {
     return { error: "errors.stripe.noDepositRequired" };
   }
 
-  const currency = store.settings?.currency || "EUR";
+  // The deposit was agreed in the reservation's currency, whatever the store's is now.
+  const currency = reservationCurrency(reservation.currency, store.settings);
   const amountMinor = toStripeCents(depositAmount, currency);
 
   try {
@@ -4022,14 +4013,35 @@ export async function captureDepositHold(
     return { error: "errors.reasonRequired" };
   }
 
-  const currency = store.settings?.currency || "EUR";
+  // The deposit the store sees, and the amount it typed, are in the reservation's
+  // currency, whatever the store's is now.
+  const currency = reservationCurrency(reservation.currency, store.settings);
 
   try {
+    // An amount sent against the hold is counted in the hold's own currency. A hold
+    // authorized in another one (before the store changed its own) cannot be read
+    // in the reservation's: the store captures it from Stripe.
+    // Stripe says which: a payment row may hold the column's default, or two rows
+    // may disagree.
+    const { currency: holdCurrency } = await getDepositAuthorizationStatus(
+      store.stripeAccountId,
+      reservation.depositPaymentIntentId,
+    );
+    if (holdCurrency !== currency) {
+      log.warn(
+        "deposit-capture",
+        `refused for reservation ${reservationId}: its hold ${reservation.depositPaymentIntentId} is in ${holdCurrency}, its deposit in ${currency}; capture it from Stripe`,
+      );
+      return { error: "errors.stripe.captureFailed" };
+    }
+
     const result = await captureDeposit({
       stripeAccountId: store.stripeAccountId,
       paymentIntentId: reservation.depositPaymentIntentId,
-      amountToCapture: toStripeCents(data.amount, currency),
+      amountToCapture: toStripeCents(data.amount, holdCurrency),
     });
+    // What is recorded is what Stripe captured, in the currency it captured it in.
+    const capturedAmount = fromStripeCents(result.amountCaptured, result.currency);
 
     const capturePaymentId = nanoid();
     await recordDepositCapture(db, {
@@ -4039,7 +4051,7 @@ export async function captureDepositHold(
       stripeAccountId: store.stripeAccountId,
       paymentIntentId: reservation.depositPaymentIntentId,
       stripeChargeId: result.chargeId,
-      amount: data.amount.toFixed(2),
+      amount: capturedAmount.toFixed(2),
       capturedMinor: result.amountCaptured,
       currency: result.currency,
       reason: data.reason,
@@ -4049,14 +4061,14 @@ export async function captureDepositHold(
     await tryGenerateInvoiceForPayment(capturePaymentId, "dashboard_capture_deposit_hold");
 
     // Log activity
-    const currencySymbol = getCurrencySymbol(currency);
+    const currencySymbol = getCurrencySymbol(result.currency);
     await logDepositActivity(
       reservationId,
       "deposit_captured",
-      `Caution capturée: ${data.amount.toFixed(2)}${currencySymbol} - ${data.reason}`,
+      `Caution capturée: ${capturedAmount.toFixed(2)}${currencySymbol} - ${data.reason}`,
       {
         paymentIntentId: reservation.depositPaymentIntentId,
-        amount: data.amount,
+        amount: capturedAmount,
         reason: data.reason,
       },
     );
@@ -4107,7 +4119,7 @@ export async function releaseDepositHold(reservationId: string) {
     await recordDepositRelease(db, { reservationId, storeId: store.id, now: new Date() });
 
     // Log activity
-    const currency = store.settings?.currency || "EUR";
+    const currency = reservationCurrency(reservation.currency, store.settings);
     const currencySymbol = getCurrencySymbol(currency);
     const depositAmount = parseFloat(reservation.depositAmount);
     await logDepositActivity(
@@ -4197,14 +4209,14 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
     return { error: "errors.stripe.noChargeToRefund" };
   }
 
-  const currency = store.settings?.currency || "EUR";
-
   try {
-    // Check refundable amount
-    const { refundable, amount: maxRefundable } = await getChargeRefundableAmount(
-      store.stripeAccountId,
-      stripePayment.stripeChargeId,
-    );
+    // Check refundable amount. A refund is counted in its charge's own currency:
+    // the payment row may hold the column's default, never the store's of today.
+    const {
+      refundable,
+      amount: maxRefundable,
+      currency,
+    } = await getChargeRefundableAmount(store.stripeAccountId, stripePayment.stripeChargeId);
 
     if (!refundable) {
       return { error: "errors.stripe.alreadyRefunded" };
@@ -4223,12 +4235,15 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
       amount: refundAmountCents,
     });
 
+    // What is recorded, credited and logged is what Stripe refunded: an amount
+    // typed with more decimals than the currency has was rounded on its way.
+    const refundedAmount = fromStripeCents(refund.amount, refund.currency);
     const refundPaidAt = new Date();
     const paymentId = await tryEnsureRefundPaymentRecord(
       {
         originalPaymentId: stripePayment.id,
         stripeRefundId: refund.refundId,
-        amount: data.amount,
+        amount: refundedAmount,
         grossMinor: refund.amount,
         type: data.type === "deposit_return" ? "deposit_return" : "rental",
         currency: refund.currency,
@@ -4241,7 +4256,7 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
     if (data.type === "rental_refund" && paymentId) {
       await tryGenerateCreditNoteForRefund(
         { originalPaymentId: stripePayment.id, refundPaymentId: paymentId },
-        data.amount,
+        refundedAmount,
         "dashboard_process_stripe_refund",
       );
     }
@@ -4250,7 +4265,7 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
     await logReservationActivity(reservationId, "payment_updated", {
       paymentId,
       refundId: refund.refundId,
-      amount: data.amount,
+      amount: refundedAmount,
       type: data.type,
     });
 
@@ -4804,39 +4819,20 @@ export async function requestPayment(
       return { error: "errors.customerNoPhone" };
     }
 
-    const currency = store.settings?.currency || "EUR";
     // The reservation's language, as the other messages about it.
     const locale = resolveReservationEmailLocale(reservation.locale, store.settings?.country);
 
-    // Calculate amount based on type
-    let amount: number;
-    let description: string;
-
-    if (data.type === "custom") {
-      if (!data.amount || data.amount < 0.5) {
-        return { error: "errors.invalidAmount" };
-      }
-      amount = data.amount;
-      description = "Payment";
-    } else if (data.type === "rental") {
-      // Calculate remaining amount for rental from payments
-      const paidAmount = reservation.payments
-        .filter((p) => p.type === "rental" && p.status === "completed")
-        .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-      amount = getReservationRentalAmount(reservation) - paidAmount;
-
-      if (amount < 0.5) {
-        return { error: "errors.noAmountDue" };
-      }
-      description = "Rental";
-    } else {
-      // deposit type
-      amount = parseFloat(reservation.depositAmount || "0");
-      if (amount < 0.5) {
-        return { error: "errors.noDepositRequired" };
-      }
-      description = "Deposit";
+    // The amount, in the reservation's currency, whatever the store's is now.
+    const terms = paymentRequestTerms({
+      type: data.type,
+      customAmount: data.amount,
+      reservation,
+      storeSettings: store.settings,
+    });
+    if (!terms.ok) {
+      return { error: terms.error };
     }
+    const { amount, description, currency } = terms;
 
     // Build URLs
     const baseUrl = getStorefrontUrl(store.slug);
@@ -4912,6 +4908,7 @@ export async function requestPayment(
             reservation: {
               id: reservationId,
               number: reservation.number,
+              currency,
             },
             depositAmount: amount,
             authorizationUrl: paymentUrl,
@@ -4939,6 +4936,7 @@ export async function requestPayment(
             reservation: {
               id: reservationId,
               number: reservation.number,
+              currency,
             },
             amount,
             description,

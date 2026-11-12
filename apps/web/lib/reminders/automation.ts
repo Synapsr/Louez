@@ -424,6 +424,7 @@ async function sendCustomerReminder(
       totalAmount: Number(reservation.totalAmount),
       subtotalAmount: Number(reservation.subtotalAmount),
       depositAmount: Number(reservation.depositAmount),
+      currency: reservation.currency,
     },
     reservationUrl,
     contractSignatureUrl,
@@ -483,6 +484,7 @@ async function sendAdminReminder(
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       totalAmount: Number(reservation.totalAmount),
+      currency: reservation.currency,
     },
     customer: {
       firstName: customer.firstName,

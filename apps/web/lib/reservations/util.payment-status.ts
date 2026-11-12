@@ -4,7 +4,7 @@
  * completed `rental` payment. Deposits, holds and refunds never count.
  */
 
-import { getSettledPaymentAmount, isStripeRefundRow } from "@louez/utils";
+import { getSettledPaymentAmount, isPaymentInCurrency, isStripeRefundRow } from "@louez/utils";
 
 export interface PaymentLike {
   id?: string;
@@ -17,6 +17,9 @@ export interface PaymentLike {
   stripeRefundId?: string | null;
   stripePaymentIntentId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  /** With `currency`, tells a Stripe payment, whose currency is its own. */
+  method?: string;
+  currency?: string | null;
 }
 
 export type ReservationPaymentStatus = "paid" | "processing" | "unpaid";
@@ -30,10 +33,14 @@ export const isRefundRow = (payment: PaymentLike): boolean =>
   isStripeRefundRow(payment) ||
   payment.type === "deposit_return";
 
-export const isRentalPaid = (payments: readonly PaymentLike[]): boolean =>
+/** With `currency`, the reservation's, a payment in another currency pays nothing. */
+export const isRentalPaid = (payments: readonly PaymentLike[], currency?: string): boolean =>
   payments.some(
     (payment) =>
-      payment.type === "rental" && payment.status === "completed" && !isRefundRow(payment),
+      payment.type === "rental" &&
+      payment.status === "completed" &&
+      !isRefundRow(payment) &&
+      (!currency || isPaymentInCurrency(payment, currency)),
   );
 
 /** A rental payment still `pending` (3DS, webhook lag). */
@@ -48,9 +55,12 @@ export const getReservationPaymentStatus = (
   return "unpaid";
 };
 
-/** What the customer paid toward the rental itself: deposits never count. */
-export const getRentalPaid = (payments: readonly PaymentLike[]): number =>
-  getSettledPaymentAmount(payments, "rental");
+/**
+ * What the customer paid toward the rental itself: deposits never count. With
+ * `currency`, the reservation's, neither does a payment in another currency.
+ */
+export const getRentalPaid = (payments: readonly PaymentLike[], currency?: string): number =>
+  getSettledPaymentAmount(payments, "rental", currency);
 
 /** Damage fees charged on top of the rental, refunds subtracted. */
 export const getDamageFees = (payments: readonly PaymentLike[]): number =>

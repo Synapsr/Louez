@@ -14,6 +14,7 @@ import { convertImageForPdf } from "./image-utils";
 import { getContractCustomerFieldLines } from "./util.contract-customer-fields";
 import { getContractItemDetailLines } from "./util.contract-item-details";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
 import { getContractTranslations } from "./contract-i18n";
@@ -275,7 +276,7 @@ export async function generateContract({
       document: documentData,
       locale,
       translations,
-      currency: store.settings?.currency || "EUR",
+      currency: reservationCurrency(reservation.currency, store.settings),
       timezone: store.settings?.timezone || undefined,
       fullCgvHtml,
     }),

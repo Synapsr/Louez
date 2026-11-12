@@ -45,6 +45,7 @@ import { z } from "zod";
 
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getCustomerSession } from "@/lib/customer-auth/session";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { createReservationPaymentSessionForCustomer } from "@/lib/reservations/payment-session";
 import {
   canAuthorizeDepositOnline,
@@ -253,7 +254,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
         catalog_line_count: reservation.items.length,
         total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
         deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
-        currency: store.settings?.currency || "EUR",
+        currency: reservationCurrency(reservation.currency, store.settings),
       },
     });
 
@@ -356,6 +357,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
         totalAmount: parseFloat(reservation.totalAmount),
         subtotalAmount: parseFloat(reservation.subtotalAmount),
         depositAmount: parseFloat(reservation.depositAmount),
+        currency: reservation.currency,
       },
       items: emailItems,
       reservationUrl,
@@ -439,7 +441,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
       customer_id: session.customerId,
       source: "customer_account",
       total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
-      currency: store.settings?.currency || "EUR",
+      currency: reservationCurrency(reservation.currency, store.settings),
     },
   });
 

@@ -341,6 +341,8 @@ export async function getChargeRefundableAmount(stripeAccountId: string, chargeI
     refundable: !charge.refunded && charge.amount > charge.amount_refunded,
     amount: charge.amount - charge.amount_refunded,
     alreadyRefunded: charge.amount_refunded,
+    /** The charge's own currency, which a refund of it is counted in. */
+    currency: charge.currency.toUpperCase(),
   };
 }
 

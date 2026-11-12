@@ -122,6 +122,12 @@ export interface ApiEffectPayloads {
       taxAmount: string | null;
       /** The language the reservation was made in. */
       locale: string | null;
+      /**
+       * The currency of these amounts, frozen when the reservation was created. Null
+       * for an older reservation, absent on a row queued before the field: the
+       * message then states the store's.
+       */
+      currency?: string | null;
     };
     items: Array<{ name: string; quantity: number; unitPrice: string; totalPrice: string }>;
     rejectionReason: string | null;

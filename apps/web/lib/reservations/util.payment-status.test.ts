@@ -44,6 +44,27 @@ describe("isRentalPaid", () => {
       false,
     );
   });
+
+  test("with the reservation's currency, a card payment in another currency pays nothing", () => {
+    const paid = (method: string, currency: string | null) => [
+      { type: "rental", status: "completed", amount: "10", method, currency },
+    ];
+
+    assert.equal(isRentalPaid(paid("stripe", "USD"), "EUR"), false);
+    assert.equal(getRentalPaid(paid("stripe", "USD"), "EUR"), 0);
+    assert.equal(isRentalPaid(paid("stripe", "eur"), "EUR"), true);
+    // A Stripe payment with no stored currency, and any payment outside Stripe, are in
+    // the reservation's currency: older manual rows kept the column's EUR default.
+    assert.equal(isRentalPaid(paid("stripe", null), "USD"), true);
+    assert.equal(isRentalPaid(paid("cash", "EUR"), "USD"), true);
+    assert.equal(getRentalPaid(paid("cash", "EUR"), "USD"), 10);
+    // Without a currency, or with rows loaded without theirs, nothing is left out.
+    assert.equal(isRentalPaid(paid("stripe", "USD")), true);
+    assert.equal(
+      isRentalPaid([{ type: "rental", status: "completed", amount: "10" }], "EUR"),
+      true,
+    );
+  });
 });
 
 describe("isStripeRefundRow", () => {

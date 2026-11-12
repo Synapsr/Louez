@@ -14,12 +14,16 @@ import {
 
 export type RecordedPaymentType = "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
 
-/** The reservation's currency: frozen at creation, else the store's (contract Q4). */
+/**
+ * The reservation's currency: frozen at creation, else the store's (contract Q4).
+ * A stored value that is no ISO code (empty, malformed) is not the reservation's
+ * either: the store's is, never the normalizer's default.
+ */
 export function reservationCurrency(
   currency: string | null,
   storeSettings: Pick<StoreSettings, "currency"> | null,
 ): string {
-  return normalizeCurrency(currency ?? storeSettings?.currency);
+  return normalizeCurrency(currency, normalizeCurrency(storeSettings?.currency));
 }
 
 /**

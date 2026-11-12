@@ -14,6 +14,7 @@ import {
   type Transaction,
   retryOnceOnDeadlock,
 } from "@louez/db";
+import { normalizeCurrency } from "@louez/utils";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { stripe } from "@/lib/stripe/client";
@@ -141,9 +142,14 @@ export const startExtension = async (input: {
       if (extensionFingerprint(reservation) !== existing.attempt.fingerprint)
         throw new ExtensionError("priceChanged");
       const refreshed = await quoteExtension(tx, reservation, end, existing.id);
+      // A checkout opened in another currency than the reservation's (by a release
+      // that read the store's) is not this price. Codes compare canonical: an older
+      // attempt stored the store's setting as written.
       if (
         refreshed.preview.mode !== "automatic" ||
-        cents(refreshed.preview.supplement) !== cents(existing.attempt.supplement)
+        cents(refreshed.preview.supplement) !== cents(existing.attempt.supplement) ||
+        normalizeCurrency(refreshed.preview.currency) !==
+          normalizeCurrency(existing.attempt.currency)
       )
         throw new ExtensionError("priceChanged");
       return { reservation, ...existing };
@@ -309,7 +315,8 @@ export const completeExtensionPayment = async (
         valid =
           quote.preview.mode === "automatic" &&
           cents(quote.preview.supplement) === cents(attempt.supplement) &&
-          quote.preview.currency === attempt.currency &&
+          // Canonical codes: an older attempt stored the store's setting as written.
+          normalizeCurrency(quote.preview.currency) === normalizeCurrency(attempt.currency) &&
           JSON.stringify(quote.plan) === JSON.stringify(attempt.plan);
       } catch (error) {
         if (!(error instanceof ExtensionError)) throw error;
@@ -321,7 +328,7 @@ export const completeExtensionPayment = async (
       id: paymentId,
       reservationId,
       amount: attempt.supplement.toFixed(2),
-      currency: attempt.currency,
+      currency: normalizeCurrency(attempt.currency),
       type: "rental",
       method: "stripe",
       status: "completed",

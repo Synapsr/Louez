@@ -13,6 +13,7 @@ import {
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 
+import { reservationCurrency } from "./payment-billing-facts";
 import type { ResolvedDelivery } from "./resolve-delivery";
 import type { ReservationTotals } from "./price-cart";
 
@@ -24,6 +25,12 @@ export interface CreatedReservationSummary {
   startDate: Date;
   endDate: Date;
   customerNotes: string | null;
+  /**
+   * The currency written on the reservation: frozen when it was created, so a
+   * pending checkout that is resumed keeps the one it was first booked in. Its
+   * messages state it, whatever the store's is when they go out.
+   */
+  currency: string | null;
 }
 
 export interface CreatedReservationCustomer {
@@ -77,7 +84,7 @@ export const runPostCreationEffects = async ({
   insurance,
   promoCodeUsed,
 }: PostCreationEffectsInput): Promise<void> => {
-  const currency = store.settings?.currency || "EUR";
+  const currency = reservationCurrency(reservation.currency, store.settings);
 
   runAfterResponse(() =>
     captureProductServerEvent({
@@ -130,7 +137,7 @@ export const runPostCreationEffects = async ({
       number: reservation.number,
       customerName: `${customer.firstName} ${customer.lastName}`,
       totalAmount: totals.total,
-      currency: store.settings?.currency,
+      currency,
     },
   ).catch(() => {});
 };
@@ -158,6 +165,7 @@ export const notifyRequestReceived = async ({
     startDate: reservation.startDate,
     endDate: reservation.endDate,
     totalAmount: totals.total,
+    currency: reservation.currency,
   };
 
   dispatchCustomerNotification("customer_request_received", {

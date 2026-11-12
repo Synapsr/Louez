@@ -4,11 +4,12 @@ import { ORPCError } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 
 import { getDashboardReservationEditContext } from "@louez/api/services";
-import { db, storeLocations } from "@louez/db";
+import { db, reservations, storeLocations } from "@louez/db";
 import type { DeliverySettings } from "@louez/types";
 
 import { getDashboardTulipInsuranceModeFromSettings } from "@/lib/integrations/tulip/settings";
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { EditReservationPageClient } from "./edit-reservation-page-client";
@@ -57,7 +58,7 @@ export default async function EditReservationPage({ params }: EditReservationPag
   const deliverySettings = (store.settings as Record<string, unknown> | null)?.delivery as
     | DeliverySettings
     | undefined;
-  const [activeStoreLocations, tulipIntegration] = await Promise.all([
+  const [activeStoreLocations, tulipIntegration, [priced]] = await Promise.all([
     deliverySettings?.multiLocationEnabled
       ? db.query.storeLocations.findMany({
           where: and(eq(storeLocations.storeId, store.id), eq(storeLocations.isActive, true)),
@@ -65,6 +66,12 @@ export default async function EditReservationPage({ params }: EditReservationPag
         })
       : Promise.resolve([]),
     resolveTulipIntegrationForStore(store.id),
+    // The prices being edited are in the reservation's currency, whatever the store's
+    // is now.
+    db
+      .select({ currency: reservations.currency })
+      .from(reservations)
+      .where(and(eq(reservations.id, id), eq(reservations.storeId, store.id))),
   ]);
 
   const locationOptions: ReservationLocationOption[] = [
@@ -102,7 +109,7 @@ export default async function EditReservationPage({ params }: EditReservationPag
     <EditReservationPageClient
       reservationId={id}
       initialContext={initialContext}
-      currency={store.settings?.currency || "EUR"}
+      currency={reservationCurrency(priced?.currency ?? null, store.settings)}
       tulipInsuranceMode={getDashboardTulipInsuranceModeFromSettings(tulipIntegration.settings)}
       storeSettings={store.settings || null}
       storeDelivery={storeDelivery}

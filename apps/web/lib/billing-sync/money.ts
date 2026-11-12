@@ -172,7 +172,11 @@ type ToMinor = (value: string | null) => number;
  */
 export function reservationTotalsMinor(input: ReservationTotalsInput): ReservationTotalsMinor {
   const { reservation } = input;
-  const currency = normalizeCurrency(reservation.currency ?? input.storeSettings?.currency);
+  // A stored value that is no currency code falls back to the store's, like null.
+  const currency = normalizeCurrency(
+    reservation.currency,
+    normalizeCurrency(input.storeSettings?.currency),
+  );
   const minor: ToMinor = (value) => toMinorOrThrow(value, currency);
 
   const subtotal = minor(reservation.subtotalAmount);

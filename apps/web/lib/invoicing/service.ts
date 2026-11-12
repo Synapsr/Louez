@@ -18,7 +18,7 @@ import { log } from "@/lib/evlog";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { InvoiceDocument } from "@/lib/pdf/invoice";
 import { generateContract } from "@/lib/pdf/generate";
-import { grossMinorOf } from "@/lib/reservations/payment-billing-facts";
+import { grossMinorOf, reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
@@ -114,6 +114,7 @@ export async function generateInvoiceForPayment(
             taxAmount: true,
             tulipInsuranceAmount: true,
             billingSnapshot: true,
+            currency: true,
           },
           with: {
             store: {
@@ -223,7 +224,9 @@ export async function generateInvoiceForPayment(
       "invoice",
       Number(issueDate.slice(0, 4)),
     );
-    const currency = payment.currency ?? payment.reservation.store.settings?.currency ?? "EUR";
+    const currency =
+      payment.currency ??
+      reservationCurrency(payment.reservation.currency, payment.reservation.store.settings);
     const snapshots = buildInvoiceSnapshots(
       {
         reservation: payment.reservation,
@@ -504,6 +507,7 @@ export async function generateCreditNoteForRefund(
             taxAmount: true,
             tulipInsuranceAmount: true,
             billingSnapshot: true,
+            currency: true,
           },
           with: {
             store: {
@@ -641,7 +645,11 @@ export async function generateCreditNoteForRefund(
       Number(issueDate.slice(0, 4)),
     );
     const currency =
-      refundPayment.currency ?? refundPayment.reservation.store.settings?.currency ?? "EUR";
+      refundPayment.currency ??
+      reservationCurrency(
+        refundPayment.reservation.currency,
+        refundPayment.reservation.store.settings,
+      );
     const precedingInvoice = {
       number: originalInvoice.number,
       issueDate: originalInvoice.issueDate,

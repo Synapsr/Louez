@@ -38,6 +38,7 @@ import {
   sendDepositAuthorizationRequestSms,
 } from "@/lib/sms/send";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { isSmsAccepted } from "@/lib/sms/delivery-record";
 import type { EmailAttachment } from "@/lib/email/client";
 import {
@@ -118,6 +119,11 @@ export interface CustomerNotificationReservation {
   taxRate?: number | null;
   subtotalExclTax?: number | null;
   taxAmount?: number | null;
+  /**
+   * The currency of these amounts, frozen when the reservation was created; null or
+   * absent for a reservation older than its own currency, which states the store's.
+   */
+  currency?: string | null;
   /**
    * The reservation's language, when the caller froze it with the message
    * (an outbox row); otherwise it is read from the reservation.
@@ -467,6 +473,7 @@ async function sendCustomerEmail(
           startDate: ctx.reservation.startDate,
           endDate: ctx.reservation.endDate,
           totalAmount: ctx.reservation.totalAmount,
+          currency: ctx.reservation.currency,
         },
         items: (ctx.items || []).map((item) => ({
           name: item.name,
@@ -549,7 +556,7 @@ async function sendCustomerSms(
         ...smsParams,
         amount: ctx.paymentRequestAmount,
         paymentUrl: ctx.paymentRequestUrl,
-        currency: ctx.store.settings?.currency,
+        currency: reservationCurrency(ctx.reservation.currency ?? null, ctx.store.settings ?? null),
       });
 
     case "customer_deposit_authorization_requested":
@@ -560,7 +567,7 @@ async function sendCustomerSms(
         ...smsParams,
         depositAmount: ctx.depositAuthorizationAmount,
         authorizationUrl: ctx.depositAuthorizationUrl,
-        currency: ctx.store.settings?.currency,
+        currency: reservationCurrency(ctx.reservation.currency ?? null, ctx.store.settings ?? null),
       });
 
     case "customer_quote_sent":

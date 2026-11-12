@@ -273,6 +273,8 @@ const toNotificationReservation = (reservation: ReservationRow) => ({
   startDate: reservation.startDate,
   endDate: reservation.endDate,
   totalAmount: Number(reservation.totalAmount),
+  // Its own currency, frozen when it was made; null for an older one, which states the store's.
+  currency: reservation.currency,
 });
 
 const toNotificationCustomer = (customer: ReservationRow["customer"]) =>
@@ -392,7 +394,7 @@ const runCheckoutPaymentCompletion = async ({
     dispatchNotification("payment_received", {
       actor: "system",
       store: toAdminNotificationStore(store),
-      reservation: { ...toNotificationReservation(reservation), currency: reservation.currency },
+      reservation: toNotificationReservation(reservation),
       customer: toNotificationCustomer(reservation.customer),
       payment: { amount: totalAmount, currency },
     }).catch((error: unknown) => {

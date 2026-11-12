@@ -198,6 +198,28 @@ describe("owner email per event", () => {
     assert.equal(sent.newRequest[0]?.reservation.customerNotes, "Arrivée vers 9h");
   });
 
+  test("a new request email is given the reservation's currency, whatever the reloaded store's is", async () => {
+    const base = ctx();
+    const dollars: AdminEmailStore = {
+      ...STORE,
+      settings: STORE.settings && { ...STORE.settings, currency: "USD" },
+    };
+    const currencyGiven = async (currency: string | null) => {
+      const sent = noneSent();
+      await sendAdminEventEmail(
+        "reservation_new",
+        ctx({ reservation: base.reservation && { ...base.reservation, currency } }),
+        fakeDeps(sent, { store: dollars }),
+      );
+      return sent.newRequest[0]?.reservation.currency;
+    };
+
+    // Booked in euros before the store moved to dollars.
+    assert.equal(await currencyGiven("EUR"), "EUR");
+    // Older than its own currency: the email states the store's.
+    assert.equal(await currencyGiven(null), null);
+  });
+
   test("a store without an address emails its owner's account", async () => {
     const sent = noneSent();
     const result = await sendAdminEventEmail(

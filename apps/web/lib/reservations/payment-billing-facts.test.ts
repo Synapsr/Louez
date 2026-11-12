@@ -39,6 +39,20 @@ describe("reservationCurrency", () => {
   test("with neither, EUR", () => {
     assert.equal(reservationCurrency(null, null), "EUR");
   });
+
+  test("a stored value that is no currency code falls back to the store's, not EUR", () => {
+    assert.equal(reservationCurrency("", { currency: "JPY" }), "JPY");
+    assert.equal(reservationCurrency("JP", { currency: "jpy" }), "JPY");
+    assert.equal(reservationCurrency("  ", { currency: "USD" }), "USD");
+  });
+
+  test("a lowercase stored currency is the reservation's, upper-cased", () => {
+    assert.equal(reservationCurrency("jpy", { currency: "EUR" }), "JPY");
+  });
+
+  test("a null stored currency takes the store's", () => {
+    assert.equal(reservationCurrency(null, { currency: "JPY" }), "JPY");
+  });
 });
 
 describe("grossMinorOf", () => {

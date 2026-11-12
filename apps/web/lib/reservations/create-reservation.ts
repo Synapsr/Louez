@@ -541,6 +541,8 @@ type WriteResult =
       reservationNumber: string;
       customerId: string;
       customerEmail: string;
+      /** The currency written on the reservation: a reused one keeps its own. */
+      currency: string | null;
     }
   | {
       ok: true;
@@ -567,6 +569,8 @@ type ReservationItemValues = Omit<typeof reservationItems.$inferInsert, "reserva
 interface ResumableCheckout {
   id: string;
   number: string;
+  /** Frozen when the pending reservation was first written. */
+  currency: string | null;
   reservation: PendingCheckoutReservation;
   items: (PendingCheckoutItem & { id: string })[];
 }
@@ -598,7 +602,13 @@ const findResumableCheckout = async (
   ) {
     return null;
   }
-  return { id: existing.id, number: existing.number, reservation: existing, items: existing.items };
+  return {
+    id: existing.id,
+    number: existing.number,
+    currency: existing.currency,
+    reservation: existing,
+    items: existing.items,
+  };
 };
 
 /** Marketplace replay: the same id already written by a previous attempt. */
@@ -1042,6 +1052,7 @@ const writeReservation = async (
         reservationNumber: resumed.number,
         customerId: customer.id,
         customerEmail: customer.email,
+        currency: resumed.currency,
       };
     }
 
@@ -1130,6 +1141,7 @@ const writeReservation = async (
       reservationNumber,
       customerId: customer.id,
       customerEmail: customer.email,
+      currency: reservationValues.currency ?? null,
     };
   });
 
@@ -1226,6 +1238,7 @@ export const createReservation = async (
       startDate: prepared.window.start,
       endDate: prepared.window.end,
       customerNotes: request.customerNotes || null,
+      currency: written.currency,
     };
     const customerSummary = {
       id: written.customerId,

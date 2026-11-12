@@ -556,3 +556,36 @@ test("cancelling an unpaid checkout releases the hold, while a completed payment
   await service.cancelExtension("store", "reservation", "customer", reservation.activity[0].id);
   assert.equal(reservation.activity[0].metadata.status, "confirmed");
 });
+
+test("a checkout opened before the release, with the store's setting in lower case, completes", async () => {
+  reset();
+  const service = await load();
+  await service.startExtension(input);
+  // The previous release stored the store's setting as written.
+  reservation.activity[0].metadata.currency = "eur";
+  const session = makePaid();
+  assert.equal(await service.completeExtensionPayment(session, "acct_test"), "confirmed");
+  assert.equal(refundCalls, 0);
+  assert.equal(reservation.endDate.getTime(), requestedEnd.getTime());
+  assert.equal(paymentRows[0]?.currency, "EUR");
+});
+
+test("a live checkout is reused only in the reservation's currency", async () => {
+  const service = await load();
+  const reopen = async (currency: string) => {
+    reset();
+    await service.startExtension(input);
+    reservation.activity[0].metadata.currency = currency;
+    makePaid();
+    paidSession = { ...paidSession, status: "open", url: "https://checkout.stripe.com/test" };
+    return service.startExtension(input);
+  };
+  // The same currency, as an older release wrote it: the open checkout is reused.
+  assert.deepEqual(await reopen("eur"), {
+    status: "checkout",
+    url: "https://checkout.stripe.com/test",
+  });
+  // Opened in the store's dollars while the reservation is in euros: not this price.
+  await assert.rejects(reopen("USD"), /priceChanged/);
+  assert.equal(sessionCreates, 1);
+});

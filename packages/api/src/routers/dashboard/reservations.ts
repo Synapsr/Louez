@@ -574,6 +574,9 @@ const getEmailRenderContextOutputSchema = z.object({
     endDate: z.string(),
     totalAmount: z.string(),
     depositAmount: z.string(),
+    // The reservation's own currency; null or absent for one older than it, which
+    // states the store's.
+    currency: z.string().nullish(),
     items: z.array(
       z.object({
         name: z.string(),

@@ -184,6 +184,33 @@ test("a Stripe refund linked to its charge is not subtracted twice; a manual ref
   assert.equal(extensionManualReason(manuallyRefunded, end), "unpaid");
 });
 
+test("a card payment in another currency than the reservation's has not paid it", async () => {
+  const { extensionManualReason } = await load();
+  const paidIn = (currency: string) =>
+    ({
+      ...base(),
+      currency: "EUR",
+      payments: [
+        {
+          id: "charge",
+          type: "rental",
+          status: "completed",
+          amount: "20.00",
+          method: "stripe",
+          currency,
+          stripeRefundId: null,
+          stripePaymentIntentId: "pi_1",
+          stripeCheckoutSessionId: null,
+          refundOfPaymentId: null,
+        },
+      ],
+    }) as unknown as ExtensionReservation;
+
+  assert.equal(extensionManualReason(paidIn("EUR"), end), null);
+  // 20 dollars are not the 20 euros due.
+  assert.equal(extensionManualReason(paidIn("USD"), end), "unpaid");
+});
+
 test("closed statuses, extension duration caps and closed return times are rejected", async () => {
   const { quoteExtension } = await load();
   for (const status of ["cancelled", "completed", "rejected", "pending", "quote"] as const)
@@ -208,6 +235,23 @@ test("prices the extra period and refuses stock conflicts or a changed original 
   await assert.rejects(quoteExtension(fixtureTx(0), base(), end), /unavailable/);
   const repriced = await quoteExtension(fixtureTx(2, "30.00"), base(), end);
   assert.deepEqual(repriced.preview, { mode: "manual", reason: "manualPrice" });
+});
+
+test("the supplement is quoted in the reservation's currency, not the store's of today", async () => {
+  const { quoteExtension } = await load();
+  const quoted = async (currency: string | null) => {
+    const reservation = { ...base(), currency };
+    // The store has moved to dollars since the booking.
+    assert.ok(reservation.store.settings);
+    reservation.store.settings.currency = "USD";
+    const { preview } = await quoteExtension(fixtureTx(), reservation, end);
+    assert.equal(preview.mode, "automatic");
+    return preview.mode === "automatic" ? preview.currency : null;
+  };
+
+  assert.equal(await quoted("EUR"), "EUR");
+  // A reservation made before it had its own currency follows the store.
+  assert.equal(await quoted(null), "USD");
 });
 
 test("fingerprint changes when dates, quantities, assigned units or agreed prices change", async () => {

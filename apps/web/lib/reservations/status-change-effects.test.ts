@@ -164,6 +164,25 @@ describe("reservation effect senders", () => {
     assert.equal(claimChecks, 1, "the claim is checked before the provider");
   });
 
+  test("the message states the currency frozen with it; a row queued before the field still sends", async () => {
+    const currencySent = async (reservation: CustomerMessage["reservation"]) => {
+      calls = [];
+      await senders["reservation.customerMessage"](message({ reservation }), context);
+      const [, ctx] = argsOf("sendCustomerNotificationChannel") as [
+        string,
+        { reservation: { currency?: string | null } },
+      ];
+      return ctx.reservation.currency;
+    };
+    const { reservation } = message();
+
+    assert.equal(await currencySent({ ...reservation, currency: "EUR" }), "EUR");
+    // Older than its own currency, or queued before the payload carried one: the
+    // message goes out and states the store's.
+    assert.equal(await currencySent({ ...reservation, currency: null }), null);
+    assert.equal(await currencySent(reservation), undefined);
+  });
+
   test("an SMS sends its own channel, without a contract link", async () => {
     await senders["reservation.customerMessage"](message({ channel: "sms" }), context);
     assert.equal(argsOf("sendCustomerNotificationChannel")[2], "sms");

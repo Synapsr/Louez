@@ -1074,6 +1074,8 @@ export interface AdminReminderContext {
     startDate: Date;
     endDate: Date;
     totalAmount: number;
+    /** Frozen at creation; null or absent for a reservation older than its own currency. */
+    currency?: string | null;
   };
   customer: {
     firstName: string;
@@ -1124,6 +1126,7 @@ export async function dispatchAdminReminder(
             number: ctx.reservation.number,
             startDate: ctx.reservation.startDate,
             totalAmount: ctx.reservation.totalAmount,
+            currency: ctx.reservation.currency,
           },
         });
       } else {
@@ -1134,6 +1137,7 @@ export async function dispatchAdminReminder(
             number: ctx.reservation.number,
             endDate: ctx.reservation.endDate,
             totalAmount: ctx.reservation.totalAmount,
+            currency: ctx.reservation.currency,
           },
         });
       }
@@ -1180,7 +1184,7 @@ export async function dispatchAdminReminder(
       },
       reservation: {
         ...ctx.reservation,
-        currency: ctx.store.settings?.currency,
+        currency: ctx.reservation.currency || ctx.store.settings?.currency,
       },
       customer: ctx.customer,
     };

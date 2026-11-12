@@ -129,7 +129,7 @@ export async function trySendInitialInvoicePaymentConfirmation(paymentId: string
       },
       with: {
         reservation: {
-          columns: { id: true, number: true },
+          columns: { id: true, number: true, currency: true },
           with: {
             customer: {
               columns: { firstName: true, lastName: true, email: true },

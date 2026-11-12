@@ -175,6 +175,7 @@ export function buildStatusChangeEffects(
             subtotalExclTax: reservation.subtotalExclTax,
             taxAmount: reservation.taxAmount,
             locale: reservation.locale,
+            currency: reservation.currency,
           },
           items: snapshot.items,
           rejectionReason: to === "rejected" ? params.rejectionReason : null,
