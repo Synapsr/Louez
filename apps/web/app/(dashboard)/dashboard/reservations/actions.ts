@@ -3080,6 +3080,7 @@ export async function updateReservation(
             lines: lockedItems,
           },
           { start: newStartDate, end: newEndDate, lines: finalLines },
+          (productId) => lockedProductsById.get(productId)?.bookingAttributeAxes,
         );
         const holdsStock = blockingStatuses.some((status) => status === lockedReservation.status);
         let capacityVerdict: ReturnType<typeof capacityVerdictMetadata> | null = null;

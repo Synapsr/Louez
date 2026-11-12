@@ -117,15 +117,22 @@ describe("fingerprintReservationEdit", () => {
 });
 
 describe("compareReservationDemand", () => {
+  const SIZE = [{ key: "size", label: "Size", position: 0 }];
+  // Only the wetsuit sells by size.
+  const axesOf = (productId: string) => (productId === "wetsuit" ? SIZE : []);
   const helmets = { productId: "helmet", quantity: 1 };
   const lines = [{ productId: "bike", quantity: 2 }, helmets, { productId: null, quantity: 1 }];
   const previous = { start: START, end: END, lines };
   const raised = (next: typeof previous) => [
-    ...compareReservationDemand(previous, next).raisedProductIds,
+    ...compareReservationDemand(previous, next, axesOf).raisedProductIds,
   ];
 
   test("the same window and quantities change nothing", () => {
-    const demand = compareReservationDemand(previous, { ...previous, lines: [...lines].reverse() });
+    const demand = compareReservationDemand(
+      previous,
+      { ...previous, lines: [...lines].reverse() },
+      axesOf,
+    );
     assert.equal(demand.changed, false);
     assert.equal(demand.raisedProductIds.size, 0);
   });
@@ -142,10 +149,14 @@ describe("compareReservationDemand", () => {
   });
 
   test("quantity moved between two lines of a product raises nothing", () => {
-    const demand = compareReservationDemand(previous, {
-      ...previous,
-      lines: [{ productId: "bike", quantity: 1 }, { productId: "bike", quantity: 1 }, helmets],
-    });
+    const demand = compareReservationDemand(
+      previous,
+      {
+        ...previous,
+        lines: [{ productId: "bike", quantity: 1 }, { productId: "bike", quantity: 1 }, helmets],
+      },
+      axesOf,
+    );
     assert.deepEqual(demand, { changed: false, raisedProductIds: new Set() });
   });
 
@@ -159,6 +170,7 @@ describe("compareReservationDemand", () => {
     const demand = compareReservationDemand(
       { start: START, end: END, lines: [sized("S", 2), sized("L", 1), helmets] },
       { start: START, end: END, lines: [sized("S", 1), sized("L", 2), helmets] },
+      axesOf,
     );
     assert.equal(demand.changed, true);
     assert.deepEqual([...demand.raisedProductIds], ["wetsuit"]);
@@ -174,16 +186,52 @@ describe("compareReservationDemand", () => {
     const demand = compareReservationDemand(
       { start: START, end: END, lines: [sized("S", 2), sized("L", 1)] },
       { start: START, end: END, lines: [sized("S", 1), sized("L", 1)] },
+      axesOf,
     );
     assert.equal(demand.changed, true);
     assert.equal(demand.raisedProductIds.size, 0);
   });
 
-  test("a lower quantity or a removed line changes the demand without raising it", () => {
-    const demand = compareReservationDemand(previous, {
-      ...previous,
-      lines: [{ productId: "bike", quantity: 1 }],
+  test("a value kept from a dropped axis is no choice: such lines are one pool", () => {
+    // The colour axis is gone: both lines are served by any S, as the stock check reads them.
+    const line = (color: string, quantity: number) => ({
+      productId: "wetsuit",
+      quantity,
+      combinationKey: null,
+      selectedAttributes: { size: "S", color },
     });
+    const demand = compareReservationDemand(
+      { start: START, end: END, lines: [line("red", 2), line("blue", 1)] },
+      { start: START, end: END, lines: [line("red", 1), line("blue", 2)] },
+      axesOf,
+    );
+    assert.deepEqual(demand, { changed: false, raisedProductIds: new Set() });
+  });
+
+  test("a line of the pooled key and a line of no key are the same pool", () => {
+    const line = (combinationKey: string | null, quantity: number) => ({
+      productId: "wetsuit",
+      quantity,
+      combinationKey,
+      selectedAttributes: null,
+    });
+    const demand = compareReservationDemand(
+      { start: START, end: END, lines: [line("__default", 2), line(null, 1)] },
+      { start: START, end: END, lines: [line("__default", 1), line(null, 2)] },
+      axesOf,
+    );
+    assert.deepEqual(demand, { changed: false, raisedProductIds: new Set() });
+  });
+
+  test("a lower quantity or a removed line changes the demand without raising it", () => {
+    const demand = compareReservationDemand(
+      previous,
+      {
+        ...previous,
+        lines: [{ productId: "bike", quantity: 1 }],
+      },
+      axesOf,
+    );
     assert.equal(demand.changed, true);
     assert.equal(demand.raisedProductIds.size, 0);
   });
@@ -195,16 +243,20 @@ describe("compareReservationDemand", () => {
       { ...previous, start: new Date(START.getTime() + DAY), end: new Date(END.getTime() + DAY) },
     ]) {
       assert.deepEqual(raised(next), ["bike", "helmet"]);
-      assert.equal(compareReservationDemand(previous, next).changed, true);
+      assert.equal(compareReservationDemand(previous, next, axesOf).changed, true);
     }
   });
 
   test("a shorter window inside the previous one raises nothing", () => {
-    const demand = compareReservationDemand(previous, {
-      ...previous,
-      start: new Date(START.getTime() + DAY / 2),
-      end: new Date(END.getTime() - DAY / 2),
-    });
+    const demand = compareReservationDemand(
+      previous,
+      {
+        ...previous,
+        start: new Date(START.getTime() + DAY / 2),
+        end: new Date(END.getTime() - DAY / 2),
+      },
+      axesOf,
+    );
     assert.equal(demand.changed, true);
     assert.equal(demand.raisedProductIds.size, 0);
   });
