@@ -15,15 +15,21 @@ import {
 import type { UnitAttributes } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
+  calculatePeakReservedQuantities,
   canonicalizeAttributes,
   getDeterministicCombinationSortValue,
-  getProductCombinationAvailabilityKey,
   isPooledCombinationKey,
   matchesSelectedAttributes,
 } from "@louez/utils";
 
-import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "./availability";
-import { spreadAcrossCombinations } from "./pooled-allocation";
+import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
+import {
+  allocateStock,
+  combinationsServing,
+  demandInstants,
+  type StockCombination,
+  type StockLineAllocation,
+} from "./stock-allocation";
 import type { PricingCatalog } from "./pricing-catalog";
 import { validateRequiredAccessoryLines } from "./required-accessories";
 import { failReservation, type ReservationFailure } from "./reservation-failure";
@@ -141,9 +147,15 @@ type InventoryReserved = { ok: true; inventory: ReservedInventory };
  * Inside the reservation transaction, after `lockReservationProducts`:
  * re-check required accessories against the current links, recompute what is
  * reserved during the window (pending blocks unless the store says otherwise,
- * turnover buffer applied, consumables shared across lines) and allocate each
- * tracked line to a deterministic unit combination. Nothing is written; the
- * caller inserts.
+ * turnover buffer applied, consumables shared across lines) and give each
+ * tracked line its units. Nothing is written; the caller inserts.
+ *
+ * The lines of a tracked product fit when, at every instant of the window,
+ * they and the other bookings can all be given a unit of a combination they
+ * accept (`allocateStock`): another booking that left a size or a colour open
+ * is counted on every combination that can serve it, not on the product
+ * alone. A line resolves to a deterministic combination, or keeps its pooled
+ * key when any matching unit serves it.
  *
  * A line the stock cannot cover stops the check with
  * `errors.productNoLongerAvailable`. With `onShortfall: "collect"` it is
@@ -296,19 +308,23 @@ export async function reserveInventory({
     trackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
   );
   const excludedUnitInfo = await loadExcludedUnitInfo(tx, excludedProductUnitIds);
-  const combinationKeyByUnitId = new Map(
-    availableUnits.map((unit) => [unit.id, unit.combinationKey || DEFAULT_COMBINATION_KEY]),
-  );
+  const rentableUnitById = new Map(availableUnits.map((unit) => [unit.id, unit]));
 
-  const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
+  const netReservations = netOfExcludedUnits({
     reservations: overlappingReservations,
-    startDate: window.start,
-    endDate: window.end,
-    turnoverBufferMinutes,
     excludedProductUnitIds,
     excludedUnitInfo,
     consumableProductIds: new Set(consumableProductIds),
-    combinationKeyByUnitId,
+    combinationKeyByUnitId: new Map(
+      availableUnits.map((unit) => [unit.id, unit.combinationKey || DEFAULT_COMBINATION_KEY]),
+    ),
+  });
+  // Products counted by quantity: the most the other bookings hold at once.
+  const { reservedByProduct } = calculatePeakReservedQuantities({
+    reservations: netReservations,
+    startDate: window.start,
+    endDate: window.end,
+    turnoverBufferMinutes,
   });
   const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
     storeId,
@@ -319,85 +335,117 @@ export async function reserveInventory({
     reservedByProduct.set(productId, reservedQuantity);
   }
 
-  const combinationsByProduct = new Map<
-    string,
-    Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
+  // Products whose units are tracked: all the lines of a product are placed
+  // at once, next to what the other bookings ask of it at each instant.
+  const trackedByLineIndex = new Map<
+    number,
+    { allocation: StockLineAllocation; pooled: boolean; selectedAttributes: UnitAttributes }
   >();
-  for (const unit of availableUnits) {
-    const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
-    const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
-    const current = productCombinations.get(combinationKey);
-    // Same rule as availability: only the product's current axes are kept,
-    // so a value left over from a removed axis never lands on the booking.
-    const selectedAttributes = canonicalizeAttributes(
-      lockedProductsById.get(unit.productId)?.bookingAttributeAxes,
-      unit.attributes,
+  const combinationsByProduct = new Map<string, Map<string, StockCombination>>();
+  const bufferMs = Math.max(0, turnoverBufferMinutes) * 60_000;
+  for (const product of lockedProducts) {
+    if (!product.trackUnits) continue;
+    const axes = product.bookingAttributeAxes || [];
+    const productLines = lines.flatMap((line, index) =>
+      line.productId === product.id
+        ? [
+            {
+              line,
+              index,
+              pooled: isPooledLine(line, axes),
+              // A booked line keeps the attributes chosen at the time; only
+              // the product's current axes take part in matching, so a value
+              // from an axis withdrawn since then no longer blocks that line.
+              selectedAttributes: canonicalizeAttributes(axes, line.selectedAttributes),
+            },
+          ]
+        : [],
+    );
+    if (productLines.length === 0) continue;
+
+    const capacity = new Map<string, number>();
+    const combinationByKey = new Map<string, StockCombination>();
+    for (const unit of availableUnits) {
+      if (unit.productId !== product.id) continue;
+      const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
+      capacity.set(combinationKey, (capacity.get(combinationKey) ?? 0) + 1);
+      // Same rule as availability: only the product's current axes are kept,
+      // so a value left over from a removed axis never lands on the booking.
+      const selectedAttributes = canonicalizeAttributes(axes, unit.attributes);
+      const known = combinationByKey.get(combinationKey);
+      if (!known || Object.keys(known.selectedAttributes).length === 0) {
+        combinationByKey.set(combinationKey, { combinationKey, selectedAttributes });
+      }
+    }
+    combinationsByProduct.set(product.id, combinationByKey);
+    const sortValue = (combination: StockCombination) =>
+      getDeterministicCombinationSortValue(axes, combination.selectedAttributes);
+    const combinations = [...combinationByKey.values()].sort(
+      (a, b) =>
+        sortValue(a).localeCompare(sortValue(b), "en") ||
+        a.combinationKey.localeCompare(b.combinationKey, "en"),
     );
 
-    if (!current) {
-      productCombinations.set(combinationKey, { totalQuantity: 1, selectedAttributes });
-    } else {
-      current.totalQuantity += 1;
-      if (Object.keys(current.selectedAttributes).length === 0) {
-        current.selectedAttributes = selectedAttributes;
-      }
-      productCombinations.set(combinationKey, current);
-    }
+    // The span each other booking holds its units, inside the window, both
+    // widened by the turnover buffer as `calculatePeakReservedQuantities` does.
+    const spans = netReservations.flatMap((reservation) => {
+      const start = Math.max(reservation.startDate.getTime(), window.start.getTime());
+      const end = Math.min(reservation.endDate.getTime(), window.end.getTime()) + bufferMs;
+      return reservation.items.flatMap((item) =>
+        item.productId === product.id
+          ? [
+              {
+                start,
+                end,
+                demand: {
+                  quantity: item.quantity,
+                  combinationKeys: item.heldUnit
+                    ? [item.combinationKey || DEFAULT_COMBINATION_KEY]
+                    : combinationsServing(axes, combinations, item),
+                },
+              },
+            ]
+          : [],
+      );
+    });
 
-    combinationsByProduct.set(unit.productId, productCombinations);
+    const allocations = allocateStock({
+      capacity,
+      instants: demandInstants(spans),
+      lines: productLines.map(({ line, pooled, selectedAttributes }) => ({
+        quantity: line.quantity,
+        candidates: combinations
+          .filter(
+            (combination) =>
+              (!line.combinationKey ||
+                pooled ||
+                combination.combinationKey === line.combinationKey) &&
+              matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
+          )
+          .map((combination) => combination.combinationKey),
+        // A checkout line books one combination; a pooled line is served by
+        // any unit that matches what it chose, and keeps on their
+        // combinations the units it already holds.
+        single: !pooled,
+        held: pooled
+          ? (line.assignedUnitIds ?? []).flatMap((unitId) => {
+              const unit = rentableUnitById.get(unitId);
+              return unit?.productId === product.id
+                ? [unit.combinationKey || DEFAULT_COMBINATION_KEY]
+                : [];
+            })
+          : [],
+      })),
+    });
+    for (const [position, { index, pooled, selectedAttributes }] of productLines.entries()) {
+      const allocation = allocations[position];
+      if (allocation) trackedByLineIndex.set(index, { allocation, pooled, selectedAttributes });
+    }
   }
 
   const resolvedCombinationByLineKey = new Map<string, ResolvedLineCombination>();
 
-  // Units already held by pooled lines are charged first, across every line,
-  // so a floating line never takes a unit another line of the booking holds.
-  // Each held unit must still fit its combination next to the other bookings.
-  const heldCountByLineKey = new Map<string, number>();
-  // Collect mode only: held units whose combination is already full.
-  const unfitHeldCountByLineKey = new Map<string, number>();
   for (const [index, line] of lines.entries()) {
-    const product = lockedProductsById.get(line.productId);
-    if (!product?.trackUnits || !line.assignedUnitIds?.length) continue;
-    if (!isPooledLine(line, product.bookingAttributeAxes)) continue;
-    const productCombinations = combinationsByProduct.get(product.id) || new Map();
-    let held = 0;
-    let unfit = 0;
-    for (const unitId of line.assignedUnitIds) {
-      if (held + unfit >= line.quantity) break;
-      const combinationKey = combinationKeyByUnitId.get(unitId);
-      if (!combinationKey) continue;
-      const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
-      const total = productCombinations.get(combinationKey)?.totalQuantity ?? 0;
-      if (total - (reservedByProductCombination.get(key) || 0) < 1) {
-        if (!collect) {
-          return failReservation("errors.productNoLongerAvailable", { name: product.name });
-        }
-        unfit += 1;
-        continue;
-      }
-      reservedByProductCombination.set(key, (reservedByProductCombination.get(key) || 0) + 1);
-      held += 1;
-    }
-    const lineKey = getReservationLineKey(line, index);
-    heldCountByLineKey.set(lineKey, held);
-    unfitHeldCountByLineKey.set(lineKey, unfit);
-  }
-
-  // Lines that chose a combination keep their order; pooled lines come last,
-  // the ones that chose the most first, so a pooled line never takes the
-  // unit a specific line of the same booking needs.
-  const orderedLines = lines
-    .map((line, index) => {
-      const axes = lockedProductsById.get(line.productId)?.bookingAttributeAxes;
-      const pooled = isPooledLine(line, axes);
-      const chosen = pooled
-        ? Object.keys(canonicalizeAttributes(axes, line.selectedAttributes)).length
-        : 0;
-      return { line, index, rank: pooled ? 1 : 0, chosen };
-    })
-    .sort((a, b) => a.rank - b.rank || b.chosen - a.chosen || a.index - b.index);
-
-  for (const { line, index } of orderedLines) {
     const product = lockedProductsById.get(line.productId);
     if (!product) return failReservation("errors.productNotFound");
     if (skipConsumableCheck && product.stockKind === "consumable") continue;
@@ -422,145 +470,42 @@ export async function reserveInventory({
       continue;
     }
 
-    const axes = product.bookingAttributeAxes || [];
-    const productCombinations = combinationsByProduct.get(product.id) || new Map();
-    // A booked line keeps the attributes chosen at the time; only the
-    // product's current axes take part in matching, so a value from an axis
-    // withdrawn since then no longer blocks the confirmation of that line.
-    const selectedAttributes = canonicalizeAttributes(axes, line.selectedAttributes);
-    // A line booked without a choice is served by any unit; units already
-    // promised to such lines are counted on the product, so every line must
-    // also fit in the product's remaining stock, not only in its combination.
-    const pooledLine = isPooledLine(line, axes);
-    const productTotalQuantity = [...productCombinations.values()].reduce(
-      (sum, combinationData) => sum + combinationData.totalQuantity,
-      0,
-    );
-    const productReservedQuantity = reservedByProduct.get(line.productId) || 0;
-    const productFreeQuantity = Math.max(0, productTotalQuantity - productReservedQuantity);
-    if (line.quantity > productFreeQuantity && !collect) {
-      return failReservation("errors.productNoLongerAvailable", { name: product.name });
+    const tracked = trackedByLineIndex.get(index);
+    if (!tracked) continue;
+    const { allocation, pooled, selectedAttributes } = tracked;
+    if (allocation.served < line.quantity) {
+      if (!collect) {
+        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+      }
+      recordShortfall(
+        index,
+        line,
+        product,
+        !pooled && line.combinationKey && line.combinationKey !== DEFAULT_COMBINATION_KEY
+          ? line.combinationKey
+          : null,
+        allocation.served,
+      );
     }
 
-    const candidates = [...productCombinations.entries()]
-      .map(([combinationKey, combinationData]) => ({ combinationKey, ...combinationData }))
-      .filter(
-        (combination) =>
-          (!line.combinationKey ||
-            pooledLine ||
-            combination.combinationKey === line.combinationKey) &&
-          matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
-      )
-      .sort((a, b) => {
-        const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes);
-        const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes);
-        return sortA.localeCompare(sortB, "en");
-      });
-    const freeInCombination = (combinationKey: string, totalQuantity: number) =>
-      Math.max(
-        0,
-        totalQuantity -
-          (reservedByProductCombination.get(
-            getProductCombinationAvailabilityKey(product.id, combinationKey),
-          ) || 0),
-      );
-
-    if (pooledLine) {
-      // No single combination has to cover a pooled line. Its held units were
-      // charged above; the rest is taken wherever units are left, and the
-      // line keeps its pooled key.
-      const lineKey = getReservationLineKey(line, index);
-      const held = heldCountByLineKey.get(lineKey) ?? 0;
-      const unfitHeld = unfitHeldCountByLineKey.get(lineKey) ?? 0;
-      const wanted = line.quantity - held - unfitHeld;
-      const floating = spreadAcrossCombinations(
-        candidates,
-        (combinationKey) =>
-          reservedByProductCombination.get(
-            getProductCombinationAvailabilityKey(product.id, combinationKey),
-          ) || 0,
-        // Collect mode only: a line the product cannot cover takes what it has left.
-        Math.max(0, Math.min(wanted, productFreeQuantity - held)),
-      );
-      const served = Math.min(
-        productFreeQuantity,
-        held + [...floating.taken.values()].reduce((sum, quantity) => sum + quantity, 0),
-      );
-      if (served < line.quantity) {
-        if (!collect) {
-          return failReservation("errors.productNoLongerAvailable", { name: product.name });
-        }
-        recordShortfall(index, line, product, null, served);
-      }
-      for (const [combinationKey, quantity] of floating.taken) {
-        const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
-        reservedByProductCombination.set(
-          key,
-          (reservedByProductCombination.get(key) || 0) + quantity,
-        );
-      }
-      reservedByProduct.set(line.productId, (reservedByProduct.get(line.productId) || 0) + served);
+    const lineKey = getReservationLineKey(line, index);
+    if (pooled) {
+      // No single combination has to cover a pooled line: it keeps its pooled key.
       resolvedCombinationByLineKey.set(lineKey, {
         combinationKey: line.combinationKey ?? DEFAULT_COMBINATION_KEY,
         selectedAttributes,
       });
       continue;
     }
-
-    let resolvedCombination = candidates.find(
-      (candidate) =>
-        freeInCombination(candidate.combinationKey, candidate.totalQuantity) >= line.quantity,
-    );
-    let served = line.quantity;
-
-    if (!resolvedCombination || line.quantity > productFreeQuantity) {
-      if (!collect) {
-        return failReservation("errors.productNoLongerAvailable", { name: product.name });
-      }
-      // The line takes what is left of the combination that has the most, the
-      // first of them in the deterministic order.
-      resolvedCombination ??= candidates.reduce<(typeof candidates)[number] | undefined>(
-        (best, candidate) =>
-          best &&
-          freeInCombination(best.combinationKey, best.totalQuantity) >=
-            freeInCombination(candidate.combinationKey, candidate.totalQuantity)
-            ? best
-            : candidate,
-        undefined,
-      );
-      served = Math.min(
-        line.quantity,
-        productFreeQuantity,
-        resolvedCombination
-          ? freeInCombination(resolvedCombination.combinationKey, resolvedCombination.totalQuantity)
-          : 0,
-      );
-      recordShortfall(
-        index,
-        line,
-        product,
-        line.combinationKey && line.combinationKey !== DEFAULT_COMBINATION_KEY
-          ? line.combinationKey
-          : null,
-        served,
-      );
-    }
-
-    reservedByProduct.set(line.productId, (reservedByProduct.get(line.productId) || 0) + served);
-    if (!resolvedCombination) continue;
-
-    const key = getProductCombinationAvailabilityKey(
-      product.id,
-      resolvedCombination.combinationKey,
-    );
-    reservedByProductCombination.set(key, (reservedByProductCombination.get(key) || 0) + served);
-
-    resolvedCombinationByLineKey.set(getReservationLineKey(line, index), {
-      combinationKey: resolvedCombination.combinationKey,
-      selectedAttributes: toResolvedAttributes(
-        selectedAttributes,
-        resolvedCombination.selectedAttributes,
-      ),
+    const [resolvedKey] = allocation.byCombination.keys();
+    const resolved =
+      resolvedKey === undefined
+        ? undefined
+        : combinationsByProduct.get(product.id)?.get(resolvedKey);
+    if (!resolved) continue;
+    resolvedCombinationByLineKey.set(lineKey, {
+      combinationKey: resolved.combinationKey,
+      selectedAttributes: toResolvedAttributes(selectedAttributes, resolved.selectedAttributes),
     });
   }
 

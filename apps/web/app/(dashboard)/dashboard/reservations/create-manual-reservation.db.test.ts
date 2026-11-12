@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import * as nodeModule from "node:module";
 import { after, before, describe, test } from "node:test";
 
 import { and, eq } from "drizzle-orm";
@@ -32,6 +33,48 @@ const SETTINGS: StoreSettings = {
 };
 /** What the marketplace's checkout proves it is with. */
 const MARKETPLACE_SECRET = "test-marketplace-secret";
+
+// The insurer, as the action sees it: connected with a quote of the amount a
+// test puts under this key, and not connected while it holds none.
+const INSURANCE_QUOTE_KEY = "__louezCreationTestInsuranceQuote";
+const quoted = `globalThis[${JSON.stringify(INSURANCE_QUOTE_KEY)}]`;
+const INSURER_STUBS: Record<string, string> = {
+  "@/lib/integrations/tulip/state": `export async function resolveTulipIntegrationForStore() {
+    const enabled = ${quoted} != null;
+    return { settings: { enabled, connectedAt: null, publicMode: enabled ? "optional" : "no_public", renterUid: null } };
+  }\n`,
+  "@/lib/integrations/tulip/contracts": `export async function previewTulipQuoteForCheckout({ items }) {
+    return { shouldApply: true, amount: ${quoted}, inclusionEnabled: false, insuredProductCount: items.length, uninsuredProductCount: 0, insuredProductIds: items.map((item) => item.productId) };
+  }
+  export async function getTulipCoverageSummary() { return { insuredProductCount: 0, uninsuredProductCount: 0, insuredProductIds: [] }; }
+  export async function createTulipContractForReservation() {}
+  export async function syncTulipContractForReservation() {}\n`,
+};
+const INSURER_SCHEME = "louez-creation-test-insurer:";
+Reflect.get(
+  nodeModule,
+  "registerHooks",
+)({
+  resolve(
+    specifier: string,
+    context: { parentURL?: string },
+    next: (specifier: string, context: unknown) => unknown,
+  ) {
+    const parent = context.parentURL ? decodeURIComponent(context.parentURL) : "";
+    if (parent.endsWith("/dashboard/reservations/actions.ts") && specifier in INSURER_STUBS) {
+      return { shortCircuit: true, url: `${INSURER_SCHEME}${specifier}` };
+    }
+    return next(specifier, context);
+  },
+  load(url: string, context: unknown, next: (url: string, context: unknown) => unknown) {
+    if (!url.startsWith(INSURER_SCHEME)) return next(url, context);
+    return {
+      shortCircuit: true,
+      format: "module",
+      source: INSURER_STUBS[url.slice(INSURER_SCHEME.length)],
+    };
+  },
+});
 
 type CompetingStatus =
   | "pending"
@@ -184,6 +227,8 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       end?: Date;
       source?: string;
       size?: string;
+      /** What the line chose with no exact combination: any unit that matches serves it. */
+      chosen?: UnitAttributes;
       assignedUnitId?: string;
     } = {},
   ) {
@@ -212,7 +257,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       totalPrice: "20.00",
       productSnapshot: { name: "Line", description: null, images: [] },
       combinationKey: options.size ? `size:${options.size}` : null,
-      selectedAttributes: options.size ? { size: options.size } : null,
+      selectedAttributes: options.size ? { size: options.size } : (options.chosen ?? null),
     });
     if (options.assignedUnitId) {
       await louezDb.db.insert(louezDb.reservationItemUnits).values({
@@ -227,9 +272,19 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
 
   type Line = { productId: string; quantity: number; selectedAttributes?: UnitAttributes };
 
+  type CustomLine = { name: string; unitPrice: number; quantity: number };
+
   const create = (
     items: Line[],
-    options: { allowOverbooking?: boolean; sendAsQuote?: boolean } = {},
+    {
+      customLines,
+      ...options
+    }: {
+      allowOverbooking?: boolean;
+      sendAsQuote?: boolean;
+      tulipInsuranceOptIn?: boolean;
+      customLines?: CustomLine[];
+    } = {},
   ): Promise<{
     success?: boolean;
     reservationId?: string;
@@ -241,6 +296,12 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       startDate: START,
       endDate: END,
       items,
+      customItems: customLines?.map((line) => ({
+        ...line,
+        description: "",
+        deposit: 0,
+        pricingMode: "day" as const,
+      })),
       sendConfirmationEmail: false,
       ...options,
     });
@@ -633,6 +694,333 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
     });
   });
 
+  describe("a product sold by size and colour, booked one after the other", () => {
+    /** One red M, one blue M, one red L. */
+    const wetsuitsBySizeAndColour = () =>
+      trackedProduct(
+        [
+          { size: "M", color: "red" },
+          { size: "M", color: "blue" },
+          { size: "L", color: "red" },
+        ],
+        ["size", "color"],
+      );
+    const mediumRed = (productId: string) => [
+      { productId, quantity: 1, selectedAttributes: { size: "M", color: "red" } },
+    ];
+
+    test("two M of any colour, then a red M: the red M is promised already", async () => {
+      const wetsuits = await wetsuitsBySizeAndColour();
+      const first = await writtenBy(
+        await create([{ productId: wetsuits.id, quantity: 2, selectedAttributes: { size: "M" } }]),
+      );
+      assert.deepEqual(combinationsOf(first, wetsuits.id), [[2, null, { size: "M" }]]);
+      assert.equal(first.created.overbooked, false);
+      const before = await storeCounts();
+
+      // Three M would be out for the two the store has.
+      assert.deepEqual(
+        await create(mediumRed(wetsuits.id)),
+        refusedWith(shortfall(wetsuits.id, "Wetsuit", 1, 0, "size:M|color:red")),
+      );
+      assert.deepEqual(await storeCounts(), before);
+
+      // The L is not one of them.
+      const large = await writtenBy(
+        await create([
+          { productId: wetsuits.id, quantity: 1, selectedAttributes: { size: "L", color: "red" } },
+        ]),
+      );
+      assert.equal(large.created.overbooked, false);
+    });
+
+    test("the red M booked over them is traced with its shortfall", async () => {
+      const wetsuits = await wetsuitsBySizeAndColour();
+      await booked(wetsuits.id, 2, { chosen: { size: "M" } });
+
+      const written = await writtenBy(
+        await create(mediumRed(wetsuits.id), { allowOverbooking: true }),
+      );
+
+      assert.deepEqual(written.created.overbookingShortfalls, [
+        shortfall(wetsuits.id, "Wetsuit", 1, 0, "size:M|color:red"),
+      ]);
+      assert.ok((await overbookedInInbox()).includes(written.reservationId));
+    });
+
+    test("a request that chose a colour alone holds it too, unless requests do not block", async () => {
+      const wetsuits = await wetsuitsBySizeAndColour();
+      await booked(wetsuits.id, 2, { status: "pending", chosen: { color: "red" } });
+      const reds = [{ productId: wetsuits.id, quantity: 1, selectedAttributes: { color: "red" } }];
+
+      assert.deepEqual(await create(reds), refusedWith(shortfall(wetsuits.id, "Wetsuit", 1, 0)));
+      await writtenBy(await withSettings({ pendingBlocksAvailability: false }, () => create(reds)));
+    });
+
+    test("a marketplace checkout finds the red M promised, and the red L free", async () => {
+      const wetsuits = await wetsuitsBySizeAndColour();
+      await writtenBy(
+        await create([{ productId: wetsuits.id, quantity: 2, selectedAttributes: { size: "M" } }]),
+      );
+      /** A marketplace booking of one unit, through the checkout's own stock check. */
+      const marketplaceBooks = async (selectedAttributes: UnitAttributes) => {
+        const holdId = nextId("hold").padEnd(21, "0");
+        await louezDb.db.insert(louezDb.marketplaceBookingAttempts).values({
+          id: nextId("att"),
+          bookingAttemptId: `attempt-${holdId}`,
+          storeId: STORE,
+          quoteTokenHash: "0".repeat(64),
+          holdId,
+          reservationId: holdId,
+          status: "creating_hold",
+          expiresAt: new Date(Date.now() + 30 * MINUTE),
+        });
+        const result = await checkout.createReservation({
+          source: "marketplace",
+          marketplaceSecret: MARKETPLACE_SECRET,
+          reservationId: holdId,
+          storeId: STORE,
+          customer: { email: "walker@example.test", firstName: "Walk", lastName: "In" },
+          items: [
+            {
+              lineId: "0",
+              productId: wetsuits.id,
+              quantity: 1,
+              startDate: START.toISOString(),
+              endDate: END.toISOString(),
+              unitPrice: 10,
+              depositPerUnit: 0,
+              selectedAttributes,
+            },
+          ],
+          subtotalAmount: 20,
+          depositAmount: 0,
+          totalAmount: 20,
+        });
+        return { holdId, outcome: result.ok ? "written" : result.error };
+      };
+
+      assert.equal(
+        (await marketplaceBooks({ size: "M", color: "red" })).outcome,
+        "errors.productNoLongerAvailable",
+      );
+      // A cart line that chose the size alone finds no M either.
+      assert.equal(
+        (await marketplaceBooks({ size: "M" })).outcome,
+        "errors.productNoLongerAvailable",
+      );
+
+      const large = await marketplaceBooks({ color: "red" });
+      assert.equal(large.outcome, "written");
+      const lines = await louezDb.db
+        .select({ combinationKey: louezDb.reservationItems.combinationKey })
+        .from(louezDb.reservationItems)
+        .where(eq(louezDb.reservationItems.reservationId, large.holdId));
+      // The red M comes first in the order of the combinations: it is passed over.
+      assert.deepEqual(lines, [{ combinationKey: "size:L|color:red" }]);
+    });
+  });
+
+  describe("lines that are not a product", () => {
+    /** The lines a creation wrote, in the order it wrote them. */
+    async function linesOf(reservationId: string) {
+      const i = louezDb.reservationItems;
+      const rows = await louezDb.db
+        .select({
+          productId: i.productId,
+          isCustomItem: i.isCustomItem,
+          quantity: i.quantity,
+          totalPrice: i.totalPrice,
+          combinationKey: i.combinationKey,
+          productSnapshot: i.productSnapshot,
+        })
+        .from(i)
+        .where(eq(i.reservationId, reservationId));
+      const [reservationRow] = await louezDb.db
+        .select({
+          subtotalAmount: louezDb.reservations.subtotalAmount,
+          totalAmount: louezDb.reservations.totalAmount,
+          tulipInsuranceAmount: louezDb.reservations.tulipInsuranceAmount,
+        })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, reservationId));
+      return {
+        reservationRow,
+        lines: rows
+          .map((row) => ({
+            name: row.productSnapshot.name,
+            productId: row.productId,
+            isCustomItem: row.isCustomItem,
+            quantity: row.quantity,
+            totalPrice: row.totalPrice,
+            combinationKey: row.combinationKey,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, "en")),
+      };
+    }
+    const delivery = { name: "Delivery", unitPrice: 5, quantity: 50 };
+    const custom = (name: string, quantity: number, totalPrice: string) => ({
+      name,
+      productId: null,
+      isCustomItem: true,
+      quantity,
+      totalPrice,
+      combinationKey: null,
+    });
+
+    test("a custom line is written whatever its quantity, and takes no stock", async () => {
+      const bikes = await product("Bike", 1);
+
+      const written = await writtenBy(
+        await create([{ productId: bikes, quantity: 1 }], { customLines: [delivery] }),
+      );
+
+      assert.equal(written.created.overbooked, false);
+      const { lines, reservationRow } = await linesOf(written.reservationId);
+      assert.deepEqual(lines, [
+        { ...custom("Bike", 1, "20.00"), productId: bikes, isCustomItem: false },
+        custom("Delivery", 50, "500.00"),
+      ]);
+      assert.equal(reservationRow?.subtotalAmount, "520.00");
+    });
+
+    test("a custom line is not listed among the shortfalls of a booking that is short", async () => {
+      const bikes = await product("Bike", 1);
+      const before = await storeCounts();
+
+      assert.deepEqual(
+        await create([{ productId: bikes, quantity: 2 }], { customLines: [delivery] }),
+        refusedWith(shortfall(bikes, "Bike", 2, 1)),
+      );
+      assert.deepEqual(await storeCounts(), before);
+
+      const written = await writtenBy(
+        await create([{ productId: bikes, quantity: 2 }], {
+          customLines: [delivery],
+          allowOverbooking: true,
+        }),
+      );
+      assert.deepEqual(written.created.overbookingShortfalls, [shortfall(bikes, "Bike", 2, 1)]);
+    });
+
+    test("the insurance is written as a line of its own, and takes no stock", async () => {
+      const bikes = await product("Bike", 1);
+      Reflect.set(globalThis, INSURANCE_QUOTE_KEY, 12.5);
+      try {
+        const written = await writtenBy(
+          await create([{ productId: bikes, quantity: 1 }], {
+            customLines: [delivery],
+            tulipInsuranceOptIn: true,
+          }),
+        );
+
+        assert.equal(written.created.overbooked, false);
+        assert.equal(written.created.tulipInsuranceAmount, 12.5);
+        const { lines, reservationRow } = await linesOf(written.reservationId);
+        assert.deepEqual(lines, [
+          { ...custom("Bike", 1, "20.00"), productId: bikes, isCustomItem: false },
+          custom("Delivery", 50, "500.00"),
+          custom("Garantie casse/vol", 1, "12.50"),
+        ]);
+        assert.deepEqual(
+          [reservationRow?.subtotalAmount, reservationRow?.tulipInsuranceAmount],
+          ["532.50", "12.50"],
+        );
+
+        // Short of bikes, with the insurance asked: the bike alone is listed.
+        assert.deepEqual(
+          await create([{ productId: bikes, quantity: 1 }], { tulipInsuranceOptIn: true }),
+          refusedWith(shortfall(bikes, "Bike", 1, 0)),
+        );
+      } finally {
+        Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
+      }
+    });
+  });
+
+  describe("a creation, then an edit", () => {
+    /** The verdicts a reservation's history holds, oldest first: its creation, then its edits. */
+    async function verdictsOf(reservationId: string) {
+      const a = louezDb.reservationActivity;
+      const rows = await louezDb.db
+        .select({ type: a.activityType, metadata: a.metadata, createdAt: a.createdAt })
+        .from(a)
+        .where(eq(a.reservationId, reservationId))
+        .orderBy(a.createdAt);
+      return rows.flatMap((row) =>
+        row.metadata && "overbooked" in row.metadata
+          ? [[row.type, row.metadata.overbooked, row.metadata.overbookingShortfalls ?? null]]
+          : [],
+      );
+    }
+
+    /** The reservation's one line, as the edit form submits it with another quantity. */
+    async function withQuantity(reservationId: string, quantity: number) {
+      const [line] = await louezDb.db
+        .select({ id: louezDb.reservationItems.id, productId: louezDb.reservationItems.productId })
+        .from(louezDb.reservationItems)
+        .where(eq(louezDb.reservationItems.reservationId, reservationId));
+      assert.ok(line?.productId);
+      return [
+        {
+          id: line.id,
+          productId: line.productId,
+          quantity,
+          unitPrice: 10,
+          depositPerUnit: 0,
+          productSnapshot: { name: "Bike" },
+        },
+      ];
+    }
+
+    test("that fits, then is forced over the stock: the inbox shows it after the edit", async () => {
+      const bikes = await product("Bike", 2);
+      const { reservationId } = await writtenBy(await create([{ productId: bikes, quantity: 2 }]));
+      assert.ok(!(await overbookedInInbox()).includes(reservationId));
+
+      const items = await withQuantity(reservationId, 3);
+      assert.deepEqual(await actions.updateReservation(reservationId, { items }), {
+        error: "errors.insufficientCapacity",
+        shortfalls: [shortfall(bikes, "Bike", 3, 2)],
+      });
+      assert.ok(
+        !(await overbookedInInbox()).includes(reservationId),
+        "a refused edit shows nothing",
+      );
+
+      const forced = await actions.updateReservation(reservationId, {
+        items,
+        allowOverbooking: true,
+      });
+      assert.equal(forced.error, undefined);
+      assert.deepEqual(await verdictsOf(reservationId), [
+        ["created", false, null],
+        ["modified", true, [shortfall(bikes, "Bike", 3, 2)]],
+      ]);
+      assert.ok((await overbookedInInbox()).includes(reservationId));
+    });
+
+    test("that is forced over the stock, then fits: the inbox drops it after the edit", async () => {
+      const bikes = await product("Bike", 2);
+      const { reservationId } = await writtenBy(
+        await create([{ productId: bikes, quantity: 3 }], { allowOverbooking: true }),
+      );
+      assert.ok((await overbookedInInbox()).includes(reservationId));
+
+      // Back within the stock: no override is asked.
+      const fitted = await actions.updateReservation(reservationId, {
+        items: await withQuantity(reservationId, 2),
+      });
+
+      assert.equal(fitted.error, undefined);
+      assert.deepEqual(await verdictsOf(reservationId), [
+        ["created", true, [shortfall(bikes, "Bike", 3, 2)]],
+        ["modified", false, null],
+      ]);
+      assert.ok(!(await overbookedInInbox()).includes(reservationId));
+    });
+  });
+
   describe("a consumable product", () => {
     test("with enough on hand is written, and a confirmed booking takes it", async () => {
       const gas = await product("Gas", 5, "consumable");
@@ -876,8 +1264,8 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
   });
 
   describe("a marketplace hold", () => {
-    async function hold(productId: string, expiresAt: Date) {
-      const reservationId = await booked(productId, 1, {
+    async function hold(productId: string, expiresAt: Date, quantity = 1) {
+      const reservationId = await booked(productId, quantity, {
         status: "pending",
         source: "marketplace",
       });

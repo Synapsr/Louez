@@ -783,6 +783,84 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       });
     });
 
+    test("dates moved onto a booking that chose the size alone find that size promised", async () => {
+      // One red M, one blue M, one red L, sold by size and colour.
+      const wetsuits = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: wetsuits,
+        storeId: STORE,
+        name: "Wetsuit",
+        price: "10.00",
+        pricingMode: "day",
+        trackUnits: true,
+        bookingAttributeAxes: [
+          { key: "size", label: "Size", position: 0 },
+          { key: "color", label: "Color", position: 1 },
+        ],
+        quantity: 3,
+      });
+      for (const [size, color] of [
+        ["M", "red"],
+        ["M", "blue"],
+        ["L", "red"],
+      ]) {
+        await louezDb.db.insert(louezDb.productUnits).values({
+          id: nextId("unt"),
+          productId: wetsuits,
+          identifier: `${size}-${color}`,
+          attributes: { size, color },
+          combinationKey: `size:${size}|color:${color}`,
+        });
+      }
+      /** A line of the product on a booking, with the combination or the open choice given. */
+      const choose = (
+        booking: { itemId: string },
+        choice: { combinationKey: string | null; selectedAttributes: Record<string, string> },
+      ) =>
+        louezDb.db
+          .update(louezDb.reservationItems)
+          .set(choice)
+          .where(eq(louezDb.reservationItems.id, booking.itemId));
+      // Two M of any colour are promised on the window.
+      const anyMedium = await reservation({ productId: wetsuits, quantity: 2 });
+      await choose(anyMedium, { combinationKey: null, selectedAttributes: { size: "M" } });
+      // A red M booked five days later moves onto it.
+      const later = {
+        start: new Date(START.getTime() + 5 * DAY),
+        end: new Date(END.getTime() + 5 * DAY),
+      };
+      const mediumRed = await reservation({ productId: wetsuits, quantity: 1 }, later);
+      await choose(mediumRed, {
+        combinationKey: "size:M|color:red",
+        selectedAttributes: { size: "M", color: "red" },
+      });
+      const before = await rowsOf(mediumRed.id);
+      const moved = { startDate: START, endDate: END };
+      const short = {
+        productId: wetsuits,
+        productName: "Wetsuit",
+        combinationKey: "size:M|color:red",
+        requested: 1,
+        available: 0,
+      };
+
+      // Three M would be out for the two the store has.
+      assert.deepEqual(await actions.updateReservation(mediumRed.id, moved), {
+        error: "errors.insufficientCapacity",
+        shortfalls: [short],
+      });
+      assert.deepEqual(await rowsOf(mediumRed.id), before);
+
+      const forced = await actions.updateReservation(mediumRed.id, {
+        ...moved,
+        allowOverbooking: true,
+      });
+      assert.equal(forced.error, undefined);
+      const [verdict] = await activityOf(mediumRed.id);
+      assert.deepEqual([verdict?.overbooked, verdict?.overbookingShortfalls], [true, [short]]);
+      assert.ok((await overbookedInInbox()).includes(mediumRed.id));
+    });
+
     test("a line added with no size is served by units of every size", async () => {
       // Two S and one L cover three units of any size: no override is asked.
       const wetsuits = await sizedProduct(["S", "S", "L"]);
