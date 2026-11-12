@@ -5084,7 +5084,8 @@ export async function assignUnitsToReservationItem(
           });
         const strictStock = await checkStock(0);
         if (!strictStock.ok) {
-          return { error: "errors.invalidUnits", failedUnitIds: addedUnitIds };
+          // The units are valid; the stock is short: another booking needs them.
+          return { error: "errors.insufficientCapacity", failedUnitIds: addedUnitIds };
         }
         if (!overrideTurnoverBuffer && turnoverBufferMinutes > 0) {
           const bufferedStock = await checkStock(turnoverBufferMinutes);

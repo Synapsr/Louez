@@ -162,7 +162,9 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
     await database?.drop();
   });
 
-  const nextId = (prefix: string) => `${prefix}_${++counter}`;
+  // 21 characters, as nanoid ids: the unit assignment checks their shape.
+  const nextId = (prefix: string) =>
+    `${prefix}_${String(++counter).padStart(20 - prefix.length, "0")}`;
 
   /** A product counted by quantity, at 10.00 a day. */
   async function product(
@@ -818,6 +820,46 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
         .where(eq(louezDb.reservationItems.reservationId, large.holdId));
       // The red M comes first in the order of the combinations: it is passed over.
       assert.deepEqual(lines, [{ combinationKey: "size:L|color:red" }]);
+    });
+  });
+
+  describe("a unit given to a line of no size or colour", () => {
+    /** A red M and a blue L; another booking chose red, and left the size open. */
+    async function assigning() {
+      const wetsuits = await trackedProduct(
+        [
+          { size: "M", color: "red" },
+          { size: "L", color: "blue" },
+        ],
+        ["size", "color"],
+      );
+      await booked(wetsuits.id, 1, { chosen: { color: "red" } });
+      const reservationId = await booked(wetsuits.id, 1);
+      const [line] = await louezDb.db
+        .select({ id: louezDb.reservationItems.id })
+        .from(louezDb.reservationItems)
+        .where(eq(louezDb.reservationItems.reservationId, reservationId));
+      assert.ok(line);
+      const [redM = "", blueL = ""] = wetsuits.unitIds;
+      return { itemId: line.id, redM, blueL };
+    }
+
+    test("the unit the other booking's choice needs is refused for lack of stock", async () => {
+      const { itemId, redM } = await assigning();
+
+      // The unit is valid: what is short is the stock, which owes the red M.
+      assert.deepEqual(await actions.assignUnitsToReservationItem(itemId, [redM]), {
+        error: "errors.insufficientCapacity",
+        failedUnitIds: [redM],
+      });
+    });
+
+    test("a unit the other booking does not need is assigned", async () => {
+      const { itemId, blueL } = await assigning();
+
+      const result = await actions.assignUnitsToReservationItem(itemId, [blueL]);
+
+      assert.equal(result.error, undefined);
     });
   });
 
