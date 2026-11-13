@@ -64,7 +64,7 @@ import {
 } from "../platform/links";
 import type { LogPort, ProductImageOperation, UrlsPort } from "../platform/ports";
 import { HANDOFF_KINDS } from "../contracts/handoffs";
-import { CAPACITY_VERDICT_ACTIVITY_TYPES } from "./capacity-verdict";
+import { CAPACITY_VERDICT_ACTIVITY_TYPES } from "../contracts/reservations";
 import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";

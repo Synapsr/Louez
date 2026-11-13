@@ -23,13 +23,14 @@ import {
   matchesSelectedAttributes,
 } from "@louez/utils";
 
-import type { ReservationUnitConflict } from "../contracts/reservations";
+import type { CapacityShortfall, ReservationUnitConflict } from "../contracts/reservations";
 
 import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
 import { capacityVerdictMetadata, nextCapacityVerdictDate } from "./capacity-verdict";
 import {
   allocateStock,
   combinationsServing,
+  heldUnitsOwed,
   type StockCombination,
   type StockLineAllocation,
 } from "./stock-allocation";
@@ -68,19 +69,6 @@ export interface ResolvedLineCombination {
 }
 
 type LockedProduct = typeof products.$inferSelect;
-
-/**
- * A line the stock cannot cover whole: how many units it asks for, and how
- * many of them are left next to the other bookings and the lines before it.
- */
-export interface CapacityShortfall {
-  productId: string;
-  productName: string;
-  /** The combination the line chose; null for a counted product or a line served by any unit. */
-  combinationKey: string | null;
-  requested: number;
-  available: number;
-}
 
 export interface ReservedInventory {
   lockedProductsById: Map<string, LockedProduct>;
@@ -168,11 +156,24 @@ type InventoryReserved = { ok: true; inventory: ReservedInventory };
  * `errors.productNoLongerAvailable`. With `onShortfall: "collect"` it is
  * recorded instead, takes what is left, and the other lines are still checked:
  * the answer then lists every shortfall, in the order of the lines, for a
- * caller that may book over the stock.
+ * caller that may book over the stock, and each unit a line holds that the
+ * other bookings need, decided apart from the allocation (`heldUnitsOwed`).
  */
 export function reserveInventory(
   input: ReserveInventoryInput & { onShortfall: "collect" },
-): Promise<(InventoryReserved & { shortfalls: CapacityShortfall[] }) | ReservationFailure>;
+): Promise<
+  | (InventoryReserved & {
+      shortfalls: CapacityShortfall[];
+      /** The position in `lines` of each shortfall, in the same order. */
+      shortfallLineIndexes: number[];
+      /**
+       * The units held by the lines (`assignedUnitIds`) that the other
+       * bookings need, in the order of the lines (`heldUnitsOwed`).
+       */
+      uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }>;
+    })
+  | ReservationFailure
+>;
 export function reserveInventory(
   input: ReserveInventoryInput & { onShortfall?: "fail" },
 ): Promise<InventoryReserved | ReservationFailure>;
@@ -190,10 +191,16 @@ export async function reserveInventory({
   skipRequiredAccessoryCheck = false,
   onShortfall = "fail",
 }: ReserveInventoryInput & { onShortfall?: "fail" | "collect" }): Promise<
-  (InventoryReserved & { shortfalls?: CapacityShortfall[] }) | ReservationFailure
+  | (InventoryReserved & {
+      shortfalls?: CapacityShortfall[];
+      shortfallLineIndexes?: number[];
+      uncoveredHeldUnits?: Array<{ lineIndex: number; unitId: string }>;
+    })
+  | ReservationFailure
 > {
   const collect = onShortfall === "collect";
   const shortfallByLineIndex = new Map<number, CapacityShortfall>();
+  const uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }> = [];
   const recordShortfall = (
     index: number,
     line: ReserveInventoryLine,
@@ -209,16 +216,17 @@ export async function reserveInventory({
       available,
     });
   };
-  const succeed = (inventory: ReservedInventory) =>
-    collect
-      ? {
-          ok: true as const,
-          inventory,
-          shortfalls: [...shortfallByLineIndex.entries()]
-            .sort(([a], [b]) => a - b)
-            .map(([, shortfall]) => shortfall),
-        }
-      : { ok: true as const, inventory };
+  const succeed = (inventory: ReservedInventory) => {
+    if (!collect) return { ok: true as const, inventory };
+    const byLine = [...shortfallByLineIndex.entries()].sort(([a], [b]) => a - b);
+    return {
+      ok: true as const,
+      inventory,
+      shortfalls: byLine.map(([, shortfall]) => shortfall),
+      shortfallLineIndexes: byLine.map(([index]) => index),
+      uncoveredHeldUnits: [...uncoveredHeldUnits].sort((a, b) => a.lineIndex - b.lineIndex),
+    };
+  };
 
   const requestedProductIds = [...new Set(lines.map((line) => line.productId))];
   if (requestedProductIds.length === 0) {
@@ -364,6 +372,15 @@ export async function reserveInventory({
               // the product's current axes take part in matching, so a value
               // from an axis withdrawn since then no longer blocks that line.
               selectedAttributes: canonicalizeAttributes(axes, line.selectedAttributes),
+              // The rentable units of the product the line holds: one that is
+              // not rentable is the unit check's (S4), not the stock's. Each
+              // is counted in its own combination's capacity below.
+              heldUnits: (line.assignedUnitIds ?? []).flatMap((unitId) => {
+                const unit = rentableUnitById.get(unitId);
+                return unit?.productId === product.id
+                  ? [{ unitId, combinationKey: unit.combinationKey || DEFAULT_COMBINATION_KEY }]
+                  : [];
+              }),
             },
           ]
         : [],
@@ -419,7 +436,7 @@ export async function reserveInventory({
     const allocations = allocateStock({
       capacity,
       bookings: spans,
-      lines: productLines.map(({ line, pooled, selectedAttributes }) => ({
+      lines: productLines.map(({ line, pooled, selectedAttributes, heldUnits }) => ({
         quantity: line.quantity,
         candidates: combinations
           .filter(
@@ -434,19 +451,33 @@ export async function reserveInventory({
         // any unit that matches what it chose, and keeps on their
         // combinations the units it already holds.
         single: !pooled,
-        held: pooled
-          ? (line.assignedUnitIds ?? []).flatMap((unitId) => {
-              const unit = rentableUnitById.get(unitId);
-              return unit?.productId === product.id
-                ? [unit.combinationKey || DEFAULT_COMBINATION_KEY]
-                : [];
-            })
-          : [],
+        held: pooled ? heldUnits.map((unit) => unit.combinationKey) : [],
       })),
     });
     for (const [position, { index, pooled, selectedAttributes }] of productLines.entries()) {
       const allocation = allocations[position];
       if (allocation) trackedByLineIndex.set(index, { allocation, pooled, selectedAttributes });
+    }
+
+    if (collect) {
+      // Whether a held unit is owed to the other bookings is decided apart
+      // from the allocation, against them and the held units only: every unit
+      // each line holds, whatever it asks for.
+      const { owed } = heldUnitsOwed({
+        capacity,
+        bookings: spans,
+        held: productLines.map(({ heldUnits }) => heldUnits.map((unit) => unit.combinationKey)),
+      });
+      // No held unit is `unplaceable` here: each is a rentable unit of this
+      // product, counted in its own combination's capacity, and a unit is
+      // held by one line of a reservation at most (one assignment per line,
+      // and both writers that assign a unit refuse one a sibling line holds),
+      // so a combination never has more held units than units.
+      for (const { line, position } of owed) {
+        const entry = productLines[line];
+        const unitId = entry?.heldUnits[position]?.unitId;
+        if (entry && unitId) uncoveredHeldUnits.push({ lineIndex: entry.index, unitId });
+      }
     }
   }
 
@@ -597,9 +628,15 @@ const findReservationUnitConflicts = async (
     blockingStatuses: BlockingReservationStatus[];
     turnoverBufferMinutes: number;
   },
-): Promise<{ hard: ReservationUnitConflict[]; buffer: ReservationUnitConflict[] }> => {
+): Promise<{
+  hard: ReservationUnitConflict[];
+  buffer: ReservationUnitConflict[];
+  /** Each held unit's name, as the store reads it now. */
+  identifiers: Map<string, string>;
+}> => {
   const hard: ReservationUnitConflict[] = [];
   const buffer: ReservationUnitConflict[] = [];
+  const identifiers = new Map<string, string>();
   // A unit deleted since keeps its name on the line and holds nothing.
   const heldByItem = params.items.map((item) => ({
     reservationItemId: item.id,
@@ -610,7 +647,7 @@ const findReservationUnitConflicts = async (
     ),
   }));
   const unitIds = [...new Set(heldByItem.flatMap((item) => item.units.map((unit) => unit.unitId)))];
-  if (unitIds.length === 0) return { hard, buffer };
+  if (unitIds.length === 0) return { hard, buffer, identifiers };
 
   const lockedUnits = await tx
     .select({ id: productUnits.id, identifier: productUnits.identifier })
@@ -646,21 +683,53 @@ const findReservationUnitConflicts = async (
         unitId: unit.unitId,
         identifier: identifierById.get(unit.unitId) || unit.identifier || unit.unitId,
       };
+      identifiers.set(unit.unitId, conflict.identifier);
       const busy = busyUnitIds.get(unit.unitId);
       if (!rentableUnitIds.has(unit.unitId) || busy === "overlap") hard.push(conflict);
       else if (busy === "buffer") buffer.push(conflict);
     }
   }
-  return { hard, buffer };
+  return { hard, buffer, identifiers };
 };
 
+/** The stock refusal of a confirmation, as any caller may show it. */
+const STOCK_GONE = "errors.productNoLongerAvailable";
+
 /**
- * Check an existing reservation before it takes its stock, under the same
- * product locks as a new checkout: the stock covers its lines, and each unit
- * it holds is free for it. A reservation that did not block yet (a quote, or
- * a request when requests do not block) may hold a unit that was since given
- * to another booking: the stock would still count enough units, so the units
- * are checked by id.
+ * The store's confirmation finds lines the returnable stock cannot cover,
+ * counted without the turnover buffer: it may book over them on purpose
+ * (`allowOverbooking`). The message is the stock refusal any caller shows.
+ */
+export class ReservationCapacityShortfallError extends ReservationInventoryError {
+  constructor(readonly shortfalls: CapacityShortfall[]) {
+    super(STOCK_GONE);
+  }
+}
+
+/**
+ * The store's confirmation finds lines that fit without the turnover buffer
+ * and not with it: `allowOverbooking` does not cover them. Each shortfall is
+ * the check's with the buffer.
+ */
+export class ReservationTurnoverBufferShortfallError extends ReservationInventoryError {
+  constructor(readonly shortfalls: CapacityShortfall[]) {
+    super(STOCK_GONE);
+  }
+}
+
+/** What a confirmation's stock check gives its status change's activity row. */
+export interface ConfirmationStockVerdict {
+  activityMetadata: Record<string, unknown>;
+  activityAt: Date;
+}
+
+/**
+ * The stock check of a change into a status that takes stock, under the
+ * product locks, before any refusal: the units the reservation holds, and
+ * the shortfalls of its lines with the turnover buffer and without it. A
+ * reservation that did not block yet (a quote, or a request when requests do
+ * not block) may hold a unit that was since given to another booking: the
+ * stock would still count enough units, so the units are checked by id.
  *
  * It confirms the lines as they are: required accessories are checked where
  * a cart is composed (the checkout, the extension), never here, so a quote
@@ -668,21 +737,18 @@ const findReservationUnitConflicts = async (
  * is not refused for it.
  *
  * Throws `ReservationUnitConflictError` for a unit that cannot serve, before
- * the stock refusal. A unit only the turnover buffer around another booking
- * reaches does not refuse: the store may have assigned it on purpose, with
- * `overrideTurnoverBuffer`, and none of the status changes can carry that
- * flag. It is named in `activityMetadata`, for the status change's row.
- *
- * What it returns is for the status change's activity row, through
- * `beforeWrite`: the capacity verdict of the demand it checked, and the
- * row's date (`nextCapacityVerdictDate`), so that verdict is the
- * reservation's latest (services/capacity-verdict.ts).
+ * any stock refusal: no caller may book over it (S4). That is a unit another
+ * booking holds, or one retired or in downtime, and also a unit no other
+ * booking holds but that the other bookings need, counted without the
+ * turnover buffer: next to them and the units the reservation holds before
+ * it, it does not fit, and with no other booking it would
+ * (`heldUnitsOwed`, `reason: "owed_to_other_bookings"`). That is decided
+ * apart from the allocation of the lines, so what the lines ask beyond their
+ * units never makes a held unit owed. An override covers only the units a
+ * line does not hold yet. A unit only the turnover buffer around another
+ * booking reaches does not refuse: it is named for the activity row.
  */
-export const checkExistingReservationInventory = async (
-  tx: Transaction,
-  reservationId: string,
-  storeId: string,
-): Promise<{ activityMetadata: Record<string, unknown>; activityAt: Date }> => {
+async function checkConfirmationStock(tx: Transaction, reservationId: string, storeId: string) {
   const reservation = await tx.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
     with: {
@@ -696,7 +762,8 @@ export const checkExistingReservationInventory = async (
     },
   });
   if (!reservation) throw new ReservationInventoryError("errors.reservationNotFound");
-  const lines = reservation.items.flatMap((item) =>
+  const lineItems = reservation.items.filter((item) => item.productId);
+  const lines = lineItems.flatMap((item) =>
     item.productId
       ? [
           {
@@ -724,20 +791,25 @@ export const checkExistingReservationInventory = async (
   const blockingStatuses = getBlockingReservationStatuses(
     reservation.store.settings?.pendingBlocksAvailability ?? true,
   );
-  const result = await reserveInventory({
-    tx,
-    storeId,
-    lines,
-    lockedProductsById,
-    window,
-    turnoverBufferMinutes,
-    blockingStatuses,
-    excludeReservationId: reservationId,
-    skipConsumableCheck: true,
-    // Every shortfall of the demand, for the verdict; any one refuses below.
-    onShortfall: "collect",
-    skipRequiredAccessoryCheck: true,
-  });
+  const check = (bufferMinutes: number) =>
+    reserveInventory({
+      tx,
+      storeId,
+      lines,
+      lockedProductsById,
+      window,
+      turnoverBufferMinutes: bufferMinutes,
+      blockingStatuses,
+      excludeReservationId: reservationId,
+      skipConsumableCheck: true,
+      // Every shortfall of the demand, for the verdict and the refusal.
+      onShortfall: "collect",
+      skipRequiredAccessoryCheck: true,
+    });
+  const buffered = await check(turnoverBufferMinutes);
+  // The same demand without the buffer: what the stock itself lacks. Without
+  // a buffer, the two checks are one.
+  const unbuffered = turnoverBufferMinutes > 0 ? await check(0) : buffered;
   const unitConflicts = await findReservationUnitConflicts(tx, {
     items: reservation.items,
     window,
@@ -747,26 +819,118 @@ export const checkExistingReservationInventory = async (
   if (unitConflicts.hard.length > 0) {
     throw new ReservationUnitConflictError(unitConflicts.hard);
   }
-  // No status change may book over the stock: a shortfall refuses as before.
-  if (!result.ok || result.shortfalls.length > 0) {
-    throw new ReservationInventoryError("errors.productNoLongerAvailable");
+  if (!buffered.ok || !unbuffered.ok) throw new ReservationInventoryError(STOCK_GONE);
+  // A held unit the other bookings need, counted without the buffer: like a
+  // unit another booking holds, no override books over it.
+  if (unbuffered.uncoveredHeldUnits.length > 0) {
+    throw new ReservationUnitConflictError(
+      unbuffered.uncoveredHeldUnits.map(
+        ({ lineIndex, unitId }): ReservationUnitConflict => ({
+          reservationItemId: lineItems[lineIndex]?.id ?? "",
+          unitId,
+          identifier: unitConflicts.identifiers.get(unitId) ?? unitId,
+          reason: "owed_to_other_bookings",
+        }),
+      ),
+    );
   }
+
+  // A line short without the buffer is a capacity shortfall; a line short
+  // only with it, a buffer-only one. Both checks place the same lines in the
+  // same order, so a line is known by its position.
+  const shortWithoutBuffer = new Set(unbuffered.shortfallLineIndexes);
+  const shortOnlyWithBuffer = new Set(
+    buffered.shortfallLineIndexes.filter((lineIndex) => !shortWithoutBuffer.has(lineIndex)),
+  );
+  return {
+    capacityShortfalls: unbuffered.shortfalls,
+    bufferOnlyShortfalls: buffered.shortfalls.filter((_shortfall, position) =>
+      shortOnlyWithBuffer.has(buffered.shortfallLineIndexes[position] ?? -1),
+    ),
+    bufferOnlyUnitIds: [...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId))],
+  };
+}
+
+/**
+ * The activity row's facts: the capacity verdict of the demand checked (the
+ * shortfalls booked over, or none), the units only the buffer reaches, and
+ * the row's date (`nextCapacityVerdictDate`), so that verdict is the
+ * reservation's latest (services/capacity-verdict.ts).
+ */
+async function confirmationVerdict(
+  tx: Transaction,
+  reservationId: string,
+  bookedOver: readonly CapacityShortfall[],
+  bufferOnlyUnitIds: readonly string[],
+): Promise<ConfirmationStockVerdict> {
   return {
     activityMetadata: {
-      // What this check observed of the stock, and nothing more: `overbooked:
-      // false` says the demand fits now, not that the store approved anything.
-      // The latest verdict counts, so an overbooking flagged earlier leaves
-      // the inbox once a confirmation finds that the stock fits.
-      ...capacityVerdictMetadata(result.shortfalls),
-      ...(unitConflicts.buffer.length > 0
-        ? {
-            // Confirmed with units the turnover buffer alone reaches: traceable.
-            turnoverBufferOnlyUnitIds: [
-              ...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId)),
-            ],
-          }
+      // What this check observed of the stock: `overbooked: false` says the
+      // demand fits now, not that the store approved anything; `overbooked:
+      // true` lists what the store chose to book over. The latest verdict
+      // counts, so an overbooking flagged earlier leaves the inbox once a
+      // confirmation finds that the stock fits.
+      ...capacityVerdictMetadata(bookedOver),
+      ...(bufferOnlyUnitIds.length > 0
+        ? // Confirmed with units the turnover buffer alone reaches: traceable.
+          { turnoverBufferOnlyUnitIds: [...bufferOnlyUnitIds] }
         : {}),
     },
     activityAt: await nextCapacityVerdictDate(tx, reservationId),
+  };
+}
+
+/**
+ * The stock check of a confirmation nobody may book over: the customer's
+ * quote acceptance and the paid confirmation. Any shortfall, counted with
+ * the turnover buffer, refuses with the stock refusal, which names no unit
+ * and no shortfall (D1, docs/domain/reservation-changes.md). It takes no
+ * override, and none can be passed: the store's confirmation has its own
+ * entry, `checkStoreConfirmationInventory`.
+ */
+export const checkExistingReservationInventory = async (
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+): Promise<ConfirmationStockVerdict> => {
+  const stock = await checkConfirmationStock(tx, reservationId, storeId);
+  if (stock.capacityShortfalls.length > 0 || stock.bufferOnlyShortfalls.length > 0) {
+    throw new ReservationInventoryError(STOCK_GONE);
+  }
+  return confirmationVerdict(tx, reservationId, [], stock.bufferOnlyUnitIds);
+};
+
+/**
+ * The stock check of the store's confirmation (S3): its capacity shortfalls,
+ * counted without the turnover buffer, refuse with
+ * `ReservationCapacityShortfallError` unless the store books over them on
+ * purpose (`allowOverbooking`), and the verdict then records them. A line
+ * short only with the buffer refuses with
+ * `ReservationTurnoverBufferShortfallError`, whatever the flag: the buffer
+ * has its own approval (slice 5). A unit conflict refuses before either.
+ *
+ * Only the store's status service calls it (`scripts/reservation-writes.test.mjs`, R7).
+ */
+export const checkStoreConfirmationInventory = async (
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+  options: { allowOverbooking: boolean },
+): Promise<ConfirmationStockVerdict & { bookedOver: CapacityShortfall[] }> => {
+  const stock = await checkConfirmationStock(tx, reservationId, storeId);
+  if (stock.bufferOnlyShortfalls.length > 0) {
+    throw new ReservationTurnoverBufferShortfallError(stock.bufferOnlyShortfalls);
+  }
+  if (stock.capacityShortfalls.length > 0 && !options.allowOverbooking) {
+    throw new ReservationCapacityShortfallError(stock.capacityShortfalls);
+  }
+  return {
+    ...(await confirmationVerdict(
+      tx,
+      reservationId,
+      stock.capacityShortfalls,
+      stock.bufferOnlyUnitIds,
+    )),
+    bookedOver: stock.capacityShortfalls,
   };
 };

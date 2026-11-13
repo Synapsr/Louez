@@ -26,8 +26,12 @@ import {
 import { evaluateReservationRules, getSettledPaymentAmount } from "@louez/utils";
 import { and, asc, eq } from "drizzle-orm";
 
-import { reservationErrors, type StatusChangeOutput } from "../contracts/reservations";
-import type { Transport } from "../platform/actor";
+import {
+  reservationErrors,
+  type CapacityShortfall,
+  type StatusChangeOutput,
+} from "../contracts/reservations";
+import type { Credential, Transport } from "../platform/actor";
 import { sha256, stableStringify } from "../platform/hash";
 import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platform/effects";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
@@ -42,9 +46,11 @@ import {
 } from "./reservation-effects";
 import { validateReservationContract } from "./reservation-contract-validation";
 import {
+  ReservationCapacityShortfallError,
   ReservationInventoryError,
+  ReservationTurnoverBufferShortfallError,
   ReservationUnitConflictError,
-  checkExistingReservationInventory,
+  checkStoreConfirmationInventory,
 } from "./reservation-inventory";
 
 /**
@@ -69,6 +75,8 @@ export interface StatusChangeCaller {
   storeId: string;
   /** The signed-in user, recorded on the activity row. */
   userId: string | null;
+  /** The key or grant the call came with, recorded on a confirmation that books over the stock. */
+  credential: Pick<Credential, "kind" | "id">;
   transport: Transport;
   /** May read customers: the preview then names the customer. */
   customers: boolean;
@@ -95,6 +103,13 @@ export interface StatusChangePreview {
   messages: Array<{ message: CustomerStatusMessage; channel: "email" | "sms" }>;
   /** The items leave the stock for these dates (a request or a quote is confirmed). */
   reducesAvailability: boolean;
+  /**
+   * A confirmation sent with `allowOverbooking`: the lines it books over the
+   * stock, as the check under the locks found them (none when the stock
+   * covers it). The confirmation binds them: a shortfall that grew since the
+   * preview voids its token. Null without the flag.
+   */
+  overbooking: { shortfalls: CapacityShortfall[] } | null;
   /** For a cancellation: what was paid, and what happens to it. */
   money: {
     rentalPaid: string;
@@ -125,6 +140,11 @@ export interface StatusChangeRequest {
   to: ReservationStatus;
   /** Kept only for a rejection. */
   rejectionReason?: string;
+  /**
+   * For a confirmation that takes stock: book over the returnable stock the
+   * check finds short, on purpose (S3). Ignored for any other change.
+   */
+  allowOverbooking?: boolean;
 }
 
 /** Whether a change needs the caller's confirmation: a message to the customer, less stock, or a cancellation. */
@@ -281,11 +301,23 @@ const MESSAGE_NAMES: Record<CustomerStatusMessage, string> = {
   reservation_cancelled: "reservation cancelled",
 };
 
+/** The shortfalls a confirmation books over, for its preview's sentence. */
+const describeOverbooking = (shortfalls: readonly CapacityShortfall[]) =>
+  shortfalls.length === 0
+    ? "The stock covers it: nothing is booked over the stock."
+    : `The stock cannot cover it, and it is booked over the stock all the same: ${shortfalls
+        .map(
+          (shortfall) =>
+            `${shortfall.productName}${shortfall.combinationKey ? ` (${shortfall.combinationKey})` : ""}, ${shortfall.requested} asked, ${shortfall.available} free`,
+        )
+        .join("; ")}. The reservation's history records it.`;
+
 async function buildPreview(
   tx: Transaction,
   caller: StatusChangeCaller,
   locked: LockedReservation,
   to: ReservationStatus,
+  overbooking: StatusChangePreview["overbooking"],
 ): Promise<StatusChangePreview> {
   const { store } = locked.snapshot;
   const currency = locked.currency ?? store.settings?.currency ?? "EUR";
@@ -349,6 +381,7 @@ async function buildPreview(
         : `Change ${reservationLabel} from ${locked.status} to ${to}.`,
     sends,
     takesStock(locked.status, to) ? "Its items leave the stock for these dates." : null,
+    overbooking ? describeOverbooking(overbooking.shortfalls) : null,
     moneyFacts
       ? `Paid so far: ${moneyFacts.rentalPaid} ${currency} for the rental, ${moneyFacts.depositCollected} ${currency} of deposit (deposit status ${moneyFacts.depositStatus ?? "none"}). Nothing is refunded or released by the cancellation: refund from the reservation's payments.`
       : null,
@@ -374,6 +407,7 @@ async function buildPreview(
     customer,
     messages,
     reducesAvailability: takesStock(locked.status, to),
+    overbooking,
     money: moneyFacts,
     insuranceContract,
     // Where the messages go, and in which language.
@@ -414,11 +448,18 @@ type TransactionOutcome =
 
 /**
  * Changes a reservation's status, as the store asks: confirm, reject, pick
- * up, return or cancel. `confirm` is asked under the locks when the change
- * sends the customer a message, takes stock, or cancels. The customer's
- * message, the store's and the platform's notifications and the analytics
- * event go to the outbox in the same transaction. Then, once committed: the
- * fee, the insurance contract, the outbox's dispatch and the revalidation.
+ * up, return or cancel. A confirmation the returnable stock cannot cover is
+ * refused with its shortfalls (RESERVATION_INSUFFICIENT_CAPACITY) unless the
+ * request carries `allowOverbooking`: it is then made, and its activity row
+ * records `overbooked: true` with the shortfalls and the credential. A line
+ * short only with the turnover buffer, a held unit another booking holds
+ * or needs, and consumable stock below zero refuse whatever the flag. `confirm` is asked
+ * under the locks when the change sends the customer a message, takes
+ * stock, or cancels; its preview lists the shortfalls booked over. The
+ * customer's message, the store's and the platform's notifications and the
+ * analytics event go to the outbox in the same transaction. Then, once
+ * committed: the fee, the insurance contract, the outbox's dispatch and the
+ * revalidation.
  */
 export async function changeStoreReservationStatus(
   caller: StatusChangeCaller,
@@ -455,12 +496,21 @@ export async function changeStoreReservationStatus(
         }
         // A change that takes stock is checked here, before the preview; its
         // verdict goes on the change's activity row, through `beforeWrite`.
+        // Short stock refuses unless the store books over it on purpose.
+        const allowOverbooking = takesStock(from, to) && request.allowOverbooking === true;
         const inventory = takesStock(from, to)
-          ? await checkExistingReservationInventory(tx, id, storeId)
+          ? await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking })
           : null;
+        const bookedOver = inventory?.bookedOver ?? [];
 
         // The preview, its confirmation and the queued messages share one snapshot.
-        const preview = await buildPreview(tx, caller, locked, to);
+        const preview = await buildPreview(
+          tx,
+          caller,
+          locked,
+          to,
+          allowOverbooking ? { shortfalls: bookedOver } : null,
+        );
         if (options.confirm && statusChangeIsSensitive(from, to)) {
           const refusal = await options.confirm(preview, tx);
           // Committed: the new preview stays recorded for its token.
@@ -483,7 +533,18 @@ export async function changeStoreReservationStatus(
           actor,
           actorUserId: caller.userId,
           expectedFrom: from,
-          beforeWrite: inventory ? async () => inventory : undefined,
+          beforeWrite: inventory
+            ? async () => ({
+                activityAt: inventory.activityAt,
+                activityMetadata: {
+                  ...inventory.activityMetadata,
+                  // Booked over the stock: by which key or grant, next to the actor.
+                  ...(bookedOver.length > 0
+                    ? { credential: { kind: caller.credential.kind, id: caller.credential.id } }
+                    : {}),
+                },
+              })
+            : undefined,
           activity: {
             metadata: {
               ...(to === "rejected" && request.rejectionReason
@@ -538,6 +599,12 @@ export async function changeStoreReservationStatus(
     if (isReservationChangeBusyError(error)) throw reservationErrors.busy(id);
     if (error instanceof ReservationUnitConflictError) {
       throw reservationErrors.unitsUnavailable(error.conflicts);
+    }
+    if (error instanceof ReservationCapacityShortfallError) {
+      throw reservationErrors.insufficientCapacity(error.shortfalls);
+    }
+    if (error instanceof ReservationTurnoverBufferShortfallError) {
+      throw reservationErrors.turnoverBufferShortfall(error.shortfalls);
     }
     if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
       throw error.message === "errors.reservationNotFound"

@@ -1668,6 +1668,23 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       assert.equal((await outbox()).length, 0, "a refused change queues no message");
     });
 
+    test("held by another booking is refused with allowOverbooking too", async () => {
+      const { productId, unitId, quoteId } = await quoteHoldingUnit();
+      await lineHolding(await reservation("confirmed"), productId, 1, unitId);
+
+      await rejects(
+        run(
+          "updateStatus",
+          { id: quoteId, status: "confirmed", allowOverbooking: true },
+          session(),
+        ),
+        "RESERVATION_UNITS_UNAVAILABLE",
+      );
+      assert.equal(await statusOf(quoteId), "quote", "nothing was written");
+      assert.equal(feeEffects.length, 0);
+      assert.equal((await outbox()).length, 0);
+    });
+
     test("that is retired is refused", async () => {
       const { unitId, quoteId } = await quoteHoldingUnit();
       await louezDb.db
@@ -1719,6 +1736,702 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     });
   });
 
+  // --- Confirming over the stock (S3; docs/domain/reservation-changes.md, slice 4) ---
+
+  describe("confirming over the returnable stock", () => {
+    /** A line of `quantity` on `reservationId`, created at `createdAt` (the lines' order). */
+    async function lineOf(
+      reservationId: string,
+      productId: string,
+      quantity: number,
+      createdAt?: Date,
+    ) {
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: nextId("rs_itm"),
+        reservationId,
+        productId,
+        quantity,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        productSnapshot: { name: "Kayak", description: null, images: [] },
+        ...(createdAt ? { createdAt } : {}),
+      });
+    }
+
+    /** A kayak of `quantity`, of which a confirmed booking of the same dates holds `held`. */
+    async function kayakHeld(quantity: number, held: number) {
+      const productId = await product(quantity);
+      if (held > 0) await lineOf(await reservation("confirmed"), productId, held);
+      return productId;
+    }
+
+    /** A reservation of `status` asking `quantity` of the product, over the stock. */
+    async function asking(status: "pending" | "quote", productId: string, quantity = 1) {
+      const id = await reservation(status);
+      await lineOf(id, productId, quantity);
+      return id;
+    }
+
+    const confirmation = (id: string, allowOverbooking?: boolean) => ({
+      id,
+      status: "confirmed" as const,
+      ...(allowOverbooking === undefined ? {} : { allowOverbooking }),
+    });
+
+    async function confirmedRow(id: string) {
+      const [row] = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(
+          orm.and(
+            orm.eq(louezDb.reservationActivity.reservationId, id),
+            orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
+          ),
+        );
+      return row?.metadata ?? null;
+    }
+
+    /** Whether anything of a change was written: status, activity, messages, fees. */
+    async function nothingWritten(id: string, status: "pending" | "quote") {
+      assert.equal(await statusOf(id), status);
+      const activity = await louezDb.db
+        .select({ id: louezDb.reservationActivity.id })
+        .from(louezDb.reservationActivity)
+        .where(orm.eq(louezDb.reservationActivity.reservationId, id));
+      assert.equal(activity.length, 0, "no activity row");
+      assert.equal((await outbox()).length, 0, "no message queued");
+      assert.equal(feeEffects.length, 0, "no fee");
+      assert.deepEqual(contracts, [], "no insurance contract");
+    }
+
+    const shortfall = (productId: string, requested: number, available: number) => ({
+      productId,
+      productName: `Kayak ${productId}`,
+      combinationKey: null,
+      requested,
+      available,
+    });
+
+    async function withBuffer(minutes: number) {
+      // Put back before each test.
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: { ...settings, turnoverBufferMinutes: minutes } })
+        .where(orm.eq(louezDb.stores.id, STORE));
+    }
+
+    /** An API key and its id, its confirmations on or off. */
+    async function agentKey(options: { confirmSensitive?: boolean; permissions?: Permissions }) {
+      const created = await apiKeys.createApiKey({
+        db: louezDb.db,
+        storeId: STORE,
+        userId: OWNER,
+        name: "Overbooking agent",
+        permissions: options.permissions ?? everything,
+      });
+      if (options.confirmSensitive === false) {
+        await louezDb.db
+          .update(louezDb.apiKeys)
+          .set({ confirmSensitive: false })
+          .where(orm.eq(louezDb.apiKeys.id, created.id));
+      }
+      return {
+        id: created.id,
+        call: (extra: Record<string, string> = {}) => ({
+          headers: new Headers({ authorization: `Bearer ${created.key}`, ...extra }),
+          transport: "openapi" as const,
+          ports,
+          receipt: {},
+        }),
+      };
+    }
+
+    type OverbookingPreview = { overbooking: { shortfalls: unknown[] } | null };
+    const overbookingOf = (refusal: { data: { details?: Record<string, unknown> } }) =>
+      (previewOf(refusal).details as unknown as OverbookingPreview).overbooking;
+
+    for (const status of ["quote", "pending"] as const) {
+      test(`a ${status} over the stock is refused with its shortfalls, then confirmed over it on purpose`, async () => {
+        const productId = await kayakHeld(1, 1);
+        const id = await asking(status, productId);
+        if (status === "pending") {
+          // A paid request that lost its stock.
+          await louezDb.db.insert(louezDb.payments).values({
+            reservationId: id,
+            amount: "20.00",
+            type: "rental",
+            method: "card",
+            status: "completed",
+          });
+        }
+
+        const refusal = await rejects(
+          run("updateStatus", confirmation(id), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data, {
+          code: "RESERVATION_INSUFFICIENT_CAPACITY",
+          retryable: false,
+          i18nKey: "errors.insufficientCapacity",
+          details: { shortfalls: [shortfall(productId, 1, 0)] },
+        });
+        await nothingWritten(id, status);
+
+        // `false` is no override either.
+        await rejects(
+          run("updateStatus", confirmation(id, false), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        await nothingWritten(id, status);
+
+        const change = await run("updateStatus", confirmation(id, true), session());
+        assert.equal(change.to, "confirmed");
+        assert.equal(await statusOf(id), "confirmed");
+        assert.deepEqual(await confirmedRow(id), {
+          previousStatus: status,
+          newStatus: "confirmed",
+          actor: "store_user",
+          overbooked: true,
+          overbookingShortfalls: [shortfall(productId, 1, 0)],
+          credential: { kind: "session", id: null },
+        });
+        assert.equal(feeEffects.length, 1, "the fee is recorded");
+        assert.deepEqual(contracts, [`create:${id}`]);
+        assert.ok((await outbox()).some((row) => row.type === "reservation.customerMessage"));
+      });
+    }
+
+    test("consumable stock never goes below zero, whatever the flag", async () => {
+      const productId = await product(0, "consumable");
+      const id = await asking("pending", productId);
+
+      const refusal = await rejects(
+        run("updateStatus", confirmation(id, true), session()),
+        "RESERVATION_ITEMS_UNAVAILABLE",
+      );
+      assert.equal(refusal.data.details, undefined);
+      await nothingWritten(id, "pending");
+    });
+
+    test("a line short only with the turnover buffer is refused with the flag, and says it is the buffer", async () => {
+      const productId = await product(1);
+      // Returned an hour before the start, with two hours asked between rentals.
+      await lineOf(
+        await reservation("confirmed", {
+          start: new Date(START.getTime() - 24 * 3_600_000),
+          end: new Date(START.getTime() - 3_600_000),
+        }),
+        productId,
+        1,
+      );
+      await withBuffer(120);
+      const id = await asking("quote", productId);
+
+      for (const allowOverbooking of [undefined, true]) {
+        const refusal = await rejects(
+          run("updateStatus", confirmation(id, allowOverbooking), session()),
+          "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+        );
+        assert.deepEqual(refusal.data, {
+          code: "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+          retryable: false,
+          i18nKey: "errors.turnoverBufferShortfall",
+          details: { shortfalls: [shortfall(productId, 1, 0)] },
+        });
+        await nothingWritten(id, "quote");
+      }
+    });
+
+    test("a buffer-only line next to a short one: the buffer refuses first, and the flag does not pass it", async () => {
+      const short = await kayakHeld(1, 1);
+      const buffered = await product(1);
+      await lineOf(
+        await reservation("confirmed", {
+          start: new Date(START.getTime() - 24 * 3_600_000),
+          end: new Date(START.getTime() - 3_600_000),
+        }),
+        buffered,
+        1,
+      );
+      await withBuffer(120);
+      const id = await reservation("quote");
+      await lineOf(id, short, 1, new Date("2030-01-01T00:00:00Z"));
+      await lineOf(id, buffered, 1, new Date("2030-01-01T00:00:01Z"));
+
+      const refusal = await rejects(
+        run("updateStatus", confirmation(id, true), session()),
+        "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+      );
+      // Only the buffer's line: the short one is the flag's.
+      assert.deepEqual(refusal.data.details, { shortfalls: [shortfall(buffered, 1, 0)] });
+      await nothingWritten(id, "quote");
+    });
+
+    test("several short lines are listed each, in the lines' fixed order", async () => {
+      const kayak = await kayakHeld(2, 1);
+      const paddle = await kayakHeld(1, 1);
+      const id = await reservation("quote");
+      // Written out of order: the check reads them by creation date, then id.
+      await lineOf(id, kayak, 1, new Date("2030-01-01T00:00:02Z"));
+      await lineOf(id, kayak, 2, new Date("2030-01-01T00:00:01Z"));
+      await lineOf(id, paddle, 1, new Date("2030-01-01T00:00:00Z"));
+
+      const shortfalls = [shortfall(paddle, 1, 0), shortfall(kayak, 2, 1), shortfall(kayak, 1, 0)];
+      const refusal = await rejects(
+        run("updateStatus", confirmation(id), session()),
+        "RESERVATION_INSUFFICIENT_CAPACITY",
+      );
+      assert.deepEqual(refusal.data.details, { shortfalls });
+
+      await run("updateStatus", confirmation(id, true), session());
+      assert.deepEqual((await confirmedRow(id))?.overbookingShortfalls, shortfalls);
+    });
+
+    test("an agent books over the stock only after a preview that lists every shortfall, even with confirmations off", async () => {
+      const productId = await kayakHeld(1, 1);
+      const id = await asking("quote", productId);
+
+      for (const confirmSensitive of [true, false]) {
+        const agent = await agentKey({ confirmSensitive });
+        // Without the flag, the stock refuses before any preview.
+        await rejects(
+          run("updateStatus", confirmation(id), agent.call()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        const refusal = await rejects(
+          run("updateStatus", confirmation(id, true), agent.call()),
+          "CONFIRMATION_REQUIRED",
+        );
+        assert.deepEqual(overbookingOf(refusal), { shortfalls: [shortfall(productId, 1, 0)] });
+        assert.match(
+          previewOf(refusal).summary,
+          new RegExp(`booked over the stock all the same: Kayak ${productId}, 1 asked, 0 free`),
+        );
+        await nothingWritten(id, "quote");
+      }
+
+      const agent = await agentKey({ confirmSensitive: false });
+      const token = tokenOf(
+        await rejects(
+          run("updateStatus", confirmation(id, true), agent.call()),
+          "CONFIRMATION_REQUIRED",
+        ),
+      );
+      // The token is bound to the input: no confirmation without the flag uses it.
+      await rejects(
+        run("updateStatus", confirmation(id), agent.call({ "louez-confirmation": token })),
+        "RESERVATION_INSUFFICIENT_CAPACITY",
+      );
+      const change = await run(
+        "updateStatus",
+        confirmation(id, true),
+        agent.call({ "louez-confirmation": token }),
+      );
+      assert.equal(change.to, "confirmed");
+      const row = await confirmedRow(id);
+      assert.deepEqual(
+        {
+          actor: row?.actor,
+          overbooked: row?.overbooked,
+          overbookingShortfalls: row?.overbookingShortfalls,
+          credential: row?.credential,
+        },
+        {
+          actor: "api",
+          overbooked: true,
+          overbookingShortfalls: [shortfall(productId, 1, 0)],
+          credential: { kind: "api_key", id: agent.id },
+        },
+      );
+    });
+
+    test("an agent's flag on a confirmation the stock covers still asks, and books nothing over", async () => {
+      const productId = await kayakHeld(1, 0);
+      const id = await asking("quote", productId);
+      const agent = await agentKey({ confirmSensitive: false });
+
+      const refusal = await rejects(
+        run("updateStatus", confirmation(id, true), agent.call()),
+        "CONFIRMATION_REQUIRED",
+      );
+      assert.deepEqual(overbookingOf(refusal), { shortfalls: [] });
+      assert.match(previewOf(refusal).summary, /The stock covers it/);
+      await run(
+        "updateStatus",
+        confirmation(id, true),
+        agent.call({ "louez-confirmation": tokenOf(refusal) }),
+      );
+      assert.deepEqual(
+        {
+          overbooked: (await confirmedRow(id))?.overbooked,
+          credential: (await confirmedRow(id))?.credential,
+        },
+        { overbooked: false, credential: undefined },
+      );
+    });
+
+    test("a token approves the shortage it previewed, not one that grew since", async () => {
+      // Three kayaks, one held: the quote of three is short by one.
+      const productId = await kayakHeld(3, 1);
+      const id = await asking("quote", productId, 3);
+      const agent = await agentKey({});
+
+      const first = await rejects(
+        run("updateStatus", confirmation(id, true), agent.call()),
+        "CONFIRMATION_REQUIRED",
+      );
+      assert.deepEqual(overbookingOf(first), { shortfalls: [shortfall(productId, 3, 2)] });
+
+      // Another booking takes the two left, without touching this quote: short by three.
+      await lineOf(await reservation("confirmed"), productId, 2);
+      await rejects(
+        run(
+          "updateStatus",
+          confirmation(id, true),
+          agent.call({ "louez-confirmation": tokenOf(first) }),
+        ),
+        "CONFIRMATION_INVALID",
+      );
+      await nothingWritten(id, "quote");
+
+      const second = await rejects(
+        run("updateStatus", confirmation(id, true), agent.call()),
+        "CONFIRMATION_REQUIRED",
+      );
+      assert.deepEqual(overbookingOf(second), { shortfalls: [shortfall(productId, 3, 0)] });
+      await run(
+        "updateStatus",
+        confirmation(id, true),
+        agent.call({ "louez-confirmation": tokenOf(second) }),
+      );
+      assert.deepEqual((await confirmedRow(id))?.overbookingShortfalls, [
+        shortfall(productId, 3, 0),
+      ]);
+    });
+
+    test("a read-only connection cannot confirm over the stock", async () => {
+      const id = await asking("quote", await kayakHeld(1, 1));
+      const reader = await agentKey({ permissions: { ...everything, reservations: "read" } });
+
+      await rejects(
+        run("updateStatus", confirmation(id, true), reader.call()),
+        "PERMISSION_DENIED",
+      );
+      await nothingWritten(id, "quote");
+    });
+
+    test("two confirmations over the last kayak at once both go through, each with what it saw", async () => {
+      const productId = await product(1);
+      const first = await asking("pending", productId);
+      const second = await asking("pending", productId);
+
+      const outcomes = await raceOnLockedRow(database, { table: "products", id: productId }, [
+        () => run("updateStatus", confirmation(first, true), session()).then((c) => c.to),
+        () => run("updateStatus", confirmation(second, true), session()).then((c) => c.to),
+      ]);
+      assert.deepEqual(outcomes, ["confirmed", "confirmed"]);
+      // Whichever took the lock first fit; the other booked over what the first took.
+      const verdicts = [await confirmedRow(first), await confirmedRow(second)]
+        .map((row) => ({
+          overbooked: row?.overbooked,
+          overbookingShortfalls: row?.overbookingShortfalls,
+        }))
+        .sort((a, b) => Number(a.overbooked) - Number(b.overbooked));
+      assert.deepEqual(verdicts, [
+        { overbooked: false, overbookingShortfalls: undefined },
+        { overbooked: true, overbookingShortfalls: [shortfall(productId, 1, 0)] },
+      ]);
+    });
+
+    describe("a unit the quote holds that another booking's open choice needs", () => {
+      /**
+       * S/red, S/blue, L/red, L/blue. A confirmed booking asks two S, colour
+       * open, and holds no unit: both S units are owed to it. A quote of
+       * three, of any size and colour, holds `held`.
+       */
+      async function wetsuitQuote(held: "S/red" | "L/red") {
+        const productId = nextId("rs_prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id: productId,
+          storeId: STORE,
+          name: `Wetsuit ${productId}`,
+          price: "10.00",
+          pricingMode: "day",
+          trackUnits: true,
+          bookingAttributeAxes: [
+            { key: "size", label: "Size", position: 0 },
+            { key: "color", label: "Color", position: 1 },
+          ],
+          quantity: 4,
+        });
+        const unitIds = new Map<string, string>();
+        for (const name of ["S/red", "S/blue", "L/red", "L/blue"]) {
+          const [size = "", color = ""] = name.split("/");
+          const unitId = nextId("rs_unt");
+          unitIds.set(name, unitId);
+          await louezDb.db.insert(louezDb.productUnits).values({
+            id: unitId,
+            productId,
+            identifier: name,
+            attributes: { size, color },
+            combinationKey: `size:${size}|color:${color}`,
+          });
+        }
+        const line = async (reservationId: string, quantity: number, size?: string) => {
+          const itemId = nextId("rs_itm");
+          await louezDb.db.insert(louezDb.reservationItems).values({
+            id: itemId,
+            reservationId,
+            productId,
+            quantity,
+            selectedAttributes: size ? { size } : null,
+            combinationKey: null,
+            unitPrice: "10.00",
+            depositPerUnit: "0.00",
+            totalPrice: "30.00",
+            productSnapshot: { name: "Wetsuit", description: null, images: [] },
+          });
+          return itemId;
+        };
+        await line(await reservation("confirmed"), 2, "S");
+        const quoteId = await reservation("quote");
+        const itemId = await line(quoteId, 3);
+        const unitId = unitIds.get(held) ?? "";
+        const assignmentId = nextId("rs_asg");
+        await louezDb.db.insert(louezDb.reservationItemUnits).values({
+          id: assignmentId,
+          reservationItemId: itemId,
+          productUnitId: unitId,
+          identifierSnapshot: held,
+        });
+        // Three asked; the two L units are all the other booking leaves.
+        const short = {
+          productId,
+          productName: `Wetsuit ${productId}`,
+          combinationKey: null,
+          requested: 3,
+          available: 2,
+        };
+        return { quoteId, itemId, unitId, assignmentId, short };
+      }
+
+      async function heldUnitIds(itemId: string) {
+        const rows = await louezDb.db
+          .select({ unitId: louezDb.reservationItemUnits.productUnitId })
+          .from(louezDb.reservationItemUnits)
+          .where(orm.eq(louezDb.reservationItemUnits.reservationItemId, itemId));
+        return rows.map((row) => row.unitId);
+      }
+
+      test("refuses the confirmation, flag or not, naming the unit; without it, the flag books the line over", async () => {
+        const { quoteId, itemId, unitId, assignmentId, short } = await wetsuitQuote("S/red");
+
+        for (const allowOverbooking of [undefined, true]) {
+          const refusal = await rejects(
+            run("updateStatus", confirmation(quoteId, allowOverbooking), session()),
+            "RESERVATION_UNITS_UNAVAILABLE",
+          );
+          assert.deepEqual(refusal.data.details, {
+            conflicts: [
+              {
+                reservationItemId: itemId,
+                unitId,
+                identifier: "S/red",
+                reason: "owed_to_other_bookings",
+              },
+            ],
+          });
+        }
+        await nothingWritten(quoteId, "quote");
+
+        // The store takes the unit off the line: only the stock is short now.
+        await louezDb.db
+          .delete(louezDb.reservationItemUnits)
+          .where(orm.eq(louezDb.reservationItemUnits.id, assignmentId));
+        const refusal = await rejects(
+          run("updateStatus", confirmation(quoteId), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data.details, { shortfalls: [short] });
+        const change = await run("updateStatus", confirmation(quoteId, true), session());
+        assert.equal(change.to, "confirmed");
+        const row = await confirmedRow(quoteId);
+        assert.deepEqual(
+          { overbooked: row?.overbooked, overbookingShortfalls: row?.overbookingShortfalls },
+          { overbooked: true, overbookingShortfalls: [short] },
+        );
+      });
+
+      test("a held unit that fits stays, and the flag books over the rest of the line", async () => {
+        const { quoteId, itemId, unitId, short } = await wetsuitQuote("L/red");
+
+        const refusal = await rejects(
+          run("updateStatus", confirmation(quoteId), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data.details, { shortfalls: [short] });
+        await nothingWritten(quoteId, "quote");
+
+        const change = await run("updateStatus", confirmation(quoteId, true), session());
+        assert.equal(change.to, "confirmed");
+        const row = await confirmedRow(quoteId);
+        assert.deepEqual(
+          { overbooked: row?.overbooked, overbookingShortfalls: row?.overbookingShortfalls },
+          { overbooked: true, overbookingShortfalls: [short] },
+        );
+        assert.deepEqual(await heldUnitIds(itemId), [unitId]);
+      });
+
+      test("an agent's flag is refused before any preview, its confirmations on or off", async () => {
+        const { quoteId, itemId } = await wetsuitQuote("S/red");
+
+        for (const confirmSensitive of [true, false]) {
+          const agent = await agentKey({ confirmSensitive });
+          await rejects(
+            run("updateStatus", confirmation(quoteId, true), agent.call()),
+            "RESERVATION_UNITS_UNAVAILABLE",
+          );
+        }
+        await nothingWritten(quoteId, "quote");
+        assert.equal((await heldUnitIds(itemId)).length, 1);
+      });
+    });
+
+    describe("the units a quote holds, against the other bookings only", () => {
+      /** A wetsuit with one size axis and a unit of each size listed, named by its size and rank. */
+      async function wetsuit(sizes: string[]) {
+        const productId = nextId("rs_prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id: productId,
+          storeId: STORE,
+          name: `Wetsuit ${productId}`,
+          price: "10.00",
+          pricingMode: "day",
+          trackUnits: true,
+          bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+          quantity: sizes.length,
+        });
+        const unitIds = new Map<string, string>();
+        for (const [index, size] of sizes.entries()) {
+          const name = `${size}${sizes.slice(0, index + 1).filter((s) => s === size).length}`;
+          const unitId = nextId("rs_unt");
+          unitIds.set(name, unitId);
+          await louezDb.db.insert(louezDb.productUnits).values({
+            id: unitId,
+            productId,
+            identifier: name,
+            attributes: { size },
+            combinationKey: `size:${size}`,
+          });
+        }
+        /** A line of `quantity`, of `size` exactly or of any size, holding the units named. */
+        const line = async (
+          reservationId: string,
+          quantity: number,
+          size: string | null,
+          held: string[],
+          createdAt: Date,
+        ) => {
+          const itemId = nextId("rs_itm");
+          await louezDb.db.insert(louezDb.reservationItems).values({
+            id: itemId,
+            reservationId,
+            productId,
+            quantity,
+            selectedAttributes: size ? { size } : null,
+            combinationKey: size ? `size:${size}` : null,
+            unitPrice: "10.00",
+            depositPerUnit: "0.00",
+            totalPrice: "10.00",
+            productSnapshot: { name: "Wetsuit", description: null, images: [] },
+            createdAt,
+          });
+          for (const name of held) {
+            await louezDb.db.insert(louezDb.reservationItemUnits).values({
+              id: nextId("rs_asg"),
+              reservationItemId: itemId,
+              productUnitId: unitIds.get(name) ?? "",
+              identifierSnapshot: name,
+            });
+          }
+          return itemId;
+        };
+        return { productId, unitIds, line };
+      }
+      const FIRST = new Date("2030-01-01T00:00:00Z");
+      const SECOND = new Date("2030-01-02T00:00:00Z");
+
+      test("its own unassigned units never make a unit it holds owed: the flag books them over", async () => {
+        // Two A units, nobody else. Two lines on A, of two and one, each holding an A.
+        const { productId, line } = await wetsuit(["A", "A"]);
+        const quoteId = await reservation("quote");
+        await line(quoteId, 2, "A", ["A1"], FIRST);
+        await line(quoteId, 1, "A", ["A2"], SECOND);
+        // Both held units fit; the second line's unit is the one the stock lacks.
+        const short = {
+          productId,
+          productName: `Wetsuit ${productId}`,
+          combinationKey: "size:A",
+          requested: 1,
+          available: 0,
+        };
+
+        const refusal = await rejects(
+          run("updateStatus", confirmation(quoteId), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data.details, { shortfalls: [short] });
+        await nothingWritten(quoteId, "quote");
+
+        const change = await run("updateStatus", confirmation(quoteId, true), session());
+        assert.equal(change.to, "confirmed");
+        const row = await confirmedRow(quoteId);
+        assert.deepEqual(
+          { overbooked: row?.overbooked, overbookingShortfalls: row?.overbookingShortfalls },
+          { overbooked: true, overbookingShortfalls: [short] },
+        );
+      });
+
+      test("an exact L line holding an S unit, nobody else, confirms as before", async () => {
+        const { line } = await wetsuit(["S", "S", "L", "L"]);
+        const quoteId = await reservation("quote");
+        await line(quoteId, 1, "L", ["S1"], FIRST);
+
+        const change = await run("updateStatus", confirmation(quoteId), session());
+        assert.equal(change.to, "confirmed");
+        assert.equal((await confirmedRow(quoteId))?.overbooked, false);
+      });
+
+      test("a unit held past what its line asks for, which another booking needs, is refused by name", async () => {
+        // One A, one B. A confirmed booking asks the B and has no unit yet.
+        const { unitIds, line } = await wetsuit(["A", "B"]);
+        await line(await reservation("confirmed"), 1, "B", [], FIRST);
+        // The quote asks one unit of any size and holds both.
+        const quoteId = await reservation("quote");
+        const itemId = await line(quoteId, 1, null, ["A1", "B1"], SECOND);
+
+        for (const allowOverbooking of [undefined, true]) {
+          const refusal = await rejects(
+            run("updateStatus", confirmation(quoteId, allowOverbooking), session()),
+            "RESERVATION_UNITS_UNAVAILABLE",
+          );
+          assert.deepEqual(refusal.data.details, {
+            conflicts: [
+              {
+                reservationItemId: itemId,
+                unitId: unitIds.get("B1"),
+                identifier: "B1",
+                reason: "owed_to_other_bookings",
+              },
+            ],
+          });
+        }
+        await nothingWritten(quoteId, "quote");
+      });
+    });
+  });
+
   // --- Concurrency (lock order: products, then the reservation) ---------------
 
   test("a confirmation waits for a write that holds the product, then sees it", async () => {
@@ -1740,7 +2453,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           ),
       ],
     );
-    assert.equal(outcome, "RESERVATION_ITEMS_UNAVAILABLE");
+    assert.equal(outcome, "RESERVATION_INSUFFICIENT_CAPACITY");
     assert.equal(await statusOf(id), "pending", "nothing was written");
     assert.equal(feeEffects.length, 0);
     assert.equal((await outbox()).length, 0, "a rolled back change queues no message");
@@ -1763,7 +2476,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           (error: { data?: { code?: string } }) => error.data?.code,
         ),
     ]);
-    assert.deepEqual([...outcomes].sort(), ["RESERVATION_ITEMS_UNAVAILABLE", "confirmed"]);
+    assert.deepEqual([...outcomes].sort(), ["RESERVATION_INSUFFICIENT_CAPACITY", "confirmed"]);
     const statuses = [await statusOf(first), await statusOf(second)].sort();
     assert.deepEqual(statuses, ["confirmed", "pending"]);
   });

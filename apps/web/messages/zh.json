@@ -2718,7 +2718,9 @@
           "shortfall": "请求：{requested} · 可用：{available}",
           "createAnyway": "无论如何创建",
           "editDescription": "某些产品在该时间段内数量不足。您仍然可以保存更改并在时间线中跟踪覆盖情况。",
-          "saveAnyway": "无论如何保存"
+          "saveAnyway": "无论如何保存",
+          "confirmDescription": "此预订期间库存不足。您仍可以超出可用库存确认此预订，该选择将记录在历史中。",
+          "confirmAnyway": "仍然确认"
         },
         "addUnavailable": {
           "title": "产品不可用",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "分配的单位在新日期不可用：{identifiers}",
     "invalidUnits": "所选的一个或多个单位无效",
     "turnoverBufferConflict": "所选单元仅被周转缓冲区阻塞",
+    "turnoverBufferShortfall": "两次租赁之间的周转缓冲导致此预订的部分项目无法确认。请释放这些日期前后的库存或调整日期。",
     "unitProductMismatch": "所选单位不属于该产品",
     "unitCombinationMismatch": "所选单位与该订单项的预留组合不匹配",
     "cannotDisableUnitTrackingWithCombinations": "当活动预订使用该产品的跟踪组合时，无法禁用单位跟踪。",
@@ -9543,7 +9546,7 @@
     },
     "confirm": {
       "label": "敏感操作前请求确认",
-      "description": "在删除或给客户发消息之前，智能体会先收到预览，并且必须确认；它会被要求先把预览给您看。记录、退还或删除付款、消耗 AI 积分、移除成员和取消邀请，即使关闭此项也始终需要确认。"
+      "description": "在删除或给客户发消息之前，智能体会先收到预览，并且必须确认；它会被要求先把预览给您看。记录、退还或删除付款、消耗 AI 积分、超出可用库存确认预订、移除成员和取消邀请，即使关闭此项也始终需要确认。"
     },
     "bundlesTitle": "显示的工具",
     "bundlesHint": "智能体会看到这些工具组。您以后可以添加更多。",

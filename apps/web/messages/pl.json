@@ -2679,7 +2679,9 @@
           "shortfall": "Żądane: {requested} · Dostępne: {available}",
           "createAnyway": "Utwórz mimo to",
           "editDescription": "Część produktów nie jest dostępna w wystarczającej liczbie w tym okresie. Możesz mimo to zapisać zmianę; override będzie widoczny w historii.",
-          "saveAnyway": "Zapisz mimo to"
+          "saveAnyway": "Zapisz mimo to",
+          "confirmDescription": "Stan magazynowy nie pokrywa tej rezerwacji w jej okresie. Możesz mimo to potwierdzić ją ponad dostępny stan; ta decyzja będzie widoczna w historii.",
+          "confirmAnyway": "Potwierdź mimo to"
         },
         "addUnavailable": {
           "title": "Produkt niedostępny",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "Przypisane jednostki są niedostępne w nowych terminach: {identifiers}",
     "invalidUnits": "Jedna lub więcej wybranych jednostek jest nieprawidłowa",
     "turnoverBufferConflict": "Wybrana jednostka jest blokowana tylko przez bufor rotacji",
+    "turnoverBufferShortfall": "Bufor rotacji między dwoma wynajmami uniemożliwia potwierdzenie niektórych pozycji tej rezerwacji. Zwolnij stan wokół tych dat lub je przesuń.",
     "unitProductMismatch": "Wybrane jednostki nie należą do tego produktu",
     "unitCombinationMismatch": "Wybrane jednostki nie odpowiadają zarezerwowanej kombinacji dla tej pozycji",
     "cannotDisableUnitTrackingWithCombinations": "Nie można wyłączyć śledzenia jednostek, gdy aktywne rezerwacje korzystają ze śledzonych kombinacji",
@@ -9543,7 +9546,7 @@
     },
     "confirm": {
       "label": "Proś o potwierdzenie przed działaniami wrażliwymi",
-      "description": "Przed usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić; ma polecenie najpierw Ci go pokazać. Zapisanie, zwrot lub usunięcie płatności, wydanie kredytów AI, usunięcie członka i anulowanie zaproszenia zawsze wymagają potwierdzenia, nawet gdy to jest wyłączone."
+      "description": "Przed usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić; ma polecenie najpierw Ci go pokazać. Zapisanie, zwrot lub usunięcie płatności, wydanie kredytów AI, potwierdzenie rezerwacji ponad dostępny stan, usunięcie członka i anulowanie zaproszenia zawsze wymagają potwierdzenia, nawet gdy to jest wyłączone."
     },
     "bundlesTitle": "Wyświetlane narzędzia",
     "bundlesHint": "Agent widzi te zestawy narzędzi. Później możesz dodać kolejne.",

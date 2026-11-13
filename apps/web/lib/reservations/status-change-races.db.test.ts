@@ -210,6 +210,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   const caller = () => ({
     storeId: STORE,
     userId: OWNER,
+    credential: { kind: "session" as const, id: null },
     transport: "rpc" as const,
     customers: true,
     store: {
@@ -640,6 +641,127 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     }
   });
 
+  describe("a line with an exact combination that holds a unit of another one", () => {
+    /**
+     * Two S and two L, nobody else. The reservation asks one L and holds an
+     * S: the stock has room for both, so no confirmation refuses it. Whether
+     * a held unit is owed to others is decided against the other bookings,
+     * not against where its line is placed.
+     */
+    async function lHoldingS(status: "pending" | "quote") {
+      const productId = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: productId,
+        storeId: STORE,
+        name: productId,
+        price: "1.00",
+        pricingMode: "day",
+        trackUnits: true,
+        bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+        quantity: 4,
+      });
+      const unitIds: string[] = [];
+      for (const size of ["S", "S", "L", "L"]) {
+        const unitId = nextId("unt");
+        unitIds.push(unitId);
+        await louezDb.db.insert(louezDb.productUnits).values({
+          id: unitId,
+          productId,
+          identifier: `${size}-${unitId}`,
+          attributes: { size },
+          combinationKey: `size:${size}`,
+        });
+      }
+      const [small = ""] = unitIds;
+      const id = nextId("res");
+      const itemId = nextId("itm");
+      // A fixture, so it may start in any status.
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId: CUSTOMER,
+        number: id,
+        status,
+        startDate: new Date("2030-08-01T09:00:00Z"),
+        endDate: new Date("2030-08-03T09:00:00Z"),
+        subtotalAmount: "1.00",
+        depositAmount: "0.00",
+        totalAmount: "1.00",
+        source: "online",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: itemId,
+        reservationId: id,
+        productId,
+        quantity: 1,
+        selectedAttributes: { size: "L" },
+        combinationKey: "size:L",
+        unitPrice: "1.00",
+        depositPerUnit: "0.00",
+        totalPrice: "1.00",
+        productSnapshot: { name: productId, description: null, images: [] },
+      });
+      await louezDb.db.insert(louezDb.reservationItemUnits).values({
+        id: nextId("asg"),
+        reservationItemId: itemId,
+        productUnitId: small,
+        identifierSnapshot: `S-${small}`,
+      });
+      return id;
+    }
+
+    async function statusOf(id: string) {
+      const [row] = await louezDb.db
+        .select({ status: louezDb.reservations.status })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, id));
+      return row?.status;
+    }
+
+    test("is accepted by the customer", async () => {
+      const id = await lHoldingS("quote");
+
+      const result = await quotes.acceptQuote(STORE_SLUG, id);
+
+      assert.ok(!("error" in result) || !result.error, JSON.stringify(result));
+      assert.equal(await statusOf(id), "confirmed");
+    });
+
+    test("is confirmed by its payment", async () => {
+      const id = await lHoldingS("pending");
+
+      await payment.confirmPaidReservationOrThrow({
+        reservationId: id,
+        storeId: STORE,
+        stripeCustomerId: null,
+        stripePaymentMethodId: null,
+        depositStatus: "none",
+        activityMetadata: { source: "exact line holding another unit" },
+      });
+      assert.equal(await statusOf(id), "confirmed");
+    });
+
+    test("is confirmed by the store's change, and fits the stock", async () => {
+      const id = await lHoldingS("quote");
+
+      const change = await statusChange.changeStoreReservationStatus(caller(), {
+        id,
+        to: "confirmed",
+      });
+      assert.equal(change.to, "confirmed");
+      const [row] = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(
+          and(
+            eq(louezDb.reservationActivity.reservationId, id),
+            eq(louezDb.reservationActivity.activityType, "confirmed"),
+          ),
+        );
+      assert.equal(row?.metadata?.overbooked, false);
+    });
+  });
+
   describe("a booking flagged over the stock, the stock freed since", () => {
     /**
      * A kayak of one, held by a confirmed booking of the same dates. The
@@ -758,6 +880,79 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         confirm: (id: string) => paidConfirmation(id),
       },
     };
+
+    // Still short: only the store may confirm over the stock (S3, D1). Each
+    // test cancels what it leaves overbooked, as the others read the whole inbox.
+    const cancel = (id: string) =>
+      louezDb.db
+        .update(louezDb.reservations)
+        .set({ status: "cancelled" })
+        .where(eq(louezDb.reservations.id, id));
+
+    test("is refused to the customer while the shortfall lasts, with no shortfall named", async (t) => {
+      const { id } = await overbooked("quote");
+      t.after(() => cancel(id));
+
+      assert.deepEqual(await quotes.acceptQuote(STORE_SLUG, id), {
+        error: "errors.productNoLongerAvailable",
+      });
+      assert.equal(await verdictOf(id), undefined, "nothing was written");
+      assert.deepEqual(await overbookings(), [id]);
+      assert.equal(quoteMessages.length, 0);
+    });
+
+    test("is left pending by its payment while the shortfall lasts", async (t) => {
+      const { id } = await overbooked("pending");
+      t.after(() => cancel(id));
+
+      await assert.rejects(paidConfirmation(id), (error: Error) => {
+        // The stock refusal the payment's completion keeps pending, never the
+        // store's capacity refusal. Read by name: this file loads the
+        // service's module a second time.
+        assert.equal(error.constructor.name, "ReservationInventoryError");
+        assert.equal(error.message, "errors.productNoLongerAvailable");
+        return true;
+      });
+      assert.equal(await verdictOf(id), undefined, "nothing was written");
+    });
+
+    test("no override reaches the check the customer and the payment run", async (t) => {
+      const { id } = await overbooked("quote");
+      t.after(() => cancel(id));
+      const inventory = await import("@louez/api/services/reservation-inventory");
+
+      await assert.rejects(
+        louezDb.db.transaction((tx) =>
+          // @ts-expect-error -- the check takes no override: its signature has no place for one.
+          inventory.checkExistingReservationInventory(tx, id, STORE, { allowOverbooking: true }),
+        ),
+        (error: Error) => error.message === "errors.productNoLongerAvailable",
+      );
+    });
+
+    test("is confirmed by the store's change over the stock, which stays in the inbox", async (t) => {
+      const { id } = await overbooked("quote");
+      t.after(() => cancel(id));
+
+      await statusChange.changeStoreReservationStatus(caller(), {
+        id,
+        to: "confirmed",
+        allowOverbooking: true,
+      });
+
+      assert.deepEqual(await verdictOf(id), { type: "confirmed", overbooked: true });
+      // Past the inbox's hold-back, still after the creation's verdict.
+      await louezDb.db
+        .update(louezDb.reservationActivity)
+        .set({ createdAt: new Date(Date.now() - 1_800_000) })
+        .where(
+          and(
+            eq(louezDb.reservationActivity.reservationId, id),
+            eq(louezDb.reservationActivity.activityType, "confirmed"),
+          ),
+        );
+      assert.deepEqual(await overbookings(), [id]);
+    });
 
     for (const [path, { from, type, confirm }] of Object.entries(paths)) {
       test(`leaves the inbox once ${path} finds that the stock fits`, async () => {

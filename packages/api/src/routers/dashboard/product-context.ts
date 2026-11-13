@@ -55,11 +55,17 @@ export function confirmUnderLock<TPreview extends { summary: string }>(
   context: ProductContext,
   path: readonly string[],
   input: unknown,
-  describe: (preview: TPreview) => { state: unknown; details: ConfirmationPreview["details"] },
+  describe: (preview: TPreview) => {
+    state: unknown;
+    details: ConfirmationPreview["details"];
+    /** Ask every key and token, even one whose confirmations are off (`requireConfirmation`'s `always`). */
+    always?: boolean;
+  },
 ) {
   return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
-    const { state, details } = describe(preview);
+    const { state, details, always } = describe(preview);
     return checkConfirmation({
+      always,
       executor: tx,
       actor: context.actor,
       headers: context.headers,

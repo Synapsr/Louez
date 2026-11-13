@@ -24,6 +24,9 @@
  * - A line that does not fit whole takes the most that fits: a single line
  *   the most one candidate gives, the first of them on a tie.
  *
+ * Whether a unit the request holds is owed to the other bookings is another
+ * question, answered apart from the allocation (`heldUnitsOwed`).
+ *
  * What the rule does not see:
  *
  * - A cart of several single lines that only another placement of an earlier
@@ -510,31 +513,7 @@ export const allocateStock = (input: {
    */
   check?: "folded" | "literal";
 }): StockLineAllocation[] => {
-  const keys = [...input.capacity.keys()];
-  const indexOf = new Map(keys.map((key, index) => [key, index]));
-  const capacity = Int32Array.from(keys, (key) => Math.max(0, input.capacity.get(key) ?? 0));
-  /** The combinations at these keys that hold a unit, once each, in their order. */
-  const usable = (combinationKeys: readonly string[]) => [
-    ...new Set(
-      combinationKeys.flatMap((key) => {
-        const index = indexOf.get(key);
-        return index !== undefined && (capacity[index] ?? 0) > 0 ? [index] : [];
-      }),
-    ),
-  ];
-
-  // Bookings that accept the same combinations share one list of them.
-  const lists = new Map<string, number[]>();
-  const bookings = input.bookings.flatMap((booking) => {
-    const accepted = usable(booking.demand.combinationKeys).sort((a, b) => a - b);
-    const signature = signatureOf(accepted);
-    const combinations = lists.get(signature) ?? accepted;
-    lists.set(signature, combinations);
-    // A booking no unit can serve lacks it whatever the request takes.
-    return combinations.length > 0 && booking.demand.quantity > 0
-      ? [{ ...booking, demand: { combinations, quantity: booking.demand.quantity } }]
-      : [];
-  });
+  const { keys, indexOf, capacity, usable, bookings } = stockOf(input);
   const lines = input.lines.map((line) => {
     const candidates = usable(line.candidates);
     const held = (line.held ?? []).slice(0, line.quantity);
@@ -622,4 +601,103 @@ export const allocateStock = (input: {
         combination !== undefined ? (keys[combination] ?? null) : (line.candidates[0] ?? null),
     };
   });
+};
+
+/**
+ * The stock and the other bookings on combination indices, as `allocateStock`
+ * and `heldUnitsOwed` read them.
+ */
+const stockOf = (input: {
+  capacity: ReadonlyMap<string, number>;
+  bookings: readonly StockBooking[];
+}) => {
+  const keys = [...input.capacity.keys()];
+  const indexOf = new Map(keys.map((key, index) => [key, index]));
+  const capacity = Int32Array.from(keys, (key) => Math.max(0, input.capacity.get(key) ?? 0));
+  /** The combinations at these keys that hold a unit, once each, in their order. */
+  const usable = (combinationKeys: readonly string[]) => [
+    ...new Set(
+      combinationKeys.flatMap((key) => {
+        const index = indexOf.get(key);
+        return index !== undefined && (capacity[index] ?? 0) > 0 ? [index] : [];
+      }),
+    ),
+  ];
+
+  // Bookings that accept the same combinations share one list of them.
+  const lists = new Map<string, number[]>();
+  const bookings = input.bookings.flatMap((booking) => {
+    const accepted = usable(booking.demand.combinationKeys).sort((a, b) => a - b);
+    const signature = signatureOf(accepted);
+    const combinations = lists.get(signature) ?? accepted;
+    lists.set(signature, combinations);
+    // A booking no unit can serve lacks it whatever the request takes.
+    return combinations.length > 0 && booking.demand.quantity > 0
+      ? [{ ...booking, demand: { combinations, quantity: booking.demand.quantity } }]
+      : [];
+  });
+  return { keys, indexOf, capacity, usable, bookings };
+};
+
+/** A unit a line of the request holds: the line, and its place among that line's units. */
+export interface HeldUnitPosition {
+  line: number;
+  position: number;
+}
+
+/**
+ * Which units the request holds are owed to the other bookings: decided apart
+ * from the allocation of the lines, against the other bookings and the held
+ * units only, with the rule of `allocateStock` (the others come first, and
+ * what they lack because the store booked them over its stock is not held
+ * against the request).
+ *
+ * The held units are taken in the order of the lines, then of their units,
+ * every one of them, whatever the line asks for. Each is an exact demand of
+ * one unit on its own combination, accepted when the other bookings, the held
+ * units accepted before it and itself fit at every instant. What the lines
+ * ask beyond the units they hold plays no part.
+ *
+ * - `owed`: a unit refused that would be accepted if there were no other
+ *   bookings: they need it.
+ * - `unplaceable`: a unit refused even with no other booking: its combination
+ *   is unknown or holds no unit, or more units are held on it than it has.
+ */
+export const heldUnitsOwed = (input: {
+  /** Rentable units per combination. */
+  capacity: ReadonlyMap<string, number>;
+  /** What the other bookings ask, and when. */
+  bookings: readonly StockBooking[];
+  /** Per line, the combination of each unit it holds. */
+  held: ReadonlyArray<readonly string[]>;
+  /** As for `allocateStock`. */
+  check?: "folded" | "literal";
+}): { owed: HeldUnitPosition[]; unplaceable: HeldUnitPosition[] } => {
+  const { indexOf, capacity, bookings } = stockOf(input);
+  const check = input.check ?? "folded";
+  const fits = fitTest(instantsOf(bookings, capacity, check === "literal"), capacity, [], check);
+
+  const owed: HeldUnitPosition[] = [];
+  const unplaceable: HeldUnitPosition[] = [];
+  const accepted: Demand[] = [];
+  // The held units each combination takes when no other booking asks for it.
+  const takenAlone = new Int32Array(capacity.length);
+  for (const [line, keys] of input.held.entries()) {
+    for (const [position, key] of keys.entries()) {
+      const combination = indexOf.get(key);
+      if (
+        combination === undefined ||
+        (takenAlone[combination] ?? 0) >= (capacity[combination] ?? 0)
+      ) {
+        // Refused with the other bookings too: fitting next to them is harder.
+        unplaceable.push({ line, position });
+        continue;
+      }
+      takenAlone[combination] = (takenAlone[combination] ?? 0) + 1;
+      const unit = { combinations: [combination], quantity: 1 };
+      if (fits([...accepted, unit])) accepted.push(unit);
+      else owed.push({ line, position });
+    }
+  }
+  return { owed, unplaceable };
 };

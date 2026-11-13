@@ -2,24 +2,12 @@ import { eq, max } from "drizzle-orm";
 
 import { reservationActivity, type Transaction } from "@louez/db";
 
-import type { CapacityShortfall } from "./reservation-inventory";
+import type { CapacityShortfall } from "../contracts/reservations";
 
 /**
- * A capacity verdict: what a stock check said of a reservation when it was
- * created, edited or confirmed, kept on that activity row. `overbooked: true`
- * with its shortfalls when the team booked over the stock, `overbooked: false`
- * when the check found that it fits. A reservation's latest verdict is the one
- * that counts: the inbox shows an overbooking until a later edit or
- * confirmation fits. A confirmation's row is `confirmed`, or `quote_accepted`
- * for the customer's.
+ * A capacity verdict, for the activity row of a write that checked the stock
+ * (`CAPACITY_VERDICT_ACTIVITY_TYPES`, contracts/reservations.ts).
  */
-export const CAPACITY_VERDICT_ACTIVITY_TYPES = [
-  "created",
-  "modified",
-  "confirmed",
-  "quote_accepted",
-] as const;
-
 export const capacityVerdictMetadata = (
   shortfalls: readonly CapacityShortfall[],
 ): { overbooked: true; overbookingShortfalls: CapacityShortfall[] } | { overbooked: false } =>

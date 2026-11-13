@@ -279,6 +279,96 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(await statusOf(pending), "rejected");
   });
 
+  test("an agent confirms over the stock only through the preview that lists the shortfalls", async (t) => {
+    const authorization = await key();
+    // Its bookings share the calendar's dates: gone once it ends.
+    const created: string[] = [];
+    t.after(async () => {
+      await louezDb.db
+        .delete(louezDb.reservationActivity)
+        .where(orm.inArray(louezDb.reservationActivity.reservationId, created));
+      await louezDb.db
+        .delete(louezDb.reservationItems)
+        .where(orm.inArray(louezDb.reservationItems.reservationId, created));
+      await louezDb.db
+        .delete(louezDb.reservations)
+        .where(orm.inArray(louezDb.reservations.id, created));
+    });
+    const productId = `rt_prd_${String(++counter).padStart(14, "0")}`;
+    await louezDb.db.insert(louezDb.products).values({
+      id: productId,
+      storeId: STORE,
+      name: "Kayak",
+      price: "10.00",
+      pricingMode: "day",
+      quantity: 1,
+    });
+    const line = async (reservationId: string) => {
+      created.push(reservationId);
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: `rt_itm_${String(++counter).padStart(14, "0")}`,
+        reservationId,
+        productId,
+        quantity: 1,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        productSnapshot: { name: "Kayak", description: null, images: [] },
+      });
+    };
+    await line(await reservation("confirmed"));
+    const pending = await reservation("pending");
+    await line(pending);
+    const shortfalls = [
+      { productId, productName: "Kayak", combinationKey: null, requested: 1, available: 0 },
+    ];
+
+    const refused = toolError(
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
+        status: "confirmed",
+      }),
+    ) as { code?: string; details?: unknown };
+    assert.deepEqual(
+      { code: refused?.code, details: refused?.details },
+      { code: "RESERVATION_INSUFFICIENT_CAPACITY", details: { shortfalls } },
+    );
+
+    const asked = await mcpCall(authorization, "reservations_update_status", {
+      id: pending,
+      status: "confirmed",
+      allowOverbooking: true,
+    });
+    const preview = (
+      toolError(asked) as { details?: { preview?: { details?: { overbooking?: unknown } } } }
+    ).details?.preview;
+    assert.deepEqual(preview?.details?.overbooking, { shortfalls });
+    assert.equal(await statusOf(pending), "pending");
+
+    const confirmed = output(
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
+        status: "confirmed",
+        allowOverbooking: true,
+        confirmationToken: tokenOf(asked),
+      }),
+    );
+    assert.equal(confirmed.to, "confirmed");
+    const [row] = await louezDb.db
+      .select({ metadata: louezDb.reservationActivity.metadata })
+      .from(louezDb.reservationActivity)
+      .where(
+        orm.and(
+          orm.eq(louezDb.reservationActivity.reservationId, pending),
+          orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
+        ),
+      );
+    assert.deepEqual(
+      { actor: row?.metadata?.actor, overbooked: row?.metadata?.overbooked },
+      { actor: "mcp", overbooked: true },
+    );
+  });
+
   test("a calendar window comes a page at a time with a cursor; the API gets it whole", async () => {
     const authorization = await key();
     const window = { from: "2030-06-01T00:00:00Z", to: "2030-06-30T00:00:00Z" };
