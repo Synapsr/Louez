@@ -14,7 +14,8 @@ import { toORPCError } from "../../utils/orpc-error";
 const permissionLevel = z.enum(["none", "read", "write"]);
 const analyticsPermissionLevel = z.enum(["none", "read"]);
 
-const permissionsSchema = z.object({
+/** What an API key may be granted: a key holds no other domain. */
+export const apiKeyPermissionsSchema = z.object({
   reservations: permissionLevel,
   products: permissionLevel,
   customers: permissionLevel,
@@ -32,7 +33,7 @@ const apiKeySchema = z.object({
   id: z.string(),
   name: z.string(),
   keyPrefix: z.string(),
-  permissions: permissionsSchema,
+  permissions: apiKeyPermissionsSchema,
   confirmSensitive: z.boolean(),
   lastUsedAt: z.date().nullable(),
   expiresAt: z.date().nullable(),
@@ -67,7 +68,7 @@ const create = credentials
   .input(
     z.object({
       name: z.string().min(1).max(100),
-      permissions: permissionsSchema,
+      permissions: apiKeyPermissionsSchema,
       expiresAt: z.coerce
         .date()
         .refine((d) => d > new Date(), "Expiration must be in the future")

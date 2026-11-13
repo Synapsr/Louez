@@ -1,3 +1,4 @@
+import type { OpenAPI } from "@orpc/contract";
 import { OpenAPIGenerator, type OpenAPIGeneratorGenerateOptions } from "@orpc/openapi";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { onError, ORPCError, type AnyRouter } from "@orpc/server";
@@ -5,12 +6,17 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
 import type { BaseContext } from "../context";
 import { resolveAccountActor } from "./actor";
+import { CONFIRMATION_TTL_MS } from "./confirmation";
 import { reportUnexpectedErrors } from "./error-reporting";
 import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
 import type { ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
 import { sha256 } from "./hash";
-import type { OperationReceipt } from "./operations";
+import {
+  MAX_IDEMPOTENCY_KEY_LENGTH,
+  OPERATION_RETENTION_MONTHS,
+  type OperationReceipt,
+} from "./operations";
 import type { ApiPorts } from "./ports";
 import { API_RATE_LIMIT } from "./rate-limit";
 
@@ -49,6 +55,15 @@ const REFERENCE_SCRIPT = {
  * reference: they change only with a deployment.
  */
 const REFERENCE_CACHE_CONTROL = "public, max-age=300";
+
+/**
+ * The reference page may not be framed by any site, its own included (Scalar
+ * renders in the page, not in a frame): no CSP reaches `/api/*` otherwise.
+ */
+export const REFERENCE_PAGE_FRAMING_HEADERS = {
+  "Content-Security-Policy": "frame-ancestors 'none'",
+  "X-Frame-Options": "DENY",
+} as const;
 
 /**
  * Largest body `/api/v1` reads, unless the procedure takes more
@@ -169,52 +184,193 @@ const openApiGeneratorOptions = {
  */
 export const OPENAPI_BETA_NOTICE = `> **Beta.** The Louez REST API is in beta. It runs in production, but its operations may still change: new operations and new fields come often, and an operation may still be renamed, changed or removed. Every such change is announced in the [Louez changelog](${API_CHANGELOG_URL}).
 >
-> What does not change without notice: the \`/api/v1\` base path, authentication with an API key, the error format and its \`data.code\` values, and the \`Idempotency-Key\` and \`Louez-Confirmation\` headers. An answer may gain fields at any time: ignore the ones you do not know. The version \`${OPENAPI_VERSION}\` marks the first version of \`/api/v1\`, before it is declared stable.`;
+> Breaking changes to the \`/api/v1\` base path, to the authentication accepted, to the error envelope, to the meaning of an existing error code or to the semantics of the \`Idempotency-Key\` and \`Louez-Confirmation\` headers are announced in advance in the changelog. An operation may gain an additional approval step: follow the flow its description states. An answer may gain fields at any time: ignore the ones you do not know. The version \`${OPENAPI_VERSION}\` marks the first version of \`/api/v1\`, before it is declared stable.`;
+
+/**
+ * How long a completed write replays for its idempotency key, in whole
+ * months: its record is kept `OPERATION_RETENTION_MONTHS` after its last
+ * change, and the purge may take it up to `OPERATION_PURGE_MARGIN_DAYS`
+ * (under a month) sooner.
+ */
+export const IDEMPOTENCY_REPLAY_MONTHS = OPERATION_RETENTION_MONTHS - 1;
+
+const MAX_BODY_MIB = OPENAPI_MAX_BODY_BYTES / (1024 * 1024);
+const CONFIRMATION_MINUTES = CONFIRMATION_TTL_MS / 60_000;
+
+/**
+ * The codes shared by the operations, which every integration should
+ * handle: the platform's own (platform/errors.ts, confirmation.ts, operations.ts, answer-pages.ts,
+ * the body cap above and large-bodies.ts). Those only an OAuth connection
+ * meets (STORE_REQUIRED, NOT_AVAILABLE_TO_THIS_AGENT) or no exposed procedure
+ * throws (SESSION_ONLY) are left out.
+ */
+export const COMMON_ERROR_CODES = [
+  [
+    400,
+    "INVALID_CURSOR",
+    "The `cursor` is not one this operation returned: start again without it.",
+  ],
+  [401, "UNAUTHENTICATED", "No API key, or one that is invalid, expired or revoked."],
+  [401, "CREDENTIAL_NOT_ACCEPTED", "The credential is not an API key."],
+  [
+    403,
+    "PERMISSION_DENIED",
+    "The key's rights or its owner's role do not allow it; `details.required` says what is needed.",
+  ],
+  [
+    403,
+    "NO_STORE_ACCESS",
+    "The key's owner is no longer a member of the key's store, or the store no longer exists.",
+  ],
+  [403, "API_ACCESS_NOT_IN_PLAN", "The store's plan does not include the API."],
+  [
+    403,
+    "CONNECTION_BOUND_TO_STORES",
+    "The operation needs a connection over all of the user's stores; an API key is bound to its store. Its description says so.",
+  ],
+  [
+    409,
+    "IDEMPOTENCY_KEY_REUSED",
+    `The idempotency key was already used with another input or for another operation, or is not 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters long.`,
+  ],
+  [
+    409,
+    "OPERATION_IN_PROGRESS",
+    "The same write is still running: retry shortly with the same idempotency key.",
+  ],
+  [
+    409,
+    "OPERATION_OUTCOME_UNKNOWN",
+    "The write may have gone through, but its outcome was not recorded (`details.operationId`): check the current state before trying again with a new idempotency key.",
+  ],
+  [412, "CONFIRMATION_REQUIRED", "The write waits for a confirmation (below)."],
+  [
+    412,
+    "CONFIRMATION_INVALID",
+    "The confirmation token is unknown, expired, used, or no longer matches: call again without it for a new preview.",
+  ],
+  [413, "REQUEST_TOO_LARGE", "The body is larger than the operation takes (`details.maxBytes`)."],
+  [429, "RATE_LIMITED", "Too many calls: retry after `details.retryAfterSeconds`."],
+  [
+    503,
+    "LARGE_BODY_BUSY",
+    "Too many large bodies are being read: retry after the `Retry-After` header.",
+  ],
+] as const satisfies ReadonlyArray<readonly [number, string, string]>;
+
+const errorTable = [
+  "| Status | `data.code` | Meaning |",
+  "| --- | --- | --- |",
+  ...COMMON_ERROR_CODES.map(
+    ([status, code, meaning]) => `| ${status} | \`${code}\` | ${meaning} |`,
+  ),
+].join("\n");
 
 const OPENAPI_DESCRIPTION = `${OPENAPI_BETA_NOTICE}
 
-Every action of the Louez dashboard, for scripts and integrations: products, reservations, settings, the online store and more. The same operations serve Louez's MCP server for AI assistants, so an operation's \`operationId\` is also its MCP tool name, and descriptions name other operations by it, such as \`products_get\`.
+Louez's dashboard operations for scripts and integrations: products and categories, the follow-up of reservations, statistics, the store's settings, its Stripe connection, the online store, the team, billing and more. The list grows; this reference is the list. Each operation is also a tool of Louez's MCP server for AI assistants, under its \`operationId\`, and descriptions name other operations by it, such as \`products_get\`.
 
 ## Authentication
 
-Send an API key in the \`Authorization\` header: \`Bearer lz_…\`. A store owner creates keys in the Louez dashboard, under Settings > Integrations > MCP, in the API keys section (\`${API_KEYS_PAGE_PATH}\`), and chooses what each key may read and change. The key is shown once. It works on its own store only; an operation outside its rights answers \`PERMISSION_DENIED\`. OAuth access tokens are for the MCP server: this API refuses them with \`CREDENTIAL_NOT_ACCEPTED\`.
+Send an API key in the \`Authorization\` header: \`Bearer lz_…\`. Keys are created in the Louez dashboard, under Settings > Integrations > MCP, in the API keys section (\`${API_KEYS_PAGE_PATH}\`), with what each key may read and change. The key is shown once. It works on its own store only; an operation outside its rights answers \`PERMISSION_DENIED\`, and an operation no API key can call says so in its description. OAuth access tokens are for the MCP server: this API refuses them with \`CREDENTIAL_NOT_ACCEPTED\`.
 
 ## Errors
 
-An error answers with its HTTP status and a JSON body: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English) and \`data\`. Branch on \`data.code\`, a stable code such as \`PRODUCT_NOT_FOUND\`. \`data.retryable\` says whether the same call can succeed later unchanged, and \`data.details\` holds the facts behind the error. An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\`, one per field at fault, and no \`data.code\`. Each operation names its own codes in its description; every integration should handle these:
+Send JSON bodies with \`Content-Type: application/json\`. An error answers with its HTTP status and, but for one case below, a JSON body of the \`Error\` schema: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English, for a developer or a model: do not parse it) and, most of the time, \`data\`.
 
-| Status | \`data.code\` | Meaning |
-| --- | --- | --- |
-| 401 | \`UNAUTHENTICATED\` | No API key, or one that is invalid, expired or revoked. |
-| 401 | \`CREDENTIAL_NOT_ACCEPTED\` | The credential is not an API key. |
-| 403 | \`PERMISSION_DENIED\` | The key's rights or its owner's role do not allow it; \`details.required\` says what is needed. |
-| 403 | \`API_ACCESS_NOT_IN_PLAN\` | The store's plan does not include the API. |
-| 409 | \`IDEMPOTENCY_KEY_REUSED\` | The idempotency key was used with another input. |
-| 409 | \`OPERATION_IN_PROGRESS\` | The same write is still running: retry shortly with the same idempotency key. |
-| 409 | \`OPERATION_OUTCOME_UNKNOWN\` | An earlier call with this idempotency key may have gone through: check the current state before trying again with a new key. |
-| 412 | \`CONFIRMATION_REQUIRED\` | The write waits for a confirmation (below). |
-| 412 | \`CONFIRMATION_INVALID\` | The confirmation token is unknown, expired, used, or no longer matches: call again without it for a new preview. |
-| 413 | \`REQUEST_TOO_LARGE\` | The body is larger than the operation takes (\`details.maxBytes\`). |
-| 429 | \`RATE_LIMITED\` | Too many calls: retry after \`details.retryAfterSeconds\`. |
-| 503 | \`LARGE_BODY_BUSY\` | Too many large bodies are being read: retry after the \`Retry-After\` header. |
+- A refusal by Louez has \`data.code\`, a stable code to branch on, such as \`PERMISSION_DENIED\`, and \`data.retryable\`, whether the same call can succeed later unchanged; \`data.details\`, when present, holds the facts behind it.
+- An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\` and no \`data.code\`. Each issue has a \`message\` and a \`path\`: the field at fault, such as \`["items", 0, "price"]\`, or \`[]\` when the issue is with the input as a whole.
+- A body that is not valid JSON answers 400 \`BAD_REQUEST\` without \`data\`.
+- An unexpected failure answers 500 \`INTERNAL_SERVER_ERROR\`, often without \`data\`.
+- A path that matches no operation answers 404 with the body \`{"message":"Not found"}\`, the one case not in the \`Error\` shape.
+
+The codes shared by the operations, which every integration should handle:
+
+${errorTable}
+
+Other codes belong to one operation or a few, such as \`PRODUCT_NOT_FOUND\`. Some descriptions name the codes to expect; this reference does not list them all yet. Branch on the codes you handle, and treat any other by its HTTP status and \`data.retryable\`.
 
 ## Confirmations
 
-Some writes change what customers see or pay, or cannot be undone; their description says so and they take the \`Louez-Confirmation\` header. On a key that asks for confirmations (the default; an option of each key), their first call changes nothing and answers 412 \`CONFIRMATION_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` lists the facts to check, and \`data.details.confirmationToken\` is the token. Show the preview to the person who decides, then send the same request again with the token in the \`Louez-Confirmation\` header. A token works once, for ten minutes, for the same key, input and state. A few operations always ask, whatever the key's option; their description says so.
+Some writes change what customers see or pay, or cannot be undone; their description says so and they take the \`Louez-Confirmation\` header. On a key that asks for confirmations (the default; an option of each key), their first call changes nothing and answers 412 \`CONFIRMATION_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` holds the facts to check, and \`data.details.confirmationToken\` is the token. Show the preview to the person who decides, then send the same request again with the token in the \`Louez-Confirmation\` header. A token works once, for ${CONFIRMATION_MINUTES} minutes, for the same key, input and state. A few operations always ask, whatever the key's option; their description says so.
 
 ## Idempotency and receipts
 
-A write takes an optional \`Idempotency-Key\` header, 1 to 100 characters. Use a new key for each write you mean, and the same key for its retries: the same key with the same input returns the stored result without running again, with \`Louez-Replayed: true\`; with another input it answers \`IDEMPOTENCY_KEY_REUSED\`. Every write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
+Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), retrying a write that succeeded, with the same key, from the same API key, for the same operation and input, returns its stored result without running it again, with \`Louez-Replayed: true\`. A retry while the first call still runs answers \`OPERATION_IN_PROGRESS\`; after a call that failed, the same key runs the write again. Writes that return a temporary link (upload URLs, hand-offs to Stripe or to billing, team invitation approvals) do not replay: they ignore the header, and a retry issues a new link. A successful write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
 
 ## Limits
 
-A key makes up to ${API_RATE_LIMIT.max} calls a minute, counted together with its MCP calls. A request body is at most 2 MiB, unless the operation says it takes more (an image's bytes, a product with its units). Lists are paged: pass the \`nextCursor\` of an answer as \`cursor\` to read on.`;
+Each API key spends at most ${API_RATE_LIMIT.max} request units a minute, shared with what the same key spends over MCP. A REST call costs at most one unit; over MCP, a request with a large body costs more. Past the limit, calls answer \`RATE_LIMITED\` with \`details.retryAfterSeconds\`. A request body is at most ${MAX_BODY_MIB} MiB, but for the few operations that take more: an image sent as its bytes, a product with its units. Where an answer has \`nextCursor\`, pass it as \`cursor\` to read on.`;
+
+/** The body of every error the operations answer, but a 404 for a path that matches none. */
+const ERROR_SCHEMA: OpenAPI.SchemaObject = {
+  type: "object",
+  description:
+    'An error. A path that matches no operation answers 404 with `{"message":"Not found"}` instead.',
+  properties: {
+    defined: { type: "boolean" },
+    code: { type: "string", description: "HTTP-level code, such as FORBIDDEN." },
+    status: { type: "integer", description: "The HTTP status." },
+    message: {
+      type: "string",
+      description: "Plain English, written for a developer or a model. Do not parse it.",
+    },
+    data: {
+      type: "object",
+      description:
+        "Absent when the body is not valid JSON, and often on a 500. A refusal by Louez has `code` and `retryable`; an input the operation does not accept has `issues` instead.",
+      properties: {
+        code: {
+          type: "string",
+          description: "Stable code to branch on, such as PERMISSION_DENIED.",
+        },
+        retryable: {
+          type: "boolean",
+          description: "Whether the same call can succeed later unchanged.",
+        },
+        i18nKey: {
+          type: "string",
+          description: "The key under which the Louez dashboard translates this error.",
+        },
+        details: {
+          type: "object",
+          additionalProperties: true,
+          description: "The facts behind the error, such as `retryAfterSeconds`.",
+        },
+        issues: {
+          type: "array",
+          description: "For an input the operation does not accept: what is wrong with it.",
+          items: {
+            type: "object",
+            properties: {
+              code: { type: "string" },
+              path: {
+                type: "array",
+                items: { type: ["string", "integer"] },
+                description: "The field at fault; empty when the issue is with the whole input.",
+              },
+              message: { type: "string" },
+            },
+            required: ["path", "message"],
+          },
+        },
+      },
+    },
+  },
+  required: ["defined", "code", "status", "message"],
+};
+
+/** A response whose body is the `Error` schema. */
+const errorBodyResponse = (description: string) => ({
+  description,
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+});
 
 /**
  * The parts of the `/api/v1` document that do not come from the procedures:
  * the beta notice and the guide to the API, the API key scheme, the
  * idempotency and confirmation headers, the receipt headers, and the error
- * body every transport sends.
+ * body and responses every operation refers to (`documented` in exposure.ts).
  */
 const openApiDocumentOptions = {
   info: {
@@ -238,16 +394,14 @@ const openApiDocumentOptions = {
         name: "Idempotency-Key",
         in: "header",
         required: false,
-        description:
-          "Makes a write safe to retry. The same key with the same input returns the stored result without running again; with another input it fails with IDEMPOTENCY_KEY_REUSED.",
-        schema: { type: "string", minLength: 1, maxLength: 100 },
+        description: `Makes this write safe to retry. While its record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months), a retry that succeeded with the same key, operation and input returns the stored result without running again; another input or operation fails with IDEMPOTENCY_KEY_REUSED.`,
+        schema: { type: "string", minLength: 1, maxLength: MAX_IDEMPOTENCY_KEY_LENGTH },
       },
       LouezConfirmation: {
         name: "Louez-Confirmation",
         in: "header",
         required: false,
-        description:
-          "The token a CONFIRMATION_REQUIRED error returned. Send the same input again with it to go ahead. Valid ten minutes, once.",
+        description: `The token a CONFIRMATION_REQUIRED error returned. Send the same input again with it to go ahead. Valid ${CONFIRMATION_MINUTES} minutes, once.`,
         schema: { type: "string" },
       },
     },
@@ -261,47 +415,24 @@ const openApiDocumentOptions = {
         schema: { type: "string", enum: ["true"] },
       },
     },
-  },
-  customErrorResponseBodySchema: () => ({
-    type: "object",
-    properties: {
-      defined: { type: "boolean" },
-      code: { type: "string", description: "HTTP-level code, such as FORBIDDEN." },
-      status: { type: "number" },
-      message: {
-        type: "string",
-        description: "Plain English, written for a model or a developer.",
-      },
-      data: {
-        type: "object",
-        description:
-          "What the error is about. Every error has `code` and `retryable`, except a 400 for an input the operation does not accept, which has `issues` instead.",
-        properties: {
-          code: {
-            type: "string",
-            description: "Stable code to branch on, such as PERMISSION_DENIED.",
-          },
-          retryable: { type: "boolean", description: "Whether the same call can succeed later." },
-          i18nKey: { type: "string" },
-          details: { type: "object", additionalProperties: true },
-          issues: {
-            type: "array",
-            description:
-              "For an input the operation does not accept: one entry per field at fault.",
-            items: {
-              type: "object",
-              properties: {
-                code: { type: "string" },
-                path: { type: "array", items: { type: ["string", "number"] } },
-                message: { type: "string" },
-              },
-            },
-          },
-        },
-      },
+    schemas: { Error: ERROR_SCHEMA },
+    responses: {
+      BadRequest: errorBodyResponse(
+        "The body is not valid JSON (no `data`), the input is not accepted (`data.issues`), or a refusal such as INVALID_CURSOR (`data.code`).",
+      ),
+      Unauthorized: errorBodyResponse(
+        "No valid API key (UNAUTHENTICATED), or a credential that is not an API key (CREDENTIAL_NOT_ACCEPTED).",
+      ),
+      Forbidden: errorBodyResponse(
+        "The key's rights, its owner's role or membership, or the store's plan do not allow it: PERMISSION_DENIED, NO_STORE_ACCESS, API_ACCESS_NOT_IN_PLAN, CONNECTION_BOUND_TO_STORES.",
+      ),
+      ConfirmationRequired: errorBodyResponse(
+        "CONFIRMATION_REQUIRED, with the preview and the token to send in `Louez-Confirmation`; or CONFIRMATION_INVALID.",
+      ),
+      RateLimited: errorBodyResponse("RATE_LIMITED: retry after `details.retryAfterSeconds`."),
+      Error: errorBodyResponse("Any other error, in the same shape: branch on `data.code`."),
     },
-    required: ["defined", "code", "status", "message"],
-  }),
+  },
 } satisfies OpenAPIGeneratorGenerateOptions;
 
 /** The OpenAPI 3.1 document of a router, as `/api/v1/openapi.json` serves it. */
@@ -353,6 +484,8 @@ function isCurrent(request: Request, etag: string): boolean {
 /**
  * The reference page: Scalar renders the document, read from the same origin.
  * The beta notice heads the document's description, which Scalar shows first.
+ * A plain link to the document ends the page, so it is never empty when
+ * Scalar's script does not load.
  */
 function referenceHtml(documentPath: string): string {
   const config = {
@@ -368,11 +501,12 @@ function referenceHtml(documentPath: string): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${openApiDocumentOptions.info.title} reference (beta)</title>
-    <meta name="description" content="The REST API of Louez, the rental management software: every operation, its input and its answer. In beta." />
+    <meta name="description" content="The REST API of Louez, the rental management software: every operation the API exposes, its input and its answer. In beta." />
   </head>
   <body>
     <div id="app"></div>
-    <noscript>This reference needs JavaScript. The OpenAPI document itself is at <a href="${documentPath}">${documentPath}</a>.</noscript>
+    <noscript><p>This reference needs JavaScript.</p></noscript>
+    <p style="margin: 1rem; font: 14px/1.5 system-ui, sans-serif">The OpenAPI document of this reference: <a href="${documentPath}">${documentPath}</a></p>
     <script src="${REFERENCE_SCRIPT.url}" integrity="${REFERENCE_SCRIPT.integrity}" crossorigin="anonymous"></script>
     <script>Scalar.createApiReference("#app", ${script});</script>
   </body>
@@ -436,6 +570,11 @@ export function createApiReference(router: AnyRouter): ApiReference {
       });
       // A public document: any site may read it, without credentials.
       if (route === OPENAPI_DOCUMENT_PATH) headers.set("Access-Control-Allow-Origin", "*");
+      else {
+        for (const [name, value] of Object.entries(REFERENCE_PAGE_FRAMING_HEADERS)) {
+          headers.set(name, value);
+        }
+      }
       if (isCurrent(request, file.etag)) return new Response(null, { status: 304, headers });
       return new Response(request.method === "HEAD" ? null : file.body, { status: 200, headers });
     },

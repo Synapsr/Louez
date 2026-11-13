@@ -277,9 +277,18 @@ function problemsOf(path: string, node: unknown): string[] {
   return problems;
 }
 
+/** A reusable response of the document (`components.responses` in platform/openapi.ts). */
+const responseRef = (name: string) => ({ $ref: `#/components/responses/${name}` });
+
 /**
  * What a write and a sensitive procedure take on top of their input: the
- * idempotency and confirmation headers, and the receipt headers of the answer.
+ * idempotency and confirmation headers, and the receipt headers of the
+ * answer. A write whose output is never stored (`meta.secretOutput`: a
+ * temporary link) ignores an idempotency key and never replays, so it
+ * documents neither the key nor `Louez-Replayed`. Every operation documents
+ * the error body: the statuses any call may meet (400, 401, 429; 403 where
+ * a scope is checked; 412 where a confirmation may be asked), and `default`
+ * for the others.
  */
 function documented(
   meta: ExposedMeta,
@@ -288,12 +297,11 @@ function documented(
 ): OpenAPI.OperationObject {
   const parameters = [...(operation.parameters ?? [])];
   const isWrite = meta.scope?.level === "write";
-  if (isWrite && !meta.secretOutput) {
-    parameters.push({ $ref: "#/components/parameters/IdempotencyKey" });
-  }
+  const replays = isWrite && !meta.secretOutput;
+  if (replays) parameters.push({ $ref: "#/components/parameters/IdempotencyKey" });
   if (meta.sensitive) parameters.push({ $ref: "#/components/parameters/LouezConfirmation" });
 
-  const responses = { ...operation.responses };
+  const responses: OpenAPI.ResponsesObject = { ...operation.responses };
   const success = responses["200"];
   if (isWrite && success && !("$ref" in success)) {
     responses["200"] = {
@@ -301,10 +309,17 @@ function documented(
       headers: {
         ...success.headers,
         "Louez-Operation-Id": { $ref: "#/components/headers/LouezOperationId" },
-        "Louez-Replayed": { $ref: "#/components/headers/LouezReplayed" },
+        ...(replays ? { "Louez-Replayed": { $ref: "#/components/headers/LouezReplayed" } } : {}),
       },
     };
   }
+  responses["400"] = responseRef("BadRequest");
+  responses["401"] = responseRef("Unauthorized");
+  // A procedure without a scope (`stores_list`) refuses no connection.
+  if (meta.scope) responses["403"] = responseRef("Forbidden");
+  if (meta.sensitive) responses["412"] = responseRef("ConfirmationRequired");
+  responses["429"] = responseRef("RateLimited");
+  responses.default = responseRef("Error");
 
   return {
     ...operation,

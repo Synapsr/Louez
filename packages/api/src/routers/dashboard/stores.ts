@@ -144,7 +144,7 @@ const create = accountProcedure
     mcp: {
       name: "stores_create",
       title: "Create Store",
-      description: `Create a new rental store owned by the user, offline until they launch it. The store starts a billing relationship with Louez, so the first call answers CONFIRMATION_REQUIRED with a preview (name, address, the future public URL, country, currency and the pricing that applies). With an idempotency key, a retry never creates a second store. Needs a connection with "Read and edit" rights on all the user's stores; ${STORE_CREATION_DAILY_LIMIT} stores per account a day at most. Returns the store's id (storeId for the other tools), its dashboard link and the next steps.`,
+      description: `Create a new rental store owned by the user, offline until they launch it. The store starts a billing relationship with Louez, so the first call answers CONFIRMATION_REQUIRED with a preview (name, address, the future public URL, country, currency and the pricing that applies). With an idempotency key, a retry never creates a second store. Available to an assistant connected over MCP with "Read and edit" rights on all of the user's stores; an API key is bound to its store and is answered 403 CONNECTION_BOUND_TO_STORES. ${STORE_CREATION_DAILY_LIMIT} stores per account a day at most. Returns the store's id (storeId for the other tools), its dashboard link and the next steps.`,
       bundle: "daily",
       effect: "additive",
       annotations: { idempotentHint: true },

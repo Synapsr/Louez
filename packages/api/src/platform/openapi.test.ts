@@ -298,12 +298,14 @@ const INTERNAL_WORDING = [
 ];
 
 describe("the public reference", () => {
+  type Ref = { $ref?: string };
   type Operation = {
     operationId?: string;
     summary?: string;
     description?: string;
     security?: unknown[];
-    responses: Record<string, unknown>;
+    parameters?: Array<Ref & { name?: string; in?: string }>;
+    responses: Record<string, Ref & { headers?: Record<string, unknown> }>;
   };
   type PublicDocument = {
     openapi: string;
@@ -311,11 +313,24 @@ describe("the public reference", () => {
     servers: Array<{ url: string }>;
     security: unknown[];
     paths: Record<string, Record<string, Operation>>;
+    components: {
+      schemas: Record<string, { required?: string[]; properties?: Record<string, unknown> }>;
+      responses: Record<string, { content: Record<string, { schema: Ref }> }>;
+      parameters: Record<
+        string,
+        { name: string; schema: { minLength?: number; maxLength?: number } }
+      >;
+    };
   };
 
   const SERVER = "https://app.louez.test/api/v1";
-  let serve: (path: string, headers?: Record<string, string>) => Promise<Response | undefined>;
+  let serve: (
+    path: string,
+    headers?: Record<string, string>,
+    init?: RequestInit,
+  ) => Promise<Response | undefined>;
   let exposedNames: string[];
+  let procedures: readonly import("./exposure").ExposedProcedure[];
   let openapi: typeof import("./openapi");
 
   before(async () => {
@@ -323,6 +338,7 @@ describe("the public reference", () => {
     openapi = await import("./openapi");
     const { appRouter } = await import("../router");
     const exposure = createExposure(appRouter);
+    procedures = exposure.procedures;
     exposedNames = exposure.procedures.map(
       ({ procedure, meta }) => procedure["~orpc"].route.operationId ?? meta.mcp.name,
     );
@@ -331,8 +347,8 @@ describe("the public reference", () => {
     const ports = {
       urls: { dashboard: (path: string) => `https://app.louez.test${path}` },
     } as unknown as import("./ports").ApiPorts;
-    serve = (path, headers = {}) =>
-      openapi.handleOpenApiRequest(handler, new Request(`${SERVER}${path}`, { headers }), {
+    serve = (path, headers = {}, init = {}) =>
+      openapi.handleOpenApiRequest(handler, new Request(`${SERVER}${path}`, { ...init, headers }), {
         ports,
         reference,
       });
@@ -350,6 +366,22 @@ describe("the public reference", () => {
         operation,
       })),
     );
+  /** Each exposed procedure with its operation in the served document. */
+  const servedProcedures = async () => {
+    const byId = new Map(
+      operationsOf(await fetchDocument()).map(({ operation }) => [
+        operation.operationId,
+        operation,
+      ]),
+    );
+    return procedures.map((exposed) => {
+      const operation = byId.get(
+        exposed.procedure["~orpc"].route.operationId ?? exposed.meta.mcp.name,
+      );
+      assert.ok(operation, `${exposed.path} is served`);
+      return { ...exposed, operation };
+    });
+  };
 
   test("serves the document to anyone, with a public cache lifetime and an ETag", async () => {
     const response = await serve("/openapi.json");
@@ -385,6 +417,22 @@ describe("the public reference", () => {
     assert.match(html, /"url":"\/api\/v1\/openapi\.json"/);
     assert.match(html, /"telemetry":false/);
     assert.match(html, /<title>Louez API reference \(beta\)<\/title>/);
+  });
+
+  test("the reference page links to the document outside <noscript>, and no site may frame it", async () => {
+    const page = await serve("/docs");
+    const html = (await page?.text()) ?? "";
+    const visible = html.replace(/<noscript>[\s\S]*?<\/noscript>/g, "");
+    assert.match(visible, /<a href="\/api\/v1\/openapi\.json">/);
+    for (const [name, value] of Object.entries(openapi.REFERENCE_PAGE_FRAMING_HEADERS)) {
+      assert.equal(page?.headers.get(name), value);
+    }
+    assert.equal(page?.headers.get("content-security-policy"), "frame-ancestors 'none'");
+    assert.equal(page?.headers.get("x-frame-options"), "DENY");
+    // Not on the document, which any site may read.
+    const document = await serve("/openapi.json");
+    assert.equal(document?.headers.get("content-security-policy"), null);
+    assert.equal(document?.headers.get("x-frame-options"), null);
   });
 
   test("leaves every other path to the procedures", async () => {
@@ -441,6 +489,231 @@ describe("the public reference", () => {
     );
     assert.deepEqual([...served].sort(), [...exposedNames].sort());
     assert.equal(new Set(served).size, served.length, "each operation once");
+  });
+
+  test("states its numbers and names from the code they come from", async () => {
+    const { info } = await fetchDocument();
+    const text = info.description;
+    const { API_RATE_LIMIT } = await import("./rate-limit");
+    const operations = await import("./operations");
+    const { CONFIRMATION_HEADER, CONFIRMATION_TTL_MS } = await import("./confirmation");
+
+    assert.equal(API_RATE_LIMIT.windowMs, 60_000, "the limit is a minute's");
+    assert.ok(text.includes(`at most ${API_RATE_LIMIT.max} request units a minute`));
+    assert.ok(
+      text.includes(`at most ${openapi.OPENAPI_MAX_BODY_BYTES / (1024 * 1024)} MiB`),
+      "the body cap",
+    );
+    assert.ok(text.includes(`1 to ${operations.MAX_IDEMPOTENCY_KEY_LENGTH} characters`));
+    // The purge may run a week early: replays last whole months less one.
+    assert.ok(operations.OPERATION_PURGE_MARGIN_DAYS > 0);
+    assert.ok(operations.OPERATION_PURGE_MARGIN_DAYS < 28);
+    assert.equal(openapi.IDEMPOTENCY_REPLAY_MONTHS, operations.OPERATION_RETENTION_MONTHS - 1);
+    assert.ok(text.includes(`at least ${openapi.IDEMPOTENCY_REPLAY_MONTHS} months`));
+    assert.ok(text.includes(`for ${CONFIRMATION_TTL_MS / 60_000} minutes`));
+    for (const header of [
+      operations.IDEMPOTENCY_HEADER,
+      CONFIRMATION_HEADER,
+      openapi.OPERATION_ID_HEADER,
+      openapi.REPLAYED_HEADER,
+    ]) {
+      assert.match(text, new RegExp(`\`${header}`, "i"), `the guide names ${header}`);
+    }
+    assert.ok(text.includes(openapi.API_KEYS_PAGE_PATH));
+    // The one answer outside the Error shape, as the route sends it.
+    assert.ok(text.includes('`{"message":"Not found"}`'));
+  });
+
+  test("its table of common codes holds each with the status the platform answers", async () => {
+    const { info } = await fetchDocument();
+    const { platformErrors } = await import("./errors");
+    const { largeBodyBusy } = await import("./large-bodies");
+    const { answerPage } = await import("./answer-pages");
+    const thrown = (run: () => unknown) => {
+      try {
+        run();
+      } catch (error) {
+        return error as { status: number; data: { code: string } };
+      }
+      assert.fail("expected an error");
+    };
+    const tooLarge = await serve(
+      "/categories",
+      {
+        "content-type": "application/json",
+        "content-length": String(openapi.OPENAPI_MAX_BODY_BYTES + 1),
+      },
+      { method: "POST", body: "{}" },
+    );
+    assert.ok(tooLarge, "the body cap answers");
+    const statusOf: Record<string, number> = {
+      INVALID_CURSOR: thrown(() =>
+        answerPage([], { key: String }, { cursor: "%" }, { transport: "openapi", tool: "t" }),
+      ).status,
+      UNAUTHENTICATED: platformErrors.unauthenticated().status,
+      CREDENTIAL_NOT_ACCEPTED: platformErrors.credentialNotAccepted("openapi").status,
+      PERMISSION_DENIED: platformErrors.permissionDenied("x").status,
+      NO_STORE_ACCESS: platformErrors.noStore().status,
+      API_ACCESS_NOT_IN_PLAN: platformErrors.apiAccessNotInPlan().status,
+      CONNECTION_BOUND_TO_STORES: platformErrors.connectionBoundToStores("api_key").status,
+      IDEMPOTENCY_KEY_REUSED: platformErrors.idempotencyConflict().status,
+      OPERATION_IN_PROGRESS: platformErrors.operationInProgress().status,
+      OPERATION_OUTCOME_UNKNOWN: platformErrors.operationOutcomeUnknown("op").status,
+      // Asked inside a handler, with a token written to the database.
+      CONFIRMATION_REQUIRED: 412,
+      CONFIRMATION_INVALID: platformErrors.confirmationInvalid().status,
+      REQUEST_TOO_LARGE: tooLarge.status,
+      RATE_LIMITED: platformErrors.rateLimited(1).status,
+      LARGE_BODY_BUSY: largeBodyBusy().status,
+    };
+    assert.equal(
+      ((await tooLarge.json()) as { data: { code: string } }).data.code,
+      "REQUEST_TOO_LARGE",
+    );
+    assert.deepEqual(
+      openapi.COMMON_ERROR_CODES.map(([status, code]) => [code, status]),
+      openapi.COMMON_ERROR_CODES.map(([, code]) => [code, statusOf[code]]),
+    );
+    for (const [status, code] of openapi.COMMON_ERROR_CODES) {
+      assert.ok(
+        info.description.includes(`| ${status} | \`${code}\` |`),
+        `the table holds ${code}`,
+      );
+    }
+  });
+
+  test("its error guide is what the transport answers", async () => {
+    const post = (body: string) =>
+      serve("/categories", { "content-type": "application/json" }, { method: "POST", body });
+
+    // A body that is not JSON: 400 without data.
+    const malformed = await post("{not json");
+    assert.equal(malformed?.status, 400);
+    const malformedBody = (await malformed?.json()) as Record<string, unknown>;
+    assert.equal(malformedBody.code, "BAD_REQUEST");
+    assert.equal(malformedBody.data, undefined);
+
+    // An input the operation does not accept: issues with their path, no code.
+    const invalid = await post(JSON.stringify({ name: 5 }));
+    assert.equal(invalid?.status, 400);
+    const invalidBody = (await invalid?.json()) as {
+      code: string;
+      data: { code?: string; issues: Array<{ path: unknown[]; message: string }> };
+    };
+    assert.equal(invalidBody.code, "BAD_REQUEST");
+    assert.equal(invalidBody.data.code, undefined);
+    assert.ok(invalidBody.data.issues.some((issue) => issue.path[0] === "name"));
+
+    // The whole input at fault: an empty path.
+    const whole = await post(JSON.stringify("text"));
+    const wholeBody = (await whole?.json()) as { data: { issues: Array<{ path: unknown[] }> } };
+    assert.deepEqual(wholeBody.data.issues[0].path, []);
+
+    // No operation: the route answers its own 404.
+    assert.equal(await serve("/nothing-here"), undefined);
+  });
+
+  test("documents the error body on every operation", async () => {
+    const document = await fetchDocument();
+    const { Error: schema } = document.components.schemas;
+    assert.deepEqual(schema.required, ["defined", "code", "status", "message"]);
+    assert.ok(schema.properties?.data);
+    for (const [name, response] of Object.entries(document.components.responses)) {
+      assert.equal(
+        response.content["application/json"].schema.$ref,
+        "#/components/schemas/Error",
+        `${name} answers the Error body`,
+      );
+    }
+
+    const served = await servedProcedures();
+    assert.equal(served.length, exposedNames.length);
+    const ref = (name: string) => `#/components/responses/${name}`;
+    for (const { path, meta, operation } of served) {
+      const { responses } = operation;
+      assert.equal(responses.default?.$ref, ref("Error"), `${path}: default`);
+      assert.equal(responses["400"]?.$ref, ref("BadRequest"), `${path}: 400`);
+      assert.equal(responses["401"]?.$ref, ref("Unauthorized"), `${path}: 401`);
+      assert.equal(responses["429"]?.$ref, ref("RateLimited"), `${path}: 429`);
+      assert.equal(
+        responses["403"]?.$ref,
+        meta.scope ? ref("Forbidden") : undefined,
+        `${path}: 403`,
+      );
+      assert.equal(
+        responses["412"]?.$ref,
+        meta.sensitive ? ref("ConfirmationRequired") : undefined,
+        `${path}: 412`,
+      );
+    }
+  });
+
+  test("documents the idempotency key and the replay only on the writes that replay", async () => {
+    const document = await fetchDocument();
+    const { MAX_IDEMPOTENCY_KEY_LENGTH } = await import("./operations");
+    assert.deepEqual(document.components.parameters.IdempotencyKey.schema, {
+      type: "string",
+      minLength: 1,
+      maxLength: MAX_IDEMPOTENCY_KEY_LENGTH,
+    });
+
+    const served = await servedProcedures();
+    const secret = served.filter(({ meta }) => meta.secretOutput).map(({ meta }) => meta.mcp.name);
+    // Upload URLs, Stripe and billing hand-offs, team invitation approvals.
+    assert.ok(secret.length >= 4, `writes that return a temporary link: ${secret.join(", ")}`);
+    for (const { path, meta, operation } of served) {
+      const writes = meta.scope?.level === "write";
+      // procedures.ts passes no key to runOperation for these.
+      const replays = writes && !meta.secretOutput;
+      const takesKey = (operation.parameters ?? []).some(
+        (parameter) => parameter.$ref === "#/components/parameters/IdempotencyKey",
+      );
+      const headers = Object.keys(operation.responses["200"]?.headers ?? {});
+      assert.equal(takesKey, replays, `${path}: Idempotency-Key`);
+      assert.equal(headers.includes("Louez-Replayed"), replays, `${path}: Louez-Replayed`);
+      assert.equal(headers.includes("Louez-Operation-Id"), writes, `${path}: Louez-Operation-Id`);
+    }
+  });
+
+  test("says, on each operation no API key can call, that an API key is refused", async () => {
+    const { accountRefusal, allows, normalizeScopes } = await import("./permissions");
+    const { apiKeyPermissionsSchema } = await import("../routers/dashboard/api-keys");
+    // The widest key there can be: write on every domain a key may hold.
+    const scopes = normalizeScopes(
+      Object.fromEntries(
+        Object.keys(apiKeyPermissionsSchema.shape).map((domain) => [domain, "write"]),
+      ),
+    );
+    const key = { kind: "api_key" as const, storeId: "store_1", stores: null, scopes };
+
+    const refused = (await servedProcedures()).flatMap(({ path, meta, operation }) => {
+      if (meta.actors && !meta.actors.includes("api_key"))
+        return [{ path, why: "actors", operation }];
+      if (!meta.scope) return [];
+      if (meta.account) {
+        const refusal = accountRefusal(key, meta.scope);
+        return refusal ? [{ path, why: refusal, operation, meta }] : [];
+      }
+      return allows("owner", scopes, meta.scope) ? [] : [{ path, why: "scope", operation }];
+    });
+    assert.deepEqual(
+      refused.map(({ path }) => path),
+      ["dashboard.stores.create"],
+    );
+    const sentence =
+      "an API key is bound to its store and is answered 403 CONNECTION_BOUND_TO_STORES";
+    for (const { path, why, operation } of refused) {
+      // Another reason needs its own sentence.
+      assert.equal(why, "bound", path);
+      assert.ok(operation.description?.includes(sentence), `${path} says an API key is refused`);
+      assert.ok(operation.description?.includes("connected over MCP"), `${path} says who may`);
+    }
+    const others = (await servedProcedures()).filter(
+      ({ path }) => !refused.some((entry) => entry.path === path),
+    );
+    for (const { path, operation } of others) {
+      assert.ok(!operation.description?.includes(sentence), `${path} does not say it`);
+    }
   });
 
   test("speaks of no internals in any description", async () => {
