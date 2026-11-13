@@ -287,6 +287,180 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
     assert.equal((await paymentsOf(reservationId)).length, 1);
     assert.deepEqual(await queue(), []);
   });
+
+  test("the payment tools write no history line", async () => {
+    const reservationId = await createReservation();
+    await recordPayment({ reservationId, type: "deposit", amount: "30.00", method: "card" });
+    await returnDeposit({ reservationId, amount: "10.00", method: "card" });
+    const [deposit] = (await paymentsOf(reservationId)).filter((row) => row.type === "deposit");
+    await deletePayment({ paymentId: deposit?.id ?? "" });
+
+    assert.deepEqual(
+      await louezDb.db
+        .select({ type: louezDb.reservationActivity.activityType })
+        .from(louezDb.reservationActivity)
+        .where(eq(louezDb.reservationActivity.reservationId, reservationId)),
+      [],
+    );
+    // The second commit records each call in api_operations, as the user's session.
+    assert.deepEqual(
+      await louezDb.db
+        .select({ procedure: louezDb.apiOperations.procedure })
+        .from(louezDb.apiOperations)
+        .where(eq(louezDb.apiOperations.storeId, STORE)),
+      [],
+    );
+  });
+
+  test("the payment and deposit answers", async () => {
+    const reservationId = await createReservation();
+    await recordPayment({ reservationId, type: "deposit", amount: "30.00", method: "card" });
+
+    assert.deepEqual(await returnDeposit({ reservationId, amount: "10.00", method: "cash" }), {
+      success: true,
+      reservationNumber: reservationId,
+      amount: "10.00",
+      method: "cash",
+    });
+    const [deposit] = (await paymentsOf(reservationId)).filter((row) => row.type === "deposit");
+    assert.deepEqual(await deletePayment({ paymentId: deposit?.id ?? "" }), {
+      success: true,
+      reservationNumber: reservationId,
+    });
+  });
+
+  test("each refusal answers with its message and writes nothing", async () => {
+    const reservationId = await createReservation();
+    await recordPayment({ reservationId, type: "deposit", amount: "30.00", method: "card" });
+    await returnDeposit({ reservationId, amount: "10.00", method: "card" });
+    const cancelled = await createReservation();
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ status: "cancelled" })
+      .where(eq(louezDb.reservations.id, cancelled));
+    const [charged] = await louezDb.db
+      .insert(louezDb.payments)
+      .values({
+        reservationId,
+        amount: "20.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+      })
+      .$returningId();
+    const before = await paymentsOf(reservationId);
+    await louezDb.db.delete(louezDb.billingSyncQueue);
+
+    assert.deepEqual(
+      await recordPayment({ reservationId, type: "rental", amount: "0", method: "cash" }),
+      { error: "Amount must be a non-zero number" },
+    );
+    assert.deepEqual(
+      await recordPayment({ reservationId, type: "rental", amount: "abc", method: "cash" }),
+      { error: "Amount must be a non-zero number" },
+    );
+    assert.deepEqual(
+      await recordPayment({
+        reservationId: cancelled,
+        type: "rental",
+        amount: "5.00",
+        method: "cash",
+      }),
+      { error: "Cannot record payment on a cancelled reservation" },
+    );
+    assert.deepEqual(
+      await recordPayment({
+        reservationId: "res_nowhere",
+        type: "rental",
+        amount: "5.00",
+        method: "cash",
+      }),
+      { error: "Reservation not found" },
+    );
+    assert.deepEqual(await returnDeposit({ reservationId, amount: "0", method: "cash" }), {
+      error: "Amount must be greater than zero",
+    });
+    assert.deepEqual(await returnDeposit({ reservationId, amount: "20.01", method: "cash" }), {
+      error:
+        "Amount exceeds returnable deposit. Collected: 30.00, already returned: 10.00, max returnable: 20.00",
+    });
+    assert.deepEqual(
+      await returnDeposit({ reservationId: "res_nowhere", amount: "1.00", method: "cash" }),
+      { error: "Reservation not found" },
+    );
+    assert.deepEqual(await deletePayment({ paymentId: charged?.id ?? "" }), {
+      error: "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+    });
+    assert.deepEqual(await deletePayment({ paymentId: "pay_nowhere" }), {
+      error: "Payment not found",
+    });
+
+    assert.deepEqual(await paymentsOf(reservationId), before);
+    assert.deepEqual(await paymentsOf(cancelled), []);
+    assert.deepEqual(await queue(), []);
+  });
+
+  test("record_payment takes a negative amount of any type", async () => {
+    // The second commit refuses it outside an adjustment, as the MCP tool
+    // does: the one change a user of the chat can see.
+    const reservationId = await createReservation();
+    assert.deepEqual(
+      await recordPayment({ reservationId, type: "rental", amount: "-5.00", method: "cash" }),
+      {
+        success: true,
+        reservationNumber: reservationId,
+        type: "rental",
+        amount: "-5.00",
+        method: "cash",
+      },
+    );
+    assert.deepEqual(
+      (await paymentsOf(reservationId)).map(({ type, amount }) => ({ type, amount })),
+      [{ type: "rental", amount: "-5.00" }],
+    );
+  });
+
+  test("a user who only reads payments may not write them", async () => {
+    const reservationId = await createReservation();
+    const aiTools = await import("./tools");
+    const reading = aiTools.createAITools({
+      storeId: STORE,
+      userId: USER,
+      storeName: "AI payments",
+      urls: createTestUrls(),
+      permissions: {
+        reservations: "read",
+        products: "read",
+        customers: "read",
+        categories: "read",
+        payments: "read",
+        analytics: "read",
+        settings: "read",
+      },
+    });
+    const denied = /Permission denied: requires payments:write \(current: read\)/;
+    await assert.rejects(
+      async () =>
+        reading.record_payment.execute?.(
+          { reservationId, type: "rental", amount: "5.00", method: "cash" },
+          options,
+        ),
+      denied,
+    );
+    await assert.rejects(
+      async () =>
+        reading.return_deposit.execute?.(
+          { reservationId, amount: "5.00", method: "cash" },
+          options,
+        ),
+      denied,
+    );
+    await assert.rejects(
+      async () => reading.delete_payment.execute?.({ paymentId: "pay_any" }, options),
+      denied,
+    );
+    assert.deepEqual(await paymentsOf(reservationId), []);
+  });
   test("a customer's reservation history, ids and links show only to a user who may read reservations", async () => {
     // A reservation of the customer, for its history.
     const reservationId = await createReservation();
