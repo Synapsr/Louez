@@ -786,6 +786,7 @@ describe("the public reference", () => {
 
   /** The writes whose whole input is in their path: they take no body. */
   const BODILESS = [
+    "DELETE /payments/{paymentId}",
     "DELETE /products/downtimes/{downtimeId}",
     "DELETE /products/seasonal-pricings/{id}",
     "DELETE /products/{id}",
@@ -1372,7 +1373,7 @@ describe("the content types an operation takes", () => {
         path,
       );
     }
-    assert.equal(none, 13);
+    assert.equal(none, 14);
   });
 
   test("an operation with a file field reads a multipart form and JSON, and nothing else", async () => {
