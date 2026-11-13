@@ -1135,6 +1135,158 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal(seen.failure?.code, "request_changed");
   });
 
+  // --- Each answer, as the step records it -------------------------------------
+
+  /**
+   * The owner's answers and what each leaves for the agent to read: sent,
+   * added at once, declined, and approved but no longer possible (the seats
+   * full, the address got an account, the day's e-mails spent).
+   */
+  const ANSWERS = [
+    {
+      label: "approved, sent by e-mail",
+      email: "tm_new_sent@tm.test",
+      decision: "approve",
+      answer: { decision: "approved", outcome: "invited" },
+      status: "completed",
+      failure: null,
+    },
+    {
+      label: "approved, added at once",
+      email: "existing@tm.test",
+      decision: "approve",
+      answer: { decision: "approved", outcome: "added" },
+      status: "completed",
+      failure: null,
+    },
+    {
+      label: "declined",
+      email: "tm_new_declined@tm.test",
+      decision: "decline",
+      answer: { decision: "declined", outcome: null },
+      status: "failed",
+      failure: "declined",
+    },
+    {
+      label: "approved, the seats full since",
+      email: "tm_new_full@tm.test",
+      decision: "approve",
+      before: () => {
+        collaboratorLimit = 1;
+      },
+      refusal: "TEAM_LIMIT_REACHED",
+      status: "failed",
+      failure: "limit_reached",
+    },
+    {
+      label: "approved, the address got an account since",
+      email: "tm_new_account@tm.test",
+      decision: "approve",
+      before: () =>
+        louezDb.db.insert(louezDb.users).values({ id: "tm_new_account_user1", email: "tm_new_account@tm.test" }),
+      refusal: "TEAM_APPROVAL_CHANGED",
+      status: "failed",
+      failure: "request_changed",
+    },
+    {
+      label: "approved, the day's e-mails spent since",
+      email: "tm_new_quota@tm.test",
+      decision: "approve",
+      before: () =>
+        louezDb.db.insert(louezDb.apiEffects).values(
+          Array.from({ length: INVITATION_EMAILS_PER_DAY }, (_, index) => ({
+            id: `tm_eff_spent_${String(index).padStart(7, "0")}`,
+            storeId: STORE,
+            type: "team.invitationEmail",
+            payload: { invitationId: "gone", store: { name: "x", logoUrl: null, country: null }, inviterName: "x" },
+            status: "sent" as const,
+          })),
+        ),
+      refusal: "TEAM_INVITATION_EMAIL_LIMIT",
+      status: "failed",
+      failure: "email_limit",
+    },
+  ] as const;
+
+  test("each answer of the owner leaves the step as the agent then reads it", async () => {
+    for (const answer of ANSWERS) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      await louezDb.db.delete(louezDb.storeInvitations);
+      await louezDb.db.delete(louezDb.apiEffects);
+      collaboratorLimit = null;
+      const context = await agent();
+      const asked = await run("invite", { email: answer.email }, context());
+      const id = asked.approval?.handoff.id ?? "";
+      const token = tokenOf(asked.approval?.url ?? "");
+      if ("before" in answer) await answer.before();
+      const people = async () => (await invitations()).length + (await memberIds()).length;
+      const peopleBefore = await people();
+
+      const posted = run("decideInvitation", { token, decision: answer.decision, ...(await pageAnswer(token)) }, session());
+      if ("refusal" in answer) {
+        await rejects(posted, answer.refusal);
+      } else {
+        assert.deepEqual(await posted, { handoffId: id, ...answer.answer }, answer.label);
+      }
+      const seen = await readHandoff(id, context());
+      assert.equal(seen.status, answer.status, answer.label);
+      assert.equal(seen.failure?.code ?? null, answer.failure, answer.label);
+      const [row] = await handoffs();
+      assert.equal(row?.activeSlot, null, answer.label);
+      assert.equal(
+        await people(),
+        peopleBefore + (answer.status === "completed" ? 1 : 0),
+        `${answer.label}: one invitation or one member more, or nothing`,
+      );
+    }
+  });
+
+  test("approve and decline posted at once: one of them decides, and the step says which", async () => {
+    for (let round = 0; round < 4; round += 1) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      await louezDb.db.delete(louezDb.storeInvitations);
+      const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
+      const token = tokenOf(asked.approval?.url ?? "");
+      const page = await pageAnswer(token);
+      const answers = await Promise.allSettled([
+        run("decideInvitation", { token, decision: "approve", ...page }, session()),
+        run("decideInvitation", { token, decision: "decline", ...page }, session()),
+      ]);
+      const decided = answers.filter((answer) => answer.status === "fulfilled");
+      assert.equal(decided.length, 1, `round ${round}: one answer decides`);
+      const [row] = await handoffs();
+      if (decided[0]?.value.decision === "approved") {
+        assert.equal(row?.status, "completed");
+        assert.equal((await invitations()).length, 1);
+      } else {
+        assert.equal(row?.status, "failed");
+        assert.equal(row?.failureCode, "declined");
+        assert.equal((await invitations()).length, 0);
+      }
+    }
+  });
+
+  test("a provider step's id posted as an answer by its own user decides nothing", async () => {
+    const stripe = await issueHandoff(
+      { storeId: STORE, userId: OWNER, credentialKind: "session", credentialId: null, clientName: null },
+      "stripe_connect_onboarding",
+      { urls: ports.urls },
+    );
+    const refused = await rejects(
+      run(
+        "decideInvitation",
+        { token: stripe.handoff.id, decision: "approve", revision: 1, shown: "0".repeat(64) },
+        session(),
+      ),
+      "TEAM_APPROVAL_INVALID",
+    );
+    assert.equal(refused.data.details?.reason, "invalid");
+    const [row] = await handoffs();
+    assert.equal(row?.status, "pending");
+    assert.equal(row?.revision, 1);
+    assert.equal(row?.activeSlot, 1);
+  });
+
   // --- A removed member never comes back through an old invitation -----------
 
   test("Codex's scenario: invite, register, invite again, remove, accept the first link: no way back", async () => {

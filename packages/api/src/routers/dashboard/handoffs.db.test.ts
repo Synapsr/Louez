@@ -12,6 +12,7 @@ import type {
   StripeConnectClient,
 } from "../../adapters/stripe-connect";
 import type { BillingStatus } from "../../contracts/billing";
+import type { HandoffKind } from "../../contracts/handoffs";
 import type { BaseContext } from "../../context";
 import type { BillingCardSetupState, BillingPort } from "../../platform/ports";
 
@@ -165,6 +166,8 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
   let apiKeys: typeof import("../../services/api-keys");
   let handoffs: typeof import("../../services/handoffs");
   let inbox: typeof import("../../services/inbox");
+  let HANDOFF_KINDS: typeof import("../../contracts/handoffs").HANDOFF_KINDS;
+  let HANDOFF_TTL_HOURS: number;
   let routers: {
     payments: typeof import("./payments").dashboardPaymentsRouter;
     billing: typeof import("./billing").dashboardBillingRouter;
@@ -198,6 +201,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     apiKeys = await import("../../services/api-keys");
     handoffs = await import("../../services/handoffs");
     inbox = await import("../../services/inbox");
+    ({ HANDOFF_KINDS, HANDOFF_TTL_HOURS } = await import("../../contracts/handoffs"));
     routers = {
       payments: (await import("./payments")).dashboardPaymentsRouter,
       billing: (await import("./billing")).dashboardBillingRouter,
@@ -1049,6 +1053,97 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Starting one needs settings write and manage_settings.
     await rejects(client(reader()).payments.startStripeOnboarding({}), "PERMISSION_DENIED");
     await rejects(client(session(MEMBER)).payments.startStripeOnboarding({}), "PERMISSION_DENIED");
+  });
+
+  /** A step of each kind in the store, asked for by the owner's session. */
+  async function oneStepOfEachKind(now?: Date) {
+    const requester = {
+      storeId: STORE,
+      userId: OWNER,
+      credentialKind: "session",
+      credentialId: null,
+      clientName: null,
+    };
+    const steps = {} as Record<HandoffKind, string>;
+    for (const kind of HANDOFF_KINDS) {
+      const issued = await handoffs.issueHandoff(requester, kind, {
+        urls: ports.urls,
+        now,
+        prepare:
+          kind === "team_invitation"
+            ? async () => ({ email: "new@ho.test", role: "member", joinsAtOnce: false })
+            : undefined,
+      });
+      steps[kind] = issued.handoff.id;
+    }
+    return steps;
+  }
+
+  test("who reads which step: each credential reads the kinds of the domains it reads, and only those", async () => {
+    const steps = await oneStepOfEachKind();
+    const none: Permissions = {
+      reservations: "none",
+      products: "none",
+      customers: "none",
+      categories: "none",
+      payments: "none",
+      analytics: "none",
+      settings: "none",
+      online_store: "none",
+      integrations: "none",
+      team: "none",
+      billing: "none",
+    };
+    const domains = Object.keys(none) as Array<keyof Permissions>;
+    // Today's visibility, written out: settings reads Stripe's steps, billing
+    // the card, the team an invitation's approval; a session reads every step.
+    const READS: Record<string, HandoffKind[]> = {
+      settings: ["stripe_connect_onboarding", "stripe_dashboard"],
+      billing: ["billing_card_setup"],
+      team: ["team_invitation"],
+    };
+    const callers: Array<{ label: string; context: () => BaseContext; reads: HandoffKind[] }> = [
+      { label: "no domain", context: await apiKey(none), reads: [] },
+      ...(await Promise.all(
+        domains.map(async (domain) => ({
+          label: `${domain} read`,
+          context: await apiKey({ ...none, [domain]: "read" }),
+          reads: READS[domain] ?? [],
+        })),
+      )),
+      { label: "the owner's session", context: () => session(OWNER), reads: [...HANDOFF_KINDS] },
+      { label: "a member's session", context: () => session(MEMBER), reads: [...HANDOFF_KINDS] },
+    ];
+    for (const caller of callers) {
+      for (const kind of HANDOFF_KINDS) {
+        const label = `${caller.label}, ${kind}`;
+        const read = client(caller.context()).handoffs.get({ id: steps[kind] });
+        if (caller.reads.includes(kind)) {
+          assert.equal((await read).kind, kind, label);
+        } else {
+          await rejects(read, "PERMISSION_DENIED");
+        }
+      }
+    }
+  });
+
+  test("every kind's link lasts as long from each request: a day, as before", async () => {
+    const first = new Date(Date.now() - HOUR);
+    const steps = await oneStepOfEachKind(first);
+    const lifetime = HANDOFF_TTL_HOURS * HOUR;
+    for (const kind of HANDOFF_KINDS) {
+      const row = await handoffs.getHandoffRow(STORE, steps[kind]);
+      assert.equal(row.expiresAt.getTime() - first.getTime(), lifetime, kind);
+      assert.equal(row.linkIssuedAt.getTime(), first.getTime(), kind);
+    }
+    // Asked again: the same step, as long again from the new request.
+    const again = new Date();
+    const same = await oneStepOfEachKind(again);
+    for (const kind of HANDOFF_KINDS) {
+      assert.equal(same[kind], steps[kind], kind);
+      const row = await handoffs.getHandoffRow(STORE, steps[kind]);
+      assert.equal(row.expiresAt.getTime() - again.getTime(), lifetime, kind);
+    }
   });
 
   // --- Stripe -------------------------------------------------------------------
