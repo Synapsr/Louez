@@ -61,6 +61,7 @@ export function createFixtureRouter() {
     .output(z.object({ id: z.string(), removed: z.boolean(), runs: z.number() }))
     .handler(async ({ context, input, path }) => {
       await requireConfirmation({
+        consequences: ["deletion"],
         actor: context.actor,
         headers: context.headers,
         procedure: path.join("."),

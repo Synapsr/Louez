@@ -18,6 +18,7 @@ import {
   type UnitConflictOutput,
 } from "../../contracts/product-units";
 import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
+import type { Consequences } from "../../platform/approval-rule";
 import { storeProcedure } from "../../platform/procedures";
 import * as units from "../../services/product-units";
 import type { UnitAvailabilityPreview } from "../../services/product-units";
@@ -80,10 +81,11 @@ function visibleConflict(conflict: UnitConflict, access: BookingAccess): UnitCon
  * now: its window is not shown, and so not bound.
  */
 const availabilityConfirmation =
-  (context: ProductContext, options: { showWindow: boolean }) =>
+  (context: ProductContext, options: { showWindow: boolean; consequences: Consequences }) =>
   (preview: UnitAvailabilityPreview) => {
     const access = bookingAccess(context);
     return {
+      consequences: options.consequences,
       state: { unitId: preview.unit.id },
       details: {
         unit: preview.unit,
@@ -180,7 +182,8 @@ export const declareDowntime = storeProcedure
           context,
           path,
           input,
-          availabilityConfirmation(context, { showWindow: true }),
+          // A downtime can be closed or deleted.
+          availabilityConfirmation(context, { showWindow: true, consequences: ["change"] }),
         ),
       })
       .then(withVisibleConflicts(context)),
@@ -211,7 +214,7 @@ export const updateDowntime = storeProcedure
           context,
           path,
           input,
-          availabilityConfirmation(context, { showWindow: true }),
+          availabilityConfirmation(context, { showWindow: true, consequences: ["change"] }),
         ),
       })
       .then(withVisibleConflicts(context)),
@@ -257,6 +260,8 @@ export const deleteDowntime = storeProcedure
   .handler(({ context, input, path }) =>
     units.deleteDowntime(productActor(context), input.downtimeId, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
+        // The unit's history keeps a record of it.
+        consequences: ["change"],
         state: {
           ...preview.downtime,
           startsAt: preview.downtime.startsAt.toISOString(),
@@ -301,7 +306,8 @@ export const retireUnit = storeProcedure
           context,
           path,
           input,
-          availabilityConfirmation(context, { showWindow: false }),
+          // products_reinstate_unit undoes it.
+          availabilityConfirmation(context, { showWindow: false, consequences: ["change"] }),
         ),
       })
       .then(withVisibleConflicts(context)),

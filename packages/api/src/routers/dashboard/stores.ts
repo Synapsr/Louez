@@ -184,6 +184,8 @@ const create = accountProcedure
     );
     const futureStorefrontUrl = ports.urls.storefront(input.slug, "/");
     await requireConfirmation({
+      // Account-scoped, it stays at the caller's level: no store member to approve it.
+      consequences: ["change"],
       actor: { ...actor, storeId: ACCOUNT_SCOPE },
       headers: context.headers,
       procedure: path.join("."),
@@ -367,6 +369,8 @@ const completeOnboarding = storeProcedure
         hostedBy: ports.hostedBy?.() ?? null,
         // The preview and its binding read the checklist under the store's lock.
         confirm: confirmUnderLock<GoLivePreview>(context, path, input, (preview) => ({
+          // The store can be taken offline again.
+          consequences: ["change"],
           state: {
             statuses: preview.statuses,
             legalStatuses: preview.legalStatuses,

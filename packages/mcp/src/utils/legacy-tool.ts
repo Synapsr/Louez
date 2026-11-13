@@ -6,6 +6,7 @@ import {
   type ConfirmationPreview,
 } from "@louez/api/platform/confirmation";
 import { apiError, platformErrors } from "@louez/api/platform/errors";
+import { legacyPaymentToolConsequences } from "@louez/api/platform/legacy-payment-tool-consequences";
 import {
   mcpToolAnnotations,
   type McpBundle,
@@ -48,9 +49,10 @@ const BUNDLE_OF_DOMAIN: Record<ApiDomain, McpBundle> = {
 export interface LegacySensitive<Args> {
   kind: SensitiveKind;
   /**
-   * Ask even a connection whose confirmations are turned off
-   * (`requireConfirmation`'s `always`): the tool records, gives back or
-   * erases money, which an agent never does on its own say.
+   * Ask even a connection whose confirmations are turned off: the tool
+   * records, gives back or erases money, which an agent never does on its own
+   * say. Read as `money` (`legacyPaymentToolConsequences`), and taken from
+   * the three payment tools alone.
    */
   always?: boolean;
   /**
@@ -96,6 +98,8 @@ export function legacyTool<Shape extends z.ZodRawShape>(
   if ((scope.level === "write") !== (tool.effect !== undefined)) {
     throw new Error(`MCP tool ${name}: a write declares its effect, a read none.`);
   }
+  // Refuses, here, any tool but the three payment tools: they alone say `always`.
+  const consequences = sensitive && legacyPaymentToolConsequences(name, sensitive.always);
   if (sensitive) {
     inputSchema.properties = {
       ...inputSchema.properties,
@@ -147,14 +151,14 @@ export function legacyTool<Shape extends z.ZodRawShape>(
         // always asks: skip its reads.
         if (sensitive && (ctx.actor.credential.confirmSensitive || sensitive.always)) {
           const confirmation = await sensitive.confirm(parsed.data);
-          if (confirmation) {
+          if (confirmation && consequences) {
             const headers = new Headers();
             if (typeof confirmationToken === "string") {
               headers.set(CONFIRMATION_HEADER, confirmationToken);
             }
             await requireConfirmation({
               actor: ctx.actor,
-              always: sensitive.always,
+              consequences,
               headers,
               procedure: `mcp.${name}`,
               input: parsed.data,
