@@ -3919,7 +3919,6 @@
           }
         },
         "recommended": "推荐",
-        "comingSoon": "即将推出",
         "noIntegrations": "尚无可用的集成。",
         "sections": {
           "byLouez": "作者：Louez.io",
@@ -3938,7 +3937,10 @@
           "api": {
             "name": "API REST",
             "description": "将您的商店连接到现有工具并自动化您的日常任务。",
-            "comingSoonDescription": "REST API 正在开发中。您很快就可以将您的商店连接到任何工具或服务。"
+            "betaTitle": "贝塔版现已可用",
+            "betaDescription": "借助 REST API，您的脚本和工具可以读取和修改商店的数据。参考文档列出了它能做的事。每个工具都通过 API 密钥连接，API 密钥可在 MCP 页面创建。",
+            "openReference": "打开 API 参考文档",
+            "createKey": "创建 API 密钥"
           }
         }
       },
@@ -4869,7 +4871,7 @@
         "description": "管理 API 密钥以将外部工具、AI 助手或自定义集成连接到您的商店。",
         "backToIntegrations": "集成",
         "keysTitle": "API 按键",
-        "keysDescription": "创建和管理 MCP 服务器和未来的 REST API 的密钥。",
+        "keysDescription": "创建和管理 MCP 服务器和 REST API 的密钥。",
         "createKey": "创建密钥",
         "noKeys": "还没有 API 密钥。创建一个以开始使用。",
         "keyRevoked": "API 密钥已撤销。",

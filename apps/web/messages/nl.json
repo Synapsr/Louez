@@ -4494,7 +4494,6 @@
       },
       "integrationsHub": {
         "recommended": "Aanbevolen",
-        "comingSoon": "Binnenkort",
         "noIntegrations": "Nog geen integraties beschikbaar.",
         "sections": {
           "byLouez": "Door Louez.io",
@@ -4513,7 +4512,10 @@
           "api": {
             "name": "API REST",
             "description": "Verbind uw winkel met uw bestaande tools en automatiseer uw dagelijkse taken.",
-            "comingSoonDescription": "De REST-API is in ontwikkeling. U kunt uw winkel binnenkort met elke tool of service verbinden."
+            "betaTitle": "Beschikbaar in bèta",
+            "betaDescription": "Met de REST-API kunnen uw scripts en tools de gegevens van uw winkel lezen en wijzigen. De referentie laat zien wat ermee kan. Elke tool maakt verbinding met een API-sleutel, die u aanmaakt op de MCP-pagina, in het gedeelte API-sleutels.",
+            "openReference": "API-referentie openen",
+            "createKey": "API-sleutel aanmaken"
           }
         },
         "title": "Integraties",
@@ -4733,7 +4735,7 @@
         "description": "Beheer API-sleutels om externe tools, AI-assistenten of aangepaste integraties met uw winkel te verbinden.",
         "backToIntegrations": "Integraties",
         "keysTitle": "API-sleutels",
-        "keysDescription": "Maak en beheer sleutels voor de MCP-server en toekomstige REST-API.",
+        "keysDescription": "Maak en beheer sleutels voor de MCP-server en de REST-API.",
         "createKey": "Sleutel aanmaken",
         "noKeys": "Nog geen API-sleutels. Maak er een aan om te beginnen.",
         "keyRevoked": "API-sleutel ingetrokken.",

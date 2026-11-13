@@ -3919,7 +3919,6 @@
           }
         },
         "recommended": "추천",
-        "comingSoon": "곧 출시 예정",
         "noIntegrations": "아직 사용할 수 있는 통합이 없습니다.",
         "sections": {
           "byLouez": "작성자: Louez.io",
@@ -3938,7 +3937,10 @@
           "api": {
             "name": "API REST",
             "description": "매장을 기존 도구에 연결하고 일상적인 작업을 자동화하세요.",
-            "comingSoonDescription": "REST API는 개발 중입니다. 곧 귀하의 매장을 모든 도구나 서비스에 연결할 수 있게 될 것입니다."
+            "betaTitle": "베타로 이용 가능",
+            "betaDescription": "REST API를 사용하면 스크립트와 도구가 매장 데이터를 읽고 변경할 수 있습니다. 할 수 있는 작업은 레퍼런스에서 확인하세요. 각 도구는 API 키로 연결하며, API 키는 MCP 페이지의 API 키 섹션에서 만듭니다.",
+            "openReference": "API 레퍼런스 열기",
+            "createKey": "API 키 만들기"
           }
         }
       },
@@ -4869,7 +4871,7 @@
         "description": "API 키를 관리하여 외부 도구, AI 보조자 또는 맞춤형 통합을 매장에 연결하세요.",
         "backToIntegrations": "통합",
         "keysTitle": "API 키",
-        "keysDescription": "MCP 서버 및 향후 REST API에 대한 키를 생성하고 관리합니다.",
+        "keysDescription": "MCP 서버 및 REST API에 대한 키를 생성하고 관리합니다.",
         "createKey": "키 생성",
         "noKeys": "아직 API 키가 없습니다. 시작하려면 계정을 만드세요.",
         "keyRevoked": "API 키가 취소되었습니다.",

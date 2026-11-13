@@ -3920,7 +3920,6 @@
           }
         },
         "recommended": "Recommended",
-        "comingSoon": "Coming soon",
         "noIntegrations": "No integrations available yet.",
         "sections": {
           "byLouez": "By Louez.io",
@@ -3939,7 +3938,10 @@
           "api": {
             "name": "API REST",
             "description": "Connect your store to your existing tools and automate your daily tasks.",
-            "comingSoonDescription": "The REST API is under development. You will soon be able to connect your store to any tool or service."
+            "betaTitle": "Available in beta",
+            "betaDescription": "With the REST API, your scripts and tools can read and change your store's data. Its reference lists what it can do. Each tool connects with an API key, created on the MCP page, in the API keys section.",
+            "openReference": "Open the API reference",
+            "createKey": "Create an API key"
           }
         }
       },
@@ -4870,7 +4872,7 @@
         "description": "Manage API keys to connect external tools, AI assistants, or custom integrations to your store.",
         "backToIntegrations": "Integrations",
         "keysTitle": "API Keys",
-        "keysDescription": "Create and manage keys for the MCP server and future REST API.",
+        "keysDescription": "Create and manage keys for the MCP server and the REST API.",
         "createKey": "Create key",
         "noKeys": "No API keys yet. Create one to get started.",
         "keyRevoked": "API key revoked.",

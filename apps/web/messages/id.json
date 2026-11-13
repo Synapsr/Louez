@@ -3919,7 +3919,6 @@
           }
         },
         "recommended": "Direkomendasikan",
-        "comingSoon": "Segera hadir",
         "noIntegrations": "Belum ada integrasi yang tersedia.",
         "sections": {
           "byLouez": "Oleh Louez.io",
@@ -3938,7 +3937,10 @@
           "api": {
             "name": "API REST",
             "description": "Hubungkan toko Anda ke alat yang ada dan otomatiskan tugas harian Anda.",
-            "comingSoonDescription": "REST API sedang dalam pengembangan. Anda akan segera dapat menghubungkan toko Anda ke alat atau layanan apa pun."
+            "betaTitle": "Tersedia dalam versi beta",
+            "betaDescription": "Dengan REST API, skrip dan alat Anda dapat membaca dan mengubah data toko Anda. Referensinya menjelaskan apa saja yang dapat dilakukan. Setiap alat terhubung dengan kunci API, yang Anda buat di halaman MCP, pada bagian Kunci API.",
+            "openReference": "Buka referensi API",
+            "createKey": "Buat kunci API"
           }
         }
       },
@@ -4869,7 +4871,7 @@
         "description": "Kelola kunci API untuk menghubungkan alat eksternal, asisten AI, atau integrasi khusus ke toko Anda.",
         "backToIntegrations": "Integrasi",
         "keysTitle": "Kunci API",
-        "keysDescription": "Membuat dan mengelola kunci untuk server MCP dan REST API di masa mendatang.",
+        "keysDescription": "Membuat dan mengelola kunci untuk server MCP dan REST API.",
         "createKey": "Buat kunci",
         "noKeys": "Belum ada kunci API. Buat satu untuk memulai.",
         "keyRevoked": "Kunci API dicabut.",

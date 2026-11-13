@@ -3919,7 +3919,6 @@
           }
         },
         "recommended": "おすすめ",
-        "comingSoon": "近日公開予定",
         "noIntegrations": "利用可能な統合はまだありません。",
         "sections": {
           "byLouez": "作成者: Louez.io",
@@ -3938,7 +3937,10 @@
           "api": {
             "name": "API REST",
             "description": "ストアを既存のツールに接続し、日常のタスクを自動化します。",
-            "comingSoonDescription": "REST API は開発中です。間もなく、ストアをあらゆるツールやサービスに接続できるようになります。"
+            "betaTitle": "ベータ版で利用可能",
+            "betaDescription": "REST API を使うと、スクリプトやツールからストアのデータを読み取り、変更できます。できることはリファレンスで確認できます。各ツールは API キーで接続します。API キーは MCP ページの「API キー」セクションで作成します。",
+            "openReference": "API リファレンスを開く",
+            "createKey": "API キーを作成"
           }
         }
       },
@@ -4869,7 +4871,7 @@
         "description": "API キーを管理して、外部ツール、AI アシスタント、またはカスタム統合をストアに接続します。",
         "backToIntegrations": "統合",
         "keysTitle": "API キー",
-        "keysDescription": "MCP サーバーと将来の REST API のキーを作成および管理します。",
+        "keysDescription": "MCP サーバーと REST API のキーを作成および管理します。",
         "createKey": "キーの作成",
         "noKeys": "API キーはまだありません。まずは作成してください。",
         "keyRevoked": "API キーが取り消されました。",

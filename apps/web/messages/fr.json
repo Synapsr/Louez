@@ -3920,7 +3920,6 @@
           }
         },
         "recommended": "Recommandé",
-        "comingSoon": "Bientôt",
         "noIntegrations": "Aucune intégration disponible pour le moment.",
         "sections": {
           "byLouez": "Par Louez.io",
@@ -3939,7 +3938,10 @@
           "api": {
             "name": "API REST",
             "description": "Connectez votre boutique à vos outils existants et automatisez vos tâches quotidiennes.",
-            "comingSoonDescription": "L'API REST est en cours de développement. Vous pourrez bientôt connecter votre boutique à n'importe quel outil ou service."
+            "betaTitle": "Disponible en bêta",
+            "betaDescription": "Avec l'API REST, vos scripts et vos outils peuvent lire et modifier les données de votre boutique. Sa documentation détaille ce qu'elle permet de faire. Chaque outil se connecte avec une clé API, à créer sur la page MCP, dans la section Clés API.",
+            "openReference": "Voir la documentation de l'API",
+            "createKey": "Créer une clé API"
           }
         }
       },
@@ -4870,7 +4872,7 @@
         "description": "Gérez vos clés API pour connecter des outils externes, des assistants IA ou des intégrations personnalisées à votre boutique.",
         "backToIntegrations": "Intégrations",
         "keysTitle": "Clés API",
-        "keysDescription": "Créez et gérez les clés pour le serveur MCP et la future API REST.",
+        "keysDescription": "Créez et gérez les clés pour le serveur MCP et l'API REST.",
         "createKey": "Créer une clé",
         "noKeys": "Aucune clé API. Créez-en une pour commencer.",
         "keyRevoked": "Clé API révoquée.",

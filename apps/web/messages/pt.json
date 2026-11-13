@@ -4494,7 +4494,6 @@
       },
       "integrationsHub": {
         "recommended": "Recomendado",
-        "comingSoon": "Em breve",
         "noIntegrations": "Nenhuma integração disponível ainda.",
         "sections": {
           "byLouez": "Por Louez.io",
@@ -4513,7 +4512,10 @@
           "api": {
             "name": "API REST",
             "description": "Conecte a sua loja às suas ferramentas existentes e automatize as suas tarefas diárias.",
-            "comingSoonDescription": "A API REST está em desenvolvimento. Em breve poderá conectar a sua loja a qualquer ferramenta ou serviço."
+            "betaTitle": "Disponível em beta",
+            "betaDescription": "Com a API REST, os seus scripts e ferramentas podem ler e alterar os dados da sua loja. A referência mostra o que ela permite fazer. Cada ferramenta se conecta com uma chave API, criada na página MCP, na seção Chaves API.",
+            "openReference": "Abrir a referência da API",
+            "createKey": "Criar uma chave API"
           }
         },
         "title": "Integrações",
@@ -4733,7 +4735,7 @@
         "description": "Gerencie chaves API para conectar ferramentas externas, assistentes IA ou integrações personalizadas à sua loja.",
         "backToIntegrations": "Integrações",
         "keysTitle": "Chaves API",
-        "keysDescription": "Crie e gerencie chaves para o servidor MCP e a futura API REST.",
+        "keysDescription": "Crie e gerencie chaves para o servidor MCP e a API REST.",
         "createKey": "Criar chave",
         "noKeys": "Nenhuma chave API. Crie uma para começar.",
         "keyRevoked": "Chave API revogada.",
