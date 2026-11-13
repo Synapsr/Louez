@@ -45,6 +45,7 @@ import {
   updateReservationNotes,
   type ReservationReader,
 } from "../../services/reservations";
+import type { Consequences } from "../../platform/approval-rule";
 import { confirmUnderLock, mayRead, type ProductContext } from "./product-context";
 
 /**
@@ -86,9 +87,9 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
  * buffer) and to where the messages go. A change since (the reservation
  * moved, a payment recorded, a setting that stops a message, the customer's
  * email or phone, a shortfall that grew or changed) voids the token. A
- * confirmation sent with either override asks every key and token, even one
- * whose confirmations are off (decision D2 and slice 5,
- * docs/domain/reservation-changes.md).
+ * confirmation sent with either override is a stock override, even when
+ * nothing is short (decision D2 and slice 5,
+ * docs/domain/reservation-changes.md); a message to the customer is one too.
  */
 const statusConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
   confirmUnderLock(context, path, input, (preview: StatusChangePreview) => {
@@ -97,9 +98,20 @@ const statusConfirmation = (context: ProductContext, path: readonly string[], in
     return {
       state: { ...details, recipientsHash },
       details,
-      always: preview.overbooking !== null || preview.turnoverBuffer !== null,
+      consequences: statusChangeConsequences(preview),
     };
   });
+
+/** What the status change the preview shows does, branch by branch. */
+function statusChangeConsequences(preview: StatusChangePreview): Consequences {
+  // A flag the change passes is set on the preview, even with nothing short.
+  const overrides = preview.overbooking !== null || preview.turnoverBuffer !== null;
+  const message = preview.messages.length > 0;
+  if (overrides && message) return ["stock_override", "customer_message"];
+  if (overrides) return ["stock_override"];
+  if (message) return ["customer_message"];
+  return ["change"];
+}
 
 /**
  * The links an answer's records get: each reservation its dashboard page,

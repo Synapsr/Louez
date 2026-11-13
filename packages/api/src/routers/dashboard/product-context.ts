@@ -1,3 +1,4 @@
+import type { Consequences } from "../../platform/approval-rule";
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { platformErrors } from "../../platform/errors";
 import { allows, type ApiDomain } from "../../platform/permissions";
@@ -49,7 +50,8 @@ export function requireReservationsAndCustomers(context: ProductContext) {
 /**
  * A confirmation asked under the write's lock, bound to what the preview
  * shows: `state`, and the summary and details themselves, so a name or a
- * date the caller was shown that changes since voids the token.
+ * date the caller was shown that changes since voids the token. `describe`
+ * declares the consequences of the branch the preview shows.
  */
 export function confirmUnderLock<TPreview extends { summary: string }>(
   context: ProductContext,
@@ -58,14 +60,13 @@ export function confirmUnderLock<TPreview extends { summary: string }>(
   describe: (preview: TPreview) => {
     state: unknown;
     details: ConfirmationPreview["details"];
-    /** Ask every key and token, even one whose confirmations are off (`requireConfirmation`'s `always`). */
-    always?: boolean;
+    consequences: Consequences;
   },
 ) {
   return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
-    const { state, details, always } = describe(preview);
+    const { state, details, consequences } = describe(preview);
     return checkConfirmation({
-      always,
+      consequences,
       executor: tx,
       actor: context.actor,
       headers: context.headers,

@@ -134,6 +134,8 @@ export const deleteVariantDefinition = storeProcedure
   .handler(({ context, input, path }) =>
     variants.deleteVariantDefinition(context.actor.storeId, input.id, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
+        // Refused while a product uses it: only the catalog's entry goes.
+        consequences: ["change"],
         state: preview.definition,
         details: {
           variant: { id: preview.definition.id, label: preview.definition.label },
@@ -192,6 +194,8 @@ export const withdrawVariantFromProducts = storeProcedure
   .handler(({ context, input, path }) =>
     variants.withdrawVariantFromProducts(productActor(context), input.id, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
+        // The units of the products that use it lose their values for it.
+        consequences: preview.products.length > 0 ? ["deletion"] : ["change"],
         state: {
           definition: preview.definition,
           productIds: preview.products.map((product) => product.id),
@@ -265,6 +269,8 @@ export const deleteVariantValue = storeProcedure
   .handler(({ context, input, path }) =>
     variants.deleteVariantValue(context.actor.storeId, input.id, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
+        // Units that carry the value keep it: only the catalog's entry goes.
+        consequences: ["change"],
         state: {
           value: preview.value,
           definition: preview.definition,
