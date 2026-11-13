@@ -50,12 +50,22 @@ const keepLayout = (character: string) =>
  * A person's words with their decision, as stored and read back: plain text
  * whatever it holds (markup stays characters, never HTML), line breaks
  * written `\n`, control characters dropped, trimmed. Null when nothing is
- * left. The input is at most `DECISION_REASON_MAX` characters, so this is too.
+ * left.
  */
 export function decisionReason(raw: string | null | undefined): string | null {
   if (raw === null || raw === undefined) return null;
   const text = raw.replace(/\r\n?/g, "\n").replace(NOT_TEXT, keepLayout).trim();
   return text === "" ? null : text;
+}
+
+/**
+ * Whether a person's words fit: at most `DECISION_REASON_MAX` characters once
+ * made plain text, counted as the person and the column count them (a line
+ * break a form posts as two characters is one, and so is a character outside
+ * the basic plane).
+ */
+export function decisionReasonFits(raw: string): boolean {
+  return [...(decisionReason(raw) ?? "")].length <= DECISION_REASON_MAX;
 }
 
 export const handoffDecisionSchema = z
@@ -139,7 +149,12 @@ export const decideHandoffInput = z.object({
   id: z.string().min(1).max(128),
   decision: z.enum(["approve", "refuse"]),
   /** The person's own words, optional; `decisionReason` makes them plain text. */
-  reason: z.string().max(DECISION_REASON_MAX).optional(),
+  reason: z
+    .string()
+    // The raw bound only keeps the input small; the limit is `decisionReasonFits`.
+    .max(DECISION_REASON_MAX * 4)
+    .refine(decisionReasonFits, { message: `At most ${DECISION_REASON_MAX} characters` })
+    .optional(),
   /** The revision the page showed: another one decides nothing. */
   revision: z.number().int().positive(),
   /** The kind's digest of what the page showed (`invitationShown`): another one decides nothing. */

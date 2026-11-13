@@ -1043,7 +1043,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const billingOnly = await apiKey({ ...agentRights, settings: "none", billing: "read" });
     await rejects(
       client(billingOnly()).handoffs.get({ id: started.handoff.id }),
-      "PERMISSION_DENIED",
+      "HANDOFF_NOT_FOUND",
     );
     const reader = await apiKey({ ...agentRights, settings: "read", billing: "none" });
     assert.equal(
@@ -1095,8 +1095,10 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       billing: "none",
     };
     const domains = Object.keys(none) as Array<keyof Permissions>;
-    // Today's visibility, written out: settings reads Stripe's steps, billing
+    // Who reads which step, written out: settings reads Stripe's steps, billing
     // the card, the team an invitation's approval; a session reads every step.
+    // A caller who reads no domain is refused before any step is looked at; one
+    // who reads another domain gets the answer an id no step has gets.
     const READS: Record<string, HandoffKind[]> = {
       settings: ["stripe_connect_onboarding", "stripe_dashboard"],
       billing: ["billing_card_setup"],
@@ -1121,7 +1123,10 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
         if (caller.reads.includes(kind)) {
           assert.equal((await read).kind, kind, label);
         } else {
-          await rejects(read, "PERMISSION_DENIED");
+          await rejects(
+            read,
+            caller.label === "no domain" ? "PERMISSION_DENIED" : "HANDOFF_NOT_FOUND",
+          );
         }
       }
     }
@@ -1156,7 +1161,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     }
   });
 
-  test("handoffs_get opens to any domain's read: an id no step has is not found, a step of a domain not read is refused", async () => {
+  test("handoffs_get opens to any domain's read: a step of a domain not read answers as an id no step has", async () => {
     const steps = await oneStepOfEachKind();
     const reservationsOnly = await apiKey({
       ...agentRights,
@@ -1164,14 +1169,21 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       billing: "none",
       team: "none",
     });
-    await rejects(
-      client(reservationsOnly()).handoffs.get({ id: "x".repeat(21) }),
-      "HANDOFF_NOT_FOUND",
-    );
-    await rejects(
-      client(reservationsOnly()).handoffs.get({ id: steps.team_invitation }),
-      "PERMISSION_DENIED",
-    );
+    const refusal = (id: string) =>
+      client(reservationsOnly())
+        .handoffs.get({ id })
+        .then(
+          () => null,
+          (error: { data?: { code?: string }; message?: string }) => ({
+            code: error.data?.code,
+            message: error.message?.replaceAll(id, "<id>"),
+          }),
+        );
+    const unknown = await refusal("x".repeat(21));
+    assert.equal(unknown?.code, "HANDOFF_NOT_FOUND");
+    for (const kind of HANDOFF_KINDS) {
+      assert.deepEqual(await refusal(steps[kind]), unknown, kind);
+    }
   });
 
   // --- Stripe -------------------------------------------------------------------

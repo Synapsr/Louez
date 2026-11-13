@@ -808,13 +808,13 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
    * pattern` is in progress: while the lock it needs is held at a barrier, it
    * can only be waiting for that lock.
    */
-  async function lockWait(pattern: string) {
+  async function lockWait(pattern: string, statements = 1) {
     for (let tries = 0; tries < 500; tries += 1) {
       const [rows] = (await louezDb.db.execute(
         orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
           WHERE db = DATABASE() AND command = 'Query' AND info LIKE ${pattern}`,
       )) as unknown as [Array<{ n: number | string }>];
-      if (Number(rows[0]?.n) > 0) return;
+      if (Number(rows[0]?.n) >= statements) return;
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     throw new Error(`no statement waited for a lock: ${pattern}`);
@@ -1087,7 +1087,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       "stripe_connect_onboarding",
       { urls: ports.urls },
     );
-    await rejects(readHandoff(stripe.handoff.id, teamOnly()), "PERMISSION_DENIED");
+    await rejects(readHandoff(stripe.handoff.id, teamOnly()), "HANDOFF_NOT_FOUND");
 
     // Both have waited more than an hour.
     await louezDb.db
@@ -1359,7 +1359,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.deepEqual((await readDecision(id, teamReader())).decision, requester.decision);
 
     const settingsOnly = await apiKey({ permissions: { ...teamWrite, team: "none", settings: "read" } });
-    await rejects(readDecision(id, settingsOnly()), "PERMISSION_DENIED");
+    await rejects(readDecision(id, settingsOnly()), "HANDOFF_NOT_FOUND");
     const otherStore = await apiKeys.createApiKey({
       db: louezDb.db,
       storeId: THIRD_STORE,
@@ -1385,6 +1385,10 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       ["  <b>Not</b> <script>alert(1)</script> yet  ", "<b>Not</b> <script>alert(1)</script> yet"],
       ["Line one\r\nLine two\u0007\u202E", "Line one\nLine two"],
       ["x".repeat(500), "x".repeat(500)],
+      // As a form posts 500 characters with a line break: the break is one character.
+      [`${"x".repeat(498)}\r\ny`, `${"x".repeat(498)}\ny`],
+      // A character outside the basic plane is one character, as the column counts it.
+      ["\u{1F6B2}".repeat(500), "\u{1F6B2}".repeat(500)],
     ];
     for (const [posted, stored] of cases) {
       await louezDb.db.delete(louezDb.apiHandoffs);
@@ -1396,14 +1400,16 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       assert.equal(seen.decision?.reason, stored, JSON.stringify(posted));
     }
 
-    // 501 characters decide nothing.
+    // 501 characters decide nothing, however they are written.
     await louezDb.db.delete(louezDb.apiHandoffs);
     const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
     const token = tokenOf(asked.approval?.url ?? "");
-    await rejects(
-      decide({ id: token, decision: "approve", reason: "x".repeat(501), ...(await pageAnswer(token)) }, session()),
-      "BAD_REQUEST",
-    );
+    for (const tooLong of ["x".repeat(501), "\u{1F6B2}".repeat(501), `${"x".repeat(499)}\r\ny`]) {
+      await rejects(
+        decide({ id: token, decision: "approve", reason: tooLong, ...(await pageAnswer(token)) }, session()),
+        "BAD_REQUEST",
+      );
+    }
     const [row] = await handoffs();
     assert.equal(row?.status, "pending");
     assert.equal(row?.decision, null);
@@ -1468,10 +1474,28 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
       const token = tokenOf(asked.approval?.url ?? "");
       const page = await pageAnswer(token);
-      const answers = await Promise.allSettled([
+      // Both answers read the step as their page showed it, then wait for the
+      // store's lock, held here until both are seen waiting: neither answer
+      // finished before the other started.
+      const entered = barrier();
+      const gate = barrier();
+      const held = louezDb.db.transaction(async (tx) => {
+        await tx.execute(orm.sql`SELECT id FROM stores WHERE id = ${STORE} FOR UPDATE`);
+        entered.open();
+        await gate.wait;
+      });
+      await entered.wait;
+      const posted = Promise.allSettled([
         decide({ id: token, decision: first, reason: "first", ...page }, session()),
         decide({ id: token, decision: second, reason: "second", ...page }, session()),
       ]);
+      try {
+        await lockWait("select%from `stores`%for update", 2);
+      } finally {
+        gate.open();
+        await held;
+      }
+      const answers = await posted;
       const won = answers.findIndex((answer) => answer.status === "fulfilled");
       assert.equal(answers.filter((answer) => answer.status === "fulfilled").length, 1);
       const [row] = await handoffs();

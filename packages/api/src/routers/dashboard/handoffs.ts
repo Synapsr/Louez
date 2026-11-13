@@ -4,6 +4,7 @@ import {
   decideHandoffOutput,
   getHandoffInput,
   getHandoffOutput,
+  handoffErrors,
   refreshHandoffInput,
   refreshHandoffOutput,
   type HandoffKind,
@@ -41,6 +42,17 @@ export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page 
 /** Every domain but the one a scope names: a read of any of them opens `handoffs_get`. */
 const OTHER_DOMAINS = API_DOMAINS.filter((domain) => domain !== "settings");
 
+/**
+ * The store's step, for a caller who reads its domain. A step of a domain the
+ * caller does not read answers as an id no step has: an id says nothing to
+ * who may not read the step.
+ */
+async function readableHandoff(context: ProductContext, id: string) {
+  const row = await getHandoffRow(context.actor.storeId, id);
+  if (!mayRead(context, handoffDomain(row))) throw handoffErrors.notFound(id);
+  return row;
+}
+
 /** Starts or resumes a handoff for the caller, bound to their user and connection. */
 export function startHandoff(context: ProductContext, kind: HandoffKind): Promise<HandoffLink> {
   const { actor, ports } = context;
@@ -60,12 +72,12 @@ export function startHandoff(context: ProductContext, kind: HandoffKind): Promis
 const get = storeProcedure
   .meta({
     capability: "handoffs.get",
-    // Opened by any domain's read; the handler checks the step's own (`handoffDomain`).
+    // Opened by any domain's read; the handler reads only a step of a domain the caller reads (`readableHandoff`).
     scope: { domain: "settings", level: "read", anyOf: OTHER_DOMAINS },
     mcp: {
       name: "handoffs_get",
       title: "Get Handoff Status",
-      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; calling the tool that started it again opens the same link for another day) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). \`url\` is the step's link, the same the tool that started it returned, for the user to open signed in to Louez. For a team invitation's approval, \`decision\` says what the user decided (approved or refused), when, and their own words if they gave any (\`reason\`, plain text); null until they answer. An approved invitation that could not go out stays approved there, and \`failure\` says why. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval.`,
+      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; calling the tool that started it again opens the same link for another day) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). \`url\` is the step's link, the same the tool that started it returned, for the user to open signed in to Louez. For a team invitation's approval, \`decision\` says what the user decided (approved or refused), when, and their own words if they gave any (\`reason\`, plain text); null until they answer. An approved invitation that could not go out stays approved there, and \`failure\` says why. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval; without it, the id answers as not found.`,
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -74,9 +86,7 @@ const get = storeProcedure
   .input(getHandoffInput)
   .output(getHandoffOutput)
   .handler(async ({ context, input }) => {
-    const row = await getHandoffRow(context.actor.storeId, input.id);
-    const domain = handoffDomain(row);
-    if (!mayRead(context, domain)) throw platformErrors.permissionDenied(`${domain}:read`);
+    const row = await readableHandoff(context, input.id);
     return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
   });
 
@@ -107,7 +117,7 @@ const refresh = storeProcedure
   .input(refreshHandoffInput)
   .output(refreshHandoffOutput)
   .handler(async ({ context, input }) => {
-    let row = await getHandoffRow(context.actor.storeId, input.id);
+    let row = await readableHandoff(context, input.id);
     const domain = handoffDomain(row);
     const { role, credential } = context.actor;
     if (!allows(role, credential.scopes, { ...REFRESH_SCOPE, domain, anyOf: [] })) {
