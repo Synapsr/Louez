@@ -4,12 +4,17 @@ import { after, before, beforeEach, describe, mock, test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import type { RecordedPayment } from "@louez/api/platform/ports";
 import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  raceOnLockedRow,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
-import type { McpRecordedPayment } from "./tools/payments";
 
 mock.module(apiDependencyUrl("@louez/auth"), {
   namedExports: { auth: {}, authInstance: { api: { getSession: async () => null } } },
@@ -56,18 +61,16 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
   let orm: typeof import("drizzle-orm");
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<ListedTool[]>;
-  let recorded: McpRecordedPayment[] = [];
-
-  const ports = {
-    planFeatures: async () => ({ apiAccess: true }),
-    runReservationEffects: async () => {},
-    insurance: { createContract: async () => null, cancelContract: async () => {} },
-    newStores: createTestNewStores(),
-    dispatchEffects: () => {},
-    storage: createMemoryStorage(),
-    urls: createTestUrls(),
-    afterCommit: () => {},
-  };
+  let openApi: (
+    method: string,
+    path: string,
+    body: object | null,
+    headers: Record<string, string>,
+  ) => Promise<Response>;
+  let openApiDocument: () => Promise<{ paths: Record<string, Record<string, Json>> }>;
+  let recorded: RecordedPayment[] = [];
+  /** Makes the next write fail once it wrote, as a writer that throws midway. */
+  let failNextWrite = false;
 
   /**
    * A stand-in for the app's writer: it notes the payment it is handed, then
@@ -76,7 +79,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
    */
   const insertRecordedPayment = async (
     tx: import("@louez/db").Transaction,
-    payment: McpRecordedPayment,
+    payment: RecordedPayment,
   ) => {
     recorded.push(payment);
     await tx.insert(louezDb.payments).values({
@@ -90,6 +93,22 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       paidAt: payment.paidAt,
     });
     await louezDb.markReservation(tx, { id: payment.reservationId, storeId: payment.storeId });
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw new Error("The writer failed midway.");
+    }
+  };
+
+  const ports = {
+    planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
+    dispatchEffects: () => {},
+    storage: createMemoryStorage(),
+    urls: createTestUrls(),
+    afterCommit: () => {},
+    paymentRecords: { insert: insertRecordedPayment },
   };
 
   before(async () => {
@@ -101,11 +120,33 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const { createExposure } = await import("@louez/api/platform/exposure");
     const { handleMcpRequest } = await import("./transports/http");
     const exposure = createExposure(appRouter);
+    const { createApiReference, createOpenApiHandler, handleOpenApiRequest } =
+      await import("@louez/api/platform/openapi");
+
+    const openApiHandler = createOpenApiHandler(exposure.router);
+    const reference = createApiReference(exposure.router);
+    const serveOpenApi = async (request: Request) =>
+      (await handleOpenApiRequest(openApiHandler, request, { ports, reference })) ??
+      new Response(null, { status: 404 });
+    openApi = (method, path, body, headers) =>
+      serveOpenApi(
+        new Request(
+          `http://louez.test/api/v1${path}`,
+          body
+            ? {
+                method,
+                headers: { "content-type": "application/json", ...headers },
+                body: JSON.stringify(body),
+              }
+            : { method, headers },
+        ),
+      );
+    openApiDocument = async () =>
+      (await serveOpenApi(new Request("http://louez.test/api/v1/openapi.json"))).json();
 
     const httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: { insertRecordedPayment },
     };
     const connect = async (authorization: string) => {
       const mcp = new Client({ name: "test", version: "0.0.0" });
@@ -258,6 +299,25 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       .map((block) => block.text ?? "")
       .join("\n");
 
+  /**
+   * A success, as the bridge answers it: the facts as structured content, a
+   * text that says it is done with the operation's receipt and the links on a
+   * line of their own, and the receipt in `_meta`.
+   */
+  function answer(result: ToolResult) {
+    assert.notEqual(result.isError, true, textOf(result));
+    const facts = result.structuredContent as Json;
+    const links = facts.links as { dashboard: string } | undefined;
+    assert.equal(
+      textOf(result),
+      `Done. Operation ${String(result._meta?.["io.louez/operationId"])}.` +
+        (links ? `\nLinks to give the user: dashboard ${links.dashboard}.` : "") +
+        `\n${JSON.stringify(facts)}`,
+    );
+    assert.equal(result._meta?.["io.louez/replayed"], false);
+    return facts;
+  }
+
   /** The preview and the token of a call that asks for its confirmation. */
   function confirmation(result: ToolResult) {
     assert.equal(result.isError, true, textOf(result));
@@ -274,17 +334,14 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     return mcpCall(authorization, name, { ...args, confirmationToken: token });
   }
 
-  /**
-   * A refusal's facts. The second commit gives each its domain's code in
-   * place of REQUEST_REFUSED and NOT_FOUND; the messages stay.
-   */
+  /** A refusal's facts: its domain's code, and the message the tools answered with. */
   function refusal(result: ToolResult) {
     assert.equal(result.isError, true, textOf(result));
     const error = errorOf(result);
     return { code: error?.code, message: error?.message, retryable: error?.retryable };
   }
 
-  const withoutDate = ({ paidAt, ...rest }: McpRecordedPayment) => {
+  const withoutDate = ({ paidAt, ...rest }: RecordedPayment) => {
     assert.ok(paidAt instanceof Date);
     return rest;
   };
@@ -361,7 +418,6 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
           destructiveHint: tool.annotations?.destructiveHint,
           openWorldHint: tool.annotations?.openWorldHint,
         },
-        // The second commit adds idempotencyKey to each.
         arguments: Object.keys(tool.inputSchema.properties ?? {}).sort(),
         required: [...((tool.inputSchema.required as string[] | undefined) ?? [])].sort(),
       };
@@ -370,19 +426,34 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(shape("record_payment"), {
       title: "Record Payment",
       annotations: additive,
-      arguments: ["amount", "confirmationToken", "method", "notes", "reservationId", "type"],
+      arguments: [
+        "amount",
+        "confirmationToken",
+        "idempotencyKey",
+        "method",
+        "notes",
+        "reservationId",
+        "type",
+      ],
       required: ["amount", "method", "reservationId", "type"],
     });
     assert.deepEqual(shape("record_deposit_return"), {
       title: "Record Deposit Return",
       annotations: additive,
-      arguments: ["amount", "confirmationToken", "method", "notes", "reservationId"],
+      arguments: [
+        "amount",
+        "confirmationToken",
+        "idempotencyKey",
+        "method",
+        "notes",
+        "reservationId",
+      ],
       required: ["amount", "method", "reservationId"],
     });
     assert.deepEqual(shape("delete_payment"), {
       title: "Delete Payment",
       annotations: { ...additive, destructiveHint: true },
-      arguments: ["confirmationToken", "paymentId"],
+      arguments: ["confirmationToken", "idempotencyKey", "paymentId"],
       required: ["paymentId"],
     });
 
@@ -428,12 +499,14 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       ...args,
       confirmationToken: first.token,
     });
-    assert.notEqual(done.isError, true, textOf(done));
-    // The second commit gives the same facts in the bridge's form.
-    assert.equal(
-      textOf(done),
-      `Payment recorded for reservation #${number}.\n\n- Type: rental\n- Amount: €80.00\n- Method: transfer\n\nLinks to give the user: dashboard ${link(id)}.`,
-    );
+    assert.deepEqual(answer(done), {
+      reservationId: id,
+      number,
+      type: "rental",
+      amount: "80.00",
+      method: "transfer",
+      links: { dashboard: link(id) },
+    });
     assert.deepEqual(recorded.map(withoutDate), [
       {
         reservationId: id,
@@ -472,10 +545,12 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.equal((await paymentsOf(id)).length, 1);
   });
 
-  test("the confirmation is asked under the tool's own name, and no operation is recorded", async () => {
-    // The second commit asks under the router's path (a token issued before
-    // the deploy answers CONFIRMATION_INVALID) and records each call in
-    // api_operations.
+  test("the confirmation is asked under the procedure's path, and each call is recorded", async () => {
+    // A token issued under the hand-written tool's name (mcp.record_payment)
+    // matches none of these: it answers CONFIRMATION_INVALID.
+    await louezDb.db
+      .delete(louezDb.apiOperations)
+      .where(orm.eq(louezDb.apiOperations.storeId, STORE));
     const authorization = await key();
     const { id } = await reservation();
     const deposit = await payment(id, { type: "deposit", amount: "50.00" });
@@ -495,11 +570,19 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.ok(deposit);
 
     assert.deepEqual(await confirmationProcedures(), [
-      "mcp.delete_payment",
-      "mcp.record_deposit_return",
-      "mcp.record_payment",
+      "dashboard.payments.delete",
+      "dashboard.payments.record",
+      "dashboard.payments.recordDepositReturn",
     ]);
-    assert.deepEqual(await operations(), []);
+    // One row per key-less call: the call that asked, then the one that ran.
+    assert.deepEqual((await operations()).map((row) => `${row.procedure} ${row.status}`).sort(), [
+      "dashboard.payments.delete failed",
+      "dashboard.payments.delete succeeded",
+      "dashboard.payments.record failed",
+      "dashboard.payments.record succeeded",
+      "dashboard.payments.recordDepositReturn failed",
+      "dashboard.payments.recordDepositReturn succeeded",
+    ]);
   });
 
   test("a key whose confirmations are off is still asked before each of the three", async () => {
@@ -600,12 +683,13 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       ...args,
       confirmationToken: again.token,
     });
-    assert.notEqual(done.isError, true, textOf(done));
-    // The second commit gives the same facts in the bridge's form.
-    assert.equal(
-      textOf(done),
-      `Deposit return recorded for reservation #${number}.\n- Amount: €30.00\n- Method: cash\n\nLinks to give the user: dashboard ${link(id)}.`,
-    );
+    assert.deepEqual(answer(done), {
+      reservationId: id,
+      number,
+      amount: "30.00",
+      method: "cash",
+      links: { dashboard: link(id) },
+    });
     assert.deepEqual(recorded.map(withoutDate), [
       {
         reservationId: id,
@@ -668,12 +752,12 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(await marks(), []);
 
     const done = await confirmed(authorization, "delete_payment", args);
-    assert.notEqual(done.isError, true, textOf(done));
-    // The second commit gives the same facts in the bridge's form.
-    assert.equal(
-      textOf(done),
-      `Payment deleted (reservation #${number}).\n\nLinks to give the user: dashboard ${link(id)}.`,
-    );
+    assert.deepEqual(answer(done), {
+      paymentId: damage,
+      reservationId: id,
+      number,
+      links: { dashboard: link(id) },
+    });
     assert.deepEqual(await paymentsOf(id), []);
     assert.deepEqual(await marks(), [{ id, storeId: STORE, version: 1 }]);
     assert.deepEqual(await historyOf(id), [], "no history line");
@@ -686,7 +770,6 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const asked = await confirmationCount();
 
     for (const reservationId of [elsewhere.id, "pw_res_nowhere"]) {
-      // The second commit answers RESERVATION_NOT_FOUND.
       assert.deepEqual(
         refusal(
           await mcpCall(authorization, "record_payment", {
@@ -696,7 +779,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
             method: "cash",
           }),
         ),
-        { code: "NOT_FOUND", message: "Reservation not found.", retryable: false },
+        { code: "RESERVATION_NOT_FOUND", message: "Reservation not found.", retryable: false },
       );
       assert.deepEqual(
         refusal(
@@ -706,13 +789,12 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
             method: "cash",
           }),
         ),
-        { code: "NOT_FOUND", message: "Reservation not found.", retryable: false },
+        { code: "RESERVATION_NOT_FOUND", message: "Reservation not found.", retryable: false },
       );
     }
     for (const paymentId of [elsewherePayment, "pw_pay_nowhere"]) {
-      // The second commit answers PAYMENT_NOT_FOUND.
       assert.deepEqual(refusal(await mcpCall(authorization, "delete_payment", { paymentId })), {
-        code: "NOT_FOUND",
+        code: "PAYMENT_NOT_FOUND",
         message: "Payment not found.",
         retryable: false,
       });
@@ -732,30 +814,32 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const charged = await payment(open.id, { type: "rental", amount: "80.00" }, "stripe");
     const before = await paymentsOf(open.id);
 
-    // The second commit gives each its domain's code in place of REQUEST_REFUSED.
-    const refused = (message: string) => ({ code: "REQUEST_REFUSED", message, retryable: false });
+    const refused = (code: string, message: string) => ({ code, message, retryable: false });
     const record = (reservationId: string, type: string, amount: string) =>
       confirmed(authorization, "record_payment", { reservationId, type, amount, method: "cash" });
 
     assert.deepEqual(
       refusal(await record(open.id, "rental", "0")),
-      refused("Amount must be a non-zero number."),
+      refused("PAYMENT_AMOUNT_INVALID", "Amount must be a non-zero number."),
     );
     assert.deepEqual(
       refusal(await record(open.id, "rental", "abc")),
-      refused("Amount must be a non-zero number."),
+      refused("PAYMENT_AMOUNT_INVALID", "Amount must be a non-zero number."),
     );
     assert.deepEqual(
       refusal(await record(open.id, "rental", "-5.00")),
-      refused('Only "adjustment" payments can have a negative amount.'),
+      refused(
+        "PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT",
+        'Only "adjustment" payments can have a negative amount.',
+      ),
     );
     assert.deepEqual(
       refusal(await record(cancelled.id, "rental", "10.00")),
-      refused("Cannot record payment on a cancelled reservation."),
+      refused("PAYMENT_RESERVATION_CLOSED", "Cannot record payment on a cancelled reservation."),
     );
     assert.deepEqual(
       refusal(await record(rejected.id, "deposit", "10.00")),
-      refused("Cannot record payment on a rejected reservation."),
+      refused("PAYMENT_RESERVATION_CLOSED", "Cannot record payment on a rejected reservation."),
     );
 
     const giveBack = (amount: string) =>
@@ -764,18 +848,28 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
         amount,
         method: "cash",
       });
-    assert.deepEqual(refusal(await giveBack("0")), refused("Amount must be greater than zero."));
-    assert.deepEqual(refusal(await giveBack("-1")), refused("Amount must be greater than zero."));
+    assert.deepEqual(
+      refusal(await giveBack("0")),
+      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "Amount must be greater than zero."),
+    );
+    assert.deepEqual(
+      refusal(await giveBack("-1")),
+      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "Amount must be greater than zero."),
+    );
     assert.deepEqual(
       refusal(await giveBack("30.01")),
       refused(
+        "DEPOSIT_RETURN_EXCEEDS_BALANCE",
         "Amount exceeds returnable deposit. Collected: €50.00, already returned: €20.00, max returnable: €30.00.",
       ),
     );
 
     assert.deepEqual(
       refusal(await confirmed(authorization, "delete_payment", { paymentId: charged })),
-      refused("Cannot delete a Stripe payment. Use the Stripe dashboard for refunds."),
+      refused(
+        "PAYMENT_STRIPE_NOT_DELETABLE",
+        "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+      ),
     );
 
     assert.deepEqual(recorded, []);
@@ -823,10 +917,239 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       amount: "12.50",
       method: "check",
     });
-    // The second commit gives the same facts in the bridge's form, without links.
-    assert.equal(
-      textOf(done),
-      `Payment recorded for reservation #${number}.\n\n- Type: damage\n- Amount: €12.50\n- Method: check`,
+    assert.deepEqual(answer(done), {
+      reservationId: id,
+      number,
+      type: "damage",
+      amount: "12.50",
+      method: "check",
+    });
+  });
+  test("the same idempotency key replays the payment, and another input under it is refused", async () => {
+    const authorization = await key();
+    const { id, number } = await reservation();
+    const args = {
+      reservationId: id,
+      type: "rental",
+      amount: "25.00",
+      method: "cash",
+      idempotencyKey: "pw-payment-1",
+    };
+    const { token } = confirmation(await mcpCall(authorization, "record_payment", args));
+    const done = await mcpCall(authorization, "record_payment", {
+      ...args,
+      confirmationToken: token,
+    });
+    const facts = answer(done);
+    assert.equal(facts.number, number);
+
+    // The same key and input: the stored answer, without running again.
+    const replay = await mcpCall(authorization, "record_payment", args);
+    assert.notEqual(replay.isError, true, textOf(replay));
+    assert.deepEqual(replay.structuredContent, facts);
+    assert.equal(replay._meta?.["io.louez/replayed"], true);
+    assert.equal(replay._meta?.["io.louez/operationId"], done._meta?.["io.louez/operationId"]);
+    assert.match(textOf(replay), /^Done earlier \(replayed\)\./);
+
+    // The same key with another input: refused, nothing written.
+    const reused = await mcpCall(authorization, "record_payment", { ...args, amount: "26.00" });
+    assert.equal(refusal(reused).code, "IDEMPOTENCY_KEY_REUSED");
+
+    assert.equal(recorded.length, 1);
+    assert.deepEqual(
+      (await paymentsOf(id)).map((row) => row.amount),
+      ["25.00"],
     );
+    assert.deepEqual(await marks(), [{ id, storeId: STORE, version: 1 }]);
+  });
+
+  test("two deposit returns sent together cannot both pass the returnable balance", async () => {
+    // Each within the balance alone, both over it. Each was previewed at
+    // 50.00; the second to take the reservation's lock reads the balance the
+    // first left, so its token no longer holds, and asked again it is refused.
+    const authorization = await key();
+    const { id } = await reservation();
+    await payment(id, { type: "deposit", amount: "50.00" });
+    const thirty = { reservationId: id, amount: "30.00", method: "cash" };
+    const forty = { reservationId: id, amount: "40.00", method: "card" };
+    const tokens = [
+      confirmation(await mcpCall(authorization, "record_deposit_return", thirty)).token,
+      confirmation(await mcpCall(authorization, "record_deposit_return", forty)).token,
+    ];
+
+    const results = await raceOnLockedRow(database, { table: "reservations", id }, [
+      () =>
+        mcpCall(authorization, "record_deposit_return", {
+          ...thirty,
+          confirmationToken: tokens[0],
+        }),
+      () =>
+        mcpCall(authorization, "record_deposit_return", {
+          ...forty,
+          confirmationToken: tokens[1],
+        }),
+    ]);
+
+    const won = results.filter((result) => result.isError !== true);
+    const lost = results.filter((result) => result.isError === true);
+    assert.equal(won.length, 1, results.map(textOf).join("\n---\n"));
+    assert.equal(lost.length, 1);
+    const [loser] = lost;
+    assert.ok(loser);
+    assert.equal(refusal(loser).code, "CONFIRMATION_INVALID");
+    const returns = (await paymentsOf(id)).filter((row) => row.type === "deposit_return");
+    assert.equal(returns.length, 1);
+
+    // Asked again, the other return previews what is left, and is refused.
+    const left = (50 - Number(returns[0]?.amount)).toFixed(2);
+    const other = returns[0]?.amount === "30.00" ? forty : thirty;
+    const again = confirmation(await mcpCall(authorization, "record_deposit_return", other));
+    assert.equal((again.preview as { details: Json }).details.returnable, left);
+    const refused = await mcpCall(authorization, "record_deposit_return", {
+      ...other,
+      confirmationToken: again.token,
+    });
+    assert.equal(refusal(refused).code, "DEPOSIT_RETURN_EXCEEDS_BALANCE");
+    assert.equal((await paymentsOf(id)).filter((row) => row.type === "deposit_return").length, 1);
+  });
+
+  test("the REST API serves the three writes with a key that may write payments, each asking first", async () => {
+    const document = await openApiDocument();
+    const operation = (path: string, method: string) => {
+      const entry = document.paths[path]?.[method] as
+        | {
+            operationId?: string;
+            tags?: string[];
+            responses?: Record<string, unknown>;
+            parameters?: Array<{ $ref?: string; name?: string }>;
+          }
+        | undefined;
+      assert.ok(entry, `${method.toUpperCase()} ${path} is documented`);
+      return {
+        operationId: entry.operationId,
+        tags: entry.tags,
+        forbidden: "403" in (entry.responses ?? {}),
+        confirmation: "412" in (entry.responses ?? {}),
+        headers: (entry.parameters ?? []).flatMap((parameter) =>
+          parameter.$ref ? [parameter.$ref.split("/").pop()] : [],
+        ),
+      };
+    };
+    const documented = (operationId: string) => ({
+      operationId,
+      tags: ["payments"],
+      forbidden: true,
+      confirmation: true,
+      headers: ["IdempotencyKey", "LouezConfirmation"],
+    });
+    assert.deepEqual(
+      operation("/reservations/{reservationId}/payments", "post"),
+      documented("record_payment"),
+    );
+    assert.deepEqual(
+      operation("/reservations/{reservationId}/deposit-returns", "post"),
+      documented("record_deposit_return"),
+    );
+    assert.deepEqual(operation("/payments/{paymentId}", "delete"), documented("delete_payment"));
+
+    const authorization = await key(WRITE, { confirmSensitive: false });
+    const { id, number } = await reservation();
+    const headers = { authorization };
+    /** Asks, then sends the same request again with the token it got. */
+    const confirmedRest = async (method: string, path: string, body: object | null) => {
+      const asked = await openApi(method, path, body, headers);
+      assert.equal(asked.status, 412);
+      const refusalBody = (await asked.json()) as {
+        data: { code: string; details: { confirmationToken: string } };
+      };
+      assert.equal(refusalBody.data.code, "CONFIRMATION_REQUIRED");
+      const done = await openApi(method, path, body, {
+        ...headers,
+        "louez-confirmation": refusalBody.data.details.confirmationToken,
+      });
+      assert.equal(done.status, 200, await done.clone().text());
+      assert.ok(done.headers.get("louez-operation-id"));
+      return done.json();
+    };
+
+    assert.deepEqual(
+      await confirmedRest("POST", `/reservations/${id}/payments`, {
+        type: "deposit",
+        amount: "50.00",
+        method: "transfer",
+      }),
+      {
+        reservationId: id,
+        number,
+        type: "deposit",
+        amount: "50.00",
+        method: "transfer",
+        links: { dashboard: link(id) },
+      },
+    );
+    assert.deepEqual(
+      await confirmedRest("POST", `/reservations/${id}/deposit-returns`, {
+        amount: "20.00",
+        method: "cash",
+      }),
+      {
+        reservationId: id,
+        number,
+        amount: "20.00",
+        method: "cash",
+        links: { dashboard: link(id) },
+      },
+    );
+    const [deposit] = (await paymentsOf(id)).filter((row) => row.type === "deposit");
+    assert.ok(deposit);
+    assert.deepEqual(await confirmedRest("DELETE", `/payments/${deposit.id}`, null), {
+      paymentId: deposit.id,
+      reservationId: id,
+      number,
+      links: { dashboard: link(id) },
+    });
+    assert.deepEqual(
+      (await paymentsOf(id)).map((row) => row.type),
+      ["deposit_return"],
+    );
+
+    // A key that reads payments may not.
+    const reading = await key({ ...WRITE, payments: "read" });
+    const denied = await openApi(
+      "POST",
+      `/reservations/${id}/payments`,
+      { type: "rental", amount: "10.00", method: "cash" },
+      { authorization: reading },
+    );
+    assert.equal(denied.status, 403);
+    assert.equal(
+      ((await denied.json()) as { data: { code: string } }).data.code,
+      "PERMISSION_DENIED",
+    );
+  });
+
+  test("a write that fails after its confirmation spends no token", async () => {
+    // The token is consumed in the write's transaction: when the write rolls
+    // back, so does its consumption, and the same token runs it once.
+    const authorization = await key();
+    const { id } = await reservation();
+    const args = { reservationId: id, type: "rental", amount: "15.00", method: "cash" };
+    const { token } = confirmation(await mcpCall(authorization, "record_payment", args));
+
+    failNextWrite = true;
+    const failed = await mcpCall(authorization, "record_payment", {
+      ...args,
+      confirmationToken: token,
+    });
+    assert.equal(refusal(failed).code, "INTERNAL_SERVER_ERROR");
+    assert.deepEqual(await paymentsOf(id), [], "the row rolled back");
+    assert.deepEqual(await marks(), [], "and its billing mark");
+
+    const done = await mcpCall(authorization, "record_payment", {
+      ...args,
+      confirmationToken: token,
+    });
+    assert.equal(answer(done).amount, "15.00");
+    assert.equal((await paymentsOf(id)).length, 1);
   });
 });

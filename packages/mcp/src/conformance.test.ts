@@ -21,12 +21,9 @@ const RESOURCE_METADATA = "https://app.louez.test/.well-known/oauth-protected-re
 const LEGACY_TOOLS = [
   "check_availability",
   "create_customer",
-  "delete_payment",
   "get_customer",
   "list_customers",
   "list_payments",
-  "record_deposit_return",
-  "record_payment",
   "update_customer",
 ];
 
@@ -83,11 +80,7 @@ describe("MCP directory conformance", () => {
       storeArgument: true,
       resourceMetadataUrl: RESOURCE_METADATA,
     };
-    const server = createMcpServer(
-      ctx,
-      { insertRecordedPayment: async () => undefined },
-      createExposure(appRouter).procedures,
-    );
+    const server = createMcpServer(ctx, createExposure(appRouter).procedures);
     // A call whose token expired after the request's check.
     addTool(server, ctx, {
       name: "test_expired_token",
@@ -311,6 +304,11 @@ describe("MCP directory conformance", () => {
       get_dashboard_stats: "read",
       get_product_performance: "read",
       get_revenue_report: "read",
+      // The payment procedures, under the names they had as hand-written
+      // tools. A payment row added; nothing recorded before changes.
+      delete_payment: "delete",
+      record_deposit_return: "additive",
+      record_payment: "additive",
       settings_create_location: "additive/public",
       settings_get: "read",
       settings_get_legal_profile: "read",
@@ -338,13 +336,9 @@ describe("MCP directory conformance", () => {
       // The hand-written tools.
       check_availability: "read",
       create_customer: "additive",
-      delete_payment: "delete",
       get_customer: "read",
       list_customers: "read",
       list_payments: "read",
-      // A payment row added; nothing recorded before changes.
-      record_deposit_return: "additive",
-      record_payment: "additive",
       update_customer: "overwrite",
     };
     assert.deepEqual(tools.map((tool) => tool.name).sort(), Object.keys(EXPECTED).sort());
@@ -564,11 +558,7 @@ describe("MCP directory conformance", () => {
           },
         },
       };
-      const server = createMcpServer(
-        ctx,
-        { insertRecordedPayment: async () => undefined },
-        procedures,
-      );
+      const server = createMcpServer(ctx, procedures);
       const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
       await server.connect(serverTransport);
       const mcp = new Client({ name: "withheld", version: "0.0.0" });

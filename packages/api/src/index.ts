@@ -30,7 +30,9 @@ export type {
   BillingPort,
   InsurancePort,
   LogPort,
+  PaymentRecordsPort,
   ProductImagesPort,
+  RecordedPayment,
   StoragePort,
   UrlsPort,
 } from "./platform/ports";

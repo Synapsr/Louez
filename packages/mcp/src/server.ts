@@ -3,7 +3,6 @@ import { McpServer } from "@modelcontextprotocol/server";
 
 import type { McpRequestContext } from "./auth/context";
 import { registerExposedTools } from "./bridge";
-import type { McpServerDeps } from "./deps";
 import { serverInstructions } from "./instructions";
 import { registerCustomerTools } from "./tools/customers";
 import { registerPaymentTools } from "./tools/payments";
@@ -16,11 +15,10 @@ import { registerPrompts } from "./prompts/index";
  * (see `resolveMcpContext`), so every request reads the credential, the
  * membership and the role again. The exposed procedures come first; the
  * hand-written tools, resources and prompts follow until their domain moves to
- * procedures. The deps come from the app and reach the tools that need them.
+ * procedures.
  */
 export function createMcpServer(
   ctx: McpRequestContext,
-  deps: McpServerDeps,
   procedures: readonly ExposedProcedure[],
 ): McpServer {
   const { urls } = ctx.ports;
@@ -43,7 +41,7 @@ export function createMcpServer(
 
   // Hand-written tools, moved to procedures domain by domain
   registerCustomerTools(server, ctx);
-  registerPaymentTools(server, ctx, deps);
+  registerPaymentTools(server, ctx);
   registerCalendarTools(server, ctx);
 
   // Resources and prompts read one store. A connection over several stores
