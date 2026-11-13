@@ -79,13 +79,22 @@ export interface CustomerStatusGated {
   gate: StoreNotAcceptingReservationsError;
 }
 
-/** A cancellation of a reservation already cancelled, by anyone: nothing written. */
+/**
+ * A cancellation of a reservation already cancelled, by anyone: nothing
+ * written. The id is the reservation's as stored, which the one asked for may
+ * differ from by its case: the caller revalidates the stored one.
+ */
 export interface CustomerStatusUnchanged {
   ok: true;
   changed: false;
+  reservationId: string;
 }
 
-/** The customer's own reservation in the store: every read and lock of these changes is scoped to it. */
+/**
+ * The customer's own reservation in the store: the read before the lock, and
+ * the cancellation's read under it, are scoped to it. The owner locks take the
+ * reservation by its id and its store, as before the move.
+ */
 const customerScope = (caller: CustomerStatusChangeCaller, reservationId: string) =>
   and(
     eq(reservations.id, reservationId),
@@ -349,5 +358,7 @@ async function cancelRequest(
 
   // Already cancelled: the run of no effects, as before; nothing else.
   await attemptFee(caller, result.effects, result.changed ? reservation : null, options);
-  return result.changed ? { ok: true, changed: true, reservation } : { ok: true, changed: false };
+  return result.changed
+    ? { ok: true, changed: true, reservation }
+    : { ok: true, changed: false, reservationId: reservation.id };
 }

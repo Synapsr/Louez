@@ -1161,6 +1161,25 @@ describe("the customer's status changes (database)", { skip: skipWithoutTestData
       ]);
     });
 
+    test("asked by its id in another case: the pages refreshed are those of the id as stored", async () => {
+      const { id } = await reservationOf("pending");
+      // The database matches an id whatever its case.
+      const asked = id.toUpperCase();
+      assert.notEqual(asked, id);
+
+      assert.deepEqual(await actions.cancelReservationRequest(STORE_SLUG, asked), {
+        success: true,
+      });
+      assert.deepEqual(calls.slice(-4), cancelRevalidations(id));
+
+      // Asked again, now that it is cancelled: the same pages.
+      calls.length = 0;
+      assert.deepEqual(await actions.cancelReservationRequest(STORE_SLUG, asked), {
+        success: true,
+      });
+      assert.deepEqual(calls.slice(-4), cancelRevalidations(id));
+    });
+
     test("cancelled between the read and the lock: success, nothing written, no message", async () => {
       const { id } = await reservationOf("pending");
       changeStatusBeforeLock(id, "cancelled");

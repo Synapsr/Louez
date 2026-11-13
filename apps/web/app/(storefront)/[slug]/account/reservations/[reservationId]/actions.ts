@@ -433,10 +433,13 @@ export async function cancelReservationRequest(
       log.error("reservation", `request cancellation notification failed: ${describeError(error)}`);
     }
   }
+  // The reservation's id as stored: the database matches an id whatever its
+  // case, and the pages to refresh are those of the stored one.
+  const storedId = result.changed ? result.reservation.id : result.reservationId;
   revalidatePath(`/${store.slug}/account`);
-  revalidatePath(`/${store.slug}/account/reservations/${id}`);
+  revalidatePath(`/${store.slug}/account/reservations/${storedId}`);
   revalidatePath("/dashboard/reservations");
-  revalidatePath(`/dashboard/reservations/${id}`);
+  revalidatePath(`/dashboard/reservations/${storedId}`);
   return { success: true };
 }
 
