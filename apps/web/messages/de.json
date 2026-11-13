@@ -2720,7 +2720,11 @@
           "editDescription": "Einige Produkte sind für den Zeitraum nicht in ausreichender Menge verfügbar. Sie können die Änderung trotzdem speichern; die Überbuchung wird im Verlauf sichtbar.",
           "saveAnyway": "Trotzdem speichern",
           "confirmDescription": "Der Bestand deckt diese Reservierung für ihren Zeitraum nicht ab. Sie können sie trotzdem über den verfügbaren Bestand hinaus bestätigen; die Überbuchung wird im Verlauf sichtbar.",
-          "confirmAnyway": "Trotzdem bestätigen"
+          "confirmAnyway": "Trotzdem bestätigen",
+          "bufferTitle": "Umschlagspuffer zu kurz",
+          "bufferDescription": "Diese Positionen passen in Ihren Bestand, aber nicht mit dem Umschlagspuffer, den Sie zwischen zwei Vermietungen einhalten. Sie können die Reservierung trotzdem mit weniger Zeit zwischen den Vermietungen bestätigen; diese Entscheidung wird im Verlauf sichtbar.",
+          "bufferShortfall": "Angefragt: {requested} · Frei mit Puffer: {available}",
+          "confirmPastBuffer": "Trotzdem bestätigen"
         },
         "addUnavailable": {
           "title": "Produkt nicht verfügbar",
@@ -2772,6 +2776,7 @@
         "quote_accepted": "Angebot angenommen",
         "quote_declined": "Angebot abgelehnt",
         "overbooked": "Überbucht",
+        "turnoverBufferOverridden": "Puffer verkürzt",
         "contract_signed": "Vertrag unterschrieben",
         "contractUnsigned": "Ohne unterschriebenen Vertrag",
         "signedBy": "Unterschrieben von {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "Zugewiesene Einheiten sind für die neuen Daten nicht verfügbar: {identifiers}",
     "invalidUnits": "Eine oder mehrere ausgewählte Einheiten sind ungültig",
     "turnoverBufferConflict": "Die ausgewählte Einheit wird nur durch den Umschlagspuffer blockiert",
-    "turnoverBufferShortfall": "Der Umschlagspuffer zwischen zwei Vermietungen verhindert, dass einige Positionen dieser Reservierung bestätigt werden. Geben Sie Bestand um diese Daten frei oder verschieben Sie sie.",
+    "turnoverBufferShortfall": "Der Umschlagspuffer zwischen zwei Vermietungen verhindert, dass einige Positionen dieser Reservierung bestätigt werden. Geben Sie Bestand um diese Daten frei, verschieben Sie sie oder bestätigen Sie trotzdem mit weniger Zeit zwischen den Vermietungen.",
     "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",
     "unitCombinationMismatch": "Ausgewählte Einheiten stimmen nicht mit der reservierten Kombination für diese Position überein",
     "cannotDisableUnitTrackingWithCombinations": "Einheitenverfolgung kann nicht deaktiviert werden, solange aktive Reservierungen verfolgte Kombinationen für dieses Produkt verwenden.",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "Vor sensiblen Aktionen um Bestätigung bitten",
-      "description": "Vor einer Löschung oder einer Nachricht an einen Kunden erhält der Agent zuerst eine Vorschau und muss bestätigen; er ist angewiesen, sie Ihnen zuerst zu zeigen. Das Erfassen, Zurückgeben oder Löschen einer Zahlung, das Ausgeben von KI-Guthaben, das Bestätigen einer Reservierung über den verfügbaren Bestand hinaus, das Entfernen eines Mitglieds und das Zurückziehen einer Einladung verlangen immer eine Bestätigung, auch wenn dies aus ist."
+      "description": "Vor einer Löschung oder einer Nachricht an einen Kunden erhält der Agent zuerst eine Vorschau und muss bestätigen; er ist angewiesen, sie Ihnen zuerst zu zeigen. Das Erfassen, Zurückgeben oder Löschen einer Zahlung, das Ausgeben von KI-Guthaben, das Bestätigen einer Reservierung über den verfügbaren Bestand oder den Umschlagspuffer hinaus, das Entfernen eines Mitglieds und das Zurückziehen einer Einladung verlangen immer eine Bestätigung, auch wenn dies aus ist."
     },
     "bundlesTitle": "Angezeigte Tools",
     "bundlesHint": "Der Agent sieht diese Tool-Pakete. Sie können später weitere hinzufügen.",

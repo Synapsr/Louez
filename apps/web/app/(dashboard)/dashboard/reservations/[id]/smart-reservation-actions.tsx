@@ -55,12 +55,17 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { isContractSignatureRequiredRefusal } from "@/lib/reservations/contract-signature-refusal";
-import { readStatusStockRefusal } from "@/lib/reservations/status-stock-refusal";
+import {
+  CONFIRMED_ANYWAY_EVENT,
+  overridesAfter,
+  readStatusStockRefusal,
+  type StatusStockOverrides,
+  type StatusStockRefusal,
+} from "@/lib/reservations/status-stock-refusal";
 import { readUnitConflictRefusal } from "@/lib/reservations/unit-conflict-refusal";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import {
-  productAnalyticsEvents,
   reservationAnalyticsActions,
   reservationManagementAnalyticsBaseProperties,
 } from "@/lib/product-analytics/analytics-events";
@@ -69,7 +74,7 @@ import {
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
-import type { CapacityShortfall, StoreTargetStatus } from "@louez/api/contracts/reservations";
+import type { StoreTargetStatus } from "@louez/api/contracts/reservations";
 
 import { ContractInStoreSignDialog } from "./contract-in-store-sign-dialog";
 import { MobileReservationQuickActions } from "./mobile-reservation-quick-actions";
@@ -150,10 +155,12 @@ export function SmartReservationActions({
   const posthog = usePostHog();
 
   const [isLoading, setIsLoading] = useState(false);
-  // A confirmation the stock cannot cover: its shortfalls, until the store chooses.
-  const [overbookingShortfalls, setOverbookingShortfalls] = useState<CapacityShortfall[] | null>(
-    null,
-  );
+  // A confirmation the stock or the turnover buffer cannot cover: the
+  // refusal, and the flags it was sent with, until the store chooses.
+  const [stockRefusal, setStockRefusal] = useState<{
+    refusal: StatusStockRefusal;
+    sent: StatusStockOverrides;
+  } | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
@@ -322,7 +329,7 @@ export function SmartReservationActions({
   const handleStatusChange = async (
     newStatus: StoreTargetStatus,
     reason?: string,
-    { allowOverbooking = false }: { allowOverbooking?: boolean } = {},
+    overrides: StatusStockOverrides = {},
   ) => {
     const analyticsAction = getReservationStatusAnalyticsAction(newStatus);
     if (analyticsAction) {
@@ -340,7 +347,7 @@ export function SmartReservationActions({
         id: reservationId,
         status: newStatus,
         rejectionReason: reason,
-        ...(allowOverbooking ? { allowOverbooking } : {}),
+        ...overrides,
       });
 
       const warnings =
@@ -360,15 +367,13 @@ export function SmartReservationActions({
           properties: { error_code: "status_update_failed", status_after: newStatus },
         });
       }
-      const stockRefusal = readStatusStockRefusal(error);
+      const refusal = readStatusStockRefusal(error);
       if (isReservationGateRefusal(error)) setGateDialogOpen(true);
       else if (isContractSignatureRequiredRefusal(error))
         toastManager.add({ title: tErrors("contractSignatureRequired"), type: "error" });
-      // The stock is short: the store may confirm over it, from the dialog.
-      else if (stockRefusal?.kind === "capacity") setOverbookingShortfalls(stockRefusal.shortfalls);
-      // Short only with the turnover buffer: no confirming over it here.
-      else if (stockRefusal?.kind === "buffer")
-        toastManager.add({ title: tErrors("turnoverBufferShortfall"), type: "error" });
+      // The stock, or the turnover buffer, is short: the store may confirm
+      // anyway, from the dialog.
+      else if (refusal) setStockRefusal({ refusal, sent: overrides });
       else {
         // Units the reservation holds cannot serve it: the store is told which.
         const unitConflict = readUnitConflictRefusal(error);
@@ -385,17 +390,18 @@ export function SmartReservationActions({
     }
   };
 
-  const handleConfirmOverbooking = async () => {
-    if (!overbookingShortfalls) return;
-    posthog.capture(productAnalyticsEvents.dashboardReservationOverbookingConfirmed, {
+  const handleConfirmAnyway = async () => {
+    if (!stockRefusal) return;
+    const { refusal, sent } = stockRefusal;
+    posthog.capture(CONFIRMED_ANYWAY_EVENT[refusal.kind], {
       ...reservationManagementAnalyticsBaseProperties,
       reservation_id: reservationId,
-      shortfall_count: overbookingShortfalls.length,
+      shortfall_count: refusal.shortfalls.length,
       source: "reservation_confirmation",
       entry_point: "reservation_detail",
     });
-    setOverbookingShortfalls(null);
-    await handleStatusChange("confirmed", undefined, { allowOverbooking: true });
+    setStockRefusal(null);
+    await handleStatusChange("confirmed", undefined, overridesAfter(refusal, sent));
   };
 
   const handleReject = async () => {
@@ -1217,14 +1223,14 @@ export function SmartReservationActions({
       <ReservationGateDialog open={gateDialogOpen} onOpenChange={setGateDialogOpen} />
 
       <ReservationOverbookingDialog
-        open={overbookingShortfalls !== null}
+        open={stockRefusal !== null}
         onOpenChange={(open) => {
-          if (!open) setOverbookingShortfalls(null);
+          if (!open) setStockRefusal(null);
         }}
-        shortfalls={overbookingShortfalls ?? []}
-        intent="confirm"
+        shortfalls={stockRefusal?.refusal.shortfalls ?? []}
+        intent={stockRefusal?.refusal.kind === "buffer" ? "confirmPastBuffer" : "confirm"}
         isPending={isLoading}
-        onConfirm={handleConfirmOverbooking}
+        onConfirm={handleConfirmAnyway}
       />
     </>
   );

@@ -2720,7 +2720,11 @@
           "editDescription": "Beberapa produk tidak tersedia dalam jumlah yang cukup untuk periode ini. Anda masih dapat menyimpan perubahan dan melacak penggantian di timeline.",
           "saveAnyway": "Tetap simpan",
           "confirmDescription": "Stok tidak mencukupi reservasi ini untuk periodenya. Anda tetap dapat mengonfirmasinya melebihi stok yang tersedia, dan pilihan ini akan terlihat di riwayat.",
-          "confirmAnyway": "Tetap konfirmasi"
+          "confirmAnyway": "Tetap konfirmasi",
+          "bufferTitle": "Buffer turnover tidak cukup",
+          "bufferDescription": "Baris ini muat dalam stok Anda, tetapi tidak dengan buffer turnover yang Anda sisakan di antara dua penyewaan. Anda tetap dapat mengonfirmasi reservasi dengan jeda yang lebih singkat di antara penyewaan, dan pilihan ini akan terlihat di riwayat.",
+          "bufferShortfall": "Diminta: {requested} · Tersedia dengan buffer: {available}",
+          "confirmPastBuffer": "Tetap konfirmasi"
         },
         "addUnavailable": {
           "title": "Produk tidak tersedia",
@@ -2772,6 +2776,7 @@
         "quote_accepted": "Penawaran diterima",
         "quote_declined": "Penawaran ditolak",
         "overbooked": "Pemesanan berlebih",
+        "turnoverBufferOverridden": "Buffer dipersingkat",
         "contract_signed": "Kontrak ditandatangani",
         "contractUnsigned": "Tanpa kontrak bertanda tangan",
         "signedBy": "Ditandatangani oleh {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "Unit yang ditetapkan tidak tersedia untuk tanggal baru: {identifiers}",
     "invalidUnits": "Satu atau lebih unit yang dipilih tidak valid",
     "turnoverBufferConflict": "Unit yang dipilih hanya diblokir oleh buffer turnover",
-    "turnoverBufferShortfall": "Buffer turnover di antara dua penyewaan mencegah konfirmasi beberapa baris reservasi ini. Kosongkan stok di sekitar tanggal ini atau pindahkan tanggalnya.",
+    "turnoverBufferShortfall": "Buffer turnover di antara dua penyewaan mencegah konfirmasi beberapa baris reservasi ini. Kosongkan stok di sekitar tanggal ini, pindahkan tanggalnya, atau tetap konfirmasi dengan jeda yang lebih singkat di antara penyewaan.",
     "unitProductMismatch": "Unit yang dipilih bukan milik produk ini",
     "unitCombinationMismatch": "Unit yang dipilih tidak cocok dengan kombinasi yang dipesan untuk item baris ini",
     "cannotDisableUnitTrackingWithCombinations": "Tidak dapat menonaktifkan pelacakan unit saat reservasi aktif menggunakan kombinasi terlacak untuk produk ini.",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "Minta konfirmasi sebelum tindakan sensitif",
-      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat, mengembalikan, atau menghapus pembayaran, memakai kredit AI, mengonfirmasi reservasi melebihi stok yang tersedia, mengeluarkan anggota, dan membatalkan undangan selalu meminta konfirmasi, meski ini dimatikan."
+      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat, mengembalikan, atau menghapus pembayaran, memakai kredit AI, mengonfirmasi reservasi melebihi stok yang tersedia atau melewati buffer turnover, mengeluarkan anggota, dan membatalkan undangan selalu meminta konfirmasi, meski ini dimatikan."
     },
     "bundlesTitle": "Alat yang ditampilkan",
     "bundlesHint": "Agen melihat kumpulan alat ini. Anda dapat menambahkan lainnya nanti.",

@@ -731,7 +731,13 @@ export const updateReservationStatusInput = z.object({
     .boolean()
     .optional()
     .describe(
-      "For a confirmation the stock cannot cover (RESERVATION_INSUFFICIENT_CAPACITY): true confirms it all the same, booking over the stock, and the reservation's history records the shortfalls. Send it only when the user chose to book over the stock. It covers only the units a line does not hold yet: a unit the reservation holds that another booking holds or needs refuses (RESERVATION_UNITS_UNAVAILABLE). It never passes consumable stock below zero, or a shortfall that comes from the turnover buffer alone (RESERVATION_TURNOVER_BUFFER_CONFLICT); a line short on the stock itself is booked over whole, buffer included. Ignored for any other change.",
+      "For a confirmation the stock cannot cover (RESERVATION_INSUFFICIENT_CAPACITY): true confirms it all the same, booking over the stock, and the reservation's history records the shortfalls. Send it only when the user chose to book over the stock. It covers only the units a line does not hold yet: a unit the reservation holds that another booking holds or needs refuses (RESERVATION_UNITS_UNAVAILABLE). It never passes consumable stock below zero, or a shortfall that comes from the turnover buffer alone (RESERVATION_TURNOVER_BUFFER_CONFLICT: that is overrideTurnoverBuffer); a line short on the stock itself is booked over whole, buffer included. Ignored for any other change.",
+    ),
+  overrideTurnoverBuffer: z
+    .boolean()
+    .optional()
+    .describe(
+      "For a confirmation refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock, but not the turnover buffer the store keeps between rentals): true confirms those lines all the same, with less time between two rentals than the store set, and the reservation's history records them with the buffer. Send it only when the user chose to. It covers this confirmation only: nothing carries it to a later change. It never passes a line the stock itself cannot cover (RESERVATION_INSUFFICIENT_CAPACITY: that is allowOverbooking), a unit another booking holds or needs (RESERVATION_UNITS_UNAVAILABLE), or a consumable out of stock. A reservation short both ways needs both flags. Ignored for any other change.",
     ),
 });
 
@@ -941,11 +947,12 @@ export const reservationErrors = {
     }),
   /**
    * Lines fit the stock, and not with the turnover buffer the store keeps
-   * between rentals. `allowOverbooking` does not cover them.
+   * between rentals. The store may confirm past it on purpose: the same call
+   * with `overrideTurnoverBuffer: true`. `allowOverbooking` does not cover them.
    */
   turnoverBufferShortfall: (shortfalls: CapacityShortfall[]) =>
     apiError("CONFLICT", "RESERVATION_TURNOVER_BUFFER_CONFLICT", {
-      message: `Not confirmed: the turnover buffer the store keeps between rentals keeps lines of this reservation from being confirmed; they fit the stock without it (${describeShortfalls(shortfalls)}). allowOverbooking does not pass it. Free the stock around these dates, or move the dates, then confirm.`,
+      message: `Not confirmed: the turnover buffer the store keeps between rentals keeps lines of this reservation from being confirmed; they fit the stock without it (${describeShortfalls(shortfalls)}). Free the stock around these dates or move the dates, then confirm; or, to confirm it all the same with less time between rentals, call again with overrideTurnoverBuffer: true, and the reservation's history records it. allowOverbooking does not pass it.`,
       i18nKey: "errors.turnoverBufferShortfall",
       details: { shortfalls },
     }),

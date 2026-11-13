@@ -40,7 +40,10 @@ import { cn, formatCurrency } from '@louez/utils'
 import { useFormatLocale } from '@/hooks/use-format-locale'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
-import { showsOverbookedBadge } from './utils/capacity-verdict-badge'
+import {
+  showsOverbookedBadge,
+  showsTurnoverBufferOverriddenBadge,
+} from './utils/capacity-verdict-badge'
 import { formatPaymentFailureDescription } from './utils/payment-failure-description'
 
 type ActivityType =
@@ -454,6 +457,8 @@ export function ActivityTimelineV2({
       : undefined
     // A capacity verdict: the booking was created, edited or confirmed over the stock.
     const isOverbooked = showsOverbookedBadge(activity)
+    // Confirmed past the turnover buffer, on purpose.
+    const isPastTurnoverBuffer = showsTurnoverBufferOverriddenBadge(activity)
 
     const Icon = isCreationEvent
       ? activitySource === 'manual'
@@ -547,6 +552,11 @@ export function ActivityTimelineV2({
               {isOverbooked && (
                 <Badge variant="failed" className="text-[10px] px-1.5 py-0 h-4 border-0">
                   {t('activity.overbooked')}
+                </Badge>
+              )}
+              {isPastTurnoverBuffer && (
+                <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4 border-0">
+                  {t('activity.turnoverBufferOverridden')}
                 </Badge>
               )}
               {contractSignatureMethod && (

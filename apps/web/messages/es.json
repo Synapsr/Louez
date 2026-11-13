@@ -2720,7 +2720,11 @@
           "editDescription": "Algunos productos no están disponibles en cantidad suficiente para el periodo. Puedes guardar los cambios de todos modos y el override quedará visible en el historial.",
           "saveAnyway": "Guardar de todos modos",
           "confirmDescription": "El stock no cubre esta reserva durante su periodo. Puedes confirmarla de todos modos por encima del stock disponible; esta decisión quedará visible en el historial.",
-          "confirmAnyway": "Confirmar de todos modos"
+          "confirmAnyway": "Confirmar de todos modos",
+          "bufferTitle": "Margen de rotación insuficiente",
+          "bufferDescription": "Estas líneas caben en tu stock, pero no con el margen de rotación que mantienes entre dos alquileres. Puedes confirmar la reserva de todos modos con menos tiempo entre alquileres; esta decisión quedará visible en el historial.",
+          "bufferShortfall": "Solicitado: {requested} · Libre con el margen: {available}",
+          "confirmPastBuffer": "Confirmar de todos modos"
         },
         "addUnavailable": {
           "title": "Producto no disponible",
@@ -2772,6 +2776,7 @@
         "quote_accepted": "Presupuesto aceptado",
         "quote_declined": "Presupuesto rechazado",
         "overbooked": "Sobrevendida",
+        "turnoverBufferOverridden": "Margen reducido",
         "contract_signed": "Contrato firmado",
         "contractUnsigned": "Sin contrato firmado",
         "signedBy": "Firmado por {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "Las unidades asignadas no están disponibles para las nuevas fechas: {identifiers}",
     "invalidUnits": "Una o más unidades seleccionadas no son válidas",
     "turnoverBufferConflict": "La unidad seleccionada solo está bloqueada por el margen de rotación",
-    "turnoverBufferShortfall": "El margen de rotación entre dos alquileres impide confirmar algunas líneas de esta reserva. Libera stock en torno a estas fechas o muévelas.",
+    "turnoverBufferShortfall": "El margen de rotación entre dos alquileres impide confirmar algunas líneas de esta reserva. Libera stock en torno a estas fechas, muévelas o confirma de todos modos con menos tiempo entre alquileres.",
     "unitProductMismatch": "Las unidades seleccionadas no pertenecen a este producto",
     "unitCombinationMismatch": "Las unidades seleccionadas no coinciden con la combinación reservada para este artículo",
     "cannotDisableUnitTrackingWithCombinations": "No se puede desactivar el seguimiento de unidades mientras haya reservas activas que utilicen combinaciones rastreadas para este producto.",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "Pedir confirmación antes de las acciones sensibles",
-      "description": "Antes de una eliminación o un mensaje a un cliente, el agente recibe primero una vista previa y debe confirmar; tiene instrucciones de mostrársela antes. Registrar, devolver o eliminar un pago, gastar créditos de IA, confirmar una reserva por encima del stock disponible, quitar a un miembro y cancelar una invitación siempre piden confirmación, incluso desactivado."
+      "description": "Antes de una eliminación o un mensaje a un cliente, el agente recibe primero una vista previa y debe confirmar; tiene instrucciones de mostrársela antes. Registrar, devolver o eliminar un pago, gastar créditos de IA, confirmar una reserva por encima del stock disponible o sin respetar el margen de rotación, quitar a un miembro y cancelar una invitación siempre piden confirmación, incluso desactivado."
     },
     "bundlesTitle": "Herramientas mostradas",
     "bundlesHint": "El agente ve estos conjuntos de herramientas. Podrá añadir más después.",

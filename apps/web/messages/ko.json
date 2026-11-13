@@ -2720,7 +2720,11 @@
           "editDescription": "일부 제품은 해당 기간에 수량이 충분하지 않습니다. 변경 사항을 저장하고 타임라인에서 재정의를 추적할 수 있습니다.",
           "saveAnyway": "무시하고 저장",
           "confirmDescription": "이 예약 기간에는 재고가 부족합니다. 그래도 가용 재고를 초과하여 확정할 수 있으며, 이 선택은 기록에 남습니다.",
-          "confirmAnyway": "무시하고 확정"
+          "confirmAnyway": "무시하고 확정",
+          "bufferTitle": "턴오버 버퍼 부족",
+          "bufferDescription": "이 항목들은 재고에는 맞지만, 대여 사이에 두는 턴오버 버퍼까지 포함하면 맞지 않습니다. 그래도 대여 사이 시간을 줄여 예약을 확정할 수 있으며, 이 선택은 기록에 남습니다.",
+          "bufferShortfall": "요청됨: {requested} · 버퍼 포함 가용: {available}",
+          "confirmPastBuffer": "무시하고 확정"
         },
         "addUnavailable": {
           "title": "제품을 사용할 수 없음",
@@ -2772,6 +2776,7 @@
         "quote_accepted": "견적이 승인되었습니다.",
         "quote_declined": "견적이 거부되었습니다.",
         "overbooked": "초과 예약됨",
+        "turnoverBufferOverridden": "버퍼 단축",
         "contract_signed": "계약 서명",
         "contractUnsigned": "계약 미서명",
         "signedBy": "서명자: {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "새 날짜에는 할당된 장치를 사용할 수 없습니다: {identifiers}",
     "invalidUnits": "선택한 단위 중 하나 이상이 잘못되었습니다.",
     "turnoverBufferConflict": "선택한 유닛은 턴오버 버퍼에 의해서만 차단됩니다.",
-    "turnoverBufferShortfall": "대여 사이의 턴오버 버퍼 때문에 이 예약의 일부 항목을 확정할 수 없습니다. 이 날짜 전후의 재고를 확보하거나 날짜를 옮기세요.",
+    "turnoverBufferShortfall": "대여 사이의 턴오버 버퍼 때문에 이 예약의 일부 항목을 확정할 수 없습니다. 이 날짜 전후의 재고를 확보하거나, 날짜를 옮기거나, 대여 사이 시간을 줄여 그대로 확정하세요.",
     "unitProductMismatch": "선택한 장치는 이 제품에 속하지 않습니다.",
     "unitCombinationMismatch": "선택한 단위가 이 광고 항목에 대해 예약된 조합과 일치하지 않습니다.",
     "cannotDisableUnitTrackingWithCombinations": "활성 예약이 이 제품에 대해 추적된 조합을 사용하는 동안에는 단위 추적을 비활성화할 수 없습니다.",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "민감한 작업 전에 확인 요청",
-      "description": "삭제나 고객에게 보내는 메시지 전에 에이전트는 먼저 미리보기를 받고 확인해야 하며, 먼저 보여 드리도록 안내받습니다. 결제 기록·반환·삭제, AI 크레딧 사용, 가용 재고를 초과한 예약 확정, 멤버 제거, 초대 취소는 이 설정이 꺼져 있어도 항상 확인을 요청합니다."
+      "description": "삭제나 고객에게 보내는 메시지 전에 에이전트는 먼저 미리보기를 받고 확인해야 하며, 먼저 보여 드리도록 안내받습니다. 결제 기록·반환·삭제, AI 크레딧 사용, 가용 재고나 턴오버 버퍼를 초과한 예약 확정, 멤버 제거, 초대 취소는 이 설정이 꺼져 있어도 항상 확인을 요청합니다."
     },
     "bundlesTitle": "표시되는 도구",
     "bundlesHint": "에이전트에게 이 도구 묶음이 표시됩니다. 나중에 더 추가할 수 있습니다.",

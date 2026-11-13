@@ -18,24 +18,49 @@ import {
 type ReservationOverbookingDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The lines the stock cannot cover, as the server listed them. */
+  /** The lines the stock, or the turnover buffer, cannot cover, as the server listed them. */
   shortfalls: CapacityShortfall[];
-  /** What confirming writes: a new reservation, the edit of one, or its confirmation. */
-  intent: "create" | "edit" | "confirm";
+  /**
+   * What confirming writes: a new reservation, the edit of one, or its
+   * confirmation, over the stock; or its confirmation past the turnover
+   * buffer, for lines that fit the stock only without it.
+   */
+  intent: "create" | "edit" | "confirm" | "confirmPastBuffer";
   isPending: boolean;
   onConfirm: () => void;
 };
 
 const WORDING = {
-  create: { description: "description", action: "createAnyway" },
-  edit: { description: "editDescription", action: "saveAnyway" },
-  confirm: { description: "confirmDescription", action: "confirmAnyway" },
+  create: {
+    title: "title",
+    description: "description",
+    shortfall: "shortfall",
+    action: "createAnyway",
+  },
+  edit: {
+    title: "title",
+    description: "editDescription",
+    shortfall: "shortfall",
+    action: "saveAnyway",
+  },
+  confirm: {
+    title: "title",
+    description: "confirmDescription",
+    shortfall: "shortfall",
+    action: "confirmAnyway",
+  },
+  confirmPastBuffer: {
+    title: "bufferTitle",
+    description: "bufferDescription",
+    shortfall: "bufferShortfall",
+    action: "confirmPastBuffer",
+  },
 } as const;
 
 /**
  * What the dashboard shows when the server refused a reservation for lack of
- * stock: each shortfall, and the choice to book over it. The choice is kept
- * in the reservation's history.
+ * stock, or of time between two rentals: each shortfall, and the choice to
+ * go past it. The choice is kept in the reservation's history.
  */
 export const ReservationOverbookingDialog = ({
   open,
@@ -54,7 +79,7 @@ export const ReservationOverbookingDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="text-destructive h-5 w-5" />
-            {t("title")}
+            {t(WORDING[intent].title)}
           </DialogTitle>
           <DialogDescription>{t(WORDING[intent].description)}</DialogDescription>
         </DialogHeader>
@@ -73,7 +98,7 @@ export const ReservationOverbookingDialog = ({
                   </p>
                 )}
                 <p className="text-muted-foreground mt-1 text-sm">
-                  {t("shortfall", {
+                  {t(WORDING[intent].shortfall, {
                     requested: shortfall.requested,
                     available: shortfall.available,
                   })}

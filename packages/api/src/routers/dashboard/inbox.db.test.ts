@@ -257,7 +257,10 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   }
 
   /** The store's confirmation, from the dashboard (`reservations.updateStatus`). */
-  const confirmFromDashboard = (id: string, options: { allowOverbooking?: boolean } = {}) =>
+  const confirmFromDashboard = (
+    id: string,
+    options: { allowOverbooking?: boolean; overrideTurnoverBuffer?: boolean } = {},
+  ) =>
     (
       orpc.createRouterClient(reservationsRouter, {
         context: session(),
@@ -1256,6 +1259,40 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     );
     // The confirmation's verdict is the latest: the inbox dates the item by it.
     assert.ok(Math.abs((items[0]?.occurredAt.getTime() ?? 0) - ago(HOUR / 2).getTime()) < 5_000);
+  });
+
+  test("a quote the store confirms past the turnover buffer lists nothing: the store chose it", async () => {
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ settings: { ...SETTINGS, turnoverBufferMinutes: 30 } })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    // The kayak comes back 15 minutes before the quote starts.
+    const { productId, reservationId: other } = await kayakBooking("confirmed");
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ startDate: ahead(DAY), endDate: new Date(ahead(2 * DAY).getTime() - 15 * 60_000) })
+      .where(orm.eq(louezDb.reservations.id, other));
+    const { reservationId: quote } = await kayakBooking("quote", productId);
+
+    await rejects(confirmFromDashboard(quote), "RESERVATION_TURNOVER_BUFFER_CONFLICT");
+    assert.equal(
+      (await confirmFromDashboard(quote, { overrideTurnoverBuffer: true })).to,
+      "confirmed",
+    );
+
+    const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
+    assert.equal(confirmed?.metadata?.turnoverBufferOverridden, true);
+    // Past the inbox's hold-back.
+    await louezDb.db
+      .update(louezDb.reservationActivity)
+      .set({ createdAt: ago(HOUR / 2) })
+      .where(orm.eq(louezDb.reservationActivity.reservationId, quote));
+    assert.deepEqual(await overbookingIds(), []);
+    assert.deepEqual(
+      (await list()).items.filter((item) => item.reservation?.id === quote),
+      [],
+      "no item of any type",
+    );
   });
 
   test("a confirmation of a booking never overbooked records that it fits, and shows nothing", async () => {

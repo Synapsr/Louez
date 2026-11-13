@@ -971,6 +971,142 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     }
   });
 
+  describe("a reservation short only with the turnover buffer", () => {
+    // A kayak of one, back from another booking at noon; the reservation
+    // starts at noon, in a store that asks an hour between rentals. It fits
+    // the stock, not the buffer. Only the store may confirm past the buffer,
+    // on that change alone (D5): the customer's and the payment's answers are
+    // what they were before the store could.
+    const NOON = new Date("2030-08-01T12:00:00Z");
+    const HOUR = 3_600_000;
+    let settings: StoreSettings | null = null;
+
+    before(async () => {
+      const [store] = await louezDb.db
+        .select({ settings: louezDb.stores.settings })
+        .from(louezDb.stores)
+        .where(eq(louezDb.stores.id, STORE));
+      assert.ok(store?.settings);
+      settings = store.settings;
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: { ...settings, turnoverBufferMinutes: 60 } })
+        .where(eq(louezDb.stores.id, STORE));
+    });
+    after(async () => {
+      await louezDb.db.update(louezDb.stores).set({ settings }).where(eq(louezDb.stores.id, STORE));
+    });
+
+    async function inBuffer(status: "pending" | "quote") {
+      const productId = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: productId,
+        storeId: STORE,
+        name: productId,
+        price: "1.00",
+        pricingMode: "day",
+        quantity: 1,
+      });
+      const booking = async (bookingStatus: "pending" | "quote" | "confirmed", start: Date) => {
+        const id = nextId("res");
+        // A fixture, so it may start in any status.
+        await louezDb.db.insert(louezDb.reservations).values({
+          id,
+          storeId: STORE,
+          customerId: CUSTOMER,
+          number: id,
+          status: bookingStatus,
+          startDate: start,
+          endDate: new Date(start.getTime() + 48 * HOUR),
+          subtotalAmount: "1.00",
+          depositAmount: "0.00",
+          totalAmount: "1.00",
+          source: "online",
+        });
+        await louezDb.db.insert(louezDb.reservationItems).values({
+          id: nextId("itm"),
+          reservationId: id,
+          productId,
+          quantity: 1,
+          unitPrice: "1.00",
+          depositPerUnit: "0.00",
+          totalPrice: "1.00",
+          productSnapshot: { name: productId, description: null, images: [] },
+        });
+        return id;
+      };
+      await booking("confirmed", new Date(NOON.getTime() - 48 * HOUR));
+      return booking(status, NOON);
+    }
+
+    async function statusOf(id: string) {
+      const [row] = await louezDb.db
+        .select({ status: louezDb.reservations.status })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, id));
+      const activity = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(eq(louezDb.reservationActivity.reservationId, id));
+      return { status: row?.status, activity: activity.map((entry) => entry.metadata) };
+    }
+
+    test("is refused to the customer, with no line named, and nothing is written", async () => {
+      const id = await inBuffer("quote");
+
+      assert.deepEqual(await quotes.acceptQuote(STORE_SLUG, id), {
+        error: "errors.productNoLongerAvailable",
+      });
+      assert.deepEqual(await statusOf(id), { status: "quote", activity: [] });
+      assert.equal(quoteMessages.length, 0);
+    });
+
+    test("is left pending by its payment, and nothing is written", async () => {
+      const id = await inBuffer("pending");
+
+      await assert.rejects(paidConfirmation(id), (error: Error) => {
+        // Read by name: this file loads the service's module a second time.
+        assert.equal(error.constructor.name, "ReservationInventoryError");
+        assert.equal(error.message, "errors.productNoLongerAvailable");
+        return true;
+      });
+      assert.deepEqual(await statusOf(id), { status: "pending", activity: [] });
+    });
+
+    test("no override of the buffer reaches the check the customer and the payment run", async () => {
+      const id = await inBuffer("quote");
+      const inventory = await import("@louez/api/services/reservation-inventory");
+
+      await assert.rejects(
+        louezDb.db.transaction((tx) =>
+          // @ts-expect-error -- the check takes no override: its signature has no place for one.
+          inventory.checkExistingReservationInventory(tx, id, STORE, {
+            overrideTurnoverBuffer: true,
+          }),
+        ),
+        (error: Error) => error.message === "errors.productNoLongerAvailable",
+      );
+    });
+
+    test("is confirmed by the store's change past the buffer, on purpose only", async () => {
+      const id = await inBuffer("quote");
+
+      await assert.rejects(
+        statusChange.changeStoreReservationStatus(caller(), { id, to: "confirmed" }),
+        (error: { data?: { code?: string } }) =>
+          error.data?.code === "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+      );
+      await statusChange.changeStoreReservationStatus(caller(), {
+        id,
+        to: "confirmed",
+        overrideTurnoverBuffer: true,
+      });
+      const { status, activity } = await statusOf(id);
+      assert.equal(status, "confirmed");
+      assert.equal(activity[0]?.turnoverBufferOverridden, true);
+    });
+  });
+
   describe("a reservation without its product's required accessory", () => {
     /**
      * A bike that requires a helmet, both in stock, and a reservation of the

@@ -16,6 +16,32 @@ export const capacityVerdictMetadata = (
     : { overbooked: false };
 
 /**
+ * A turnover-buffer verdict, next to the capacity verdict on the activity row
+ * of a store confirmation sent with `overrideTurnoverBuffer`: the lines it
+ * confirmed although they fit the stock only without the buffer, and the
+ * buffer it checked them with, or `false` when the buffer stopped none. It is
+ * a trace of what the store did on that change, never an authority: no later
+ * change reads it (decision D5, docs/domain/reservation-changes.md).
+ */
+export const turnoverBufferVerdictMetadata = (
+  shortfalls: readonly CapacityShortfall[],
+  turnoverBufferMinutes: number,
+):
+  | {
+      turnoverBufferOverridden: true;
+      turnoverBufferShortfalls: CapacityShortfall[];
+      turnoverBufferMinutes: number;
+    }
+  | { turnoverBufferOverridden: false } =>
+  shortfalls.length > 0
+    ? {
+        turnoverBufferOverridden: true,
+        turnoverBufferShortfalls: [...shortfalls],
+        turnoverBufferMinutes,
+      }
+    : { turnoverBufferOverridden: false };
+
+/**
  * The date of a new verdict row, under the reservation's lock. Activity rows
  * are dated to the second: a verdict is dated at least one second after every
  * earlier row of its reservation, so the latest verdict is never a tie.

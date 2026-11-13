@@ -26,7 +26,11 @@ import {
 import type { CapacityShortfall, ReservationUnitConflict } from "../contracts/reservations";
 
 import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
-import { capacityVerdictMetadata, nextCapacityVerdictDate } from "./capacity-verdict";
+import {
+  capacityVerdictMetadata,
+  nextCapacityVerdictDate,
+  turnoverBufferVerdictMetadata,
+} from "./capacity-verdict";
 import {
   allocateStock,
   combinationsServing,
@@ -708,8 +712,9 @@ export class ReservationCapacityShortfallError extends ReservationInventoryError
 
 /**
  * The store's confirmation finds lines that fit without the turnover buffer
- * and not with it: `allowOverbooking` does not cover them. Each shortfall is
- * the check's with the buffer.
+ * and not with it, and was not sent with `overrideTurnoverBuffer`;
+ * `allowOverbooking` does not cover them. Each shortfall is the check's with
+ * the buffer.
  */
 export class ReservationTurnoverBufferShortfallError extends ReservationInventoryError {
   constructor(readonly shortfalls: CapacityShortfall[]) {
@@ -848,20 +853,24 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
       shortOnlyWithBuffer.has(buffered.shortfallLineIndexes[position] ?? -1),
     ),
     bufferOnlyUnitIds: [...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId))],
+    turnoverBufferMinutes,
   };
 }
 
 /**
  * The activity row's facts: the capacity verdict of the demand checked (the
- * shortfalls booked over, or none), the units only the buffer reaches, and
- * the row's date (`nextCapacityVerdictDate`), so that verdict is the
- * reservation's latest (services/capacity-verdict.ts).
+ * shortfalls booked over, or none), the turnover-buffer verdict of a store
+ * confirmation sent with `overrideTurnoverBuffer` (null for any other), the
+ * units only the buffer reaches, and the row's date
+ * (`nextCapacityVerdictDate`), so that verdict is the reservation's latest
+ * (services/capacity-verdict.ts).
  */
 async function confirmationVerdict(
   tx: Transaction,
   reservationId: string,
   bookedOver: readonly CapacityShortfall[],
   bufferOnlyUnitIds: readonly string[],
+  bufferOverride: { shortfalls: readonly CapacityShortfall[]; minutes: number } | null = null,
 ): Promise<ConfirmationStockVerdict> {
   return {
     activityMetadata: {
@@ -871,6 +880,11 @@ async function confirmationVerdict(
       // counts, so an overbooking flagged earlier leaves the inbox once a
       // confirmation finds that the stock fits.
       ...capacityVerdictMetadata(bookedOver),
+      // The buffer the store confirmed past, on this change only: nothing
+      // reads it back as an approval (D5).
+      ...(bufferOverride
+        ? turnoverBufferVerdictMetadata(bufferOverride.shortfalls, bufferOverride.minutes)
+        : {}),
       ...(bufferOnlyUnitIds.length > 0
         ? // Confirmed with units the turnover buffer alone reaches: traceable.
           { turnoverBufferOnlyUnitIds: [...bufferOnlyUnitIds] }
@@ -901,13 +915,15 @@ export const checkExistingReservationInventory = async (
 };
 
 /**
- * The stock check of the store's confirmation (S3): its capacity shortfalls,
- * counted without the turnover buffer, refuse with
- * `ReservationCapacityShortfallError` unless the store books over them on
- * purpose (`allowOverbooking`), and the verdict then records them. A line
- * short only with the buffer refuses with
- * `ReservationTurnoverBufferShortfallError`, whatever the flag: the buffer
- * has its own approval (slice 5). A unit conflict refuses before either.
+ * The stock check of the store's confirmation (S3, S4), with two overrides
+ * that neither covers the other's shortfalls. A unit conflict refuses before
+ * either. Then a line short only with the turnover buffer refuses with
+ * `ReservationTurnoverBufferShortfallError` unless the store confirms past
+ * the buffer on purpose (`overrideTurnoverBuffer`); then a capacity
+ * shortfall, counted without the buffer, refuses with
+ * `ReservationCapacityShortfallError` unless the store books over it
+ * (`allowOverbooking`). The verdict records what each flag passed, on this
+ * change only (D5, docs/domain/reservation-changes.md).
  *
  * Only the store's status service calls it (`scripts/reservation-writes.test.mjs`, R7).
  */
@@ -915,10 +931,17 @@ export const checkStoreConfirmationInventory = async (
   tx: Transaction,
   reservationId: string,
   storeId: string,
-  options: { allowOverbooking: boolean },
-): Promise<ConfirmationStockVerdict & { bookedOver: CapacityShortfall[] }> => {
+  options: { allowOverbooking: boolean; overrideTurnoverBuffer: boolean },
+): Promise<
+  ConfirmationStockVerdict & {
+    bookedOver: CapacityShortfall[];
+    /** The buffer-only shortfalls confirmed past the buffer; empty without the flag. */
+    pastBuffer: CapacityShortfall[];
+    turnoverBufferMinutes: number;
+  }
+> => {
   const stock = await checkConfirmationStock(tx, reservationId, storeId);
-  if (stock.bufferOnlyShortfalls.length > 0) {
+  if (stock.bufferOnlyShortfalls.length > 0 && !options.overrideTurnoverBuffer) {
     throw new ReservationTurnoverBufferShortfallError(stock.bufferOnlyShortfalls);
   }
   if (stock.capacityShortfalls.length > 0 && !options.allowOverbooking) {
@@ -930,7 +953,12 @@ export const checkStoreConfirmationInventory = async (
       reservationId,
       stock.capacityShortfalls,
       stock.bufferOnlyUnitIds,
+      options.overrideTurnoverBuffer
+        ? { shortfalls: stock.bufferOnlyShortfalls, minutes: stock.turnoverBufferMinutes }
+        : null,
     )),
     bookedOver: stock.capacityShortfalls,
+    pastBuffer: options.overrideTurnoverBuffer ? stock.bufferOnlyShortfalls : [],
+    turnoverBufferMinutes: stock.turnoverBufferMinutes,
   };
 };

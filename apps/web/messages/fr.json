@@ -2729,7 +2729,11 @@
           "editDescription": "Certains produits ne sont pas disponibles en quantité suffisante sur la période. Vous pouvez tout de même enregistrer la modification : ce choix sera visible dans l'historique.",
           "saveAnyway": "Enregistrer quand même",
           "confirmDescription": "Le stock ne couvre pas cette réservation sur sa période. Vous pouvez tout de même la confirmer au-delà du stock disponible : ce choix sera visible dans l'historique.",
-          "confirmAnyway": "Confirmer quand même"
+          "confirmAnyway": "Confirmer quand même",
+          "bufferTitle": "Marge de rotation insuffisante",
+          "bufferDescription": "Ces lignes tiennent dans votre stock, mais pas avec la marge de rotation que vous gardez entre deux locations. Vous pouvez tout de même confirmer la réservation avec moins de temps entre deux locations : ce choix sera visible dans l'historique.",
+          "bufferShortfall": "Demandé : {requested} · Libre avec la marge : {available}",
+          "confirmPastBuffer": "Confirmer quand même"
         },
         "addUnavailable": {
           "title": "Produit indisponible",
@@ -2781,6 +2785,7 @@
         "quote_accepted": "Devis accepté",
         "quote_declined": "Devis refusé",
         "overbooked": "Sur-réservée",
+        "turnoverBufferOverridden": "Marge de rotation réduite",
         "contract_signed": "Contrat signé",
         "contractUnsigned": "Sans contrat signé",
         "signedBy": "Signé par {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "Des unités assignées sont indisponibles aux nouvelles dates : {identifiers}",
     "invalidUnits": "Une ou plusieurs unités sélectionnées sont invalides",
     "turnoverBufferConflict": "L'unité sélectionnée est bloquée uniquement par la marge de rotation",
-    "turnoverBufferShortfall": "La marge de rotation entre deux locations empêche de confirmer certaines lignes de cette réservation. Libérez du stock autour de ces dates ou déplacez-les.",
+    "turnoverBufferShortfall": "La marge de rotation entre deux locations empêche de confirmer certaines lignes de cette réservation. Libérez du stock autour de ces dates, déplacez-les, ou confirmez quand même avec moins de temps entre deux locations.",
     "unitProductMismatch": "Les unités sélectionnées n'appartiennent pas à ce produit",
     "unitCombinationMismatch": "Les unités sélectionnées ne correspondent pas à la combinaison réservée pour cette ligne",
     "cannotDisableUnitTrackingWithCombinations": "Impossible de désactiver le suivi unitaire tant que des réservations actives utilisent des combinaisons suivies pour ce produit.",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "Demander une confirmation avant les actions sensibles",
-      "description": "Avant une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer ; il a pour consigne de vous le montrer d’abord. Enregistrer, rendre ou supprimer un paiement, dépenser des crédits IA, confirmer une réservation au-delà du stock disponible, retirer un membre et annuler une invitation demandent toujours une confirmation, même désactivé."
+      "description": "Avant une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer ; il a pour consigne de vous le montrer d’abord. Enregistrer, rendre ou supprimer un paiement, dépenser des crédits IA, confirmer une réservation au-delà du stock disponible ou malgré la marge de rotation, retirer un membre et annuler une invitation demandent toujours une confirmation, même désactivé."
     },
     "bundlesTitle": "Outils affichés",
     "bundlesHint": "L’agent voit ces ensembles d’outils. Vous pourrez en ajouter plus tard.",

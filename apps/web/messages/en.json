@@ -2720,7 +2720,11 @@
           "editDescription": "Some products are not available in sufficient quantity for the period. You can still save the changes and track the override in the timeline.",
           "saveAnyway": "Save anyway",
           "confirmDescription": "The stock does not cover this reservation for its period. You can still confirm it beyond the available stock and track the override in the timeline.",
-          "confirmAnyway": "Confirm anyway"
+          "confirmAnyway": "Confirm anyway",
+          "bufferTitle": "Not enough time between rentals",
+          "bufferDescription": "These lines fit your stock, but not the turnover buffer you keep between two rentals. You can still confirm the reservation with less time between rentals: this choice will show in the timeline.",
+          "bufferShortfall": "Requested: {requested} · Free with the buffer: {available}",
+          "confirmPastBuffer": "Confirm anyway"
         },
         "addUnavailable": {
           "title": "Product unavailable",
@@ -2772,6 +2776,7 @@
         "quote_accepted": "Quote accepted",
         "quote_declined": "Quote declined",
         "overbooked": "Overbooked",
+        "turnoverBufferOverridden": "Short turnaround",
         "contract_signed": "Contract signed",
         "contractUnsigned": "Without signed contract",
         "signedBy": "Signed by {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "Assigned units are unavailable for the new dates: {identifiers}",
     "invalidUnits": "One or more selected units are invalid",
     "turnoverBufferConflict": "The selected unit is blocked only by the turnover buffer",
-    "turnoverBufferShortfall": "The turnover buffer between two rentals keeps some lines of this reservation from being confirmed. Free up stock around these dates or move them.",
+    "turnoverBufferShortfall": "The turnover buffer between two rentals keeps some lines of this reservation from being confirmed. Free up stock around these dates, move them, or confirm anyway with less time between rentals.",
     "unitProductMismatch": "Selected units do not belong to this product",
     "unitCombinationMismatch": "Selected units do not match the reserved combination for this line item",
     "cannotDisableUnitTrackingWithCombinations": "Cannot disable unit tracking while active reservations use tracked combinations for this product.",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "Ask for confirmation before sensitive actions",
-      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording, returning or deleting a payment, spending AI credits, confirming a reservation beyond the available stock, removing a member and cancelling an invitation always ask, even with this off."
+      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording, returning or deleting a payment, spending AI credits, confirming a reservation beyond the available stock or past the turnover buffer, removing a member and cancelling an invitation always ask, even with this off."
     },
     "bundlesTitle": "Tools shown",
     "bundlesHint": "The agent sees these tool sets. You can add more later.",
