@@ -1,8 +1,7 @@
 /**
  * The origins of the payment rows Louez writes when a session is paid, not when
  * it creates it: a payment request's session and an extension's have no payment
- * row before. Their binding belongs to the money lot; their events keep the
- * store's connected account.
+ * row before. These origins use the store's current connected account.
  */
 const PAID_SESSION_ORIGINS: ReadonlySet<string> = new Set(["payment_request", "extension"]);
 

@@ -252,6 +252,15 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
     return { status: response.status, body: await response.json() };
   };
 
+  /** How many lines the reservation's history holds: none after a refused event. */
+  async function historyLines(id: string) {
+    const lines = await louezDb.db
+      .select({ id: louezDb.reservationActivity.id })
+      .from(louezDb.reservationActivity)
+      .where(eq(louezDb.reservationActivity.reservationId, id));
+    return lines.length;
+  }
+
   /** The reservation's status and its payment rows. */
   async function stateOf(id: string) {
     const [reservation] = await louezDb.db
@@ -339,6 +348,7 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
         { status: "pending", stripeAccountId: PREVIOUS_ACCOUNT, stripePaymentIntentId: null },
       ],
     });
+    assert.equal(await historyLines(booking.id), 0);
   });
 
   test("a row that records no account, sent by the store's account: recorded and confirmed, the PaymentIntent read on it", async () => {
@@ -377,6 +387,7 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
       status: "pending",
       payments: [{ status: "pending", stripeAccountId: null, stripePaymentIntentId: null }],
     });
+    assert.equal(await historyLines(booking.id), 0);
   });
 
   test("a session its row names, sent with no account: connected_account_missing logged, nothing written", async () => {
@@ -403,6 +414,7 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
         { status: "pending", stripeAccountId: PREVIOUS_ACCOUNT, stripePaymentIntentId: null },
       ],
     });
+    assert.equal(await historyLines(booking.id), 0);
   });
 
   test("a session with no payment row (a payment request's) keeps the store's account: the account the store left is refused", async () => {
@@ -418,5 +430,6 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
 
     assert.deepEqual(calls, [accountMismatch(booking, TODAY_ACCOUNT, PREVIOUS_ACCOUNT)]);
     assert.deepEqual(await stateOf(booking.id), { status: "pending", payments: [] });
+    assert.equal(await historyLines(booking.id), 0);
   });
 });
