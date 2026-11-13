@@ -63,6 +63,9 @@ const STUBBED = new Set([
   "@/lib/integrations/tulip/contracts",
 ]);
 const quoteMessages: string[] = [];
+// The paid confirmation's runs of its fee effects, recorded as it asks them:
+// the real runner does nothing with the empty list a payment's change returns.
+const feeEffectRuns: unknown[][] = [];
 Reflect.set(globalThis, "__louezRaceStubs", {
   revalidatePath: () => {},
   getCustomerSession: async () => ({ customerId: CUSTOMER }),
@@ -76,6 +79,9 @@ Reflect.set(globalThis, "__louezRaceStubs", {
   toAnalyticsAmountCents: () => 0,
   createReservationPaymentSessionForCustomer: async () => ({ success: false, error: "none" }),
   cancelTulipContractForReservation: async () => {},
+  runReservationEffects: async (effects: unknown[]) => {
+    feeEffectRuns.push([...effects]);
+  },
 });
 
 Reflect.get(
@@ -92,6 +98,12 @@ Reflect.get(
     }
     const parent = context.parentURL ? decodeURIComponent(context.parentURL) : "";
     if (parent.includes("[reservationId]/actions.ts") && STUBBED.has(specifier)) {
+      return { url: pathToFileURL(stubsPath).href, shortCircuit: true };
+    }
+    if (
+      parent.includes("lib/reservations/complete-checkout-payment.ts") &&
+      specifier === "@/lib/billing/reservation-effects"
+    ) {
       return { url: pathToFileURL(stubsPath).href, shortCircuit: true };
     }
     return next(specifier, context);
@@ -159,6 +171,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   beforeEach(() => {
     dispatched = [];
     quoteMessages.length = 0;
+    feeEffectRuns.length = 0;
     hooks.restarts = 0;
     hooks.beforeReservationLock = null;
   });
@@ -1297,13 +1310,18 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
       ? error.data.code
       : undefined;
 
-  const paidConfirmation = (id: string) =>
+  const paidConfirmation = (
+    id: string,
+    deposit: {
+      stripeCustomerId: string | null;
+      stripePaymentMethodId: string | null;
+      depositStatus: "none" | "card_saved";
+    } = { stripeCustomerId: null, stripePaymentMethodId: null, depositStatus: "none" },
+  ) =>
     payment.confirmPaidReservationOrThrow({
       reservationId: id,
       storeId: STORE,
-      stripeCustomerId: null,
-      stripePaymentMethodId: null,
-      depositStatus: "none",
+      ...deposit,
       activityMetadata: { source: "race" },
     });
 
@@ -1472,9 +1490,21 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
       assert.equal(quoteMessages.length, 0, "the customer is told nothing");
     });
 
-    test("the paid confirmation throws, so Stripe sends the event again, and its claim stays", async () => {
-      const { id, productId } = await reservationOfLastUnit("pending");
-      // The claim, committed before the confirmation (claimCompletedCheckoutPayment).
+    /** The deposit columns the paid confirmation writes. */
+    async function depositOf(id: string) {
+      const [row] = await louezDb.db
+        .select({
+          stripeCustomerId: louezDb.reservations.stripeCustomerId,
+          stripePaymentMethodId: louezDb.reservations.stripePaymentMethodId,
+          depositStatus: louezDb.reservations.depositStatus,
+        })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, id));
+      return row;
+    }
+
+    /** The claim, committed before the confirmation (claimCompletedCheckoutPayment). */
+    async function claimOf(id: string) {
       const claim = nextId("pay");
       await louezDb.db.insert(louezDb.payments).values({
         id: claim,
@@ -1483,21 +1513,88 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         type: "rental",
         method: "stripe",
         status: "completed",
-        stripeCheckoutSessionId: "cs_paid",
+        stripeCheckoutSessionId: `cs_paid_${claim}`,
       });
+      return async () => {
+        const [kept] = await louezDb.db
+          .select({ status: louezDb.payments.status })
+          .from(louezDb.payments)
+          .where(eq(louezDb.payments.id, claim));
+        return kept?.status;
+      };
+    }
 
-      await assert.rejects(paidConfirmation(id), { name: "ReservationChangeBusyError" });
+    const checkoutDeposit = {
+      stripeCustomerId: "cus_checkout",
+      stripePaymentMethodId: "pm_checkout",
+      depositStatus: "card_saved" as const,
+    };
+
+    test("the paid confirmation throws, so Stripe sends the event again, and its claim stays", async () => {
+      // The deadlocks are lost in the deposit's own transaction (step 7): it
+      // writes nothing, and the status transaction never opens.
+      const { id, productId } = await reservationOfLastUnit("pending");
+      const claim = await claimOf(id);
+      const before = await depositOf(id);
+
+      await assert.rejects(paidConfirmation(id, checkoutDeposit), {
+        name: "ReservationChangeBusyError",
+      });
       assert.equal(hooks.restarts, 2);
       const state = await endState(id, productId);
       assert.deepEqual(
         { status: state.status, stock: state.stock, confirmed: state.confirmed },
         { status: "pending", stock: 1, confirmed: 0 },
       );
-      const [kept] = await louezDb.db
-        .select({ status: louezDb.payments.status })
-        .from(louezDb.payments)
-        .where(eq(louezDb.payments.id, claim));
-      assert.equal(kept?.status, "completed");
+      assert.deepEqual(await depositOf(id), before, "the deposit is as it was");
+      assert.equal(await claim(), "completed");
+      assert.deepEqual(feeEffectRuns, []);
+    });
+
+    test("the paid confirmation's status transaction throws after its deposit committed, and the event delivered again confirms once", async () => {
+      // The deposit's transaction (step 7) takes the first lock; every run of
+      // the status transaction (step 8) loses its deadlock.
+      const { id, productId } = await reservationOfLastUnit("pending");
+      const claim = await claimOf(id);
+      let locks = 0;
+      hooks.beforeReservationLock = async () => {
+        locks += 1;
+        if (locks === 1) return;
+        throw Object.assign(new Error("Deadlock found when trying to get lock"), {
+          code: "ER_LOCK_DEADLOCK",
+          errno: 1213,
+        });
+      };
+
+      await assert.rejects(paidConfirmation(id, checkoutDeposit), {
+        name: "ReservationChangeBusyError",
+      });
+      assert.equal(locks, 4, "one lock for the deposit, three runs of the status transaction");
+      assert.equal(hooks.restarts, 2, "the status transaction ran three times");
+      const busy = await endState(id, productId);
+      assert.deepEqual(
+        { status: busy.status, stock: busy.stock, confirmed: busy.confirmed },
+        { status: "pending", stock: 1, confirmed: 0 },
+      );
+      assert.deepEqual(
+        await depositOf(id),
+        checkoutDeposit,
+        "as the deposit's transaction wrote it",
+      );
+      assert.equal(await claim(), "completed");
+      assert.deepEqual(feeEffectRuns, [], "nothing confirmed, no fee effect asked");
+
+      // Stripe sends the event again.
+      hooks.beforeReservationLock = null;
+      assert.equal(await paidConfirmation(id, checkoutDeposit), true);
+      const confirmed = await endState(id, productId);
+      assert.deepEqual(
+        { status: confirmed.status, stock: confirmed.stock, confirmed: confirmed.confirmed },
+        { status: "confirmed", stock: 0, confirmed: 1 },
+      );
+      assert.deepEqual(await depositOf(id), checkoutDeposit);
+      assert.equal(await claim(), "completed");
+      assert.deepEqual(feeEffectRuns, [[]], "the fee effects asked once, empty for a payment");
     });
   });
 });
