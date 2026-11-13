@@ -2993,6 +2993,123 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         });
       }
 
+      /**
+       * S/red, S/blue, L/red, L/blue. Two confirmed neighbours ask the S/red
+       * and the S/blue, back `endsBefore` before START (null: over the same
+       * dates). A quote asks one S in red on a line with no exact combination:
+       * one asked, none free, with the colour and without it.
+       */
+      async function redSmallQuote(endsBefore: number | null) {
+        const productId = nextId("rs_prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id: productId,
+          storeId: STORE,
+          name: `Kayak ${productId}`,
+          price: "10.00",
+          pricingMode: "day",
+          trackUnits: true,
+          bookingAttributeAxes: [
+            { key: "size", label: "Size", position: 0 },
+            { key: "color", label: "Color", position: 1 },
+          ],
+          quantity: 4,
+        });
+        for (const name of ["S/red", "S/blue", "L/red", "L/blue"]) {
+          const [size = "", color = ""] = name.split("/");
+          await louezDb.db.insert(louezDb.productUnits).values({
+            id: nextId("rs_unt"),
+            productId,
+            identifier: name,
+            attributes: { size, color },
+            combinationKey: `size:${size}|color:${color}`,
+          });
+        }
+        const line = async (reservationId: string, color: string) => {
+          const itemId = nextId("rs_itm");
+          await louezDb.db.insert(louezDb.reservationItems).values({
+            id: itemId,
+            reservationId,
+            productId,
+            quantity: 1,
+            selectedAttributes: { size: "S", color },
+            combinationKey: null,
+            unitPrice: "10.00",
+            depositPerUnit: "0.00",
+            totalPrice: "10.00",
+            productSnapshot: { name: "Kayak", description: null, images: [] },
+          });
+          return itemId;
+        };
+        const dates =
+          endsBefore === null
+            ? {}
+            : {
+                start: new Date(START.getTime() - 24 * HOUR),
+                end: new Date(START.getTime() - endsBefore),
+              };
+        await line(await reservation("confirmed", dates), "red");
+        await line(await reservation("confirmed", dates), "blue");
+        const quoteId = await reservation("quote");
+        const quoteLine = await line(quoteId, "red");
+        const short = (selectedAttributes: Record<string, string>) => ({
+          productId,
+          productName: `Kayak ${productId}`,
+          combinationKey: null,
+          requested: 1,
+          available: 0,
+          reservationItemId: quoteLine,
+          selectedAttributes,
+        });
+        /** The store stops selling by colour: the lines keep their stored colour, which no longer restricts them. */
+        const withdrawColour = async () => {
+          const { removeVariantFromStoreProducts } = await import("../../services/variant-axes");
+          await louezDb.db.transaction((tx) =>
+            removeVariantFromStoreProducts(tx, {
+              storeId: STORE,
+              variant: { key: "color", label: "Color" },
+            }),
+          );
+        };
+        return { quoteId, short, withdrawColour };
+      }
+
+      for (const { flag, list, endsBefore } of [
+        { flag: "overrideTurnoverBuffer", list: "turnoverBuffer", endsBefore: HOUR },
+        { flag: "allowOverbooking", list: "overbooking", endsBefore: null },
+      ] as const) {
+        test(`a token for ${flag} names the choice the stock check reads, and is void once the product loses that attribute`, async () => {
+          const { quoteId, short, withdrawColour } = await redSmallQuote(endsBefore);
+          await withBuffer(BUFFER);
+          const agent = await agentKey({});
+          const change = { ...confirmation(quoteId), [flag]: true };
+
+          const first = await rejects(
+            run("updateStatus", change, agent.call()),
+            "CONFIRMATION_REQUIRED",
+          );
+          assert.deepEqual(linesOf(first, list), [short({ size: "S", color: "red" })]);
+          assert.match(previewOf(first).summary, /\(size: S, color: red\), 1 asked, 0 free/);
+
+          // The colour goes: the line now asks any S, and is as short as
+          // before, one asked and none free. The token saw a red S short.
+          await withdrawColour();
+          await rejects(
+            run("updateStatus", change, agent.call({ "louez-confirmation": tokenOf(first) })),
+            "CONFIRMATION_INVALID",
+          );
+          await nothingWritten(quoteId, "quote");
+
+          // The next preview names what the line asks today, not its stored colour.
+          const second = await rejects(
+            run("updateStatus", change, agent.call()),
+            "CONFIRMATION_REQUIRED",
+          );
+          assert.deepEqual(linesOf(second, list), [short({ size: "S" })]);
+          assert.match(previewOf(second).summary, /\(size: S\), 1 asked, 0 free/);
+          assert.doesNotMatch(previewOf(second).summary, /red/);
+        });
+      }
+
       test("the refusal names the line and its choice", async () => {
         const { quoteId, sLine, short } = await twoSizesQuote(null);
 

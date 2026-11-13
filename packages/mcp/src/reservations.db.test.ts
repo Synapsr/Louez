@@ -321,9 +321,10 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     };
     await line(await reservation("confirmed"));
     const pending = await reservation("pending");
-    // The line names what it chose; the stock counts kayaks alone.
+    // The line keeps a colour, but this product is counted by quantity: the
+    // colour restricts nothing in the stock check, so no choice is named.
     const itemId = await line(pending, { color: "red" });
-    // Each shortfall names its line and what the line chose.
+    // Each shortfall names its line and what the stock check read of its choice.
     const shortfalls = [
       {
         productId,
@@ -332,7 +333,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
         requested: 1,
         available: 0,
         reservationItemId: itemId,
-        selectedAttributes: { color: "red" },
+        selectedAttributes: null,
       },
     ];
 
@@ -358,7 +359,8 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       }
     ).details?.preview;
     assert.deepEqual(preview?.details?.overbooking, { shortfalls });
-    assert.match(preview?.summary ?? "", /Kayak \(color: red\), 1 asked, 0 free/);
+    assert.match(preview?.summary ?? "", /Kayak, 1 asked, 0 free/);
+    assert.doesNotMatch(preview?.summary ?? "", /red/);
     assert.equal(await statusOf(pending), "pending");
 
     const confirmed = output(

@@ -842,11 +842,13 @@ export interface CapacityShortfall {
    */
   reservationItemId?: string;
   /**
-   * What the line chose of the product's attributes (a size, a colour), as the
-   * customer or the store chose them; null when it chose none. With no
-   * `combinationKey`, it is the line's only choice: any unit that matches it
-   * may serve the line. The store's confirmation fills it in; a creation's and
-   * an edit's shortfalls do not carry it yet.
+   * What the line asks of the product's attributes (a size, a colour), as the
+   * stock check read it: the line's choices on the attributes the product has
+   * today. A choice on an attribute the product no longer has restricts
+   * nothing and is left out. With no `combinationKey`, it is the line's only
+   * choice: any unit that matches it may serve the line; null when the line
+   * asks for none. The store's confirmation fills it in; a creation's and an
+   * edit's shortfalls do not carry it yet.
    */
   selectedAttributes?: Record<string, string> | null;
 }

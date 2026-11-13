@@ -171,6 +171,12 @@ export function reserveInventory(
       /** The position in `lines` of each shortfall, in the same order. */
       shortfallLineIndexes: number[];
       /**
+       * What each short line asks of the product's attributes as this check
+       * read it (its choices on the attributes the product has today), in the
+       * same order; null when it asks for none.
+       */
+      shortfallChoices: Array<UnitAttributes | null>;
+      /**
        * The units held by the lines (`assignedUnitIds`) that the other
        * bookings need, in the order of the lines (`heldUnitsOwed`).
        */
@@ -198,12 +204,14 @@ export async function reserveInventory({
   | (InventoryReserved & {
       shortfalls?: CapacityShortfall[];
       shortfallLineIndexes?: number[];
+      shortfallChoices?: Array<UnitAttributes | null>;
       uncoveredHeldUnits?: Array<{ lineIndex: number; unitId: string }>;
     })
   | ReservationFailure
 > {
   const collect = onShortfall === "collect";
   const shortfallByLineIndex = new Map<number, CapacityShortfall>();
+  const shortfallChoiceByLineIndex = new Map<number, UnitAttributes | null>();
   const uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }> = [];
   const recordShortfall = (
     index: number,
@@ -211,6 +219,10 @@ export async function reserveInventory({
     product: LockedProduct,
     combinationKey: string | null,
     available: number,
+    // What the line asks of the product's attributes as this check read it,
+    // against the product's attributes today: a choice on an attribute the
+    // product no longer has restricts nothing, and is not one.
+    selectedAttributes: UnitAttributes = {},
   ) => {
     shortfallByLineIndex.set(index, {
       productId: product.id,
@@ -219,6 +231,10 @@ export async function reserveInventory({
       requested: line.quantity,
       available,
     });
+    shortfallChoiceByLineIndex.set(
+      index,
+      Object.keys(selectedAttributes).length > 0 ? selectedAttributes : null,
+    );
   };
   const succeed = (inventory: ReservedInventory) => {
     if (!collect) return { ok: true as const, inventory };
@@ -228,6 +244,7 @@ export async function reserveInventory({
       inventory,
       shortfalls: byLine.map(([, shortfall]) => shortfall),
       shortfallLineIndexes: byLine.map(([index]) => index),
+      shortfallChoices: byLine.map(([index]) => shortfallChoiceByLineIndex.get(index) ?? null),
       uncoveredHeldUnits: [...uncoveredHeldUnits].sort((a, b) => a.lineIndex - b.lineIndex),
     };
   };
@@ -527,6 +544,7 @@ export async function reserveInventory({
           ? line.combinationKey
           : null,
         allocation.served,
+        selectedAttributes,
       );
     }
 
@@ -844,34 +862,38 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
   // only with it, a buffer-only one. Both checks place the same lines in the
   // same order, so a line is known by its position.
   const shortWithoutBuffer = new Set(unbuffered.shortfallLineIndexes);
-  // Each shortfall names its line and what the line chose: two lines of one
-  // product, both open on a choice, are otherwise alike, and the preview's
-  // token must not take one for the other.
+  // Each shortfall names its line and what the check read of its choice: two
+  // lines of one product, both open on a choice, are otherwise alike, and the
+  // preview's token must not take one for the other.
   const ofLines = (
-    shortfalls: CapacityShortfall[],
-    lineIndexes: number[],
+    check: {
+      shortfalls: CapacityShortfall[];
+      shortfallLineIndexes: number[];
+      shortfallChoices: Array<UnitAttributes | null>;
+    },
     keep: (lineIndex: number) => boolean = () => true,
   ): CapacityShortfall[] =>
-    shortfalls.flatMap((shortfall, position) => {
-      const lineIndex = lineIndexes[position] ?? -1;
+    check.shortfalls.flatMap((shortfall, position) => {
+      const lineIndex = check.shortfallLineIndexes[position] ?? -1;
       if (!keep(lineIndex)) return [];
       const item = lineItems[lineIndex];
       return [
         {
           ...shortfall,
           ...(item
-            ? { reservationItemId: item.id, selectedAttributes: item.selectedAttributes ?? null }
+            ? // The choice is the check's own (the line's attributes the
+              // product still has), never the line's stored ones as they are.
+              {
+                reservationItemId: item.id,
+                selectedAttributes: check.shortfallChoices[position] ?? null,
+              }
             : {}),
         },
       ];
     });
   return {
-    capacityShortfalls: ofLines(unbuffered.shortfalls, unbuffered.shortfallLineIndexes),
-    bufferOnlyShortfalls: ofLines(
-      buffered.shortfalls,
-      buffered.shortfallLineIndexes,
-      (lineIndex) => !shortWithoutBuffer.has(lineIndex),
-    ),
+    capacityShortfalls: ofLines(unbuffered),
+    bufferOnlyShortfalls: ofLines(buffered, (lineIndex) => !shortWithoutBuffer.has(lineIndex)),
     bufferOnlyUnitIds: [...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId))],
     turnoverBufferMinutes,
   };
