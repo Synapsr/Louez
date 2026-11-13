@@ -151,10 +151,13 @@ export const inviteMemberOutput = z.object({
   links: teamPageLinks,
 });
 
-/** An owner's answer to an agent's invitation, from its link's page. */
+/** An owner's answer to an agent's invitation, from its page. */
 export const decideInvitationInput = z.object({
+  /** The page's link: the handoff's id, or an older link's id then its secret. */
   token: z.string().min(1).max(128),
   decision: z.enum(["approve", "decline"]),
+  /** The revision the page showed: another one decides nothing. */
+  revision: z.number().int().positive(),
 });
 export const decideInvitationOutput = z.object({
   /** The handoff the agent reads. */
@@ -259,7 +262,10 @@ export const teamErrors = {
     }),
   approvalInvalid: (reason: string) =>
     apiError("BAD_REQUEST", "TEAM_APPROVAL_INVALID", {
-      message: "This approval link no longer works, or is not for this account.",
+      message:
+        reason === "changed"
+          ? "The request changed since the page showed it, and nothing was decided: look at it again, then answer."
+          : "This approval link no longer works, or is not for this account.",
       i18nKey: `handoff.refused.${reason}.title`,
       details: { reason },
     }),

@@ -6,7 +6,7 @@ import { handoffDonePath, handoffPath } from "@louez/api/services/handoffs";
 import { createRouterClient } from "@orpc/server";
 
 import { apiPorts } from "@/lib/api/ports";
-import { redirectTo, toLogin } from "@/lib/handoffs/handoff-response";
+import { postedRevision, redirectTo, toLogin } from "@/lib/handoffs/handoff-response";
 import { isSameOriginPost } from "@/lib/util.active-store-link";
 
 import { env } from "@/env";
@@ -15,8 +15,10 @@ import { env } from "@/env";
  * An owner approves or declines an agent's team invitation, from its page's
  * form. Only from this app's pages (Origin, and Sec-Fetch-Site when sent), so
  * another site cannot answer with the owner's cookie. It calls the
- * session-only procedure `team.decideInvitation` as the signed-in user; the
- * procedure checks the link, the user and their right to manage the team.
+ * session-only procedure `team.decideInvitation` as the signed-in user, with
+ * the revision the page showed; the procedure checks the link, the user,
+ * their right to manage the team and the revision. A request changed since
+ * the page showed it decides nothing: the page shows it again.
  */
 export async function POST(
   request: NextRequest,
@@ -32,17 +34,23 @@ export async function POST(
   const form = await request.formData();
   const decision = form.get("decision");
   if (decision !== "approve" && decision !== "decline") return redirectTo(page, 303);
+  const revision = postedRevision(form);
+  if (revision === null) return redirectTo(`${page}?changed=1`, 303);
 
   const team = createRouterClient(appRouter.dashboard.team, {
     context: { headers: request.headers, transport: "rpc", ports: apiPorts },
     path: ["dashboard", "team"],
   });
   try {
-    const decided = await team.decideInvitation({ token, decision });
+    const decided = await team.decideInvitation({ token, decision, revision });
     return redirectTo(handoffDonePath(decided.handoffId), 303);
   } catch (error) {
-    const code = (error as { data?: { code?: unknown } }).data?.code;
+    const { code, details } =
+      (error as { data?: { code?: unknown; details?: { reason?: unknown } } }).data ?? {};
     if (code === "UNAUTHENTICATED") return toLogin(page, 303);
+    if (code === "TEAM_APPROVAL_INVALID" && details?.reason === "changed") {
+      return redirectTo(`${page}?changed=1`, 303);
+    }
     // An approval the answer ended (changed since, no seat, the day's
     // e-mails spent) sends the page on to its result, which says why; any
     // other refusal is shown by the page itself.

@@ -4522,9 +4522,9 @@ export interface ApiHandoffPayload {
 
 /**
  * A step only the human can take (Stripe identity checks, a billing card),
- * handed over by an agent: a short-lived link to a Louez page that checks who
- * opens it, then sends them to the provider and back. The link's secret is
- * stored hashed; a new link for the same handoff replaces it. Each click on
+ * handed over by an agent: a link to its Louez page (`/handoffs/<id>`), which
+ * checks who opens it, then sends them to the provider and back. Asking again
+ * keeps the link and raises `revision`. Each click on
  * the page starts an attempt, named by `return_state_hash`; the provider's
  * answers only ever change the attempt they belong to. One active
  * handoff (pending or opened) per store, kind and subject: `active_slot` is 1
@@ -4542,6 +4542,12 @@ export const apiHandoffs = mysqlTable(
     subject: varchar("subject", { length: 64 }).default("").notNull(),
     /** What the page shows and the step acts on, for the kinds that need it. */
     payload: json("payload").$type<ApiHandoffPayload>(),
+    /**
+     * Raised each time the payload or the binding changes (a repeated
+     * request, another user starting over): a decision names the revision
+     * its page showed, and a different one decides nothing.
+     */
+    revision: int("revision", { unsigned: true }).default(1).notNull(),
     /** `expired` is not stored: an active handoff past `expires_at` reads as expired. */
     status: mysqlEnum("status", ["pending", "opened", "completed", "failed"])
       .default("pending")
@@ -4553,7 +4559,10 @@ export const apiHandoffs = mysqlTable(
     credentialKind: varchar("credential_kind", { length: 16 }).notNull(),
     credentialId: varchar("credential_id", { length: 64 }),
     clientName: varchar("client_name", { length: 100 }),
-    /** SHA-256 of the link's secret, hex. */
+    /**
+     * SHA-256 of a secret, hex: a link given before links were addressed by id
+     * carried it after the id; a new row's secret is given to nobody.
+     */
     tokenHash: varchar("token_hash", { length: 64 }).notNull(),
     linkIssuedAt: timestamp("link_issued_at", { mode: "date", fsp: 3 }).notNull(),
     expiresAt: timestamp("expires_at", { mode: "date", fsp: 3 }).notNull(),

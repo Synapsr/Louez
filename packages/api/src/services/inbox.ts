@@ -65,7 +65,7 @@ import {
 import type { LogPort, ProductImageOperation, UrlsPort } from "../platform/ports";
 import { HANDOFF_KINDS } from "../contracts/handoffs";
 import { CAPACITY_VERDICT_ACTIVITY_TYPES } from "../contracts/reservations";
-import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
+import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffUrl, handoffView } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
@@ -1554,7 +1554,7 @@ const offlineStore = async (window: Window, shaper: Shaper): Promise<Candidate[]
   ];
 };
 
-/** The tool that gives each kind of handoff a new link. */
+/** The tool that starts each kind of handoff again, or gives an expired one another day. */
 const HANDOFF_START_TOOLS = {
   stripe_connect_onboarding: "payments_start_stripe_onboarding",
   stripe_dashboard: "payments_open_stripe_dashboard",
@@ -1568,6 +1568,7 @@ const HANDOFF_START_TOOLS = {
  * again since. Each shows to who may read its kind's domain: settings for
  * Stripe, billing for the billing card, the team for an invitation's
  * approval; an approval is started again by a later one for the same address.
+ * Its link is the step's page, where the user takes it or reads how it ended.
  */
 const waitingHandoffs: Source = async (window, shaper) => {
   const kinds = HANDOFF_KINDS.filter((kind) => shaper.reader.reads[HANDOFF_KIND_DOMAINS[kind]]);
@@ -1638,7 +1639,7 @@ const waitingHandoffs: Source = async (window, shaper) => {
       tools: view.confirming
         ? ["handoffs_refresh", "handoffs_get", HANDOFF_START_TOOLS[row.kind]]
         : ["handoffs_get", HANDOFF_START_TOOLS[row.kind]],
-      links: view.links,
+      links: { dashboard: handoffUrl(urls, row.id) },
     });
   });
 };

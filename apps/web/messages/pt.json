@@ -9731,6 +9731,10 @@
       "not_allowed": {
         "title": "Não pode fazer isto nesta loja",
         "description": "A sua função nesta loja não permite este passo. Peça ao proprietário da loja."
+      },
+      "changed": {
+        "title": "Este pedido mudou enquanto o lia",
+        "description": "Nada foi feito: o seu agente pediu de novo desde que esta página abriu. Leia-o novamente abaixo e depois responda."
       }
     },
     "done": {

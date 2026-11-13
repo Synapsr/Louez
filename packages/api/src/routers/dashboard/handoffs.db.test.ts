@@ -15,6 +15,7 @@ import type { BillingStatus } from "../../contracts/billing";
 import type { BaseContext } from "../../context";
 import type { BillingCardSetupState, BillingPort } from "../../platform/ports";
 
+import { sha256 } from "../../platform/hash";
 import { createMemoryStorage } from "../../platform/memory-storage";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
@@ -325,12 +326,37 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(data?.code ?? httpCode, code, String(caught));
   }
 
-  /** The token of a link: the path after /handoffs/. */
+  /** The link's path after /handoffs/: the step's id. */
   const tokenOf = (url: string) => {
     const prefix = `${TEST_APP_URL}/handoffs/`;
     assert.ok(url.startsWith(prefix), url);
     return url.slice(prefix.length);
   };
+
+  /** The revision the step's page shows now. */
+  const shownRevision = async (link: string) => {
+    const [row] = await louezDb.db
+      .select({ revision: louezDb.apiHandoffs.revision })
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, link.slice(0, 21)));
+    return row?.revision ?? 0;
+  };
+
+  /** The user continues from the page, as it shows the step now unless `revision` says otherwise. */
+  const continueAs = async (link: string, userId: string, revision?: number) =>
+    handoffs.continueHandoff(link, userId, revision ?? (await shownRevision(link)));
+
+  /**
+   * A link given before links were addressed by id: the id then a secret,
+   * whose hash the row holds as it did when the secret was the link's credential.
+   */
+  async function olderLink(id: string, secret = "S".repeat(43)) {
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ tokenHash: sha256(secret) })
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    return `${id}${secret}`;
+  }
 
   const storeRow = async (id = STORE) => {
     const [row] = await louezDb.db
@@ -361,7 +387,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
   /** A billing card handoff the owner continued: its row and the click's state. */
   async function cardAttempt(agent: () => BaseContext) {
     const started = await client(agent()).billing.startCardSetup({});
-    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    const continued = await continueAs(tokenOf(started.url), OWNER);
     assert.ok(continued.ok && continued.state);
     return { id: started.handoff.id, token: tokenOf(started.url), state: continued.state };
   }
@@ -419,15 +445,16 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const hours = (started.handoff.expiresAt.getTime() - Date.now()) / HOUR;
     assert.ok(hours > 23.9 && hours <= 24, String(hours));
     const token = tokenOf(started.url);
-    assert.equal(token.length, 64);
+    assert.equal(token, started.handoff.id, "the link is the step's page, by its id");
     assert.ok(!token.includes("."), "no dot: the proxy reads a dotted path as a static file");
 
-    // Only a hash of the secret is stored.
+    // Every row still holds a hash, of a secret nobody received.
     const [row] = await handoffRows();
     assert.equal(row?.id, started.handoff.id);
     assert.equal(row?.userId, OWNER);
     assert.equal(row?.credentialKind, "api_key");
-    assert.ok(row?.tokenHash && !token.includes(row.tokenHash));
+    assert.match(row?.tokenHash ?? "", /^[0-9a-f]{64}$/);
+    assert.equal(row?.revision, 1);
     // Nothing reached Stripe yet: the link only names the step.
     assert.equal(stripe.calls.created.length, 0);
 
@@ -437,7 +464,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Reading the page changes nothing.
     assert.equal((await handoffs.getHandoffRow(STORE, started.handoff.id)).status, "pending");
 
-    const continued = await handoffs.continueHandoff(token, OWNER);
+    const continued = await continueAs(token, OWNER);
     assert.ok(continued.ok && continued.state);
     const launch = await handoffs.launchHandoff({
       row: continued.row,
@@ -555,7 +582,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
 
     const stranger = await handoffs.readHandoffLink(token, STRANGER);
     assert.equal(!stranger.ok && stranger.reason, "other_user");
-    const member = await handoffs.continueHandoff(token, MEMBER);
+    const member = await continueAs(token, MEMBER);
     assert.equal(!member.ok && member.reason, "other_user");
     assert.equal((await handoffs.getHandoffRow(STORE, started.handoff.id)).status, "pending");
 
@@ -580,12 +607,12 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
 
   test("a link given with its secret opens and continues for its user", async () => {
     const started = await client((await apiKey())()).payments.startStripeOnboarding({});
-    const token = tokenOf(started.url);
+    const token = await olderLink(started.handoff.id);
 
     const read = await handoffs.readHandoffLink(token, OWNER);
     assert.ok(read.ok);
     assert.equal(read.row.id, started.handoff.id);
-    const continued = await handoffs.continueHandoff(token, OWNER);
+    const continued = await continueAs(token, OWNER);
     assert.ok(continued.ok && continued.state);
     assert.equal((await handoffs.getHandoffRow(STORE, started.handoff.id)).status, "opened");
   });
@@ -610,7 +637,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     for (const user of [STRANGER, MEMBER]) {
       const read = await handoffs.readHandoffLink(token, user);
       assert.equal(!read.ok && read.reason, "other_user", user);
-      const continued = await handoffs.continueHandoff(token, user);
+      const continued = await continueAs(token, user);
       assert.equal(!continued.ok && continued.reason, "other_user", user);
     }
 
@@ -625,7 +652,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       );
     const removed = await handoffs.readHandoffLink(token, OWNER);
     assert.equal(!removed.ok && removed.reason, "not_allowed");
-    const removedContinue = await handoffs.continueHandoff(token, OWNER);
+    const removedContinue = await continueAs(token, OWNER);
     assert.equal(!removedContinue.ok && removedContinue.reason, "not_allowed");
     await louezDb.db.insert(louezDb.storeMembers).values({
       storeId: STORE,
@@ -638,7 +665,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       .update(louezDb.apiKeys)
       .set({ revokedAt: new Date() })
       .where(orm.eq(louezDb.apiKeys.id, created.id));
-    const revoked = await handoffs.continueHandoff(token, OWNER);
+    const revoked = await continueAs(token, OWNER);
     assert.equal(!revoked.ok && revoked.reason, "invalid");
 
     const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
@@ -649,7 +676,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
   test("a Stripe attempt survives the agent asking again: its return still completes the step", async () => {
     const agent = await apiKey();
     const started = await client(agent()).payments.startStripeOnboarding({});
-    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    const continued = await continueAs(tokenOf(started.url), OWNER);
     assert.ok(continued.ok && continued.state);
     await handoffs.launchHandoff({
       row: continued.row,
@@ -686,7 +713,125 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(reload.row.status, "completed");
   });
 
-  test("a link expires after a day, and asking again resumes the same handoff with a new link", async () => {
+  // --- A link addressed by id ---------------------------------------------------
+
+  test("handoffs_get gives the step's link, the one its start gave, and never a secret", async () => {
+    const agent = await apiKey();
+    const started = await client(agent()).payments.startStripeOnboarding({});
+    assert.equal(started.url, `${TEST_APP_URL}/handoffs/${started.handoff.id}`);
+    assert.equal(started.handoff.url, started.url);
+
+    const read = await client(agent()).handoffs.get({ id: started.handoff.id });
+    assert.equal(read.url, started.url);
+    const [row] = await handoffRows();
+    const answer = JSON.stringify(read);
+    assert.ok(row?.tokenHash && !answer.includes(row.tokenHash), "no hash in the answer");
+    assert.doesNotMatch(answer, /\/handoffs\/[A-Za-z0-9_-]{22,}/, "no secret after the id");
+  });
+
+  test("asking again keeps the link, pushes its expiry back and raises the revision", async () => {
+    const agent = await apiKey();
+    const first = await client(agent()).payments.startStripeOnboarding({});
+    const older = await olderLink(first.handoff.id);
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ expiresAt: new Date(first.handoff.expiresAt.getTime() - 60_000) })
+      .where(orm.eq(louezDb.apiHandoffs.id, first.handoff.id));
+    const before = await handoffs.getHandoffRow(STORE, first.handoff.id);
+
+    const second = await client(agent()).payments.startStripeOnboarding({});
+    assert.equal(second.url, first.url);
+    assert.equal(second.handoff.id, first.handoff.id);
+    const after = await handoffs.getHandoffRow(STORE, first.handoff.id);
+    assert.ok(after.expiresAt > before.expiresAt, "the expiry is pushed back");
+    assert.equal(after.revision, before.revision + 1);
+    assert.notEqual(after.tokenHash, before.tokenHash, "a new hash, of a secret nobody received");
+    // A link with a secret given before stops opening, as a replaced link did.
+    const replaced = await handoffs.readHandoffLink(older, OWNER);
+    assert.equal(!replaced.ok && replaced.reason, "invalid");
+    assert.equal((await handoffs.readHandoffLink(tokenOf(first.url), OWNER)).ok, true);
+  });
+
+  test("a page opened before the agent asked again continues nothing, and shows the step again", async () => {
+    const agent = await apiKey();
+    const started = await client(agent()).payments.startStripeOnboarding({});
+    const link = tokenOf(started.url);
+    const page = await handoffs.readHandoffLink(link, OWNER);
+    assert.ok(page.ok);
+    const shown = page.row.revision;
+
+    await client(agent()).payments.startStripeOnboarding({});
+    const stale = await continueAs(link, OWNER, shown);
+    assert.equal(!stale.ok && stale.reason, "changed");
+    const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
+    assert.equal(row.status, "pending");
+    assert.equal(row.returnStateHash, null, "no attempt started");
+    assert.equal(stripe.calls.created.length, 0);
+
+    // The page shows it again, at its new revision: that click continues.
+    const again = await handoffs.readHandoffLink(link, OWNER);
+    assert.ok(again.ok);
+    const continued = await continueAs(link, OWNER, again.row.revision);
+    assert.ok(continued.ok && continued.state);
+  });
+
+  test("the id alone opens nothing for another user, another store's, a guessed id or a forged revision", async () => {
+    const started = await client((await apiKey())()).payments.startStripeOnboarding({});
+    const link = tokenOf(started.url);
+    const revision = await shownRevision(link);
+
+    // Another store's owner, and a member of the step's own store.
+    for (const user of [STRANGER, MEMBER]) {
+      const read = await handoffs.readHandoffLink(link, user);
+      assert.equal(!read.ok && read.reason, "other_user", user);
+      assert.equal(read.ok, false);
+      const continued = await continueAs(link, user, revision);
+      assert.equal(!continued.ok && continued.reason, "other_user", user);
+    }
+    // An id no step has.
+    const guessed = await handoffs.readHandoffLink("Zz".repeat(10) + "Z", OWNER);
+    assert.equal(!guessed.ok && guessed.reason, "invalid");
+    assert.equal(!guessed.ok && guessed.row, null);
+    // A revision the page never showed.
+    for (const forged of [revision + 1, revision - 1, 0]) {
+      const continued = await continueAs(link, OWNER, forged);
+      assert.equal(!continued.ok && continued.reason, "changed", String(forged));
+    }
+    const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
+    assert.equal(row.status, "pending");
+    assert.equal(row.returnStateHash, null);
+  });
+
+  test("the agent asking again while the user clicks: one wins, and the other is told", async () => {
+    for (let round = 0; round < 5; round += 1) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const agent = await apiKey();
+      const started = await client(agent()).payments.startStripeOnboarding({});
+      const link = tokenOf(started.url);
+      const shown = await shownRevision(link);
+
+      const [continued, asked] = await Promise.all([
+        continueAs(link, OWNER, shown),
+        client(agent()).payments.startStripeOnboarding({}),
+      ]);
+      assert.equal(asked.url, started.url);
+      const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
+      assert.equal(row.revision, shown + 1, "the request was taken either way");
+      if (continued.ok) {
+        // The click came first: the request that followed keeps its attempt.
+        assert.ok(continued.state);
+        assert.equal(row.status, "opened");
+        assert.equal(row.returnStateHash, sha256(continued.state));
+      } else {
+        // The request came first: the click decided nothing.
+        assert.equal(continued.reason, "changed");
+        assert.equal(row.status, "pending");
+        assert.equal(row.returnStateHash, null);
+      }
+    }
+  });
+
+  test("a link expires after a day, and asking again resumes the same handoff with the same link", async () => {
     const agent = await apiKey();
     const first = await client(agent()).payments.startStripeOnboarding({});
     const firstToken = tokenOf(first.url);
@@ -703,14 +848,12 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       .where(orm.eq(louezDb.apiHandoffs.id, first.handoff.id));
     assert.equal((await client(agent()).handoffs.get({ id: first.handoff.id })).status, "expired");
 
-    // One active handoff per kind: the same one, a new link, the old one dead.
+    // One active handoff per kind: the same one, the same link, open again.
     const second = await client(agent()).payments.startStripeOnboarding({});
     assert.equal(second.handoff.id, first.handoff.id);
     assert.equal(second.handoff.status, "pending");
-    assert.notEqual(second.url, first.url);
-    const old = await handoffs.readHandoffLink(firstToken, OWNER);
-    assert.equal(!old.ok && old.reason, "invalid");
-    assert.equal((await handoffs.readHandoffLink(tokenOf(second.url), OWNER)).ok, true);
+    assert.equal(second.url, first.url);
+    assert.equal((await handoffs.readHandoffLink(firstToken, OWNER)).ok, true);
     assert.equal((await handoffRows()).length, 1);
 
     // Another kind is its own handoff; once completed, the next one is new.
@@ -728,7 +871,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
 
   test("another user asking for the same step starts it over for them", async () => {
     const owner = await client(session(OWNER)).payments.startStripeOnboarding({});
-    const continued = await handoffs.continueHandoff(tokenOf(owner.url), OWNER);
+    const continued = await continueAs(tokenOf(owner.url), OWNER);
     assert.ok(continued.ok);
 
     // A second owner of the store asks from their own session.
@@ -792,7 +935,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Stripe does not answer: the same link may try again.
     stripe.calls.failLinks = true;
     const started = await client(agent()).payments.startStripeOnboarding({});
-    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    const continued = await continueAs(tokenOf(started.url), OWNER);
     assert.ok(continued.ok && continued.state);
     const down = await handoffs.launchHandoff({
       row: continued.row,
@@ -848,7 +991,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
 
   test("an expired Stripe link gives a new one for the same return", async () => {
     const started = await client((await apiKey())()).payments.startStripeOnboarding({});
-    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    const continued = await continueAs(tokenOf(started.url), OWNER);
     assert.ok(continued.ok && continued.state);
     await handoffs.launchHandoff({
       row: continued.row,
@@ -901,7 +1044,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       .where(orm.eq(louezDb.stores.id, STORE));
     const started = await client((await apiKey())()).payments.openStripeDashboard({});
     assert.equal(started.handoff.kind, "stripe_dashboard");
-    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    const continued = await continueAs(tokenOf(started.url), OWNER);
     assert.ok(continued.ok && continued.state);
     const launch = await handoffs.launchHandoff({
       row: continued.row,
@@ -917,7 +1060,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
 
     stripe.set({ type: "express" });
     const express = await client((await apiKey())()).payments.openStripeDashboard({});
-    const next = await handoffs.continueHandoff(tokenOf(express.url), OWNER);
+    const next = await continueAs(tokenOf(express.url), OWNER);
     assert.ok(next.ok && next.state);
     const expressLaunch = await handoffs.launchHandoff({
       row: next.row,
@@ -998,7 +1141,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       `${TEST_APP_URL}/dashboard/settings/billing?store=${STORE}`,
     );
 
-    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    const continued = await continueAs(tokenOf(started.url), OWNER);
     assert.ok(continued.ok && continued.state);
     const launch = await handoffs.launchHandoff({
       row: continued.row,
@@ -1135,6 +1278,10 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(stripeItem?.details.status, "pending");
     assert.deepEqual(stripeItem?.tools, ["handoffs_get", "payments_start_stripe_onboarding"]);
     assert.match(stripeItem?.summary ?? "", /more than an hour ago/);
+    // The item links to the step's own page, where its user takes it.
+    assert.deepEqual(stripeItem?.links, {
+      dashboard: `${TEST_APP_URL}/handoffs/${stripeStep.handoff.id}`,
+    });
     const cardItem = items.find((item) => item.details.handoffId === cardStep.handoff.id);
     assert.equal(cardItem?.details.status, "expired");
     assert.equal(cardItem?.severity, "warning");
@@ -1217,7 +1364,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal((await handoffs.getHandoffRow(STORE, a.id)).providerRef, "cs_attempt_a");
 
     // Continue again: attempt B, with no Checkout yet.
-    const b = await handoffs.continueHandoff(a.token, OWNER);
+    const b = await continueAs(a.token, OWNER);
     assert.ok(b.ok && b.state);
     const row = await handoffs.getHandoffRow(STORE, a.id);
     assert.equal(row.providerRef, null);
@@ -1272,7 +1419,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const a = await cardAttempt(agent);
     const finishA = await returning(a.id, a.state, "cs_attempt_a");
     // Click B lands between A's check and A's claim.
-    const b = await handoffs.continueHandoff(a.token, OWNER);
+    const b = await continueAs(a.token, OWNER);
     assert.ok(b.ok);
     assert.deepEqual(await finishA(), { done: false });
     assert.deepEqual(billing.state.finished, [], "no provider call for a replaced attempt");
@@ -1286,7 +1433,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const inFlight = finishC();
     while (billing.state.finished.length === 0)
       await new Promise((resolve) => setImmediate(resolve));
-    const d = await handoffs.continueHandoff(c.token, OWNER);
+    const d = await continueAs(c.token, OWNER);
     assert.ok(d.ok);
     gate.open();
     billing.state.gate = null;
@@ -1484,18 +1631,23 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(!gone.ok && gone.reason, "invalid");
   });
 
-  test("the answers that hold a link are never stored for a replay", async () => {
+  test("an answer that starts a step replays with its idempotency key, and holds no secret", async () => {
     const agent = await apiKey();
     const context = agent();
     context.headers.set("idempotency-key", "ho-replay-1");
     const first = await client(context).payments.startStripeOnboarding({});
-    const second = await client(context).payments.startStripeOnboarding({});
-    assert.notEqual(first.url, second.url);
-    const operations = await louezDb.db.select().from(louezDb.apiOperations);
-    assert.ok(operations.every((operation) => operation.result === null));
-    assert.ok(
-      operations.every((operation) => !JSON.stringify(operation).includes(tokenOf(second.url))),
-      "no link in the audit trail",
-    );
+    const replayContext = agent();
+    replayContext.headers.set("idempotency-key", "ho-replay-1");
+    const second = await client(replayContext).payments.startStripeOnboarding({});
+    assert.equal(second.url, first.url);
+    assert.equal(replayContext.receipt.replayed, true);
+    // The replay ran nothing: the step was asked for once.
+    assert.equal((await handoffs.getHandoffRow(STORE, first.handoff.id)).revision, 1);
+
+    const [row] = await handoffRows();
+    const [operation] = await louezDb.db.select().from(louezDb.apiOperations);
+    assert.ok(operation?.result, "the answer is stored for the replay");
+    assert.ok(!JSON.stringify(operation).includes(row?.tokenHash ?? "-"), "no hash in the record");
+    assert.equal(tokenOf(first.url), first.handoff.id);
   });
 });

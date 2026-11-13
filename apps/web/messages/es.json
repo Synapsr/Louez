@@ -9731,6 +9731,10 @@
       "not_allowed": {
         "title": "No puedes hacer esto en esta tienda",
         "description": "Tu rol en esta tienda no permite este paso. Pregunta al propietario de la tienda."
+      },
+      "changed": {
+        "title": "Esta solicitud cambió mientras la leía",
+        "description": "No se hizo nada: su agente volvió a pedirla desde que se abrió esta página. Vuelva a leerla abajo y luego responda."
       }
     },
     "done": {

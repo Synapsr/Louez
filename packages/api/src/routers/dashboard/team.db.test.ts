@@ -470,6 +470,14 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
   /** The approval link's token, the last segment of its URL. */
   const tokenOf = (url: string) => url.slice(url.lastIndexOf("/") + 1);
   const handoffs = () => louezDb.db.select().from(louezDb.apiHandoffs);
+  /** The revision the approval's page shows now, as its form posts it. */
+  const pageRevision = async (token: string) => {
+    const [row] = await louezDb.db
+      .select({ revision: louezDb.apiHandoffs.revision })
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, token.slice(0, 21)));
+    return row?.revision ?? 0;
+  };
   const readHandoff = async (id: string, context: BaseContext) =>
     (await orpc.call(handoffsRouter.get, { id }, {
       context,
@@ -486,7 +494,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       assert.equal(asked.invitation, null);
       assert.equal(asked.member, null);
       assert.ok(asked.approval);
-      assert.match(asked.approval.url, new RegExp(`^${TEST_APP_URL}/handoffs/[A-Za-z0-9_-]{64}$`));
+      assert.equal(asked.approval.url, `${TEST_APP_URL}/handoffs/${asked.approval.handoff.id}`);
       assert.deepEqual(asked.approval.handoff.invitation, {
         email: "new@tm.test",
         role: "member",
@@ -502,7 +510,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
       const decided = await run(
         "decideInvitation",
-        { token: tokenOf(asked.approval.url), decision: "approve" },
+        { token: tokenOf(asked.approval.url), decision: "approve", revision: await pageRevision(tokenOf(asked.approval.url)) },
         session(),
       );
       assert.deepEqual(decided, {
@@ -519,7 +527,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       const seen = await readHandoff(asked.approval.handoff.id, context());
       assert.equal(seen.status, "completed");
       await rejects(
-        run("decideInvitation", { token: tokenOf(asked.approval.url), decision: "approve" }, session()),
+        run("decideInvitation", { token: tokenOf(asked.approval.url), decision: "approve", revision: await pageRevision(tokenOf(asked.approval.url)) }, session()),
         "TEAM_APPROVAL_INVALID",
       );
       assert.equal((await invitations()).length, 1);
@@ -533,7 +541,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     const decided = await run(
       "decideInvitation",
-      { token: tokenOf(asked.approval?.url ?? ""), decision: "approve" },
+      { token: tokenOf(asked.approval?.url ?? ""), decision: "approve", revision: await pageRevision(tokenOf(asked.approval?.url ?? "")) },
       session(),
     );
     assert.equal(decided.outcome, "added");
@@ -546,14 +554,14 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     for (const context of [(await apiKey({ confirm: false }))(), (await agent())()]) {
       await rejects(
-        run("decideInvitation", { token, decision: "approve" }, context),
+        run("decideInvitation", { token, decision: "approve", revision: await pageRevision(token) }, context),
         "SESSION_ONLY",
       );
     }
     // Another store's owner, and the store's other owner: the link is not theirs.
     for (const userId of [STRANGER, CO_OWNER]) {
       const refused = await rejects(
-        run("decideInvitation", { token, decision: "approve" }, session(userId)),
+        run("decideInvitation", { token, decision: "approve", revision: await pageRevision(token) }, session(userId)),
         "TEAM_APPROVAL_INVALID",
       );
       assert.equal(refused.data.details?.reason, "other_user");
@@ -564,7 +572,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .set({ role: "member" })
       .where(orm.eq(louezDb.storeMembers.id, membership(OWNER)));
     const demoted = await rejects(
-      run("decideInvitation", { token, decision: "approve" }, session()),
+      run("decideInvitation", { token, decision: "approve", revision: await pageRevision(token) }, session()),
       "TEAM_APPROVAL_INVALID",
     );
     assert.equal(demoted.data.details?.reason, "not_allowed");
@@ -595,7 +603,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .delete(louezDb.storeMembers)
       .where(orm.eq(louezDb.storeMembers.id, membership(CO_OWNER)));
     const removed = await rejects(
-      run("decideInvitation", { token, decision: "approve" }, session(CO_OWNER)),
+      run("decideInvitation", { token, decision: "approve", revision: await pageRevision(token) }, session(CO_OWNER)),
       "TEAM_APPROVAL_INVALID",
     );
     assert.equal(removed.data.details?.reason, "not_allowed");
@@ -609,7 +617,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .set({ revokedAt: new Date() })
       .where(orm.eq(louezDb.apiKeys.id, created.id));
     const revoked = await rejects(
-      run("decideInvitation", { token, decision: "approve" }, session(CO_OWNER)),
+      run("decideInvitation", { token, decision: "approve", revision: await pageRevision(token) }, session(CO_OWNER)),
       "TEAM_APPROVAL_INVALID",
     );
     assert.equal(revoked.data.details?.reason, "invalid");
@@ -623,7 +631,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     const asked = await run("invite", { email: "new@tm.test" }, context());
     const decided = await run(
       "decideInvitation",
-      { token: tokenOf(asked.approval?.url ?? ""), decision: "decline" },
+      { token: tokenOf(asked.approval?.url ?? ""), decision: "decline", revision: await pageRevision(tokenOf(asked.approval?.url ?? "")) },
       session(),
     );
     assert.equal(decided.decision, "declined");
@@ -647,7 +655,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .where(orm.eq(louezDb.apiHandoffs.id, id));
 
     const refused = await rejects(
-      run("decideInvitation", { token: tokenOf(asked.approval?.url ?? ""), decision: "approve" }, session()),
+      run("decideInvitation", { token: tokenOf(asked.approval?.url ?? ""), decision: "approve", revision: await pageRevision(tokenOf(asked.approval?.url ?? "")) }, session()),
       "TEAM_APPROVAL_INVALID",
     );
     assert.equal(refused.data.details?.reason, "expired");
@@ -658,26 +666,37 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal(again.approval?.handoff.id, id, "the same approval");
     await run(
       "decideInvitation",
-      { token: tokenOf(again.approval?.url ?? ""), decision: "approve" },
+      { token: tokenOf(again.approval?.url ?? ""), decision: "approve", revision: await pageRevision(tokenOf(again.approval?.url ?? "")) },
       session(),
     );
     assert.equal((await invitations()).length, 1);
   });
 
-  test("the same address asked twice is one approval: the first link stops, the second approves", async () => {
+  test("the same address asked twice is one approval and one link: a page opened before decides nothing", async () => {
     const context = await apiKey();
     const first = await run("invite", { email: "new@tm.test" }, context());
+    const token = tokenOf(first.approval?.url ?? "");
+    const shown = await pageRevision(token);
     const second = await run("invite", { email: "NEW@tm.test" }, context());
     assert.equal(second.approval?.handoff.id, first.approval?.handoff.id);
+    assert.equal(second.approval?.url, first.approval?.url, "the same link");
+    assert.equal(await pageRevision(token), shown + 1);
     assert.equal((await handoffs()).length, 1);
 
-    await rejects(
-      run("decideInvitation", { token: tokenOf(first.approval?.url ?? ""), decision: "approve" }, session()),
-      "TEAM_APPROVAL_INVALID",
-    );
+    for (const decision of ["approve", "decline"] as const) {
+      const stale = await rejects(
+        run("decideInvitation", { token, decision, revision: shown }, session()),
+        "TEAM_APPROVAL_INVALID",
+      );
+      assert.equal(stale.data.details?.reason, "changed");
+    }
+    assert.equal((await invitations()).length, 0);
+    assert.equal((await handoffs())[0]?.status, "pending");
+
+    // The page shows it again: that answer decides.
     await run(
       "decideInvitation",
-      { token: tokenOf(second.approval?.url ?? ""), decision: "approve" },
+      { token, decision: "approve", revision: await pageRevision(token) },
       session(),
     );
     assert.equal((await invitations()).length, 1);
@@ -685,6 +704,100 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     // Another address is another approval.
     const other = await run("invite", { email: "other-new@tm.test" }, context());
     assert.notEqual(other.approval?.handoff.id, first.approval?.handoff.id);
+  });
+
+  test("a page opened on an e-mail invitation, then asked again once it would add at once: the click decides nothing", async () => {
+    const context = await agent();
+    const asked = await run("invite", { email: "tm_new_joins@tm.test" }, context());
+    const token = tokenOf(asked.approval?.url ?? "");
+    assert.equal(asked.approval?.handoff.invitation?.joinsAtOnce, false);
+    const shown = await pageRevision(token);
+
+    // The address gets an account, and the agent asks again: approving would now add them at once.
+    await louezDb.db
+      .insert(louezDb.users)
+      .values({ id: "tm_new_joins_user_01", email: "tm_new_joins@tm.test" });
+    const again = await run("invite", { email: "tm_new_joins@tm.test" }, context());
+    assert.equal(again.approval?.handoff.invitation?.joinsAtOnce, true);
+
+    const stale = await rejects(
+      run("decideInvitation", { token, decision: "approve", revision: shown }, session()),
+      "TEAM_APPROVAL_INVALID",
+    );
+    assert.equal(stale.data.details?.reason, "changed");
+    assert.deepEqual(await memberIds(), [CO_OWNER, MEMBER, OWNER].sort(), "nobody added");
+    assert.equal((await invitations()).length, 0);
+    const [row] = await handoffs();
+    assert.equal(row?.status, "pending", "the approval waits for the owner's answer");
+
+    // The owner reads "adds at once" and approves that.
+    const decided = await run(
+      "decideInvitation",
+      { token, decision: "approve", revision: await pageRevision(token) },
+      session(),
+    );
+    assert.equal(decided.outcome, "added");
+  });
+
+  test("an answer posted twice, or with a forged revision, decides once or not at all", async () => {
+    const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
+    const token = tokenOf(asked.approval?.url ?? "");
+    const shown = await pageRevision(token);
+
+    for (const forged of [shown + 1, shown + 1000]) {
+      const refused = await rejects(
+        run("decideInvitation", { token, decision: "approve", revision: forged }, session()),
+        "TEAM_APPROVAL_INVALID",
+      );
+      assert.equal(refused.data.details?.reason, "changed");
+    }
+    // An id no approval has.
+    const guessed = await rejects(
+      run("decideInvitation", { token: "Zz".repeat(10) + "Z", decision: "approve", revision: 1 }, session()),
+      "TEAM_APPROVAL_INVALID",
+    );
+    assert.equal(guessed.data.details?.reason, "invalid");
+    assert.equal((await invitations()).length, 0);
+
+    const answers = await Promise.allSettled([
+      run("decideInvitation", { token, decision: "approve", revision: shown }, session()),
+      run("decideInvitation", { token, decision: "approve", revision: shown }, session()),
+    ]);
+    assert.equal(answers.filter((answer) => answer.status === "fulfilled").length, 1);
+    assert.equal((await invitations()).length, 1, "one invitation");
+    assert.equal((await handoffs())[0]?.status, "completed");
+  });
+
+  test("the agent asking again while the owner clicks: one wins under the store's lock, the other is told", async () => {
+    for (let round = 0; round < 5; round += 1) {
+      await louezDb.db.delete(louezDb.storeInvitations);
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const context = await apiKey();
+      const asked = await run("invite", { email: "new@tm.test" }, context());
+      const token = tokenOf(asked.approval?.url ?? "");
+      const shown = await pageRevision(token);
+
+      const [click, repeat] = await Promise.allSettled([
+        run("decideInvitation", { token, decision: "approve", revision: shown }, session()),
+        run("invite", { email: "new@tm.test" }, context()),
+      ]);
+      const [row] = await handoffs();
+      if (click.status === "fulfilled") {
+        // The click came first: the invitation went out, and the request that followed is refused.
+        assert.equal(row?.status, "completed");
+        assert.equal((await invitations()).length, 1);
+        assert.equal(repeat.status, "rejected");
+        const code = (repeat as PromiseRejectedResult).reason?.data?.code;
+        assert.equal(code, "TEAM_INVITATION_ALREADY_SENT");
+      } else {
+        // The request came first: the click decided nothing, and the page asks again.
+        assert.equal(click.reason?.data?.details?.reason, "changed");
+        assert.equal(repeat.status, "fulfilled");
+        assert.equal(row?.status, "pending");
+        assert.equal(row?.revision, shown + 1);
+        assert.equal((await invitations()).length, 0);
+      }
+    }
   });
 
   test(`a store holds at most ${MAX_OPEN_INVITATION_APPROVALS} open approvals; an open one may still be asked again`, async () => {
@@ -830,7 +943,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     await louezDb.db.insert(louezDb.users).values({ id: "tm_new_late_user_001", email: "tm_new_late@tm.test" });
 
     await rejects(
-      run("decideInvitation", { token: tokenOf(asked.approval?.url ?? ""), decision: "approve" }, session()),
+      run("decideInvitation", { token: tokenOf(asked.approval?.url ?? ""), decision: "approve", revision: await pageRevision(tokenOf(asked.approval?.url ?? "")) }, session()),
       "TEAM_APPROVAL_CHANGED",
     );
     assert.deepEqual(await memberIds(), [CO_OWNER, MEMBER, OWNER].sort());

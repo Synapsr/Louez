@@ -5,8 +5,9 @@ import { resourceLinksSchema } from "./links";
 
 /**
  * Handoffs: a step only the human can take (Stripe's identity checks, a
- * billing card, approving a team invitation), started by an agent. The agent gets a short-lived link to a
- * Louez page, gives it to the user, then reads the handoff until it is done.
+ * billing card, approving a team invitation), started by an agent. The agent
+ * gets the step's page in Louez, gives its link to the user, then reads the
+ * handoff until it is done.
  */
 
 export const HANDOFF_KINDS = [
@@ -56,17 +57,22 @@ export const handoffSchema = z.object({
       joinsAtOnce: z.boolean(),
     })
     .nullable(),
+  url: z
+    .string()
+    .describe(
+      "The step's page in Louez, to give the user as is: it opens signed in as the user this connection acts for. The same link for the step's whole life.",
+    ),
   links: resourceLinksSchema,
 });
 export type HandoffView = z.infer<typeof handoffSchema>;
 
-/** A new link: shown once, never stored in clear, never replayed. */
+/** A step handed to the user: the handoff, and its page's link (`handoff.url`). */
 export const handoffLinkSchema = z.object({
   handoff: handoffSchema,
   url: z
     .string()
     .describe(
-      "The link to give the user, as is. It works once signed in to Louez as this user, and expires at handoff.expiresAt.",
+      "The link to give the user, as is. It works once signed in to Louez as this user, until handoff.expiresAt; asking again gives the same link a new expiry.",
     ),
 });
 export type HandoffLink = z.infer<typeof handoffLinkSchema>;

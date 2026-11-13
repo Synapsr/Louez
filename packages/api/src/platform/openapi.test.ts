@@ -944,8 +944,16 @@ describe("the public reference", () => {
 
     const served = await servedProcedures();
     const secret = served.filter(({ meta }) => meta.secretOutput).map(({ meta }) => meta.mcp.name);
-    // Upload URLs, Stripe and billing hand-offs, team invitation approvals.
-    assert.ok(secret.length >= 4, `writes that return a temporary link: ${secret.join(", ")}`);
+    // Upload URLs. A hand-off's link is its page, the same for its whole life: those replay.
+    assert.ok(secret.length >= 3, `writes that return a temporary link: ${secret.join(", ")}`);
+    for (const name of [
+      "payments_start_stripe_onboarding",
+      "payments_open_stripe_dashboard",
+      "billing_start_card_setup",
+      "team_invite_member",
+    ]) {
+      assert.ok(!secret.includes(name), `${name} replays`);
+    }
     for (const { path, meta, operation } of served) {
       const writes = meta.scope?.level === "write";
       // procedures.ts passes no key to runOperation for these.

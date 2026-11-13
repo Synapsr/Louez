@@ -50,8 +50,6 @@ const startCardSetup = storeProcedure
   .meta({
     capability: "billing.startCardSetup",
     scope: WRITE,
-    // The answer holds the link: whoever has it may continue the step.
-    secretOutput: true,
     mcp: {
       name: "billing_start_card_setup",
       title: "Add Billing Card",

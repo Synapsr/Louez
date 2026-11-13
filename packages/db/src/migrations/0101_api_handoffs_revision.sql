@@ -1,0 +1,1 @@
+ALTER TABLE `api_handoffs` ADD `revision` int unsigned DEFAULT 1 NOT NULL;
