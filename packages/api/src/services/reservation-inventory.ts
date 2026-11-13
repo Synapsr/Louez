@@ -604,6 +604,13 @@ const linesShortIn = (check: CollectedInventory): LineShortfall[] =>
  * buffer; after the run with it, only when that run found a shortfall; after
  * the run without it, only when the caller wants the buffer-only lines
  * (`wantBufferOnly`). The buffer is the caller's to give, not read here.
+ *
+ * "A run with the buffer that fits means nothing is short without it" holds
+ * for the lines the three writers give: a line with an exact combination, or
+ * one spread over every combination that matches its choice. It does not hold
+ * for a line that one combination among several must cover whole (a checkout
+ * line with an open choice): fewer bookings in the way can place it elsewhere
+ * and leave a later line short. A caller with such lines must not rely on it.
  */
 export async function splitShortfallsByTurnoverBuffer(
   run: (turnoverBufferMinutes: number) => Promise<CollectedInventory | ReservationFailure>,
