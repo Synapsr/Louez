@@ -280,6 +280,192 @@ describe("OpenAPI document", () => {
   });
 });
 
+/**
+ * Words that speak of the code, of unfinished work or of the MCP bridge's own
+ * arguments: none belongs in the public reference.
+ */
+const INTERNAL_WORDING = [
+  /\bTODO\b/,
+  /\bFIXME\b/,
+  /\blot \d+[a-z]?\b/i,
+  /\bbridge\b/i,
+  /\bidempotencyKey\b/,
+  /\bthe agent's\b/i,
+  /\ban agent gets\b/i,
+  /\.agent-docs\b/,
+  /\b(?:packages|apps)\/[a-z]/,
+  /\blocalhost\b|127\.0\.0\.1/,
+];
+
+describe("the public reference", () => {
+  type Operation = {
+    operationId?: string;
+    summary?: string;
+    description?: string;
+    security?: unknown[];
+    responses: Record<string, unknown>;
+  };
+  type PublicDocument = {
+    openapi: string;
+    info: { title: string; version: string; description: string };
+    servers: Array<{ url: string }>;
+    security: unknown[];
+    paths: Record<string, Record<string, Operation>>;
+  };
+
+  const SERVER = "https://app.louez.test/api/v1";
+  let serve: (path: string, headers?: Record<string, string>) => Promise<Response | undefined>;
+  let exposedNames: string[];
+  let openapi: typeof import("./openapi");
+
+  before(async () => {
+    const { createExposure } = await import("./exposure");
+    openapi = await import("./openapi");
+    const { appRouter } = await import("../router");
+    const exposure = createExposure(appRouter);
+    exposedNames = exposure.procedures.map(
+      ({ procedure, meta }) => procedure["~orpc"].route.operationId ?? meta.mcp.name,
+    );
+    const handler = openapi.createOpenApiHandler(exposure.router);
+    const reference = openapi.createApiReference(exposure.router);
+    const ports = {
+      urls: { dashboard: (path: string) => `https://app.louez.test${path}` },
+    } as unknown as import("./ports").ApiPorts;
+    serve = (path, headers = {}) =>
+      openapi.handleOpenApiRequest(handler, new Request(`${SERVER}${path}`, { headers }), {
+        ports,
+        reference,
+      });
+  });
+
+  const fetchDocument = async () => {
+    const response = await serve("/openapi.json");
+    assert.equal(response?.status, 200);
+    return (await response.json()) as PublicDocument;
+  };
+  const operationsOf = (document: PublicDocument) =>
+    Object.entries(document.paths).flatMap(([path, methods]) =>
+      Object.entries(methods).map(([method, operation]) => ({
+        route: `${method.toUpperCase()} ${path}`,
+        operation,
+      })),
+    );
+
+  test("serves the document to anyone, with a public cache lifetime and an ETag", async () => {
+    const response = await serve("/openapi.json");
+    assert.equal(response?.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+    assert.equal(response.headers.get("cache-control"), "public, max-age=300");
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    assert.equal(response.headers.get("set-cookie"), null);
+    const etag = response.headers.get("etag");
+    assert.match(etag ?? "", /^"[0-9a-f]{32}"$/);
+
+    // Generated once: the next request gets the same document.
+    const again = await serve("/openapi.json/");
+    assert.equal(again?.headers.get("etag"), etag);
+    assert.equal(await again?.text(), await response.text());
+
+    const current = await serve("/openapi.json", { "if-none-match": `W/${etag}` });
+    assert.equal(current?.status, 304);
+    assert.equal(await current?.text(), "");
+  });
+
+  test("serves the reference page: the pinned renderer, the same-origin document, no cookie", async () => {
+    const response = await serve("/docs");
+    assert.equal(response?.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^text\/html/);
+    assert.equal(response.headers.get("set-cookie"), null);
+    assert.equal(response.headers.get("cache-control"), "public, max-age=300");
+    const html = await response.text();
+    assert.match(
+      html,
+      /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@scalar\/api-reference@\d+\.\d+\.\d+\/[^"]+" integrity="sha384-[A-Za-z0-9+/=]+" crossorigin="anonymous"><\/script>/,
+    );
+    assert.match(html, /"url":"\/api\/v1\/openapi\.json"/);
+    assert.match(html, /"telemetry":false/);
+    assert.match(html, /<title>Louez API reference \(beta\)<\/title>/);
+  });
+
+  test("leaves every other path to the procedures", async () => {
+    assert.equal(await serve("/docs/openapi.json"), undefined);
+    assert.equal(await serve("/openapi.yaml"), undefined);
+  });
+
+  test("states that the API is in beta, where changes are announced, and a beta version", async () => {
+    const { info } = await fetchDocument();
+    assert.equal(info.version, "1.0.0-beta");
+    assert.match(info.version, /-beta$/);
+    // The notice comes first: the reference shows the description at the top.
+    assert.ok(info.description.startsWith(openapi.OPENAPI_BETA_NOTICE));
+    assert.match(openapi.OPENAPI_BETA_NOTICE, /^> \*\*Beta\.\*\* The Louez REST API is in beta\./);
+    assert.ok(info.description.includes(`(${openapi.API_CHANGELOG_URL})`));
+    assert.ok(info.description.includes(openapi.API_KEYS_PAGE_PATH));
+    for (const code of [
+      "UNAUTHENTICATED",
+      "PERMISSION_DENIED",
+      "CONFIRMATION_REQUIRED",
+      "IDEMPOTENCY_KEY_REUSED",
+      "RATE_LIMITED",
+    ]) {
+      assert.ok(info.description.includes(`\`${code}\``), `the guide names ${code}`);
+    }
+  });
+
+  test("names this deployment as its server, and no local address anywhere", async () => {
+    const document = await fetchDocument();
+    assert.deepEqual(document.servers, [{ url: SERVER }]);
+    assert.doesNotMatch(JSON.stringify(document), /localhost|127\.0\.0\.1|0\.0\.0\.0/);
+  });
+
+  test("is OpenAPI 3.1 whose every operation is named, summed up, answers and asks for the key", async () => {
+    const document = await fetchDocument();
+    assert.match(document.openapi, /^3\.1\./);
+    assert.deepEqual(document.security, [{ apiKey: [] }]);
+    for (const { route, operation } of operationsOf(document)) {
+      assert.ok(operation.operationId, `${route} has an operationId`);
+      assert.ok(operation.summary?.trim(), `${route} has a summary`);
+      assert.ok(operation.description?.trim(), `${route} has a description`);
+      assert.ok(
+        Object.keys(operation.responses).some((status) => /^2\d\d$/.test(status)),
+        `${route} has a success response`,
+      );
+      // No operation opts out of the document's API key requirement.
+      assert.equal(operation.security, undefined, `${route} keeps the API key requirement`);
+    }
+  });
+
+  test("holds exactly the operations of the exposure registry", async () => {
+    const served = operationsOf(await fetchDocument()).map(
+      ({ operation }) => operation.operationId,
+    );
+    assert.deepEqual([...served].sort(), [...exposedNames].sort());
+    assert.equal(new Set(served).size, served.length, "each operation once");
+  });
+
+  test("speaks of no internals in any description", async () => {
+    const document = await fetchDocument();
+    const descriptions: string[] = [];
+    const walk = (node: unknown) => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      for (const [key, value] of Object.entries(node)) {
+        if ((key === "description" || key === "summary") && typeof value === "string") {
+          descriptions.push(value);
+        }
+        walk(value);
+      }
+    };
+    walk(document);
+    assert.ok(descriptions.length > 100);
+    for (const text of descriptions) {
+      for (const word of INTERNAL_WORDING) {
+        assert.doesNotMatch(text, word, `"${text.slice(0, 80)}…" says ${word}`);
+      }
+    }
+  });
+});
+
 describe("the /api/v1 body cap", () => {
   let serve: (request: Request) => Promise<Response | undefined>;
   let limits: Array<{ method: string; pattern: RegExp; maxBytes: number }>;
@@ -298,7 +484,7 @@ describe("the /api/v1 body cap", () => {
     ({ PRODUCT_LIST_LIMITS: listLimits } = await import("@louez/validations"));
     const { appRouter } = await import("../router");
     const exposure = createExposure(appRouter);
-    const handler = openapi.createOpenApiHandler(exposure.router, { docs: false });
+    const handler = openapi.createOpenApiHandler(exposure.router);
     limits = openapi.routeBodyLimits(exposure.procedures);
     ({ MAX_LARGE_BODY_READS: maxLargeReads } = await import("./large-bodies"));
     serve = (request) =>

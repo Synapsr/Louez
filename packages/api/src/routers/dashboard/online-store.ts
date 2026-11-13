@@ -190,7 +190,7 @@ const uploadImageProcedure = storeProcedure
       name: "online_store_upload_image",
       title: "Upload Storefront Image",
       description:
-        "Upload a logo, a favicon (kind logo, 2 MB at most) or a banner photo (kind hero, 5 MB at most) in one call: JPEG, PNG, GIF or WebP. It takes the file's bytes base64 as `contentBase64`, for a file whose upload URL (online_store_create_image_upload) is out of reach, such as an image made in the agent's own workspace; or a public HTTPS `imageUrl`, which Louez downloads. The type is read from the bytes. Each upload is a new image; the storefront does not change. Returns the image's public `url`, which online_store_update_appearance takes (logoUrl, darkLogoUrl, faviconUrl or heroImages).",
+        "Upload a logo, a favicon (kind logo, 2 MB at most) or a banner photo (kind hero, 5 MB at most) in one call: JPEG, PNG, GIF or WebP. It takes the file's bytes base64 as `contentBase64`, for a file whose upload URL (online_store_create_image_upload) is out of reach, such as an image generated on the caller's machine; or a public HTTPS `imageUrl`, which Louez downloads. The type is read from the bytes. Each upload is a new image; the storefront does not change. Returns the image's public `url`, which online_store_update_appearance takes (logoUrl, darkLogoUrl, faviconUrl or heroImages).",
       bundle: "settings",
       effect: "additive",
       reach: "provider",

@@ -99,7 +99,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     rpc = (name, input) => client.dashboard.categories[name](input);
 
     // OpenAPI: the exposed procedures at their REST paths, as /api/v1 serves them.
-    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (method, path, body, headers) =>
       (await handleOpenApiRequest(
         openApiHandler,

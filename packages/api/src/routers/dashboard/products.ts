@@ -153,7 +153,7 @@ const withItemLinks = async (
   return { ...result, items: result.items.map((item) => withLinks(context, item)) };
 };
 
-const UNITS_PAGE_HELP = `On MCP, \`units\` holds the first ${ANSWER_PAGE_MCP_DEFAULT} units by identifier (the API, every unit); \`unitsTotal\` counts them all and, when \`unitsNextCursor\` is not null, products_list_units gives the others from that cursor. products_update keeps the units its \`units\` list leaves out, and deletes only those in removeUnitIds.`;
+const UNITS_PAGE_HELP = `Over MCP, \`units\` holds the first ${ANSWER_PAGE_MCP_DEFAULT} units by identifier (over the REST API, every unit); \`unitsTotal\` counts them all and, when \`unitsNextCursor\` is not null, products_list_units gives the others from that cursor. products_update keeps the units its \`units\` list leaves out, and deletes only those in removeUnitIds.`;
 
 const TIERS_HELP =
   'Pricing: a duration product has a base rate (basePriceDuration, e.g. { "price": "30", "duration": 1, "unit": "day" }) and optional rateTiers (prix dégressifs): each tier is the TOTAL price of a rental of exactly that duration, e.g. { "duration": 7, "unit": "day", "price": "150" } for a week. A fixed product has one price per item (pricingKind "fixed"). Seasons are set with products_create_seasonal_pricing.';
@@ -205,7 +205,7 @@ const listUnits = storeProcedure
     mcp: {
       name: "products_list_units",
       title: "List Product Units",
-      description: `List a product's units (serial numbers, asset tags), retired ones included, in products_get's order (by identifier): id, identifier, variant attributes and whether it is active or retired. Takes the product's id, and a cursor (products_get's unitsNextCursor, or this tool's nextCursor) to read on; nextCursor is null on the last page. Without a limit, an agent gets ${ANSWER_PAGE_MCP_DEFAULT} units a page.`,
+      description: `List a product's units (serial numbers, asset tags), retired ones included, in products_get's order (by identifier): id, identifier, variant attributes and whether it is active or retired. Takes the product's id, and a cursor (products_get's unitsNextCursor, or the nextCursor of a previous page) to read on; nextCursor is null on the last page. Without a limit, a page holds ${ANSWER_PAGE_MCP_DEFAULT} units over MCP and every unit over the REST API.`,
       bundle: "catalog",
     },
   })
@@ -230,7 +230,7 @@ const create = storeProcedure
     mcp: {
       name: "products_create",
       title: "Create Product",
-      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_upload_image, or products_complete_image_upload). Returns the product as products_get does, with its \`links\`, the URLs to give the user to see it. An idempotencyKey makes a retry safe.`,
+      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_upload_image, or products_complete_image_upload). Returns the product as products_get does, with its \`links\`, the URLs to give the user to see it. An idempotency key makes a retry safe.`,
       bundle: "catalog",
       answer: pageProductUnits,
       effect: "additive",
@@ -487,7 +487,7 @@ const uploadImageProcedure = storeProcedure
       name: "products_upload_image",
       title: "Upload Product Image",
       description:
-        "Upload a product image in one call (JPEG, PNG, GIF or WebP). It takes the file's bytes base64 as `contentBase64` (5 MB at most), for a file whose upload URL (products_create_image_upload) is out of reach, such as an image made in the agent's own workspace; or a public HTTPS `imageUrl`, which Louez downloads (15 MB at most). The type is read from the bytes. Each upload is a new image; no product changes. Returns the image's public `url`, which a product's `images` take in products_create and products_update.",
+        "Upload a product image in one call (JPEG, PNG, GIF or WebP). It takes the file's bytes base64 as `contentBase64` (5 MB at most), for a file whose upload URL (products_create_image_upload) is out of reach, such as an image generated on the caller's machine; or a public HTTPS `imageUrl`, which Louez downloads (15 MB at most). The type is read from the bytes. Each upload is a new image; no product changes. Returns the image's public `url`, which a product's `images` take in products_create and products_update.",
       bundle: "catalog",
       effect: "additive",
       reach: "provider",
@@ -634,8 +634,7 @@ const getReservationTimeline = storeProcedure
     mcp: {
       name: "products_get_reservation_timeline",
       title: "Get Product Reservation Timeline",
-      description:
-        `When a product is out: the reservations that hold it between \`from\` and \`to\` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. An agent gets ${ANSWER_PAGE_MCP_DEFAULT} reservations a page without a limit (the API, every one); nextCursor, when not null, reads on, and every page holds the downtimes. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
+      description: `When a product is out: the reservations that hold it between \`from\` and \`to\` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. Without a limit, a page holds ${ANSWER_PAGE_MCP_DEFAULT} reservations over MCP and every one over the REST API; nextCursor, when not null, reads on, and every page holds the downtimes. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
       bundle: "catalog",
     },
   })

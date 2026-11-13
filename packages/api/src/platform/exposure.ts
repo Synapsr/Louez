@@ -2,7 +2,13 @@ import type { OpenAPI } from "@orpc/contract";
 import { isProcedure, Procedure, type AnyProcedure, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
-import { MCP_BUNDLES, MCP_TOOL_NAME_MAX, type ApiMeta, type McpBundle, type McpExposure } from "./meta";
+import {
+  MCP_BUNDLES,
+  MCP_TOOL_NAME_MAX,
+  type ApiMeta,
+  type McpBundle,
+  type McpExposure,
+} from "./meta";
 import type { ProcedureScope } from "./permissions";
 
 /**
@@ -304,6 +310,7 @@ function documented(
     ...operation,
     // The tool name, unless the procedure names its operation: stable for SDKs.
     operationId: ownOperationId ? operation.operationId : meta.mcp.name,
+    summary: operation.summary ?? meta.mcp.title,
     description: operation.description ?? meta.mcp.description,
     tags: operation.tags ?? [meta.scope?.domain ?? "account"],
     parameters,

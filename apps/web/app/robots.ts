@@ -31,13 +31,19 @@ const PRIVATE_PATHS = [
   "/admin",
 ];
 
+// The public REST API reference and its OpenAPI document
+// (app/api/v1/[[...path]]/route.ts). Indexed on the app's host only, never
+// once per storefront.
+const API_REFERENCE_PATHS = ["/api/v1/docs", "/api/v1/openapi.json"];
+
 export default async function robots(): Promise<MetadataRoute.Robots> {
   // Dashboard, www and apex hosts: private application surface, and on a
   // platform deployment the dashboard also mirrors every storefront under
-  // /{slug}. Keep the whole host out of the index.
+  // /{slug}. Keep the whole host out of the index, but for the API reference
+  // (the longest matching rule wins).
   if (!(await isStorefrontHost())) {
     return {
-      rules: { userAgent: "*", disallow: "/" },
+      rules: { userAgent: "*", allow: API_REFERENCE_PATHS, disallow: "/" },
     };
   }
 

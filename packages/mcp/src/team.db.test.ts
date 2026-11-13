@@ -105,7 +105,7 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     rpcWith = (headers, name, input) => clientWith(headers).dashboard.team[name](input);
 
     // OpenAPI: the exposed procedures at their REST paths, as /api/v1 serves them.
-    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (method, path, body, headers) =>
       (await handleOpenApiRequest(
         openApiHandler,

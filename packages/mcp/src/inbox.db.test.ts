@@ -60,7 +60,7 @@ describe("inbox tools (database)", { skip: skipWithoutTestDatabase() }, () => {
     const { handleMcpRequest } = await import("./transports/http");
     exposure = createExposure(appRouter);
 
-    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (method, path, body, headers) =>
       (await handleOpenApiRequest(
         openApiHandler,

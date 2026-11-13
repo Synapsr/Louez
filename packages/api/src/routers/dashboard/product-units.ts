@@ -133,7 +133,7 @@ export const getUnitHistory = storeProcedure
     mcp: {
       name: "products_get_unit_history",
       title: "Get Unit History",
-      description: `The history of one unit: its events (created, changed, retired, reinstated, downtimes, assignments), newest first, with who did them, and its downtimes (current, upcoming, past). An agent gets ${ANSWER_PAGE_MCP_DEFAULT} events a page without a limit (the API, every one); nextCursor, when not null, reads on, and every page holds the downtimes. ${UNIT_HELP} It shows the reservations and customers the unit served: it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
+      description: `The history of one unit: its events (created, changed, retired, reinstated, downtimes, assignments), newest first, with who did them, and its downtimes (current, upcoming, past). Without a limit, a page holds ${ANSWER_PAGE_MCP_DEFAULT} events over MCP and every one over the REST API; nextCursor, when not null, reads on, and every page holds the downtimes. ${UNIT_HELP} It shows the reservations and customers the unit served: it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
       bundle: "catalog",
     },
   })

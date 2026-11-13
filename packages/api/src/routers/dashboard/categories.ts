@@ -266,7 +266,7 @@ const uploadImageProcedure = storeProcedure
       name: "categories_upload_image",
       title: "Upload Category Image",
       description:
-        "Upload a category image in one call (JPEG, PNG, GIF or WebP). It takes the file's bytes base64 as `contentBase64` (5 MB at most), for a file whose upload URL (categories_create_image_upload) is out of reach, such as an image made in the agent's own workspace; or a public HTTPS `imageUrl`, which Louez downloads (5 MB at most). The type is read from the bytes. Each upload is a new image; no record changes. Returns the image's public `url`, which `imageUrl` takes in categories_create and categories_update.",
+        "Upload a category image in one call (JPEG, PNG, GIF or WebP). It takes the file's bytes base64 as `contentBase64` (5 MB at most), for a file whose upload URL (categories_create_image_upload) is out of reach, such as an image generated on the caller's machine; or a public HTTPS `imageUrl`, which Louez downloads (5 MB at most). The type is read from the bytes. Each upload is a new image; no record changes. Returns the image's public `url`, which `imageUrl` takes in categories_create and categories_update.",
       bundle: "catalog",
       effect: "additive",
       reach: "provider",
