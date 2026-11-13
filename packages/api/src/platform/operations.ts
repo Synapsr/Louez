@@ -11,7 +11,7 @@ import { and, asc, eq, lt, min, sql } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
 import { enqueueEffects, type ApiEffect } from "./effects";
-import { isApiError, platformErrors } from "./errors";
+import { isApiError, isRefusal, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
 
 /** Header of an idempotency key. The MCP bridge maps its `idempotencyKey` argument onto it. */
@@ -76,8 +76,10 @@ function decodeResult(value: unknown): unknown {
  * With an idempotency key, the row also makes the call safe to retry: the same
  * key with the same input returns the stored result without running again; the
  * same key with another input is refused; a call that arrives while the first
- * still runs is told to retry; a key whose call failed may run again; a key
- * whose outcome was lost (unknown, or running past its lease) never runs again.
+ * still runs is told to retry; a key whose call Louez refused (`isRefusal`) is
+ * `failed` and may run again; a key whose outcome is unknown (the call ended
+ * on any other error, its record was lost, or it ran past its lease) never
+ * runs again.
  */
 export async function runOperation<T>(
   params: {
@@ -163,7 +165,11 @@ export async function runOperation<T>(
     await db
       .update(apiOperations)
       .set({
-        status: "failed",
+        // A refusal did nothing, so its key may run it again. Any other
+        // error may have come after the handler's commit (a step after it,
+        // a lost acknowledgement of the COMMIT itself): its key never runs
+        // it again.
+        status: isRefusal(error) ? "failed" : "unknown",
         // A refused preview commits its own transaction, the setup mark of
         // the store it locked with it: the write set nothing up.
         setupStoreId: null,
@@ -304,10 +310,11 @@ async function claimIdempotencyKey(
   }
   if (existing.status === "unknown") throw platformErrors.operationOutcomeUnknown(existing.id);
 
-  // It failed. A procedure writes in one transaction, so it committed nothing
-  // and the same key may run again (procedures that call a provider before
-  // their transaction pass the key on to it). Only one retry can move it back
-  // to running.
+  // It failed: Louez refused it, and a refusal leaves nothing the handler
+  // wrote (`isRefusal`), so the same key may run again (procedures that
+  // call a provider before their transaction pass the key on to it). A record
+  // marked failed before refusals were told from other errors stays as it is.
+  // Only one retry can move it back to running.
   const [retry] = await db
     .update(apiOperations)
     .set({ status: "running", error: null })

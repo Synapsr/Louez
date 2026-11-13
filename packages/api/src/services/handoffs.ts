@@ -24,7 +24,7 @@ import {
   type HandoffStatus,
   type HandoffView,
 } from "../contracts/handoffs";
-import { isApiError, platformErrors } from "../platform/errors";
+import { isApiError, platformErrors, readAfterCommit } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import { logProviderError } from "../platform/sanitize-error";
 import { dashboardPageLinks, type DashboardLinkStore } from "../platform/links";
@@ -853,7 +853,9 @@ export async function settlePendingCardSetup(
   } catch (error) {
     logProviderError("Billing card check failed", error);
   }
-  return getHandoffRow(row.storeId, row.id);
+  // The lease is committed and the provider was asked: a handoff gone by now
+  // is no refusal of this call.
+  return readAfterCommit(() => getHandoffRow(row.storeId, row.id));
 }
 
 /** Handoffs untouched this long are deleted by the cron. */

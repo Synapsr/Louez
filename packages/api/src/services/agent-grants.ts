@@ -23,6 +23,7 @@ import {
   type DirectoryClient,
 } from "../platform/agent-clients";
 import { registeredRedirectUris, verifiedDestination } from "../platform/agent-destinations";
+import { readAfterCommit } from "../platform/errors";
 import { bundlesWithTools, createExposure } from "../platform/exposure";
 import { MCP_BUNDLES, type McpBundle } from "../platform/meta";
 import { failCredentialHandoffs } from "./handoffs";
@@ -455,9 +456,11 @@ export async function updateGrant(input: {
     if (patch.stores) await replaceStores(tx, input.id, patch.stores);
   });
 
-  const [connection] = await listGrants(input.userId, input.id);
-  if (!connection) throw agentConnectionErrors.notFound(input.id);
-  return connection;
+  return readAfterCommit(async () => {
+    const [connection] = await listGrants(input.userId, input.id);
+    if (!connection) throw agentConnectionErrors.notFound(input.id);
+    return connection;
+  });
 }
 
 /**

@@ -20,6 +20,7 @@ import {
   type deleteCategoryInput,
   type updateCategoryInput,
 } from "../contracts/categories";
+import { readAfterCommit } from "../platform/errors";
 
 /**
  * Categories of a store: the business rules behind the categories procedures.
@@ -194,7 +195,7 @@ export async function createCategory(
     return { id: inserted.id, created: true };
   });
 
-  return { ...(await getCategory(storeId, id)), created };
+  return { ...(await readAfterCommit(() => getCategory(storeId, id))), created };
 }
 
 /** Changes the fields given: a field left out is unchanged, `null` clears it. */
@@ -243,7 +244,7 @@ export async function updateCategory(
       .where(and(eq(categories.id, input.id), eq(categories.storeId, storeId)));
   });
 
-  return getCategory(storeId, input.id);
+  return readAfterCommit(() => getCategory(storeId, input.id));
 }
 
 /** What deleting a category would do, for its confirmation preview. */
