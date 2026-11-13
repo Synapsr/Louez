@@ -204,6 +204,8 @@ export async function createReservationPaymentSessionForCustomer(
         method: "stripe",
         status: "pending",
         stripeCheckoutSessionId: sessionId,
+        // The account the session was created on: its lifecycle is read on it.
+        stripeAccountId,
         origin: "customer_session",
         currency,
         createdAt: now,

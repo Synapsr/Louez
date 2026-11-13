@@ -9,7 +9,7 @@ import { nanoid } from "nanoid";
 
 import { validateReservationContract, confirmMarketplaceBookingAttempt } from "@louez/api/services";
 import { ConsumableStockError, db, toWholeSeconds } from "@louez/db";
-import { paymentRequests, reservationActivity, reservations, stores } from "@louez/db";
+import { payments, paymentRequests, reservationActivity, reservations, stores } from "@louez/db";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
@@ -37,6 +37,8 @@ import {
   paymentInsuranceShareMinor,
 } from "@/lib/stripe/payment-completion";
 import { evaluateReservationRules } from "@louez/utils";
+
+import { checkoutSessionAccount, isSessionCreationRow } from "./checkout-session-account";
 
 export type CheckoutPaymentCompletionSource = "webhook" | "return";
 
@@ -470,7 +472,10 @@ const runCheckoutPaymentCompletion = async ({
 
 /**
  * Shared completion of a Stripe Checkout payment for a reservation, used by
- * the Connect webhook and by the customer's return from Stripe.
+ * the Connect webhook and by the customer's return from Stripe. The return
+ * reads the session and its PaymentIntent on the account the session's
+ * payment row records, the one Louez created it on, else on the store's
+ * connected account (`checkoutSessionAccount`), and gives the claim that account.
  */
 export const completeCheckoutPayment = async (
   input: CompleteCheckoutPaymentInput,
@@ -500,7 +505,27 @@ export const completeCheckoutPayment = async (
     return { status: "payment_unavailable" };
   }
 
-  const session = await getCheckoutSession(store.stripeAccountId, input.stripeCheckoutSessionId);
+  // The session's payment row of this reservation in this store, read before
+  // Stripe is asked: its account is the one the session lives on.
+  const [sessionRow] = await db
+    .select({ origin: payments.origin, stripeAccountId: payments.stripeAccountId })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .where(
+      and(
+        eq(payments.reservationId, input.reservationId),
+        eq(payments.stripeCheckoutSessionId, input.stripeCheckoutSessionId),
+        eq(reservations.storeId, store.id),
+      ),
+    )
+    .limit(1);
+  const sessionAccount = checkoutSessionAccount({
+    recordedAccountId:
+      sessionRow && isSessionCreationRow(sessionRow) ? sessionRow.stripeAccountId : null,
+    storeAccountId: store.stripeAccountId,
+  });
+
+  const session = await getCheckoutSession(sessionAccount, input.stripeCheckoutSessionId);
 
   // The session id comes from the URL: it must be the session created for
   // THIS reservation (`createCheckoutSession` stamps the id in the metadata),
@@ -531,7 +556,7 @@ export const completeCheckoutPayment = async (
     const paymentIntent = await stripe.paymentIntents.retrieve(
       session.paymentIntentId,
       { expand: ["latest_charge"] },
-      { stripeAccount: store.stripeAccountId },
+      { stripeAccount: sessionAccount },
     );
     paymentIntentId = paymentIntent.id;
     const charge = paymentIntent.latest_charge;
@@ -567,7 +592,7 @@ export const completeCheckoutPayment = async (
       chargeCreatedAt,
       stripeCustomerId,
       stripePaymentMethodId,
-      stripeAccountId: store.stripeAccountId,
+      stripeAccountId: sessionAccount,
       paymentIntentMetadata,
       sessionMetadata: session.metadata,
     },
