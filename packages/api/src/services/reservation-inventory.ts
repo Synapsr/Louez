@@ -155,7 +155,8 @@ type InventoryReserved = { ok: true; inventory: ReservedInventory };
  * `errors.productNoLongerAvailable`. With `onShortfall: "collect"` it is
  * recorded instead, takes what is left, and the other lines are still checked:
  * the answer then lists every shortfall, in the order of the lines, for a
- * caller that may book over the stock.
+ * caller that may book over the stock, and each unit a line holds that the
+ * stock does not cover where it is held.
  */
 export function reserveInventory(
   input: ReserveInventoryInput & { onShortfall: "collect" },
@@ -164,6 +165,8 @@ export function reserveInventory(
       shortfalls: CapacityShortfall[];
       /** The position in `lines` of each shortfall, in the same order. */
       shortfallLineIndexes: number[];
+      /** The units held by the lines (`assignedUnitIds`) that the stock does not cover. */
+      uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }>;
     })
   | ReservationFailure
 >;
@@ -184,11 +187,16 @@ export async function reserveInventory({
   skipRequiredAccessoryCheck = false,
   onShortfall = "fail",
 }: ReserveInventoryInput & { onShortfall?: "fail" | "collect" }): Promise<
-  | (InventoryReserved & { shortfalls?: CapacityShortfall[]; shortfallLineIndexes?: number[] })
+  | (InventoryReserved & {
+      shortfalls?: CapacityShortfall[];
+      shortfallLineIndexes?: number[];
+      uncoveredHeldUnits?: Array<{ lineIndex: number; unitId: string }>;
+    })
   | ReservationFailure
 > {
   const collect = onShortfall === "collect";
   const shortfallByLineIndex = new Map<number, CapacityShortfall>();
+  const uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }> = [];
   const recordShortfall = (
     index: number,
     line: ReserveInventoryLine,
@@ -212,6 +220,7 @@ export async function reserveInventory({
       inventory,
       shortfalls: byLine.map(([, shortfall]) => shortfall),
       shortfallLineIndexes: byLine.map(([index]) => index),
+      uncoveredHeldUnits,
     };
   };
 
@@ -341,7 +350,12 @@ export async function reserveInventory({
   // at once, next to what the other bookings ask of it at each instant.
   const trackedByLineIndex = new Map<
     number,
-    { allocation: StockLineAllocation; pooled: boolean; selectedAttributes: UnitAttributes }
+    {
+      allocation: StockLineAllocation;
+      pooled: boolean;
+      selectedAttributes: UnitAttributes;
+      heldUnitIds: string[];
+    }
   >();
   const combinationsByProduct = new Map<string, Map<string, StockCombination>>();
   const bufferMs = Math.max(0, turnoverBufferMinutes) * 60_000;
@@ -359,6 +373,14 @@ export async function reserveInventory({
               // the product's current axes take part in matching, so a value
               // from an axis withdrawn since then no longer blocks that line.
               selectedAttributes: canonicalizeAttributes(axes, line.selectedAttributes),
+              // The rentable units of the product the line holds: one that is
+              // not rentable is the unit check's (S4), not the stock's.
+              heldUnits: (line.assignedUnitIds ?? []).flatMap((unitId) => {
+                const unit = rentableUnitById.get(unitId);
+                return unit?.productId === product.id
+                  ? [{ unitId, combinationKey: unit.combinationKey || DEFAULT_COMBINATION_KEY }]
+                  : [];
+              }),
             },
           ]
         : [],
@@ -414,7 +436,7 @@ export async function reserveInventory({
     const allocations = allocateStock({
       capacity,
       bookings: spans,
-      lines: productLines.map(({ line, pooled, selectedAttributes }) => ({
+      lines: productLines.map(({ line, pooled, selectedAttributes, heldUnits }) => ({
         quantity: line.quantity,
         candidates: combinations
           .filter(
@@ -429,19 +451,22 @@ export async function reserveInventory({
         // any unit that matches what it chose, and keeps on their
         // combinations the units it already holds.
         single: !pooled,
-        held: pooled
-          ? (line.assignedUnitIds ?? []).flatMap((unitId) => {
-              const unit = rentableUnitById.get(unitId);
-              return unit?.productId === product.id
-                ? [unit.combinationKey || DEFAULT_COMBINATION_KEY]
-                : [];
-            })
-          : [],
+        held: heldUnits.map((unit) => unit.combinationKey),
       })),
     });
-    for (const [position, { index, pooled, selectedAttributes }] of productLines.entries()) {
+    for (const [
+      position,
+      { index, pooled, selectedAttributes, heldUnits },
+    ] of productLines.entries()) {
       const allocation = allocations[position];
-      if (allocation) trackedByLineIndex.set(index, { allocation, pooled, selectedAttributes });
+      if (allocation) {
+        trackedByLineIndex.set(index, {
+          allocation,
+          pooled,
+          selectedAttributes,
+          heldUnitIds: heldUnits.map((unit) => unit.unitId),
+        });
+      }
     }
   }
 
@@ -474,7 +499,11 @@ export async function reserveInventory({
 
     const tracked = trackedByLineIndex.get(index);
     if (!tracked) continue;
-    const { allocation, pooled, selectedAttributes } = tracked;
+    const { allocation, pooled, selectedAttributes, heldUnitIds } = tracked;
+    for (const position of allocation.heldShort) {
+      const unitId = heldUnitIds[position];
+      if (unitId) uncoveredHeldUnits.push({ lineIndex: index, unitId });
+    }
     if (allocation.served < line.quantity) {
       if (!collect) {
         return failReservation("errors.productNoLongerAvailable", { name: product.name });
@@ -592,9 +621,15 @@ const findReservationUnitConflicts = async (
     blockingStatuses: BlockingReservationStatus[];
     turnoverBufferMinutes: number;
   },
-): Promise<{ hard: ReservationUnitConflict[]; buffer: ReservationUnitConflict[] }> => {
+): Promise<{
+  hard: ReservationUnitConflict[];
+  buffer: ReservationUnitConflict[];
+  /** Each held unit's name, as the store reads it now. */
+  identifiers: Map<string, string>;
+}> => {
   const hard: ReservationUnitConflict[] = [];
   const buffer: ReservationUnitConflict[] = [];
+  const identifiers = new Map<string, string>();
   // A unit deleted since keeps its name on the line and holds nothing.
   const heldByItem = params.items.map((item) => ({
     reservationItemId: item.id,
@@ -605,7 +640,7 @@ const findReservationUnitConflicts = async (
     ),
   }));
   const unitIds = [...new Set(heldByItem.flatMap((item) => item.units.map((unit) => unit.unitId)))];
-  if (unitIds.length === 0) return { hard, buffer };
+  if (unitIds.length === 0) return { hard, buffer, identifiers };
 
   const lockedUnits = await tx
     .select({ id: productUnits.id, identifier: productUnits.identifier })
@@ -641,12 +676,13 @@ const findReservationUnitConflicts = async (
         unitId: unit.unitId,
         identifier: identifierById.get(unit.unitId) || unit.identifier || unit.unitId,
       };
+      identifiers.set(unit.unitId, conflict.identifier);
       const busy = busyUnitIds.get(unit.unitId);
       if (!rentableUnitIds.has(unit.unitId) || busy === "overlap") hard.push(conflict);
       else if (busy === "buffer") buffer.push(conflict);
     }
   }
-  return { hard, buffer };
+  return { hard, buffer, identifiers };
 };
 
 /** The stock refusal of a confirmation, as any caller may show it. */
@@ -694,7 +730,12 @@ export interface ConfirmationStockVerdict {
  * is not refused for it.
  *
  * Throws `ReservationUnitConflictError` for a unit that cannot serve, before
- * any stock refusal: no caller may book over it (S4). A unit only the
+ * any stock refusal: no caller may book over it (S4). That is a unit another
+ * booking holds, or one retired or in downtime, and also a unit no other
+ * booking holds that the stock, counted without the turnover buffer, does
+ * not cover where the line holds it: other bookings that left a choice open
+ * (a size, a colour) need it (`reason: "owed_to_other_bookings"`). An
+ * override covers only the units a line does not hold yet. A unit only the
  * turnover buffer around another booking reaches does not refuse: it is
  * named for the activity row.
  */
@@ -712,7 +753,8 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
     },
   });
   if (!reservation) throw new ReservationInventoryError("errors.reservationNotFound");
-  const lines = reservation.items.flatMap((item) =>
+  const lineItems = reservation.items.filter((item) => item.productId);
+  const lines = lineItems.flatMap((item) =>
     item.productId
       ? [
           {
@@ -769,6 +811,20 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
     throw new ReservationUnitConflictError(unitConflicts.hard);
   }
   if (!buffered.ok || !unbuffered.ok) throw new ReservationInventoryError(STOCK_GONE);
+  // A held unit the stock itself does not cover is owed to other bookings'
+  // open choices: like a unit held by id, no override books over it.
+  if (unbuffered.uncoveredHeldUnits.length > 0) {
+    throw new ReservationUnitConflictError(
+      unbuffered.uncoveredHeldUnits.map(
+        ({ lineIndex, unitId }): ReservationUnitConflict => ({
+          reservationItemId: lineItems[lineIndex]?.id ?? "",
+          unitId,
+          identifier: unitConflicts.identifiers.get(unitId) ?? unitId,
+          reason: "owed_to_other_bookings",
+        }),
+      ),
+    );
+  }
 
   // A line short without the buffer is a capacity shortfall; a line short
   // only with it, a buffer-only one. Both checks place the same lines in the

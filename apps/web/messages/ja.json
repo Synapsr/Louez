@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "割り当てられたユニットは新しい日付では使用できません: {identifiers}",
     "invalidUnits": "選択した 1 つ以上のユニットが無効です",
     "turnoverBufferConflict": "選択したユニットはターンオーバー バッファーによってのみブロックされます",
-    "turnoverBufferShortfall": "在庫はこの予約をまかなえますが、レンタル間のターンオーバーバッファーを含めるとまかなえません。確定するには、この日程の前後の在庫を空けるか、日程を変更してください。",
+    "turnoverBufferShortfall": "レンタル間のターンオーバーバッファーにより、この予約の一部の明細を確定できません。この日程の前後の在庫を空けるか、日程を変更してください。",
     "unitProductMismatch": "選択したユニットはこの製品に属しません",
     "unitCombinationMismatch": "選択したユニットは、このラインアイテムの予約された組み合わせと一致しません",
     "cannotDisableUnitTrackingWithCombinations": "アクティブな予約でこの製品の追跡された組み合わせが使用されている間は、ユニット追跡を無効にすることはできません。",

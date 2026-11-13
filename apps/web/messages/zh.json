@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "分配的单位在新日期不可用：{identifiers}",
     "invalidUnits": "所选的一个或多个单位无效",
     "turnoverBufferConflict": "所选单元仅被周转缓冲区阻塞",
-    "turnoverBufferShortfall": "库存足以覆盖此预订，但加上两次租赁之间的周转缓冲后则不足。请释放这些日期前后的库存或调整日期后再确认。",
+    "turnoverBufferShortfall": "两次租赁之间的周转缓冲导致此预订的部分项目无法确认。请释放这些日期前后的库存或调整日期。",
     "unitProductMismatch": "所选单位不属于该产品",
     "unitCombinationMismatch": "所选单位与该订单项的预留组合不匹配",
     "cannotDisableUnitTrackingWithCombinations": "当活动预订使用该产品的跟踪组合时，无法禁用单位跟踪。",

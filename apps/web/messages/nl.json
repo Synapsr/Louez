@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "Toegewezen eenheden zijn niet beschikbaar voor de nieuwe datums: {identifiers}",
     "invalidUnits": "Een of meer geselecteerde eenheden zijn ongeldig",
     "turnoverBufferConflict": "De geselecteerde eenheid wordt alleen geblokkeerd door de omlooptijdbuffer",
-    "turnoverBufferShortfall": "De voorraad dekt deze reservering, maar niet met de omlooptijdbuffer tussen twee verhuringen. Maak voorraad vrij rond deze data of verplaats ze om de reservering te bevestigen.",
+    "turnoverBufferShortfall": "De omlooptijdbuffer tussen twee verhuringen verhindert dat sommige regels van deze reservering worden bevestigd. Maak voorraad vrij rond deze data of verplaats ze.",
     "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",
     "unitCombinationMismatch": "Geselecteerde eenheden komen niet overeen met de gereserveerde combinatie voor dit regelitem",
     "cannotDisableUnitTrackingWithCombinations": "Kan eenheidtracering niet uitschakelen terwijl actieve reserveringen gevolgde combinaties gebruiken voor dit product.",

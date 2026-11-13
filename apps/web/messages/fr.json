@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "Des unités assignées sont indisponibles aux nouvelles dates : {identifiers}",
     "invalidUnits": "Une ou plusieurs unités sélectionnées sont invalides",
     "turnoverBufferConflict": "L'unité sélectionnée est bloquée uniquement par la marge de rotation",
-    "turnoverBufferShortfall": "Le stock couvre cette réservation, mais pas avec la marge de rotation entre deux locations. Libérez du stock autour de ces dates ou déplacez-les pour la confirmer.",
+    "turnoverBufferShortfall": "La marge de rotation entre deux locations empêche de confirmer certaines lignes de cette réservation. Libérez du stock autour de ces dates ou déplacez-les.",
     "unitProductMismatch": "Les unités sélectionnées n'appartiennent pas à ce produit",
     "unitCombinationMismatch": "Les unités sélectionnées ne correspondent pas à la combinaison réservée pour cette ligne",
     "cannotDisableUnitTrackingWithCombinations": "Impossible de désactiver le suivi unitaire tant que des réservations actives utilisent des combinaisons suivies pour ce produit.",

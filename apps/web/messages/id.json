@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "Unit yang ditetapkan tidak tersedia untuk tanggal baru: {identifiers}",
     "invalidUnits": "Satu atau lebih unit yang dipilih tidak valid",
     "turnoverBufferConflict": "Unit yang dipilih hanya diblokir oleh buffer turnover",
-    "turnoverBufferShortfall": "Stok mencukupi reservasi ini, tetapi tidak dengan buffer turnover di antara dua penyewaan. Kosongkan stok di sekitar tanggal ini atau pindahkan tanggalnya untuk mengonfirmasinya.",
+    "turnoverBufferShortfall": "Buffer turnover di antara dua penyewaan mencegah konfirmasi beberapa baris reservasi ini. Kosongkan stok di sekitar tanggal ini atau pindahkan tanggalnya.",
     "unitProductMismatch": "Unit yang dipilih bukan milik produk ini",
     "unitCombinationMismatch": "Unit yang dipilih tidak cocok dengan kombinasi yang dipesan untuk item baris ini",
     "cannotDisableUnitTrackingWithCombinations": "Tidak dapat menonaktifkan pelacakan unit saat reservasi aktif menggunakan kombinasi terlacak untuk produk ini.",

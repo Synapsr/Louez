@@ -180,15 +180,18 @@ const allocateByRule = (instance: Instance): StockLineAllocation[] => {
   };
 
   const granted: StockDemand[] = [];
-  const heldOf = (line: StockLine) => (line.held ?? []).slice(0, line.quantity);
-  const servedHeld = lines.map((line) => {
+  // A single line's held units are not granted ahead of it.
+  const heldOf = (line: StockLine) =>
+    line.single ? [] : (line.held ?? []).slice(0, line.quantity);
+  const heldShort = lines.map((): number[] => []);
+  const servedHeld = lines.map((line, index) => {
     let served = 0;
-    for (const key of heldOf(line)) {
+    for (const [position, key] of heldOf(line).entries()) {
       const unit = { combinationKeys: [key], quantity: 1 };
       if (fits([...granted, unit])) {
         granted.push(unit);
         served += 1;
-      }
+      } else heldShort[index]?.push(position);
     }
     return served;
   });
@@ -202,7 +205,7 @@ const allocateByRule = (instance: Instance): StockLineAllocation[] => {
         quantity,
       }));
       granted.push({ combinationKeys: line.candidates, quantity: served });
-      return { served: held + served, combinationKey: null };
+      return { served: held + served, combinationKey: null, heldShort: heldShort[index] ?? [] };
     }
     // A combination with no unit is no candidate.
     const candidates = [...new Set(line.candidates)].filter((key) => (capacity.get(key) ?? 0) > 0);
@@ -230,7 +233,18 @@ const allocateByRule = (instance: Instance): StockLineAllocation[] => {
       served = Math.max(0, served);
     }
     if (placed !== undefined) granted.push(on(placed, served));
-    return { served: held + served, combinationKey: placed ?? line.candidates[0] ?? null };
+    // A unit the line holds is covered on the combination it is placed on, up to what it gets.
+    let covered = 0;
+    const short = (line.held ?? []).flatMap((key, position) => {
+      if (key !== placed || covered >= served) return [position];
+      covered += 1;
+      return [];
+    });
+    return {
+      served: held + served,
+      combinationKey: placed ?? line.candidates[0] ?? null,
+      heldShort: short,
+    };
   });
 };
 
@@ -605,6 +619,37 @@ describe("allocateStock, named cases", () => {
     );
   });
 
+  test("a held unit the stock does not cover where the line holds it is reported", () => {
+    const medium = serving({ selectedAttributes: { size: "M" } });
+    // Another booking asks two M units, colour open: both M units are its.
+    const others = [[{ combinationKeys: medium, quantity: 2 }]];
+    const heldShortOf = (line: StockLine) =>
+      allocateStock({ capacity: oneOfEach, bookings: bookingsOf(others), lines: [line] }).map(
+        (allocation) => [allocation.served, allocation.heldShort],
+      );
+
+    // A spread line holding M/red: L/red serves the rest, the held unit is short.
+    assert.deepEqual(heldShortOf({ ...open(serving({}), 2), held: [M_RED.combinationKey] }), [
+      [1, [0]],
+    ]);
+    // A single line on M/red holding it: nothing of M/red is left for it.
+    assert.deepEqual(heldShortOf({ ...exact(M_RED), held: [M_RED.combinationKey] }), [[0, [0]]]);
+    // A single line on L/red holding L/red, then one it is not placed on.
+    assert.deepEqual(
+      heldShortOf({ ...exact(L_RED, 2), held: [L_RED.combinationKey, M_BLUE.combinationKey] }),
+      [[1, [1]]],
+    );
+    // Nothing else asks for them: every held unit is covered.
+    assert.deepEqual(
+      allocateStock({
+        capacity: oneOfEach,
+        bookings: [],
+        lines: [{ ...exact(M_RED), held: [M_RED.combinationKey] }],
+      }).map((allocation) => allocation.heldShort),
+      [[]],
+    );
+  });
+
   test("a unit held by a later line is not taken by an earlier one", () => {
     const anyUnit = serving({});
     assert.deepEqual(
@@ -707,14 +752,14 @@ describe("allocateStock, named cases", () => {
       bookings: [],
       lines: [{ quantity: 3, candidates: [...capacity.keys()], single: true }],
     });
-    assert.deepEqual(short, { served: 2, combinationKey: M_RED.combinationKey });
+    assert.deepEqual(short, { served: 2, combinationKey: M_RED.combinationKey, heldShort: [] });
 
     const [none] = allocateStock({
       capacity: new Map([[M_BLUE.combinationKey, 0]]),
       bookings: [],
       lines: [{ quantity: 1, candidates: [M_BLUE.combinationKey], single: true }],
     });
-    assert.deepEqual(none, { served: 0, combinationKey: M_BLUE.combinationKey });
+    assert.deepEqual(none, { served: 0, combinationKey: M_BLUE.combinationKey, heldShort: [] });
   });
 
   test("open choices are placed afresh at each instant, the request's spread lines too", () => {
@@ -801,15 +846,15 @@ describe("allocateStock places single lines first fit, never revisiting one", ()
     single: true,
   }));
   const expected = [
-    { served: 4, combinationKey: "c0" },
-    { served: 4, combinationKey: "c1" },
-    { served: 4, combinationKey: "c2" },
-    { served: 4, combinationKey: "c3" },
+    { served: 4, combinationKey: "c0", heldShort: [] },
+    { served: 4, combinationKey: "c1", heldShort: [] },
+    { served: 4, combinationKey: "c2", heldShort: [] },
+    { served: 4, combinationKey: "c3", heldShort: [] },
     // Short from here on: each takes the most a combination has left.
-    { served: 4, combinationKey: "c4" },
-    { served: 4, combinationKey: "c5" },
-    { served: 4, combinationKey: "c6" },
-    { served: 4, combinationKey: "c7" },
+    { served: 4, combinationKey: "c4", heldShort: [] },
+    { served: 4, combinationKey: "c5", heldShort: [] },
+    { served: 4, combinationKey: "c6", heldShort: [] },
+    { served: 4, combinationKey: "c7", heldShort: [] },
   ];
 
   test("the 4s take the sevens and the first 6 is short", () => {

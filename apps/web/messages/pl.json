@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "Przypisane jednostki są niedostępne w nowych terminach: {identifiers}",
     "invalidUnits": "Jedna lub więcej wybranych jednostek jest nieprawidłowa",
     "turnoverBufferConflict": "Wybrana jednostka jest blokowana tylko przez bufor rotacji",
-    "turnoverBufferShortfall": "Stan magazynowy pokrywa tę rezerwację, ale nie z buforem rotacji między dwoma wynajmami. Zwolnij stan wokół tych dat lub je przesuń, aby ją potwierdzić.",
+    "turnoverBufferShortfall": "Bufor rotacji między dwoma wynajmami uniemożliwia potwierdzenie niektórych pozycji tej rezerwacji. Zwolnij stan wokół tych dat lub je przesuń.",
     "unitProductMismatch": "Wybrane jednostki nie należą do tego produktu",
     "unitCombinationMismatch": "Wybrane jednostki nie odpowiadają zarezerwowanej kombinacji dla tej pozycji",
     "cannotDisableUnitTrackingWithCombinations": "Nie można wyłączyć śledzenia jednostek, gdy aktywne rezerwacje korzystają ze śledzonych kombinacji",

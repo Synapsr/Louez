@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "새 날짜에는 할당된 장치를 사용할 수 없습니다: {identifiers}",
     "invalidUnits": "선택한 단위 중 하나 이상이 잘못되었습니다.",
     "turnoverBufferConflict": "선택한 유닛은 턴오버 버퍼에 의해서만 차단됩니다.",
-    "turnoverBufferShortfall": "재고로 이 예약을 처리할 수 있지만, 대여 사이의 턴오버 버퍼까지 포함하면 부족합니다. 확정하려면 이 날짜 전후의 재고를 확보하거나 날짜를 옮기세요.",
+    "turnoverBufferShortfall": "대여 사이의 턴오버 버퍼 때문에 이 예약의 일부 항목을 확정할 수 없습니다. 이 날짜 전후의 재고를 확보하거나 날짜를 옮기세요.",
     "unitProductMismatch": "선택한 장치는 이 제품에 속하지 않습니다.",
     "unitCombinationMismatch": "선택한 단위가 이 광고 항목에 대해 예약된 조합과 일치하지 않습니다.",
     "cannotDisableUnitTrackingWithCombinations": "활성 예약이 이 제품에 대해 추적된 조합을 사용하는 동안에는 단위 추적을 비활성화할 수 없습니다.",

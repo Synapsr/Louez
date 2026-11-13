@@ -40,6 +40,7 @@ import { cn, formatCurrency } from '@louez/utils'
 import { useFormatLocale } from '@/hooks/use-format-locale'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
+import { showsOverbookedBadge } from './utils/capacity-verdict-badge'
 import { formatPaymentFailureDescription } from './utils/payment-failure-description'
 
 type ActivityType =
@@ -451,10 +452,8 @@ export function ActivityTimelineV2({
     const activitySource = isCreationEvent
       ? (activity.metadata?.source as string) || reservationSource
       : undefined
-    // A capacity verdict: the booking was created or edited over the stock.
-    const isOverbooked =
-      (isCreationEvent || activity.activityType === 'modified') &&
-      activity.metadata?.overbooked === true
+    // A capacity verdict: the booking was created, edited or confirmed over the stock.
+    const isOverbooked = showsOverbookedBadge(activity)
 
     const Icon = isCreationEvent
       ? activitySource === 'manual'

@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "Zugewiesene Einheiten sind für die neuen Daten nicht verfügbar: {identifiers}",
     "invalidUnits": "Eine oder mehrere ausgewählte Einheiten sind ungültig",
     "turnoverBufferConflict": "Die ausgewählte Einheit wird nur durch den Umschlagspuffer blockiert",
-    "turnoverBufferShortfall": "Der Bestand deckt diese Reservierung ab, jedoch nicht mit dem Umschlagspuffer zwischen zwei Vermietungen. Geben Sie Bestand um diese Daten frei oder verschieben Sie sie, um sie zu bestätigen.",
+    "turnoverBufferShortfall": "Der Umschlagspuffer zwischen zwei Vermietungen verhindert, dass einige Positionen dieser Reservierung bestätigt werden. Geben Sie Bestand um diese Daten frei oder verschieben Sie sie.",
     "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",
     "unitCombinationMismatch": "Ausgewählte Einheiten stimmen nicht mit der reservierten Kombination für diese Position überein",
     "cannotDisableUnitTrackingWithCombinations": "Einheitenverfolgung kann nicht deaktiviert werden, solange aktive Reservierungen verfolgte Kombinationen für dieses Produkt verwenden.",

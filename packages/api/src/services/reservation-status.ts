@@ -452,8 +452,8 @@ type TransactionOutcome =
  * refused with its shortfalls (RESERVATION_INSUFFICIENT_CAPACITY) unless the
  * request carries `allowOverbooking`: it is then made, and its activity row
  * records `overbooked: true` with the shortfalls and the credential. A line
- * short only with the turnover buffer, a unit another booking holds and
- * consumable stock below zero refuse whatever the flag. `confirm` is asked
+ * short only with the turnover buffer, a held unit another booking holds
+ * or needs, and consumable stock below zero refuse whatever the flag. `confirm` is asked
  * under the locks when the change sends the customer a message, takes
  * stock, or cancels; its preview lists the shortfalls booked over. The
  * customer's message, the store's and the platform's notifications and the

@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "As unidades atribuídas não estão disponíveis para as novas datas: {identifiers}",
     "invalidUnits": "Uma ou mais unidades selecionadas são inválidas",
     "turnoverBufferConflict": "A unidade selecionada está bloqueada apenas pela margem de rotação",
-    "turnoverBufferShortfall": "O stock cobre esta reserva, mas não com a margem de rotação entre dois alugueres. Liberte stock em torno destas datas ou altere-as para a confirmar.",
+    "turnoverBufferShortfall": "A margem de rotação entre dois alugueres impede a confirmação de algumas linhas desta reserva. Liberte stock em torno destas datas ou altere-as.",
     "unitProductMismatch": "As unidades selecionadas não pertencem a este produto",
     "unitCombinationMismatch": "As unidades selecionadas não correspondem à combinação reservada para esta linha",
     "cannotDisableUnitTrackingWithCombinations": "Não é possível desativar o rastreamento de unidades enquanto reservas ativas utilizam combinações rastreadas para este produto.",

@@ -731,7 +731,7 @@ export const updateReservationStatusInput = z.object({
     .boolean()
     .optional()
     .describe(
-      "For a confirmation the stock cannot cover (RESERVATION_INSUFFICIENT_CAPACITY): true confirms it all the same, booking over the stock, and the reservation's history records the shortfalls. Send it only when the user chose to book over the stock. It never passes a unit held by another booking, consumable stock below zero, or the turnover buffer. Ignored for any other change.",
+      "For a confirmation the stock cannot cover (RESERVATION_INSUFFICIENT_CAPACITY): true confirms it all the same, booking over the stock, and the reservation's history records the shortfalls. Send it only when the user chose to book over the stock. It covers only the units a line does not hold yet: a unit the reservation holds that another booking holds or needs refuses (RESERVATION_UNITS_UNAVAILABLE). It never passes consumable stock below zero, or a shortfall that comes from the turnover buffer alone (RESERVATION_TURNOVER_BUFFER_CONFLICT); a line short on the stock itself is booked over whole, buffer included. Ignored for any other change.",
     ),
 });
 
@@ -831,12 +831,49 @@ export interface CapacityShortfall {
   available: number;
 }
 
+/**
+ * A capacity verdict: what a stock check said of a reservation when it was
+ * created, edited or confirmed, kept on that activity row. `overbooked: true`
+ * with its shortfalls when the team booked over the stock, `overbooked: false`
+ * when the check found that it fits. A reservation's latest verdict is the one
+ * that counts: the inbox shows an overbooking until a later edit or
+ * confirmation fits, and the reservation's history marks each row booked
+ * over the stock. A confirmation's row is `confirmed`, or `quote_accepted`
+ * for the customer's.
+ */
+export const CAPACITY_VERDICT_ACTIVITY_TYPES = [
+  "created",
+  "modified",
+  "confirmed",
+  "quote_accepted",
+] as const;
+
 /** A unit held by a reservation's line that cannot serve it over its dates. */
 export interface ReservationUnitConflict {
   reservationItemId: string;
   unitId: string;
   identifier: string;
+  /**
+   * `owed_to_other_bookings`: no other booking holds the unit, and the stock
+   * owes it to bookings that left a choice open (a size, a colour). Absent
+   * when another booking holds it over these dates, or it is retired or in
+   * downtime.
+   */
+  reason?: "owed_to_other_bookings";
 }
+
+/** Why the units cannot serve, for an error's message. */
+const unitConflictCauses = (conflicts: ReservationUnitConflict[]) =>
+  [
+    conflicts.some((conflict) => conflict.reason === undefined)
+      ? "Another booking holds them over these dates, or they are retired or in downtime."
+      : null,
+    conflicts.some((conflict) => conflict.reason === "owed_to_other_bookings")
+      ? "Other bookings that left a choice open (a size, a colour) need them over these dates, and the stock has no other unit for them."
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
 /** Each shortfall in a few words, for an error's message. */
 const describeShortfalls = (shortfalls: CapacityShortfall[]) =>
@@ -879,10 +916,14 @@ export const reservationErrors = {
         "Not confirmed: some items of this reservation are no longer available for its dates.",
       i18nKey,
     }),
-  /** Units the reservation holds are held by another booking over its dates, or out of the stock. */
+  /**
+   * Units the reservation holds are held by another booking over its dates,
+   * out of the stock, or owed to bookings that left a choice open.
+   * `allowOverbooking` does not pass it.
+   */
   unitsUnavailable: (conflicts: ReservationUnitConflict[]) =>
     apiError("CONFLICT", "RESERVATION_UNITS_UNAVAILABLE", {
-      message: `Not confirmed: units assigned to this reservation cannot serve it for its dates (${conflicts.map((conflict) => conflict.identifier).join(", ")}). Another booking holds them over these dates, or they are retired or in downtime. Assign other units, then confirm.`,
+      message: `Not confirmed: units assigned to this reservation cannot serve it for its dates (${conflicts.map((conflict) => conflict.identifier).join(", ")}). ${unitConflictCauses(conflicts)} Remove them from the reservation or assign other units, then confirm; allowOverbooking does not pass it.`,
       i18nKey: "errors.assignedUnitsConflict",
       details: { conflicts },
     }),
@@ -903,7 +944,7 @@ export const reservationErrors = {
    */
   turnoverBufferShortfall: (shortfalls: CapacityShortfall[]) =>
     apiError("CONFLICT", "RESERVATION_TURNOVER_BUFFER_CONFLICT", {
-      message: `Not confirmed: the stock covers this reservation, but not with the turnover buffer the store keeps between rentals (${describeShortfalls(shortfalls)}). allowOverbooking does not pass it. Free the stock around these dates, or move the dates, then confirm.`,
+      message: `Not confirmed: the turnover buffer the store keeps between rentals keeps lines of this reservation from being confirmed; they fit the stock without it (${describeShortfalls(shortfalls)}). allowOverbooking does not pass it. Free the stock around these dates, or move the dates, then confirm.`,
       i18nKey: "errors.turnoverBufferShortfall",
       details: { shortfalls },
     }),

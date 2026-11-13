@@ -9253,7 +9253,7 @@
     "assignedUnitsConflict": "Le unità assegnate non sono disponibili per le nuove date: {identifiers}",
     "invalidUnits": "Una o più unità selezionate non sono valide",
     "turnoverBufferConflict": "L'unità selezionata è bloccata solo dal margine di rotazione",
-    "turnoverBufferShortfall": "Lo stock copre questa prenotazione, ma non con il margine di rotazione tra due noleggi. Libera stock intorno a queste date o spostale per confermarla.",
+    "turnoverBufferShortfall": "Il margine di rotazione tra due noleggi impedisce di confermare alcune righe di questa prenotazione. Libera stock intorno a queste date o spostale.",
     "unitProductMismatch": "Le unità selezionate non appartengono a questo prodotto",
     "unitCombinationMismatch": "Le unità selezionate non corrispondono alla combinazione riservata per questa riga",
     "cannotDisableUnitTrackingWithCombinations": "Impossibile disattivare il tracciamento delle unità mentre prenotazioni attive utilizzano combinazioni tracciate per questo prodotto.",

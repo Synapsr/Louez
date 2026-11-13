@@ -13,7 +13,8 @@
  *   stock is not held against the request. The request fits when it fits at
  *   every instant of its window.
  * - The units a spread line already holds are granted first, each on its own
- *   combination, one by one, each only if it fits.
+ *   combination, one by one, each only if it fits. A held unit that does not
+ *   fit is reported, and not replaced by another one.
  * - Then the lines, in their order. A spread line (one booked with no exact
  *   combination) is a demand like the others' and gets the most that fits
  *   next to what was granted before it. A single line (a checkout line, or
@@ -23,6 +24,9 @@
  *   fits. A placement is never revisited.
  * - A line that does not fit whole takes the most that fits: a single line
  *   the most one candidate gives, the first of them on a tie.
+ * - The units a single line holds are not granted ahead of it: each is
+ *   covered when it is on the combination the line is placed on, within what
+ *   the line is served, in their order; the others are reported.
  *
  * What the rule does not see:
  *
@@ -105,8 +109,9 @@ export interface StockLine {
   /** One combination covers the whole line; otherwise it spreads over its candidates. */
   single: boolean;
   /**
-   * The combination of each unit a spread line already holds. They are
-   * granted there, before any line takes a unit it does not hold yet.
+   * The combination of each unit the line already holds. A spread line's are
+   * granted there, before any line takes a unit it does not hold yet; a
+   * single line's are covered by where it is placed.
    */
   held?: readonly string[];
 }
@@ -120,6 +125,11 @@ export interface StockLineAllocation {
    * a line with no candidate.
    */
   combinationKey: string | null;
+  /**
+   * The position in the line's `held` of each unit the stock does not cover
+   * where the line holds it, in order. Empty when the line holds none.
+   */
+  heldShort: number[];
 }
 
 // --- Flows on combination indices ---------------------------------------------
@@ -537,7 +547,8 @@ export const allocateStock = (input: {
   });
   const lines = input.lines.map((line) => {
     const candidates = usable(line.candidates);
-    const held = (line.held ?? []).slice(0, line.quantity);
+    // Only a spread line's held units are granted ahead of the lines.
+    const held = line.single ? [] : (line.held ?? []).slice(0, line.quantity);
     return {
       line,
       candidates,
@@ -566,15 +577,16 @@ export const allocateStock = (input: {
   const granted: Demand[] = [];
   const fitsWith = (...more: Demand[]) => fits([...granted, ...more]);
   const servedHeld = lines.map(() => 0);
+  const heldShort = lines.map((): number[] => []);
   for (const [index, entry] of lines.entries()) {
-    for (const key of entry.held) {
+    for (const [position, key] of entry.held.entries()) {
       const combination = indexOf.get(key);
-      if (combination === undefined) continue;
-      const unit = { combinations: [combination], quantity: 1 };
-      if (fitsWith(unit)) {
+      const unit =
+        combination === undefined ? undefined : { combinations: [combination], quantity: 1 };
+      if (unit && fitsWith(unit)) {
         granted.push(unit);
         servedHeld[index] = (servedHeld[index] ?? 0) + 1;
-      }
+      } else heldShort[index]?.push(position);
     }
   }
 
@@ -585,7 +597,7 @@ export const allocateStock = (input: {
       const asked = (quantity: number) => ({ combinations: candidates, quantity });
       const served = largestWhere(free, (quantity) => fitsWith(asked(quantity)));
       granted.push(asked(served));
-      return { served: held + served, combinationKey: null };
+      return { served: held + served, combinationKey: null, heldShort: heldShort[index] ?? [] };
     }
 
     const on = (combination: number, quantity: number) => ({
@@ -620,6 +632,29 @@ export const allocateStock = (input: {
       served: held + served,
       combinationKey:
         combination !== undefined ? (keys[combination] ?? null) : (line.candidates[0] ?? null),
+      heldShort: heldOutside(
+        line.held ?? [],
+        combination === undefined ? undefined : keys[combination],
+        served,
+      ),
     };
   });
+};
+
+/**
+ * The position of each unit a single line holds that its placement does not
+ * cover: off the combination it is placed on, or past what it is served there.
+ */
+const heldOutside = (
+  held: readonly string[],
+  placedOn: string | undefined,
+  served: number,
+): number[] => {
+  const short: number[] = [];
+  let covered = 0;
+  for (const [position, key] of held.entries()) {
+    if (key === placedOn && covered < served) covered += 1;
+    else short.push(position);
+  }
+  return short;
 };
