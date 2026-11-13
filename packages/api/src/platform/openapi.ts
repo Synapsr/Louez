@@ -220,7 +220,7 @@ export const COMMON_ERROR_CODES = [
   [
     403,
     "NO_STORE_ACCESS",
-    "The key's owner is no longer a member of the key's store, or the store no longer exists.",
+    "The store asked for is not the key's, the key's owner is no longer a member of its store, or the store no longer exists.",
   ],
   [403, "API_ACCESS_NOT_IN_PLAN", "The store's plan does not include the API."],
   [
@@ -280,7 +280,7 @@ Send JSON bodies with \`Content-Type: application/json\`. An error answers with 
 
 - A refusal by Louez has \`data.code\`, a stable code to branch on, such as \`PERMISSION_DENIED\`, and \`data.retryable\`, whether the same call can succeed later unchanged; \`data.details\`, when present, holds the facts behind it.
 - An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\` and no \`data.code\`. Each issue has a \`message\` and a \`path\`: the field at fault, such as \`["items", 0, "price"]\`, or \`[]\` when the issue is with the input as a whole.
-- A body that is not valid JSON answers 400 \`BAD_REQUEST\` without \`data\`.
+- A body sent as \`application/json\` that cannot be parsed answers 400 \`BAD_REQUEST\` without \`data\`; an empty body is read as an input with nothing in it.
 - An unexpected failure answers 500 \`INTERNAL_SERVER_ERROR\`, often without \`data\`.
 - A path that matches no operation answers 404 with the body \`{"message":"Not found"}\`, the one case not in the \`Error\` shape.
 
@@ -318,7 +318,7 @@ const ERROR_SCHEMA: OpenAPI.SchemaObject = {
     data: {
       type: "object",
       description:
-        "Absent when the body is not valid JSON, and often on a 500. A refusal by Louez has `code` and `retryable`; an input the operation does not accept has `issues` instead.",
+        "Absent when a JSON body cannot be parsed, and often on a 500. A refusal by Louez has `code` and `retryable`; an input the operation does not accept has `issues` instead.",
       properties: {
         code: {
           type: "string",
@@ -418,7 +418,7 @@ const openApiDocumentOptions = {
     schemas: { Error: ERROR_SCHEMA },
     responses: {
       BadRequest: errorBodyResponse(
-        "The body is not valid JSON (no `data`), the input is not accepted (`data.issues`), or a refusal such as INVALID_CURSOR (`data.code`).",
+        "A JSON body that cannot be parsed (no `data`), an input that is not accepted (`data.issues`), or a refusal such as INVALID_CURSOR (`data.code`).",
       ),
       Unauthorized: errorBodyResponse(
         "No valid API key (UNAUTHENTICATED), or a credential that is not an API key (CREDENTIAL_NOT_ACCEPTED).",

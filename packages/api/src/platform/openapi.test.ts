@@ -586,12 +586,21 @@ describe("the public reference", () => {
     const post = (body: string) =>
       serve("/categories", { "content-type": "application/json" }, { method: "POST", body });
 
-    // A body that is not JSON: 400 without data.
+    // A JSON body that cannot be parsed: 400 without data.
     const malformed = await post("{not json");
     assert.equal(malformed?.status, 400);
     const malformedBody = (await malformed?.json()) as Record<string, unknown>;
     assert.equal(malformedBody.code, "BAD_REQUEST");
     assert.equal(malformedBody.data, undefined);
+
+    // An empty body is an input with nothing in it: issues, on the input as a whole.
+    const empty = await post("");
+    assert.equal(empty?.status, 400);
+    const emptyBody = (await empty?.json()) as { data?: { issues?: { path: unknown[] }[] } };
+    assert.deepEqual(
+      emptyBody.data?.issues?.map((issue) => issue.path),
+      [[]],
+    );
 
     // An input the operation does not accept: issues with their path, no code.
     const invalid = await post(JSON.stringify({ name: 5 }));
