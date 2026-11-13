@@ -835,7 +835,38 @@ export interface CapacityShortfall {
   combinationKey: string | null;
   requested: number;
   available: number;
+  /**
+   * The reservation's line that is short: two lines of one product are told
+   * apart by it. The store's confirmation fills it in; a creation's and an
+   * edit's shortfalls do not carry it yet.
+   */
+  reservationItemId?: string;
+  /**
+   * What the line chose of the product's attributes (a size, a colour), as the
+   * customer or the store chose them; null when it chose none. With no
+   * `combinationKey`, it is the line's only choice: any unit that matches it
+   * may serve the line. The store's confirmation fills it in; a creation's and
+   * an edit's shortfalls do not carry it yet.
+   */
+  selectedAttributes?: Record<string, string> | null;
 }
+
+/**
+ * What a short line chose, in a few words: its combination, or else the
+ * attributes it chose ("size: S"); null when it chose nothing.
+ */
+export const shortfallChoice = (shortfall: CapacityShortfall): string | null =>
+  shortfall.combinationKey ??
+  (Object.entries(shortfall.selectedAttributes ?? {})
+    .map(([attribute, value]) => `${attribute}: ${value}`)
+    .join(", ") ||
+    null);
+
+/** A short line in a few words, for a message or a preview: "Kayak (size: S)". */
+export const describeShortfallLine = (shortfall: CapacityShortfall): string => {
+  const choice = shortfallChoice(shortfall);
+  return choice ? `${shortfall.productName} (${choice})` : shortfall.productName;
+};
 
 /**
  * A capacity verdict: what a stock check said of a reservation when it was
@@ -887,7 +918,7 @@ const describeShortfalls = (shortfalls: CapacityShortfall[]) =>
   shortfalls
     .map(
       (shortfall) =>
-        `${shortfall.productName}${shortfall.combinationKey ? ` (${shortfall.combinationKey})` : ""}: ${shortfall.requested} asked, ${shortfall.available} free`,
+        `${describeShortfallLine(shortfall)}: ${shortfall.requested} asked, ${shortfall.available} free`,
     )
     .join("; ");
 

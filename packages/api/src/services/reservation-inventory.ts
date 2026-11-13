@@ -844,13 +844,33 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
   // only with it, a buffer-only one. Both checks place the same lines in the
   // same order, so a line is known by its position.
   const shortWithoutBuffer = new Set(unbuffered.shortfallLineIndexes);
-  const shortOnlyWithBuffer = new Set(
-    buffered.shortfallLineIndexes.filter((lineIndex) => !shortWithoutBuffer.has(lineIndex)),
-  );
+  // Each shortfall names its line and what the line chose: two lines of one
+  // product, both open on a choice, are otherwise alike, and the preview's
+  // token must not take one for the other.
+  const ofLines = (
+    shortfalls: CapacityShortfall[],
+    lineIndexes: number[],
+    keep: (lineIndex: number) => boolean = () => true,
+  ): CapacityShortfall[] =>
+    shortfalls.flatMap((shortfall, position) => {
+      const lineIndex = lineIndexes[position] ?? -1;
+      if (!keep(lineIndex)) return [];
+      const item = lineItems[lineIndex];
+      return [
+        {
+          ...shortfall,
+          ...(item
+            ? { reservationItemId: item.id, selectedAttributes: item.selectedAttributes ?? null }
+            : {}),
+        },
+      ];
+    });
   return {
-    capacityShortfalls: unbuffered.shortfalls,
-    bufferOnlyShortfalls: buffered.shortfalls.filter((_shortfall, position) =>
-      shortOnlyWithBuffer.has(buffered.shortfallLineIndexes[position] ?? -1),
+    capacityShortfalls: ofLines(unbuffered.shortfalls, unbuffered.shortfallLineIndexes),
+    bufferOnlyShortfalls: ofLines(
+      buffered.shortfalls,
+      buffered.shortfallLineIndexes,
+      (lineIndex) => !shortWithoutBuffer.has(lineIndex),
     ),
     bufferOnlyUnitIds: [...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId))],
     turnoverBufferMinutes,

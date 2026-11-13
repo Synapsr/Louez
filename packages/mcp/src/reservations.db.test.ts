@@ -303,24 +303,37 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       pricingMode: "day",
       quantity: 1,
     });
-    const line = async (reservationId: string) => {
+    const line = async (reservationId: string, selectedAttributes?: Record<string, string>) => {
       created.push(reservationId);
+      const itemId = `rt_itm_${String(++counter).padStart(14, "0")}`;
       await louezDb.db.insert(louezDb.reservationItems).values({
-        id: `rt_itm_${String(++counter).padStart(14, "0")}`,
+        id: itemId,
         reservationId,
         productId,
         quantity: 1,
+        selectedAttributes: selectedAttributes ?? null,
         unitPrice: "10.00",
         depositPerUnit: "0.00",
         totalPrice: "20.00",
         productSnapshot: { name: "Kayak", description: null, images: [] },
       });
+      return itemId;
     };
     await line(await reservation("confirmed"));
     const pending = await reservation("pending");
-    await line(pending);
+    // The line names what it chose; the stock counts kayaks alone.
+    const itemId = await line(pending, { color: "red" });
+    // Each shortfall names its line and what the line chose.
     const shortfalls = [
-      { productId, productName: "Kayak", combinationKey: null, requested: 1, available: 0 },
+      {
+        productId,
+        productName: "Kayak",
+        combinationKey: null,
+        requested: 1,
+        available: 0,
+        reservationItemId: itemId,
+        selectedAttributes: { color: "red" },
+      },
     ];
 
     const refused = toolError(
@@ -340,9 +353,12 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       allowOverbooking: true,
     });
     const preview = (
-      toolError(asked) as { details?: { preview?: { details?: { overbooking?: unknown } } } }
+      toolError(asked) as {
+        details?: { preview?: { summary?: string; details?: { overbooking?: unknown } } };
+      }
     ).details?.preview;
     assert.deepEqual(preview?.details?.overbooking, { shortfalls });
+    assert.match(preview?.summary ?? "", /Kayak \(color: red\), 1 asked, 0 free/);
     assert.equal(await statusOf(pending), "pending");
 
     const confirmed = output(
@@ -409,8 +425,9 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     });
     const line = async (reservationId: string) => {
       created.push(reservationId);
+      const itemId = `rt_itm_${String(++counter).padStart(14, "0")}`;
       await louezDb.db.insert(louezDb.reservationItems).values({
-        id: `rt_itm_${String(++counter).padStart(14, "0")}`,
+        id: itemId,
         reservationId,
         productId,
         quantity: 1,
@@ -419,6 +436,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
         totalPrice: "20.00",
         productSnapshot: { name: "Kayak", description: null, images: [] },
       });
+      return itemId;
     };
     // Back an hour before the request starts; the store asks two.
     const returned = `rt_res_${String(++counter).padStart(14, "0")}`;
@@ -436,9 +454,17 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     });
     await line(returned);
     const pending = await reservation("pending");
-    await line(pending);
+    const itemId = await line(pending);
     const shortfalls = [
-      { productId, productName: "Kayak", combinationKey: null, requested: 1, available: 0 },
+      {
+        productId,
+        productName: "Kayak",
+        combinationKey: null,
+        requested: 1,
+        available: 0,
+        reservationItemId: itemId,
+        selectedAttributes: null,
+      },
     ];
 
     const refused = toolError(

@@ -22,6 +22,19 @@ test("a capacity refusal gives the dialog every shortfall, in the server's order
   );
 });
 
+test("a confirmation's shortfalls keep their line and its choice, for the dialog to show", () => {
+  const shortfalls = [
+    { ...shortfall("Wetsuit"), reservationItemId: "itm_s", selectedAttributes: { size: "S" } },
+    { ...shortfall("Wetsuit"), reservationItemId: "itm_l", selectedAttributes: { size: "L" } },
+  ];
+  assert.deepEqual(
+    readStatusStockRefusal(
+      refusal({ code: "RESERVATION_TURNOVER_BUFFER_CONFLICT", details: { shortfalls } }),
+    ),
+    { kind: "buffer", shortfalls },
+  );
+});
+
 test("a buffer-only refusal is told apart: its dialog confirms past the buffer", () => {
   const shortfalls = [shortfall("Kayak")];
   assert.deepEqual(

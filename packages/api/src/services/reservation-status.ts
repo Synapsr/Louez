@@ -27,6 +27,7 @@ import { evaluateReservationRules, getSettledPaymentAmount } from "@louez/utils"
 import { and, asc, eq } from "drizzle-orm";
 
 import {
+  describeShortfallLine,
   reservationErrors,
   type CapacityShortfall,
   type StatusChangeOutput,
@@ -326,7 +327,7 @@ const describeOverbooking = (shortfalls: readonly CapacityShortfall[]) =>
     : `The stock cannot cover it, and it is booked over the stock all the same: ${shortfalls
         .map(
           (shortfall) =>
-            `${shortfall.productName}${shortfall.combinationKey ? ` (${shortfall.combinationKey})` : ""}, ${shortfall.requested} asked, ${shortfall.available} free`,
+            `${describeShortfallLine(shortfall)}, ${shortfall.requested} asked, ${shortfall.available} free`,
         )
         .join("; ")}. The reservation's history records it.`;
 
@@ -340,7 +341,7 @@ const describeTurnoverBuffer = ({
     : `These lines fit the stock but not the ${turnoverBufferMinutes}-minute turnover buffer the store keeps between rentals, and are confirmed past it all the same: ${shortfalls
         .map(
           (shortfall) =>
-            `${shortfall.productName}${shortfall.combinationKey ? ` (${shortfall.combinationKey})` : ""}, ${shortfall.requested} asked, ${shortfall.available} free with the buffer`,
+            `${describeShortfallLine(shortfall)}, ${shortfall.requested} asked, ${shortfall.available} free with the buffer`,
         )
         .join("; ")}. The reservation's history records it.`;
 

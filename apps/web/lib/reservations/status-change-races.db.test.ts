@@ -1103,7 +1103,9 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
       });
       const { status, activity } = await statusOf(id);
       assert.equal(status, "confirmed");
-      assert.equal(activity[0]?.turnoverBufferOverridden, true);
+      // The rows come in no order: the confirmation's is the one that names it.
+      const confirmed = activity.find((metadata) => metadata?.newStatus === "confirmed");
+      assert.equal(confirmed?.turnoverBufferOverridden, true);
     });
   });
 
