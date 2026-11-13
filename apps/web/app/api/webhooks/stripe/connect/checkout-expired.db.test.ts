@@ -196,9 +196,11 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     reservationId: string,
     sessionId: string,
     checkoutFlow: string | null = "storefront_checkout",
+    // A delivery of its own, unless the test sends one event twice.
+    eventId: string = nextId("evt"),
   ) => {
     const event = {
-      id: nextId("evt"),
+      id: eventId,
       type: "checkout.session.expired",
       account: ACCOUNT,
       data: {
@@ -312,11 +314,15 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   test("the same event again: another payment_expired row, the checkout already cancelled, no fee effects", async () => {
     const id = await booking();
     const sessionId = await sessionPayment(id);
-    await expire(id, sessionId);
+    const eventId = nextId("evt");
+    await expire(id, sessionId, undefined, eventId);
     calls.length = 0;
     await raw.query("TRUNCATE TABLE test_writes");
 
-    assert.deepEqual(await expire(id, sessionId), { status: 200, body: { received: true } });
+    assert.deepEqual(await expire(id, sessionId, undefined, eventId), {
+      status: 200,
+      body: { received: true },
+    });
 
     assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
     assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
@@ -429,9 +435,10 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       });
     };
 
+    const eventId = nextId("evt");
     let answer: Awaited<ReturnType<typeof expire>>;
     try {
-      answer = await expire(id, sessionId);
+      answer = await expire(id, sessionId, undefined, eventId);
     } finally {
       reservationChangeTestHooks().beforeReservationLock = null;
     }
@@ -452,7 +459,10 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     // Stripe sends the event again: the payment is no longer pending, so the
     // cancellation is skipped and the checkout stays pending (section 5).
     calls.length = 0;
-    assert.deepEqual(await expire(id, sessionId), { status: 200, body: { received: true } });
+    assert.deepEqual(await expire(id, sessionId, undefined, eventId), {
+      status: 200,
+      body: { received: true },
+    });
     assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
     assert.equal(await readStatus(id), "pending");
   });

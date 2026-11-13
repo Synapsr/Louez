@@ -234,7 +234,7 @@ Do not bundle:
 - **Slice 1 with any behaviour change.** It reorders locks only. Mixed with a new check, a race failure could not be attributed.
 - **Slices 4 and 5.** Two overrides, two refusal codes, two traces: a reviewer must see each alone against S3 and S4.
 - **6a, 6b, 6c and 6d.** Moving the services, making the messages durable, adding insurance, and answering the customer's replays are four behaviours with four rollbacks.
-- **A move of 6a with a rule change.** 6a-1 and 6d change what a path does; 6a-2, 6a-3 and 6a-4 must show no test change between their two commits. Mixed, a changed answer could not be told from a move's mistake.
+- **A move of 6a with a rule change.** 6a-1 and 6d change what a path does; 6a-2, 6a-3 and 6a-4 must show no change of an assertion between their two commits: only call sites renamed, source-text tests of the removed code deleted, and a case deleted where the package that held it can no longer reach the moved code and the first commit holds the same case (6a-4, one case). Mixed, a changed answer could not be told from a move's mistake.
 - **A move's tests after its move.** They are its first commit and pass on the unmoved code; the move is the second commit. Tests written after the move would describe the moved code, not today's. No pull request of tests alone: each move carries its own.
 - **Two actors' moves.** Each actor's entry is its own pull request: their steps, answers and tests share nothing but the owner entries.
 - **Slice 7 with 8a, 8b, 9, 10 or 11.** The move must keep every existing test passing unchanged. A move that also reprices cannot be checked against today's behaviour.
@@ -676,7 +676,7 @@ WHERE r.deposit_status IN ('pending', 'none', 'card_saved')
 
 #### How a move is reviewed
 
-Each move (6a-2, 6a-3, 6a-4) is one pull request of two commits. The first adds its characterization tests, listed under the move, and passes on the unmoved code. The second is the move, and those tests pass unchanged after it. The reviewer checks out the first commit and runs the suite with `TEST_DATABASE_URL` set (`pnpm test`; without it the database tests are skipped, `packages/db/src/testing/test-database.ts:57`), then the second, and reads the second commit's diff for any change to a test file other than the callers renamed below.
+Each move (6a-2, 6a-3, 6a-4) is one pull request of two commits. The first adds its characterization tests, listed under the move, and passes on the unmoved code. The second is the move, and those tests pass unchanged after it. The reviewer checks out the first commit and runs the suite with `TEST_DATABASE_URL` set (`pnpm test`; without it the database tests are skipped, `packages/db/src/testing/test-database.ts:57`), then the second, and reads the second commit's diff for any change to a test file other than the callers renamed below, the source-text tests deleted with the code they read, and the one case of 6a-4 that moves with its code.
 
 #### 6a-2. The customer's status changes run in `packages/api`
 
