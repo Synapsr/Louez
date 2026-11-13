@@ -266,8 +266,14 @@ export const storeProcedure = authenticated.use(
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
       replay: async (result) => {
-        // A stored answer goes only to a caller the handler would answer now.
-        await meta.authorizeReplay?.(result, storeActor);
+        // A stored answer goes only to a caller the handler would answer now;
+        // refused, nothing was replayed, and the receipt says so.
+        try {
+          await meta.authorizeReplay?.(result, storeActor);
+        } catch (error) {
+          if (context.receipt) context.receipt.replayed = false;
+          throw error;
+        }
         return output(
           meta.upgradeReplay ? meta.upgradeReplay(result, ports.urls) : result,
         ) as Awaited<ReturnType<typeof next<typeof nextContext>>>;

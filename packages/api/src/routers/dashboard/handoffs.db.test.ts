@@ -1969,7 +1969,9 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
         .where(orm.eq(louezDb.apiKeys.storeId, STORE));
     await narrowed("none");
     await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
-    await rejects(client(withKey()).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
+    const refused = withKey();
+    await rejects(client(refused).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
+    assert.notEqual(refused.receipt.replayed, true, "nothing was replayed");
     await narrowed("read");
     await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
     await rejects(client(withKey()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
