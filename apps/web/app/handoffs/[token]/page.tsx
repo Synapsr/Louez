@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { handoffDonePath, handoffPath, readHandoffLink } from "@louez/api/services/handoffs";
+import {
+  handoffDonePath,
+  handoffPath,
+  invitationShown,
+  readHandoffLink,
+} from "@louez/api/services/handoffs";
 import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
@@ -25,8 +30,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * it starts no step. The user continues with a form that posts to
  * `continue`, which sends them to the provider; a team invitation is
  * approved or declined with a form that posts to `decide`. Each form posts
- * the revision the page showed: a step asked for again since decides
- * nothing, and the page shows it again with a note.
+ * the revision the page showed, and an invitation's form what it showed of
+ * it (`invitationShown`): a step that changed since decides nothing, and the
+ * page shows it again with a note.
  */
 export default async function HandoffPage({
   params,
@@ -73,6 +79,7 @@ export default async function HandoffPage({
       <TeamInvitationApproval
         action={`${path}/decide`}
         revision={revision}
+        shown={invitationShown(payload)}
         store={checked.store.name}
         invitation={payload}
         note={changed ?? (query.error !== undefined ? t("team_invitation.error.failed") : null)}

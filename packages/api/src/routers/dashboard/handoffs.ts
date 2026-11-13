@@ -17,6 +17,7 @@ import {
   handoffView,
   issueHandoff,
   settlePendingCardSetup,
+  withHandoffUrl,
 } from "../../services/handoffs";
 import { mayRead, type ProductContext } from "./product-context";
 
@@ -85,6 +86,8 @@ const refresh = storeProcedure
   .meta({
     capability: "handoffs.refresh",
     scope: REFRESH_SCOPE,
+    // Its answers stored before views carried `url` replay with it.
+    upgradeReplay: withHandoffUrl,
     mcp: {
       name: "handoffs_refresh",
       title: "Refresh Handoff Status",

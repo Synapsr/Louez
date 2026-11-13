@@ -177,6 +177,17 @@ export function handoffView(
 export const handoffPath = (link: string) => `/handoffs/${encodeURIComponent(link)}`;
 /** The step's page, where the user takes it: the same for the step's whole life. */
 export const handoffUrl = (urls: UrlsPort, id: string) => urls.dashboard(handoffPath(id));
+
+/**
+ * A handoff view stored before views carried `url` (an answer of
+ * `handoffs_refresh` kept for its idempotency key), with its url: the link
+ * follows from the id. Anything else is returned as it is.
+ */
+export function withHandoffUrl(stored: unknown, urls: UrlsPort): unknown {
+  if (!stored || typeof stored !== "object" || "url" in stored) return stored;
+  const { id } = stored as { id?: unknown };
+  return typeof id === "string" ? { ...stored, url: handoffUrl(urls, id) } : stored;
+}
 /** Where the provider sends the user back, with the state of their click. */
 export const handoffReturnPath = (id: string, state: string) => `/handoffs/return/${id}/${state}`;
 /** Where Stripe sends the user when its onboarding link expired. */
@@ -445,7 +456,18 @@ export type HandoffRefusal =
 
 export type HandoffCheck =
   | { ok: true; row: HandoffRow; store: { id: string; name: string } }
-  | { ok: false; reason: HandoffRefusal; row: HandoffRow | null };
+  /** Another user learns nothing of the step: no row, so no status, kind or store. */
+  | { ok: false; reason: "other_user"; row: null }
+  | { ok: false; reason: Exclude<HandoffRefusal, "other_user">; row: HandoffRow | null };
+
+/**
+ * The one answer a signed-in user who is not the step's user gets, whatever
+ * the step's state, kind or store: it is checked before anything else.
+ */
+const NOT_THEIRS = { ok: false, reason: "other_user", row: null } as const;
+
+/** Whether `userId` is the user the step is for: the first check of every reader. */
+const isStepUser = (row: Pick<HandoffRow, "userId">, userId: string) => row.userId === userId;
 
 /**
  * A link: the handoff's id, or, given before links were addressed by id,
@@ -485,6 +507,18 @@ async function rowOfLink(link: string) {
 export const atShownRevision = (id: string, revision: number) =>
   and(eq(apiHandoffs.id, id), eq(apiHandoffs.revision, revision));
 
+/**
+ * What an owner's page shows of an agent's invitation, and what approving it
+ * carries out: the address, the role, and whether the address joins at once.
+ * The page posts this digest next to the revision, and the decision compares
+ * it with the row's payload under the store's lock: the owner decides what
+ * they read, even when a writer changed the payload without raising the
+ * revision (an instance still running the code before revisions).
+ */
+export function invitationShown(payload: ApiHandoffPayload): string {
+  return sha256(JSON.stringify([payload.email, payload.role, payload.joinsAtOnce]));
+}
+
 /** Whether the connection that asked for the step still exists: a revoked agent's link stops. */
 async function connectionAlive(row: HandoffRow): Promise<boolean> {
   if (!row.credentialId) return row.credentialKind === "session";
@@ -506,11 +540,12 @@ async function connectionAlive(row: HandoffRow): Promise<boolean> {
 }
 
 /**
- * Whether `userId` may take the step of `row` now: the link's user, still
- * allowed in the store, for a connection that still exists.
+ * Whether `userId` may take the step of `row` now: the step's user, still
+ * allowed in the store, for a connection that still exists. Anyone else gets
+ * `NOT_THEIRS` and nothing about the step.
  */
 async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck> {
-  if (row.userId !== userId) return { ok: false, reason: "other_user", row };
+  if (!isStepUser(row, userId)) return NOT_THEIRS;
   if (!(await connectionAlive(row))) return { ok: false, reason: "invalid", row };
   const [member] = await db
     .select({ role: storeMembers.role, storeName: stores.name })
@@ -523,7 +558,11 @@ async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck>
   return { ok: true, row, store: { id: row.storeId, name: member.storeName } };
 }
 
-/** The link as the page shows it before the user continues. Changes nothing. */
+/**
+ * The link as the page shows it before the user continues. Changes nothing.
+ * Whose step it is comes first: another user is told only that, before the
+ * step's state is read.
+ */
 export async function readHandoffLink(
   link: string,
   userId: string,
@@ -531,6 +570,7 @@ export async function readHandoffLink(
 ): Promise<HandoffCheck> {
   const row = await rowOfLink(link);
   if (!row) return { ok: false, reason: "invalid", row: null };
+  if (!isStepUser(row, userId)) return NOT_THEIRS;
   const status = statusOf(row, now);
   if (status === "completed" || status === "failed") return { ok: false, reason: "finished", row };
   if (status === "expired") return { ok: false, reason: "expired", row };
@@ -576,9 +616,11 @@ export async function continueHandoff(
 }
 
 /**
- * The provider's return: the state must be the latest click's, and the user
- * the link's, still allowed. A finished handoff passes, so a reload of the
- * return page shows where it stands.
+ * The provider's return: the state must be the latest click's (the state is
+ * what authenticates the return: only the browser that clicked holds it),
+ * and the user the step's, still allowed. A finished handoff passes, so a
+ * reload of the return page shows where it stands. Another session gets
+ * nothing about the step, as everywhere.
  */
 export async function checkHandoffReturn(
   id: string,

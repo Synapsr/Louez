@@ -39,6 +39,16 @@ export function postedRevision(form: FormData): number | null {
   return Number(value);
 }
 
+/**
+ * What an invitation's page posted of the invitation it showed (its
+ * `invitationShown` digest). Null when there is none: the click decides
+ * nothing and the page shows the invitation again.
+ */
+export function postedShown(form: FormData): string | null {
+  const value = form.get("shown");
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value) ? value : null;
+}
+
 /** Where the login sends the user back: the handoff path kept in a cookie. */
 export const HANDOFF_RESUME_PATH = "/handoffs/resume";
 export const HANDOFF_RESUME_COOKIE = "louez_handoff_next";

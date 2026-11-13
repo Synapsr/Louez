@@ -1,5 +1,6 @@
 import type { CredentialKind } from "./actor";
 import type { ProcedureScope } from "./permissions";
+import type { UrlsPort } from "./ports";
 
 /**
  * What a sensitive operation does, when it needs a confirmation from a
@@ -151,6 +152,13 @@ export interface ApiMeta {
    * idempotency key is ignored and the call is only recorded.
    */
   secretOutput?: boolean;
+  /**
+   * A store write whose stored answers may predate a field its contract has
+   * since gained, one derivable from the answer itself: brings such an answer
+   * to the contract when an idempotency key replays it. The write does not
+   * run again.
+   */
+  upgradeReplay?: (stored: unknown, urls: UrlsPort) => unknown;
   /**
    * Largest request body this procedure legitimately takes, when it is more
    * than the transports take by default (2 MiB on `/api/v1`, 4 MiB on

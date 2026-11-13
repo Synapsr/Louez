@@ -6,7 +6,7 @@ import { handoffDonePath, handoffPath } from "@louez/api/services/handoffs";
 import { createRouterClient } from "@orpc/server";
 
 import { apiPorts } from "@/lib/api/ports";
-import { postedRevision, redirectTo, toLogin } from "@/lib/handoffs/handoff-response";
+import { postedRevision, postedShown, redirectTo, toLogin } from "@/lib/handoffs/handoff-response";
 import { isSameOriginPost } from "@/lib/util.active-store-link";
 
 import { env } from "@/env";
@@ -16,8 +16,9 @@ import { env } from "@/env";
  * form. Only from this app's pages (Origin, and Sec-Fetch-Site when sent), so
  * another site cannot answer with the owner's cookie. It calls the
  * session-only procedure `team.decideInvitation` as the signed-in user, with
- * the revision the page showed; the procedure checks the link, the user,
- * their right to manage the team and the revision. A request changed since
+ * the revision and the invitation the page showed; the procedure checks the
+ * link, the user, their right to manage the team, and that the request is
+ * still what the page showed. A request changed since
  * the page showed it decides nothing: the page shows it again.
  */
 export async function POST(
@@ -35,14 +36,15 @@ export async function POST(
   const decision = form.get("decision");
   if (decision !== "approve" && decision !== "decline") return redirectTo(page, 303);
   const revision = postedRevision(form);
-  if (revision === null) return redirectTo(`${page}?changed=1`, 303);
+  const shown = postedShown(form);
+  if (revision === null || shown === null) return redirectTo(`${page}?changed=1`, 303);
 
   const team = createRouterClient(appRouter.dashboard.team, {
     context: { headers: request.headers, transport: "rpc", ports: apiPorts },
     path: ["dashboard", "team"],
   });
   try {
-    const decided = await team.decideInvitation({ token, decision, revision });
+    const decided = await team.decideInvitation({ token, decision, revision, shown });
     return redirectTo(handoffDonePath(decided.handoffId), 303);
   } catch (error) {
     const { code, details } =

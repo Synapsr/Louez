@@ -802,31 +802,117 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(row.returnStateHash, null);
   });
 
-  test("the agent asking again while the user clicks: one wins, and the other is told", async () => {
-    for (let round = 0; round < 5; round += 1) {
-      await louezDb.db.delete(louezDb.apiHandoffs);
-      const agent = await apiKey();
-      const started = await client(agent()).payments.startStripeOnboarding({});
-      const link = tokenOf(started.url);
-      const shown = await shownRevision(link);
+  /**
+   * Resolves once a statement of this test's database whose text is `LIKE
+   * pattern` is in progress: while the lock it needs is held at a barrier, it
+   * can only be waiting for that lock.
+   */
+  async function lockWait(pattern: string) {
+    for (let tries = 0; tries < 500; tries += 1) {
+      const [rows] = (await louezDb.db.execute(
+        orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
+          WHERE db = DATABASE() AND command = 'Query' AND info LIKE ${pattern}`,
+      )) as unknown as [Array<{ n: number | string }>];
+      if (Number(rows[0]?.n) > 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error(`no statement waited for a lock: ${pattern}`);
+  }
 
-      const [continued, asked] = await Promise.all([
-        continueAs(link, OWNER, shown),
-        client(agent()).payments.startStripeOnboarding({}),
-      ]);
-      assert.equal(asked.url, started.url);
-      const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
-      assert.equal(row.revision, shown + 1, "the request was taken either way");
-      if (continued.ok) {
-        // The click came first: the request that followed keeps its attempt.
-        assert.ok(continued.state);
-        assert.equal(row.status, "opened");
-        assert.equal(row.returnStateHash, sha256(continued.state));
-      } else {
-        // The request came first: the click decided nothing.
-        assert.equal(continued.reason, "changed");
-        assert.equal(row.status, "pending");
-        assert.equal(row.returnStateHash, null);
+  test("the agent's request committed between the page's read and the click's write: the click continues nothing", async () => {
+    const agent = await apiKey();
+    const started = await client(agent()).payments.startStripeOnboarding({});
+    const link = tokenOf(started.url);
+    const shown = await shownRevision(link);
+    const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
+
+    // The repeated request holds the store's lock and the step's row.
+    const entered = barrier();
+    const gate = barrier();
+    const repeat = handoffs.issueHandoff(
+      {
+        storeId: STORE,
+        userId: row.userId,
+        credentialKind: row.credentialKind,
+        credentialId: row.credentialId,
+        clientName: row.clientName,
+      },
+      "stripe_connect_onboarding",
+      {
+        urls: ports.urls,
+        prepare: async () => {
+          entered.open();
+          await gate.wait;
+          return null;
+        },
+      },
+    );
+    await entered.wait;
+    // The click read the step at the page's revision, and its write waits for the row.
+    const click = continueAs(link, OWNER, shown);
+    try {
+      await lockWait("update `api_handoffs`%");
+    } finally {
+      gate.open();
+      await repeat;
+    }
+
+    const continued = await click;
+    assert.equal(!continued.ok && continued.reason, "changed");
+    const after = await handoffs.getHandoffRow(STORE, started.handoff.id);
+    assert.equal(after.revision, shown + 1);
+    assert.equal(after.status, "pending");
+    assert.equal(after.returnStateHash, null, "no attempt started");
+    assert.equal(stripe.calls.created.length, 0);
+  });
+
+  test("another user gets one answer, whatever the step's state", async () => {
+    const states = {
+      active: {},
+      opened: {},
+      expired: { expiresAt: new Date(Date.now() - 60_000) },
+      completed: { status: "completed" as const, completedAt: new Date(), activeSlot: null },
+      failed: {
+        status: "failed" as const,
+        failedAt: new Date(),
+        failureCode: "not_available",
+        activeSlot: null,
+      },
+    };
+    const nothing = { ok: false, reason: "other_user", row: null };
+    for (const [state, patch] of Object.entries(states)) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const started = await client((await apiKey())()).payments.startStripeOnboarding({});
+      const id = started.handoff.id;
+      const link = tokenOf(started.url);
+      const revision = await shownRevision(link);
+      // The step's user clicked: the return's state exists.
+      const clicked = await continueAs(link, OWNER);
+      assert.ok(clicked.ok && clicked.state);
+      if (state === "active") {
+        await louezDb.db
+          .update(louezDb.apiHandoffs)
+          .set({ status: "pending", openedAt: null })
+          .where(orm.eq(louezDb.apiHandoffs.id, id));
+      }
+      if (Object.keys(patch).length > 0) {
+        await louezDb.db
+          .update(louezDb.apiHandoffs)
+          .set(patch)
+          .where(orm.eq(louezDb.apiHandoffs.id, id));
+      }
+      // A member of the step's store, and another store's owner.
+      for (const user of [MEMBER, STRANGER]) {
+        const label = `${state}, ${user}`;
+        assert.deepEqual(await handoffs.readHandoffLink(link, user), nothing, label);
+        assert.deepEqual(await handoffs.readHandoffForUser(id, user), nothing, label);
+        assert.deepEqual(await continueAs(link, user, revision), nothing, label);
+        // Even holding the return's state.
+        assert.deepEqual(
+          await handoffs.checkHandoffReturn(id, clicked.state, user),
+          nothing,
+          label,
+        );
       }
     }
   });
@@ -1677,6 +1763,43 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       .where(orm.eq(louezDb.apiHandoffs.id, fromGrant.handoff.id));
     const gone = await handoffs.readHandoffLink(tokenOf(fromGrant.url), OWNER);
     assert.equal(!gone.ok && gone.reason, "invalid");
+  });
+
+  test("a refresh answer stored before views carried url replays with it, and asks the provider nothing", async () => {
+    const agent = await apiKey();
+    const attempt = await cardAttempt(agent);
+    // Back with a card Stripe has not confirmed: its Checkout is on the row.
+    billing.state.outcome = "pending";
+    await (
+      await returning(attempt.id, attempt.state, "cs_test_1")
+    )();
+    await endLease(attempt.id);
+    const KEY = "ho-refresh-before-url";
+    const context = agent();
+    context.headers.set("idempotency-key", KEY);
+    const first = await client(context).handoffs.refresh({ id: attempt.id });
+    assert.equal(first.url, `${TEST_APP_URL}/handoffs/${attempt.id}`);
+
+    // The answer as the code before kept it: no url.
+    const byKey = orm.eq(louezDb.apiOperations.idempotencyKey, KEY);
+    await louezDb.db
+      .update(louezDb.apiOperations)
+      .set({ result: orm.sql`JSON_REMOVE(${louezDb.apiOperations.result}, '$.url')` })
+      .where(byKey);
+    const [stored] = await louezDb.db.select().from(louezDb.apiOperations).where(byKey);
+    assert.equal(JSON.stringify(stored?.result).includes('"url"'), false, "stored without url");
+
+    // A real run now would ask the provider again: the lease is free, and it would confirm.
+    await endLease(attempt.id);
+    billing.state.outcome = "refreshed";
+    const asked = billing.state.finished.length;
+    const replayContext = agent();
+    replayContext.headers.set("idempotency-key", KEY);
+    const replayed = await client(replayContext).handoffs.refresh({ id: attempt.id });
+    assert.equal(replayContext.receipt.replayed, true);
+    assert.deepEqual(replayed, first);
+    assert.equal(billing.state.finished.length, asked, "the provider was not asked again");
+    assert.equal((await handoffs.getHandoffRow(STORE, attempt.id)).status, "opened");
   });
 
   test("an answer that starts a step replays with its idempotency key, and holds no secret", async () => {

@@ -41,6 +41,7 @@ type Json = Record<string, unknown>;
 
 describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
+  let invitationShown: typeof import("@louez/api/services/handoffs").invitationShown;
   let louezDb: typeof import("@louez/db");
   let apiKeys: typeof import("@louez/api/services");
   let exposure: import("@louez/api/platform/exposure").Exposure;
@@ -72,6 +73,7 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     database = await createTestDatabase("api_team_transports");
     louezDb = await import("@louez/db");
     apiKeys = await import("@louez/api/services");
+    ({ invitationShown } = await import("@louez/api/services/handoffs"));
     const { appRouter } = await import("@louez/api/router");
     const { createExposure } = await import("@louez/api/platform/exposure");
     const { createOpenApiHandler, handleOpenApiRequest } =
@@ -306,8 +308,14 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
 
     // The owner approves from the link's page, signed in.
     assert.equal(
-      json(await rpc("decideInvitation", { token: tokenOf(approval.url), decision: "approve", revision: 1 }))
-        .decision,
+      json(
+        await rpc("decideInvitation", {
+          token: tokenOf(approval.url),
+          decision: "approve",
+          revision: 1,
+          shown: invitationShown({ email: "b@tt.test", role: "member", joinsAtOnce: false }),
+        }),
+      ).decision,
       "approved",
     );
     const handoff = output(await mcpCall(authorization, "handoffs_get", { id: approval.handoff.id }));
@@ -327,15 +335,15 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     // MCP and OpenAPI do not serve it; the RPC endpoint refuses a key.
     assert.ok(!(await mcpTools(authorization)).some((name) => name.includes("decide")));
     await assert.rejects(
-      mcpCall(authorization, "team_decide_invitation", { token, decision: "approve", revision: 1 }),
+      mcpCall(authorization, "team_decide_invitation", { token, decision: "approve", revision: 1, shown: "0".repeat(64) }),
       /not found/,
     );
     for (const path of ["/team/decide", "/dashboard/team/decideInvitation"]) {
-      const viaOpenApi = await openApi("POST", path, { token, decision: "approve", revision: 1 }, { authorization });
+      const viaOpenApi = await openApi("POST", path, { token, decision: "approve", revision: 1, shown: "0".repeat(64) }, { authorization });
       assert.equal(viaOpenApi.status, 404);
     }
     let refused: unknown = null;
-    await rpcWith({ authorization }, "decideInvitation", { token, decision: "approve", revision: 1 }).catch(
+    await rpcWith({ authorization }, "decideInvitation", { token, decision: "approve", revision: 1, shown: "0".repeat(64) }).catch(
       (error: unknown) => {
         refused = error;
       },

@@ -30,7 +30,7 @@ import { enqueueEffects } from "../platform/effects";
 import { isApiError, platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import type { ApiEvent, ApiEventStore, ApiPorts, UrlsPort } from "../platform/ports";
-import { atShownRevision, issueHandoff, readHandoffLink, type HandoffRequester } from "./handoffs";
+import { invitationShown, issueHandoff, readHandoffLink, type HandoffRequester } from "./handoffs";
 
 /**
  * The store's team: its members and pending invitations, and the writes the
@@ -303,10 +303,44 @@ async function checkInvitable(tx: Transaction, caller: TeamCaller, email: string
   return { existingUserId: existingUser?.id ?? null, memberLimit };
 }
 
-/** The handoff an owner approves an agent's invitation through, at the revision their page showed. */
+/** The handoff an owner approves an agent's invitation through, as their page showed it. */
 interface Approval {
   handoffId: string;
   revision: number;
+  /** `invitationShown` of what the page showed. */
+  shown: string;
+}
+
+/** The store's active approval of that id, locked: under the store's lock, as every team write. */
+async function lockApproval(tx: Transaction, storeId: string, handoffId: string) {
+  const [row] = await tx
+    .select({
+      revision: apiHandoffs.revision,
+      payload: apiHandoffs.payload,
+      expiresAt: apiHandoffs.expiresAt,
+    })
+    .from(apiHandoffs)
+    .where(
+      and(
+        eq(apiHandoffs.id, handoffId),
+        eq(apiHandoffs.storeId, storeId),
+        eq(apiHandoffs.activeSlot, 1),
+      ),
+    )
+    .for("update");
+  return row ?? null;
+}
+
+/**
+ * Whether the approval is still what the owner's page showed: the same
+ * revision and the same facts (`invitationShown`). Either one differing
+ * decides nothing.
+ */
+function stillShown(
+  row: { revision: number; payload: ApiHandoffPayload },
+  approval: Pick<Approval, "revision" | "shown">,
+): boolean {
+  return row.revision === approval.revision && invitationShown(row.payload) === approval.shown;
 }
 
 /**
@@ -330,24 +364,16 @@ export async function inviteMember(
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
     // What the owner was shown, read under the store's lock: active, in time,
-    // and at the revision their page showed, so a repeated request since
-    // decides nothing.
+    // and still as their page showed it, so a request changed since decides nothing.
     let shown: ApiHandoffPayload | null = null;
     if (approval) {
-      const [handoff] = await tx
-        .select({ revision: apiHandoffs.revision, payload: apiHandoffs.payload })
-        .from(apiHandoffs)
-        .where(
-          and(
-            eq(apiHandoffs.id, approval.handoffId),
-            eq(apiHandoffs.storeId, caller.storeId),
-            eq(apiHandoffs.activeSlot, 1),
-            gt(apiHandoffs.expiresAt, now),
-          ),
-        )
-        .for("update");
-      if (!handoff?.payload) throw teamErrors.approvalInvalid("invalid");
-      if (handoff.revision !== approval.revision) throw teamErrors.approvalInvalid("changed");
+      const handoff = await lockApproval(tx, caller.storeId, approval.handoffId);
+      if (!handoff?.payload || handoff.expiresAt <= now) {
+        throw teamErrors.approvalInvalid("invalid");
+      }
+      if (!stillShown({ ...handoff, payload: handoff.payload }, approval)) {
+        throw teamErrors.approvalInvalid("changed");
+      }
       shown = handoff.payload;
     }
 
@@ -495,8 +521,8 @@ function approvalFailure(error: unknown): string | null {
 }
 
 /**
- * Ends an approval, under the store's lock, while it is still active at the
- * revision the owner's page showed. False when that changed: nothing ended.
+ * Ends an approval, under the store's lock, while it is still active and as
+ * the owner's page showed it. False when that changed: nothing ended.
  */
 async function endApproval(
   approval: Approval & { storeId: string },
@@ -505,28 +531,37 @@ async function endApproval(
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     await lockStore(tx, approval.storeId);
-    const [result] = await tx
+    const handoff = await lockApproval(tx, approval.storeId, approval.handoffId);
+    if (!handoff?.payload || !stillShown({ ...handoff, payload: handoff.payload }, approval)) {
+      return false;
+    }
+    await tx
       .update(apiHandoffs)
       .set({ status: "failed", failedAt: now, failureCode: code, activeSlot: null, updatedAt: now })
-      .where(
-        and(atShownRevision(approval.handoffId, approval.revision), eq(apiHandoffs.activeSlot, 1)),
-      );
-    return result.affectedRows > 0;
+      .where(eq(apiHandoffs.id, approval.handoffId));
+    return true;
   });
 }
 
 /**
  * An owner's answer to an agent's invitation, signed in on its page: the
- * step's user, still allowed to manage the team (`manage_members`), at the
- * revision the page showed; another revision decides nothing
- * (`TEAM_APPROVAL_INVALID`, `changed`), and the page shows the request
- * again. To approve runs the invitation as the dashboard does and completes
+ * step's user, still allowed to manage the team (`manage_members`), with
+ * the revision and the facts the page showed (`stillShown`); a request that
+ * changed since decides nothing (`TEAM_APPROVAL_INVALID`, `changed`), and
+ * the page shows it again. To approve runs the invitation as the dashboard does and completes
  * the approval; to decline ends it as failed (`declined`). An invitation
  * that can no longer go out as shown (the address joined, got an account or
  * an invitation since, the seats are full) ends the approval too, with why.
  */
 export async function decideInvitation(
-  input: { token: string; decision: "approve" | "decline"; revision: number; userId: string },
+  input: {
+    token: string;
+    decision: "approve" | "decline";
+    revision: number;
+    /** `invitationShown` of what the page showed. */
+    shown: string;
+    userId: string;
+  },
   ports: Pick<ApiPorts, "team" | "afterCommit">,
   now = new Date(),
 ) {
@@ -534,8 +569,15 @@ export async function decideInvitation(
   if (!checked.ok) throw teamErrors.approvalInvalid(checked.reason);
   const { row } = checked;
   if (row.kind !== "team_invitation" || !row.payload) throw teamErrors.approvalInvalid("invalid");
-  if (row.revision !== input.revision) throw teamErrors.approvalInvalid("changed");
-  const approval = { handoffId: row.id, revision: input.revision, storeId: row.storeId };
+  const approval = {
+    handoffId: row.id,
+    revision: input.revision,
+    shown: input.shown,
+    storeId: row.storeId,
+  };
+  if (!stillShown({ revision: row.revision, payload: row.payload }, approval)) {
+    throw teamErrors.approvalInvalid("changed");
+  }
 
   if (input.decision === "decline") {
     if (!(await endApproval(approval, "declined", now))) {

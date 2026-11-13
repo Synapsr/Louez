@@ -10,6 +10,8 @@ interface TeamInvitationApprovalProps {
   action: string;
   /** The revision of the request shown: the answer is about it, and no other. */
   revision: number;
+  /** The digest of what the page shows of the invitation (`invitationShown`). */
+  shown: string;
   store: string;
   invitation: ApiHandoffPayload;
   /** Why the last answer was not applied, when it was not. */
@@ -24,6 +26,7 @@ interface TeamInvitationApprovalProps {
 export const TeamInvitationApproval = ({
   action,
   revision,
+  shown,
   store,
   invitation,
   note,
@@ -43,6 +46,7 @@ export const TeamInvitationApproval = ({
           <form method="post" action={action}>
             <input type="hidden" name="decision" value="decline" />
             <input type="hidden" name="revision" value={revision} />
+            <input type="hidden" name="shown" value={shown} />
             <Button type="submit" variant="outline" className="w-full sm:w-auto">
               {t("decline")}
             </Button>
@@ -50,6 +54,7 @@ export const TeamInvitationApproval = ({
           <form method="post" action={action}>
             <input type="hidden" name="decision" value="approve" />
             <input type="hidden" name="revision" value={revision} />
+            <input type="hidden" name="shown" value={shown} />
             <Button type="submit" className="w-full sm:w-auto">
               {t("approve")}
             </Button>

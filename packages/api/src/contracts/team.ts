@@ -158,6 +158,8 @@ export const decideInvitationInput = z.object({
   decision: z.enum(["approve", "decline"]),
   /** The revision the page showed: another one decides nothing. */
   revision: z.number().int().positive(),
+  /** What the page showed of the invitation (its digest): another one decides nothing. */
+  shown: z.string().regex(/^[0-9a-f]{64}$/),
 });
 export const decideInvitationOutput = z.object({
   /** The handoff the agent reads. */
