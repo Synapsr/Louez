@@ -149,23 +149,241 @@ A procedure that moves money, deletes, sends to a customer or spends credits dec
 - A dashboard session, or a connection whose confirmation is turned off (`api_keys.confirm_sensitive = false`), runs directly. The dashboard keeps its own confirmation dialogs.
 - Two kinds of action are the exception: `requireConfirmation({ always: true })` (or `checkConfirmation`) asks every key and token, even one whose confirmation is turned off, as the agent alone would otherwise decide to move, give back, erase or spend the store's money, to promise stock the store may not hold or a turnaround it did not plan for, or to take a person's access away. Giving access is not confirmed at all: an agent's invitation waits for an owner's approval from a link, as a token the agent holds proves no human agreed. A dashboard session is still never asked: the user clicked the button. The tools that pass it:
 
-  | Tool                                                         | Why                                                                                                                                                                                                                                          |
-  | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `record_payment`                                             | records money received or paid back (a negative adjustment)                                                                                                                                                                                  |
-  | `record_deposit_return`                                      | records a deposit already given back to the customer (moves no money)                                                                                                                                                                        |
-  | `delete_payment`                                             | erases a payment from the reservation's balance and the billing figures                                                                                                                                                                      |
-  | `products_enhance_image`, `products_remove_image_background` | spend AI credits, when the run has a price ([AI photos](#ai-photos))                                                                                                                                                                         |
-  | `team_remove_member`, `team_cancel_invitation`               | take a person's access away ([The team](#the-team))                                                                                                                                                                                          |
-  | `reservations_update_status` with `allowOverbooking`         | confirms a reservation over the store's stock, promising what the store may not hold ([Reservation changes](../domain/reservation-changes.md), D2); its preview lists every shortfall, and its token holds only while they stay as previewed |
-
-| `reservations_update_status` with `overrideTurnoverBuffer` | confirms a reservation with less time between two rentals than the store keeps for cleaning or charging ([Reservation changes](../domain/reservation-changes.md), slice 5); its preview lists the lines and the buffer, and its token holds only while they stay as previewed |
+  | Tool                                                         | Why                                                                                                                                                                                                                                                                           |
+  | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `record_payment`                                             | records money received or paid back (a negative adjustment)                                                                                                                                                                                                                   |
+  | `record_deposit_return`                                      | records a deposit already given back to the customer (moves no money)                                                                                                                                                                                                         |
+  | `delete_payment`                                             | erases a payment from the reservation's balance and the billing figures                                                                                                                                                                                                       |
+  | `products_enhance_image`, `products_remove_image_background` | spend AI credits, when the run has a price ([AI photos](#ai-photos))                                                                                                                                                                                                          |
+  | `team_remove_member`, `team_cancel_invitation`               | take a person's access away ([The team](#the-team))                                                                                                                                                                                                                           |
+  | `reservations_update_status` with `allowOverbooking`         | confirms a reservation over the store's stock, promising what the store may not hold ([Reservation changes](../domain/reservation-changes.md), D2); its preview lists every shortfall, and its token holds only while they stay as previewed                                  |
+  | `reservations_update_status` with `overrideTurnoverBuffer`   | confirms a reservation with less time between two rentals than the store keeps for cleaning or charging ([Reservation changes](../domain/reservation-changes.md), slice 5); its preview lists the lines and the buffer, and its token holds only while they stay as previewed |
 
 The other sensitive tools keep the connection's setting, as none of them moves money or takes access away: `stores_create` and `stores_go_live` start or open a billing relationship whose terms the preview shows, but charge nothing; the settings writes (currency, taxes, delivery, booking mode, invoicing) change what later bookings cost; `reservations_update_status` without either override and `reservations_cancel` charge, refund and release nothing (a cancellation says so in its preview). `billing_start_card_setup` and the Stripe onboarding hand a link to the user, who types the card or the identity details: the human is already the one acting. A new tool that charges, refunds or releases money passes `always`.
 
 - Otherwise, the first call does nothing. It fails with `CONFIRMATION_REQUIRED`, which carries the preview and a token valid for ten minutes. The caller sends the same input again with the token in the `Louez-Confirmation` header (`confirmationToken` for MCP tools).
 - The token is bound to the actor, the connection, the store, the procedure, the input and the state. It can be used once. If any of these change, the token fails with `CONFIRMATION_INVALID`.
 
-This proves the caller saw the preview. It does not prove that a human approved, because the same agent can make both calls. Human approval, through MCP elicitation or an approval link, comes with the first money procedures.
+This proves the caller saw the preview. It does not prove that a human approved, because the same agent can make both calls. [A person's approval](#a-persons-approval-plan) is the plan that replaces it for the actions a person must approve.
+
+## A person's approval (plan)
+
+A plan, not built yet: the product owner's decision of 2026-11-13 ("a real human approval"), to land before refunds open to agents. The paths below are where each piece goes; the facts it rests on are cited as the code stands.
+
+**The rule.** An agent's action that a person must approve runs only after a member of the store, signed in to Louez, approved on a Louez page the preview Louez computed for it, and only while the store is still as that preview showed; the agent then carries it out with the approval's id.
+
+**What an approval proves.** That the user the connection acts for (an API key's owner, the user who granted the OAuth connection), signed in to Louez with a session, holding at that moment a role that allows the action itself, was shown on Louez's own page, at a recorded time, a preview Louez computed from the stored input and the store's state of that moment, and chose Approve; and that the action ran on the same state. It does not prove that the person read the preview, that the person is not the one steering the agent, nor that their signed-in browser is theirs alone: an agent that drives the user's own signed-in browser can open the page and click. A choice made inside an assistant's client proves less again (below). The self-returned confirmation stays what it is: the caller saw the preview.
+
+### What it rests on
+
+**Confirmations today.** One function asks, `checkConfirmation` (`platform/confirmation.ts:82`; `requireConfirmation`, `:48`, throws its refusal). It asks a key or a token whose connection has `confirmSensitive`, and any key or token when the call passes `always` (`:84`); a session never. The token is 32 random bytes (`:136`), stored in `api_confirmations` (`packages/db/src/schema.ts:4380`), bound by a SHA-256 of the user, the credential's kind and id, the store, the procedure, the input and the `state` (`:89`–`:98`), valid ten minutes (`CONFIRMATION_TTL_MS`, `:18`), consumed once by a conditional update in the caller's transaction (`:101`–`:122`). Most procedures ask under their domain's lock through `confirmUnderLock` (`routers/dashboard/product-context.ts:54`), which binds the summary and details too; the team's `confirmAlways` (`routers/dashboard/team.ts:90`) passes `always`.
+
+| Tool                                                                                                                                                                                                     | What it changes                                           | Asks                             | Preview and state bound                                                                              |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `record_payment`, `record_deposit_return`, `delete_payment` (hand-written, `packages/mcp/src/tools/payments.ts:182`, `:241`, `:339`)                                                                     | money received, given back or erased from the balance     | always                           | the call's amount, type, method; the reservation's status or the payment row, read outside the write |
+| `products_enhance_image`, `products_remove_image_background` (`services/product-images.ts:344`)                                                                                                          | spends AI credits                                         | always, when the run has a price | the product, the photo, the operation and the price                                                  |
+| `team_remove_member`, `team_cancel_invitation`                                                                                                                                                           | takes a person's access away                              | always (`team.ts:105`)           | the person and the role                                                                              |
+| `reservations_update_status` with `allowOverbooking` or `overrideTurnoverBuffer` (`reservation-follow-up.ts:100`)                                                                                        | confirms over the stock or past the turnover buffer       | always                           | the shortfalls, each line and its choice, the buffer, the messages and their recipients              |
+| `reservations_update_status` (confirm, reject, cancel), `reservations_cancel`                                                                                                                            | the status; the customer's message                        | the connection's option          | the dates, the amounts, the messages, a hash of each recipient                                       |
+| `products_delete`, `categories_delete`, `products_delete_variant`, `products_delete_variant_value`, `products_withdraw_variant`, `products_update` (deleting units or tiers)                             | deletes a record and what hangs on it                     | the connection's option          | what goes, counted under the lock                                                                    |
+| `products_update` (archiving), `products_update_status`, `products_delete_seasonal_pricing`, `products_declare_downtime`, `products_update_downtime`, `products_delete_downtime`, `products_retire_unit` | the catalog or its availability; each can be put back     | the connection's option          | the record and the reservations it touches                                                           |
+| `online_store_update_slug`, `settings_update_company`, `settings_update_reservation_rules`, `settings_update_delivery`, `settings_update_taxes`, `settings_update_legal_profile`                         | what customers see or pay, the store's address on the web | the connection's option          | each value before and after                                                                          |
+| `stores_create` (`routers/dashboard/stores.ts:186`, account scope), `stores_go_live`                                                                                                                     | starts or opens a billing relationship; charges nothing   | the connection's option          | the terms, the future or public URL                                                                  |
+
+`reservations.resolveDepositAttempt` is session-only (`meta.actors`), and so are the changes to a connection's confirmation option. The in-app assistant calls the procedures with the user's session (`AIChatContext.api`), so nothing asks it: its own `record_payment`, `delete_payment` and `return_deposit` tools write at once (`apps/web/lib/ai/tools.ts:716`, `:772`, `:807`), and its status tool never sends an override (`:329`).
+
+**Hand-offs and the invitation approval.** `api_handoffs` (migration 0096, `schema.ts:4535`): one row per step, `pending`, `opened`, `completed` or `failed` with a code, `expired` computed; one active row per store, kind and `subject` (migration 0099). `issueHandoff` (`services/handoffs.ts:225`) creates it or gives the active one a new link under the store row's lock, and binds it to the requester's user. The link is the row's id followed by a 43-character secret stored hashed (`:436`), valid 24 hours, shown once (`secretOutput`), never returned by `handoffs_get`. The page checks the signed-in user is the link's user, still allowed (`mayTakeStep`, `:66`), for a connection that still exists (`checkUser`, `:481`). A Stripe step goes on to the provider through `continueHandoff` (`:515`); an invitation approval is refused there (`:523`) and decided by `team.decideInvitation`, session-only, which runs `inviteMember` with the approval (`services/team.ts:322`, `:514`): the invitation is executed at the owner's click, as the owner. Who reads a step: `handoffs_get`, opened to `settings` read with `anyOf: ["billing", "team"]`, then the kind's domain (`HANDOFF_KIND_DOMAINS`, `:58`). The inbox's `handoff_waiting` shows a step an hour after its link (`HANDOFF_WAIT_MS`), with the dashboard page of the kind as its link, not the step's page (`services/inbox.ts:1623`).
+
+**MCP elicitation.** The server runs `@modelcontextprotocol/server` 2.4.0 through `createMcpHandler(…, { legacy: "stateless" })` (`packages/mcp/src/transports/http.ts:319`). It serves two eras (the SDK paths below are in the installed `@modelcontextprotocol/server` 2.4.0 and the `@modelcontextprotocol/core` 2.4.0 it bundles):
+
+- **2026-07-28** (`server/discover`; `SUPPORTED_MODERN_PROTOCOL_VERSIONS`, SDK `server/dist/src-DdvbAHrR.mjs:567`). There is no server-to-client request: a tool asks for input by returning `resultType: "input_required"` with `inputRequests` and an opaque `requestState`, and the client retries the same call with `inputResponses` and the `requestState` echoed (`inputRequired`, `:5626`–`:5700`). The client declares its capabilities on each request, in `_meta["io.modelcontextprotocol/clientCapabilities"]`, and the server must not infer them from earlier requests (`core/dist/schemas-DscsoNZN.mjs`, `CLIENT_CAPABILITIES_META_KEY`). `elicitation` has two modes, `form` and `url` (`:267`–`:275`).
+- **2025-11-25, 2025-06-18, 2025-03-26, 2024-11-05, 2024-10-07** (`initialize`; `SUPPORTED_PROTOCOL_VERSIONS`, `:6`), served statelessly: each request gets a fresh server that never saw the client's `initialize`, so a tool cannot send `elicitation/create`; the SDK refuses with "per-request legacy serving cannot receive server-to-client requests" (`server/dist/mcp-oHn3ureC.mjs:699`). 2025-11-25 also defines a `-32042 UrlElicitationRequired` error (`src-DdvbAHrR.mjs:3570`), meant for a client that declared URL elicitation; on this path Louez cannot know that it did.
+
+What a client can render as a choice, in form mode (`ElicitRequestFormParams`, `schemas-DscsoNZN.mjs:1144`; primitives, `:1020`–`:1135`): a flat object of primitives only, among them `boolean`, a string `enum`, a titled single select (`oneOf: [{ const, title }]`), its multi-select forms, and the deprecated `enumNames`. Every answer comes with the client's own `action`: `accept`, `decline` or `cancel` (`ElicitResult`, `:1201`). URL mode carries `url`, `message` and `elicitationId` (`:1156`); the client asks the user before opening it. How a client draws either (buttons, a list, a dialog) is the client's: not established from these sources. No other standard way for a server to make a client show actionable choices is in the sources at hand: the capability objects have an open `extensions` map (`:310`), and interactive UI extensions (MCP Apps, OpenAI's widgets) are not in the SDK installed here, so their state is not established. Which assistants speak 2026-07-28 with Louez and declare `elicitation` is not established either.
+
+What an elicitation answer proves: the client's handler produced it. The specification asks clients to show the request to the user; the server cannot tell a person's click from a client or a model that answers by itself, and the SDK says to treat `inputResponses` as untrusted input (`src-DdvbAHrR.mjs:5700`). A form answer is therefore the client's say, never a person's approval. A URL answer only says the client opened, or refused to open, a Louez page; what happens on that page is what Louez itself authenticates.
+
+**Credentials and the person.** An API key acts for its owner (`key.userId`, `platform/actor.ts:145`) in its store; an OAuth grant for the user who granted it; a session, the dashboard's and the in-app assistant's, is the user. The person who may approve an agent's action is that user, as with every hand-off. A platform admin has no staff powers through a key or a token.
+
+### Which actions need a person
+
+Each call that asks names what it does, with one or more consequences, and one function decides who must agree, `approvalLevel` (`platform/approval-rule.ts`):
+
+```ts
+export type Consequence =
+  | "money" // money moves, or the record of money received or given back changes
+  | "stock_override" // books over the stock or past the turnover buffer
+  | "access_removed" // takes a person's access to the store away
+  | "deletion" // deletes a record together with what hangs on it (links, units, history)
+  | "customer_message" // a message goes to a customer
+  | "credits" // spends credits the store bought from Louez
+  | "change"; // anything else a preview guards; the store can put it back
+
+export type ApprovalLevel = "person" | "caller" | "none";
+
+export function approvalLevel(
+  consequences: readonly Consequence[],
+  credential: Pick<Credential, "kind" | "confirmSensitive">,
+): ApprovalLevel; // the strictest level among the consequences
+```
+
+| Consequence        | Key or token, option on (default) | Key or token, option off | Session |
+| ------------------ | --------------------------------- | ------------------------ | ------- |
+| `money`            | person                            | person                   | none    |
+| `stock_override`   | person                            | person                   | none    |
+| `access_removed`   | person                            | person                   | none    |
+| `deletion`         | person                            | none                     | none    |
+| `customer_message` | person                            | none                     | none    |
+| `credits`          | caller                            | caller                   | none    |
+| `change`           | caller                            | none                     | none    |
+
+The criterion: a person approves what the store cannot take back in Louez and what reaches money, a person or a promise the store's own rules refuse; the caller confirms what the store can put back. `credits` stays with the caller: the price and the balance are in the preview, the spend is bounded by credits already bought, and the result keeps the original photo (open question 2). A call passes its consequences with its preview: `reservations_update_status` passes `customer_message` when its preview names a message, `change` when none goes, and `stock_override` with either flag; `products_update` passes `deletion` when it deletes units or tiers, `change` when it archives; `reservations_cancel` as the status change. The table test lists every row; a new consequence, or a store-level rule later, is a parameter of this function, not a branch in a handler. `always` goes: the table says it.
+
+The connection's option keeps its name, "Ask for confirmation before sensitive actions", and its default (on). On, deletions and messages to customers wait for the user's approval in Louez, and other changes are confirmed by the caller (a token, or a choice in the client: below). Off, they run directly, as automations need. Money, booking over the stock or the buffer, and taking access away always wait for the user, whatever the option; credits always ask the caller. No store-level setting: a store tightens by leaving the option on, and nothing relaxes the first three rows. Granting access is already a person's (the invitation approval) and stays so.
+
+### The approval object
+
+An approval is a hand-off of kind `operation_approval`: the same table, link, page machinery, revocation, retention and read tool. What is new is what it binds and its two last states.
+
+- **Stored.** In columns: `procedure` (the router path), `binding_hash` (today's binding: user, credential, store, procedure, input, state), `subject` (SHA-256 of the credential, the procedure and the input: "the same request"), `decided_by_user_id`, `decided_at`, `decision_reason` (up to 500 characters, the person's optional words). In `payload`: the exact input, the preview as last computed, and the domain of the procedure's scope. Who asked, through which credential and client: the existing `user_id`, `credential_kind`, `credential_id`, `client_name`. The execution: `api_operations.approval_id` on the write that used it.
+- **States.**
+
+  | From       | Event                                                                                      | To                                                         |
+  | ---------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+  | (none)     | a call whose level is `person`, without an approval id                                     | `pending`                                                  |
+  | `pending`  | the same request again                                                                     | `pending`: same id and link, preview and binding refreshed |
+  | `pending`  | the person approves the preview the page showed                                            | `approved`, executable for one hour                        |
+  | `pending`  | the person refuses (the page, or the client's decline)                                     | `failed`, `declined`                                       |
+  | `pending`  | the page finds the action can no longer be done (not found, refused, right lost)           | `failed`, `no_longer_possible`                             |
+  | `pending`  | 24 hours pass                                                                              | `expired` (computed)                                       |
+  | active     | the connection is revoked                                                                  | `failed`, `connection_revoked` (exists)                    |
+  | `approved` | the agent calls with its id, the same input, the binding equal, the approver still allowed | `completed`, in the write's transaction                    |
+  | `approved` | that call finds another binding                                                            | `failed`, `state_changed`                                  |
+  | `approved` | that call finds the approver no longer allowed                                             | `failed`, `approver_not_allowed`                           |
+  | `approved` | the hour passes                                                                            | `expired` (computed)                                       |
+
+- **Single use.** `completed` is set by a conditional update (still `approved`, the binding, in time) in the transaction that writes, under the domain's lock, where today's token is consumed; one affected row or nothing runs. A replay of the agent's idempotency key returns the stored result and never reads the approval.
+- **Idempotency and the record.** The first call fails with `APPROVAL_REQUIRED` and is recorded as failed, so the agent may keep one idempotency key for the whole flow (a failed key runs again). The executing call is the agent's write: its operation, its key, its receipt, its credential, with `approval_id`. The person's decision is a session write of its own (`handoffs.decide`, below).
+- **Why the agent executes, not the page.** The action is the agent's: its operation record says "done by the agent, approved by this person", its idempotency key and its answer stay its own, and its result reaches it in its own call. An approval given hours later never runs on a store that moved: the execution reads everything again under its locks and refuses another binding. The invitation keeps executing at the owner's click, as the owner: granting access must never be in a key's or a token's hands.
+- **The outbox.** An approval queues nothing itself; the executed write queues its effects as today. The notice to the person (pull request 8) is an outbox row.
+- **Migration (additive).** `api_handoffs`: the five columns above, nullable, and `approved` appended to `status`. `api_operations`: `approval_id`, nullable, indexed. Pull request 2's relaxation of `token_hash` (below) is the one change that is not an addition; it rewrites no row.
+- **What replaces what.** `checkConfirmation` stays the one entry point and asks `approvalLevel`: `person` goes to the approval, `caller` to today's token in `api_confirmations`, `none` runs. The `always` path is removed, and with it the self-returned token for money, overrides and access.
+
+### The link machinery, improved for every step
+
+What is weak in the hand-offs as built, and what this work fixes, each for a use:
+
+1. **The link is a secret, so only the agent can bring the person to the step.** It is shown once, `handoffs_get` never gives it again, the inbox links to the kind's dashboard page, and asking again replaces it, which breaks a page the person already has open. Approvals need the person to reach them from Louez itself (the inbox, a notification, a URL elicitation), which is also the guard against a look-alike link pasted by an agent. **Fix (pull request 2):** the page is `/handoffs/<id>`: the id (21 random characters) addresses it and the signed-in session is the credential, as the page's checks already require the link's user. `handoffs_get` returns `url`; asking again returns the same link and pushes its expiry back; a link already given with its secret still opens (the 43 characters after the id are ignored), so no link out there breaks. `token_hash` becomes nullable and stops being read; the start procedures lose `secretOutput`, so their idempotency key replays; the redaction of the secret goes once the last old link has expired (pull request 3). **Behaviour that changes for Stripe onboarding, Stripe's dashboard, the billing card and invitations:** a second request no longer voids the first link; `handoffs_get` and the start tools return the link each time; another user asking still starts the step over for them.
+2. **A refusal is a failure.** An owner who declines an invitation ends it `failed` with `declined`, and the agent must read a failure code to tell a person's no from an error. **Fix (pull request 3):** the view gains `decision` (`{ outcome: "approved" | "refused", at, reason }`, null until decided) for invitations and approvals; `failed` and its codes stay for compatibility.
+3. **Two decision paths.** `team.decideInvitation` and its link check inside `inviteMember` are the invitation's own; an operation approval would need the same. **Fix (pull requests 3 and 4):** one session-only procedure, `handoffs.decide` (`{ id, decision, reason?, shown }`), checks the user, the right and that the step is still as shown, then dispatches by kind: an invitation runs `inviteMember` as today, an operation approval records the decision. `team.decideInvitation` goes; `/handoffs/<id>/decide` calls the new procedure.
+4. **One expiry for every kind, and `opened` meaningless for an approval** (the invitation's pending and opened summaries are the same). **Fix (pull request 3):** each kind declares its lifetimes (provider steps and invitations 24 hours, as today; an approval 24 hours to decide, one hour to execute); an approval never takes `opened`.
+5. **The inbox waits an hour and links to the wrong page.** Right for a Stripe step a person is working through, wrong for a click. **Fix:** `handoff_waiting` links to the step's page (pull request 2); `approval_waiting` shows at once (pull request 3).
+6. **Who may read a step is a fixed map** (`settings` with `anyOf: ["billing", "team"]`). **Fix (pull request 3):** `handoffs_get` opens to any domain's read and checks each row's domain: the kind's, or an approval's procedure domain.
+
+Kept as is: the names (`handoffs_get` and `handoffs_refresh` are tool names; a hand-off is "a step a person takes on a Louez page: a provider step or an approval"), the provider attempts and leases, the revocation, the privacy headers, the 90-day retention. An agent still learns the outcome by reading: MCP has no push across requests.
+
+### The flow, by transport
+
+**MCP.**
+
+1. The first call computes its preview under its locks, as today, and `approvalLevel` answers `person`. Nothing is written but the approval. The tool fails with `APPROVAL_REQUIRED` (HTTP 412 on OpenAPI, not retryable): `message` says what would happen and that the user approves it in Louez from the link; `details` holds `preview`, `approval` (`id`, `url`, `status`, `expiresAt`, `pollAfterSeconds`: 30) and `confirmationToken`, which is the approval's id. The bridge's text puts the link on a line of its own with the id, as for a hand-off, and tells the model to give the link to the user as it is, never to ask them to answer in the chat.
+2. The agent reads `handoffs_get` with the id (or watches `inbox_list`) until the status is `approved`, `failed` or `expired`; `decision` says who decided, when, and the reason.
+3. Approved, the agent calls the same tool with the same arguments and `confirmationToken`. The procedure runs its checks and its preview again under its locks; an equal binding consumes the approval and writes; the answer is the tool's usual one, with its receipt.
+4. Other answers to a call with an approval id: `APPROVAL_PENDING` (412, retryable, the approval as above), `APPROVAL_DECLINED` (409, not retryable, the reason), `APPROVAL_INVALID` (412, `details.reason`: `state_changed`, `expired`, `used`, `approver_not_allowed`, `other_request`): the next call without it asks again with the preview as it is now.
+
+**MCP with elicitation** (2026-07-28 only; a 2025-era request gets the flow above). On a call whose request declares `elicitation.url`, the first answer is `input_required` with `inputRequired.elicitUrl({ url, elicitationId: <approval id>, message: <the preview's summary> })` and `requestState` set to the approval's id. The client asks the user whether to open Louez. A `decline` ends the approval `declined` (a refusal harms nothing, whoever sends it); an `accept` opens the page, where the person decides. The client's retry reads the approval: approved, it executes in that retry; pending, it answers `APPROVAL_PENDING` (never a second `input_required`, so no loop); refused, `APPROVAL_DECLINED`. A request without `elicitation.url` gets the link. For the caller level, see the choices below.
+
+**OpenAPI with an API key.** The same as MCP without elicitation: 412 `APPROVAL_REQUIRED` with `data.details.approval.url`, `GET /handoffs/{id}` to wait, then the same request with the id in `Louez-Confirmation`. The person is the key's owner. This is the step the public reference announces ("an operation may gain an approval step"); each operation's description states it.
+
+**The in-app assistant.** It acts with the user's session, so the procedures ask nothing and nothing changes there. What changes is the assistant's own tools: a tool whose call would need a person on a connection with the option on (money, deletion, a customer message; it sends no override) declares `needsApproval` (the AI SDK 6 installed, `ai` 6.0.116). The chat shows a card Louez renders from the call's input, read by the server (the reservation, the amount, the method), with Approve and Refuse; the click is the signed-in user on Louez's own page, so it is a person's approval, and a refusal tells the model the user said no. The record stays the user's session operation; the chat keeps the answer.
+
+### The approval page
+
+- **Who.** `/handoffs/<id>` on the app's host (`NEXT_PUBLIC_APP_URL`), never a storefront host. Signed out, the user signs in and comes back (`/handoffs/resume`, as today). Only the approval's user, still a member of its store whose role allows the procedure's scope (the dashboard right it maps to, such as `manage_members` for the team), while the connection that asked still exists. Anyone else: "another account" or "no longer allowed", nothing about the request.
+- **What it shows.** The preview Louez computes when the page loads, not the stored one and never the agent's words: the page runs the procedure for the stored input as the requesting connection, in a dry run that stops at the preview and writes nothing (`approvalPreview` on the context: no operation record, no rate limit, `checkConfirmation` returns the preview and its binding). With it: the store, the agent (the client's name, as the consent page names it: "verified" only where that page says so), when it asked, how long is left. When the dry run is refused (the record gone, the stock gone without the flag, the connection's right lost), the page says the action can no longer be done, and the approval ends `no_longer_possible`.
+- **Approve and Refuse,** with an optional reason (500 characters). The form posts, same-origin only (as `/decide` today), the binding it showed. The server computes it again: equal, the approval is `approved` with that binding; different, nothing is decided and the page shows the new preview with "this changed while you were reading". Loading the page never changes anything.
+- **Afterwards.** `/handoffs/done/<id>`: approved ("your agent can now carry it out; it has an hour"), refused, or why it ended. When the agent carried it out, the page of the record it changed is linked.
+- **Protection.** An unguessable id, the session, the user and right checks, an expiry, the store bound in the row; the hand-off pages' `no-referrer`, `no-store`, no analytics, and no framing.
+
+### Choosing instead of typing
+
+Where the client can, the request appears as two choices, Approve and Refuse; everywhere, the page shows the same two as buttons.
+
+- **The caller level** (`change`, `credits`, and every class on a client the operator lets choose: open question 1), on a 2026-07-28 request that declares `elicitation.form`: `inputRequired.elicit` with the preview's summary as `message` and
+
+  ```json
+  {
+    "type": "object",
+    "properties": {
+      "decision": {
+        "type": "string",
+        "title": "Your answer",
+        "oneOf": [
+          { "const": "approve", "title": "Approve" },
+          { "const": "refuse", "title": "Refuse" }
+        ]
+      },
+      "reason": { "type": "string", "title": "Reason (optional)", "maxLength": 500 }
+    },
+    "required": ["decision"]
+  }
+  ```
+
+  No default, so a client that applies defaults (`applyDefaults`) never answers for the user. `requestState` is a confirmation token (`api_confirmations`, bound as today). On the retry, `accept` with `approve` and the same token passes, as the token did; `refuse` or `decline` ends it, and the tool answers that the user refused, with the reason; `cancel` decides nothing. Without the capability, the token as today.
+
+- **The person level**, on a request that declares `elicitation.url`: the URL elicitation above. The client's consent prompt is the choice (open Louez, or decline); the approval itself is the Approve button on the page.
+- **Whether the choice is the approval:**
+
+  | Class                                       | A choice in the client                        | Why                                                                                                                 |
+  | ------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+  | `change`, `credits`                         | is the confirmation                           | it proves at least what the token proves today, and the store can put the change back (credits: bounded and priced) |
+  | `deletion`, `customer_message`              | opens the page (recommended); open question 1 | neither can be taken back, and the server cannot tell whether a person or the client chose                          |
+  | `money`, `stock_override`, `access_removed` | opens the page                                | money leaving, a promise the store's rules refuse, and someone's access are where a manipulated agent costs most    |
+  | any class                                   | a refusal always counts                       | a forged refusal only stops the agent's own request                                                                 |
+  | the in-app assistant                        | is the approval, for every class              | Louez draws the buttons and the session posts the click                                                             |
+
+### Refusals, expiry, repeated requests
+
+- **The same request while one is pending** (same connection, procedure and input) gets the same approval, the same link, a fresh preview; it opens no other and counts nothing.
+- **Refused.** The agent learns it from `handoffs_get` or its next call (`APPROVAL_DECLINED`, with the reason). The same request asked again within an hour of a refusal is refused at once (`APPROVAL_RECENTLY_DECLINED`, 409, with when it may ask again), so a person who said no is not asked again and again.
+- **Caps,** per connection and store, counted under the store row's lock on the database's clock: 10 pending approvals (`MAX_PENDING_APPROVALS`) and 30 new requests an hour (`APPROVAL_REQUESTS_PER_HOUR`); past either, `APPROVALS_FULL` (429, retryable, `Retry-After`). Each call also counts on the connection's rate limit, as any call.
+- **Expired.** Undecided after 24 hours, or approved and not carried out within the hour: the next call without the id asks again.
+- **Inbox.** `approval_waiting`: a pending approval at once (the 30-second horizon), a warning for money, overrides and access; an approval refused, expired, or approved and never carried out, for 7 days unless the same request is asked again. It shows to the connection that asked and to a dashboard session that reads its domain, names the request and who may approve, lists `handoffs_get`, and links to the page.
+- **The trail.** The agent's refused first call, the person's decision (`handoffs.decide`, a session operation) and the execution (the agent's operation, with `approval_id`) are each a row of `api_operations`; the approval row keeps who decided, when and why. The dashboard's "done by" reads "done by the agent, approved by" from them.
+
+### Compatibility
+
+- **Clients that send the token back today** on `record_payment`, `record_deposit_return`, `delete_payment`, `team_remove_member`, `team_cancel_invitation` and the overrides get `APPROVAL_REQUIRED` instead of `CONFIRMATION_REQUIRED` once pull request 6 ships, on the same HTTP status (412); sending its id before a person approved answers `APPROVAL_PENDING`. An automation that loops on those tools without a person stops there: that is the change. Connections with the option on see the same for deletions and customer messages after pull request 7. Every other confirmation is unchanged, header and argument included.
+- **Invitations and Stripe steps** keep their tools and fields; they gain `url` on `handoffs_get` and `decision`, and a second request keeps the first link (pull request 2).
+- **Notice.** The public reference promises advance notice for the `Louez-Confirmation` header's semantics and the meaning of error codes: the beta notice in `platform/openapi.ts` and the changelog announce pull requests 6 and 7 before they ship (open question 5), the descriptions of the tools concerned say the flow, and the consent page and the key's option say what the option does. MCP clients read the new descriptions and instructions when they reconnect; the directories review them as any change.
+
+### Pull requests
+
+One decision each, in order. Each keeps today's behaviour for what it does not name.
+
+1. **The rule.** `approvalLevel` and `Consequence`; every call that asks passes its consequences; `always` removed. `person` still means today's always-asked token, so nothing changes for callers. Tests: the table, row by row; the existing confirmation tests unchanged. Touches no table, no transport, no text a caller reads.
+2. **Links addressed by id** (improvements 1 and 5): `/handoffs/<id>`, the session as the credential, the old links still open, `url` in `handoffs_get`, the same link on a second request, `token_hash` nullable, `secretOutput` dropped from the start procedures, `handoff_waiting` linked to the step. Tests: the page's checks (another user, a removed member, a revoked connection), an old link, a second request keeping the link, Stripe's attempts unchanged. Touches no confirmation.
+3. **The approval object** (improvements 2, 3's service, 4, 6): the migration, `operation_approval`, request, decide, consume, void, caps, the lifetimes, `decision`, `handoffs_get` by domain, `approval_waiting`, `handoffs.decide` replacing `team.decideInvitation`, the redaction of the link's secret removed (the provider's return state stays redacted). Exercised through the fixture router (`platform/testing.ts`); no real procedure asks for a person yet. Tests: every row of the state table, the caps, a refusal and the hour after it, a revoked connection, the inbox, an invitation decided through the new procedure.
+4. **The page**: the dry-run preview, Approve and Refuse with a reason, a changed state, the done page. Tests: the dry run writes nothing and records no operation; a binding that moves between load and click decides nothing; another user, a lost right.
+5. **The transports' answers**: `APPROVAL_*` codes in `platform/errors.ts` and the error registry, the bridge's text and instructions, the OpenAPI guide and common codes, `confirmationToken` and `Louez-Confirmation` taking an approval id. Tests: the same flow through RPC, OpenAPI and MCP on the fixture router (`packages/mcp/src/*.db.test.ts`), the reference's guide against its constants.
+6. **The always-asked actions switch to a person**: the payment tools (still hand-written: their approval is consumed before the handler, outside the write's transaction, the limit already stated for them, until lot 2c makes them procedures), the team's removals, the two overrides. After the notice. **The smallest pull request that makes the claim true for money, stock overrides and access.**
+7. **The option's "on" switches deletions and customer messages to a person**, with the consent page's and the key's texts. After the notice. **With it, "a person approves sensitive actions" holds as the landing page words it.**
+8. **The person is told**: an outbox row on each new approval sends a push to the user's devices with the page's link, as the store's notifications do; the dashboard shows the approvals waiting for the signed-in user. Touches no flow.
+9. **The in-app assistant** asks in the chat (`needsApproval`) for money, deletions and customer messages.
+10. **Elicitation**, last: URL mode for the person level, the two choices for the caller level, the client's refusal recorded, on 2026-07-28 requests only. Tests with the SDK's own client, both modes, a client that declares neither, a 2025-era request.
+
+### Open questions for the program's operator
+
+1. **May a choice in the client approve a deletion or a customer message?** Recommended: no, they open the page. Objection: confirming a booking request becomes a trip to Louez for every request, in the agent's main job, where the client already draws Approve and Refuse.
+2. **Credits: caller or person?** Recommended: caller, always asked, as today. Objection: with automatic top-up on, spending credits ends in a card charge.
+3. **Who may approve: the connection's user only, or any member allowed to do it?** Recommended: the connection's user, still allowed, as every hand-off. Objection: an employee's agent cannot get the owner's approval for money, and an owner may want to be the one who approves money.
+4. **Recording money received (a positive `record_payment`) from an automation.** Recommended: a person, as for all money: it marks a reservation paid. Objection: it blocks bookkeeping and till integrations that run with the option off; the answer later would be a per-key allowance with caps, a new setting this plan does not add.
+5. **How much notice before pull requests 6 and 7.** Recommended: two weeks, in the changelog and the reference's notice. Objection: it delays refunds for agents, which wait on this.
+6. **A second factor on the page for money above an amount**, against an agent that drives the user's signed-in browser. Recommended: not in this cut; the trust model says so. Objection: such agents exist today.
+
+### Not established
+
+Which assistants negotiate 2026-07-28 with Louez and declare `elicitation.form` or `elicitation.url`, and how each draws a titled `oneOf`; whether a 2025-era client that never declared URL elicitation handles `-32042`; the state of MCP Apps and of OpenAI's widgets as ways to show choices (not in the sources at hand). Until a client is tested, the link is the path every client takes.
 
 ## Ports
 

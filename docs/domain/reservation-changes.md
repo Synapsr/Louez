@@ -122,6 +122,7 @@ Taken by the program's operator after review, for this lot.
 
 - What this proves: the caller saw the preview, not that a human approved it. The same agent can send both calls (`packages/api/src/platform/confirmation.ts:40`).
 - Strongest objection: an unattended agent could approve shortages again and again while it optimises bookings. A store that wants a human in the loop withholds write access until owner hand-offs exist.
+- Planned: an override is a `stock_override`, which a person approves in Louez whatever the connection's option ([A person's approval](../architecture/api-and-agents.md#a-persons-approval-plan), pull request 6). The agent still carries the confirmation out, with the approval's id, on the shortfalls the person approved.
 
 **D3. A buffer-only conflict on a held unit does not refuse a customer's or a payment's confirmation.** This is today's behaviour, kept: the unit check accepts a unit that only the turnover buffer around another booking reaches, and the activity row keeps its id (`turnoverBufferOnlyUnitIds`). The buffered capacity check still runs and can still refuse such a confirmation (section 1). Neither writer is promised acceptance. Naming the conflict to the store in the activity row, and an inbox item, are open (section 5).
 
