@@ -609,6 +609,18 @@ test("the customer's status service may not call the store's stock check", () =>
   );
 });
 
+test("the payment's status service may not call the store's stock check", () => {
+  // The paid confirmation's entry, in its own file, is seen as the customer's is.
+  const file = "packages/api/src/services/payment-reservation-status.ts";
+  const code = `${SNIPPET_IMPORTS}import { checkStoreConfirmationInventory } from "./reservation-inventory";
+    await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true, overrideTurnoverBuffer: true });`;
+  const { remaining } = applyAllowlist(findViolations(code, file, tables), ALLOWLIST);
+  assert.deepEqual(
+    remaining.map(({ rule }) => rule),
+    ["R7"],
+  );
+});
+
 test("reservation status writes and inserts go through the helpers", () => {
   const files = listSourceFiles();
   assert.ok(files.length > 1000, `only ${files.length} source files found`);
