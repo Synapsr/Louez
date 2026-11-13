@@ -29,7 +29,7 @@ export function probes(
   void ask({ ...rest, consequences: [] });
   // @ts-expect-error: an empty list, through the function that does not throw
   void check({ ...rest, consequences: [] });
-  // @ts-expect-error: `always` is gone; the payment tools convert it in their adapter
+  // @ts-expect-error: `always` is gone
   void ask({ ...rest, always: true });
   // @ts-expect-error: not a consequence
   void ask({ ...rest, consequences: ["refund"] });

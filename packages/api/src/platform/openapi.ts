@@ -363,7 +363,7 @@ const errorTable = [
 
 const OPENAPI_DESCRIPTION = `${OPENAPI_BETA_NOTICE}
 
-Louez's dashboard operations for scripts and integrations: products and categories, the follow-up of reservations, statistics, the store's settings, its Stripe connection, the online store, the team, billing and more. The list grows; this reference is the list. Each operation is also a tool of Louez's MCP server for AI assistants, under its \`operationId\`, and descriptions name other operations by it, such as \`products_get\`.
+Louez's dashboard operations for scripts and integrations: products and categories, the follow-up of reservations and the payments recorded on them, statistics, the store's settings, its Stripe connection, the online store, the team, billing and more. The list grows; this reference is the list. Each operation is also a tool of Louez's MCP server for AI assistants, under its \`operationId\`, and descriptions name other operations by it, such as \`products_get\`.
 
 ## Authentication
 

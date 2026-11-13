@@ -1,17 +1,44 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import * as nodeModule from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { after, before, beforeEach, describe, test } from "node:test";
 
 import { eq } from "drizzle-orm";
 
+import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-import type { createAITools } from "./tools";
+import type { AIChatContext, createAITools } from "./tools";
 
-// The assistant's payment tools on a migrated database: each write carries its
-// billing facts and marks the reservation for the billing service in the same
-// transaction (louez-billing docs/api, README §5.2, Q3, Q4, Q7).
+// The assistant's payment tools on a migrated database: they call the payment
+// procedures as the signed-in user, which write through the dashboard's writer:
+// each write carries its billing facts and marks the reservation for the billing
+// service in the same transaction (louez-billing docs/api, README §5.2, Q3, Q4,
+// Q7).
+
+// A dashboard session, read from a test header: Better Auth stays out.
+const SESSION_HEADER = "x-test-session-user";
+const directory = mkdtempSync(join(tmpdir(), "louez-ai-payments-"));
+const authStubPath = join(directory, "auth.mjs");
+writeFileSync(
+  authStubPath,
+  `export const auth = {};
+export const mcpOAuth = null;
+export const authInstance = {
+  api: {
+    getSession: async ({ headers }) => {
+      const id = headers.get(${JSON.stringify(SESSION_HEADER)});
+      return id ? { user: { id, email: id + "@ai.test" } } : null;
+    },
+  },
+};`,
+);
+after(() => rmSync(directory, { recursive: true }));
 
 // The status-change module the tools import pulls in "server-only".
 Reflect.get(
@@ -23,9 +50,11 @@ Reflect.get(
     context: unknown,
     next: (specifier: string, context: unknown) => unknown,
   ) {
-    return specifier === "server-only"
-      ? { url: "node:module", shortCircuit: true }
-      : next(specifier, context);
+    if (specifier === "server-only") return { url: "node:module", shortCircuit: true };
+    if (specifier === "@louez/auth") {
+      return { url: pathToFileURL(authStubPath).href, shortCircuit: true };
+    }
+    return next(specifier, context);
   },
 });
 
@@ -44,6 +73,7 @@ const SETTINGS = {
 } as const;
 
 type Tools = ReturnType<typeof createAITools>;
+type AssistantApi = NonNullable<AIChatContext["api"]>;
 
 describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
@@ -56,11 +86,46 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
     const aiTools = await import("./tools");
+    const { paymentRecordsPort } = await import("@/lib/api/payment-records-port");
+    // packages/api is ES modules: its router needs the CommonJS packages'
+    // names by hand. Loaded last, as the mocks change how later modules load.
+    await import("@louez/mcp/testing/cjs-named-exports");
+    const { appRouter } = await import("@louez/api/router");
+    const { STORE_HEADER } = await import("@louez/api/platform/procedures");
+    const { createRouterClient } = await import("@orpc/server");
+
+    // The procedures as the chat route builds them: this user's session, on this store.
+    const context = {
+      headers: new Headers({ [SESSION_HEADER]: USER, [STORE_HEADER]: STORE }),
+      transport: "rpc" as const,
+      ports: {
+        planFeatures: async () => ({ apiAccess: true }),
+        runReservationEffects: async () => {},
+        insurance: { createContract: async () => null, cancelContract: async () => {} },
+        newStores: createTestNewStores(),
+        dispatchEffects: () => {},
+        storage: createMemoryStorage(),
+        urls: createTestUrls(),
+        afterCommit: () => {},
+        paymentRecords: paymentRecordsPort,
+      },
+    };
+    const at = (name: string) => ({ context, path: ["dashboard", name] });
+    const { dashboard } = appRouter;
+    const api: AssistantApi = {
+      analytics: createRouterClient(dashboard.analytics, at("analytics")),
+      categories: createRouterClient(dashboard.categories, at("categories")),
+      payments: createRouterClient(dashboard.payments, at("payments")),
+      products: createRouterClient(dashboard.products, at("products")),
+      reservations: createRouterClient(dashboard.reservations, at("reservations")),
+      settings: createRouterClient(dashboard.settings, at("settings")),
+    };
     tools = aiTools.createAITools({
       storeId: STORE,
       userId: USER,
       storeName: "AI payments",
       urls: createTestUrls(),
+      api,
       permissions: {
         reservations: "write",
         products: "read",
@@ -72,6 +137,7 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
       },
     });
 
+    await louezDb.db.insert(louezDb.users).values({ id: USER, email: "owner@ai.test" });
     // The store prices in EUR; the reservation froze USD at creation (contract Q4).
     await louezDb.db.insert(louezDb.stores).values({
       id: STORE,
@@ -80,6 +146,9 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
       slug: "ai-payments",
       settings: SETTINGS,
     });
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values({ storeId: STORE, userId: USER, role: "owner" });
   });
 
   after(async () => {
@@ -286,6 +355,183 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
 
     assert.equal((await paymentsOf(reservationId)).length, 1);
     assert.deepEqual(await queue(), []);
+  });
+
+  test("the payment tools write no history line, and each call is recorded as the user's session", async () => {
+    await louezDb.db.delete(louezDb.apiOperations).where(eq(louezDb.apiOperations.storeId, STORE));
+    const reservationId = await createReservation();
+    await recordPayment({ reservationId, type: "deposit", amount: "30.00", method: "card" });
+    await returnDeposit({ reservationId, amount: "10.00", method: "card" });
+    const [deposit] = (await paymentsOf(reservationId)).filter((row) => row.type === "deposit");
+    await deletePayment({ paymentId: deposit?.id ?? "" });
+
+    assert.deepEqual(
+      await louezDb.db
+        .select({ type: louezDb.reservationActivity.activityType })
+        .from(louezDb.reservationActivity)
+        .where(eq(louezDb.reservationActivity.reservationId, reservationId)),
+      [],
+    );
+    assert.deepEqual(
+      (
+        await louezDb.db
+          .select({
+            procedure: louezDb.apiOperations.procedure,
+            credentialKind: louezDb.apiOperations.credentialKind,
+            userId: louezDb.apiOperations.userId,
+            status: louezDb.apiOperations.status,
+          })
+          .from(louezDb.apiOperations)
+          .where(eq(louezDb.apiOperations.storeId, STORE))
+      )
+        .map((row) => `${row.procedure} ${row.credentialKind} ${row.userId} ${row.status}`)
+        .sort(),
+      [
+        `dashboard.payments.delete session ${USER} succeeded`,
+        `dashboard.payments.record session ${USER} succeeded`,
+        `dashboard.payments.recordDepositReturn session ${USER} succeeded`,
+      ],
+    );
+  });
+
+  test("the payment and deposit answers", async () => {
+    const reservationId = await createReservation();
+    await recordPayment({ reservationId, type: "deposit", amount: "30.00", method: "card" });
+
+    assert.deepEqual(await returnDeposit({ reservationId, amount: "10.00", method: "cash" }), {
+      success: true,
+      reservationNumber: reservationId,
+      amount: "10.00",
+      method: "cash",
+    });
+    const [deposit] = (await paymentsOf(reservationId)).filter((row) => row.type === "deposit");
+    assert.deepEqual(await deletePayment({ paymentId: deposit?.id ?? "" }), {
+      success: true,
+      reservationNumber: reservationId,
+    });
+  });
+
+  test("each refusal answers with its message and writes nothing", async () => {
+    const reservationId = await createReservation();
+    await recordPayment({ reservationId, type: "deposit", amount: "30.00", method: "card" });
+    await returnDeposit({ reservationId, amount: "10.00", method: "card" });
+    const cancelled = await createReservation();
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ status: "cancelled" })
+      .where(eq(louezDb.reservations.id, cancelled));
+    const [charged] = await louezDb.db
+      .insert(louezDb.payments)
+      .values({
+        reservationId,
+        amount: "20.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+      })
+      .$returningId();
+    const before = await paymentsOf(reservationId);
+    await louezDb.db.delete(louezDb.billingSyncQueue);
+
+    assert.deepEqual(
+      await recordPayment({ reservationId, type: "rental", amount: "0", method: "cash" }),
+      { error: "Amount must be a non-zero number" },
+    );
+    assert.deepEqual(
+      await recordPayment({ reservationId, type: "rental", amount: "abc", method: "cash" }),
+      { error: "Amount must be a non-zero number" },
+    );
+    assert.deepEqual(
+      await recordPayment({
+        reservationId: cancelled,
+        type: "rental",
+        amount: "5.00",
+        method: "cash",
+      }),
+      { error: "Cannot record payment on a cancelled reservation" },
+    );
+    assert.deepEqual(
+      await recordPayment({
+        reservationId: "res_nowhere",
+        type: "rental",
+        amount: "5.00",
+        method: "cash",
+      }),
+      { error: "Reservation not found" },
+    );
+    assert.deepEqual(await returnDeposit({ reservationId, amount: "0", method: "cash" }), {
+      error: "Amount must be greater than zero",
+    });
+    assert.deepEqual(await returnDeposit({ reservationId, amount: "20.01", method: "cash" }), {
+      error:
+        "Amount exceeds returnable deposit. Collected: 30.00, already returned: 10.00, max returnable: 20.00",
+    });
+    assert.deepEqual(
+      await returnDeposit({ reservationId: "res_nowhere", amount: "1.00", method: "cash" }),
+      { error: "Reservation not found" },
+    );
+    assert.deepEqual(await deletePayment({ paymentId: charged?.id ?? "" }), {
+      error: "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+    });
+    assert.deepEqual(await deletePayment({ paymentId: "pay_nowhere" }), {
+      error: "Payment not found",
+    });
+
+    assert.deepEqual(await paymentsOf(reservationId), before);
+    assert.deepEqual(await paymentsOf(cancelled), []);
+    assert.deepEqual(await queue(), []);
+  });
+
+  test("record_payment refuses a negative amount outside an adjustment", async () => {
+    // As the MCP tool does: the one change a user of the chat can see.
+    const reservationId = await createReservation();
+    assert.deepEqual(
+      await recordPayment({ reservationId, type: "rental", amount: "-5.00", method: "cash" }),
+      { error: 'Only "adjustment" payments can have a negative amount' },
+    );
+    assert.deepEqual(await paymentsOf(reservationId), []);
+  });
+
+  test("a user who only reads payments may not write them", async () => {
+    const reservationId = await createReservation();
+    const aiTools = await import("./tools");
+    const reading = aiTools.createAITools({
+      storeId: STORE,
+      userId: USER,
+      storeName: "AI payments",
+      urls: createTestUrls(),
+      permissions: {
+        reservations: "read",
+        products: "read",
+        customers: "read",
+        categories: "read",
+        payments: "read",
+        analytics: "read",
+        settings: "read",
+      },
+    });
+    const denied = /Permission denied: requires payments:write \(current: read\)/;
+    await assert.rejects(
+      async () =>
+        reading.record_payment.execute?.(
+          { reservationId, type: "rental", amount: "5.00", method: "cash" },
+          options,
+        ),
+      denied,
+    );
+    await assert.rejects(
+      async () =>
+        reading.return_deposit.execute?.(
+          { reservationId, amount: "5.00", method: "cash" },
+          options,
+        ),
+      denied,
+    );
+    await assert.rejects(
+      async () => reading.delete_payment.execute?.({ paymentId: "pay_any" }, options),
+      denied,
+    );
+    assert.deepEqual(await paymentsOf(reservationId), []);
   });
   test("a customer's reservation history, ids and links show only to a user who may read reservations", async () => {
     // A reservation of the customer, for its history.

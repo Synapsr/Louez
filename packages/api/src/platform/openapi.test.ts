@@ -107,7 +107,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations, the statistics, the settings, the online store, the stores, the inbox, Stripe, billing, handoffs and jobs at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations and their payments, the statistics, the settings, the online store, the stores, the inbox, Stripe, billing, handoffs and jobs at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -187,6 +187,9 @@ describe("OpenAPI document", () => {
         "POST /reservations/{id}/status": "reservations_update_status",
         "POST /reservations/{id}/cancel": "reservations_cancel",
         "PATCH /reservations/{id}/notes": "reservations_update_notes",
+        "POST /reservations/{reservationId}/payments": "record_payment",
+        "POST /reservations/{reservationId}/deposit-returns": "record_deposit_return",
+        "DELETE /payments/{paymentId}": "delete_payment",
         "PATCH /online-store": "online_store_update",
         "GET /online-store/slug-availability": "online_store_check_slug_availability",
         "POST /online-store/slug": "online_store_update_slug",
@@ -809,6 +812,7 @@ describe("the public reference", () => {
 
   /** The writes whose whole input is in their path: they take no body. */
   const BODILESS = [
+    "DELETE /payments/{paymentId}",
     "DELETE /products/downtimes/{downtimeId}",
     "DELETE /products/seasonal-pricings/{id}",
     "DELETE /products/{id}",
@@ -1395,7 +1399,7 @@ describe("the content types an operation takes", () => {
         path,
       );
     }
-    assert.equal(none, 13);
+    assert.equal(none, 14);
   });
 
   test("an operation with a file field reads a multipart form and JSON, and nothing else", async () => {

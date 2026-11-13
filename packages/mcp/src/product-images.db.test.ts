@@ -107,7 +107,6 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: { insertRecordedPayment: async () => undefined },
     };
     connect = async (authorization: string) => {
       const mcp = new Client({ name: "test", version: "0.0.0" });

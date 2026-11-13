@@ -1,4 +1,5 @@
 import type { ReservationEffectRunner, ReservationGateReason, Transaction } from "@louez/db";
+import type { StoreSettings } from "@louez/types";
 
 import type { StripeConnectClient } from "../adapters/stripe-connect";
 import type { BillingStatus } from "../contracts/billing";
@@ -75,6 +76,12 @@ export interface ApiPorts {
    */
   depositHolds?: DepositHoldsPort;
   /**
+   * The app's writer of a payment the store records by hand
+   * (services/payment-records.ts): the billing facts it adds are the app's.
+   * Absent where no procedure needs it.
+   */
+  paymentRecords?: PaymentRecordsPort;
+  /**
    * What the team procedures read from the app (services/team.ts). Absent
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
@@ -146,6 +153,31 @@ export interface DepositHoldsPort {
 /** A structured log event: a name, then fields that hold no personal data. */
 export interface LogPort {
   error: (event: { event: string } & Record<string, unknown>) => void;
+}
+
+/** A payment the store records by hand, as the app's writer takes it. */
+export interface RecordedPayment {
+  reservationId: string;
+  storeId: string;
+  storeSettings: Pick<StoreSettings, "currency" | "tax"> | null;
+  type: "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
+  method: "cash" | "card" | "transfer" | "check" | "other";
+  /** As stored, `decimal(10,2)`. */
+  amount: string;
+  /** `deposit` for a deposit given back, `manual` otherwise. */
+  origin: "manual" | "deposit";
+  paidAt: Date;
+  notes: string | null;
+}
+
+/** The app's writer of the payments a store records by hand (`ApiPorts.paymentRecords`). */
+export interface PaymentRecordsPort {
+  /**
+   * In the caller's transaction: the payment, under a new id, in the
+   * reservation's currency with its billing facts (gross, insurance share),
+   * and the reservation's mark for the billing service.
+   */
+  insert: (tx: Transaction, payment: RecordedPayment) => Promise<void>;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */

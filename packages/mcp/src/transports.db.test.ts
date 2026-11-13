@@ -153,9 +153,6 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
     httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: {
-        insertRecordedPayment: async () => undefined,
-      },
     };
 
     await louezDb.db.insert(louezDb.users).values([

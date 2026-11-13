@@ -92,7 +92,14 @@ const STAND_INS: Record<string, string[]> = {
   "../services/launch": ["goLive"],
   "../services/team": ["cancelInvitation", "removeMember"],
   "../services/reservation-status": ["changeStoreReservationStatus"],
+  "../services/payment-records": ["recordPayment", "recordDepositReturn", "deletePayment"],
 };
+
+/**
+ * The payment writes' step takes the transaction first, then the preview with
+ * the state it binds; the branches below hand it that pair.
+ */
+const TRANSACTION_FIRST = new Set(["recordPayment", "recordDepositReturn", "deletePayment"]);
 
 let captured: Confirm | null = null;
 
@@ -142,7 +149,9 @@ async function installStandIns() {
             typeof arg === "object" && arg !== null && "confirm" in arg,
         );
         assert.ok(options, `${name} was given a confirm step`);
-        captured = options.confirm;
+        captured = TRANSACTION_FIRST.has(name)
+          ? (preview, tx) => options.confirm(tx, preview)
+          : options.confirm;
         if (throughStatusService && name === "changeStoreReservationStatus") {
           // The real service picks the branch; it stops once it has asked,
           // inside its transaction, so nothing is written.
@@ -590,6 +599,83 @@ const SITES: Site[] = [
       ].slice(0, name === "cancel" ? 2 : undefined),
     }),
   ),
+  // The three payment writes ask in their transaction, under the
+  // reservation's lock, with the preview and the state the token binds. The
+  // deletion is money too: it erases a record of money received.
+  {
+    path: ["dashboard", "payments", "record"],
+    input: {
+      reservationId: "cs_reservation_00001",
+      type: "rental",
+      amount: "80.00",
+      method: "cash",
+    },
+    branches: [
+      {
+        name: "records a payment",
+        preview: {
+          preview: {
+            summary: "Record a rental payment of €80.00 (cash) on reservation #R-1.",
+            details: {
+              reservationId: "cs_reservation_00001",
+              number: "R-1",
+              type: "rental",
+              amount: "80.00",
+              method: "cash",
+            },
+          },
+          state: { status: "confirmed" },
+        },
+        asksWithOptionOff: true,
+      },
+    ],
+  },
+  {
+    path: ["dashboard", "payments", "recordDepositReturn"],
+    input: { reservationId: "cs_reservation_00001", amount: "50.00", method: "cash" },
+    branches: [
+      {
+        name: "records a return",
+        preview: {
+          preview: {
+            summary: "Record a deposit return of €50.00 (cash) on reservation #R-1.",
+            details: {
+              reservationId: "cs_reservation_00001",
+              number: "R-1",
+              amount: "50.00",
+              method: "cash",
+              returnable: "50.00",
+            },
+          },
+          state: { returnable: "50.00" },
+        },
+        asksWithOptionOff: true,
+      },
+    ],
+  },
+  {
+    path: ["dashboard", "payments", "delete"],
+    input: { paymentId: "cs_payment_000000001" },
+    branches: [
+      {
+        name: "deletes",
+        preview: {
+          preview: {
+            summary: "Delete the deposit payment of €50.00 (cash) on reservation #R-1.",
+            details: {
+              paymentId: "cs_payment_000000001",
+              number: "R-1",
+              type: "deposit",
+              amount: "50.00",
+              method: "cash",
+            },
+          },
+          state: { amount: "50.00", status: "completed" },
+        },
+        asksWithOptionOff: true,
+      },
+    ],
+  },
   {
     path: ["dashboard", "stores", "create"],
     input: {
@@ -693,6 +779,12 @@ const FINGERPRINTS: Record<string, string> = {
     "bfd6897c223270bdc61a2fd3082c8bb97da3eb369ae94cf6c738a84af9f22e5f",
   "dashboard.reservations.cancel, no message":
     "0c4213cf9f48761267bb8fa2d0862ae1db4ce4c6e00a2c082b9feea305db2417",
+  "dashboard.payments.record, records a payment":
+    "5dc4e9b7580e0f12b141acf99724ef683068990a543b6cbb5ce3cd9dfa7431f0",
+  "dashboard.payments.recordDepositReturn, records a return":
+    "83c6191808fff5376d85199787c8949c427393f9f2e68b45c0a682aa440304da",
+  "dashboard.payments.delete, deletes":
+    "b9d4c93529b32260d7e4cae338d168da7ab86e9448f83051aa1fe2aa84bf46d4",
   "dashboard.stores.create, creates":
     "ad17363db02c0e1e3c6f488f11b118ff4ca0b64236d2b4d2a13efc65658627ef",
   "dashboard.products.enhanceImage, priced":
@@ -745,6 +837,9 @@ const CONSEQUENCES: Record<string, readonly Consequence[] | null> = {
   "dashboard.reservations.updateStatus, past the turnover buffer": ["stock_override"],
   "dashboard.reservations.cancel, a message goes": ["customer_message"],
   "dashboard.reservations.cancel, no message": ["change"],
+  "dashboard.payments.record, records a payment": ["money"],
+  "dashboard.payments.recordDepositReturn, records a return": ["money"],
+  "dashboard.payments.delete, deletes": ["money"],
   "dashboard.stores.create, creates": ["change"],
   "dashboard.products.enhanceImage, priced": ["credits"],
   "dashboard.products.enhanceImage, free": null,
@@ -1034,6 +1129,12 @@ describe(
       urls: createTestUrls(),
       afterCommit: () => {},
       productImages: images.port,
+      // The payment writes stop before they write: their writer is never reached.
+      paymentRecords: {
+        insert: async () => {
+          throw new Error("the payment writer is not reached");
+        },
+      },
     };
 
     before(async () => {
@@ -1052,6 +1153,7 @@ describe(
         team: (await import("../routers/dashboard/team")).dashboardTeamRouter,
         reservations: (await import("../routers/dashboard/reservations"))
           .dashboardReservationsRouter,
+        payments: (await import("../routers/dashboard/payments")).dashboardPaymentsRouter,
         notes: (await import("./testing")).createFixtureRouter().fixture.notes,
       };
 
