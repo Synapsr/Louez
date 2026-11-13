@@ -2718,7 +2718,9 @@
           "shortfall": "Angefragt: {requested} · Verfügbar: {available}",
           "createAnyway": "Trotzdem erstellen",
           "editDescription": "Einige Produkte sind für den Zeitraum nicht in ausreichender Menge verfügbar. Sie können die Änderung trotzdem speichern; die Überbuchung wird im Verlauf sichtbar.",
-          "saveAnyway": "Trotzdem speichern"
+          "saveAnyway": "Trotzdem speichern",
+          "confirmDescription": "Der Bestand deckt diese Reservierung für ihren Zeitraum nicht ab. Sie können sie trotzdem über den verfügbaren Bestand hinaus bestätigen; die Überbuchung wird im Verlauf sichtbar.",
+          "confirmAnyway": "Trotzdem bestätigen"
         },
         "addUnavailable": {
           "title": "Produkt nicht verfügbar",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "Zugewiesene Einheiten sind für die neuen Daten nicht verfügbar: {identifiers}",
     "invalidUnits": "Eine oder mehrere ausgewählte Einheiten sind ungültig",
     "turnoverBufferConflict": "Die ausgewählte Einheit wird nur durch den Umschlagspuffer blockiert",
+    "turnoverBufferShortfall": "Der Bestand deckt diese Reservierung ab, jedoch nicht mit dem Umschlagspuffer zwischen zwei Vermietungen. Geben Sie Bestand um diese Daten frei oder verschieben Sie sie, um sie zu bestätigen.",
     "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",
     "unitCombinationMismatch": "Ausgewählte Einheiten stimmen nicht mit der reservierten Kombination für diese Position überein",
     "cannotDisableUnitTrackingWithCombinations": "Einheitenverfolgung kann nicht deaktiviert werden, solange aktive Reservierungen verfolgte Kombinationen für dieses Produkt verwenden.",

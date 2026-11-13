@@ -2679,7 +2679,9 @@
           "shortfall": "Richiesto: {requested} · Disponibile: {available}",
           "createAnyway": "Crea comunque",
           "editDescription": "Alcuni prodotti non sono disponibili in quantità sufficiente per il periodo. Puoi comunque salvare la modifica e l'override sarà visibile nella cronologia.",
-          "saveAnyway": "Salva comunque"
+          "saveAnyway": "Salva comunque",
+          "confirmDescription": "Lo stock non copre questa prenotazione nel suo periodo. Puoi comunque confermarla oltre lo stock disponibile: la scelta sarà visibile nella cronologia.",
+          "confirmAnyway": "Conferma comunque"
         },
         "addUnavailable": {
           "title": "Prodotto non disponibile",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "Le unità assegnate non sono disponibili per le nuove date: {identifiers}",
     "invalidUnits": "Una o più unità selezionate non sono valide",
     "turnoverBufferConflict": "L'unità selezionata è bloccata solo dal margine di rotazione",
+    "turnoverBufferShortfall": "Lo stock copre questa prenotazione, ma non con il margine di rotazione tra due noleggi. Libera stock intorno a queste date o spostale per confermarla.",
     "unitProductMismatch": "Le unità selezionate non appartengono a questo prodotto",
     "unitCombinationMismatch": "Le unità selezionate non corrispondono alla combinazione riservata per questa riga",
     "cannotDisableUnitTrackingWithCombinations": "Impossibile disattivare il tracciamento delle unità mentre prenotazioni attive utilizzano combinazioni tracciate per questo prodotto.",

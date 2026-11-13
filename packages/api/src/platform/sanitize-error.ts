@@ -47,7 +47,8 @@ const KNOWN_NAMES: ReadonlySet<string> = new Set(
     StripeAPIError StripeAuthenticationError StripePermissionError StripeRateLimitError
     StripeConnectionError StripeSignatureVerificationError StripeIdempotencyError
     StripeInvalidGrantError StripeUnknownError APIError BetterAuthError ApiServiceError
-    ReservationInventoryError ReservationUnitConflictError ReservationProductsChangedError
+    ReservationInventoryError ReservationUnitConflictError ReservationCapacityShortfallError
+    ReservationTurnoverBufferShortfallError ReservationProductsChangedError
     ReservationChangeBusyError ReservationLockError`),
 );
 

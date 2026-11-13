@@ -2718,7 +2718,9 @@
           "shortfall": "Solicitado: {requested} · Disponible: {available}",
           "createAnyway": "Crear de todos modos",
           "editDescription": "Algunos productos no están disponibles en cantidad suficiente para el periodo. Puedes guardar los cambios de todos modos y el override quedará visible en el historial.",
-          "saveAnyway": "Guardar de todos modos"
+          "saveAnyway": "Guardar de todos modos",
+          "confirmDescription": "El stock no cubre esta reserva durante su periodo. Puedes confirmarla de todos modos por encima del stock disponible; esta decisión quedará visible en el historial.",
+          "confirmAnyway": "Confirmar de todos modos"
         },
         "addUnavailable": {
           "title": "Producto no disponible",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "Las unidades asignadas no están disponibles para las nuevas fechas: {identifiers}",
     "invalidUnits": "Una o más unidades seleccionadas no son válidas",
     "turnoverBufferConflict": "La unidad seleccionada solo está bloqueada por el margen de rotación",
+    "turnoverBufferShortfall": "El stock cubre esta reserva, pero no con el margen de rotación entre dos alquileres. Libera stock en torno a estas fechas o muévelas para confirmarla.",
     "unitProductMismatch": "Las unidades seleccionadas no pertenecen a este producto",
     "unitCombinationMismatch": "Las unidades seleccionadas no coinciden con la combinación reservada para este artículo",
     "cannotDisableUnitTrackingWithCombinations": "No se puede desactivar el seguimiento de unidades mientras haya reservas activas que utilicen combinaciones rastreadas para este producto.",

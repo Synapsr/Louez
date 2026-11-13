@@ -727,6 +727,12 @@ export const updateReservationStatusInput = z.object({
     .describe(
       "For a rejection: the customer reads it in the rejection email, and the reservation's history shows it.",
     ),
+  allowOverbooking: z
+    .boolean()
+    .optional()
+    .describe(
+      "For a confirmation the stock cannot cover (RESERVATION_INSUFFICIENT_CAPACITY): true confirms it all the same, booking over the stock, and the reservation's history records the shortfalls. Send it only when the user chose to book over the stock. It never passes a unit held by another booking, consumable stock below zero, or the turnover buffer. Ignored for any other change.",
+    ),
 });
 
 export const cancelReservationInput = z.object({ id: idSchema });
@@ -810,12 +816,36 @@ export const globalSearchOutput = globalSearchSchema.extend({
 
 // --- Errors ------------------------------------------------------------------
 
+/**
+ * A line the stock cannot cover whole: how many units it asks for, and how
+ * many of them are left next to the other bookings and the lines before it.
+ * A creation, an edit and the store's confirmation refuse with these, and
+ * record the ones they book over.
+ */
+export interface CapacityShortfall {
+  productId: string;
+  productName: string;
+  /** The combination the line chose; null for a counted product or a line served by any unit. */
+  combinationKey: string | null;
+  requested: number;
+  available: number;
+}
+
 /** A unit held by a reservation's line that cannot serve it over its dates. */
 export interface ReservationUnitConflict {
   reservationItemId: string;
   unitId: string;
   identifier: string;
 }
+
+/** Each shortfall in a few words, for an error's message. */
+const describeShortfalls = (shortfalls: CapacityShortfall[]) =>
+  shortfalls
+    .map(
+      (shortfall) =>
+        `${shortfall.productName}${shortfall.combinationKey ? ` (${shortfall.combinationKey})` : ""}: ${shortfall.requested} asked, ${shortfall.available} free`,
+    )
+    .join("; ");
 
 export const reservationErrors = {
   notFound: (id: string) =>
@@ -855,6 +885,27 @@ export const reservationErrors = {
       message: `Not confirmed: units assigned to this reservation cannot serve it for its dates (${conflicts.map((conflict) => conflict.identifier).join(", ")}). Another booking holds them over these dates, or they are retired or in downtime. Assign other units, then confirm.`,
       i18nKey: "errors.assignedUnitsConflict",
       details: { conflicts },
+    }),
+  /**
+   * The returnable stock cannot cover lines of the reservation over its
+   * dates, counted without the turnover buffer. The store may confirm over
+   * them on purpose: the same call with `allowOverbooking: true`.
+   */
+  insufficientCapacity: (shortfalls: CapacityShortfall[]) =>
+    apiError("CONFLICT", "RESERVATION_INSUFFICIENT_CAPACITY", {
+      message: `Not confirmed: the stock cannot cover this reservation over its dates (${describeShortfalls(shortfalls)}). Other bookings hold the rest. To confirm it all the same, booking over the stock, call again with allowOverbooking: true; the reservation's history records it.`,
+      i18nKey: "errors.insufficientCapacity",
+      details: { shortfalls },
+    }),
+  /**
+   * Lines fit the stock, and not with the turnover buffer the store keeps
+   * between rentals. `allowOverbooking` does not cover them.
+   */
+  turnoverBufferShortfall: (shortfalls: CapacityShortfall[]) =>
+    apiError("CONFLICT", "RESERVATION_TURNOVER_BUFFER_CONFLICT", {
+      message: `Not confirmed: the stock covers this reservation, but not with the turnover buffer the store keeps between rentals (${describeShortfalls(shortfalls)}). allowOverbooking does not pass it. Free the stock around these dates, or move the dates, then confirm.`,
+      i18nKey: "errors.turnoverBufferShortfall",
+      details: { shortfalls },
     }),
   storeNotAccepting: (i18nKey: string) =>
     apiError("CONFLICT", "STORE_NOT_ACCEPTING_RESERVATIONS", {

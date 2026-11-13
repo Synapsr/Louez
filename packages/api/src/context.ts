@@ -5,7 +5,7 @@ import type { ErrorScope } from "./platform/error-reporting";
 import type { OperationReceipt } from "./platform/operations";
 import type { ApiPorts } from "./platform/ports";
 import type { AvailabilityMemo } from "./services/availability";
-import type { CapacityShortfall } from "./services/reservation-inventory";
+import type { CapacityShortfall } from "./contracts/reservations";
 
 /**
  * Store-configured overrides of an email's wording ({name}/{number}

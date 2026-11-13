@@ -2679,7 +2679,9 @@
           "shortfall": "Solicitado: {requested} · Disponível: {available}",
           "createAnyway": "Criar mesmo assim",
           "editDescription": "Alguns produtos não estão disponíveis em quantidade suficiente para o período. Ainda pode guardar a alteração; o override ficará visível no histórico.",
-          "saveAnyway": "Guardar mesmo assim"
+          "saveAnyway": "Guardar mesmo assim",
+          "confirmDescription": "O stock não cobre esta reserva no seu período. Ainda pode confirmá-la para além do stock disponível; esta escolha ficará visível no histórico.",
+          "confirmAnyway": "Confirmar mesmo assim"
         },
         "addUnavailable": {
           "title": "Produto indisponível",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "As unidades atribuídas não estão disponíveis para as novas datas: {identifiers}",
     "invalidUnits": "Uma ou mais unidades selecionadas são inválidas",
     "turnoverBufferConflict": "A unidade selecionada está bloqueada apenas pela margem de rotação",
+    "turnoverBufferShortfall": "O stock cobre esta reserva, mas não com a margem de rotação entre dois alugueres. Liberte stock em torno destas datas ou altere-as para a confirmar.",
     "unitProductMismatch": "As unidades selecionadas não pertencem a este produto",
     "unitCombinationMismatch": "As unidades selecionadas não correspondem à combinação reservada para esta linha",
     "cannotDisableUnitTrackingWithCombinations": "Não é possível desativar o rastreamento de unidades enquanto reservas ativas utilizam combinações rastreadas para este produto.",

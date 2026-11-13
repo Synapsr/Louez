@@ -3,7 +3,7 @@
 import { AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { CapacityShortfall } from "@louez/api/services/reservation-inventory";
+import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import {
   Button,
   Dialog,
@@ -20,15 +20,21 @@ type ReservationOverbookingDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** The lines the stock cannot cover, as the server listed them. */
   shortfalls: CapacityShortfall[];
-  /** What confirming writes: a new reservation, or the edit of one. */
-  intent: "create" | "edit";
+  /** What confirming writes: a new reservation, the edit of one, or its confirmation. */
+  intent: "create" | "edit" | "confirm";
   isPending: boolean;
   onConfirm: () => void;
 };
 
+const WORDING = {
+  create: { description: "description", action: "createAnyway" },
+  edit: { description: "editDescription", action: "saveAnyway" },
+  confirm: { description: "confirmDescription", action: "confirmAnyway" },
+} as const;
+
 /**
  * What the dashboard shows when the server refused a reservation for lack of
- * stock: each shortfall, and the choice to book over it. The override is kept
+ * stock: each shortfall, and the choice to book over it. The choice is kept
  * in the reservation's history.
  */
 export const ReservationOverbookingDialog = ({
@@ -50,9 +56,7 @@ export const ReservationOverbookingDialog = ({
             <AlertTriangle className="text-destructive h-5 w-5" />
             {t("title")}
           </DialogTitle>
-          <DialogDescription>
-            {intent === "edit" ? t("editDescription") : t("description")}
-          </DialogDescription>
+          <DialogDescription>{t(WORDING[intent].description)}</DialogDescription>
         </DialogHeader>
         <DialogPanel>
           <div className="space-y-2">
@@ -83,7 +87,7 @@ export const ReservationOverbookingDialog = ({
             {tCommon("cancel")}
           </Button>
           <Button type="button" variant="destructive" isPending={isPending} onClick={onConfirm}>
-            {intent === "edit" ? t("saveAnyway") : t("createAnyway")}
+            {t(WORDING[intent].action)}
           </Button>
         </DialogFooter>
       </DialogPopup>

@@ -67,6 +67,7 @@ const reader = (context: ProductContext): ReservationReader => ({
 const statusCaller = (context: ProductContext): StatusChangeCaller => ({
   storeId: context.actor.storeId,
   userId: context.actor.credential.userId,
+  credential: { kind: context.actor.credential.kind, id: context.actor.credential.id },
   transport: context.actor.transport,
   customers: mayRead(context, "customers"),
   store: {
@@ -80,16 +81,23 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
 
 /**
  * The confirmation of a status change, bound to what its preview shows (the
- * status it starts from, the dates, the amounts, the messages and the money)
- * and to where the messages go. A change since (the reservation moved, a
- * payment recorded, a setting that stops a message, the customer's email or
- * phone) voids the token.
+ * status it starts from, the dates, the amounts, the messages, the money and
+ * the shortfalls booked over) and to where the messages go. A change since
+ * (the reservation moved, a payment recorded, a setting that stops a
+ * message, the customer's email or phone, a shortfall that grew) voids the
+ * token. A confirmation that books over the stock asks every key and token,
+ * even one whose confirmations are off (decision D2,
+ * docs/domain/reservation-changes.md).
  */
 const statusConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
   confirmUnderLock(context, path, input, (preview: StatusChangePreview) => {
     const { summary: _summary, recipientsHash, ...details } = preview;
     // The recipients are bound even where the preview may not show them.
-    return { state: { ...details, recipientsHash }, details };
+    return {
+      state: { ...details, recipientsHash },
+      details,
+      always: preview.overbooking !== null,
+    };
   });
 
 /**
@@ -317,7 +325,7 @@ const updateStatus = storeProcedure
       name: "reservations_update_status",
       title: "Change Reservation Status",
       description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
+        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. A confirmation the stock cannot cover answers RESERVATION_INSUFFICIENT_CAPACITY with each line short (details.shortfalls: product, combination, requested, available). The same input with allowOverbooking: true books over the stock, for when the user chose to: it always answers CONFIRMATION_REQUIRED first, even on a connection whose confirmations are off, with a preview listing every shortfall, and its token holds only while the shortfalls stay as previewed. The token proves the preview was seen, not that a person approved it. allowOverbooking never passes RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock but not the turnover buffer between rentals), RESERVATION_UNITS_UNAVAILABLE or a consumable out of stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       effect: "overwrite",
       reach: "customer",
@@ -330,7 +338,12 @@ const updateStatus = storeProcedure
     linker(context).reservation(
       await changeStoreReservationStatus(
         statusCaller(context),
-        { id: input.id, to: input.status, rejectionReason: input.rejectionReason },
+        {
+          id: input.id,
+          to: input.status,
+          rejectionReason: input.rejectionReason,
+          allowOverbooking: input.allowOverbooking,
+        },
         { confirm: statusConfirmation(context, path, input) },
       ),
     ),

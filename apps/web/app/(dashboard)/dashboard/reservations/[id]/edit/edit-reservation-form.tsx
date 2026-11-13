@@ -52,7 +52,7 @@ import {
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
 import { isInsufficientCapacityResult } from "@/lib/reservations/util.insufficient-capacity";
-import type { CapacityShortfall } from "@louez/api/services/reservation-inventory";
+import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import type { PricingMode } from "@louez/types";
 import { EditReservationItemsSection } from "./components/edit-reservation-items-section";
 import { EditReservationSummarySection } from "./components/edit-reservation-summary-section";

@@ -257,13 +257,13 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   }
 
   /** The store's confirmation, from the dashboard (`reservations.updateStatus`). */
-  const confirmFromDashboard = (id: string) =>
+  const confirmFromDashboard = (id: string, options: { allowOverbooking?: boolean } = {}) =>
     (
       orpc.createRouterClient(reservationsRouter, {
         context: session(),
         path: ["dashboard", "reservations"],
       }) as RouterClient<typeof reservationsRouter>
-    ).updateStatus({ id, status: "confirmed" });
+    ).updateStatus({ id, status: "confirmed", ...options });
 
   const list = (
     context: BaseContext = session(),
@@ -1216,7 +1216,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.deepEqual(await overbookingIds(), [quote]);
 
     // Still short: refused, and nothing is recorded.
-    await rejects(confirmFromDashboard(quote), "RESERVATION_ITEMS_UNAVAILABLE");
+    await rejects(confirmFromDashboard(quote), "RESERVATION_INSUFFICIENT_CAPACITY");
     assert.deepEqual(await overbookingIds(), [quote]);
 
     await setStatus(other.reservationId, "cancelled");
@@ -1226,6 +1226,36 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(confirmed?.metadata?.overbooked, false);
     assert.equal(confirmed?.metadata?.overbookingShortfalls, undefined);
     assert.deepEqual(await overbookingIds(), []);
+  });
+
+  test("a quote the store confirms over the stock stays in the inbox with the shortfalls it booked over", async () => {
+    const other = await kayakBooking("confirmed");
+    const { productId, reservationId: quote } = await kayakBooking("quote", other.productId);
+    await activity(quote, "created", { source: "manual", overbooked: true }, ago(HOUR));
+
+    await confirmFromDashboard(quote, { allowOverbooking: true });
+
+    const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
+    assert.deepEqual(confirmed?.metadata?.overbookingShortfalls, [
+      { productId, productName: "Kayak", combinationKey: null, requested: 1, available: 0 },
+    ]);
+    // Past the inbox's hold-back, still after the creation's verdict.
+    await louezDb.db
+      .update(louezDb.reservationActivity)
+      .set({ createdAt: ago(HOUR / 2) })
+      .where(
+        orm.and(
+          orm.eq(louezDb.reservationActivity.reservationId, quote),
+          orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
+        ),
+      );
+    const items = ofType((await list()).items, "overbooking");
+    assert.deepEqual(
+      items.map((item) => [item.reservation?.id, item.details.productsShort]),
+      [[quote, 1]],
+    );
+    // The confirmation's verdict is the latest: the inbox dates the item by it.
+    assert.ok(Math.abs((items[0]?.occurredAt.getTime() ?? 0) - ago(HOUR / 2).getTime()) < 5_000);
   });
 
   test("a confirmation of a booking never overbooked records that it fits, and shows nothing", async () => {

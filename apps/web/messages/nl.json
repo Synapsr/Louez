@@ -2679,7 +2679,9 @@
           "shortfall": "Gevraagd: {requested} · Beschikbaar: {available}",
           "createAnyway": "Toch aanmaken",
           "editDescription": "Sommige producten zijn voor de periode niet in voldoende aantal beschikbaar. Je kunt de wijziging toch opslaan; de override wordt zichtbaar in de tijdlijn.",
-          "saveAnyway": "Toch opslaan"
+          "saveAnyway": "Toch opslaan",
+          "confirmDescription": "De voorraad dekt deze reservering niet voor haar periode. Je kunt haar toch bevestigen boven de beschikbare voorraad; deze keuze wordt zichtbaar in de tijdlijn.",
+          "confirmAnyway": "Toch bevestigen"
         },
         "addUnavailable": {
           "title": "Product niet beschikbaar",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "Toegewezen eenheden zijn niet beschikbaar voor de nieuwe datums: {identifiers}",
     "invalidUnits": "Een of meer geselecteerde eenheden zijn ongeldig",
     "turnoverBufferConflict": "De geselecteerde eenheid wordt alleen geblokkeerd door de omlooptijdbuffer",
+    "turnoverBufferShortfall": "De voorraad dekt deze reservering, maar niet met de omlooptijdbuffer tussen twee verhuringen. Maak voorraad vrij rond deze data of verplaats ze om de reservering te bevestigen.",
     "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",
     "unitCombinationMismatch": "Geselecteerde eenheden komen niet overeen met de gereserveerde combinatie voor dit regelitem",
     "cannotDisableUnitTrackingWithCombinations": "Kan eenheidtracering niet uitschakelen terwijl actieve reserveringen gevolgde combinaties gebruiken voor dit product.",

@@ -2718,7 +2718,9 @@
           "shortfall": "Diminta: {requested} · Tersedia: {available}",
           "createAnyway": "Tetap buat",
           "editDescription": "Beberapa produk tidak tersedia dalam jumlah yang cukup untuk periode ini. Anda masih dapat menyimpan perubahan dan melacak penggantian di timeline.",
-          "saveAnyway": "Tetap simpan"
+          "saveAnyway": "Tetap simpan",
+          "confirmDescription": "Stok tidak mencukupi reservasi ini untuk periodenya. Anda tetap dapat mengonfirmasinya melebihi stok yang tersedia, dan pilihan ini akan terlihat di riwayat.",
+          "confirmAnyway": "Tetap konfirmasi"
         },
         "addUnavailable": {
           "title": "Produk tidak tersedia",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "Unit yang ditetapkan tidak tersedia untuk tanggal baru: {identifiers}",
     "invalidUnits": "Satu atau lebih unit yang dipilih tidak valid",
     "turnoverBufferConflict": "Unit yang dipilih hanya diblokir oleh buffer turnover",
+    "turnoverBufferShortfall": "Stok mencukupi reservasi ini, tetapi tidak dengan buffer turnover di antara dua penyewaan. Kosongkan stok di sekitar tanggal ini atau pindahkan tanggalnya untuk mengonfirmasinya.",
     "unitProductMismatch": "Unit yang dipilih bukan milik produk ini",
     "unitCombinationMismatch": "Unit yang dipilih tidak cocok dengan kombinasi yang dipesan untuk item baris ini",
     "cannotDisableUnitTrackingWithCombinations": "Tidak dapat menonaktifkan pelacakan unit saat reservasi aktif menggunakan kombinasi terlacak untuk produk ini.",

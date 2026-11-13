@@ -2,7 +2,7 @@ import { eq, max } from "drizzle-orm";
 
 import { reservationActivity, type Transaction } from "@louez/db";
 
-import type { CapacityShortfall } from "./reservation-inventory";
+import type { CapacityShortfall } from "../contracts/reservations";
 
 /**
  * A capacity verdict: what a stock check said of a reservation when it was

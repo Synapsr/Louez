@@ -319,7 +319,7 @@ export function createAITools(ctx: AIChatContext) {
 
     update_reservation_status: tool({
       description:
-        "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also tells the customer when a request is confirmed or rejected and when the store cancels, as the store's customer notification settings say, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation.",
+        "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also tells the customer when a request is confirmed or rejected and when the store cancels, as the store's customer notification settings say, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation. A confirmation the stock cannot cover is refused with each line short: tell the user, who may confirm it over the stock from the reservation's page in the dashboard, where the shortfalls are shown first. This tool never books over the stock.",
       inputSchema: z.object({
         reservationId: z.string().describe("The reservation ID"),
         status: z
@@ -327,7 +327,9 @@ export function createAITools(ctx: AIChatContext) {
           .describe("New status"),
       }),
       // As on the dashboard: the stock check, the fees, the insurance contract,
-      // the emails and the notifications.
+      // the emails and the notifications. Never `allowOverbooking`: the chat
+      // calls with the user's session, which no confirmation stops, so booking
+      // over the stock stays a click in the dashboard's dialog.
       execute: async ({ reservationId, status }) => {
         const change = await assistantApi(ctx).reservations.updateStatus({
           id: reservationId,

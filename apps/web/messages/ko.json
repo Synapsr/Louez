@@ -2718,7 +2718,9 @@
           "shortfall": "요청됨: {requested} · 사용 가능: {available}",
           "createAnyway": "무시하고 만들기",
           "editDescription": "일부 제품은 해당 기간에 수량이 충분하지 않습니다. 변경 사항을 저장하고 타임라인에서 재정의를 추적할 수 있습니다.",
-          "saveAnyway": "무시하고 저장"
+          "saveAnyway": "무시하고 저장",
+          "confirmDescription": "이 예약 기간에는 재고가 부족합니다. 그래도 가용 재고를 초과하여 확정할 수 있으며, 이 선택은 기록에 남습니다.",
+          "confirmAnyway": "무시하고 확정"
         },
         "addUnavailable": {
           "title": "제품을 사용할 수 없음",
@@ -9251,6 +9253,7 @@
     "assignedUnitsConflict": "새 날짜에는 할당된 장치를 사용할 수 없습니다: {identifiers}",
     "invalidUnits": "선택한 단위 중 하나 이상이 잘못되었습니다.",
     "turnoverBufferConflict": "선택한 유닛은 턴오버 버퍼에 의해서만 차단됩니다.",
+    "turnoverBufferShortfall": "재고로 이 예약을 처리할 수 있지만, 대여 사이의 턴오버 버퍼까지 포함하면 부족합니다. 확정하려면 이 날짜 전후의 재고를 확보하거나 날짜를 옮기세요.",
     "unitProductMismatch": "선택한 장치는 이 제품에 속하지 않습니다.",
     "unitCombinationMismatch": "선택한 단위가 이 광고 항목에 대해 예약된 조합과 일치하지 않습니다.",
     "cannotDisableUnitTrackingWithCombinations": "활성 예약이 이 제품에 대해 추적된 조합을 사용하는 동안에는 단위 추적을 비활성화할 수 없습니다.",

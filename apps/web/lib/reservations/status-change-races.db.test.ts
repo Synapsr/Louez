@@ -210,6 +210,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   const caller = () => ({
     storeId: STORE,
     userId: OWNER,
+    credential: { kind: "session" as const, id: null },
     transport: "rpc" as const,
     customers: true,
     store: {
@@ -758,6 +759,79 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         confirm: (id: string) => paidConfirmation(id),
       },
     };
+
+    // Still short: only the store may confirm over the stock (S3, D1). Each
+    // test cancels what it leaves overbooked, as the others read the whole inbox.
+    const cancel = (id: string) =>
+      louezDb.db
+        .update(louezDb.reservations)
+        .set({ status: "cancelled" })
+        .where(eq(louezDb.reservations.id, id));
+
+    test("is refused to the customer while the shortfall lasts, with no shortfall named", async (t) => {
+      const { id } = await overbooked("quote");
+      t.after(() => cancel(id));
+
+      assert.deepEqual(await quotes.acceptQuote(STORE_SLUG, id), {
+        error: "errors.productNoLongerAvailable",
+      });
+      assert.equal(await verdictOf(id), undefined, "nothing was written");
+      assert.deepEqual(await overbookings(), [id]);
+      assert.equal(quoteMessages.length, 0);
+    });
+
+    test("is left pending by its payment while the shortfall lasts", async (t) => {
+      const { id } = await overbooked("pending");
+      t.after(() => cancel(id));
+
+      await assert.rejects(paidConfirmation(id), (error: Error) => {
+        // The stock refusal the payment's completion keeps pending, never the
+        // store's capacity refusal. Read by name: this file loads the
+        // service's module a second time.
+        assert.equal(error.constructor.name, "ReservationInventoryError");
+        assert.equal(error.message, "errors.productNoLongerAvailable");
+        return true;
+      });
+      assert.equal(await verdictOf(id), undefined, "nothing was written");
+    });
+
+    test("no override reaches the check the customer and the payment run", async (t) => {
+      const { id } = await overbooked("quote");
+      t.after(() => cancel(id));
+      const inventory = await import("@louez/api/services/reservation-inventory");
+
+      await assert.rejects(
+        louezDb.db.transaction((tx) =>
+          // @ts-expect-error -- the check takes no override: its signature has no place for one.
+          inventory.checkExistingReservationInventory(tx, id, STORE, { allowOverbooking: true }),
+        ),
+        (error: Error) => error.message === "errors.productNoLongerAvailable",
+      );
+    });
+
+    test("is confirmed by the store's change over the stock, which stays in the inbox", async (t) => {
+      const { id } = await overbooked("quote");
+      t.after(() => cancel(id));
+
+      await statusChange.changeStoreReservationStatus(caller(), {
+        id,
+        to: "confirmed",
+        allowOverbooking: true,
+      });
+
+      assert.deepEqual(await verdictOf(id), { type: "confirmed", overbooked: true });
+      // Past the inbox's hold-back, still after the creation's verdict.
+      await louezDb.db
+        .update(louezDb.reservationActivity)
+        .set({ createdAt: new Date(Date.now() - 1_800_000) })
+        .where(
+          and(
+            eq(louezDb.reservationActivity.reservationId, id),
+            eq(louezDb.reservationActivity.activityType, "confirmed"),
+          ),
+        );
+      assert.deepEqual(await overbookings(), [id]);
+    });
 
     for (const [path, { from, type, confirm }] of Object.entries(paths)) {
       test(`leaves the inbox once ${path} finds that the stock fits`, async () => {

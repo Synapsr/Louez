@@ -18,7 +18,7 @@ import {
 import { useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
 
-import type { CapacityShortfall } from "@louez/api/services/reservation-inventory";
+import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import type { PricingMode, UnitAttributes } from "@louez/types";
 import { toastManager } from "@louez/ui";
 import { Button } from "@louez/ui";

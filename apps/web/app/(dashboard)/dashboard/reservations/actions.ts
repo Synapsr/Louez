@@ -4,8 +4,8 @@ import {
   capacityVerdictMetadata,
   nextCapacityVerdictDate,
 } from "@louez/api/services/capacity-verdict";
+import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import {
-  type CapacityShortfall,
   lockReservationProducts,
   reserveInventory,
 } from "@louez/api/services/reservation-inventory";
