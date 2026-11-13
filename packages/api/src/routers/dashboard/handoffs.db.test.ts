@@ -1943,6 +1943,38 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(!gone.ok && gone.reason, "invalid");
   });
 
+  test("a stored refresh answer replays only to a caller who may still settle the step", async () => {
+    const agent = await apiKey();
+    const attempt = await cardAttempt(agent);
+    billing.state.outcome = "pending";
+    await (
+      await returning(attempt.id, attempt.state, "cs_test_1")
+    )();
+    await endLease(attempt.id);
+    const KEY = "ho-refresh-replay-rights";
+    const withKey = () => {
+      const context = agent();
+      context.headers.set("idempotency-key", KEY);
+      return context;
+    };
+    const first = await client(withKey()).handoffs.refresh({ id: attempt.id });
+    assert.deepEqual(await client(withKey()).handoffs.refresh({ id: attempt.id }), first);
+
+    // The connection keeps the right that opens the procedure, and loses the
+    // step's domain: its stored answer answers as the step itself does now.
+    const narrowed = (billingRight: "none" | "read") =>
+      louezDb.db
+        .update(louezDb.apiKeys)
+        .set({ permissions: { ...agentRights, settings: "write", billing: billingRight } })
+        .where(orm.eq(louezDb.apiKeys.storeId, STORE));
+    await narrowed("none");
+    await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
+    await rejects(client(withKey()).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
+    await narrowed("read");
+    await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
+    await rejects(client(withKey()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
+  });
+
   test("a refresh answer stored before views carried url replays with it, and asks the provider nothing", async () => {
     const agent = await apiKey();
     const attempt = await cardAttempt(agent);

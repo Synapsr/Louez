@@ -10,6 +10,7 @@ import {
   type HandoffKind,
   type HandoffLink,
 } from "../../contracts/handoffs";
+import type { StoreActor } from "../../platform/actor";
 import { platformErrors } from "../../platform/errors";
 import { API_DOMAINS, allows } from "../../platform/permissions";
 import { accountProcedure, missingTransport, storeProcedure } from "../../platform/procedures";
@@ -47,7 +48,7 @@ const OTHER_DOMAINS = API_DOMAINS.filter((domain) => domain !== "settings");
  * caller does not read answers as an id no step has: an id says nothing to
  * who may not read the step.
  */
-async function readableHandoff(context: ProductContext, id: string) {
+async function readableHandoff(context: Pick<ProductContext, "actor">, id: string) {
   const row = await getHandoffRow(context.actor.storeId, id);
   if (!mayRead(context, handoffDomain(row))) throw handoffErrors.notFound(id);
   return row;
@@ -98,10 +99,32 @@ const REFRESH_SCOPE = {
   anyOf: ["settings"],
 } as const;
 
+/**
+ * The step a caller may settle: one they read, of a domain they may change.
+ * The handler's check, and the one a stored answer is replayed behind.
+ */
+async function refreshableHandoff(actor: StoreActor, id: string) {
+  const row = await readableHandoff({ actor }, id);
+  const domain = handoffDomain(row);
+  if (!allows(actor.role, actor.credential.scopes, { ...REFRESH_SCOPE, domain, anyOf: [] })) {
+    throw platformErrors.permissionDenied(`${domain}:write`);
+  }
+  return row;
+}
+
+/** The id of the step a stored refresh answer is about. */
+function storedHandoffId(stored: unknown): string {
+  const id = stored && typeof stored === "object" && "id" in stored ? stored.id : null;
+  return typeof id === "string" ? id : "";
+}
+
 const refresh = storeProcedure
   .meta({
     capability: "handoffs.refresh",
     scope: REFRESH_SCOPE,
+    authorizeReplay: async (stored, actor) => {
+      await refreshableHandoff(actor, storedHandoffId(stored));
+    },
     // Its answers stored before views carried `url` or `decision` replay with them.
     upgradeReplay: upgradeStoredView,
     mcp: {
@@ -117,13 +140,10 @@ const refresh = storeProcedure
   .input(refreshHandoffInput)
   .output(refreshHandoffOutput)
   .handler(async ({ context, input }) => {
-    let row = await readableHandoff(context, input.id);
-    const domain = handoffDomain(row);
-    const { role, credential } = context.actor;
-    if (!allows(role, credential.scopes, { ...REFRESH_SCOPE, domain, anyOf: [] })) {
-      throw platformErrors.permissionDenied(`${domain}:write`);
-    }
-    row = await settlePendingCardSetup(row, context.ports);
+    const row = await settlePendingCardSetup(
+      await refreshableHandoff(context.actor, input.id),
+      context.ports,
+    );
     return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
   });
 
