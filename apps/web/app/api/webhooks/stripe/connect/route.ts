@@ -9,6 +9,7 @@ import type Stripe from "stripe";
 import { failMarketplaceBookingAttempt } from "@louez/api/services";
 import { completeActiveHandoff } from "@louez/api/services/handoffs";
 import { writeConnectColumns } from "@louez/api/services/stripe-connect";
+import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
 import { db, markReservationIds, toWholeSeconds } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
@@ -26,7 +27,6 @@ import {
 import { maybeGrantReferrerReward } from "@/lib/referral/rewards";
 import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
-import { cancelAbandonedCheckout } from "@/lib/reservations/cancel-abandoned-checkout";
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
 import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
@@ -617,8 +617,8 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
 
   const reservationCancelled =
     abandoned && session.metadata?.checkoutFlow === "storefront_checkout"
-      ? await cancelAbandonedCheckout(
-          { reservationId, checkoutSessionId: session.id },
+      ? await changeSystemReservationStatus(
+          { reason: "checkout_abandoned", reservationId, checkoutSessionId: session.id },
           runReservationEffects,
         )
       : false;

@@ -57,7 +57,6 @@ export function databaseOnConnection(connection: mysql.PoolConnection) {
 }
 
 export type DatabaseOnConnection = ReturnType<typeof databaseOnConnection>;
-export { cancelFailedCheckoutReservation } from "./failed-checkout";
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Re-export schema for convenience

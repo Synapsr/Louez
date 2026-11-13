@@ -6,9 +6,9 @@ import { saveCustomerFieldValues } from "@louez/api/services/customer-fields";
 import { saveReservationItemDetails } from "@louez/api/services/customer-fields-online";
 import { saveCustomerProfileValues } from "@louez/api/services/customer-profile-fields";
 import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pricing-catalog";
+import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
 import {
   aiAdvisorConversations,
-  cancelFailedCheckoutReservation,
   changeReservationStatus,
   db,
   getBlockingReservationStatuses,
@@ -1312,11 +1312,12 @@ export const createReservation = async (
     }
 
     if (effectiveReservationMode === "payment" && paymentUrl === null) {
-      await cancelFailedCheckoutReservation(
+      await changeSystemReservationStatus(
         {
+          reason: "checkout_failed",
           storeId: store.id,
           reservationId: written.reservationId,
-          reason: "session_creation_failed",
+          failure: "session_creation_failed",
         },
         runReservationEffects,
       );

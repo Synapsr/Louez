@@ -39,6 +39,7 @@
     "./services/store-creation": "./src/services/store-creation.ts",
     "./services/store-metrics": "./src/services/store-metrics.ts",
     "./services/stripe-connect": "./src/services/stripe-connect.ts",
+    "./services/system-reservation-status": "./src/services/system-reservation-status.ts",
     "./services/unit-availability": "./src/services/unit-availability.ts",
     "./services/unit-conflicts": "./src/services/unit-conflicts.ts",
     "./services/unit-mutations": "./src/services/unit-mutations.ts"

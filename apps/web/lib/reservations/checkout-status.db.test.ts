@@ -49,7 +49,7 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
   let payment: typeof import("@louez/api/services/payment-reservation-status");
   let fees: typeof import("@/lib/billing/reservation-effects");
   let creation: typeof import("./create-reservation");
-  let abandoned: typeof import("./cancel-abandoned-checkout");
+  let system: typeof import("@louez/api/services/system-reservation-status");
   let counter = 0;
 
   before(async () => {
@@ -57,12 +57,12 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
     creation = await import("./create-reservation");
-    abandoned = await import("./cancel-abandoned-checkout");
     fees = await import("@/lib/billing/reservation-effects");
     // packages/api is ES modules: its services need the CommonJS packages'
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
     payment = await import("@louez/api/services/payment-reservation-status");
+    system = await import("@louez/api/services/system-reservation-status");
 
     // The inventory check reads the store's settings.
     await louezDb.db
@@ -423,7 +423,11 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
   const expire = (
     reservationId: string,
     run: (effects: readonly ReservationBillingEffect[]) => Promise<void>,
-  ) => abandoned.cancelAbandonedCheckout({ reservationId, checkoutSessionId: "cs_expired" }, run);
+  ) =>
+    system.changeSystemReservationStatus(
+      { reason: "checkout_abandoned", reservationId, checkoutSessionId: "cs_expired" },
+      run,
+    );
 
   test("an expired checkout is cancelled and runs its effects after commit", async () => {
     const id = await createReservation("pending");
@@ -502,11 +506,12 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     });
     const runs: Array<{ effects: readonly ReservationBillingEffect[]; status?: string }> = [];
 
-    const cancelled = await louezDb.cancelFailedCheckoutReservation(
+    const cancelled = await system.changeSystemReservationStatus(
       {
+        reason: "checkout_failed",
         storeId: STORE,
         reservationId: id,
-        reason: "amount_too_small",
+        failure: "amount_too_small",
         minimumAmount: 0.5,
         currency: "EUR",
       },
@@ -559,8 +564,13 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     await addPayment(id, { status: "failed" });
     let runs = 0;
 
-    const cancelled = await louezDb.cancelFailedCheckoutReservation(
-      { storeId: STORE, reservationId: id, reason: "session_creation_failed" },
+    const cancelled = await system.changeSystemReservationStatus(
+      {
+        reason: "checkout_failed",
+        storeId: STORE,
+        reservationId: id,
+        failure: "session_creation_failed",
+      },
       async () => {
         runs += 1;
       },
@@ -625,7 +635,7 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
       }),
       runPostCreationEffects: async () => {},
       startCheckoutPayment: async () => null,
-      cancelFailedCheckoutReservation: louezDb.cancelFailedCheckoutReservation,
+      changeSystemReservationStatus: system.changeSystemReservationStatus,
       runReservationEffects: async (ran: unknown) => {
         effects.push(ran);
       },
@@ -836,12 +846,16 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
         expectedAmount?: string;
       },
       run: (effects: readonly ReservationBillingEffect[]) => Promise<void>,
-    ) => louezDb.cancelFailedCheckoutReservation(input, run);
+    ) =>
+      system.changeSystemReservationStatus(
+        { ...input, reason: "checkout_failed", failure: input.reason },
+        run,
+      );
 
     const abandonCheckout = (
       input: { reservationId: string; checkoutSessionId: string },
       run: (effects: readonly ReservationBillingEffect[]) => Promise<void>,
-    ) => abandoned.cancelAbandonedCheckout(input, run);
+    ) => system.changeSystemReservationStatus({ reason: "checkout_abandoned", ...input }, run);
 
     const deadlockThrice = () => {
       const hooks = reservationChangeTestHooks();
@@ -1116,7 +1130,7 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
             calls.push(["startCheckoutPayment"]);
             return null;
           },
-          cancelFailedCheckoutReservation: louezDb.cancelFailedCheckoutReservation,
+          changeSystemReservationStatus: system.changeSystemReservationStatus,
           runReservationEffects: async (effects: readonly ReservationBillingEffect[]) => {
             calls.push(["runReservationEffects"]);
             await recordingRunner(id, runs)(effects);
