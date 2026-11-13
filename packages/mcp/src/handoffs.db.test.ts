@@ -258,7 +258,8 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
     );
     assert.equal(viaMcp.status, "pending");
     assert.equal(viaMcp.kind, "stripe_connect_onboarding");
-    assert.equal("url" in viaMcp, false, "the link is never given again");
+    assert.equal(viaMcp.url, started.url, "the same link, as long as the step lasts");
+    assert.equal(started.url, `${TEST_APP_URL}/handoffs/${started.handoff.id}`);
 
     const viaOpenApi = await openApi("GET", `/handoffs/${started.handoff.id}`, { authorization });
     assert.equal(viaOpenApi.status, 200);

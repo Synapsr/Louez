@@ -34,16 +34,20 @@ import { startConnectOnboarding, syncConnectStatus, type ConnectStore } from "./
 
 /**
  * Handoffs: a step only the human can take, started by an agent (plan,
- * section 7). The agent gets a link to a Louez page (`/handoffs/<token>`);
- * the page makes the user sign in as the user the link was made for, checks
- * they may still do it in this store, and on their click sends them to the
- * provider. The provider comes back to `/handoffs/<id>/return/<state>`,
- * where the state proves the return belongs to that click. The agent reads
- * the handoff (`handoffs.get`) until it is completed.
+ * section 7). The agent gets a link to a Louez page (`/handoffs/<id>`): the
+ * id addresses the step and the signed-in session is the credential. The
+ * page makes the user sign in as the user the step is for, checks they may
+ * still do it in this store, and on their click sends them to the provider.
+ * The provider comes back to `/handoffs/return/<id>/<state>`, where the
+ * state proves the return belongs to that click. The agent reads the
+ * handoff (`handoffs.get`) until it is completed.
  *
- * The link's secret is stored hashed. Asking again for the same kind (and
- * subject) while one is active gives the same handoff a new link, and the old
- * link stops working. One active handoff per store, kind and subject: a
+ * Asking again for the same kind (and subject) while one is active gives the
+ * same handoff, with the same link, a new expiry and its revision raised: a
+ * click on a page that showed an earlier revision decides nothing, and the
+ * page shows the step again. A link given before links were addressed by id
+ * carries a secret after the id; it opens while its hash is the row's
+ * current one. One active handoff per store, kind and subject: a
  * store-wide step has an empty subject; a team invitation's is its address's
  * hash, so each address has its own approval. A team invitation has no
  * provider: its page asks an owner to approve or decline (services/team.ts).
@@ -154,6 +158,7 @@ export function handoffView(
         : null,
     confirming: isConfirming(row, status),
     invitation: row.kind === "team_invitation" && row.payload ? row.payload : null,
+    url: handoffUrl(context.urls, row.id),
     summary:
       status === "failed" && row.failureCode
         ? `${SUMMARIES[row.kind].failed} ${handoffFailureMessage(row.failureCode)}`
@@ -165,11 +170,24 @@ export function handoffView(
 }
 
 /**
- * The path of the page a link opens. The token is the handoff's id (21
- * characters) then its secret (43), with no dot: the app's proxy takes a
- * path with a dot for a static file.
+ * The path of the page a link opens: the handoff's id (21 characters), or,
+ * for a link given before links were addressed by id, the id then its
+ * secret (43). No dot: the app's proxy takes a path with a dot for a static file.
  */
-export const handoffPath = (token: string) => `/handoffs/${encodeURIComponent(token)}`;
+export const handoffPath = (link: string) => `/handoffs/${encodeURIComponent(link)}`;
+/** The step's page, where the user takes it: the same for the step's whole life. */
+export const handoffUrl = (urls: UrlsPort, id: string) => urls.dashboard(handoffPath(id));
+
+/**
+ * A handoff view stored before views carried `url` (an answer of
+ * `handoffs_refresh` kept for its idempotency key), with its url: the link
+ * follows from the id. Anything else is returned as it is.
+ */
+export function withHandoffUrl(stored: unknown, urls: UrlsPort): unknown {
+  if (!stored || typeof stored !== "object" || "url" in stored) return stored;
+  const { id } = stored as { id?: unknown };
+  return typeof id === "string" ? { ...stored, url: handoffUrl(urls, id) } : stored;
+}
 /** Where the provider sends the user back, with the state of their click. */
 export const handoffReturnPath = (id: string, state: string) => `/handoffs/return/${id}/${state}`;
 /** Where Stripe sends the user when its onboarding link expired. */
@@ -217,10 +235,15 @@ const leaseEnd = () =>
   sql`NOW(3) + INTERVAL LEAST(${HANDOFF_CHECK_LEASE_SECONDS.min} * POW(2, LEAST(${apiHandoffs.providerChecks}, 4)), ${HANDOFF_CHECK_LEASE_SECONDS.max}) SECOND`;
 
 /**
- * Gives the store an active handoff of `kind` with a new link: the one it
- * has (its old link stops working, and an expired one runs again), or a new
- * one. Serialized per store by the store row's lock. The link is bound to
- * the requester's user; a different user asking starts the step over.
+ * Gives the store an active handoff of `kind`: the one it has, with its
+ * expiry pushed back (an expired one runs again) and its revision raised, or
+ * a new one. Its link is its page, the same for its whole life. Serialized
+ * per store by the store row's lock. The step is bound to the requester's
+ * user; a different user asking starts the step over.
+ *
+ * Every write still stores a hash, of a secret nobody receives: an instance
+ * still running the code that read links by their secret reads every row as
+ * before, and a link with a secret given before this one stops opening.
  */
 export async function issueHandoff(
   requester: HandoffRequester,
@@ -243,8 +266,7 @@ export async function issueHandoff(
 ): Promise<HandoffLink> {
   const subject = context.subject ?? "";
   const now = context.now ?? new Date();
-  const secret = newSecret();
-  const tokenHash = sha256(secret);
+  const tokenHash = sha256(newSecret());
   const expiresAt = new Date(now.getTime() + TTL_MS);
   const credential = {
     userId: requester.userId,
@@ -278,6 +300,7 @@ export async function issueHandoff(
           linkIssuedAt: now,
           expiresAt,
           payload,
+          revision: sql`${apiHandoffs.revision} + 1`,
           // Another user starts over: the click in flight was not theirs.
           ...(sameUser ? {} : { status: "pending", openedAt: null, ...NO_ATTEMPT }),
           updatedAt: now,
@@ -310,7 +333,7 @@ export async function issueHandoff(
 
   return {
     handoff: handoffView(row, { now, urls: context.urls, store: { id: requester.storeId } }),
-    url: context.urls.dashboard(handoffPath(`${row.id}${secret}`)),
+    url: handoffUrl(context.urls, row.id),
   };
 }
 
@@ -419,8 +442,10 @@ export async function completeActiveHandoff(
 
 /** Why the page refuses a link or a return. */
 export type HandoffRefusal =
-  /** No such link, or a link replaced by a newer one. */
+  /** No such link, or a link with a secret replaced by a newer one. */
   | "invalid"
+  /** The step changed since the page showed it: the click decides nothing, the page asks again. */
+  | "changed"
   | "expired"
   /** Completed or failed already. */
   | "finished"
@@ -431,9 +456,24 @@ export type HandoffRefusal =
 
 export type HandoffCheck =
   | { ok: true; row: HandoffRow; store: { id: string; name: string } }
-  | { ok: false; reason: HandoffRefusal; row: HandoffRow | null };
+  /** Another user learns nothing of the step: no row, so no status, kind or store. */
+  | { ok: false; reason: "other_user"; row: null }
+  | { ok: false; reason: Exclude<HandoffRefusal, "other_user">; row: HandoffRow | null };
 
-const TOKEN_PATTERN = /^([A-Za-z0-9_-]{21})([A-Za-z0-9_-]{43})$/;
+/**
+ * The one answer a signed-in user who is not the step's user gets, whatever
+ * the step's state, kind or store: it is checked before anything else.
+ */
+const NOT_THEIRS = { ok: false, reason: "other_user", row: null } as const;
+
+/** Whether `userId` is the user the step is for: the first check of every reader. */
+const isStepUser = (row: Pick<HandoffRow, "userId">, userId: string) => row.userId === userId;
+
+/**
+ * A link: the handoff's id, or, given before links were addressed by id,
+ * the id then its 43-character secret.
+ */
+const LINK_PATTERN = /^([A-Za-z0-9_-]{21})([A-Za-z0-9_-]{43})?$/;
 
 function sameHash(stored: string | null, value: string): boolean {
   if (!stored) return false;
@@ -442,16 +482,44 @@ function sameHash(stored: string | null, value: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** The row a link names, when its secret is the current one. */
-async function rowOfToken(token: string) {
-  const match = TOKEN_PATTERN.exec(token);
+/**
+ * The row a link names. A link that carries a secret opens only while the
+ * secret's hash is the row's current one, as when the secret was the link's
+ * credential; the session is the credential of every link either way.
+ */
+async function rowOfLink(link: string) {
+  const match = LINK_PATTERN.exec(link);
   if (!match) return null;
-  const [, id = "", secret = ""] = match;
-  const [row] = await db
-    .select()
-    .from(apiHandoffs)
-    .where(and(eq(apiHandoffs.id, id), eq(apiHandoffs.tokenHash, sha256(secret))));
-  return row ?? null;
+  const [, id = "", secret] = match;
+  const [row] = await db.select().from(apiHandoffs).where(eq(apiHandoffs.id, id));
+  if (!row) return null;
+  if (secret !== undefined && !sameHash(row.tokenHash, secret)) return null;
+  return row;
+}
+
+/**
+ * The rows a decision on the step may change: the handoff, at the revision
+ * its page showed, while it is still the step of the user who decides. A
+ * repeated request or another user starting over raises the revision, so a
+ * click on a page that showed an earlier one changes nothing; and a step
+ * that became another user's is never changed by the user it was shown to,
+ * whatever its revision. Every write that raises the revision holds the
+ * row's lock under the store row's lock, so the comparison and the raise
+ * are ordered.
+ */
+export const atShownRevision = (id: string, revision: number, userId: string) =>
+  and(eq(apiHandoffs.id, id), eq(apiHandoffs.revision, revision), eq(apiHandoffs.userId, userId));
+
+/**
+ * What an owner's page shows of an agent's invitation, and what approving it
+ * carries out: the address, the role, and whether the address joins at once.
+ * The page posts this digest next to the revision, and the decision compares
+ * it with the row's payload under the store's lock: the owner decides what
+ * they read, even when a writer changed the payload without raising the
+ * revision (an instance still running the code before revisions).
+ */
+export function invitationShown(payload: ApiHandoffPayload): string {
+  return sha256(JSON.stringify([payload.email, payload.role, payload.joinsAtOnce]));
 }
 
 /** Whether the connection that asked for the step still exists: a revoked agent's link stops. */
@@ -475,11 +543,12 @@ async function connectionAlive(row: HandoffRow): Promise<boolean> {
 }
 
 /**
- * Whether `userId` may take the step of `row` now: the link's user, still
- * allowed in the store, for a connection that still exists.
+ * Whether `userId` may take the step of `row` now: the step's user, still
+ * allowed in the store, for a connection that still exists. Anyone else gets
+ * `NOT_THEIRS` and nothing about the step.
  */
 async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck> {
-  if (row.userId !== userId) return { ok: false, reason: "other_user", row };
+  if (!isStepUser(row, userId)) return NOT_THEIRS;
   if (!(await connectionAlive(row))) return { ok: false, reason: "invalid", row };
   const [member] = await db
     .select({ role: storeMembers.role, storeName: stores.name })
@@ -492,14 +561,19 @@ async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck>
   return { ok: true, row, store: { id: row.storeId, name: member.storeName } };
 }
 
-/** The link as the page shows it before the user continues. Changes nothing. */
+/**
+ * The link as the page shows it before the user continues. Changes nothing.
+ * Whose step it is comes first: another user is told only that, before the
+ * step's state is read.
+ */
 export async function readHandoffLink(
-  token: string,
+  link: string,
   userId: string,
   now = new Date(),
 ): Promise<HandoffCheck> {
-  const row = await rowOfToken(token);
+  const row = await rowOfLink(link);
   if (!row) return { ok: false, reason: "invalid", row: null };
+  if (!isStepUser(row, userId)) return NOT_THEIRS;
   const status = statusOf(row, now);
   if (status === "completed" || status === "failed") return { ok: false, reason: "finished", row };
   if (status === "expired") return { ok: false, reason: "expired", row };
@@ -507,20 +581,25 @@ export async function readHandoffLink(
 }
 
 /**
- * The user continues to the provider: the handoff is opened with a new
- * attempt, a fresh state the provider's return must carry. A link continued
- * twice gives a new attempt each time: the earlier one's provider flow and
- * lease are dropped, and only the latest attempt's return counts.
+ * The user continues to the provider, from a page that showed `revision`:
+ * the handoff is opened with a new attempt, a fresh state the provider's
+ * return must carry. A step asked for again since the page showed it
+ * (another revision) is not continued: the page shows it again. A link
+ * continued twice gives a new attempt each time: the earlier one's provider
+ * flow and lease are dropped, and only the latest attempt's return counts.
  */
 export async function continueHandoff(
-  token: string,
+  link: string,
   userId: string,
+  revision: number,
   now = new Date(),
 ): Promise<HandoffCheck & { state?: string }> {
-  const checked = await readHandoffLink(token, userId, now);
+  const checked = await readHandoffLink(link, userId, now);
   if (!checked.ok) return checked;
   // No provider: an invitation is approved or declined on its page (services/team.ts).
   if (checked.row.kind === "team_invitation") return { ok: false, reason: "invalid", row: null };
+  const changed = { ok: false, reason: "changed", row: checked.row } as const;
+  if (checked.row.revision !== revision) return changed;
   const state = newSecret();
   const updated = await db
     .update(apiHandoffs)
@@ -533,20 +612,21 @@ export async function continueHandoff(
     })
     .where(
       and(
-        eq(apiHandoffs.id, checked.row.id),
-        eq(apiHandoffs.tokenHash, checked.row.tokenHash),
+        atShownRevision(checked.row.id, revision, userId),
         inArray(apiHandoffs.status, [...ACTIVE]),
       ),
     );
-  if (updated[0].affectedRows === 0) return { ok: false, reason: "invalid", row: null };
+  if (updated[0].affectedRows === 0) return changed;
   const [row] = await db.select().from(apiHandoffs).where(eq(apiHandoffs.id, checked.row.id));
   return { ...checked, row: row ?? checked.row, state };
 }
 
 /**
- * The provider's return: the state must be the latest click's, and the user
- * the link's, still allowed. A finished handoff passes, so a reload of the
- * return page shows where it stands.
+ * The provider's return: the state must be the latest click's (the state is
+ * what authenticates the return: only the browser that clicked holds it),
+ * and the user the step's, still allowed. A finished handoff passes, so a
+ * reload of the return page shows where it stands. Another session gets
+ * nothing about the step, as everywhere.
  */
 export async function checkHandoffReturn(
   id: string,

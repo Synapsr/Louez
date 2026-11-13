@@ -9731,6 +9731,10 @@
       "not_allowed": {
         "title": "You cannot do this for this store",
         "description": "Your role in this store does not allow this step. Ask the store’s owner."
+      },
+      "changed": {
+        "title": "This request changed while you were reading",
+        "description": "Nothing was done: your agent asked again since this page opened. Read it again below, then answer."
       }
     },
     "done": {

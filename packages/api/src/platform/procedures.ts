@@ -265,7 +265,10 @@ export const storeProcedure = authenticated.use(
       dispatchEffects: ports.dispatchEffects,
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
-      replay: (result) => output(result) as Awaited<ReturnType<typeof next<typeof nextContext>>>,
+      replay: (result) =>
+        output(meta.upgradeReplay ? meta.upgradeReplay(result, ports.urls) : result) as Awaited<
+          ReturnType<typeof next<typeof nextContext>>
+        >,
     });
   },
 );

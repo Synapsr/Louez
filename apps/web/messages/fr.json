@@ -9731,6 +9731,10 @@
       "not_allowed": {
         "title": "Vous ne pouvez pas faire cela pour cette boutique",
         "description": "Votre rôle dans cette boutique ne permet pas cette étape. Demandez au propriétaire de la boutique."
+      },
+      "changed": {
+        "title": "Cette demande a changé pendant votre lecture",
+        "description": "Rien n’a été fait : votre agent a redemandé depuis l’ouverture de cette page. Relisez-la ci-dessous, puis répondez."
       }
     },
     "done": {

@@ -17,6 +17,7 @@ import {
   handoffView,
   issueHandoff,
   settlePendingCardSetup,
+  withHandoffUrl,
 } from "../../services/handoffs";
 import { mayRead, type ProductContext } from "./product-context";
 
@@ -32,7 +33,7 @@ import { mayRead, type ProductContext } from "./product-context";
  */
 
 /** What every procedure that starts a handoff says of the link it returns. */
-export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page where they sign in, then continue to the provider and come back; only they can finish this step. The link works for ${HANDOFF_TTL_HOURS} hours, only for the user this connection acts for, and a new call replaces it. handoff.id is what handoffs_get takes to follow the step: pending, opened, completed, expired or failed.`;
+export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page where they sign in, then continue to the provider and come back; only they can finish this step. The link works for ${HANDOFF_TTL_HOURS} hours, only for the user this connection acts for; a new call gives the same link ${HANDOFF_TTL_HOURS} more hours. handoff.id is what handoffs_get takes to follow the step: pending, opened, completed, expired or failed.`;
 
 /** Starts or resumes a handoff for the caller, bound to their user and connection. */
 export function startHandoff(context: ProductContext, kind: HandoffKind): Promise<HandoffLink> {
@@ -58,7 +59,7 @@ const get = storeProcedure
     mcp: {
       name: "handoffs_get",
       title: "Get Handoff Status",
-      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; the tool that started it makes a new one) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). Never returns the link again. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval.`,
+      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; calling the tool that started it again opens the same link for another day) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). \`url\` is the step's link, the same the tool that started it returned, for the user to open signed in to Louez. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval.`,
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -85,6 +86,8 @@ const refresh = storeProcedure
   .meta({
     capability: "handoffs.refresh",
     scope: REFRESH_SCOPE,
+    // Its answers stored before views carried `url` replay with it.
+    upgradeReplay: withHandoffUrl,
     mcp: {
       name: "handoffs_refresh",
       title: "Refresh Handoff Status",

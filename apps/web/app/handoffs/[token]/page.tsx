@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { handoffDonePath, handoffPath, readHandoffLink } from "@louez/api/services/handoffs";
+import {
+  handoffDonePath,
+  handoffPath,
+  invitationShown,
+  readHandoffLink,
+} from "@louez/api/services/handoffs";
 import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
@@ -19,18 +24,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * The link an agent gave the user for a step only they can take. Signed out,
- * they sign in first. The page itself changes nothing: a link preview that
- * loads it starts no step. The user continues with a form that posts to
+ * The page of a step only the user can take, as an agent's link names it:
+ * `/handoffs/<id>`, or an older link's id then its secret. Signed out, they
+ * sign in first. The page itself changes nothing: a link preview that loads
+ * it starts no step. The user continues with a form that posts to
  * `continue`, which sends them to the provider; a team invitation is
- * approved or declined with a form that posts to `decide`.
+ * approved or declined with a form that posts to `decide`. Each form posts
+ * the revision the page showed, and an invitation's form what it showed of
+ * it (`invitationShown`): a step that changed since decides nothing, and the
+ * page shows it again with a note.
  */
 export default async function HandoffPage({
   params,
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ retry?: string; error?: string }>;
+  searchParams: Promise<{ retry?: string; error?: string; changed?: string }>;
 }) {
   const { token } = await params;
   const path = handoffPath(token);
@@ -41,8 +50,8 @@ export default async function HandoffPage({
 
   const t = await getTranslations("handoff");
   const checked = await readHandoffLink(token, userId);
-  // An invitation's approval that ended: its result says how, and why.
-  if (!checked.ok && checked.reason === "finished" && checked.row?.kind === "team_invitation") {
+  // A step that ended: its result says how, and why.
+  if (!checked.ok && checked.reason === "finished" && checked.row) {
     redirect(handoffDonePath(checked.row.id));
   }
   if (!checked.ok) {
@@ -54,8 +63,9 @@ export default async function HandoffPage({
     );
   }
 
-  const { kind, payload } = checked.row;
+  const { kind, payload, revision } = checked.row;
   const query = await searchParams;
+  const changed = query.changed !== undefined ? t("refused.changed.description") : null;
   if (kind === "team_invitation") {
     if (!payload) {
       return (
@@ -68,9 +78,11 @@ export default async function HandoffPage({
     return (
       <TeamInvitationApproval
         action={`${path}/decide`}
+        revision={revision}
+        shown={invitationShown(payload)}
         store={checked.store.name}
         invitation={payload}
-        failed={query.error !== undefined}
+        note={changed ?? (query.error !== undefined ? t("team_invitation.error.failed") : null)}
       />
     );
   }
@@ -79,9 +91,10 @@ export default async function HandoffPage({
     <HandoffCard
       title={t(`kinds.${kind}.title`)}
       description={t(`kinds.${kind}.description`, { store: checked.store.name })}
-      note={query.retry ? t("retry") : null}
+      note={changed ?? (query.retry ? t("retry") : null)}
     >
       <form method="post" action={`${path}/continue`}>
+        <input type="hidden" name="revision" value={revision} />
         <Button type="submit" className="w-full sm:w-auto">
           {t(`kinds.${kind}.continue`)}
         </Button>

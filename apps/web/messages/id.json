@@ -9731,6 +9731,10 @@
       "not_allowed": {
         "title": "Anda tidak dapat melakukan ini untuk toko ini",
         "description": "Peran Anda di toko ini tidak mengizinkan langkah ini. Mintalah kepada pemilik toko."
+      },
+      "changed": {
+        "title": "Permintaan ini berubah saat Anda membacanya",
+        "description": "Tidak ada yang dilakukan: agen Anda meminta lagi sejak halaman ini dibuka. Baca lagi di bawah, lalu jawab."
       }
     },
     "done": {

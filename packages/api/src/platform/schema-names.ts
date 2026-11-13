@@ -666,6 +666,7 @@ export const SCHEMA_NAMES = {
     "review_count",
     "review_request_channel",
     "reviews",
+    "revision",
     "revoked",
     "revoked_at",
     "role",

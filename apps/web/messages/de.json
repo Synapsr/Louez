@@ -9731,6 +9731,10 @@
       "not_allowed": {
         "title": "Das können Sie für diesen Shop nicht tun",
         "description": "Ihre Rolle in diesem Shop erlaubt diesen Schritt nicht. Fragen Sie den Inhaber des Shops."
+      },
+      "changed": {
+        "title": "Diese Anfrage hat sich beim Lesen geändert",
+        "description": "Es wurde nichts ausgeführt: Ihr Agent hat erneut gefragt, seit diese Seite geöffnet wurde. Lesen Sie sie unten noch einmal und antworten Sie dann."
       }
     },
     "done": {

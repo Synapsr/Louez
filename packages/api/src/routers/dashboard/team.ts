@@ -155,12 +155,10 @@ const invite = storeProcedure
   .meta({
     capability: "team.inviteMember",
     scope: MANAGE,
-    // An agent's answer holds the approval link, which an owner opens: never stored.
-    secretOutput: true,
     mcp: {
       name: "team_invite_member",
       title: "Invite Team Member",
-      description: `Ask to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Nothing is created yet: the answer (\`outcome: "approval_requested"\`) holds \`approval.url\`, a link to give the user as is, and the user approves the invitation from the link, signed in as an owner of the store, within 24 hours. handoffs_get with \`approval.handoff.id\` says when it is approved (completed: the invitation e-mail went out, or someone with a Louez account joined at once) or declined (failed). The same address asked again gets the same approval with a new link. Refused when the person is already a member, when an invitation of theirs is pending, when the store has reached its team-member limit, when ${MAX_OPEN_INVITATION_APPROVALS} approvals are already open, or past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails a day. ${TEAM_PAGE_HELP}`,
+      description: `Ask to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Nothing is created yet: the answer (\`outcome: "approval_requested"\`) holds \`approval.url\`, a link to give the user as is, and the user approves the invitation from the link, signed in as an owner of the store, within 24 hours. handoffs_get with \`approval.handoff.id\` says when it is approved (completed: the invitation e-mail went out, or someone with a Louez account joined at once) or declined (failed). The same address asked again gets the same approval and link, with 24 more hours to answer; a page the user opened before that shows the request again rather than approve it. Refused when the person is already a member, when an invitation of theirs is pending, when the store has reached its team-member limit, when ${MAX_OPEN_INVITATION_APPROVALS} approvals are already open, or past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails a day. ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "additive",
     },
@@ -301,16 +299,17 @@ const invitationLink = dashboardOnly
   }));
 
 /**
- * An owner approves or declines an agent's invitation, on its link's page
- * (`/handoffs/<token>`): a session only, the link's user, still allowed to
- * manage the team. Approving runs the invitation as the dashboard does.
+ * An owner approves or declines an agent's invitation, on its page
+ * (`/handoffs/<id>`), at the revision the page showed: a session only, the
+ * step's user, still allowed to manage the team. Approving runs the
+ * invitation as the dashboard does.
  */
 const decideInvitationProcedure = accountProcedure
   .meta({
     capability: "team.approveInvitation",
     scope: { domain: "team", level: "write" },
     actors: ["session"],
-    // The token is the approval link's secret.
+    // A link given before links were addressed by id carries its secret: nothing is replayed.
     secretOutput: true,
     mcp: { exclude: "an owner approves an agent's invitation, signed in to Louez" },
   })

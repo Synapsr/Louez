@@ -398,7 +398,7 @@ Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDE
 - Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers \`OPERATION_OUTCOME_UNKNOWN\` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation, call it without the token for a new preview, as the old token is spent if the write went through.
 - It still runs: the retry answers \`OPERATION_IN_PROGRESS\`; retry shortly with the same key.
 
-If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was. Writes that return a temporary link (upload URLs, hand-offs to Stripe or to billing, team invitation approvals) do not replay: they ignore the header, and a retry issues a new link. A successful write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
+If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was. Writes that return a temporary upload URL do not replay: they ignore the header, and a retry issues a new URL. A successful write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
 
 ## Limits
 

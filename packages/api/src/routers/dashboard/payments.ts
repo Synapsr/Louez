@@ -126,8 +126,6 @@ const startStripeOnboarding = storeProcedure
   .meta({
     capability: "payments.startStripeOnboarding",
     scope: STRIPE_WRITE,
-    // The answer holds the link: whoever has it may continue the step.
-    secretOutput: true,
     mcp: {
       name: "payments_start_stripe_onboarding",
       title: "Connect Stripe",
@@ -152,7 +150,6 @@ const openStripeDashboard = storeProcedure
   .meta({
     capability: "payments.getStripeDashboardUrl",
     scope: STRIPE_WRITE,
-    secretOutput: true,
     mcp: {
       name: "payments_open_stripe_dashboard",
       title: "Open Stripe Dashboard",

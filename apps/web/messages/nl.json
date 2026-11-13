@@ -9731,6 +9731,10 @@
       "not_allowed": {
         "title": "Dit kunt u niet doen voor deze winkel",
         "description": "Uw rol in deze winkel staat deze stap niet toe. Vraag het aan de eigenaar van de winkel."
+      },
+      "changed": {
+        "title": "Dit verzoek is gewijzigd terwijl u las",
+        "description": "Er is niets gedaan: uw agent heeft het opnieuw gevraagd sinds deze pagina openging. Lees het hieronder opnieuw en antwoord dan."
       }
     },
     "done": {
