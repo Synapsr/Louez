@@ -621,6 +621,18 @@ test("the payment's status service may not call the store's stock check", () => 
   );
 });
 
+test("the system's status service may not call the store's stock check", () => {
+  // The system's checkout cancellations, in their own file, are seen as the others are.
+  const file = "packages/api/src/services/system-reservation-status.ts";
+  const code = `${SNIPPET_IMPORTS}import { checkStoreConfirmationInventory } from "./reservation-inventory";
+    await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true, overrideTurnoverBuffer: true });`;
+  const { remaining } = applyAllowlist(findViolations(code, file, tables), ALLOWLIST);
+  assert.deepEqual(
+    remaining.map(({ rule }) => rule),
+    ["R7"],
+  );
+});
+
 test("reservation status writes and inserts go through the helpers", () => {
   const files = listSourceFiles();
   assert.ok(files.length > 1000, `only ${files.length} source files found`);
