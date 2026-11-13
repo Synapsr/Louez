@@ -83,6 +83,14 @@ const notRefusals: Array<[string, unknown]> = [
     "a code the registry does not hold",
     apiError("CONFLICT", "NOT_A_LOUEZ_CODE", { message: "Unknown." }),
   ],
+  // The operation layer's answers about a key: registered codes, never a
+  // refusal of the call, so never recorded `failed`.
+  [
+    "the operation layer's OPERATION_OUTCOME_UNKNOWN",
+    platformErrors.operationOutcomeUnknown("op_1"),
+  ],
+  ["the operation layer's OPERATION_IN_PROGRESS", platformErrors.operationInProgress()],
+  ["the operation layer's IDEMPOTENCY_KEY_REUSED", platformErrors.idempotencyConflict()],
   [
     // Never reaches a write's record: the input is validated before the
     // middleware runs (procedures.ts, `base`).

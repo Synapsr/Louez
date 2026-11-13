@@ -161,18 +161,42 @@ export function isApiError(error: unknown): error is ORPCError<string, ApiErrorD
 }
 
 /**
- * True when Louez refused the call on purpose and did not do it: one of its
- * own errors (`apiError`) with a code of the registry. A write that ends on
- * one may run again under its idempotency key (platform/operations.ts).
- * Anything else (a database or network error, a thrown `Error`, an error
- * without a registered code) leaves unknown whether the write went through.
+ * The operation layer's own answers about an idempotency key: they say where
+ * an earlier call with the key stands, not that this one was refused. They
+ * are thrown before a record is claimed (platform/operations.ts), so none is
+ * ever recorded; were one to reach the record, it must not be `failed`.
+ */
+export const OPERATION_STATE_CODES: ReadonlySet<string> = new Set([
+  "OPERATION_OUTCOME_UNKNOWN",
+  "OPERATION_IN_PROGRESS",
+  "IDEMPOTENCY_KEY_REUSED",
+]);
+
+/**
+ * True when Louez refused the call: one of its own errors (`apiError`) with a
+ * code of the registry, other than the operation layer's answers
+ * (`OPERATION_STATE_CODES`). A write that ends on one is `failed`, and its
+ * idempotency key may run it again (platform/operations.ts). Anything else
+ * (a database or network error, a timeout, a thrown `Error`, an error
+ * without a registered code) is `unknown`, and its key never runs it again.
  *
- * A refusal never follows a commit: a write refuses before it writes, or in
- * the transaction that rolls its writes back. What reads the answer after
- * the commit goes through `readAfterCommit`.
+ * The predicate reads the code, not what the handler did: a registered code
+ * is a convention, not a proof that nothing was written. A handler raises a
+ * refusal only when nothing it wrote remains: it refuses before it writes, in
+ * the transaction that rolls its writes back, or after undoing what it wrote.
+ * The one exception is the refusal's own trace (the preview row of
+ * `CONFIRMATION_REQUIRED`, with the setup mark of the store it locked; the
+ * activity line of `DEPOSIT_ATTEMPT_NEEDS_STRIPE`), which records that the
+ * write did not happen. A refusal raised after a write whose undoing failed
+ * is raised as an ordinary error carrying both (`uploadImage`,
+ * services/uploads.ts); a read after a commit goes through `readAfterCommit`.
  */
 export function isRefusal(error: unknown): error is ORPCError<string, ApiErrorData> {
-  return isApiError(error) && LOUEZ_ERROR_CODES.has(error.data.code);
+  return (
+    isApiError(error) &&
+    LOUEZ_ERROR_CODES.has(error.data.code) &&
+    !OPERATION_STATE_CODES.has(error.data.code)
+  );
 }
 
 /**

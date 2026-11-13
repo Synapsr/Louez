@@ -310,8 +310,8 @@ async function claimIdempotencyKey(
   }
   if (existing.status === "unknown") throw platformErrors.operationOutcomeUnknown(existing.id);
 
-  // It failed: Louez refused it, before it wrote or in the transaction that
-  // rolled its writes back, so the same key may run again (procedures that
+  // It failed: Louez refused it, and a refusal leaves nothing the handler
+  // wrote (`isRefusal`), so the same key may run again (procedures that
   // call a provider before their transaction pass the key on to it). A record
   // marked failed before refusals were told from other errors stays as it is.
   // Only one retry can move it back to running.

@@ -525,24 +525,29 @@ describe("the public reference", () => {
     assert.ok(text.includes('`{"message":"Not found"}`'));
   });
 
-  test("states which retries run a write again: a refused call's, never an unexpected failure's", async () => {
+  test("states which retries run a write again: a refused call's, never one whose outcome is unknown", async () => {
     const { info } = await fetchDocument();
     const text = info.description;
-    assert.ok(
-      text.includes(
-        "A call Louez refused (an error with `data.code`, such as `CONFIRMATION_REQUIRED` or `RESERVATION_BUSY`) did nothing: the same key runs the write again.",
-      ),
+    for (const sentence of [
+      "- It succeeded: the retry returns its stored result without running it again, with `Louez-Replayed: true`.",
+      "- Louez refused it before doing it, for instance `CONFIRMATION_REQUIRED`, `PERMISSION_DENIED` or `RESERVATION_BUSY`: the retry runs the write again.",
+      "- Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers `OPERATION_OUTCOME_UNKNOWN` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation, call it without the token for a new preview, as the old token is spent if the write went through.",
+      "- It still runs: the retry answers `OPERATION_IN_PROGRESS`; retry shortly with the same key.",
+      "If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was.",
+    ]) {
+      assert.ok(text.includes(sentence), sentence);
+    }
+    // `data.code` is no test of a refusal: OPERATION_OUTCOME_UNKNOWN has one too.
+    const section = text.slice(
+      text.indexOf("## Idempotency and receipts"),
+      text.indexOf("## Limits"),
     );
-    assert.ok(
-      text.includes(
-        "A call that ended on an unexpected failure (500 `INTERNAL_SERVER_ERROR` without `data.code`) may have gone through: the same key answers `OPERATION_OUTCOME_UNKNOWN` and never runs the write again, so check the current state, then use a new key.",
-      ),
-    );
+    assert.doesNotMatch(section, /data\.code/);
     assert.doesNotMatch(text, /after a call that failed, the same key runs the write again/);
     const [, , row] = openapi.COMMON_ERROR_CODES.find(
       ([, code]) => code === "OPERATION_OUTCOME_UNKNOWN",
     )!;
-    assert.match(row, /ended on an unexpected failure/);
+    assert.match(row, /does not know whether an earlier call/);
     assert.match(row, /never runs the write again/);
   });
 
