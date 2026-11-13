@@ -654,8 +654,8 @@ SELECT COUNT(DISTINCT r.id) AS held_under_another_status
 FROM reservations r
 JOIN payments p
   ON p.reservation_id = r.id
- AND p.type = 'deposit_hold'
- AND p.status IN ('authorized', 'completed')
+ AND p.payment_type = 'deposit_hold'
+ AND p.payment_status IN ('authorized', 'completed')
 WHERE r.deposit_status IN ('pending', 'none', 'card_saved')
    OR r.deposit_status IS NULL;
 ```
