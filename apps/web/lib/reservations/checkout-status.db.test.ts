@@ -1159,15 +1159,9 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
       assert.deepEqual(await confirmedRows(id), []);
     });
 
-    test("a deposit authorized on a request, then the rental paid: confirmed on the hold, and no second hold is taken", async () => {
-      const stripe = fakeDepositStripe();
-      // The request comes in, pending; the customer authorizes the deposit on the page
-      // the store sent; the webhook records it.
-      const id = await pendingWithDeposit();
-      const held = await customerAuthorizes(id, stripe);
-      // The customer pays the rental request the store sent; the webhook claims the
-      // payment, then confirms, as the completion runs them.
-      await completion.claimCompletedCheckoutPayment({
+    /** The webhook's claim of the rental's checkout payment, before it confirms. */
+    const claimRentalPayment = (id: string) =>
+      completion.claimCompletedCheckoutPayment({
         reservationId: id,
         amount: 10,
         currency: "EUR",
@@ -1184,6 +1178,29 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
         paymentRequestId: null,
         feeFacts: null,
       });
+
+    /** The store asks for a hold of the deposit, from the dashboard. */
+    const storeAsksHold = (id: string, stripe: ReturnType<typeof fakeDepositStripe>) =>
+      hold.authorizeDepositHold(
+        {
+          reservationId: id,
+          storeId: DEPOSIT_STORE,
+          stripeAccountId: ACCOUNT,
+          storeSettings: { currency: "EUR" },
+          actorUserId: null,
+        },
+        { database: louezDb.db, stripe: stripe.port, dispatchEffects: () => {} },
+      );
+
+    test("a deposit authorized on a request, then the rental paid: confirmed on the hold, and no second hold is taken", async () => {
+      const stripe = fakeDepositStripe();
+      // The request comes in, pending; the customer authorizes the deposit on the page
+      // the store sent; the webhook records it.
+      const id = await pendingWithDeposit();
+      const held = await customerAuthorizes(id, stripe);
+      // The customer pays the rental request the store sent; the webhook claims the
+      // payment, then confirms, as the completion runs them.
+      await claimRentalPayment(id);
       assert.equal(await confirmDeposit(id), true);
 
       assert.deepEqual(await readDeposit(id), {
@@ -1195,18 +1212,37 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
       });
       // The store asks for a hold on the checkout's card: refused before Stripe.
       stripe.saveCard(ACCOUNT, "pm_test", "cus_test");
-      const again = await hold.authorizeDepositHold(
-        {
-          reservationId: id,
-          storeId: DEPOSIT_STORE,
-          stripeAccountId: ACCOUNT,
-          storeSettings: { currency: "EUR" },
-          actorUserId: null,
-        },
-        { database: louezDb.db, stripe: stripe.port, dispatchEffects: () => {} },
-      );
+      const again = await storeAsksHold(id, stripe);
       assert.deepEqual(again, { ok: false, error: "errors.stripe.noSavedCard" });
       assert.equal(stripe.calls.length, 0);
+    });
+
+    test("a deposit authorized on a request with a saved card, then the rental paid: the store's second hold is refused for the deposit's status", async () => {
+      const stripe = fakeDepositStripe();
+      // A card saved on a Stripe customer before the request was sent; the customer
+      // then authorizes the deposit on the store's page, the webhook records it.
+      const id = await pendingWithDeposit({
+        depositStatus: "card_saved",
+        stripeCustomerId: "cus_test",
+        stripePaymentMethodId: "pm_test",
+      });
+      const held = await customerAuthorizes(id, stripe);
+      await claimRentalPayment(id);
+      assert.equal(await confirmDeposit(id), true);
+
+      assert.deepEqual(await readDeposit(id), {
+        status: "confirmed",
+        depositStatus: "authorized",
+        depositPaymentIntentId: held.id,
+        stripeCustomerId: "cus_test",
+        stripePaymentMethodId: "pm_customer",
+      });
+      // The saved customer and card are valid: only the deposit's status refuses.
+      stripe.saveCard(ACCOUNT, "pm_customer", "cus_test");
+      const again = await storeAsksHold(id, stripe);
+      assert.deepEqual(again, { ok: false, error: "errors.stripe.invalidDepositStatus" });
+      assert.equal(stripe.calls.length, 0, "Stripe is asked nothing");
+      assert.deepEqual(stripe.pagesRead, []);
     });
   });
 });
