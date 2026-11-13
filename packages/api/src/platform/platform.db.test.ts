@@ -712,6 +712,9 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
         .input(zod.z.object({ paymentId: zod.z.string() }))
         .handler(async ({ context, input }) => {
           await confirmation.requireConfirmation({
+            // Asked as the connection's option says: these tests are about the
+            // token, not about who is asked (confirmation-sites.db.test.ts).
+            consequences: ["change"],
             actor: context.actor,
             headers: context.headers,
             procedure: "test.refund",

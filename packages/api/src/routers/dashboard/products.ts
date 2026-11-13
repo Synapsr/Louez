@@ -276,6 +276,14 @@ const update = storeProcedure
         // makes the token stale. `updatedAt` counts whole seconds, so the
         // name is bound too.
         confirm: confirmUnderLock(context, path, input, (preview) => ({
+          // Archiving can be undone; deleted units, tiers and seasons cannot.
+          consequences:
+            preview.deletedUnits.length +
+              preview.deletedTierCount +
+              preview.deletedSeasonalPricingCount >
+            0
+              ? ["deletion"]
+              : ["change"],
           state: {
             name: preview.product.name,
             status: preview.product.status,
@@ -328,6 +336,8 @@ const updateStatus = storeProcedure
   .handler(async ({ context, input, path }) => {
     const { slug, ...result } = await updateProductStatus(productActor(context), input, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
+        // Archived, the product can be put back.
+        consequences: ["change"],
         state: {
           name: preview.product.name,
           status: preview.product.status,
@@ -368,6 +378,7 @@ const remove = storeProcedure
   .handler(({ context, input, path }) =>
     deleteProduct(productActor(context), input.id, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
+        consequences: ["deletion"],
         state: {
           name: preview.product.name,
           updatedAt: preview.product.updatedAt.toISOString(),
@@ -758,6 +769,8 @@ const deleteSeasonalPricingProcedure = storeProcedure
   .handler(({ context, input, path }) =>
     deleteSeasonalPricing(productActor(context), input.id, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
+        // The season's tiers go with it.
+        consequences: ["deletion"],
         state: {
           ...preview.season,
           updatedAt: preview.season.updatedAt.toISOString(),
