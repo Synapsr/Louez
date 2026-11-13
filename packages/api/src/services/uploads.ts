@@ -11,6 +11,7 @@ import {
 import { nanoid } from "nanoid";
 
 import { INLINE_UPLOAD_MAX_BYTES, uploadErrors } from "../contracts/uploads";
+import { isRefusal } from "../platform/errors";
 import type { StoragePort, UploadTarget } from "../platform/ports";
 
 /**
@@ -344,12 +345,29 @@ export async function uploadImage(
   } catch (error) {
     // Nobody else knows this key: a failed upload leaves nothing behind, so
     // a retry does not add a second object.
-    await storage.delete(key).catch((cleanup: unknown) => {
+    try {
+      await storage.delete(key);
+    } catch (cleanup) {
       console.error(cleanupFailure(key, input.kind, cleanup));
-    });
+      // The object may remain: a refusal would let the same idempotency key
+      // store a second one (`isRefusal`, platform/errors.ts).
+      if (isRefusal(error)) throw refusalNotUndone(error, cleanup);
+    }
     throw error;
   }
 }
+
+/**
+ * A refusal raised once the bytes were stored, whose deletion failed: an
+ * ordinary error carrying both, so the operation is unknown and its key
+ * never runs again.
+ */
+const refusalNotUndone = (refusal: unknown, cleanup: unknown) =>
+  new AggregateError(
+    [refusal, cleanup],
+    "The upload was refused, but the stored file could not be deleted.",
+    { cause: refusal },
+  );
 
 /**
  * The log event of an object an upload could not delete: an opaque

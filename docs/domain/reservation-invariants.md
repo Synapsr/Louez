@@ -134,7 +134,7 @@ _Held_ for the paths listed under the lock order: the work each status writer gi
 _Partial._ The store's status changes do. The messages of a new booking, and those of a customer's quote acceptance or cancellation, are sent after the commit from memory: a crash between the two loses them. The extension's messages have their own recoverable attempts, outside the outbox.
 
 **E2. A write sent twice with the same idempotency key runs once.**
-_Partial._ A procedure built on `storeProcedure` replays a recorded success and refuses a concurrent or unknown outcome (`runOperation`). A key whose call failed runs again, also when the handler threw after its commit; a procedure with a secret output ignores the key. The server actions that are not procedures yet have none.
+_Partial._ A procedure built on `storeProcedure` replays a recorded success and refuses a concurrent or unknown outcome (`runOperation`). A call that ends on a refusal (`isRefusal`) is `failed` and its key runs it again; a call that ends on any other error is `unknown` and its key never runs it again, so a handler that threw after its commit is not run twice. The rule rests on a convention: a handler raises a refusal only when nothing it wrote remains ([Raising a refusal](../architecture/api-and-agents.md#writes-audit-idempotency-receipts)). A record marked `failed` before that rule, also when its handler threw after its commit, keeps its status, and its key runs it again. A procedure with a secret output ignores the key. The server actions that are not procedures yet have none.
 
 ## Measuring
 

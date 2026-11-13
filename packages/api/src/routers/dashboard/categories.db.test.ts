@@ -842,6 +842,86 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(storage.objects.size, 1, "only the other store's image");
   });
 
+  describe("an upload refused once its bytes are stored", () => {
+    /** The storage reports another type than the one stored: the metadata check refuses. */
+    const misreported = () => {
+      storage.head = async (key) => {
+        const object = storage.objects.get(key);
+        return object ? { size: object.bytes.byteLength, contentType: "text/html" } : null;
+      };
+    };
+    const recorded = async (idempotencyKey: string) => {
+      const [row] = await louezDb.db
+        .select({ status: louezDb.apiOperations.status, error: louezDb.apiOperations.error })
+        .from(louezDb.apiOperations)
+        .where(orm.eq(louezDb.apiOperations.idempotencyKey, idempotencyKey));
+      return { status: row?.status, code: (row?.error as { code?: string } | null)?.code };
+    };
+
+    test("deleted again: a refusal, nothing stored, and the same key runs it again", async () => {
+      const context = await apiKey();
+      misreported();
+      await rejects(
+        run(
+          "uploadImage",
+          { contentBase64: base64(PNG) },
+          context({ "idempotency-key": "refused-upload" }),
+        ),
+        "UPLOAD_TYPE_NOT_ALLOWED",
+      );
+      assert.equal(storage.objects.size, 0, "nothing stored");
+      assert.deepEqual(await recorded("refused-upload"), {
+        status: "failed",
+        code: "UPLOAD_TYPE_NOT_ALLOWED",
+      });
+
+      storage = createMemoryStorage();
+      const sent = await run(
+        "uploadImage",
+        { contentBase64: base64(PNG) },
+        context({ "idempotency-key": "refused-upload" }),
+      );
+      assert.equal(storage.objects.get(sent.key)?.public, true, "the same key ran it again");
+      assert.equal((await recorded("refused-upload")).status, "succeeded");
+    });
+
+    test("not deleted: unknown, and the same key never stores a second object", async (t) => {
+      t.mock.method(console, "error", () => {});
+      const context = await apiKey();
+      misreported();
+      storage.delete = async () => {
+        throw Object.assign(new Error("Access denied"), { name: "AccessDenied" });
+      };
+      await assert.rejects(
+        run(
+          "uploadImage",
+          { contentBase64: base64(PNG) },
+          context({ "idempotency-key": "orphaned-upload" }),
+        ),
+        (error: unknown) => {
+          assert.notEqual(
+            (error as { data?: { code?: string } }).data?.code,
+            "UPLOAD_TYPE_NOT_ALLOWED",
+            "no refusal: an object remains",
+          );
+          return true;
+        },
+      );
+      assert.equal(storage.objects.size, 1, "the object remains");
+      assert.deepEqual(await recorded("orphaned-upload"), { status: "unknown", code: "INTERNAL" });
+
+      await rejects(
+        run(
+          "uploadImage",
+          { contentBase64: base64(PNG) },
+          context({ "idempotency-key": "orphaned-upload" }),
+        ),
+        "OPERATION_OUTCOME_UNKNOWN",
+      );
+      assert.equal(storage.objects.size, 1, "one stored object, never two");
+    });
+  });
+
   // --- Images by URL --------------------------------------------------------
 
   test("an image imported by URL goes through the guarded fetch", async () => {

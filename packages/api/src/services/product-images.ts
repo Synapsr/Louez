@@ -400,7 +400,8 @@ export async function startImageJob(
   });
 
   if (refusal) throw refusal;
-  if (!job) throw productErrors.notFound(input.id);
+  // The job was queued and committed, so no refusal: its key must never queue another.
+  if (!job) throw new Error("The job was queued, but it could not be read back.");
   if (queued) ports.dispatchJobs?.([queued]);
   return imageJobView(job, {
     urls: ports.urls,

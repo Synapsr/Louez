@@ -25,6 +25,7 @@ import {
   type updateDowntimeInput,
   type updateUnitDetailsInput,
 } from "../contracts/product-units";
+import { readAfterCommit } from "../platform/errors";
 import { getProductUnitHistory } from "./product-unit-history";
 import {
   emit,
@@ -711,14 +712,17 @@ export async function updateUnitDetails(actor: ProductActor, input: UpdateUnitDe
 
   if (changed) unitChanged(actor, ref.productId);
   // Read back: the database stores the price with its two decimals.
-  const [details] = await db
-    .select({
-      notes: productUnits.notes,
-      purchasePrice: productUnits.purchasePrice,
-      purchasedAt: productUnits.purchasedAt,
-    })
-    .from(productUnits)
-    .where(eq(productUnits.id, ref.id));
-  if (!details) throw productUnitErrors.unitNotFound(ref.id);
+  const details = await readAfterCommit(async () => {
+    const [row] = await db
+      .select({
+        notes: productUnits.notes,
+        purchasePrice: productUnits.purchasePrice,
+        purchasedAt: productUnits.purchasedAt,
+      })
+      .from(productUnits)
+      .where(eq(productUnits.id, ref.id));
+    if (!row) throw productUnitErrors.unitNotFound(ref.id);
+    return row;
+  });
   return { unitId: ref.id, ...details };
 }

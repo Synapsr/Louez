@@ -17,6 +17,7 @@ import {
   type createSeasonalPricingInput,
   type updateSeasonalPricingInput,
 } from "../contracts/products";
+import { readAfterCommit } from "../platform/errors";
 import type { ApiEvent } from "../platform/ports";
 import { lockStoreProducts, type ConfirmStep, type ProductActor } from "./products";
 
@@ -256,7 +257,7 @@ export async function createSeasonalPricing(
     }
   });
   emit(actor, input.productId);
-  return getSeason(actor.storeId, id);
+  return readAfterCommit(() => getSeason(actor.storeId, id));
 }
 
 /** Partial: a field left out is unchanged; rateTiers sent replaces the tiers. */
@@ -295,7 +296,7 @@ export async function updateSeasonalPricing(
     }
   });
   emit(actor, productId);
-  return getSeason(actor.storeId, input.id);
+  return readAfterCommit(() => getSeason(actor.storeId, input.id));
 }
 
 /**
@@ -341,7 +342,7 @@ export async function duplicateSeasonalPricing(actor: ProductActor, id: string) 
     }
   });
   emit(actor, productId);
-  return getSeason(actor.storeId, newId);
+  return readAfterCommit(() => getSeason(actor.storeId, newId));
 }
 
 /** What deleting a season would do, for its confirmation preview. */
