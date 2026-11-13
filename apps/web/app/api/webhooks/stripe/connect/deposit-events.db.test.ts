@@ -205,7 +205,6 @@ describe("deposit hold events (database)", { skip: skipWithoutTestDatabase() }, 
       };
     },
     notifyPaymentFailed: async () => {},
-    failMarketplaceBookingAttempt: async () => {},
   };
 
   const eventDeps = (stripe: FakeDepositStripe): DepositEventDeps => ({

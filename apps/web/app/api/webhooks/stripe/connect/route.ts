@@ -35,6 +35,8 @@ import { env } from "@/env";
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded } from "./charge-refund";
 import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
+import { failedAttemptBinding, failedAttemptReservationId } from "./failed-attempt-binding";
+import { matchesDeploymentMode } from "./matches-deployment-mode";
 import { handlePaymentFailure } from "./payment-failure";
 
 // ===== TYPE DEFINITIONS =====
@@ -98,14 +100,6 @@ const depositEventDeps: DepositEventDeps = {
 
 // ===== VALIDATION HELPERS =====
 // Validates Stripe metadata to prevent manipulation attacks
-
-/**
- * Validates that a reservationId from Stripe metadata is properly formatted
- * @returns true if valid, false otherwise
- */
-function isValidReservationId(reservationId: string | undefined): reservationId is string {
-  return typeof reservationId === "string" && reservationId.length === 21;
-}
 
 /**
  * Validates that the connected account matches the reservation's store
@@ -231,7 +225,7 @@ export async function POST(request: Request) {
         break;
 
       case "payment_intent.payment_failed":
-        await handlePaymentFailed(event.data.object, connectedAccountId, event.id);
+        await handlePaymentFailed(event, event.data.object, connectedAccountId);
         break;
 
       // Refund events
@@ -708,48 +702,99 @@ async function handleCheckoutExpired(
 }
 
 /**
- * Handles payment failure
- * Triggered when card is declined or payment fails. The owner is told once per
- * event: a redelivered event is recognised and notifies nobody again.
+ * A failed payment attempt adds its line and its alert, and changes nothing else:
+ * the Checkout Session stays open for another try, and its completion or its expiry
+ * settles the payment, the booking and a marketplace attempt. The event acts in the
+ * deployment's mode, from the account that sent it, on the reservation of the payment
+ * rows that record its PaymentIntent, or the one it names when no row does. A
+ * PaymentIntent a `deposit_hold` row records, or one no row records whose event states
+ * a deposit hold's, goes to the deposit events, which read it from Stripe. An event
+ * that does not agree with those records is logged and nothing is written; it is
+ * answered 2xx, as Stripe would only send it again.
  */
 async function handlePaymentFailed(
+  event: { readonly id: string; readonly livemode: boolean },
   paymentIntent: Stripe.PaymentIntent,
   connectedAccountId: string | undefined,
-  stripeEventId: string,
 ) {
-  // A deposit hold's failure is read against Stripe, as its other events are.
-  if (paymentIntent.metadata?.type === "deposit_hold") {
+  const namedReservationId = paymentIntent.metadata?.reservationId;
+  const refuse = (issue: string, details: Record<string, unknown> = {}) => {
+    log.error({
+      stripeWebhook: {
+        event: "payment_failed",
+        issue,
+        stripeEventId: event.id,
+        paymentIntentId: paymentIntent.id,
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        ...(namedReservationId !== undefined && { namedReservationId }),
+        ...details,
+      },
+    });
+  };
+
+  // The deployment's mode and the sending account come first: they hold for a
+  // deposit hold's failed attempt too.
+  if (!matchesDeploymentMode({ livemode: event.livemode, secretKey: env.STRIPE_SECRET_KEY })) {
+    refuse("livemode_mismatch", { livemode: event.livemode });
+    return;
+  }
+  if (!connectedAccountId) {
+    refuse("connected_account_missing");
+    return;
+  }
+
+  // The payment rows that record the PaymentIntent, of any reservation and any
+  // type: a row's type decides the route.
+  const recorded = await db
+    .select({ reservationId: payments.reservationId, type: payments.type })
+    .from(payments)
+    .where(eq(payments.stripePaymentIntentId, paymentIntent.id));
+  const hold = recorded.find((row) => row.type === "deposit_hold");
+  if (hold || (recorded.length === 0 && paymentIntent.metadata?.type === "deposit_hold")) {
     await handleDepositEvent(
       {
         type: "payment_intent.payment_failed",
-        stripeEventId,
+        stripeEventId: event.id,
         accountId: connectedAccountId,
         paymentIntent,
+        recordedReservationId: hold?.reservationId ?? null,
       },
       depositEventDeps,
     );
     return;
   }
 
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
-    log.error({
-      stripeWebhook: { event: "payment_failed", issue: "invalid_reservation_id", reservationId },
+  const recordedReservationIds = recorded.map((row) => row.reservationId);
+  const reservationId = failedAttemptReservationId({ recordedReservationIds, namedReservationId });
+  const reservation = reservationId
+    ? await db.query.reservations.findFirst({
+        where: eq(reservations.id, reservationId),
+        with: { store: true, customer: true },
+      })
+    : undefined;
+  const binding = failedAttemptBinding({
+    livemode: event.livemode,
+    secretKey: env.STRIPE_SECRET_KEY,
+    accountId: connectedAccountId,
+    namedReservationId,
+    recordedReservationIds,
+    reservation: reservation ?? null,
+  });
+  if (!binding.ok) {
+    refuse(binding.issue, {
+      recordedReservationIds,
+      ...(reservationId !== undefined && { readReservationId: reservationId }),
+      ...(reservation && { storeAccountId: reservation.store.stripeAccountId }),
     });
     return;
   }
 
-  // SECURITY: Validate connected account matches store
-  const { valid, reservation } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "payment_failed",
-  );
-  if (!valid || !reservation) return;
-
-  await handlePaymentFailure({ reservation, stripeEventId, paymentIntent });
+  await handlePaymentFailure({
+    kind: "rental",
+    reservation: binding.reservation,
+    stripeEventId: event.id,
+    paymentIntent,
+  });
 }
 
 async function handleAccountUpdated(account: Stripe.Account) {

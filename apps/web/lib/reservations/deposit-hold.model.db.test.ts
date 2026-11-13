@@ -226,7 +226,6 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
           push: { sent: false },
         }),
         notifyPaymentFailed: async () => {},
-        failMarketplaceBookingAttempt: async () => {},
       },
     };
     const senders = {
