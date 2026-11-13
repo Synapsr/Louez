@@ -27,6 +27,8 @@
     "./services/inbox": "./src/services/inbox.ts",
     "./services/jobs": "./src/services/jobs.ts",
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
+    "./services/paid-confirmation-deposit": "./src/services/paid-confirmation-deposit.ts",
+    "./services/payment-reservation-status": "./src/services/payment-reservation-status.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
     "./services/promo": "./src/services/promo.ts",
     "./services/reservation-failure": "./src/services/reservation-failure.ts",

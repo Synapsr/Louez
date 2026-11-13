@@ -45,7 +45,8 @@ const BEFORE = new Date("2026-01-10T08:00:00Z");
 describe("checkout status changes (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
-  let payment: typeof import("./complete-checkout-payment");
+  let payment: typeof import("@louez/api/services/payment-reservation-status");
+  let fees: typeof import("@/lib/billing/reservation-effects");
   let creation: typeof import("./create-reservation");
   let abandoned: typeof import("./cancel-abandoned-checkout");
   let counter = 0;
@@ -54,9 +55,13 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     database = await createTestDatabase("checkout_status");
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
-    payment = await import("./complete-checkout-payment");
     creation = await import("./create-reservation");
     abandoned = await import("./cancel-abandoned-checkout");
+    fees = await import("@/lib/billing/reservation-effects");
+    // packages/api is ES modules: its services need the CommonJS packages'
+    // names by hand. Loaded last, as the mocks change how later modules load.
+    await import("@louez/mcp/testing/cjs-named-exports");
+    payment = await import("@louez/api/services/payment-reservation-status");
 
     // The inventory check reads the store's settings.
     await louezDb.db
@@ -200,7 +205,10 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
   } as const;
 
   const confirmPaid = (reservationId: string) =>
-    payment.confirmPaidReservationOrThrow({ reservationId, storeId: STORE, ...PAID });
+    payment.confirmPaidReservation(
+      { reservationId, storeId: STORE, ...PAID },
+      fees.runReservationEffects,
+    );
 
   /**
    * A product update, which locks the product's row first, with writes behind
@@ -827,12 +835,15 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
 
     /** The session saved a card: `card_saved`, with the checkout's customer and card. */
     const confirmDeposit = (reservationId: string) =>
-      payment.confirmPaidReservationOrThrow({
-        reservationId,
-        storeId: DEPOSIT_STORE,
-        ...PAID,
-        activityMetadata: { ...PAID.activityMetadata, depositAmount: 50 },
-      });
+      payment.confirmPaidReservation(
+        {
+          reservationId,
+          storeId: DEPOSIT_STORE,
+          ...PAID,
+          activityMetadata: { ...PAID.activityMetadata, depositAmount: 50 },
+        },
+        fees.runReservationEffects,
+      );
 
     /** What the Connect webhook writes for a PaymentIntent as the fake Stripe has it now. */
     async function settle(

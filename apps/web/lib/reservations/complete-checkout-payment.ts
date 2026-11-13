@@ -1,23 +1,15 @@
 import {
-  checkExistingReservationInventory,
-  ReservationInventoryError,
-} from "@louez/api/services/reservation-inventory";
-import { and, eq, inArray } from "drizzle-orm";
+  confirmPaidReservation,
+  type PaidConfirmationDepositStatus,
+  type PaidConfirmationInput,
+} from "@louez/api/services/payment-reservation-status";
+import { ReservationInventoryError } from "@louez/api/services/reservation-inventory";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { validateReservationContract, confirmMarketplaceBookingAttempt } from "@louez/api/services";
-import {
-  ConsumableStockError,
-  changeReservationStatus,
-  consumeReservationStock,
-  db,
-  runReservationChangeByStatus,
-  runReservationOnlyChange,
-  toWholeSeconds,
-  type ReservationBillingEffect,
-  type Transaction,
-} from "@louez/db";
-import { paymentRequests, payments, reservationActivity, reservations, stores } from "@louez/db";
+import { ConsumableStockError, db, toWholeSeconds } from "@louez/db";
+import { paymentRequests, reservationActivity, reservations, stores } from "@louez/db";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
@@ -46,11 +38,7 @@ import {
 } from "@/lib/stripe/payment-completion";
 import { evaluateReservationRules } from "@louez/utils";
 
-import { paidConfirmationKeepsDeposit } from "./util.paid-confirmation-deposit";
-
 export type CheckoutPaymentCompletionSource = "webhook" | "return";
-
-type DepositStatus = "none" | "card_saved" | "pending";
 
 /** What the Stripe Checkout session and its PaymentIntent tell us. */
 export interface CheckoutPaymentStripeDetails {
@@ -138,170 +126,20 @@ const insuranceShareAtClaim = async (
 };
 
 /**
- * Whether one of the reservation's `deposit_hold` rows holds funds (`authorized`, a
- * release owed included) or took them (`completed`): `readHoldRows`' filter narrowed
- * to those statuses, served by `payments_reservation_idx`. Read under the
- * reservation's row lock, which every writer of a hold row takes first: it is what
- * the hold writer last committed.
- */
-const depositLedgerHoldsFunds = async (tx: Transaction, reservationId: string) => {
-  const [row] = await tx
-    .select({ id: payments.id })
-    .from(payments)
-    .where(
-      and(
-        eq(payments.reservationId, reservationId),
-        eq(payments.type, "deposit_hold"),
-        inArray(payments.status, ["authorized", "completed"]),
-      ),
-    )
-    .limit(1);
-  return row !== undefined;
-};
-
-/**
- * The reservation's status and deposit as stored, read after its row lock, and
- * whether the paid confirmation leaves the deposit as it is
- * (`paidConfirmationKeepsDeposit`). Null when the reservation is not in the store.
- */
-const readDepositUnderLock = async (
-  tx: Transaction,
-  scope: { reservationId: string; storeId: string },
-) => {
-  const [row] = await tx
-    .select({ status: reservations.status, depositStatus: reservations.depositStatus })
-    .from(reservations)
-    .where(and(eq(reservations.id, scope.reservationId), eq(reservations.storeId, scope.storeId)));
-  if (!row) return null;
-  const keeps = paidConfirmationKeepsDeposit({
-    depositStatus: row.depositStatus,
-    ledgerHoldsFunds: await depositLedgerHoldsFunds(tx, scope.reservationId),
-  });
-  return { ...row, keeps };
-};
-
-/**
- * Confirms a paid pending reservation as the `payment` actor, with its
- * `confirmed` activity row. Returns false when it was not pending. Exported for
- * its database test. A reservation still busy after the owner entry's runs
- * throws `ReservationChangeBusyError`: the webhook answers non-2xx and Stripe
- * sends the event again; the payment's claim, committed before, stays.
- *
- * The session's customer, card and `depositStatus` are written on a pending
- * reservation unless funds are held or were taken on it: then its deposit is left
- * as stored, and the `confirmed` row says so (`depositStatusKept`).
- */
-export const confirmPaidReservationOrThrow = async (params: {
-  reservationId: string;
-  storeId: string;
-  stripeCustomerId: string | null;
-  stripePaymentMethodId: string | null;
-  depositStatus: DepositStatus;
-  /** The metadata of the `confirmed` activity row. */
-  activityMetadata: Record<string, unknown>;
-}): Promise<boolean> => {
-  const scope = { reservationId: params.reservationId, storeId: params.storeId };
-
-  // Keep payment/deposit metadata even when stock consumption rolls back. A
-  // merchant can then restock and confirm the paid reservation manually. Under
-  // the reservation's lock alone, as the hold writer takes it, and committed
-  // before the status transaction opens: it adds no lock order. The status
-  // transaction decides again under its own lock, so a hold settled between the
-  // two is seen there.
-  await runReservationOnlyChange(scope, async (tx) => {
-    const found = await readDepositUnderLock(tx, scope);
-    if (found?.status !== "pending" || found.keeps) return;
-    await tx
-      .update(reservations)
-      .set({
-        stripeCustomerId: params.stripeCustomerId,
-        stripePaymentMethodId: params.stripePaymentMethodId,
-        depositStatus: params.depositStatus,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(eq(reservations.id, scope.reservationId), eq(reservations.storeId, scope.storeId)),
-      );
-  });
-
-  // A pending reservation is checked and takes its stock, a confirmed one is
-  // repaired below: the owner entry locks their products, then the
-  // reservation (DL-12). Any other status is left as it is, under the
-  // reservation's lock alone. A lost deadlock, a product added or the status
-  // changed meanwhile runs the whole transaction again. It records no
-  // payment, so a new run cannot record one twice; the effects run once,
-  // after it.
-  const result = await runReservationChangeByStatus(
-    scope,
-    (status) => status === "pending" || status === "confirmed",
-    async (tx, lock): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
-      // After the lock the owner entry took: the deposit and the ledger as the hold
-      // writer last committed them, decided on with the status change.
-      const found = await readDepositUnderLock(tx, scope);
-      const change = await changeReservationStatus(tx, {
-        lock,
-        reservationId: params.reservationId,
-        storeId: params.storeId,
-        to: "confirmed",
-        actor: "payment",
-        actorUserId: null,
-        expectedFrom: "pending",
-        beforeWrite: (lockedTx) =>
-          checkExistingReservationInventory(lockedTx, params.reservationId, params.storeId),
-        activity: {
-          metadata: {
-            ...params.activityMetadata,
-            ...(found?.keeps && { depositStatusKept: found.depositStatus }),
-          },
-        },
-      });
-
-      if (!change.changed) {
-        // Already confirmed, by the other completion path or the merchant: make
-        // sure its consumables were taken. Consuming twice changes nothing. Read
-        // as confirmed under its lock, so the lock is the products'.
-        if (change.from === "confirmed" && lock.kind === "products") {
-          await consumeReservationStock(tx, lock);
-        }
-        return { confirmed: false, effects: [] };
-      }
-
-      if (!found?.keeps) {
-        await tx
-          .update(reservations)
-          .set({
-            stripeCustomerId: params.stripeCustomerId,
-            stripePaymentMethodId: params.stripePaymentMethodId,
-            depositStatus: params.depositStatus,
-          })
-          .where(
-            and(eq(reservations.id, scope.reservationId), eq(reservations.storeId, scope.storeId)),
-          );
-      }
-
-      return { confirmed: true, effects: change.effects };
-    },
-  );
-
-  // The webhook records a paid checkout's fee itself, so this is empty today.
-  await runReservationEffects(result.effects);
-  return result.confirmed;
-};
-
-/**
- * Confirm a paid pending reservation and consume its consumable stock. Stock
+ * Confirm a paid pending reservation and consume its consumable stock, through
+ * the payment's status service (packages/api), with the app's fee runner. Stock
  * that ran out between checkout and confirmation leaves the reservation
  * pending rather than failing the webhook or the customer's return: the
  * merchant restocks and confirms from the dashboard, or confirms it there
  * over the returnable stock (`allowOverbooking`) or past the turnover buffer
- * (`overrideTurnoverBuffer`), which no payment passes.
+ * (`overrideTurnoverBuffer`), which no payment passes. Still busy, it throws.
  */
-const confirmPaidReservation = async (
-  params: Parameters<typeof confirmPaidReservationOrThrow>[0],
+const confirmPaidReservationLoggingRefusal = async (
+  params: PaidConfirmationInput,
   source: CheckoutPaymentCompletionSource,
 ): Promise<boolean> => {
   try {
-    return await confirmPaidReservationOrThrow(params);
+    return await confirmPaidReservation(params, runReservationEffects);
   } catch (error) {
     if (error instanceof ReservationInventoryError) {
       log.error("checkout", `Inventory conflict on paid confirmation: ${params.reservationId}`);
@@ -385,7 +223,7 @@ const runCheckoutPaymentCompletion = async ({
   const currency = stripeDetails.currency;
   const totalAmount = fromStripeCents(stripeDetails.amountTotalCents, currency);
   const depositAmount = Number(reservation.depositAmount) || 0;
-  const depositStatus: DepositStatus =
+  const depositStatus: PaidConfirmationDepositStatus =
     depositAmount > 0
       ? stripeDetails.stripeCustomerId && stripeDetails.stripePaymentMethodId
         ? "card_saved"
@@ -485,7 +323,7 @@ const runCheckoutPaymentCompletion = async ({
     endDate: reservation.endDate,
     storeSettings: store.settings,
   });
-  const reservationConfirmed = await confirmPaidReservation(
+  const reservationConfirmed = await confirmPaidReservationLoggingRefusal(
     {
       reservationId,
       storeId: store.id,

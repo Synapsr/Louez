@@ -66,6 +66,9 @@ const quoteMessages: string[] = [];
 // The paid confirmation's runs of its fee effects, recorded as it asks them:
 // the real runner does nothing with the empty list a payment's change returns.
 const feeEffectRuns: unknown[][] = [];
+const recordFeeEffects = async (effects: readonly unknown[]) => {
+  feeEffectRuns.push([...effects]);
+};
 Reflect.set(globalThis, "__louezRaceStubs", {
   revalidatePath: () => {},
   getCustomerSession: async () => ({ customerId: CUSTOMER }),
@@ -79,9 +82,6 @@ Reflect.set(globalThis, "__louezRaceStubs", {
   toAnalyticsAmountCents: () => 0,
   createReservationPaymentSessionForCustomer: async () => ({ success: false, error: "none" }),
   cancelTulipContractForReservation: async () => {},
-  runReservationEffects: async (effects: unknown[]) => {
-    feeEffectRuns.push([...effects]);
-  },
 });
 
 Reflect.get(
@@ -100,12 +100,6 @@ Reflect.get(
     if (parent.includes("[reservationId]/actions.ts") && STUBBED.has(specifier)) {
       return { url: pathToFileURL(stubsPath).href, shortCircuit: true };
     }
-    if (
-      parent.includes("lib/reservations/complete-checkout-payment.ts") &&
-      specifier === "@/lib/billing/reservation-effects"
-    ) {
-      return { url: pathToFileURL(stubsPath).href, shortCircuit: true };
-    }
     return next(specifier, context);
   },
 });
@@ -120,7 +114,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let statusChange: typeof import("@louez/api/services/reservation-status");
-  let payment: typeof import("./complete-checkout-payment");
+  let payment: typeof import("@louez/api/services/payment-reservation-status");
   let abandoned: typeof import("./cancel-abandoned-checkout");
   let quotes: typeof import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions");
   let inbox: typeof import("@louez/api/services/inbox");
@@ -131,13 +125,13 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   before(async () => {
     database = await createTestDatabase("status_races");
     louezDb = await import("@louez/db");
-    payment = await import("./complete-checkout-payment");
     abandoned = await import("./cancel-abandoned-checkout");
     quotes = await import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions");
     // packages/api is ES modules: its services need the CommonJS packages'
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
     statusChange = await import("@louez/api/services/reservation-status");
+    payment = await import("@louez/api/services/payment-reservation-status");
     inbox = await import("@louez/api/services/inbox");
     testUrls = await import("@louez/api/platform/test-urls");
 
@@ -390,14 +384,17 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
       const { id, contested } = await holdingContestedUnit("pending");
 
       await assert.rejects(
-        payment.confirmPaidReservationOrThrow({
-          reservationId: id,
-          storeId: STORE,
-          stripeCustomerId: null,
-          stripePaymentMethodId: null,
-          depositStatus: "none",
-          activityMetadata: { source: "unit conflict" },
-        }),
+        payment.confirmPaidReservation(
+          {
+            reservationId: id,
+            storeId: STORE,
+            stripeCustomerId: null,
+            stripePaymentMethodId: null,
+            depositStatus: "none",
+            activityMetadata: { source: "unit conflict" },
+          },
+          recordFeeEffects,
+        ),
         (error: Error & { conflicts?: Array<{ unitId: string }> }) => {
           // A stock refusal, which the payment's completion keeps pending. Read
           // by name: this file loads the service's module a second time.
@@ -606,14 +603,17 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         from: "pending" as const,
         confirm: async (id: string) => {
           try {
-            await payment.confirmPaidReservationOrThrow({
-              reservationId: id,
-              storeId: STORE,
-              stripeCustomerId: null,
-              stripePaymentMethodId: null,
-              depositStatus: "none",
-              activityMetadata: { source: "buffer" },
-            });
+            await payment.confirmPaidReservation(
+              {
+                reservationId: id,
+                storeId: STORE,
+                stripeCustomerId: null,
+                stripePaymentMethodId: null,
+                depositStatus: "none",
+                activityMetadata: { source: "buffer" },
+              },
+              recordFeeEffects,
+            );
             return "confirmed";
           } catch (error) {
             // Read by name: this file loads the service's module a second time.
@@ -743,14 +743,17 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
     test("is confirmed by its payment", async () => {
       const id = await lHoldingS("pending");
 
-      await payment.confirmPaidReservationOrThrow({
-        reservationId: id,
-        storeId: STORE,
-        stripeCustomerId: null,
-        stripePaymentMethodId: null,
-        depositStatus: "none",
-        activityMetadata: { source: "exact line holding another unit" },
-      });
+      await payment.confirmPaidReservation(
+        {
+          reservationId: id,
+          storeId: STORE,
+          stripeCustomerId: null,
+          stripePaymentMethodId: null,
+          depositStatus: "none",
+          activityMetadata: { source: "exact line holding another unit" },
+        },
+        recordFeeEffects,
+      );
       assert.equal(await statusOf(id), "confirmed");
     });
 
@@ -1226,14 +1229,17 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
           .changeStoreReservationStatus(caller(), { id, to: "cancelled" })
           .then((change) => change.to),
       () =>
-        payment.confirmPaidReservationOrThrow({
-          reservationId: id,
-          storeId: STORE,
-          stripeCustomerId: null,
-          stripePaymentMethodId: null,
-          depositStatus: "none",
-          activityMetadata: { source: "race" },
-        }),
+        payment.confirmPaidReservation(
+          {
+            reservationId: id,
+            storeId: STORE,
+            stripeCustomerId: null,
+            stripePaymentMethodId: null,
+            depositStatus: "none",
+            activityMetadata: { source: "race" },
+          },
+          recordFeeEffects,
+        ),
     ]);
     assert.equal(cancelled, "cancelled");
     const state = await endState(id, productId);
@@ -1318,12 +1324,15 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
       depositStatus: "none" | "card_saved";
     } = { stripeCustomerId: null, stripePaymentMethodId: null, depositStatus: "none" },
   ) =>
-    payment.confirmPaidReservationOrThrow({
-      reservationId: id,
-      storeId: STORE,
-      ...deposit,
-      activityMetadata: { source: "race" },
-    });
+    payment.confirmPaidReservation(
+      {
+        reservationId: id,
+        storeId: STORE,
+        ...deposit,
+        activityMetadata: { source: "race" },
+      },
+      recordFeeEffects,
+    );
 
   // The paid confirmation writes the payment's details on the pending row
   // before its transaction, so it cannot be queued first this way: the
