@@ -5,6 +5,7 @@ import { after, before, describe, mock, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import type { Consequence } from "./approval-rule";
 import { createMemoryStorage } from "./memory-storage";
 import { createTestNewStores } from "./test-new-stores";
 import { createTestProductImages } from "./test-product-images";
@@ -39,6 +40,15 @@ mock.module("@louez/auth", { namedExports: { auth: {}, authInstance: { api: {} }
 // confirmation, `checkConfirmation`) runs as it is. Three places ask outside
 // a service's `confirm` and run for real: `stores.create` in its handler, the
 // AI photo runs in `startImageJob`, and the transport tests' fixture.
+//
+// Each call also records the consequences the place declared, as they reach
+// the rule (`confirmationStep`, wrapped below), against a table written here:
+// a branch whose declaration changes fails even where today's answer stays the
+// same. The token's lifetime is pinned at ten minutes, and tried just before
+// and at its end on a test clock. The status changes run once more through
+// the real service, which picks the branch from the reservation: from
+// `pending` or `quote`, each override, something short or nothing, a message
+// or none; a rejection and a cancellation sent a flag.
 
 const USER = "cs_owner_user_000001";
 const STORE = "cs_store_a_000000001";
@@ -86,11 +96,41 @@ const STAND_INS: Record<string, string[]> = {
 
 let captured: Confirm | null = null;
 
+/** The consequences each call handed the rule, in order. */
+let emitted: Array<readonly Consequence[]> = [];
+
+/** The status changes run through the real service, which stops once it has asked. */
+let throughStatusService = false;
+let statusAsked: { preview: StatusPreview; refusal: Error | null } | null = null;
+
+interface StatusPreview {
+  messages: unknown[];
+  overbooking: { shortfalls: unknown[] } | null;
+  turnoverBuffer: { shortfalls: unknown[] } | null;
+}
+
 /**
  * Puts the stand-ins in place of the services, before the routers load (and
  * once the test database is there: the services load the database client).
  */
 async function installStandIns() {
+  // First, before any module that asks loads it: the rule, as it is, with
+  // what each call declared kept.
+  const rule: Record<string, unknown> = await import("./approval-rule");
+  const confirmationStep = rule.confirmationStep as (
+    consequences: readonly Consequence[],
+    credential: unknown,
+  ) => unknown;
+  mock.module(import.meta.resolve("./approval-rule"), {
+    namedExports: {
+      ...rule,
+      confirmationStep: (consequences: readonly Consequence[], credential: unknown) => {
+        emitted.push([...consequences]);
+        return confirmationStep(consequences, credential);
+      },
+    },
+  });
+
   for (const [specifier, names] of Object.entries(STAND_INS)) {
     const actual: Record<string, unknown> = await import(specifier);
     const namedExports: Record<string, unknown> = { ...actual };
@@ -103,6 +143,18 @@ async function installStandIns() {
         );
         assert.ok(options, `${name} was given a confirm step`);
         captured = options.confirm;
+        if (throughStatusService && name === "changeStoreReservationStatus") {
+          // The real service picks the branch; it stops once it has asked,
+          // inside its transaction, so nothing is written.
+          const real = actual[name] as (...real: unknown[]) => Promise<unknown>;
+          return real(...args.slice(0, -1), {
+            ...options,
+            confirm: async (preview: StatusPreview, tx: unknown) => {
+              statusAsked = { preview, refusal: await options.confirm(preview, tx) };
+              throw new Error(STOPPED);
+            },
+          });
+        }
         throw new Error(STOPPED);
       };
     }
@@ -502,6 +554,8 @@ const SITES: Site[] = [
     ([name, input]): Site => ({
       path: ["dashboard", "reservations", name],
       input,
+      // A cancellation takes no stock: the service never sets an override on
+      // its preview, so it has the message branches only.
       branches: [
         {
           name: "a message goes",
@@ -533,7 +587,7 @@ const SITES: Site[] = [
           }),
           asksWithOptionOff: true,
         },
-      ],
+      ].slice(0, name === "cancel" ? 2 : undefined),
     }),
   ),
   {
@@ -639,12 +693,6 @@ const FINGERPRINTS: Record<string, string> = {
     "bfd6897c223270bdc61a2fd3082c8bb97da3eb369ae94cf6c738a84af9f22e5f",
   "dashboard.reservations.cancel, no message":
     "0c4213cf9f48761267bb8fa2d0862ae1db4ce4c6e00a2c082b9feea305db2417",
-  "dashboard.reservations.cancel, booked over the stock, nothing short":
-    "6621d80a76cd590a1d78bf77432757d21d336ca2eed4121589f8a800b9d44403",
-  "dashboard.reservations.cancel, booked over the stock, a message goes":
-    "068fda074e2ac351f8da4dc9fe7b144f071171cac6a51c08d594dcb87298a751",
-  "dashboard.reservations.cancel, past the turnover buffer":
-    "5c39dbcebd9e54fb55e8c10db2cc1fc835472461d1f24b61e6e2c57a57827f72",
   "dashboard.stores.create, creates":
     "ad17363db02c0e1e3c6f488f11b118ff4ca0b64236d2b4d2a13efc65658627ef",
   "dashboard.products.enhanceImage, priced":
@@ -656,6 +704,311 @@ const FINGERPRINTS: Record<string, string> = {
   "dashboard.products.removeImageBackground, free":
     "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
 };
+
+/**
+ * What each place and branch declares, as the rule receives it: the same for
+ * every caller, a session included. None where the branch never asks.
+ */
+const CONSEQUENCES: Record<string, readonly Consequence[] | null> = {
+  "fixture.notes.remove, removes": ["deletion"],
+  "dashboard.products.update, archives": ["change"],
+  "dashboard.products.update, deletes units and tiers": ["deletion"],
+  "dashboard.products.updateStatus, archives": ["change"],
+  "dashboard.products.delete, deletes": ["deletion"],
+  "dashboard.products.deleteSeasonalPricing, deletes": ["deletion"],
+  "dashboard.products.declareDowntime, conflicts": ["change"],
+  "dashboard.products.updateDowntime, conflicts": ["change"],
+  "dashboard.products.retireUnit, conflicts": ["change"],
+  "dashboard.products.deleteDowntime, deletes": ["change"],
+  "dashboard.products.deleteVariantDefinition, deletes the entry": ["change"],
+  "dashboard.products.withdrawVariantFromProducts, products use it": ["deletion"],
+  "dashboard.products.withdrawVariantFromProducts, no product uses it": ["change"],
+  "dashboard.products.deleteVariantValue, deletes the entry": ["change"],
+  "dashboard.categories.delete, deletes": ["deletion"],
+  "dashboard.settings.updateCompany, changes": ["change"],
+  "dashboard.settings.updateReservationRules, changes": ["change"],
+  "dashboard.settings.updateDelivery, changes": ["change"],
+  "dashboard.settings.updateTaxes, changes": ["change"],
+  "dashboard.settings.upsertLegalProfile, changes": ["change"],
+  "dashboard.onlineStore.updateSlug, store online": ["deletion"],
+  "dashboard.onlineStore.updateSlug, store offline": ["change"],
+  "dashboard.stores.completeOnboarding, goes live": ["change"],
+  "dashboard.team.cancelInvitation, cancels": ["access_removed"],
+  "dashboard.team.removeMember, removes": ["access_removed"],
+  "dashboard.reservations.updateStatus, a message goes": ["customer_message"],
+  "dashboard.reservations.updateStatus, no message": ["change"],
+  "dashboard.reservations.updateStatus, booked over the stock, nothing short": ["stock_override"],
+  "dashboard.reservations.updateStatus, booked over the stock, a message goes": [
+    "stock_override",
+    "customer_message",
+  ],
+  "dashboard.reservations.updateStatus, past the turnover buffer": ["stock_override"],
+  "dashboard.reservations.cancel, a message goes": ["customer_message"],
+  "dashboard.reservations.cancel, no message": ["change"],
+  "dashboard.stores.create, creates": ["change"],
+  "dashboard.products.enhanceImage, priced": ["credits"],
+  "dashboard.products.enhanceImage, free": null,
+  "dashboard.products.removeImageBackground, priced": ["credits"],
+  "dashboard.products.removeImageBackground, free": null,
+};
+
+/** A token's lifetime, written out: ten minutes. */
+const TOKEN_LIFETIME_MS = 600_000;
+
+// --- The status changes, through the real service ------------------------------
+
+interface StatusRow {
+  name: string;
+  procedure: "updateStatus" | "cancel";
+  from: "pending" | "quote" | "confirmed";
+  to: "confirmed" | "rejected" | "cancelled";
+  flags: { allowOverbooking?: true; overrideTurnoverBuffer?: true };
+  /** What the reservation lacks: nothing, stock (two asked of one), or the turnover buffer. */
+  short: "nothing" | "stock" | "buffer";
+  /** Whether the customer has an address the message goes to. */
+  message: boolean;
+  /** What the branch declares; null when the service refuses before it asks. */
+  consequences: readonly Consequence[] | null;
+  asksWithOptionOff: boolean;
+  /** The refusal's code, when the service refuses before it asks. */
+  refused?: string;
+}
+
+const OVERBOOK = { allowOverbooking: true } as const;
+const PAST_BUFFER = { overrideTurnoverBuffer: true } as const;
+const BOTH = { allowOverbooking: true, overrideTurnoverBuffer: true } as const;
+
+const confirming = (from: "pending" | "quote"): StatusRow[] => [
+  {
+    name: `${from}, no flag, nothing short, a message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: {},
+    short: "nothing",
+    message: true,
+    consequences: ["customer_message"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: `${from}, no flag, nothing short, no message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: {},
+    short: "nothing",
+    message: false,
+    consequences: ["change"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: `${from}, allowOverbooking, nothing short, a message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: OVERBOOK,
+    short: "nothing",
+    message: true,
+    consequences: ["stock_override", "customer_message"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, allowOverbooking, nothing short, no message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: OVERBOOK,
+    short: "nothing",
+    message: false,
+    consequences: ["stock_override"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, allowOverbooking, stock short, a message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: OVERBOOK,
+    short: "stock",
+    message: true,
+    consequences: ["stock_override", "customer_message"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, allowOverbooking, stock short, no message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: OVERBOOK,
+    short: "stock",
+    message: false,
+    consequences: ["stock_override"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, overrideTurnoverBuffer, nothing short, a message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: PAST_BUFFER,
+    short: "nothing",
+    message: true,
+    consequences: ["stock_override", "customer_message"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, overrideTurnoverBuffer, nothing short, no message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: PAST_BUFFER,
+    short: "nothing",
+    message: false,
+    consequences: ["stock_override"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, overrideTurnoverBuffer, buffer short, a message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: PAST_BUFFER,
+    short: "buffer",
+    message: true,
+    consequences: ["stock_override", "customer_message"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, overrideTurnoverBuffer, buffer short, no message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: PAST_BUFFER,
+    short: "buffer",
+    message: false,
+    consequences: ["stock_override"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, both flags, stock short, no message`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: BOTH,
+    short: "stock",
+    message: false,
+    consequences: ["stock_override"],
+    asksWithOptionOff: true,
+  },
+  {
+    name: `${from}, no flag, stock short`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: {},
+    short: "stock",
+    message: true,
+    consequences: null,
+    asksWithOptionOff: false,
+    refused: "RESERVATION_INSUFFICIENT_CAPACITY",
+  },
+  {
+    name: `${from}, allowOverbooking, buffer short`,
+    procedure: "updateStatus",
+    from,
+    to: "confirmed",
+    flags: OVERBOOK,
+    short: "buffer",
+    message: true,
+    consequences: null,
+    asksWithOptionOff: false,
+    refused: "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+  },
+];
+
+/** Each status change, through the real service, and what it declares. */
+const STATUS_ROWS: StatusRow[] = [
+  ...confirming("pending"),
+  ...confirming("quote"),
+  // A rejection or a cancellation takes no stock: a flag sent changes nothing.
+  {
+    name: "reject, allowOverbooking sent, a message",
+    procedure: "updateStatus",
+    from: "pending",
+    to: "rejected",
+    flags: OVERBOOK,
+    short: "nothing",
+    message: true,
+    consequences: ["customer_message"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: "reject, overrideTurnoverBuffer sent, no message",
+    procedure: "updateStatus",
+    from: "pending",
+    to: "rejected",
+    flags: PAST_BUFFER,
+    short: "nothing",
+    message: false,
+    consequences: ["change"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: "reject, both flags sent, no message",
+    procedure: "updateStatus",
+    from: "pending",
+    to: "rejected",
+    flags: BOTH,
+    short: "nothing",
+    message: false,
+    consequences: ["change"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: "cancel through updateStatus, allowOverbooking sent, a message",
+    procedure: "updateStatus",
+    from: "confirmed",
+    to: "cancelled",
+    flags: OVERBOOK,
+    short: "nothing",
+    message: true,
+    consequences: ["customer_message"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: "cancel through updateStatus, overrideTurnoverBuffer sent, no message",
+    procedure: "updateStatus",
+    from: "confirmed",
+    to: "cancelled",
+    flags: PAST_BUFFER,
+    short: "nothing",
+    message: false,
+    consequences: ["change"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: "cancel, a message",
+    procedure: "cancel",
+    from: "confirmed",
+    to: "cancelled",
+    flags: {},
+    short: "nothing",
+    message: true,
+    consequences: ["customer_message"],
+    asksWithOptionOff: false,
+  },
+  {
+    name: "cancel, no message",
+    procedure: "cancel",
+    from: "confirmed",
+    to: "cancelled",
+    flags: {},
+    short: "nothing",
+    message: false,
+    consequences: ["change"],
+    asksWithOptionOff: false,
+  },
+];
 
 // --- The test --------------------------------------------------------------------
 
@@ -788,6 +1141,7 @@ describe(
       const handler = handlerOf(site);
       const ctx = await context(kind, confirmSensitive, token);
       captured = null;
+      emitted = [];
       if (site.runsForReal) {
         await louezDb.db.delete(louezDb.apiJobs);
         images.state.quote = {
@@ -840,6 +1194,9 @@ describe(
               (confirmSensitive || branch.asksWithOptionOff);
 
             const first = await attempt(site, branch, kind, confirmSensitive, null);
+            const declared = CONSEQUENCES[`${site.path.join(".")}, ${branch.name}`];
+            assert.notEqual(declared, undefined, `${label}: the table has this branch`);
+            assert.deepEqual(emitted, declared ? [declared] : [], `${label}: what it declares`);
             if (!expected) {
               assert.equal(first, null, `${label}: runs without being asked`);
               continue;
@@ -867,6 +1224,10 @@ describe(
               `${label}: the token lasts ten minutes`,
             );
             assert.ok(
+              Math.abs(lifetime - TOKEN_LIFETIME_MS) < 2_000,
+              `${label}: ten minutes, written out`,
+            );
+            assert.ok(
               Math.abs(new Date(expiresAt as string).getTime() - row.expiresAt.getTime()) < 1_000,
               `${label}: the answer gives the token's expiry`,
             );
@@ -888,6 +1249,7 @@ describe(
               confirmationToken as string,
             );
             assert.equal(second, null, `${label}: the token lets the call go on`);
+            assert.deepEqual(emitted, [declared], `${label}: the confirmed call declares the same`);
             const third = await attempt(
               site,
               branch,
@@ -906,5 +1268,192 @@ describe(
         });
       }
     }
+
+    // The token's end, on the test clock: no real waiting.
+    const NOW = Date.UTC(2027, 0, 4, 10, 0, 0);
+    for (const site of SITES) {
+      const branch = site.branches.find((candidate) => !candidate.neverAsks);
+      if (!branch) continue;
+      test(`${site.path.join(".")}, ${branch.name}: the token works until ten minutes have passed`, async (t) => {
+        t.mock.timers.enable({ apis: ["Date"], now: NOW });
+        const token = async () => {
+          const data = errorData(await attempt(site, branch, "api_key", true, null));
+          assert.equal(data?.code, "CONFIRMATION_REQUIRED");
+          assert.equal(data?.details?.expiresAt, new Date(NOW + TOKEN_LIFETIME_MS).toISOString());
+          return data?.details?.confirmationToken as string;
+        };
+        const early = await token();
+        t.mock.timers.setTime(NOW + TOKEN_LIFETIME_MS - 1);
+        assert.equal(
+          await attempt(site, branch, "api_key", true, early),
+          null,
+          "a millisecond before its end, it lets the call go on",
+        );
+        t.mock.timers.setTime(NOW);
+        const late = await token();
+        t.mock.timers.setTime(NOW + TOKEN_LIFETIME_MS);
+        assert.equal(
+          errorData(await attempt(site, branch, "api_key", true, late))?.code,
+          "CONFIRMATION_INVALID",
+          "at its end, it is refused",
+        );
+      });
+    }
+
+    describe("the status changes, through the real service", () => {
+      const MAILED = "cs_customer_mail_0001";
+      const UNREACHABLE = "cs_customer_none_0001";
+      const HOUR = 3_600_000;
+      let fixtures = 0;
+
+      before(async () => {
+        await louezDb.db.insert(louezDb.customers).values([
+          { id: MAILED, storeId: STORE, email: "ann@cs.test", firstName: "Ann", lastName: "Lee" },
+          // No email, no phone: no message can go.
+          { id: UNREACHABLE, storeId: STORE, email: "", firstName: "Bo", lastName: "Ray" },
+        ]);
+      });
+
+      async function line(reservationId: string, productId: string, quantity: number) {
+        await louezDb.db.insert(louezDb.reservationItems).values({
+          id: `${reservationId}_l`,
+          reservationId,
+          productId,
+          quantity,
+          unitPrice: "10.00",
+          depositPerUnit: "0.00",
+          totalPrice: "20.00",
+          productSnapshot: { name: "Kayak", description: null, images: [] },
+        });
+      }
+
+      /** A reservation in the row's status, on a kayak of its own, one in stock. */
+      async function reservationFor(row: StatusRow) {
+        const n = String((fixtures += 1)).padStart(4, "0");
+        const productId = `cs_status_prd_${n}`;
+        await louezDb.db.insert(louezDb.products).values({
+          id: productId,
+          storeId: STORE,
+          name: `Kayak ${n}`,
+          price: "10.00",
+          pricingMode: "day",
+          quantity: 1,
+        });
+        const reservation = (id: string, status: StatusRow["from"], start: Date, end: Date) =>
+          louezDb.db.insert(louezDb.reservations).values({
+            id,
+            storeId: STORE,
+            customerId: row.message ? MAILED : UNREACHABLE,
+            number: id,
+            status,
+            startDate: start,
+            endDate: end,
+            subtotalAmount: "20.00",
+            depositAmount: "0.00",
+            totalAmount: "20.00",
+          });
+        const id = `cs_status_res_${n}`;
+        await reservation(id, row.from, AT, UNTIL);
+        await line(id, productId, row.short === "stock" ? 2 : 1);
+        if (row.short === "buffer") {
+          // Back an hour before AT, in a store that keeps two hours between rentals.
+          const other = `cs_status_oth_${n}`;
+          await reservation(
+            other,
+            "confirmed",
+            new Date(AT.getTime() - 24 * HOUR),
+            new Date(AT.getTime() - HOUR),
+          );
+          await line(other, productId, 1);
+        }
+        return id;
+      }
+
+      const bufferOf = (minutes: number | null) =>
+        louezDb.db
+          .update(louezDb.stores)
+          .set({
+            settings:
+              minutes === null
+                ? null
+                : {
+                    reservationMode: "request" as const,
+                    currency: "EUR",
+                    pendingBlocksAvailability: false,
+                    advanceNoticeMinutes: 0,
+                    minRentalMinutes: 0,
+                    turnoverBufferMinutes: minutes,
+                  },
+          })
+          .where(orm.eq(louezDb.stores.id, STORE));
+
+      for (const row of STATUS_ROWS) {
+        test(row.name, async () => {
+          const id = await reservationFor(row);
+          if (row.short === "buffer") await bufferOf(120);
+          try {
+            const path = ["dashboard", "reservations", row.procedure];
+            const handler = handlerOf({ path, input: {}, branches: [] } as unknown as Site);
+            const input =
+              row.procedure === "cancel" ? { id } : { id, status: row.to, ...row.flags };
+            for (const { kind, confirmSensitive } of CASES) {
+              const label = `${kind}, option ${confirmSensitive ? "on" : "off"}`;
+              const ctx = await context(kind, confirmSensitive, null);
+              emitted = [];
+              statusAsked = null;
+              throughStatusService = true;
+              let error: Error | null = null;
+              try {
+                await handler({ context: ctx, input, path });
+              } catch (caught) {
+                error = caught as Error;
+              } finally {
+                throughStatusService = false;
+              }
+
+              if (row.consequences === null) {
+                assert.equal(statusAsked, null, `${label}: refused before it asks`);
+                assert.deepEqual(emitted, [], `${label}: nothing declared`);
+                assert.equal(errorData(error)?.code, row.refused, `${label}: the refusal`);
+                continue;
+              }
+              assert.equal(error?.message, STOPPED, `${label}: the service asked`);
+              const asked = statusAsked as { preview: StatusPreview; refusal: Error | null } | null;
+              assert.ok(asked, `${label}: the service asked`);
+              // The reservation took the branch the row names.
+              const { preview, refusal } = asked;
+              assert.equal(preview.messages.length > 0, row.message, `${label}: a message`);
+              const takesStock = row.to === "confirmed";
+              assert.equal(
+                preview.overbooking !== null,
+                takesStock && row.flags.allowOverbooking === true,
+                `${label}: booked over the stock`,
+              );
+              assert.equal(
+                preview.turnoverBuffer !== null,
+                takesStock && row.flags.overrideTurnoverBuffer === true,
+                `${label}: past the turnover buffer`,
+              );
+              assert.equal(
+                (preview.overbooking?.shortfalls.length ?? 0) +
+                  (preview.turnoverBuffer?.shortfalls.length ?? 0),
+                row.short === "nothing" ? 0 : 1,
+                `${label}: what is short`,
+              );
+
+              assert.deepEqual(emitted, [row.consequences], `${label}: what it declares`);
+              const expected = kind !== "session" && (confirmSensitive || row.asksWithOptionOff);
+              assert.equal(
+                errorData(refusal)?.code,
+                expected ? "CONFIRMATION_REQUIRED" : undefined,
+                `${label}: ${expected ? "asked" : "runs without being asked"}`,
+              );
+            }
+          } finally {
+            if (row.short === "buffer") await bufferOf(null);
+          }
+        });
+      }
+    });
   },
 );

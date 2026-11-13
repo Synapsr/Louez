@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, describe, test } from "node:test";
+import { after, before, describe, mock, test } from "node:test";
 
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { McpServer } from "@modelcontextprotocol/server";
@@ -14,7 +14,8 @@ import type { McpRecordedPayment } from "./payments";
 // record_deposit_return and delete_payment, and the token lets the call run
 // once; a dashboard session (as the in-memory context can make one) runs
 // directly. The API key's cases are also in confirmation.db.test.ts; this
-// table adds the other credentials.
+// table adds the other credentials. Each confirmation declares money: the
+// tools' `always`, converted by their adapter, as the rule receives it.
 
 process.env.LOUEZ_BILLING = "cloud";
 process.env.BILLING_SERVICE_URL = "http://localhost:3100";
@@ -51,6 +52,8 @@ describe(
     let recorded: McpRecordedPayment[] = [];
     let counter = 0;
     const clients: Client[] = [];
+    /** The consequences each confirmation handed the rule, in order. */
+    let emitted: unknown[] = [];
 
     async function connect(kind: Kind, confirmSensitive: boolean) {
       const { registerPaymentTools } = await import("./payments");
@@ -84,6 +87,20 @@ describe(
     }
 
     before(async () => {
+      // The rule, as it is, with what each call declared kept; before any
+      // module that asks loads it.
+      const specifier = "@louez/api/platform/approval-rule";
+      const rule: Record<string, unknown> = await import(specifier);
+      const confirmationStep = rule.confirmationStep as (...args: unknown[]) => unknown;
+      mock.module(import.meta.resolve(specifier), {
+        namedExports: {
+          ...rule,
+          confirmationStep: (consequences: unknown[], credential: unknown) => {
+            emitted.push([...consequences]);
+            return confirmationStep(consequences, credential);
+          },
+        },
+      });
       database = await createTestDatabase("mcp_confirm_credentials");
       louezDb = await import("@louez/db");
       await louezDb.db.insert(louezDb.stores).values({
@@ -159,7 +176,10 @@ describe(
         ];
         for (const { replay, ...call } of calls) {
           const before = recorded.length;
+          emitted = [];
           const first = await client.callTool(call);
+          // Every caller reaches the rule, a session too: the rule says who is asked.
+          assert.deepEqual(emitted, [["money"]], `${call.name} declares money`);
           if (!asked) {
             assert.notEqual(first.isError, true, `${call.name}: ${JSON.stringify(first.content)}`);
             continue;
@@ -172,8 +192,10 @@ describe(
           assert.equal(recorded.length, before, `${call.name} did nothing yet`);
 
           const confirmed = { ...call, arguments: { ...call.arguments, confirmationToken: token } };
+          emitted = [];
           const done = await client.callTool(confirmed);
           assert.notEqual(done.isError, true, `${call.name}: ${JSON.stringify(done.content)}`);
+          assert.deepEqual(emitted, [["money"]], `${call.name}: the confirmed call declares money`);
           const again = await client.callTool(confirmed);
           assert.equal(error(again)?.code, replay, `${call.name}: a token works once`);
         }

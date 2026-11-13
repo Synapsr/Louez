@@ -47,28 +47,22 @@ export interface ConfirmationPreview {
  * the same agent can send both calls. A person's approval is planned for the
  * actions a person must approve (docs/architecture/api-and-agents.md).
  */
-export async function requireConfirmation(
-  input: ConfirmationCheck | LegacyConfirmationCheck,
+export async function requireConfirmation<Check extends ConfirmationCheck>(
+  input: KnownCheck<Check>,
 ): Promise<void> {
-  const refusal = await checkConfirmation(
-    input.consequences ? input : { ...input, consequences: legacyConsequences(input.always) },
-  );
+  const refusal = await checkConfirmation(input);
   if (refusal) throw refusal;
 }
 
 /**
- * The hand-written payment tools' call (`legacyTool`, packages/mcp), until
- * they become procedures (pull request 6 of the approval plan): they say
- * `always` where a procedure declares its consequences. `always` is theirs
- * alone, and reads as money: they record, give back or erase it.
+ * A check whose type is known. An object spread from `any` is `any`, and
+ * would carry whatever `consequences` it holds at run time: it does not
+ * compile. (A spread of a typed object loses its index signature, so no type
+ * sees it: approval-coverage.test.ts refuses a spread in an object that
+ * declares consequences.)
  */
-export type LegacyConfirmationCheck = Omit<ConfirmationCheck, "consequences"> & {
-  always?: boolean;
-  consequences?: undefined;
-};
-
-const legacyConsequences = (always: boolean | undefined): Consequences =>
-  always ? ["money"] : ["change"];
+export type KnownCheck<Check extends ConfirmationCheck> = Check &
+  (0 extends 1 & Check ? never : unknown);
 
 export interface ConfirmationCheck {
   actor: ScopedActor;
@@ -80,7 +74,8 @@ export interface ConfirmationCheck {
   /**
    * What the branch about to run does (`Consequence`, platform/approval-rule.ts),
    * declared with its preview: who is asked follows from it. Never inferred
-   * from the procedure's `sensitive`, `effect` or `reach`.
+   * from the procedure's `sensitive`, `effect` or `reach`. At least one, by
+   * type, and checked again when it runs.
    */
   consequences: Consequences;
   /**
@@ -98,7 +93,13 @@ export interface ConfirmationCheck {
  * a caller inside a transaction must commit it (not roll back) and throw the
  * error once the transaction is over.
  */
-export async function checkConfirmation(input: ConfirmationCheck) {
+export async function checkConfirmation<Check extends ConfirmationCheck>(input: KnownCheck<Check>) {
+  // The type asks for at least one; a value forced past it is a bug here.
+  if (!Array.isArray(input.consequences) || input.consequences.length === 0) {
+    throw new Error(
+      `${input.procedure}: a confirmation declares the consequences of its branch, at least one.`,
+    );
+  }
   const step = confirmationStep(input.consequences, input.actor.credential);
   if (step === "none") return null;
   if (step === "approval") {
