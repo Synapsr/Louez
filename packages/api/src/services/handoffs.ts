@@ -499,13 +499,16 @@ async function rowOfLink(link: string) {
 
 /**
  * The rows a decision on the step may change: the handoff, at the revision
- * its page showed. A repeated request or another user starting over raises
- * the revision, so a click on a page that showed an earlier one changes
- * nothing. Every write that raises it holds the row's lock under the store
- * row's lock, so the comparison and the raise are ordered.
+ * its page showed, while it is still the step of the user who decides. A
+ * repeated request or another user starting over raises the revision, so a
+ * click on a page that showed an earlier one changes nothing; and a step
+ * that became another user's is never changed by the user it was shown to,
+ * whatever its revision. Every write that raises the revision holds the
+ * row's lock under the store row's lock, so the comparison and the raise
+ * are ordered.
  */
-export const atShownRevision = (id: string, revision: number) =>
-  and(eq(apiHandoffs.id, id), eq(apiHandoffs.revision, revision));
+export const atShownRevision = (id: string, revision: number, userId: string) =>
+  and(eq(apiHandoffs.id, id), eq(apiHandoffs.revision, revision), eq(apiHandoffs.userId, userId));
 
 /**
  * What an owner's page shows of an agent's invitation, and what approving it
@@ -608,7 +611,10 @@ export async function continueHandoff(
       updatedAt: now,
     })
     .where(
-      and(atShownRevision(checked.row.id, revision), inArray(apiHandoffs.status, [...ACTIVE])),
+      and(
+        atShownRevision(checked.row.id, revision, userId),
+        inArray(apiHandoffs.status, [...ACTIVE]),
+      ),
     );
   if (updated[0].affectedRows === 0) return changed;
   const [row] = await db.select().from(apiHandoffs).where(eq(apiHandoffs.id, checked.row.id));

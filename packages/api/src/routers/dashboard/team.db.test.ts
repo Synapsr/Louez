@@ -902,6 +902,51 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     }
   });
 
+  test("an approval that became another owner's while the click waited, its revision left as shown: the click decides nothing", async () => {
+    for (const decision of ["approve", "decline"] as const) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const asked = await run("invite", { email: `tm_moved_${decision}@tm.test` }, (await agent())());
+      const token = tokenOf(asked.approval?.url ?? "");
+      const page = await pageAnswer(token);
+      const id = asked.approval?.handoff.id ?? "";
+
+      // A writer that leaves the revision alone (the code before revisions) gives
+      // the approval to the other owner, under the store's lock, and holds it.
+      const entered = barrier();
+      const gate = barrier();
+      const handedOver = louezDb.db.transaction(async (tx) => {
+        await tx.execute(orm.sql`SELECT id FROM stores WHERE id = ${STORE} FOR UPDATE`);
+        await tx
+          .update(louezDb.apiHandoffs)
+          .set({ userId: CO_OWNER, tokenHash: sha256(`old-writer-moved-${decision}`) })
+          .where(orm.eq(louezDb.apiHandoffs.id, id));
+        entered.open();
+        await gate.wait;
+      });
+      await entered.wait;
+      // The click read the approval as the first owner's, and waits for the store's lock.
+      const click = run("decideInvitation", { token, decision, ...page }, session()).then(
+        () => null,
+        (error: unknown) => error as { data?: { code?: string; details?: { reason?: string } } },
+      );
+      try {
+        await lockWait("select%from `stores`%for update");
+      } finally {
+        gate.open();
+        await handedOver;
+      }
+
+      const refused = await click;
+      assert.equal(refused?.data?.code, "TEAM_APPROVAL_INVALID", decision);
+      assert.equal(refused?.data?.details?.reason, "changed", decision);
+      const [after] = await handoffs();
+      assert.equal(after?.userId, CO_OWNER, decision);
+      assert.equal(after?.revision, page.revision, "the revision was not raised");
+      assert.equal(after?.status, "pending", decision);
+      assert.equal((await invitations()).length, 0);
+    }
+  });
+
   test("another user gets one answer, whatever the approval's state", async () => {
     const states = {
       active: {},

@@ -306,6 +306,8 @@ async function checkInvitable(tx: Transaction, caller: TeamCaller, email: string
 /** The handoff an owner approves an agent's invitation through, as their page showed it. */
 interface Approval {
   handoffId: string;
+  /** The user who decides: the step's user when their page was read. */
+  userId: string;
   revision: number;
   /** `invitationShown` of what the page showed. */
   shown: string;
@@ -315,6 +317,7 @@ interface Approval {
 async function lockApproval(tx: Transaction, storeId: string, handoffId: string) {
   const [row] = await tx
     .select({
+      userId: apiHandoffs.userId,
       revision: apiHandoffs.revision,
       payload: apiHandoffs.payload,
       expiresAt: apiHandoffs.expiresAt,
@@ -332,15 +335,19 @@ async function lockApproval(tx: Transaction, storeId: string, handoffId: string)
 }
 
 /**
- * Whether the approval is still what the owner's page showed: the same
- * revision and the same facts (`invitationShown`). Either one differing
- * decides nothing.
+ * Whether the approval is still what the owner's page showed, and still
+ * theirs to decide: the same user, the same revision and the same facts
+ * (`invitationShown`). Any one differing decides nothing.
  */
 function stillShown(
-  row: { revision: number; payload: ApiHandoffPayload },
-  approval: Pick<Approval, "revision" | "shown">,
+  row: { userId: string; revision: number; payload: ApiHandoffPayload },
+  approval: Pick<Approval, "userId" | "revision" | "shown">,
 ): boolean {
-  return row.revision === approval.revision && invitationShown(row.payload) === approval.shown;
+  return (
+    row.userId === approval.userId &&
+    row.revision === approval.revision &&
+    invitationShown(row.payload) === approval.shown
+  );
 }
 
 /**
@@ -571,11 +578,12 @@ export async function decideInvitation(
   if (row.kind !== "team_invitation" || !row.payload) throw teamErrors.approvalInvalid("invalid");
   const approval = {
     handoffId: row.id,
+    userId: input.userId,
     revision: input.revision,
     shown: input.shown,
     storeId: row.storeId,
   };
-  if (!stillShown({ revision: row.revision, payload: row.payload }, approval)) {
+  if (!stillShown({ ...row, payload: row.payload }, approval)) {
     throw teamErrors.approvalInvalid("changed");
   }
 

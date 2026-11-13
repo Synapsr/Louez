@@ -866,6 +866,49 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(stripe.calls.created.length, 0);
   });
 
+  test("a step that became another user's while the click waited, its revision left as shown: the click continues nothing", async () => {
+    const agent = await apiKey();
+    const started = await client(agent()).payments.startStripeOnboarding({});
+    const link = tokenOf(started.url);
+    const shown = await shownRevision(link);
+    await louezDb.db.insert(louezDb.storeMembers).values({
+      storeId: STORE,
+      userId: STRANGER,
+      role: "owner",
+    });
+
+    // A writer that leaves the revision alone (the code before revisions) gives
+    // the step to another owner, and holds its row until the click waits for it.
+    const entered = barrier();
+    const gate = barrier();
+    const handedOver = louezDb.db.transaction(async (tx) => {
+      await tx
+        .update(louezDb.apiHandoffs)
+        .set({ userId: STRANGER, tokenHash: sha256("old-writer") })
+        .where(orm.eq(louezDb.apiHandoffs.id, started.handoff.id));
+      entered.open();
+      await gate.wait;
+    });
+    await entered.wait;
+    // The click read the step as the first owner's, and its write waits for the row.
+    const click = continueAs(link, OWNER, shown);
+    try {
+      await lockWait("update `api_handoffs`%");
+    } finally {
+      gate.open();
+      await handedOver;
+    }
+
+    const continued = await click;
+    assert.equal(!continued.ok && continued.reason, "changed");
+    const after = await handoffs.getHandoffRow(STORE, started.handoff.id);
+    assert.equal(after.userId, STRANGER);
+    assert.equal(after.revision, shown, "the revision was not raised");
+    assert.equal(after.status, "pending");
+    assert.equal(after.returnStateHash, null, "no attempt started");
+    assert.equal(stripe.calls.created.length, 0);
+  });
+
   test("another user gets one answer, whatever the step's state", async () => {
     const states = {
       active: {},
