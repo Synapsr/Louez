@@ -142,6 +142,24 @@ interface ReserveInventoryInput {
 
 type InventoryReserved = { ok: true; inventory: ReservedInventory };
 
+/** What `reserveInventory` answers with `onShortfall: "collect"` when it went through. */
+export type CollectedInventory = InventoryReserved & {
+  shortfalls: CapacityShortfall[];
+  /** The position in `lines` of each shortfall, in the same order. */
+  shortfallLineIndexes: number[];
+  /**
+   * What each short line asks of the product's attributes as this check
+   * read it (its choices on the attributes the product has today), in the
+   * same order; null when it asks for none.
+   */
+  shortfallChoices: Array<UnitAttributes | null>;
+  /**
+   * The units held by the lines (`assignedUnitIds`) that the other
+   * bookings need, in the order of the lines (`heldUnitsOwed`).
+   */
+  uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }>;
+};
+
 /**
  * Inside the reservation transaction, after `lockReservationProducts`:
  * re-check required accessories against the current links, recompute what is
@@ -165,25 +183,7 @@ type InventoryReserved = { ok: true; inventory: ReservedInventory };
  */
 export function reserveInventory(
   input: ReserveInventoryInput & { onShortfall: "collect" },
-): Promise<
-  | (InventoryReserved & {
-      shortfalls: CapacityShortfall[];
-      /** The position in `lines` of each shortfall, in the same order. */
-      shortfallLineIndexes: number[];
-      /**
-       * What each short line asks of the product's attributes as this check
-       * read it (its choices on the attributes the product has today), in the
-       * same order; null when it asks for none.
-       */
-      shortfallChoices: Array<UnitAttributes | null>;
-      /**
-       * The units held by the lines (`assignedUnitIds`) that the other
-       * bookings need, in the order of the lines (`heldUnitsOwed`).
-       */
-      uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }>;
-    })
-  | ReservationFailure
->;
+): Promise<CollectedInventory | ReservationFailure>;
 export function reserveInventory(
   input: ReserveInventoryInput & { onShortfall?: "fail" },
 ): Promise<InventoryReserved | ReservationFailure>;
@@ -571,6 +571,75 @@ export async function reserveInventory({
   return succeed({ lockedProductsById, resolvedCombinationByLineKey });
 }
 
+/** A line short in a stock check: its position in the lines, its shortfall, and its choice as that check read it. */
+export interface LineShortfall {
+  lineIndex: number;
+  shortfall: CapacityShortfall;
+  choice: UnitAttributes | null;
+}
+
+const linesShortIn = (check: CollectedInventory): LineShortfall[] =>
+  check.shortfalls.map((shortfall, position) => ({
+    lineIndex: check.shortfallLineIndexes[position] ?? -1,
+    shortfall,
+    choice: check.shortfallChoices[position] ?? null,
+  }));
+
+/**
+ * The shortfalls of one demand, told apart by the turnover buffer, for every
+ * store write that may pass them (S3, S4): the store's confirmation, the
+ * dashboard's creation and its edit.
+ *
+ * - **Capacity shortfalls**: the lines short without the buffer, with what
+ *   that check found free. The stock itself lacks them: only these are an
+ *   overbooking (`overbooked`).
+ * - **Buffer-only shortfalls**: the lines short with the buffer and not
+ *   without it, with what the buffered check found free.
+ *
+ * A line short in both is a capacity shortfall.
+ *
+ * `run` checks the same lines, in the same order, at the buffer it is given;
+ * `first` is the run the caller already made, with the buffer or without it.
+ * Another run is made only when it can change the answer: never without a
+ * buffer; after the run with it, only when that run found a shortfall; after
+ * the run without it, only when the caller wants the buffer-only lines
+ * (`wantBufferOnly`). The buffer is the caller's to give, not read here.
+ */
+export async function splitShortfallsByTurnoverBuffer(
+  run: (turnoverBufferMinutes: number) => Promise<CollectedInventory | ReservationFailure>,
+  turnoverBufferMinutes: number,
+  first: { withBuffer: boolean; check: CollectedInventory },
+  wantBufferOnly = true,
+): Promise<
+  { ok: true; capacity: LineShortfall[]; bufferOnly: LineShortfall[] } | ReservationFailure
+> {
+  if (turnoverBufferMinutes <= 0) {
+    return { ok: true, capacity: linesShortIn(first.check), bufferOnly: [] };
+  }
+  let buffered: CollectedInventory;
+  let unbuffered: CollectedInventory;
+  if (first.withBuffer) {
+    if (first.check.shortfalls.length === 0) return { ok: true, capacity: [], bufferOnly: [] };
+    buffered = first.check;
+    const second = await run(0);
+    if (!second.ok) return second;
+    unbuffered = second;
+  } else {
+    unbuffered = first.check;
+    if (!wantBufferOnly) return { ok: true, capacity: linesShortIn(unbuffered), bufferOnly: [] };
+    const second = await run(turnoverBufferMinutes);
+    if (!second.ok) return second;
+    buffered = second;
+  }
+  // Both runs place the same lines in the same order: a line is known by its position.
+  const shortWithoutBuffer = new Set(unbuffered.shortfallLineIndexes);
+  return {
+    ok: true,
+    capacity: linesShortIn(unbuffered),
+    bufferOnly: linesShortIn(buffered).filter((line) => !shortWithoutBuffer.has(line.lineIndex)),
+  };
+}
+
 /**
  * Pre-transaction stock check per line, on the catalog snapshot: tracked
  * products need enough rentable units during the line's own period, counted
@@ -829,10 +898,16 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
       onShortfall: "collect",
       skipRequiredAccessoryCheck: true,
     });
-  const buffered = await check(turnoverBufferMinutes);
-  // The same demand without the buffer: what the stock itself lacks. Without
-  // a buffer, the two checks are one.
-  const unbuffered = turnoverBufferMinutes > 0 ? await check(0) : buffered;
+  // Without the buffer first: what the stock itself lacks, and which held
+  // units the other bookings need. Then, when the store keeps a buffer, the
+  // same demand with it, for the lines only the buffer makes short.
+  const unbuffered = await check(0);
+  const split = unbuffered.ok
+    ? await splitShortfallsByTurnoverBuffer(check, turnoverBufferMinutes, {
+        withBuffer: false,
+        check: unbuffered,
+      })
+    : unbuffered;
   const unitConflicts = await findReservationUnitConflicts(tx, {
     items: reservation.items,
     window,
@@ -842,7 +917,7 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
   if (unitConflicts.hard.length > 0) {
     throw new ReservationUnitConflictError(unitConflicts.hard);
   }
-  if (!buffered.ok || !unbuffered.ok) throw new ReservationInventoryError(STOCK_GONE);
+  if (!unbuffered.ok || !split.ok) throw new ReservationInventoryError(STOCK_GONE);
   // A held unit the other bookings need, counted without the buffer: like a
   // unit another booking holds, no override books over it.
   if (unbuffered.uncoveredHeldUnits.length > 0) {
@@ -858,42 +933,20 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
     );
   }
 
-  // A line short without the buffer is a capacity shortfall; a line short
-  // only with it, a buffer-only one. Both checks place the same lines in the
-  // same order, so a line is known by its position.
-  const shortWithoutBuffer = new Set(unbuffered.shortfallLineIndexes);
   // Each shortfall names its line and what the check read of its choice: two
   // lines of one product, both open on a choice, are otherwise alike, and the
-  // preview's token must not take one for the other.
-  const ofLines = (
-    check: {
-      shortfalls: CapacityShortfall[];
-      shortfallLineIndexes: number[];
-      shortfallChoices: Array<UnitAttributes | null>;
-    },
-    keep: (lineIndex: number) => boolean = () => true,
-  ): CapacityShortfall[] =>
-    check.shortfalls.flatMap((shortfall, position) => {
-      const lineIndex = check.shortfallLineIndexes[position] ?? -1;
-      if (!keep(lineIndex)) return [];
-      const item = lineItems[lineIndex];
-      return [
-        {
-          ...shortfall,
-          ...(item
-            ? // The choice is the check's own (the line's attributes the
-              // product still has), never the line's stored ones as they are.
-              {
-                reservationItemId: item.id,
-                selectedAttributes: check.shortfallChoices[position] ?? null,
-              }
-            : {}),
-        },
-      ];
-    });
+  // preview's token must not take one for the other. The choice is the
+  // check's own (the line's attributes the product still has), never the
+  // line's stored ones as they are.
+  const ofLine = ({ lineIndex, shortfall, choice }: LineShortfall): CapacityShortfall => {
+    const item = lineItems[lineIndex];
+    return item
+      ? { ...shortfall, reservationItemId: item.id, selectedAttributes: choice }
+      : { ...shortfall };
+  };
   return {
-    capacityShortfalls: ofLines(unbuffered),
-    bufferOnlyShortfalls: ofLines(buffered, (lineIndex) => !shortWithoutBuffer.has(lineIndex)),
+    capacityShortfalls: split.capacity.map(ofLine),
+    bufferOnlyShortfalls: split.bufferOnly.map(ofLine),
     bufferOnlyUnitIds: [...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId))],
     turnoverBufferMinutes,
   };

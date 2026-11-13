@@ -952,4 +952,147 @@ describe("reserveInventory (database)", { skip: skipWithoutTestDatabase() }, () 
       });
     });
   });
+
+  describe("the shortfalls told apart by the turnover buffer", () => {
+    const BUFFER = 120;
+
+    /**
+     * A bike back an hour before the window (short only with the buffer), and
+     * two helmets, one out over the window and the other back an hour before
+     * it (two asked: one free without the buffer, none with it), and a lock
+     * nobody books.
+     */
+    async function bikeAndHelmets() {
+      const storeId = nextId("store");
+      const bike = nextId("prd");
+      const helmet = nextId("prd");
+      const lock = nextId("prd");
+      for (const [id, name, quantity] of [
+        [bike, "Bike", 1],
+        [helmet, "Helmet", 2],
+        [lock, "Lock", 1],
+      ] as const) {
+        await louezDb.db
+          .insert(louezDb.products)
+          .values({ id, storeId, name, price: "10.00", pricingMode: "day", quantity });
+      }
+      const justBefore = {
+        start: new Date(START.getTime() - 48 * HOUR),
+        end: new Date(START.getTime() - HOUR),
+      };
+      await otherBooking(storeId, { productId: bike, quantity: 1 }, justBefore);
+      await otherBooking(storeId, { productId: helmet, quantity: 1 }, justBefore);
+      await otherBooking(storeId, { productId: helmet, quantity: 1 });
+      return { storeId, bike, helmet, lock };
+    }
+
+    /**
+     * Splits the shortfalls of `lines`, its first run made at `firstBuffer`,
+     * and counts the runs made, the first included.
+     */
+    const split = (
+      storeId: string,
+      lines: ReserveInventoryLine[],
+      turnoverBufferMinutes: number,
+      firstBuffer: number,
+      wantBufferOnly?: boolean,
+    ) =>
+      louezDb.db.transaction(async (tx) => {
+        const lockedProductsById = await inventory.lockReservationProducts(
+          tx,
+          storeId,
+          lines.map((line) => line.productId),
+        );
+        let runs = 0;
+        const run = (bufferMinutes: number) => {
+          runs += 1;
+          return inventory.reserveInventory({
+            tx,
+            storeId,
+            lockedProductsById,
+            lines,
+            window: { start: START, end: END },
+            turnoverBufferMinutes: bufferMinutes,
+            blockingStatuses: louezDb.getBlockingReservationStatuses(true),
+            onShortfall: "collect",
+          });
+        };
+        const first = await run(firstBuffer);
+        assert.ok(first.ok);
+        const result = await inventory.splitShortfallsByTurnoverBuffer(
+          run,
+          turnoverBufferMinutes,
+          { withBuffer: firstBuffer > 0, check: first },
+          wantBufferOnly,
+        );
+        assert.ok(result.ok);
+        const of = (found: typeof result.capacity) =>
+          found.map(({ lineIndex, shortfall }) => [
+            lineIndex,
+            shortfall.productName,
+            shortfall.available,
+          ]);
+        return { runs, capacity: of(result.capacity), bufferOnly: of(result.bufferOnly) };
+      });
+
+    test("a store with no buffer: one run, and every shortfall is a capacity one", async () => {
+      const { storeId, bike, helmet } = await bikeAndHelmets();
+      const lines = [
+        { productId: bike, quantity: 1 },
+        { productId: helmet, quantity: 2 },
+      ];
+
+      assert.deepEqual(await split(storeId, lines, 0, 0), {
+        runs: 1,
+        capacity: [[1, "Helmet", 1]],
+        bufferOnly: [],
+      });
+    });
+
+    test("a buffered run that is not short: no second run", async () => {
+      const { storeId, lock } = await bikeAndHelmets();
+
+      assert.deepEqual(await split(storeId, [{ productId: lock, quantity: 1 }], BUFFER, BUFFER), {
+        runs: 1,
+        capacity: [],
+        bufferOnly: [],
+      });
+    });
+
+    test("a buffered run that is short: the run without the buffer tells the lines apart", async () => {
+      const { storeId, bike, helmet } = await bikeAndHelmets();
+      const lines = [
+        { productId: bike, quantity: 1 },
+        { productId: helmet, quantity: 2 },
+      ];
+
+      // The helmets are short both ways: a capacity shortfall, with what the
+      // stock leaves without the buffer. The bike only with it, with what
+      // the buffered run found.
+      assert.deepEqual(await split(storeId, lines, BUFFER, BUFFER), {
+        runs: 2,
+        capacity: [[1, "Helmet", 1]],
+        bufferOnly: [[0, "Bike", 0]],
+      });
+    });
+
+    test("a run without the buffer first: the buffered one only when the buffer-only lines are wanted", async () => {
+      const { storeId, bike, helmet } = await bikeAndHelmets();
+      const lines = [
+        { productId: bike, quantity: 1 },
+        { productId: helmet, quantity: 2 },
+      ];
+
+      assert.deepEqual(await split(storeId, lines, BUFFER, 0), {
+        runs: 2,
+        capacity: [[1, "Helmet", 1]],
+        bufferOnly: [[0, "Bike", 0]],
+      });
+      assert.deepEqual(await split(storeId, lines, BUFFER, 0, false), {
+        runs: 1,
+        capacity: [[1, "Helmet", 1]],
+        bufferOnly: [],
+      });
+    });
+  });
 });

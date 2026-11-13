@@ -516,6 +516,98 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
     });
   });
 
+  describe("a store that keeps a turnover buffer", () => {
+    const BUFFER = 120;
+    const HOUR = 3_600_000;
+    /** Back an hour before START: inside a two-hour buffer, clear of it without. */
+    const JUST_BEFORE = {
+      start: new Date(START.getTime() - 2 * DAY - HOUR),
+      end: new Date(START.getTime() - HOUR),
+    };
+    /** The verdicts of a "created" row, and nothing else. */
+    const verdictsOf = (metadata: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(metadata).filter(([key]) =>
+          [
+            "overbooked",
+            "overbookingShortfalls",
+            "turnoverBufferOverridden",
+            "turnoverBufferShortfalls",
+            "turnoverBufferMinutes",
+            "credential",
+          ].includes(key),
+        ),
+      );
+
+    test("short only with the buffer: refused as today; forced, recorded past the buffer, not as an overbooking", async () => {
+      await withSettings({ turnoverBufferMinutes: BUFFER }, async () => {
+        const bikes = await product("Bike", 1);
+        await booked(bikes, 1, JUST_BEFORE);
+        const before = await storeCounts();
+
+        const refused = await create([{ productId: bikes, quantity: 1 }]);
+        assert.deepEqual(refused, refusedWith(shortfall(bikes, "Bike", 1, 0)));
+        assert.deepEqual(await storeCounts(), before);
+
+        const written = await writtenBy(
+          await create([{ productId: bikes, quantity: 1 }], { allowOverbooking: true }),
+        );
+
+        assert.deepEqual(verdictsOf(written.created), {
+          overbooked: false,
+          turnoverBufferOverridden: true,
+          turnoverBufferShortfalls: [shortfall(bikes, "Bike", 1, 0)],
+          turnoverBufferMinutes: BUFFER,
+          credential: { kind: "session", id: null },
+        });
+        assert.ok(!(await overbookedInInbox()).includes(written.reservationId));
+      });
+    });
+
+    test("short on the stock itself: forced, an overbooking counted without the buffer", async () => {
+      await withSettings({ turnoverBufferMinutes: BUFFER }, async () => {
+        const bikes = await product("Bike", 2);
+        await booked(bikes, 1, JUST_BEFORE);
+        await booked(bikes, 1);
+
+        // Refused with the buffered figure, as today: none free.
+        assert.deepEqual(
+          await create([{ productId: bikes, quantity: 2 }]),
+          refusedWith(shortfall(bikes, "Bike", 2, 0)),
+        );
+
+        const written = await writtenBy(
+          await create([{ productId: bikes, quantity: 2 }], { allowOverbooking: true }),
+        );
+
+        // Recorded with what the stock leaves without the buffer: one free.
+        assert.deepEqual(verdictsOf(written.created), {
+          overbooked: true,
+          overbookingShortfalls: [shortfall(bikes, "Bike", 2, 1)],
+        });
+        assert.ok((await overbookedInInbox()).includes(written.reservationId));
+      });
+    });
+
+    test("with no buffer, a forced creation writes its row as before", async () => {
+      const bikes = await product("Bike", 1);
+      await booked(bikes, 1);
+
+      const written = await writtenBy(
+        await create([{ productId: bikes, quantity: 1 }], { allowOverbooking: true }),
+      );
+
+      assert.deepEqual(written.created, {
+        source: "manual",
+        status: "confirmed",
+        tulipInsuranceOptIn: false,
+        tulipInsuranceAmount: 0,
+        overbooked: true,
+        overbookingShortfalls: [shortfall(bikes, "Bike", 1, 0)],
+      });
+    });
+  });
+
   describe("a product with tracked units and no size", () => {
     test("is counted on its units, and its line stores the default combination", async () => {
       const kayaks = await trackedProduct([{}, {}], []);

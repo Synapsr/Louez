@@ -14,10 +14,11 @@ export const showsOverbookedBadge = (activity: {
 
 /**
  * Whether a history row shows the "turnover buffer reduced" badge: a row that
- * carries a capacity verdict whose write confirmed lines past the turnover
- * buffer, on purpose (`overrideTurnoverBuffer`). A row sent with the flag
- * that the buffer stopped nothing on (`turnoverBufferOverridden: false`)
- * shows none.
+ * carries a capacity verdict whose write passed lines short only with the
+ * turnover buffer, on purpose: a confirmation sent with
+ * `overrideTurnoverBuffer`, a creation or an edit sent with either flag. A row
+ * sent with the flag that the buffer stopped nothing on
+ * (`turnoverBufferOverridden: false`) shows none.
  */
 export const showsTurnoverBufferOverriddenBadge = (activity: {
   activityType: string;
