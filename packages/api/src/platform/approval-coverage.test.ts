@@ -14,8 +14,13 @@ import { fileURLToPath } from "node:url";
 // confirmation-types.test.ts), and confirmation-sites.db.test.ts pins what
 // each branch emits when it runs.
 //
-// A text scan sees what is written by name. So that nothing reaches an asking
-// function another way, it also refuses, in the same files: an asking
+// A text scan sees what is written by name, in ordinary code: it does not
+// follow a call built inside a template string, a module re-exported whole, or
+// a helper imported from a test file, and it is not a proof that nothing else
+// reaches an asking function. What it guards against is forgetting, not a
+// determined detour: a value forced past the types is refused when it runs
+// (`checkConfirmation` checks every consequence). To keep the ordinary detours
+// out of the inventory's blind spots, it also refuses, in the same files: an asking
 // function named but neither defined, imported by its own name, called by it,
 // nor read as a type (no alias, no `x.requireConfirmation(…)`, no value passed
 // around); its name as a string (`obj["requireConfirmation"]`); a namespace,

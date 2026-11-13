@@ -30,6 +30,10 @@ export const CONSEQUENCES = [
 ] as const;
 export type Consequence = (typeof CONSEQUENCES)[number];
 
+/** Whether a value is one of the consequences the rule knows, and not a name an object inherits. */
+export const isConsequence = (value: unknown): value is Consequence =>
+  typeof value === "string" && (CONSEQUENCES as readonly string[]).includes(value);
+
 /** What a branch declares: at least one consequence. */
 export type Consequences = readonly [Consequence, ...Consequence[]];
 
@@ -55,6 +59,11 @@ function levelOf(
   credential: Pick<Credential, "kind" | "confirmSensitive">,
 ): ApprovalLevel {
   // A session is the user: they clicked in the dashboard, or asked the in-app assistant.
+  // A name forced past the type must not find a level by accident (an object
+  // inherits `toString`): the rule knows its consequences and no other.
+  if (!isConsequence(consequence)) {
+    throw new Error(`Unknown consequence: ${String(consequence)}`);
+  }
   if (credential.kind === "session") return "none";
   const levels = LEVELS[consequence];
   return credential.confirmSensitive ? levels.optionOn : levels.optionOff;

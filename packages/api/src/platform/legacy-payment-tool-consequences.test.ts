@@ -21,6 +21,11 @@ describe("legacyPaymentToolConsequences", () => {
     }
   });
 
+  test("the list of the three cannot be added to", () => {
+    assert.throws(() => (LEGACY_PAYMENT_TOOLS as string[]).push("fourth_tool"), TypeError);
+    assert.throws(() => legacyPaymentToolConsequences("fourth_tool", true), /fourth_tool/);
+  });
+
   test("one of them without `always` is refused", () => {
     for (const always of [false, undefined]) {
       assert.throws(

@@ -12,7 +12,11 @@ import type { Consequences } from "./approval-rule";
  * registers a tool, so any other tool, or one of these without `always`, is
  * refused before it can be called.
  */
-export const LEGACY_PAYMENT_TOOLS = ["record_payment", "delete_payment", "record_deposit_return"];
+export const LEGACY_PAYMENT_TOOLS: readonly string[] = Object.freeze([
+  "record_payment",
+  "delete_payment",
+  "record_deposit_return",
+]);
 
 export function legacyPaymentToolConsequences(
   tool: string,

@@ -10,7 +10,7 @@ import {
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
-import { confirmationStep, type Consequences } from "./approval-rule";
+import { CONSEQUENCES, confirmationStep, isConsequence, type Consequences } from "./approval-rule";
 import { apiError, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
 
@@ -94,10 +94,15 @@ export interface ConfirmationCheck {
  * error once the transaction is over.
  */
 export async function checkConfirmation<Check extends ConfirmationCheck>(input: KnownCheck<Check>) {
-  // The type asks for at least one; a value forced past it is a bug here.
-  if (!Array.isArray(input.consequences) || input.consequences.length === 0) {
+  // The type asks for at least one, each a consequence the rule knows; a value
+  // forced past it is a bug here, and must never read as "nothing to ask".
+  if (
+    !Array.isArray(input.consequences) ||
+    input.consequences.length === 0 ||
+    !input.consequences.every(isConsequence)
+  ) {
     throw new Error(
-      `${input.procedure}: a confirmation declares the consequences of its branch, at least one.`,
+      `${input.procedure}: a confirmation declares the consequences of its branch, at least one, each one of ${CONSEQUENCES.join(", ")}.`,
     );
   }
   const step = confirmationStep(input.consequences, input.actor.credential);

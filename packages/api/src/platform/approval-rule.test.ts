@@ -81,6 +81,19 @@ describe("approvalLevel", () => {
     );
   });
 
+  test("a name that is not a consequence is refused, even one every object inherits", () => {
+    const key = (confirmSensitive: boolean) => ({ kind: "api_key" as const, confirmSensitive });
+    for (const name of ["toString", "constructor", "__proto__", "hasOwnProperty", "", "Money"]) {
+      for (const credential of [key(true), key(false)]) {
+        assert.throws(
+          () => approvalLevel([name as Consequence], credential),
+          /Unknown consequence/,
+          name,
+        );
+      }
+    }
+  });
+
   test("no consequence asks nothing", () => {
     assert.equal(approvalLevel([], { kind: "oauth", confirmSensitive: true }), "none");
   });
