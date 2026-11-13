@@ -11,8 +11,6 @@ on:
     paths: ["README.md", "README.fr.md", "CHANGELOG.md"]
   release:
     types: [published]
-  schedule:
-    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -42,7 +40,7 @@ jobs:
   kai-sources:
     name: Sync Kai sources
     needs: test
-    if: vars.GLEAP_SUPPORT_ENABLED == 'true' && github.event_name != 'pull_request' && github.event_name != 'schedule'
+    if: vars.GLEAP_SUPPORT_ENABLED == 'true' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -60,21 +58,3 @@ jobs:
             echo "Kai now reads the changelog of ${{ github.event.release.tag_name }}."
             echo "Next: draft the Gleap news and the help center update, review them, then publish in Gleap."
           } >> "$GITHUB_STEP_SUMMARY"
-
-  bugs-to-issues:
-    name: Gleap bugs to GitHub issues
-    needs: test
-    if: vars.GLEAP_SUPPORT_ENABLED == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node .github/scripts/gleap/bugs-to-issues.mjs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GLEAP_ISSUES_TOKEN }}
-          GLEAP_ISSUES_REPO: ${{ vars.GLEAP_ISSUES_REPO }}
-          GLEAP_BUGS_SINCE: ${{ vars.GLEAP_BUGS_SINCE }}
-          GLEAP_ISSUES_INCLUDE_TITLE: ${{ vars.GLEAP_ISSUES_INCLUDE_TITLE }}

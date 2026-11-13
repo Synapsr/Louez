@@ -27,10 +27,6 @@ DRY_RUN=false GLEAP_API_KEY=… GLEAP_PROJECT_ID=… \
 
 The script only writes drafts. Publishing stays a click in Gleap.
 
-## Bugs to GitHub issues
-
-`.github/scripts/gleap/bugs-to-issues.mjs` opens one issue per open Gleap BUG ticket created after `GLEAP_BUGS_SINCE`, tags the ticket `github-issue` and adds an internal note with the issue link. The issue holds only the Gleap number, priority and link: tickets carry customer data, and this repository is public, so `GLEAP_ISSUES_REPO` should be a private repository.
-
 ## Release notes loop
 
 1. Each user-visible change ships with a note in `changes/`; a release turns them into `CHANGELOG.md`.
@@ -41,17 +37,13 @@ The script only writes drafts. Publishing stays a click in Gleap.
 
 Repository settings › Secrets and variables › Actions:
 
-| Name                         | Kind     | Value                                                                  |
-| ---------------------------- | -------- | ---------------------------------------------------------------------- |
-| `GLEAP_SUPPORT_ENABLED`      | variable | `true` to run the jobs                                                 |
-| `GLEAP_DRY_RUN`              | variable | `false` to write; anything else prints what would change               |
-| `GLEAP_PROJECT_ID`           | variable | The Gleap project id                                                   |
-| `GLEAP_API_KEY`              | secret   | A Gleap API key (Settings › Developer › API keys)                      |
-| `GLEAP_AI_CONTENT_TYPE`      | variable | The `type` of an AI content entry, read from one made in the dashboard |
-| `GLEAP_ISSUES_REPO`          | variable | `owner/repo` of the private issue tracker                              |
-| `GLEAP_ISSUES_TOKEN`         | secret   | A fine-grained token with Issues: write on that repository             |
-| `GLEAP_BUGS_SINCE`           | variable | ISO date; older tickets are left alone                                 |
-| `GLEAP_ISSUES_INCLUDE_TITLE` | variable | `true` to copy the ticket title into the issue title                   |
+| Name                    | Kind     | Value                                                                  |
+| ----------------------- | -------- | ---------------------------------------------------------------------- |
+| `GLEAP_SUPPORT_ENABLED` | variable | `true` to run the jobs                                                 |
+| `GLEAP_DRY_RUN`         | variable | `false` to write; anything else prints what would change               |
+| `GLEAP_PROJECT_ID`      | variable | The Gleap project id                                                   |
+| `GLEAP_API_KEY`         | secret   | A Gleap API key (Settings › Developer › API keys)                      |
+| `GLEAP_AI_CONTENT_TYPE` | variable | The `type` of an AI content entry, read from one made in the dashboard |
 
 Start with the dry run and read the job log before setting `GLEAP_DRY_RUN` to `false`.
 
