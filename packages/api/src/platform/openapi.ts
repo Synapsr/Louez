@@ -1,7 +1,8 @@
 import type { OpenAPI } from "@orpc/contract";
 import { OpenAPIGenerator, type OpenAPIGeneratorGenerateOptions } from "@orpc/openapi";
-import { OpenAPIHandler } from "@orpc/openapi/fetch";
-import { onError, ORPCError, type AnyRouter } from "@orpc/server";
+import { OpenAPIHandler, type OpenAPIHandlerOptions } from "@orpc/openapi/fetch";
+import { StandardOpenAPIMatcher } from "@orpc/openapi/standard";
+import { onError, ORPCError, type AnyProcedure, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
 import type { BaseContext } from "../context";
@@ -106,8 +107,45 @@ export function routeBodyLimits(procedures: readonly ExposedProcedure[]): RouteB
   return limits;
 }
 
+/** Whether a JSON Schema holds, at any depth, a file: a string with a `contentMediaType`. */
+function holdsFile(schema: unknown): boolean {
+  if (Array.isArray(schema)) return schema.some(holdsFile);
+  if (!schema || typeof schema !== "object") return false;
+  const node = schema as Record<string, unknown>;
+  if (node.type === "string" && typeof node.contentMediaType === "string") return true;
+  return Object.values(node).some(holdsFile);
+}
+
+/**
+ * The media types `/api/v1` reads an operation's body in, decided from its
+ * input as JSON Schema, as oRPC's generator documents its request body: an
+ * object input is JSON, and also a multipart form when it holds a file. Any
+ * other input takes no body. A body in another type is refused with 415
+ * (`handleOpenApiRequest`).
+ */
+export function requestBodyMediaTypes(inputJsonSchema: unknown): string[] {
+  const schema = inputJsonSchema as { type?: unknown } | null;
+  if (schema?.type !== "object") return [];
+  return holdsFile(schema) ? ["application/json", "multipart/form-data"] : ["application/json"];
+}
+
+/** A `Content-Type` value's media type, lowercase, without its parameters. */
+const mediaTypeOf = (contentType: string) => contentType.split(";")[0].trim().toLowerCase();
+
 const errorResponse = (error: ORPCError<string, unknown>, headers?: HeadersInit) =>
   Response.json(error.toJSON(), { status: error.status, headers });
+
+function unsupportedMediaType(contentTypes: readonly string[]): Response {
+  return errorResponse(
+    new ORPCError<"UNSUPPORTED_MEDIA_TYPE", ApiErrorData>("UNSUPPORTED_MEDIA_TYPE", {
+      message:
+        contentTypes.length > 0
+          ? `This operation reads a request body only as ${contentTypes.join(" or ")}, named in the Content-Type header, without Content-Disposition.`
+          : "This operation takes no request body.",
+      data: { code: "UNSUPPORTED_MEDIA_TYPE", retryable: false, details: { contentTypes } },
+    }),
+  );
+}
 
 function tooLarge(maxBytes: number): Response {
   return errorResponse(
@@ -119,17 +157,17 @@ function tooLarge(maxBytes: number): Response {
 }
 
 /**
- * The request with its body read, streaming, at most `maxBytes`: a body past
- * it, declared or sent, gets 413 before anything parses it. Past
- * `OPENAPI_MAX_BODY_BYTES` (declared, or once that much was read), the
- * request must first pass `enterLarge`, which answers a refusal or null.
+ * The request's body, read streaming, at most `maxBytes` (null when it has
+ * none): a body past it, declared or sent, gets 413 before anything parses
+ * it. Past `OPENAPI_MAX_BODY_BYTES` (declared, or once that much was read),
+ * the request must first pass `enterLarge`, which answers a refusal or null.
  */
-async function withBoundedBody(
+async function readBoundedBody(
   request: Request,
   maxBytes: number,
   enterLarge: () => Promise<Response | null>,
-): Promise<Request | Response> {
-  if (!request.body) return request;
+): Promise<Uint8Array<ArrayBuffer> | null | Response> {
+  if (!request.body) return null;
   const declared = Number(request.headers.get("content-length"));
   if (declared > maxBytes) {
     await request.body.cancel().catch(() => {});
@@ -165,17 +203,14 @@ async function withBoundedBody(
     }
     chunks.push(value);
   }
-  return new Request(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body: Buffer.concat(chunks),
-    signal: request.signal,
-  });
+  return Buffer.concat(chunks);
 }
+
+const jsonSchemaConverter = new ZodToJsonSchemaConverter();
 
 /** What the OpenAPI generator and the reference plugin need to read Zod 4 schemas. */
 const openApiGeneratorOptions = {
-  schemaConverters: [new ZodToJsonSchemaConverter()],
+  schemaConverters: [jsonSchemaConverter],
 };
 
 /**
@@ -200,7 +235,7 @@ const CONFIRMATION_MINUTES = CONFIRMATION_TTL_MS / 60_000;
 /**
  * The codes shared by the operations, which every integration should
  * handle: the platform's own (platform/errors.ts, confirmation.ts, operations.ts, answer-pages.ts,
- * the body cap above and large-bodies.ts). Those only an OAuth connection
+ * the body cap and the content types below, and large-bodies.ts). Those only an OAuth connection
  * meets (STORE_REQUIRED, NOT_AVAILABLE_TO_THIS_AGENT) or no exposed procedure
  * throws (SESSION_ONLY) are left out.
  */
@@ -250,6 +285,11 @@ export const COMMON_ERROR_CODES = [
     "The confirmation token is unknown, expired, used, or no longer matches: call again without it for a new preview.",
   ],
   [413, "REQUEST_TOO_LARGE", "The body is larger than the operation takes (`details.maxBytes`)."],
+  [
+    415,
+    "UNSUPPORTED_MEDIA_TYPE",
+    "The body is not in a content type the operation takes (`details.contentTypes`), or has no `Content-Type`.",
+  ],
   [429, "RATE_LIMITED", "Too many calls: retry after `details.retryAfterSeconds`."],
   [
     503,
@@ -276,7 +316,7 @@ Send an API key in the \`Authorization\` header: \`Bearer lz_…\`. Keys are cre
 
 ## Errors
 
-Send JSON bodies with \`Content-Type: application/json\`. An error answers with its HTTP status and, but for one case below, a JSON body of the \`Error\` schema: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English, for a developer or a model: do not parse it) and, most of the time, \`data\`.
+Send JSON bodies with \`Content-Type: application/json\`. A body is read only as JSON, or in another content type an operation's request body lists; any other, or a body without \`Content-Type\`, answers 415 \`UNSUPPORTED_MEDIA_TYPE\` before the operation runs. An error answers with its HTTP status and, but for one case below, a JSON body of the \`Error\` schema: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English, for a developer or a model: do not parse it) and, most of the time, \`data\`.
 
 - A refusal by Louez has \`data.code\`, a stable code to branch on, such as \`PERMISSION_DENIED\`, and \`data.retryable\`, whether the same call can succeed later unchanged; \`data.details\`, when present, holds the facts behind it.
 - An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\` and no \`data.code\`. Each issue has a \`message\` and a \`path\`: the field at fault, such as \`["items", 0, "price"]\`, or \`[]\` when the issue is with the input as a whole.
@@ -429,6 +469,9 @@ const openApiDocumentOptions = {
       ConfirmationRequired: errorBodyResponse(
         "CONFIRMATION_REQUIRED, with the preview and the token to send in `Louez-Confirmation`; or CONFIRMATION_INVALID.",
       ),
+      UnsupportedMediaType: errorBodyResponse(
+        "UNSUPPORTED_MEDIA_TYPE: the body is not in a content type the operation takes; `details.contentTypes` lists them.",
+      ),
       RateLimited: errorBodyResponse("RATE_LIMITED: retry after `details.retryAfterSeconds`."),
       Error: errorBodyResponse("Any other error, in the same shape: branch on `data.code`."),
     },
@@ -444,14 +487,47 @@ export function generateOpenApiDocument(router: AnyRouter, serverUrl?: string) {
 }
 
 /**
+ * oRPC's OpenAPI handler, which also says which media types the operation a
+ * request reaches reads its body in: found by oRPC's own matcher, so it is
+ * the operation the handler runs.
+ */
+export class OpenApiTransportHandler extends OpenAPIHandler<BaseContext> {
+  readonly #matcher = new StandardOpenAPIMatcher();
+  readonly #mediaTypes = new WeakMap<AnyProcedure, string[]>();
+
+  constructor(router: AnyRouter, options: OpenAPIHandlerOptions<BaseContext>) {
+    super(router, options);
+    this.#matcher.init(router);
+  }
+
+  /**
+   * `requestBodyMediaTypes` of the operation at `method` and `path` (under
+   * the prefix, as oRPC matches it); undefined when none is there.
+   */
+  async bodyMediaTypes(method: string, path: string): Promise<string[] | undefined> {
+    const match = await this.#matcher.match(method, `/${path.replace(/^\/|\/$/g, "")}`);
+    if (!match) return undefined;
+    let types = this.#mediaTypes.get(match.procedure);
+    if (!types) {
+      const [, schema] = jsonSchemaConverter.convert(match.procedure["~orpc"].inputSchema, {
+        strategy: "input",
+      });
+      types = requestBodyMediaTypes(schema);
+      this.#mediaTypes.set(match.procedure, types);
+    }
+    return types;
+  }
+}
+
+/**
  * The OpenAPI transport over the exposed router (`createExposure(...).router`),
  * never the whole router. Its document and reference are `createApiReference`.
  */
 export function createOpenApiHandler(
   router: AnyRouter,
   options: { onError?: (error: unknown) => void } = {},
-): OpenAPIHandler<BaseContext> {
-  return new OpenAPIHandler<BaseContext>(router, {
+): OpenApiTransportHandler {
+  return new OpenApiTransportHandler(router, {
     interceptors: options.onError ? [onError(options.onError)] : [],
     // An unexpected error reaches error tracking through `ports.reportError`.
     clientInterceptors: [reportUnexpectedErrors],
@@ -587,11 +663,12 @@ export function createApiReference(router: AnyRouter): ApiReference {
  * `Louez-Replayed: true` when an idempotency key replayed it). Errors keep
  * oRPC's JSON shape, with our `data` (code, retryable, i18nKey, details).
  * With `reference`, it also serves the OpenAPI document and its reference
- * page, to anyone; their server is this deployment's `ports.urls`. Undefined
- * when nothing matches.
+ * page, to anyone; their server is this deployment's `ports.urls`. A body in
+ * a media type its operation does not take (`requestBodyMediaTypes`) gets
+ * 415 before anything reads it. Undefined when nothing matches.
  */
 export async function handleOpenApiRequest(
-  handler: OpenAPIHandler<BaseContext>,
+  handler: OpenApiTransportHandler,
   incoming: Request,
   options: {
     ports: ApiPorts;
@@ -644,14 +721,54 @@ export async function handleOpenApiRequest(
     return null;
   };
 
+  // A body is read only in the media types its operation takes; any other is
+  // refused before anything reads it. A read (GET) takes its input from the
+  // query string, and its body is never read.
+  let headers = incoming.headers;
+  const routed = pathname === prefix || pathname.startsWith(`${prefix}/`);
+  const bodyTypes =
+    !routed || incoming.method === "GET" || incoming.method === "HEAD"
+      ? undefined
+      : await handler.bodyMediaTypes(incoming.method, path);
+  const contentType = incoming.headers.get("content-type");
+  // oRPC reads a body sent with Content-Disposition as one file, whatever its
+  // type, even an empty one.
+  if (
+    bodyTypes &&
+    (incoming.headers.has("content-disposition") ||
+      (contentType !== null && !bodyTypes.includes(mediaTypeOf(contentType))))
+  ) {
+    await incoming.body?.cancel().catch(() => {});
+    return unsupportedMediaType(bodyTypes);
+  }
+  if (bodyTypes && contentType !== null) {
+    const type = mediaTypeOf(contentType);
+    // oRPC tells the types apart by the header's first characters, in their case.
+    const separator = contentType.indexOf(";");
+    const normalized = separator === -1 ? type : `${type}${contentType.slice(separator)}`;
+    if (normalized !== contentType) {
+      headers = new Headers(headers);
+      headers.set("content-type", normalized);
+    }
+  }
+
   try {
-    const bounded = await withBoundedBody(
+    const body = await readBoundedBody(
       incoming,
       larger?.maxBytes ?? OPENAPI_MAX_BODY_BYTES,
       enterLarge,
     );
-    if (bounded instanceof Response) return bounded;
-    const request = bounded;
+    if (body instanceof Response) return body;
+    // A body without a Content-Type is read in none of the types an operation takes.
+    if (bodyTypes && contentType === null && body && body.byteLength > 0) {
+      return unsupportedMediaType(bodyTypes);
+    }
+    const request = new Request(incoming.url, {
+      method: incoming.method,
+      headers,
+      body,
+      signal: incoming.signal,
+    });
     const receipt: OperationReceipt = {};
     const { response } = await handler.handle(request, {
       prefix,

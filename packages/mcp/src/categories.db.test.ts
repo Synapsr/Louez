@@ -47,6 +47,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     body: object | null,
     headers: Record<string, string>,
   ) => Promise<Response>;
+  let openApiRaw: (request: Request) => Promise<Response>;
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<string[]>;
   let mcpHttp: (
@@ -100,9 +101,11 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
 
     // OpenAPI: the exposed procedures at their REST paths, as /api/v1 serves them.
     const openApiHandler = createOpenApiHandler(exposure.router);
-    openApi = async (method, path, body, headers) =>
-      (await handleOpenApiRequest(
-        openApiHandler,
+    openApiRaw = async (request) =>
+      (await handleOpenApiRequest(openApiHandler, request, { ports })) ??
+      new Response(null, { status: 404 });
+    openApi = (method, path, body, headers) =>
+      openApiRaw(
         new Request(
           `http://louez.test/api/v1${path}`,
           body
@@ -113,8 +116,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
               }
             : { method, headers },
         ),
-        { ports },
-      )) ?? new Response(null, { status: 404 });
+      );
 
     // MCP: through the real HTTP handler, as /api/mcp serves it.
     const httpOptions = {
@@ -277,6 +279,104 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     assert.equal(apiDenied.status, 403);
     const mcpDenied = await mcpCall(readOnlyKey, "categories_create", { name: "Denied" });
     assert.equal(toolError(mcpDenied), "PERMISSION_DENIED");
+  });
+
+  test("OpenAPI reads a body only as JSON: any other content type is refused, and nothing is created", async () => {
+    const authorization = await key();
+    const names = async () =>
+      (await louezDb.db.select().from(louezDb.categories))
+        .filter((row) => row.storeId === STORE)
+        .map((row) => row.name)
+        .sort();
+    const send = (headers: Record<string, string>, body: BodyInit) =>
+      openApiRaw(
+        new Request("http://louez.test/api/v1/categories", {
+          method: "POST",
+          headers: { authorization, ...headers },
+          body,
+        }),
+      );
+    const valid = (name: string) => new TextEncoder().encode(JSON.stringify({ name }));
+    const before = await names();
+
+    // A form as bytes: Node cannot cancel a body it streams from a FormData.
+    const form = new FormData();
+    form.set("name", "Sent as a form");
+    const multipart = new Response(form);
+    const multipartType = multipart.headers.get("content-type") ?? "";
+    const multipartBody = new Uint8Array(await multipart.arrayBuffer());
+    for (const [label, headers, body] of [
+      ["application/octet-stream", { "content-type": "application/octet-stream" }, valid("Raw")],
+      [
+        "application/problem+json",
+        { "content-type": "application/problem+json" },
+        valid("Problem"),
+      ],
+      ["multipart/form-data", { "content-type": multipartType }, multipartBody],
+      [
+        "application/x-www-form-urlencoded",
+        {},
+        new URLSearchParams({ name: "Sent as a query string" }),
+      ],
+      ["text/plain", { "content-type": "text/plain" }, JSON.stringify({ name: "Plain" })],
+      ["no content type", {}, valid("Untyped")],
+    ] as const) {
+      const refused = await send(headers, body);
+      assert.equal(refused.status, 415, label);
+      const { data } = (await refused.json()) as { data: Json };
+      assert.deepEqual(
+        data,
+        {
+          code: "UNSUPPORTED_MEDIA_TYPE",
+          retryable: false,
+          details: { contentTypes: ["application/json"] },
+        },
+        label,
+      );
+      assert.equal(refused.headers.get("louez-operation-id"), null, `${label}: no operation`);
+    }
+    assert.deepEqual(await names(), before, "no category was created");
+
+    // JSON, with or without a charset, creates the category.
+    for (const [type, name] of [
+      ["application/json", "Typed"],
+      ["application/json; charset=utf-8", "Typed with a charset"],
+    ]) {
+      const created = await send({ "content-type": type }, valid(name));
+      assert.equal(created.status, 200, type);
+      assert.equal(((await created.json()) as Json).name, name);
+    }
+    assert.deepEqual(await names(), [...before, "Typed", "Typed with a charset"].sort());
+
+    // A read and a deletion send no body, as before.
+    const listed = await openApi("GET", "/categories", null, { authorization });
+    assert.equal(listed.status, 200);
+    const typed = ((await listed.json()) as { items: Json[] }).items.find(
+      (item) => item.name === "Typed",
+    );
+    assert.ok(typed);
+    const asked = await openApi("DELETE", `/categories/${typed.id}`, null, { authorization });
+    assert.equal(asked.status, 412);
+
+    // An image's bytes go in JSON, as base64, as before; sent raw, they are refused.
+    const png = Buffer.alloc(9);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png);
+    const uploaded = await openApi(
+      "POST",
+      "/categories/images",
+      { contentBase64: png.toString("base64") },
+      { authorization },
+    );
+    assert.equal(uploaded.status, 200);
+    assert.equal(((await uploaded.json()) as Json).contentType, "image/png");
+    const rawImage = await openApiRaw(
+      new Request("http://louez.test/api/v1/categories/images", {
+        method: "POST",
+        headers: { authorization, "content-type": "image/png" },
+        body: png,
+      }),
+    );
+    assert.equal(rawImage.status, 415);
   });
 
   test("delete: the dashboard runs it directly; a key confirms first, on OpenAPI and MCP", async () => {
