@@ -20,7 +20,8 @@ import type {
 // `payment_intent.payment_failed` on a migrated database: each Stripe event is
 // recorded, and tells the owner, once. A redelivered event changes nothing and
 // notifies nobody; each failed attempt of one PaymentIntent is its own event. The
-// senders are fakes.
+// line is the only write: payment rows, the booking and a marketplace attempt are
+// the session's completion's and expiry's. The senders are fakes.
 
 // The email logo helper imports "server-only", which throws outside Next.
 Reflect.get(
@@ -82,7 +83,6 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     const reservation: FailedPaymentReservation = {
       id,
       number: id,
-      source,
       startDate: new Date("2027-05-01T09:00:00Z"),
       endDate: new Date("2027-05-03T09:00:00Z"),
       totalAmount: "120.00",
@@ -115,10 +115,9 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
   });
 
   const fakeDeps = () => {
-    const sent: { owner: number; platform: number; marketplace: number; currencies: string[] } = {
+    const sent: { owner: number; platform: number; currencies: string[] } = {
       owner: 0,
       platform: 0,
-      marketplace: 0,
       currencies: [],
     };
     const deps: PaymentFailureDeps = {
@@ -135,9 +134,6 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
       notifyPaymentFailed: async () => {
         sent.platform += 1;
       },
-      failMarketplaceBookingAttempt: async () => {
-        sent.marketplace += 1;
-      },
     };
     return { deps, sent };
   };
@@ -153,7 +149,10 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     const paymentIntent = intent(reservation.id, `pi_pf_${counter}`);
     const { deps, sent } = fakeDeps();
     const handle = (stripeEventId: string) =>
-      failure.handlePaymentFailure({ reservation, stripeEventId, paymentIntent }, deps);
+      failure.handlePaymentFailure(
+        { kind: "rental", reservation, stripeEventId, paymentIntent },
+        deps,
+      );
 
     await handle("evt_first_attempt");
     await handle("evt_first_attempt");
@@ -179,7 +178,7 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
       [1, 2].map(
         () => () =>
           failure.handlePaymentFailure(
-            { reservation, stripeEventId: "evt_concurrent", paymentIntent },
+            { kind: "rental", reservation, stripeEventId: "evt_concurrent", paymentIntent },
             deps,
           ),
       ),
@@ -188,7 +187,7 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     assert.equal((await activities(reservation.id)).length, 1);
   });
 
-  test("a payment row is marked failed once", async () => {
+  test("a payment row that records the PaymentIntent is left pending, its line written once", async () => {
     const reservation = await createReservation();
     const paymentIntentId = `pi_pf_${counter}`;
     await louezDb.db.insert(louezDb.payments).values({
@@ -204,11 +203,11 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     const { deps, sent } = fakeDeps();
     const paymentIntent = intent(reservation.id, paymentIntentId);
     await failure.handlePaymentFailure(
-      { reservation, stripeEventId: "evt_row", paymentIntent },
+      { kind: "rental", reservation, stripeEventId: "evt_row", paymentIntent },
       deps,
     );
     await failure.handlePaymentFailure(
-      { reservation, stripeEventId: "evt_row", paymentIntent },
+      { kind: "rental", reservation, stripeEventId: "evt_row", paymentIntent },
       deps,
     );
 
@@ -216,7 +215,8 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
       .select({ status: louezDb.payments.status })
       .from(louezDb.payments)
       .where(eq(louezDb.payments.stripePaymentIntentId, paymentIntentId));
-    assert.equal(row?.status, "failed");
+    assert.equal(row?.status, "pending");
+    assert.deepEqual(await activities(reservation.id), [{ type: "payment_failed" }]);
     assert.equal(sent.owner, 1);
   });
 
@@ -236,13 +236,14 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     const { deps, sent } = fakeDeps();
     await failure.handlePaymentFailure(
       {
+        kind: "rental",
         reservation,
         stripeEventId: "evt_stale",
         paymentIntent: intent(reservation.id, paymentIntentId),
       },
       deps,
     );
-    assert.deepEqual(sent, { owner: 0, platform: 0, marketplace: 0, currencies: [] });
+    assert.deepEqual(sent, { owner: 0, platform: 0, currencies: [] });
     assert.equal((await activities(reservation.id)).length, 0);
   });
 
@@ -256,7 +257,7 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
       .where(eq(louezDb.reservations.id, reservation.id));
     for (const _delivery of [1, 2]) {
       await failure.handlePaymentFailure(
-        { reservation, stripeEventId: "evt_deposit", paymentIntent },
+        { kind: "deposit_hold", reservation, stripeEventId: "evt_deposit", paymentIntent },
         deps,
       );
     }
@@ -271,45 +272,35 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     assert.equal(sent.owner, 1);
   });
 
-  test("a marketplace attempt is expired on every delivery, the owner told once", async () => {
+  test("a marketplace booking's failed attempt is told to the owner once, the booking and its attempt left as they are", async () => {
     const reservation = await createReservation("marketplace");
+    await louezDb.db.insert(louezDb.marketplaceBookingAttempts).values({
+      id: `att_pf_${counter}`,
+      bookingAttemptId: `attempt-${reservation.id}`,
+      storeId: STORE,
+      quoteTokenHash: "0".repeat(64),
+      reservationId: reservation.id,
+      status: "checkout_pending",
+      expiresAt: new Date("2030-01-01T00:00:00Z"),
+    });
     const paymentIntent = intent(reservation.id, `pi_pf_${counter}`);
     const { deps, sent } = fakeDeps();
     for (const _delivery of [1, 2]) {
       await failure.handlePaymentFailure(
-        { reservation, stripeEventId: "evt_marketplace", paymentIntent },
+        { kind: "rental", reservation, stripeEventId: "evt_marketplace", paymentIntent },
         deps,
       );
     }
-    assert.equal(sent.marketplace, 2);
     assert.equal(sent.owner, 1);
-  });
-
-  test("an expiry that throws does not stop the alert, and the redelivery retries it", async () => {
-    const reservation = await createReservation("marketplace");
-    const paymentIntent = intent(reservation.id, `pi_pf_${counter}`);
-    const { deps, sent } = fakeDeps();
-    let expiries = 0;
-    const failingOnce: PaymentFailureDeps = {
-      ...deps,
-      failMarketplaceBookingAttempt: async () => {
-        expiries += 1;
-        if (expiries === 1) throw new Error("marketplace down");
-      },
-    };
-    const handle = () =>
-      failure.handlePaymentFailure(
-        { reservation, stripeEventId: "evt_expiry", paymentIntent },
-        failingOnce,
-      );
-
-    await assert.rejects(handle(), /marketplace down/);
-    assert.equal(sent.owner, 1);
-    assert.equal(sent.platform, 1);
-
-    // Stripe redelivers after the 500: the expiry runs again, the owner is not told twice.
-    await handle();
-    assert.equal(expiries, 2);
-    assert.equal(sent.owner, 1);
+    const [booking] = await louezDb.db
+      .select({ status: louezDb.reservations.status })
+      .from(louezDb.reservations)
+      .where(eq(louezDb.reservations.id, reservation.id));
+    assert.equal(booking?.status, "pending");
+    const [attempt] = await louezDb.db
+      .select({ status: louezDb.marketplaceBookingAttempts.status })
+      .from(louezDb.marketplaceBookingAttempts)
+      .where(eq(louezDb.marketplaceBookingAttempts.reservationId, reservation.id));
+    assert.equal(attempt?.status, "checkout_pending");
   });
 });

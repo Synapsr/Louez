@@ -36,6 +36,12 @@ export type DepositEvent = {
   /** The connected account that sent the event. */
   readonly accountId: string | undefined;
   readonly paymentIntent: FailedPaymentIntent;
+  /**
+   * The reservation of the `deposit_hold` row that records the PaymentIntent, or null.
+   * The route sets it for `payment_intent.payment_failed` only: the row is then the
+   * hold's record, and the reservation the event names must be that one.
+   */
+  readonly recordedReservationId?: string | null;
 };
 
 /** What the handler runs on; the webhook route gives the app's (route.ts). */
@@ -73,6 +79,10 @@ const loadReservation = (database: Database, reservationId: string) =>
  * the reservation its metadata names. Everything written comes from the PaymentIntent
  * as Stripe answers it on that account.
  *
+ * A PaymentIntent a `deposit_hold` row records (`recordedReservationId`) is that row's
+ * reservation's hold, whatever the event states of its type: an event that names
+ * another reservation is refused before Stripe is asked.
+ *
  * An event of the store's connected account is read. One of an account the store left
  * is read only when a hold row of the reservation names that account for this
  * PaymentIntent, or is a pending attempt sent to it that has no PaymentIntent yet:
@@ -85,7 +95,10 @@ export async function handleDepositEvent(
   deps: DepositEventDeps,
 ): Promise<DepositEventOutcome> {
   const { paymentIntent } = event;
-  if (paymentIntent.metadata?.type !== "deposit_hold") return "ignored";
+  const recordedReservationId = event.recordedReservationId ?? null;
+  if (recordedReservationId === null && paymentIntent.metadata?.type !== "deposit_hold") {
+    return "ignored";
+  }
 
   const reject = (issue: string, details: Record<string, unknown> = {}) => {
     log.error({
@@ -94,7 +107,18 @@ export async function handleDepositEvent(
     return "rejected" as const;
   };
 
-  const reservationId = paymentIntent.metadata.reservationId;
+  const namedReservationId = paymentIntent.metadata?.reservationId;
+  if (
+    recordedReservationId !== null &&
+    namedReservationId !== undefined &&
+    namedReservationId !== recordedReservationId
+  ) {
+    return reject("reservation_mismatch", {
+      expected: recordedReservationId,
+      received: namedReservationId,
+    });
+  }
+  const reservationId = recordedReservationId ?? namedReservationId;
   if (!isReservationId(reservationId)) return reject("invalid_reservation_id", { reservationId });
   const reservation = await loadReservation(deps.database, reservationId);
   if (!reservation) return reject("reservation_not_found", { reservationId });
@@ -105,7 +129,7 @@ export async function handleDepositEvent(
     const named = holdsNameIntentOnAccount(await readHoldRows(deps.database, reservationId), {
       accountId,
       paymentIntentId: paymentIntent.id,
-      attemptId: paymentIntent.metadata[DEPOSIT_HOLD_ATTEMPT_METADATA] ?? null,
+      attemptId: paymentIntent.metadata?.[DEPOSIT_HOLD_ATTEMPT_METADATA] ?? null,
     });
     if (!named) {
       return reject("connected_account_mismatch", {
@@ -153,6 +177,7 @@ export async function handleDepositEvent(
     } else {
       await handlePaymentFailure(
         {
+          kind: "deposit_hold",
           reservation,
           stripeEventId: event.stripeEventId,
           // The amount and the currency Stripe answers, not the event's.

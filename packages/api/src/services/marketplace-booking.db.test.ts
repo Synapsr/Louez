@@ -904,7 +904,7 @@ describe(
       assert.deepEqual(attempt, { status: "creating_hold" });
     });
 
-    test("a failed payment cancels a pending booking in checkout, and nothing else", async () => {
+    test("an unpaid checkout's expiry cancels its pending marketplace booking, and nothing else", async () => {
       const store = await createStore();
       const inCheckout = await createBooking(store, "pending", {
         status: "checkout_pending",
