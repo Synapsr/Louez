@@ -4494,7 +4494,6 @@
       },
       "integrationsHub": {
         "recommended": "Recomendado",
-        "comingSoon": "Próximamente",
         "noIntegrations": "No hay integraciones disponibles aún.",
         "sections": {
           "byLouez": "Por Louez.io",
@@ -4513,7 +4512,10 @@
           "api": {
             "name": "API REST",
             "description": "Conecta tu tienda a tus herramientas existentes y automatiza tus tareas diarias.",
-            "comingSoonDescription": "La API REST está en desarrollo. Pronto podrás conectar tu tienda a cualquier herramienta o servicio."
+            "betaTitle": "Disponible en beta",
+            "betaDescription": "Con la API REST, tus scripts y herramientas pueden leer y modificar los datos de tu tienda. Su referencia muestra lo que permite hacer. Cada herramienta se conecta con una clave API, que creas en la página MCP, en la sección Claves API.",
+            "openReference": "Abrir la referencia de la API",
+            "createKey": "Crear una clave API"
           }
         },
         "title": "Integraciones",
@@ -4733,7 +4735,7 @@
         "description": "Gestiona las claves API para conectar herramientas externas, asistentes IA o integraciones personalizadas a tu tienda.",
         "backToIntegrations": "Integraciones",
         "keysTitle": "Claves API",
-        "keysDescription": "Crea y gestiona claves para el servidor MCP y la futura API REST.",
+        "keysDescription": "Crea y gestiona claves para el servidor MCP y la API REST.",
         "createKey": "Crear clave",
         "noKeys": "Aún no hay claves API. Crea una para empezar.",
         "keyRevoked": "Clave API revocada.",

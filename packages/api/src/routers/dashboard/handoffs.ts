@@ -32,7 +32,7 @@ import { mayRead, type ProductContext } from "./product-context";
  */
 
 /** What every procedure that starts a handoff says of the link it returns. */
-export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page where they sign in, then continue to the provider and come back; only they can finish this step. The link works for ${HANDOFF_TTL_HOURS} hours, only for the user this connection acts for, and calling the tool again replaces it. handoff.id is what handoffs_get takes to follow the step: pending, opened, completed, expired or failed.`;
+export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page where they sign in, then continue to the provider and come back; only they can finish this step. The link works for ${HANDOFF_TTL_HOURS} hours, only for the user this connection acts for, and a new call replaces it. handoff.id is what handoffs_get takes to follow the step: pending, opened, completed, expired or failed.`;
 
 /** Starts or resumes a handoff for the caller, bound to their user and connection. */
 export function startHandoff(context: ProductContext, kind: HandoffKind): Promise<HandoffLink> {

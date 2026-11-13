@@ -210,7 +210,7 @@ const poll = storeProcedure
   });
 
 /** The windows' lists come a page at a time to an agent (`answerPage`). */
-const WINDOW_PAGE_NOTE = `An agent gets ${ANSWER_PAGE_MCP_DEFAULT} entries a page without a limit (the API, every entry); nextCursor, when not null, reads on.`;
+const WINDOW_PAGE_NOTE = `Without a limit, a page holds ${ANSWER_PAGE_MCP_DEFAULT} entries over MCP and every entry over the REST API; nextCursor, when not null, reads on.`;
 
 const listCalendarPeriodProcedure = storeProcedure
   .meta({

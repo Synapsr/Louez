@@ -52,7 +52,7 @@ const LOUEZ_ITEMS: BuiltInItem[] = [
     nameKey: "dashboard.settings.integrationsHub.builtIn.api.name",
     descriptionKey: "dashboard.settings.integrationsHub.builtIn.api.description",
     badge: {
-      labelKey: "dashboard.settings.integrationsHub.comingSoon",
+      labelKey: "dashboard.settings.integrationsHub.lifecycle.beta",
       variant: "expired",
     },
   },

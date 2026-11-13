@@ -16,7 +16,8 @@ import { sha256, stableStringify } from "./hash";
 
 /** Header of an idempotency key. The MCP bridge maps its `idempotencyKey` argument onto it. */
 export const IDEMPOTENCY_HEADER = "idempotency-key";
-const MAX_IDEMPOTENCY_KEY_LENGTH = 100;
+/** The longest idempotency key accepted; an empty one is refused too. */
+export const MAX_IDEMPOTENCY_KEY_LENGTH = 100;
 
 /**
  * How long a call may stay `running`. Past it, a retry is not told to wait:
@@ -34,7 +35,7 @@ export const OPERATION_RETENTION_MONTHS = 12;
  * The purge deletes this many days before the promised retention runs out,
  * so a backlog or a cron outage of up to a week still keeps the promise.
  */
-const OPERATION_PURGE_MARGIN_DAYS = 7;
+export const OPERATION_PURGE_MARGIN_DAYS = 7;
 const PURGE_BATCH = 500;
 const PURGE_BUDGET_MS = 5_000;
 

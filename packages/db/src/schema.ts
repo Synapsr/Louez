@@ -4251,7 +4251,7 @@ export const inspectionPhotosRelations = relations(inspectionPhotos, ({ one }) =
 }));
 
 // ============================================================================
-// API Keys (for MCP Server & future REST API)
+// API Keys (for the MCP server and the REST API)
 // ============================================================================
 
 export type ApiKeyPermissions = {

@@ -276,7 +276,7 @@ const createLocationProcedure = storeProcedure
     mcp: {
       name: "settings_create_location",
       title: "Add Pickup Point",
-      description: `Add a pickup and return point customers can choose at checkout (once the delivery settings allow pickup points): a name, an address, and its coordinates when you have them. A store has 50 at most. Returns the point, with its id for settings_update_location. ${LINKS_HELP} An idempotencyKey makes a retry safe.`,
+      description: `Add a pickup and return point customers can choose at checkout (once the delivery settings allow pickup points): a name, an address, and its coordinates when you have them. A store has 50 at most. Returns the point, with its id for settings_update_location. ${LINKS_HELP} An idempotency key makes a retry safe.`,
       bundle: "settings",
       effect: "additive",
       reach: "public",

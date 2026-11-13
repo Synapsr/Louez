@@ -1,23 +1,22 @@
 import { createExposure } from "@louez/api/platform/exposure";
 import {
+  createApiReference,
   createOpenApiHandler,
   handleOpenApiRequest,
   routeBodyLimits,
 } from "@louez/api/platform/openapi";
 import { appRouter } from "@louez/api/router";
 
-import { env } from "@/env";
 import { apiPorts } from "@/lib/api/ports";
 import { log, useLogger, withEvlog } from "@/lib/evlog";
 
 // Only the procedures of the exposure registry. A body stops at 2 MiB, more
 // for the procedures that take more (routeBodyLimits: an image's bytes, a
-// product with its units). The spec
-// (/api/v1/openapi.json) and its reference (/api/v1/docs) are served in
-// development only: in production they answer 404.
+// product with its units). The OpenAPI document (/api/v1/openapi.json) and
+// its reference (/api/v1/docs) are public, in every environment: anyone reads
+// them without a key, and the document names this deployment's URL.
 const exposure = createExposure(appRouter);
 const handler = createOpenApiHandler(exposure.router, {
-  docs: env.NODE_ENV === "development",
   onError: (error) => {
     const apiError = error instanceof Error ? error : new Error("Unknown oRPC error");
     try {
@@ -27,6 +26,7 @@ const handler = createOpenApiHandler(exposure.router, {
     }
   },
 });
+const reference = createApiReference(exposure.router);
 
 const bodyLimits = routeBodyLimits(exposure.procedures);
 
@@ -37,6 +37,7 @@ async function handleRequest(request: Request) {
   const response = await handleOpenApiRequest(handler, request, {
     ports: apiPorts,
     bodyLimits,
+    reference,
   });
   return response ?? Response.json({ message: "Not found" }, { status: 404 });
 }
