@@ -9546,7 +9546,7 @@
     },
     "confirm": {
       "label": "Vor sensiblen Aktionen um Bestätigung bitten",
-      "description": "Vor einer Löschung oder einer Nachricht an einen Kunden erhält der Agent zuerst eine Vorschau und muss bestätigen; er ist angewiesen, sie Ihnen zuerst zu zeigen. Das Erfassen, Zurückgeben oder Löschen einer Zahlung, das Ausgeben von KI-Guthaben, das Entfernen eines Mitglieds und das Zurückziehen einer Einladung verlangen immer eine Bestätigung, auch wenn dies aus ist."
+      "description": "Vor einer Löschung oder einer Nachricht an einen Kunden erhält der Agent zuerst eine Vorschau und muss bestätigen; er ist angewiesen, sie Ihnen zuerst zu zeigen. Das Erfassen, Zurückgeben oder Löschen einer Zahlung, das Ausgeben von KI-Guthaben, das Bestätigen einer Reservierung über den verfügbaren Bestand hinaus, das Entfernen eines Mitglieds und das Zurückziehen einer Einladung verlangen immer eine Bestätigung, auch wenn dies aus ist."
     },
     "bundlesTitle": "Angezeigte Tools",
     "bundlesHint": "Der Agent sieht diese Tool-Pakete. Sie können später weitere hinzufügen.",

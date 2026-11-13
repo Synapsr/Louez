@@ -13,8 +13,7 @@
  *   stock is not held against the request. The request fits when it fits at
  *   every instant of its window.
  * - The units a spread line already holds are granted first, each on its own
- *   combination, one by one, each only if it fits. A held unit that does not
- *   fit is reported, and not replaced by another one.
+ *   combination, one by one, each only if it fits.
  * - Then the lines, in their order. A spread line (one booked with no exact
  *   combination) is a demand like the others' and gets the most that fits
  *   next to what was granted before it. A single line (a checkout line, or
@@ -24,9 +23,9 @@
  *   fits. A placement is never revisited.
  * - A line that does not fit whole takes the most that fits: a single line
  *   the most one candidate gives, the first of them on a tie.
- * - The units a single line holds are not granted ahead of it: each is
- *   covered when it is on the combination the line is placed on, within what
- *   the line is served, in their order; the others are reported.
+ *
+ * Whether a unit the request holds is owed to the other bookings is another
+ * question, answered apart from the allocation (`heldUnitsOwed`).
  *
  * What the rule does not see:
  *
@@ -109,9 +108,8 @@ export interface StockLine {
   /** One combination covers the whole line; otherwise it spreads over its candidates. */
   single: boolean;
   /**
-   * The combination of each unit the line already holds. A spread line's are
-   * granted there, before any line takes a unit it does not hold yet; a
-   * single line's are covered by where it is placed.
+   * The combination of each unit a spread line already holds. They are
+   * granted there, before any line takes a unit it does not hold yet.
    */
   held?: readonly string[];
 }
@@ -125,11 +123,6 @@ export interface StockLineAllocation {
    * a line with no candidate.
    */
   combinationKey: string | null;
-  /**
-   * The position in the line's `held` of each unit the stock does not cover
-   * where the line holds it, in order. Empty when the line holds none.
-   */
-  heldShort: number[];
 }
 
 // --- Flows on combination indices ---------------------------------------------
@@ -520,35 +513,10 @@ export const allocateStock = (input: {
    */
   check?: "folded" | "literal";
 }): StockLineAllocation[] => {
-  const keys = [...input.capacity.keys()];
-  const indexOf = new Map(keys.map((key, index) => [key, index]));
-  const capacity = Int32Array.from(keys, (key) => Math.max(0, input.capacity.get(key) ?? 0));
-  /** The combinations at these keys that hold a unit, once each, in their order. */
-  const usable = (combinationKeys: readonly string[]) => [
-    ...new Set(
-      combinationKeys.flatMap((key) => {
-        const index = indexOf.get(key);
-        return index !== undefined && (capacity[index] ?? 0) > 0 ? [index] : [];
-      }),
-    ),
-  ];
-
-  // Bookings that accept the same combinations share one list of them.
-  const lists = new Map<string, number[]>();
-  const bookings = input.bookings.flatMap((booking) => {
-    const accepted = usable(booking.demand.combinationKeys).sort((a, b) => a - b);
-    const signature = signatureOf(accepted);
-    const combinations = lists.get(signature) ?? accepted;
-    lists.set(signature, combinations);
-    // A booking no unit can serve lacks it whatever the request takes.
-    return combinations.length > 0 && booking.demand.quantity > 0
-      ? [{ ...booking, demand: { combinations, quantity: booking.demand.quantity } }]
-      : [];
-  });
+  const { keys, indexOf, capacity, usable, bookings } = stockOf(input);
   const lines = input.lines.map((line) => {
     const candidates = usable(line.candidates);
-    // Only a spread line's held units are granted ahead of the lines.
-    const held = line.single ? [] : (line.held ?? []).slice(0, line.quantity);
+    const held = (line.held ?? []).slice(0, line.quantity);
     return {
       line,
       candidates,
@@ -577,16 +545,15 @@ export const allocateStock = (input: {
   const granted: Demand[] = [];
   const fitsWith = (...more: Demand[]) => fits([...granted, ...more]);
   const servedHeld = lines.map(() => 0);
-  const heldShort = lines.map((): number[] => []);
   for (const [index, entry] of lines.entries()) {
-    for (const [position, key] of entry.held.entries()) {
+    for (const key of entry.held) {
       const combination = indexOf.get(key);
-      const unit =
-        combination === undefined ? undefined : { combinations: [combination], quantity: 1 };
-      if (unit && fitsWith(unit)) {
+      if (combination === undefined) continue;
+      const unit = { combinations: [combination], quantity: 1 };
+      if (fitsWith(unit)) {
         granted.push(unit);
         servedHeld[index] = (servedHeld[index] ?? 0) + 1;
-      } else heldShort[index]?.push(position);
+      }
     }
   }
 
@@ -597,7 +564,7 @@ export const allocateStock = (input: {
       const asked = (quantity: number) => ({ combinations: candidates, quantity });
       const served = largestWhere(free, (quantity) => fitsWith(asked(quantity)));
       granted.push(asked(served));
-      return { served: held + served, combinationKey: null, heldShort: heldShort[index] ?? [] };
+      return { served: held + served, combinationKey: null };
     }
 
     const on = (combination: number, quantity: number) => ({
@@ -632,29 +599,105 @@ export const allocateStock = (input: {
       served: held + served,
       combinationKey:
         combination !== undefined ? (keys[combination] ?? null) : (line.candidates[0] ?? null),
-      heldShort: heldOutside(
-        line.held ?? [],
-        combination === undefined ? undefined : keys[combination],
-        served,
-      ),
     };
   });
 };
 
 /**
- * The position of each unit a single line holds that its placement does not
- * cover: off the combination it is placed on, or past what it is served there.
+ * The stock and the other bookings on combination indices, as `allocateStock`
+ * and `heldUnitsOwed` read them.
  */
-const heldOutside = (
-  held: readonly string[],
-  placedOn: string | undefined,
-  served: number,
-): number[] => {
-  const short: number[] = [];
-  let covered = 0;
-  for (const [position, key] of held.entries()) {
-    if (key === placedOn && covered < served) covered += 1;
-    else short.push(position);
+const stockOf = (input: {
+  capacity: ReadonlyMap<string, number>;
+  bookings: readonly StockBooking[];
+}) => {
+  const keys = [...input.capacity.keys()];
+  const indexOf = new Map(keys.map((key, index) => [key, index]));
+  const capacity = Int32Array.from(keys, (key) => Math.max(0, input.capacity.get(key) ?? 0));
+  /** The combinations at these keys that hold a unit, once each, in their order. */
+  const usable = (combinationKeys: readonly string[]) => [
+    ...new Set(
+      combinationKeys.flatMap((key) => {
+        const index = indexOf.get(key);
+        return index !== undefined && (capacity[index] ?? 0) > 0 ? [index] : [];
+      }),
+    ),
+  ];
+
+  // Bookings that accept the same combinations share one list of them.
+  const lists = new Map<string, number[]>();
+  const bookings = input.bookings.flatMap((booking) => {
+    const accepted = usable(booking.demand.combinationKeys).sort((a, b) => a - b);
+    const signature = signatureOf(accepted);
+    const combinations = lists.get(signature) ?? accepted;
+    lists.set(signature, combinations);
+    // A booking no unit can serve lacks it whatever the request takes.
+    return combinations.length > 0 && booking.demand.quantity > 0
+      ? [{ ...booking, demand: { combinations, quantity: booking.demand.quantity } }]
+      : [];
+  });
+  return { keys, indexOf, capacity, usable, bookings };
+};
+
+/** A unit a line of the request holds: the line, and its place among that line's units. */
+export interface HeldUnitPosition {
+  line: number;
+  position: number;
+}
+
+/**
+ * Which units the request holds are owed to the other bookings: decided apart
+ * from the allocation of the lines, against the other bookings and the held
+ * units only, with the rule of `allocateStock` (the others come first, and
+ * what they lack because the store booked them over its stock is not held
+ * against the request).
+ *
+ * The held units are taken in the order of the lines, then of their units,
+ * every one of them, whatever the line asks for. Each is an exact demand of
+ * one unit on its own combination, accepted when the other bookings, the held
+ * units accepted before it and itself fit at every instant. What the lines
+ * ask beyond the units they hold plays no part.
+ *
+ * - `owed`: a unit refused that would be accepted if there were no other
+ *   bookings: they need it.
+ * - `unplaceable`: a unit refused even with no other booking: its combination
+ *   is unknown or holds no unit, or more units are held on it than it has.
+ */
+export const heldUnitsOwed = (input: {
+  /** Rentable units per combination. */
+  capacity: ReadonlyMap<string, number>;
+  /** What the other bookings ask, and when. */
+  bookings: readonly StockBooking[];
+  /** Per line, the combination of each unit it holds. */
+  held: ReadonlyArray<readonly string[]>;
+  /** As for `allocateStock`. */
+  check?: "folded" | "literal";
+}): { owed: HeldUnitPosition[]; unplaceable: HeldUnitPosition[] } => {
+  const { indexOf, capacity, bookings } = stockOf(input);
+  const check = input.check ?? "folded";
+  const fits = fitTest(instantsOf(bookings, capacity, check === "literal"), capacity, [], check);
+
+  const owed: HeldUnitPosition[] = [];
+  const unplaceable: HeldUnitPosition[] = [];
+  const accepted: Demand[] = [];
+  // The held units each combination takes when no other booking asks for it.
+  const takenAlone = new Int32Array(capacity.length);
+  for (const [line, keys] of input.held.entries()) {
+    for (const [position, key] of keys.entries()) {
+      const combination = indexOf.get(key);
+      if (
+        combination === undefined ||
+        (takenAlone[combination] ?? 0) >= (capacity[combination] ?? 0)
+      ) {
+        // Refused with the other bookings too: fitting next to them is harder.
+        unplaceable.push({ line, position });
+        continue;
+      }
+      takenAlone[combination] = (takenAlone[combination] ?? 0) + 1;
+      const unit = { combinations: [combination], quantity: 1 };
+      if (fits([...accepted, unit])) accepted.push(unit);
+      else owed.push({ line, position });
+    }
   }
-  return short;
+  return { owed, unplaceable };
 };

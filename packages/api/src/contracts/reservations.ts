@@ -854,10 +854,11 @@ export interface ReservationUnitConflict {
   unitId: string;
   identifier: string;
   /**
-   * `owed_to_other_bookings`: no other booking holds the unit, and the stock
-   * owes it to bookings that left a choice open (a size, a colour). Absent
-   * when another booking holds it over these dates, or it is retired or in
-   * downtime.
+   * `owed_to_other_bookings`: no other booking holds the unit, but the stock
+   * needs it for the other bookings over these dates (ones that left a size
+   * or a colour open, or were not given their units yet): next to them it
+   * does not fit, and without them it would. Absent when another booking
+   * holds it over these dates, or it is retired or in downtime.
    */
   reason?: "owed_to_other_bookings";
 }
@@ -869,7 +870,7 @@ const unitConflictCauses = (conflicts: ReservationUnitConflict[]) =>
       ? "Another booking holds them over these dates, or they are retired or in downtime."
       : null,
     conflicts.some((conflict) => conflict.reason === "owed_to_other_bookings")
-      ? "Other bookings that left a choice open (a size, a colour) need them over these dates, and the stock has no other unit for them."
+      ? "No other booking holds them, but the stock needs them for other bookings over these dates (ones that left a size or a colour open, or were not given their units yet)."
       : null,
   ]
     .filter(Boolean)
@@ -918,7 +919,7 @@ export const reservationErrors = {
     }),
   /**
    * Units the reservation holds are held by another booking over its dates,
-   * out of the stock, or owed to bookings that left a choice open.
+   * out of the stock, or needed by the other bookings (`reason`).
    * `allowOverbooking` does not pass it.
    */
   unitsUnavailable: (conflicts: ReservationUnitConflict[]) =>

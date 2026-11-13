@@ -9546,7 +9546,7 @@
     },
     "confirm": {
       "label": "Chiedi conferma prima delle azioni sensibili",
-      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare, restituire o eliminare un pagamento, spendere crediti IA, rimuovere un membro e annullare un invito chiedono sempre conferma, anche se disattivato."
+      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare, restituire o eliminare un pagamento, spendere crediti IA, confermare una prenotazione oltre lo stock disponibile, rimuovere un membro e annullare un invito chiedono sempre conferma, anche se disattivato."
     },
     "bundlesTitle": "Strumenti mostrati",
     "bundlesHint": "L’agente vede questi gruppi di strumenti. Potrà aggiungerne altri in seguito.",

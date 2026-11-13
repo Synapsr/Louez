@@ -5,6 +5,7 @@ import { describe, mock, test } from "node:test";
 import type { BookingAttributeAxis } from "@louez/types";
 
 import type {
+  HeldUnitPosition,
   StockBooking,
   StockCombination,
   StockDemand,
@@ -18,7 +19,8 @@ const require = createRequire(import.meta.url);
 const variantUtils: Record<string, unknown> = require("@louez/utils");
 mock.module("@louez/utils", { namedExports: variantUtils });
 
-const { allocateStock, combinationsServing, maxServed } = await import("./stock-allocation");
+const { allocateStock, combinationsServing, heldUnitsOwed, maxServed } =
+  await import("./stock-allocation");
 
 // --- Instances ------------------------------------------------------------------
 
@@ -180,18 +182,15 @@ const allocateByRule = (instance: Instance): StockLineAllocation[] => {
   };
 
   const granted: StockDemand[] = [];
-  // A single line's held units are not granted ahead of it.
-  const heldOf = (line: StockLine) =>
-    line.single ? [] : (line.held ?? []).slice(0, line.quantity);
-  const heldShort = lines.map((): number[] => []);
-  const servedHeld = lines.map((line, index) => {
+  const heldOf = (line: StockLine) => (line.held ?? []).slice(0, line.quantity);
+  const servedHeld = lines.map((line) => {
     let served = 0;
-    for (const [position, key] of heldOf(line).entries()) {
+    for (const key of heldOf(line)) {
       const unit = { combinationKeys: [key], quantity: 1 };
       if (fits([...granted, unit])) {
         granted.push(unit);
         served += 1;
-      } else heldShort[index]?.push(position);
+      }
     }
     return served;
   });
@@ -205,7 +204,7 @@ const allocateByRule = (instance: Instance): StockLineAllocation[] => {
         quantity,
       }));
       granted.push({ combinationKeys: line.candidates, quantity: served });
-      return { served: held + served, combinationKey: null, heldShort: heldShort[index] ?? [] };
+      return { served: held + served, combinationKey: null };
     }
     // A combination with no unit is no candidate.
     const candidates = [...new Set(line.candidates)].filter((key) => (capacity.get(key) ?? 0) > 0);
@@ -233,18 +232,7 @@ const allocateByRule = (instance: Instance): StockLineAllocation[] => {
       served = Math.max(0, served);
     }
     if (placed !== undefined) granted.push(on(placed, served));
-    // A unit the line holds is covered on the combination it is placed on, up to what it gets.
-    let covered = 0;
-    const short = (line.held ?? []).flatMap((key, position) => {
-      if (key !== placed || covered >= served) return [position];
-      covered += 1;
-      return [];
-    });
-    return {
-      served: held + served,
-      combinationKey: placed ?? line.candidates[0] ?? null,
-      heldShort: short,
-    };
+    return { served: held + served, combinationKey: placed ?? line.candidates[0] ?? null };
   });
 };
 
@@ -619,37 +607,6 @@ describe("allocateStock, named cases", () => {
     );
   });
 
-  test("a held unit the stock does not cover where the line holds it is reported", () => {
-    const medium = serving({ selectedAttributes: { size: "M" } });
-    // Another booking asks two M units, colour open: both M units are its.
-    const others = [[{ combinationKeys: medium, quantity: 2 }]];
-    const heldShortOf = (line: StockLine) =>
-      allocateStock({ capacity: oneOfEach, bookings: bookingsOf(others), lines: [line] }).map(
-        (allocation) => [allocation.served, allocation.heldShort],
-      );
-
-    // A spread line holding M/red: L/red serves the rest, the held unit is short.
-    assert.deepEqual(heldShortOf({ ...open(serving({}), 2), held: [M_RED.combinationKey] }), [
-      [1, [0]],
-    ]);
-    // A single line on M/red holding it: nothing of M/red is left for it.
-    assert.deepEqual(heldShortOf({ ...exact(M_RED), held: [M_RED.combinationKey] }), [[0, [0]]]);
-    // A single line on L/red holding L/red, then one it is not placed on.
-    assert.deepEqual(
-      heldShortOf({ ...exact(L_RED, 2), held: [L_RED.combinationKey, M_BLUE.combinationKey] }),
-      [[1, [1]]],
-    );
-    // Nothing else asks for them: every held unit is covered.
-    assert.deepEqual(
-      allocateStock({
-        capacity: oneOfEach,
-        bookings: [],
-        lines: [{ ...exact(M_RED), held: [M_RED.combinationKey] }],
-      }).map((allocation) => allocation.heldShort),
-      [[]],
-    );
-  });
-
   test("a unit held by a later line is not taken by an earlier one", () => {
     const anyUnit = serving({});
     assert.deepEqual(
@@ -752,14 +709,14 @@ describe("allocateStock, named cases", () => {
       bookings: [],
       lines: [{ quantity: 3, candidates: [...capacity.keys()], single: true }],
     });
-    assert.deepEqual(short, { served: 2, combinationKey: M_RED.combinationKey, heldShort: [] });
+    assert.deepEqual(short, { served: 2, combinationKey: M_RED.combinationKey });
 
     const [none] = allocateStock({
       capacity: new Map([[M_BLUE.combinationKey, 0]]),
       bookings: [],
       lines: [{ quantity: 1, candidates: [M_BLUE.combinationKey], single: true }],
     });
-    assert.deepEqual(none, { served: 0, combinationKey: M_BLUE.combinationKey, heldShort: [] });
+    assert.deepEqual(none, { served: 0, combinationKey: M_BLUE.combinationKey });
   });
 
   test("open choices are placed afresh at each instant, the request's spread lines too", () => {
@@ -846,15 +803,15 @@ describe("allocateStock places single lines first fit, never revisiting one", ()
     single: true,
   }));
   const expected = [
-    { served: 4, combinationKey: "c0", heldShort: [] },
-    { served: 4, combinationKey: "c1", heldShort: [] },
-    { served: 4, combinationKey: "c2", heldShort: [] },
-    { served: 4, combinationKey: "c3", heldShort: [] },
+    { served: 4, combinationKey: "c0" },
+    { served: 4, combinationKey: "c1" },
+    { served: 4, combinationKey: "c2" },
+    { served: 4, combinationKey: "c3" },
     // Short from here on: each takes the most a combination has left.
-    { served: 4, combinationKey: "c4", heldShort: [] },
-    { served: 4, combinationKey: "c5", heldShort: [] },
-    { served: 4, combinationKey: "c6", heldShort: [] },
-    { served: 4, combinationKey: "c7", heldShort: [] },
+    { served: 4, combinationKey: "c4" },
+    { served: 4, combinationKey: "c5" },
+    { served: 4, combinationKey: "c6" },
+    { served: 4, combinationKey: "c7" },
   ];
 
   test("the 4s take the sevens and the first 6 is short", () => {
@@ -995,5 +952,203 @@ describe("allocateStock cost", () => {
       ratio < GROWTH_CEILING,
       `6,000: ${half.toFixed(0)} ms, 12,000: ${whole.toFixed(0)} ms, ratio ${ratio.toFixed(2)}`,
     );
+  });
+});
+
+// --- Held units owed to the other bookings ------------------------------------------
+
+/** An instance as the review wrote it: the held units are those of its lines. */
+type HeldInstance = {
+  capacity: Array<[string, number]>;
+  bookings: StockBooking[];
+  lines: StockLine[];
+};
+const owedOf = ({ capacity, bookings, lines }: HeldInstance, check?: "folded" | "literal") =>
+  heldUnitsOwed({
+    capacity: new Map(capacity),
+    bookings,
+    held: lines.map((line) => line.held ?? []),
+    check,
+  });
+const at = (line: number, position: number): HeldUnitPosition => ({ line, position });
+
+describe("heldUnitsOwed, named cases", () => {
+  test("the reservation's own unassigned demand never makes its own held unit owed", () => {
+    // Two units of A, nobody else: both held units fit, one unassigned unit is missing.
+    const instance: HeldInstance = {
+      capacity: [["A", 2]],
+      bookings: [],
+      lines: [
+        { quantity: 2, candidates: ["A"], single: true, held: ["A"] },
+        { quantity: 1, candidates: ["A"], single: true, held: ["A"] },
+      ],
+    };
+    assert.deepEqual(owedOf(instance), { owed: [], unplaceable: [] });
+    assert.deepEqual(owedOf(instance, "literal"), { owed: [], unplaceable: [] });
+  });
+
+  test("a unit held past what its line asks for is reported when another booking needs it", () => {
+    const instance: HeldInstance = {
+      capacity: [
+        ["A", 1],
+        ["B", 1],
+      ],
+      bookings: [{ start: 0, end: 1, demand: { combinationKeys: ["B"], quantity: 1 } }],
+      lines: [{ quantity: 1, candidates: ["A", "B"], single: false, held: ["A", "B"] }],
+    };
+    assert.deepEqual(owedOf(instance), { owed: [at(0, 1)], unplaceable: [] });
+    assert.deepEqual(owedOf(instance, "literal"), { owed: [at(0, 1)], unplaceable: [] });
+  });
+
+  test("a held unit another booking's open choice needs is owed, wherever the line is placed", () => {
+    // Another booking asks two M, colour open: both M units are its.
+    const medium = serving({ selectedAttributes: { size: "M" } });
+    const owed = (held: string[][]) =>
+      heldUnitsOwed({
+        capacity: oneOfEach,
+        bookings: bookingsOf([[{ combinationKeys: medium, quantity: 2 }]]),
+        held,
+      });
+
+    assert.deepEqual(owed([[M_RED.combinationKey]]), { owed: [at(0, 0)], unplaceable: [] });
+    assert.deepEqual(owed([[L_RED.combinationKey]]), { owed: [], unplaceable: [] });
+    // An exact L line holding an M unit: what decides is the M unit, not the line.
+    assert.deepEqual(owed([[], [L_RED.combinationKey, M_BLUE.combinationKey]]), {
+      owed: [at(1, 1)],
+      unplaceable: [],
+    });
+    // Nobody else: every held unit fits.
+    assert.deepEqual(
+      heldUnitsOwed({ capacity: oneOfEach, bookings: [], held: [[M_RED.combinationKey]] }),
+      { owed: [], unplaceable: [] },
+    );
+  });
+
+  test("the held units are taken in the order of the lines, then of their units", () => {
+    // One unit of A and one of B; another booking takes either.
+    const capacity = new Map([
+      ["A", 1],
+      ["B", 1],
+    ]);
+    const bookings = bookingsOf([[{ combinationKeys: ["A", "B"], quantity: 1 }]]);
+    const owed = (held: string[][]) => heldUnitsOwed({ capacity, bookings, held });
+
+    assert.deepEqual(owed([["A"], ["B"]]).owed, [at(1, 0)]);
+    assert.deepEqual(owed([["B"], ["A"]]).owed, [at(1, 0)]);
+    assert.deepEqual(owed([["B", "A"]]).owed, [at(0, 1)]);
+    // The order of the stock and of the bookings plays no part, and every run answers the same.
+    for (let run = 0; run < 3; run += 1) {
+      assert.deepEqual(
+        heldUnitsOwed({
+          capacity: new Map([...capacity].reverse()),
+          bookings: bookingsOf([[{ combinationKeys: ["B", "A"], quantity: 1 }]]),
+          held: [["A"], ["B"]],
+        }).owed,
+        [at(1, 0)],
+      );
+    }
+  });
+
+  test("a unit no stock can take, other bookings or not, is unplaceable, not owed", () => {
+    const capacity = new Map([
+      ["A", 0],
+      ["B", 1],
+    ]);
+    // A holds no unit, "none" is no combination, and B has one unit for two held.
+    assert.deepEqual(heldUnitsOwed({ capacity, bookings: [], held: [["A", "none", "B", "B"]] }), {
+      owed: [],
+      unplaceable: [at(0, 0), at(0, 1), at(0, 3)],
+    });
+    // Another booking needs B: the first B is owed to it, the second fits nowhere anyway.
+    assert.deepEqual(
+      heldUnitsOwed({
+        capacity,
+        bookings: bookingsOf([[{ combinationKeys: ["B"], quantity: 1 }]]),
+        held: [["B"], ["B"]],
+      }),
+      { owed: [at(0, 0)], unplaceable: [at(1, 0)] },
+    );
+  });
+});
+
+/**
+ * The definition, read by brute force: the held units in their order, each
+ * accepted when the others, the units accepted before it and itself get, at
+ * every instant, what the others get alone plus every unit accepted. Owed: a
+ * unit that pass refuses with the other bookings, and accepts with none.
+ * Unplaceable: one it refuses with none.
+ */
+const owedByDefinition = (
+  capacity: ReadonlyMap<string, number>,
+  instants: readonly StockDemand[][],
+  held: readonly (readonly string[])[],
+) => {
+  const refusedNextTo = (others: readonly StockDemand[][]) => {
+    const moments = others.length > 0 ? others : [[]];
+    const alone = moments.map((demands) => mostServedByAssignment(demands, capacity));
+    const accepted: StockDemand[] = [];
+    const refused = new Set<string>();
+    for (const [line, keys] of held.entries()) {
+      for (const [position, key] of keys.entries()) {
+        const unit = { combinationKeys: [key], quantity: 1 };
+        const fits = moments.every(
+          (demands, index) =>
+            mostServedByAssignment([...demands, ...accepted, unit], capacity) ===
+            (alone[index] ?? 0) + accepted.length + 1,
+        );
+        if (fits) accepted.push(unit);
+        else refused.add(`${line}:${position}`);
+      }
+    }
+    return refused;
+  };
+  const withOthers = refusedNextTo(instants);
+  const withNone = refusedNextTo([]);
+  const positions = held.flatMap((keys, line) => keys.map((_key, position) => at(line, position)));
+  const named = (unit: HeldUnitPosition) => `${unit.line}:${unit.position}`;
+  return {
+    owed: positions.filter((unit) => withOthers.has(named(unit)) && !withNone.has(named(unit))),
+    unplaceable: positions.filter((unit) => withNone.has(named(unit))),
+  };
+};
+
+/** Small instances: those of `instanceOf`, every line holding up to three units, any of them. */
+const heldInstanceOf = (seed: number) => {
+  const instance = instanceOf(seed, { openOthers: true, instants: 4, spreadLines: true });
+  const { upTo } = generatorOf(seed * 31);
+  const namable = [...instance.capacity.keys(), "none"];
+  const held = instance.lines.map(() =>
+    Array.from({ length: upTo(3) }, () => namable[upTo(namable.length - 1)] ?? "none"),
+  );
+  return { ...instance, held };
+};
+
+describe("heldUnitsOwed against its definition read by brute force", () => {
+  const seeds = Array.from({ length: 3_000 }, (_, index) => index + 1);
+
+  test("each held unit is owed, unplaceable or accepted as the definition says", () => {
+    let owed = 0;
+    let unplaceable = 0;
+    for (const seed of seeds) {
+      const { capacity, instants, held } = heldInstanceOf(seed);
+      const answer = heldUnitsOwed({ capacity, bookings: bookingsOf(instants), held });
+      assert.deepEqual(answer, owedByDefinition(capacity, instants, held), `seed ${seed}`);
+      owed += answer.owed.length;
+      unplaceable += answer.unplaceable.length;
+    }
+    // The cases reach both answers, often.
+    assert.ok(owed >= 300 && unplaceable >= 300, `${owed} owed, ${unplaceable} unplaceable`);
+  });
+
+  test("the folded check answers as the rule written as a flow per instant", () => {
+    for (const seed of seeds) {
+      const { capacity, instants, held } = heldInstanceOf(seed);
+      const bookings = bookingsOf(instants);
+      assert.deepEqual(
+        heldUnitsOwed({ capacity, bookings, held }),
+        heldUnitsOwed({ capacity, bookings, held, check: "literal" }),
+        `seed ${seed}`,
+      );
+    }
   });
 });

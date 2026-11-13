@@ -9546,7 +9546,7 @@
     },
     "confirm": {
       "label": "Minta konfirmasi sebelum tindakan sensitif",
-      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat, mengembalikan, atau menghapus pembayaran, memakai kredit AI, mengeluarkan anggota, dan membatalkan undangan selalu meminta konfirmasi, meski ini dimatikan."
+      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat, mengembalikan, atau menghapus pembayaran, memakai kredit AI, mengonfirmasi reservasi melebihi stok yang tersedia, mengeluarkan anggota, dan membatalkan undangan selalu meminta konfirmasi, meski ini dimatikan."
     },
     "bundlesTitle": "Alat yang ditampilkan",
     "bundlesHint": "Agen melihat kumpulan alat ini. Anda dapat menambahkan lainnya nanti.",

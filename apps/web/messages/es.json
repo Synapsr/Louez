@@ -9546,7 +9546,7 @@
     },
     "confirm": {
       "label": "Pedir confirmación antes de las acciones sensibles",
-      "description": "Antes de una eliminación o un mensaje a un cliente, el agente recibe primero una vista previa y debe confirmar; tiene instrucciones de mostrársela antes. Registrar, devolver o eliminar un pago, gastar créditos de IA, quitar a un miembro y cancelar una invitación siempre piden confirmación, incluso desactivado."
+      "description": "Antes de una eliminación o un mensaje a un cliente, el agente recibe primero una vista previa y debe confirmar; tiene instrucciones de mostrársela antes. Registrar, devolver o eliminar un pago, gastar créditos de IA, confirmar una reserva por encima del stock disponible, quitar a un miembro y cancelar una invitación siempre piden confirmación, incluso desactivado."
     },
     "bundlesTitle": "Herramientas mostradas",
     "bundlesHint": "El agente ve estos conjuntos de herramientas. Podrá añadir más después.",

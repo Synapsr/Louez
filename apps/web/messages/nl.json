@@ -9546,7 +9546,7 @@
     },
     "confirm": {
       "label": "Om bevestiging vragen vóór gevoelige acties",
-      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling registreren, terugstorten of verwijderen, AI-tegoed uitgeven, een lid verwijderen en een uitnodiging intrekken vragen altijd om bevestiging, ook als dit uit staat."
+      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling registreren, terugstorten of verwijderen, AI-tegoed uitgeven, een reservering bevestigen boven de beschikbare voorraad, een lid verwijderen en een uitnodiging intrekken vragen altijd om bevestiging, ook als dit uit staat."
     },
     "bundlesTitle": "Getoonde tools",
     "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",

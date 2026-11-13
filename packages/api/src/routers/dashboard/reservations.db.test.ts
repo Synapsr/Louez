@@ -2297,6 +2297,139 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         assert.equal((await heldUnitIds(itemId)).length, 1);
       });
     });
+
+    describe("the units a quote holds, against the other bookings only", () => {
+      /** A wetsuit with one size axis and a unit of each size listed, named by its size and rank. */
+      async function wetsuit(sizes: string[]) {
+        const productId = nextId("rs_prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id: productId,
+          storeId: STORE,
+          name: `Wetsuit ${productId}`,
+          price: "10.00",
+          pricingMode: "day",
+          trackUnits: true,
+          bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+          quantity: sizes.length,
+        });
+        const unitIds = new Map<string, string>();
+        for (const [index, size] of sizes.entries()) {
+          const name = `${size}${sizes.slice(0, index + 1).filter((s) => s === size).length}`;
+          const unitId = nextId("rs_unt");
+          unitIds.set(name, unitId);
+          await louezDb.db.insert(louezDb.productUnits).values({
+            id: unitId,
+            productId,
+            identifier: name,
+            attributes: { size },
+            combinationKey: `size:${size}`,
+          });
+        }
+        /** A line of `quantity`, of `size` exactly or of any size, holding the units named. */
+        const line = async (
+          reservationId: string,
+          quantity: number,
+          size: string | null,
+          held: string[],
+          createdAt: Date,
+        ) => {
+          const itemId = nextId("rs_itm");
+          await louezDb.db.insert(louezDb.reservationItems).values({
+            id: itemId,
+            reservationId,
+            productId,
+            quantity,
+            selectedAttributes: size ? { size } : null,
+            combinationKey: size ? `size:${size}` : null,
+            unitPrice: "10.00",
+            depositPerUnit: "0.00",
+            totalPrice: "10.00",
+            productSnapshot: { name: "Wetsuit", description: null, images: [] },
+            createdAt,
+          });
+          for (const name of held) {
+            await louezDb.db.insert(louezDb.reservationItemUnits).values({
+              id: nextId("rs_asg"),
+              reservationItemId: itemId,
+              productUnitId: unitIds.get(name) ?? "",
+              identifierSnapshot: name,
+            });
+          }
+          return itemId;
+        };
+        return { productId, unitIds, line };
+      }
+      const FIRST = new Date("2030-01-01T00:00:00Z");
+      const SECOND = new Date("2030-01-02T00:00:00Z");
+
+      test("its own unassigned units never make a unit it holds owed: the flag books them over", async () => {
+        // Two A units, nobody else. Two lines on A, of two and one, each holding an A.
+        const { productId, line } = await wetsuit(["A", "A"]);
+        const quoteId = await reservation("quote");
+        await line(quoteId, 2, "A", ["A1"], FIRST);
+        await line(quoteId, 1, "A", ["A2"], SECOND);
+        // Both held units fit; the second line's unit is the one the stock lacks.
+        const short = {
+          productId,
+          productName: `Wetsuit ${productId}`,
+          combinationKey: "size:A",
+          requested: 1,
+          available: 0,
+        };
+
+        const refusal = await rejects(
+          run("updateStatus", confirmation(quoteId), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data.details, { shortfalls: [short] });
+        await nothingWritten(quoteId, "quote");
+
+        const change = await run("updateStatus", confirmation(quoteId, true), session());
+        assert.equal(change.to, "confirmed");
+        const row = await confirmedRow(quoteId);
+        assert.deepEqual(
+          { overbooked: row?.overbooked, overbookingShortfalls: row?.overbookingShortfalls },
+          { overbooked: true, overbookingShortfalls: [short] },
+        );
+      });
+
+      test("an exact L line holding an S unit, nobody else, confirms as before", async () => {
+        const { line } = await wetsuit(["S", "S", "L", "L"]);
+        const quoteId = await reservation("quote");
+        await line(quoteId, 1, "L", ["S1"], FIRST);
+
+        const change = await run("updateStatus", confirmation(quoteId), session());
+        assert.equal(change.to, "confirmed");
+        assert.equal((await confirmedRow(quoteId))?.overbooked, false);
+      });
+
+      test("a unit held past what its line asks for, which another booking needs, is refused by name", async () => {
+        // One A, one B. A confirmed booking asks the B and has no unit yet.
+        const { unitIds, line } = await wetsuit(["A", "B"]);
+        await line(await reservation("confirmed"), 1, "B", [], FIRST);
+        // The quote asks one unit of any size and holds both.
+        const quoteId = await reservation("quote");
+        const itemId = await line(quoteId, 1, null, ["A1", "B1"], SECOND);
+
+        for (const allowOverbooking of [undefined, true]) {
+          const refusal = await rejects(
+            run("updateStatus", confirmation(quoteId, allowOverbooking), session()),
+            "RESERVATION_UNITS_UNAVAILABLE",
+          );
+          assert.deepEqual(refusal.data.details, {
+            conflicts: [
+              {
+                reservationItemId: itemId,
+                unitId: unitIds.get("B1"),
+                identifier: "B1",
+                reason: "owed_to_other_bookings",
+              },
+            ],
+          });
+        }
+        await nothingWritten(quoteId, "quote");
+      });
+    });
   });
 
   // --- Concurrency (lock order: products, then the reservation) ---------------

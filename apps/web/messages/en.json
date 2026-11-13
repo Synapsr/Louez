@@ -9546,7 +9546,7 @@
     },
     "confirm": {
       "label": "Ask for confirmation before sensitive actions",
-      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording, returning or deleting a payment, spending AI credits, removing a member and cancelling an invitation always ask, even with this off."
+      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording, returning or deleting a payment, spending AI credits, confirming a reservation beyond the available stock, removing a member and cancelling an invitation always ask, even with this off."
     },
     "bundlesTitle": "Tools shown",
     "bundlesHint": "The agent sees these tool sets. You can add more later.",
