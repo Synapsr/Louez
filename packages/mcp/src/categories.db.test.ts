@@ -379,6 +379,57 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     assert.equal(rawImage.status, 415);
   });
 
+  test("OpenAPI: a body never names another category than the path", async () => {
+    const authorization = await key();
+    const a = json(await rpc("create", { name: "Path A" }));
+    const b = json(await rpc("create", { name: "Path B" }));
+    const row = async (id: unknown) =>
+      (await louezDb.db.select().from(louezDb.categories)).find((category) => category.id === id);
+    const count = async (table: typeof louezDb.apiConfirmations | typeof louezDb.apiOperations) =>
+      (await louezDb.db.select().from(table)).length;
+    const conflict = {
+      code: "PATH_PARAMETER_CONFLICT",
+      retryable: false,
+      details: { parameter: "id" },
+    };
+    const previews = await count(louezDb.apiConfirmations);
+    const operations = await count(louezDb.apiOperations);
+
+    // PATCH through A's path with B's id: refused, neither changes.
+    const renamed = await openApi(
+      "PATCH",
+      `/categories/${a.id}`,
+      { id: b.id, name: "Renamed" },
+      { authorization },
+    );
+    assert.equal(renamed.status, 400);
+    const refusal = (await renamed.json()) as Json;
+    assert.deepEqual(refusal.data, conflict);
+    assert.equal(refusal.code, "BAD_REQUEST");
+    assert.equal((await row(a.id))?.name, "Path A");
+    assert.equal((await row(b.id))?.name, "Path B");
+
+    // DELETE through A's path with B's id: refused before any preview.
+    const deleted = await openApi("DELETE", `/categories/${a.id}`, { id: b.id }, { authorization });
+    assert.equal(deleted.status, 400);
+    assert.deepEqual(((await deleted.json()) as Json).data, conflict);
+    assert.equal(await count(louezDb.apiConfirmations), previews, "nothing previewed");
+    assert.equal(await count(louezDb.apiOperations), operations, "no operation recorded");
+    assert.ok(await row(a.id));
+    assert.ok(await row(b.id));
+
+    // The path's own id, repeated in the body, is read: A changes.
+    const same = await openApi(
+      "PATCH",
+      `/categories/${a.id}`,
+      { id: a.id, name: "Path A, renamed" },
+      { authorization },
+    );
+    assert.equal(same.status, 200, await same.clone().text());
+    assert.equal((await row(a.id))?.name, "Path A, renamed");
+    assert.equal((await row(b.id))?.name, "Path B");
+  });
+
   test("delete: the dashboard runs it directly; a key confirms first, on OpenAPI and MCP", async () => {
     const authorization = await key();
     const viaRpc = json(await rpc("create", { name: "Rpc" }));

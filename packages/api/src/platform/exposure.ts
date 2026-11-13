@@ -287,13 +287,15 @@ const responseRef = (name: string) => ({ $ref: `#/components/responses/${name}` 
  * temporary link) ignores an idempotency key and never replays, so it
  * documents neither the key nor `Louez-Replayed`. Every operation documents
  * the error body: the statuses any call may meet (400, 401, 429; 403 where
- * a scope is checked; 412 where a confirmation may be asked; 415 where it
- * takes a body, every method but GET), and `default` for the others.
+ * a scope is checked; 412 where a confirmation may be asked; 415 on every
+ * method but GET, whose body is checked: one in a content type the operation
+ * does not take, or any body where it takes none), and `default` for the
+ * others.
  */
 function documented(
   meta: ExposedMeta,
   operation: OpenAPI.OperationObject,
-  options: { ownOperationId: boolean; takesBody: boolean },
+  options: { ownOperationId: boolean; checksBody: boolean },
 ): OpenAPI.OperationObject {
   const parameters = [...(operation.parameters ?? [])];
   const isWrite = meta.scope?.level === "write";
@@ -318,7 +320,7 @@ function documented(
   // A procedure without a scope (`stores_list`) refuses no connection.
   if (meta.scope) responses["403"] = responseRef("Forbidden");
   if (meta.sensitive) responses["412"] = responseRef("ConfirmationRequired");
-  if (options.takesBody) responses["415"] = responseRef("UnsupportedMediaType");
+  if (options.checksBody) responses["415"] = responseRef("UnsupportedMediaType");
   responses["429"] = responseRef("RateLimited");
   responses.default = responseRef("Error");
 
@@ -348,7 +350,7 @@ function withDocumentation(procedure: AnyProcedure, meta: ExposedMeta): AnyProce
         documented(meta, typeof spec === "function" ? spec(operation) : operation, {
           ownOperationId: def.route.operationId !== undefined,
           // oRPC reads a GET's input from the query string only.
-          takesBody: (def.route.method ?? "POST") !== "GET",
+          checksBody: (def.route.method ?? "POST") !== "GET",
         }),
     },
   });
