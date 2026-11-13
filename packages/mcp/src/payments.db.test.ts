@@ -25,7 +25,10 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 // record_deposit_return and delete_payment: what each previews and binds its
 // token to, what it writes (the payment through the app's writer, in the
 // tool's transaction, and the billing mark), what it leaves alone (no history
-// line), each refusal with its message, and who may call them.
+// line), each refusal with its message, and who may call them. On the REST
+// API, the transport's guards on their routes: the path names the record, a
+// body in another content type than JSON is refused, a deletion takes none.
+// An id sent in another case is written as stored.
 //
 // The app's writer adds the billing facts (currency, gross, insurance share):
 // apps/web/lib/reservations/dashboard-payment-writes.db.test.ts and the
@@ -68,6 +71,13 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     headers: Record<string, string>,
   ) => Promise<Response>;
   let openApiDocument: () => Promise<{ paths: Record<string, Record<string, Json>> }>;
+  /** A request to the REST API as it is sent: any body, any content type. */
+  let openApiRaw: (
+    method: string,
+    path: string,
+    body: string | null,
+    headers: Record<string, string>,
+  ) => Promise<Response>;
   let recorded: RecordedPayment[] = [];
   /** Makes the next write fail once it wrote, as a writer that throws midway. */
   let failNextWrite = false;
@@ -140,6 +150,14 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
               }
             : { method, headers },
         ),
+      );
+    openApiRaw = (method, path, body, headers) =>
+      serveOpenApi(
+        new Request(`http://louez.test/api/v1${path}`, {
+          method,
+          headers,
+          ...(body === null ? {} : { body }),
+        }),
       );
     openApiDocument = async () =>
       (await serveOpenApi(new Request("http://louez.test/api/v1/openapi.json"))).json();
@@ -1126,6 +1144,186 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       ((await denied.json()) as { data: { code: string } }).data.code,
       "PERMISSION_DENIED",
     );
+  });
+
+  /** The code of a REST refusal, from its body. */
+  const restCode = async (response: Response) =>
+    ((await response.json()) as { data?: { code?: string } }).data?.code;
+
+  test("on REST, a body naming another reservation than the path is refused before anything is asked", async () => {
+    const authorization = await key(WRITE, { confirmSensitive: false });
+    const a = await reservation();
+    const b = await reservation();
+    await payment(a.id, { type: "deposit", amount: "50.00" });
+    await payment(b.id, { type: "deposit", amount: "50.00" });
+    const asked = await confirmationCount();
+    const json = { authorization, "content-type": "application/json" };
+    const routes: Array<[string, Json]> = [
+      ["payments", { type: "rental", amount: "10.00", method: "cash" }],
+      ["deposit-returns", { amount: "10.00", method: "cash" }],
+    ];
+
+    for (const [route, body] of routes) {
+      const conflict = await openApiRaw(
+        "POST",
+        `/reservations/${a.id}/${route}`,
+        JSON.stringify({ ...body, reservationId: b.id }),
+        json,
+      );
+      assert.equal(conflict.status, 400, route);
+      assert.equal(await restCode(conflict), "PATH_PARAMETER_CONFLICT", route);
+    }
+    assert.deepEqual(recorded, [], "nothing written");
+    assert.deepEqual(
+      (await paymentsOf(a.id)).map((row) => row.type),
+      ["deposit"],
+    );
+    assert.deepEqual(
+      (await paymentsOf(b.id)).map((row) => row.type),
+      ["deposit"],
+    );
+    assert.deepEqual(await marks(), []);
+    assert.equal(await confirmationCount(), asked, "nothing previewed");
+
+    // The same id repeated in the body is the path's: asked, then recorded on it.
+    for (const [route, body] of routes) {
+      const repeated = JSON.stringify({ ...body, reservationId: a.id });
+      const first = await openApiRaw("POST", `/reservations/${a.id}/${route}`, repeated, json);
+      assert.equal(first.status, 412, route);
+      const token = ((await first.json()) as { data: { details: { confirmationToken: string } } })
+        .data.details.confirmationToken;
+      const done = await openApiRaw("POST", `/reservations/${a.id}/${route}`, repeated, {
+        ...json,
+        "louez-confirmation": token,
+      });
+      assert.equal(done.status, 200, await done.clone().text());
+      assert.equal(((await done.json()) as { reservationId: string }).reservationId, a.id);
+    }
+    assert.deepEqual(
+      (await paymentsOf(a.id)).map((row) => row.type),
+      ["rental", "deposit", "deposit_return"],
+    );
+    assert.deepEqual(
+      (await paymentsOf(b.id)).map((row) => row.type),
+      ["deposit"],
+    );
+  });
+
+  test("on REST, a body in another content type than JSON is refused, and a deletion takes none", async () => {
+    const authorization = await key(WRITE, { confirmSensitive: false });
+    const { id } = await reservation();
+    const deposit = await payment(id, { type: "deposit", amount: "50.00" });
+    const asked = await confirmationCount();
+    const routes: Array<[string, Json]> = [
+      ["payments", { type: "rental", amount: "10.00", method: "cash" }],
+      ["deposit-returns", { amount: "10.00", method: "cash" }],
+    ];
+
+    for (const [route, body] of routes) {
+      for (const contentType of ["text/plain", "application/octet-stream"]) {
+        const refused = await openApiRaw(
+          "POST",
+          `/reservations/${id}/${route}`,
+          JSON.stringify(body),
+          {
+            authorization,
+            "content-type": contentType,
+          },
+        );
+        assert.equal(refused.status, 415, `${route}, ${contentType}`);
+        assert.equal(await restCode(refused), "UNSUPPORTED_MEDIA_TYPE");
+      }
+    }
+
+    // DELETE /payments/{paymentId} takes its input from its path alone.
+    for (const [contentType, body] of [
+      ["application/json", JSON.stringify({ paymentId: deposit })],
+      ["application/json", JSON.stringify({ reason: "mistake" })],
+      ["text/plain", "delete it"],
+    ]) {
+      const refused = await openApiRaw("DELETE", `/payments/${deposit}`, body, {
+        authorization,
+        "content-type": contentType,
+      });
+      assert.equal(refused.status, 415, `${contentType} ${body}`);
+      assert.equal(await restCode(refused), "UNSUPPORTED_MEDIA_TYPE");
+    }
+    assert.deepEqual(recorded, [], "nothing written");
+    assert.deepEqual(
+      (await paymentsOf(id)).map((row) => row.type),
+      ["deposit"],
+    );
+    assert.equal(await confirmationCount(), asked, "nothing previewed");
+
+    // Without a body, or an empty one, it goes on to its confirmation.
+    for (const body of [null, ""]) {
+      const first = await openApiRaw("DELETE", `/payments/${deposit}`, body, { authorization });
+      assert.equal(first.status, 412, JSON.stringify(body));
+      assert.equal(await restCode(first), "CONFIRMATION_REQUIRED");
+    }
+    assert.equal(await confirmationCount(), asked + 2);
+  });
+
+  /** The id in other letters' case: MySQL still matches it. */
+  const otherCase = (id: string) =>
+    [...id]
+      .map((char) => (char === char.toUpperCase() ? char.toLowerCase() : char.toUpperCase()))
+      .join("");
+
+  test("a reservation named in another case is written under its id as stored", async () => {
+    const authorization = await key();
+    const { id } = await reservation();
+    await payment(id, { type: "deposit", amount: "50.00" });
+    const sent = otherCase(id);
+    assert.notEqual(sent, id);
+
+    const paid = await confirmed(authorization, "record_payment", {
+      reservationId: sent,
+      type: "rental",
+      amount: "80.00",
+      method: "cash",
+    });
+    assert.equal(answer(paid).reservationId, id);
+    const returned = await confirmed(authorization, "record_deposit_return", {
+      reservationId: sent,
+      amount: "20.00",
+      method: "cash",
+    });
+    assert.equal(answer(returned).reservationId, id);
+    assert.deepEqual(
+      recorded.map((row) => row.reservationId),
+      [id, id],
+      "the writer is handed the stored id",
+    );
+    const rows = await louezDb.db
+      .select({ reservationId: louezDb.payments.reservationId, type: louezDb.payments.type })
+      .from(louezDb.payments)
+      .where(orm.eq(louezDb.payments.reservationId, id))
+      .orderBy(louezDb.payments.type);
+    assert.deepEqual(rows, [
+      { reservationId: id, type: "rental" },
+      { reservationId: id, type: "deposit" },
+      { reservationId: id, type: "deposit_return" },
+    ]);
+    assert.deepEqual(await marks(), [{ id, storeId: STORE, version: 2 }]);
+  });
+
+  test("a payment named in another case is deleted, and its reservation marked under its id as stored", async () => {
+    const authorization = await key();
+    const { id, number } = await reservation();
+    const damage = await payment(id, { type: "damage", amount: "15.00" });
+    const sent = otherCase(damage);
+    assert.notEqual(sent, damage);
+
+    const done = await confirmed(authorization, "delete_payment", { paymentId: sent });
+    assert.deepEqual(answer(done), {
+      paymentId: damage,
+      reservationId: id,
+      number,
+      links: { dashboard: link(id) },
+    });
+    assert.deepEqual(await paymentsOf(id), []);
+    assert.deepEqual(await marks(), [{ id, storeId: STORE, version: 1 }]);
   });
 
   test("a write that fails after its confirmation spends no token", async () => {
