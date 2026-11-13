@@ -23,7 +23,10 @@ import {
 // signature check, the log and the fee runner are replaced; each call is
 // recorded with its payload, in order. A move of the cancellation into
 // packages/api must leave every case passing unchanged
-// (docs/domain/reservation-changes.md, 6a-4).
+// (docs/domain/reservation-changes.md, 6a-4). The event acts on the payment
+// row its session names, on that row's reservation, in the store whose
+// account sent it: a metadata reservation or an account other than those is
+// logged and writes nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -89,6 +92,11 @@ Reflect.get(
 
 const STORE = "store_chk_expired";
 const ACCOUNT = "acct_checkout_expired";
+const OTHER_STORE = "store_chk_exp_other";
+const OTHER_ACCOUNT = "acct_checkout_expired_other";
+/** A store that left PREVIOUS_ACCOUNT for its account of today. */
+const RECONNECTED_STORE = "store_chk_exp_moved";
+const PREVIOUS_ACCOUNT = "acct_checkout_expired_previous";
 
 const TRX = `(SELECT CONCAT(THREAD_ID, ':', EVENT_ID) FROM performance_schema.events_transactions_current WHERE THREAD_ID = PS_CURRENT_THREAD_ID())`;
 const WRITE_LOG = [
@@ -134,13 +142,29 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       return Number(rows[0]?.commits);
     };
 
-    await louezDb.db.insert(louezDb.stores).values({
-      id: STORE,
-      userId: "owner",
-      name: "Expired",
-      slug: "checkout-expired",
-      stripeAccountId: ACCOUNT,
-    });
+    await louezDb.db.insert(louezDb.stores).values([
+      {
+        id: STORE,
+        userId: "owner",
+        name: "Expired",
+        slug: "checkout-expired",
+        stripeAccountId: ACCOUNT,
+      },
+      {
+        id: OTHER_STORE,
+        userId: "other-owner",
+        name: "Other",
+        slug: "checkout-expired-other",
+        stripeAccountId: OTHER_ACCOUNT,
+      },
+      {
+        id: RECONNECTED_STORE,
+        userId: "moved-owner",
+        name: "Moved",
+        slug: "checkout-expired-moved",
+        stripeAccountId: "acct_checkout_expired_today",
+      },
+    ]);
   });
 
   after(async () => {
@@ -157,11 +181,11 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
 
   const nextId = (prefix: string) => `${prefix}_${++counter}`;
 
-  async function booking(source: "online" | "marketplace" = "online") {
+  async function booking(source: "online" | "marketplace" = "online", storeId = STORE) {
     const id = nextId("exp");
     await louezDb.db.insert(louezDb.reservations).values({
       id,
-      storeId: STORE,
+      storeId,
       customerId: "customer",
       number: id,
       status: "pending",
@@ -178,6 +202,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   async function sessionPayment(
     reservationId: string,
     status: "pending" | "cancelled" | "completed" = "pending",
+    stripeAccountId: string | null = null,
   ) {
     const sessionId = nextId("cs");
     await louezDb.db.insert(louezDb.payments).values({
@@ -188,6 +213,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       method: "stripe",
       status,
       stripeCheckoutSessionId: sessionId,
+      stripeAccountId,
     });
     return sessionId;
   }
@@ -198,18 +224,24 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     checkoutFlow: string | null = "storefront_checkout",
     // A delivery of its own, unless the test sends one event twice.
     eventId: string = nextId("evt"),
+    // The sending account, and the whole metadata, when not the session's own.
+    overrides: { account?: string | null; metadata?: Record<string, string> } = {},
   ) => {
     const event = {
       id: eventId,
       type: "checkout.session.expired",
-      account: ACCOUNT,
+      // null: an event that names no account.
+      ...(overrides.account !== null && { account: overrides.account ?? ACCOUNT }),
       data: {
         object: {
           id: sessionId,
           object: "checkout.session",
           currency: "eur",
           amount_total: 1000,
-          metadata: { reservationId, ...(checkoutFlow && { checkoutFlow }) },
+          metadata: overrides.metadata ?? {
+            reservationId,
+            ...(checkoutFlow && { checkoutFlow }),
+          },
         },
       },
     };
@@ -270,6 +302,38 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
         reservationId,
         sessionId,
         reservationCancelled,
+      },
+    },
+  ];
+
+  const reservationMismatch = (sessionId: string, expected: string, received: string) => [
+    "log.error",
+    {
+      stripeWebhook: {
+        event: "checkout.session.expired",
+        issue: "reservation_mismatch",
+        sessionId,
+        expected,
+        received,
+      },
+    },
+  ];
+
+  const accountMismatch = (
+    sessionId: string,
+    reservationId: string,
+    expected: string,
+    received: string,
+  ) => [
+    "log.error",
+    {
+      stripeWebhook: {
+        event: "checkout.session.expired",
+        issue: "connected_account_mismatch",
+        expected,
+        received,
+        reservationId,
+        sessionId,
       },
     },
   ];
@@ -465,5 +529,169 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     });
     assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
     assert.equal(await readStatus(id), "pending");
+  });
+
+  test("an event whose reservation disagrees with its payment's, in the same store: logged, nothing written on either", async () => {
+    const paid = await booking();
+    const sessionId = await sessionPayment(paid);
+    const named = await booking();
+
+    assert.deepEqual(await expire(named, sessionId), { status: 200, body: { received: true } });
+
+    assert.deepEqual(await readWrites(paid), []);
+    assert.deepEqual(await readWrites(named), []);
+    assert.deepEqual(calls, [reservationMismatch(sessionId, paid, named)]);
+    assert.equal(await readStatus(paid), "pending");
+    assert.equal(await readStatus(named), "pending");
+  });
+
+  test("an event whose reservation disagrees with its payment's, in another store: logged, nothing written on either", async () => {
+    const paid = await booking();
+    const sessionId = await sessionPayment(paid);
+    const named = await booking("online", OTHER_STORE);
+
+    assert.deepEqual(await expire(named, sessionId), { status: 200, body: { received: true } });
+
+    assert.deepEqual(await readWrites(paid), []);
+    assert.deepEqual(await readWrites(named), []);
+    assert.deepEqual(calls, [reservationMismatch(sessionId, paid, named)]);
+    assert.equal(await readStatus(paid), "pending");
+    assert.equal(await readStatus(named), "pending");
+  });
+
+  test("a session sent by another account than its store's: connected_account_mismatch logged, nothing written", async () => {
+    const id = await booking();
+    const sessionId = await sessionPayment(id);
+
+    assert.deepEqual(
+      await expire(id, sessionId, undefined, undefined, { account: OTHER_ACCOUNT }),
+      {
+        status: 200,
+        body: { received: true },
+      },
+    );
+
+    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(calls, [accountMismatch(sessionId, id, ACCOUNT, OTHER_ACCOUNT)]);
+    assert.equal(await readStatus(id), "pending");
+  });
+
+  test("a session whose metadata names no reservation is left, as before the binding", async () => {
+    const id = await booking();
+    const sessionId = await sessionPayment(id);
+
+    assert.deepEqual(
+      await expire(id, sessionId, undefined, undefined, {
+        metadata: { checkoutFlow: "storefront_checkout" },
+      }),
+      { status: 200, body: { received: true } },
+    );
+
+    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(calls, []);
+    assert.equal(await readStatus(id), "pending");
+  });
+
+  test("a session no payment row names (a payment request's): its payment_expired row on its store's reservation, nothing else", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+
+    assert.deepEqual(await expire(id, sessionId, null), { status: 200, body: { received: true } });
+
+    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
+    assert.equal(await readStatus(id), "pending");
+  });
+
+  test("a session no payment row names leaves a marketplace booking and its attempt as they are", async () => {
+    const id = await booking("marketplace");
+    // The booking's own checkout, still open.
+    await sessionPayment(id);
+    await raw.query(
+      `INSERT INTO marketplace_booking_attempts
+         (id, booking_attempt_id, store_id, quote_token_hash, reservation_id, status, expires_at)
+       VALUES (?, ?, ?, ?, ?, 'checkout_pending', ?)`,
+      [nextId("att"), `attempt-${id}`, STORE, "0".repeat(64), id, new Date("2030-01-01T00:00:00Z")],
+    );
+    const otherSession = nextId("cs");
+
+    assert.deepEqual(await expire(id, otherSession, null), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(calls, [expiredLog(id, otherSession, false)]);
+    assert.equal(await readStatus(id), "pending");
+  });
+
+  test("a session no payment row names, whose reservation is not of its account's store: logged, nothing written", async () => {
+    const named = await booking("online", OTHER_STORE);
+    const sessionId = nextId("cs");
+
+    assert.deepEqual(await expire(named, sessionId), { status: 200, body: { received: true } });
+
+    assert.deepEqual(await readWrites(named), []);
+    assert.deepEqual(calls, [accountMismatch(sessionId, named, OTHER_ACCOUNT, ACCOUNT)]);
+    assert.equal(await readStatus(named), "pending");
+  });
+
+  test("a session no payment row names, sent with no account: logged, nothing written", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+
+    assert.deepEqual(await expire(id, sessionId, undefined, undefined, { account: null }), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(calls, [
+      [
+        "log.error",
+        {
+          stripeWebhook: {
+            event: "checkout.session.expired",
+            issue: "connected_account_missing",
+            sessionId,
+          },
+        },
+      ],
+    ]);
+    assert.equal(await readStatus(id), "pending");
+  });
+
+  test("a store that reconnected: a session its payment records under the previous account is read, one its payment records under none is refused", async () => {
+    const recorded = await booking("online", RECONNECTED_STORE);
+    const recordedSession = await sessionPayment(recorded, "pending", PREVIOUS_ACCOUNT);
+
+    await expire(recorded, recordedSession, undefined, undefined, { account: PREVIOUS_ACCOUNT });
+
+    assert.deepEqual(await readWrites(recorded), [
+      "1: payments pending > cancelled",
+      "1: reservation_activity + payment_expired",
+      "2: reservations status pending > cancelled",
+      "2: reservation_activity + cancelled",
+    ]);
+    assert.deepEqual(calls.at(-1), expiredLog(recorded, recordedSession, true));
+
+    calls.length = 0;
+    const unrecorded = await booking("online", RECONNECTED_STORE);
+    const unrecordedSession = await sessionPayment(unrecorded);
+
+    await expire(unrecorded, unrecordedSession, undefined, undefined, {
+      account: PREVIOUS_ACCOUNT,
+    });
+
+    assert.deepEqual(await readWrites(unrecorded), []);
+    assert.deepEqual(calls, [
+      accountMismatch(
+        unrecordedSession,
+        unrecorded,
+        "acct_checkout_expired_today",
+        PREVIOUS_ACCOUNT,
+      ),
+    ]);
+    assert.equal(await readStatus(unrecorded), "pending");
   });
 });

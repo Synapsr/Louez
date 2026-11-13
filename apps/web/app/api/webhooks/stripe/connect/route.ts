@@ -110,11 +110,22 @@ function isValidReservationId(reservationId: string | undefined): reservationId 
 /**
  * Validates that the connected account matches the reservation's store
  * Prevents attacks where metadata is manipulated
+ *
+ * `recordedAccountId` is the account a Louez row of the reservation records for
+ * the event's object, as the deposit events read a store that reconnected since:
+ * that account is still heard about that object, and about nothing else.
  */
 async function validateConnectedAccountForReservation(
   reservationId: string,
   connectedAccountId: string | undefined,
   eventType: string,
+  {
+    recordedAccountId = null,
+    logDetails = {},
+  }: {
+    recordedAccountId?: string | null;
+    logDetails?: Record<string, unknown>;
+  } = {},
 ): Promise<{ valid: boolean; reservation?: ReservationWithRelations }> {
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
@@ -133,7 +144,11 @@ async function validateConnectedAccountForReservation(
   }
 
   // If we have a connected account, validate it matches the store
-  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+  if (
+    connectedAccountId &&
+    reservation.store.stripeAccountId !== connectedAccountId &&
+    recordedAccountId !== connectedAccountId
+  ) {
     log.error({
       stripeWebhook: {
         event: eventType,
@@ -141,6 +156,7 @@ async function validateConnectedAccountForReservation(
         expected: reservation.store.stripeAccountId,
         received: connectedAccountId,
         reservationId,
+        ...logDetails,
       },
     });
     return { valid: false };
@@ -192,7 +208,10 @@ export async function POST(request: Request) {
         break;
 
       case "checkout.session.expired":
-        await handleCheckoutExpired(event.data.object as Stripe.Checkout.Session);
+        await handleCheckoutExpired(
+          event.data.object as Stripe.Checkout.Session,
+          connectedAccountId,
+        );
         break;
 
       // Deposit authorization hold events: `handleDepositEvent` ignores a
@@ -565,19 +584,69 @@ async function handleCheckoutCompleted(
   });
 }
 
-async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
+/**
+ * An expired Checkout Session acts on the payment row its session id names, on
+ * that payment's reservation, in the store whose connected account sent the
+ * event, and on nothing else. The session id is the binding: Louez stored it
+ * on the row when it created the session. An event whose reservation or
+ * account does not agree with that row is logged and nothing is written; it
+ * is answered 2xx, as Stripe would only send it again.
+ */
+async function handleCheckoutExpired(
+  session: Stripe.Checkout.Session,
+  connectedAccountId: string | undefined,
+) {
+  // An extension's session, or one that names no reservation, is not this
+  // handler's: it returns as before the binding.
   if (session.metadata?.extensionId) return;
+  const namedReservationId = session.metadata?.reservationId;
+  if (!namedReservationId) return;
 
-  const reservationId = session.metadata?.reservationId;
-  if (!reservationId) return;
-
-  const currency = session.currency?.toUpperCase() || "EUR";
-  const amount = fromStripeCents(session.amount_total || 0, currency);
-
-  // Update pending payment to failed/cancelled
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
+  // A session with no payment row (a payment request's records none until it
+  // is paid) has only its account to bind it: the reservation its metadata
+  // names must be one of the store that account is connected to, so the
+  // event must say which account sent it.
+  if (!existingPayment && !connectedAccountId) {
+    log.error({
+      stripeWebhook: {
+        event: "checkout.session.expired",
+        issue: "connected_account_missing",
+        sessionId: session.id,
+      },
+    });
+    return;
+  }
+  const reservationId = existingPayment?.reservationId ?? namedReservationId;
+
+  if (namedReservationId !== reservationId) {
+    log.error({
+      stripeWebhook: {
+        event: "checkout.session.expired",
+        issue: "reservation_mismatch",
+        sessionId: session.id,
+        expected: reservationId,
+        received: namedReservationId,
+      },
+    });
+    return;
+  }
+
+  const { valid } = await validateConnectedAccountForReservation(
+    reservationId,
+    connectedAccountId,
+    "checkout.session.expired",
+    {
+      recordedAccountId: existingPayment?.stripeAccountId ?? null,
+      logDetails: { sessionId: session.id },
+    },
+  );
+  if (!valid) return;
+
+  const currency = session.currency?.toUpperCase() || "EUR";
+  const amount = fromStripeCents(session.amount_total || 0, currency);
 
   // A row still pending here means nobody replaced this session: the
   // customer simply never paid. A resumed or superseded checkout cancels its
@@ -585,7 +654,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
   const abandoned = existingPayment?.status === "pending";
 
   await db.transaction(async (tx) => {
-    if (existingPayment && existingPayment.status === "pending") {
+    if (existingPayment && abandoned) {
       await tx
         .update(payments)
         .set({
@@ -593,7 +662,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
           updatedAt: new Date(),
         })
         .where(eq(payments.id, existingPayment.id));
-      await markReservationIds(tx, [existingPayment.reservationId]);
+      await markReservationIds(tx, [reservationId]);
     }
 
     // Log payment expired activity
@@ -613,8 +682,13 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
     });
   });
 
-  await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
+  // A marketplace booking's attempt fails with its own session only: without
+  // the payment row, nothing ties this session to the booking's checkout.
+  if (existingPayment) await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
 
+  // The flow is a hint of the metadata, not an identifier: it only chooses
+  // whether the entry is asked about this payment's own reservation, which
+  // cancels nothing but an unpaid online checkout.
   const reservationCancelled =
     abandoned && session.metadata?.checkoutFlow === "storefront_checkout"
       ? await changeSystemReservationStatus(
