@@ -181,7 +181,7 @@ Send an API key in the \`Authorization\` header: \`Bearer lz_…\`. A store owne
 
 ## Errors
 
-An error answers with its HTTP status and a JSON body: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English, safe to show) and \`data\`. Branch on \`data.code\`, a stable code such as \`PRODUCT_NOT_FOUND\`. \`data.retryable\` says whether the same call can succeed later unchanged, and \`data.details\` holds the facts behind the error. An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\`, one per field at fault, and no \`data.code\`. Each operation names its own codes in its description; every integration should handle these:
+An error answers with its HTTP status and a JSON body: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English) and \`data\`. Branch on \`data.code\`, a stable code such as \`PRODUCT_NOT_FOUND\`. \`data.retryable\` says whether the same call can succeed later unchanged, and \`data.details\` holds the facts behind the error. An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\`, one per field at fault, and no \`data.code\`. Each operation names its own codes in its description; every integration should handle these:
 
 | Status | \`data.code\` | Meaning |
 | --- | --- | --- |
