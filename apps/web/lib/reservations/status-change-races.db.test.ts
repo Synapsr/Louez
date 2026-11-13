@@ -115,7 +115,7 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   let louezDb: typeof import("@louez/db");
   let statusChange: typeof import("@louez/api/services/reservation-status");
   let payment: typeof import("@louez/api/services/payment-reservation-status");
-  let abandoned: typeof import("./cancel-abandoned-checkout");
+  let system: typeof import("@louez/api/services/system-reservation-status");
   let quotes: typeof import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions");
   let inbox: typeof import("@louez/api/services/inbox");
   let testUrls: typeof import("@louez/api/platform/test-urls");
@@ -125,13 +125,13 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
   before(async () => {
     database = await createTestDatabase("status_races");
     louezDb = await import("@louez/db");
-    abandoned = await import("./cancel-abandoned-checkout");
     quotes = await import("@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions");
     // packages/api is ES modules: its services need the CommonJS packages'
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
     statusChange = await import("@louez/api/services/reservation-status");
     payment = await import("@louez/api/services/payment-reservation-status");
+    system = await import("@louez/api/services/system-reservation-status");
     inbox = await import("@louez/api/services/inbox");
     testUrls = await import("@louez/api/platform/test-urls");
 
@@ -1371,8 +1371,13 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         writer: "the failed checkout",
         from: "pending",
         run: (id: string) =>
-          louezDb.cancelFailedCheckoutReservation(
-            { storeId: STORE, reservationId: id, reason: "session_creation_failed" },
+          system.changeSystemReservationStatus(
+            {
+              reason: "checkout_failed",
+              storeId: STORE,
+              reservationId: id,
+              failure: "session_creation_failed",
+            },
             async () => {},
           ),
         store: "rejected",
@@ -1382,8 +1387,8 @@ describe("status change races (database)", { skip: skipWithoutTestDatabase() }, 
         writer: "the abandoned checkout",
         from: "pending",
         run: (id: string) =>
-          abandoned.cancelAbandonedCheckout(
-            { reservationId: id, checkoutSessionId: "cs_expired" },
+          system.changeSystemReservationStatus(
+            { reason: "checkout_abandoned", reservationId: id, checkoutSessionId: "cs_expired" },
             async () => {},
           ),
         store: "rejected",

@@ -45,7 +45,7 @@ for (const mode of ["request", "payment", "payment-unavailable"]) {
       getEffectiveReservationMode: () => (mode === "request" ? "request" : "payment"),
       getCheckoutChargeAmount,
       validateStripePaymentAmount,
-      cancelFailedCheckoutReservation: async () => true,
+      changeSystemReservationStatus: async () => true,
       runReservationEffects: async () => {},
       runPostCreationEffects: async () => {},
       notifyRequestReceived: async () => {},
@@ -139,7 +139,7 @@ const checkoutFixture = ({
       notifications.push(input);
     },
     startCheckoutPayment: async () => paymentUrl,
-    cancelFailedCheckoutReservation: async (input, runner) => {
+    changeSystemReservationStatus: async (input, runner) => {
       cancellations.push({ input, runner });
       return true;
     },

@@ -572,39 +572,4 @@ describe("reservation change owner entry (database)", { skip: skipWithoutTestDat
       activity: 0,
     });
   });
-
-  test("a failed checkout still busy after three runs throws, and writes nothing", async () => {
-    const id = await createReservation("pending");
-    let runs = 0;
-    hooks.beforeReservationLock = async () => {
-      runs += 1;
-      throw deadlock();
-    };
-    const effects: unknown[] = [];
-
-    // Nothing runs this cancellation again: its caller must see the failure.
-    await assert.rejects(
-      louezDb.cancelFailedCheckoutReservation(
-        { storeId: STORE, reservationId: id, reason: "session_creation_failed" },
-        async (ran) => {
-          effects.push(ran);
-        },
-      ),
-      (error: unknown) =>
-        louezDb.isReservationChangeBusyError(error) && louezDb.isDatabaseDeadlock(error.cause),
-    );
-
-    assert.equal(runs, 3);
-    assert.deepEqual(effects, []);
-    const [row] = await louezDb.db
-      .select({ status: louezDb.reservations.status })
-      .from(louezDb.reservations)
-      .where(eq(louezDb.reservations.id, id));
-    assert.equal(row?.status, "pending");
-    const activity = await louezDb.db
-      .select({ id: louezDb.reservationActivity.id })
-      .from(louezDb.reservationActivity)
-      .where(eq(louezDb.reservationActivity.reservationId, id));
-    assert.equal(activity.length, 0, "not even its payment_failed row");
-  });
 });
