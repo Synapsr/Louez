@@ -576,6 +576,116 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(!wrongSecret.ok && wrongSecret.reason, "invalid");
   });
 
+  // --- What a link keeps doing ---------------------------------------------------
+
+  test("a link given with its secret opens and continues for its user", async () => {
+    const started = await client((await apiKey())()).payments.startStripeOnboarding({});
+    const token = tokenOf(started.url);
+
+    const read = await handoffs.readHandoffLink(token, OWNER);
+    assert.ok(read.ok);
+    assert.equal(read.row.id, started.handoff.id);
+    const continued = await handoffs.continueHandoff(token, OWNER);
+    assert.ok(continued.ok && continued.state);
+    assert.equal((await handoffs.getHandoffRow(STORE, started.handoff.id)).status, "opened");
+  });
+
+  test("the page refuses another user, a removed member and a revoked connection, and changes nothing", async () => {
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Refused agent",
+      permissions: agentRights,
+    });
+    const agent = (): BaseContext => ({
+      headers: new Headers({ authorization: `Bearer ${created.key}` }),
+      transport: "mcp",
+      ports,
+      receipt: {},
+    });
+    const started = await client(agent()).payments.startStripeOnboarding({});
+    const token = tokenOf(started.url);
+
+    for (const user of [STRANGER, MEMBER]) {
+      const read = await handoffs.readHandoffLink(token, user);
+      assert.equal(!read.ok && read.reason, "other_user", user);
+      const continued = await handoffs.continueHandoff(token, user);
+      assert.equal(!continued.ok && continued.reason, "other_user", user);
+    }
+
+    // The link's user, no longer a member of the store.
+    await louezDb.db
+      .delete(louezDb.storeMembers)
+      .where(
+        orm.and(
+          orm.eq(louezDb.storeMembers.storeId, STORE),
+          orm.eq(louezDb.storeMembers.userId, OWNER),
+        ),
+      );
+    const removed = await handoffs.readHandoffLink(token, OWNER);
+    assert.equal(!removed.ok && removed.reason, "not_allowed");
+    const removedContinue = await handoffs.continueHandoff(token, OWNER);
+    assert.equal(!removedContinue.ok && removedContinue.reason, "not_allowed");
+    await louezDb.db.insert(louezDb.storeMembers).values({
+      storeId: STORE,
+      userId: OWNER,
+      role: "owner",
+    });
+
+    // The connection that asked, revoked.
+    await louezDb.db
+      .update(louezDb.apiKeys)
+      .set({ revokedAt: new Date() })
+      .where(orm.eq(louezDb.apiKeys.id, created.id));
+    const revoked = await handoffs.continueHandoff(token, OWNER);
+    assert.equal(!revoked.ok && revoked.reason, "invalid");
+
+    const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
+    assert.equal(row.status, "pending");
+    assert.equal(row.returnStateHash, null);
+  });
+
+  test("a Stripe attempt survives the agent asking again: its return still completes the step", async () => {
+    const agent = await apiKey();
+    const started = await client(agent()).payments.startStripeOnboarding({});
+    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    assert.ok(continued.ok && continued.state);
+    await handoffs.launchHandoff({
+      row: continued.row,
+      state: continued.state,
+      userId: OWNER,
+      locale: "fr",
+      ports,
+    });
+    const inFlight = await handoffs.getHandoffRow(STORE, started.handoff.id);
+
+    // The agent asks again while the user is on Stripe's page.
+    const again = await client(agent()).payments.startStripeOnboarding({});
+    assert.equal(again.handoff.id, started.handoff.id);
+    const asked = await handoffs.getHandoffRow(STORE, started.handoff.id);
+    assert.equal(asked.status, "opened");
+    assert.equal(asked.returnStateHash, inFlight.returnStateHash);
+    assert.equal(asked.providerChecks, inFlight.providerChecks);
+
+    stripe.set({ details_submitted: true, charges_enabled: true, requirements: null });
+    const back = await handoffs.checkHandoffReturn(started.handoff.id, continued.state, OWNER);
+    assert.ok(back.ok);
+    assert.deepEqual(
+      await handoffs.finishHandoffReturn({
+        row: back.row,
+        state: continued.state,
+        ports,
+        checkoutSessionId: null,
+      }),
+      { done: true },
+    );
+    // A second return of the same attempt within its lease reads the stored status.
+    const reload = await handoffs.checkHandoffReturn(started.handoff.id, continued.state, OWNER);
+    assert.ok(reload.ok);
+    assert.equal(reload.row.status, "completed");
+  });
+
   test("a link expires after a day, and asking again resumes the same handoff with a new link", async () => {
     const agent = await apiKey();
     const first = await client(agent()).payments.startStripeOnboarding({});

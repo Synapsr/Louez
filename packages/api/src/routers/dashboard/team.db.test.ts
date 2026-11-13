@@ -573,6 +573,51 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal((await handoffs())[0]?.status, "pending");
   });
 
+  test("an approval decides nothing for a removed owner or a revoked connection", async () => {
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: CO_OWNER,
+      name: "Co-owner's agent",
+      permissions: teamWrite,
+    });
+    const context = () => ({
+      headers: new Headers({ authorization: `Bearer ${created.key}` }),
+      transport: "openapi" as const,
+      ports,
+      receipt: {} as { operationId?: string; replayed?: boolean },
+    });
+    const asked = await run("invite", { email: "new@tm.test" }, context());
+    const token = tokenOf(asked.approval?.url ?? "");
+
+    // The co-owner, removed from the store since the agent asked.
+    await louezDb.db
+      .delete(louezDb.storeMembers)
+      .where(orm.eq(louezDb.storeMembers.id, membership(CO_OWNER)));
+    const removed = await rejects(
+      run("decideInvitation", { token, decision: "approve" }, session(CO_OWNER)),
+      "TEAM_APPROVAL_INVALID",
+    );
+    assert.equal(removed.data.details?.reason, "not_allowed");
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values(TEAM.filter((row) => row.userId === CO_OWNER));
+
+    // The agent's key, revoked.
+    await louezDb.db
+      .update(louezDb.apiKeys)
+      .set({ revokedAt: new Date() })
+      .where(orm.eq(louezDb.apiKeys.id, created.id));
+    const revoked = await rejects(
+      run("decideInvitation", { token, decision: "approve" }, session(CO_OWNER)),
+      "TEAM_APPROVAL_INVALID",
+    );
+    assert.equal(revoked.data.details?.reason, "invalid");
+
+    assert.equal((await invitations()).length, 0);
+    assert.equal((await handoffs())[0]?.status, "pending");
+  });
+
   test("a declined approval creates nothing, and the agent reads why", async () => {
     const context = await agent();
     const asked = await run("invite", { email: "new@tm.test" }, context());
