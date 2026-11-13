@@ -163,8 +163,10 @@ export function isApiError(error: unknown): error is ORPCError<string, ApiErrorD
 /**
  * The operation layer's own answers about an idempotency key: they say where
  * an earlier call with the key stands, not that this one was refused. They
- * are thrown before a record is claimed (platform/operations.ts), so none is
- * ever recorded; were one to reach the record, it must not be `failed`.
+ * are thrown outside the classification of a handler's error
+ * (platform/operations.ts): before a record is claimed, or after a handler
+ * that returned when its outcome could not be recorded. Were one to reach
+ * that classification, it must not be `failed`.
  */
 export const OPERATION_STATE_CODES: ReadonlySet<string> = new Set([
   "OPERATION_OUTCOME_UNKNOWN",
