@@ -225,8 +225,9 @@ export const confirmPaidReservationOrThrow = async (params: {
  * Confirm a paid pending reservation and consume its consumable stock. Stock
  * that ran out between checkout and confirmation leaves the reservation
  * pending rather than failing the webhook or the customer's return: the
- * merchant restocks and confirms from the dashboard, or confirms it over the
- * returnable stock there (`allowOverbooking`, which no payment passes).
+ * merchant restocks and confirms from the dashboard, or confirms it there
+ * over the returnable stock (`allowOverbooking`) or past the turnover buffer
+ * (`overrideTurnoverBuffer`), which no payment passes.
  */
 const confirmPaidReservation = async (
   params: Parameters<typeof confirmPaidReservationOrThrow>[0],

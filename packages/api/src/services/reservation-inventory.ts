@@ -26,7 +26,11 @@ import {
 import type { CapacityShortfall, ReservationUnitConflict } from "../contracts/reservations";
 
 import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
-import { capacityVerdictMetadata, nextCapacityVerdictDate } from "./capacity-verdict";
+import {
+  capacityVerdictMetadata,
+  nextCapacityVerdictDate,
+  turnoverBufferVerdictMetadata,
+} from "./capacity-verdict";
 import {
   allocateStock,
   combinationsServing,
@@ -167,6 +171,12 @@ export function reserveInventory(
       /** The position in `lines` of each shortfall, in the same order. */
       shortfallLineIndexes: number[];
       /**
+       * What each short line asks of the product's attributes as this check
+       * read it (its choices on the attributes the product has today), in the
+       * same order; null when it asks for none.
+       */
+      shortfallChoices: Array<UnitAttributes | null>;
+      /**
        * The units held by the lines (`assignedUnitIds`) that the other
        * bookings need, in the order of the lines (`heldUnitsOwed`).
        */
@@ -194,12 +204,14 @@ export async function reserveInventory({
   | (InventoryReserved & {
       shortfalls?: CapacityShortfall[];
       shortfallLineIndexes?: number[];
+      shortfallChoices?: Array<UnitAttributes | null>;
       uncoveredHeldUnits?: Array<{ lineIndex: number; unitId: string }>;
     })
   | ReservationFailure
 > {
   const collect = onShortfall === "collect";
   const shortfallByLineIndex = new Map<number, CapacityShortfall>();
+  const shortfallChoiceByLineIndex = new Map<number, UnitAttributes | null>();
   const uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }> = [];
   const recordShortfall = (
     index: number,
@@ -207,6 +219,10 @@ export async function reserveInventory({
     product: LockedProduct,
     combinationKey: string | null,
     available: number,
+    // What the line asks of the product's attributes as this check read it,
+    // against the product's attributes today: a choice on an attribute the
+    // product no longer has restricts nothing, and is not one.
+    selectedAttributes: UnitAttributes = {},
   ) => {
     shortfallByLineIndex.set(index, {
       productId: product.id,
@@ -215,6 +231,10 @@ export async function reserveInventory({
       requested: line.quantity,
       available,
     });
+    shortfallChoiceByLineIndex.set(
+      index,
+      Object.keys(selectedAttributes).length > 0 ? selectedAttributes : null,
+    );
   };
   const succeed = (inventory: ReservedInventory) => {
     if (!collect) return { ok: true as const, inventory };
@@ -224,6 +244,7 @@ export async function reserveInventory({
       inventory,
       shortfalls: byLine.map(([, shortfall]) => shortfall),
       shortfallLineIndexes: byLine.map(([index]) => index),
+      shortfallChoices: byLine.map(([index]) => shortfallChoiceByLineIndex.get(index) ?? null),
       uncoveredHeldUnits: [...uncoveredHeldUnits].sort((a, b) => a.lineIndex - b.lineIndex),
     };
   };
@@ -523,6 +544,7 @@ export async function reserveInventory({
           ? line.combinationKey
           : null,
         allocation.served,
+        selectedAttributes,
       );
     }
 
@@ -708,8 +730,9 @@ export class ReservationCapacityShortfallError extends ReservationInventoryError
 
 /**
  * The store's confirmation finds lines that fit without the turnover buffer
- * and not with it: `allowOverbooking` does not cover them. Each shortfall is
- * the check's with the buffer.
+ * and not with it, and was not sent with `overrideTurnoverBuffer`;
+ * `allowOverbooking` does not cover them. Each shortfall is the check's with
+ * the buffer.
  */
 export class ReservationTurnoverBufferShortfallError extends ReservationInventoryError {
   constructor(readonly shortfalls: CapacityShortfall[]) {
@@ -839,29 +862,57 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
   // only with it, a buffer-only one. Both checks place the same lines in the
   // same order, so a line is known by its position.
   const shortWithoutBuffer = new Set(unbuffered.shortfallLineIndexes);
-  const shortOnlyWithBuffer = new Set(
-    buffered.shortfallLineIndexes.filter((lineIndex) => !shortWithoutBuffer.has(lineIndex)),
-  );
+  // Each shortfall names its line and what the check read of its choice: two
+  // lines of one product, both open on a choice, are otherwise alike, and the
+  // preview's token must not take one for the other.
+  const ofLines = (
+    check: {
+      shortfalls: CapacityShortfall[];
+      shortfallLineIndexes: number[];
+      shortfallChoices: Array<UnitAttributes | null>;
+    },
+    keep: (lineIndex: number) => boolean = () => true,
+  ): CapacityShortfall[] =>
+    check.shortfalls.flatMap((shortfall, position) => {
+      const lineIndex = check.shortfallLineIndexes[position] ?? -1;
+      if (!keep(lineIndex)) return [];
+      const item = lineItems[lineIndex];
+      return [
+        {
+          ...shortfall,
+          ...(item
+            ? // The choice is the check's own (the line's attributes the
+              // product still has), never the line's stored ones as they are.
+              {
+                reservationItemId: item.id,
+                selectedAttributes: check.shortfallChoices[position] ?? null,
+              }
+            : {}),
+        },
+      ];
+    });
   return {
-    capacityShortfalls: unbuffered.shortfalls,
-    bufferOnlyShortfalls: buffered.shortfalls.filter((_shortfall, position) =>
-      shortOnlyWithBuffer.has(buffered.shortfallLineIndexes[position] ?? -1),
-    ),
+    capacityShortfalls: ofLines(unbuffered),
+    bufferOnlyShortfalls: ofLines(buffered, (lineIndex) => !shortWithoutBuffer.has(lineIndex)),
     bufferOnlyUnitIds: [...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId))],
+    turnoverBufferMinutes,
   };
 }
 
 /**
  * The activity row's facts: the capacity verdict of the demand checked (the
- * shortfalls booked over, or none), the units only the buffer reaches, and
- * the row's date (`nextCapacityVerdictDate`), so that verdict is the
- * reservation's latest (services/capacity-verdict.ts).
+ * shortfalls booked over, or none), the turnover-buffer verdict of a store
+ * confirmation sent with `overrideTurnoverBuffer` (null for any other), the
+ * units only the buffer reaches, and the row's date
+ * (`nextCapacityVerdictDate`), so that verdict is the reservation's latest
+ * (services/capacity-verdict.ts).
  */
 async function confirmationVerdict(
   tx: Transaction,
   reservationId: string,
   bookedOver: readonly CapacityShortfall[],
   bufferOnlyUnitIds: readonly string[],
+  bufferOverride: { shortfalls: readonly CapacityShortfall[]; minutes: number } | null = null,
 ): Promise<ConfirmationStockVerdict> {
   return {
     activityMetadata: {
@@ -871,6 +922,11 @@ async function confirmationVerdict(
       // counts, so an overbooking flagged earlier leaves the inbox once a
       // confirmation finds that the stock fits.
       ...capacityVerdictMetadata(bookedOver),
+      // The buffer the store confirmed past, on this change only: nothing
+      // reads it back as an approval (D5).
+      ...(bufferOverride
+        ? turnoverBufferVerdictMetadata(bufferOverride.shortfalls, bufferOverride.minutes)
+        : {}),
       ...(bufferOnlyUnitIds.length > 0
         ? // Confirmed with units the turnover buffer alone reaches: traceable.
           { turnoverBufferOnlyUnitIds: [...bufferOnlyUnitIds] }
@@ -901,13 +957,15 @@ export const checkExistingReservationInventory = async (
 };
 
 /**
- * The stock check of the store's confirmation (S3): its capacity shortfalls,
- * counted without the turnover buffer, refuse with
- * `ReservationCapacityShortfallError` unless the store books over them on
- * purpose (`allowOverbooking`), and the verdict then records them. A line
- * short only with the buffer refuses with
- * `ReservationTurnoverBufferShortfallError`, whatever the flag: the buffer
- * has its own approval (slice 5). A unit conflict refuses before either.
+ * The stock check of the store's confirmation (S3, S4), with two overrides
+ * that neither covers the other's shortfalls. A unit conflict refuses before
+ * either. Then a line short only with the turnover buffer refuses with
+ * `ReservationTurnoverBufferShortfallError` unless the store confirms past
+ * the buffer on purpose (`overrideTurnoverBuffer`); then a capacity
+ * shortfall, counted without the buffer, refuses with
+ * `ReservationCapacityShortfallError` unless the store books over it
+ * (`allowOverbooking`). The verdict records what each flag passed, on this
+ * change only (D5, docs/domain/reservation-changes.md).
  *
  * Only the store's status service calls it (`scripts/reservation-writes.test.mjs`, R7).
  */
@@ -915,10 +973,17 @@ export const checkStoreConfirmationInventory = async (
   tx: Transaction,
   reservationId: string,
   storeId: string,
-  options: { allowOverbooking: boolean },
-): Promise<ConfirmationStockVerdict & { bookedOver: CapacityShortfall[] }> => {
+  options: { allowOverbooking: boolean; overrideTurnoverBuffer: boolean },
+): Promise<
+  ConfirmationStockVerdict & {
+    bookedOver: CapacityShortfall[];
+    /** The buffer-only shortfalls confirmed past the buffer; empty without the flag. */
+    pastBuffer: CapacityShortfall[];
+    turnoverBufferMinutes: number;
+  }
+> => {
   const stock = await checkConfirmationStock(tx, reservationId, storeId);
-  if (stock.bufferOnlyShortfalls.length > 0) {
+  if (stock.bufferOnlyShortfalls.length > 0 && !options.overrideTurnoverBuffer) {
     throw new ReservationTurnoverBufferShortfallError(stock.bufferOnlyShortfalls);
   }
   if (stock.capacityShortfalls.length > 0 && !options.allowOverbooking) {
@@ -930,7 +995,12 @@ export const checkStoreConfirmationInventory = async (
       reservationId,
       stock.capacityShortfalls,
       stock.bufferOnlyUnitIds,
+      options.overrideTurnoverBuffer
+        ? { shortfalls: stock.bufferOnlyShortfalls, minutes: stock.turnoverBufferMinutes }
+        : null,
     )),
     bookedOver: stock.capacityShortfalls,
+    pastBuffer: options.overrideTurnoverBuffer ? stock.bufferOnlyShortfalls : [],
+    turnoverBufferMinutes: stock.turnoverBufferMinutes,
   };
 };

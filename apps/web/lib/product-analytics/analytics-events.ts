@@ -8,6 +8,8 @@ export const productAnalyticsEvents = {
   dashboardReservationCapacityBlocked: 'dashboard_reservation_capacity_blocked',
   dashboardReservationOverbookingConfirmed:
     'dashboard_reservation_overbooking_confirmed',
+  dashboardReservationTurnoverBufferOverridden:
+    'dashboard_reservation_turnover_buffer_overridden',
   dashboardReservationCreationFailed: 'dashboard_reservation_creation_failed',
   reservationViewed: 'reservation_viewed',
   reservationActionStarted: 'reservation_action_started',

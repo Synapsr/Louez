@@ -105,8 +105,8 @@ export const ProductReservationsSectionBody = ({
     router.refresh();
   };
 
-  const handleConfirmOverbookingAndRefresh = async () => {
-    await confirmDialogsProps.handleConfirmOverbooking();
+  const handleConfirmAnywayAndRefresh = async () => {
+    await confirmDialogsProps.handleConfirmAnyway();
     router.refresh();
   };
 
@@ -159,7 +159,7 @@ export const ProductReservationsSectionBody = ({
             <ReservationConfirmDialogs
               {...confirmDialogsProps}
               handleReject={handleRejectAndRefresh}
-              handleConfirmOverbooking={handleConfirmOverbookingAndRefresh}
+              handleConfirmAnyway={handleConfirmAnywayAndRefresh}
             />
             {reservationsPage.total > reservationsPage.items.length && (
               <p className="text-muted-foreground mt-3 text-center text-xs">

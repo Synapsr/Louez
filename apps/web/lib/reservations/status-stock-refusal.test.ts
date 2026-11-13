@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { readStatusStockRefusal } from "./status-stock-refusal";
+import { overridesAfter, readStatusStockRefusal } from "./status-stock-refusal";
 
 const refusal = (data: unknown) => Object.assign(new Error("Not confirmed"), { data });
 const shortfall = (productName: string, combinationKey: string | null = null) => ({
@@ -22,7 +22,20 @@ test("a capacity refusal gives the dialog every shortfall, in the server's order
   );
 });
 
-test("a buffer-only refusal is told apart: it offers no confirm anyway", () => {
+test("a confirmation's shortfalls keep their line and its choice, for the dialog to show", () => {
+  const shortfalls = [
+    { ...shortfall("Wetsuit"), reservationItemId: "itm_s", selectedAttributes: { size: "S" } },
+    { ...shortfall("Wetsuit"), reservationItemId: "itm_l", selectedAttributes: { size: "L" } },
+  ];
+  assert.deepEqual(
+    readStatusStockRefusal(
+      refusal({ code: "RESERVATION_TURNOVER_BUFFER_CONFLICT", details: { shortfalls } }),
+    ),
+    { kind: "buffer", shortfalls },
+  );
+});
+
+test("a buffer-only refusal is told apart: its dialog confirms past the buffer", () => {
   const shortfalls = [shortfall("Kayak")];
   assert.deepEqual(
     readStatusStockRefusal(
@@ -61,4 +74,22 @@ test("reads no other refusal, and no refusal without its shortfalls", () => {
   );
   assert.equal(readStatusStockRefusal(new Error("network")), null);
   assert.equal(readStatusStockRefusal("RESERVATION_INSUFFICIENT_CAPACITY"), null);
+});
+
+test("confirm anyway sends the refusal's flag, and keeps the one already sent", () => {
+  const shortfalls = [shortfall("Kayak")];
+  const buffer = { kind: "buffer" as const, shortfalls };
+  const capacity = { kind: "capacity" as const, shortfalls };
+
+  assert.deepEqual(overridesAfter(buffer, {}), { overrideTurnoverBuffer: true });
+  assert.deepEqual(overridesAfter(capacity, {}), { allowOverbooking: true });
+  // Short both ways: the buffer's dialog first, then the stock's with the buffer kept.
+  assert.deepEqual(overridesAfter(capacity, overridesAfter(buffer, {})), {
+    overrideTurnoverBuffer: true,
+    allowOverbooking: true,
+  });
+  assert.deepEqual(overridesAfter(buffer, { allowOverbooking: true }), {
+    allowOverbooking: true,
+    overrideTurnoverBuffer: true,
+  });
 });

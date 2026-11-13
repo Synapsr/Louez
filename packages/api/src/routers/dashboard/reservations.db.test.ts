@@ -1668,18 +1668,20 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       assert.equal((await outbox()).length, 0, "a refused change queues no message");
     });
 
-    test("held by another booking is refused with allowOverbooking too", async () => {
+    test("held by another booking is refused with allowOverbooking or overrideTurnoverBuffer too", async () => {
       const { productId, unitId, quoteId } = await quoteHoldingUnit();
       await lineHolding(await reservation("confirmed"), productId, 1, unitId);
 
-      await rejects(
-        run(
-          "updateStatus",
-          { id: quoteId, status: "confirmed", allowOverbooking: true },
-          session(),
-        ),
-        "RESERVATION_UNITS_UNAVAILABLE",
-      );
+      for (const flags of [
+        { allowOverbooking: true },
+        { overrideTurnoverBuffer: true },
+        { allowOverbooking: true, overrideTurnoverBuffer: true },
+      ]) {
+        await rejects(
+          run("updateStatus", { id: quoteId, status: "confirmed", ...flags }, session()),
+          "RESERVATION_UNITS_UNAVAILABLE",
+        );
+      }
       assert.equal(await statusOf(quoteId), "quote", "nothing was written");
       assert.equal(feeEffects.length, 0);
       assert.equal((await outbox()).length, 0);
@@ -1739,6 +1741,11 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
   // --- Confirming over the stock (S3; docs/domain/reservation-changes.md, slice 4) ---
 
   describe("confirming over the returnable stock", () => {
+    /** Each line `lineOf` wrote, by its reservation, product and quantity. */
+    const lineIds = new Map<string, string>();
+    const lineKey = (reservationId: string, productId: string, quantity: number) =>
+      `${reservationId}:${productId}:${quantity}`;
+
     /** A line of `quantity` on `reservationId`, created at `createdAt` (the lines' order). */
     async function lineOf(
       reservationId: string,
@@ -1746,8 +1753,10 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       quantity: number,
       createdAt?: Date,
     ) {
+      const itemId = nextId("rs_itm");
+      lineIds.set(lineKey(reservationId, productId, quantity), itemId);
       await louezDb.db.insert(louezDb.reservationItems).values({
-        id: nextId("rs_itm"),
+        id: itemId,
         reservationId,
         productId,
         quantity,
@@ -1805,13 +1814,25 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       assert.deepEqual(contracts, [], "no insurance contract");
     }
 
-    const shortfall = (productId: string, requested: number, available: number) => ({
-      productId,
-      productName: `Kayak ${productId}`,
-      combinationKey: null,
-      requested,
-      available,
-    });
+    /** The shortfall of the line of `requested` that `lineOf` wrote on `reservationId`. */
+    const shortfall = (
+      reservationId: string,
+      productId: string,
+      requested: number,
+      available: number,
+    ) => {
+      const reservationItemId = lineIds.get(lineKey(reservationId, productId, requested));
+      assert.ok(reservationItemId, "a line written by lineOf");
+      return {
+        productId,
+        productName: `Kayak ${productId}`,
+        combinationKey: null,
+        requested,
+        available,
+        reservationItemId,
+        selectedAttributes: null,
+      };
+    };
 
     async function withBuffer(minutes: number) {
       // Put back before each test.
@@ -1874,7 +1895,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           code: "RESERVATION_INSUFFICIENT_CAPACITY",
           retryable: false,
           i18nKey: "errors.insufficientCapacity",
-          details: { shortfalls: [shortfall(productId, 1, 0)] },
+          details: { shortfalls: [shortfall(id, productId, 1, 0)] },
         });
         await nothingWritten(id, status);
 
@@ -1893,7 +1914,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           newStatus: "confirmed",
           actor: "store_user",
           overbooked: true,
-          overbookingShortfalls: [shortfall(productId, 1, 0)],
+          overbookingShortfalls: [shortfall(id, productId, 1, 0)],
           credential: { kind: "session", id: null },
         });
         assert.equal(feeEffects.length, 1, "the fee is recorded");
@@ -1914,7 +1935,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       await nothingWritten(id, "pending");
     });
 
-    test("a line short only with the turnover buffer is refused with the flag, and says it is the buffer", async () => {
+    test("a line short only with the turnover buffer is refused with allowOverbooking, and says it is the buffer", async () => {
       const productId = await product(1);
       // Returned an hour before the start, with two hours asked between rentals.
       await lineOf(
@@ -1937,13 +1958,13 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           code: "RESERVATION_TURNOVER_BUFFER_CONFLICT",
           retryable: false,
           i18nKey: "errors.turnoverBufferShortfall",
-          details: { shortfalls: [shortfall(productId, 1, 0)] },
+          details: { shortfalls: [shortfall(id, productId, 1, 0)] },
         });
         await nothingWritten(id, "quote");
       }
     });
 
-    test("a buffer-only line next to a short one: the buffer refuses first, and the flag does not pass it", async () => {
+    test("a buffer-only line next to a short one: the buffer refuses first, and allowOverbooking does not pass it", async () => {
       const short = await kayakHeld(1, 1);
       const buffered = await product(1);
       await lineOf(
@@ -1964,7 +1985,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         "RESERVATION_TURNOVER_BUFFER_CONFLICT",
       );
       // Only the buffer's line: the short one is the flag's.
-      assert.deepEqual(refusal.data.details, { shortfalls: [shortfall(buffered, 1, 0)] });
+      assert.deepEqual(refusal.data.details, { shortfalls: [shortfall(id, buffered, 1, 0)] });
       await nothingWritten(id, "quote");
     });
 
@@ -1977,7 +1998,11 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       await lineOf(id, kayak, 2, new Date("2030-01-01T00:00:01Z"));
       await lineOf(id, paddle, 1, new Date("2030-01-01T00:00:00Z"));
 
-      const shortfalls = [shortfall(paddle, 1, 0), shortfall(kayak, 2, 1), shortfall(kayak, 1, 0)];
+      const shortfalls = [
+        shortfall(id, paddle, 1, 0),
+        shortfall(id, kayak, 2, 1),
+        shortfall(id, kayak, 1, 0),
+      ];
       const refusal = await rejects(
         run("updateStatus", confirmation(id), session()),
         "RESERVATION_INSUFFICIENT_CAPACITY",
@@ -2003,7 +2028,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           run("updateStatus", confirmation(id, true), agent.call()),
           "CONFIRMATION_REQUIRED",
         );
-        assert.deepEqual(overbookingOf(refusal), { shortfalls: [shortfall(productId, 1, 0)] });
+        assert.deepEqual(overbookingOf(refusal), { shortfalls: [shortfall(id, productId, 1, 0)] });
         assert.match(
           previewOf(refusal).summary,
           new RegExp(`booked over the stock all the same: Kayak ${productId}, 1 asked, 0 free`),
@@ -2040,7 +2065,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         {
           actor: "api",
           overbooked: true,
-          overbookingShortfalls: [shortfall(productId, 1, 0)],
+          overbookingShortfalls: [shortfall(id, productId, 1, 0)],
           credential: { kind: "api_key", id: agent.id },
         },
       );
@@ -2081,7 +2106,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         run("updateStatus", confirmation(id, true), agent.call()),
         "CONFIRMATION_REQUIRED",
       );
-      assert.deepEqual(overbookingOf(first), { shortfalls: [shortfall(productId, 3, 2)] });
+      assert.deepEqual(overbookingOf(first), { shortfalls: [shortfall(id, productId, 3, 2)] });
 
       // Another booking takes the two left, without touching this quote: short by three.
       await lineOf(await reservation("confirmed"), productId, 2);
@@ -2099,14 +2124,14 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         run("updateStatus", confirmation(id, true), agent.call()),
         "CONFIRMATION_REQUIRED",
       );
-      assert.deepEqual(overbookingOf(second), { shortfalls: [shortfall(productId, 3, 0)] });
+      assert.deepEqual(overbookingOf(second), { shortfalls: [shortfall(id, productId, 3, 0)] });
       await run(
         "updateStatus",
         confirmation(id, true),
         agent.call({ "louez-confirmation": tokenOf(second) }),
       );
       assert.deepEqual((await confirmedRow(id))?.overbookingShortfalls, [
-        shortfall(productId, 3, 0),
+        shortfall(id, productId, 3, 0),
       ]);
     });
 
@@ -2132,16 +2157,395 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       ]);
       assert.deepEqual(outcomes, ["confirmed", "confirmed"]);
       // Whichever took the lock first fit; the other booked over what the first took.
-      const verdicts = [await confirmedRow(first), await confirmedRow(second)]
-        .map((row) => ({
-          overbooked: row?.overbooked,
-          overbookingShortfalls: row?.overbookingShortfalls,
-        }))
-        .sort((a, b) => Number(a.overbooked) - Number(b.overbooked));
-      assert.deepEqual(verdicts, [
-        { overbooked: false, overbookingShortfalls: undefined },
-        { overbooked: true, overbookingShortfalls: [shortfall(productId, 1, 0)] },
-      ]);
+      const verdicts = await Promise.all(
+        [first, second].map(async (id) => {
+          const row = await confirmedRow(id);
+          return {
+            id,
+            overbooked: row?.overbooked,
+            overbookingShortfalls: row?.overbookingShortfalls,
+          };
+        }),
+      );
+      verdicts.sort((a, b) => Number(a.overbooked) - Number(b.overbooked));
+      const loser = verdicts[1]?.id ?? "";
+      assert.deepEqual(
+        verdicts.map(({ overbooked, overbookingShortfalls }) => ({
+          overbooked,
+          overbookingShortfalls,
+        })),
+        [
+          { overbooked: false, overbookingShortfalls: undefined },
+          { overbooked: true, overbookingShortfalls: [shortfall(loser, productId, 1, 0)] },
+        ],
+      );
+    });
+
+    describe("confirming past the turnover buffer", () => {
+      const HOUR = 3_600_000;
+      const BUFFER = 120;
+
+      /** A kayak of one, returned by another booking an hour before START: short only with the buffer. */
+      async function kayakInBuffer() {
+        const productId = await product(1);
+        await returnedBeforeStart(productId);
+        return productId;
+      }
+
+      /** A confirmed booking of the product, back an hour before START, in a store that asks two hours. */
+      async function returnedBeforeStart(productId: string) {
+        await lineOf(
+          await reservation("confirmed", {
+            start: new Date(START.getTime() - 24 * HOUR),
+            end: new Date(START.getTime() - HOUR),
+          }),
+          productId,
+          1,
+        );
+        await withBuffer(BUFFER);
+      }
+
+      type Flags = { allowOverbooking?: boolean; overrideTurnoverBuffer?: boolean };
+      const confirmWith = (id: string, flags: Flags) => ({ ...confirmation(id), ...flags });
+
+      type BufferPreview = {
+        overbooking: { shortfalls: unknown[] } | null;
+        turnoverBuffer: { shortfalls: unknown[]; turnoverBufferMinutes: number } | null;
+      };
+      const overridesOf = (refusal: { data: { details?: Record<string, unknown> } }) => {
+        const { overbooking, turnoverBuffer } = previewOf(refusal)
+          .details as unknown as BufferPreview;
+        return { overbooking, turnoverBuffer };
+      };
+
+      for (const status of ["quote", "pending"] as const) {
+        test(`a ${status} short only with the buffer is refused with its lines, then confirmed past it on purpose`, async () => {
+          const productId = await kayakInBuffer();
+          const id = await asking(status, productId);
+          if (status === "pending") {
+            // A paid request.
+            await louezDb.db.insert(louezDb.payments).values({
+              reservationId: id,
+              amount: "20.00",
+              type: "rental",
+              method: "card",
+              status: "completed",
+            });
+          }
+
+          for (const flags of [{}, { overrideTurnoverBuffer: false }, { allowOverbooking: true }]) {
+            const refusal = await rejects(
+              run("updateStatus", confirmWith(id, flags), session()),
+              "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+            );
+            assert.deepEqual(refusal.data.details, {
+              shortfalls: [shortfall(id, productId, 1, 0)],
+            });
+            await nothingWritten(id, status);
+          }
+
+          const change = await run(
+            "updateStatus",
+            confirmWith(id, { overrideTurnoverBuffer: true }),
+            session(),
+          );
+          assert.equal(change.to, "confirmed");
+          assert.equal(await statusOf(id), "confirmed");
+          assert.deepEqual(await confirmedRow(id), {
+            previousStatus: status,
+            newStatus: "confirmed",
+            actor: "store_user",
+            overbooked: false,
+            turnoverBufferOverridden: true,
+            turnoverBufferShortfalls: [shortfall(id, productId, 1, 0)],
+            turnoverBufferMinutes: BUFFER,
+            credential: { kind: "session", id: null },
+          });
+          assert.equal(feeEffects.length, 1, "the fee is recorded");
+          assert.deepEqual(contracts, [`create:${id}`]);
+          assert.ok((await outbox()).some((row) => row.type === "reservation.customerMessage"));
+        });
+      }
+
+      test("overrideTurnoverBuffer never passes a line the stock itself cannot cover", async () => {
+        const productId = await kayakHeld(1, 1);
+        await withBuffer(BUFFER);
+        const id = await asking("quote", productId);
+
+        const refusal = await rejects(
+          run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data.details, { shortfalls: [shortfall(id, productId, 1, 0)] });
+        await nothingWritten(id, "quote");
+      });
+
+      test("short both ways: refused on the buffer first, then on the stock, and confirmed with both flags", async () => {
+        const short = await kayakHeld(1, 1);
+        const buffered = await kayakInBuffer();
+        const id = await reservation("quote");
+        await lineOf(id, short, 1, new Date("2030-01-01T00:00:00Z"));
+        await lineOf(id, buffered, 1, new Date("2030-01-01T00:00:01Z"));
+
+        for (const flags of [{}, { allowOverbooking: true }]) {
+          const refusal = await rejects(
+            run("updateStatus", confirmWith(id, flags), session()),
+            "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+          );
+          assert.deepEqual(refusal.data.details, { shortfalls: [shortfall(id, buffered, 1, 0)] });
+        }
+        const refusal = await rejects(
+          run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data.details, { shortfalls: [shortfall(id, short, 1, 0)] });
+        await nothingWritten(id, "quote");
+
+        await run(
+          "updateStatus",
+          confirmWith(id, { allowOverbooking: true, overrideTurnoverBuffer: true }),
+          session(),
+        );
+        assert.deepEqual(await confirmedRow(id), {
+          previousStatus: "quote",
+          newStatus: "confirmed",
+          actor: "store_user",
+          overbooked: true,
+          overbookingShortfalls: [shortfall(id, short, 1, 0)],
+          turnoverBufferOverridden: true,
+          turnoverBufferShortfalls: [shortfall(id, buffered, 1, 0)],
+          turnoverBufferMinutes: BUFFER,
+          credential: { kind: "session", id: null },
+        });
+      });
+
+      test("consumable stock at zero refuses whatever the flags", async () => {
+        const productId = await product(0, "consumable");
+        await withBuffer(BUFFER);
+        const id = await asking("pending", productId);
+
+        const refusal = await rejects(
+          run(
+            "updateStatus",
+            confirmWith(id, { overrideTurnoverBuffer: true, allowOverbooking: true }),
+            session(),
+          ),
+          "RESERVATION_ITEMS_UNAVAILABLE",
+        );
+        assert.equal(refusal.data.details, undefined);
+        await nothingWritten(id, "pending");
+      });
+
+      test("the flag with nothing short only with the buffer records that, with no credential", async () => {
+        const productId = await product(1);
+        await withBuffer(BUFFER);
+        const id = await asking("quote", productId);
+
+        await run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), session());
+        const row = await confirmedRow(id);
+        assert.deepEqual(
+          {
+            overbooked: row?.overbooked,
+            turnoverBufferOverridden: row?.turnoverBufferOverridden,
+            turnoverBufferShortfalls: row?.turnoverBufferShortfalls,
+            credential: row?.credential,
+          },
+          {
+            overbooked: false,
+            turnoverBufferOverridden: false,
+            turnoverBufferShortfalls: undefined,
+            credential: undefined,
+          },
+        );
+      });
+
+      test("without the flag the row says nothing of the buffer", async () => {
+        const id = await asking("quote", await product(1));
+        await withBuffer(BUFFER);
+
+        await run("updateStatus", confirmation(id), session());
+        assert.equal((await confirmedRow(id))?.turnoverBufferOverridden, undefined);
+      });
+
+      test("an agent confirms past the buffer only after a preview that lists its lines, even with confirmations off", async () => {
+        const productId = await kayakInBuffer();
+        const id = await asking("quote", productId);
+
+        for (const confirmSensitive of [true, false]) {
+          const agent = await agentKey({ confirmSensitive });
+          // Without the flag, the buffer refuses before any preview.
+          await rejects(
+            run("updateStatus", confirmation(id), agent.call()),
+            "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+          );
+          const refusal = await rejects(
+            run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), agent.call()),
+            "CONFIRMATION_REQUIRED",
+          );
+          assert.deepEqual(overridesOf(refusal), {
+            overbooking: null,
+            turnoverBuffer: {
+              shortfalls: [shortfall(id, productId, 1, 0)],
+              turnoverBufferMinutes: BUFFER,
+            },
+          });
+          assert.match(
+            previewOf(refusal).summary,
+            new RegExp(
+              `not the ${BUFFER}-minute turnover buffer .* confirmed past it all the same: Kayak ${productId}, 1 asked, 0 free with the buffer`,
+            ),
+          );
+          await nothingWritten(id, "quote");
+        }
+
+        const agent = await agentKey({ confirmSensitive: false });
+        const token = tokenOf(
+          await rejects(
+            run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), agent.call()),
+            "CONFIRMATION_REQUIRED",
+          ),
+        );
+        // The token is bound to the input: no confirmation without the flag uses it.
+        await rejects(
+          run("updateStatus", confirmation(id), agent.call({ "louez-confirmation": token })),
+          "RESERVATION_TURNOVER_BUFFER_CONFLICT",
+        );
+        await run(
+          "updateStatus",
+          confirmWith(id, { overrideTurnoverBuffer: true }),
+          agent.call({ "louez-confirmation": token }),
+        );
+        const row = await confirmedRow(id);
+        assert.deepEqual(
+          {
+            actor: row?.actor,
+            turnoverBufferOverridden: row?.turnoverBufferOverridden,
+            turnoverBufferShortfalls: row?.turnoverBufferShortfalls,
+            credential: row?.credential,
+          },
+          {
+            actor: "api",
+            turnoverBufferOverridden: true,
+            turnoverBufferShortfalls: [shortfall(id, productId, 1, 0)],
+            credential: { kind: "api_key", id: agent.id },
+          },
+        );
+      });
+
+      test("an agent's two flags ask once, with both lists in one preview", async () => {
+        const short = await kayakHeld(1, 1);
+        const buffered = await kayakInBuffer();
+        const id = await reservation("quote");
+        await lineOf(id, short, 1, new Date("2030-01-01T00:00:00Z"));
+        await lineOf(id, buffered, 1, new Date("2030-01-01T00:00:01Z"));
+        const agent = await agentKey({ confirmSensitive: false });
+        const both = { allowOverbooking: true, overrideTurnoverBuffer: true };
+
+        const refusal = await rejects(
+          run("updateStatus", confirmWith(id, both), agent.call()),
+          "CONFIRMATION_REQUIRED",
+        );
+        assert.deepEqual(overridesOf(refusal), {
+          overbooking: { shortfalls: [shortfall(id, short, 1, 0)] },
+          turnoverBuffer: {
+            shortfalls: [shortfall(id, buffered, 1, 0)],
+            turnoverBufferMinutes: BUFFER,
+          },
+        });
+        await run(
+          "updateStatus",
+          confirmWith(id, both),
+          agent.call({ "louez-confirmation": tokenOf(refusal) }),
+        );
+        const row = await confirmedRow(id);
+        assert.deepEqual(
+          [row?.overbookingShortfalls, row?.turnoverBufferShortfalls],
+          [[shortfall(id, short, 1, 0)], [shortfall(id, buffered, 1, 0)]],
+        );
+      });
+
+      test("a token confirms past the buffer it previewed, not a buffer shortfall that appeared since", async () => {
+        // Two kayaks of one each: only the first is short with the buffer.
+        const first = await kayakInBuffer();
+        const second = await product(1);
+        const id = await reservation("quote");
+        await lineOf(id, first, 1, new Date("2030-01-01T00:00:00Z"));
+        await lineOf(id, second, 1, new Date("2030-01-01T00:00:01Z"));
+        const agent = await agentKey({});
+        const flag = { overrideTurnoverBuffer: true };
+
+        const preview = await rejects(
+          run("updateStatus", confirmWith(id, flag), agent.call()),
+          "CONFIRMATION_REQUIRED",
+        );
+        assert.deepEqual(overridesOf(preview).turnoverBuffer?.shortfalls, [
+          shortfall(id, first, 1, 0),
+        ]);
+
+        // Another booking lands in the second kayak's buffer, without touching this quote.
+        await returnedBeforeStart(second);
+        await rejects(
+          run(
+            "updateStatus",
+            confirmWith(id, flag),
+            agent.call({ "louez-confirmation": tokenOf(preview) }),
+          ),
+          "CONFIRMATION_INVALID",
+        );
+        await nothingWritten(id, "quote");
+
+        const again = await rejects(
+          run("updateStatus", confirmWith(id, flag), agent.call()),
+          "CONFIRMATION_REQUIRED",
+        );
+        const both = [shortfall(id, first, 1, 0), shortfall(id, second, 1, 0)];
+        assert.deepEqual(overridesOf(again).turnoverBuffer?.shortfalls, both);
+        await run(
+          "updateStatus",
+          confirmWith(id, flag),
+          agent.call({ "louez-confirmation": tokenOf(again) }),
+        );
+        assert.deepEqual((await confirmedRow(id))?.turnoverBufferShortfalls, both);
+      });
+
+      test("a read-only connection cannot confirm past the buffer", async () => {
+        const id = await asking("quote", await kayakInBuffer());
+        const reader = await agentKey({ permissions: { ...everything, reservations: "read" } });
+
+        await rejects(
+          run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), reader.call()),
+          "PERMISSION_DENIED",
+        );
+        await nothingWritten(id, "quote");
+      });
+
+      test("two confirmations past the buffer of the last kayak at once: the first passes the buffer, the second finds the stock gone", async () => {
+        const productId = await kayakInBuffer();
+        const first = await asking("pending", productId);
+        const second = await asking("pending", productId);
+        const flag = { overrideTurnoverBuffer: true };
+        const answer = (id: string) =>
+          run("updateStatus", confirmWith(id, flag), session()).then(
+            (change) => change.to,
+            (error: { data?: { code?: string } }) => error.data?.code,
+          );
+
+        const outcomes = await raceOnLockedRow(database, { table: "products", id: productId }, [
+          () => answer(first),
+          () => answer(second),
+        ]);
+        // Whichever took the lock first had only the buffer against it. The
+        // other then finds the kayak held without the buffer too: a capacity
+        // shortfall, which this flag never passes.
+        assert.deepEqual([...outcomes].sort(), ["RESERVATION_INSUFFICIENT_CAPACITY", "confirmed"]);
+        const winner = outcomes[0] === "confirmed" ? first : second;
+        const row = await confirmedRow(winner);
+        assert.deepEqual(
+          [row?.turnoverBufferOverridden, row?.turnoverBufferShortfalls],
+          [true, [shortfall(winner, productId, 1, 0)]],
+        );
+        assert.equal(await statusOf(winner === first ? second : first), "pending");
+      });
     });
 
     describe("a unit the quote holds that another booking's open choice needs", () => {
@@ -2212,6 +2616,8 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           combinationKey: null,
           requested: 3,
           available: 2,
+          reservationItemId: itemId,
+          selectedAttributes: null,
         };
         return { quoteId, itemId, unitId, assignmentId, short };
       }
@@ -2227,9 +2633,14 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       test("refuses the confirmation, flag or not, naming the unit; without it, the flag books the line over", async () => {
         const { quoteId, itemId, unitId, assignmentId, short } = await wetsuitQuote("S/red");
 
-        for (const allowOverbooking of [undefined, true]) {
+        for (const flags of [
+          {},
+          { allowOverbooking: true },
+          { overrideTurnoverBuffer: true },
+          { allowOverbooking: true, overrideTurnoverBuffer: true },
+        ]) {
           const refusal = await rejects(
-            run("updateStatus", confirmation(quoteId, allowOverbooking), session()),
+            run("updateStatus", { ...confirmation(quoteId), ...flags }, session()),
             "RESERVATION_UNITS_UNAVAILABLE",
           );
           assert.deepEqual(refusal.data.details, {
@@ -2367,7 +2778,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         const { productId, line } = await wetsuit(["A", "A"]);
         const quoteId = await reservation("quote");
         await line(quoteId, 2, "A", ["A1"], FIRST);
-        await line(quoteId, 1, "A", ["A2"], SECOND);
+        const secondLine = await line(quoteId, 1, "A", ["A2"], SECOND);
         // Both held units fit; the second line's unit is the one the stock lacks.
         const short = {
           productId,
@@ -2375,6 +2786,8 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           combinationKey: "size:A",
           requested: 1,
           available: 0,
+          reservationItemId: secondLine,
+          selectedAttributes: { size: "A" },
         };
 
         const refusal = await rejects(
@@ -2427,6 +2840,285 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
             ],
           });
         }
+        await nothingWritten(quoteId, "quote");
+      });
+    });
+
+    describe("two lines of one product, each open on the colour", () => {
+      const HOUR = 3_600_000;
+      const BUFFER = 120;
+
+      /**
+       * S/red, S/blue, L/red, L/blue. A confirmed neighbour asks one S, colour
+       * open, back `endsBefore` before START (null: over the same dates). A
+       * quote asks two S and two L, colour open: the two lines are alike but
+       * for their size.
+       */
+      async function twoSizesQuote(endsBefore: number | null) {
+        const productId = nextId("rs_prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id: productId,
+          storeId: STORE,
+          name: `Kayak ${productId}`,
+          price: "10.00",
+          pricingMode: "day",
+          trackUnits: true,
+          bookingAttributeAxes: [
+            { key: "size", label: "Size", position: 0 },
+            { key: "color", label: "Color", position: 1 },
+          ],
+          quantity: 4,
+        });
+        for (const name of ["S/red", "S/blue", "L/red", "L/blue"]) {
+          const [size = "", color = ""] = name.split("/");
+          await louezDb.db.insert(louezDb.productUnits).values({
+            id: nextId("rs_unt"),
+            productId,
+            identifier: name,
+            attributes: { size, color },
+            combinationKey: `size:${size}|color:${color}`,
+          });
+        }
+        const line = async (reservationId: string, quantity: number, size: string, at: Date) => {
+          const itemId = nextId("rs_itm");
+          await louezDb.db.insert(louezDb.reservationItems).values({
+            id: itemId,
+            reservationId,
+            productId,
+            quantity,
+            selectedAttributes: { size },
+            combinationKey: null,
+            unitPrice: "10.00",
+            depositPerUnit: "0.00",
+            totalPrice: "20.00",
+            productSnapshot: { name: "Kayak", description: null, images: [] },
+            createdAt: at,
+          });
+          return itemId;
+        };
+        const neighbour = await line(
+          await reservation(
+            "confirmed",
+            endsBefore === null
+              ? {}
+              : {
+                  start: new Date(START.getTime() - 24 * HOUR),
+                  end: new Date(START.getTime() - endsBefore),
+                },
+          ),
+          1,
+          "S",
+          new Date("2030-01-01T00:00:00Z"),
+        );
+        const quoteId = await reservation("quote");
+        const sLine = await line(quoteId, 2, "S", new Date("2030-01-01T00:00:00Z"));
+        const lLine = await line(quoteId, 2, "L", new Date("2030-01-01T00:00:01Z"));
+        // Both lines short the same way: two asked, one free.
+        const short = (reservationItemId: string, size: string) => ({
+          productId,
+          productName: `Kayak ${productId}`,
+          combinationKey: null,
+          requested: 2,
+          available: 1,
+          reservationItemId,
+          selectedAttributes: { size },
+        });
+        /** The neighbour now wants an L instead: the shortage moves to the other line. */
+        const neighbourTakesL = () =>
+          louezDb.db
+            .update(louezDb.reservationItems)
+            .set({ selectedAttributes: { size: "L" } })
+            .where(orm.eq(louezDb.reservationItems.id, neighbour));
+        return { quoteId, sLine, lLine, short, neighbourTakesL };
+      }
+
+      type LinePreview = {
+        overbooking: { shortfalls: unknown[] } | null;
+        turnoverBuffer: { shortfalls: unknown[] } | null;
+      };
+      const linesOf = (
+        refusal: { data: { details?: Record<string, unknown> } },
+        list: keyof LinePreview,
+      ) => (previewOf(refusal).details as unknown as LinePreview)[list]?.shortfalls;
+
+      for (const { flag, list, endsBefore, row } of [
+        {
+          flag: "overrideTurnoverBuffer",
+          list: "turnoverBuffer",
+          // Back an hour before START, in a store that asks two hours: short with the buffer only.
+          endsBefore: HOUR,
+          row: "turnoverBufferShortfalls",
+        },
+        {
+          flag: "allowOverbooking",
+          list: "overbooking",
+          // Over the same dates: short on the stock itself.
+          endsBefore: null,
+          row: "overbookingShortfalls",
+        },
+      ] as const) {
+        test(`a token for ${flag} names the line short, and is void once the shortage moves to the other line`, async () => {
+          const { quoteId, sLine, lLine, short, neighbourTakesL } = await twoSizesQuote(endsBefore);
+          await withBuffer(BUFFER);
+          const agent = await agentKey({});
+          const change = { ...confirmation(quoteId), [flag]: true };
+
+          const first = await rejects(
+            run("updateStatus", change, agent.call()),
+            "CONFIRMATION_REQUIRED",
+          );
+          assert.deepEqual(linesOf(first, list), [short(sLine, "S")]);
+          // The summary names the line's choice, for the agent to show.
+          assert.match(previewOf(first).summary, /\(size: S\), 2 asked, 1 free/);
+
+          // The neighbour now wants an L: the S line fits, the L line is short
+          // by as much. The token saw the S line short, not the L one.
+          await neighbourTakesL();
+          await rejects(
+            run("updateStatus", change, agent.call({ "louez-confirmation": tokenOf(first) })),
+            "CONFIRMATION_INVALID",
+          );
+          await nothingWritten(quoteId, "quote");
+
+          const second = await rejects(
+            run("updateStatus", change, agent.call()),
+            "CONFIRMATION_REQUIRED",
+          );
+          assert.deepEqual(linesOf(second, list), [short(lLine, "L")]);
+          assert.match(previewOf(second).summary, /\(size: L\), 2 asked, 1 free/);
+
+          await run("updateStatus", change, agent.call({ "louez-confirmation": tokenOf(second) }));
+          // The confirmation's row names the line it passed, and what it chose.
+          assert.deepEqual((await confirmedRow(quoteId))?.[row], [short(lLine, "L")]);
+        });
+      }
+
+      /**
+       * S/red, S/blue, L/red, L/blue. Two confirmed neighbours ask the S/red
+       * and the S/blue, back `endsBefore` before START (null: over the same
+       * dates). A quote asks one S in red on a line with no exact combination:
+       * one asked, none free, with the colour and without it.
+       */
+      async function redSmallQuote(endsBefore: number | null) {
+        const productId = nextId("rs_prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id: productId,
+          storeId: STORE,
+          name: `Kayak ${productId}`,
+          price: "10.00",
+          pricingMode: "day",
+          trackUnits: true,
+          bookingAttributeAxes: [
+            { key: "size", label: "Size", position: 0 },
+            { key: "color", label: "Color", position: 1 },
+          ],
+          quantity: 4,
+        });
+        for (const name of ["S/red", "S/blue", "L/red", "L/blue"]) {
+          const [size = "", color = ""] = name.split("/");
+          await louezDb.db.insert(louezDb.productUnits).values({
+            id: nextId("rs_unt"),
+            productId,
+            identifier: name,
+            attributes: { size, color },
+            combinationKey: `size:${size}|color:${color}`,
+          });
+        }
+        const line = async (reservationId: string, color: string) => {
+          const itemId = nextId("rs_itm");
+          await louezDb.db.insert(louezDb.reservationItems).values({
+            id: itemId,
+            reservationId,
+            productId,
+            quantity: 1,
+            selectedAttributes: { size: "S", color },
+            combinationKey: null,
+            unitPrice: "10.00",
+            depositPerUnit: "0.00",
+            totalPrice: "10.00",
+            productSnapshot: { name: "Kayak", description: null, images: [] },
+          });
+          return itemId;
+        };
+        const dates =
+          endsBefore === null
+            ? {}
+            : {
+                start: new Date(START.getTime() - 24 * HOUR),
+                end: new Date(START.getTime() - endsBefore),
+              };
+        await line(await reservation("confirmed", dates), "red");
+        await line(await reservation("confirmed", dates), "blue");
+        const quoteId = await reservation("quote");
+        const quoteLine = await line(quoteId, "red");
+        const short = (selectedAttributes: Record<string, string>) => ({
+          productId,
+          productName: `Kayak ${productId}`,
+          combinationKey: null,
+          requested: 1,
+          available: 0,
+          reservationItemId: quoteLine,
+          selectedAttributes,
+        });
+        /** The store stops selling by colour: the lines keep their stored colour, which no longer restricts them. */
+        const withdrawColour = async () => {
+          const { removeVariantFromStoreProducts } = await import("../../services/variant-axes");
+          await louezDb.db.transaction((tx) =>
+            removeVariantFromStoreProducts(tx, {
+              storeId: STORE,
+              variant: { key: "color", label: "Color" },
+            }),
+          );
+        };
+        return { quoteId, short, withdrawColour };
+      }
+
+      for (const { flag, list, endsBefore } of [
+        { flag: "overrideTurnoverBuffer", list: "turnoverBuffer", endsBefore: HOUR },
+        { flag: "allowOverbooking", list: "overbooking", endsBefore: null },
+      ] as const) {
+        test(`a token for ${flag} names the choice the stock check reads, and is void once the product loses that attribute`, async () => {
+          const { quoteId, short, withdrawColour } = await redSmallQuote(endsBefore);
+          await withBuffer(BUFFER);
+          const agent = await agentKey({});
+          const change = { ...confirmation(quoteId), [flag]: true };
+
+          const first = await rejects(
+            run("updateStatus", change, agent.call()),
+            "CONFIRMATION_REQUIRED",
+          );
+          assert.deepEqual(linesOf(first, list), [short({ size: "S", color: "red" })]);
+          assert.match(previewOf(first).summary, /\(size: S, color: red\), 1 asked, 0 free/);
+
+          // The colour goes: the line now asks any S, and is as short as
+          // before, one asked and none free. The token saw a red S short.
+          await withdrawColour();
+          await rejects(
+            run("updateStatus", change, agent.call({ "louez-confirmation": tokenOf(first) })),
+            "CONFIRMATION_INVALID",
+          );
+          await nothingWritten(quoteId, "quote");
+
+          // The next preview names what the line asks today, not its stored colour.
+          const second = await rejects(
+            run("updateStatus", change, agent.call()),
+            "CONFIRMATION_REQUIRED",
+          );
+          assert.deepEqual(linesOf(second, list), [short({ size: "S" })]);
+          assert.match(previewOf(second).summary, /\(size: S\), 1 asked, 0 free/);
+          assert.doesNotMatch(previewOf(second).summary, /red/);
+        });
+      }
+
+      test("the refusal names the line and its choice", async () => {
+        const { quoteId, sLine, short } = await twoSizesQuote(null);
+
+        const refusal = await rejects(
+          run("updateStatus", confirmation(quoteId), session()),
+          "RESERVATION_INSUFFICIENT_CAPACITY",
+        );
+        assert.deepEqual(refusal.data.details, { shortfalls: [short(sLine, "S")] });
+        assert.match(String(refusal), /\(size: S\): 2 asked, 1 free/);
         await nothingWritten(quoteId, "quote");
       });
     });

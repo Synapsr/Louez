@@ -257,7 +257,10 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   }
 
   /** The store's confirmation, from the dashboard (`reservations.updateStatus`). */
-  const confirmFromDashboard = (id: string, options: { allowOverbooking?: boolean } = {}) =>
+  const confirmFromDashboard = (
+    id: string,
+    options: { allowOverbooking?: boolean; overrideTurnoverBuffer?: boolean } = {},
+  ) =>
     (
       orpc.createRouterClient(reservationsRouter, {
         context: session(),
@@ -1159,7 +1162,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   async function kayakBooking(
     status: "pending" | "quote" | "confirmed",
     productId?: string,
-  ): Promise<{ productId: string; reservationId: string }> {
+  ): Promise<{ productId: string; reservationId: string; itemId: string }> {
     const id = productId ?? nextId("ib_prd");
     if (!productId) {
       await louezDb.db.insert(louezDb.products).values({
@@ -1172,8 +1175,9 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       });
     }
     const reservationId = await reservation(status);
+    const itemId = nextId("ib_itm");
     await louezDb.db.insert(louezDb.reservationItems).values({
-      id: nextId("ib_itm"),
+      id: itemId,
       reservationId,
       productId: id,
       quantity: 1,
@@ -1182,7 +1186,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       totalPrice: "20.00",
       productSnapshot: { name: "Kayak", description: null, images: [] },
     });
-    return { productId: id, reservationId };
+    return { productId: id, reservationId, itemId };
   }
 
   async function activityOf(reservationId: string) {
@@ -1230,14 +1234,26 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
 
   test("a quote the store confirms over the stock stays in the inbox with the shortfalls it booked over", async () => {
     const other = await kayakBooking("confirmed");
-    const { productId, reservationId: quote } = await kayakBooking("quote", other.productId);
+    const {
+      productId,
+      reservationId: quote,
+      itemId,
+    } = await kayakBooking("quote", other.productId);
     await activity(quote, "created", { source: "manual", overbooked: true }, ago(HOUR));
 
     await confirmFromDashboard(quote, { allowOverbooking: true });
 
     const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
     assert.deepEqual(confirmed?.metadata?.overbookingShortfalls, [
-      { productId, productName: "Kayak", combinationKey: null, requested: 1, available: 0 },
+      {
+        productId,
+        productName: "Kayak",
+        combinationKey: null,
+        requested: 1,
+        available: 0,
+        reservationItemId: itemId,
+        selectedAttributes: null,
+      },
     ]);
     // Past the inbox's hold-back, still after the creation's verdict.
     await louezDb.db
@@ -1256,6 +1272,40 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     );
     // The confirmation's verdict is the latest: the inbox dates the item by it.
     assert.ok(Math.abs((items[0]?.occurredAt.getTime() ?? 0) - ago(HOUR / 2).getTime()) < 5_000);
+  });
+
+  test("a quote the store confirms past the turnover buffer lists nothing: the store chose it", async () => {
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ settings: { ...SETTINGS, turnoverBufferMinutes: 30 } })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    // The kayak comes back 15 minutes before the quote starts.
+    const { productId, reservationId: other } = await kayakBooking("confirmed");
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ startDate: ahead(DAY), endDate: new Date(ahead(2 * DAY).getTime() - 15 * 60_000) })
+      .where(orm.eq(louezDb.reservations.id, other));
+    const { reservationId: quote } = await kayakBooking("quote", productId);
+
+    await rejects(confirmFromDashboard(quote), "RESERVATION_TURNOVER_BUFFER_CONFLICT");
+    assert.equal(
+      (await confirmFromDashboard(quote, { overrideTurnoverBuffer: true })).to,
+      "confirmed",
+    );
+
+    const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
+    assert.equal(confirmed?.metadata?.turnoverBufferOverridden, true);
+    // Past the inbox's hold-back.
+    await louezDb.db
+      .update(louezDb.reservationActivity)
+      .set({ createdAt: ago(HOUR / 2) })
+      .where(orm.eq(louezDb.reservationActivity.reservationId, quote));
+    assert.deepEqual(await overbookingIds(), []);
+    assert.deepEqual(
+      (await list()).items.filter((item) => item.reservation?.id === quote),
+      [],
+      "no item of any type",
+    );
   });
 
   test("a confirmation of a booking never overbooked records that it fits, and shows nothing", async () => {

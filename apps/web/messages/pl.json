@@ -2681,7 +2681,11 @@
           "editDescription": "Część produktów nie jest dostępna w wystarczającej liczbie w tym okresie. Możesz mimo to zapisać zmianę; override będzie widoczny w historii.",
           "saveAnyway": "Zapisz mimo to",
           "confirmDescription": "Stan magazynowy nie pokrywa tej rezerwacji w jej okresie. Możesz mimo to potwierdzić ją ponad dostępny stan; ta decyzja będzie widoczna w historii.",
-          "confirmAnyway": "Potwierdź mimo to"
+          "confirmAnyway": "Potwierdź mimo to",
+          "bufferTitle": "Za krótki bufor rotacji",
+          "bufferDescription": "Te pozycje mieszczą się w stanie magazynowym, ale nie z buforem rotacji, który zachowujesz między dwoma wynajmami. Możesz mimo to potwierdzić rezerwację z krótszym czasem między wynajmami; ta decyzja będzie widoczna w historii.",
+          "bufferShortfall": "Żądane: {requested} · Wolne z buforem: {available}",
+          "confirmPastBuffer": "Potwierdź mimo to"
         },
         "addUnavailable": {
           "title": "Produkt niedostępny",
@@ -2733,6 +2737,7 @@
         "quote_accepted": "Oferta zaakceptowana",
         "quote_declined": "Oferta odrzucona",
         "overbooked": "Nadmiarowa",
+        "turnoverBufferOverridden": "Skrócony bufor",
         "contract_signed": "Umowa podpisana",
         "contractUnsigned": "Bez podpisanej umowy",
         "signedBy": "Podpisane przez: {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "Przypisane jednostki są niedostępne w nowych terminach: {identifiers}",
     "invalidUnits": "Jedna lub więcej wybranych jednostek jest nieprawidłowa",
     "turnoverBufferConflict": "Wybrana jednostka jest blokowana tylko przez bufor rotacji",
-    "turnoverBufferShortfall": "Bufor rotacji między dwoma wynajmami uniemożliwia potwierdzenie niektórych pozycji tej rezerwacji. Zwolnij stan wokół tych dat lub je przesuń.",
+    "turnoverBufferShortfall": "Bufor rotacji między dwoma wynajmami uniemożliwia potwierdzenie niektórych pozycji tej rezerwacji. Zwolnij stan wokół tych dat, przesuń je lub potwierdź mimo to z krótszym czasem między wynajmami.",
     "unitProductMismatch": "Wybrane jednostki nie należą do tego produktu",
     "unitCombinationMismatch": "Wybrane jednostki nie odpowiadają zarezerwowanej kombinacji dla tej pozycji",
     "cannotDisableUnitTrackingWithCombinations": "Nie można wyłączyć śledzenia jednostek, gdy aktywne rezerwacje korzystają ze śledzonych kombinacji",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "Proś o potwierdzenie przed działaniami wrażliwymi",
-      "description": "Przed usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić; ma polecenie najpierw Ci go pokazać. Zapisanie, zwrot lub usunięcie płatności, wydanie kredytów AI, potwierdzenie rezerwacji ponad dostępny stan, usunięcie członka i anulowanie zaproszenia zawsze wymagają potwierdzenia, nawet gdy to jest wyłączone."
+      "description": "Przed usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić; ma polecenie najpierw Ci go pokazać. Zapisanie, zwrot lub usunięcie płatności, wydanie kredytów AI, potwierdzenie rezerwacji ponad dostępny stan lub z pominięciem bufora rotacji, usunięcie członka i anulowanie zaproszenia zawsze wymagają potwierdzenia, nawet gdy to jest wyłączone."
     },
     "bundlesTitle": "Wyświetlane narzędzia",
     "bundlesHint": "Agent widzi te zestawy narzędzi. Później możesz dodać kolejne.",

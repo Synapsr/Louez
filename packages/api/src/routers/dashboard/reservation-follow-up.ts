@@ -82,11 +82,12 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
 /**
  * The confirmation of a status change, bound to what its preview shows (the
  * status it starts from, the dates, the amounts, the messages, the money and
- * the shortfalls booked over) and to where the messages go. A change since
- * (the reservation moved, a payment recorded, a setting that stops a
- * message, the customer's email or phone, a shortfall that grew) voids the
- * token. A confirmation that books over the stock asks every key and token,
- * even one whose confirmations are off (decision D2,
+ * the shortfalls booked over or confirmed past the turnover buffer, and that
+ * buffer) and to where the messages go. A change since (the reservation
+ * moved, a payment recorded, a setting that stops a message, the customer's
+ * email or phone, a shortfall that grew or changed) voids the token. A
+ * confirmation sent with either override asks every key and token, even one
+ * whose confirmations are off (decision D2 and slice 5,
  * docs/domain/reservation-changes.md).
  */
 const statusConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
@@ -96,7 +97,7 @@ const statusConfirmation = (context: ProductContext, path: readonly string[], in
     return {
       state: { ...details, recipientsHash },
       details,
-      always: preview.overbooking !== null,
+      always: preview.overbooking !== null || preview.turnoverBuffer !== null,
     };
   });
 
@@ -229,7 +230,9 @@ const listCalendarPeriodProcedure = storeProcedure
     const link = linker(context);
     const period = await listCalendarPeriod(reader(context), { from: input.from, to: input.to });
     // By start date, then id: the calendar's order, total.
-    const order = { key: (item: CalendarEntry) => `${item.startDate.toISOString()}\u0000${item.id}` };
+    const order = {
+      key: (item: CalendarEntry) => `${item.startDate.toISOString()}\u0000${item.id}`,
+    };
     const page = answerPage(period.items, order, input, {
       transport: context.actor.transport,
       tool: "reservations_list_calendar_period",
@@ -325,7 +328,7 @@ const updateStatus = storeProcedure
       name: "reservations_update_status",
       title: "Change Reservation Status",
       description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. A confirmation the stock cannot cover answers RESERVATION_INSUFFICIENT_CAPACITY with each line short (details.shortfalls: product, combination, requested, available). The same input with allowOverbooking: true books over the stock, for when the user chose to: it always answers CONFIRMATION_REQUIRED first, even on a connection whose confirmations are off, with a preview listing every shortfall, and its token holds only while the shortfalls stay as previewed. The token proves the preview was seen, not that a person approved it. allowOverbooking never passes RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock but not the turnover buffer between rentals), RESERVATION_UNITS_UNAVAILABLE or a consumable out of stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
+        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. A confirmation the stock cannot cover answers RESERVATION_INSUFFICIENT_CAPACITY with each line short (details.shortfalls: each short line by its reservationItemId, with its product, its combination or the attributes it chose, requested, available). The same input with allowOverbooking: true books over the stock, for when the user chose to: it always answers CONFIRMATION_REQUIRED first, even on a connection whose confirmations are off, with a preview listing every shortfall, and its token holds only while the shortfalls stay as previewed. The token proves the preview was seen, not that a person approved it. A confirmation refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock but not the turnover buffer the store keeps between rentals, details.shortfalls counted with the buffer) is confirmed all the same with overrideTurnoverBuffer: true, for when the user chose a shorter turnaround: it asks the same way, its preview lists those lines and the buffer, and it covers this confirmation only. Neither flag passes the other's refusal: a reservation short both ways needs both, and one preview lists both. Neither passes RESERVATION_UNITS_UNAVAILABLE or a consumable out of stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       effect: "overwrite",
       reach: "customer",
@@ -343,6 +346,7 @@ const updateStatus = storeProcedure
           to: input.status,
           rejectionReason: input.rejectionReason,
           allowOverbooking: input.allowOverbooking,
+          overrideTurnoverBuffer: input.overrideTurnoverBuffer,
         },
         { confirm: statusConfirmation(context, path, input) },
       ),

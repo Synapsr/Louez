@@ -2681,7 +2681,11 @@
           "editDescription": "Alcuni prodotti non sono disponibili in quantità sufficiente per il periodo. Puoi comunque salvare la modifica e l'override sarà visibile nella cronologia.",
           "saveAnyway": "Salva comunque",
           "confirmDescription": "Lo stock non copre questa prenotazione nel suo periodo. Puoi comunque confermarla oltre lo stock disponibile: la scelta sarà visibile nella cronologia.",
-          "confirmAnyway": "Conferma comunque"
+          "confirmAnyway": "Conferma comunque",
+          "bufferTitle": "Margine di rotazione insufficiente",
+          "bufferDescription": "Queste righe rientrano nel tuo stock, ma non con il margine di rotazione che tieni tra due noleggi. Puoi comunque confermare la prenotazione con meno tempo tra i noleggi: la scelta sarà visibile nella cronologia.",
+          "bufferShortfall": "Richiesto: {requested} · Libero con il margine: {available}",
+          "confirmPastBuffer": "Conferma comunque"
         },
         "addUnavailable": {
           "title": "Prodotto non disponibile",
@@ -2733,6 +2737,7 @@
         "quote_accepted": "Preventivo accettato",
         "quote_declined": "Preventivo rifiutato",
         "overbooked": "Overbooking",
+        "turnoverBufferOverridden": "Margine ridotto",
         "contract_signed": "Contratto firmato",
         "contractUnsigned": "Senza contratto firmato",
         "signedBy": "Firmato da {name}",
@@ -9253,7 +9258,7 @@
     "assignedUnitsConflict": "Le unità assegnate non sono disponibili per le nuove date: {identifiers}",
     "invalidUnits": "Una o più unità selezionate non sono valide",
     "turnoverBufferConflict": "L'unità selezionata è bloccata solo dal margine di rotazione",
-    "turnoverBufferShortfall": "Il margine di rotazione tra due noleggi impedisce di confermare alcune righe di questa prenotazione. Libera stock intorno a queste date o spostale.",
+    "turnoverBufferShortfall": "Il margine di rotazione tra due noleggi impedisce di confermare alcune righe di questa prenotazione. Libera stock intorno a queste date, spostale o conferma comunque con meno tempo tra i noleggi.",
     "unitProductMismatch": "Le unità selezionate non appartengono a questo prodotto",
     "unitCombinationMismatch": "Le unità selezionate non corrispondono alla combinazione riservata per questa riga",
     "cannotDisableUnitTrackingWithCombinations": "Impossibile disattivare il tracciamento delle unità mentre prenotazioni attive utilizzano combinazioni tracciate per questo prodotto.",
@@ -9546,7 +9551,7 @@
     },
     "confirm": {
       "label": "Chiedi conferma prima delle azioni sensibili",
-      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare, restituire o eliminare un pagamento, spendere crediti IA, confermare una prenotazione oltre lo stock disponibile, rimuovere un membro e annullare un invito chiedono sempre conferma, anche se disattivato."
+      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare, restituire o eliminare un pagamento, spendere crediti IA, confermare una prenotazione oltre lo stock disponibile o il margine di rotazione, rimuovere un membro e annullare un invito chiedono sempre conferma, anche se disattivato."
     },
     "bundlesTitle": "Strumenti mostrati",
     "bundlesHint": "L’agente vede questi gruppi di strumenti. Potrà aggiungerne altri in seguito.",

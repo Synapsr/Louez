@@ -27,6 +27,7 @@ import { evaluateReservationRules, getSettledPaymentAmount } from "@louez/utils"
 import { and, asc, eq } from "drizzle-orm";
 
 import {
+  describeShortfallLine,
   reservationErrors,
   type CapacityShortfall,
   type StatusChangeOutput,
@@ -75,7 +76,10 @@ export interface StatusChangeCaller {
   storeId: string;
   /** The signed-in user, recorded on the activity row. */
   userId: string | null;
-  /** The key or grant the call came with, recorded on a confirmation that books over the stock. */
+  /**
+   * The key or grant the call came with, recorded on a confirmation that
+   * books over the stock or confirms past the turnover buffer.
+   */
   credential: Pick<Credential, "kind" | "id">;
   transport: Transport;
   /** May read customers: the preview then names the customer. */
@@ -110,6 +114,14 @@ export interface StatusChangePreview {
    * preview voids its token. Null without the flag.
    */
   overbooking: { shortfalls: CapacityShortfall[] } | null;
+  /**
+   * A confirmation sent with `overrideTurnoverBuffer`: the lines that fit the
+   * stock but not the turnover buffer, confirmed past it, as the check under
+   * the locks found them (none when the buffer stops none), and the buffer
+   * they were checked with. The confirmation binds them, as it binds
+   * `overbooking`. Null without the flag.
+   */
+  turnoverBuffer: { shortfalls: CapacityShortfall[]; turnoverBufferMinutes: number } | null;
   /** For a cancellation: what was paid, and what happens to it. */
   money: {
     rentalPaid: string;
@@ -145,6 +157,13 @@ export interface StatusChangeRequest {
    * check finds short, on purpose (S3). Ignored for any other change.
    */
   allowOverbooking?: boolean;
+  /**
+   * For a confirmation that takes stock: confirm past the turnover buffer the
+   * lines that fit the stock only without it, on purpose (S4). It covers
+   * this change only (D5), never a capacity shortfall. Ignored for any other
+   * change.
+   */
+  overrideTurnoverBuffer?: boolean;
 }
 
 /** Whether a change needs the caller's confirmation: a message to the customer, less stock, or a cancellation. */
@@ -308,7 +327,21 @@ const describeOverbooking = (shortfalls: readonly CapacityShortfall[]) =>
     : `The stock cannot cover it, and it is booked over the stock all the same: ${shortfalls
         .map(
           (shortfall) =>
-            `${shortfall.productName}${shortfall.combinationKey ? ` (${shortfall.combinationKey})` : ""}, ${shortfall.requested} asked, ${shortfall.available} free`,
+            `${describeShortfallLine(shortfall)}, ${shortfall.requested} asked, ${shortfall.available} free`,
+        )
+        .join("; ")}. The reservation's history records it.`;
+
+/** The lines a confirmation takes past the turnover buffer, for its preview's sentence. */
+const describeTurnoverBuffer = ({
+  shortfalls,
+  turnoverBufferMinutes,
+}: NonNullable<StatusChangePreview["turnoverBuffer"]>) =>
+  shortfalls.length === 0
+    ? "The turnover buffer stops no line: nothing is confirmed past it."
+    : `These lines fit the stock but not the ${turnoverBufferMinutes}-minute turnover buffer the store keeps between rentals, and are confirmed past it all the same: ${shortfalls
+        .map(
+          (shortfall) =>
+            `${describeShortfallLine(shortfall)}, ${shortfall.requested} asked, ${shortfall.available} free with the buffer`,
         )
         .join("; ")}. The reservation's history records it.`;
 
@@ -317,8 +350,9 @@ async function buildPreview(
   caller: StatusChangeCaller,
   locked: LockedReservation,
   to: ReservationStatus,
-  overbooking: StatusChangePreview["overbooking"],
+  overrides: Pick<StatusChangePreview, "overbooking" | "turnoverBuffer">,
 ): Promise<StatusChangePreview> {
+  const { overbooking, turnoverBuffer } = overrides;
   const { store } = locked.snapshot;
   const currency = locked.currency ?? store.settings?.currency ?? "EUR";
   const name = [locked.customer?.firstName, locked.customer?.lastName]
@@ -381,6 +415,7 @@ async function buildPreview(
         : `Change ${reservationLabel} from ${locked.status} to ${to}.`,
     sends,
     takesStock(locked.status, to) ? "Its items leave the stock for these dates." : null,
+    turnoverBuffer ? describeTurnoverBuffer(turnoverBuffer) : null,
     overbooking ? describeOverbooking(overbooking.shortfalls) : null,
     moneyFacts
       ? `Paid so far: ${moneyFacts.rentalPaid} ${currency} for the rental, ${moneyFacts.depositCollected} ${currency} of deposit (deposit status ${moneyFacts.depositStatus ?? "none"}). Nothing is refunded or released by the cancellation: refund from the reservation's payments.`
@@ -408,6 +443,7 @@ async function buildPreview(
     messages,
     reducesAvailability: takesStock(locked.status, to),
     overbooking,
+    turnoverBuffer,
     money: moneyFacts,
     insuranceContract,
     // Where the messages go, and in which language.
@@ -448,14 +484,17 @@ type TransactionOutcome =
 
 /**
  * Changes a reservation's status, as the store asks: confirm, reject, pick
- * up, return or cancel. A confirmation the returnable stock cannot cover is
- * refused with its shortfalls (RESERVATION_INSUFFICIENT_CAPACITY) unless the
- * request carries `allowOverbooking`: it is then made, and its activity row
- * records `overbooked: true` with the shortfalls and the credential. A line
- * short only with the turnover buffer, a held unit another booking holds
- * or needs, and consumable stock below zero refuse whatever the flag. `confirm` is asked
- * under the locks when the change sends the customer a message, takes
- * stock, or cancels; its preview lists the shortfalls booked over. The
+ * up, return or cancel. A confirmation with lines that fit the stock but not
+ * the turnover buffer is refused with them
+ * (RESERVATION_TURNOVER_BUFFER_CONFLICT) unless the request carries
+ * `overrideTurnoverBuffer`; one the returnable stock cannot cover, with its
+ * shortfalls (RESERVATION_INSUFFICIENT_CAPACITY) unless it carries
+ * `allowOverbooking`. Neither flag passes the other's shortfalls. Passed, the
+ * change is made, and its activity row records what each flag passed and
+ * the credential. A held unit another booking holds or needs, and consumable
+ * stock below zero, refuse whatever the flags. `confirm` is asked under the
+ * locks when the change sends the customer a message, takes stock, or
+ * cancels; its preview lists what each flag passes. The
  * customer's message, the store's and the platform's notifications and the
  * analytics event go to the outbox in the same transaction. Then, once
  * committed: the fee, the insurance contract, the outbox's dispatch and the
@@ -496,21 +535,28 @@ export async function changeStoreReservationStatus(
         }
         // A change that takes stock is checked here, before the preview; its
         // verdict goes on the change's activity row, through `beforeWrite`.
-        // Short stock refuses unless the store books over it on purpose.
+        // Short stock, or a short turnover buffer, refuses unless the store
+        // passes it on purpose, each with its own flag.
         const allowOverbooking = takesStock(from, to) && request.allowOverbooking === true;
+        const overrideTurnoverBuffer =
+          takesStock(from, to) && request.overrideTurnoverBuffer === true;
         const inventory = takesStock(from, to)
-          ? await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking })
+          ? await checkStoreConfirmationInventory(tx, id, storeId, {
+              allowOverbooking,
+              overrideTurnoverBuffer,
+            })
           : null;
         const bookedOver = inventory?.bookedOver ?? [];
+        const pastBuffer = inventory?.pastBuffer ?? [];
 
         // The preview, its confirmation and the queued messages share one snapshot.
-        const preview = await buildPreview(
-          tx,
-          caller,
-          locked,
-          to,
-          allowOverbooking ? { shortfalls: bookedOver } : null,
-        );
+        const preview = await buildPreview(tx, caller, locked, to, {
+          overbooking: allowOverbooking ? { shortfalls: bookedOver } : null,
+          turnoverBuffer:
+            inventory && overrideTurnoverBuffer
+              ? { shortfalls: pastBuffer, turnoverBufferMinutes: inventory.turnoverBufferMinutes }
+              : null,
+        });
         if (options.confirm && statusChangeIsSensitive(from, to)) {
           const refusal = await options.confirm(preview, tx);
           // Committed: the new preview stays recorded for its token.
@@ -538,8 +584,9 @@ export async function changeStoreReservationStatus(
                 activityAt: inventory.activityAt,
                 activityMetadata: {
                   ...inventory.activityMetadata,
-                  // Booked over the stock: by which key or grant, next to the actor.
-                  ...(bookedOver.length > 0
+                  // Booked over the stock, or confirmed past the buffer: by
+                  // which key or grant, next to the actor.
+                  ...(bookedOver.length > 0 || pastBuffer.length > 0
                     ? { credential: { kind: caller.credential.kind, id: caller.credential.id } }
                     : {}),
                 },
