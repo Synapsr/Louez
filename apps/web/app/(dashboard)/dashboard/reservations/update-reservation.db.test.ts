@@ -11,6 +11,7 @@ import {
   type TestDatabase,
 } from "@louez/db/testing";
 
+import * as badges from "./[id]/utils/capacity-verdict-badge";
 import { STORE_KEY } from "./actions-test-stubs";
 
 // An edit of a reservation on a migrated database: it is refused with its
@@ -23,13 +24,18 @@ const DAY = 86_400_000;
 const START = new Date("2031-06-10T09:00:00.000Z");
 const END = new Date(START.getTime() + 2 * DAY);
 
-type Settings = { currency: string; pendingBlocksAvailability?: boolean };
+type Settings = {
+  currency: string;
+  pendingBlocksAvailability?: boolean;
+  turnoverBufferMinutes?: number;
+};
 
 describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let actions: typeof import("./actions");
   let inbox: typeof import("@louez/api/services/inbox");
+  let statusChange: typeof import("@louez/api/services/reservation-status");
   let counter = 0;
 
   const useStore = (settings: Settings = { currency: "eur" }) =>
@@ -53,6 +59,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
     inbox = await import("@louez/api/services/inbox");
+    statusChange = await import("@louez/api/services/reservation-status");
 
     await louezDb.db
       .insert(louezDb.stores)
@@ -874,6 +881,253 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       assert.equal(result.error, undefined);
       const [verdict] = await activityOf(booking.id);
       assert.equal(verdict?.overbooked, false);
+    });
+  });
+
+  describe("the turnover buffer, told apart from the stock", () => {
+    const BUFFER = 120;
+    const HOUR = 3_600_000;
+    /** A window that ends an hour before START: inside a two-hour buffer, clear of it without. */
+    const JUST_BEFORE = {
+      start: new Date(START.getTime() - 2 * DAY - HOUR),
+      end: new Date(START.getTime() - HOUR),
+    };
+
+    /** Runs with a two-hour turnover buffer, in the session and on the store's row, then puts the store back. */
+    async function withBuffer(run: () => Promise<void>) {
+      const s = louezDb.stores;
+      const [saved] = await louezDb.db
+        .select({ settings: s.settings })
+        .from(s)
+        .where(eq(s.id, STORE));
+      assert.ok(saved?.settings);
+      const original = saved.settings;
+      await louezDb.db
+        .update(s)
+        .set({ settings: { ...original, turnoverBufferMinutes: BUFFER } })
+        .where(eq(s.id, STORE));
+      useStore({ currency: "eur", turnoverBufferMinutes: BUFFER });
+      try {
+        await run();
+      } finally {
+        await louezDb.db.update(s).set({ settings: original }).where(eq(s.id, STORE));
+        useStore();
+      }
+    }
+
+    /** The store's confirmation, from its dashboard session. */
+    const confirm = (id: string, flags: { overrideTurnoverBuffer?: boolean } = {}) =>
+      statusChange.changeStoreReservationStatus(
+        {
+          storeId: STORE,
+          userId: "owner_edits",
+          credential: { kind: "session", id: null },
+          transport: "rpc",
+          customers: true,
+          store: {
+            id: STORE,
+            name: "Edits",
+            slug: "edits",
+            ownerUserId: "owner_edits",
+          },
+          ports: {
+            afterCommit: () => {},
+            runReservationEffects: async () => {},
+            insurance: { createContract: async () => null, cancelContract: async () => {} },
+            dispatchEffects: () => {},
+          },
+        },
+        { id, to: "confirmed", ...flags },
+      );
+
+    const session = { kind: "session", id: null };
+    const pastBuffer = (shortfalls: Array<ReturnType<typeof shortfall>>) => ({
+      turnoverBufferOverridden: true,
+      turnoverBufferShortfalls: shortfalls,
+      turnoverBufferMinutes: BUFFER,
+      credential: session,
+    });
+    /** The verdicts of a row, and nothing else. */
+    const verdictsOf = (metadata: Record<string, unknown> | undefined) =>
+      Object.fromEntries(
+        Object.entries(metadata ?? {}).filter(([key]) =>
+          [
+            "overbooked",
+            "overbookingShortfalls",
+            "turnoverBufferOverridden",
+            "turnoverBufferShortfalls",
+            "turnoverBufferMinutes",
+            "credential",
+          ].includes(key),
+        ),
+      );
+
+    test("a reservation confirmed past the buffer, then shortened, and its neighbour moved: never an overbooking", async () => {
+      await withBuffer(async () => {
+        const bike = await product("Bike", 1);
+        // A, then B an hour after A's return: one bike, inside the buffer.
+        const a = await reservation({ productId: bike, quantity: 1 });
+        const bStart = new Date(END.getTime() + HOUR);
+        const bEnd = new Date(bStart.getTime() + 2 * DAY);
+        const b = await reservation(
+          { productId: bike, quantity: 1 },
+          { status: "quote", start: bStart, end: bEnd },
+        );
+
+        await confirm(b.id, { overrideTurnoverBuffer: true });
+        const activity = louezDb.reservationActivity;
+        const [confirmed] = await louezDb.db
+          .select({ metadata: activity.metadata })
+          .from(activity)
+          .where(and(eq(activity.reservationId, b.id), eq(activity.activityType, "confirmed")));
+        assert.deepEqual(
+          [confirmed?.metadata?.overbooked, confirmed?.metadata?.turnoverBufferOverridden],
+          [false, true],
+          "B is confirmed past the buffer, not over the stock",
+        );
+        assert.ok(!(await overbookedInInbox()).includes(b.id));
+
+        // B ends a day earlier, with no flag: nothing is short without the buffer.
+        const shortened = await actions.updateReservation(b.id, {
+          endDate: new Date(bEnd.getTime() - DAY),
+        });
+        assert.equal(shortened.error, undefined);
+        const [bVerdict] = await activityOf(b.id);
+        assert.deepEqual(verdictsOf(bVerdict), { overbooked: false });
+
+        // A starts a day later, with no flag: the same, for A.
+        const moved = await actions.updateReservation(a.id, {
+          startDate: new Date(START.getTime() + DAY),
+        });
+        assert.equal(moved.error, undefined);
+        const [aVerdict] = await activityOf(a.id);
+        assert.deepEqual(verdictsOf(aVerdict), { overbooked: false });
+
+        const listed = await overbookedInInbox();
+        assert.ok(!listed.includes(b.id), "B is not an overbooking");
+        assert.ok(!listed.includes(a.id), "A is not an overbooking");
+      });
+    });
+
+    test("a quantity raised into a buffer-only shortfall: refused as today, then recorded past the buffer with the override", async () => {
+      await withBuffer(async () => {
+        const bikes = await product("Bike", 2);
+        await reservation({ productId: bikes, quantity: 1 }, JUST_BEFORE);
+        const booking = await reservation({ productId: bikes, quantity: 1 });
+        const before = await rowsOf(booking.id);
+
+        // The refusal is today's: the shortfall counted with the buffer.
+        assert.deepEqual(
+          await actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
+          { error: "errors.insufficientCapacity", shortfalls: [shortfall(bikes, "Bike", 2, 1)] },
+        );
+        assert.deepEqual(await rowsOf(booking.id), before);
+
+        const forced = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2)],
+          allowOverbooking: true,
+        });
+
+        assert.equal(forced.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: false,
+          ...pastBuffer([shortfall(bikes, "Bike", 2, 1)]),
+        });
+        assert.ok(!(await overbookedInInbox()).includes(booking.id));
+        const row = { activityType: "modified", metadata: verdict ?? null };
+        assert.equal(badges.showsOverbookedBadge(row), false);
+        assert.equal(badges.showsTurnoverBufferOverriddenBadge(row), true);
+      });
+    });
+
+    test("a quantity raised past the stock itself: an overbooking, counted without the buffer", async () => {
+      await withBuffer(async () => {
+        const bikes = await product("Bike", 2);
+        await reservation({ productId: bikes, quantity: 1 }, JUST_BEFORE);
+        await reservation({ productId: bikes, quantity: 1 });
+        const booking = await reservation({ productId: bikes, quantity: 1 });
+
+        // Refused with the buffered figure, as today: none free.
+        assert.deepEqual(
+          await actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
+          { error: "errors.insufficientCapacity", shortfalls: [shortfall(bikes, "Bike", 2, 0)] },
+        );
+
+        const forced = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2)],
+          allowOverbooking: true,
+        });
+
+        assert.equal(forced.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        // Recorded with what the stock leaves without the buffer: one free.
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: true,
+          overbookingShortfalls: [shortfall(bikes, "Bike", 2, 1)],
+        });
+        assert.ok((await overbookedInInbox()).includes(booking.id));
+      });
+    });
+
+    test("one line short only with the buffer, another on the stock, forced: both verdicts, each with its line", async () => {
+      await withBuffer(async () => {
+        const bikes = await product("Bike", 2);
+        const helmets = await product("Helmet", 1);
+        await reservation({ productId: bikes, quantity: 1 }, JUST_BEFORE);
+        await reservation({ productId: helmets, quantity: 1 });
+        const booking = await reservation({ productId: bikes, quantity: 1 });
+
+        const forced = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2), added(helmets, 1, "Helmet")],
+          allowOverbooking: true,
+        });
+
+        assert.equal(forced.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: true,
+          overbookingShortfalls: [shortfall(helmets, "Helmet", 1, 0)],
+          ...pastBuffer([shortfall(bikes, "Bike", 2, 1)]),
+        });
+        assert.ok((await overbookedInInbox()).includes(booking.id));
+      });
+    });
+
+    test("dates moved into the buffer with overrideTurnoverBuffer: the row records what it passed", async () => {
+      await withBuffer(async () => {
+        const bike = await product("Bike", 1);
+        const later = await reservation(
+          { productId: bike, quantity: 1 },
+          { start: new Date(START.getTime() + 5 * DAY), end: new Date(END.getTime() + 5 * DAY) },
+        );
+        const booking = await reservation({ productId: bike, quantity: 1 });
+        // Back an hour before the later booking leaves.
+        const moved = {
+          startDate: new Date(START.getTime() + 3 * DAY - HOUR),
+          endDate: new Date(START.getTime() + 5 * DAY - HOUR),
+        };
+
+        assert.deepEqual(await actions.updateReservation(booking.id, moved), {
+          error: "errors.insufficientCapacity",
+          shortfalls: [shortfall(bike, "Bike", 1, 0)],
+        });
+
+        const passed = await actions.updateReservation(booking.id, {
+          ...moved,
+          overrideTurnoverBuffer: true,
+        });
+
+        assert.equal(passed.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: false,
+          ...pastBuffer([shortfall(bike, "Bike", 1, 0)]),
+        });
+        const listed = await overbookedInInbox();
+        assert.ok(!listed.includes(booking.id));
+        assert.ok(!listed.includes(later.id));
+      });
     });
   });
 });

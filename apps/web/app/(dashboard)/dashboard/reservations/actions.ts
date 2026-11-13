@@ -3,11 +3,13 @@
 import {
   capacityVerdictMetadata,
   nextCapacityVerdictDate,
+  turnoverBufferVerdictMetadata,
 } from "@louez/api/services/capacity-verdict";
 import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import {
   lockReservationProducts,
   reserveInventory,
+  splitShortfallsByTurnoverBuffer,
 } from "@louez/api/services/reservation-inventory";
 
 import { validateReservationContract } from "@louez/api/services";
@@ -525,6 +527,32 @@ function resolveManualLineChoice(
   return { combinationKey, selectedAttributes: Object.keys(chosen).length > 0 ? chosen : null };
 }
 
+/**
+ * The verdicts a creation or an edit records with its write
+ * (services/capacity-verdict.ts). Its capacity verdict, which the inbox
+ * reads, is built from what the stock itself lacks, counted without the
+ * turnover buffer: a line short only with the buffer is never an
+ * overbooking. Such lines that a flag of the write let through are recorded
+ * apart, with the buffer they were checked with and the session's
+ * credential, as the store's confirmation records them.
+ */
+function stockVerdictMetadata(
+  bookedOver: readonly CapacityShortfall[],
+  pastBuffer: readonly CapacityShortfall[],
+  turnoverBufferMinutes: number,
+) {
+  return {
+    ...capacityVerdictMetadata(bookedOver),
+    ...(pastBuffer.length > 0
+      ? {
+          ...turnoverBufferVerdictMetadata(pastBuffer, turnoverBufferMinutes),
+          // The dashboard's writes come with the user's session.
+          credential: { kind: "session" as const, id: null },
+        }
+      : {}),
+  };
+}
+
 export async function createManualReservation(data: CreateReservationData) {
   const store = await getStoreForUser();
   if (!store) {
@@ -920,28 +948,31 @@ export async function createManualReservation(data: CreateReservationData) {
     // The stock rule every booking is checked against. Each shortfall is
     // listed, for the store to book over on purpose. Consumables are checked
     // here against what other bookings hold, and again when they are taken.
-    const inventory = await reserveInventory({
-      tx,
-      storeId: store.id,
-      lockedProductsById,
-      lines: lines.map(({ detail, choice }) => ({
-        productId: detail.product.id,
-        quantity: detail.quantity,
-        selectedAttributes: choice.selectedAttributes ?? undefined,
-        combinationKey: choice.combinationKey,
-        // A line with no exact combination is served by any unit that
-        // matches what it chose (resolveUnitAssignmentScope).
-        pooled: choice.combinationKey === null,
-      })),
-      window: { start: data.startDate, end: data.endDate },
-      blockingStatuses: getBlockingReservationStatuses(
-        availabilityRules?.settings?.pendingBlocksAvailability ?? true,
-      ),
-      turnoverBufferMinutes: availabilityRules?.settings?.turnoverBufferMinutes ?? 0,
-      // A booking the team types does not ask for the required accessories.
-      skipRequiredAccessoryCheck: true,
-      onShortfall: "collect",
-    });
+    const turnoverBufferMinutes = availabilityRules?.settings?.turnoverBufferMinutes ?? 0;
+    const checkStock = (bufferMinutes: number) =>
+      reserveInventory({
+        tx,
+        storeId: store.id,
+        lockedProductsById,
+        lines: lines.map(({ detail, choice }) => ({
+          productId: detail.product.id,
+          quantity: detail.quantity,
+          selectedAttributes: choice.selectedAttributes ?? undefined,
+          combinationKey: choice.combinationKey,
+          // A line with no exact combination is served by any unit that
+          // matches what it chose (resolveUnitAssignmentScope).
+          pooled: choice.combinationKey === null,
+        })),
+        window: { start: data.startDate, end: data.endDate },
+        blockingStatuses: getBlockingReservationStatuses(
+          availabilityRules?.settings?.pendingBlocksAvailability ?? true,
+        ),
+        turnoverBufferMinutes: bufferMinutes,
+        // A booking the team types does not ask for the required accessories.
+        skipRequiredAccessoryCheck: true,
+        onShortfall: "collect",
+      });
+    const inventory = await checkStock(turnoverBufferMinutes);
     if (!inventory.ok) {
       return { ok: false as const, error: inventory.error, shortfalls: [] };
     }
@@ -951,6 +982,17 @@ export async function createManualReservation(data: CreateReservationData) {
         error: "errors.insufficientCapacity",
         shortfalls: inventory.shortfalls,
       };
+    }
+    // What the override let through, told apart: only what the stock itself
+    // lacks is an overbooking; a line short only with the buffer is recorded
+    // as passed past it. The check without the buffer runs only when the
+    // buffered one was short.
+    const split = await splitShortfallsByTurnoverBuffer(checkStock, turnoverBufferMinutes, {
+      withBuffer: true,
+      check: inventory,
+    });
+    if (!split.ok) {
+      return { ok: false as const, error: split.error, shortfalls: [] };
     }
 
     const { effects, lock } = await insertReservation(tx, {
@@ -1074,7 +1116,12 @@ export async function createManualReservation(data: CreateReservationData) {
         status: reservationStatus,
         tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
         tulipInsuranceAmount,
-        ...capacityVerdictMetadata(inventory.shortfalls),
+        // Every line short only with the buffer was let through by the override.
+        ...stockVerdictMetadata(
+          split.capacity.map((line) => line.shortfall),
+          split.bufferOnly.map((line) => line.shortfall),
+          turnoverBufferMinutes,
+        ),
         ...(tulipQuoteError && { tulipQuoteError }),
       },
     });
@@ -2854,24 +2901,26 @@ export async function updateReservation(
           (productId) => lockedProductsById.get(productId)?.bookingAttributeAxes,
         );
         const holdsStock = blockingStatuses.some((status) => status === lockedReservation.status);
-        let capacityVerdict: ReturnType<typeof capacityVerdictMetadata> | null = null;
+        let capacityVerdict: ReturnType<typeof stockVerdictMetadata> | null = null;
         if (holdsStock && demand.changed) {
-          const inventory = await reserveInventory({
-            tx,
-            storeId: store.id,
-            lockedProductsById,
-            // A line whose product was deleted since has no stock to check.
-            lines: finalLines.filter((line) => lockedProductsById.has(line.productId)),
-            window: { start: newStartDate, end: newEndDate },
-            blockingStatuses,
-            turnoverBufferMinutes: overrideTurnoverBuffer ? 0 : turnoverBufferMinutes,
-            excludeReservationId: reservationId,
-            // Consumable stock is reconciled below; like a booking the team
-            // creates, an edit does not ask for the required accessories.
-            skipConsumableCheck: true,
-            skipRequiredAccessoryCheck: true,
-            onShortfall: "collect",
-          });
+          const checkStock = (bufferMinutes: number) =>
+            reserveInventory({
+              tx,
+              storeId: store.id,
+              lockedProductsById,
+              // A line whose product was deleted since has no stock to check.
+              lines: finalLines.filter((line) => lockedProductsById.has(line.productId)),
+              window: { start: newStartDate, end: newEndDate },
+              blockingStatuses,
+              turnoverBufferMinutes: bufferMinutes,
+              excludeReservationId: reservationId,
+              // Consumable stock is reconciled below; like a booking the team
+              // creates, an edit does not ask for the required accessories.
+              skipConsumableCheck: true,
+              skipRequiredAccessoryCheck: true,
+              onShortfall: "collect",
+            });
+          const inventory = await checkStock(overrideTurnoverBuffer ? 0 : turnoverBufferMinutes);
           if (!inventory.ok) {
             return { error: inventory.error };
           }
@@ -2883,7 +2932,28 @@ export async function updateReservation(
           ) {
             return { error: "errors.insufficientCapacity", shortfalls: inventory.shortfalls };
           }
-          capacityVerdict = capacityVerdictMetadata(inventory.shortfalls);
+          // The verdict, told apart: only what the stock itself lacks is an
+          // overbooking. A line short only with the buffer is recorded when a
+          // flag let it through, on a product the edit asks more of; one the
+          // edit did not raise needed no flag and records nothing. The other
+          // run is made only when the first was short, or, sent with
+          // `overrideTurnoverBuffer`, to trace what it passed.
+          const split = await splitShortfallsByTurnoverBuffer(
+            checkStock,
+            turnoverBufferMinutes,
+            { withBuffer: !overrideTurnoverBuffer, check: inventory },
+            demand.raisedProductIds.size > 0,
+          );
+          if (!split.ok) {
+            return { error: split.error };
+          }
+          capacityVerdict = stockVerdictMetadata(
+            split.capacity.map((line) => line.shortfall),
+            split.bufferOnly.flatMap((line) =>
+              demand.raisedProductIds.has(line.shortfall.productId) ? [line.shortfall] : [],
+            ),
+            turnoverBufferMinutes,
+          );
         }
 
         const unitEvents: Array<typeof productUnitEvents.$inferInsert> = assignmentsToRemove.map(

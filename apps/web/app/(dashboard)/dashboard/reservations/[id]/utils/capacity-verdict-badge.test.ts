@@ -45,6 +45,18 @@ test("a confirmation past the turnover buffer shows its own badge, apart from th
   assert.equal(showsOverbookedBadge({ activityType: "confirmed", metadata: both }), true);
 });
 
+test("a creation or an edit past the turnover buffer shows the buffer badge, not the overbooked one", () => {
+  const metadata = { overbooked: false, turnoverBufferOverridden: true };
+  for (const activityType of ["created", "modified"]) {
+    assert.equal(
+      showsTurnoverBufferOverriddenBadge({ activityType, metadata }),
+      true,
+      activityType,
+    );
+    assert.equal(showsOverbookedBadge({ activityType, metadata }), false, activityType);
+  }
+});
+
 test("the flag with nothing past the buffer, or a row without it, shows no buffer badge", () => {
   for (const metadata of [{ turnoverBufferOverridden: false }, { overbooked: true }, {}, null]) {
     assert.equal(
