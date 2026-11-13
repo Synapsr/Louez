@@ -287,13 +287,15 @@ const responseRef = (name: string) => ({ $ref: `#/components/responses/${name}` 
  * temporary link) ignores an idempotency key and never replays, so it
  * documents neither the key nor `Louez-Replayed`. Every operation documents
  * the error body: the statuses any call may meet (400, 401, 429; 403 where
- * a scope is checked; 412 where a confirmation may be asked), and `default`
- * for the others.
+ * a scope is checked; 412 where a confirmation may be asked; 415 on every
+ * method but GET, whose body is checked: one in a content type the operation
+ * does not take, or any body where it takes none), and `default` for the
+ * others.
  */
 function documented(
   meta: ExposedMeta,
   operation: OpenAPI.OperationObject,
-  ownOperationId: boolean,
+  options: { ownOperationId: boolean; checksBody: boolean },
 ): OpenAPI.OperationObject {
   const parameters = [...(operation.parameters ?? [])];
   const isWrite = meta.scope?.level === "write";
@@ -318,13 +320,14 @@ function documented(
   // A procedure without a scope (`stores_list`) refuses no connection.
   if (meta.scope) responses["403"] = responseRef("Forbidden");
   if (meta.sensitive) responses["412"] = responseRef("ConfirmationRequired");
+  if (options.checksBody) responses["415"] = responseRef("UnsupportedMediaType");
   responses["429"] = responseRef("RateLimited");
   responses.default = responseRef("Error");
 
   return {
     ...operation,
     // The tool name, unless the procedure names its operation: stable for SDKs.
-    operationId: ownOperationId ? operation.operationId : meta.mcp.name,
+    operationId: options.ownOperationId ? operation.operationId : meta.mcp.name,
     summary: operation.summary ?? meta.mcp.title,
     description: operation.description ?? meta.mcp.description,
     tags: operation.tags ?? [meta.scope?.domain ?? "account"],
@@ -344,11 +347,11 @@ function withDocumentation(procedure: AnyProcedure, meta: ExposedMeta): AnyProce
     route: {
       ...def.route,
       spec: (operation: OpenAPI.OperationObject) =>
-        documented(
-          meta,
-          typeof spec === "function" ? spec(operation) : operation,
-          def.route.operationId !== undefined,
-        ),
+        documented(meta, typeof spec === "function" ? spec(operation) : operation, {
+          ownOperationId: def.route.operationId !== undefined,
+          // oRPC reads a GET's input from the query string only.
+          checksBody: (def.route.method ?? "POST") !== "GET",
+        }),
     },
   });
 }
