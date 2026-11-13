@@ -1,0 +1,80 @@
+name: Gleap support
+
+# Feeds the Gleap support project from this repository. Off until the
+# repository variable GLEAP_SUPPORT_ENABLED is "true", and every job then runs
+# as a dry run until GLEAP_DRY_RUN is "false". See docs/support/gleap.md.
+on:
+  pull_request:
+    paths: [".github/scripts/gleap/**", ".github/workflows/gleap-support.yml"]
+  push:
+    branches: [main]
+    paths: ["README.md", "README.fr.md", "CHANGELOG.md"]
+  release:
+    types: [published]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gleap-support-${{ github.event_name }}
+  cancel-in-progress: false
+
+env:
+  DRY_RUN: ${{ vars.GLEAP_DRY_RUN || 'true' }}
+  GLEAP_PROJECT_ID: ${{ vars.GLEAP_PROJECT_ID }}
+  GLEAP_API_KEY: ${{ secrets.GLEAP_API_KEY }}
+
+jobs:
+  test:
+    name: Script tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test .github/scripts/gleap/
+
+  kai-sources:
+    name: Sync Kai sources
+    needs: test
+    if: vars.GLEAP_SUPPORT_ENABLED == 'true' && github.event_name != 'pull_request' && github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node .github/scripts/gleap/sync-kai-sources.mjs
+        env:
+          GLEAP_AI_CONTENT_TYPE: ${{ vars.GLEAP_AI_CONTENT_TYPE }}
+      - if: github.event_name == 'release'
+        run: |
+          {
+            echo "### Release notes loop"
+            echo "Kai now reads the changelog of ${{ github.event.release.tag_name }}."
+            echo "Next: draft the Gleap news and the help center update, review them, then publish in Gleap."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  bugs-to-issues:
+    name: Gleap bugs to GitHub issues
+    needs: test
+    if: vars.GLEAP_SUPPORT_ENABLED == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node .github/scripts/gleap/bugs-to-issues.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GLEAP_ISSUES_TOKEN }}
+          GLEAP_ISSUES_REPO: ${{ vars.GLEAP_ISSUES_REPO }}
+          GLEAP_BUGS_SINCE: ${{ vars.GLEAP_BUGS_SINCE }}
+          GLEAP_ISSUES_INCLUDE_TITLE: ${{ vars.GLEAP_ISSUES_INCLUDE_TITLE }}

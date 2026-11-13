@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Help center
+    url: https://help.louez.io
+    about: Guides for running your rental business on Louez, self-hosting included.
+  - name: Feature ideas
+    url: https://github.com/Synapsr/Louez/discussions
+    about: Suggest a feature or discuss an idea.
+  - name: Security
+    url: https://github.com/Synapsr/Louez/blob/main/SECURITY.md
+    about: Report a vulnerability privately, never in a public issue.
