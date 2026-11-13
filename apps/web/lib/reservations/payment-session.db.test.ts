@@ -53,6 +53,8 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
   let paymentSession: typeof import("./payment-session");
   let counter = 0;
   const sessions: Stripe.Checkout.SessionCreateParams[] = [];
+  /** The account each session was created on, in order. */
+  const accounts: (string | undefined)[] = [];
 
   before(async () => {
     database = await createTestDatabase("payment_session");
@@ -63,8 +65,9 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     Reflect.set(
       getStripe().checkout.sessions,
       "create",
-      async (params: Stripe.Checkout.SessionCreateParams) => {
+      async (params: Stripe.Checkout.SessionCreateParams, options?: Stripe.RequestOptions) => {
         sessions.push(params);
+        accounts.push(options?.stripeAccount);
         return {
           id: `cs_pay_${sessions.length}`,
           url: "https://checkout.stripe.test/pay",
@@ -99,6 +102,7 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
 
   beforeEach(() => {
     sessions.length = 0;
+    accounts.length = 0;
   });
 
   /** A confirmed reservation of 100.00, with a deposit of 300.00. */
@@ -206,5 +210,31 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     assert.ok(!("error" in stillOwed), JSON.stringify(stillOwed));
     assert.deepEqual(asked(), [["eur", 10_000]]);
     assert.deepEqual(alreadyPaid, { error: "errors.alreadyPaid" });
+  });
+
+  test("the pending payment records the account its session was created on", async () => {
+    const reservationId = await createReservation("EUR");
+
+    const result = await start(reservationId);
+
+    assert.ok(!("error" in result), JSON.stringify(result));
+    assert.deepEqual(accounts, ["acct_pay_session"]);
+    const rows = await louezDb.db
+      .select({
+        status: louezDb.payments.status,
+        origin: louezDb.payments.origin,
+        stripeCheckoutSessionId: louezDb.payments.stripeCheckoutSessionId,
+        stripeAccountId: louezDb.payments.stripeAccountId,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, reservationId));
+    assert.deepEqual(rows, [
+      {
+        status: "pending",
+        origin: "customer_session",
+        stripeCheckoutSessionId: result.sessionId,
+        stripeAccountId: "acct_pay_session",
+      },
+    ]);
   });
 });

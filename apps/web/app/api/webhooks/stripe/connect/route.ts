@@ -27,6 +27,10 @@ import {
 import { maybeGrantReferrerReward } from "@/lib/referral/rewards";
 import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
+import {
+  checkoutSessionAccount,
+  isSessionCreationRow,
+} from "@/lib/reservations/checkout-session-account";
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
 import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
@@ -102,16 +106,14 @@ const depositEventDeps: DepositEventDeps = {
 // Validates Stripe metadata to prevent manipulation attacks
 
 /**
- * Validates that the connected account matches the reservation's store
- * Prevents attacks where metadata is manipulated
- *
- * `recordedAccountId` is the account a Louez row of the reservation records for
- * the event's object, as the deposit events read a store that reconnected since:
- * that account is still heard about that object, and about nothing else.
+ * Validates that the connected account is the one heard about the event's
+ * checkout session: the account its payment row records, or the store's
+ * connected account when the row records none or the session has no row
+ * (`checkoutSessionAccount`). Prevents attacks where metadata is manipulated.
  */
 async function validateConnectedAccountForReservation(
   reservationId: string,
-  connectedAccountId: string | undefined,
+  connectedAccountId: string,
   eventType: string,
   {
     recordedAccountId = null,
@@ -137,17 +139,16 @@ async function validateConnectedAccountForReservation(
     return { valid: false };
   }
 
-  // If we have a connected account, validate it matches the store
-  if (
-    connectedAccountId &&
-    reservation.store.stripeAccountId !== connectedAccountId &&
-    recordedAccountId !== connectedAccountId
-  ) {
+  const sessionAccount = checkoutSessionAccount({
+    recordedAccountId,
+    storeAccountId: reservation.store.stripeAccountId,
+  });
+  if (connectedAccountId !== sessionAccount) {
     log.error({
       stripeWebhook: {
         event: eventType,
         issue: "connected_account_mismatch",
-        expected: reservation.store.stripeAccountId,
+        expected: sessionAccount,
         received: connectedAccountId,
         reservationId,
         ...logDetails,
@@ -328,13 +329,35 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  // Validate connected account matches store to prevent metadata manipulation
-  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+  // The account heard about the session: the one its payment row of this
+  // reservation records, the account Louez created the session on, else the
+  // store's connected account (`checkoutSessionAccount`). A session with such a
+  // row is heard from the account that sends its event, so the event names it.
+  const sessionRow =
+    existingPayment?.reservationId === reservationId && isSessionCreationRow(existingPayment)
+      ? existingPayment
+      : null;
+  if (sessionRow && !connectedAccountId) {
+    log.error({
+      stripeWebhook: {
+        event: "checkout.session.completed",
+        issue: "connected_account_missing",
+        reservationId,
+        sessionId: session.id,
+      },
+    });
+    return;
+  }
+  const sessionAccount = checkoutSessionAccount({
+    recordedAccountId: sessionRow?.stripeAccountId ?? null,
+    storeAccountId: reservation.store.stripeAccountId,
+  });
+  if (connectedAccountId && connectedAccountId !== sessionAccount) {
     log.error({
       stripeWebhook: {
         event: "checkout.session.completed",
         issue: "connected_account_mismatch",
-        expected: reservation.store.stripeAccountId,
+        expected: sessionAccount,
         received: connectedAccountId,
         reservationId,
         sessionId: session.id,
@@ -580,11 +603,12 @@ async function handleCheckoutCompleted(
 
 /**
  * An expired Checkout Session acts on the payment row its session id names, on
- * that payment's reservation, in the store whose connected account sent the
- * event, and on nothing else. The session id is the binding: Louez stored it
- * on the row when it created the session. An event whose reservation or
- * account does not agree with that row is logged and nothing is written; it
- * is answered 2xx, as Stripe would only send it again.
+ * that payment's reservation, sent by the account that row records, and on
+ * nothing else. The session id is the binding: Louez stored it, with the
+ * account it created the session on, on the row when it created the session. A
+ * row that records no account is heard from its store's connected account. An
+ * event whose reservation or account does not agree with that row is logged
+ * and nothing is written; it is answered 2xx, as Stripe would only send it again.
  */
 async function handleCheckoutExpired(
   session: Stripe.Checkout.Session,
@@ -599,11 +623,11 @@ async function handleCheckoutExpired(
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
-  // A session with no payment row (a payment request's records none until it
-  // is paid) has only its account to bind it: the reservation its metadata
-  // names must be one of the store that account is connected to, so the
-  // event must say which account sent it.
-  if (!existingPayment && !connectedAccountId) {
+  // The event must say which account sent it: the account its payment row
+  // records, or, for a session with no payment row (a payment request's records
+  // none until it is paid), the account of the store whose reservation its
+  // metadata names.
+  if (!connectedAccountId) {
     log.error({
       stripeWebhook: {
         event: "checkout.session.expired",
@@ -633,7 +657,10 @@ async function handleCheckoutExpired(
     connectedAccountId,
     "checkout.session.expired",
     {
-      recordedAccountId: existingPayment?.stripeAccountId ?? null,
+      recordedAccountId:
+        existingPayment && isSessionCreationRow(existingPayment)
+          ? existingPayment.stripeAccountId
+          : null,
       logDetails: { sessionId: session.id },
     },
   );

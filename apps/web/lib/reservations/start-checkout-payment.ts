@@ -152,6 +152,8 @@ export const startCheckoutPayment = async ({
         method: "stripe",
         status: "pending",
         stripeCheckoutSessionId: sessionId,
+        // The account the session was created on: its lifecycle is read on it.
+        stripeAccountId: store.stripeAccountId,
         origin: "checkout",
         currency,
         notes: isPartialPayment ? `Acompte ${depositPercentage}%` : null,

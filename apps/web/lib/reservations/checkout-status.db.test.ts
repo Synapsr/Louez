@@ -40,6 +40,9 @@ Reflect.get(
   },
 });
 
+// The Stripe client is built from this key; the checkout's session creation is replaced.
+process.env.STRIPE_SECRET_KEY = "sk_test_stub";
+
 const STORE = "store_checkout";
 const BEFORE = new Date("2026-01-10T08:00:00Z");
 
@@ -1951,6 +1954,109 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
       assert.deepEqual(again, { ok: false, error: "errors.stripe.invalidDepositStatus" });
       assert.equal(stripe.calls.length, 0, "Stripe is asked nothing");
       assert.deepEqual(stripe.pagesRead, []);
+    });
+  });
+
+  // The storefront checkout's payment session, Stripe's session creation
+  // replaced: the pending payment row records the account the session was
+  // created on, which the session's lifecycle is read on
+  // (docs/domain/reservation-changes.md, 6a-W2).
+  describe("the storefront checkout's payment session", () => {
+    const PAYING_STORE = "store_checkout_paying";
+    const PAYING_ACCOUNT = "acct_checkout_paying";
+    let start: typeof import("./start-checkout-payment");
+    /** The account each session was created on, in order. */
+    const accounts: (string | undefined)[] = [];
+
+    before(async () => {
+      start = await import("./start-checkout-payment");
+      const { getStripe } = await import("@/lib/stripe/client");
+      Reflect.set(
+        getStripe().checkout.sessions,
+        "create",
+        async (_params: unknown, options?: { stripeAccount?: string }) => {
+          accounts.push(options?.stripeAccount);
+          return {
+            id: `cs_checkout_${accounts.length}`,
+            url: "https://checkout.stripe.test/pay",
+            expires_at: 1_900_000_000,
+          };
+        },
+      );
+      await louezDb.db.insert(louezDb.stores).values({
+        id: PAYING_STORE,
+        userId: "owner_paying",
+        name: "Paying",
+        slug: "checkout-paying",
+        stripeAccountId: PAYING_ACCOUNT,
+        stripeChargesEnabled: true,
+      });
+    });
+
+    test("the pending payment records the account its session was created on", async () => {
+      const id = nextId("chk");
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: PAYING_STORE,
+        customerId: "customer",
+        number: id,
+        status: "pending",
+        startDate: new Date("2026-02-01T09:00:00Z"),
+        endDate: new Date("2026-02-03T09:00:00Z"),
+        subtotalAmount: "10.00",
+        depositAmount: "0.00",
+        totalAmount: "10.00",
+        source: "online",
+      });
+      type Input = Parameters<typeof start.startCheckoutPayment>[0];
+
+      const url = await start.startCheckoutPayment({
+        store: {
+          id: PAYING_STORE,
+          slug: "checkout-paying",
+          stripeAccountId: PAYING_ACCOUNT,
+          settings: { currency: "EUR" },
+        },
+        reservation: {
+          id,
+          number: id,
+          customerId: "customer",
+          customerEmail: "guest@example.test",
+          customerName: "Test Guest",
+        },
+        // What the line items read of a priced line and of the totals.
+        lines: [{ productName: "Kayak", quantity: 1, subtotal: 10 }] as Input["lines"],
+        totals: {
+          total: 10,
+          deposit: 0,
+          deliveryFee: 0,
+          discount: 0,
+          displayMode: "inclusive",
+          taxByLineId: new Map(),
+        } as unknown as Input["totals"],
+        insuranceAmount: 0,
+        locale: undefined,
+      });
+
+      assert.equal(url, "https://checkout.stripe.test/pay");
+      assert.deepEqual(accounts, [PAYING_ACCOUNT]);
+      const rows = await louezDb.db
+        .select({
+          status: louezDb.payments.status,
+          origin: louezDb.payments.origin,
+          stripeCheckoutSessionId: louezDb.payments.stripeCheckoutSessionId,
+          stripeAccountId: louezDb.payments.stripeAccountId,
+        })
+        .from(louezDb.payments)
+        .where(eq(louezDb.payments.reservationId, id));
+      assert.deepEqual(rows, [
+        {
+          status: "pending",
+          origin: "checkout",
+          stripeCheckoutSessionId: "cs_checkout_1",
+          stripeAccountId: PAYING_ACCOUNT,
+        },
+      ]);
     });
   });
 });

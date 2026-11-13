@@ -24,9 +24,9 @@ import {
 // recorded with its payload, in order. A move of the cancellation into
 // packages/api must leave every case passing unchanged
 // (docs/domain/reservation-changes.md, 6a-4). The event acts on the payment
-// row its session names, on that row's reservation, in the store whose
-// account sent it: a metadata reservation or an account other than those is
-// logged and writes nothing.
+// row its session names, on that row's reservation, sent by the account that
+// row records, or its store's for a row that records none (6a-W2): a metadata
+// reservation or an account other than those is logged and writes nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -693,5 +693,64 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       ),
     ]);
     assert.equal(await readStatus(unrecorded), "pending");
+  });
+
+  test("a store that reconnected: a session its payment records under the previous account is heard from that account only", async () => {
+    const recorded = await booking("online", RECONNECTED_STORE);
+    const recordedSession = await sessionPayment(recorded, "pending", PREVIOUS_ACCOUNT);
+
+    // The store's account of today did not create the session.
+    assert.deepEqual(
+      await expire(recorded, recordedSession, undefined, undefined, {
+        account: "acct_checkout_expired_today",
+      }),
+      { status: 200, body: { received: true } },
+    );
+
+    assert.deepEqual(await readWrites(recorded), []);
+    assert.deepEqual(calls, [
+      accountMismatch(recordedSession, recorded, PREVIOUS_ACCOUNT, "acct_checkout_expired_today"),
+    ]);
+    assert.equal(await readStatus(recorded), "pending");
+
+    // The account it was created on: cancelled.
+    calls.length = 0;
+    await expire(recorded, recordedSession, undefined, undefined, { account: PREVIOUS_ACCOUNT });
+
+    assert.deepEqual(await readWrites(recorded), [
+      "1: payments pending > cancelled",
+      "1: reservation_activity + payment_expired",
+      "2: reservations status pending > cancelled",
+      "2: reservation_activity + cancelled",
+    ]);
+    assert.deepEqual(calls.at(-1), expiredLog(recorded, recordedSession, true));
+  });
+
+  test("a session its payment row names, sent with no account: connected_account_missing logged, nothing written", async () => {
+    for (const stripeAccountId of [ACCOUNT, null]) {
+      const id = await booking();
+      const sessionId = await sessionPayment(id, "pending", stripeAccountId);
+
+      assert.deepEqual(await expire(id, sessionId, undefined, undefined, { account: null }), {
+        status: 200,
+        body: { received: true },
+      });
+
+      assert.deepEqual(await readWrites(id), []);
+      assert.deepEqual(calls, [
+        [
+          "log.error",
+          {
+            stripeWebhook: {
+              event: "checkout.session.expired",
+              issue: "connected_account_missing",
+              sessionId,
+            },
+          },
+        ],
+      ]);
+      assert.equal(await readStatus(id), "pending");
+      calls.length = 0;
+    }
   });
 });
