@@ -596,6 +596,19 @@ test("a helper file may break its own rule only, and is reported once it stops",
   assert.deepEqual(missingHelpers, [HELPER_FILES.R1, HELPER_FILES.R7]);
 });
 
+test("the customer's status service may not call the store's stock check", () => {
+  // Only the store's status service file is exempt from R7: an entry of
+  // another actor, in its own file, is seen.
+  const file = "packages/api/src/services/customer-reservation-status.ts";
+  const code = `${SNIPPET_IMPORTS}import { checkStoreConfirmationInventory } from "./reservation-inventory";
+    await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true, overrideTurnoverBuffer: true });`;
+  const { remaining } = applyAllowlist(findViolations(code, file, tables), ALLOWLIST);
+  assert.deepEqual(
+    remaining.map(({ rule }) => rule),
+    ["R7"],
+  );
+});
+
 test("reservation status writes and inserts go through the helpers", () => {
   const files = listSourceFiles();
   assert.ok(files.length > 1000, `only ${files.length} source files found`);

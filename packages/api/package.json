@@ -20,6 +20,7 @@
     "./services/customer-fields": "./src/services/customer-fields.ts",
     "./services/customer-fields-online": "./src/services/customer-fields-online.ts",
     "./services/customer-profile-fields": "./src/services/customer-profile-fields.ts",
+    "./services/customer-reservation-status": "./src/services/customer-reservation-status.ts",
     "./services/customer-tools": "./src/services/customer-tools.ts",
     "./services/date-change-requests": "./src/services/date-change-requests.ts",
     "./services/handoffs": "./src/services/handoffs.ts",

@@ -1,15 +1,8 @@
 "use server";
 
-import {
-  checkExistingReservationInventory,
-  ReservationInventoryError,
-} from "@louez/api/services/reservation-inventory";
+import { changeCustomerReservationStatus } from "@louez/api/services/customer-reservation-status";
 
-import {
-  ApiServiceError,
-  signReservationAsCustomer,
-  validateReservationContract,
-} from "@louez/api/services";
+import { ApiServiceError, signReservationAsCustomer } from "@louez/api/services";
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -17,20 +10,7 @@ import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import {
-  ConsumableStockError,
-  changeReservationStatus,
-  db,
-  isReservationChangeBusyError,
-  isStoreNotAcceptingReservationsError,
-  payments,
-  reservations,
-  runReservationChange,
-  runReservationOnlyChange,
-  stores,
-  verificationCodes,
-} from "@louez/db";
-import type { ReservationBillingEffect } from "@louez/db";
+import { db, reservations, stores, verificationCodes } from "@louez/db";
 import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR } from "@louez/types";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
@@ -170,114 +150,66 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   if ("error" in resolved) return { error: resolved.error };
   const { store, session } = resolved;
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id),
-      eq(reservations.customerId, session.customerId),
-    ),
-    with: {
-      customer: true,
-      items: true,
+  let paymentUrl: string | null = null;
+  // The fee comes after the payment session: the session takes the fee at source
+  // only while no fee row exists. The entry attempts the fee after `beforeFee`,
+  // even when the session throws. Once paid, the webhook turns this manual fee
+  // into a collected one.
+  const result = await changeCustomerReservationStatus(
+    { storeId: store.id, customerId: session.customerId, runReservationEffects },
+    { action: "accept_quote", reservationId },
+    {
+      beforeFee: async (reservation) => {
+        await captureProductServerEvent({
+          distinctId: session.customerId,
+          event: productAnalyticsEvents.quoteAccepted,
+          properties: {
+            feature: "customer_account",
+            surface: "storefront",
+            store_id: store.id,
+            reservation_id: reservationId,
+            customer_id: session.customerId,
+            source: "customer_account",
+            reservation_mode: getEffectiveReservationMode(store),
+            catalog_line_count: reservation.items.length,
+            total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
+            deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
+            currency: reservationCurrency(reservation.currency, store.settings),
+          },
+        });
+
+        if (getEffectiveReservationMode(store) === "payment") {
+          const paymentSession = await createReservationPaymentSessionForCustomer(
+            storeSlug,
+            reservationId,
+            session.customerId,
+            "quote_acceptance",
+          );
+          if (paymentSession.success) {
+            paymentUrl = paymentSession.paymentUrl;
+          } else if (paymentSession.error !== "errors.alreadyPaid") {
+            log.error(
+              "reservation",
+              `quote payment session failed (${reservationId}): ${paymentSession.error}`,
+            );
+          }
+        }
+      },
     },
-  });
-
-  if (!reservation) {
-    return { error: "reservationNotFound" };
-  }
-
-  if (reservation.status !== "quote") {
-    return { error: "invalidStatus" };
-  }
-
-  // The read above checked the customer. A reservation's customer never changes,
-  // so the store scope of the lock is enough.
-  let effects: ReservationBillingEffect[] | null = null;
-  try {
-    // The quote's products, then the quote (DL-12). A lost deadlock or a
-    // product added meanwhile runs the whole transaction again; it holds no
-    // effect, so the session, the fee and the messages come once, after it.
-    effects = await runReservationChange({ reservationId, storeId: store.id }, async (tx, lock) => {
-      const change = await changeReservationStatus(tx, {
-        lock,
-        reservationId,
-        storeId: store.id,
-        to: "confirmed",
-        actor: "customer",
-        actorUserId: null,
-        expectedFrom: "quote",
-        beforeWrite: () => checkExistingReservationInventory(tx, reservationId, store.id),
-        activity: { type: "quote_accepted", metadata: { source: "quote_acceptance" } },
-      });
-      if (!change.changed) return null;
-
-      await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
-      return change.effects;
-    });
-  } catch (error) {
-    // Busy on every run: nothing was written, the customer can try again.
-    if (isReservationChangeBusyError(error)) return { error: "tryAgain" };
-    if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
-      return { error: error.message };
-    }
+  );
+  if (!result.ok) {
     // The card gate (README §8.4): the renter sees the generic text and the store's
     // contact, no reason.
-    if (isStoreNotAcceptingReservationsError(error)) {
-      logReservationGateRefusal(error, "quote_acceptance");
+    if ("gate" in result) {
+      logReservationGateRefusal(result.gate, "quote_acceptance");
       return {
         error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
         errorParams: renterGateRefusalParams(store),
       };
     }
-    throw error;
+    return { error: result.error };
   }
-
-  if (!effects) {
-    return { error: "invalidStatus" };
-  }
-
-  let paymentUrl: string | null = null;
-  // The fee comes after the payment session: the session takes the fee at source
-  // only while no fee row exists. `finally` still records it when the session
-  // throws. Once paid, the webhook turns this manual fee into a collected one.
-  try {
-    await captureProductServerEvent({
-      distinctId: session.customerId,
-      event: productAnalyticsEvents.quoteAccepted,
-      properties: {
-        feature: "customer_account",
-        surface: "storefront",
-        store_id: store.id,
-        reservation_id: reservationId,
-        customer_id: session.customerId,
-        source: "customer_account",
-        reservation_mode: getEffectiveReservationMode(store),
-        catalog_line_count: reservation.items.length,
-        total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
-        deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
-        currency: reservationCurrency(reservation.currency, store.settings),
-      },
-    });
-
-    if (getEffectiveReservationMode(store) === "payment") {
-      const paymentSession = await createReservationPaymentSessionForCustomer(
-        storeSlug,
-        reservationId,
-        session.customerId,
-        "quote_acceptance",
-      );
-      if (paymentSession.success) {
-        paymentUrl = paymentSession.paymentUrl;
-      } else if (paymentSession.error !== "errors.alreadyPaid") {
-        log.error(
-          "reservation",
-          `quote payment session failed (${reservationId}): ${paymentSession.error}`,
-        );
-      }
-    }
-  } finally {
-    await runReservationEffects(effects);
-  }
+  const { reservation } = result;
 
   // Notify the store owner
   dispatchNotification("reservation_confirmed", {
@@ -388,55 +320,13 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   if ("error" in resolved) return { error: resolved.error };
   const { store, session } = resolved;
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id),
-      eq(reservations.customerId, session.customerId),
-    ),
-    with: {
-      customer: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "reservationNotFound" };
-  }
-
-  if (reservation.status !== "quote") {
-    return { error: "invalidStatus" };
-  }
-
-  // Under the lock, so a quote the store confirmed meanwhile is not declined. A
-  // declined quote gives back no stock: the reservation's lock is enough. A lost
-  // deadlock runs the whole transaction again (DL-12).
-  let effects: ReservationBillingEffect[] | null;
-  try {
-    effects = await runReservationOnlyChange(
-      { reservationId, storeId: store.id },
-      async (tx, lock) => {
-        const change = await changeReservationStatus(tx, {
-          lock,
-          reservationId,
-          storeId: store.id,
-          to: "declined",
-          actor: "customer",
-          actorUserId: null,
-          expectedFrom: "quote",
-          activity: { type: "quote_declined", metadata: { source: "quote_decline" } },
-        });
-        return change.changed ? change.effects : null;
-      },
-    );
-  } catch (error) {
-    // Busy on every run: nothing was written, the customer can try again.
-    if (isReservationChangeBusyError(error)) return { error: "tryAgain" };
-    throw error;
-  }
-  if (!effects) {
-    return { error: "invalidStatus" };
-  }
-  await runReservationEffects(effects);
+  // The entry voids the fee once the quote is declined, before anything below.
+  const result = await changeCustomerReservationStatus(
+    { storeId: store.id, customerId: session.customerId, runReservationEffects },
+    { action: "decline_quote", reservationId },
+  );
+  if (!result.ok) return { error: result.error };
+  const { reservation } = result;
 
   await captureProductServerEvent({
     distinctId: session.customerId,
@@ -501,87 +391,21 @@ export async function cancelReservationRequest(
   const resolved = await resolveCustomerStore(parsed.data.storeSlug);
   if ("error" in resolved) return { error: resolved.error };
   const { store, session } = resolved;
-  const scope = and(
-    eq(reservations.id, parsed.data.reservationId),
-    eq(reservations.storeId, store.id),
-    eq(reservations.customerId, session.customerId),
-  );
-  const reservation = await db.query.reservations.findFirst({
-    where: scope,
-    columns: {
-      id: true,
-      number: true,
-      startDate: true,
-      endDate: true,
-      totalAmount: true,
-      currency: true,
-      tulipContractId: true,
-    },
-    with: { customer: { columns: { firstName: true, lastName: true, email: true, phone: true } } },
-  });
-  if (!reservation) return { error: "reservationNotFound" };
+  const { reservationId: id } = parsed.data;
 
-  // A pending request gives back no stock: the reservation's lock is enough. A
-  // lost deadlock runs the whole transaction again (DL-12).
-  const cancellation = runReservationOnlyChange(
-    { reservationId: reservation.id, storeId: store.id },
-    async (tx, lock) => {
-      const [locked] = await tx
-        .select({ status: reservations.status })
-        .from(reservations)
-        .where(scope)
-        .for("update");
-      if (!locked) return { error: "reservationNotFound" };
-      if (locked.status === "cancelled") return { changed: false, effects: [] };
-      if (locked.status !== "pending") return { error: "requestCancellationStatusChanged" };
-
-      const paymentRows = await tx
-        .select({ status: payments.status, method: payments.method, type: payments.type })
-        .from(payments)
-        .where(eq(payments.reservationId, reservation.id))
-        .for("update");
-      // A checkout can still settle asynchronously. Leave its reservation intact. A
-      // deposit hold the store asked for and Stripe has not confirmed is no checkout.
-      if (
-        paymentRows.some(
-          (payment) =>
-            payment.method === "stripe" &&
-            payment.status === "pending" &&
-            payment.type !== "deposit_hold",
-        )
-      ) {
-        return { error: "requestCancellationPaymentPending" };
-      }
-      if (
-        !parsed.data.acknowledgePayment &&
-        paymentRows.some((payment) => ["completed", "authorized"].includes(payment.status))
-      ) {
-        return { error: "requestCancellationPaymentChanged" };
-      }
-      const change = await changeReservationStatus(tx, {
-        lock,
-        reservationId: reservation.id,
-        storeId: store.id,
-        to: "cancelled",
-        actor: "customer",
-        actorUserId: null,
-        expectedFrom: "pending",
-        activity: { metadata: { source: "customer_request_cancellation" } },
-      });
-      // The row is locked above, so this cannot happen. It narrows the type.
-      if (!change.changed) return { error: "requestCancellationStatusChanged" };
-      return { changed: true, effects: change.effects };
+  // The entry voids the fee once the request is cancelled, before anything below.
+  const result = await changeCustomerReservationStatus(
+    { storeId: store.id, customerId: session.customerId, runReservationEffects },
+    {
+      action: "cancel_request",
+      reservationId: id,
+      acknowledgePayment: parsed.data.acknowledgePayment,
     },
   );
-  const result = await cancellation.catch((error: unknown) => {
-    // Busy on every run: nothing was written, the customer can try again.
-    if (isReservationChangeBusyError(error)) return { error: "tryAgain" };
-    throw error;
-  });
-  if ("error" in result) return { error: result.error };
-  await runReservationEffects(result.effects);
+  if (!result.ok) return { error: result.error };
 
   if (result.changed) {
+    const { reservation } = result;
     if (reservation.tulipContractId) {
       try {
         await cancelTulipContractForReservation({
@@ -609,10 +433,13 @@ export async function cancelReservationRequest(
       log.error("reservation", `request cancellation notification failed: ${describeError(error)}`);
     }
   }
+  // The reservation's id as stored: the database matches an id whatever its
+  // case, and the pages to refresh are those of the stored one.
+  const storedId = result.changed ? result.reservation.id : result.reservationId;
   revalidatePath(`/${store.slug}/account`);
-  revalidatePath(`/${store.slug}/account/reservations/${reservation.id}`);
+  revalidatePath(`/${store.slug}/account/reservations/${storedId}`);
   revalidatePath("/dashboard/reservations");
-  revalidatePath(`/dashboard/reservations/${reservation.id}`);
+  revalidatePath(`/dashboard/reservations/${storedId}`);
   return { success: true };
 }
 
