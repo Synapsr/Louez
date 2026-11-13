@@ -208,9 +208,10 @@ const ALWAYS_CONFIRMED =
 
 /**
  * What the payment writes take from their context: the app's writer, and
- * the confirmation asked in the write's transaction, of every key and token
- * whatever its setting (money; a session never). The preview's details open
- * with its kind, as the hand-written tools showed them.
+ * the confirmation asked in the write's transaction. All three record, give
+ * back or erase money, the deletion included: they declare `money`, so every
+ * key and token is asked whatever its setting, and a session never. The
+ * preview's details open with its kind, as the hand-written tools showed them.
  */
 function paymentRecordsCaller(
   context: ProductContext,
@@ -230,7 +231,7 @@ function paymentRecordsCaller(
     port,
     confirm: (tx, { preview, state }) =>
       checkConfirmation({
-        always: true,
+        consequences: ["money"],
         executor: tx,
         actor: context.actor,
         headers: context.headers,

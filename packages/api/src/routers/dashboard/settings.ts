@@ -79,6 +79,8 @@ const links = (context: ProductContext, page: SettingsPage) =>
 /** The confirmation of a settings write, bound to each value it changes. */
 const confirmChanges = (context: ProductContext, path: readonly string[], input: unknown) =>
   confirmUnderLock<SettingsPreview>(context, path, input, (preview) => ({
+    // What customers see or pay from now on: the store can set it back.
+    consequences: ["change"],
     state: preview.changes,
     details: { changes: preview.changes },
   }));
@@ -425,6 +427,7 @@ const upsertLegalProfileProcedure = storeProcedure
     const profile = await upsertLegalProfile(settingsActor(context), input, {
       fallbackCountry: settings?.billingAddress?.country ?? settings?.country ?? "FR",
       confirm: confirmUnderLock<LegalProfilePreview>(context, path, input, (preview) => ({
+        consequences: ["change"],
         state: preview.changes,
         details: { changes: preview.changes },
       })),

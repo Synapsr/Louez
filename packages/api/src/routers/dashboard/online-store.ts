@@ -87,6 +87,8 @@ const updateSlug = storeProcedure
       storefrontUrl: (slug) => urls.storefront(slug, "/"),
       // The preview and its binding read the slug and the launch state under the lock.
       confirm: confirmUnderLock<SlugChangePreview>(context, path, input, (preview) => ({
+        // Online, every outside link to the old address stops working: no redirect.
+        consequences: preview.online ? ["deletion"] : ["change"],
         state: { previousSlug: preview.previousSlug, online: preview.online },
         details: {
           previousUrl: preview.previousUrl,

@@ -308,6 +308,7 @@ describe("the public reference", () => {
     description?: string;
     security?: unknown[];
     parameters?: Array<Ref & { name?: string; in?: string }>;
+    requestBody?: { content: Record<string, unknown> };
     responses: Record<string, Ref & { headers?: Record<string, unknown> }>;
   };
   type PublicDocument = {
@@ -549,6 +550,18 @@ describe("the public reference", () => {
       { method: "POST", body: "{}" },
     );
     assert.ok(tooLarge, "the body cap answers");
+    const unsupported = await serve(
+      "/categories",
+      { "content-type": "text/plain" },
+      { method: "POST", body: "{}" },
+    );
+    assert.ok(unsupported, "the content type check answers");
+    const conflicting = await serve(
+      "/categories/in-the-path",
+      { "content-type": "application/json" },
+      { method: "PATCH", body: JSON.stringify({ id: "another" }) },
+    );
+    assert.ok(conflicting, "the path parameter check answers");
     const statusOf: Record<string, number> = {
       INVALID_CURSOR: thrown(() =>
         answerPage([], { key: String }, { cursor: "%" }, { transport: "openapi", tool: "t" }),
@@ -566,12 +579,22 @@ describe("the public reference", () => {
       CONFIRMATION_REQUIRED: 412,
       CONFIRMATION_INVALID: platformErrors.confirmationInvalid().status,
       REQUEST_TOO_LARGE: tooLarge.status,
+      UNSUPPORTED_MEDIA_TYPE: unsupported.status,
+      PATH_PARAMETER_CONFLICT: conflicting.status,
       RATE_LIMITED: platformErrors.rateLimited(1).status,
       LARGE_BODY_BUSY: largeBodyBusy().status,
     };
     assert.equal(
       ((await tooLarge.json()) as { data: { code: string } }).data.code,
       "REQUEST_TOO_LARGE",
+    );
+    assert.equal(
+      ((await unsupported.json()) as { data: { code: string } }).data.code,
+      "UNSUPPORTED_MEDIA_TYPE",
+    );
+    assert.equal(
+      ((await conflicting.json()) as { data: { code: string } }).data.code,
+      "PATH_PARAMETER_CONFLICT",
     );
     assert.deepEqual(
       openapi.COMMON_ERROR_CODES.map(([status, code]) => [code, status]),
@@ -616,10 +639,85 @@ describe("the public reference", () => {
     assert.equal(invalidBody.data.code, undefined);
     assert.ok(invalidBody.data.issues.some((issue) => issue.path[0] === "name"));
 
-    // The whole input at fault: an empty path.
-    const whole = await post(JSON.stringify("text"));
-    const wholeBody = (await whole?.json()) as { data: { issues: Array<{ path: unknown[] }> } };
-    assert.deepEqual(wholeBody.data.issues[0].path, []);
+    // The whole input at fault: an empty path. JSON that is not an object is
+    // never read as one.
+    for (const body of [JSON.stringify("text"), "[]", JSON.stringify([{ name: "Bikes" }])]) {
+      const whole = await post(body);
+      assert.equal(whole?.status, 400, body);
+      const wholeBody = (await whole?.json()) as { data: { issues: Array<{ path: unknown[] }> } };
+      assert.deepEqual(wholeBody.data.issues[0].path, [], body);
+    }
+
+    // A body in a content type the operation does not take: 415 before
+    // anything reads it, with the types it takes. Here, without a key: a
+    // body that reached the operation would answer 400 or 401 instead.
+    const raw = (body: string) => new TextEncoder().encode(body);
+    const valid = JSON.stringify({ name: "Bikes" });
+    // A form as bytes: Node cannot cancel a body it streams from a FormData.
+    const form = new FormData();
+    form.set("name", "Bikes");
+    const multipart = new Response(form);
+    const multipartType = multipart.headers.get("content-type") ?? "";
+    const multipartBody = new Uint8Array(await multipart.arrayBuffer());
+    for (const [label, headers, body] of [
+      ["application/octet-stream", { "content-type": "application/octet-stream" }, raw(valid)],
+      ["application/problem+json", { "content-type": "application/problem+json" }, raw(valid)],
+      ["image/png", { "content-type": "image/png" }, raw(valid)],
+      ["multipart/form-data", { "content-type": multipartType }, multipartBody],
+      ["application/x-www-form-urlencoded", {}, new URLSearchParams({ name: "Bikes" })],
+      ["text/plain", { "content-type": "text/plain" }, valid],
+      ["application/jsonp", { "content-type": "application/jsonp" }, raw(valid)],
+      ["no content type", {}, raw(valid)],
+      ["an empty octet stream", { "content-type": "application/octet-stream" }, raw("")],
+      [
+        "a file's Content-Disposition",
+        { "content-type": "application/json", "content-disposition": 'attachment; filename="x"' },
+        raw(valid),
+      ],
+      [
+        "an empty body with a file's Content-Disposition",
+        { "content-disposition": 'attachment; filename="Bikes"' },
+        raw(""),
+      ],
+    ] as const) {
+      const refused = await serve("/categories", headers, { method: "POST", body });
+      assert.ok(refused, label);
+      assert.equal(refused.status, 415, label);
+      const { message, ...envelope } = (await refused.json()) as { message: string };
+      assert.deepEqual(
+        envelope,
+        {
+          defined: false,
+          code: "UNSUPPORTED_MEDIA_TYPE",
+          status: 415,
+          data: {
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            retryable: false,
+            details: { contentTypes: ["application/json"] },
+          },
+        },
+        label,
+      );
+      assert.match(message, /application\/json/, label);
+    }
+
+    // JSON, whatever the case of its type and with a charset, is read as JSON.
+    for (const type of ["application/json; charset=utf-8", "Application/JSON"]) {
+      const read = await serve(
+        "/categories",
+        { "content-type": type },
+        { method: "POST", body: JSON.stringify({ name: 5 }) },
+      );
+      assert.equal(read?.status, 400, type);
+      const readBody = (await read?.json()) as { data: { issues: Array<{ path: unknown[] }> } };
+      assert.ok(
+        readBody.data.issues.some((issue) => issue.path[0] === "name"),
+        type,
+      );
+    }
+    // A read takes no body, so its content type is not looked at.
+    const read = await serve("/categories", { "content-type": "application/octet-stream" });
+    assert.equal(read?.status, 401);
 
     // No operation: the route answers its own 404.
     assert.equal(await serve("/nothing-here"), undefined);
@@ -641,10 +739,16 @@ describe("the public reference", () => {
     const served = await servedProcedures();
     assert.equal(served.length, exposedNames.length);
     const ref = (name: string) => `#/components/responses/${name}`;
-    for (const { path, meta, operation } of served) {
+    for (const { path, meta, procedure, operation } of served) {
       const { responses } = operation;
       assert.equal(responses.default?.$ref, ref("Error"), `${path}: default`);
       assert.equal(responses["400"]?.$ref, ref("BadRequest"), `${path}: 400`);
+      // Every operation but a read takes a body, so may refuse its content type.
+      assert.equal(
+        responses["415"]?.$ref,
+        procedure["~orpc"].route.method === "GET" ? undefined : ref("UnsupportedMediaType"),
+        `${path}: 415`,
+      );
       assert.equal(responses["401"]?.$ref, ref("Unauthorized"), `${path}: 401`);
       assert.equal(responses["429"]?.$ref, ref("RateLimited"), `${path}: 429`);
       assert.equal(
@@ -658,6 +762,178 @@ describe("the public reference", () => {
         `${path}: 412`,
       );
     }
+  });
+
+  /** Every operation but a read, as `METHOD /path`. */
+  const writesOf = (served: Awaited<ReturnType<typeof servedProcedures>>) =>
+    served.flatMap((entry) => {
+      const { method = "POST", path = "" } = entry.procedure["~orpc"].route;
+      return method === "GET" ? [] : [{ ...entry, route: `${method} ${path}` }];
+    });
+
+  /**
+   * The operations whose request body, in the served document, differs from
+   * what the transport reads: an absent request body means it takes none.
+   */
+  const bodyMismatches = (served: Awaited<ReturnType<typeof servedProcedures>>) =>
+    writesOf(served).flatMap(({ route, inputJsonSchema, procedure, operation }) => {
+      const documented = Object.keys(operation.requestBody?.content ?? {});
+      const read = openapi.requestBodyMediaTypes(inputJsonSchema, procedure["~orpc"].route);
+      return JSON.stringify(documented) === JSON.stringify(read)
+        ? []
+        : [`${route}: documents [${documented}], reads [${read}]`];
+    });
+
+  /** The writes whose whole input is in their path: they take no body. */
+  const BODILESS = [
+    "DELETE /products/downtimes/{downtimeId}",
+    "DELETE /products/seasonal-pricings/{id}",
+    "DELETE /products/{id}",
+    "DELETE /team/members/{id}",
+    "DELETE /variants/values/{id}",
+    "DELETE /variants/{id}",
+    "POST /handoffs/{id}/refresh",
+    "POST /products/seasonal-pricings/{id}/duplicate",
+    "POST /products/units/{unitId}/reinstate",
+    "POST /products/{id}/duplicate",
+    "POST /reservations/{id}/cancel",
+    "POST /team/invitations/{id}/cancel",
+    "POST /variants/{id}/withdraw",
+  ];
+
+  test("documents each request body in the content types the transport reads it in", async () => {
+    const served = await servedProcedures();
+    assert.deepEqual(bodyMismatches(served), []);
+
+    const writes = writesOf(served);
+    assert.deepEqual(
+      writes
+        .filter(({ operation }) => !operation.requestBody)
+        .map(({ route }) => route)
+        .sort(),
+      BODILESS,
+    );
+    // The comparison sees a request body go: without its own, each operation
+    // that has one differs from what the transport reads.
+    const withBody = writes.filter(({ operation }) => operation.requestBody);
+    assert.ok(withBody.length > 0);
+    for (const entry of withBody) {
+      const { requestBody: _dropped, ...operation } = entry.operation;
+      assert.equal(bodyMismatches([{ ...entry, operation }]).length, 1, entry.route);
+    }
+  });
+
+  test("an operation whose whole input is in its path reads no body", async () => {
+    const bodiless = writesOf(await servedProcedures()).filter(
+      ({ operation }) => !operation.requestBody,
+    );
+    assert.equal(bodiless.length, BODILESS.length);
+    const json = { "content-type": "application/json" };
+    for (const { route, procedure } of bodiless) {
+      const { method = "POST", path = "" } = procedure["~orpc"].route;
+      const url = path.replace(/\{\w+\}/g, "in-the-path");
+      // A body with anything in it is refused before the operation: without
+      // a key, a body that reached it would answer 401.
+      for (const [label, headers, body] of [
+        ["a JSON field", json, JSON.stringify({ id: "another" })],
+        ["the path's own id", json, JSON.stringify({ id: "in-the-path" })],
+        ["JSON null", json, "null"],
+        ["a JSON array", json, "[]"],
+        ["text", { "content-type": "text/plain" }, "another"],
+        ["a field without Content-Type", {}, JSON.stringify({ id: "another" })],
+      ] as const) {
+        const refused = await serve(url, headers, { method, body });
+        assert.equal(refused?.status, 415, `${route}: ${label}`);
+        assert.deepEqual(
+          await refused.json(),
+          {
+            defined: false,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            status: 415,
+            message: "This operation takes no request body.",
+            data: {
+              code: "UNSUPPORTED_MEDIA_TYPE",
+              retryable: false,
+              details: { contentTypes: [] },
+            },
+          },
+          `${route}: ${label}`,
+        );
+      }
+      // No body, an empty one whatever its type, or JSON's empty object:
+      // the operation runs.
+      for (const [label, headers, body] of [
+        ["no body", {}, undefined],
+        ["an empty JSON body", json, ""],
+        ["an empty body without Content-Type", {}, ""],
+        ["an empty text body", { "content-type": "text/plain" }, ""],
+        ["JSON's empty object", json, "{}"],
+        ["JSON's empty object, spaced", json, " { }\n"],
+      ] as const) {
+        const ran = await serve(url, headers, { method, body });
+        assert.equal(ran?.status, 401, `${route}: ${label}`);
+      }
+    }
+  });
+
+  test("a field named as a path parameter must hold the path's value", async () => {
+    const served = await servedProcedures();
+    const withParameters = served.filter(({ procedure }) =>
+      /\{\w+\}/.test(procedure["~orpc"].route.path ?? ""),
+    );
+    const bodiless = new Set(BODILESS);
+    let checked = 0;
+    for (const { procedure, operation } of withParameters) {
+      const { method = "POST", path = "" } = procedure["~orpc"].route;
+      const route = `${method} ${path}`;
+      if (bodiless.has(route)) continue;
+      const names = [...path.matchAll(/\{(\w+)\}/g)].map(([, name]) => name);
+      const url = path.replace(/\{(\w+)\}/g, (_, name: string) => `path-${name}`);
+      for (const name of names) {
+        // A read takes its input from the query string; a write, from its body.
+        const send = (value: unknown) =>
+          method === "GET"
+            ? serve(`${url}?${new URLSearchParams({ [name]: String(value) })}`)
+            : serve(
+                url,
+                { "content-type": "application/json" },
+                { method, body: JSON.stringify({ [name]: value, other: "kept" }) },
+              );
+        const values: unknown[] = ["another", `path-${name}x`, ""];
+        // JSON carries other types; a query string, only text.
+        if (method !== "GET") values.push(5, null, [`path-${name}`]);
+        for (const value of values) {
+          const refused = await send(value);
+          assert.equal(refused?.status, 400, `${route}: ${name}=${JSON.stringify(value)}`);
+          const { message, ...envelope } = (await refused.json()) as { message: string };
+          assert.deepEqual(
+            envelope,
+            {
+              defined: false,
+              code: "BAD_REQUEST",
+              status: 400,
+              data: {
+                code: "PATH_PARAMETER_CONFLICT",
+                retryable: false,
+                details: { parameter: name },
+              },
+            },
+            `${route}: ${name}=${JSON.stringify(value)}`,
+          );
+          assert.match(message, new RegExp(name), route);
+        }
+        // The path's own value, repeated, is read: without a key, 401, or 400
+        // with the issues of an input that lacks a field.
+        const same = await send(`path-${name}`);
+        assert.ok(same, route);
+        const read = (await same.json()) as { data?: { code?: string; issues?: unknown[] } };
+        if (same.status === 400) assert.ok(read.data?.issues, `${route}: ${name} repeated`);
+        else assert.equal(same.status, 401, `${route}: ${name} repeated`);
+        checked++;
+      }
+      assert.ok(operation.responses["400"], route);
+    }
+    assert.ok(checked > 30, `${checked} parameters checked`);
   });
 
   test("documents the idempotency key and the replay only on the writes that replay", async () => {
@@ -991,5 +1267,159 @@ describe("the /api/v1 body cap", () => {
     const after = await serve(post("/products", next.body, KNOWN));
     assert.equal(next.sent.bytes, 3 * MiB, "read");
     assert.notEqual(after?.status, 503);
+  });
+});
+
+describe("the content types an operation takes", () => {
+  let openapi: typeof import("./openapi");
+  let procedures: readonly import("./exposure").ExposedProcedure[];
+  let toJsonSchema: (schema: import("zod").ZodType) => unknown;
+  let z: typeof import("zod").z;
+
+  before(async () => {
+    openapi = await import("./openapi");
+    const { createExposure } = await import("./exposure");
+    const { appRouter } = await import("../router");
+    procedures = createExposure(appRouter).procedures;
+    ({ z } = await import("zod"));
+    const { ZodToJsonSchemaConverter } = await import("@orpc/zod/zod4");
+    const converter = new ZodToJsonSchemaConverter();
+    toJsonSchema = (schema) => converter.convert(schema, { strategy: "input" })[1];
+  });
+
+  test("are decided from the input: JSON, and a multipart form when it holds a file", () => {
+    const table: Array<[string, import("zod").ZodType, string[]]> = [
+      ["an object", z.object({ name: z.string() }), ["application/json"]],
+      ["an empty object", z.object({}), ["application/json"]],
+      [
+        "an object with a file",
+        z.object({ file: z.file(), note: z.string() }),
+        ["application/json", "multipart/form-data"],
+      ],
+      [
+        "an object with a nested image",
+        z.object({ images: z.array(z.object({ file: z.file().mime("image/png") })) }),
+        ["application/json", "multipart/form-data"],
+      ],
+      ["no schema at all", z.any(), []],
+    ];
+    for (const [label, schema, types] of table) {
+      assert.deepEqual(openapi.requestBodyMediaTypes(toJsonSchema(schema)), types, label);
+    }
+  });
+
+  test("are decided once the path parameters are taken out, as the document's generator does", () => {
+    const id = z.string();
+    const table: Array<[string, `/${string}`, import("zod").ZodType, string[]]> = [
+      ["an input all in the path", "/things/{id}", z.object({ id }), []],
+      [
+        "an input all in the path, two parameters",
+        "/things/{id}/parts/{partId}",
+        z.object({ id, partId: id }),
+        [],
+      ],
+      [
+        "a field beside the path",
+        "/things/{id}",
+        z.object({ id, name: z.string() }),
+        ["application/json"],
+      ],
+      [
+        "an optional field beside the path",
+        "/things/{id}",
+        z.object({ id, name: z.string().optional() }),
+        ["application/json"],
+      ],
+      [
+        "a file beside the path",
+        "/things/{id}",
+        z.object({ id, file: z.file() }),
+        ["application/json", "multipart/form-data"],
+      ],
+      ["no path parameter", "/things", z.object({ id }), ["application/json"]],
+    ];
+    for (const [label, path, schema, types] of table) {
+      for (const method of ["POST", "PATCH", "DELETE"]) {
+        assert.deepEqual(
+          openapi.requestBodyMediaTypes(toJsonSchema(schema), { method, path }),
+          types,
+          `${method}: ${label}`,
+        );
+      }
+      // A read takes its input from the query string.
+      assert.deepEqual(
+        openapi.requestBodyMediaTypes(toJsonSchema(schema), { method: "GET", path }),
+        [],
+        `GET: ${label}`,
+      );
+    }
+  });
+
+  test("every exposed write takes JSON, unless its whole input is in its path", () => {
+    let none = 0;
+    for (const { path, inputJsonSchema, procedure } of procedures) {
+      const route = procedure["~orpc"].route;
+      const inPath = [...(route.path ?? "").matchAll(/\{(\w+)\}/g)].map(([, name]) => name);
+      const fields = Object.keys((inputJsonSchema as { properties?: object }).properties ?? {});
+      // An input with no field still takes a body when nothing is in its path.
+      const takesNone =
+        route.method === "GET" ||
+        (inPath.length > 0 && fields.every((field) => inPath.includes(field)));
+      if (takesNone && route.method !== "GET") none++;
+      assert.deepEqual(
+        openapi.requestBodyMediaTypes(inputJsonSchema, route),
+        takesNone ? [] : ["application/json"],
+        path,
+      );
+    }
+    assert.equal(none, 13);
+  });
+
+  test("an operation with a file field reads a multipart form and JSON, and nothing else", async () => {
+    const { os } = await import("@orpc/server");
+    const router = {
+      files: os
+        .route({ method: "POST", path: "/files" })
+        .input(z.object({ file: z.file(), note: z.string() }))
+        .handler(({ input }) => ({ name: input.file.name, note: input.note })),
+    };
+    const handler = openapi.createOpenApiHandler(router);
+    const serve = (init: RequestInit) =>
+      openapi.handleOpenApiRequest(
+        handler,
+        new Request("https://app.louez.test/api/v1/files", { method: "POST", ...init }),
+        { ports: {} as import("./ports").ApiPorts },
+      );
+
+    const form = new FormData();
+    form.set("file", new File(["bytes"], "photo.png", { type: "image/png" }));
+    form.set("note", "front");
+    const sent = await serve({ body: form });
+    assert.equal(sent?.status, 200);
+    assert.deepEqual(await sent?.json(), { name: "photo.png", note: "front" });
+
+    // JSON is read, and cannot carry the file: the input is refused on it.
+    const json = await serve({
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: "bytes", note: "front" }),
+    });
+    assert.ok(json);
+    assert.equal(json.status, 400);
+    const issues = ((await json.json()) as { data: { issues: Array<{ path: unknown[] }> } }).data
+      .issues;
+    assert.deepEqual(
+      issues.map((issue) => issue.path),
+      [["file"]],
+    );
+
+    const raw = await serve({
+      headers: { "content-type": "application/octet-stream" },
+      body: new TextEncoder().encode("bytes"),
+    });
+    assert.ok(raw);
+    assert.equal(raw.status, 415);
+    assert.deepEqual(((await raw.json()) as { data: { details: unknown } }).data.details, {
+      contentTypes: ["application/json", "multipart/form-data"],
+    });
   });
 });

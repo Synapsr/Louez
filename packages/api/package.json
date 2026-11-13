@@ -55,6 +55,7 @@
     "@louez/validations": "workspace:*",
     "@orpc/contract": "1.14.14",
     "@orpc/openapi": "1.14.14",
+    "@orpc/openapi-client": "1.14.14",
     "@orpc/server": "1.14.14",
     "@orpc/zod": "1.14.14",
     "date-fns": "^4.1.0",

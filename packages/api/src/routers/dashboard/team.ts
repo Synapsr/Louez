@@ -20,6 +20,7 @@ import {
   resendInvitationInput,
   resendInvitationOutput,
 } from "../../contracts/team";
+import type { Consequences } from "../../platform/approval-rule";
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { dashboardPageLinks } from "../../platform/links";
 import type { UrlsPort } from "../../platform/ports";
@@ -84,17 +85,23 @@ const caller = (context: TeamContext): TeamCaller => ({
 
 /**
  * Asks for the confirmation under the write's lock, bound to what the
- * preview shows. Always asked of an agent, never of a dashboard session.
+ * preview shows (its state and summary). `describe` declares the
+ * consequences of the branch the preview shows.
  */
-function confirmAlways<TPreview extends { summary: string }>(
+function confirmTeamChange<TPreview extends { summary: string }>(
   context: TeamContext,
   path: readonly string[],
   input: unknown,
-  describe: (preview: TPreview) => { state: unknown; details: ConfirmationPreview["details"] },
+  describe: (preview: TPreview) => {
+    state: unknown;
+    details: ConfirmationPreview["details"];
+    consequences: Consequences;
+  },
 ) {
   return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
-    const { state, details } = describe(preview);
+    const { state, details, consequences } = describe(preview);
     return checkConfirmation({
+      consequences,
       executor: tx,
       actor: context.actor,
       headers: context.headers,
@@ -102,7 +109,6 @@ function confirmAlways<TPreview extends { summary: string }>(
       input,
       state: { state, summary: preview.summary },
       preview: { summary: preview.summary, details },
-      always: true,
     });
   };
 }
@@ -216,7 +222,9 @@ const cancel = storeProcedure
   .output(cancelInvitationOutput)
   .handler(async ({ context, input, path }) => {
     const result = await cancelInvitation(caller(context), input.id, {
-      confirm: confirmAlways(context, path, input, (preview) => ({
+      confirm: confirmTeamChange(context, path, input, (preview) => ({
+        // The invitation's link stops letting the person in.
+        consequences: ["access_removed"],
         state: {
           id: preview.invitation.id,
           email: preview.invitation.email,
@@ -247,7 +255,8 @@ const remove = storeProcedure
   .output(removeMemberOutput)
   .handler(async ({ context, input, path }) => {
     const result = await removeMember(caller(context), input.id, {
-      confirm: confirmAlways(context, path, input, (preview) => ({
+      confirm: confirmTeamChange(context, path, input, (preview) => ({
+        consequences: ["access_removed"],
         state: {
           id: preview.member.id,
           userId: preview.member.userId,

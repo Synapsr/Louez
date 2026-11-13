@@ -36,6 +36,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     body: object | null,
     headers: Record<string, string>,
   ) => Promise<Response>;
+  let openApiRaw: (request: Request) => Promise<Response>;
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<string[]>;
 
@@ -63,9 +64,12 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     exposure = createExposure(appRouter);
 
     const openApiHandler = createOpenApiHandler(exposure.router);
-    openApi = async (method, path, body, headers) =>
-      (await handleOpenApiRequest(
-        openApiHandler,
+    const bodyLimits = routeBodyLimits(exposure.procedures);
+    openApiRaw = async (request) =>
+      (await handleOpenApiRequest(openApiHandler, request, { ports, bodyLimits })) ??
+      new Response(null, { status: 404 });
+    openApi = (method, path, body, headers) =>
+      openApiRaw(
         new Request(
           `http://louez.test/api/v1${path}`,
           body
@@ -76,8 +80,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
               }
             : { method, headers },
         ),
-        { ports, bodyLimits: routeBodyLimits(exposure.procedures) },
-      )) ?? new Response(null, { status: 404 });
+      );
 
     const httpOptions = {
       ports,
@@ -169,7 +172,10 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       "products_remove_image_background",
       "products_use_image_version",
     ]) {
-      assert.ok(products.some((entry) => entry.meta.mcp.name === name), name);
+      assert.ok(
+        products.some((entry) => entry.meta.mcp.name === name),
+        name,
+      );
     }
     assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
     const writer = await mcpTools(await key());
@@ -427,6 +433,122 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(usage.status, 200, await usage.clone().text());
   });
 
+  test("OpenAPI: a write through one product's path never acts on another named in its body", async () => {
+    const authorization = await key();
+    const make = async (name: string, identifier: string) =>
+      output(
+        await mcpCall(authorization, "products_create", {
+          name,
+          price: "10",
+          trackUnits: true,
+          units: [{ identifier }],
+        }),
+      );
+    const a = await make("Paddle A", "PA-1");
+    const b = await make("Paddle B", "PB-1");
+    const [unitA] = a.units as Json[];
+    const [unitB] = b.units as Json[];
+    const send = (method: string, path: string, headers: Record<string, string>, body?: string) =>
+      openApiRaw(
+        new Request(`http://louez.test/api/v1${path}`, {
+          method,
+          headers: { authorization, ...headers },
+          body,
+        }),
+      );
+    const json = { "content-type": "application/json" };
+    const names = async () =>
+      (
+        await louezDb.db
+          .select({ name: louezDb.products.name })
+          .from(louezDb.products)
+          .where(orm.eq(louezDb.products.storeId, STORE))
+      )
+        .map((row) => row.name)
+        .filter((name) => name.startsWith("Paddle"))
+        .sort();
+    const recorded = async () => (await louezDb.db.select().from(louezDb.apiOperations)).length;
+    const downtimesOf = async (unitId: unknown) =>
+      louezDb.db
+        .select()
+        .from(louezDb.productUnitDowntimes)
+        .where(orm.eq(louezDb.productUnitDowntimes.productUnitId, unitId as string));
+
+    // Duplicating takes no body: one that names another product is refused,
+    // and nothing is copied.
+    const operations = await recorded();
+    for (const body of [JSON.stringify({ id: b.id }), JSON.stringify({ id: a.id })]) {
+      const refused = await send("POST", `/products/${a.id}/duplicate`, json, body);
+      assert.equal(refused.status, 415, body);
+      assert.deepEqual(((await refused.json()) as { data: Json }).data, {
+        code: "UNSUPPORTED_MEDIA_TYPE",
+        retryable: false,
+        details: { contentTypes: [] },
+      });
+    }
+    assert.deepEqual(await names(), ["Paddle A", "Paddle B"]);
+    assert.equal(await recorded(), operations, "no operation recorded");
+
+    // No body, an empty one, or JSON's empty object: the product of the path is copied.
+    for (const [headers, body] of [
+      [{}, undefined],
+      [json, ""],
+      [json, "{}"],
+    ] as const) {
+      const copied = await send("POST", `/products/${a.id}/duplicate`, headers, body);
+      assert.equal(copied.status, 200, `${JSON.stringify(headers)} ${body}`);
+      assert.equal(((await copied.json()) as Json).name, "Paddle A (copy)");
+    }
+    assert.deepEqual(await names(), [
+      "Paddle A",
+      "Paddle A (copy)",
+      "Paddle A (copy)",
+      "Paddle A (copy)",
+      "Paddle B",
+    ]);
+
+    // A downtime asked through unit A's path, for unit B in the body: refused
+    // before anything is previewed or stored.
+    const downtime = { reason: "repair", startsAt: "2031-01-10T00:00:00Z" };
+    const previews = async () => (await louezDb.db.select().from(louezDb.apiConfirmations)).length;
+    const previewed = await previews();
+    const conflicting = await send(
+      "POST",
+      `/products/units/${unitA.id}/downtimes`,
+      json,
+      JSON.stringify({ ...downtime, unitId: unitB.id }),
+    );
+    assert.equal(conflicting.status, 400);
+    assert.deepEqual(((await conflicting.json()) as { data: Json }).data, {
+      code: "PATH_PARAMETER_CONFLICT",
+      retryable: false,
+      details: { parameter: "unitId" },
+    });
+    assert.deepEqual(await downtimesOf(unitA.id), []);
+    assert.deepEqual(await downtimesOf(unitB.id), []);
+    assert.equal(await previews(), previewed, "nothing previewed");
+
+    // The path's own unit, repeated in the body, is the unit the downtime goes to.
+    let declared = await send(
+      "POST",
+      `/products/units/${unitA.id}/downtimes`,
+      json,
+      JSON.stringify({ ...downtime, unitId: unitA.id }),
+    );
+    if (declared.status === 412) {
+      const { data } = (await declared.json()) as { data: { details: Json } };
+      declared = await send(
+        "POST",
+        `/products/units/${unitA.id}/downtimes`,
+        { ...json, "louez-confirmation": data.details.confirmationToken as string },
+        JSON.stringify({ ...downtime, unitId: unitA.id }),
+      );
+    }
+    assert.equal(declared.status, 200, await declared.clone().text());
+    assert.equal((await downtimesOf(unitA.id)).length, 1);
+    assert.deepEqual(await downtimesOf(unitB.id), []);
+  });
+
   test("an agent reads a product's units a page at a time; the API gets them all", async () => {
     const authorization = await key();
     const created = output(
@@ -465,7 +587,11 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const small = output(await mcpCall(authorization, "products_list_units", { id, limit: 2 }));
     assert.deepEqual(identifiers(small.items), ["SUP-000", "SUP-001"]);
     const next = output(
-      await mcpCall(authorization, "products_list_units", { id, limit: 2, cursor: small.nextCursor }),
+      await mcpCall(authorization, "products_list_units", {
+        id,
+        limit: 2,
+        cursor: small.nextCursor,
+      }),
     );
     assert.deepEqual(identifiers(next.items), ["SUP-002", "SUP-003"]);
     const unknown = await mcpCall(authorization, "products_list_units", { id, cursor: "gone" });

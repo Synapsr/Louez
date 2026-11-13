@@ -157,6 +157,7 @@ const remove = storeProcedure
       // too.
       confirm: (preview, tx) =>
         checkConfirmation({
+          consequences: ["deletion"],
           executor: tx,
           actor: context.actor,
           headers: context.headers,

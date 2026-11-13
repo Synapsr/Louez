@@ -342,8 +342,8 @@ export async function startImageJob(
       const balance = balanceText(quote);
       const summary = `${VERB[operation].doing} photo ${position + 1} of "${product.name}" costs ${credits(quote.priceMicro)} AI credits${balance ? ` (${balance})` : ""}. In about ${imageJobDuration(operation)} the result replaces this photo on the product${store.onboardingCompleted ? " and its online page" : ""}; the original stays among the photo's versions, and products_use_image_version puts it back. Nothing is charged if it fails.`;
       refusal = await checkConfirmation({
+        consequences: ["credits"],
         executor: tx,
-        always: true,
         actor,
         headers: starter.headers,
         procedure: starter.procedure,

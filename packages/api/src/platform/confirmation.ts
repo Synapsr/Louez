@@ -10,6 +10,7 @@ import {
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
+import { CONSEQUENCES, confirmationStep, isConsequence, type Consequences } from "./approval-rule";
 import { apiError, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
 
@@ -26,13 +27,13 @@ export interface ConfirmationPreview {
 }
 
 /**
- * Asks for a confirmation before a sensitive operation, when the actor's
- * connection wants one (`confirmSensitive`). Call it in the handler, after
+ * Asks for a confirmation before a sensitive operation, as the rule decides
+ * from the branch's `consequences` and the actor's credential
+ * (`approvalLevel`, platform/approval-rule.ts). Call it in the handler, after
  * the checks and before the first write.
  *
- * - No confirmation wanted (dashboard session, connection set to run
- *   directly): returns at once. `always` asks a connection set to run
- *   directly too (spending AI credits); a dashboard session never.
+ * - Nobody to ask (a dashboard session; a connection set to run directly,
+ *   for what it may run directly): returns at once.
  * - No token, or a token that does not match: throws CONFIRMATION_REQUIRED
  *   with the preview and a new token.
  * - A matching token: consumes it (once) and returns.
@@ -43,12 +44,25 @@ export interface ConfirmationPreview {
  * the token no longer works.
  *
  * This proves the caller saw the preview. It does not prove a human approved:
- * the same agent can send both calls. Human approval comes with lot 2c.
+ * the same agent can send both calls. A person's approval is planned for the
+ * actions a person must approve (docs/architecture/api-and-agents.md).
  */
-export async function requireConfirmation(input: ConfirmationCheck): Promise<void> {
+export async function requireConfirmation<Check extends ConfirmationCheck>(
+  input: KnownCheck<Check>,
+): Promise<void> {
   const refusal = await checkConfirmation(input);
   if (refusal) throw refusal;
 }
+
+/**
+ * A check whose type is known. An object spread from `any` is `any`, and
+ * would carry whatever `consequences` it holds at run time: it does not
+ * compile. (A spread of a typed object loses its index signature, so no type
+ * sees it: approval-coverage.test.ts refuses a spread in an object that
+ * declares consequences.)
+ */
+export type KnownCheck<Check extends ConfirmationCheck> = Check &
+  (0 extends 1 & Check ? never : unknown);
 
 export interface ConfirmationCheck {
   actor: ScopedActor;
@@ -58,12 +72,12 @@ export interface ConfirmationCheck {
   state: unknown;
   preview: ConfirmationPreview;
   /**
-   * Ask every key and token, even a connection whose confirmations are
-   * turned off (`confirmSensitive: false`): what it guards spends the
-   * store's money on the agent's say alone (AI credits). A dashboard
-   * session is never asked: the user clicked the button.
+   * What the branch about to run does (`Consequence`, platform/approval-rule.ts),
+   * declared with its preview: who is asked follows from it. Never inferred
+   * from the procedure's `sensitive`, `effect` or `reach`. At least one, by
+   * type, and checked again when it runs.
    */
-  always?: boolean;
+  consequences: Consequences;
   /**
    * The transaction the operation runs in, when it asks under a lock: the
    * token is consumed, or the new preview recorded, on its connection, so a
@@ -79,10 +93,24 @@ export interface ConfirmationCheck {
  * a caller inside a transaction must commit it (not roll back) and throw the
  * error once the transaction is over.
  */
-export async function checkConfirmation(input: ConfirmationCheck) {
-  const { credential } = input.actor;
-  const asks = credential.confirmSensitive || (input.always === true && credential.kind !== "session");
-  if (!asks) return null;
+export async function checkConfirmation<Check extends ConfirmationCheck>(input: KnownCheck<Check>) {
+  // The type asks for at least one, each a consequence the rule knows; a value
+  // forced past it is a bug here, and must never read as "nothing to ask".
+  if (
+    !Array.isArray(input.consequences) ||
+    input.consequences.length === 0 ||
+    !input.consequences.every(isConsequence)
+  ) {
+    throw new Error(
+      `${input.procedure}: a confirmation declares the consequences of its branch, at least one, each one of ${CONSEQUENCES.join(", ")}.`,
+    );
+  }
+  const step = confirmationStep(input.consequences, input.actor.credential);
+  if (step === "none") return null;
+  if (step === "approval") {
+    // No consequence is live before a person's approval exists: never reached.
+    throw new Error(`${input.procedure}: a person's approval is not built yet.`);
+  }
 
   const executor = input.executor ?? db;
   const now = input.now ?? new Date();
