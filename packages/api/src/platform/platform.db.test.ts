@@ -456,17 +456,160 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
       }
     });
 
-    test("a failed call may be retried with the same key", async () => {
+    test("a call that ended on an unexpected error is not run again under its key", async () => {
       const { key: raw } = await key();
       const headers = bearer(raw, { "idempotency-key": "fails-once" });
       await assert.rejects(
         orpc.call(create(), { name: "boom" }, { context: context("mcp", headers) }),
       );
       const before = runs;
-      await assert.rejects(
+      await rejects(
         orpc.call(create(), { name: "boom" }, { context: context("mcp", headers) }),
+        "OPERATION_OUTCOME_UNKNOWN",
       );
-      assert.equal(runs, before + 1, "it ran again");
+      assert.equal(runs, before, "it did not run again");
+    });
+
+    describe("how a call ends decides whether its key runs it again", () => {
+      // A write that adds a category row; `faults` says how each run ends.
+      type Fault = "before_write" | "after_commit" | "refusal" | "busy";
+      let faults: Fault[] = [];
+      let errors: typeof import("./errors");
+      let reservationContracts: typeof import("../contracts/reservations");
+      before(async () => {
+        errors = await import("./errors");
+        reservationContracts = await import("../contracts/reservations");
+      });
+
+      const addCategory = () =>
+        procedures.storeProcedure
+          .meta({ capability: "test.addCategory", scope: { domain: "categories", level: "write" } })
+          .input(zod.z.object({ name: zod.z.string() }))
+          .handler(async ({ context, input }) => {
+            const fault = faults.shift();
+            if (fault === "before_write") throw new Error("connection lost");
+            if (fault === "refusal") {
+              throw errors.apiError("CONFLICT", "CATEGORY_NAME_TAKEN", { message: "Taken." });
+            }
+            if (fault === "busy") throw reservationContracts.reservationErrors.busy("res_1");
+            await louezDb.db
+              .insert(louezDb.categories)
+              .values({ storeId: context.actor.storeId, name: input.name });
+            // The row is committed; the call still ends on an error (a lost
+            // COMMIT acknowledgement, a step after the commit that throws).
+            if (fault === "after_commit") throw new Error("connection lost at COMMIT");
+            return { name: input.name };
+          });
+
+      const rowsNamed = async (name: string) =>
+        (
+          await louezDb.db
+            .select({ id: louezDb.categories.id })
+            .from(louezDb.categories)
+            .where(
+              orm.and(
+                orm.eq(louezDb.categories.storeId, STORE),
+                orm.eq(louezDb.categories.name, name),
+              ),
+            )
+        ).length;
+
+      const recorded = async (operationId: string) => {
+        const [row] = await louezDb.db
+          .select({ status: louezDb.apiOperations.status, error: louezDb.apiOperations.error })
+          .from(louezDb.apiOperations)
+          .where(orm.eq(louezDb.apiOperations.id, operationId));
+        return { status: row.status, code: (row.error as { code?: string } | null)?.code };
+      };
+
+      test("written, then an unexpected error: unknown, and the same key writes nothing more", async () => {
+        const { key: raw } = await key();
+        const headers = bearer(raw, { "idempotency-key": "paid-once" });
+        faults = ["after_commit"];
+        const first = context("mcp", headers);
+        await assert.rejects(orpc.call(addCategory(), { name: "Paid 15.00" }, { context: first }));
+        assert.equal(await rowsNamed("Paid 15.00"), 1);
+        assert.deepEqual(await recorded(first.receipt.operationId!), {
+          status: "unknown",
+          code: "INTERNAL",
+        });
+
+        const retry = context("mcp", headers);
+        await assert.rejects(
+          orpc.call(addCategory(), { name: "Paid 15.00" }, { context: retry }),
+          (error: unknown) => {
+            const data = (error as { data?: { code?: string; details?: unknown } }).data;
+            assert.equal(data?.code, "OPERATION_OUTCOME_UNKNOWN");
+            assert.deepEqual(data?.details, { operationId: first.receipt.operationId });
+            return true;
+          },
+        );
+        assert.equal(await rowsNamed("Paid 15.00"), 1, "the retry wrote nothing");
+      });
+
+      test("an unexpected error before any write is unknown too; a new key runs it", async () => {
+        const { key: raw } = await key();
+        faults = ["before_write"];
+        const first = context("mcp", bearer(raw, { "idempotency-key": "lost-early" }));
+        await assert.rejects(orpc.call(addCategory(), { name: "Early" }, { context: first }));
+        assert.equal(await rowsNamed("Early"), 0);
+        // Louez cannot tell it from a fault after a commit: never run again.
+        assert.equal((await recorded(first.receipt.operationId!)).status, "unknown");
+        await rejects(
+          orpc.call(
+            addCategory(),
+            { name: "Early" },
+            { context: context("mcp", bearer(raw, { "idempotency-key": "lost-early" })) },
+          ),
+          "OPERATION_OUTCOME_UNKNOWN",
+        );
+
+        const fresh = context("mcp", bearer(raw, { "idempotency-key": "lost-early-2" }));
+        assert.deepEqual(await orpc.call(addCategory(), { name: "Early" }, { context: fresh }), {
+          name: "Early",
+        });
+        assert.equal(await rowsNamed("Early"), 1);
+      });
+
+      test("a refusal is failed, and the same key runs it again", async () => {
+        const { key: raw } = await key();
+        const headers = bearer(raw, { "idempotency-key": "refused-once" });
+        faults = ["refusal"];
+        const first = context("mcp", headers);
+        await rejects(
+          orpc.call(addCategory(), { name: "Refused" }, { context: first }),
+          "CATEGORY_NAME_TAKEN",
+        );
+        assert.deepEqual(await recorded(first.receipt.operationId!), {
+          status: "failed",
+          code: "CATEGORY_NAME_TAKEN",
+        });
+
+        const retry = context("mcp", headers);
+        assert.deepEqual(await orpc.call(addCategory(), { name: "Refused" }, { context: retry }), {
+          name: "Refused",
+        });
+        assert.equal(retry.receipt.operationId, first.receipt.operationId);
+        assert.equal(await rowsNamed("Refused"), 1);
+      });
+
+      test("RESERVATION_BUSY past its retries is failed, and the same key succeeds", async () => {
+        const { key: raw } = await key();
+        const headers = bearer(raw, { "idempotency-key": "busy-once" });
+        faults = ["busy"];
+        const first = context("mcp", headers);
+        await rejects(
+          orpc.call(addCategory(), { name: "Busy" }, { context: first }),
+          "RESERVATION_BUSY",
+        );
+        assert.equal((await recorded(first.receipt.operationId!)).status, "failed");
+
+        assert.deepEqual(
+          await orpc.call(addCategory(), { name: "Busy" }, { context: context("mcp", headers) }),
+          { name: "Busy" },
+        );
+        assert.equal(await rowsNamed("Busy"), 1);
+      });
     });
 
     test("the key is matched on the validated input, not on its raw spelling", async () => {
@@ -683,6 +826,40 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
         ),
         "CONFIRMATION_INVALID",
       );
+    });
+
+    test("one idempotency key for the preview and the confirmed call: the preview is a refusal, the token runs it once", async () => {
+      const { key: raw } = await key({ permissions: paymentsWrite });
+      const before = executed;
+      const asked = context("mcp", bearer(raw, { "idempotency-key": "confirm-flow" }));
+      const token = await tokenFrom(orpc.call(refund(), { paymentId: "p8" }, { context: asked }));
+      const [preview] = await louezDb.db
+        .select({ status: louezDb.apiOperations.status, error: louezDb.apiOperations.error })
+        .from(louezDb.apiOperations)
+        .where(orm.eq(louezDb.apiOperations.id, asked.receipt.operationId!));
+      assert.equal(preview.status, "failed", "the preview is recorded as a refused call");
+      assert.equal((preview.error as { code?: string } | null)?.code, "CONFIRMATION_REQUIRED");
+
+      // The token is a header: the input, and so the key's record, are the same.
+      const confirmed = context(
+        "mcp",
+        bearer(raw, { "idempotency-key": "confirm-flow", "louez-confirmation": token }),
+      );
+      assert.deepEqual(await orpc.call(refund(), { paymentId: "p8" }, { context: confirmed }), {
+        ok: true,
+      });
+      assert.equal(executed, before + 1);
+      assert.equal(confirmed.receipt.operationId, asked.receipt.operationId, "one record per key");
+
+      const replay = context(
+        "mcp",
+        bearer(raw, { "idempotency-key": "confirm-flow", "louez-confirmation": token }),
+      );
+      assert.deepEqual(await orpc.call(refund(), { paymentId: "p8" }, { context: replay }), {
+        ok: true,
+      });
+      assert.equal(replay.receipt.replayed, true, "the spent token is never read again");
+      assert.equal(executed, before + 1);
     });
 
     test("a connection set to run directly runs at once", async () => {

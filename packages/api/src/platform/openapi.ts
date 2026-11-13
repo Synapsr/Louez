@@ -331,7 +331,7 @@ export const COMMON_ERROR_CODES = [
   [
     409,
     "OPERATION_OUTCOME_UNKNOWN",
-    "The write may have gone through, but its outcome was not recorded (`details.operationId`): check the current state before trying again with a new idempotency key.",
+    "An earlier call with this idempotency key may have gone through (`details.operationId`): it ended on an unexpected failure, or its outcome was not recorded. The key never runs the write again: check the current state before trying again with a new idempotency key.",
   ],
   [412, "CONFIRMATION_REQUIRED", "The write waits for a confirmation (below)."],
   [
@@ -391,7 +391,7 @@ Some writes change what customers see or pay, or cannot be undone; their descrip
 
 ## Idempotency and receipts
 
-Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), retrying a write that succeeded, with the same key, from the same API key, for the same operation and input, returns its stored result without running it again, with \`Louez-Replayed: true\`. A retry while the first call still runs answers \`OPERATION_IN_PROGRESS\`; after a call that failed, the same key runs the write again. Writes that return a temporary link (upload URLs, hand-offs to Stripe or to billing, team invitation approvals) do not replay: they ignore the header, and a retry issues a new link. A successful write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
+Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), retrying a write that succeeded, with the same key, from the same API key, for the same operation and input, returns its stored result without running it again, with \`Louez-Replayed: true\`. A retry while the first call still runs answers \`OPERATION_IN_PROGRESS\`. A call Louez refused (an error with \`data.code\`, such as \`CONFIRMATION_REQUIRED\` or \`RESERVATION_BUSY\`) did nothing: the same key runs the write again. A call that ended on an unexpected failure (500 \`INTERNAL_SERVER_ERROR\` without \`data.code\`) may have gone through: the same key answers \`OPERATION_OUTCOME_UNKNOWN\` and never runs the write again, so check the current state, then use a new key. If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was. Writes that return a temporary link (upload URLs, hand-offs to Stripe or to billing, team invitation approvals) do not replay: they ignore the header, and a retry issues a new link. A successful write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
 
 ## Limits
 

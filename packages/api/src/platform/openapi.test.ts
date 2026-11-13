@@ -525,6 +525,27 @@ describe("the public reference", () => {
     assert.ok(text.includes('`{"message":"Not found"}`'));
   });
 
+  test("states which retries run a write again: a refused call's, never an unexpected failure's", async () => {
+    const { info } = await fetchDocument();
+    const text = info.description;
+    assert.ok(
+      text.includes(
+        "A call Louez refused (an error with `data.code`, such as `CONFIRMATION_REQUIRED` or `RESERVATION_BUSY`) did nothing: the same key runs the write again.",
+      ),
+    );
+    assert.ok(
+      text.includes(
+        "A call that ended on an unexpected failure (500 `INTERNAL_SERVER_ERROR` without `data.code`) may have gone through: the same key answers `OPERATION_OUTCOME_UNKNOWN` and never runs the write again, so check the current state, then use a new key.",
+      ),
+    );
+    assert.doesNotMatch(text, /after a call that failed, the same key runs the write again/);
+    const [, , row] = openapi.COMMON_ERROR_CODES.find(
+      ([, code]) => code === "OPERATION_OUTCOME_UNKNOWN",
+    )!;
+    assert.match(row, /ended on an unexpected failure/);
+    assert.match(row, /never runs the write again/);
+  });
+
   test("its table of common codes holds each with the status the platform answers", async () => {
     const { info } = await fetchDocument();
     const { platformErrors } = await import("./errors");

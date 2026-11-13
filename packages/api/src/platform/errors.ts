@@ -1,5 +1,7 @@
 import { ORPCError } from "@orpc/server";
 
+import { LOUEZ_ERROR_CODES } from "./error-registry";
+
 /**
  * Errors of the agent-ready API. Every transport sends the same thing:
  *
@@ -140,7 +142,7 @@ export const platformErrors = {
   operationOutcomeUnknown: (operationId: string) =>
     apiError("CONFLICT", "OPERATION_OUTCOME_UNKNOWN", {
       message:
-        "An earlier call with this idempotency key may have gone through, but its outcome was not recorded. Check the current state before trying again with a new key.",
+        "An earlier call with this idempotency key may have gone through: it ended on an unexpected error, or its outcome was not recorded. Check the current state before trying again with a new key.",
       details: { operationId },
     }),
   confirmationInvalid: () =>
@@ -156,4 +158,36 @@ export function isApiError(error: unknown): error is ORPCError<string, ApiErrorD
     error instanceof ORPCError &&
     typeof (error.data as Partial<ApiErrorData> | undefined)?.code === "string"
   );
+}
+
+/**
+ * True when Louez refused the call on purpose and did not do it: one of its
+ * own errors (`apiError`) with a code of the registry. A write that ends on
+ * one may run again under its idempotency key (platform/operations.ts).
+ * Anything else (a database or network error, a thrown `Error`, an error
+ * without a registered code) leaves unknown whether the write went through.
+ *
+ * A refusal never follows a commit: a write refuses before it writes, or in
+ * the transaction that rolls its writes back. What reads the answer after
+ * the commit goes through `readAfterCommit`.
+ */
+export function isRefusal(error: unknown): error is ORPCError<string, ApiErrorData> {
+  return isApiError(error) && LOUEZ_ERROR_CODES.has(error.data.code);
+}
+
+/**
+ * Reads a write's answer once its transaction has committed. A refusal there
+ * (the record was deleted in between) is not the write's, which went
+ * through: it is thrown as an unexpected error instead, so the operation is
+ * unknown and its idempotency key never runs it again (`isRefusal`).
+ */
+export async function readAfterCommit<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    if (!isRefusal(error)) throw error;
+    throw new Error("The write went through, but its answer could not be read back.", {
+      cause: error,
+    });
+  }
 }
