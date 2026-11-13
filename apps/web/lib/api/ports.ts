@@ -5,6 +5,7 @@ import { runAfterCommit } from "@/lib/api/after-commit";
 import { depositHoldsPort } from "@/lib/api/deposit-holds-port";
 import { dispatchApiEffects } from "@/lib/api/effects";
 import { dispatchApiJobs } from "@/lib/api/jobs";
+import { paymentRecordsPort } from "@/lib/api/payment-records-port";
 import { log } from "@/lib/evlog";
 import { productImagesPort } from "@/lib/api/product-images";
 import { apiUrls } from "@/lib/api/urls";
@@ -40,6 +41,7 @@ export const apiPorts: ApiPorts = {
   stripeConnect: () => (isConnectConfigured() ? getStripe() : null),
   billing: billingPort,
   depositHolds: depositHoldsPort,
+  paymentRecords: paymentRecordsPort,
   team: {
     collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
     emailConfigured: isEmailConfigured,

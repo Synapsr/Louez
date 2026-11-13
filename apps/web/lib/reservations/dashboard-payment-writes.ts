@@ -18,10 +18,12 @@ import {
   reservationCurrency,
 } from "@/lib/reservations/payment-billing-facts";
 
-// The payment writes of the dashboard's reservation actions, which the assistant's
-// payment tools share. Each one writes its rows and marks the reservation for the
-// billing service in one transaction (louez-billing docs/api, README §5.2). Stripe
-// calls stay with the caller, before the transaction. A deposit hold, its capture and
+// The payment writes of the dashboard's reservation actions. The payment
+// procedures (packages/api services/payment-records.ts) record through
+// `insertRecordedPayment`, lent as `ApiPorts.paymentRecords`. Each one writes its
+// rows and marks the reservation for the billing service in one transaction
+// (louez-billing docs/api, README §5.2). Stripe calls stay with the caller, before
+// the transaction. A deposit hold, its capture and
 // its release are written by lib/reservations/deposit-hold-writes.ts.
 
 type TotalsSettings = Pick<StoreSettings, "currency" | "tax"> | null;

@@ -75,6 +75,7 @@ import {
 } from "../contracts/products";
 import type { ApiEvent, ApiEventStore } from "../platform/ports";
 import type { Transport } from "../platform/actor";
+import { readAfterCommit } from "../platform/errors";
 import {
   hasTrackedUnitCapacityConflict,
   shouldValidateTrackedUnitCapacity,
@@ -900,7 +901,7 @@ export async function createProduct(actor: ProductActor, input: CreateProductInp
     },
   });
 
-  return getProduct(actor, productId);
+  return readAfterCommit(() => getProduct(actor, productId));
 }
 
 // --- Update ------------------------------------------------------------------
@@ -1370,7 +1371,7 @@ export async function updateProduct(
     productId: input.id,
     productName: savedName,
   });
-  return getProduct(actor, input.id);
+  return readAfterCommit(() => getProduct(actor, input.id));
 }
 
 /** "SKI-2 (size 170)": a unit as a person tells it apart. */
@@ -1919,7 +1920,7 @@ export async function duplicateProduct(actor: ProductActor, id: string) {
   });
 
   emit(actor, { type: "products.changed", store: eventStore(actor) });
-  return getProduct(actor, newId);
+  return readAfterCommit(() => getProduct(actor, newId));
 }
 
 // --- Order -------------------------------------------------------------------

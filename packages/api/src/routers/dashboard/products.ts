@@ -41,6 +41,7 @@ import {
   uploadImageInput,
 } from "../../contracts/uploads";
 import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
+import { readAfterCommit } from "../../platform/errors";
 import { productLinks } from "../../platform/links";
 import type { ProductImageOperation } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
@@ -606,7 +607,7 @@ const useImageVersionProcedure = storeProcedure
         productName: name,
       });
     }
-    return withLinks(context, await getProduct(actor, input.id));
+    return withLinks(context, await readAfterCommit(() => getProduct(actor, input.id)));
   });
 
 // --- Activity and timeline ---------------------------------------------------

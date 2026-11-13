@@ -1,6 +1,5 @@
 import { tool } from "ai";
 import { and, desc, eq, exists, gte, inArray, or, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
@@ -17,7 +16,7 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import type { AppRouter, UrlsPort } from "@louez/api";
+import { ORPCError, type AppRouter, type UrlsPort } from "@louez/api";
 import { ANALYTICS_PERIODS } from "@louez/api/contracts/analytics";
 import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
@@ -34,11 +33,6 @@ import {
   checkCustomerFieldEntries,
   toReadableCustomerFields,
 } from "@louez/api/services/customer-tools";
-
-import {
-  deleteRecordedPayment,
-  insertRecordedPayment,
-} from "@/lib/reservations/dashboard-payment-writes";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -67,6 +61,7 @@ export type AIChatContext = {
 export type AssistantApi = {
   analytics: RouterClient<AppRouter["dashboard"]["analytics"]>;
   categories: RouterClient<AppRouter["dashboard"]["categories"]>;
+  payments: RouterClient<AppRouter["dashboard"]["payments"]>;
   products: RouterClient<AppRouter["dashboard"]["products"]>;
   reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
   settings: RouterClient<AppRouter["dashboard"]["settings"]>;
@@ -88,6 +83,37 @@ function requirePermission(
   }
   if (level === "write" && perm === "read") {
     throw new Error(`Permission denied: requires ${domain}:write (current: read)`);
+  }
+}
+
+/**
+ * The chat's own words for the payment procedures' refusals, as its tools
+ * answered before they called them.
+ */
+const PAYMENT_REFUSALS: Record<string, (details: Record<string, unknown>) => string> = {
+  RESERVATION_NOT_FOUND: () => "Reservation not found",
+  PAYMENT_NOT_FOUND: () => "Payment not found",
+  PAYMENT_AMOUNT_INVALID: () => "Amount must be a non-zero number",
+  PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT: () =>
+    'Only "adjustment" payments can have a negative amount',
+  PAYMENT_RESERVATION_CLOSED: (details) =>
+    `Cannot record payment on a ${String(details.status)} reservation`,
+  PAYMENT_STRIPE_NOT_DELETABLE: () =>
+    "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+  DEPOSIT_RETURN_AMOUNT_INVALID: () => "Amount must be greater than zero",
+  DEPOSIT_RETURN_EXCEEDS_BALANCE: (details) =>
+    `Amount exceeds returnable deposit. Collected: ${String(details.collected)}, already returned: ${String(details.returned)}, max returnable: ${String(details.returnable)}`,
+};
+
+/** A payment procedure's answer, or its refusal in the chat's words; any other error is thrown. */
+async function paymentAnswer<T>(run: () => Promise<T>): Promise<T | { error: string }> {
+  try {
+    return await run();
+  } catch (error) {
+    const data = error instanceof ORPCError ? (error.data as Record<string, unknown>) : null;
+    const words = typeof data?.code === "string" ? PAYMENT_REFUSALS[data.code] : undefined;
+    if (!words) throw error;
+    return { error: words((data?.details as Record<string, unknown> | undefined) ?? {}) };
   }
 }
 
@@ -122,14 +148,6 @@ const customFieldEntriesSchema = z
 export function createAITools(ctx: AIChatContext) {
   /** The chat's store, named by every dashboard link the tools return. */
   const linkStore = { id: ctx.storeId };
-  /** The settings a recorded payment's currency and insurance share are read with. */
-  const loadStoreSettings = async () => {
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.id, ctx.storeId),
-      columns: { settings: true },
-    });
-    return store?.settings ?? null;
-  };
 
   return {
     // ── Products ──────────────────────────────────────────────────────────
@@ -722,50 +740,20 @@ export function createAITools(ctx: AIChatContext) {
         method: z.enum(["cash", "card", "transfer", "check", "other"]),
         notes: z.string().optional(),
       }),
-      execute: async ({ reservationId, type, amount, method, notes }) => {
+      execute: async (input) => {
         requirePermission(ctx, "payments", "write");
-
-        const numAmount = parseFloat(amount);
-        if (isNaN(numAmount) || numAmount === 0) {
-          return { error: "Amount must be a non-zero number" };
-        }
-
-        const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          columns: { id: true, number: true, status: true },
-        });
-        if (!reservation) return { error: "Reservation not found" };
-
-        if (reservation.status === "cancelled" || reservation.status === "rejected") {
+        // The procedure, with the dashboard's writer: billing facts, currency
+        // and the reservation's mark. A session is never asked to confirm.
+        return paymentAnswer(async () => {
+          const recorded = await assistantApi(ctx).payments.record(input);
           return {
-            error: `Cannot record payment on a ${reservation.status} reservation`,
+            success: true,
+            reservationNumber: recorded.number,
+            type: recorded.type,
+            amount: recorded.amount,
+            method: recorded.method,
           };
-        }
-
-        // The dashboard's writer: billing facts, currency and the reservation's mark.
-        const storeSettings = await loadStoreSettings();
-        await db.transaction((tx) =>
-          insertRecordedPayment(tx, {
-            id: nanoid(),
-            reservationId,
-            storeId: ctx.storeId,
-            storeSettings,
-            amount,
-            type,
-            method,
-            origin: "manual",
-            paidAt: new Date(),
-            notes: notes ?? null,
-          }),
-        );
-
-        return {
-          success: true,
-          reservationNumber: reservation.number,
-          type,
-          amount,
-          method,
-        };
+        });
       },
     }),
 
@@ -776,31 +764,10 @@ export function createAITools(ctx: AIChatContext) {
       }),
       execute: async ({ paymentId }) => {
         requirePermission(ctx, "payments", "write");
-
-        const payment = await db.query.payments.findFirst({
-          where: eq(payments.id, paymentId),
-          with: { reservation: { columns: { storeId: true, number: true } } },
+        return paymentAnswer(async () => {
+          const deleted = await assistantApi(ctx).payments.delete({ paymentId });
+          return { success: true, reservationNumber: deleted.number };
         });
-
-        if (!payment || payment.reservation?.storeId !== ctx.storeId) {
-          return { error: "Payment not found" };
-        }
-
-        if (payment.method === "stripe") {
-          return {
-            error: "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
-          };
-        }
-
-        await deleteRecordedPayment(db, {
-          paymentId,
-          reservationId: payment.reservationId,
-          storeId: ctx.storeId,
-        });
-        return {
-          success: true,
-          reservationNumber: payment.reservation?.number,
-        };
       },
     }),
 
@@ -812,57 +779,17 @@ export function createAITools(ctx: AIChatContext) {
         method: z.enum(["cash", "card", "transfer", "check", "other"]).describe("Return method"),
         notes: z.string().optional(),
       }),
-      execute: async ({ reservationId, amount, method, notes }) => {
+      execute: async (input) => {
         requirePermission(ctx, "payments", "write");
-
-        const numAmount = parseFloat(amount);
-        if (isNaN(numAmount) || numAmount <= 0) {
-          return { error: "Amount must be greater than zero" };
-        }
-
-        const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          columns: { id: true, number: true },
-          with: { payments: true },
-        });
-        if (!reservation) return { error: "Reservation not found" };
-
-        const depositCollected = reservation.payments
-          .filter((p) => p.type === "deposit" && p.status === "completed")
-          .reduce((s, p) => s + parseFloat(p.amount), 0);
-        const depositReturned = reservation.payments
-          .filter((p) => p.type === "deposit_return" && p.status === "completed")
-          .reduce((s, p) => s + parseFloat(p.amount), 0);
-        const maxReturnable = depositCollected - depositReturned;
-
-        if (numAmount > maxReturnable) {
+        return paymentAnswer(async () => {
+          const recorded = await assistantApi(ctx).payments.recordDepositReturn(input);
           return {
-            error: `Amount exceeds returnable deposit. Collected: ${depositCollected.toFixed(2)}, already returned: ${depositReturned.toFixed(2)}, max returnable: ${maxReturnable.toFixed(2)}`,
+            success: true,
+            reservationNumber: recorded.number,
+            amount: recorded.amount,
+            method: recorded.method,
           };
-        }
-
-        const storeSettings = await loadStoreSettings();
-        await db.transaction((tx) =>
-          insertRecordedPayment(tx, {
-            id: nanoid(),
-            reservationId,
-            storeId: ctx.storeId,
-            storeSettings,
-            amount,
-            type: "deposit_return",
-            method,
-            origin: "deposit",
-            paidAt: new Date(),
-            notes: notes ?? null,
-          }),
-        );
-
-        return {
-          success: true,
-          reservationNumber: reservation.number,
-          amount,
-          method,
-        };
+        });
       },
     }),
 

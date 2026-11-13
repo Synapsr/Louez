@@ -169,6 +169,37 @@ describe("uploadImage", () => {
     assert.ok(!written.includes("arn:aws"), "no provider message");
   });
 
+  test("a refusal once the bytes are stored stays one only if they are deleted", async (t) => {
+    const { isRefusal } = await import("../platform/errors");
+    // The storage reports another type than the one stored: the metadata check refuses.
+    storage.head = async (key) => {
+      const object = storage.objects.get(key);
+      return object ? { size: object.bytes.byteLength, contentType: "text/html" } : null;
+    };
+    await assert.rejects(upload({ contentBase64: pngBase64(64) }), (error: unknown) => {
+      assert.equal(isRefusal(error), true);
+      assert.equal((error as { data?: { code?: string } }).data?.code, "UPLOAD_TYPE_NOT_ALLOWED");
+      return true;
+    });
+    assert.equal(storage.objects.size, 0);
+
+    t.mock.method(console, "error", () => {});
+    const cleanup = new Error("delete failed");
+    storage.delete = async () => {
+      throw cleanup;
+    };
+    await assert.rejects(upload({ contentBase64: pngBase64(64) }), (error: unknown) => {
+      assert.equal(isRefusal(error), false, "an object remains: no refusal");
+      assert.ok(error instanceof AggregateError);
+      const [refusal, failure] = error.errors;
+      assert.equal(error.cause, refusal);
+      assert.equal((refusal as { data?: { code?: string } }).data?.code, "UPLOAD_TYPE_NOT_ALLOWED");
+      assert.equal(failure, cleanup);
+      return true;
+    });
+    assert.equal(storage.objects.size, 1);
+  });
+
   test("base64 is sized from its data, with padding only where it belongs", async () => {
     // 5,242,880 bytes: the limit, with its padding or without.
     const atLimit = pngBase64(MAX);

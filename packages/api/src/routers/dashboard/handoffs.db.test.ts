@@ -1577,6 +1577,54 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(billing.state.finished.length, 2);
   });
 
+  test("a refresh whose handoff is gone once the provider confirmed is unknown, never run again", async () => {
+    const agent = await apiKey();
+    const a = await cardAttempt(agent);
+    billing.state.outcome = "pending";
+    await (
+      await returning(a.id, a.state, "cs_gone")
+    )();
+    await endLease(a.id);
+    billing.state.finished.length = 0;
+
+    // The lease is taken and the provider saves the card; meanwhile the
+    // handoff is deleted (the purge, the store's deletion).
+    const gate = barrier();
+    billing.state.gate = gate.wait;
+    billing.state.outcome = "refreshed";
+    const context = agent();
+    context.headers.set("idempotency-key", "ho-refresh-gone");
+    const refreshing = client(context).handoffs.refresh({ id: a.id });
+    while (billing.state.finished.length === 0)
+      await new Promise((resolve) => setImmediate(resolve));
+    await louezDb.db.delete(louezDb.apiHandoffs).where(orm.eq(louezDb.apiHandoffs.id, a.id));
+    gate.open();
+    billing.state.gate = null;
+
+    let caught: unknown;
+    try {
+      await refreshing;
+    } catch (error) {
+      caught = error;
+    }
+    assert.ok(caught, "the refresh cannot answer");
+    assert.notEqual(
+      (caught as { data?: { code?: string } }).data?.code,
+      "HANDOFF_NOT_FOUND",
+      "no refusal: the lease was taken and the provider asked",
+    );
+    const [operation] = await louezDb.db
+      .select({ status: louezDb.apiOperations.status })
+      .from(louezDb.apiOperations)
+      .where(orm.eq(louezDb.apiOperations.idempotencyKey, "ho-refresh-gone"));
+    assert.equal(operation?.status, "unknown");
+
+    const retry = agent();
+    retry.headers.set("idempotency-key", "ho-refresh-gone");
+    await rejects(client(retry).handoffs.refresh({ id: a.id }), "OPERATION_OUTCOME_UNKNOWN");
+    assert.deepEqual(billing.state.finished, ["cs_gone"], "the provider was asked once");
+  });
+
   // --- A revoked connection ------------------------------------------------------
 
   test("revoking the agent's key ends its handoffs, and its links stop working", async () => {

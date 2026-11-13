@@ -126,7 +126,6 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     const httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: { insertRecordedPayment: async () => undefined },
     };
     const connect = async (authorization: string) => {
       const mcp = new Client({ name: "test", version: "0.0.0" });

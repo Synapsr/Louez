@@ -26,11 +26,11 @@ import { fileURLToPath } from "node:url";
 // around); its name as a string (`obj["requireConfirmation"]`); a namespace,
 // default or dynamic import of a module that defines one; a spread in an
 // object that declares consequences (a spread's keys could replace them,
-// unseen by the types). It also lists the hand-written MCP tools that ask
-// (`legacyTool` with `sensitive`): the three payment tools, the only ones
-// `always` is converted for. And every procedure that declares `sensitive`
-// calls an asking function, directly or through a helper of its file, or is
-// listed with why it does not; a call the code never makes is beyond it.
+// unseen by the types). And every procedure that declares `sensitive` calls an
+// asking function, directly or through a helper of its file, or is listed with
+// why it does not; a call the code never makes is beyond it. No hand-written
+// MCP tool asks: `legacyTool` takes no confirmation, and the tools that move
+// money or delete are procedures.
 
 const REPO = fileURLToPath(new URL("../../../../", import.meta.url));
 const SELF = relative(REPO, fileURLToPath(import.meta.url));
@@ -44,16 +44,6 @@ const ASKING = [
   "confirmUnderLock",
   "confirmTeamChange",
 ];
-/** The hand-written tools' registration: one with `sensitive` asks. */
-const LEGACY_TOOL = "legacyTool";
-const WATCHED = [...ASKING, LEGACY_TOOL];
-
-/** The only module allowed to import the legacy conversion of `always`. */
-const LEGACY_CONVERSION = "legacy-payment-tool-consequences";
-const LEGACY_CONVERSION_IMPORTERS = [
-  "packages/api/src/platform/legacy-payment-tool-consequences.test.ts",
-  "packages/mcp/src/utils/legacy-tool.ts",
-];
 
 /** The files outside tests that name an asking function. None under apps/. */
 const FILES = [
@@ -61,6 +51,7 @@ const FILES = [
   "packages/api/src/platform/testing.ts",
   "packages/api/src/routers/dashboard/categories.ts",
   "packages/api/src/routers/dashboard/online-store.ts",
+  "packages/api/src/routers/dashboard/payments.ts",
   "packages/api/src/routers/dashboard/product-context.ts",
   "packages/api/src/routers/dashboard/product-units.ts",
   "packages/api/src/routers/dashboard/product-variants.ts",
@@ -70,7 +61,6 @@ const FILES = [
   "packages/api/src/routers/dashboard/stores.ts",
   "packages/api/src/routers/dashboard/team.ts",
   "packages/api/src/services/product-images.ts",
-  "packages/mcp/src/utils/legacy-tool.ts",
 ];
 
 /**
@@ -83,6 +73,8 @@ const DECLARED: Record<string, readonly string[]> = {
   "packages/api/src/routers/dashboard/online-store.ts#updateSlug": [
     'preview.online ? ["deletion"] : ["change"]',
   ],
+  // The three payment writes, the deletion included: money, whatever the option.
+  "packages/api/src/routers/dashboard/payments.ts#paymentRecordsCaller": ['["money"]'],
   "packages/api/src/routers/dashboard/product-units.ts#declareDowntime": ['["change"]'],
   "packages/api/src/routers/dashboard/product-units.ts#deleteDowntime": ['["change"]'],
   "packages/api/src/routers/dashboard/product-units.ts#retireUnit": ['["change"]'],
@@ -110,15 +102,6 @@ const DECLARED: Record<string, readonly string[]> = {
   "packages/api/src/routers/dashboard/team.ts#remove": ['["access_removed"]'],
   // A priced run only: a free one asks nothing.
   "packages/api/src/services/product-images.ts#startImageJob": ['["credits"]'],
-  // `always`, converted to `["money"]` for the three payment tools alone.
-  "packages/mcp/src/utils/legacy-tool.ts#legacyTool": ["consequences"],
-};
-
-/** The hand-written MCP tools registered with a confirmation (`sensitive`), and their `always`. */
-const LEGACY_ASKING: Record<string, string> = {
-  delete_payment: "always: true",
-  record_deposit_return: "always: true",
-  record_payment: "always: true",
 };
 
 /** Sensitive procedures that never ask, and why. */
@@ -190,23 +173,6 @@ function closing(code: string, open: number): number {
     if (depth === 0) return index;
   }
   throw new Error(`unbalanced bracket at ${open}`);
-}
-
-/** The comma-separated items between `from` and `to`, at their own depth. */
-function topLevel(code: string, from: number, to: number): Array<{ from: number; to: number }> {
-  const items: Array<{ from: number; to: number }> = [];
-  let depth = 0;
-  let start = from;
-  for (let index = from; index < to; index += 1) {
-    if ("([{".includes(code[index])) depth += 1;
-    else if (")]}".includes(code[index])) depth -= 1;
-    else if (code[index] === "," && depth === 0) {
-      items.push({ from: start, to: index });
-      start = index + 1;
-    }
-  }
-  if (code.slice(start, to).trim()) items.push({ from: start, to });
-  return items;
 }
 
 /** Where the bracket that encloses `at` opens, or -1. */
@@ -297,16 +263,12 @@ interface Scan {
   files: string[];
   /** Each asking call: its place, what it declares, and whether a spread shares its object. */
   places: Array<{ place: string; declared: string[]; spread: boolean }>;
-  /** Each name of a watched function used otherwise than defined, imported, called or read as a type. */
+  /** Each name of an asking function used otherwise than defined, imported, called or read as a type. */
   misuses: string[];
-  /** The hand-written tools registered with `sensitive`, and the `always` each says. */
-  legacyAsking: Record<string, string>;
   /** The helpers (not procedures) that hold an asking call: a procedure that calls one asks. */
   askers: Set<string>;
   /** Each sensitive procedure, and the names of the functions its declaration calls. */
   sensitive: Array<{ capability: string; place: string; calls: Set<string> }>;
-  /** The files, tests included, that name the legacy conversion's module. */
-  conversionImporters: string[];
 }
 
 function scan(): Scan {
@@ -314,31 +276,25 @@ function scan(): Scan {
     files: [],
     places: [],
     misuses: [],
-    legacyAsking: {},
     askers: new Set(),
     sensitive: [],
-    conversionImporters: [],
   };
-  const watched = new RegExp(`\\b(${WATCHED.join("|")})\\b`, "g");
-  const asking = new Set(ASKING);
-  // The modules that define a watched function, by the end of their import path.
-  const defining = /\/(?:confirmation|product-context|legacy-tool|team)["']/;
+  const watched = new RegExp(`\\b(${ASKING.join("|")})\\b`, "g");
+  // The modules that define an asking function, by the end of their import path.
+  const defining = /\/(?:confirmation|product-context|team)["']/;
 
   for (const file of sourceFiles()) {
     if (file === SELF) continue;
     const text = readFileSync(join(REPO, file), "utf8");
-    const withStrings = codeOnly(text, true);
-    if (withStrings.includes(LEGACY_CONVERSION)) result.conversionImporters.push(file);
     if (isTest(file)) continue;
-    if (!WATCHED.some((name) => withStrings.includes(name))) continue;
+    const withStrings = codeOnly(text, true);
+    if (!ASKING.some((name) => withStrings.includes(name))) continue;
 
     const code = codeOnly(text);
     const where = (at: number) => `${file}:${text.slice(0, at).split("\n").length}`;
 
-    // A watched name as a string: a computed call or a lookup by name.
-    for (const match of withStrings.matchAll(
-      new RegExp(`(["'\`])(${WATCHED.join("|")})\\1`, "g"),
-    )) {
+    // An asking name as a string: a computed call or a lookup by name.
+    for (const match of withStrings.matchAll(new RegExp(`(["'\`])(${ASKING.join("|")})\\1`, "g"))) {
       result.misuses.push(`${where(match.index)}: "${match[2]}" as a string`);
     }
     // A namespace, default or dynamic import, or a re-export, of a defining module.
@@ -364,9 +320,7 @@ function scan(): Scan {
         imported.add(at);
       }
       // `import { x as requireConfirmation }`: something else under its name.
-      for (const alias of match[1].matchAll(
-        new RegExp(`\\bas\\s+(${WATCHED.join("|")})\\b`, "g"),
-      )) {
+      for (const alias of match[1].matchAll(new RegExp(`\\bas\\s+(${ASKING.join("|")})\\b`, "g"))) {
         result.misuses.push(`${where(listStart + alias.index)}: imported as ${alias[1]}`);
       }
     }
@@ -376,7 +330,7 @@ function scan(): Scan {
       const name = match[1];
       const at = match.index;
       if (imported.has(at)) continue;
-      if (asking.has(name)) named = true;
+      named = true;
       const before = code.slice(0, at);
       const after = code.slice(at + name.length);
       if (/\b(?:function\*?)\s+$/.test(before)) continue;
@@ -391,27 +345,6 @@ function scan(): Scan {
       const place = `${file}#${declaration}`;
       const open = at + name.length + call[0].length - 1;
       const close = closing(code, open);
-      if (name === LEGACY_TOOL) {
-        // Its eighth argument, the options: `sensitive` there asks.
-        const args = topLevel(code, open + 1, close);
-        const options = args[7];
-        if (!options) continue;
-        const optionsCode = code.slice(options.from, options.to).trim();
-        const optionsText = text.slice(options.from, options.to);
-        const tool = /\bname:\s*["']([^"']*)["']/.exec(text.slice(args[3].from, args[3].to));
-        const key = tool?.[1] ?? where(at);
-        if (!optionsCode.startsWith("{")) {
-          result.legacyAsking[key] = `options not written at the call: ${optionsCode}`;
-          continue;
-        }
-        const start = options.from + code.slice(options.from).indexOf("{");
-        const keys = topLevel(code, start + 1, closing(code, start));
-        const sensitive = keys.find(({ from, to }) => /^\s*sensitive\b/.test(code.slice(from, to)));
-        if (!sensitive) continue;
-        const always = /\balways:\s*[^,\n}]+/.exec(text.slice(sensitive.from, sensitive.to));
-        result.legacyAsking[key] = always?.[0].trim() ?? `no always: ${optionsText.trim()}`;
-        continue;
-      }
       if (ASKING.includes(declaration)) continue;
       result.places.push({ place, ...declaredIn(text, code, open + 1, close) });
       if (!/\.meta\(/.test(code.slice(0, at).slice(code.lastIndexOf("\n", at)))) {
@@ -463,14 +396,6 @@ describe("the inventory of the places that ask for a confirmation", () => {
       assert.ok(declared.length > 0, `${place}: the consequences are written at the call`);
       assert.equal(spread, false, `${place}: a spread shares the object of its consequences`);
     }
-  });
-
-  test("the hand-written tools that ask are the three payment tools, with `always`", () => {
-    assert.deepEqual(found.legacyAsking, LEGACY_ASKING);
-  });
-
-  test("the legacy conversion of `always` is imported by the MCP adapter alone", () => {
-    assert.deepEqual(found.conversionImporters, LEGACY_CONVERSION_IMPORTERS);
   });
 
   test("every sensitive procedure calls an asking function, or says why it does not", () => {

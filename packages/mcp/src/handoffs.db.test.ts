@@ -98,7 +98,6 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
     const httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: { insertRecordedPayment: async () => undefined },
     };
     connect = async (authorization: string) => {
       const mcp = new Client({ name: "test", version: "0.0.0" });
@@ -179,10 +178,14 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
         .filter((entry) => entry.path.startsWith(prefix))
         .map((entry) => [entry.meta.mcp.name, entry.meta.mcp.bundle])
         .sort();
+    // The payments recorded by hand are a day's work.
     assert.deepEqual(names("dashboard.payments."), [
+      ["delete_payment", "daily"],
       ["payments_open_stripe_dashboard", "settings"],
       ["payments_start_stripe_onboarding", "settings"],
       ["payments_sync_stripe_status", "settings"],
+      ["record_deposit_return", "daily"],
+      ["record_payment", "daily"],
     ]);
     assert.deepEqual(names("dashboard.billing."), [
       ["billing_get_status", "billing"],

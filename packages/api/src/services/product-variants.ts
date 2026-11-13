@@ -21,6 +21,7 @@ import {
   type ensureVariantDefinitionInput,
   type updateVariantValueInput,
 } from "../contracts/product-variants";
+import { readAfterCommit } from "../platform/errors";
 import {
   emit,
   eventStore,
@@ -328,7 +329,7 @@ export async function ensureVariantDefinition(
     return { id: definitionId, created: !existing };
   });
 
-  return { ...(await getDefinition(db, storeId, id)), created };
+  return { ...(await readAfterCommit(() => getDefinition(db, storeId, id))), created };
 }
 
 /** Renames a variant. Its key stays, so products keep their link to it. */
@@ -344,7 +345,7 @@ export async function updateVariantDefinition(
       .set({ label: input.label, updatedAt: new Date() })
       .where(and(eq(variantDefinitions.id, input.id), eq(variantDefinitions.storeId, storeId)));
   });
-  return getDefinition(db, storeId, input.id);
+  return readAfterCommit(() => getDefinition(db, storeId, input.id));
 }
 
 /**
@@ -522,7 +523,7 @@ export async function createVariantValue(
     definitionLabel: _label,
     key: _key,
     ...value
-  } = await findValue(db, storeId, valueId);
+  } = await readAfterCommit(() => findValue(db, storeId, valueId));
   return { ...value, created };
 }
 
@@ -563,7 +564,7 @@ export async function updateVariantValue(
     definitionLabel: _label,
     key: _key,
     ...value
-  } = await findValue(db, storeId, input.id);
+  } = await readAfterCommit(() => findValue(db, storeId, input.id));
   return value;
 }
 

@@ -473,7 +473,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "recordPayment"),
       procedure("reservations", "recordPayment"),
-      tool(MCP.payments, "record_payment"),
+      procedure("payments", "record"),
     ],
     kind: "write",
     sensitive: "money",
@@ -501,7 +501,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "deletePayment"),
       procedure("reservations", "deletePayment"),
-      tool(MCP.payments, "delete_payment"),
+      procedure("payments", "delete"),
     ],
     kind: "write",
     sensitive: "destructive",
@@ -512,7 +512,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "returnDeposit"),
       procedure("reservations", "returnDeposit"),
-      tool(MCP.payments, "record_deposit_return"),
+      procedure("payments", "recordDepositReturn"),
     ],
     kind: "write",
     sensitive: "money",

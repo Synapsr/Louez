@@ -1,5 +1,7 @@
 import { ORPCError } from "@orpc/server";
 
+import { LOUEZ_ERROR_CODES } from "./error-registry";
+
 /**
  * Errors of the agent-ready API. Every transport sends the same thing:
  *
@@ -140,7 +142,7 @@ export const platformErrors = {
   operationOutcomeUnknown: (operationId: string) =>
     apiError("CONFLICT", "OPERATION_OUTCOME_UNKNOWN", {
       message:
-        "An earlier call with this idempotency key may have gone through, but its outcome was not recorded. Check the current state before trying again with a new key.",
+        "An earlier call with this idempotency key may have gone through: it ended on an unexpected error, or its outcome was not recorded. Check the current state before trying again with a new key.",
       details: { operationId },
     }),
   confirmationInvalid: () =>
@@ -156,4 +158,62 @@ export function isApiError(error: unknown): error is ORPCError<string, ApiErrorD
     error instanceof ORPCError &&
     typeof (error.data as Partial<ApiErrorData> | undefined)?.code === "string"
   );
+}
+
+/**
+ * The operation layer's own answers about an idempotency key: they say where
+ * an earlier call with the key stands, not that this one was refused. They
+ * are thrown outside the classification of a handler's error
+ * (platform/operations.ts): before a record is claimed, or after a handler
+ * that returned when its outcome could not be recorded. Were one to reach
+ * that classification, it must not be `failed`.
+ */
+export const OPERATION_STATE_CODES: ReadonlySet<string> = new Set([
+  "OPERATION_OUTCOME_UNKNOWN",
+  "OPERATION_IN_PROGRESS",
+  "IDEMPOTENCY_KEY_REUSED",
+]);
+
+/**
+ * True when Louez refused the call: one of its own errors (`apiError`) with a
+ * code of the registry, other than the operation layer's answers
+ * (`OPERATION_STATE_CODES`). A write that ends on one is `failed`, and its
+ * idempotency key may run it again (platform/operations.ts). Anything else
+ * (a database or network error, a timeout, a thrown `Error`, an error
+ * without a registered code) is `unknown`, and its key never runs it again.
+ *
+ * The predicate reads the code, not what the handler did: a registered code
+ * is a convention, not a proof that nothing was written. A handler raises a
+ * refusal only when nothing it wrote remains: it refuses before it writes, in
+ * the transaction that rolls its writes back, or after undoing what it wrote.
+ * The one exception is the refusal's own trace (the preview row of
+ * `CONFIRMATION_REQUIRED`, with the setup mark of the store it locked; the
+ * activity line of `DEPOSIT_ATTEMPT_NEEDS_STRIPE`), which records that the
+ * write did not happen. A refusal raised after a write whose undoing failed
+ * is raised as an ordinary error carrying both (`uploadImage`,
+ * services/uploads.ts); a read after a commit goes through `readAfterCommit`.
+ */
+export function isRefusal(error: unknown): error is ORPCError<string, ApiErrorData> {
+  return (
+    isApiError(error) &&
+    LOUEZ_ERROR_CODES.has(error.data.code) &&
+    !OPERATION_STATE_CODES.has(error.data.code)
+  );
+}
+
+/**
+ * Reads a write's answer once its transaction has committed. A refusal there
+ * (the record was deleted in between) is not the write's, which went
+ * through: it is thrown as an unexpected error instead, so the operation is
+ * unknown and its idempotency key never runs it again (`isRefusal`).
+ */
+export async function readAfterCommit<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    if (!isRefusal(error)) throw error;
+    throw new Error("The write went through, but its answer could not be read back.", {
+      cause: error,
+    });
+  }
 }
