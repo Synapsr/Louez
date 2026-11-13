@@ -132,7 +132,7 @@ export const inviteMemberOutput = z.object({
    * `invited`: an invitation went out, valid 7 days. `added`: the person
    * already had a Louez account and joined the store at once.
    * `approval_requested` (an agent): nothing was created yet; an owner
-   * approves or declines from `approval.url`.
+   * approves or refuses from `approval.url`.
    */
   outcome: z.enum(["invited", "added", "approval_requested"]),
   invitation: teamInvitationSchema.nullable(),
@@ -145,27 +145,11 @@ export const inviteMemberOutput = z.object({
   invitationEmail: z.enum(["queued", "not_configured"]).nullable(),
   /**
    * An agent's request: the link to give the user, and the handoff to read
-   * with handoffs_get (completed once approved, failed once declined).
+   * with handoffs_get (completed once approved and carried out, failed
+   * otherwise; `decision` says what the owner decided).
    */
   approval: handoffLinkSchema.nullable(),
   links: teamPageLinks,
-});
-
-/** An owner's answer to an agent's invitation, from its page. */
-export const decideInvitationInput = z.object({
-  /** The page's link: the handoff's id, or an older link's id then its secret. */
-  token: z.string().min(1).max(128),
-  decision: z.enum(["approve", "decline"]),
-  /** The revision the page showed: another one decides nothing. */
-  revision: z.number().int().positive(),
-  /** What the page showed of the invitation (its digest): another one decides nothing. */
-  shown: z.string().regex(/^[0-9a-f]{64}$/),
-});
-export const decideInvitationOutput = z.object({
-  /** The handoff the agent reads. */
-  handoffId: z.string(),
-  decision: z.enum(["approved", "declined"]),
-  outcome: z.enum(["invited", "added"]).nullable(),
 });
 
 /** The invited person accepts, signed in with the invited address. */
@@ -252,7 +236,7 @@ export const teamErrors = {
     }),
   approvalsFull: () =>
     apiError("CONFLICT", "TEAM_APPROVALS_FULL", {
-      message: `This store already has ${MAX_OPEN_INVITATION_APPROVALS} invitations waiting for an owner's approval. The user approves or declines them from their links, or they expire after a day.`,
+      message: `This store already has ${MAX_OPEN_INVITATION_APPROVALS} invitations waiting for an owner's approval. The user approves or refuses them from their links, or they expire after a day.`,
       details: { max: MAX_OPEN_INVITATION_APPROVALS },
     }),
   emailLimit: () =>
@@ -261,15 +245,6 @@ export const teamErrors = {
       i18nKey: "errors.tooManyRequests",
       retryable: true,
       details: { max: INVITATION_EMAILS_PER_DAY },
-    }),
-  approvalInvalid: (reason: string) =>
-    apiError("BAD_REQUEST", "TEAM_APPROVAL_INVALID", {
-      message:
-        reason === "changed"
-          ? "The request changed since the page showed it, and nothing was decided: look at it again, then answer."
-          : "This approval link no longer works, or is not for this account.",
-      i18nKey: `handoff.refused.${reason}.title`,
-      details: { reason },
     }),
   approvalChanged: () =>
     apiError("CONFLICT", "TEAM_APPROVAL_CHANGED", {

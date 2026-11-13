@@ -1146,6 +1146,34 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     }
   });
 
+  test("each kind declares its lifetime, and its link lasts that long from each request", async () => {
+    assert.deepEqual(Object.keys(handoffs.HANDOFF_LIFETIMES).sort(), [...HANDOFF_KINDS].sort());
+    const now = new Date(Date.now() - HOUR);
+    const steps = await oneStepOfEachKind(now);
+    for (const kind of HANDOFF_KINDS) {
+      const row = await handoffs.getHandoffRow(STORE, steps[kind]);
+      assert.equal(row.expiresAt.getTime(), handoffs.linkExpiry(kind, now).getTime(), kind);
+    }
+  });
+
+  test("handoffs_get opens to any domain's read: an id no step has is not found, a step of a domain not read is refused", async () => {
+    const steps = await oneStepOfEachKind();
+    const reservationsOnly = await apiKey({
+      ...agentRights,
+      settings: "none",
+      billing: "none",
+      team: "none",
+    });
+    await rejects(
+      client(reservationsOnly()).handoffs.get({ id: "x".repeat(21) }),
+      "HANDOFF_NOT_FOUND",
+    );
+    await rejects(
+      client(reservationsOnly()).handoffs.get({ id: steps.team_invitation }),
+      "PERMISSION_DENIED",
+    );
+  });
+
   // --- Stripe -------------------------------------------------------------------
 
   test("Stripe's refusals: not configured, no account, no email, Stripe down", async () => {
@@ -1938,6 +1966,32 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(replayed, first);
     assert.equal(billing.state.finished.length, asked, "the provider was not asked again");
     assert.equal((await handoffs.getHandoffRow(STORE, attempt.id)).status, "opened");
+  });
+
+  test("answers stored before views carried decision replay with decision null", async () => {
+    const agent = await apiKey();
+    const KEY = "ho-start-before-decision";
+    const context = agent();
+    context.headers.set("idempotency-key", KEY);
+    const first = await client(context).payments.startStripeOnboarding({});
+    assert.equal(first.handoff.decision, null);
+
+    // The answer as the code before kept it: no decision.
+    const byKey = orm.eq(louezDb.apiOperations.idempotencyKey, KEY);
+    await louezDb.db
+      .update(louezDb.apiOperations)
+      .set({
+        result: orm.sql`JSON_REMOVE(${louezDb.apiOperations.result}, '$.handoff.decision')`,
+      })
+      .where(byKey);
+    const [stored] = await louezDb.db.select().from(louezDb.apiOperations).where(byKey);
+    assert.equal(JSON.stringify(stored?.result).includes('"decision"'), false);
+
+    const replayContext = agent();
+    replayContext.headers.set("idempotency-key", KEY);
+    const replayed = await client(replayContext).payments.startStripeOnboarding({});
+    assert.equal(replayContext.receipt?.replayed, true);
+    assert.deepEqual(replayed, first);
   });
 
   test("an answer that starts a step replays with its idempotency key, and holds no secret", async () => {

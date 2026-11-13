@@ -4581,6 +4581,18 @@ export const apiHandoffs = mysqlTable(
     completedAt: timestamp("completed_at", { mode: "date", fsp: 3 }),
     failedAt: timestamp("failed_at", { mode: "date", fsp: 3 }),
     failureCode: varchar("failure_code", { length: 60 }),
+    /**
+     * What a person decided on the step's page (a team invitation's
+     * approval), written once, in the statement that ends the step, and never
+     * rewritten. Null until a person decided, for the steps a provider
+     * settles, and for a step decided before these columns existed.
+     */
+    decision: mysqlEnum("decision", ["approved", "refused"]),
+    decidedAt: timestamp("decided_at", { mode: "date", fsp: 3 }),
+    /** The user who decided: the step's user, signed in on its page. */
+    decidedByUserId: varchar("decided_by_user_id", { length: 21 }),
+    /** The person's own words with their decision, plain text, if they gave any. */
+    decisionReason: varchar("decision_reason", { length: 500 }),
     createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
   },

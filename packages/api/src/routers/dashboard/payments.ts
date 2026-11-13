@@ -38,7 +38,7 @@ import {
   stripeConnectErrors,
   syncConnectStatus,
 } from "../../services/stripe-connect";
-import { completeActiveHandoff } from "../../services/handoffs";
+import { completeActiveHandoff, upgradeStoredLink } from "../../services/handoffs";
 import { toORPCError } from "../../utils/orpc-error";
 import { HANDOFF_HELP, startHandoff } from "./handoffs";
 import { mayRead, type ProductContext } from "./product-context";
@@ -126,6 +126,8 @@ const startStripeOnboarding = storeProcedure
   .meta({
     capability: "payments.startStripeOnboarding",
     scope: STRIPE_WRITE,
+    // Its answers stored before views carried `decision` replay with it.
+    upgradeReplay: upgradeStoredLink,
     mcp: {
       name: "payments_start_stripe_onboarding",
       title: "Connect Stripe",
@@ -150,6 +152,8 @@ const openStripeDashboard = storeProcedure
   .meta({
     capability: "payments.getStripeDashboardUrl",
     scope: STRIPE_WRITE,
+    // Its answers stored before views carried `decision` replay with it.
+    upgradeReplay: upgradeStoredLink,
     mcp: {
       name: "payments_open_stripe_dashboard",
       title: "Open Stripe Dashboard",

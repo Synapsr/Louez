@@ -19,17 +19,19 @@ import {
   HANDOFF_TTL_HOURS,
   handoffErrors,
   handoffFailureMessage,
+  type HandoffDecision,
   type HandoffKind,
   type HandoffLink,
   type HandoffStatus,
   type HandoffView,
 } from "../contracts/handoffs";
+import { mayApprove } from "../platform/approval-rule";
 import { isApiError, platformErrors, readAfterCommit } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import { logProviderError } from "../platform/sanitize-error";
 import { dashboardPageLinks, type DashboardLinkStore } from "../platform/links";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
-import type { ApiDomain } from "../platform/permissions";
+import type { ApiDomain, ProcedureScope } from "../platform/permissions";
 import { startConnectOnboarding, syncConnectStatus, type ConnectStore } from "./stripe-connect";
 
 /**
@@ -50,11 +52,11 @@ import { startConnectOnboarding, syncConnectStatus, type ConnectStore } from "./
  * current one. One active handoff per store, kind and subject: a
  * store-wide step has an empty subject; a team invitation's is its address's
  * hash, so each address has its own approval. A team invitation has no
- * provider: its page asks an owner to approve or decline (services/team.ts).
+ * provider: its page asks an owner to approve or refuse (`handoffs.decide`,
+ * services/handoff-decisions.ts), and the row records what they decided.
  */
 
 const HOUR_MS = 3_600_000;
-const TTL_MS = HANDOFF_TTL_HOURS * HOUR_MS;
 /** An active handoff shows in the inbox this long after its link went out. */
 export const HANDOFF_WAIT_MS = HOUR_MS;
 
@@ -66,11 +68,69 @@ export const HANDOFF_KIND_DOMAINS: Record<HandoffKind, ApiDomain> = {
   team_invitation: "team",
 };
 
-/** Who may take the step in the store: the dashboard's own rule for each flow. */
+/** The domain whose read access shows a step: its kind's. */
+export function handoffDomain(row: Pick<HandoffRow, "kind">): ApiDomain {
+  return HANDOFF_KIND_DOMAINS[row.kind];
+}
+
+/** How long a kind gives the person, counted from each request of the step. */
+export interface HandoffLifetimes {
+  /** The link works this long: to continue to the provider, or to decide on the page. */
+  actMs: number;
+}
+
+/**
+ * Each kind's lifetimes. A lifetime bounds the link, never the provider: a
+ * provider's return after the link expired still completes its attempt
+ * (`claimAttempt`), and a return or a lease never reads this table.
+ */
+export const HANDOFF_LIFETIMES: Record<HandoffKind, HandoffLifetimes> = {
+  stripe_connect_onboarding: { actMs: HANDOFF_TTL_HOURS * HOUR_MS },
+  stripe_dashboard: { actMs: HANDOFF_TTL_HOURS * HOUR_MS },
+  billing_card_setup: { actMs: HANDOFF_TTL_HOURS * HOUR_MS },
+  team_invitation: { actMs: HANDOFF_TTL_HOURS * HOUR_MS },
+};
+
+/** When a step's link stops working, for a request at `requestedAt`. */
+export function linkExpiry(kind: HandoffKind, requestedAt: Date): Date {
+  return new Date(requestedAt.getTime() + HANDOFF_LIFETIMES[kind].actMs);
+}
+
+/**
+ * The kinds a person decides on the step's page, with the right deciding
+ * needs: an invitation is decided as the team's manager. The other kinds
+ * have no decision: the person goes on to the provider.
+ */
+export const HANDOFF_DECISION_SCOPES: Partial<Record<HandoffKind, ProcedureScope>> = {
+  team_invitation: { domain: "team", level: "write", role: "manage_members" },
+};
+
+/** Who may take a provider's step in the store: the dashboard's own rule for each flow. */
 export function mayTakeStep(kind: HandoffKind, role: MemberRole): boolean {
   if (kind === "billing_card_setup") return role === "owner";
-  if (kind === "team_invitation") return hasPermission(role, "manage_members");
   return hasPermission(role, "manage_settings");
+}
+
+/**
+ * Whether `userId`, whose role in the step's store is `role` (null when they
+ * are no longer a member), may still take the step: decide it, by the one
+ * rule of who decides (`mayApprove`: the user the requesting connection acts
+ * for, still a member whose role allows the decision), or go on to the
+ * provider (`mayTakeStep`).
+ */
+export function mayActOnStep(
+  row: Pick<HandoffRow, "kind" | "storeId" | "userId">,
+  userId: string,
+  role: MemberRole | null,
+): boolean {
+  const scope = HANDOFF_DECISION_SCOPES[row.kind];
+  if (scope) {
+    return mayApprove(
+      { userId, storeId: row.storeId, role },
+      { storeId: row.storeId, requesterUserId: row.userId, scope },
+    );
+  }
+  return role !== null && mayTakeStep(row.kind, role);
 }
 
 const PAGES: Record<HandoffKind, `/dashboard${string}`> = {
@@ -129,6 +189,27 @@ const SUMMARIES: Record<HandoffKind, Record<HandoffStatus, string>> = {
   },
 };
 
+/** A step the person approved, which ended failed: it could not be carried out. */
+const APPROVED_NOT_CARRIED_OUT = "The user approved, but it could not be carried out.";
+
+/** What a person decided on the step's page, as the row records it; null until then. */
+function decisionOf(
+  row: Pick<HandoffRow, "decision" | "decidedAt" | "decisionReason">,
+): HandoffDecision {
+  if (!row.decision || !row.decidedAt) return null;
+  return { outcome: row.decision, at: row.decidedAt, reason: row.decisionReason };
+}
+
+/** The view's sentence: where the step stands, and why it failed. */
+function summaryOf(row: HandoffRow, status: HandoffStatus): string {
+  if (status === "failed" && row.failureCode) {
+    const failed =
+      row.decision === "approved" ? APPROVED_NOT_CARRIED_OUT : SUMMARIES[row.kind].failed;
+    return `${failed} ${handoffFailureMessage(row.failureCode)}`;
+  }
+  return isConfirming(row, status) ? CONFIRMING_SUMMARY : SUMMARIES[row.kind][status];
+}
+
 const CONFIRMING_SUMMARY = "The user is back from Stripe, which has not confirmed the card yet.";
 
 /**
@@ -159,12 +240,8 @@ export function handoffView(
     confirming: isConfirming(row, status),
     invitation: row.kind === "team_invitation" && row.payload ? row.payload : null,
     url: handoffUrl(context.urls, row.id),
-    summary:
-      status === "failed" && row.failureCode
-        ? `${SUMMARIES[row.kind].failed} ${handoffFailureMessage(row.failureCode)}`
-        : isConfirming(row, status)
-          ? CONFIRMING_SUMMARY
-          : SUMMARIES[row.kind][status],
+    decision: decisionOf(row),
+    summary: summaryOf(row, status),
     links: dashboardPageLinks(context.urls, context.store, PAGES[row.kind]),
   };
 }
@@ -179,14 +256,25 @@ export const handoffPath = (link: string) => `/handoffs/${encodeURIComponent(lin
 export const handoffUrl = (urls: UrlsPort, id: string) => urls.dashboard(handoffPath(id));
 
 /**
- * A handoff view stored before views carried `url` (an answer of
- * `handoffs_refresh` kept for its idempotency key), with its url: the link
- * follows from the id. Anything else is returned as it is.
+ * A handoff view kept for an idempotency key before views carried `url` or
+ * `decision`, as a view gives them now: the link follows from the id, and no
+ * view stored then carried a decision. Anything else is returned as it is.
  */
-export function withHandoffUrl(stored: unknown, urls: UrlsPort): unknown {
-  if (!stored || typeof stored !== "object" || "url" in stored) return stored;
+export function upgradeStoredView(stored: unknown, urls: UrlsPort): unknown {
+  if (!stored || typeof stored !== "object") return stored;
   const { id } = stored as { id?: unknown };
-  return typeof id === "string" ? { ...stored, url: handoffUrl(urls, id) } : stored;
+  if (typeof id !== "string") return stored;
+  return {
+    ...stored,
+    ...("url" in stored ? {} : { url: handoffUrl(urls, id) }),
+    ...("decision" in stored ? {} : { decision: null }),
+  };
+}
+
+/** A stored answer that hands a step over (`{ handoff, url }`), its view upgraded. */
+export function upgradeStoredLink(stored: unknown, urls: UrlsPort): unknown {
+  if (!stored || typeof stored !== "object" || !("handoff" in stored)) return stored;
+  return { ...stored, handoff: upgradeStoredView(stored.handoff, urls) };
 }
 /** Where the provider sends the user back, with the state of their click. */
 export const handoffReturnPath = (id: string, state: string) => `/handoffs/return/${id}/${state}`;
@@ -267,7 +355,7 @@ export async function issueHandoff(
   const subject = context.subject ?? "";
   const now = context.now ?? new Date();
   const tokenHash = sha256(newSecret());
-  const expiresAt = new Date(now.getTime() + TTL_MS);
+  const expiresAt = linkExpiry(kind, now);
   const credential = {
     userId: requester.userId,
     credentialKind: requester.credentialKind,
@@ -543,9 +631,9 @@ async function connectionAlive(row: HandoffRow): Promise<boolean> {
 }
 
 /**
- * Whether `userId` may take the step of `row` now: the step's user, still
- * allowed in the store, for a connection that still exists. Anyone else gets
- * `NOT_THEIRS` and nothing about the step.
+ * Whether `userId` may take the step of `row` now: the step's user, for a
+ * connection that still exists, still allowed in the store (`mayActOnStep`).
+ * Anyone else gets `NOT_THEIRS` and nothing about the step.
  */
 async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck> {
   if (!isStepUser(row, userId)) return NOT_THEIRS;
@@ -555,7 +643,7 @@ async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck>
     .from(storeMembers)
     .innerJoin(stores, eq(stores.id, storeMembers.storeId))
     .where(and(eq(storeMembers.storeId, row.storeId), eq(storeMembers.userId, userId)));
-  if (!member || !mayTakeStep(row.kind, member.role)) {
+  if (!member || !mayActOnStep(row, userId, member.role)) {
     return { ok: false, reason: "not_allowed", row };
   }
   return { ok: true, row, store: { id: row.storeId, name: member.storeName } };

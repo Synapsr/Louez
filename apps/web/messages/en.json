@@ -9768,6 +9768,10 @@
       "access": "A member sees the store’s customers, reservations and payments, and can change products and reservations.",
       "approve": "Approve the invitation",
       "decline": "Decline",
+      "reason": {
+        "label": "A word for your agent (optional)",
+        "hint": "Your AI agent reads it with your answer. {max} characters at most."
+      },
       "error": {
         "failed": "The invitation could not go out. Reload this page to see where it stands."
       },

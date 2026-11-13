@@ -38,6 +38,7 @@ const RELEASE = [
   "0099_api_handoffs_subject",
   "0100_deposit_hold_release_and_attempt",
   "0101_api_handoffs_revision",
+  "0102_api_handoffs_decision",
 ];
 
 interface Journal {
@@ -124,6 +125,7 @@ describe("Docker migrator after the app's runner (database)", { skip: skipWithou
       ["inbox_acknowledgements", "occurred_at"],
       ["reservations", "schedule_changed_at"],
       ["api_handoffs", "provider_checks"],
+      ["api_handoffs", "decision_reason"],
       ["api_jobs", "slot_key"],
       ["payments", "release_owed_at"],
       ["payments", "provider_requested_at"],

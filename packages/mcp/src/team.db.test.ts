@@ -46,8 +46,8 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
   let apiKeys: typeof import("@louez/api/services");
   let exposure: import("@louez/api/platform/exposure").Exposure;
   let rpc: (name: string, input: object) => Promise<unknown>;
-  /** The RPC endpoint called with other headers than the owner's session (an API key). */
-  let rpcWith: (headers: Record<string, string>, name: string, input: object) => Promise<unknown>;
+  /** A person's answer on a step's page (`handoffs.decide`), with the given headers. */
+  let decideWith: (headers: Record<string, string>, input: object) => Promise<unknown>;
   let openApi: (
     method: string,
     path: string,
@@ -88,7 +88,10 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     const rpcHandler = new RPCHandler(appRouter);
     const clientWith = (headers: Record<string, string>) =>
       createORPCClient<{
-        dashboard: { team: Record<string, (input: object) => Promise<unknown>> };
+        dashboard: {
+          team: Record<string, (input: object) => Promise<unknown>>;
+          handoffs: Record<string, (input: object) => Promise<unknown>>;
+        };
       }>(
         new RPCLink({
           url: "http://louez.test/api/rpc",
@@ -104,7 +107,7 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
       );
     const client = clientWith({ [SESSION_HEADER]: OWNER });
     rpc = (name, input) => client.dashboard.team[name](input);
-    rpcWith = (headers, name, input) => clientWith(headers).dashboard.team[name](input);
+    decideWith = (headers, input) => clientWith(headers).dashboard.handoffs.decide(input);
 
     // OpenAPI: the exposed procedures at their REST paths, as /api/v1 serves them.
     const openApiHandler = createOpenApiHandler(exposure.router);
@@ -309,8 +312,8 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     // The owner approves from the link's page, signed in.
     assert.equal(
       json(
-        await rpc("decideInvitation", {
-          token: tokenOf(approval.url),
+        await decideWith({ [SESSION_HEADER]: OWNER }, {
+          id: tokenOf(approval.url),
           decision: "approve",
           revision: 1,
           shown: invitationShown({ email: "b@tt.test", role: "member", joinsAtOnce: false }),
@@ -320,6 +323,10 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     );
     const handoff = output(await mcpCall(authorization, "handoffs_get", { id: approval.handoff.id }));
     assert.equal(handoff.status, "completed");
+    // The agent reads what the owner decided, on MCP as on OpenAPI.
+    assert.equal((handoff.decision as { outcome: string }).outcome, "approved");
+    const viaRest = await openApi("GET", `/handoffs/${approval.handoff.id}`, null, { authorization });
+    assert.deepEqual(((await viaRest.json()) as Json).decision, JSON.parse(JSON.stringify(handoff.decision)));
     const row = (await louezDb.db.select().from(louezDb.storeInvitations)).find(
       (invitation) => invitation.email === "b@tt.test",
     );
@@ -335,15 +342,15 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     // MCP and OpenAPI do not serve it; the RPC endpoint refuses a key.
     assert.ok(!(await mcpTools(authorization)).some((name) => name.includes("decide")));
     await assert.rejects(
-      mcpCall(authorization, "team_decide_invitation", { token, decision: "approve", revision: 1, shown: "0".repeat(64) }),
+      mcpCall(authorization, "handoffs_decide", { id: token, decision: "approve", revision: 1, shown: "0".repeat(64) }),
       /not found/,
     );
-    for (const path of ["/team/decide", "/dashboard/team/decideInvitation"]) {
-      const viaOpenApi = await openApi("POST", path, { token, decision: "approve", revision: 1, shown: "0".repeat(64) }, { authorization });
+    for (const path of ["/handoffs/decide", `/handoffs/${token}/decide`, "/dashboard/handoffs/decide"]) {
+      const viaOpenApi = await openApi("POST", path, { id: token, decision: "approve", revision: 1, shown: "0".repeat(64) }, { authorization });
       assert.equal(viaOpenApi.status, 404);
     }
     let refused: unknown = null;
-    await rpcWith({ authorization }, "decideInvitation", { token, decision: "approve", revision: 1, shown: "0".repeat(64) }).catch(
+    await decideWith({ authorization }, { id: token, decision: "approve", revision: 1, shown: "0".repeat(64) }).catch(
       (error: unknown) => {
         refused = error;
       },

@@ -1,7 +1,8 @@
 import { useTranslations } from "next-intl";
 
+import { DECISION_REASON_MAX } from "@louez/api/contracts/handoffs";
 import type { ApiHandoffPayload } from "@louez/db";
-import { Button } from "@louez/ui";
+import { Button, Label, Textarea } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
 
@@ -19,9 +20,10 @@ interface TeamInvitationApprovalProps {
 }
 
 /**
- * An agent's team invitation, for an owner to approve or decline: who, as
- * what, whether they join at once, and what they will see. Each answer posts
- * the revision shown, so it decides what the owner read.
+ * An agent's team invitation, for an owner to approve or refuse: who, as
+ * what, whether they join at once, and what they will see, with a few words
+ * for the agent if they want. The answer posts the revision shown, so it
+ * decides what the owner read.
  */
 export const TeamInvitationApproval = ({
   action,
@@ -36,31 +38,42 @@ export const TeamInvitationApproval = ({
 
   return (
     <HandoffCard title={t("title")} description={t("description", { email, store })} note={note}>
-      <div className="w-full space-y-4">
+      <form method="post" action={action} className="w-full space-y-4">
         <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
           <li>{t("role")}</li>
           <li>{invitation.joinsAtOnce ? t("joinsAtOnce", { email }) : t("byEmail", { email })}</li>
           <li>{t("access")}</li>
         </ul>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <form method="post" action={action}>
-            <input type="hidden" name="decision" value="decline" />
-            <input type="hidden" name="revision" value={revision} />
-            <input type="hidden" name="shown" value={shown} />
-            <Button type="submit" variant="outline" className="w-full sm:w-auto">
-              {t("decline")}
-            </Button>
-          </form>
-          <form method="post" action={action}>
-            <input type="hidden" name="decision" value="approve" />
-            <input type="hidden" name="revision" value={revision} />
-            <input type="hidden" name="shown" value={shown} />
-            <Button type="submit" className="w-full sm:w-auto">
-              {t("approve")}
-            </Button>
-          </form>
+        <input type="hidden" name="revision" value={revision} />
+        <input type="hidden" name="shown" value={shown} />
+        <div className="space-y-2">
+          <Label htmlFor="handoff-reason">{t("reason.label")}</Label>
+          <Textarea
+            id="handoff-reason"
+            name="reason"
+            maxLength={DECISION_REASON_MAX}
+            rows={2}
+            aria-describedby="handoff-reason-hint"
+          />
+          <p id="handoff-reason-hint" className="text-muted-foreground text-xs">
+            {t("reason.hint", { max: DECISION_REASON_MAX })}
+          </p>
         </div>
-      </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="submit"
+            name="decision"
+            value="refuse"
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            {t("decline")}
+          </Button>
+          <Button type="submit" name="decision" value="approve" className="w-full sm:w-auto">
+            {t("approve")}
+          </Button>
+        </div>
+      </form>
     </HandoffCard>
   );
 };
