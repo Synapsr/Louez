@@ -5,6 +5,7 @@ import {
   db,
   lockStoreRow,
   storeMembers,
+  stores,
   unmarkSetupWrite,
   type ApiApprovalPayload,
   type Transaction,
@@ -25,7 +26,7 @@ import {
   type ApprovalAnswer,
 } from "../platform/errors";
 import { sha256, stableStringify } from "../platform/hash";
-import { approvalIsReadable } from "./approval-preview";
+import { approvalIsReadable, isReadableText } from "./approval-preview";
 import type { HandoffDecided } from "./handoff-decisions";
 import {
   approvalPayloadOf,
@@ -765,10 +766,17 @@ export async function answerApproval(
     if (current.revision !== input.revision || current.bindingHash !== input.shown) {
       throw handoffErrors.decisionInvalid("changed");
     }
-    // What its page cannot show whole is not approved, whatever was posted;
-    // read on the row as locked. A refusal stays possible.
-    if (input.decision === "approve" && !approvalIsReadable(approvalPayloadOf(current))) {
-      throw handoffErrors.decisionInvalid("unreadable");
+    // What its page cannot show whole is not approved, whatever was posted:
+    // its preview read on the row as locked, and the store's name its page
+    // names it by, read under the store's lock. A refusal stays possible.
+    if (input.decision === "approve") {
+      const [store] = await tx
+        .select({ name: stores.name })
+        .from(stores)
+        .where(eq(stores.id, current.storeId));
+      if (!approvalIsReadable(approvalPayloadOf(current)) || !isReadableText(store?.name ?? "", 1)) {
+        throw handoffErrors.decisionInvalid("unreadable");
+      }
     }
     if (!(await mayStillApprove(tx, current, input.userId))) {
       throw handoffErrors.decisionInvalid("not_allowed");

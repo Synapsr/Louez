@@ -9813,9 +9813,9 @@
         "change": "Deze wijziging goedkeuren?",
         "unknown": "Dit verzoek goedkeuren?"
       },
-      "provenance": "{store} · gevraagd door ‘{agent}’",
-      "provenanceKey": "{store} · gevraagd door een API-sleutel",
-      "provenanceAssistant": "{store} · gevraagd door een AI-assistent",
+      "provenance": "<place>{store}</place> · gevraagd door ‘<who>{agent}</who>’",
+      "provenanceKey": "<place>{store}</place> · gevraagd door een API-sleutel",
+      "provenanceAssistant": "<place>{store}</place> · gevraagd door een AI-assistent",
       "trustShort": "Alleen de samenvatting van Louez telt.",
       "stakes": "Niet terug te draaien: {list}.",
       "stake": {
@@ -9839,7 +9839,8 @@
       "checked": "Wat Louez heeft gecontroleerd",
       "values": {
         "yes": "Ja",
-        "no": "Nee"
+        "no": "Nee",
+        "none": "Geen"
       },
       "computedAt": "Louez heeft dit {when} berekend uit de gegevens van je winkel.",
       "expires": "Als je niet antwoordt, vervalt het verzoek {when}.",

@@ -9813,9 +9813,9 @@
         "change": "이 변경을 승인할까요?",
         "unknown": "이 요청을 승인할까요?"
       },
-      "provenance": "{store} · “{agent}”의 요청",
-      "provenanceKey": "{store} · API 키의 요청",
-      "provenanceAssistant": "{store} · AI 어시스턴트의 요청",
+      "provenance": "<place>{store}</place> · “<who>{agent}</who>”의 요청",
+      "provenanceKey": "<place>{store}</place> · API 키의 요청",
+      "provenanceAssistant": "<place>{store}</place> · AI 어시스턴트의 요청",
       "trustShort": "유효한 것은 Louez의 요약뿐입니다.",
       "stakes": "되돌릴 수 없음: {list}.",
       "stake": {
@@ -9839,7 +9839,8 @@
       "checked": "Louez가 확인한 내용",
       "values": {
         "yes": "예",
-        "no": "아니요"
+        "no": "아니요",
+        "none": "없음"
       },
       "computedAt": "Louez가 스토어 데이터를 바탕으로 {when} 계산했습니다.",
       "expires": "답하지 않으면 이 요청은 {when} 만료됩니다.",

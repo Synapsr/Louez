@@ -9813,9 +9813,9 @@
         "change": "Approuver cette modification ?",
         "unknown": "Approuver cette demande ?"
       },
-      "provenance": "{store} · demandé par « {agent} »",
-      "provenanceKey": "{store} · demandé par une clé d’API",
-      "provenanceAssistant": "{store} · demandé par un assistant IA",
+      "provenance": "<place>{store}</place> · demandé par « <who>{agent}</who> »",
+      "provenanceKey": "<place>{store}</place> · demandé par une clé d’API",
+      "provenanceAssistant": "<place>{store}</place> · demandé par un assistant IA",
       "trustShort": "Seul le résumé de Louez fait foi.",
       "stakes": "Irréversible : {list}.",
       "stake": {
@@ -9839,7 +9839,8 @@
       "checked": "Ce que Louez a vérifié",
       "values": {
         "yes": "Oui",
-        "no": "Non"
+        "no": "Non",
+        "none": "Aucun"
       },
       "computedAt": "Louez a établi ceci {when}, à partir des données de votre boutique.",
       "expires": "Sans réponse de votre part, la demande expire {when}.",

@@ -9,6 +9,7 @@ import { grantClient } from "./agent-grants";
 import {
   approvalAsksToTick,
   approvalIsReadable,
+  isReadableText,
   knownConsequences,
   oneLine,
   shownDisplay,
@@ -174,7 +175,10 @@ export async function readApprovalPage(
   const stored = approvalPayloadOf(row) ?? payload;
   const preview = shownPreview(stored.preview);
   const display = shownDisplay(stored.display)?.display ?? null;
-  const state = pageState(row, now, alive, approvalIsReadable(stored));
+  // The screen names the store: a name that shows nothing tells no store apart.
+  // One letter or digit is a name ("UP", "Ab"): a store's name is its own.
+  const readable = approvalIsReadable(stored) && isReadableText(member.storeName, 1);
+  const state = pageState(row, now, alive, readable);
   return {
     ok: true,
     approval: {
@@ -250,9 +254,14 @@ async function agentOf(row: HandoffRow): Promise<ApprovalAgent> {
   if (row.credentialKind === "oauth" && row.credentialId) {
     const client = await grantClient(row.userId, row.credentialId);
     const declared = client?.destination?.name ?? client?.name ?? name;
-    return { kind: "oauth", name, client, shownName: declared ? oneLine(declared) || null : null };
+    return { kind: "oauth", name, client, shownName: shownNameOf(declared) };
   }
-  return { kind: "api_key", name, shownName: name };
+  return { kind: "api_key", name, shownName: shownNameOf(name) };
+}
+
+/** A name the screen's line can give who asks: one that shows a letter or a digit, else none. */
+function shownNameOf(name: string | null): string | null {
+  return name && isReadableText(name, 1) ? oneLine(name) : null;
 }
 
 /** The store's time zone when it names one the runtime knows, else UTC. */

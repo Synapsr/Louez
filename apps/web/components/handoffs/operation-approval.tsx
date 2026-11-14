@@ -3,6 +3,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { DECISION_REASON_MAX } from "@louez/api/contracts/handoffs";
 import type { Consequence } from "@louez/api/platform/approval-rule";
 import type { ApprovalPage, ShownPreview } from "@louez/api/services/approval-page";
+import { displayName } from "@louez/api/services/approval-preview";
 import { Alert, AlertTitle } from "@louez/ui";
 import { WarningIcon } from "@louez/ui/icons";
 
@@ -68,10 +69,18 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
     <HandoffCard
       title={t(`title.${headline}`)}
       description={
+        // Each name bounded and isolated: a long or right-to-left name
+        // pushes and reorders nothing else on the line.
         approval.agent.shownName
-          ? t("provenance", { store: approval.store.name, agent: approval.agent.shownName })
-          : t(approval.agent.kind === "api_key" ? "provenanceKey" : "provenanceAssistant", {
-              store: approval.store.name,
+          ? t.rich("provenance", {
+              store: displayName(approval.store.name),
+              agent: displayName(approval.agent.shownName),
+              place: (chunks) => <bdi>{chunks}</bdi>,
+              who: (chunks) => <bdi>{chunks}</bdi>,
+            })
+          : t.rich(approval.agent.kind === "api_key" ? "provenanceKey" : "provenanceAssistant", {
+              store: displayName(approval.store.name),
+              place: (chunks) => <bdi>{chunks}</bdi>,
             })
       }
       note={note}

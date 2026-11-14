@@ -9813,9 +9813,9 @@
         "change": "Diese Änderung genehmigen?",
         "unknown": "Diese Anfrage genehmigen?"
       },
-      "provenance": "{store} · angefragt von „{agent}“",
-      "provenanceKey": "{store} · angefragt von einem API-Schlüssel",
-      "provenanceAssistant": "{store} · angefragt von einem KI-Assistenten",
+      "provenance": "<place>{store}</place> · angefragt von „<who>{agent}</who>“",
+      "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
+      "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
       "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
       "stakes": "Nicht rückgängig zu machen: {list}.",
       "stake": {
@@ -9839,7 +9839,8 @@
       "checked": "Was Louez geprüft hat",
       "values": {
         "yes": "Ja",
-        "no": "Nein"
+        "no": "Nein",
+        "none": "Keine"
       },
       "computedAt": "Louez hat dies {when} aus den Daten Ihres Shops ermittelt.",
       "expires": "Ohne Antwort verfällt die Anfrage {when}.",

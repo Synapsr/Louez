@@ -148,11 +148,53 @@ export const VISIBLE_MIN = 3;
  * over what surrounds them.
  */
 export const MARK_RUN_MAX = 4;
-const MARK_RUN = new RegExp(String.raw`\p{M}{${MARK_RUN_MAX + 1},}`, "u");
+const MARK = /\p{M}/gu;
 const VISIBLE = /[\p{L}\p{N}]/gu;
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/**
+ * The combining marks one character carries, as a person sees a character
+ * (a grapheme cluster): every mark of the cluster, whatever sits between
+ * them (a kept joiner breaks no run here), but the variation selectors,
+ * which choose a form and stack nothing.
+ */
+const marksOf = (cluster: string) =>
+  [...cluster.matchAll(MARK)].filter(([mark]) => !shapesText(mark)).length;
 
 /** Whether a text draws within its line: no character carries more marks than `MARK_RUN_MAX`. */
-const staysOnItsLine = (text: string) => !MARK_RUN.test(text);
+const staysOnItsLine = (text: string) => {
+  for (const { segment } of GRAPHEMES.segment(text)) {
+    if (marksOf(segment) > MARK_RUN_MAX) return false;
+  }
+  return true;
+};
+
+/**
+ * Whether a text once on one line says something a person can read: at
+ * least `minimum` letters or digits, and no character carrying more than
+ * `MARK_RUN_MAX` marks. The summary and the store's name on the screen hold
+ * `VISIBLE_MIN`; who asks, one letter or digit, else the page names it by
+ * its kind ("an API key").
+ */
+export function isReadableText(text: string, minimum = VISIBLE_MIN): boolean {
+  const line = oneLine(text);
+  return (line.match(VISIBLE) ?? []).length >= minimum && staysOnItsLine(line);
+}
+
+/** The most characters a name takes on the screen's one line; the details keep it whole. */
+export const NAME_DISPLAY_MAX = 40;
+
+/**
+ * A name for the screen's one line: on one line, at most `NAME_DISPLAY_MAX`
+ * characters as a person counts them (grapheme clusters, so an emoji is
+ * never cut in two), an ellipsis last when it was cut.
+ */
+export function displayName(name: string): string {
+  const clusters = [...GRAPHEMES.segment(oneLine(name))].map(({ segment }) => segment);
+  return clusters.length <= NAME_DISPLAY_MAX
+    ? clusters.join("")
+    : `${clusters.slice(0, NAME_DISPLAY_MAX - 1).join("").trimEnd()}…`;
+}
 
 /** Whether every label and text value of the details stays on its line. */
 const detailsStayOnTheirLines = (entries: readonly ShownDetail[]): boolean =>
@@ -171,7 +213,9 @@ const detailsStayOnTheirLines = (entries: readonly ShownDetail[]): boolean =>
  * readable. A sentence within `SUMMARY_MAX`, holding at least `VISIBLE_MIN`
  * letters or digits once on one line (a summary of joiners, variation
  * selectors or U+FFFC shows nothing), and no character in it or in the
- * details carrying more than `MARK_RUN_MAX` combining marks. One that is not
+ * details (a label, a group's heading, a value) carrying more than
+ * `MARK_RUN_MAX` combining marks. The store's name the screen shows is
+ * checked apart (`isReadableText`), as it is the store's. One that is not
  * is `unreadable` on its page, and its decision refuses an approval of it
  * under its lock; refusing it stays possible.
  */
@@ -180,8 +224,7 @@ export function approvalIsReadable(
 ): boolean {
   const preview = shownPreview(payload?.preview);
   if (preview === null || preview.truncated) return false;
-  if ((preview.summary.match(VISIBLE) ?? []).length < VISIBLE_MIN) return false;
-  if (!staysOnItsLine(preview.summary) || !detailsStayOnTheirLines(preview.details)) return false;
+  if (!isReadableText(preview.summary) || !detailsStayOnTheirLines(preview.details)) return false;
   // A display the page shows must read whole too; one it cannot read as
   // Louez wrote it is not shown, and the summary decides alone.
   return shownDisplay(payload?.display)?.readable ?? true;
@@ -217,13 +260,60 @@ export const knownConsequences = (stored: unknown): Consequence[] =>
 /** Past four levels of groups, a value is shown as its JSON text. */
 const MAX_DEPTH = 4;
 
-/**
- * The keys of technical identifiers and digests, never shown: a record is
- * named by its number or its name, which the preview carries next to them.
- */
-const HIDDEN_KEY = /^id$|Id$|_id$|Hash$|_hash$/;
+/** The keys of digests, never shown: a hash says nothing to a person. */
+const DIGEST_KEY = /Hash$|_hash$/;
 
-/** The keys an item of a list is named by, when it has one: its group's title. */
+/**
+ * The keys of technical identifiers: hidden when their group names the same
+ * record another way (`NAMING_ENDINGS`), shown otherwise, as then nothing
+ * else says which record it is.
+ */
+const IDENTIFIER_KEY = /^id$|Id$|_id$/;
+
+/**
+ * Whether a key ends with one of `endings`: the key itself ("amount"), a
+ * camel-case ending ("totalAmount") or a snake-case one ("total_amount").
+ */
+const endsWithWord = (key: string, endings: readonly string[]) =>
+  endings.some(
+    (ending) =>
+      key.toLowerCase() === ending ||
+      key.endsWith(ending.charAt(0).toUpperCase() + ending.slice(1)) ||
+      key.toLowerCase().endsWith(`_${ending}`),
+  );
+
+/** The keys that name a record to a person: its name, number, e-mail, title or label. */
+export const NAMING_ENDINGS = ["name", "number", "email", "title", "label"] as const;
+
+/**
+ * The keys of an amount of money, from the previews Louez writes (a
+ * payment's `amount`, a reservation's `totalAmount`, a deposit return's
+ * `returnable`, a cancellation's `rentalPaid` and `depositCollected`): a
+ * number under one of them, in a group that names its currency, is that
+ * amount in that currency; under any other key it stays a number.
+ */
+export const AMOUNT_ENDINGS = [
+  "amount",
+  "total",
+  "subtotal",
+  "price",
+  "deposit",
+  "balance",
+  "fee",
+  "paid",
+  "collected",
+  "returnable",
+  "refund",
+] as const;
+
+/**
+ * The keys of a date or a date and time (`startDate`, `expiresAt`,
+ * `pickupTime`): a value under one of them that reads as ISO is written as
+ * a date; under any other key it stays as stored.
+ */
+export const DATE_ENDINGS = ["at", "date", "time", "day"] as const;
+
+/** The keys an item of a list is named by, when it has one: its group's heading. */
 const NAME_KEYS = ["name", "title", "label", "productName", "product"] as const;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -243,29 +333,54 @@ const amountOf = (value: unknown): number | null => {
 };
 
 /**
- * An object's entries, as a page shows them: technical identifiers left
- * out, empty values left out, and, in an object that names its currency,
- * every amount an amount of money in it (the currency itself then said by
- * the amounts).
+ * An object's entries, as a page shows them: digests left out, empty values
+ * left out, identifiers left out when the group names the record another
+ * way (`named`: the group's heading does, or one of its entries under
+ * `NAMING_ENDINGS`); amounts under `AMOUNT_ENDINGS`, in a group that names
+ * its currency, in that currency (the currency itself then said by them).
  */
-function entriesOf(record: Record<string, unknown>, depth: number): ShownDetail[] {
+function entriesOf(
+  record: Record<string, unknown>,
+  depth: number,
+  named = false,
+): ShownDetail[] {
   const code = typeof record.currency === "string" ? record.currency.trim() : "";
   const currency = CURRENCY.test(code) ? code.toUpperCase() : null;
+  const namesIt =
+    named ||
+    Object.entries(record).some(
+      ([key, value]) =>
+        !IDENTIFIER_KEY.test(key) &&
+        endsWithWord(key, NAMING_ENDINGS) &&
+        (typeof value === "number" || (typeof value === "string" && oneLine(value) !== "")),
+    );
   const entries: ShownDetail[] = [];
   for (const [key, value] of Object.entries(record)) {
-    if (HIDDEN_KEY.test(key) || (currency && key === "currency")) continue;
-    const amount = currency ? amountOf(value) : null;
+    if (DIGEST_KEY.test(key) || (namesIt && IDENTIFIER_KEY.test(key))) continue;
+    const amount = currency && endsWithWord(key, AMOUNT_ENDINGS) ? amountOf(value) : null;
+    if (currency && key === "currency" && amountsIn(record)) continue;
     const shown: ShownValue | null =
       currency && amount !== null
         ? { kind: "money", amount, currency }
-        : shownValue(value, depth + 1);
+        : shownValue(value, depth + 1, endsWithWord(key, DATE_ENDINGS));
     if (shown) entries.push({ label: labelOf(key), value: shown });
   }
   return entries;
 }
 
-/** A value as a page shows it, or null when there is nothing to show (empty, or only identifiers). */
-function shownValue(value: unknown, depth: number): ShownValue | null {
+/** Whether a group holds an amount its currency is said by. */
+const amountsIn = (record: Record<string, unknown>) =>
+  Object.entries(record).some(
+    ([key, value]) => endsWithWord(key, AMOUNT_ENDINGS) && amountOf(value) !== null,
+  );
+
+/**
+ * A value as a page shows it, or null when there is nothing to show (null,
+ * an empty text, an object with nothing to show). An empty list is a fact
+ * ("no message") and shows as a group with no entries. `dated`: its key
+ * names a date, so an ISO text under it is one.
+ */
+function shownValue(value: unknown, depth: number, dated = false): ShownValue | null {
   if (value === null || value === undefined) return null;
   if (value === true) return { kind: "yes" };
   if (value === false) return { kind: "no" };
@@ -273,7 +388,7 @@ function shownValue(value: unknown, depth: number): ShownValue | null {
     return Number.isFinite(value) ? { kind: "number", value } : { kind: "text", text: String(value) };
   }
   if (typeof value === "bigint") return { kind: "text", text: String(value) };
-  if (typeof value === "string") return textValue(value);
+  if (typeof value === "string") return textValue(value, dated);
   if (depth > MAX_DEPTH) return textValue(JSON.stringify(value) ?? "");
   if (Array.isArray(value)) {
     const entries = value.flatMap((item, index): ShownDetail[] => {
@@ -281,13 +396,13 @@ function shownValue(value: unknown, depth: number): ShownValue | null {
       const title = named && isRecord(item) ? oneLine(String(item[named])) : "";
       if (named && title && isRecord(item)) {
         const { [named]: _name, ...rest } = item;
-        const group = entriesOf(rest, depth + 1);
+        const group = entriesOf(rest, depth + 1, true);
         return [{ label: title, value: { kind: "group", entries: group } }];
       }
       const shown = shownValue(item, depth + 1);
       return shown ? [{ label: String(index + 1), value: shown }] : [];
     });
-    return entries.length > 0 ? { kind: "group", entries } : null;
+    return { kind: "group", entries };
   }
   if (isRecord(value)) {
     const entries = entriesOf(value, depth);
@@ -296,10 +411,11 @@ function shownValue(value: unknown, depth: number): ShownValue | null {
   return textValue(String(value));
 }
 
-/** A text on one line: a date when it is one, nothing when it is empty. */
-function textValue(raw: string): ShownValue | null {
+/** A text on one line: a date when its key names one and it reads as one, nothing when it is empty. */
+function textValue(raw: string, dated = false): ShownValue | null {
   const text = oneLine(raw);
   if (text === "") return null;
+  if (!dated) return { kind: "text", text };
   if (ISO_DATE.test(text) && !Number.isNaN(Date.parse(text))) {
     return { kind: "date", iso: text, dateOnly: true };
   }

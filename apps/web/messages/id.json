@@ -9813,9 +9813,9 @@
         "change": "Setujui perubahan ini?",
         "unknown": "Setujui permintaan ini?"
       },
-      "provenance": "{store} · diminta oleh “{agent}”",
-      "provenanceKey": "{store} · diminta oleh kunci API",
-      "provenanceAssistant": "{store} · diminta oleh asisten AI",
+      "provenance": "<place>{store}</place> · diminta oleh “<who>{agent}</who>”",
+      "provenanceKey": "<place>{store}</place> · diminta oleh kunci API",
+      "provenanceAssistant": "<place>{store}</place> · diminta oleh asisten AI",
       "trustShort": "Hanya ringkasan Louez yang berlaku.",
       "stakes": "Tidak dapat dibatalkan: {list}.",
       "stake": {
@@ -9839,7 +9839,8 @@
       "checked": "Yang diperiksa Louez",
       "values": {
         "yes": "Ya",
-        "no": "Tidak"
+        "no": "Tidak",
+        "none": "Tidak ada"
       },
       "computedAt": "Louez menghitung ini {when} dari data toko Anda.",
       "expires": "Jika Anda tidak menjawab, permintaan ini berakhir {when}.",
