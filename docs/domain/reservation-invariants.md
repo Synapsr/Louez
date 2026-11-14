@@ -115,7 +115,7 @@ _Partial._ The evaluation (`packages/api/src/services/promo.ts`) and the countin
 ## Extensions
 
 **X1. An extension holds stock while its checkout is live, and is applied only to the reservation it was quoted for.** A payment that completes against a reservation that changed since the quote, or whose stock is gone, is refunded and not applied (`extension-service.ts`).
-_Partial._ The extension service does it; its tests replace the transaction with a mock, and none runs on a database.
+_Partial._ The extension service does it. Its tests of the payment's completion and refund replace the transaction with a mock (`extension-service.test.ts`). On a database, `create-manual-reservation.db.test.ts` checks that a live extension checkout holds the stock to the end it asks for and an expired one holds nothing, `required-accessories.db.test.ts` runs the extension's stock check, and `writers-lock-order.db.test.ts` starts an extension against the store's cancellation. No database test completes a payment against a reservation that changed since its quote.
 
 ## Concurrency
 

@@ -3,16 +3,17 @@ import * as nodeModule from "node:module";
 import { after, before, beforeEach, describe, test } from "node:test";
 
 import { eq } from "drizzle-orm";
-import type { RowDataPacket } from "mysql2/promise";
 
 import type { StoreSettings } from "@louez/types";
 
 import { STORE_KEY } from "@/app/(dashboard)/dashboard/reservations/actions-test-stubs";
 import {
   createTestDatabase,
+  readLockWaiters,
   reservationChangeTestHooks,
   skipWithoutTestDatabase,
   waitForLockWaits,
+  type RowLock,
   type TestDatabase,
 } from "@louez/db/testing";
 
@@ -26,10 +27,14 @@ import {
 // change on the product, it then waited for the product the status change held
 // while the status change waited for the reservation, a deadlock.
 //
-// Each race is run in both orders, and ends with both writes, or with the
-// writer's refusal when the status change made it impossible; no run started
-// over and InnoDB detected no deadlock in this database. A product added to the
-// reservation while a writer waits for it starts that writer over once.
+// Each race is run in both orders. While the writer waits, the test reads its
+// row locks: queued first, it holds the product and waits for the reservation;
+// queued second, it waits for the product and holds no reservation. That fails
+// on a writer that inverts the order, whether or not the race then deadlocks
+// and a retry hides it. Each race ends with both writes, or with the writer's
+// refusal when the status change made it impossible, and no run started over.
+// A product added to the reservation while a writer waits for it starts that
+// writer over once.
 
 const STORE = "store_writer_locks";
 const CUSTOMER = "cus_writer_locks";
@@ -251,7 +256,8 @@ describe(
 
     /**
      * Holds `row` while `first` waits for a lock, then while `second` waits too,
-     * then lets them go: `first` was queued first.
+     * then lets them go: `first` was queued first. Returns what each ended with,
+     * and the row locks each held, and waited for, while it waited.
      */
     async function raceInOrder<A, B>(
       row: { table: "reservations" | "products"; id: string },
@@ -264,31 +270,26 @@ describe(
         await holder.query(`SELECT id FROM \`${row.table}\` WHERE id = ? FOR UPDATE`, [row.id]);
         const firstRun = settle(first());
         await waitForLockWaits(holder, database.name, 1);
+        const [firstLocks] = await readLockWaiters(holder, database.name);
         const secondRun = settle(second());
         await waitForLockWaits(holder, database.name, 2);
+        const secondLocks = (await readLockWaiters(holder, database.name)).find(
+          (waiter) => waiter.transactionId !== firstLocks?.transactionId,
+        );
         await holder.commit();
-        return { first: await firstRun, second: await secondRun };
+        // Asserted once both calls have ended, so a failing race leaves none running.
+        assert.ok(firstLocks && secondLocks, "both callers waited on a lock");
+        return {
+          first: { ...(await firstRun), locks: firstLocks },
+          second: { ...(await secondRun), locks: secondLocks },
+        };
       } finally {
         await holder.end();
       }
     }
 
-    /**
-     * Whether the latest deadlock InnoDB detected involved this suite's database.
-     * A writer that lost one and retried it on its own would not show in the
-     * owner entry's restart count.
-     */
-    async function deadlockedHere() {
-      const connection = await database.connect();
-      try {
-        const [rows] = await connection.query<RowDataPacket[]>("SHOW ENGINE INNODB STATUS");
-        const status = String(rows[0]?.Status ?? "");
-        const latest = status.split("LATEST DETECTED DEADLOCK")[1]?.split("\nTRANSACTIONS\n")[0];
-        return latest?.includes(`\`${database.name}\``) ?? false;
-      } finally {
-        await connection.end();
-      }
-    }
+    const rowsOf = (locks: RowLock[], table: RowLock["table"]) =>
+      locks.filter((lock) => lock.table === table).map((lock) => lock.id);
 
     async function reservationRow(id: string) {
       const [row] = await louezDb.db
@@ -394,7 +395,7 @@ describe(
 
     for (const { writer, run, wrote, refusedAfterCancellation } of writers) {
       describe(writer, () => {
-        test("queued first, on the reservation: it writes, then the store cancels, with no deadlock", async () => {
+        test("queued first, on the reservation: it waits holding its product, writes, then the store cancels", async () => {
           const fixture = await confirmedReservation();
 
           const raced = await raceInOrder(
@@ -403,6 +404,9 @@ describe(
             cancellation(fixture.id),
           );
 
+          // Its products first: waiting for the reservation, it holds them.
+          assert.deepEqual(rowsOf(raced.first.locks.waitsFor, "reservations"), [fixture.id]);
+          assert.deepEqual(rowsOf(raced.first.locks.holds, "products"), [fixture.product.id]);
           assert.ok(
             "value" in raced.first,
             `${writer} failed: ${String("error" in raced.first && raced.first.error)}`,
@@ -418,10 +422,9 @@ describe(
           assert.equal((await reservationRow(fixture.id)).status, "cancelled");
           assert.ok(await wrote(fixture), `${writer} wrote what it was asked`);
           assert.equal(hooks.restarts, 0, "no deadlock, no product changed: no run started over");
-          assert.equal(await deadlockedHere(), false, "InnoDB detected no deadlock");
         });
 
-        test("queued second, behind the cancellation on the product: the store cancels, then it runs, with no deadlock", async () => {
+        test("queued second, behind the cancellation on the product: it waits holding no reservation, then runs", async () => {
           const fixture = await confirmedReservation();
 
           const raced = await raceInOrder(
@@ -430,6 +433,9 @@ describe(
             () => run(fixture),
           );
 
+          // Behind the cancellation on the product, it has not locked the reservation.
+          assert.deepEqual(rowsOf(raced.second.locks.waitsFor, "products"), [fixture.product.id]);
+          assert.deepEqual(rowsOf(raced.second.locks.holds, "reservations"), []);
           assert.ok(
             "value" in raced.first,
             `the cancellation failed: ${String("error" in raced.first && raced.first.error)}`,
@@ -451,7 +457,6 @@ describe(
             assert.ok(await wrote(fixture), `${writer} wrote what it was asked`);
           }
           assert.equal(hooks.restarts, 0, "no deadlock, no product changed: no run started over");
-          assert.equal(await deadlockedHere(), false, "InnoDB detected no deadlock");
         });
 
         test("a product added while it waits for the reservation starts it over once, and it writes", async () => {
