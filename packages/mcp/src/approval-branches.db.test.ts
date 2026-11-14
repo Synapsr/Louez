@@ -913,6 +913,135 @@ describe(
       }
     });
 
+    /**
+     * The reviewer's wetsuit: a quote with one size-S line holding unit S,
+     * on a product sold by size with one S and one L, both free. Returns the
+     * branch that confirms it with `allowOverbooking`, and the change that
+     * makes it size L holding unit L, the product, the quantity, the dates
+     * and the amounts as they were.
+     */
+    async function wetsuit(seed: Seed) {
+      const { db } = louezDb;
+      const product = `lb_suit_${seed.k}`;
+      const reservation = `lb_quote_${seed.k}`;
+      const line = `lb_suit_line_${seed.k}`;
+      const unit = (size: "S" | "L") => `lb_suit_${size}_${seed.k}`;
+      await db.insert(louezDb.products).values({
+        id: product,
+        storeId: seed.store,
+        name: "Wetsuit",
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 2,
+        trackUnits: true,
+        bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+      });
+      for (const size of ["S", "L"] as const) {
+        await db.insert(louezDb.productUnits).values({
+          id: unit(size),
+          productId: product,
+          identifier: `${size}1`,
+          attributes: { size },
+          combinationKey: `size:${size}`,
+        });
+      }
+      await db.insert(louezDb.reservations).values({
+        id: reservation,
+        storeId: seed.store,
+        customerId: `lb_customer_${seed.k}`,
+        number: `R-${seed.k}8`,
+        status: "quote",
+        startDate: new Date("2026-12-20T09:00:00.000Z"),
+        endDate: new Date("2026-12-21T09:00:00.000Z"),
+        subtotalAmount: "10.00",
+        depositAmount: "0.00",
+        totalAmount: "10.00",
+        currency: "EUR",
+      });
+      await db.insert(louezDb.reservationItems).values({
+        id: line,
+        reservationId: reservation,
+        productId: product,
+        quantity: 1,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: "10.00",
+        combinationKey: "size:S",
+        selectedAttributes: { size: "S" },
+        productSnapshot: { name: "Wetsuit", description: null, images: [] },
+      });
+      await db.insert(louezDb.reservationItemUnits).values({
+        reservationItemId: line,
+        productUnitId: unit("S"),
+        identifierSnapshot: "S1",
+      });
+      const each: Branch = {
+        ...branch("A6"),
+        rest: () => ({
+          method: "POST",
+          path: `/reservations/${reservation}/status`,
+          body: { status: "confirmed", allowOverbooking: true },
+        }),
+        args: () => ({ id: reservation, status: "confirmed", allowOverbooking: true }),
+        written: async () => ((await statusOf(reservation)) === "confirmed" ? 1 : 0),
+      };
+      const toSizeL = async () => {
+        await db
+          .update(louezDb.reservationItems)
+          .set({ combinationKey: "size:L", selectedAttributes: { size: "L" } })
+          .where(orm.eq(louezDb.reservationItems.id, line));
+        await db
+          .update(louezDb.reservationItemUnits)
+          .set({ productUnitId: unit("L"), identifierSnapshot: "L1" })
+          .where(orm.eq(louezDb.reservationItemUnits.reservationItemId, line));
+      };
+      return { each, toSizeL };
+    }
+
+    /** The binding a token's preview was recorded with. */
+    const bindingOf = async (token: unknown) =>
+      (
+        await louezDb.db
+          .select({ bindingHash: louezDb.apiConfirmations.bindingHash })
+          .from(louezDb.apiConfirmations)
+          .where(orm.eq(louezDb.apiConfirmations.id, String(token)))
+      )[0]?.bindingHash;
+
+    test("the stock a status change binds names which: a line moved to another size and unit answers CONFIRMATION_INVALID", async () => {
+      live = [];
+      try {
+        const seed = await seedStore();
+        const { each, toSizeL } = await wetsuit(seed);
+        const asked = await send("rest", each, seed);
+        assert.equal(asked.code, "CONFIRMATION_REQUIRED", JSON.stringify(asked));
+        // Read again, unchanged: the same binding.
+        const again = await send("rest", each, seed);
+        assert.equal(
+          await bindingOf(again.details?.confirmationToken),
+          await bindingOf(asked.details?.confirmationToken),
+        );
+        await toSizeL();
+        const presented = await send("rest", each, seed, String(asked.details?.confirmationToken));
+        assert.equal(presented.code, "CONFIRMATION_INVALID", JSON.stringify(presented));
+        assert.equal(await each.written(seed), 0);
+      } finally {
+        live = LIVE;
+      }
+    });
+
+    test("the stock an override's approval binds names which: a line moved to another size and unit voids it", async () => {
+      const seed = await seedStore();
+      const { each, toSizeL } = await wetsuit(seed);
+      const id = await ask("rest", each, seed);
+      await decide(seed, id, "approve");
+      await toSizeL();
+      const presented = await send("rest", each, seed, id);
+      assert.equal(presented.code, "APPROVAL_INVALID", JSON.stringify(presented));
+      assert.deepEqual(presented.details, { reason: "state_changed" });
+      assert.equal(await each.written(seed), 0);
+      assert.equal((await rowOf(id)).status, "failed");
+    });
+
     /** Each payment write with its record's id sent in upper case. */
     const UPPER: Array<[string, (seed: Seed) => string]> = [
       ["A1", (seed) => `/reservations/${seed.open.toUpperCase()}/payments`],

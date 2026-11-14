@@ -18,7 +18,6 @@ import {
   stores,
   type ReservationActor,
   type ReservationBillingEffect,
-  type ReservationDemandLine,
   type ReservationStatus,
   type Transaction,
 } from "@louez/db";
@@ -59,6 +58,8 @@ import {
   ReservationTurnoverBufferShortfallError,
   ReservationUnitConflictError,
   checkStoreConfirmationInventory,
+  stockDemandOf,
+  type StockDemandLine,
 } from "./reservation-inventory";
 
 /**
@@ -151,10 +152,11 @@ export interface StatusChangePreview {
   recipientsHash: string;
   /**
    * The reservation's stock demand as the change takes it, never shown
-   * (`readReservationStockDemand`, packages/db): the confirmation binds it,
-   * so a line added, removed or changed since the preview voids its token.
+   * (`stockDemandOf`): per line, the product, the quantity, the variant, the
+   * assigned units and a consumable's units. The confirmation binds it, so a
+   * line added, removed or changed since the preview voids its token.
    */
-  demand: ReservationDemandLine[];
+  demand: StockDemandLine[];
 }
 
 /**
@@ -586,10 +588,8 @@ export async function changeStoreReservationStatus(
         // known before the preview, as the stock is.
         if (takesStock(from, to)) await checkReservationConsumables(tx, lock);
         // What the change takes of the stock, bound with its preview.
-        const demand = await readReservationStockDemand(
-          tx,
-          lock,
-          reservationStatusStockAction(from, to),
+        const demand = stockDemandOf(
+          await readReservationStockDemand(tx, lock, reservationStatusStockAction(from, to)),
         );
 
         // The preview, its confirmation and the queued messages share one snapshot.

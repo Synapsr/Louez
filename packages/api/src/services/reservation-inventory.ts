@@ -1,7 +1,12 @@
 import { and, eq, inArray, ne } from "drizzle-orm";
 
 import { loadConsumableReservedQuantities, lockProductRows } from "@louez/db";
-import type { BlockingReservationStatus, Database, Transaction } from "@louez/db";
+import type {
+  BlockingReservationStatus,
+  Database,
+  ReservationDemandLine,
+  Transaction,
+} from "@louez/db";
 import {
   getBlockingReservationStatuses,
   buildReservationAvailabilityPredicate,
@@ -41,6 +46,41 @@ import {
 import type { PricingCatalog } from "./pricing-catalog";
 import { validateRequiredAccessoryLines } from "./required-accessories";
 import { failReservation, type ReservationFailure } from "./reservation-failure";
+
+/**
+ * One line of the stock a status change takes, in the canonical form its
+ * confirmation binds: the product, the quantity, the variant the line
+ * selects as the stock check itself reads it (its combination, and its
+ * choice on the product's booking axes today, `canonicalizeAttributes`, or
+ * null for none), its assigned units, sorted, and a consumable's units
+ * consumed and to take, or null. Every field is always present, so two
+ * reads of an unchanged reservation give the same value.
+ */
+export interface StockDemandLine {
+  line: string;
+  product: string;
+  quantity: number;
+  combinationKey: string | null;
+  choice: UnitAttributes | null;
+  units: string[];
+  consumable: { consumed: number; takes: number } | null;
+}
+
+/** The demand read under the locks (`readReservationStockDemand`, packages/db), in its canonical form. */
+export function stockDemandOf(lines: readonly ReservationDemandLine[]): StockDemandLine[] {
+  return lines.map((line) => {
+    const choice = canonicalizeAttributes(line.axes, line.selectedAttributes);
+    return {
+      line: line.line,
+      product: line.product,
+      quantity: line.quantity,
+      combinationKey: line.combinationKey ?? null,
+      choice: Object.keys(choice).length > 0 ? choice : null,
+      units: [...line.units].sort(),
+      consumable: line.consumable ?? null,
+    };
+  });
+}
 
 export interface ReserveInventoryLine {
   lineId?: string;
