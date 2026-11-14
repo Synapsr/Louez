@@ -79,7 +79,12 @@ const tags = (html: string, tag: string) =>
     ),
   );
 
-const textOf = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+/** The text a person reads: an isolated run (`bdi`) is inline, every other tag a break. */
+const textOf = (html: string) =>
+  html
+    .replace(/<\/?bdi\b[^>]*>/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ");
 
 const DISCLOSURE = /<details\b([^>]*)>([\s\S]*?)<\/details>/g;
 /** The page as a person sees it before opening anything: every disclosure's body left out. */
@@ -352,6 +357,50 @@ describe("the approval's page", () => {
     // Reservation, Shortfalls, and the named item Kayak biplace.
     const groups = tags(html, "dd").filter((dd) => (dd.class ?? "").includes("border-l"));
     assert.equal(groups.length, 3);
+  });
+
+  test("the provenance line's names are bounded and isolated; the details keep the store's name whole", () => {
+    const long = `Location de vélos et kayaks de la baie de Morlaix ${"et environs ".repeat(5)}`.trim();
+    const html = renderPage({
+      store: { id: "store_000000000000001", name: long, timeZone: "Europe/Paris" },
+      agent: { kind: "api_key", name: "שרה agent", shownName: "שרה agent" },
+    });
+    const description = /data-slot="card-description">([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
+    // Each name in its own isolated run.
+    const runs = [...description.matchAll(/<bdi>([\s\S]*?)<\/bdi>/g)].map((match) => match[1]);
+    assert.equal(runs.length, 2);
+    // At most 40 characters, the ellipsis included (a space before it is trimmed).
+    assert.ok([...(runs[0] ?? "")].length <= 40 && [...(runs[0] ?? "")].length >= 38);
+    assert.ok(runs[0]?.endsWith("…"));
+    assert.equal(runs[1], "שרה agent");
+    assert.match(textOf(description), /^Location de vélos .*… · asked by “שרה agent”$/);
+    // The details keep the whole name.
+    assert.ok(textOf(disclosures(html)[0]?.body ?? "").includes(`in “${long}”`));
+    // Unnamed, the store's name is isolated all the same.
+    const unnamed = renderPage({ agent: { kind: "api_key", name: null, shownName: null } });
+    assert.match(unnamed, /data-slot="card-description"><bdi>Roscoff Voile<\/bdi> · asked by an API key/);
+  });
+
+  test("an empty list says None; every label, heading and value is clipped and isolated", () => {
+    const html = renderPage({
+      preview: {
+        summary: "Confirm it.",
+        truncated: false,
+        details: [
+          { label: "Messages", value: { kind: "group", entries: [] } },
+          {
+            label: "Customer",
+            value: { kind: "group", entries: [{ label: "Name", value: { kind: "text", text: "Ann" } }] },
+          },
+        ],
+      },
+    });
+    assert.match(textOf(checkedList(html)), /Messages None/);
+    const list = checkedList(html);
+    const dts = tags(list, "dt");
+    assert.equal(dts.length, 3);
+    assert.ok(dts.every((dt) => /\boverflow-hidden\b/.test(dt.class ?? "")), "every label and heading clipped");
+    assert.equal((list.match(/<dt\b[^>]*><bdi>/g) ?? []).length, 3);
   });
 
   test("the three sample requests' details render flat, with no identifier and no raw date", () => {

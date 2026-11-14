@@ -500,6 +500,30 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       }
     });
 
+    test("a store whose name shows nothing is not approved by a forged post; refusing works", async () => {
+      // The reviewer's store name: a zero-width space and a Hangul filler.
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ name: "\u200b\u3164" })
+        .where(orm.eq(louezDb.stores.id, STORE));
+      const row = await approval();
+      const response = await post(row.id, {
+        decision: "approve",
+        acknowledged: "yes",
+        revision: String(row.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(response), `/handoffs/${row.id}?error=failed`);
+      assert.equal((await rowOf(row.id)).status, "pending");
+      const refused = await post(row.id, {
+        decision: "refuse",
+        revision: String(row.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(refused), `/handoffs/done/${row.id}`);
+      assert.equal((await rowOf(row.id)).decision, "refused");
+    });
+
     test("a partly malformed list of consequences asks for the box; only a list of known plain changes does not", async () => {
       for (const consequences of [["change", {}], [], "change", ["change", "nope"]]) {
         await louezDb.db.delete(louezDb.apiHandoffs);

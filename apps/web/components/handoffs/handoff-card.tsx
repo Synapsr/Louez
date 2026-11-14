@@ -3,7 +3,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@louez
 interface HandoffCardProps {
   title: string;
   /** One or two sentences under the title; none when the title says it all. */
-  description?: string;
+  description?: React.ReactNode;
   /** A note under the description, such as a provider that did not answer. */
   note?: string | null;
   /** The form or button that moves the step on; none on a closing page. */

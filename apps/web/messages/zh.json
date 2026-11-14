@@ -9813,9 +9813,9 @@
         "change": "批准此项修改？",
         "unknown": "批准此请求？"
       },
-      "provenance": "{store} · 由“{agent}”请求",
-      "provenanceKey": "{store} · 由 API 密钥请求",
-      "provenanceAssistant": "{store} · 由 AI 助手请求",
+      "provenance": "<place>{store}</place> · 由“<who>{agent}</who>”请求",
+      "provenanceKey": "<place>{store}</place> · 由 API 密钥请求",
+      "provenanceAssistant": "<place>{store}</place> · 由 AI 助手请求",
       "trustShort": "只有 Louez 的摘要才算数。",
       "stakes": "无法撤销：{list}。",
       "stake": {
@@ -9839,7 +9839,8 @@
       "checked": "Louez 核对的内容",
       "values": {
         "yes": "是",
-        "no": "否"
+        "no": "否",
+        "none": "无"
       },
       "computedAt": "Louez 于{when}根据你店铺的数据得出以上内容。",
       "expires": "如果你不回复，此请求将于{when}失效。",

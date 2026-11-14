@@ -9813,9 +9813,9 @@
         "change": "Approvare questa modifica?",
         "unknown": "Approvare questa richiesta?"
       },
-      "provenance": "{store} · richiesto da «{agent}»",
-      "provenanceKey": "{store} · richiesto da una chiave API",
-      "provenanceAssistant": "{store} · richiesto da un assistente IA",
+      "provenance": "<place>{store}</place> · richiesto da «<who>{agent}</who>»",
+      "provenanceKey": "<place>{store}</place> · richiesto da una chiave API",
+      "provenanceAssistant": "<place>{store}</place> · richiesto da un assistente IA",
       "trustShort": "Conta solo il riepilogo di Louez.",
       "stakes": "Non si può annullare: {list}.",
       "stake": {
@@ -9839,7 +9839,8 @@
       "checked": "Cosa ha verificato Louez",
       "values": {
         "yes": "Sì",
-        "no": "No"
+        "no": "No",
+        "none": "Nessuno"
       },
       "computedAt": "Louez lo ha calcolato {when}, dai dati del tuo negozio.",
       "expires": "Senza una tua risposta, la richiesta scade {when}.",
