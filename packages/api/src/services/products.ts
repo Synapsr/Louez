@@ -6,6 +6,7 @@ import {
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
   lockProductRows,
+  lockStoreProductRows,
   lockStoreRow,
   marketplaceCatalogTombstones,
   nextProductSlug,
@@ -802,6 +803,13 @@ export async function createProduct(actor: ProductActor, input: CreateProductInp
 
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
+    // The accessories the new product names, by id, before any write: a link
+    // to a product takes that product's row for its foreign-key check.
+    await lockProductRows(
+      tx,
+      storeId,
+      (data.accessories ?? []).map((link) => link.accessoryId),
+    );
     categoryIds = await resolveCategoryIds(tx, storeId, data);
 
     await tx.insert(products).values({
@@ -1156,6 +1164,10 @@ export async function updateProduct(
     db.transaction(async (tx) => {
       refusal = null;
       await lockStoreProducts(tx, storeId);
+      // The store's products, by id, before this one's row: the save rewrites
+      // the product's accessory links, known only once the product is read,
+      // and each link takes its accessory's row for its foreign-key check.
+      await lockStoreProductRows(tx, storeId);
       // Every lock before the first plain read: InnoDB reads at the snapshot of
       // that first read, so a reservation committed while this waited for the
       // product's row must not be missed. Checkout locks the product first,
