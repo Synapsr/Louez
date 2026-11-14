@@ -689,10 +689,10 @@ async function handleCheckoutExpired(
   const amount = fromStripeCents(session.amount_total || 0, currency);
 
   // The session's line in the reservation's history: its id, amount and currency.
-  const expiredLine = () => ({
+  const expiredLine = (): typeof reservationActivity.$inferInsert => ({
     id: nanoid(),
     reservationId,
-    activityType: "payment_expired" as const,
+    activityType: "payment_expired",
     description: null,
     metadata: {
       checkoutSessionId: session.id,
