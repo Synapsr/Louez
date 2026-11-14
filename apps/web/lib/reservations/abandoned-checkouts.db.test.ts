@@ -7,6 +7,7 @@ import { eq, sql } from "drizzle-orm";
 import {
   createTestDatabase,
   raceOnLockedRow,
+  reservationChangeTestHooks,
   skipWithoutTestDatabase,
   type TestDatabase,
 } from "@louez/db/testing";
@@ -80,6 +81,7 @@ describe(
     let louezDb: typeof import("@louez/db");
     let pass: typeof import("./abandoned-checkouts");
     let paymentSession: typeof import("./payment-session");
+    let settlement: typeof import("./checkout-session-settlement");
     let counter = 0;
     const atStripe = new Map<string, AtStripe>();
     /** The calls to Stripe, in order: `retrieve cs_…`, `expire cs_…`, `create cs_…`. */
@@ -97,6 +99,7 @@ describe(
       louezDb = await import("@louez/db");
       paymentSession = await import("./payment-session");
       pass = await import("./abandoned-checkouts");
+      settlement = await import("./checkout-session-settlement");
       // The pass's log: its run lines are kept, every other line dropped.
       const { log } = await import("@/lib/evlog");
       Reflect.set(log, "warn", (event: { abandonedCheckouts?: Record<string, unknown> }) => {
@@ -186,6 +189,7 @@ describe(
       stripeCalls.length = 0;
       readOptions.length = 0;
       onStripeCall = null;
+      reservationChangeTestHooks().beforeReservationLock = null;
       // Each case leaves nothing for the next one's pass to look at.
       await louezDb.db.delete(louezDb.payments);
       await louezDb.db.delete(louezDb.reservationActivity);
@@ -201,7 +205,8 @@ describe(
       sessions: ReadonlyArray<{
         status: "pending" | "cancelled" | "completed";
         age: number;
-        settled?: boolean;
+        /** Marked settled, that long ago (the row's age when `true`). */
+        settled?: boolean | number;
       }>,
       { source = "online" }: { source?: string } = {},
     ) {
@@ -235,7 +240,10 @@ describe(
           stripeAccountId: ACCOUNT,
           origin: "checkout",
           currency: "EUR",
-          sessionSettledAt: settled ? new Date(Date.now() - age) : null,
+          sessionSettledAt:
+            settled === undefined || settled === false
+              ? null
+              : new Date(Date.now() - (settled === true ? age : settled)),
           createdAt: new Date(Date.now() - age),
         });
       }
@@ -370,7 +378,7 @@ describe(
       }
     });
 
-    test("selected by the record: an unsettled session past its lifetime and a margin, and under 48 hours old; a settled one, a younger one, an older one and a paid checkout are not", async () => {
+    test("selected by the record: an unsettled session past its lifetime and a margin, and under 48 hours old, to read; a settled one with no payment left, to cancel; a younger one, an older one and a paid checkout are not", async () => {
       const due = await checkout([{ status: "pending", age: 40 * MINUTE }]);
       const settled = await checkout([{ status: "cancelled", age: 40 * MINUTE, settled: true }]);
       const young = await checkout([{ status: "pending", age: 10 * MINUTE }]);
@@ -389,11 +397,16 @@ describe(
 
       const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
 
+      // The unsettled one is read at Stripe; the settled one, with no payment
+      // left, is drawn for its cancellation.
       assert.deepEqual(
-        found.map(({ id }) => id),
-        [due.id],
+        found.map(({ id, branch }) => [id, branch]),
+        [
+          [due.id, "unsettled"],
+          [settled.id, "settled"],
+        ],
       );
-      for (const { id } of [settled, young, old, paid, marketplace, manual]) {
+      for (const { id } of [young, old, paid, marketplace, manual]) {
         assert.ok(!found.some((checkout) => checkout.id === id), id);
       }
     });
@@ -438,12 +451,20 @@ describe(
         atStripe.set(String(sessions[0]), "unreachable");
       }
       const readable = await checkout([{ status: "pending", age: 40 * MINUTE }]);
+      // And as many settled checkouts with no payment left, the other question's.
+      const settled = [];
+      for (let index = 0; index < unreadable; index += 1) {
+        settled.push(
+          await checkout([{ status: "cancelled", age: 3 * HOUR, settled: 40 * MINUTE }]),
+        );
+      }
 
       // The draw is RAND(seed), one seed a run, so the runs are the same each
-      // time. With 26 checkouts and a batch of 20, a checkout is left out of a
-      // run drawn at random with probability 6/26, and out of 19 runs with
-      // (6/26)^19, under 1e-12: 19 runs bound the wait.
-      const bound = 19;
+      // time. While the settled ones last, each question has half the batch: with
+      // 26 checkouts to read and 10 places, a checkout is left out of a run drawn
+      // at random with probability 16/26, and out of 58 runs with (16/26)^58, under
+      // 1e-12: 58 runs bound the wait. The settled ones are cancelled meanwhile.
+      const bound = 58;
       let runs = 0;
       while ((await stateOf(readable.id)).status === "pending" && runs < bound) {
         runs += 1;
@@ -451,6 +472,12 @@ describe(
       }
 
       assert.equal((await stateOf(readable.id)).status, "cancelled", `within ${bound} runs`);
+      for (const { id } of settled) {
+        if ((await stateOf(id)).status !== "cancelled") {
+          await pass.settleAbandonedCheckouts({ order: sql`RAND(${(runs += 1)})` });
+        }
+      }
+      for (const { id } of settled) assert.equal((await stateOf(id)).status, "cancelled", id);
       assert.equal(runLines.length, runs, "one line a run");
       for (const line of runLines) {
         assert.equal(line.event, "run_skipped");
@@ -600,6 +627,126 @@ describe(
       assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ cancelled: 1 }));
       assert.deepEqual(await settledOf(id), [first, successor].sort());
       assert.equal((await stateOf(id)).status, "cancelled");
+    });
+
+    test("a resume replaces the last session and is refused, then that session's expiry marks it: past the delay, the pass cancels the checkout", async () => {
+      const { id, sessions } = await checkout([{ status: "pending", age: 5 * MINUTE }]);
+      const last = String(sessions[0]);
+      // Stripe can neither expire nor read the session: the resume is refused, and
+      // the row it cancelled stays cancelled.
+      atStripe.set(last, "unreachable");
+      assert.deepEqual(await resume(id), { error: "errors.paymentSessionError" });
+      // Its expiry is delivered: the handler's write marks the replaced row alone.
+      assert.equal(
+        await settlement.recordCheckoutSessionExpiry({
+          reservationId: id,
+          paymentId: `pay_${id}_0`,
+          session: { id: last, amount_total: 1000, currency: "eur" },
+        }),
+        false,
+      );
+      assert.deepEqual(await settledOf(id), [last]);
+      assert.equal((await stateOf(id)).status, "pending");
+
+      // Within the delay the pass leaves it; once the mark is past it, it cancels.
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({}));
+      await louezDb.db
+        .update(louezDb.payments)
+        .set({ sessionSettledAt: new Date(Date.now() - 40 * MINUTE) })
+        .where(eq(louezDb.payments.stripeCheckoutSessionId, last));
+      stripeCalls.length = 0;
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ cancelled: 1 }));
+      assert.deepEqual(stripeCalls, [], "no Stripe call");
+      assert.deepEqual(await stateOf(id), {
+        status: "cancelled",
+        payments: { [last]: "cancelled" },
+        history: ["cancelled"],
+      });
+    });
+
+    test("a settled checkout is left when a successor is pending, a rental payment completed, its newest mark younger than the delay, or older than the bound", async () => {
+      const successor = await checkout([
+        { status: "cancelled", age: 3 * HOUR, settled: 40 * MINUTE },
+        { status: "pending", age: 2 * MINUTE },
+      ]);
+      const paid = await checkout([
+        { status: "cancelled", age: 3 * HOUR, settled: 40 * MINUTE },
+        { status: "completed", age: 2 * HOUR },
+      ]);
+      const young = await checkout([
+        { status: "cancelled", age: 3 * HOUR, settled: 40 * MINUTE },
+        { status: "cancelled", age: 10 * MINUTE, settled: 5 * MINUTE },
+      ]);
+      const old = await checkout([{ status: "cancelled", age: 50 * HOUR, settled: 49 * HOUR }]);
+
+      assert.deepEqual(await pass.findAbandonedCheckouts(new Date()), []);
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({}));
+      for (const { id } of [successor, paid, young, old]) {
+        assert.equal((await stateOf(id)).status, "pending", id);
+      }
+      assert.deepEqual(stripeCalls, []);
+    });
+
+    test("two runs at once over a settled checkout: cancelled once", async () => {
+      const { id } = await checkout([{ status: "cancelled", age: 3 * HOUR, settled: 40 * MINUTE }]);
+
+      // Both runs have drawn the checkout, then wait on its row.
+      await raceOnLockedRow(database, { table: "reservations", id }, [
+        () => pass.settleAbandonedCheckouts(),
+        () => pass.settleAbandonedCheckouts(),
+      ]);
+
+      assert.deepEqual((await stateOf(id)).history, ["cancelled"]);
+      assert.equal((await stateOf(id)).status, "cancelled");
+    });
+
+    test("a settled checkout cancelled by the pass while a resume creates its session: the resume installs nothing and expires its session", async () => {
+      const { id, sessions } = await checkout([
+        { status: "cancelled", age: 3 * HOUR, settled: 40 * MINUTE },
+      ]);
+      let outcome: unknown;
+      onStripeCall = async (call) => {
+        if (call.startsWith("create ")) {
+          onStripeCall = null;
+          outcome = await pass.settleAbandonedCheckouts();
+        }
+      };
+
+      assert.deepEqual(await resume(id), { error: "errors.invalidStatus" });
+
+      assert.deepEqual(outcome, counts({ cancelled: 1 }));
+      const created = stripeCalls
+        .find((call) => call.startsWith("create "))
+        ?.slice("create ".length);
+      assert.ok(stripeCalls.includes(`expire ${created}`), "the new session expired");
+      assert.deepEqual(await stateOf(id), {
+        status: "cancelled",
+        payments: { [String(sessions[0])]: "cancelled" },
+        history: ["cancelled"],
+      });
+    });
+
+    test("a resume that installs its session after the pass drew the settled checkout: the cancellation, under the lock, leaves it", async () => {
+      const { id, sessions } = await checkout([
+        { status: "cancelled", age: 3 * HOUR, settled: 40 * MINUTE },
+      ]);
+      let resumed: Awaited<ReturnType<typeof resume>> | undefined;
+      // The pass has drawn the checkout and asks for its cancellation: before the
+      // cancellation takes the reservation's lock, the resume runs whole.
+      reservationChangeTestHooks().beforeReservationLock = async (scope) => {
+        if (scope.reservationId !== id) return;
+        reservationChangeTestHooks().beforeReservationLock = null;
+        resumed = await resume(id);
+      };
+
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ left: 1 }));
+
+      assert.ok(resumed && !("error" in resumed), JSON.stringify(resumed));
+      assert.deepEqual(await stateOf(id), {
+        status: "pending",
+        payments: { [String(sessions[0])]: "cancelled", [String(resumed.sessionId)]: "pending" },
+        history: ["payment_initiated"],
+      });
     });
 
     test("three resumes: one replaces the session another just gave, while a third creates its own: the third installs nothing and its session is expired; one session given stays payable", async () => {

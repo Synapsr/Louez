@@ -1,4 +1,16 @@
-import { type SQL, and, eq, gt, isNotNull, lt, notExists, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  lt,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 
 import {
@@ -13,6 +25,7 @@ import {
   reservations,
   stores,
   unsettledCheckoutSession,
+  unsettledCheckoutSessionIn,
 } from "@louez/db";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
@@ -41,7 +54,7 @@ const LOOK_AFTER_LIFETIME_MS = 5 * 60 * 1000;
  * written before the record existed, is not looked at.
  */
 const ABANDONED_CHECKOUT_REACH_MS = 48 * 60 * 60 * 1000;
-/** Most checkouts one run looks at, drawn at random from those in the window. */
+/** Most checkouts one run looks at, both questions together (`findAbandonedCheckouts`). */
 export const ABANDONED_CHECKOUTS_PER_RUN = 20;
 /**
  * How long a run keeps taking checkouts: past it, those left wait for the next
@@ -56,14 +69,25 @@ export const ABANDONED_CHECKOUT_READ: CheckoutSessionReadOptions = {
 /** Most reservation ids a run's log line names. */
 const LOGGED_IDS_PER_RUN = 5;
 /**
- * The order a run draws its batch in: at random, so checkouts that stay
- * unreadable (a store whose Stripe account is gone) cannot hold every run while
- * others wait. With N checkouts in the window and a batch of B, one is left out
- * of a run with probability 1 - B/N, and out of k runs with (1 - B/N)^k.
+ * The order a run draws each question's checkouts in: at random, so checkouts
+ * that stay unreadable (a store whose Stripe account is gone) cannot hold every
+ * run while others wait. With N checkouts of a question and B places for it in
+ * the batch (half of it at least while the other question fills its half), one
+ * is left out of a run with probability 1 - B/N, and out of k runs with
+ * (1 - B/N)^k.
  */
 const RANDOM_ORDER = sql`RAND()`;
 
 export type AbandonedCheckoutOutcome = "confirmed" | "cancelled" | "left" | "unreadable";
+
+/** Which of the pass's two questions a checkout is drawn for. */
+export type AbandonedCheckoutBranch = "unsettled" | "settled";
+
+export interface AbandonedCheckout {
+  id: string;
+  storeId: string;
+  branch: AbandonedCheckoutBranch;
+}
 
 /**
  * The checkouts with an unsettled rental session old enough to be over: a
@@ -74,7 +98,7 @@ export type AbandonedCheckoutOutcome = "confirmed" | "cancelled" | "left" | "unr
  * random). The query starts from `payments`, through
  * `payments_session_settled_created_idx` (the unmarked rows, by their age), reads
  * each row's reservation by its primary key, and its completed payments through
- * `payments_reservation_idx`.
+ * `payments_reservation_idx`. Each is read at Stripe.
  */
 export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
   const completed = alias(payments, "completed_payment");
@@ -85,7 +109,7 @@ export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
     .where(
       and(
         unsettledCheckoutSession,
-        gt(payments.createdAt, new Date(now.getTime() - ABANDONED_CHECKOUT_REACH_MS)),
+        gt(payments.createdAt, reachAfter(now)),
         lt(payments.createdAt, lookBefore(now)),
         eq(reservations.status, "pending"),
         eq(reservations.source, ONLINE_CHECKOUT_SOURCE),
@@ -108,17 +132,94 @@ export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
     .limit(ABANDONED_CHECKOUTS_PER_RUN);
 }
 
-/** The batch `abandonedCheckoutsQuery` draws. */
-export async function findAbandonedCheckouts(now: Date, order: SQL = RANDOM_ORDER) {
-  return abandonedCheckoutsQuery(now, order);
+/**
+ * The checkouts whose sessions are all settled and that have no payment left: a
+ * reservation from the storefront's online checkout, still `pending`, with no
+ * rental payment `pending` or `completed`, no unsettled session, and whose newest
+ * mark (`session_settled_at` of its rental sessions) is more than a session's
+ * lifetime and a margin and less than 48 hours old. The delay is on the mark: a
+ * resume in flight marks the session it replaces and installs its successor a
+ * moment later, and the delay keeps the pass away from it; the cancellation's
+ * guard under the reservation's lock covers the rest. The query starts from
+ * `payments`, through `payments_session_settled_created_idx` (a range of marks),
+ * reads each row's reservation by its primary key, and its other payments through
+ * `payments_reservation_idx`. None is read at Stripe.
+ */
+export function settledCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
+  const other = alias(payments, "other_payment");
+  return db
+    .select({ id: reservations.id, storeId: reservations.storeId })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .where(
+      and(
+        eq(payments.type, "rental"),
+        isNotNull(payments.stripeCheckoutSessionId),
+        gt(payments.sessionSettledAt, reachAfter(now)),
+        lt(payments.sessionSettledAt, lookBefore(now)),
+        eq(reservations.status, "pending"),
+        eq(reservations.source, ONLINE_CHECKOUT_SOURCE),
+        // No payment left, no session that may still be paid, and no mark younger
+        // than the delay: the newest mark decides.
+        notExists(
+          db
+            .select({ id: other.id })
+            .from(other)
+            .where(
+              and(
+                eq(other.reservationId, reservations.id),
+                or(
+                  and(eq(other.type, "rental"), inArray(other.status, ["pending", "completed"])),
+                  unsettledCheckoutSessionIn(other),
+                  and(eq(other.type, "rental"), gte(other.sessionSettledAt, lookBefore(now))),
+                ),
+              ),
+            ),
+        ),
+      ),
+    )
+    .groupBy(reservations.id, reservations.storeId)
+    .orderBy(order)
+    .limit(ABANDONED_CHECKOUTS_PER_RUN);
 }
 
+/**
+ * One batch for both questions: each is drawn at random (`order`), at most a
+ * batch each, and the two are taken in turn, one of each, until the batch is
+ * full. While both have checkouts, each gets half the batch; one with fewer
+ * leaves the rest to the other. The two never hold the same reservation: one
+ * has an unsettled session, the other none.
+ */
+export async function findAbandonedCheckouts(
+  now: Date,
+  order: SQL = RANDOM_ORDER,
+): Promise<AbandonedCheckout[]> {
+  const [unsettled, settled] = await Promise.all([
+    abandonedCheckoutsQuery(now, order),
+    settledCheckoutsQuery(now, order),
+  ]);
+  const batch: AbandonedCheckout[] = [];
+  for (let index = 0; batch.length < ABANDONED_CHECKOUTS_PER_RUN; index += 1) {
+    const first = unsettled[index];
+    const second = settled[index];
+    if (!first && !second) break;
+    if (first) batch.push({ ...first, branch: "unsettled" });
+    if (second && batch.length < ABANDONED_CHECKOUTS_PER_RUN) {
+      batch.push({ ...second, branch: "settled" });
+    }
+  }
+  return batch;
+}
+
+const reachAfter = (now: Date) => new Date(now.getTime() - ABANDONED_CHECKOUT_REACH_MS);
 const lookBefore = (now: Date) =>
   new Date(now.getTime() - CHECKOUT_SESSION_LIFETIME_SECONDS * 1000 - LOOK_AFTER_LIFETIME_MS);
 
 /**
- * One checkout. Each unsettled rental session old enough to be over is read at
- * Stripe, never expired: past its lifetime a session cannot be open. One read
+ * One checkout. One drawn for its settled sessions is read nowhere: its
+ * cancellation is asked for at once. Otherwise each unsettled rental session old
+ * enough to be over is read at Stripe, never expired: past its lifetime a session
+ * cannot be open. One read
  * `expired` is marked: a `pending` row through the `checkout.session.expired`
  * handler's own write (cancelled, marked, its line), a `cancelled` one alone. One
  * paid is recorded as the customer's return records it. One unread, or still
@@ -127,7 +228,7 @@ const lookBefore = (now: Date) =>
  * rental payment pending or completed and no unsettled session.
  */
 export async function settleAbandonedCheckout(
-  checkout: { id: string; storeId: string },
+  checkout: { id: string; storeId: string; branch?: AbandonedCheckoutBranch },
   { now = new Date(), request = ABANDONED_CHECKOUT_READ } = {},
 ): Promise<AbandonedCheckoutOutcome> {
   const store = await db.query.stores.findFirst({
@@ -155,7 +256,9 @@ export async function settleAbandonedCheckout(
     );
   const due = lookBefore(now);
   const sessions = [];
-  for (const row of rows) {
+  // A checkout drawn for its settled sessions is read nowhere: its cancellation
+  // is asked for at once, and its guard decides.
+  for (const row of checkout.branch === "settled" ? [] : rows) {
     if (!isUnsettledCheckoutSession(row) || !row.stripeCheckoutSessionId) continue;
     // A younger session may still be open: the cancellation below leaves it.
     if (row.createdAt >= due) continue;
@@ -212,7 +315,9 @@ export async function settleAbandonedCheckout(
 }
 
 /**
- * The cron's pass over abandoned checkouts. Each checkout is its own unit: one
+ * The cron's pass over abandoned checkouts: those with an unsettled session to
+ * read at Stripe, and those whose sessions are all settled, with no payment
+ * left, to cancel (`findAbandonedCheckouts`). Each checkout is its own unit: one
  * that fails is counted and the others go on. Once its time budget is spent it
  * takes no new checkout: those left wait for the next run. It holds no
  * transaction across a Stripe call, and two runs at once write each record once:

@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNotNull, isNull, type SQL } from "drizzle-orm";
+import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 import type { Transaction } from "./index";
 import { payments } from "./schema";
@@ -15,13 +16,24 @@ import { payments } from "./schema";
  */
 const UNSETTLED_SESSION_STATUSES = ["pending", "cancelled"] as const;
 
+/** The columns the question reads: those of `payments`, or of an alias of it. */
+type PaymentSessionColumns = Record<
+  "type" | "stripeCheckoutSessionId" | "status" | "sessionSettledAt",
+  AnyMySqlColumn
+>;
+
+/** The unsettled sessions among the rows of `table` (`payments` or an alias of it). */
+export function unsettledCheckoutSessionIn(table: PaymentSessionColumns): SQL {
+  return and(
+    eq(table.type, "rental"),
+    isNotNull(table.stripeCheckoutSessionId),
+    inArray(table.status, [...UNSETTLED_SESSION_STATUSES]),
+    isNull(table.sessionSettledAt),
+  ) as SQL;
+}
+
 /** The unsettled sessions among `payments` rows, as a condition of a query. */
-export const unsettledCheckoutSession: SQL = and(
-  eq(payments.type, "rental"),
-  isNotNull(payments.stripeCheckoutSessionId),
-  inArray(payments.status, [...UNSETTLED_SESSION_STATUSES]),
-  isNull(payments.sessionSettledAt),
-) as SQL;
+export const unsettledCheckoutSession: SQL = unsettledCheckoutSessionIn(payments);
 
 /** The same question asked of a row already read. */
 export function isUnsettledCheckoutSession(row: {

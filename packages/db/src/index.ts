@@ -115,6 +115,7 @@ export {
   isUnsettledCheckoutSession,
   markCheckoutSessionSettled,
   unsettledCheckoutSession,
+  unsettledCheckoutSessionIn,
 } from "./checkout-session";
 export {
   ReservationLockError,
