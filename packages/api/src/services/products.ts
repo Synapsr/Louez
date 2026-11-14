@@ -5,6 +5,7 @@ import {
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
+  lockProductRows,
   lockStoreRow,
   marketplaceCatalogTombstones,
   nextProductSlug,
@@ -1961,14 +1962,7 @@ export async function reorderProducts(actor: ProductActor, ids: readonly string[
     // order a reservation's writers take their products in, whatever the
     // order the catalog is put in.
     const moved = finalOrder.filter((id, index) => before.get(id) !== index);
-    if (moved.length > 0) {
-      await tx
-        .select({ id: products.id })
-        .from(products)
-        .where(and(eq(products.storeId, storeId), inArray(products.id, moved)))
-        .orderBy(asc(products.id))
-        .for("update");
-    }
+    await lockProductRows(tx, storeId, moved);
     const now = new Date();
     for (const [index, id] of finalOrder.entries()) {
       if (before.get(id) === index) continue;

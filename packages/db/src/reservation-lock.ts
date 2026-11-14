@@ -1,7 +1,8 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { Transaction } from "./index";
-import { products, reservationItems, reservations } from "./schema";
+import { lockProductRows } from "./product-lock";
+import { reservationItems, reservations } from "./schema";
 
 /**
  * The locks of a reservation's status change, in the lock order of DL-12
@@ -232,14 +233,7 @@ export async function lockReservationInTransaction(
   const state = ownerTransaction(owner);
   const { tx } = state;
   const productIds = await reservationProductIds(tx, scope);
-  if (productIds.length > 0) {
-    await tx
-      .select({ id: products.id })
-      .from(products)
-      .where(and(eq(products.storeId, scope.storeId), inArray(products.id, productIds)))
-      .orderBy(asc(products.id))
-      .for("update");
-  }
+  await lockProductRows(tx, scope.storeId, productIds);
   await lockReservationRow(tx, scope);
   const current = await reservationProductIds(tx, scope);
   if (current.some((productId) => !productIds.includes(productId))) {

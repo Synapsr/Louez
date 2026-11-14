@@ -110,6 +110,7 @@ export {
   reservationStatusChangeMovesStock,
   toWholeSeconds,
 } from "./reservation-status";
+export { lockProductRows, lockStoreProductRows } from "./product-lock";
 export {
   ReservationLockError,
   ReservationProductsChangedError,

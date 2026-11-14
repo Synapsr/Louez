@@ -1,6 +1,7 @@
 import {
   type Database,
   type Transaction,
+  lockStoreProductRows,
   productUnits,
   products,
   reservationItems,
@@ -211,7 +212,10 @@ export const removeVariantFromStoreProducts = async (
   input: { storeId: string; variant: VariantAxisRef },
 ): Promise<RemoveVariantResult> => {
   // Row locks: two toggles on the same store derive the next axes from the
-  // same row, and the second must read what the first wrote.
+  // same row, and the second must read what the first wrote. Taken by id
+  // first, the order every transaction takes a store's products in; the
+  // read below then finds them held.
+  await lockStoreProductRows(executor, input.storeId);
   const rows = await executor
     .select({ id: products.id, bookingAttributeAxes: products.bookingAttributeAxes })
     .from(products)

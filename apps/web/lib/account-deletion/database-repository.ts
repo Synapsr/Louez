@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHmac } from "node:crypto";
 
-import { db, isBillingSyncEnabled, markBillingDirty } from "@louez/db";
+import { db, isBillingSyncEnabled, lockStoreProductRows, markBillingDirty } from "@louez/db";
 import * as schema from "@louez/db";
 import type { BillingMark, Transaction } from "@louez/db";
 import { type Column, and, count, eq, gt, inArray, ne, notInArray, or, sql } from "drizzle-orm";
@@ -556,10 +556,7 @@ const purgeOwnedData = async (
     // store's products are taken by id, through the store's index, as those take
     // them; with the billing service, before `lockFinalSnapshotFacts` runs.
     for (const storeId of [...storeIds].sort()) {
-      await transaction.execute(
-        sql`SELECT id FROM products FORCE INDEX (products_store_idx)
-            WHERE store_id = ${storeId} ORDER BY id FOR UPDATE`,
-      );
+      await lockStoreProductRows(transaction, storeId);
     }
     // Before the first plain read, which fixes what the closing snapshots see.
     await lockFinalSnapshotFacts(transaction, storeIds);
