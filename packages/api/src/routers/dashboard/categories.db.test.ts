@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  readLockWaiters,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import type { RouterClient } from "@orpc/server";
 
@@ -455,6 +461,53 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       run("delete", { id: cycles.id, replacementCategoryId: cycles.id }, session()),
       "CATEGORY_REPLACEMENT_INVALID",
     );
+  });
+
+  test("deleting a category locks its products by id before it writes any link or product", async () => {
+    const [low, high] = ["ca_p_lock_aaaa", "ca_p_lock_zzzz"];
+    // The links run opposite to the products: the higher product's link comes first.
+    const links = { [high]: "ca_l_lock_aaaa", [low]: "ca_l_lock_zzzz" };
+    for (const held of [low, high]) {
+      const category = await run("create", { name: `Locked ${held}` }, session());
+      for (const id of [low, high]) {
+        await louezDb.db.insert(louezDb.products).values({
+          id,
+          storeId: STORE,
+          name: id,
+          price: "1.00",
+          pricingMode: "day",
+          categoryId: category.id,
+        });
+        await louezDb.db
+          .insert(louezDb.productCategories)
+          .values({ id: links[id], productId: id, categoryId: category.id, position: 0 });
+      }
+      const holder = await database.connect();
+      try {
+        await holder.beginTransaction();
+        await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [held]);
+        const deleting = run("delete", { id: category.id }, session());
+        await waitForLockWaits(holder, database.name, 1);
+        const [waiter] = await readLockWaiters(holder, database.name);
+        await holder.commit();
+        await deleting;
+        // Asserted once the call has ended, so a failing run leaves none running.
+        const products = (locks: Array<{ table: string; id: string }> = []) => [
+          ...new Set(locks.filter((lock) => lock.table === "products").map((lock) => lock.id)),
+        ];
+        assert.deepEqual(products(waiter?.waitsFor), [held], `waits for ${held}`);
+        assert.deepEqual(products(waiter?.holds), held === low ? [] : [low], `holding ${held}`);
+        // Nothing is written before the products are held: no link is deleted yet.
+        assert.deepEqual(
+          waiter?.holds.filter((lock) => lock.table === "product_categories"),
+          [],
+          `no link written while waiting for ${held}`,
+        );
+      } finally {
+        await holder.end();
+      }
+      await louezDb.db.delete(louezDb.products).where(orm.inArray(louezDb.products.id, [low, high]));
+    }
   });
 
   test("deleting a category into a replacement that is deleted at the same time leaves no dangling link", async () => {

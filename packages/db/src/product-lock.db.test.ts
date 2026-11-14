@@ -11,12 +11,13 @@ import {
 
 // The locks a transaction takes on several products, on a migrated database:
 // by id. The catalog here has its slugs in the opposite order of its ids, so
-// a read through the store's slugs would meet the rows last id first. The
-// tests check the order the rows are met in; that it holds under any plan is
-// the index each statement names, which no test here can force the optimizer
-// to contradict.
+// a read through the store's slugs meets the rows last id first; and other
+// stores hold ten times as many products, which is what makes the optimizer
+// read a list of this store's products through its slugs when the statement
+// names no index.
 const STORE = "product_lock_store";
 const COUNT = 100;
+const OTHER_STORES = 10;
 const idOf = (index: number) => `prd_${String(index).padStart(4, "0")}`;
 const IDS = Array.from({ length: COUNT }, (_, index) => idOf(index));
 const LOWEST = idOf(0);
@@ -39,6 +40,18 @@ describe("product row locks (database)", { skip: skipWithoutTestDatabase() }, ()
         pricingMode: "day" as const,
       })),
     );
+    for (let store = 0; store < OTHER_STORES; store++) {
+      await louezDb.db.insert(louezDb.products).values(
+        IDS.map((_, index) => ({
+          id: `other_${store}_${String(index).padStart(4, "0")}`,
+          storeId: `other_store_${store}`,
+          name: "other",
+          slug: `s-${index}`,
+          price: "1.00",
+          pricingMode: "day" as const,
+        })),
+      );
+    }
     await louezDb.db.execute("ANALYZE TABLE products");
   });
 
