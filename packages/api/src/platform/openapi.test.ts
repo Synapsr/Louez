@@ -1071,6 +1071,34 @@ describe("the public reference", () => {
     }
   });
 
+  test("gives the operations of the groups written for developers their own text, without an assistant's words", async () => {
+    // The groups whose operations have a REST text of their own
+    // (`.route({ description })`); the others still show the tool's text.
+    const ownText = new Set(["Reservations", "Payments"]);
+    const assistantWording = [
+      /\bgive the user\b/i,
+      /\bto the user\b/i,
+      /\btools?\b/i,
+      /\bMCP\b/,
+      /\bconnection\b/i,
+      /\bagents?\b/i,
+      /\bstoreId\b/,
+    ];
+    let written = 0;
+    for (const { path, meta, operation } of await servedProcedures()) {
+      const own = operation.description !== meta.mcp.description;
+      if (operation.tags?.some((tag) => ownText.has(tag))) {
+        assert.ok(own, `${path} has its own REST text`);
+      }
+      if (!own) continue;
+      written += 1;
+      for (const word of assistantWording) {
+        assert.doesNotMatch(operation.description ?? "", word, `${path} says ${word}`);
+      }
+    }
+    assert.ok(written >= 13);
+  });
+
   test("speaks of no internals in any description", async () => {
     const document = await fetchDocument();
     const descriptions: string[] = [];

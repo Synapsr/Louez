@@ -251,6 +251,13 @@ function reservationLinksFor(context: ProductContext, reservationId: string) {
     : {};
 }
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_ALWAYS_CONFIRMED =
+  "It always asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), whatever the key's confirmation setting, with a preview";
+
+const REST_LINKS_NOTE =
+  "Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.";
+
 const LINKS_NOTE =
   "Returns the reservation's number and, when the connection may read reservations, its `links`: its dashboard page, to give the user.";
 
@@ -267,7 +274,11 @@ const record = storeProcedure
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/reservations/{reservationId}/payments" })
+  .route({
+    method: "POST",
+    path: "/reservations/{reservationId}/payments",
+    description: `Records a payment the store collected itself (cash, card, transfer, check or other) on a reservation, or money it paid back, as a negative \`adjustment\`. It moves no money. Refused for an amount of zero, a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+  })
   .input(recordPaymentInput)
   .output(recordPaymentOutput)
   .handler(async ({ context, input, path }) => {
@@ -291,7 +302,11 @@ const recordDepositReturnProcedure = storeProcedure
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/reservations/{reservationId}/deposit-returns" })
+  .route({
+    method: "POST",
+    path: "/reservations/{reservationId}/deposit-returns",
+    description: `Records a deposit the store has already given back: the amount and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused with \`DEPOSIT_RETURN_EXCEEDS_BALANCE\` above the deposit collected and not yet returned. ${REST_ALWAYS_CONFIRMED} showing that balance. ${REST_LINKS_NOTE}`,
+  })
   .input(recordDepositReturnInput)
   .output(recordDepositReturnOutput)
   .handler(async ({ context, input, path }) => {
@@ -315,7 +330,11 @@ const deletePaymentProcedure = storeProcedure
       effect: "delete",
     },
   })
-  .route({ method: "DELETE", path: "/payments/{paymentId}" })
+  .route({
+    method: "DELETE",
+    path: "/payments/{paymentId}",
+    description: `Deletes a payment recorded on a reservation: it leaves the reservation's balance and the billing figures. A payment made through Stripe is refused: refund it in Stripe. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+  })
   .input(deletePaymentInput)
   .output(deletePaymentOutput)
   .handler(async ({ context, input, path }) => {
