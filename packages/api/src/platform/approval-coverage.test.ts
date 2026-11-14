@@ -475,6 +475,15 @@ describe("the inventory of the places that ask for a confirmation", () => {
     // a write from running: each call is passed on (`return`, `=>`), or
     // awaited into a name, and the very next statement returns on it
     // (`if (refusal) return …`; `requireConfirmation` raises it).
+    //
+    // A convention guard on the source's shape, not a proof: it reads the
+    // statement after the check, not what that statement runs. It does not
+    // catch a write inside the returning expression or before it in the same
+    // `if` (`if (refusal) return (await write(), unconfirmed(refusal))`), a
+    // refusal copied to another name first, a helper that writes and is
+    // called on the way out, or a write in a caller after the refusal came
+    // back out of the transaction. Review and the end-to-end tests of each
+    // branch hold those.
     const call =
       /\b(?:[\w$]+(?:\??\.[\w$]+)*\??\.)?(checkConfirmation|confirm)\s*(?:\?\.)?\s*(?:<[^()]*>)?\(/g;
     const loose: string[] = [];
