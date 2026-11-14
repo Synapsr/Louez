@@ -3,7 +3,7 @@ import type { McpRequestContext } from "../auth/context";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { ORPCError } from "@orpc/server";
 
-import { APPROVAL_TEXTS } from "./approval-texts";
+import { APPROVAL_TEXTS, oneLineJson, quoted } from "./approval-texts";
 import { TRANSLATION_KEY, TRANSLATION_KEY_MESSAGES, unknownKeyMessage } from "./error-messages";
 
 /**
@@ -107,8 +107,12 @@ function headOf(tool: string, facts: ToolErrorFacts): { text: string; spelledOut
   if (facts.code === "CONFIRMATION_REQUIRED") {
     return { text: confirmationText(tool, facts.details), spelledOut: true };
   }
-  const words = APPROVAL_TEXTS.get(facts.code)?.(tool, facts.details);
-  if (!words) return { text: facts.message, spelledOut: false };
+  const approval = APPROVAL_TEXTS.get(facts.code);
+  if (!approval) return { text: facts.message, spelledOut: false };
+  const words = approval(tool, facts.details);
+  // An approval answer not of its shape: its message may hold the preview's
+  // sentence, so it is quoted as data, never printed as lines of its own.
+  if (!words) return { text: `Louez answered: ${quoted(facts.message)}`, spelledOut: false };
   return { text: words, spelledOut: facts.code === "APPROVAL_REQUIRED" };
 }
 
@@ -126,7 +130,9 @@ export function errorResult(tool: string, error: unknown): CallToolResult {
   const head = headOf(tool, facts);
   const lines = [head.text, `code: ${facts.code}`, `retryable: ${facts.retryable}`];
   if (facts.details && !head.spelledOut) {
-    lines.push(`details: ${JSON.stringify(facts.details)}`);
+    // An approval's details hold what the store or the person wrote: on one line, whatever they hold.
+    const json = APPROVAL_TEXTS.has(facts.code) ? oneLineJson : JSON.stringify;
+    lines.push(`details: ${json(facts.details)}`);
   }
   return {
     content: [{ type: "text", text: lines.join("\n") }],

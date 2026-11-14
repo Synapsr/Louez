@@ -542,7 +542,7 @@ describe(
         `Check: ${JSON.stringify(details)}`,
         `Nothing was done yet. Only the user can approve this, in Louez, until ${approval.expiresAt}.`,
         `Link to send the user (only they can approve this, signed in to Louez): ${approval.url} . Give it to them as it is. Approval id: ${approval.id}.`,
-        `Then call handoffs_get with id ${approval.id} (or read inbox_list) every 30 seconds or more, until its status is approved, failed or expired; decision says what the user decided. Do not press the user or ask them to approve some other way: they decide from the link.`,
+        `Then call handoffs_get with id ${approval.id} every 30 seconds or more, and stop when its status is approved, completed, failed or expired, or at ${approval.expiresAt} at the latest; decision says what the user decided. Do not press the user or ask them to approve some other way: they decide from the link.`,
         `Once it is approved, call ${TOOL} again with the same arguments and confirmationToken: "${approval.id}". The same idempotency key may be kept for the whole flow.`,
         "code: APPROVAL_REQUIRED",
         "retryable: false",
@@ -612,7 +612,7 @@ describe(
         text(early),
         [
           "The user has not decided yet, and nothing was done.",
-          `Then call handoffs_get with id ${approval.id} (or read inbox_list) every 30 seconds or more, until its status is approved, failed or expired; decision says what the user decided. Do not press the user or ask them to approve some other way: they decide from the link.`,
+          `Then call handoffs_get with id ${approval.id} every 30 seconds or more, and stop when its status is approved, completed, failed or expired, or at ${approval.expiresAt} at the latest; decision says what the user decided. Do not press the user or ask them to approve some other way: they decide from the link.`,
           `Once it is approved, call ${TOOL} again with the same arguments and confirmationToken: "${approval.id}".`,
           `If the user no longer has the link: ${approval.url}`,
           "code: APPROVAL_PENDING",
@@ -1002,7 +1002,20 @@ describe(
       assert.equal(moved.approval.stillAsApproved, false);
       assert.equal(
         text(moved.result).split("\n")[3],
-        `This call, or the store, is no longer as that preview showed, so the approval will not carry it out. Tell the user. Called with confirmationToken: "${approval.id}", ${TOOL} ends the approval and does nothing; the call after that, without it, asks the user again with the preview as it is then.`,
+        `This call, or the store, is no longer as that preview showed. Tell the user. Called with confirmationToken: "${approval.id}", ${TOOL} is checked again against the store as it then is: if both match what the user approved it is carried out, and if not the approval ends, nothing is done, and the call after that, without the token, asks the user again with the preview as it is then.`,
+      );
+
+      // The store back as the user approved it: the id carries the action out, as the text says.
+      await renameStore("Roscoff Voile");
+      const carried = await serve.live.mcp(key.authorization, TOOL, {
+        ...money("n1"),
+        confirmationToken: approval.id,
+      });
+      assert.notEqual(carried.isError, true, text(carried));
+      assert.deepEqual(
+        (carried.structuredContent as { erased?: boolean }).erased,
+        true,
+        "carried out, not ended",
       );
     });
 
@@ -1031,7 +1044,7 @@ describe(
       const { retryAfterSeconds } = errorOf(viaMcp).details as { retryAfterSeconds: number };
       assert.equal(
         text(viaMcp),
-        `Too many requests already wait for the user's approval, so this one was not sent to them, and nothing was done. The user approves or refuses the waiting ones from their links (inbox_list lists them); otherwise the first ends in ${retryAfterSeconds} seconds. Then call ${TOOL} again.\ncode: APPROVALS_FULL\nretryable: true\ndetails: ${JSON.stringify({ limit: "connection_open", retryAfterSeconds })}`,
+        `Too many requests of this connection already wait for the user's approval, so this one was not sent to them, and nothing was done. The user approves or refuses the waiting ones from their links (inbox_list lists them); otherwise the first ends in ${retryAfterSeconds} seconds. Then call ${TOOL} again.\ncode: APPROVALS_FULL\nretryable: true\ndetails: ${JSON.stringify({ limit: "connection_open", retryAfterSeconds })}`,
       );
     });
 

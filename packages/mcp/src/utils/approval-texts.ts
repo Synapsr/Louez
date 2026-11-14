@@ -15,15 +15,20 @@ import { z } from "zod";
  * `code:` or an instruction gets out of its quotes.
  */
 
-/** A value someone other than Louez wrote, as a JSON string on one line. */
-export function quoted(value: string): string {
-  // JSON escapes line breaks, quotes and control characters; these are not
-  // escaped by JSON but break or reorder a line on screen.
+/**
+ * Any value as JSON on one line: JSON escapes line breaks, quotes and
+ * control characters; the characters it leaves alone but which break or
+ * reorder a line on screen are escaped too, in keys and nested values alike.
+ */
+export function oneLineJson(value: unknown): string {
   return JSON.stringify(value).replace(
     /[\u0085\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,
     (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
   );
 }
+
+/** A value someone other than Louez wrote, as a JSON string on one line. */
+export const quoted = (value: string): string => oneLineJson(value);
 
 const previewSchema = z.object({
   summary: z.string(),
@@ -50,12 +55,12 @@ export function approvalLinkLine(approval: Approval): string {
 
 /** How the agent waits: it reads the approval, it never presses the user. */
 function waitLine(approval: Approval): string {
-  return `Then call handoffs_get with id ${approval.id} (or read inbox_list) every ${approval.pollAfterSeconds} seconds or more, until its status is approved, failed or expired; decision says what the user decided. Do not press the user or ask them to approve some other way: they decide from the link.`;
+  return `Then call handoffs_get with id ${approval.id} every ${approval.pollAfterSeconds} seconds or more, and stop when its status is approved, completed, failed or expired, or at ${approval.expiresAt} at the latest; decision says what the user decided. Do not press the user or ask them to approve some other way: they decide from the link.`;
 }
 
 function previewLines(preview: z.infer<typeof previewSchema>, label: string): string[] {
   const lines = [`${label}: ${quoted(preview.summary)}`];
-  if (preview.details !== undefined) lines.push(`Check: ${JSON.stringify(preview.details)}`);
+  if (preview.details !== undefined) lines.push(`Check: ${oneLineJson(preview.details)}`);
   return lines;
 }
 
@@ -72,7 +77,7 @@ export function approvalRequiredText(tool: string, details: Record<string, unkno
     lines.push(
       approval.stillAsApproved
         ? `Call ${tool} again with the same arguments and confirmationToken: "${approval.id}".`
-        : `This call, or the store, is no longer as that preview showed, so the approval will not carry it out. Tell the user. Called with confirmationToken: "${approval.id}", ${tool} ends the approval and does nothing; the call after that, without it, asks the user again with the preview as it is then.`,
+        : `This call, or the store, is no longer as that preview showed. Tell the user. Called with confirmationToken: "${approval.id}", ${tool} is checked again against the store as it then is: if both match what the user approved it is carried out, and if not the approval ends, nothing is done, and the call after that, without the token, asks the user again with the preview as it is then.`,
     );
     return lines.join("\n");
   }
@@ -145,16 +150,35 @@ export function approvalRecentlyDeclinedText(tool: string, details: Record<strin
   return `The user refused this same request a moment ago: nobody was asked again, and nothing was done. Tell the user. Do not call ${tool} for it again before ${parsed.data.retryAt}, and then only if the user wants it.`;
 }
 
-/** `APPROVALS_FULL`: too many approvals wait; this one was not requested. */
+/** `APPROVALS_FULL`, by `details.limit`: which limit is reached, and what ends it. */
+const APPROVALS_FULL_TEXTS: Readonly<Record<string, (tool: string, seconds: number) => string>> = {
+  connection_open: (tool, seconds) =>
+    `Too many requests of this connection already wait for the user's approval, so this one was not sent to them, and nothing was done. The user approves or refuses the waiting ones from their links (inbox_list lists them); otherwise the first ends in ${seconds} seconds. Then call ${tool} again.`,
+  connection_per_hour: (tool, seconds) =>
+    `This connection asked for too many approvals within an hour, so this request was not sent to the user, and nothing was done. Call ${tool} again in ${seconds} seconds or more.`,
+  store_open: (tool, seconds) =>
+    `Too many requests wait for an approval in this store, from this connection or others, so this one was not sent to the user, and nothing was done. One of them ends in ${seconds} seconds at the latest. Then call ${tool} again.`,
+};
+
+/** `APPROVALS_FULL`: a limit on approval requests is reached; this one was not requested. */
 export function approvalsFullText(tool: string, details: Record<string, unknown>) {
-  const parsed = z.object({ retryAfterSeconds: z.number() }).safeParse(details);
+  const parsed = z
+    .object({ retryAfterSeconds: z.number(), limit: z.string().optional() })
+    .safeParse(details);
   if (!parsed.success) return null;
-  return `Too many requests already wait for the user's approval, so this one was not sent to them, and nothing was done. The user approves or refuses the waiting ones from their links (inbox_list lists them); otherwise the first ends in ${parsed.data.retryAfterSeconds} seconds. Then call ${tool} again.`;
+  const { retryAfterSeconds, limit } = parsed.data;
+  const text =
+    limit !== undefined && Object.hasOwn(APPROVALS_FULL_TEXTS, limit)
+      ? APPROVALS_FULL_TEXTS[limit]
+      : undefined;
+  return text
+    ? text(tool, retryAfterSeconds)
+    : `A limit on approval requests is reached, so this one was not sent to the user, and nothing was done. Call ${tool} again in ${retryAfterSeconds} seconds or more.`;
 }
 
 /**
  * The text of an approval answer by its code; null for another code, or a
- * `details` not of its shape (the error's message is then the text).
+ * `details` not of its shape (the bridge then quotes the error's message).
  */
 export const APPROVAL_TEXTS: ReadonlyMap<
   string,

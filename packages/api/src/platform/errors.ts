@@ -245,7 +245,7 @@ export const approvalErrors = {
     }),
   full: (limit: string, retryAt: Date, now: Date) =>
     apiError("TOO_MANY_REQUESTS", "APPROVALS_FULL", {
-      message: "Too many requests wait for the user's approval. Nothing was done: retry later.",
+      message: "A limit on approval requests is reached. Nothing was done: retry later.",
       retryable: true,
       details: {
         limit,
