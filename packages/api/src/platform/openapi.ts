@@ -69,6 +69,15 @@ const REFERENCE_SCRIPT = {
 };
 
 /**
+ * The reference's layout over Scalar's, by its class names in the pinned
+ * version: where Scalar shows two columns, the introduction's text takes the
+ * width and its cards (server, key, client) a narrow column, rather than half
+ * each. Narrower, Scalar stacks them, and this rule stays out of it.
+ */
+const REFERENCE_CSS =
+  "@container references-container (width > 900px) { .introduction-section .section-column:nth-of-type(2) { flex: 0 0 340px; } }";
+
+/**
  * How long a client or a shared cache may keep the document and the
  * reference: they change only with a deployment.
  */
@@ -677,6 +686,7 @@ function referenceHtml(documentPath: string): string {
     // Scalar's usage telemetry and its AI chat stay off.
     telemetry: false,
     agent: { disabled: true },
+    customCss: REFERENCE_CSS,
   };
   const script = JSON.stringify(config).replace(/</g, "\\u003c");
   return `<!doctype html>
