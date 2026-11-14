@@ -138,8 +138,9 @@ const currencyOf = (caller: PaymentRecordsCaller, reservation: { currency: strin
  * share), computed by the app's writer under the reservation's lock from the
  * reservation, its lines and the store's settings as the call read them.
  * The write binds them with its preview, shows their currency, and hands the
- * writer these very values: a change of anything they derive from between a
- * preview and the call that carries it out voids its token or approval.
+ * writer these very values: a change between a preview and the call that
+ * carries it out voids its token or approval when it changes the facts; one
+ * that leaves them the same writes the same row, and does not.
  */
 const factsOf = (
   tx: Transaction,
