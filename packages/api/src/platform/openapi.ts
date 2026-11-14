@@ -29,6 +29,7 @@ import { reportUnexpectedErrors } from "./error-reporting";
 import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
 import { apiError, type ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
+import { REFERENCE_TAGS } from "./openapi-tags";
 import { sha256 } from "./hash";
 import {
   MAX_IDEMPOTENCY_KEY_LENGTH,
@@ -67,6 +68,20 @@ const REFERENCE_SCRIPT = {
   url: "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.76.0/dist/browser/standalone.js",
   integrity: "sha384-oH1C0RwqcwbVXkC+r8A+4qRoyEUQdtxAzOwumkxZtQBBcsy61FOoPt7B50OVJYYQ",
 };
+
+/**
+ * The reference's layout over Scalar's, by its class names in the pinned
+ * version. Where Scalar shows two columns, the introduction's text takes the
+ * width and its cards (server, key, client) a narrow column, rather than half
+ * each; narrower, Scalar stacks them, and this rule stays out of it. The
+ * introduction's tables size their columns to their content, rather than
+ * evenly, and their first two (the error table's status and code) never wrap.
+ */
+const REFERENCE_CSS = [
+  "@container references-container (width > 900px) { .introduction-section .section-column:nth-of-type(2) { flex: 0 0 340px; } }",
+  ".introduction-section .markdown table { table-layout: auto; }",
+  ".introduction-section .markdown :is(td, th):nth-child(-n + 2) { white-space: nowrap; }",
+].join("\n");
 
 /**
  * How long a client or a shared cache may keep the document and the
@@ -267,9 +282,9 @@ const openApiGeneratorOptions = {
  * What the reference shows first, and every reader of the document gets: the
  * API is in beta, and what that means.
  */
-export const OPENAPI_BETA_NOTICE = `> **Beta.** The Louez REST API is in beta. It runs in production, but its operations may still change: new operations and new fields come often, and an operation may still be renamed, changed or removed. Every such change is announced in the [Louez changelog](${API_CHANGELOG_URL}).
+export const OPENAPI_BETA_NOTICE = `> **Beta.** The Louez REST API is in beta. It runs in production, but anything in it may still change while it is in beta: its operations and their fields, the \`/api/v1\` base path, the authentication, the error format and its codes, and the \`Idempotency-Key\` and \`Louez-Confirmation\` headers. Every change is announced in the [Louez changelog](${API_CHANGELOG_URL}) when it ships.
 >
-> Breaking changes to the \`/api/v1\` base path, to the authentication accepted, to the error envelope, to the meaning of an existing error code or to the semantics of the \`Idempotency-Key\` and \`Louez-Confirmation\` headers are announced in advance in the changelog. An operation may gain an additional approval step: follow the flow its description states. An answer may gain fields at any time: ignore the ones you do not know. The version \`${OPENAPI_VERSION}\` marks the first version of \`/api/v1\`, before it is declared stable.`;
+> An operation may gain an additional approval step: follow the flow its description states. An answer may gain fields at any time: ignore the ones you do not know. The version \`${OPENAPI_VERSION}\` marks the first version of \`/api/v1\`, before it is declared stable.`;
 
 /**
  * How long a completed write replays for its idempotency key, in whole
@@ -364,7 +379,7 @@ const errorTable = [
 
 const OPENAPI_DESCRIPTION = `${OPENAPI_BETA_NOTICE}
 
-Louez's dashboard operations for scripts and integrations: products and categories, the follow-up of reservations and the payments recorded on them, statistics, the store's settings, its Stripe connection, the online store, the team, billing and more. The list grows; this reference is the list. Each operation is also a tool of Louez's MCP server for AI assistants, under its \`operationId\`, and descriptions name other operations by it, such as \`products_get\`.
+Louez's dashboard operations for scripts and integrations: products and categories, the follow-up of reservations and the payments recorded on them, statistics, the store's settings, its Stripe connection, the online store, the team, billing and more. The list grows; this reference is the list. Each operation is also a tool of Louez's MCP server for AI assistants, under its \`operationId\`. Operation descriptions name other operations by method and path, such as \`GET /products/{id}\`; some field descriptions still name them by \`operationId\`.
 
 ## Authentication
 
@@ -374,7 +389,7 @@ Send an API key in the \`Authorization\` header: \`Bearer lz_…\`. Keys are cre
 
 Send JSON bodies with \`Content-Type: application/json\`. A body is read only as JSON, or in another content type an operation's request body lists; any other, or a body without \`Content-Type\`, answers 415 \`UNSUPPORTED_MEDIA_TYPE\` before the operation runs. A \`GET\` reads its input from its path and its query string. Any other operation without a request body takes its whole input from its path: it reads no body, and one with anything in it answers 415 with an empty \`details.contentTypes\`; an empty body, or the JSON object \`{}\`, is accepted. A path parameter names the record an operation acts on: a body field (on a GET, a query parameter) with the same name may repeat it, but another value answers 400 \`PATH_PARAMETER_CONFLICT\` before the operation runs. An error answers with its HTTP status and, but for one case below, a JSON body of the \`Error\` schema: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English, for a developer or a model: do not parse it) and, most of the time, \`data\`.
 
-- A refusal by Louez has \`data.code\`, a stable code to branch on, such as \`PERMISSION_DENIED\`, and \`data.retryable\`, whether the same call can succeed later unchanged; \`data.details\`, when present, holds the facts behind it.
+- A refusal by Louez has \`data.code\`, a code to branch on rather than the message, such as \`PERMISSION_DENIED\`, and \`data.retryable\`, whether the same call can succeed later unchanged; \`data.details\`, when present, holds the facts behind it.
 - An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\` and no \`data.code\`. Each issue has a \`message\` and a \`path\`: the field at fault, such as \`["items", 0, "price"]\`, or \`[]\` when the issue is with the input as a whole.
 - A body sent as \`application/json\` that cannot be parsed answers 400 \`BAD_REQUEST\` without \`data\`; an empty body is read as an input with nothing in it.
 - An unexpected failure answers 500 \`INTERNAL_SERVER_ERROR\`, often without \`data\`.
@@ -425,7 +440,7 @@ const ERROR_SCHEMA: OpenAPI.SchemaObject = {
       properties: {
         code: {
           type: "string",
-          description: "Stable code to branch on, such as PERMISSION_DENIED.",
+          description: "The code to branch on, such as PERMISSION_DENIED.",
         },
         retryable: {
           type: "boolean",
@@ -482,6 +497,7 @@ const openApiDocumentOptions = {
     description: OPENAPI_DESCRIPTION,
   },
   security: [{ apiKey: [] }],
+  tags: REFERENCE_TAGS,
   components: {
     securitySchemes: {
       apiKey: {
@@ -677,6 +693,7 @@ function referenceHtml(documentPath: string): string {
     // Scalar's usage telemetry and its AI chat stay off.
     telemetry: false,
     agent: { disabled: true },
+    customCss: REFERENCE_CSS,
   };
   const script = JSON.stringify(config).replace(/</g, "\\u003c");
   return `<!doctype html>

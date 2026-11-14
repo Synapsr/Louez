@@ -307,6 +307,7 @@ describe("the public reference", () => {
     summary?: string;
     description?: string;
     security?: unknown[];
+    tags?: string[];
     parameters?: Array<Ref & { name?: string; in?: string }>;
     requestBody?: { content: Record<string, unknown> };
     responses: Record<string, Ref & { headers?: Record<string, unknown> }>;
@@ -316,6 +317,7 @@ describe("the public reference", () => {
     info: { title: string; version: string; description: string };
     servers: Array<{ url: string }>;
     security: unknown[];
+    tags: Array<{ name: string; description: string }>;
     paths: Record<string, Record<string, Operation>>;
     components: {
       schemas: Record<string, { required?: string[]; properties?: Record<string, unknown> }>;
@@ -493,6 +495,36 @@ describe("the public reference", () => {
     );
     assert.deepEqual([...served].sort(), [...exposedNames].sort());
     assert.equal(new Set(served).size, served.length, "each operation once");
+  });
+
+  test("groups each operation by the record it acts on, in a group the menu declares with its sentence", async () => {
+    const document = await fetchDocument();
+    const { REFERENCE_GROUPS } = await import("./openapi-tags");
+    assert.deepEqual(
+      document.tags,
+      REFERENCE_GROUPS.map(({ name, description }) => ({ name, description })),
+    );
+    const names = new Set(document.tags.map(({ name }) => name));
+    const used = new Set<string>();
+    for (const { route, operation } of operationsOf(document)) {
+      assert.equal(operation.tags?.length, 1, `${route} is in one group`);
+      const [group] = operation.tags ?? [];
+      assert.ok(names.has(group), `${route} is in a declared group, not ${group}`);
+      used.add(group);
+    }
+    assert.deepEqual(
+      [...names].filter((name) => !used.has(name)),
+      [],
+      "no group is empty",
+    );
+    const groupOf = (method: string, path: string) => document.paths[path]?.[method]?.tags?.[0];
+    assert.equal(groupOf("get", "/reservations/{id}"), "Reservations");
+    assert.equal(groupOf("post", "/reservations/{reservationId}/payments"), "Payments");
+    assert.equal(groupOf("post", "/payments/stripe/onboarding"), "Stripe");
+    assert.equal(groupOf("get", "/products/{id}/units"), "Units");
+    assert.equal(groupOf("post", "/products/units/{unitId}/retire"), "Units");
+    assert.equal(groupOf("get", "/products/{productId}/seasonal-pricings"), "Seasonal pricing");
+    assert.equal(groupOf("patch", "/products/{id}"), "Products");
   });
 
   test("states its numbers and names from the code they come from", async () => {
@@ -1025,17 +1057,84 @@ describe("the public reference", () => {
     );
     const sentence =
       "an API key is bound to its store and is answered 403 CONNECTION_BOUND_TO_STORES";
-    for (const { path, why, operation } of refused) {
+    for (const { path, why, operation, meta } of refused) {
       // Another reason needs its own sentence.
       assert.equal(why, "bound", path);
+      // The reference says it to a developer; the tool says who may call it.
       assert.ok(operation.description?.includes(sentence), `${path} says an API key is refused`);
-      assert.ok(operation.description?.includes("connected over MCP"), `${path} says who may`);
+      assert.ok(meta?.mcp.description.includes(sentence), `${path}'s tool says it too`);
+      assert.ok(meta?.mcp.description.includes("connected over MCP"), `${path} says who may`);
     }
     const others = (await servedProcedures()).filter(
       ({ path }) => !refused.some((entry) => entry.path === path),
     );
     for (const { path, operation } of others) {
       assert.ok(!operation.description?.includes(sentence), `${path} does not say it`);
+    }
+  });
+
+  test("gives every operation a text of its own, written for developers, without an assistant's words", async () => {
+    const assistantWording = [
+      // What an assistant is told to do for the person it helps.
+      /\b(?:show|give|tell|ask|offer|remind|send)\b(?:\s+(?:it|them|this|these|that))?\s+(?:to\s+)?the user\b/i,
+      /\b(?:show|give|tell)\s+(?:it|them|the \w+)\s+to the user\b/i,
+      /\bto the user\b/i,
+      /\bthe user (?:wants|asks|chose|agrees|says|decides|confirms)\b/i,
+      /\bonce they agree\b/i,
+      /\b(?:ask|tell) them\b/i,
+      // The words of the MCP transport.
+      /\btools?\b/i,
+      /\bMCP\b/i,
+      /\bconnection\b/i,
+      /\bagents?\b/i,
+      /\bstoreId\b/i,
+    ];
+    // Every MCP tool name, in lower case: the exposed procedures' and the hand-written tools'.
+    const { capabilities } = await import("./inventory");
+    const toolNames = new Set(
+      [
+        ...procedures.map(({ meta }) => meta.mcp.name),
+        ...capabilities.flatMap(({ sources }) =>
+          sources.filter(({ kind }) => kind === "mcp-tool").map(({ name }) => name),
+        ),
+      ].map((name) => name.toLowerCase()),
+    );
+    assert.ok(toolNames.has("products_get") && toolNames.has("check_availability"));
+    // The whole identifiers of a text that are a tool's name, whatever their case:
+    // a longer identifier that merely contains one is not.
+    const toolsNamed = (text: string) =>
+      (text.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/gi) ?? []).filter((word) =>
+        toolNames.has(word.toLowerCase()),
+      );
+    for (const { path, meta, operation } of await servedProcedures()) {
+      // `.route({ description })`; the tool keeps `meta.mcp.description`.
+      assert.ok(operation.description, `${path} has a REST text`);
+      assert.notEqual(operation.description, meta.mcp.description, `${path} has its own REST text`);
+      for (const word of assistantWording) {
+        assert.doesNotMatch(operation.description, word, `${path} says ${word}`);
+      }
+      assert.deepEqual(toolsNamed(operation.description), [], `${path} names no tool`);
+    }
+    // The guard catches what it is meant to.
+    const caught = (text: string) =>
+      assistantWording.some((word) => word.test(text)) || toolsNamed(text).length > 0;
+    for (const text of [
+      "Show the user the preview.",
+      "Call products_get first.",
+      "Give it to the user as is.",
+      "Ask the user which one.",
+      "When the user wants a refund.",
+      "Call PRODUCTS_GET first.",
+      "Use mcp for this request.",
+    ]) {
+      assert.ok(caught(text), `the guard catches "${text}"`);
+    }
+    for (const text of [
+      "It opens for the Louez user the key belongs to.",
+      "Send the same request again with the token.",
+      "The answer's `my_products_get` field is a longer identifier.",
+    ]) {
+      assert.ok(!caught(text), `the guard lets "${text}" through`);
     }
   });
 

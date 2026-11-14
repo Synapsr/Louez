@@ -1055,7 +1055,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     };
     const documented = (operationId: string) => ({
       operationId,
-      tags: ["payments"],
+      tags: ["Payments"],
       forbidden: true,
       confirmation: true,
       headers: ["IdempotencyKey", "LouezConfirmation"],

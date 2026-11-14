@@ -40,7 +40,7 @@ import {
 } from "../../services/stripe-connect";
 import { completeActiveHandoff, upgradeStoredLink } from "../../services/handoffs";
 import { toORPCError } from "../../utils/orpc-error";
-import { HANDOFF_HELP, startHandoff } from "./handoffs";
+import { HANDOFF_HELP, REST_HANDOFF_HELP, startHandoff } from "./handoffs";
 import { mayRead, type ProductContext } from "./product-context";
 
 const payoutCursorSchema = z
@@ -137,7 +137,11 @@ const startStripeOnboarding = storeProcedure
       reach: "provider",
     },
   })
-  .route({ method: "POST", path: "/payments/stripe/onboarding" })
+  .route({
+    method: "POST",
+    path: "/payments/stripe/onboarding",
+    description: `Starts connecting the store to Stripe so it takes online payments, or finishes a setup left midway. Stripe asks the person for their identity and bank details on its own pages, which only they can fill in. ${REST_HANDOFF_HELP} When a Stripe account must be created for the store, the step fails with \`failure.code\` \`store_email_required\` if neither the store's contact e-mail (\`PATCH /settings/store-info\` sets it) nor its owner's is usable. Once it is completed, \`POST /payments/stripe/sync\` reads where Stripe stands: Stripe may still review the details before charges are enabled, and the online store takes requests rather than payments until then. Refused with \`STRIPE_ALREADY_CONNECTED\` when the store already takes payments, and \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe.`,
+  })
   .input(startStripeOnboardingInput)
   .output(startStripeOnboardingOutput)
   .handler(({ context }) => {
@@ -163,7 +167,11 @@ const openStripeDashboard = storeProcedure
       reach: "provider",
     },
   })
-  .route({ method: "POST", path: "/payments/stripe/dashboard" })
+  .route({
+    method: "POST",
+    path: "/payments/stripe/dashboard",
+    description: `Starts a visit to the store's own Stripe dashboard (payouts, disputes, bank details), where the person signs in to Stripe. ${REST_HANDOFF_HELP} The step completes once the person is on their way to Stripe. Refused with \`NO_STRIPE_ACCOUNT\` when the store has no Stripe account, and \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe.`,
+  })
   .input(openStripeDashboardInput)
   .output(openStripeDashboardOutput)
   .handler(({ context }) => {
@@ -187,7 +195,12 @@ const syncStripeStatus = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/payments/stripe/sync" })
+  .route({
+    method: "POST",
+    path: "/payments/stripe/sync",
+    description:
+      "Reads the store's Stripe account from Stripe now and saves it in Louez. Returns whether it takes charges (`chargesEnabled`) and payouts (`payoutsEnabled`), whether its details were submitted (`detailsSubmitted`), what Stripe still asks for (`requirements`, by Stripe's own field names), the booking mode the store chose and the one its online store applies (`bookingMode`: payment mode takes requests until charges are enabled), and `links.dashboard`, the payment settings page in the Louez dashboard. Once the details are submitted, it also completes the step `POST /payments/stripe/onboarding` started. Refused with `NO_STRIPE_ACCOUNT` when the store has no Stripe account, `STRIPE_NOT_CONFIGURED` when this Louez has no Stripe, and `STRIPE_UNAVAILABLE` (retryable) when Stripe does not answer as expected.",
+  })
   .input(syncStripeStatusInput)
   .output(syncStripeStatusOutput)
   .handler(async ({ context }) => {
@@ -251,6 +264,13 @@ function reservationLinksFor(context: ProductContext, reservationId: string) {
     : {};
 }
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_ALWAYS_CONFIRMED =
+  "It always asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), whatever the key's confirmation setting, with a preview";
+
+const REST_LINKS_NOTE =
+  "Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.";
+
 const LINKS_NOTE =
   "Returns the reservation's number and, when the connection may read reservations, its `links`: its dashboard page, to give the user.";
 
@@ -267,7 +287,11 @@ const record = storeProcedure
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/reservations/{reservationId}/payments" })
+  .route({
+    method: "POST",
+    path: "/reservations/{reservationId}/payments",
+    description: `Records a payment row the store handled itself on a reservation: its \`type\` (\`rental\`, \`deposit\`, \`deposit_return\`, \`damage\` or \`adjustment\`), its amount and how it was paid (cash, card, transfer, check or other). Money the store paid back is a negative \`adjustment\`. It moves no money. A \`deposit_return\` recorded here is not checked against the deposit collected: to record a deposit given back against that balance, use \`POST /reservations/{reservationId}/deposit-returns\`. Refused for an amount of zero, a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+  })
   .input(recordPaymentInput)
   .output(recordPaymentOutput)
   .handler(async ({ context, input, path }) => {
@@ -291,7 +315,11 @@ const recordDepositReturnProcedure = storeProcedure
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/reservations/{reservationId}/deposit-returns" })
+  .route({
+    method: "POST",
+    path: "/reservations/{reservationId}/deposit-returns",
+    description: `Records a deposit the store has already given back: the amount and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused with \`DEPOSIT_RETURN_EXCEEDS_BALANCE\` above the returnable balance: the reservation's completed \`deposit\` rows minus its completed \`deposit_return\` rows. Stripe deposit holds and captures are not in that balance. The check is this operation's own: a \`deposit_return\` recorded with \`POST /reservations/{reservationId}/payments\` is not checked. ${REST_ALWAYS_CONFIRMED} showing that balance. ${REST_LINKS_NOTE}`,
+  })
   .input(recordDepositReturnInput)
   .output(recordDepositReturnOutput)
   .handler(async ({ context, input, path }) => {
@@ -315,7 +343,11 @@ const deletePaymentProcedure = storeProcedure
       effect: "delete",
     },
   })
-  .route({ method: "DELETE", path: "/payments/{paymentId}" })
+  .route({
+    method: "DELETE",
+    path: "/payments/{paymentId}",
+    description: `Deletes a payment recorded on a reservation: it leaves the reservation's balance and the billing figures. A payment made through Stripe is refused: refund it in Stripe. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+  })
   .input(deletePaymentInput)
   .output(deletePaymentOutput)
   .handler(async ({ context, input, path }) => {

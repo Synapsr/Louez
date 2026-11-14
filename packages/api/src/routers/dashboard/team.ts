@@ -1,6 +1,7 @@
 import {
   INVITATION_EMAILS_PER_DAY,
   MAX_OPEN_INVITATION_APPROVALS,
+  TEAM_PAGE_MAX,
   acceptInvitationInput,
   acceptInvitationOutput,
   cancelInvitationInput,
@@ -18,6 +19,7 @@ import {
   resendInvitationInput,
   resendInvitationOutput,
 } from "../../contracts/team";
+import { HANDOFF_TTL_HOURS } from "../../contracts/handoffs";
 import type { Consequences } from "../../platform/approval-rule";
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { dashboardPageLinks } from "../../platform/links";
@@ -64,6 +66,17 @@ const READ = { domain: "team", level: "read" } as const;
 
 const TEAM_PAGE_HELP =
   "Its `links` hold the dashboard's team page, the URL to give the user: there they send an invitation again or share its link.";
+
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_TEAM_PAGE_NOTE =
+  "`links.dashboard` is the team page in the Louez dashboard, where invitations are sent again and their links shared.";
+
+const REST_OWNERS_ONLY = "Only a key of an owner of the store may call it.";
+
+const REST_ALWAYS_CONFIRMED =
+  "It always asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), whatever the key's confirmation setting, with a preview naming the person.";
+
+const REST_PAGE_NOTE = `Returns up to \`limit\` rows (${TEAM_PAGE_MAX} by default and at most); pass \`nextCursor\` back as \`cursor\` to read on, null on the last page. A cursor this list did not return answers \`INVALID_CURSOR\`.`;
 
 interface TeamContext {
   actor: StoreActor;
@@ -123,7 +136,11 @@ const listMembersProcedure = storeProcedure
       bundle: "team",
     },
   })
-  .route({ method: "GET", path: "/team/members" })
+  .route({
+    method: "GET",
+    path: "/team/members",
+    description: `Lists the people who work in the store, the newest to join first: name, e-mail, role (\`owner\` or \`member\`) and when they joined. Each \`id\` is the membership's, which \`DELETE /team/members/{id}\` takes. \`memberLimit\` is the store's allowance of members, owners aside: \`current\`, \`limit\` (null: unlimited) and \`canAddMember\`. ${REST_PAGE_NOTE} ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(listMembersInput)
   .output(listMembersOutput)
   .handler(async ({ context, input }) => ({
@@ -142,7 +159,11 @@ const listInvitationsProcedure = storeProcedure
       bundle: "team",
     },
   })
-  .route({ method: "GET", path: "/team/invitations" })
+  .route({
+    method: "GET",
+    path: "/team/invitations",
+    description: `Lists the store's pending invitations, the newest first: the e-mail invited, the role, when it was sent (\`invitedAt\`) and when it expires (\`expiresAt\`; \`expired\` is true once past, when its link no longer works). Each \`id\` is what \`POST /team/invitations/{id}/cancel\` takes. ${REST_PAGE_NOTE} ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(listInvitationsInput)
   .output(listInvitationsOutput)
   .handler(async ({ context, input }) => ({
@@ -170,7 +191,11 @@ const invite = storeProcedure
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/team/invitations" })
+  .route({
+    method: "POST",
+    path: "/team/invitations",
+    description: `Asks to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. ${REST_OWNERS_ONLY} With an API key, the call creates no invitation and sends no e-mail yet: it answers \`outcome: "approval_requested"\` with \`approval.url\`, the request's page in Louez, and \`approval.handoff\`. That page must be opened, signed in to Louez, by the user the key acts for, while they are still an owner of the store: they approve or refuse the request there, within ${HANDOFF_TTL_HOURS} hours. \`GET /handoffs/{id}\` with \`approval.handoff.id\` then says what happened: read both its \`status\` and its \`decision\`, as an approved request can still fail to go out (\`failure\` says why). While the request is active, the same address asked again gets the same link, for ${HANDOFF_TTL_HOURS} more hours. Refused with \`TEAM_ALREADY_MEMBER\` when the person is already a member, \`TEAM_INVITATION_ALREADY_SENT\` when an invitation of theirs is pending, \`TEAM_LIMIT_REACHED\` when the store has reached its member allowance, \`TEAM_APPROVALS_FULL\` when ${MAX_OPEN_INVITATION_APPROVALS} such requests are already open, and \`TEAM_INVITATION_EMAIL_LIMIT\` past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails in 24 hours. ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(inviteMemberInput)
   .output(inviteMemberOutput)
   .handler(async ({ context, input }) => {
@@ -222,7 +247,11 @@ const cancel = storeProcedure
       effect: "overwrite",
     },
   })
-  .route({ method: "POST", path: "/team/invitations/{id}/cancel" })
+  .route({
+    method: "POST",
+    path: "/team/invitations/{id}/cancel",
+    description: `Cancels a pending invitation: its link stops working and the person does not join. Takes the invitation's \`id\` from \`GET /team/invitations\`; one that is not a pending invitation of the store answers \`TEAM_INVITATION_NOT_FOUND\`. ${REST_OWNERS_ONLY} ${REST_ALWAYS_CONFIRMED} Returns the invitation's \`id\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(cancelInvitationInput)
   .output(cancelInvitationOutput)
   .handler(async ({ context, input, path }) => {
@@ -255,7 +284,11 @@ const remove = storeProcedure
       effect: "delete",
     },
   })
-  .route({ method: "DELETE", path: "/team/members/{id}" })
+  .route({
+    method: "DELETE",
+    path: "/team/members/{id}",
+    description: `Removes a member from the store: they lose access to it at once, and their pending invitations to the store are cancelled. Takes the membership's \`id\` from \`GET /team/members\`, not the user id. ${REST_OWNERS_ONLY} Refused with \`TEAM_CANNOT_REMOVE_SELF\` for the membership of the user the key belongs to, \`TEAM_OWNER_NOT_REMOVABLE\` for an owner, and \`TEAM_MEMBER_NOT_FOUND\` for an id the store does not have. ${REST_ALWAYS_CONFIRMED} Returns the membership's \`id\`, the member's \`userId\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(removeMemberInput)
   .output(removeMemberOutput)
   .handler(async ({ context, input, path }) => {

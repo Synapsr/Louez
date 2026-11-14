@@ -44,6 +44,13 @@ import { completeImageUpload, createImageUpload, uploadImage } from "../../servi
 const LINKS_HELP =
   "Its `links` hold the dashboard's categories page and, once the store is online, the storefront catalog filtered on the category, the URLs to give the user.";
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_LINKS_NOTE =
+  "Its `links.dashboard` is the dashboard's categories page; once the store is online, `links.storefront` is the storefront catalog filtered on the category.";
+
+const REST_IMAGE_URL_NOTE =
+  "`imageUrl` takes the `url` of a category image uploaded for the store (`POST /categories/images`, or `POST /categories/image-uploads` then `POST /categories/image-uploads/complete`); another URL is refused with `CATEGORY_IMAGE_INVALID`.";
+
 /** A category with its links. */
 const withLinks = <T extends { id: string; slug: string | null }>(
   context: { ports: { urls: UrlsPort }; store: LinkStore },
@@ -62,7 +69,12 @@ const list = storeProcedure
       bundle: "catalog",
     },
   })
-  .route({ method: "GET", path: "/categories" })
+  .route({
+    method: "GET",
+    path: "/categories",
+    description:
+      "Lists the store's product categories in the store's order (as `POST /categories/reorder` sets it, then by name), each with its position and the number of products it holds. Returns up to `limit` categories (500 by default and at most) in `items`. To read on, pass `nextCursor` back as `cursor`; it is null on the last page, and a cursor this operation did not return answers `INVALID_CURSOR`. Each category comes with `links.dashboard`, the dashboard's categories page, and `links.storefront` once the store is online.",
+  })
   .input(listCategoriesInput)
   .output(listCategoriesOutput)
   .handler(async ({ context, input }) => {
@@ -81,7 +93,11 @@ const get = storeProcedure
       bundle: "catalog",
     },
   })
-  .route({ method: "GET", path: "/categories/{id}" })
+  .route({
+    method: "GET",
+    path: "/categories/{id}",
+    description: `Returns one category of the store: its name, slug, description, image, position and number of products. An id the store does not have answers \`CATEGORY_NOT_FOUND\`. ${REST_LINKS_NOTE}`,
+  })
   .input(getCategoryInput)
   .output(categoryOutput)
   .handler(async ({ context, input }) =>
@@ -102,7 +118,11 @@ const create = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/categories" })
+  .route({
+    method: "POST",
+    path: "/categories",
+    description: `Creates a product category, placed last in the store's order. \`name\` takes 2 to 255 characters; \`description\` and \`imageUrl\` are optional. When the store already has a category of the same name, whatever the case, that one is returned unchanged with \`created: false\`, so a retry creates nothing twice. A store holds 2,000 categories at most: past that, \`CATEGORY_LIMIT_REACHED\`. ${REST_IMAGE_URL_NOTE} ${REST_LINKS_NOTE}`,
+  })
   .input(createCategoryInput)
   .output(createCategoryOutput)
   .handler(async ({ context, input }) =>
@@ -123,7 +143,11 @@ const update = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/categories/{id}" })
+  .route({
+    method: "PATCH",
+    path: "/categories/{id}",
+    description: `Changes a category's name, description or image. Send only the fields to change: a field left out stays as it is, and null clears the description or the image. A name another category of the store already has, whatever the case, is refused with \`CATEGORY_NAME_TAKEN\`; an id the store does not have answers \`CATEGORY_NOT_FOUND\`. ${REST_IMAGE_URL_NOTE} Returns the category. ${REST_LINKS_NOTE}`,
+  })
   .input(updateCategoryInput)
   .output(categoryOutput)
   .handler(async ({ context, input }) =>
@@ -145,7 +169,12 @@ const remove = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "DELETE", path: "/categories/{id}" })
+  .route({
+    method: "DELETE",
+    path: "/categories/{id}",
+    description:
+      "Deletes a category. Its products keep their other categories, or move to `replacementCategoryId` when given; a product whose main category it was takes its next one, or none. A replacement that is not another category of the store answers `CATEGORY_REPLACEMENT_INVALID`. On a key that asks for confirmations, it asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), with a preview of the products that lose the category and of those left with none. Returns the deleted id, the number of products it held and the replacement's id.",
+  })
   .input(deleteCategoryInput)
   .output(deleteCategoryOutput)
   .handler(({ context, input, path }) =>
@@ -198,7 +227,12 @@ const reorder = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/categories/reorder" })
+  .route({
+    method: "POST",
+    path: "/categories/reorder",
+    description:
+      "Sets the order of the store's categories, as the storefront shows them. `ids` holds every category of the store, each once, in the new order (`GET /categories` gives them). A list with a category missing, unknown or repeated is refused with `CATEGORY_ORDER_MISMATCH`, which names them in `details.missing`, `details.unknown` and `details.duplicates`. Returns each id with its new position, from 1.",
+  })
   .input(reorderCategoriesInput)
   .output(reorderCategoriesOutput)
   .handler(({ context, input }) => reorderCategories(context.actor.storeId, input.ids));
@@ -218,7 +252,19 @@ const createImageUploadProcedure = storeProcedure
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/categories/image-uploads" })
+  .route({
+    method: "POST",
+    path: "/categories/image-uploads",
+    description: [
+      "Starts the upload of a category image: JPEG, PNG, GIF or WebP, 5 MB at most (`UPLOAD_TOO_LARGE` above). Send its `contentType` and `size` in bytes. The upload takes three requests:",
+      "",
+      "1. This one returns a `key`, an `upload` and its `expiresAt`, 10 minutes from now.",
+      "2. Send the file's bytes in the one request `upload` describes, without the `Authorization` header and before `expiresAt`: with `upload.method` PUT, the bytes as the body of a PUT to `upload.url` with `upload.headers`, its `Content-Type` included; with POST, a `multipart/form-data` POST to `upload.url` with `upload.fields` first, then the file as `file`.",
+      "3. `POST /categories/image-uploads/complete` with the `key` checks the file and returns its public `url`.",
+      "",
+      "Each call issues a new upload. `POST /categories/images` uploads an image in one request instead.",
+    ].join("\n"),
+  })
   .input(createImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
@@ -246,7 +292,12 @@ const completeImageUploadProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/categories/image-uploads/complete" })
+  .route({
+    method: "POST",
+    path: "/categories/image-uploads/complete",
+    description:
+      "Finishes a category image upload started with `POST /categories/image-uploads`, once its file was sent: checks the file at the `key` (its size, and that its bytes are an image of the declared type), makes it publicly readable and returns its `url`, its type and its size. `imageUrl` takes that `url` in `POST /categories` and `PATCH /categories/{id}`. It changes no category. A key that is not a category upload of the store answers `UPLOAD_NOT_OWNED`; a key with no file sent yet, `UPLOAD_NOT_FOUND`. A file over 5 MB (`UPLOAD_TOO_LARGE`) or whose bytes are not an image of the declared type (`UPLOAD_CONTENT_INVALID`) is refused and stays private: start over with a new upload. Completing the same key again returns the same answer.",
+  })
   .input(completeImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
@@ -274,7 +325,12 @@ const uploadImageProcedure = storeProcedure
     },
     maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
   })
-  .route({ method: "POST", path: "/categories/images" })
+  .route({
+    method: "POST",
+    path: "/categories/images",
+    description:
+      "Uploads a category image in one request: JPEG, PNG, GIF or WebP, 5 MB at most. Send exactly one of `contentBase64`, the file's bytes in base64 (or a `data:image/…;base64,` URL), and `imageUrl`, a public HTTPS URL Louez downloads; both or neither answers `UPLOAD_SOURCE_INVALID`. The type is read from the bytes: with `contentBase64`, a `contentType` that does not match them answers `UPLOAD_CONTENT_INVALID`; with `imageUrl`, the type is only detected from the bytes downloaded. Bytes that are no such image answer `UPLOAD_CONTENT_INVALID`, and text that is not base64 answers `UPLOAD_BASE64_INVALID`. A URL that does not answer 200 with the image, needs more than 3 redirects, takes more than 10 seconds on one of its requests, is not HTTPS or points to a private or local address answers `UPLOAD_URL_UNREACHABLE`; while too many images are being downloaded, `UPLOAD_IMPORT_BUSY` (429, retry a few seconds later). An image over 5 MB answers `UPLOAD_TOO_LARGE`. Each call stores a new image and changes no category. Returns the image's public `url`, which `imageUrl` takes in `POST /categories` and `PATCH /categories/{id}`, with its key, type and size.",
+  })
   .input(uploadImageInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>

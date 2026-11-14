@@ -144,6 +144,16 @@ const withLinks = <T extends { id: string; customer: { id: string } | null }>(
 const LINKS_NOTE =
   "Each reservation has `links` (its dashboard page) and each customer shown its own, the URLs to give the user.";
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_LINKS_NOTE =
+  "Each reservation, and its customer when shown, comes with `links.dashboard`: its page in the Louez dashboard.";
+
+const REST_CUSTOMER_NOTE =
+  "With a key that cannot read customers, the customer's name, email, addresses and notes are left out; with one that cannot read payments, so are the payment rows and Stripe ids (`rentalPaid` stays).";
+
+const REST_WINDOW_NOTE =
+  "`from` and `to` are ISO 8601 dates at most 400 days apart. Without `limit`, the answer holds the whole window; with one, pass `nextCursor` back as `cursor` to read on.";
+
 const CUSTOMER_NOTE =
   "Without read access to customers, the customer's name, email, addresses and notes are left out; without read access to payments, so are payment rows and Stripe ids (rentalPaid stays).";
 
@@ -160,7 +170,11 @@ const list = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations" })
+  .route({
+    method: "GET",
+    path: "/reservations",
+    description: `Lists the store's reservations, by start date, newest first. Filter by \`status\` (by default, every open one), \`period\` (today, this week or this month, on the start date or, with \`operation: return\`, the end date), \`paymentMethod\` (with a key that can read payments) or \`search\` (part of the number, or of the customer's name with a key that can read customers); \`sort\` and \`sortDirection\` change the order. Returns up to \`limit\` reservations (25 by default, 100 at most), the count per status and the total that match. To read on, pass \`nextCursor\` back as \`cursor\` with the same filters and sort; it is null on the last page. Numbered pages (\`page\`) stop at the first 10,000 reservations. A reservation's lines, payments and history are in \`GET /reservations/{id}\`. ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(listReservationsInput)
   .output(listReservationsOutput)
   .handler(async ({ context, input }) => {
@@ -189,7 +203,11 @@ const get = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/{id}" })
+  .route({
+    method: "GET",
+    path: "/reservations/{id}",
+    description: `Returns one reservation with everything its dashboard page shows: status and dates, customer, lines with their products and assigned units, amounts and taxes, payments, deposit, delivery or pickup, insurance, notes, documents and history (newest first). ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(getReservationInput)
   .output(reservationOutput)
   .handler(async ({ context, input }) =>
@@ -208,7 +226,12 @@ const poll = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/counters" })
+  .route({
+    method: "GET",
+    path: "/reservations/counters",
+    description:
+      "Counters cheap enough to poll: the requests waiting for an answer (with the five newest), the reservations per status, and the supplier invoices to handle. Each reservation listed comes with `links.dashboard`, its page in the Louez dashboard.",
+  })
   .input(pollReservationsInput)
   .output(pollReservationsOutput)
   .handler(async ({ context }) => {
@@ -235,7 +258,11 @@ const listCalendarPeriodProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/calendar" })
+  .route({
+    method: "GET",
+    path: "/reservations/calendar",
+    description: `Lists the reservations that overlap a window, by start date, as the dashboard's calendar shows them: status, dates, amounts, customer, lines and delivery legs. ${REST_WINDOW_NOTE} ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(reservationWindowInput)
   .output(listCalendarPeriodOutput)
   .handler(async ({ context, input }) => {
@@ -267,7 +294,11 @@ const getPlanningTimelineProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/planning" })
+  .route({
+    method: "GET",
+    path: "/reservations/planning",
+    description: `Returns the planning of a window: one entry per reservation and product, with the quantity, the assigned units and the delivery legs. ${REST_WINDOW_NOTE} Each entry comes with \`links.dashboard\`, its reservation's page in the Louez dashboard. ${REST_CUSTOMER_NOTE}`,
+  })
   .input(reservationWindowInput)
   .output(getPlanningTimelineOutput)
   .handler(async ({ context, input }) => {
@@ -296,7 +327,11 @@ const listUpcomingProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/upcoming" })
+  .route({
+    method: "GET",
+    path: "/reservations/upcoming",
+    description: `Lists what is due from the start of today over the next \`days\` (7 by default, 1 for today only, 90 at most), soonest first: the confirmed reservations to hand over (\`pickups\`) and the ongoing ones due back (\`returns\`). ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(listUpcomingInput)
   .output(listUpcomingOutput)
   .handler(async ({ context, input }) => {
@@ -320,7 +355,11 @@ const listOverdueProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/overdue" })
+  .route({
+    method: "GET",
+    path: "/reservations/overdue",
+    description: `Lists the late returns: ongoing reservations past their end date, the longest overdue first, with the number of days late. ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(listOverdueInput)
   .output(listOverdueOutput)
   .handler(async ({ context, input }) => {
@@ -346,7 +385,25 @@ const updateStatus = storeProcedure
       reach: "customer",
     },
   })
-  .route({ method: "POST", path: "/reservations/{id}/status" })
+  .route({
+    method: "POST",
+    path: "/reservations/{id}/status",
+    description: [
+      "Changes a reservation's status, with the same effects as in the dashboard:",
+      "",
+      "- `confirmed` confirms a request or a quote: its items leave the stock and the customer gets the acceptance message. For a reservation with insurance, Louez then creates the insurance contract; a failure comes back in `warnings`, and the confirmation stands.",
+      "- `rejected` rejects a request; the customer gets the rejection message, with `rejectionReason`.",
+      "- `ongoing` marks it picked up. Refused with `CONTRACT_UNSIGNED` when the store requires a signed contract and the customer has not signed.",
+      "- `completed` marks it returned.",
+      "- `cancelled` cancels it, as `POST /reservations/{id}/cancel` does.",
+      "",
+      "The customer's messages go out on the channels the store set for each. On a key set to ask for confirmations (the default), confirming a request or a quote, rejecting and cancelling first answer 412 `CONFIRMATION_REQUIRED`, with a preview of the messages and the stock; on a key whose confirmations are off, they run at once.",
+      "",
+      "A confirmation the stock cannot cover answers `RESERVATION_INSUFFICIENT_CAPACITY`, with each short line in `details.shortfalls`. The same request with `allowOverbooking: true` confirms over the stock: it always answers 412 `CONFIRMATION_REQUIRED` first, even on a key whose confirmations are off, and its token holds only while the shortfalls stay as previewed. Lines that fit the stock but not the turnover buffer the store keeps between rentals answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes it the same way, for this confirmation only. Each flag passes only its own refusal, and neither passes `RESERVATION_UNITS_UNAVAILABLE` or a consumable out of stock.",
+      "",
+      "Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links.dashboard`.",
+    ].join("\n"),
+  })
   .input(updateReservationStatusInput)
   .output(statusChangeOutput)
   .handler(async ({ context, input, path }) =>
@@ -380,7 +437,12 @@ const cancel = storeProcedure
       reach: "customer",
     },
   })
-  .route({ method: "POST", path: "/reservations/{id}/cancel" })
+  .route({
+    method: "POST",
+    path: "/reservations/{id}/cancel",
+    description:
+      "Cancels a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock and the customer gets the cancellation message on the channels the store set. If the reservation has an insurance contract, Louez asks the insurer to cancel it; if that fails, the reservation is cancelled all the same and the answer does not say so. Nothing is refunded or released, and the message does not mention a refund. On a key set to ask for confirmations (the default), it first answers 412 `CONFIRMATION_REQUIRED`, with a preview of the customer, the dates, what was paid and the message; on a key whose confirmations are off, it runs at once. Returns the change and the reservation's `links.dashboard`.",
+  })
   .input(cancelReservationInput)
   .output(statusChangeOutput)
   .handler(async ({ context, input, path }) =>
@@ -407,7 +469,12 @@ const updateNotes = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/reservations/{id}/notes" })
+  .route({
+    method: "PATCH",
+    path: "/reservations/{id}/notes",
+    description:
+      "Replaces a reservation's internal notes, which only the store's team sees; an empty string clears them. Returns the notes and the reservation's `links.dashboard`.",
+  })
   .input(updateReservationNotesInput)
   .output(updateReservationNotesOutput)
   .handler(async ({ context, input }) =>
@@ -438,7 +505,12 @@ export const globalSearchProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/search" })
+  .route({
+    method: "GET",
+    path: "/search",
+    description:
+      "Searches the store at once, as the dashboard's search bar does, for `query` (1 to 100 characters, matched anywhere in the field). Returns up to 5 products by name, A to Z; up to 5 reservations by number, or by the customer's name or company with a key that can read customers, newest first; and up to 5 customers by name, company, email, phone or a searchable custom field the store has not flagged sensitive, newest first. With a key that cannot read products, `products` comes back empty; with one that cannot read customers, so does `customers`, and each reservation's `customerName` is null. Each hit comes with `links.dashboard`, its page in the Louez dashboard.",
+  })
   .input(globalSearchInput)
   .output(globalSearchOutput)
   .handler(async ({ context, input }) => {

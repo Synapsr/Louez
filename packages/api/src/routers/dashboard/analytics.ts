@@ -42,7 +42,11 @@ const getDashboardStats = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/analytics/dashboard" })
+  .route({
+    method: "GET",
+    path: "/analytics/dashboard",
+    description: `Returns the figures of the dashboard's home, computed at the time of the call: today's revenue, departures (confirmed reservations that start today) and returns (ongoing reservations due back today); the revenue since the first of the month, over the previous month and since the store opened; the reservations by status; the products and the customers. ${REVENUE} Today and the month follow the store's time zone, returned as \`timezone\`. ${AMOUNTS} Takes no parameter, and refuses \`period\`: the figures over a period are in \`GET /analytics/revenue\` and \`GET /analytics/products\`. Storefront visits are not counted. \`links.dashboard\` is the dashboard's home.`,
+  })
   .input(getDashboardStatsInput)
   .output(getDashboardStatsOutput)
   .handler(async ({ context }) => ({
@@ -61,7 +65,11 @@ const getRevenueReport = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/analytics/revenue" })
+  .route({
+    method: "GET",
+    path: "/analytics/revenue",
+    description: `Returns the store's revenue over a window, as the dashboard's sales page shows it: the total and its change in percent against the window of the same length right before, the number of payments and their average, the split by payment method, and the revenue per day (per month for a window longer than 92 days). ${REVENUE} Also counts the reservations that start over the window (pending, confirmed, ongoing or completed), with their change. ${WINDOW} \`window\` returns the bounds used. ${AMOUNTS} \`links.dashboard\` is the sales page.`,
+  })
   .input(getRevenueReportInput)
   .output(getRevenueReportOutput)
   .handler(async ({ context, input }) => {
@@ -83,7 +91,11 @@ const getProductPerformance = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/analytics/products" })
+  .route({
+    method: "GET",
+    path: "/analytics/products",
+    description: `Ranks the store's products by revenue over a window, as the top products table of the dashboard's sales page does: each reservation's payments received over the window are split across its items in proportion to their price, and each product gets its share, with the units booked and the number of reservations behind it. ${REVENUE} Returns the \`limit\` best products (10 by default, 50 at most), how many products brought revenue, and the window's revenue with the parts that went to the products, to items outside the catalog and to reservations without priced items. ${WINDOW} ${AMOUNTS} Storefront views are not counted. Each product comes with \`links.dashboard\`, its page in the dashboard, and \`links.storefront\` when it is active and the store is online; the answer's own \`links.dashboard\` is the sales page.`,
+  })
   .input(getProductPerformanceInput)
   .output(getProductPerformanceOutput)
   .handler(async ({ context, input }) => {
