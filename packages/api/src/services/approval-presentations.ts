@@ -19,6 +19,7 @@ import {
   type HeadlineKey,
 } from "./approval-display";
 import { oneLine } from "./approval-preview";
+import { depositReturnAmount, recordedPaymentAmount } from "./payment-amount";
 import type { StatusChangePreview } from "./reservation-status";
 
 /**
@@ -28,46 +29,16 @@ import type { StatusChangePreview } from "./reservation-status";
  * facts are functions of the preview's own fields (and of the record's
  * currency or date, which the preview leaves implicit), so the stored
  * display and the stored summary cannot disagree. Null where the values
- * cannot be shown as typed facts (an amount that is not a number, which the
- * write refuses anyway): the page then shows the summary, as for any other
- * action.
+ * cannot be shown as typed facts: the page then shows the summary, as for
+ * any other action. The two payment writes refuse, before they ask, every
+ * input their display could not show (`paymentAmount`, the sign, the
+ * balance), so each input they accept has one.
  *
  * Pure, and light: the sample approvals (apps/web/scripts/seed) and the
  * page's tests build their displays with these same functions.
  */
 
 const CURRENCY = /^[A-Za-z]{3}$/;
-
-/** The digits a payment's amount keeps: `payments.amount`, `decimal(10,2)`. */
-const AMOUNT_PRECISION = 10;
-const AMOUNT_SCALE = 2;
-
-/**
- * The amount a `decimal(10,2)` column holds once the write assigns it the
- * text it was given, as MySQL assigns it: a plain decimal ("1.234",
- * "-20.005", "007.5") rounded half away from zero to two decimals, every
- * decimal written ("120" holds "120.00"), no negative zero; null for a text
- * MySQL would not store as written (spaces, a sign `+`, an exponent) or
- * one past the column's eight integer digits, which the write refuses. The
- * writer hands the column the amount as it was sent
- * (apps/web lib/reservations/dashboard-payment-writes.ts), so this is the
- * amount the row will hold, which the display shows, digit for digit
- * (approval-branches.db.test.ts compares it with the rows MySQL writes).
- */
-export function storedAmount(raw: string): string | null {
-  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(raw);
-  if (!match) return null;
-  const [, sign, whole = "", fraction = ""] = match;
-  let units = BigInt(whole + (fraction + "0".repeat(AMOUNT_SCALE)).slice(0, AMOUNT_SCALE));
-  if ((fraction.charAt(AMOUNT_SCALE) || "0") >= "5") units += BigInt(1);
-  if (units >= BigInt(10) ** BigInt(AMOUNT_PRECISION)) return null;
-  const digits = units.toString().padStart(AMOUNT_SCALE + 1, "0");
-  const text = `${digits.slice(0, -AMOUNT_SCALE)}.${digits.slice(-AMOUNT_SCALE)}`;
-  return sign && units !== BigInt(0) ? `-${text}` : text;
-}
-
-/** A stored amount that is zero: the row of an amount too small for its two decimals. */
-const holdsNothing = (stored: string) => parseFloat(stored) === 0;
 
 /** A computed or stored decimal the page shows as it is (a total, a balance): a plain decimal. */
 const plainDecimal = (raw: string): string | null =>
@@ -110,23 +81,19 @@ const bookingNumber = (reservationId: string, number: string) =>
 /**
  * A payment recorded on a reservation (`dashboard.payments.record`): said as
  * what the writer records, by its type (`RECORDED`), with the amount its
- * row will hold (`storedAmount`).
+ * row will hold (`paymentAmount`).
  */
 export function recordPaymentPresentation(
   details: { reservationId: string; number: string; type: string; amount: string; method: string },
   currency: string,
 ): ApprovalPresentation | null {
-  const amount = storedAmount(details.amount);
   const { type, method } = details;
-  if (!amount || !CURRENCY.test(currency) || !isRecordedType(type)) return null;
+  // Judged as the write judges it: an amount it refuses gets no display.
+  const verdict = recordedPaymentAmount(details.amount, type);
+  if (!verdict.ok || !CURRENCY.test(currency) || !isRecordedType(type)) return null;
   if (!isChoice("paymentType", type) || !isChoice("paymentMethod", method)) return null;
-  // The writer judges the amount as sent, before any rounding: zero is
-  // refused, and so is a negative amount outside an adjustment. A request it
-  // would refuse gets no display, whatever its rounded amount reads; nor does
-  // one whose row would hold zero, which no wording here says truly.
-  const sent = parseFloat(details.amount);
-  if (Number.isNaN(sent) || sent === 0 || holdsNothing(amount)) return null;
-  const said = RECORDED[type](sent < 0);
+  const { amount } = verdict;
+  const said = RECORDED[type](amount.startsWith("-"));
   if (!said) return null;
   const values = {
     type: choice("paymentType", type),
@@ -168,17 +135,14 @@ export function recordDepositReturnPresentation(
   currency: string,
   balance: number,
 ): ApprovalPresentation | null {
-  const amount = storedAmount(details.amount);
+  // Judged as the write judges it: a return it refuses gets no display.
+  const verdict = depositReturnAmount(details.amount, balance);
   const held = plainDecimal(details.returnable);
   const { method } = details;
-  if (!amount || !held || !CURRENCY.test(currency) || !isChoice("paymentMethod", method)) {
+  if (!verdict.ok || !held || !CURRENCY.test(currency) || !isChoice("paymentMethod", method)) {
     return null;
   }
-  // The writer takes a return above zero and within the deposit still held,
-  // judged as sent: one it would refuse gets no display, nor one whose row
-  // would hold zero.
-  const sent = parseFloat(details.amount);
-  if (Number.isNaN(sent) || sent <= 0 || sent > balance || holdsNothing(amount)) return null;
+  const { amount } = verdict;
   return {
     display: {
       headline: headline("returnDeposit", {}),
@@ -376,10 +340,24 @@ export function confirmOverridePresentation(
     facts: {
       reservation: reservation.id,
       status: reservation.to,
+      // Which override is asked for, so that a refusal of one never cools
+      // the other down, nor a request for one refreshes the other's. Never
+      // the shortfalls: the binding holds them.
+      overrides: overridesOf(preview),
       message: message ? { message, channels } : null,
       recipients: recipientHashes(recipients),
     },
   };
+}
+
+/** The overrides a confirmation asks for, in a fixed order: `stock`, then `turnover_buffer`. */
+export function overridesOf(
+  preview: Pick<StatusChangePreview, "overbooking" | "turnoverBuffer">,
+): Array<"stock" | "turnover_buffer"> {
+  return [
+    ...(preview.overbooking ? (["stock"] as const) : []),
+    ...(preview.turnoverBuffer ? (["turnover_buffer"] as const) : []),
+  ];
 }
 
 /** Where a customer message goes: its channel and the address it goes to, as the store holds it. */

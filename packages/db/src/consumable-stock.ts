@@ -164,12 +164,19 @@ export function planConsumableStockMutation(
   }
 }
 
-async function mutateReservationStock(
+/**
+ * What a mutation of the reservation's consumables would change, read under
+ * the locks it takes (the reservation, then its consumable lines and their
+ * products, by id), checked as it would be applied: a product missing, or
+ * a quantity that would fall below zero, throws `ConsumableStockError`.
+ * Null when nothing would change. It writes nothing.
+ */
+async function checkedStockPlan(
   tx: Transaction,
   reservationId: string,
   storeId: string,
   mode: ConsumableStockMutationMode,
-): Promise<void> {
+): Promise<ConsumableStockMutationPlan | null> {
   const lockedReservation = await tx
     .select({ id: reservations.id })
     .from(reservations)
@@ -219,7 +226,7 @@ async function mutateReservationStock(
   const plan = planConsumableStockMutation(consumableItems, mode)
 
   if (plan.itemChanges.length === 0) {
-    return
+    return null
   }
 
   const productIds = plan.productChanges.map((change) => change.productId)
@@ -260,6 +267,18 @@ async function mutateReservationStock(
       })
     }
   }
+
+  return plan
+}
+
+async function mutateReservationStock(
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+  mode: ConsumableStockMutationMode,
+): Promise<void> {
+  const plan = await checkedStockPlan(tx, reservationId, storeId, mode)
+  if (!plan) return
 
   for (const change of plan.productChanges) {
     await tx
@@ -302,6 +321,21 @@ export async function consumeReservationStock(
 ): Promise<void> {
   const grant = assertReservationLock(tx, lock, ['products', 'inserted'])
   await mutateReservationStock(tx, grant.reservationId, grant.storeId, 'consume')
+}
+
+/**
+ * Whether the reservation's consumables can be taken, as
+ * `consumeReservationStock` would take them, under its products' lock
+ * (`runReservationChange`): throws the `ConsumableStockError` that taking
+ * them would throw, and writes nothing. A change that asks someone first
+ * checks it before it asks: no override passes a consumable short.
+ */
+export async function checkReservationConsumables(
+  tx: Transaction,
+  lock: ReservationProductsLock,
+): Promise<void> {
+  const grant = assertReservationLock(tx, lock, ['products'])
+  await checkedStockPlan(tx, grant.reservationId, grant.storeId, 'consume')
 }
 
 /** Gives the reservation's consumables back, under its products' lock (`runReservationChange`). */

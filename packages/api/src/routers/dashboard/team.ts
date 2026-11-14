@@ -99,7 +99,9 @@ const caller = (context: TeamContext): TeamCaller => ({
 /**
  * Asks for the confirmation under the write's lock, bound to what the
  * preview shows (its state and summary). `describe` declares the
- * consequences of the branch the preview shows.
+ * consequences of the branch the preview shows. The presentation's identity
+ * facts, with the team's right (`MANAGE`), are what a person's approval is
+ * about.
  */
 function confirmTeamChange<TPreview extends { summary: string }>(
   context: TeamContext,
@@ -127,6 +129,9 @@ function confirmTeamChange<TPreview extends { summary: string }>(
       state: { state, summary: preview.summary },
       preview: { summary: preview.summary, details },
       display: presentation?.display,
+      approval: presentation
+        ? { facts: presentation.facts, scope: MANAGE, urls: context.ports.urls }
+        : undefined,
     });
   };
 }
@@ -299,16 +304,24 @@ const remove = storeProcedure
   .output(removeMemberOutput)
   .handler(async ({ context, input, path }) => {
     const result = await removeMember(caller(context), input.id, {
-      confirm: confirmTeamChange(context, path, input, (preview) => ({
-        consequences: ["access_removed"],
-        state: {
-          id: preview.member.id,
-          userId: preview.member.userId,
-          email: preview.member.email,
-          role: preview.member.role,
-        },
-        details: { member: preview.member },
-      })),
+      confirm: confirmTeamChange(context, path, input, (preview) => {
+        // Said, and bound, when the removal also cancels invitations of theirs.
+        const cancelled =
+          preview.pendingInvitations > 0
+            ? { pendingInvitationsCancelled: preview.pendingInvitations }
+            : {};
+        return {
+          consequences: ["access_removed"],
+          state: {
+            id: preview.member.id,
+            userId: preview.member.userId,
+            email: preview.member.email,
+            role: preview.member.role,
+            ...cancelled,
+          },
+          details: { member: preview.member, ...cancelled },
+        };
+      }),
     });
     return { ...result, removed: true as const, links: teamLinks(context) };
   });

@@ -226,6 +226,8 @@ const ALWAYS_CONFIRMED =
  * back or erase money, the deletion included: they declare `money`, so every
  * key and token is asked whatever its setting, and a session never. The
  * preview's details open with its kind, as the hand-written tools showed them.
+ * The presentation's identity facts, with `PAYMENTS_WRITE`, are what a
+ * person's approval is about.
  */
 function paymentRecordsCaller(
   context: ProductContext,
@@ -254,6 +256,9 @@ function paymentRecordsCaller(
         state,
         preview: { summary: preview.summary, details: { sensitive, ...preview.details } },
         display: presentation?.display,
+        approval: presentation
+          ? { facts: presentation.facts, scope: PAYMENTS_WRITE, urls: context.ports.urls }
+          : undefined,
       }),
   };
 }
@@ -283,7 +288,7 @@ const record = storeProcedure
     mcp: {
       name: "record_payment",
       title: "Record Payment",
-      description: `Record a payment the store received by hand on a reservation (cash, card, transfer, check or other), or money it paid back as a negative adjustment: adds it to the reservation's payments. It moves no money. Refused for an amount that is zero or not a number, a negative amount of another type than adjustment, and a cancelled or rejected reservation. ${ALWAYS_CONFIRMED} of the payment. ${LINKS_NOTE}`,
+      description: `Record a payment the store received by hand on a reservation (cash, card, transfer, check or other), or money it paid back as a negative adjustment: adds it to the reservation's payments. It moves no money. Refused, before anything is asked, for an amount that is zero or not a plain decimal of at most two decimals (such as "150" or "-20.50"), a negative amount of another type than adjustment, and a cancelled or rejected reservation. ${ALWAYS_CONFIRMED} of the payment. ${LINKS_NOTE}`,
       bundle: "daily",
       effect: "additive",
     },
@@ -291,7 +296,7 @@ const record = storeProcedure
   .route({
     method: "POST",
     path: "/reservations/{reservationId}/payments",
-    description: `Records a payment row the store handled itself on a reservation: its \`type\` (\`rental\`, \`deposit\`, \`deposit_return\`, \`damage\` or \`adjustment\`), its amount and how it was paid (cash, card, transfer, check or other). Money the store paid back is a negative \`adjustment\`. It moves no money. A \`deposit_return\` recorded here is not checked against the deposit collected: to record a deposit given back against that balance, use \`POST /reservations/{reservationId}/deposit-returns\`. Refused for an amount of zero, a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+    description: `Records a payment row the store handled itself on a reservation: its \`type\` (\`rental\`, \`deposit\`, \`deposit_return\`, \`damage\` or \`adjustment\`), its amount and how it was paid (cash, card, transfer, check or other). Money the store paid back is a negative \`adjustment\`. It moves no money. A \`deposit_return\` recorded here is not checked against the deposit collected: to record a deposit given back against that balance, use \`POST /reservations/{reservationId}/deposit-returns\`. Refused, before anything is asked, for an amount that is zero or not a plain decimal of at most two decimals (\`PAYMENT_AMOUNT_INVALID\`), a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
   })
   .input(recordPaymentInput)
   .output(recordPaymentOutput)

@@ -85,6 +85,7 @@ export type { BlockingReservationStatus, BusyUnitReason } from "./unit-availabil
 export {
   ConsumableStockError,
   canTransitionReservationStatus,
+  checkReservationConsumables,
   consumeReservationStock,
   getAllowedReservationStatusTransitions,
   getProductStockKindChangeBlockers,

@@ -3,6 +3,7 @@ import {
   assertStoreCanTakeReservations,
   canTransitionReservationStatus,
   changeReservationStatus,
+  checkReservationConsumables,
   getAllowedReservationStatusTransitions,
   isReservationChangeBusyError,
   isStoreNotAcceptingReservationsError,
@@ -23,7 +24,7 @@ import {
   withCustomerNotificationDefaults,
   type CustomerNotificationSettings,
 } from "@louez/types";
-import { evaluateReservationRules, getSettledPaymentAmount } from "@louez/utils";
+import { evaluateReservationRules, getSettledPaymentAmount, normalizeCurrency } from "@louez/utils";
 import { and, asc, eq } from "drizzle-orm";
 
 import {
@@ -374,7 +375,8 @@ async function buildPreview(
 ): Promise<StatusChangePreview> {
   const { overbooking, turnoverBuffer } = overrides;
   const { store } = locked.snapshot;
-  const currency = locked.currency ?? store.settings?.currency ?? "EUR";
+  // As the payment writers read it: the reservation's, else the store's, an ISO code.
+  const currency = normalizeCurrency(locked.currency, normalizeCurrency(store.settings?.currency));
   const name = [locked.customer?.firstName, locked.customer?.lastName]
     .filter(Boolean)
     .join(" ")
@@ -543,7 +545,8 @@ export async function changeStoreReservationStatus(
         }
 
         // Checks before the confirmation, so a caller is never asked to
-        // confirm what cannot happen: the card gate, then the stock.
+        // confirm what cannot happen: the card gate, then the stock and the
+        // consumables.
         if (requiresReservationGate(from, to, actor)) {
           await assertStoreCanTakeReservations(tx, storeId);
         }
@@ -562,6 +565,9 @@ export async function changeStoreReservationStatus(
           : null;
         const bookedOver = inventory?.bookedOver ?? [];
         const pastBuffer = inventory?.pastBuffer ?? [];
+        // Consumables short refuse whatever the flags, as taking them would:
+        // known before the preview, as the stock is.
+        if (takesStock(from, to)) await checkReservationConsumables(tx, lock);
 
         // The preview, its confirmation and the queued messages share one snapshot.
         const preview = await buildPreview(tx, caller, locked, to, {
@@ -623,8 +629,10 @@ export async function changeStoreReservationStatus(
             },
           },
         });
-        // The reservation is locked since the owner entry took it: it cannot have moved.
-        if (!change.changed) return { kind: "refused", error: refusalError(locked, to) };
+        // The reservation is locked since the owner entry took it: it cannot
+        // have moved. Thrown, never returned: what asking carried out (a token,
+        // an approval) rolls back with the change.
+        if (!change.changed) throw refusalError(locked, to);
 
         // It does nothing unless the reservation is now billable and not yet signed.
         await validateReservationContract(tx, id, storeId, "confirmation");

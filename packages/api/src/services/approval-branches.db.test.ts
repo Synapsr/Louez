@@ -127,11 +127,11 @@ const DISPLAYS: Record<(typeof BRANCHES)[number]["name"], string> = {
 /** What each branch answers an agent today, as JSON: the message, the details but the token, the binding. */
 const ANSWERS: Record<(typeof BRANCHES)[number]["name"], string> = {
   "a payment recorded":
-    "{\"message\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"120.00\",\"method\":\"cash\"}}},\"bindingHash\":\"3225c13c0152f035a031b36951be16361bac732ad8e2f14de26f546ba9e7443a\"}",
+    "{\"message\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"120.00\",\"method\":\"cash\"}}},\"bindingHash\":\"5d87769d2fa9377a228327aab39e5605eb9c9aa5222756c71dbe4f937543eab5\"}",
   "a negative adjustment recorded":
-    "{\"message\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"adjustment\",\"amount\":\"-20.00\",\"method\":\"card\"}}},\"bindingHash\":\"6e2e6d7b231fd3d9155bd6e74e685d69d4d81efaa59dda95e69ae031e8f171c4\"}",
+    "{\"message\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"adjustment\",\"amount\":\"-20.00\",\"method\":\"card\"}}},\"bindingHash\":\"f727731f23660af63014b9735255e162420b906d823750d740acc55bf0fe1f87\"}",
   "a deposit return recorded":
-    "{\"message\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"amount\":\"150.00\",\"method\":\"transfer\",\"returnable\":\"300.00\"}}},\"bindingHash\":\"2ebeaa8e47dc48090d11cbe4ac5c2f972c2cceb8024a724c7a7d15bfe85d48ce\"}",
+    "{\"message\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"amount\":\"150.00\",\"method\":\"transfer\",\"returnable\":\"300.00\"}}},\"bindingHash\":\"b18543eb089ea5a4246431d3e12622e2a50cfbdb177219b4b20c3c49ca68e01b\"}",
   "a payment deleted":
     "{\"message\":\"Delete the rental payment of €80.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Delete the rental payment of €80.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"destructive\",\"paymentId\":\"ab_payment_000000001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"80.00\",\"method\":\"cash\"}}},\"bindingHash\":\"a6178616dd6b98fb15222101c4fe29b2d37b9c70d7c91080e5aa57005fa95671\"}",
   "a member removed":
@@ -408,27 +408,12 @@ describe("the six branches a person will approve, as an agent is answered (datab
     });
   }
 
-  test("the amount a display shows is the amount the row holds: MySQL's own `decimal(10,2)`", async () => {
-    const { storedAmount } = await import("./approval-presentations");
-    // As the writer hands it the column: the amount as it was sent
-    // (apps/web lib/reservations/dashboard-payment-writes.ts).
-    const sent = [
-      "1.49",
-      "1.234",
-      "1.235",
-      "1.245",
-      "-20.005",
-      "-20.004",
-      "-0.004",
-      "0.004",
-      "120",
-      "120.5",
-      "007.5",
-      "1500.00",
-      "99999999.99",
-      "99999999.994",
-    ];
-    for (const [index, amount] of sent.entries()) {
+  test("an amount the payment writes take is the amount its row holds: MySQL's own `decimal(10,2)`", async () => {
+    const { paymentAmount } = await import("./payment-amount");
+    // Every shape the writes take, as the writer hands it the column: the
+    // amount as it was sent (apps/web lib/reservations/dashboard-payment-writes.ts).
+    const taken = ["1.49", "1.2", "-20.05", "-0.01", "0.01", "120", "120.5", "007.5", "1500.00", "99999999.99"];
+    for (const [index, amount] of taken.entries()) {
       const id = `ab_amount_${String(index).padStart(11, "0")}`;
       await louezDb.db.insert(louezDb.payments).values({
         id,
@@ -443,23 +428,72 @@ describe("the six branches a person will approve, as an agent is answered (datab
         .select({ amount: louezDb.payments.amount })
         .from(louezDb.payments)
         .where(orm.eq(louezDb.payments.id, id));
-      assert.equal(storedAmount(amount), row?.amount, amount);
+      assert.equal(paymentAmount(amount), row?.amount, amount);
       await louezDb.db.delete(louezDb.payments).where(orm.eq(louezDb.payments.id, id));
     }
-    // Past eight integer digits the column refuses it, and no display shows it.
-    for (const amount of ["99999999.995", "100000000"]) {
-      await assert.rejects(
-        louezDb.db.insert(louezDb.payments).values({
-          id: "ab_amount_out_of_range",
-          reservationId: PAID,
-          amount,
-          type: "rental",
-          method: "cash",
-          status: "pending",
-        }),
-        amount,
-      );
-      assert.equal(storedAmount(amount), null, amount);
+    // A text the column would round, or refuse past eight integer digits: the writes refuse it.
+    for (const amount of ["1.234", "-20.005", "0.004", "99999999.994", "99999999.995", "100000000"]) {
+      assert.equal(paymentAmount(amount), null, amount);
+    }
+  });
+
+  /** A call's answer code, and the displays its checks were handed (none when it was refused before asking). */
+  async function asked(path: readonly string[], input: object) {
+    const [, domain, name] = path;
+    const procedure = routers[domain ?? ""]?.[name ?? ""] as {
+      "~orpc": { handler: (options: unknown) => Promise<unknown> };
+    };
+    displays = [];
+    let code: string | undefined;
+    try {
+      await procedure["~orpc"].handler({ context: await context(), input, path });
+    } catch (caught) {
+      code = (caught as { data?: { code?: string } }).data?.code;
+    }
+    return { code, displays: [...displays] };
+  }
+
+  test("each amount the payment writes accept gets a display; each they refuse is refused before anything is asked", async () => {
+    // Plain decimals of at most two decimals, a sign, zero, and texts a
+    // number reader would take ("1e2", " 5", "12abc"), for each type.
+    const shapes = [
+      "120.00", "120", "120.5", "007.5", "0.01", "-0.01", "-20.00", "99999999.99",
+      "0", "0.00", "-0", "0.004", "1.234", "-20.005", "100000000", "1e2", "+5", " 5", "5 ",
+      "5.", ".5", "12abc", "1,50", "", "Infinity", "NaN", "0x10",
+    ];
+    const accepted = (amount: string, type: string) =>
+      /^-?\d{1,8}(\.\d{1,2})?$/.test(amount) && Number(amount) !== 0 && (type === "adjustment" || !amount.startsWith("-"));
+    for (const type of ["rental", "deposit", "deposit_return", "damage", "adjustment"]) {
+      for (const amount of shapes) {
+        const call = await asked(["dashboard", "payments", "record"], { reservationId: PAID, type, amount, method: "cash" });
+        const label = `${type} ${JSON.stringify(amount)}: ${call.code}`;
+        if (accepted(amount, type)) {
+          assert.equal(call.code, "CONFIRMATION_REQUIRED", label);
+          assert.equal(call.displays.length, 1, label);
+          assert.ok(call.displays[0], `${label}: a display`);
+        } else {
+          assert.ok(
+            call.code === "PAYMENT_AMOUNT_INVALID" || call.code === "PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT",
+            label,
+          );
+          assert.deepEqual(call.displays, [], `${label}: nothing asked`);
+        }
+      }
+    }
+    // A deposit return: above zero and within the 300.00 still held.
+    for (const amount of [...shapes, "300.00", "300.01", "299.99"]) {
+      const call = await asked(["dashboard", "payments", "recordDepositReturn"], { reservationId: PAID, amount, method: "cash" });
+      const label = `return ${JSON.stringify(amount)}: ${call.code}`;
+      if (accepted(amount, "deposit_return") && Number(amount) <= 300) {
+        assert.equal(call.code, "CONFIRMATION_REQUIRED", label);
+        assert.ok(call.displays[0], `${label}: a display`);
+      } else {
+        assert.ok(
+          call.code === "DEPOSIT_RETURN_AMOUNT_INVALID" || call.code === "DEPOSIT_RETURN_EXCEEDS_BALANCE",
+          label,
+        );
+        assert.deepEqual(call.displays, [], `${label}: nothing asked`);
+      }
     }
   });
 

@@ -314,10 +314,12 @@ describe(
             arguments: { reservationId: id, type: "rental", amount: "80.00", method: "cash" },
             replay: "CONFIRMATION_INVALID",
           },
+          // The whole deposit given back: the same return again exceeds the
+          // balance, refused before anything is asked or any token read.
           {
             name: "record_deposit_return",
             arguments: { reservationId: id, amount: "50.00", method: "cash" },
-            replay: "CONFIRMATION_INVALID",
+            replay: "DEPOSIT_RETURN_EXCEEDS_BALANCE",
           },
           // Once deleted, the payment is not found: refused before anything is asked.
           {
