@@ -1634,6 +1634,38 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.deepEqual(await inbox(key.context()), []);
   });
 
+  test("a connection gone without its cleanup: what it asked is not decided, not counted, not listed as waiting", async () => {
+    // Ten open approvals of a key, then the key revoked and nothing cleaned.
+    const gone = await apiKey();
+    const asked: string[] = [];
+    for (let index = 0; index < approvals.MAX_PENDING_APPROVALS; index += 1) {
+      asked.push((await ask({ id: `g${index}` }, gone)).approval.id);
+    }
+    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: gone.id });
+    for (const id of asked) assert.equal((await rowOf(id)).status, "pending", "left as it was");
+
+    // Not decided.
+    const refusal = await failure(decide(asked[0] ?? "", "approve"));
+    assert.equal(refusal.code, "HANDOFF_DECISION_INVALID");
+    assert.equal((await rowOf(asked[0] ?? "")).decision, null);
+
+    // Not listed as waiting to a session that reads the domain.
+    assert.deepEqual(await inbox(session()), []);
+
+    // Not counted against the store: other connections open the store's fifty.
+    let opened = 0;
+    while (opened < approvals.MAX_STORE_PENDING_APPROVALS) {
+      const key = await apiKey();
+      for (let index = 0; index < approvals.MAX_PENDING_APPROVALS; index += 1) {
+        await ask({ id: `s${opened}` }, key);
+        opened += 1;
+      }
+    }
+    const full = await failure(erase({ id: "one-more" }, (await apiKey()).context()));
+    assert.equal(full.code, "APPROVALS_FULL");
+    assert.equal(full.details.limit, "store_open");
+  });
+
   test("approval_waiting: an approval asked again replaces the one that expired", async () => {
     const key = await apiKey();
     const asked = await ask({ id: "n1" }, key);

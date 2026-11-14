@@ -763,6 +763,52 @@ export function invitationShown(payload: ApiHandoffPayload): string {
 }
 
 /**
+ * `connectionAlive` for many steps at once: a test of whether a step's
+ * connection still exists (a session's always, a key not revoked, a grant
+ * not deleted). A step whose connection is gone is inert whatever its row
+ * still says: it is not decided (`mayStillApprove`), not counted against a
+ * cap, not listed as waiting. `failCredentialHandoffs` marks such rows when
+ * a connection is revoked; nothing rests on it having run.
+ */
+export async function liveConnections(
+  rows: ReadonlyArray<Pick<HandoffRow, "credentialKind" | "credentialId">>,
+  executor: Transaction | typeof db = db,
+): Promise<(row: Pick<HandoffRow, "credentialKind" | "credentialId">) => boolean> {
+  const idsOf = (kind: HandoffRow["credentialKind"]) => [
+    ...new Set(
+      rows.flatMap((row) =>
+        row.credentialKind === kind && row.credentialId ? [row.credentialId] : [],
+      ),
+    ),
+  ];
+  const keyIds = idsOf("api_key");
+  const grantIds = idsOf("oauth");
+  const keys = keyIds.length
+    ? await executor
+        .select({ id: apiKeys.id })
+        .from(apiKeys)
+        .where(and(inArray(apiKeys.id, keyIds), isNull(apiKeys.revokedAt)))
+    : [];
+  const grants = grantIds.length
+    ? await executor
+        .select({ id: apiAgentGrants.id })
+        .from(apiAgentGrants)
+        .where(inArray(apiAgentGrants.id, grantIds))
+    : [];
+  const live = {
+    api_key: new Set(keys.map((key) => key.id)),
+    oauth: new Set(grants.map((grant) => grant.id)),
+  };
+  return (row) => {
+    if (!row.credentialId) return row.credentialKind === "session";
+    if (row.credentialKind === "api_key" || row.credentialKind === "oauth") {
+      return live[row.credentialKind].has(row.credentialId);
+    }
+    return false;
+  };
+}
+
+/**
  * Whether the connection that asked for the step still exists: a revoked
  * agent's link stops. On `executor`, a transaction's own connection when a
  * decision reads it under its lock.

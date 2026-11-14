@@ -474,18 +474,21 @@ export async function updateGrant(input: {
  * same user and client.
  */
 export async function revokeGrant(input: { userId: string; id: string }): Promise<void> {
-  const storeIds = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     const grant = await ownGrant(tx, input.userId, input.id);
-    // Every store the grant could act in: the user's, of which its own are a part.
-    const memberOf = await tx
-      .select({ storeId: storeMembers.storeId })
-      .from(storeMembers)
-      .where(eq(storeMembers.userId, input.userId));
     await tx.delete(apiAgentGrants).where(eq(apiAgentGrants.id, grant.id));
-    return memberOf.map((row) => row.storeId);
   });
-  // The links it handed to the user stop working.
-  await failCredentialHandoffs({ kind: "oauth", id: input.id }, storeIds);
+  // The links it handed to the user stop working. Every store the grant
+  // could act in is the user's, read once the grant is gone: a request that
+  // found the grant still there found its user a member of a store read here.
+  const memberOf = await db
+    .select({ storeId: storeMembers.storeId })
+    .from(storeMembers)
+    .where(eq(storeMembers.userId, input.userId));
+  await failCredentialHandoffs(
+    { kind: "oauth", id: input.id },
+    memberOf.map((row) => row.storeId),
+  );
 }
 
 /** The user's grants, newest first, with their stores and their last action. */

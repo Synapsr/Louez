@@ -72,6 +72,7 @@ import {
   HANDOFF_WAIT_MS,
   approvalPayloadOf,
   connectionReadsApproval,
+  liveConnections,
   handoffUrl,
   handoffView,
 } from "./handoffs";
@@ -1748,11 +1749,14 @@ const waitingApprovals: Source = async (window, shaper) => {
     .limit(window.take);
 
   const { urls, store } = reader;
+  // An approval waits only while the connection that asked still exists.
+  const isLive = await liveConnections(rows.map(({ row }) => row));
   return rows.flatMap(({ row, occurredAt, approver, email }) => {
     const payload = approvalPayloadOf(row);
     if (!payload || (connection && !connectionReadsApproval(connection, row, reads))) return [];
     const view = handoffView(row, { now: window.now, urls, store });
     const waiting = view.status === "pending";
+    if (waiting && !isLive(row)) return [];
     const who = approver || email || "the user this connection acts for";
     return [
       candidate("approval_waiting", row.id, {

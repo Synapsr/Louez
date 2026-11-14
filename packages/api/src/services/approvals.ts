@@ -27,6 +27,7 @@ import type { HandoffDecided } from "./handoff-decisions";
 import {
   approvalPayloadOf,
   connectionAlive,
+  liveConnections,
   executionExpiry,
   handoffUrl,
   linkExpiry,
@@ -473,27 +474,46 @@ async function countApprovals(
       ? isNull(apiHandoffs.credentialId)
       : eq(apiHandoffs.credentialId, actor.credential.id),
   );
-  const open = and(
-    eq(apiHandoffs.activeSlot, 1),
-    inArray(apiHandoffs.status, ["pending", "approved"]),
-    gt(apiHandoffs.expiresAt, now),
-  );
-  const [connectionOpen] = await tx
-    .select({ count: count(), first: min(apiHandoffs.expiresAt) })
+  // Open, for a connection that still exists: a revoked connection's rows
+  // count for nothing, whether its cleanup has ended them yet or not.
+  const openRows = await tx
+    .select({
+      credentialKind: apiHandoffs.credentialKind,
+      credentialId: apiHandoffs.credentialId,
+      expiresAt: apiHandoffs.expiresAt,
+    })
     .from(apiHandoffs)
-    .where(and(ofConnection, open));
+    .where(
+      and(
+        ofStore,
+        eq(apiHandoffs.activeSlot, 1),
+        inArray(apiHandoffs.status, ["pending", "approved"]),
+        gt(apiHandoffs.expiresAt, now),
+      ),
+    );
+  const isLive = await liveConnections(openRows, tx);
+  const counted = (rows: typeof openRows) => ({
+    count: rows.length,
+    firstEnd: rows.reduce<Date | null>(
+      (first, row) => (first && first <= row.expiresAt ? first : row.expiresAt),
+      null,
+    ),
+  });
+  const storeOpen = counted(openRows.filter(isLive));
+  const connectionOpen = counted(
+    openRows.filter(
+      (row) =>
+        row.credentialKind === actor.credential.kind && row.credentialId === actor.credential.id,
+    ),
+  );
   const [lastHour] = await tx
     .select({ count: count(), first: min(apiHandoffs.createdAt) })
     .from(apiHandoffs)
     .where(and(ofConnection, gt(apiHandoffs.createdAt, new Date(now.getTime() - HOUR_MS))));
-  const [storeOpen] = await tx
-    .select({ count: count(), first: min(apiHandoffs.expiresAt) })
-    .from(apiHandoffs)
-    .where(and(ofStore, open));
   return {
-    connectionOpen: { count: connectionOpen?.count ?? 0, firstEnd: connectionOpen?.first ?? null },
+    connectionOpen,
     connectionLastHour: { count: lastHour?.count ?? 0, firstAt: lastHour?.first ?? null },
-    storeOpen: { count: storeOpen?.count ?? 0, firstEnd: storeOpen?.first ?? null },
+    storeOpen,
   };
 }
 
