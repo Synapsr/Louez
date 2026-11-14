@@ -40,7 +40,7 @@ import {
 } from "../../services/stripe-connect";
 import { completeActiveHandoff, upgradeStoredLink } from "../../services/handoffs";
 import { toORPCError } from "../../utils/orpc-error";
-import { HANDOFF_HELP, startHandoff } from "./handoffs";
+import { HANDOFF_HELP, REST_HANDOFF_HELP, startHandoff } from "./handoffs";
 import { mayRead, type ProductContext } from "./product-context";
 
 const payoutCursorSchema = z
@@ -137,7 +137,11 @@ const startStripeOnboarding = storeProcedure
       reach: "provider",
     },
   })
-  .route({ method: "POST", path: "/payments/stripe/onboarding" })
+  .route({
+    method: "POST",
+    path: "/payments/stripe/onboarding",
+    description: `Starts connecting the store to Stripe so it takes online payments, or finishes a setup left midway. Stripe asks the person for their identity and bank details on its own pages, which only they can fill in. ${REST_HANDOFF_HELP} The step fails with \`failure.code\` \`store_email_required\` when the store has no contact e-mail, which \`PATCH /settings/store-info\` sets. Once it is completed, \`POST /payments/stripe/sync\` reads where Stripe stands: Stripe may still review the details before charges are enabled, and the online store takes requests rather than payments until then. Refused with \`STRIPE_ALREADY_CONNECTED\` when the store already takes payments, and \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe.`,
+  })
   .input(startStripeOnboardingInput)
   .output(startStripeOnboardingOutput)
   .handler(({ context }) => {
@@ -163,7 +167,11 @@ const openStripeDashboard = storeProcedure
       reach: "provider",
     },
   })
-  .route({ method: "POST", path: "/payments/stripe/dashboard" })
+  .route({
+    method: "POST",
+    path: "/payments/stripe/dashboard",
+    description: `Starts a visit to the store's own Stripe dashboard (payouts, disputes, bank details), where the person signs in to Stripe. ${REST_HANDOFF_HELP} The step completes once the person is on their way to Stripe. Refused with \`NO_STRIPE_ACCOUNT\` when the store has no Stripe account, and \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe.`,
+  })
   .input(openStripeDashboardInput)
   .output(openStripeDashboardOutput)
   .handler(({ context }) => {
@@ -187,7 +195,12 @@ const syncStripeStatus = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/payments/stripe/sync" })
+  .route({
+    method: "POST",
+    path: "/payments/stripe/sync",
+    description:
+      "Reads the store's Stripe account from Stripe now and saves it in Louez. Returns whether it takes charges (`chargesEnabled`) and payouts (`payoutsEnabled`), whether its details were submitted (`detailsSubmitted`), what Stripe still asks for (`requirements`, by Stripe's own field names), the booking mode the store chose and the one its online store applies (`bookingMode`: payment mode takes requests until charges are enabled), and `links.dashboard`, the payment settings page in the Louez dashboard. Once the details are submitted, it also completes the step `POST /payments/stripe/onboarding` started. Refused with `NO_STRIPE_ACCOUNT` when the store has no Stripe account, `STRIPE_NOT_CONFIGURED` when this Louez has no Stripe, and `STRIPE_UNAVAILABLE` (retryable) when Stripe does not answer as expected.",
+  })
   .input(syncStripeStatusInput)
   .output(syncStripeStatusOutput)
   .handler(async ({ context }) => {

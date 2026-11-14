@@ -132,7 +132,15 @@ Without cursor, it returns the whole inbox, oldest first. With the nextCursor of
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/inbox" })
+  .route({
+    method: "GET",
+    path: "/inbox",
+    description: [
+      "Lists what needs the store's attention now: booking requests to answer, return-date requests, late pickups and returns, deposit holds about to expire, failed payments, open disputes, bookings on a retired or out-of-service unit, overbookings, supplier invoices and rejected e-invoices, Louez billing stopping new bookings, a store not online yet, messages and invitation e-mails that never went out, the key's own writes whose outcome is unknown, and steps taken in a browser (such as Stripe's onboarding) still waiting an hour after their link went out, expired or failed. Each item has an `id`, a `type`, a `severity` (`critical`, `warning` or `info`), `occurredAt`, a one-sentence `summary`, the `reservation` it is about, the facts behind it in `details`, the operations that act on it by `operationId` (none when only a person can, in the Louez dashboard) and `links.dashboard`.",
+      "",
+      `Without \`cursor\`, it returns the whole inbox, oldest first. With the \`nextCursor\` of an earlier answer as \`cursor\`, it returns only the items that entered the inbox since, in the order they did; \`hasMore: true\` means more wait at the new \`nextCursor\`. It only reads: the same cursor returns the same items, minus those handled since. An item shows ${INBOX_HOLD_BACK_MS / 1000} seconds after it happens, and leaves the inbox once what it is about is handled (the request answered, the reservation returned); the same \`id\` with a later \`occurredAt\` means it came back. \`POST /inbox/acknowledge\` hides an item for the whole store. When Louez cannot read some item types, the others still come and \`unavailable\` names the missing ones; their items come with a later call at \`nextCursor\`, late but not lost, while the other types are not given again. Up to \`limit\` items a call (${INBOX_PAGE_DEFAULT} by default, ${INBOX_PAGE_MAX} at most). A cursor this operation did not return answers \`INVALID_CURSOR\`. Each type of item shows only to a key that can read what it shows: payments for payment items, customers for the customer's name.`,
+    ].join("\n"),
+  })
   .input(listInboxInput)
   .output(listInboxOutput)
   .handler(async ({ context, input }) => listInbox(await readerOf(context), input));
@@ -151,7 +159,11 @@ const acknowledge = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/inbox/acknowledge" })
+  .route({
+    method: "POST",
+    path: "/inbox/acknowledge",
+    description: `Marks inbox items as handled for the whole store: they leave \`GET /inbox\` for every member and every key. Takes each item's \`id\` and \`occurredAt\` as \`GET /inbox\` returned them, up to ${INBOX_ACKNOWLEDGE_MAX} at once. Items the inbox does not hold now with that \`occurredAt\` are left unmarked and come back in \`rejected\`: with \`currentOccurredAt\` when the inbox holds the item with another occurrence (send it again with that one to mark it), null when it left the inbox. After a rejection, \`GET /inbox\` without a cursor gives what the inbox holds now. Marking an item twice changes nothing; it counts in \`alreadyAcknowledged\`. An item that comes back later (the same \`id\`, a later \`occurredAt\`) shows again, and so does one still open ${INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS} days after its mark. An item whose record is handled leaves the inbox by itself. Needs a key that can change what the item is about (payments for a failed payment, reservations for a booking request), else \`PERMISSION_DENIED\`; an \`id\` that is not an inbox item's answers \`INBOX_ITEM_INVALID\`.`,
+  })
   .input(acknowledgeInboxInput)
   .output(acknowledgeInboxOutput)
   .handler(async ({ context, input }) => {

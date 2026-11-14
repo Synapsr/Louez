@@ -42,6 +42,16 @@ const READ: ProcedureScope = { domain: "online_store", level: "read" };
 /** The dashboard lets only members who manage settings change the online store. */
 const WRITE: ProcedureScope = { domain: "online_store", level: "write", role: "manage_settings" };
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_KIND_NOTE =
+  "`kind` is `logo` for a logo, the dark logo or the favicon (2 MB at most) and `hero` for a banner photo of the home page (5 MB at most); the file is JPEG, PNG, GIF or WebP.";
+
+const REST_IMAGE_TARGETS =
+  "`PATCH /online-store/appearance` takes that `url` (`logoUrl`, `darkLogoUrl`, `faviconUrl` or `heroImages`)";
+
+const REST_EDITOR_LINKS_NOTE =
+  "`links.dashboard` is the online store editor; once the store is online, `links.storefront` is its storefront.";
+
 // --- Web address -------------------------------------------------------------
 
 const checkSlugAvailability = storeProcedure
@@ -57,7 +67,12 @@ const checkSlugAvailability = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/online-store/slug-availability" })
+  .route({
+    method: "GET",
+    path: "/online-store/slug-availability",
+    description:
+      "Says whether the store can move to another web address (its slug), before `POST /online-store/slug`. Returns `available`; `current: true` when it is the store's address already; the `reason` it cannot be used (`taken`, `reserved` or `invalid`); and up to three free `suggestions` close to it. `slug` may also be a name: the suggestions are built from it. A slug is 3 to 50 lowercase letters, digits and hyphens.",
+  })
   .input(checkStoreSlugInput)
   .output(checkStoreSlugOutput)
   .handler(({ context, input }) => checkCurrentStoreSlug(context.store.slug, input));
@@ -78,7 +93,12 @@ const updateSlug = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/online-store/slug" })
+  .route({
+    method: "POST",
+    path: "/online-store/slug",
+    description:
+      "Moves the store to a new web address (its slug: 3 to 50 lowercase letters, digits and hyphens): the storefront's public URL changes and Louez keeps no redirect, so links to the old address stop working once the store is online. The store's current address is refused with `STORE_SLUG_UNCHANGED`, and an address another store has with `STORE_SLUG_TAKEN`, with free ones close to it in `details.suggestions`. On a key that asks for confirmations, it asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), with a preview of the old and the new URL and whether the store is online. Returns the new and the previous slug, the storefront's new `storefrontUrl`, `oldLinksRedirect: false` and `links`: the online store editor and, once the store is online, its storefront at the new address.",
+  })
   .input(updateSlugInput)
   .output(updateSlugOutput)
   .handler(async ({ context, input, path }) => {
@@ -128,7 +148,11 @@ const updateAppearanceProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/online-store/appearance" })
+  .route({
+    method: "PATCH",
+    path: "/online-store/appearance",
+    description: `Changes how the storefront looks: light or dark theme, brand colour (#RRGGBB), logo, dark logo, favicon, the home page's banner photos (5 at most, in order) and their layout, and whether the home page lists products or categories first. Send only the fields to change; null removes an image, and \`heroImages: []\` removes the banner photos. An image must be one the store uploaded (\`POST /online-store/images\`, or \`POST /online-store/image-uploads\` then \`POST /online-store/image-uploads/complete\`); another URL is refused with \`IMAGE_NOT_OWNED\`. Returns the whole look. ${REST_EDITOR_LINKS_NOTE}`,
+  })
   .input(updateAppearanceInput)
   .output(updateAppearanceOutput)
   .handler(async ({ context, input }) => ({
@@ -151,7 +175,19 @@ const createImageUploadProcedure = storeProcedure
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/online-store/image-uploads" })
+  .route({
+    method: "POST",
+    path: "/online-store/image-uploads",
+    description: [
+      `Starts the upload of a storefront image. ${REST_KIND_NOTE} Send \`kind\`, the \`contentType\` and the \`size\` in bytes; a size over the kind's limit answers \`UPLOAD_TOO_LARGE\`. The upload takes three requests:`,
+      "",
+      "1. This one returns a `key`, an `upload` and its `expiresAt`, 10 minutes from now.",
+      "2. Send the file's bytes in the one request `upload` describes, without the `Authorization` header and before `expiresAt`: with `upload.method` PUT, the bytes as the body of a PUT to `upload.url` with `upload.headers`, its `Content-Type` included; with POST, a `multipart/form-data` POST to `upload.url` with `upload.fields` first, then the file as `file`.",
+      "3. `POST /online-store/image-uploads/complete` with the same `kind` and the `key` checks the file and returns its public `url`.",
+      "",
+      "Each call issues a new upload. `POST /online-store/images` uploads an image in one request instead.",
+    ].join("\n"),
+  })
   .input(createStorefrontImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
@@ -175,7 +211,11 @@ const completeImageUploadProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/online-store/image-uploads/complete" })
+  .route({
+    method: "POST",
+    path: "/online-store/image-uploads/complete",
+    description: `Finishes a storefront image upload started with \`POST /online-store/image-uploads\`, once its file was sent: with the same \`kind\` and the \`key\`, checks the file (its size, and that its bytes are an image of the declared type), makes it publicly readable and returns its \`url\`, its type and its size. ${REST_IMAGE_TARGETS}. It changes nothing on the storefront. A key that is not a storefront upload of the store answers \`UPLOAD_NOT_OWNED\`; a key with no file sent yet, \`UPLOAD_NOT_FOUND\`. A file over the kind's limit (\`UPLOAD_TOO_LARGE\`) or whose bytes are not an image of the declared type (\`UPLOAD_CONTENT_INVALID\`) is refused and stays private: start over with a new upload. Completing the same key again returns the same answer.`,
+  })
   .input(completeStorefrontImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
@@ -199,7 +239,11 @@ const uploadImageProcedure = storeProcedure
     },
     maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
   })
-  .route({ method: "POST", path: "/online-store/images" })
+  .route({
+    method: "POST",
+    path: "/online-store/images",
+    description: `Uploads a storefront image in one request. ${REST_KIND_NOTE} Send \`kind\` and exactly one of \`contentBase64\`, the file's bytes in base64 (or a \`data:image/…;base64,\` URL), and \`imageUrl\`, a public HTTPS URL Louez downloads; both or neither answers \`UPLOAD_SOURCE_INVALID\`. The type is read from the bytes: a \`contentType\` that does not match them, or bytes that are no such image, answer \`UPLOAD_CONTENT_INVALID\`, and text that is not base64 answers \`UPLOAD_BASE64_INVALID\`. A URL that does not answer 200 with the image within 10 seconds, needs more than 3 redirects, is not HTTPS or points to a private or local address answers \`UPLOAD_URL_UNREACHABLE\`; while too many images are being downloaded, \`UPLOAD_IMPORT_BUSY\` (429, retry a few seconds later). An image over the kind's limit answers \`UPLOAD_TOO_LARGE\`. Each call stores a new image and changes nothing on the storefront. Returns the image's public \`url\`, with its key, type and size: ${REST_IMAGE_TARGETS}.`,
+  })
   .input(uploadStorefrontImageInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input: { kind, ...source } }) =>
@@ -229,7 +273,23 @@ const update = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/online-store" })
+  .route({
+    method: "PATCH",
+    path: "/online-store",
+    description: [
+      "Saves sections of the online store editor in one write. Each section sent replaces what it covers; a section left out stays as it is:",
+      "",
+      "- `identity`: the name, the tagline and the description as HTML, the storefront's language, the logos and favicon, the theme and brand colour.",
+      "- `home`: the banner photos (5 at most) and their layout, whether the home page lists products or categories first, the largest discount percent the product cards show, the announcement bar and the home sections (map, reviews, reassurance).",
+      "- `contact`: email, phone, address and coordinates, the contact page's channels, the social links and whether the header shows the phone.",
+      "- `legal`: the terms, the legal notice, whether the contract includes the full terms, and the footer note.",
+      "- `seo`: the Google site verification and the share image.",
+      "",
+      "HTML is sanitised on save; HTML nested too deep answers `TEXT_TOO_DEEP`, and a text too long once saved `TEXT_TOO_LONG`. An image must be one the store uploaded (`POST /online-store/images`, or `POST /online-store/image-uploads` then `POST /online-store/image-uploads/complete`); another URL is refused with `IMAGE_NOT_OWNED`. To change a few fields, `PATCH /settings/store-info`, `PATCH /settings/legal` and `PATCH /online-store/appearance` take only those.",
+      "",
+      `Returns \`success: true\`. ${REST_EDITOR_LINKS_NOTE}`,
+    ].join("\n"),
+  })
   .input(updateOnlineStoreInputSchema)
   .output(updateOnlineStoreOutput)
   .handler(async ({ context, input }) => ({

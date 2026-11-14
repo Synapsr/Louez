@@ -42,6 +42,9 @@ import { mayRead, type ProductContext } from "./product-context";
 /** What every procedure that starts a handoff says of the link it returns. */
 export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page where they sign in, then continue to the provider and come back; only they can finish this step. The link works for ${HANDOFF_TTL_HOURS} hours, only for the user this connection acts for; a new call gives the same link ${HANDOFF_TTL_HOURS} more hours. handoff.id is what handoffs_get takes to follow the step: pending, opened, completed, expired or failed.`;
 
+/** The REST reference's own text (`.route({ description })`) of the link a step starts with, for a developer. */
+export const REST_HANDOFF_HELP = `It returns \`url\`, a link to the step's page in Louez, to open in a browser: it opens for the Louez user the key belongs to, once signed in, who goes on to the provider from there and comes back. Only that person can finish the step. The link works for ${HANDOFF_TTL_HOURS} hours. Calling again returns the same link for ${HANDOFF_TTL_HOURS} more hours, an expired one included; after a step completed or failed, it starts a new one. \`handoff.id\` is what \`GET /handoffs/{id}\` takes to read where the step stands: \`pending\`, \`opened\`, \`completed\`, \`expired\` or \`failed\`.`;
+
 /** Every domain but the one a scope names: a read of any of them opens `handoffs_get`. */
 const OTHER_DOMAINS = API_DOMAINS.filter((domain) => domain !== "settings");
 
@@ -97,7 +100,11 @@ const get = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/handoffs/{id}" })
+  .route({
+    method: "GET",
+    path: "/handoffs/{id}",
+    description: `Returns where a step taken in a browser stands, by the \`handoff.id\` the operation that started it returned: \`pending\` (the link waits), \`opened\` (the person is on the provider's page), \`completed\`, \`expired\` (the link ran out; calling the operation that started it again gives the same link for another ${HANDOFF_TTL_HOURS} hours) or \`failed\`, with \`failure\` saying why. It only reads. \`confirming\` is true while the person came back from Stripe with a billing card Stripe has not confirmed yet; \`POST /handoffs/{id}/refresh\` asks Stripe again. \`url\` is the step's link, the same the starting operation returned. Once completed, the result is read where the step leads: \`POST /payments/stripe/sync\` for Stripe, \`GET /billing\` for the billing card. For a \`team_invitation\` step, \`decision\` holds what was decided on its page (\`approved\` or \`refused\`), when, and the \`reason\` given, as plain text; it is null until then. Needs a key that can read the step's domain: settings for Stripe, billing for the billing card, team for a team invitation; otherwise, and for an id the store does not have, it answers \`HANDOFF_NOT_FOUND\`.`,
+  })
   .input(getHandoffInput)
   .output(getHandoffOutput)
   .handler(async ({ context, input }) => {
@@ -150,7 +157,11 @@ const refresh = storeProcedure
       reach: "provider",
     },
   })
-  .route({ method: "POST", path: "/handoffs/{id}/refresh" })
+  .route({
+    method: "POST",
+    path: "/handoffs/{id}/refresh",
+    description: `Asks the provider again where a step stands, records it and returns the step as \`GET /handoffs/{id}\` does. It acts on a billing card the person came back from while Stripe had not confirmed it (\`confirming: true\`): once Stripe confirms, the card is saved in place of the one on file and the step completes. Louez asks Stripe at most once in ${HANDOFF_CHECK_LEASE_SECONDS.min} seconds, a wait that grows after each check up to ${HANDOFF_CHECK_LEASE_SECONDS.max / 60} minutes; during that wait, and for any other step, it answers without asking. Needs a key that can change the step's domain: billing for the billing card, settings for Stripe; otherwise \`PERMISSION_DENIED\`. An id the key cannot read answers \`HANDOFF_NOT_FOUND\`.`,
+  })
   .input(refreshHandoffInput)
   .output(refreshHandoffOutput)
   .handler(async ({ context, input }) => {

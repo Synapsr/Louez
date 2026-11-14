@@ -17,7 +17,7 @@ import {
   updateUnitDetailsOutput,
   type UnitConflictOutput,
 } from "../../contracts/product-units";
-import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
+import { ANSWER_PAGE_MAX, ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import type { Consequences } from "../../platform/approval-rule";
 import { storeProcedure } from "../../platform/procedures";
 import * as units from "../../services/product-units";
@@ -43,6 +43,23 @@ const CONFIRM_HELP =
   "the first call answers CONFIRMATION_REQUIRED with a preview of those reservations.";
 const BOOKING_ACCESS_HELP =
   "A booking's number and id are null without read access to reservations, and its customer's name without read access to customers; its dates are always given.";
+
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_UNIT_ID = "A unit's id is in `GET /products/{id}/units`.";
+
+const REST_DOWNTIME_ID = "A downtime's id is in `GET /products/units/{unitId}/history`.";
+
+const REST_CONFIRM =
+  "it asks for a confirmation first (412 `CONFIRMATION_REQUIRED`) on a key that asks for confirmations, with a preview of those reservations.";
+
+const REST_CONFLICTS =
+  "keep it, and come back in `conflicts`, each with the units that could serve it instead (`replacementCandidates`).";
+
+const REST_EXCLUDE =
+  "`excludeReservationItemIds` (100 at most) leaves out of `conflicts` the lines of reservations whose return inspection is done, the unit being back; any other line is refused with `DOWNTIME_EXCLUSION_INVALID`, and a confirmation still names every booking.";
+
+const REST_BOOKING_ACCESS =
+  "With a key that cannot read reservations, a booking's `reservationId` and `reservationNumber` are null; with one that cannot read customers, so is its `customerName`. Its dates are always given.";
 
 interface BookingAccess {
   reservations: boolean;
@@ -139,7 +156,11 @@ export const getUnitHistory = storeProcedure
       bundle: "catalog",
     },
   })
-  .route({ method: "GET", path: "/products/units/{unitId}/history" })
+  .route({
+    method: "GET",
+    path: "/products/units/{unitId}/history",
+    description: `Returns a unit's history. \`timeline\` holds, newest first, its events (created, changed, retired, reinstated, downtimes declared, changed, closed or deleted) with who did them, and the reservations it was assigned to, with their number, customer and dates. \`downtimes\` holds its downtimes, current first, then upcoming, then past. Without \`limit\`, the timeline comes whole; with one (${ANSWER_PAGE_MAX} at most), pass \`nextCursor\` back as \`cursor\` to read on, and every page holds the downtimes. As it shows the reservations and customers the unit served, it needs a key that can read reservations and customers, else \`PERMISSION_DENIED\`. ${REST_UNIT_ID}`,
+  })
   .input(unitHistoryInput)
   .output(unitHistoryOutput)
   .handler(async ({ context, input }) => {
@@ -172,7 +193,11 @@ export const declareDowntime = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "POST", path: "/products/units/{unitId}/downtimes" })
+  .route({
+    method: "POST",
+    path: "/products/units/{unitId}/downtimes",
+    description: `Takes a unit out of service for a \`reason\` (\`maintenance\`, \`repair\` or \`other\`) from \`startsAt\` until \`endsAt\`, ISO 8601 dates; without \`endsAt\`, or with null, until \`POST /products/downtimes/{downtimeId}/close\` ends it. The unit cannot be booked then. \`endsAt\` must come after \`startsAt\` (\`DOWNTIME_DATES_INVALID\`); \`note\` holds up to 2,000 characters. Reservations that already hold the unit then ${REST_CONFLICTS} When there are any, ${REST_CONFIRM} ${REST_EXCLUDE} ${REST_BOOKING_ACCESS} Returns the downtime's id and the conflicts. ${REST_UNIT_ID}`,
+  })
   .input(declareDowntimeInput)
   .output(declareDowntimeOutput)
   .handler(({ context, input, path }) =>
@@ -204,7 +229,11 @@ export const updateDowntime = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/products/downtimes/{downtimeId}" })
+  .route({
+    method: "PATCH",
+    path: "/products/downtimes/{downtimeId}",
+    description: `Changes a downtime's \`reason\`, \`startsAt\`, \`endsAt\` or \`note\`. Send only the fields to change; \`endsAt: null\` makes it last until closed, \`note: null\` clears the note. The end must still come after the start (\`DOWNTIME_DATES_INVALID\`). Reservations that hold the unit over the new dates ${REST_CONFLICTS} When there are any, ${REST_CONFIRM} ${REST_EXCLUDE} ${REST_BOOKING_ACCESS} Returns the downtime's id and the conflicts. ${REST_DOWNTIME_ID}`,
+  })
   .input(updateDowntimeInput)
   .output(updateDowntimeOutput)
   .handler(({ context, input, path }) =>
@@ -234,7 +263,11 @@ export const closeDowntime = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "POST", path: "/products/downtimes/{downtimeId}/close" })
+  .route({
+    method: "POST",
+    path: "/products/downtimes/{downtimeId}/close",
+    description: `Ends a downtime: the unit is back in service from \`endsAt\`, now by default. \`endsAt\` must come after the downtime's start (\`DOWNTIME_DATES_INVALID\`) and not after its current end: closing only ends a downtime earlier, and a later end answers \`DOWNTIME_CLOSE_EXTENDS\` (\`PATCH /products/downtimes/{downtimeId}\` moves it, and checks the bookings it would overlap). Returns the downtime's id and when it ends. ${REST_DOWNTIME_ID}`,
+  })
   .input(closeDowntimeInput)
   .output(closeDowntimeOutput)
   .handler(({ context, input }) => units.closeDowntime(productActor(context), input));
@@ -254,7 +287,11 @@ export const deleteDowntime = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "DELETE", path: "/products/downtimes/{downtimeId}" })
+  .route({
+    method: "DELETE",
+    path: "/products/downtimes/{downtimeId}",
+    description: `Deletes a downtime entered by mistake, as if it never was: the unit is available on its days again, and the unit's history keeps a record of it. To end a downtime, use \`POST /products/downtimes/{downtimeId}/close\`. It asks for a confirmation first (412 \`CONFIRMATION_REQUIRED\`) on a key that asks for confirmations, with a preview of the unit, its product and the downtime. Returns the downtime's id. ${REST_DOWNTIME_ID}`,
+  })
   .input(downtimeIdInput)
   .output(deleteDowntimeOutput)
   .handler(({ context, input, path }) =>
@@ -296,7 +333,11 @@ export const retireUnit = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "POST", path: "/products/units/{unitId}/retire" })
+  .route({
+    method: "POST",
+    path: "/products/units/{unitId}/retire",
+    description: `Retires a unit for good, with a \`reason\` (\`sold\`, \`lost\`, \`broken\` or \`other\`) and an optional \`note\`: it leaves the stock from now on and can no longer be booked. \`POST /products/units/{unitId}/reinstate\` undoes it. Refused with \`UNIT_ALREADY_RETIRED\` for a retired unit. Current and future reservations that hold it ${REST_CONFLICTS} Even when there are none, ${REST_CONFIRM} ${REST_BOOKING_ACCESS} Returns the unit's id and the conflicts. ${REST_UNIT_ID}`,
+  })
   .input(retireUnitInput)
   .output(retireUnitOutput)
   .handler(({ context, input, path }) =>
@@ -326,7 +367,12 @@ export const reinstateUnit = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "POST", path: "/products/units/{unitId}/reinstate" })
+  .route({
+    method: "POST",
+    path: "/products/units/{unitId}/reinstate",
+    description:
+      "Puts a retired unit back in service: it can be booked again. Refused with `UNIT_NOT_RETIRED` for a unit in service. Returns the unit's id.",
+  })
   .input(reinstateUnitInput)
   .output(reinstateUnitOutput)
   .handler(({ context, input }) => units.reinstateUnit(productActor(context), input.unitId));
@@ -344,7 +390,11 @@ export const updateUnitDetails = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/products/units/{unitId}" })
+  .route({
+    method: "PATCH",
+    path: "/products/units/{unitId}",
+    description: `Changes a unit's \`notes\` (up to 1,000 characters), \`purchasePrice\` (a decimal string with at most 2 decimals, e.g. \`"450.00"\`) or \`purchasedAt\`. Send only the fields to change; null clears one. A unit's name and variant values change through \`PATCH /products/{id}\`. Returns the unit's notes and purchase details. ${REST_UNIT_ID}`,
+  })
   .input(updateUnitDetailsInput)
   .output(updateUnitDetailsOutput)
   .handler(({ context, input }) => units.updateUnitDetails(productActor(context), input));

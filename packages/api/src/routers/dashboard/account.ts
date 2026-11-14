@@ -22,7 +22,12 @@ const getProfile = accountProcedure
       profile: true,
     },
   })
-  .route({ method: "GET", path: "/account/profile" })
+  .route({
+    method: "GET",
+    path: "/account/profile",
+    description:
+      "Returns the Louez account the API key acts for, its owner's: its `id`, stable and never reused, and its `name`, left out when the account has none. Takes no parameter.",
+  })
   .input(getProfileInput)
   .output(getProfileOutput)
   .handler(({ context }) => getAccountProfile(context.actor.credential.userId));

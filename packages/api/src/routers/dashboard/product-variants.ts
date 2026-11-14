@@ -1,5 +1,7 @@
 import {
   VARIANT_STORE_MAX,
+  VARIANT_USAGE_PRODUCTS_MAX,
+  VARIANT_VALUE_MAX,
   createVariantValueInput,
   createVariantValueOutput,
   deleteVariantDefinitionOutput,
@@ -35,6 +37,13 @@ const VARIANT_HELP =
   "A variant (size, color…) is shared by the store's products: a product books by it when it is one of the product's bookingAttributeAxes (by its key), and each unit carries one of its values in its attributes. products_update sets those.";
 const CONFIRM_HELP = "The first call answers CONFIRMATION_REQUIRED with a preview.";
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_VARIANT_HELP =
+  "A variant (size, color…) is shared by the store's products: a product books by it when its key is one of the product's `bookingAttributeAxes`, and each of its units then carries one of its values in `attributes`. `PATCH /products/{id}` sets both.";
+
+const REST_CONFIRM =
+  "It asks for a confirmation first (412 `CONFIRMATION_REQUIRED`) on a key that asks for confirmations, with a preview";
+
 export const listVariants = storeProcedure
   .meta({
     capability: "products.listVariants",
@@ -46,7 +55,11 @@ export const listVariants = storeProcedure
       bundle: "catalog",
     },
   })
-  .route({ method: "GET", path: "/variants" })
+  .route({
+    method: "GET",
+    path: "/variants",
+    description: `Lists the store's variants with their values, in the catalog's order. Returns up to \`limit\` variants (${VARIANT_STORE_MAX} by default and at most, as many as a store may hold); pass \`nextCursor\` back as \`cursor\` to read on; it is null on the last page. ${REST_VARIANT_HELP}`,
+  })
   .input(listVariantsInput)
   .output(listVariantsOutput)
   .handler(({ context, input }) => variants.listVariants(context.actor.storeId, input));
@@ -65,7 +78,11 @@ export const ensureVariantDefinition = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/variants" })
+  .route({
+    method: "POST",
+    path: "/variants",
+    description: `Adds a variant to the store's catalog: its \`label\` (2 to 50 characters), its \`kind\` (\`size\`, \`color\` or \`custom\`, the default), its \`key\` (up to 32 characters, derived from the label by default) and up to 100 \`values\` to start with, each with its \`colorHex\` for a color. A key, or a label without a key, that has no letter or digit is refused with \`VARIANT_INVALID\`. When the store already has a variant with that key, it is returned as is, with \`created: false\`; the starting values are only added to a variant that has none yet. A store holds at most ${VARIANT_STORE_MAX} variants (\`VARIANT_LIMIT_REACHED\`). Returns the variant with its values. ${REST_VARIANT_HELP}`,
+  })
   .input(ensureVariantDefinitionInput)
   .output(ensureVariantDefinitionOutput)
   .handler(({ context, input }) => variants.ensureVariantDefinition(context.actor.storeId, input));
@@ -85,7 +102,12 @@ export const updateVariantDefinition = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/variants/{id}" })
+  .route({
+    method: "PATCH",
+    path: "/variants/{id}",
+    description:
+      "Renames a variant (`label`, 2 to 50 characters). Its `key` stays, so the products that book by it keep it. Returns the variant with its values.",
+  })
   .input(updateVariantDefinitionInput)
   .output(variantDefinitionSchema)
   .handler(({ context, input }) => variants.updateVariantDefinition(context.actor.storeId, input));
@@ -105,7 +127,12 @@ export const setVariantDefinitionActive = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/variants/{id}/active" })
+  .route({
+    method: "POST",
+    path: "/variants/{id}/active",
+    description:
+      "Turns a variant on or off (`isActive`). Off only stops offering it when editing products: the products that carry it keep it, and `POST /variants/{id}/withdraw` takes it off them. Returns the variant's id and `isActive`.",
+  })
   .input(setVariantDefinitionActiveInput)
   .output(setVariantDefinitionActiveOutput)
   .handler(({ context, input }) =>
@@ -128,7 +155,11 @@ export const deleteVariantDefinition = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "DELETE", path: "/variants/{id}" })
+  .route({
+    method: "DELETE",
+    path: "/variants/{id}",
+    description: `Deletes a variant and its values from the catalog. Refused with \`VARIANT_IN_USE\` while products use it, as a booking axis or through their units' values: \`details.productCount\` counts them and \`details.products\` names them. \`GET /variants/usage\` lists them too, and \`POST /variants/{id}/withdraw\` takes the variant off them. ${REST_CONFIRM} of the variant and how many values it has. Returns the variant's id.`,
+  })
   .input(variantIdInput)
   .output(deleteVariantDefinitionOutput)
   .handler(({ context, input, path }) =>
@@ -157,7 +188,11 @@ export const getVariantUsage = storeProcedure
       bundle: "catalog",
     },
   })
-  .route({ method: "GET", path: "/variants/usage" })
+  .route({
+    method: "GET",
+    path: "/variants/usage",
+    description: `Says which products use each variant, as a booking axis or through their units' values: what \`POST /variants/{id}/withdraw\` would change, and what keeps \`DELETE /variants/{id}\` from deleting it. Pass \`definitionId\` for one variant; by default, every variant. Each comes with its \`productCount\` and its \`products\`, the first ${VARIANT_USAGE_PRODUCTS_MAX} by name, each with \`links.dashboard\`, its page in the Louez dashboard.`,
+  })
   .input(getVariantUsageInput)
   .output(getVariantUsageOutput)
   .handler(async ({ context, input }) => {
@@ -188,7 +223,11 @@ export const withdrawVariantFromProducts = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/variants/{id}/withdraw" })
+  .route({
+    method: "POST",
+    path: "/variants/{id}/withdraw",
+    description: `Withdraws a variant from every product of the store at once: it is no longer one of their booking axes, their units lose their value for it, and their stock and bookings stop being split by it. The variant stays in the catalog. ${REST_CONFIRM} of the products it changes (their count, and the first 50). Returns \`affectedProductCount\`, how many products changed.`,
+  })
   .input(variantIdInput)
   .output(withdrawVariantOutput)
   .handler(({ context, input, path }) =>
@@ -224,7 +263,11 @@ export const createVariantValue = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/variants/{definitionId}/values" })
+  .route({
+    method: "POST",
+    path: "/variants/{definitionId}/values",
+    description: `Adds a value to a variant, e.g. XL to Size: its \`label\` (1 to 100 characters) and, for a color variant, its swatch in \`colorHex\` (\`#RRGGBB\`). When the variant already has a value of that label, whatever its case, that value is returned with \`created: false\`, its color updated when one is sent. A variant holds at most ${VARIANT_VALUE_MAX} values (\`VARIANT_VALUE_LIMIT_REACHED\`). Returns the value.`,
+  })
   .input(createVariantValueInput)
   .output(createVariantValueOutput)
   .handler(({ context, input }) => variants.createVariantValue(context.actor.storeId, input));
@@ -244,7 +287,12 @@ export const updateVariantValue = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/variants/values/{id}" })
+  .route({
+    method: "PATCH",
+    path: "/variants/values/{id}",
+    description:
+      "Renames a variant's value or changes its color. Send only the fields to change; `colorHex: null` clears the color. Refused with `VARIANT_VALUE_EXISTS` when the variant has another value of that label, whatever its case. Units that carry the former label keep it. Returns the value.",
+  })
   .input(updateVariantValueInput)
   .output(variantValueSchema)
   .handler(({ context, input }) => variants.updateVariantValue(context.actor.storeId, input));
@@ -263,7 +311,11 @@ export const deleteVariantValue = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "DELETE", path: "/variants/values/{id}" })
+  .route({
+    method: "DELETE",
+    path: "/variants/values/{id}",
+    description: `Deletes a value from a variant's catalog: it is no longer offered to products. Units that carry it keep it. ${REST_CONFIRM} naming the products whose units carry it (their count, and the first 50). Returns the value's id.`,
+  })
   .input(variantIdInput)
   .output(deleteVariantValueOutput)
   .handler(({ context, input, path }) =>

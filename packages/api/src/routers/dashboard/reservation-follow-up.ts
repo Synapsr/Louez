@@ -505,7 +505,12 @@ export const globalSearchProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/search" })
+  .route({
+    method: "GET",
+    path: "/search",
+    description:
+      "Searches the store at once, as the dashboard's search bar does, for `query` (1 to 100 characters, matched anywhere in the field). Returns up to 5 products by name, A to Z; up to 5 reservations by number, or by the customer's name or company with a key that can read customers, newest first; and up to 5 customers by name, company, email, phone or a searchable custom field the store has not flagged sensitive, newest first. With a key that cannot read products, `products` comes back empty; with one that cannot read customers, so does `customers`, and each reservation's `customerName` is null. Each hit comes with `links.dashboard`, its page in the Louez dashboard.",
+  })
   .input(globalSearchInput)
   .output(globalSearchOutput)
   .handler(async ({ context, input }) => {

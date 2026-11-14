@@ -15,6 +15,7 @@ import {
   storeErrors,
   STORE_CREATION_DAILY_LIMIT,
   STORE_PAGE_MAX,
+  SLUG_SUGGESTION_COUNT,
   updateOnboardingInfoInput,
   updateOnboardingInfoOutput,
 } from "../../contracts/stores";
@@ -60,7 +61,11 @@ const list = accountProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/stores" })
+  .route({
+    method: "GET",
+    path: "/stores",
+    description: `Lists the stores the key reaches, by name. An API key is bound to one store, so the list holds that store alone. Each store has its \`id\`, \`name\` and \`slug\`, the \`role\` in it of the user the key belongs to (\`owner\` or \`member\`), and \`links\`: \`links.dashboard\`, its page in the Louez dashboard, and once the store is online, \`links.storefront\`, its online store. \`limit\` (${STORE_PAGE_MAX} by default and at most) and \`cursor\` page the list; \`nextCursor\` is null on the last page.`,
+  })
   .input(listStoresInput)
   .output(listStoresOutput)
   .handler(async ({ context, input }) => {
@@ -118,7 +123,11 @@ const checkSlugAvailability = accountProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/stores/slug-availability" })
+  .route({
+    method: "GET",
+    path: "/stores/slug-availability",
+    description: `Checks whether a new store could take a web address (its slug: 3 to 50 lowercase letters, digits and hyphens). Answers \`available\` and, when it cannot, the \`reason\` (\`taken\`, \`reserved\` or \`invalid\`) with up to ${SLUG_SUGGESTION_COUNT} free \`suggestions\` close to it. A name works too in \`slug\`: the suggestions come from it. A store is created with \`POST /stores\`, which no API key can call; to change the address of the key's own store, check it with \`GET /online-store/slug-availability\`.`,
+  })
   .input(checkSlugAvailabilityInput)
   .output(checkSlugAvailabilityOutput)
   .handler(({ input }) => checkStoreSlug(input));
@@ -150,7 +159,12 @@ const create = accountProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/stores" })
+  .route({
+    method: "POST",
+    path: "/stores",
+    description:
+      "Creates a store. No API key can call it: an API key is bound to its store and is answered 403 CONNECTION_BOUND_TO_STORES. A new store is created in the Louez dashboard.",
+  })
   .input(createStoreInput)
   .output(createStoreOutput)
   .handler(async ({ context, input, path }) => {
@@ -318,7 +332,21 @@ const getLaunchChecklistProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/stores/launch-checklist" })
+  .route({
+    method: "GET",
+    path: "/stores/launch-checklist",
+    description: [
+      "Returns what the store still lacks before customers can book, and whether it is `online`. Each entry of `items` has a `status`:",
+      "",
+      "- `done`: in place.",
+      "- `missing`: customers will miss it; a `required` one stops `POST /stores/go-live`.",
+      "- `optional`: the store works well without it.",
+      "- `blocked`: Louez billing stops new bookings; only a person fixes it, in the Louez dashboard.",
+      "- `unverified`: in place, but Louez cannot read it to check it, such as the text of a legal notice of the store's own.",
+      "",
+      "Each item says why it matters, names the operations that fix it by `operationId` (none when only a person can) and has `links.dashboard`, the page where it is seen or fixed. `canGoLive` and `blocking` sum up the required items still missing. The answer also gives how customers book (`bookingMode`: without Stripe charges enabled, a store in payment mode takes requests), the online store's address (the future one while offline), what the law asks of the store in its country (`legalRequirements`, null where Louez knows no rule) and `warnings`, which never stop the launch. `milestones` (the first reservation, the first completed one) is null with a key that cannot read reservations.",
+    ].join("\n"),
+  })
   .input(getLaunchChecklistInput)
   .output(launchChecklistOutput)
   .handler(({ context }) =>
@@ -351,7 +379,12 @@ const completeOnboarding = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/stores/go-live" })
+  .route({
+    method: "POST",
+    path: "/stores/go-live",
+    description:
+      "Puts the store online: its online store opens to the public and customers can book. Refused with `STORE_NOT_READY` while a required item of `GET /stores/launch-checklist` is missing, each one in `details.blocking`. `reservationMode` sets how customers book: `payment` (they pay at checkout; without Stripe charges enabled, they send requests until then) or `request` (the store accepts or refuses each request); left out, the store keeps its choice. On a key that asks for confirmations, it asks for one first (412 `CONFIRMATION_REQUIRED`), with a preview of the public address, how customers book, what they will see, and what is still missing, to check or optional. A store already online is not launched again and answers with `launched: false`; with another `reservationMode`, only the booking mode changes, after the same confirmation. Returns the online store's address, the booking mode, the items still missing or optional (`remaining`), the `warnings`, and `links.dashboard` and `links.storefront`.",
+  })
   .input(goLiveInput)
   .output(goLiveOutput)
   .handler(async ({ context, input, path }) => {

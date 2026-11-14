@@ -73,6 +73,18 @@ const LINKS_HELP =
 const CONFIRM_HELP =
   "Customers see this change at checkout, so when it changes something the first call answers CONFIRMATION_REQUIRED with a preview of each value before and after.";
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_LINKS_NOTE =
+  "`links.dashboard` is the page of these settings in the Louez dashboard; once the store is online, `links.storefront` is its storefront's home.";
+
+const REST_SEND_ONLY =
+  "Send only the fields to change; a request with none is refused with `NOTHING_TO_UPDATE`.";
+
+const REST_CONFIRMS =
+  "asks for a confirmation first (412 `CONFIRMATION_REQUIRED`) on a key that asks for confirmations, with each value before and after in the preview";
+
+const REST_RICH_TEXT = `${PLAIN_TEXT_HELP} A text too long once saved as HTML is refused with \`TEXT_TOO_LONG\`, one nested too deep with \`TEXT_TOO_DEEP\`.`;
+
 const links = (context: ProductContext, page: SettingsPage) =>
   settingsLinks(context.ports.urls, context.store, page);
 
@@ -99,7 +111,11 @@ const get = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/settings" })
+  .route({
+    method: "GET",
+    path: "/settings",
+    description: `Returns everything the store is set up with: its info and contact (\`store\`), the company (country, time zone, currency, billing address), the legal texts, the storefront (web address, URL, tagline, language, appearance), the reservation rules, the business hours and closures, delivery, the pickup points (\`locations\`), taxes, and whether Stripe takes payments. The terms and the legal notice come as a summary, whether each is set and its length; \`includeLegalTexts=true\` adds their full text, up to ${SETTINGS_LIMITS.richText.toLocaleString("en-US")} characters each. Each section is changed by its own \`PATCH /settings/…\` operation, which takes the field names shown here (the legal texts as \`cgv\` and \`legalNotice\`). ${REST_LINKS_NOTE} Each pickup point and the storefront come with their own \`links\`.`,
+  })
   .input(getSettingsInput)
   .output(getSettingsOutput)
   .handler(async ({ context, input }) => {
@@ -137,7 +153,11 @@ const updateStoreInfoProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/store-info" })
+  .route({
+    method: "PATCH",
+    path: "/settings/store-info",
+    description: `Changes the store's name, description and contact details (\`email\`, \`phone\`, \`address\`, \`latitude\`, \`longitude\`), as the storefront shows them. ${REST_SEND_ONLY} A null clears a field. Send \`latitude\` and \`longitude\` with a new address: delivery distances are measured from them. The description takes plain text (blank lines make paragraphs) or simple HTML, sanitised before it is saved. ${REST_RICH_TEXT} Returns the store info. \`links.dashboard\` is the identity page of the online store editor; once the store is online, \`links.storefront\` is its storefront's home.`,
+  })
   .input(updateStoreInfoInput)
   .output(updateStoreInfoOutput)
   .handler(async ({ context, input }) => {
@@ -163,7 +183,11 @@ const updateCompanyProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/company" })
+  .route({
+    method: "PATCH",
+    path: "/settings/company",
+    description: `Changes the company's country, the currency and the billing address printed on contracts and invoices. The country sets the store's time zone, which every date and opening hour follows. New reservations use the new currency for their prices, deposits and payments. A currency Louez does not take is refused with \`CURRENCY_NOT_SUPPORTED\`, unless it is the store's current one sent back unchanged. ${REST_SEND_ONLY} A new country or currency ${REST_CONFIRMS}; the billing address alone is saved directly. Returns the company settings. ${REST_LINKS_NOTE}`,
+  })
   .input(updateCompanyInput)
   .output(updateCompanyOutput)
   .handler(async ({ context, input, path }) => ({
@@ -187,7 +211,11 @@ const updateLegalProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/legal" })
+  .route({
+    method: "PATCH",
+    path: "/settings/legal",
+    description: `Changes the store's legal texts: the terms and conditions (\`cgv\`), the legal notice (\`legalNotice\`), whether the full terms are printed in every rental contract (\`includeCgvInContract\`), and the plain-text note at the bottom of the storefront's footer (\`footerNote\`, 500 characters at most). ${REST_SEND_ONLY} A null or blank text clears it. The terms and the legal notice take plain text (blank lines make paragraphs) or simple HTML, ${SETTINGS_LIMITS.richText.toLocaleString("en-US")} characters at most, sanitised before they are saved. ${REST_RICH_TEXT} \`GET /settings?includeLegalTexts=true\` returns the current texts. Returns the legal texts as saved, in HTML. \`links.dashboard\` is the legal page of the online store editor; once the store is online, \`links.storefront\` is its storefront's home.`,
+  })
   .input(updateLegalInput)
   .output(updateLegalOutput)
   .handler(async ({ context, input }) => ({
@@ -212,7 +240,11 @@ const updateReservationRulesProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/reservation-rules" })
+  .route({
+    method: "PATCH",
+    path: "/settings/reservation-rules",
+    description: `Changes how customers book: the booking mode (\`payment\`: paid online at checkout; \`request\`: a request the store accepts or declines), whether an unanswered request already holds the stock, the share paid online (10 to 100 percent), the shortest and longest rental, the notice before a rental starts, the buffer after each return (a week at most), whether checkout asks for the customer's address, extensions, and whether the contract must be signed before pickup (\`contractSignatureMode\`). Durations are in minutes, a year at most. ${REST_SEND_ONLY} Refused with \`SETTINGS_INVALID\` when the shortest rental would be longer than the longest, and with \`STRIPE_REQUIRED\` when switching to \`payment\` while the store's Stripe account does not take charges. A change of the booking mode or of the share paid online ${REST_CONFIRMS}. Returns the rules. ${REST_LINKS_NOTE}`,
+  })
   .input(updateReservationRulesInput)
   .output(updateReservationRulesOutput)
   .handler(async ({ context, input, path }) => ({
@@ -236,7 +268,11 @@ const updateBusinessHoursProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/business-hours" })
+  .route({
+    method: "PATCH",
+    path: "/settings/business-hours",
+    description: `Changes the opening hours and closures; with \`enabled: true\`, pickups and returns are only offered within them, and with \`enabled: false\` the store takes bookings at any time. \`schedule\` names the days to change (\`monday\` … \`sunday\`), each with \`isOpen\` and up to ${SETTINGS_LIMITS.rangesPerDay} \`ranges\` of \`openTime\` and \`closeTime\` (HH:mm, in the store's time zone); days left out stay as they are. \`closurePeriods\` replaces every closure, ${SETTINGS_LIMITS.closurePeriods} at most: send the current ones, as \`GET /settings\` returns them with their \`id\`, along with your change to keep them. ${REST_SEND_ONLY} Returns the hours. ${REST_LINKS_NOTE}`,
+  })
   .input(updateBusinessHoursInput)
   .output(updateBusinessHoursOutput)
   .handler(async ({ context, input }) => ({
@@ -261,7 +297,11 @@ const updateDeliveryProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/delivery" })
+  .route({
+    method: "PATCH",
+    path: "/settings/delivery",
+    description: `Changes delivery to the customer's address: on or off (\`enabled\`), its \`mode\` (\`optional\`: the customer chooses pickup or delivery; \`required\`: outbound delivery is mandatory; \`included\`: mandatory and free), the fee per kilometre, the lowest fee per leg, the farthest distance (\`maximumDistanceKm\`, 1 to 500, null for no limit), the order amount from which it is free, the smallest order delivered, and whether customers may choose one of the store's active pickup points (\`multiLocationEnabled\`). Amounts are decimal strings in the store's currency, such as \`"1.50"\`. ${REST_SEND_ONLY} Distances are measured from the store: while delivery is on, a store without coordinates is refused with \`STORE_COORDINATES_REQUIRED\` (\`PATCH /settings/store-info\` sets them). Any change ${REST_CONFIRMS}. Returns the delivery settings. ${REST_LINKS_NOTE}`,
+  })
   .input(updateDeliveryInput)
   .output(updateDeliveryOutput)
   .handler(async ({ context, input, path }) => ({
@@ -284,7 +324,11 @@ const createLocationProcedure = storeProcedure
       reach: "public",
     },
   })
-  .route({ method: "POST", path: "/settings/locations" })
+  .route({
+    method: "POST",
+    path: "/settings/locations",
+    description: `Adds a pickup and return point: a \`name\`, an \`address\`, and optionally its city, postal code, country (the store's by default) and coordinates. Customers can choose it at checkout once \`multiLocationEnabled\` is on (\`PATCH /settings/delivery\`). A new point is active. A store has ${SETTINGS_LIMITS.locations} at most: one more is refused with \`LOCATION_LIMIT_REACHED\`. Returns the point with its \`id\`. ${REST_LINKS_NOTE}`,
+  })
   .input(createLocationInput)
   .output(locationOutput)
   .handler(async ({ context, input }) => ({
@@ -306,7 +350,11 @@ const updateLocationProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/locations/{id}" })
+  .route({
+    method: "PATCH",
+    path: "/settings/locations/{id}",
+    description: `Changes a pickup point. ${REST_SEND_ONLY} A null clears an optional field (city, postal code, country, coordinates). An unknown id answers \`LOCATION_NOT_FOUND\`. Returns the point. ${REST_LINKS_NOTE}`,
+  })
   .input(updateLocationInput)
   .output(locationOutput)
   .handler(async ({ context, input }) => ({
@@ -328,7 +376,11 @@ const setLocationActiveProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "POST", path: "/settings/locations/{id}/active" })
+  .route({
+    method: "POST",
+    path: "/settings/locations/{id}/active",
+    description: `Shows (\`isActive: true\`) or hides (\`false\`) a pickup point at checkout. Reservations that already use it keep it. An unknown id answers \`LOCATION_NOT_FOUND\`. Returns the point. ${REST_LINKS_NOTE}`,
+  })
   .input(setLocationActiveInput)
   .output(locationOutput)
   .handler(async ({ context, input }) => ({
@@ -353,7 +405,11 @@ const updateTaxesProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/taxes" })
+  .route({
+    method: "PATCH",
+    path: "/settings/taxes",
+    description: `Changes the store's taxes: on or off, the default rate in percent (0 to 100; 20 for 20 %), whether prices include tax (\`inclusive\`) or have it added (\`exclusive\`), the tax's label on documents (20 characters at most) and the store's tax number (30 at most). ${REST_SEND_ONLY} A null clears the label or the number. Any change ${REST_CONFIRMS}. Returns the taxes. ${REST_LINKS_NOTE}`,
+  })
   .input(updateTaxesInput)
   .output(updateTaxesOutput)
   .handler(async ({ context, input, path }) => ({
@@ -377,7 +433,11 @@ const getLegalProfileProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/settings/legal-profile" })
+  .route({
+    method: "GET",
+    path: "/settings/legal-profile",
+    description: `Returns the store's legal identity, as invoices, contracts and the legal notice name it: legal name and form, company number (the SIREN in France, the BCE number in Belgium), SIRET, VAT number, trade register city, share capital, registered office, and the electronic invoicing settings (\`invoicingEnabled\`, \`vatRegime\`, \`hasVatOnDebits\`). \`profile\` is null until the store saved one with \`PATCH /settings/legal-profile\`. ${REST_LINKS_NOTE}`,
+  })
   .input(getLegalProfileInput)
   .output(getLegalProfileOutput)
   .handler(async ({ context }) => ({
@@ -399,7 +459,12 @@ const searchCompanyRegistryProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/settings/company-registry" })
+  .route({
+    method: "GET",
+    path: "/settings/company-registry",
+    description:
+      "Looks a French company up in the public registry (recherche-entreprises.api.gouv.fr) by `query`: its name, SIREN or SIRET, 3 to 120 characters. Returns up to 8 matches, each with its SIREN, SIRET, legal name, legal form, VAT number, registered office, trade register city and whether it is still active. A match maps onto `PATCH /settings/legal-profile`: `siren` as `companyNumber`, `address` as `registeredAddress`, `addressComplement` as `registeredAddressComplement`, `postalCode` as `registeredPostalCode`, `city` as `registeredCity`; the other fields keep their names. `available: false` means the registry did not answer, and `results` is empty.",
+  })
   .input(searchCompanyRegistryInput)
   .output(searchCompanyRegistryOutput)
   .handler(({ input }) => searchCompanyRegistry(input.query));
@@ -419,7 +484,11 @@ const upsertLegalProfileProcedure = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/settings/legal-profile" })
+  .route({
+    method: "PATCH",
+    path: "/settings/legal-profile",
+    description: `Saves the store's legal identity: legal name and form, company number (the SIREN in France, 9 digits; the BCE number in Belgium, 10), SIRET (14 digits), VAT number, trade register city, share capital (a decimal string), registered office, and the electronic invoicing settings. A first save needs \`legalName\`, \`legalForm\`, \`companyNumber\`, \`registeredAddress\`, \`registeredPostalCode\` and \`registeredCity\`; \`country\` defaults to the store's. Later, send only the fields to change; null clears an optional one. A profile missing a required field, or with one in the wrong format, is refused with \`LEGAL_PROFILE_INVALID\`, each field and its problem in \`details.problems\`. With \`invoicingEnabled: true\`, Louez issues the store's invoices as legal electronic invoices sent to the tax network; it needs \`vatRegime\`. A change of \`invoicingEnabled\`, \`vatRegime\` or \`hasVatOnDebits\` ${REST_CONFIRMS}; the identity alone is saved directly. Returns the profile. ${REST_LINKS_NOTE}`,
+  })
   .input(upsertLegalProfileInput)
   .output(upsertLegalProfileOutput)
   .handler(async ({ context, input, path }) => {

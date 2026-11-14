@@ -8,7 +8,7 @@ import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
 import { assertCardSetupAllowed, getBillingStatus } from "../../services/billing";
 import { upgradeStoredLink } from "../../services/handoffs";
-import { HANDOFF_HELP, startHandoff } from "./handoffs";
+import { HANDOFF_HELP, REST_HANDOFF_HELP, startHandoff } from "./handoffs";
 
 /**
  * What Louez bills the store, on every transport: `billing_get_status` and
@@ -34,7 +34,12 @@ const getStatus = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/billing" })
+  .route({
+    method: "GET",
+    path: "/billing",
+    description:
+      "Returns what Louez bills the store, as its billing pages in the dashboard show it: who bills it (`billing`: `none`, `legacy` or `service`), the plan in force or pay-as-you-go (`mode`, `plan`), the offer and the billing service's notice in its own words, the pay-as-you-go fees and this month's figures, the card on file, the month-end invoices (newest first), the unpaid balance, whether Louez billing lets the store take new bookings (`gate`) and why not, and whether `POST /billing/card-setup` can run for the key now (`cardSetup`). Amounts are decimal strings with their currency. It only reads: a plan is changed or cancelled in the Louez dashboard, at `links.dashboard`.",
+  })
   .input(getBillingStatusInput)
   .output(billingStatusSchema)
   .handler(({ context }) =>
@@ -62,7 +67,11 @@ const startCardSetup = storeProcedure
       reach: "provider",
     },
   })
-  .route({ method: "POST", path: "/billing/card-setup" })
+  .route({
+    method: "POST",
+    path: "/billing/card-setup",
+    description: `Starts adding or replacing the card Louez charges the store's fees on, on Stripe's page: only the person can type it. It serves when Louez billing stops new bookings until a card is added, or the card expired, as \`GET /billing\` and \`GET /inbox\` show. ${REST_HANDOFF_HELP} When the person comes back before Stripe confirmed the card, the step answers \`confirming: true\` and \`POST /handoffs/{id}/refresh\` asks Stripe again. Once completed, \`GET /billing\` shows the card and whether new bookings are accepted again. Only for a key of the store's owner, on a store Louez's billing service bills (\`cardSetup.available\` in \`GET /billing\`); otherwise \`CARD_SETUP_UNAVAILABLE\`, with \`details.reason\` \`owner_only\` or \`not_billed_by_service\`.`,
+  })
   .input(startCardSetupInput)
   .output(startCardSetupOutput)
   .handler(async ({ context }) => {

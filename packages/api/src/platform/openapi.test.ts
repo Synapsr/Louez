@@ -1057,11 +1057,13 @@ describe("the public reference", () => {
     );
     const sentence =
       "an API key is bound to its store and is answered 403 CONNECTION_BOUND_TO_STORES";
-    for (const { path, why, operation } of refused) {
+    for (const { path, why, operation, meta } of refused) {
       // Another reason needs its own sentence.
       assert.equal(why, "bound", path);
+      // The reference says it to a developer; the tool says who may call it.
       assert.ok(operation.description?.includes(sentence), `${path} says an API key is refused`);
-      assert.ok(operation.description?.includes("connected over MCP"), `${path} says who may`);
+      assert.ok(meta?.mcp.description.includes(sentence), `${path}'s tool says it too`);
+      assert.ok(meta?.mcp.description.includes("connected over MCP"), `${path} says who may`);
     }
     const others = (await servedProcedures()).filter(
       ({ path }) => !refused.some((entry) => entry.path === path),
@@ -1071,10 +1073,7 @@ describe("the public reference", () => {
     }
   });
 
-  test("gives the operations of the groups written for developers their own text, without an assistant's words", async () => {
-    // The groups whose operations have a REST text of their own
-    // (`.route({ description })`); the others still show the tool's text.
-    const ownText = new Set(["Reservations", "Payments"]);
+  test("gives every operation a text of its own, written for developers, without an assistant's words", async () => {
     const assistantWording = [
       /\bgive the user\b/i,
       /\bto the user\b/i,
@@ -1084,19 +1083,14 @@ describe("the public reference", () => {
       /\bagents?\b/i,
       /\bstoreId\b/,
     ];
-    let written = 0;
     for (const { path, meta, operation } of await servedProcedures()) {
-      const own = operation.description !== meta.mcp.description;
-      if (operation.tags?.some((tag) => ownText.has(tag))) {
-        assert.ok(own, `${path} has its own REST text`);
-      }
-      if (!own) continue;
-      written += 1;
+      // `.route({ description })`; the tool keeps `meta.mcp.description`.
+      assert.ok(operation.description, `${path} has a REST text`);
+      assert.notEqual(operation.description, meta.mcp.description, `${path} has its own REST text`);
       for (const word of assistantWording) {
-        assert.doesNotMatch(operation.description ?? "", word, `${path} says ${word}`);
+        assert.doesNotMatch(operation.description, word, `${path} says ${word}`);
       }
     }
-    assert.ok(written >= 13);
   });
 
   test("speaks of no internals in any description", async () => {
