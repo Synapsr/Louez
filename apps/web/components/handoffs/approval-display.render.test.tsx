@@ -664,6 +664,9 @@ describe("the guarantee: each fact of a request's identity is among what the pag
         // Who receives a message is held as a hash of each recipient: the
         // screen shows them in the form the caller may see (below).
         if (name === "recipients") continue;
+        // Which override is asked for: the screen shows each line it passes,
+        // or that nothing goes past the store's rules (below).
+        if (name === "overrides") continue;
         for (const leaf of leaves(identity)) {
           const index = lines.findIndex((candidate) => candidate.leaves.includes(leaf));
           assert.ok(index >= 0, `the identity fact ${name} (${leaf}) is on no line the page always shows`);
@@ -701,6 +704,25 @@ describe("the guarantee: each fact of a request's identity is among what the pag
       } else {
         assert.ok(message.startsWith("The customer will receive"), message);
       }
+    });
+  }
+
+  // A confirmation's overrides: in the identity, each one asked for; on the
+  // screen, each line one of them passes, and no line of one not asked for.
+  for (const branch of BRANCHES.filter((candidate) => candidate.preview)) {
+    test(`${branch.name}: each override is in the identity, and what it passes on the screen`, () => {
+      const { preview, presentation } = branch;
+      assert.ok(preview && presentation);
+      const asked = [
+        ...(preview.overbooking ? ["stock"] : []),
+        ...(preview.turnoverBuffer ? ["turnover_buffer"] : []),
+      ];
+      assert.deepEqual(presentation.facts.overrides, asked);
+      const keys = presentation.display.facts.map((line) => line.key);
+      if (keys.includes("beyondStock")) assert.ok(asked.includes("stock"));
+      if (keys.includes("pastBuffer")) assert.ok(asked.includes("turnover_buffer"));
+      const passed = (preview.overbooking?.shortfalls.length ?? 0) + (preview.turnoverBuffer?.shortfalls.length ?? 0);
+      if (passed === 0) assert.ok(keys.includes("withinRules"), "nothing goes past the rules, and the screen says so");
     });
   }
 

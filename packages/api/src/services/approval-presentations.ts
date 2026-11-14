@@ -340,10 +340,24 @@ export function confirmOverridePresentation(
     facts: {
       reservation: reservation.id,
       status: reservation.to,
+      // Which override is asked for, so that a refusal of one never cools
+      // the other down, nor a request for one refreshes the other's. Never
+      // the shortfalls: the binding holds them.
+      overrides: overridesOf(preview),
       message: message ? { message, channels } : null,
       recipients: recipientHashes(recipients),
     },
   };
+}
+
+/** The overrides a confirmation asks for, in a fixed order: `stock`, then `turnover_buffer`. */
+export function overridesOf(
+  preview: Pick<StatusChangePreview, "overbooking" | "turnoverBuffer">,
+): Array<"stock" | "turnover_buffer"> {
+  return [
+    ...(preview.overbooking ? (["stock"] as const) : []),
+    ...(preview.turnoverBuffer ? (["turnover_buffer"] as const) : []),
+  ];
 }
 
 /** Where a customer message goes: its channel and the address it goes to, as the store holds it. */
