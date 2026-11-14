@@ -7,10 +7,14 @@ import type { Connection, RowDataPacket } from "mysql2/promise";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import { WRITE_SAMPLES_FLAG } from "./approvals-guard";
+
 // The sample approvals script, run as `pnpm db:seed:approvals` runs it, on a
 // migrated database: three pending approvals of the owner, one per
 // consequence the page treats apart, asked by a key nobody holds; their
 // page URLs printed; refused in production and for anyone but an owner.
+// Every run passes the flag; the guard's other refusals are in
+// approvals-guard.test.ts.
 
 const APP_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const OWNER = "sa_owner_user_000001";
@@ -50,18 +54,22 @@ describe("the sample approvals script (database)", { skip: skipWithoutTestDataba
   });
 
   function run(args: string[], env: Record<string, string> = {}) {
-    return spawnSync(process.execPath, ["--import", "tsx", "scripts/seed/approvals.ts", ...args], {
-      cwd: APP_ROOT,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        DATABASE_URL: database.url,
-        SKIP_ENV_VALIDATION: "true",
-        NODE_ENV: "development",
-        NEXT_PUBLIC_APP_URL: "https://app.samples.test",
-        ...env,
+    return spawnSync(
+      process.execPath,
+      ["--import", "tsx", "scripts/seed/approvals.ts", WRITE_SAMPLES_FLAG, ...args],
+      {
+        cwd: APP_ROOT,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          DATABASE_URL: database.url,
+          SKIP_ENV_VALIDATION: "true",
+          NODE_ENV: "development",
+          NEXT_PUBLIC_APP_URL: "https://app.samples.test",
+          ...env,
+        },
       },
-    });
+    );
   }
 
   const approvals = async () =>
@@ -116,7 +124,7 @@ describe("the sample approvals script (database)", { skip: skipWithoutTestDataba
       NODE_ENV: "production",
     });
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /cannot be run in production/);
+    assert.match(result.stderr, /NODE_ENV is production/);
     assert.equal((await approvals()).length, 0);
   });
 
