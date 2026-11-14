@@ -14,9 +14,10 @@ import { apiDependencyUrl } from "./testing/cjs-named-exports";
 
 // Who the three payment writes ask, by kind of credential and the
 // connection's option: an API key and an assistant's connection (OAuth),
-// option on or off, are asked before each of record_payment,
+// option on or off, need the user's approval before each of record_payment,
 // record_deposit_return and delete_payment, through the real MCP handler, and
-// the token lets the call run once; a dashboard session, through the
+// the approval, once the user approved it, lets the call run once; a
+// dashboard session, through the
 // dashboard's RPC handler, runs directly. Each call declares money, the
 // deletion included, as the rule receives it. The procedures' other facts
 // (previews, bindings, refusals, the REST API) are in payments.db.test.ts.
@@ -58,7 +59,12 @@ type Json = Record<string, unknown>;
 interface Answer {
   error?: {
     code?: string;
-    details?: { confirmationToken?: string; preview?: { summary?: string } };
+    details?: {
+      confirmationToken?: string;
+      preview?: { summary?: string };
+      approval?: { id?: string };
+      reason?: string;
+    };
   };
 }
 
@@ -89,6 +95,8 @@ describe(
     let handleMcpRequest: typeof import("./transports/http").handleMcpRequest;
     let httpOptions: import("./transports/http").McpHttpOptions;
     let rpc: (name: string, input: Json) => Promise<unknown>;
+    /** The owner's answer on an approval's page, with their session. */
+    let decide: (input: Json) => Promise<unknown>;
     let recorded: RecordedPayment[] = [];
     let counter = 0;
     /** The consequences each confirmation handed the rule, in order. */
@@ -168,7 +176,10 @@ describe(
       const { RPCLink } = await import("@orpc/client/fetch");
       const rpcHandler = new RPCHandler(appRouter);
       const client = createORPCClient<{
-        dashboard: { payments: Record<string, (input: Json) => Promise<unknown>> };
+        dashboard: {
+          payments: Record<string, (input: Json) => Promise<unknown>>;
+          handoffs: { decide: (input: Json) => Promise<unknown> };
+        };
       }>(
         new RPCLink({
           url: "http://louez.test/api/rpc",
@@ -183,6 +194,7 @@ describe(
         }),
       );
       rpc = (name, input) => client.dashboard.payments[name](input);
+      decide = (input) => client.dashboard.handoffs.decide(input);
 
       await louezDb.db.insert(louezDb.users).values({ id: USER, email: "owner@cc.test" });
       await louezDb.db.insert(louezDb.stores).values({
@@ -329,10 +341,10 @@ describe(
           {
             name: "record_payment",
             arguments: { reservationId: id, type: "rental", amount: "80.00", method: "cash" },
-            replay: "CONFIRMATION_INVALID",
+            replay: "APPROVAL_INVALID",
           },
           // The whole deposit given back: the same return again exceeds the
-          // balance, refused before anything is asked or any token read.
+          // balance, refused before anything is asked or any approval read.
           {
             name: "record_deposit_return",
             arguments: { reservationId: id, amount: "50.00", method: "cash" },
@@ -356,19 +368,35 @@ describe(
             continue;
           }
           assert.equal(first.isError, true, `${call.name} is asked`);
-          assert.equal(first.error?.code, "CONFIRMATION_REQUIRED", call.name);
+          assert.equal(first.error?.code, "APPROVAL_REQUIRED", call.name);
           assert.ok(first.error?.details?.preview?.summary, `${call.name} shows a preview`);
-          const token = first.error?.details?.confirmationToken;
-          assert.ok(token, `${call.name} gives a token`);
+          const token = first.error?.details?.approval?.id;
+          assert.ok(token, `${call.name} gives an approval`);
+          assert.equal(first.error?.details?.confirmationToken, token);
           assert.equal(recorded.length, before, `${call.name} did nothing yet`);
+
+          // The user approves it on its page, signed in.
+          const [row] = await louezDb.db
+            .select()
+            .from(louezDb.apiHandoffs)
+            .where(orm.eq(louezDb.apiHandoffs.id, token));
+          assert.ok(row);
+          await decide({
+            id: token,
+            decision: "approve",
+            revision: row.revision,
+            shown: row.bindingHash,
+            acknowledged: true,
+          });
 
           const confirmed = { ...call.arguments, confirmationToken: token };
           emitted = [];
           const done = await send(call.name, confirmed);
           assert.equal(done.isError, false, `${call.name}: ${done.text}`);
-          assert.deepEqual(emitted, [["money"]], `${call.name}: the confirmed call declares money`);
+          assert.deepEqual(emitted, [["money"]], `${call.name}: the approved call declares money`);
           const again = await send(call.name, confirmed);
-          assert.equal(again.error?.code, replay, `${call.name}: a token works once`);
+          assert.equal(again.error?.code, replay, `${call.name}: an approval works once`);
+          if (replay === "APPROVAL_INVALID") assert.equal(again.error?.details?.reason, "used");
         }
         // Each ran once: the payment, the return, and the deposit deleted.
         assert.deepEqual(await typesOf(id), ["rental", "deposit_return"]);

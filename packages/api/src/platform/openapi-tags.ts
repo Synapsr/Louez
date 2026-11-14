@@ -119,7 +119,7 @@ export const REFERENCE_GROUPS: readonly ReferenceGroup[] = [
   {
     name: "Handoffs",
     description:
-      "Steps only a person can take in their browser, such as Stripe's identity checks or adding a billing card: the operation that starts one returns a link, and these say where the step stands.",
+      "Steps only a person can take in their browser, such as Stripe's identity checks, adding a billing card, or approving a write that needs the approval of the key's owner: the operation that starts one returns a link, and these say where the step stands.",
     prefixes: ["/handoffs"],
   },
 ];

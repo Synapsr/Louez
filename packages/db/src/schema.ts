@@ -4293,8 +4293,10 @@ export const apiKeys = mysqlTable(
 
     permissions: json("permissions").$type<ApiKeyPermissions>().notNull(),
     /**
-     * Sensitive operations (money, deletion, sends, spending) wait for a
-     * confirmation when true. Only a dashboard session may change it.
+     * Controls optional caller confirmations. Money, stock overrides and
+     * access removals always require a person's approval; priced credit
+     * spending always requires caller confirmation. Only a dashboard session
+     * may change this setting.
      */
     confirmSensitive: boolean("confirm_sensitive").default(true).notNull(),
 

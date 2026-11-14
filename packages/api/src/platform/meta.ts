@@ -105,6 +105,12 @@ export interface McpExposure {
   description: string;
   /** Tool bundle the tool is listed in; the connection picks its bundles. */
   bundle: McpBundle;
+  /**
+   * Listed for a connection whatever its bundles (its scopes still apply):
+   * a tool every connection needs to follow what another one started, as
+   * `handoffs_get` reads the approval any bundle's tool may ask for.
+   */
+  everyBundle?: true;
   /** What a write does to the data already there; required on a write, refused on a read. */
   effect?: McpEffect;
   /** Why it reaches outside the user's Louez account; required with `sensitive: "send"`. */
@@ -147,6 +153,14 @@ export interface ApiMeta {
   /** Platform staff only, from a dashboard session. */
   platformAdmin?: boolean;
   sensitive?: SensitiveKind;
+  /**
+   * A branch of it needs a person's approval when a key or a token calls it:
+   * it declares a consequence of `APPROVAL_LIVE` (platform/approval-rule.ts).
+   * Its OpenAPI operation documents the approval's answers (409, the 412's
+   * codes, 429 with `Retry-After`), and its MCP tool's `confirmationToken`
+   * says it takes an approval's id. Only with `sensitive`.
+   */
+  personApproval?: true;
   /**
    * The output holds a secret (a new API key): it is never stored, so an
    * idempotency key is ignored and the call is only recorded.

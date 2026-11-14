@@ -26,12 +26,16 @@ for (const name of [
 // Better Auth stays out: every caller here is built in memory.
 mock.module("@louez/auth", { namedExports: { auth: {}, authInstance: { api: {} } } });
 
-// Who is asked for a confirmation today, at every place that can ask: each
-// sensitive procedure's handler and the confirmation it builds, for each
-// branch its preview can take, for a dashboard session, an API key and an
-// assistant's connection (OAuth), with the connection's option on and off.
-// Where it asks: the preview the caller is shown, the binding of the token,
-// and the token's flow (it passes once, then no more).
+// Who is asked, at every place that can ask: each sensitive procedure's
+// handler and the confirmation it builds, for each branch its preview can
+// take, for a dashboard session, an API key and an assistant's connection
+// (OAuth), with the connection's option on and off. Where it asks: the
+// preview the caller is shown, the binding, and the flow: a token passes
+// once, then no more; a branch a person approves (`APPROVAL_LIVE`: money,
+// stock overrides, access taken away) asks for an approval instead, which
+// the person approves and which then passes once. Its preview and binding
+// are pinned as the token's were, so the switch changed only the answer
+// around them.
 //
 // The services that run under their locks are replaced by a stand-in that
 // keeps the confirmation the handler built and stops there: the test then
@@ -63,7 +67,7 @@ const UNTIL = new Date("2027-03-03T09:00:00.000Z");
 const STOPPED = "the service stand-in stopped here";
 
 type Kind = "session" | "api_key" | "oauth";
-type Confirm = (preview: unknown, tx: unknown) => Promise<unknown>;
+type Confirm = (preview: unknown, tx: unknown, presentation?: unknown) => Promise<unknown>;
 
 /** The service functions that take a `confirm` step, by module. */
 const STAND_INS: Record<string, string[]> = {
@@ -150,7 +154,8 @@ async function installStandIns() {
         );
         assert.ok(options, `${name} was given a confirm step`);
         captured = TRANSACTION_FIRST.has(name)
-          ? (preview, tx) => options.confirm(tx, preview)
+          ? (preview, tx, presentation) =>
+              options.confirm(tx, { ...(preview as object), presentation })
           : options.confirm;
         if (throughStatusService && name === "changeStoreReservationStatus") {
           // The real service picks the branch; it stops once it has asked,
@@ -158,8 +163,8 @@ async function installStandIns() {
           const real = actual[name] as (...real: unknown[]) => Promise<unknown>;
           return real(...args.slice(0, -1), {
             ...options,
-            confirm: async (preview: StatusPreview, tx: unknown) => {
-              statusAsked = { preview, refusal: await options.confirm(preview, tx) };
+            confirm: async (preview: StatusPreview, tx: unknown, ...rest: unknown[]) => {
+              statusAsked = { preview, refusal: await options.confirm(preview, tx, ...rest) };
               throw new Error(STOPPED);
             },
           });
@@ -198,6 +203,11 @@ interface Branch {
   asksWithOptionOff: boolean;
   /** Not asked by anyone: the branch runs without a preview. */
   neverAsks?: boolean;
+  /**
+   * A branch a person approves: what its presentation hands the check with
+   * the preview (the request's identity facts), as the service builds it.
+   */
+  presentation?: { facts: Record<string, unknown> };
 }
 
 interface Site {
@@ -532,6 +542,7 @@ const SITES: Site[] = [
           },
         },
         asksWithOptionOff: true,
+        presentation: { facts: { invitation: "cs_invitation_000001" } },
       },
     ],
   },
@@ -551,6 +562,7 @@ const SITES: Site[] = [
           },
         },
         asksWithOptionOff: true,
+        presentation: { facts: { member: "cs_membership_000001" } },
       },
     ],
   },
@@ -580,6 +592,7 @@ const SITES: Site[] = [
           name: "booked over the stock, nothing short",
           preview: statusPreview({ overbooking: { shortfalls: [] } }),
           asksWithOptionOff: true,
+          presentation: { facts: { reservation: "cs_reservation_00001", overrides: [] } },
         },
         {
           name: "booked over the stock, a message goes",
@@ -588,6 +601,7 @@ const SITES: Site[] = [
             messages: [{ message: "accepted", channel: "email" }],
           }),
           asksWithOptionOff: true,
+          presentation: { facts: { reservation: "cs_reservation_00001", overrides: ["stock"] } },
         },
         {
           name: "past the turnover buffer",
@@ -595,6 +609,9 @@ const SITES: Site[] = [
             turnoverBuffer: { shortfalls: [shortfall], turnoverBufferMinutes: 60 },
           }),
           asksWithOptionOff: true,
+          presentation: {
+            facts: { reservation: "cs_reservation_00001", overrides: ["turnover_buffer"] },
+          },
         },
       ].slice(0, name === "cancel" ? 2 : undefined),
     }),
@@ -627,6 +644,7 @@ const SITES: Site[] = [
           state: { status: "confirmed" },
         },
         asksWithOptionOff: true,
+        presentation: { facts: { reservation: "cs_reservation_00001", amount: "80.00" } },
       },
     ],
   },
@@ -650,6 +668,7 @@ const SITES: Site[] = [
           state: { returnable: "50.00" },
         },
         asksWithOptionOff: true,
+        presentation: { facts: { reservation: "cs_reservation_00001", amount: "50.00" } },
       },
     ],
   },
@@ -673,6 +692,7 @@ const SITES: Site[] = [
           state: { amount: "50.00", status: "completed" },
         },
         asksWithOptionOff: true,
+        presentation: { facts: { payment: "cs_payment_000000001", amount: "50.00" } },
       },
     ],
   },
@@ -1116,6 +1136,9 @@ describe(
     let orm: typeof import("drizzle-orm");
     let permissions: typeof import("./permissions");
     let confirmation: typeof import("./confirmation");
+    let decideHandoff: typeof import("../services/handoff-decisions").decideHandoff;
+    let operations: typeof import("./operations");
+    let APPROVAL_DECIDE_HOURS: number;
     let routers: Record<string, Record<string, unknown>>;
 
     const images = createTestProductImages(FILES);
@@ -1144,6 +1167,9 @@ describe(
       orm = await import("drizzle-orm");
       permissions = await import("./permissions");
       confirmation = await import("./confirmation");
+      ({ decideHandoff } = await import("../services/handoff-decisions"));
+      operations = await import("./operations");
+      ({ APPROVAL_DECIDE_HOURS } = await import("../services/handoffs"));
       routers = {
         products: (await import("../routers/dashboard/products")).dashboardProductsRouter,
         categories: (await import("../routers/dashboard/categories")).dashboardCategoriesRouter,
@@ -1169,6 +1195,32 @@ describe(
         storeId: STORE,
         userId: USER,
         role: "owner",
+      });
+      // The key and the grant the calls come from: an approval is requested
+      // only for a connection that exists.
+      await louezDb.db.insert(louezDb.apiKeys).values({
+        id: KEY,
+        storeId: STORE,
+        userId: USER,
+        name: "Test client",
+        keyPrefix: "lz_cs",
+        keyHash: "cs".repeat(32),
+        permissions: permissions.presetScopes("write") as never,
+      });
+      await louezDb.db.insert(louezDb.oauthClients).values({
+        clientId: "https://client.cs.test/oauth/client.json",
+        name: "Test client",
+        uri: "https://client.cs.test",
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify(["https://client.cs.test/callback"]),
+      });
+      await louezDb.db.insert(louezDb.apiAgentGrants).values({
+        id: GRANT,
+        userId: USER,
+        clientId: "https://client.cs.test/oauth/client.json",
+        allStores: true,
+        preset: "write",
+        bundles: ["daily"],
       });
       await louezDb.db.insert(louezDb.products).values({
         id: PRODUCT,
@@ -1266,9 +1318,26 @@ describe(
       const confirm = captured as Confirm | null;
       assert.ok(confirm, `${site.path.join(".")} handed its confirmation to the service`);
       let refusal: unknown = null;
-      await louezDb.db.transaction(async (tx) => {
-        refusal = await confirm(branch.preview, tx);
-      });
+      const asking = () =>
+        louezDb.db.transaction(async (tx) => {
+          refusal = await confirm(branch.preview, tx, branch.presentation);
+        });
+      // A call that presents an approval carries it out inside its recorded
+      // write, as the procedure's own runs under `runOperation`.
+      if (token && branch.presentation) {
+        await operations.runOperation(
+          {
+            actor: ctx.actor as never,
+            procedure: site.path.join("."),
+            input: site.input,
+            idempotencyKey: null,
+            receipt: {},
+          },
+          asking,
+        );
+      } else {
+        await asking();
+      }
       return answerOf(refusal);
     }
 
@@ -1300,6 +1369,8 @@ describe(
         test(`${site.path.join(".")}, ${branch.name}`, async () => {
           const seen: unknown[] = [];
           for (const { kind, confirmSensitive } of CASES) {
+            // Each case asks afresh: an approval another case left open is no part of it.
+            await louezDb.db.delete(louezDb.apiHandoffs);
             const label = `${kind}, option ${confirmSensitive ? "on" : "off"}`;
             const expected =
               !branch.neverAsks &&
@@ -1312,6 +1383,66 @@ describe(
             assert.deepEqual(emitted, declared ? [declared] : [], `${label}: what it declares`);
             if (!expected) {
               assert.equal(first, null, `${label}: runs without being asked`);
+              continue;
+            }
+
+            if (branch.presentation) {
+              // A person approves: nothing ran, and the answer carries the preview and an approval.
+              const data = errorData(first);
+              assert.equal(data?.code, "APPROVAL_REQUIRED", `${label}: asked`);
+              assert.equal((first as { status?: number }).status, 412);
+              const { approval, confirmationToken, ...details } = (data?.details ?? {}) as {
+                approval?: { id: string; url: string; status: string };
+                confirmationToken?: string;
+              };
+              assert.ok(approval, `${label}: an approval`);
+              assert.equal(confirmationToken, approval.id);
+              assert.equal(approval.status, "pending");
+              const [row] = await louezDb.db
+                .select()
+                .from(louezDb.apiHandoffs)
+                .where(orm.eq(louezDb.apiHandoffs.id, approval.id));
+              assert.ok(row, `${label}: the approval is recorded`);
+              assert.equal(row.kind, "operation_approval");
+              assert.equal(row.storeId, STORE);
+              assert.equal(row.procedure, site.path.join("."));
+              const lifetime = row.expiresAt.getTime() - row.linkIssuedAt.getTime();
+              assert.ok(
+                Math.abs(lifetime - APPROVAL_DECIDE_HOURS * 3_600_000) < 2_000,
+                `${label}: the person has ${APPROVAL_DECIDE_HOURS} hours to decide`,
+              );
+              // No token is issued for it: the preview and the binding are what a
+              // token's were, so the answer reads as one around them.
+              seen.push({
+                kind,
+                confirmSensitive,
+                message: first?.message.replace(
+                  ` The user approves it in Louez, signed in, from this link: ${approval.url}`,
+                  " To go ahead, call again with the same input and this confirmation token.",
+                ),
+                retryable: (data as { retryable?: boolean }).retryable,
+                details,
+                bindingHash: row.bindingHash,
+              });
+
+              // The person approves it on its page; the same call with its id goes on, once.
+              await decideHandoff(
+                {
+                  id: approval.id,
+                  decision: "approve",
+                  revision: row.revision,
+                  shown: String(row.bindingHash),
+                  acknowledged: true,
+                  userId: USER,
+                },
+                ports as never,
+              );
+              const second = await attempt(site, branch, kind, confirmSensitive, approval.id);
+              assert.equal(second, null, `${label}: the approval lets the call go on`);
+              assert.deepEqual(emitted, [declared], `${label}: the approved call declares the same`);
+              const third = await attempt(site, branch, kind, confirmSensitive, approval.id);
+              assert.equal(errorData(third)?.code, "APPROVAL_INVALID", `${label}: once only`);
+              assert.deepEqual(errorData(third)?.details, { reason: "used" });
               continue;
             }
 
@@ -1376,16 +1507,20 @@ describe(
           assert.equal(
             fingerprint,
             FINGERPRINTS[`${site.path.join(".")}, ${branch.name}`],
-            `what the caller is shown and the token's binding are as recorded`,
+            `what the caller is shown and its binding are as recorded`,
           );
         });
       }
     }
 
-    // The token's end, on the test clock: no real waiting.
+    // The token's end, on the test clock: no real waiting. A branch a person
+    // approves issues no token; its approval's hours are the approvals' own
+    // tests' (routers/dashboard/approvals.db.test.ts).
     const NOW = Date.UTC(2027, 0, 4, 10, 0, 0);
     for (const site of SITES) {
-      const branch = site.branches.find((candidate) => !candidate.neverAsks);
+      const branch = site.branches.find(
+        (candidate) => !candidate.neverAsks && !candidate.presentation,
+      );
       if (!branch) continue;
       test(`${site.path.join(".")}, ${branch.name}: the token works until ten minutes have passed`, async (t) => {
         t.mock.timers.enable({ apis: ["Date"], now: NOW });
@@ -1510,6 +1645,7 @@ describe(
             const input =
               row.procedure === "cancel" ? { id } : { id, status: row.to, ...row.flags };
             for (const { kind, confirmSensitive } of CASES) {
+              await louezDb.db.delete(louezDb.apiHandoffs);
               const label = `${kind}, option ${confirmSensitive ? "on" : "off"}`;
               const ctx = await context(kind, confirmSensitive, null);
               emitted = [];
@@ -1557,9 +1693,11 @@ describe(
 
               assert.deepEqual(emitted, [row.consequences], `${label}: what it declares`);
               const expected = kind !== "session" && (confirmSensitive || row.asksWithOptionOff);
+              // An override is a person's to approve; every other branch, the token's.
+              const person = row.consequences.includes("stock_override");
               assert.equal(
                 errorData(refusal)?.code,
-                expected ? "CONFIRMATION_REQUIRED" : undefined,
+                expected ? (person ? "APPROVAL_REQUIRED" : "CONFIRMATION_REQUIRED") : undefined,
                 `${label}: ${expected ? "asked" : "runs without being asked"}`,
               );
             }

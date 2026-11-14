@@ -20,6 +20,7 @@ import {
   resendInvitationOutput,
 } from "../../contracts/team";
 import { HANDOFF_TTL_HOURS } from "../../contracts/handoffs";
+import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
 import type { Consequences } from "../../platform/approval-rule";
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { dashboardPageLinks } from "../../platform/links";
@@ -57,9 +58,10 @@ import {
  * creates nothing: an owner approves it from a link (a `team_invitation`
  * handoff, answered through `handoffs.decide`), as a confirmation token the
  * agent holds would prove nothing.
- * Removing a member and cancelling an invitation always ask an agent to
- * confirm, even a connection whose confirmations are off: each one takes a
- * person's access away, and an agent cannot undo it on its own say.
+ * Removing a member and cancelling an invitation need a person's approval
+ * when an agent asks, even on a connection whose confirmations are off: each
+ * one takes a person's access away, and an agent cannot undo it on its own
+ * say.
  */
 
 const MANAGE = { domain: "team", level: "write", role: "manage_members" } as const;
@@ -74,8 +76,7 @@ const REST_TEAM_PAGE_NOTE =
 
 const REST_OWNERS_ONLY = "Only a key of an owner of the store may call it.";
 
-const REST_ALWAYS_CONFIRMED =
-  "It always asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), whatever the key's confirmation setting, with a preview naming the person.";
+const REST_APPROVAL = restApprovalAsked("a preview naming the person");
 
 const REST_PAGE_NOTE = `Returns up to \`limit\` rows (${TEAM_PAGE_MAX} by default and at most); pass \`nextCursor\` back as \`cursor\` to read on, null on the last page. A cursor this list did not return answers \`INVALID_CURSOR\`.`;
 
@@ -250,10 +251,11 @@ const cancel = storeProcedure
     capability: "team.cancelInvitation",
     scope: MANAGE,
     sensitive: "destructive",
+    personApproval: true,
     mcp: {
       name: "team_cancel_invitation",
       title: "Cancel Team Invitation",
-      description: `Cancel a pending invitation: its link stops working and the person does not join. Owners only. It always asks for a confirmation, whatever the connection's confirmation setting: the first call answers CONFIRMATION_REQUIRED with a preview naming the person. ${TEAM_PAGE_HELP}`,
+      description: `Cancel a pending invitation: its link stops working and the person does not join. Owners only. ${approvalAsked("a preview naming the person")} ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "overwrite",
     },
@@ -261,7 +263,7 @@ const cancel = storeProcedure
   .route({
     method: "POST",
     path: "/team/invitations/{id}/cancel",
-    description: `Cancels a pending invitation: its link stops working and the person does not join. Takes the invitation's \`id\` from \`GET /team/invitations\`; one that is not a pending invitation of the store answers \`TEAM_INVITATION_NOT_FOUND\`. ${REST_OWNERS_ONLY} ${REST_ALWAYS_CONFIRMED} Returns the invitation's \`id\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
+    description: `Cancels a pending invitation: its link stops working and the person does not join. Takes the invitation's \`id\` from \`GET /team/invitations\`; one that is not a pending invitation of the store answers \`TEAM_INVITATION_NOT_FOUND\`. ${REST_OWNERS_ONLY} ${REST_APPROVAL} Returns the invitation's \`id\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
   })
   .input(cancelInvitationInput)
   .output(cancelInvitationOutput)
@@ -287,10 +289,11 @@ const remove = storeProcedure
     capability: "team.removeMember",
     scope: MANAGE,
     sensitive: "destructive",
+    personApproval: true,
     mcp: {
       name: "team_remove_member",
       title: "Remove Team Member",
-      description: `Remove a member from the store: they lose access to it at once. Takes the membership's id from team_list_members. Owners only. An owner is never removed, and nobody removes themselves. It always asks for a confirmation, whatever the connection's confirmation setting: the first call answers CONFIRMATION_REQUIRED with a preview naming the person. ${TEAM_PAGE_HELP}`,
+      description: `Remove a member from the store: they lose access to it at once. Takes the membership's id from team_list_members. Owners only. An owner is never removed, and nobody removes themselves. ${approvalAsked("a preview naming the person")} ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "delete",
     },
@@ -298,7 +301,7 @@ const remove = storeProcedure
   .route({
     method: "DELETE",
     path: "/team/members/{id}",
-    description: `Removes a member from the store: they lose access to it at once, and their pending invitations to the store are cancelled. Takes the membership's \`id\` from \`GET /team/members\`, not the user id. ${REST_OWNERS_ONLY} Refused with \`TEAM_CANNOT_REMOVE_SELF\` for the membership of the user the key belongs to, \`TEAM_OWNER_NOT_REMOVABLE\` for an owner, and \`TEAM_MEMBER_NOT_FOUND\` for an id the store does not have. ${REST_ALWAYS_CONFIRMED} Returns the membership's \`id\`, the member's \`userId\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
+    description: `Removes a member from the store: they lose access to it at once, and their pending invitations to the store are cancelled. Takes the membership's \`id\` from \`GET /team/members\`, not the user id. ${REST_OWNERS_ONLY} Refused with \`TEAM_CANNOT_REMOVE_SELF\` for the membership of the user the key belongs to, \`TEAM_OWNER_NOT_REMOVABLE\` for an owner, and \`TEAM_MEMBER_NOT_FOUND\` for an id the store does not have. ${REST_APPROVAL} Returns the membership's \`id\`, the member's \`userId\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
   })
   .input(removeMemberInput)
   .output(removeMemberOutput)

@@ -87,17 +87,18 @@ export function hasPermission(
 
 /**
  * Whether `tools/list` shows a store tool: it is in one of the connection's
- * bundles (an API key lists them all), and the listing role cut down to the
- * connection's scopes allows its scope. Listing only shows: the call is
- * authorized where it runs. Account tools: `isAccountToolListed`.
+ * bundles (an API key lists them all), or in every bundle (`null`: a tool
+ * declared `everyBundle`), and the listing role cut down to the connection's
+ * scopes allows its scope. Listing only shows: the call is authorized where
+ * it runs. Account tools: `isAccountToolListed`.
  */
 export function isListed(
   ctx: McpRequestContext,
   scope: ProcedureScope,
-  bundle: McpBundle,
+  bundle: McpBundle | null,
 ): boolean {
   const { bundles, scopes } = ctx.actor.credential;
-  if (bundles && !bundles.includes(bundle)) return false;
+  if (bundles && bundle !== null && !bundles.includes(bundle)) return false;
   return allows(ctx.listingRole, scopes, scope);
 }
 

@@ -7,7 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { categoryErrors } from "../contracts/categories";
-import { CONSEQUENCES, type Consequence } from "./approval-rule";
+import { CONSEQUENCES } from "./approval-rule";
 import { checkConfirmation, raiseConfirmation, requireConfirmation } from "./confirmation";
 import { platformErrors } from "./errors";
 import { sha256 } from "./hash";
@@ -34,9 +34,6 @@ const ERASE_SCOPE: ProcedureScope = { domain: "categories", level: "write", role
  * through it.
  * Each call builds fresh procedures and a fresh counter.
  *
- * `liveConsequences` makes consequences live for `erase` alone, as
- * `APPROVAL_LIVE` will for the procedures Louez serves; nothing else names
- * them, and no request can (`checkConfirmation` refuses them in production).
  * `deadlocksBeforeCommit` makes `erase`'s transaction fail that many times
  * with a deadlock once it has asked (refused or let through), as a write
  * retried on a deadlock does;
@@ -46,7 +43,6 @@ const ERASE_SCOPE: ProcedureScope = { domain: "categories", level: "write", role
  */
 export function createFixtureRouter(
   options: {
-    liveConsequences?: readonly Consequence[];
     deadlocksBeforeCommit?: number;
     whileAsked?: () => Promise<void>;
     display?: (input: { id: string; amount?: number }, store: { name: string }) => ApprovalDisplay;
@@ -171,7 +167,6 @@ export function createFixtureRouter(
                 scope: ERASE_SCOPE,
                 urls: context.ports.urls,
               },
-              liveConsequences: options.liveConsequences,
             });
             await options.whileAsked?.();
             if (deadlocks > 0) {

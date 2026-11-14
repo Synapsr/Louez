@@ -357,7 +357,8 @@ describe(
       const run = (context: BaseContext) =>
         call<{ erased: boolean }>(
           routers.fixture.notes.erase,
-          { id: "au_note_000000000001", consequences: ["money"], amount: 40 },
+          // A deletion: a person's level, not live yet.
+          { id: "au_note_000000000001", consequences: ["deletion"], amount: 40 },
           context,
           ["fixture", "notes", "erase"],
         );

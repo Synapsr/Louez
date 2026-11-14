@@ -105,7 +105,7 @@ export const handoffDecisionSchema = z
   })
   .nullable()
   .describe(
-    "What the person decided on the step's page (a team invitation's approval): null until they decided, and for the steps a provider settles. An approved request that could not be carried out stays approved here, with `failure` saying why.",
+    "What the person decided on the step's page (a team invitation's approval, or an operation's): null until they decided, and for the steps a provider settles. An approved request that could not be carried out stays approved here, with `failure` saying why.",
   );
 export type HandoffDecision = z.infer<typeof handoffDecisionSchema>;
 
@@ -201,7 +201,7 @@ const FAILURE_MESSAGES: Record<string, string> = {
   not_available: "This step is not available for the store anymore.",
   connection_revoked:
     "The agent connection that asked for this step was revoked: its link no longer works.",
-  declined: "The user declined this invitation.",
+  declined: "The user refused it.",
   state_changed:
     "The store, or the call, was no longer as the preview the user approved showed: nothing was done. Call again without the approval to ask again.",
   approver_not_allowed:

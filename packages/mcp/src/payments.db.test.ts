@@ -16,14 +16,28 @@ import {
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
 
+// A dashboard session, read from a test header: Better Auth stays out. The
+// person decides an approval with it, as the approval's page does.
+const SESSION_HEADER = "x-test-session-user";
 mock.module(apiDependencyUrl("@louez/auth"), {
-  namedExports: { auth: {}, authInstance: { api: { getSession: async () => null } } },
+  namedExports: {
+    auth: {},
+    authInstance: {
+      api: {
+        getSession: async ({ headers }: { headers: Headers }) => {
+          const id = headers.get(SESSION_HEADER);
+          return id ? { user: { id, email: `${id}@pw.test` } } : null;
+        },
+      },
+    },
+  },
 });
 
 // The three payment writes as a connected assistant calls them: through the
 // real MCP handler, with an API key, on a database. record_payment,
 // record_deposit_return and delete_payment: what each previews and binds its
-// token to, what it writes (the payment through the app's writer, in the
+// approval to (the key's owner approves it through the dashboard's RPC
+// handler with their session, as the approval's page does), what it writes (the payment through the app's writer, in the
 // tool's transaction, and the billing mark), what it leaves alone (no history
 // line), each refusal with its message, and who may call them. On the REST
 // API, the transport's guards on their routes: the path names the record, a
@@ -78,6 +92,8 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     body: string | null,
     headers: Record<string, string>,
   ) => Promise<Response>;
+  /** The dashboard's RPC handler, with a user's session on the store. */
+  let rpc: (user: string, path: string, input: object) => Promise<unknown>;
   let recorded: RecordedPayment[] = [];
   /** Makes the next write fail once it wrote, as a writer that throws midway. */
   let failNextWrite = false;
@@ -209,6 +225,30 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       }
     };
 
+    const { RPCHandler } = await import("@orpc/server/fetch");
+    const { createORPCClient } = await import("@orpc/client");
+    const { RPCLink } = await import("@orpc/client/fetch");
+    const rpcHandler = new RPCHandler(appRouter);
+    rpc = (user, path, input) => {
+      const client = createORPCClient<
+        Record<string, Record<string, Record<string, (input: object) => Promise<unknown>>>>
+      >(
+        new RPCLink({
+          url: "http://louez.test/api/rpc",
+          headers: { [SESSION_HEADER]: user, cookie: `louez_active_store=${STORE}` },
+          fetch: async (request) => {
+            const { response } = await rpcHandler.handle(request, {
+              prefix: "/api/rpc",
+              context: { headers: request.headers, transport: "rpc", ports, receipt: {} },
+            });
+            return response ?? new Response(null, { status: 404 });
+          },
+        }),
+      );
+      const [a, b, c] = path.split(".") as [string, string, string];
+      return client[a][b][c](input);
+    };
+
     await louezDb.db.insert(louezDb.users).values([
       { id: OWNER, email: "owner@pw.test" },
       { id: MEMBER, email: "member@pw.test" },
@@ -322,7 +362,12 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
               code?: string;
               message?: string;
               retryable?: boolean;
-              details?: { confirmationToken?: string; preview?: unknown };
+              details?: {
+                confirmationToken?: string;
+                preview?: unknown;
+                approval?: { id: string };
+                reason?: string;
+              };
             };
           }
         | undefined
@@ -352,20 +397,52 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     return facts;
   }
 
-  /** The preview and the token of a call that asks for its confirmation. */
-  function confirmation(result: ToolResult) {
+  /** The preview and the approval of a call that asks for the key's owner's approval. */
+  function approval(result: ToolResult) {
     assert.equal(result.isError, true, textOf(result));
     const error = errorOf(result);
-    assert.equal(error?.code, "CONFIRMATION_REQUIRED", textOf(result));
-    const token = error?.details?.confirmationToken;
-    assert.ok(token);
-    return { preview: error?.details?.preview, token };
+    assert.equal(error?.code, "APPROVAL_REQUIRED", textOf(result));
+    const id = error?.details?.approval?.id;
+    assert.ok(id);
+    assert.equal(error?.details?.confirmationToken, id, "the id is the token the tool takes");
+    return { preview: error?.details?.preview, id };
   }
 
-  /** Asks, then calls again with the token it got. */
-  async function confirmed(authorization: string, name: string, args: Json) {
-    const { token } = confirmation(await mcpCall(authorization, name, args));
-    return mcpCall(authorization, name, { ...args, confirmationToken: token });
+  /** An approval's row. */
+  const approvalRow = async (id: string) => {
+    const [row] = await louezDb.db
+      .select()
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    assert.ok(row, `approval ${id}`);
+    return row;
+  };
+
+  /** The person approves on the approval's page: `handoffs.decide`, with their session, on RPC. */
+  async function approve(id: string, user = OWNER) {
+    const row = await approvalRow(id);
+    await rpc(user, "dashboard.handoffs.decide", {
+      id,
+      decision: "approve",
+      revision: row.revision,
+      shown: row.bindingHash,
+      acknowledged: true,
+    });
+    assert.equal((await approvalRow(id)).status, "approved");
+  }
+
+  /** Asks, the person approves, then the same call presents the approval's id. */
+  async function approved(authorization: string, name: string, args: Json, user = OWNER) {
+    const { id } = approval(await mcpCall(authorization, name, args));
+    await approve(id, user);
+    return mcpCall(authorization, name, { ...args, confirmationToken: id });
+  }
+
+  /** Why an approval presented did not let the call run (`APPROVAL_INVALID`). */
+  function invalid(result: ToolResult) {
+    const { code } = refusal(result);
+    assert.equal(code, "APPROVAL_INVALID", textOf(result));
+    return errorOf(result)?.details?.reason;
   }
 
   /** A refusal's facts: its domain's code, and the message the tools answered with. */
@@ -411,7 +488,20 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       .from(louezDb.reservationActivity)
       .where(orm.eq(louezDb.reservationActivity.reservationId, reservationId));
 
-  const confirmationCount = async () =>
+  /** The store's approval requests, and its confirmation tokens: none is issued for these writes. */
+  const approvalCount = async () =>
+    (
+      await louezDb.db
+        .select({ id: louezDb.apiHandoffs.id })
+        .from(louezDb.apiHandoffs)
+        .where(
+          orm.and(
+            orm.eq(louezDb.apiHandoffs.storeId, STORE),
+            orm.eq(louezDb.apiHandoffs.kind, "operation_approval"),
+          ),
+        )
+    ).length;
+  const tokenCount = async () =>
     (
       await louezDb.db
         .select({ id: louezDb.apiConfirmations.id })
@@ -419,15 +509,20 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
         .where(orm.eq(louezDb.apiConfirmations.storeId, STORE))
     ).length;
 
-  /** The procedures the confirmations of the store were asked under. */
-  const confirmationProcedures = async () =>
+  /** The procedures the store's approvals were asked under. */
+  const approvalProcedures = async () =>
     (
       await louezDb.db
-        .selectDistinct({ procedure: louezDb.apiConfirmations.procedure })
-        .from(louezDb.apiConfirmations)
-        .where(orm.eq(louezDb.apiConfirmations.storeId, STORE))
+        .selectDistinct({ procedure: louezDb.apiHandoffs.procedure })
+        .from(louezDb.apiHandoffs)
+        .where(
+          orm.and(
+            orm.eq(louezDb.apiHandoffs.storeId, STORE),
+            orm.eq(louezDb.apiHandoffs.kind, "operation_approval"),
+          ),
+        )
     )
-      .map((row) => row.procedure)
+      .map((row) => String(row.procedure))
       .sort();
 
   /** The store's recorded operations of the payment writes. */
@@ -501,7 +596,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     }
   });
 
-  test("record_payment asks first, then writes the payment once, with its billing mark and no history line", async () => {
+  test("record_payment asks the person first, then writes the payment once, with its billing mark and no history line", async () => {
     const authorization = await key();
     const { id, number } = await reservation();
     const args = {
@@ -512,7 +607,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       notes: "Paid by wire",
     };
 
-    const first = confirmation(await mcpCall(authorization, "record_payment", args));
+    const first = approval(await mcpCall(authorization, "record_payment", args));
     assert.deepEqual(first.preview, {
       // The amount is written in euros whatever the store's currency, as today.
       summary: `Record a rental payment of €80.00 (transfer) on reservation #${number}.`,
@@ -530,10 +625,12 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(recorded, [], "nothing was done yet");
     assert.deepEqual(await paymentsOf(id), []);
     assert.deepEqual(await marks(), []);
+    assert.equal(await tokenCount(), 0, "no token is issued");
 
+    await approve(first.id);
     const done = await mcpCall(authorization, "record_payment", {
       ...args,
-      confirmationToken: first.token,
+      confirmationToken: first.id,
     });
     assert.deepEqual(answer(done), {
       reservationId: id,
@@ -571,19 +668,18 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(await marks(), [{ id, storeId: STORE, version: 1 }]);
     assert.deepEqual(await historyOf(id), [], "no history line");
 
-    // A token works once.
+    // An approval works once.
     const again = await mcpCall(authorization, "record_payment", {
       ...args,
-      confirmationToken: first.token,
+      confirmationToken: first.id,
     });
-    assert.equal(refusal(again).code, "CONFIRMATION_INVALID");
+    assert.equal(invalid(again), "used");
+    assert.equal((await approvalRow(first.id)).status, "completed");
     assert.equal(recorded.length, 1);
     assert.equal((await paymentsOf(id)).length, 1);
   });
 
-  test("the confirmation is asked under the procedure's path, and each call is recorded", async () => {
-    // A token issued under the hand-written tool's name (mcp.record_payment)
-    // matches none of these: it answers CONFIRMATION_INVALID.
+  test("the approval is asked under the procedure's path, and each call is recorded", async () => {
     await louezDb.db
       .delete(louezDb.apiOperations)
       .where(orm.eq(louezDb.apiOperations.storeId, STORE));
@@ -591,21 +687,21 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const { id } = await reservation();
     const deposit = await payment(id, { type: "deposit", amount: "50.00" });
     const removable = await payment(id, { type: "damage", amount: "5.00" });
-    await confirmed(authorization, "record_payment", {
+    await approved(authorization, "record_payment", {
       reservationId: id,
       type: "rental",
       amount: "10.00",
       method: "cash",
     });
-    await confirmed(authorization, "record_deposit_return", {
+    await approved(authorization, "record_deposit_return", {
       reservationId: id,
       amount: "10.00",
       method: "cash",
     });
-    await confirmed(authorization, "delete_payment", { paymentId: removable });
+    await approved(authorization, "delete_payment", { paymentId: removable });
     assert.ok(deposit);
 
-    assert.deepEqual(await confirmationProcedures(), [
+    assert.deepEqual(await approvalProcedures(), [
       "dashboard.payments.delete",
       "dashboard.payments.record",
       "dashboard.payments.recordDepositReturn",
@@ -621,7 +717,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     ]);
   });
 
-  test("a key whose confirmations are off is still asked before each of the three", async () => {
+  test("a key whose confirmations are off still needs the person's approval before each of the three", async () => {
     const authorization = await key(WRITE, { confirmSensitive: false });
     const { id } = await reservation();
     const deposit = await payment(id, { type: "deposit", amount: "50.00" });
@@ -632,9 +728,10 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     ];
     for (const [name, args] of calls) {
       const before = recorded.length;
-      const { token } = confirmation(await mcpCall(authorization, name, args));
+      const { id: approvalId } = approval(await mcpCall(authorization, name, args));
       assert.equal(recorded.length, before, `${name} did nothing yet`);
-      const done = await mcpCall(authorization, name, { ...args, confirmationToken: token });
+      await approve(approvalId);
+      const done = await mcpCall(authorization, name, { ...args, confirmationToken: approvalId });
       assert.notEqual(done.isError, true, textOf(done));
     }
     assert.deepEqual(
@@ -644,54 +741,58 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(
       (await paymentsOf(id)).map((row) => row.type),
       ["rental", "deposit_return"],
-      "the confirmed deletion ran",
+      "the approved deletion ran",
     );
   });
 
-  test("record_payment's token holds while the reservation's status and the input stay as previewed", async () => {
+  test("record_payment's approval holds while the reservation's status and the input stay as previewed", async () => {
     const authorization = await key();
     const { id } = await reservation("pending");
     const args = { reservationId: id, type: "rental", amount: "80.00", method: "cash" };
 
-    // Another payment recorded meanwhile: the token still holds (only the status is bound).
-    const kept = confirmation(await mcpCall(authorization, "record_payment", args));
+    // Another payment recorded meanwhile: the approval still holds (only the status is bound).
+    const kept = approval(await mcpCall(authorization, "record_payment", args));
+    await approve(kept.id);
     await payment(id, { type: "deposit", amount: "50.00" });
     const done = await mcpCall(authorization, "record_payment", {
       ...args,
-      confirmationToken: kept.token,
+      confirmationToken: kept.id,
     });
     assert.notEqual(done.isError, true, textOf(done));
 
     // The status moved: refused.
-    const moved = confirmation(await mcpCall(authorization, "record_payment", args));
+    const moved = approval(await mcpCall(authorization, "record_payment", args));
+    await approve(moved.id);
     await louezDb.db
       .update(louezDb.reservations)
       .set({ status: "confirmed" })
       .where(orm.eq(louezDb.reservations.id, id));
     const late = await mcpCall(authorization, "record_payment", {
       ...args,
-      confirmationToken: moved.token,
+      confirmationToken: moved.id,
     });
-    assert.equal(refusal(late).code, "CONFIRMATION_INVALID");
+    assert.equal(invalid(late), "state_changed");
 
-    // Another argument than the previewed one: refused.
-    const fresh = confirmation(await mcpCall(authorization, "record_payment", args));
+    // Another argument than the approved one: another request, which the id is not.
+    const fresh = approval(await mcpCall(authorization, "record_payment", args));
+    await approve(fresh.id);
     const changed = await mcpCall(authorization, "record_payment", {
       ...args,
       amount: "800.00",
-      confirmationToken: fresh.token,
+      confirmationToken: fresh.id,
     });
-    assert.equal(refusal(changed).code, "CONFIRMATION_INVALID");
+    assert.equal(invalid(changed), "other_request");
+    assert.equal((await approvalRow(fresh.id)).status, "approved", "the approval is untouched");
     assert.equal(recorded.length, 1, "only the first one ran");
   });
 
-  test("record_deposit_return previews the returnable deposit, and its token stops once that balance moves", async () => {
+  test("record_deposit_return previews the returnable deposit, and its approval stops once that balance moves", async () => {
     const authorization = await key();
     const { id, number } = await reservation();
     await payment(id, { type: "deposit", amount: "50.00" });
     const args = { reservationId: id, amount: "30.00", method: "cash" };
 
-    const first = confirmation(await mcpCall(authorization, "record_deposit_return", args));
+    const first = approval(await mcpCall(authorization, "record_deposit_return", args));
     assert.deepEqual(first.preview, {
       summary: `Record a deposit return of €30.00 (cash) on reservation #${number}.`,
       details: {
@@ -705,19 +806,22 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     });
 
     // Another deposit collected meanwhile moves the balance: refused.
+    await approve(first.id);
     await payment(id, { type: "deposit", amount: "10.00" });
     const late = await mcpCall(authorization, "record_deposit_return", {
       ...args,
-      confirmationToken: first.token,
+      confirmationToken: first.id,
     });
-    assert.equal(refusal(late).code, "CONFIRMATION_INVALID");
+    assert.equal(invalid(late), "state_changed");
     assert.deepEqual(recorded, []);
 
-    const again = confirmation(await mcpCall(authorization, "record_deposit_return", args));
+    const again = approval(await mcpCall(authorization, "record_deposit_return", args));
+    assert.notEqual(again.id, first.id, "a new approval, with the balance as it is now");
     assert.equal((again.preview as { details: Json }).details.returnable, "60.00");
+    await approve(again.id);
     const done = await mcpCall(authorization, "record_deposit_return", {
       ...args,
-      confirmationToken: again.token,
+      confirmationToken: again.id,
     });
     assert.deepEqual(answer(done), {
       reservationId: id,
@@ -748,7 +852,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const damage = await payment(id, { type: "damage", amount: "15.00" }, "card");
     const args = { paymentId: damage };
 
-    const first = confirmation(await mcpCall(authorization, "delete_payment", args));
+    const first = approval(await mcpCall(authorization, "delete_payment", args));
     assert.deepEqual(first.preview, {
       summary: `Delete the damage payment of €15.00 (card) on reservation #${number}.`,
       details: {
@@ -763,31 +867,35 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.equal((await paymentsOf(id)).length, 1, "the payment is still there");
 
     // The row's amount changed meanwhile: refused.
+    await approve(first.id);
     await louezDb.db
       .update(louezDb.payments)
       .set({ amount: "16.00" })
       .where(orm.eq(louezDb.payments.id, damage));
     const amountMoved = await mcpCall(authorization, "delete_payment", {
       ...args,
-      confirmationToken: first.token,
+      confirmationToken: first.id,
     });
-    assert.equal(refusal(amountMoved).code, "CONFIRMATION_INVALID");
+    // The amount is part of what the person approved (the request's identity):
+    // another amount is another request, which this approval is not.
+    assert.equal(invalid(amountMoved), "other_request");
 
     // Its status changed meanwhile: refused.
-    const second = confirmation(await mcpCall(authorization, "delete_payment", args));
+    const second = approval(await mcpCall(authorization, "delete_payment", args));
+    await approve(second.id);
     await louezDb.db
       .update(louezDb.payments)
       .set({ status: "pending" })
       .where(orm.eq(louezDb.payments.id, damage));
     const statusMoved = await mcpCall(authorization, "delete_payment", {
       ...args,
-      confirmationToken: second.token,
+      confirmationToken: second.id,
     });
-    assert.equal(refusal(statusMoved).code, "CONFIRMATION_INVALID");
+    assert.equal(invalid(statusMoved), "state_changed");
     assert.equal((await paymentsOf(id)).length, 1);
     assert.deepEqual(await marks(), []);
 
-    const done = await confirmed(authorization, "delete_payment", args);
+    const done = await approved(authorization, "delete_payment", args);
     assert.deepEqual(answer(done), {
       paymentId: damage,
       reservationId: id,
@@ -803,7 +911,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const authorization = await key();
     const elsewhere = await reservation("confirmed", OTHER_STORE);
     const elsewherePayment = await payment(elsewhere.id, { type: "rental", amount: "20.00" });
-    const asked = await confirmationCount();
+    const asked = await approvalCount();
 
     for (const reservationId of [elsewhere.id, "pw_res_nowhere"]) {
       assert.deepEqual(
@@ -837,7 +945,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     }
     assert.deepEqual(recorded, []);
     assert.equal((await paymentsOf(elsewhere.id)).length, 1);
-    assert.equal(await confirmationCount(), asked, "nothing was asked");
+    assert.equal(await approvalCount(), asked, "nothing was asked");
   });
 
   test("each refusal comes before anything is asked, with its message, and writes nothing", async () => {
@@ -851,12 +959,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const before = await paymentsOf(open.id);
 
     const refused = (code: string, message: string) => ({ code, message, retryable: false });
-    const asked = () =>
-      louezDb.db
-        .select({ id: louezDb.apiConfirmations.id })
-        .from(louezDb.apiConfirmations)
-        .where(orm.eq(louezDb.apiConfirmations.storeId, STORE));
-    const previews = (await asked()).length;
+    const previews = await approvalCount();
     // Refused whatever the user would answer: refused at once, nothing asked.
     const record = (reservationId: string, type: string, amount: string) =>
       mcpCall(authorization, "record_payment", { reservationId, type, amount, method: "cash" });
@@ -945,7 +1048,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       ),
     );
 
-    assert.equal((await asked()).length, previews, "no preview was recorded");
+    assert.equal(await approvalCount(), previews, "no approval was asked");
     assert.deepEqual(recorded, []);
     assert.deepEqual(await paymentsOf(open.id), before);
     assert.deepEqual(await paymentsOf(cancelled.id), []);
@@ -955,17 +1058,18 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
   test("a member may record and delete; a connection that reads payments may do neither", async () => {
     const member = await key(WRITE, { userId: MEMBER });
     const { id } = await reservation();
-    const done = await confirmed(member, "record_payment", {
+    // The member's key: the member approves, as the user it acts for.
+    const done = await approved(member, "record_payment", {
       reservationId: id,
       type: "rental",
       amount: "10.00",
       method: "card",
-    });
+    }, MEMBER);
     assert.notEqual(done.isError, true, textOf(done));
     const [recordedRow] = await paymentsOf(id);
     assert.ok(recordedRow);
     // A deletion needs the member's write permission, not delete.
-    const deleted = await confirmed(member, "delete_payment", { paymentId: recordedRow.id });
+    const deleted = await approved(member, "delete_payment", { paymentId: recordedRow.id }, MEMBER);
     assert.notEqual(deleted.isError, true, textOf(deleted));
     assert.deepEqual(await paymentsOf(id), []);
 
@@ -985,7 +1089,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
   test("without read access to reservations, the answer carries no link", async () => {
     const authorization = await key({ ...WRITE, reservations: "none" });
     const { id, number } = await reservation();
-    const done = await confirmed(authorization, "record_payment", {
+    const done = await approved(authorization, "record_payment", {
       reservationId: id,
       type: "damage",
       amount: "12.50",
@@ -1009,11 +1113,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       method: "cash",
       idempotencyKey: "pw-payment-1",
     };
-    const { token } = confirmation(await mcpCall(authorization, "record_payment", args));
-    const done = await mcpCall(authorization, "record_payment", {
-      ...args,
-      confirmationToken: token,
-    });
+    const done = await approved(authorization, "record_payment", args);
     const facts = answer(done);
     assert.equal(facts.number, number);
 
@@ -1040,16 +1140,17 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
   test("two deposit returns sent together cannot both pass the returnable balance", async () => {
     // Each within the balance alone, both over it. Each was previewed at
     // 50.00; the second to take the reservation's lock reads the balance the
-    // first left, and is refused by it before its token is read.
+    // first left, and is refused by it before its approval is read.
     const authorization = await key();
     const { id } = await reservation();
     await payment(id, { type: "deposit", amount: "50.00" });
     const thirty = { reservationId: id, amount: "30.00", method: "cash" };
     const forty = { reservationId: id, amount: "40.00", method: "card" };
     const tokens = [
-      confirmation(await mcpCall(authorization, "record_deposit_return", thirty)).token,
-      confirmation(await mcpCall(authorization, "record_deposit_return", forty)).token,
+      approval(await mcpCall(authorization, "record_deposit_return", thirty)).id,
+      approval(await mcpCall(authorization, "record_deposit_return", forty)).id,
     ];
+    for (const id of tokens) await approve(id);
 
     const results = await raceOnLockedRow(database, { table: "reservations", id }, [
       () =>
@@ -1083,7 +1184,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.equal((await paymentsOf(id)).filter((row) => row.type === "deposit_return").length, 1);
   });
 
-  test("the REST API serves the three writes with a key that may write payments, each asking first", async () => {
+  test("the REST API serves the three writes with a key that may write payments, each asking the person first", async () => {
     const document = await openApiDocument();
     const operation = (path: string, method: string) => {
       const entry = document.paths[path]?.[method] as
@@ -1099,7 +1200,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
         operationId: entry.operationId,
         tags: entry.tags,
         forbidden: "403" in (entry.responses ?? {}),
-        confirmation: "412" in (entry.responses ?? {}),
+        approval: [entry.responses?.["409"], entry.responses?.["412"], entry.responses?.["429"]],
         headers: (entry.parameters ?? []).flatMap((parameter) =>
           parameter.$ref ? [parameter.$ref.split("/").pop()] : [],
         ),
@@ -1109,7 +1210,11 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       operationId,
       tags: ["Payments"],
       forbidden: true,
-      confirmation: true,
+      approval: [
+        { $ref: "#/components/responses/ApprovalDeclined" },
+        { $ref: "#/components/responses/ApprovalRequired" },
+        { $ref: "#/components/responses/ApprovalsFull" },
+      ],
       headers: ["IdempotencyKey", "LouezConfirmation"],
     });
     assert.deepEqual(
@@ -1125,17 +1230,20 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const authorization = await key(WRITE, { confirmSensitive: false });
     const { id, number } = await reservation();
     const headers = { authorization };
-    /** Asks, then sends the same request again with the token it got. */
+    /** Asks, the key's owner approves, then the same request again with the approval's id. */
     const confirmedRest = async (method: string, path: string, body: object | null) => {
       const asked = await openApi(method, path, body, headers);
       assert.equal(asked.status, 412);
       const refusalBody = (await asked.json()) as {
-        data: { code: string; details: { confirmationToken: string } };
+        data: { code: string; details: { confirmationToken: string; approval: { id: string } } };
       };
-      assert.equal(refusalBody.data.code, "CONFIRMATION_REQUIRED");
+      assert.equal(refusalBody.data.code, "APPROVAL_REQUIRED");
+      const { id: approvalId } = refusalBody.data.details.approval;
+      assert.equal(refusalBody.data.details.confirmationToken, approvalId);
+      await approve(approvalId);
       const done = await openApi(method, path, body, {
         ...headers,
-        "louez-confirmation": refusalBody.data.details.confirmationToken,
+        "louez-confirmation": approvalId,
       });
       assert.equal(done.status, 200, await done.clone().text());
       assert.ok(done.headers.get("louez-operation-id"));
@@ -1208,7 +1316,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const b = await reservation();
     await payment(a.id, { type: "deposit", amount: "50.00" });
     await payment(b.id, { type: "deposit", amount: "50.00" });
-    const asked = await confirmationCount();
+    const asked = await approvalCount();
     const json = { authorization, "content-type": "application/json" };
     const routes: Array<[string, Json]> = [
       ["payments", { type: "rental", amount: "10.00", method: "cash" }],
@@ -1235,15 +1343,16 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       ["deposit"],
     );
     assert.deepEqual(await marks(), []);
-    assert.equal(await confirmationCount(), asked, "nothing previewed");
+    assert.equal(await approvalCount(), asked, "nothing previewed");
 
     // The same id repeated in the body is the path's: asked, then recorded on it.
     for (const [route, body] of routes) {
       const repeated = JSON.stringify({ ...body, reservationId: a.id });
       const first = await openApiRaw("POST", `/reservations/${a.id}/${route}`, repeated, json);
       assert.equal(first.status, 412, route);
-      const token = ((await first.json()) as { data: { details: { confirmationToken: string } } })
-        .data.details.confirmationToken;
+      const token = ((await first.json()) as { data: { details: { approval: { id: string } } } })
+        .data.details.approval.id;
+      await approve(token);
       const done = await openApiRaw("POST", `/reservations/${a.id}/${route}`, repeated, {
         ...json,
         "louez-confirmation": token,
@@ -1265,7 +1374,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const authorization = await key(WRITE, { confirmSensitive: false });
     const { id } = await reservation();
     const deposit = await payment(id, { type: "deposit", amount: "50.00" });
-    const asked = await confirmationCount();
+    const asked = await approvalCount();
     const routes: Array<[string, Json]> = [
       ["payments", { type: "rental", amount: "10.00", method: "cash" }],
       ["deposit-returns", { amount: "10.00", method: "cash" }],
@@ -1305,15 +1414,15 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       (await paymentsOf(id)).map((row) => row.type),
       ["deposit"],
     );
-    assert.equal(await confirmationCount(), asked, "nothing previewed");
+    assert.equal(await approvalCount(), asked, "nothing previewed");
 
-    // Without a body, or an empty one, it goes on to its confirmation.
+    // Without a body, or an empty one, it goes on to its approval: the same request, one approval.
     for (const body of [null, ""]) {
       const first = await openApiRaw("DELETE", `/payments/${deposit}`, body, { authorization });
       assert.equal(first.status, 412, JSON.stringify(body));
-      assert.equal(await restCode(first), "CONFIRMATION_REQUIRED");
+      assert.equal(await restCode(first), "APPROVAL_REQUIRED");
     }
-    assert.equal(await confirmationCount(), asked + 2);
+    assert.equal(await approvalCount(), asked + 1);
   });
 
   /** The id in other letters' case: MySQL still matches it. */
@@ -1329,14 +1438,14 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const sent = otherCase(id);
     assert.notEqual(sent, id);
 
-    const paid = await confirmed(authorization, "record_payment", {
+    const paid = await approved(authorization, "record_payment", {
       reservationId: sent,
       type: "rental",
       amount: "80.00",
       method: "cash",
     });
     assert.equal(answer(paid).reservationId, id);
-    const returned = await confirmed(authorization, "record_deposit_return", {
+    const returned = await approved(authorization, "record_deposit_return", {
       reservationId: sent,
       amount: "20.00",
       method: "cash",
@@ -1367,7 +1476,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const sent = otherCase(damage);
     assert.notEqual(sent, damage);
 
-    const done = await confirmed(authorization, "delete_payment", { paymentId: sent });
+    const done = await approved(authorization, "delete_payment", { paymentId: sent });
     assert.deepEqual(answer(done), {
       paymentId: damage,
       reservationId: id,
@@ -1378,13 +1487,14 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(await marks(), [{ id, storeId: STORE, version: 1 }]);
   });
 
-  test("a write that fails after its confirmation spends no token", async () => {
-    // The token is consumed in the write's transaction: when the write rolls
-    // back, so does its consumption, and the same token runs it once.
+  test("a write that fails after its approval was carried out leaves it approved", async () => {
+    // The approval is carried out in the write's transaction: when the write
+    // rolls back, so does that, and the same approval runs it once.
     const authorization = await key();
     const { id } = await reservation();
     const args = { reservationId: id, type: "rental", amount: "15.00", method: "cash" };
-    const { token } = confirmation(await mcpCall(authorization, "record_payment", args));
+    const { id: token } = approval(await mcpCall(authorization, "record_payment", args));
+    await approve(token);
 
     failNextWrite = true;
     const failed = await mcpCall(authorization, "record_payment", {
@@ -1394,6 +1504,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.equal(refusal(failed).code, "INTERNAL_SERVER_ERROR");
     assert.deepEqual(await paymentsOf(id), [], "the row rolled back");
     assert.deepEqual(await marks(), [], "and its billing mark");
+    assert.equal((await approvalRow(token)).status, "approved", "the approval still approved");
 
     const done = await mcpCall(authorization, "record_payment", {
       ...args,

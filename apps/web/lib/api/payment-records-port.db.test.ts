@@ -4,7 +4,7 @@ import * as nodeModule from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { after, before, describe, mock, test } from "node:test";
+import { after, before, describe, test } from "node:test";
 
 import { eq } from "drizzle-orm";
 
@@ -19,8 +19,8 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 // facts the row takes are computed under the reservation's lock, bound with
 // the preview, and written as they were bound. A reservation whose totals
 // change between the preview and the call that carries it out makes other
-// facts, and the call is refused, through a token as through a person's
-// approval (the switch turned on by this test alone: `liveConsequences`).
+// facts, and the call is refused through the person's approval it presents
+// (`money` is live: an API key's payment needs one).
 
 // A dashboard session, read from a test header: Better Auth stays out.
 const SESSION_HEADER = "x-test-session-user";
@@ -80,8 +80,6 @@ describe(
   () => {
     let database: TestDatabase;
     let louezDb: typeof import("@louez/db");
-    /** The consequences live for every check: none (tokens), or a person's (approvals). */
-    let live: readonly string[] = [];
     let record: Call;
     let decide: (id: string) => Promise<void>;
     let counter = 0;
@@ -92,16 +90,6 @@ describe(
       const { paymentRecordsPort } = await import("@/lib/api/payment-records-port");
       // packages/api is ES modules: its router needs the CommonJS packages' names by hand.
       await import("@louez/mcp/testing/cjs-named-exports");
-      // The switch, for this test alone, before any procedure is loaded.
-      const confirmation: Record<string, unknown> =
-        await import("@louez/api/platform/confirmation");
-      const check = confirmation.checkConfirmation as (input: object) => unknown;
-      mock.module("@louez/api/platform/confirmation", {
-        namedExports: {
-          ...confirmation,
-          checkConfirmation: (input: object) => check({ ...input, liveConsequences: live }),
-        },
-      });
       const { appRouter } = await import("@louez/api/router");
       const { STORE_HEADER } = await import("@louez/api/platform/procedures");
       const { createApiKey } = await import("@louez/api/services");
@@ -254,66 +242,46 @@ describe(
     });
 
     test("unchanged, the row takes the facts bound with the preview", async () => {
-      live = [];
       const id = await reservation();
       const asked = await codeOf(record(rental(id)));
-      assert.equal(asked.code, "CONFIRMATION_REQUIRED");
-      assert.equal(
-        await codeOf(record(rental(id), String(asked.details.confirmationToken))).then(
-          (r) => r.code,
-        ),
-        "OK",
-      );
+      assert.equal(asked.code, "APPROVAL_REQUIRED");
+      const approval = String(asked.details.confirmationToken);
+      await decide(approval);
+      assert.equal(await codeOf(record(rental(id), approval)).then((r) => r.code), "OK");
       assert.deepEqual(await rowsOf(id), [
         { amount: "120.00", currency: "EUR", grossMinor: 12000, insuranceShareMinor: 0 },
       ]);
     });
 
-    test("a token: the reservation insured since the preview, the call is refused and nothing is written", async () => {
-      live = [];
+    test("an approval: the reservation insured since the person approved, the call is refused, nothing is written, and the approval ends as state_changed", async () => {
       const id = await reservation();
       const asked = await codeOf(record(rental(id)));
-      assert.equal(asked.code, "CONFIRMATION_REQUIRED");
+      assert.equal(asked.code, "APPROVAL_REQUIRED");
+      const approval = String(asked.details.confirmationToken);
+      await decide(approval);
       await insure(id);
-      const presented = await codeOf(record(rental(id), String(asked.details.confirmationToken)));
-      assert.equal(presented.code, "CONFIRMATION_INVALID");
+      const presented = await codeOf(record(rental(id), approval));
+      assert.equal(presented.code, "APPROVAL_INVALID");
+      assert.deepEqual(presented.details, { reason: "state_changed" });
       assert.deepEqual(await rowsOf(id), []);
-    });
+      const [row] = await louezDb.db
+        .select({
+          status: louezDb.apiHandoffs.status,
+          failureCode: louezDb.apiHandoffs.failureCode,
+        })
+        .from(louezDb.apiHandoffs)
+        .where(eq(louezDb.apiHandoffs.id, approval));
+      assert.deepEqual(row, { status: "failed", failureCode: "state_changed" });
 
-    test("an approval: the reservation insured since the person approved, the call is refused, nothing is written, and the approval ends as state_changed", async () => {
-      live = ["money"];
-      try {
-        const id = await reservation();
-        const asked = await codeOf(record(rental(id)));
-        assert.equal(asked.code, "APPROVAL_REQUIRED");
-        const approval = String(asked.details.confirmationToken);
-        await decide(approval);
-        await insure(id);
-        const presented = await codeOf(record(rental(id), approval));
-        assert.equal(presented.code, "APPROVAL_INVALID");
-        assert.deepEqual(presented.details, { reason: "state_changed" });
-        assert.deepEqual(await rowsOf(id), []);
-        const [row] = await louezDb.db
-          .select({
-            status: louezDb.apiHandoffs.status,
-            failureCode: louezDb.apiHandoffs.failureCode,
-          })
-          .from(louezDb.apiHandoffs)
-          .where(eq(louezDb.apiHandoffs.id, approval));
-        assert.deepEqual(row, { status: "failed", failureCode: "state_changed" });
-
-        // Asked again, the person sees the facts as they are now, and the row takes them.
-        const again = await codeOf(record(rental(id)));
-        assert.equal(again.code, "APPROVAL_REQUIRED");
-        const next = String(again.details.confirmationToken);
-        await decide(next);
-        assert.equal((await codeOf(record(rental(id), next))).code, "OK");
-        assert.deepEqual(await rowsOf(id), [
-          { amount: "120.00", currency: "EUR", grossMinor: 12000, insuranceShareMinor: 2400 },
-        ]);
-      } finally {
-        live = [];
-      }
+      // Asked again, the person sees the facts as they are now, and the row takes them.
+      const again = await codeOf(record(rental(id)));
+      assert.equal(again.code, "APPROVAL_REQUIRED");
+      const next = String(again.details.confirmationToken);
+      await decide(next);
+      assert.equal((await codeOf(record(rental(id), next))).code, "OK");
+      assert.deepEqual(await rowsOf(id), [
+        { amount: "120.00", currency: "EUR", grossMinor: 12000, insuranceShareMinor: 2400 },
+      ]);
     });
   },
 );

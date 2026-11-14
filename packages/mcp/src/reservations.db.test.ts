@@ -10,13 +10,26 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
 
+// A dashboard session, read from a test header: Better Auth stays out. The
+// owner decides an override's approval with it, as the approval's page does.
+const SESSION_HEADER = "x-test-session-user";
 mock.module(apiDependencyUrl("@louez/auth"), {
-  namedExports: { auth: {}, authInstance: { api: { getSession: async () => null } } },
+  namedExports: {
+    auth: {},
+    authInstance: {
+      api: {
+        getSession: async ({ headers }: { headers: Headers }) => {
+          const id = headers.get(SESSION_HEADER);
+          return id ? { user: { id, email: `${id}@rt.test` } } : null;
+        },
+      },
+    },
+  },
 });
 
 // The reservation follow-up tools, through the app's real router and the
 // real MCP and OpenAPI handlers: what an agent sees in the daily bundle, the
-// confirmation of a status change.
+// confirmation of a status change, and the owner's approval of an override.
 
 const OWNER = "rt_owner_user_000001";
 const STORE = "rt_store_a_000000001";
@@ -28,6 +41,8 @@ type Json = Record<string, unknown>;
 describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
+  /** The owner's answer on an approval's page: `handoffs.decide`, with their session, on RPC. */
+  let decide: (input: object) => Promise<unknown>;
   let apiKeys: typeof import("@louez/api/services");
   let orm: typeof import("drizzle-orm");
   let exposure: import("@louez/api/platform/exposure").Exposure;
@@ -62,6 +77,27 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       await import("@louez/api/platform/openapi");
     const { handleMcpRequest } = await import("./transports/http");
     exposure = createExposure(appRouter);
+
+    const { RPCHandler } = await import("@orpc/server/fetch");
+    const { createORPCClient } = await import("@orpc/client");
+    const { RPCLink } = await import("@orpc/client/fetch");
+    const rpcHandler = new RPCHandler(appRouter);
+    const client = createORPCClient<{
+      dashboard: { handoffs: { decide: (input: object) => Promise<unknown> } };
+    }>(
+      new RPCLink({
+        url: "http://louez.test/api/rpc",
+        headers: { [SESSION_HEADER]: OWNER, cookie: `louez_active_store=${STORE}` },
+        fetch: async (request) => {
+          const { response } = await rpcHandler.handle(request, {
+            prefix: "/api/rpc",
+            context: { headers: request.headers, transport: "rpc", ports, receipt: {} },
+          });
+          return response ?? new Response(null, { status: 404 });
+        },
+      }),
+    );
+    decide = (input) => client.dashboard.handoffs.decide(input);
 
     const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (method, path, body, headers) =>
@@ -164,6 +200,30 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     const error = toolError(result) as { code?: string; details?: { confirmationToken?: string } };
     assert.equal(error?.code, "CONFIRMATION_REQUIRED", JSON.stringify(result.content));
     return error.details?.confirmationToken ?? "";
+  };
+
+  /** The approval an override asks for, approved by the owner on its page: its id. */
+  const approvedId = async (result: ToolResult) => {
+    const error = toolError(result) as {
+      code?: string;
+      details?: { confirmationToken?: string; approval?: { id: string } };
+    };
+    assert.equal(error?.code, "APPROVAL_REQUIRED", JSON.stringify(result.content));
+    const id = error.details?.approval?.id ?? "";
+    assert.equal(error.details?.confirmationToken, id);
+    const [row] = await louezDb.db
+      .select()
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    assert.ok(row, `approval ${id}`);
+    await decide({
+      id,
+      decision: "approve",
+      revision: row.revision,
+      shown: row.bindingHash,
+      acknowledged: true,
+    });
+    return id;
   };
 
   let counter = 0;
@@ -276,7 +336,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(await statusOf(pending), "rejected");
   });
 
-  test("an agent confirms over the stock only through the preview that lists the shortfalls", async (t) => {
+  test("an agent confirms over the stock only once the owner approved the preview that lists the shortfalls", async (t) => {
     const authorization = await key();
     // Its bookings share the calendar's dates: gone once it ends.
     const created: string[] = [];
@@ -365,7 +425,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
         id: pending,
         status: "confirmed",
         allowOverbooking: true,
-        confirmationToken: tokenOf(asked),
+        confirmationToken: await approvedId(asked),
       }),
     );
     assert.equal(confirmed.to, "confirmed");
@@ -384,7 +444,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     );
   });
 
-  test("an agent confirms past the turnover buffer only through the preview that lists its lines", async (t) => {
+  test("an agent confirms past the turnover buffer only once the owner approved the preview that lists its lines", async (t) => {
     const authorization = await key();
     // Its bookings share the calendar's dates, and its buffer the store: gone once it ends.
     const created: string[] = [];
@@ -496,7 +556,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
         id: pending,
         status: "confirmed",
         overrideTurnoverBuffer: true,
-        confirmationToken: tokenOf(asked),
+        confirmationToken: await approvedId(asked),
       }),
     );
     assert.equal(confirmed.to, "confirmed");

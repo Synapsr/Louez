@@ -14,11 +14,9 @@ import type { ApprovalDisplay } from "../services/approval-display";
 import { carryOutPresentedApproval, requestApproval } from "../services/approvals";
 import type { ScopedActor } from "./actor";
 import {
-  APPROVAL_LIVE,
   CONSEQUENCES,
   confirmationStep,
   isConsequence,
-  type Consequence,
   type Consequences,
 } from "./approval-rule";
 import { apiError, platformErrors, type ApiErrorData } from "./errors";
@@ -55,9 +53,10 @@ export interface ConfirmationPreview {
  * showed (amount, recipients, the record's version). If any of them changes,
  * the token no longer works.
  *
- * This proves the caller saw the preview. It does not prove a human approved:
- * the same agent can send both calls. A person's approval is planned for the
- * actions a person must approve (docs/architecture/api-and-agents.md).
+ * A token proves the caller saw the preview. It does not prove a human
+ * approved: the same agent can send both calls. A branch a person must
+ * approve (`APPROVAL_LIVE`) asks a key or a token for a person's approval
+ * instead, on a Louez page (docs/architecture/api-and-agents.md).
  *
  * It takes no `executor`: it throws, and a refusal thrown inside a
  * transaction would roll back the preview it records with it. A write that
@@ -200,14 +199,6 @@ export interface ConfirmationCheck {
     scope: ProcedureScope;
     urls: UrlsPort;
   };
-  /**
-   * The consequences live for this call: `APPROVAL_LIVE` when absent, as for
-   * every procedure Louez serves. Only the transport tests' fixture router
-   * names it (platform/testing.ts), from the option it is built with, to
-   * run an approval before any consequence is live; no request reaches it,
-   * and it is refused in production.
-   */
-  liveConsequences?: readonly Consequence[];
   now?: Date;
 }
 
@@ -238,16 +229,7 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(
       `${input.procedure}: a confirmation declares the consequences of its branch, at least one, each one of ${CONSEQUENCES.join(", ")}.`,
     );
   }
-  if (input.liveConsequences !== undefined && process.env.NODE_ENV === "production") {
-    throw new Error(
-      `${input.procedure}: live consequences are the transport tests' fixture's alone.`,
-    );
-  }
-  const step = confirmationStep(
-    input.consequences,
-    input.actor.credential,
-    input.liveConsequences ?? APPROVAL_LIVE,
-  );
+  const step = confirmationStep(input.consequences, input.actor.credential);
   if (step === "none") return null;
 
   const bindingHash = sha256(

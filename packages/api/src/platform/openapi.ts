@@ -24,10 +24,15 @@ import { z } from "zod";
 
 import type { BaseContext } from "../context";
 import { resolveAccountActor } from "./actor";
+import {
+  APPROVAL_COOL_DOWN_TIME,
+  APPROVAL_DECIDE_TIME,
+  APPROVAL_EXECUTE_TIME,
+} from "./approval-help";
 import { CONFIRMATION_TTL_MS } from "./confirmation";
 import { reportUnexpectedErrors } from "./error-reporting";
 import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
-import { apiError, type ApiErrorData } from "./errors";
+import { APPROVAL_POLL_SECONDS, apiError, type ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
 import { REFERENCE_TAGS } from "./openapi-tags";
 import { sha256 } from "./hash";
@@ -38,6 +43,11 @@ import {
 } from "./operations";
 import type { ApiPorts } from "./ports";
 import { API_RATE_LIMIT } from "./rate-limit";
+import {
+  APPROVAL_REQUESTS_PER_HOUR,
+  MAX_PENDING_APPROVALS,
+  MAX_STORE_PENDING_APPROVALS,
+} from "../services/approvals";
 
 /** Response header with the id of the operation a write recorded (its receipt). */
 export const OPERATION_ID_HEADER = "Louez-Operation-Id";
@@ -301,7 +311,8 @@ const CONFIRMATION_MINUTES = CONFIRMATION_TTL_MS / 60_000;
  * The codes shared by the operations, which every integration should
  * handle: the platform's own (platform/errors.ts, confirmation.ts,
  * operations.ts, answer-pages.ts, the body cap, the content types and the
- * path parameters below, and large-bodies.ts). Those only an OAuth connection
+ * path parameters below, large-bodies.ts, and a person's approval:
+ * `approvalErrors`). Those only an OAuth connection
  * meets (STORE_REQUIRED, NOT_AVAILABLE_TO_THIS_AGENT) or no exposed procedure
  * throws (SESSION_ONLY) are left out.
  */
@@ -349,11 +360,32 @@ export const COMMON_ERROR_CODES = [
     "OPERATION_OUTCOME_UNKNOWN",
     "Louez does not know whether an earlier call with this idempotency key went through (`details.operationId`): it ended on an error Louez did not expect, or its outcome was not recorded. The key never runs the write again: check the current state before trying again with a new idempotency key.",
   ],
+  [
+    409,
+    "APPROVAL_DECLINED",
+    "The key's owner refused the write on its approval page (`details.reason`: their words, if any). Nothing was done.",
+  ],
+  [
+    409,
+    "APPROVAL_RECENTLY_DECLINED",
+    `The same request was refused less than ${APPROVAL_COOL_DOWN_TIME} ago: it may be asked again from \`details.retryAt\`.`,
+  ],
   [412, "CONFIRMATION_REQUIRED", "The write waits for a confirmation (below)."],
   [
     412,
     "CONFIRMATION_INVALID",
     "The confirmation token is unknown, expired, used, or no longer matches: call again without it for a new preview.",
+  ],
+  [412, "APPROVAL_REQUIRED", "The write waits for a person's approval (below)."],
+  [
+    412,
+    "APPROVAL_PENDING",
+    "The approval sent has not been decided yet: read it again, then retry (retryable).",
+  ],
+  [
+    412,
+    "APPROVAL_INVALID",
+    "The approval does not authorize this request. Check `details.reason` and follow the “Approvals” section before retrying.",
   ],
   [413, "REQUEST_TOO_LARGE", "The body is larger than the operation takes (`details.maxBytes`)."],
   [
@@ -362,6 +394,11 @@ export const COMMON_ERROR_CODES = [
     "The body is not in a content type the operation takes (`details.contentTypes`; empty when it takes no body), or has no `Content-Type`.",
   ],
   [429, "RATE_LIMITED", "Too many calls: retry after `details.retryAfterSeconds`."],
+  [
+    429,
+    "APPROVALS_FULL",
+    "Too many approval requests are open or were made this hour (`details.limit`): retry after the `Retry-After` header.",
+  ],
   [
     503,
     "LARGE_BODY_BUSY",
@@ -403,15 +440,34 @@ Other codes belong to one operation or a few, such as \`PRODUCT_NOT_FOUND\`. Som
 
 ## Confirmations
 
-Some writes change what customers see or pay, or cannot be undone; their description says so and they take the \`Louez-Confirmation\` header. On a key that asks for confirmations (the default; an option of each key), their first call changes nothing and answers 412 \`CONFIRMATION_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` holds the facts to check, and \`data.details.confirmationToken\` is the token. Show the preview to the person who decides, then send the same request again with the token in the \`Louez-Confirmation\` header. A token works once, for ${CONFIRMATION_MINUTES} minutes, for the same key, input and state. A few operations always ask, whatever the key's option; their description says so.
+Some writes change what customers see or pay, or cannot be undone; their description says so and they take the \`Louez-Confirmation\` header. On a key that asks for confirmations (the default; an option of each key), their first call changes nothing and answers 412 \`CONFIRMATION_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` holds the facts to check, and \`data.details.confirmationToken\` is the token. Show the preview to the person who decides, then send the same request again with the token in the \`Louez-Confirmation\` header. A token works once, for ${CONFIRMATION_MINUTES} minutes, for the same key, input and state. A few operations always ask, whatever the key's option; their description says so. The writes below need a person's approval instead.
+
+## Approvals
+
+Recording a payment or a deposit return, deleting a payment, removing a member, cancelling an invitation, and confirming a reservation over the stock or past the turnover buffer need the approval of the key's owner, on a Louez page, whatever the key's confirmation option. Their description says so.
+
+1. The first call changes nothing and answers 412 \`APPROVAL_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` holds the facts, and \`data.details.approval\` the approval: its \`id\` (also \`data.details.confirmationToken\`), \`url\`, \`status\`, \`expiresAt\` and \`pollAfterSeconds\`.
+2. Give \`url\` to the key's owner. They open it signed in to Louez, read Louez's own summary of the write, and approve or refuse it, within ${APPROVAL_DECIDE_TIME}.
+3. Read \`GET /handoffs/{id}\` with the approval's id every \`pollAfterSeconds\` (${APPROVAL_POLL_SECONDS}) seconds or more, until its \`status\` is \`approved\`, \`completed\`, \`failed\` or \`expired\`, and no later than \`expiresAt\`; \`decision\` says what the owner decided, when, and their words. Only the key that asked reads its approval. It returns neither the input nor the operation: keep the request you sent.
+4. Approved, send the same request again, with the same input and the approval's id in the \`Louez-Confirmation\` header, within ${APPROVAL_EXECUTE_TIME}. It runs once, if the store is still as the preview showed, and answers as the operation always does. The same \`Idempotency-Key\` may be kept for the whole flow.
+
+The operation's own refusals come first: a request that fails them, such as an approved deletion sent again (\`PAYMENT_NOT_FOUND\`) or a deposit return above what is left (\`DEPOSIT_RETURN_EXCEEDS_BALANCE\`), answers that refusal whatever approval it carries. An approval error comes only for a request that is otherwise still valid. The other answers, each with nothing done:
+
+- \`APPROVAL_PENDING\` (412, retryable): the approval sent is not decided yet.
+- \`APPROVAL_DECLINED\` (409): the owner refused; \`details.reason\` holds their words, if any, as plain text.
+- \`APPROVAL_INVALID\` (412): inspect \`details.reason\`. For \`used\`, the action already ran: check the current record before requesting another action. For \`approver_not_allowed\`, the key’s owner can no longer authorize it; someone allowed must act in Louez. For \`expired\` or \`state_changed\`, send the request without \`Louez-Confirmation\` for a new preview and approval. For \`other_request\`, use this request’s approval, or omit the header to request one.
+- \`APPROVAL_RECENTLY_DECLINED\` (409): the owner refused the same request less than ${APPROVAL_COOL_DOWN_TIME} ago; it may be asked again from \`details.retryAt\`.
+- \`APPROVALS_FULL\` (429, with \`Retry-After\`): a key holds at most ${MAX_PENDING_APPROVALS} open approvals and makes at most ${APPROVAL_REQUESTS_PER_HOUR} requests an hour in its store, and a store holds at most ${MAX_STORE_PENDING_APPROVALS} open approvals.
+
+Sending the same request again while its approval is open answers with that approval, not a new one. A confirmation token sent where an approval is needed is no approval: the call asks for one.
 
 ## Idempotency and receipts
 
 Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), a retry with the same key, from the same API key, for the same operation and input, answers by how the first call ended:
 
 - It succeeded: the retry returns its stored result without running it again, with \`Louez-Replayed: true\`.
-- Louez refused it before doing it, for instance \`CONFIRMATION_REQUIRED\`, \`PERMISSION_DENIED\` or \`RESERVATION_BUSY\`: the retry runs the write again.
-- Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers \`OPERATION_OUTCOME_UNKNOWN\` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation, call it without the token for a new preview, as the old token is spent if the write went through.
+- Louez refused it before doing it, for instance \`CONFIRMATION_REQUIRED\`, \`APPROVAL_REQUIRED\`, \`PERMISSION_DENIED\` or \`RESERVATION_BUSY\`: the retry runs the write again. So one key serves a write's whole approval, from the first call to the one that carries it out.
+- Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers \`OPERATION_OUTCOME_UNKNOWN\` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation or an approval, call it without the token or the approval's id for a new preview, as either is spent if the write went through.
 - It still runs: the retry answers \`OPERATION_IN_PROGRESS\`; retry shortly with the same key.
 
 If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was. Writes that return a temporary upload URL do not replay: they ignore the header, and a retry issues a new URL. A successful write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
@@ -520,11 +576,15 @@ const openApiDocumentOptions = {
         name: "Louez-Confirmation",
         in: "header",
         required: false,
-        description: `The token a CONFIRMATION_REQUIRED error returned. Send the same input again with it to go ahead. Valid ${CONFIRMATION_MINUTES} minutes, once.`,
+        description: `What lets a write that asked go ahead, from \`data.details.confirmationToken\` of its answer: the token a CONFIRMATION_REQUIRED error returned (valid ${CONFIRMATION_MINUTES} minutes, once), or the id of the approval an APPROVAL_REQUIRED error returned, once the key's owner approved it (valid for ${APPROVAL_EXECUTE_TIME} after the approval, once). Send the same input again with it.`,
         schema: { type: "string" },
       },
     },
     headers: {
+      RetryAfter: {
+        description: "Seconds to wait before calling again.",
+        schema: { type: "integer", minimum: 1 },
+      },
       LouezOperationId: {
         description: "Id of the operation this write recorded.",
         schema: { type: "string" },
@@ -548,10 +608,22 @@ const openApiDocumentOptions = {
       ConfirmationRequired: errorBodyResponse(
         "CONFIRMATION_REQUIRED, with the preview and the token to send in `Louez-Confirmation`; or CONFIRMATION_INVALID.",
       ),
+      ApprovalRequired: errorBodyResponse(
+        "APPROVAL_REQUIRED, with the preview and the approval (`data.details.approval`: its `url` for the key's owner, its `id` to send in `Louez-Confirmation` once approved); APPROVAL_PENDING, not decided yet; or APPROVAL_INVALID, with `details.reason`. Where the description says a branch asks for a confirmation instead: CONFIRMATION_REQUIRED or CONFIRMATION_INVALID.",
+      ),
+      ApprovalDeclined: errorBodyResponse(
+        `APPROVAL_DECLINED: the key's owner refused, with their words in \`details.reason\`; APPROVAL_RECENTLY_DECLINED: the same request was refused less than ${APPROVAL_COOL_DOWN_TIME} ago, and may be asked again from \`details.retryAt\`; or another conflict, by its \`data.code\`.`,
+      ),
       UnsupportedMediaType: errorBodyResponse(
         "UNSUPPORTED_MEDIA_TYPE: the body is not in a content type the operation takes; `details.contentTypes` lists them, and is empty when the operation takes no body.",
       ),
       RateLimited: errorBodyResponse("RATE_LIMITED: retry after `details.retryAfterSeconds`."),
+      ApprovalsFull: {
+        ...errorBodyResponse(
+          "RATE_LIMITED: retry after `details.retryAfterSeconds`; or APPROVALS_FULL: too many approval requests are open or were made this hour, retry after `Retry-After`.",
+        ),
+        headers: { "Retry-After": { $ref: "#/components/headers/RetryAfter" } },
+      },
       Error: errorBodyResponse("Any other error, in the same shape: branch on `data.code`."),
     },
   },

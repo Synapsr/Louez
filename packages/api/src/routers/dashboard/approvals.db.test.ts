@@ -49,8 +49,8 @@ mock.module("@louez/auth", {
 });
 
 // A person's approval of an agent's operation, end to end on the database,
-// through the transport tests' fixture (`fixture.notes.erase`) with `money`
-// made live for it alone: requested once the write's transaction is over, read,
+// through the transport tests' fixture (`fixture.notes.erase`) on its `money`
+// branch, which a person approves (`APPROVAL_LIVE`): requested once the write's transaction is over, read,
 // decided on its page, refused, expired and revoked; its identity, its caps
 // and its cool-down; who reads it and who decides it; the inbox; and carried
 // out by the agent's call, once, inside the write (the fixture erases a note,
@@ -84,7 +84,6 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   type Fixture = ReturnType<typeof import("../../platform/testing").createFixtureRouter>;
   let fixtureRouter: typeof import("../../platform/testing").createFixtureRouter;
   let live: Fixture["fixture"]["notes"];
-  let notLive: Fixture["fixture"]["notes"];
   let LIFETIME: { actMs: number; executeMs?: number };
 
   const ports = {
@@ -117,8 +116,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       inbox: (await import("./inbox")).dashboardInboxRouter,
     };
     fixtureRouter = (await import("../../platform/testing")).createFixtureRouter;
-    live = fixtureRouter({ liveConsequences: ["money"] }).fixture.notes;
-    notLive = fixtureRouter().fixture.notes;
+    live = fixtureRouter().fixture.notes;
     LIFETIME = handoffs.HANDOFF_LIFETIMES.operation_approval;
     await louezDb.db.insert(louezDb.users).values([
       { id: OWNER, email: "owner@ap.test", name: "Olga Owner" },
@@ -490,6 +488,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   });
 
   test("who is asked: a session never; a key with its option off still, for money; not live, the token as before", async () => {
+    // A deletion is at a person's level and not live yet: the caller's token.
     await addNote("n1");
     await erase({ id: "n1" }, session());
     assert.equal(await noteExists("n1"), false, "a session runs directly");
@@ -500,14 +499,13 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
 
     const key = await apiKey();
     await addNote("n3");
-    const token = await failure(erase({ id: "n3" }, key.context(), notLive));
+    const token = await failure(erase({ id: "n3", consequences: ["deletion"] }, key.context()));
     assert.equal(token.code, "CONFIRMATION_REQUIRED");
     assert.match(String(token.details.confirmationToken), /^[A-Za-z0-9_-]{43}$/);
     assert.equal((await rows()).length, 1, "a token writes no approval");
     const done = await erase(
-      { id: "n3" },
+      { id: "n3", consequences: ["deletion"] },
       key.context({ "louez-confirmation": String(token.details.confirmationToken) }),
-      notLive,
     );
     assert.equal(done.erased, true);
 
@@ -704,13 +702,14 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
           scope: { domain: "categories", level: "write", role: "delete" },
           urls: ports.urls,
         },
-        liveConsequences: ["money"],
-      }),
+        }),
     );
     assert.ok(otherRefusal);
     same(await failure(confirmation.raiseConfirmation(otherRefusal)), "another procedure");
     // A procedure that asks for the token reads it as an unknown token.
-    const token = await failure(erase({ id: "n1" }, key.context(presenting), notLive));
+    const token = await failure(
+      erase({ id: "n1", consequences: ["deletion"] }, key.context(presenting)),
+    );
     assert.equal(token.code, "CONFIRMATION_INVALID");
 
     assert.deepEqual(await rowOf(asked.approval.id), before, "nothing changed");
@@ -980,7 +979,6 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       asked = resolve;
     });
     const notes = fixtureRouter({
-      liveConsequences: ["money"],
       whileAsked: async () => {
         asked();
         await resumed;
@@ -1078,7 +1076,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   });
 
   test("a write retried on a deadlock requests its approval once, after the transaction that refused it", async () => {
-    const notes = fixtureRouter({ liveConsequences: ["money"], deadlocksBeforeCommit: 1 }).fixture
+    const notes = fixtureRouter({ deadlocksBeforeCommit: 1 }).fixture
       .notes;
     const key = await apiKey();
     await addNote("n1");
@@ -1161,7 +1159,6 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
         scope: ERASE_SCOPE,
         urls: ports.urls,
       },
-      liveConsequences: ["money"],
     });
 
   /** A recorded write that runs `run`, as `storeProcedure` records the fixture's. */
@@ -1186,7 +1183,6 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       asked = resolve;
     });
     const notes = fixtureRouter({
-      liveConsequences: ["money"],
       whileAsked: async () => {
         asked();
         await resumed;
@@ -1731,7 +1727,6 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     await addNote("n1");
     let renamed = false;
     const moving = fixtureRouter({
-      liveConsequences: ["money"],
       whileAsked: async () => {
         if (renamed) return;
         renamed = true;
@@ -1828,7 +1823,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   });
 
   test("a write retried on a deadlock after it consumed the approval: one consumption, one write", async () => {
-    const notes = fixtureRouter({ liveConsequences: ["money"], deadlocksBeforeCommit: 1 }).fixture
+    const notes = fixtureRouter({ deadlocksBeforeCommit: 1 }).fixture
       .notes;
     const key = await apiKey();
     await addNote("n1");
@@ -2290,7 +2285,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
 
   // --- The request path's own guards ------------------------------------------------
 
-  test("a branch a person approves asks in its transaction, with what the approval is about; the fixture's live list never in production", async () => {
+  test("a branch a person approves asks in its transaction, with what the approval is about", async () => {
     const key = await apiKey();
     const context = key.context();
     const actor = {
@@ -2318,20 +2313,12 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       input: {},
       state: {},
       preview: { summary: "x" },
-      liveConsequences: ["money"] as const,
     };
     await assert.rejects(confirmation.checkConfirmation(check), /executor/);
     await assert.rejects(
       louezDb.db.transaction((tx) => confirmation.checkConfirmation({ ...check, executor: tx })),
       /approval/,
     );
-    const environment = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
-    try {
-      await assert.rejects(confirmation.checkConfirmation(check), /fixture/);
-    } finally {
-      process.env.NODE_ENV = environment;
-    }
     assert.deepEqual(await rows(), []);
   });
 

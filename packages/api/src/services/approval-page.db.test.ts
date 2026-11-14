@@ -43,8 +43,8 @@ mock.module("@louez/auth", {
 
 // What the page of an operation's approval shows its approver, and to whom:
 // `readApprovalPage` on a migrated database. Requests go through the
-// transport tests' fixture (`fixture.notes.erase`, `money` live for it
-// alone), so the preview read is the one Louez stored; the states a request
+// transport tests' fixture (`fixture.notes.erase`, on its `money` branch,
+// which a person approves), so the preview read is the one Louez stored; the states a request
 // reaches later are written on its row as the code that ends it writes them.
 // Reading changes nothing, and runs no procedure.
 
@@ -91,12 +91,10 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     grants = await import("./agent-grants");
     page = await import("./approval-page");
     decideHandoff = (await import("./handoff-decisions")).decideHandoff;
-    live = (await import("../platform/testing")).createFixtureRouter({ liveConsequences: ["money"] })
-      .fixture.notes;
+    live = (await import("../platform/testing")).createFixtureRouter().fixture.notes;
     display = await import("./approval-display");
     const { fact, headline, money, text } = display;
     shown = (await import("../platform/testing")).createFixtureRouter({
-      liveConsequences: ["money"],
       display: (input, store) => ({
         headline: headline("recordPayment", {}),
         facts: [

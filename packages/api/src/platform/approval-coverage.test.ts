@@ -523,19 +523,9 @@ describe("the inventory of the places that ask for a confirmation", () => {
     }
   });
 
-  test("only the transport tests' fixture makes a consequence live", () => {
-    // `checkConfirmation` reads `liveConsequences`, the fixture sets it, and
-    // nothing else outside tests names it; the rule's live list reaches the
-    // adapter from `checkConfirmation` alone.
-    const naming = sourceFiles()
-      .filter((file) => !isTest(file))
-      .filter((file) =>
-        /\bliveConsequences\b/.test(codeOnly(readFileSync(join(REPO, file), "utf8"))),
-      );
-    assert.deepEqual(naming, [
-      "packages/api/src/platform/confirmation.ts",
-      "packages/api/src/platform/testing.ts",
-    ]);
+  test("the live list reaches the adapter from `checkConfirmation` alone", () => {
+    // No caller picks its own live list: the rule's (`APPROVAL_LIVE`) is the
+    // only one, and only `checkConfirmation` steps through it.
     const stepping = sourceFiles()
       .filter((file) => !isTest(file))
       .filter((file) =>

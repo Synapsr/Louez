@@ -6,7 +6,7 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 
 import { createMemoryStorage } from "../platform/memory-storage";
 import { createTestNewStores } from "../platform/test-new-stores";
-import { createTestUrls } from "../platform/test-urls";
+import { createTestUrls, TEST_APP_URL } from "../platform/test-urls";
 
 process.env.NODE_ENV = "test";
 
@@ -23,11 +23,11 @@ for (const name of [
 }
 mock.module("@louez/auth", { namedExports: { auth: {}, authInstance: { api: {} } } });
 
-// The six branches a person will approve once pull request 7 switches them
-// (docs/architecture/api-and-agents.md, "Pull requests", 6b and 7), run
-// through their real procedures and services on a migrated database, as an
-// API key asks: what the agent receives (the answer's message and details,
-// the token aside) and what its token is bound to, pinned byte for byte.
+// The six branches a person approves (docs/architecture/api-and-agents.md,
+// "Pull requests", 6b and 7), run through their real procedures and
+// services on a migrated database, as an API key asks: the preview the
+// agent receives and what its approval is bound to, pinned byte for byte as
+// the token's were before the switch, and the approval's answer around them.
 // Nothing a person's display adds may change one of them.
 //
 // Each branch also hands its check what a person reads first (`display`,
@@ -124,7 +124,12 @@ const DISPLAYS: Record<(typeof BRANCHES)[number]["name"], string> = {
     "{\"headline\":{\"key\":\"confirmWithinRules\",\"values\":{\"to\":{\"type\":\"choice\",\"list\":\"reservationStatus\",\"value\":\"confirmed\"}}},\"facts\":[{\"key\":\"booking\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00096\"},\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"}},\"ref\":\"ab_reservation_00004\"},{\"key\":\"period\",\"values\":{\"period\":{\"type\":\"dateRange\",\"start\":\"2026-12-13T13:00:00.000Z\",\"end\":\"2026-12-17T13:00:00.000Z\"},\"total\":{\"type\":\"money\",\"amount\":\"98.00\",\"currency\":\"EUR\"}}},{\"key\":\"withinRules\",\"values\":{}},{\"key\":\"message\",\"values\":{\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"},\"message\":{\"type\":\"choice\",\"list\":\"customerMessage\",\"value\":\"request_accepted\"},\"channels\":{\"type\":\"choice\",\"list\":\"messageChannels\",\"value\":\"email\"},\"to\":{\"type\":\"text\",\"text\":\"camille.simon@ab.test\"}}}]}",
 };
 
-/** What each branch answers an agent today, as JSON: the message, the details but the token, the binding. */
+/**
+ * What each branch answered an agent before the switch, as JSON: the
+ * message, the details but the token, the binding. The preview and the
+ * binding are still these, byte for byte; the message ends on the
+ * approval's link instead of the token.
+ */
 const ANSWERS: Record<(typeof BRANCHES)[number]["name"], string> = {
   "a payment recorded":
     "{\"message\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"120.00\",\"method\":\"cash\"}}},\"bindingHash\":\"4d303a2b28ee7470b95e0ffae6ce8c1b93d8e5fffce8b4982a30d46df13959a7\"}",
@@ -146,7 +151,7 @@ const ANSWERS: Record<(typeof BRANCHES)[number]["name"], string> = {
     "{\"message\":\"Change reservation #R-00096 for Camille Simon (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. Camille Simon (camille.simon@ab.test) gets the \\\"request accepted\\\" message by email. Its items leave the stock for these dates. The turnover buffer stops no line: nothing is confirmed past it. The stock covers it: nothing is booked over the stock. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Change reservation #R-00096 for Camille Simon (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. Camille Simon (camille.simon@ab.test) gets the \\\"request accepted\\\" message by email. Its items leave the stock for these dates. The turnover buffer stops no line: nothing is confirmed past it. The stock covers it: nothing is booked over the stock.\",\"details\":{\"reservation\":{\"id\":\"ab_reservation_00004\",\"number\":\"R-00096\",\"from\":\"pending\",\"to\":\"confirmed\",\"startDate\":\"2026-12-13T13:00:00.000Z\",\"endDate\":\"2026-12-17T13:00:00.000Z\",\"totalAmount\":\"98.00\",\"currency\":\"EUR\"},\"customer\":{\"name\":\"Camille Simon\",\"email\":\"camille.simon@ab.test\"},\"messages\":[{\"message\":\"request_accepted\",\"channel\":\"email\",\"to\":\"camille.simon@ab.test\"}],\"reducesAvailability\":true,\"overbooking\":{\"shortfalls\":[]},\"turnoverBuffer\":{\"shortfalls\":[],\"turnoverBufferMinutes\":120},\"money\":null,\"insuranceContract\":null}}},\"bindingHash\":\"9d0fec7a177396bdb2361619e058b78fcbbfcf11b936ab3e83bef7e55de24250\"}",
 };
 
-describe("the six branches a person will approve, as an agent is answered (database)", {
+describe("the six branches a person approves, as an agent is answered (database)", {
   skip: skipWithoutTestDatabase(),
 }, () => {
   let database: TestDatabase;
@@ -227,6 +232,24 @@ describe("the six branches a person will approve, as an agent is answered (datab
         advanceNoticeMinutes: 0,
         minRentalMinutes: 0,
         turnoverBufferMinutes: 120,
+      },
+    });
+    // The key the calls come from: an approval is requested only for a connection that exists.
+    await db.insert(louezDb.apiKeys).values({
+      id: KEY,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Sample assistant",
+      keyPrefix: "lz_ab",
+      keyHash: "ab".repeat(32),
+      permissions: {
+        reservations: "write",
+        products: "write",
+        customers: "write",
+        categories: "write",
+        payments: "write",
+        analytics: "read",
+        settings: "write",
       },
     });
     await db.insert(louezDb.storeMembers).values([
@@ -383,8 +406,12 @@ describe("the six branches a person will approve, as an agent is answered (datab
     };
   }
 
-  /** What the agent is answered, as JSON: the code, the message, the details but the token, the binding. */
-  async function answerOf(branch: (typeof BRANCHES)[number]): Promise<string> {
+  /** The store's approvals: each enumerating test clears them, as the caps would refuse its many requests. */
+  const clearApprovals = () =>
+    louezDb.db.delete(louezDb.apiHandoffs).where(orm.eq(louezDb.apiHandoffs.storeId, STORE));
+
+  /** What the agent is answered: its message, its details, and the approval's binding. */
+  async function answerOf(branch: (typeof BRANCHES)[number]) {
     const [, domain, name] = branch.path;
     const procedure = routers[domain]?.[name] as
       | { "~orpc": { handler: (options: unknown) => Promise<unknown> } }
@@ -402,18 +429,25 @@ describe("the six branches a person will approve, as an agent is answered (datab
       error = caught;
     }
     const data = (error as { data?: { code?: string; details?: Record<string, unknown> } }).data;
-    assert.equal(data?.code, "CONFIRMATION_REQUIRED", `${branch.name}: asked`);
-    const { confirmationToken, expiresAt: _expiresAt, ...details } = data?.details ?? {};
+    assert.equal(data?.code, "APPROVAL_REQUIRED", `${branch.name}: asked`);
+    const details = (data?.details ?? {}) as {
+      preview?: unknown;
+      approval?: { id: string; url: string } & Record<string, unknown>;
+      confirmationToken?: string;
+    };
+    const id = String(details.approval?.id);
     const [row] = await louezDb.db
-      .select({ bindingHash: louezDb.apiConfirmations.bindingHash })
-      .from(louezDb.apiConfirmations)
-      .where(orm.eq(louezDb.apiConfirmations.id, String(confirmationToken)));
-    assert.ok(row, `${branch.name}: its token is recorded`);
-    return JSON.stringify({
+      .select({ bindingHash: louezDb.apiHandoffs.bindingHash })
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    assert.ok(row, `${branch.name}: its approval is recorded`);
+    return {
       message: (error as Error).message,
       details,
+      id,
       bindingHash: row.bindingHash,
-    });
+      json: JSON.stringify({ message: (error as Error).message, details }),
+    };
   }
 
   test("an amount the payment writes take is the amount its row holds: MySQL's own `decimal(10,2)`", async () => {
@@ -458,6 +492,7 @@ describe("the six branches a person will approve, as an agent is answered (datab
     } catch (caught) {
       code = (caught as { data?: { code?: string } }).data?.code;
     }
+    await clearApprovals();
     return { code, displays: [...displays] };
   }
 
@@ -476,7 +511,7 @@ describe("the six branches a person will approve, as an agent is answered (datab
         const call = await asked(["dashboard", "payments", "record"], { reservationId: PAID, type, amount, method: "cash" });
         const label = `${type} ${JSON.stringify(amount)}: ${call.code}`;
         if (accepted(amount, type)) {
-          assert.equal(call.code, "CONFIRMATION_REQUIRED", label);
+          assert.equal(call.code, "APPROVAL_REQUIRED", label);
           assert.equal(call.displays.length, 1, label);
           assert.ok(call.displays[0], `${label}: a display`);
         } else {
@@ -493,7 +528,7 @@ describe("the six branches a person will approve, as an agent is answered (datab
       const call = await asked(["dashboard", "payments", "recordDepositReturn"], { reservationId: PAID, amount, method: "cash" });
       const label = `return ${JSON.stringify(amount)}: ${call.code}`;
       if (accepted(amount, "deposit_return") && Number(amount) <= 300) {
-        assert.equal(call.code, "CONFIRMATION_REQUIRED", label);
+        assert.equal(call.code, "APPROVAL_REQUIRED", label);
         assert.ok(call.displays[0], `${label}: a display`);
       } else {
         assert.ok(
@@ -507,7 +542,7 @@ describe("the six branches a person will approve, as an agent is answered (datab
 
   for (const branch of BRANCHES) {
     test(`${branch.name}: its check gets a display the page shows, kept out of the answer`, async () => {
-      const answer = await answerOf(branch);
+      const { json: answer } = await answerOf(branch);
       assert.equal(displays.length, 1);
       const [display] = displays;
       assert.equal(JSON.stringify(display), DISPLAYS[branch.name]);
@@ -519,9 +554,38 @@ describe("the six branches a person will approve, as an agent is answered (datab
   }
 
   for (const branch of BRANCHES) {
-    test(`${branch.name}: the agent is answered as before, byte for byte`, async () => {
+    test(`${branch.name}: the agent gets the preview and the binding as before, byte for byte, and the approval`, async () => {
       const answer = await answerOf(branch);
-      assert.equal(answer, ANSWERS[branch.name]);
+      const before = JSON.parse(ANSWERS[branch.name]) as {
+        message: string;
+        details: { preview: unknown };
+        bindingHash: string;
+      };
+      assert.equal(
+        JSON.stringify(answer.details.preview),
+        JSON.stringify(before.details.preview),
+        "the preview",
+      );
+      assert.equal(answer.bindingHash, before.bindingHash, "the binding");
+      const url = `${TEST_APP_URL}/handoffs/${answer.id}`;
+      assert.equal(
+        answer.message,
+        before.message.replace(
+          " To go ahead, call again with the same input and this confirmation token.",
+          ` The user approves it in Louez, signed in, from this link: ${url}`,
+        ),
+      );
+      const { expiresAt, ...approval } = answer.details.approval ?? {};
+      assert.ok(typeof expiresAt === "string");
+      assert.deepEqual(approval, {
+        id: answer.id,
+        url,
+        status: "pending",
+        pollAfterSeconds: 30,
+        decision: null,
+      });
+      assert.equal(answer.details.confirmationToken, answer.id);
+      assert.deepEqual(Object.keys(answer.details).sort(), ["approval", "confirmationToken", "preview"]);
     });
   }
 });
