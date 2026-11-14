@@ -9803,9 +9803,109 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "이 요청은 아직 여기에서 답할 수 없습니다",
-        "description": "Louez는 아직 이 요청을 승인용으로 보여 줄 수 없으며, 아무 작업도 수행되지 않았습니다. AI 에이전트로 돌아가셔도 됩니다."
+      "title": {
+        "access_removed": "접근 권한 제거를 승인할까요?",
+        "money": "결제 작업을 승인할까요?",
+        "stock_override": "재고를 초과하는 예약을 승인할까요?",
+        "deletion": "삭제를 승인할까요?",
+        "customer_message": "고객에게 보내는 메시지를 승인할까요?",
+        "credits": "크레딧 사용을 승인할까요?",
+        "change": "이 변경을 승인할까요?"
+      },
+      "description": "AI 어시스턴트가 “{store}”에서 승인을 요청합니다. 어시스턴트는 회원님의 계정({email})으로 작업합니다. 승인하기 전에는 아무 일도 일어나지 않습니다.",
+      "askedBy": "요청한 곳",
+      "apiKey": "API 키 “{name}”",
+      "apiKeyUnnamed": "API 키",
+      "unnamedAgent": "AI 어시스턴트",
+      "what": "승인하면 Louez가 하는 일",
+      "details": "Louez가 확인한 내용",
+      "values": {
+        "yes": "예",
+        "no": "아니요",
+        "none": "없음"
+      },
+      "consequence": {
+        "access_removed": {
+          "title": "접근",
+          "description": "누군가 스토어에 대한 접근 권한을 잃습니다."
+        },
+        "money": {
+          "title": "돈",
+          "description": "스토어에 기록된 금액이 바뀝니다."
+        },
+        "stock_override": {
+          "title": "재고",
+          "description": "재고나 준비 시간을 넘겨 예약합니다. 여러 고객이 같은 상품을 기대할 수 있습니다."
+        },
+        "deletion": {
+          "title": "삭제",
+          "description": "삭제된 항목은 되돌릴 수 없습니다."
+        },
+        "customer_message": {
+          "title": "메시지",
+          "description": "고객이 스토어로부터 메시지를 받습니다."
+        },
+        "credits": {
+          "title": "크레딧",
+          "description": "스토어의 크레딧을 사용합니다."
+        }
+      },
+      "computedAt": "Louez가 스토어 데이터를 바탕으로 {when} 계산했습니다.",
+      "expires": "답하지 않으면 이 요청은 {when} 만료됩니다.",
+      "trust": "채팅에서 어시스턴트가 뭐라고 했든, 유효한 것은 Louez의 이 요약뿐입니다. 서로 다르면 거절하세요.",
+      "acknowledge": "Louez가 할 일을 읽었습니다",
+      "approve": "승인",
+      "refuse": "거절",
+      "reason": {
+        "label": "어시스턴트에게 남길 말 (선택)",
+        "hint": "어시스턴트가 답변과 함께 읽습니다. 최대 {max}자입니다."
+      },
+      "error": {
+        "failed": "답변을 저장하지 못했습니다. 요청을 다시 읽은 뒤 답해 주세요."
+      },
+      "unreadable": {
+        "title": "이 요청을 표시할 수 없습니다",
+        "description": "Louez가 이 요청의 세부 내용을 표시할 수 없어 여기서 승인할 수 없습니다. 아무 작업도 하지 않았습니다. 어시스턴트가 다시 요청할 수 있습니다."
+      },
+      "done": {
+        "request": "요청 내용",
+        "yourWords": "남긴 말",
+        "approved": {
+          "title": "승인됨",
+          "description": "이제 어시스턴트가 실행할 수 있습니다. 실행하지 않으면 승인은 {when} 만료되고 아무 일도 일어나지 않습니다."
+        },
+        "completed": {
+          "title": "완료됨",
+          "description": "어시스턴트가 {when} 실행했습니다. 채팅으로 돌아가셔도 됩니다."
+        },
+        "approved_expired": {
+          "title": "승인했지만 실행되지 않음",
+          "description": "어시스턴트가 1시간 안에 실행하지 않아 아무 작업도 하지 않았습니다. 아직 필요하면 다시 요청합니다."
+        },
+        "refused": {
+          "title": "거절됨",
+          "description": "아무 작업도 하지 않았습니다. 어시스턴트는 답변을 볼 수 있으며, 다시 시도하려면 다시 요청해야 합니다."
+        },
+        "state_changed": {
+          "title": "실행되지 않음: 스토어가 바뀌었습니다",
+          "description": "승인한 뒤 스토어에 변경이 있어 Louez는 아무 작업도 하지 않았습니다. 어시스턴트가 아직 필요하면 다시 요청하며, 새로운 내용을 보게 됩니다."
+        },
+        "approver_not_allowed": {
+          "title": "실행되지 않음: 역할이 바뀌었습니다",
+          "description": "어시스턴트가 실행하려 할 때 스토어에서의 역할로는 더 이상 허용되지 않아 아무 작업도 하지 않았습니다."
+        },
+        "connection_revoked": {
+          "title": "종료됨: 어시스턴트 연결이 해제되었습니다",
+          "description": "어시스턴트와 Louez의 연결이 삭제되어 이 요청은 더 이상 답하거나 실행할 수 없습니다. 아무 작업도 하지 않았습니다."
+        },
+        "expired": {
+          "title": "이 요청은 만료되었습니다",
+          "description": "하루 안에 아무도 답하지 않아 아무 작업도 하지 않았습니다. 어시스턴트가 아직 필요하면 다시 요청합니다."
+        },
+        "ended": {
+          "title": "이 요청은 종료되었습니다",
+          "description": "여기서 더 할 수 있는 일은 없으며, 아무 작업도 하지 않았습니다. 어시스턴트가 아직 필요하면 다시 요청합니다."
+        }
       }
     }
   }

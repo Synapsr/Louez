@@ -9803,9 +9803,109 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Na tę prośbę nie można jeszcze tutaj odpowiedzieć",
-        "description": "Louez nie może jeszcze pokazać tej prośby do zatwierdzenia i nic nie zostało zrobione. Możesz wrócić do swojego agenta AI."
+      "title": {
+        "access_removed": "Zatwierdzić odebranie dostępu?",
+        "money": "Zatwierdzić operację płatniczą?",
+        "stock_override": "Zatwierdzić rezerwację ponad stan magazynu?",
+        "deletion": "Zatwierdzić usunięcie?",
+        "customer_message": "Zatwierdzić wiadomość do klienta?",
+        "credits": "Zatwierdzić wydanie kredytów?",
+        "change": "Zatwierdzić tę zmianę?"
+      },
+      "description": "Twój asystent AI prosi o zgodę w „{store}”. Działa w imieniu Twojego konta ({email}): nic się nie stanie, dopóki nie zatwierdzisz.",
+      "askedBy": "Prośba od",
+      "apiKey": "Klucz API „{name}”",
+      "apiKeyUnnamed": "Klucz API",
+      "unnamedAgent": "Asystent AI",
+      "what": "Co Louez zrobi, jeśli zatwierdzisz",
+      "details": "Co Louez sprawdził",
+      "values": {
+        "yes": "Tak",
+        "no": "Nie",
+        "none": "Brak"
+      },
+      "consequence": {
+        "access_removed": {
+          "title": "Dostęp",
+          "description": "Ktoś traci dostęp do Twojego sklepu."
+        },
+        "money": {
+          "title": "Pieniądze",
+          "description": "To zmienia pieniądze zapisane dla Twojego sklepu."
+        },
+        "stock_override": {
+          "title": "Magazyn",
+          "description": "To rezerwuje ponad Twój stan magazynu lub czas przygotowania: kilku klientów może liczyć na ten sam przedmiot."
+        },
+        "deletion": {
+          "title": "Usunięcie",
+          "description": "Coś zostanie usunięte i nie da się tego przywrócić."
+        },
+        "customer_message": {
+          "title": "Wiadomość",
+          "description": "Klient otrzyma wiadomość od Twojego sklepu."
+        },
+        "credits": {
+          "title": "Kredyty",
+          "description": "To wydaje kredyty Twojego sklepu."
+        }
+      },
+      "computedAt": "Louez obliczył to {when} na podstawie danych Twojego sklepu.",
+      "expires": "Jeśli nie odpowiesz, prośba wygaśnie {when}.",
+      "trust": "Liczy się tylko to podsumowanie od Louez, bez względu na to, co asystent napisał na czacie. Jeśli się nie zgadzają, odrzuć.",
+      "acknowledge": "Rozumiem, co zrobi Louez",
+      "approve": "Zatwierdź",
+      "refuse": "Odrzuć",
+      "reason": {
+        "label": "Kilka słów dla asystenta (opcjonalnie)",
+        "hint": "Asystent przeczyta je razem z Twoją odpowiedzią. Maksymalnie {max} znaków."
+      },
+      "error": {
+        "failed": "Nie udało się zapisać Twojej odpowiedzi. Przeczytaj prośbę jeszcze raz i odpowiedz."
+      },
+      "unreadable": {
+        "title": "Tej prośby nie można wyświetlić",
+        "description": "Louez nie może wyświetlić szczegółów tej prośby, więc nie można jej tu zatwierdzić. Nic nie zostało zrobione. Asystent może poprosić ponownie."
+      },
+      "done": {
+        "request": "Prośba",
+        "yourWords": "Twoje słowa",
+        "approved": {
+          "title": "Zatwierdzono",
+          "description": "Asystent może to teraz wykonać. Jeśli tego nie zrobi, Twoja zgoda wygaśnie {when} i nic się nie stanie."
+        },
+        "completed": {
+          "title": "Gotowe",
+          "description": "Asystent wykonał to {when}. Możesz wrócić do czatu."
+        },
+        "approved_expired": {
+          "title": "Zatwierdzono, ale nie wykonano",
+          "description": "Asystent nie wykonał tego w ciągu godziny, więc nic nie zostało zrobione. Jeśli nadal tego potrzebuje, poprosi ponownie."
+        },
+        "refused": {
+          "title": "Odrzucono",
+          "description": "Nic nie zostało zrobione. Asystent widzi Twoją odpowiedź i musi poprosić ponownie, aby spróbować jeszcze raz."
+        },
+        "state_changed": {
+          "title": "Nie wykonano: Twój sklep się zmienił",
+          "description": "Po Twojej zgodzie coś zmieniło się w sklepie, więc Louez nic nie zrobił. Jeśli asystent nadal tego potrzebuje, poprosi ponownie i zobaczysz nowe szczegóły."
+        },
+        "approver_not_allowed": {
+          "title": "Nie wykonano: Twoja rola się zmieniła",
+          "description": "Gdy asystent próbował, Twoja rola w sklepie już na to nie pozwalała, więc nic nie zostało zrobione."
+        },
+        "connection_revoked": {
+          "title": "Zakończono: asystent został odłączony",
+          "description": "Połączenie asystenta z Louez zostało usunięte, więc tej prośby nie można już ani zatwierdzić, ani wykonać. Nic nie zostało zrobione."
+        },
+        "expired": {
+          "title": "Ta prośba wygasła",
+          "description": "Nikt nie odpowiedział w ciągu doby, więc nic nie zostało zrobione. Jeśli asystent nadal tego potrzebuje, poprosi ponownie."
+        },
+        "ended": {
+          "title": "Ta prośba została zakończona",
+          "description": "Nie ma tu już nic do zrobienia i nic nie zostało zrobione. Jeśli asystent nadal tego potrzebuje, poprosi ponownie."
+        }
       }
     }
   }

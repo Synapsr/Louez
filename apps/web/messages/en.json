@@ -9803,9 +9803,109 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "This request can't be answered here yet",
-        "description": "Louez can't show this request for your approval yet, and nothing was done. You can go back to your AI agent."
+      "title": {
+        "access_removed": "Approve removing access?",
+        "money": "Approve a payment action?",
+        "stock_override": "Approve booking over your stock?",
+        "deletion": "Approve a deletion?",
+        "customer_message": "Approve a message to a customer?",
+        "credits": "Approve spending credits?",
+        "change": "Approve this change?"
+      },
+      "description": "Your AI assistant asks for your approval in “{store}”. It acts for your account ({email}): nothing happens unless you approve.",
+      "askedBy": "Asked by",
+      "apiKey": "API key “{name}”",
+      "apiKeyUnnamed": "An API key",
+      "unnamedAgent": "An AI assistant",
+      "what": "What Louez will do if you approve",
+      "details": "What Louez checked",
+      "values": {
+        "yes": "Yes",
+        "no": "No",
+        "none": "Not set"
+      },
+      "consequence": {
+        "access_removed": {
+          "title": "Access",
+          "description": "Someone loses access to your store."
+        },
+        "money": {
+          "title": "Money",
+          "description": "This changes the money recorded for your store."
+        },
+        "stock_override": {
+          "title": "Stock",
+          "description": "This books past your stock or your turnover time: customers may count on the same item."
+        },
+        "deletion": {
+          "title": "Deletion",
+          "description": "Something is deleted and cannot be brought back."
+        },
+        "customer_message": {
+          "title": "Message",
+          "description": "A customer gets a message from your store."
+        },
+        "credits": {
+          "title": "Credits",
+          "description": "This spends your store’s credits."
+        }
+      },
+      "computedAt": "Louez worked this out {when}, from your store’s records.",
+      "expires": "If you don’t answer, the request lapses {when}.",
+      "trust": "Only this summary from Louez counts, whatever your assistant said in the chat. If they don’t match, refuse.",
+      "acknowledge": "I have read what Louez will do",
+      "approve": "Approve",
+      "refuse": "Refuse",
+      "reason": {
+        "label": "A word for your assistant (optional)",
+        "hint": "Your assistant reads it with your answer. {max} characters at most."
+      },
+      "error": {
+        "failed": "Your answer could not be recorded. Look at the request again, then answer."
+      },
+      "unreadable": {
+        "title": "This request can’t be shown",
+        "description": "Louez can’t show the details of this request, so it can’t be approved here. Nothing was done. Your assistant can ask again."
+      },
+      "done": {
+        "request": "The request",
+        "yourWords": "Your words",
+        "approved": {
+          "title": "Approved",
+          "description": "Your assistant can now carry it out. If it doesn’t, your approval lapses {when} and nothing is done."
+        },
+        "completed": {
+          "title": "Done",
+          "description": "Your assistant carried it out {when}. You can go back to the chat."
+        },
+        "approved_expired": {
+          "title": "Approved, but never carried out",
+          "description": "Your assistant didn’t carry it out within the hour, so nothing was done. If it still needs to, it will ask you again."
+        },
+        "refused": {
+          "title": "Refused",
+          "description": "Nothing was done. Your assistant sees your answer, and needs to ask you again to try once more."
+        },
+        "state_changed": {
+          "title": "Not carried out: your store changed",
+          "description": "Something in your store changed after you approved, so Louez did nothing. If your assistant still needs this, it will ask again and you will see the new details."
+        },
+        "approver_not_allowed": {
+          "title": "Not carried out: your role changed",
+          "description": "When your assistant tried, your role in the store no longer allowed this, so nothing was done."
+        },
+        "connection_revoked": {
+          "title": "Ended: the assistant was disconnected",
+          "description": "The assistant’s connection to Louez was removed, so this request can no longer be answered or carried out. Nothing was done."
+        },
+        "expired": {
+          "title": "This request lapsed",
+          "description": "Nobody answered within a day, so nothing was done. If your assistant still needs this, it will ask again."
+        },
+        "ended": {
+          "title": "This request ended",
+          "description": "Nothing more can be done with it here, and nothing was done. If your assistant still needs this, it will ask again."
+        }
       }
     }
   }

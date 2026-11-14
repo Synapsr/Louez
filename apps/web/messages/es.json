@@ -9803,9 +9803,109 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Esta solicitud aún no se puede responder aquí",
-        "description": "Louez aún no puede mostrarte esta solicitud para que la apruebes, y no se ha hecho nada. Puedes volver a tu agente de IA."
+      "title": {
+        "access_removed": "¿Aprobar que se retire un acceso?",
+        "money": "¿Aprobar una operación de pago?",
+        "stock_override": "¿Aprobar una reserva por encima del stock?",
+        "deletion": "¿Aprobar una eliminación?",
+        "customer_message": "¿Aprobar un mensaje a un cliente?",
+        "credits": "¿Aprobar un gasto de créditos?",
+        "change": "¿Aprobar este cambio?"
+      },
+      "description": "Tu asistente de IA te pide aprobación en «{store}». Actúa en nombre de tu cuenta ({email}): no pasa nada mientras no apruebes.",
+      "askedBy": "Lo pide",
+      "apiKey": "Clave de API «{name}»",
+      "apiKeyUnnamed": "Una clave de API",
+      "unnamedAgent": "Un asistente de IA",
+      "what": "Lo que Louez hará si apruebas",
+      "details": "Lo que Louez ha comprobado",
+      "values": {
+        "yes": "Sí",
+        "no": "No",
+        "none": "Sin indicar"
+      },
+      "consequence": {
+        "access_removed": {
+          "title": "Acceso",
+          "description": "Alguien pierde el acceso a tu tienda."
+        },
+        "money": {
+          "title": "Dinero",
+          "description": "Esto cambia el dinero registrado en tu tienda."
+        },
+        "stock_override": {
+          "title": "Stock",
+          "description": "Esto reserva por encima de tu stock o de tu tiempo de preparación: varios clientes podrían contar con el mismo artículo."
+        },
+        "deletion": {
+          "title": "Eliminación",
+          "description": "Algo se elimina y no se podrá recuperar."
+        },
+        "customer_message": {
+          "title": "Mensaje",
+          "description": "Un cliente recibe un mensaje de tu tienda."
+        },
+        "credits": {
+          "title": "Créditos",
+          "description": "Esto gasta créditos de tu tienda."
+        }
+      },
+      "computedAt": "Louez lo calculó {when}, a partir de los datos de tu tienda.",
+      "expires": "Si no respondes, la solicitud caduca {when}.",
+      "trust": "Solo cuenta este resumen de Louez, diga lo que diga tu asistente en el chat. Si no coinciden, rechaza.",
+      "acknowledge": "He leído lo que va a hacer Louez",
+      "approve": "Aprobar",
+      "refuse": "Rechazar",
+      "reason": {
+        "label": "Unas palabras para tu asistente (opcional)",
+        "hint": "Tu asistente las lee con tu respuesta. {max} caracteres como máximo."
+      },
+      "error": {
+        "failed": "No se pudo guardar tu respuesta. Vuelve a leer la solicitud y responde."
+      },
+      "unreadable": {
+        "title": "Esta solicitud no se puede mostrar",
+        "description": "Louez no puede mostrar el detalle de esta solicitud, así que no se puede aprobar aquí. No se ha hecho nada. Tu asistente puede volver a pedirlo."
+      },
+      "done": {
+        "request": "La solicitud",
+        "yourWords": "Tus palabras",
+        "approved": {
+          "title": "Aprobado",
+          "description": "Tu asistente ya puede llevarlo a cabo. Si no lo hace, tu aprobación caduca {when} y no se hace nada."
+        },
+        "completed": {
+          "title": "Hecho",
+          "description": "Tu asistente lo llevó a cabo {when}. Puedes volver al chat."
+        },
+        "approved_expired": {
+          "title": "Aprobado, pero nunca realizado",
+          "description": "Tu asistente no lo llevó a cabo en una hora, así que no se hizo nada. Si todavía lo necesita, te lo volverá a pedir."
+        },
+        "refused": {
+          "title": "Rechazado",
+          "description": "No se ha hecho nada. Tu asistente ve tu respuesta y tendrá que volver a pedírtelo para intentarlo de nuevo."
+        },
+        "state_changed": {
+          "title": "No realizado: tu tienda ha cambiado",
+          "description": "Algo cambió en tu tienda después de tu aprobación, así que Louez no hizo nada. Si tu asistente todavía lo necesita, lo volverá a pedir y verás el nuevo detalle."
+        },
+        "approver_not_allowed": {
+          "title": "No realizado: tu rol ha cambiado",
+          "description": "Cuando tu asistente lo intentó, tu rol en la tienda ya no lo permitía, así que no se hizo nada."
+        },
+        "connection_revoked": {
+          "title": "Terminado: el asistente se desconectó",
+          "description": "Se eliminó la conexión del asistente con Louez, así que esta solicitud ya no se puede responder ni llevar a cabo. No se hizo nada."
+        },
+        "expired": {
+          "title": "Esta solicitud ha caducado",
+          "description": "Nadie respondió en un día, así que no se hizo nada. Si tu asistente todavía lo necesita, lo volverá a pedir."
+        },
+        "ended": {
+          "title": "Esta solicitud ha terminado",
+          "description": "Aquí ya no queda nada por hacer, y no se hizo nada. Si tu asistente todavía lo necesita, lo volverá a pedir."
+        }
       }
     }
   }

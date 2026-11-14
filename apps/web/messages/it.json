@@ -9803,9 +9803,109 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Questa richiesta non può ancora essere gestita qui",
-        "description": "Louez non può ancora mostrarti questa richiesta da approvare, e non è stato fatto nulla. Puoi tornare al tuo agente IA."
+      "title": {
+        "access_removed": "Approvare la revoca di un accesso?",
+        "money": "Approvare un’operazione di pagamento?",
+        "stock_override": "Approvare una prenotazione oltre la disponibilità?",
+        "deletion": "Approvare un’eliminazione?",
+        "customer_message": "Approvare un messaggio a un cliente?",
+        "credits": "Approvare una spesa di crediti?",
+        "change": "Approvare questa modifica?"
+      },
+      "description": "Il tuo assistente IA chiede la tua approvazione in «{store}». Agisce per il tuo account ({email}): non succede nulla finché non approvi.",
+      "askedBy": "Richiesto da",
+      "apiKey": "Chiave API «{name}»",
+      "apiKeyUnnamed": "Una chiave API",
+      "unnamedAgent": "Un assistente IA",
+      "what": "Cosa farà Louez se approvi",
+      "details": "Cosa ha verificato Louez",
+      "values": {
+        "yes": "Sì",
+        "no": "No",
+        "none": "Non indicato"
+      },
+      "consequence": {
+        "access_removed": {
+          "title": "Accesso",
+          "description": "Qualcuno perde l’accesso al tuo negozio."
+        },
+        "money": {
+          "title": "Denaro",
+          "description": "Questo modifica il denaro registrato per il tuo negozio."
+        },
+        "stock_override": {
+          "title": "Disponibilità",
+          "description": "Questo prenota oltre la tua disponibilità o il tuo tempo di preparazione: più clienti potrebbero contare sullo stesso articolo."
+        },
+        "deletion": {
+          "title": "Eliminazione",
+          "description": "Qualcosa viene eliminato e non potrà essere recuperato."
+        },
+        "customer_message": {
+          "title": "Messaggio",
+          "description": "Un cliente riceve un messaggio dal tuo negozio."
+        },
+        "credits": {
+          "title": "Crediti",
+          "description": "Questo spende crediti del tuo negozio."
+        }
+      },
+      "computedAt": "Louez lo ha calcolato {when}, dai dati del tuo negozio.",
+      "expires": "Senza una tua risposta, la richiesta scade {when}.",
+      "trust": "Conta solo questo riepilogo di Louez, qualunque cosa abbia detto il tuo assistente nella chat. Se non corrispondono, rifiuta.",
+      "acknowledge": "Ho letto cosa farà Louez",
+      "approve": "Approva",
+      "refuse": "Rifiuta",
+      "reason": {
+        "label": "Due parole per il tuo assistente (facoltativo)",
+        "hint": "Il tuo assistente le legge con la tua risposta. Al massimo {max} caratteri."
+      },
+      "error": {
+        "failed": "Non è stato possibile registrare la tua risposta. Rileggi la richiesta, poi rispondi."
+      },
+      "unreadable": {
+        "title": "Questa richiesta non può essere mostrata",
+        "description": "Louez non può mostrare i dettagli di questa richiesta, quindi non può essere approvata qui. Non è stato fatto nulla. Il tuo assistente può chiederlo di nuovo."
+      },
+      "done": {
+        "request": "La richiesta",
+        "yourWords": "Le tue parole",
+        "approved": {
+          "title": "Approvato",
+          "description": "Ora il tuo assistente può eseguirla. Se non lo fa, la tua approvazione scade {when} e non viene fatto nulla."
+        },
+        "completed": {
+          "title": "Fatto",
+          "description": "Il tuo assistente l’ha eseguita {when}. Puoi tornare alla chat."
+        },
+        "approved_expired": {
+          "title": "Approvato, ma mai eseguito",
+          "description": "Il tuo assistente non l’ha eseguita entro un’ora, quindi non è stato fatto nulla. Se ne ha ancora bisogno, te lo chiederà di nuovo."
+        },
+        "refused": {
+          "title": "Rifiutato",
+          "description": "Non è stato fatto nulla. Il tuo assistente vede la tua risposta e dovrà chiedertelo di nuovo per riprovare."
+        },
+        "state_changed": {
+          "title": "Non eseguito: il tuo negozio è cambiato",
+          "description": "Qualcosa è cambiato nel tuo negozio dopo la tua approvazione, quindi Louez non ha fatto nulla. Se il tuo assistente ne ha ancora bisogno, lo chiederà di nuovo e vedrai i nuovi dettagli."
+        },
+        "approver_not_allowed": {
+          "title": "Non eseguito: il tuo ruolo è cambiato",
+          "description": "Quando il tuo assistente ci ha provato, il tuo ruolo nel negozio non lo permetteva più, quindi non è stato fatto nulla."
+        },
+        "connection_revoked": {
+          "title": "Terminato: l’assistente è stato scollegato",
+          "description": "La connessione dell’assistente a Louez è stata rimossa, quindi questa richiesta non può più essere né accolta né eseguita. Non è stato fatto nulla."
+        },
+        "expired": {
+          "title": "Questa richiesta è scaduta",
+          "description": "Nessuno ha risposto entro un giorno, quindi non è stato fatto nulla. Se il tuo assistente ne ha ancora bisogno, lo chiederà di nuovo."
+        },
+        "ended": {
+          "title": "Questa richiesta è terminata",
+          "description": "Qui non c’è più niente da fare, e non è stato fatto nulla. Se il tuo assistente ne ha ancora bisogno, lo chiederà di nuovo."
+        }
       }
     }
   }

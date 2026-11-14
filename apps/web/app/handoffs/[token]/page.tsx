@@ -9,9 +9,11 @@ import {
   invitationShown,
   readHandoffLink,
 } from "@louez/api/services/handoffs";
+import { readApprovalPage } from "@louez/api/services/approval-page";
 import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
+import { OperationApproval } from "@/components/handoffs/operation-approval";
 import { TeamInvitationApproval } from "@/components/handoffs/team-invitation-approval";
 import { auth } from "@/lib/auth";
 
@@ -31,10 +33,11 @@ export async function generateMetadata(): Promise<Metadata> {
  * it starts no step. The user continues with a form that posts to
  * `continue`, which sends them to the provider; a team invitation is
  * approved or refused, with the owner's words if they add any, with a form
- * that posts to `decide`. Each form posts
- * the revision the page showed, and an invitation's form what it showed of
- * it (`invitationShown`): a step that changed since decides nothing, and the
- * page shows it again with a note.
+ * that posts to `decide`, and so is an agent's request a person must
+ * approve (an operation's approval), shown as Louez stored its preview. Each
+ * form posts the revision the page showed, and what it showed of the step
+ * (an invitation's `invitationShown`, an approval's binding): a step that
+ * changed since decides nothing, and the page shows it again with a note.
  */
 export default async function HandoffPage({
   params,
@@ -52,6 +55,45 @@ export default async function HandoffPage({
 
   const t = await getTranslations("handoff");
   const checked = await readHandoffLink(token, userId);
+  const query = await searchParams;
+  const changed = query.changed !== undefined ? t("refused.changed.description") : null;
+  // An operation's approval: decided here while pending, read from its row
+  // (`readApprovalPage`); once out of the person's hands, its result says
+  // where it stands. Anyone else gets what they get for any step.
+  if (checked.row?.kind === "operation_approval") {
+    const read = await readApprovalPage(checked.row.id, userId);
+    if (!read.ok) {
+      return (
+        <HandoffCard
+          title={t(`refused.${read.reason}.title`)}
+          description={t(`refused.${read.reason}.description`)}
+        />
+      );
+    }
+    const { approval } = read;
+    if (approval.state === "unreadable") {
+      return (
+        <HandoffCard
+          title={t("operation_approval.unreadable.title")}
+          description={t("operation_approval.unreadable.description")}
+        />
+      );
+    }
+    const { preview, binding } = approval;
+    if (approval.state !== "pending" || !preview || !binding) {
+      redirect(handoffDonePath(approval.id));
+    }
+    return (
+      <OperationApproval
+        action={`${path}/decide`}
+        approval={{ ...approval, preview, binding }}
+        email={session.user?.email ?? ""}
+        note={
+          changed ?? (query.error !== undefined ? t("operation_approval.error.failed") : null)
+        }
+      />
+    );
+  }
   // A step that ended: its result says how, and why.
   if (!checked.ok && checked.reason === "finished" && checked.row) {
     redirect(handoffDonePath(checked.row.id));
@@ -66,19 +108,7 @@ export default async function HandoffPage({
   }
 
   const { kind, revision } = checked.row;
-  // An operation's approval is decided on its page from pull request 4 of the
-  // plan; until then its approver, and only them, reads that it is not available.
-  if (kind === "operation_approval") {
-    return (
-      <HandoffCard
-        title={t("operation_approval.unavailable.title")}
-        description={t("operation_approval.unavailable.description")}
-      />
-    );
-  }
   const payload = invitationPayloadOf(checked.row);
-  const query = await searchParams;
-  const changed = query.changed !== undefined ? t("refused.changed.description") : null;
   if (kind === "team_invitation") {
     if (!payload) {
       return (

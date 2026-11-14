@@ -20,7 +20,9 @@ import { env } from "@/env";
 
 /**
  * A person approves or refuses a step on its page (an agent's team
- * invitation), with their own words if they add any. Only from this app's
+ * invitation, or an agent's request a person must approve), with their own
+ * words if they add any, from the one decision form of every such page
+ * (`HandoffDecisionForm`). Only from this app's
  * pages (Origin, and Sec-Fetch-Site when sent), so another site cannot answer
  * with the owner's cookie. It calls the session-only procedure
  * `handoffs.decide` as the signed-in user, with the revision and what the
@@ -66,9 +68,10 @@ export async function POST(
     if (code === "HANDOFF_DECISION_INVALID" && details?.reason === "changed") {
       return redirectTo(`${page}?changed=1`, 303);
     }
-    // An approval the answer ended (changed since, no seat, the day's
-    // e-mails spent) sends the page on to its result, which says why; any
-    // other refusal is shown by the page itself.
+    // An invitation the answer ended (changed since, no seat, the day's
+    // e-mails spent), or a request decided or lapsed meanwhile, sends the
+    // page on to its result, which says why; any other refusal is shown by
+    // the page itself.
     return redirectTo(`${page}?error=failed`, 303);
   }
 }

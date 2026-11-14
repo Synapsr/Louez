@@ -9803,9 +9803,109 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Cette demande ne peut pas encore être traitée ici",
-        "description": "Louez ne peut pas encore vous montrer cette demande pour que vous l’approuviez, et rien n’a été fait. Vous pouvez revenir à votre agent IA."
+      "title": {
+        "access_removed": "Approuver le retrait d’un accès ?",
+        "money": "Approuver une opération de paiement ?",
+        "stock_override": "Approuver une réservation au-delà du stock ?",
+        "deletion": "Approuver une suppression ?",
+        "customer_message": "Approuver un message à un client ?",
+        "credits": "Approuver une dépense de crédits ?",
+        "change": "Approuver cette modification ?"
+      },
+      "description": "Votre assistant IA vous demande votre accord dans « {store} ». Il agit pour votre compte ({email}) : rien ne se passe tant que vous n’approuvez pas.",
+      "askedBy": "Demandé par",
+      "apiKey": "Clé d’API « {name} »",
+      "apiKeyUnnamed": "Une clé d’API",
+      "unnamedAgent": "Un assistant IA",
+      "what": "Ce que Louez fera si vous approuvez",
+      "details": "Ce que Louez a vérifié",
+      "values": {
+        "yes": "Oui",
+        "no": "Non",
+        "none": "Non renseigné"
+      },
+      "consequence": {
+        "access_removed": {
+          "title": "Accès",
+          "description": "Quelqu’un perd l’accès à votre boutique."
+        },
+        "money": {
+          "title": "Argent",
+          "description": "Cela modifie l’argent enregistré pour votre boutique."
+        },
+        "stock_override": {
+          "title": "Stock",
+          "description": "Cela réserve au-delà de votre stock ou de votre temps de préparation : des clients risquent de compter sur le même article."
+        },
+        "deletion": {
+          "title": "Suppression",
+          "description": "Un élément est supprimé et ne pourra pas être récupéré."
+        },
+        "customer_message": {
+          "title": "Message",
+          "description": "Un client reçoit un message de votre boutique."
+        },
+        "credits": {
+          "title": "Crédits",
+          "description": "Cela dépense des crédits de votre boutique."
+        }
+      },
+      "computedAt": "Louez a établi ceci {when}, à partir des données de votre boutique.",
+      "expires": "Sans réponse de votre part, la demande expire {when}.",
+      "trust": "Seul ce résumé de Louez fait foi, quoi que votre assistant ait dit dans la conversation. S’ils ne correspondent pas, refusez.",
+      "acknowledge": "J’ai lu ce que Louez va faire",
+      "approve": "Approuver",
+      "refuse": "Refuser",
+      "reason": {
+        "label": "Un mot pour votre assistant (facultatif)",
+        "hint": "Votre assistant le lit avec votre réponse. {max} caractères au maximum."
+      },
+      "error": {
+        "failed": "Votre réponse n’a pas pu être enregistrée. Relisez la demande, puis répondez."
+      },
+      "unreadable": {
+        "title": "Cette demande ne peut pas être affichée",
+        "description": "Louez ne peut pas afficher le détail de cette demande : elle ne peut donc pas être approuvée ici. Rien n’a été fait. Votre assistant peut vous la redemander."
+      },
+      "done": {
+        "request": "La demande",
+        "yourWords": "Vos mots",
+        "approved": {
+          "title": "Approuvé",
+          "description": "Votre assistant peut maintenant la réaliser. S’il ne le fait pas, votre accord expire {when} et rien n’est fait."
+        },
+        "completed": {
+          "title": "C’est fait",
+          "description": "Votre assistant l’a réalisée {when}. Vous pouvez retourner à la conversation."
+        },
+        "approved_expired": {
+          "title": "Approuvé, mais jamais réalisé",
+          "description": "Votre assistant ne l’a pas réalisée dans l’heure : rien n’a été fait. S’il en a encore besoin, il vous la redemandera."
+        },
+        "refused": {
+          "title": "Refusé",
+          "description": "Rien n’a été fait. Votre assistant voit votre réponse, et doit vous redemander pour réessayer."
+        },
+        "state_changed": {
+          "title": "Non réalisé : votre boutique a changé",
+          "description": "Quelque chose a changé dans votre boutique après votre accord : Louez n’a donc rien fait. Si votre assistant en a encore besoin, il vous redemandera et vous verrez le nouveau détail."
+        },
+        "approver_not_allowed": {
+          "title": "Non réalisé : votre rôle a changé",
+          "description": "Quand votre assistant a essayé, votre rôle dans la boutique ne le permettait plus : rien n’a été fait."
+        },
+        "connection_revoked": {
+          "title": "Terminé : l’assistant a été déconnecté",
+          "description": "La connexion de l’assistant à Louez a été supprimée : cette demande ne peut plus être ni acceptée ni réalisée. Rien n’a été fait."
+        },
+        "expired": {
+          "title": "Cette demande a expiré",
+          "description": "Personne n’a répondu dans la journée : rien n’a été fait. Si votre assistant en a encore besoin, il vous redemandera."
+        },
+        "ended": {
+          "title": "Cette demande est terminée",
+          "description": "Il n’y a plus rien à faire ici, et rien n’a été fait. Si votre assistant en a encore besoin, il vous redemandera."
+        }
       }
     }
   }

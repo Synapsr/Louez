@@ -9803,9 +9803,109 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Permintaan ini belum dapat dijawab di sini",
-        "description": "Louez belum dapat menampilkan permintaan ini untuk Anda setujui, dan belum ada yang dilakukan. Anda dapat kembali ke agen AI Anda."
+      "title": {
+        "access_removed": "Setujui pencabutan akses?",
+        "money": "Setujui tindakan pembayaran?",
+        "stock_override": "Setujui pemesanan melebihi stok?",
+        "deletion": "Setujui penghapusan?",
+        "customer_message": "Setujui pesan ke pelanggan?",
+        "credits": "Setujui penggunaan kredit?",
+        "change": "Setujui perubahan ini?"
+      },
+      "description": "Asisten AI Anda meminta persetujuan Anda di “{store}”. Asisten bertindak untuk akun Anda ({email}): tidak ada yang terjadi sebelum Anda menyetujui.",
+      "askedBy": "Diminta oleh",
+      "apiKey": "Kunci API “{name}”",
+      "apiKeyUnnamed": "Sebuah kunci API",
+      "unnamedAgent": "Sebuah asisten AI",
+      "what": "Yang akan dilakukan Louez jika Anda menyetujui",
+      "details": "Yang diperiksa Louez",
+      "values": {
+        "yes": "Ya",
+        "no": "Tidak",
+        "none": "Tidak diisi"
+      },
+      "consequence": {
+        "access_removed": {
+          "title": "Akses",
+          "description": "Seseorang kehilangan akses ke toko Anda."
+        },
+        "money": {
+          "title": "Uang",
+          "description": "Ini mengubah uang yang tercatat untuk toko Anda."
+        },
+        "stock_override": {
+          "title": "Stok",
+          "description": "Ini memesan melebihi stok atau waktu persiapan Anda: beberapa pelanggan bisa mengandalkan barang yang sama."
+        },
+        "deletion": {
+          "title": "Penghapusan",
+          "description": "Sesuatu dihapus dan tidak dapat dikembalikan."
+        },
+        "customer_message": {
+          "title": "Pesan",
+          "description": "Seorang pelanggan menerima pesan dari toko Anda."
+        },
+        "credits": {
+          "title": "Kredit",
+          "description": "Ini menggunakan kredit toko Anda."
+        }
+      },
+      "computedAt": "Louez menghitung ini {when} dari data toko Anda.",
+      "expires": "Jika Anda tidak menjawab, permintaan ini berakhir {when}.",
+      "trust": "Hanya ringkasan dari Louez ini yang berlaku, apa pun yang dikatakan asisten Anda di obrolan. Jika tidak cocok, tolak.",
+      "acknowledge": "Saya sudah membaca apa yang akan dilakukan Louez",
+      "approve": "Setujui",
+      "refuse": "Tolak",
+      "reason": {
+        "label": "Pesan untuk asisten Anda (opsional)",
+        "hint": "Asisten Anda membacanya bersama jawaban Anda. Maksimal {max} karakter."
+      },
+      "error": {
+        "failed": "Jawaban Anda tidak dapat disimpan. Baca kembali permintaannya, lalu jawab."
+      },
+      "unreadable": {
+        "title": "Permintaan ini tidak dapat ditampilkan",
+        "description": "Louez tidak dapat menampilkan detail permintaan ini, jadi tidak dapat disetujui di sini. Tidak ada yang dilakukan. Asisten Anda dapat meminta lagi."
+      },
+      "done": {
+        "request": "Permintaan",
+        "yourWords": "Kata-kata Anda",
+        "approved": {
+          "title": "Disetujui",
+          "description": "Asisten Anda sekarang dapat melaksanakannya. Jika tidak, persetujuan Anda berakhir {when} dan tidak ada yang dilakukan."
+        },
+        "completed": {
+          "title": "Selesai",
+          "description": "Asisten Anda melaksanakannya {when}. Anda dapat kembali ke obrolan."
+        },
+        "approved_expired": {
+          "title": "Disetujui, tetapi tidak pernah dilaksanakan",
+          "description": "Asisten Anda tidak melaksanakannya dalam satu jam, jadi tidak ada yang dilakukan. Jika masih perlu, asisten akan meminta lagi."
+        },
+        "refused": {
+          "title": "Ditolak",
+          "description": "Tidak ada yang dilakukan. Asisten Anda melihat jawaban Anda dan harus meminta lagi untuk mencoba kembali."
+        },
+        "state_changed": {
+          "title": "Tidak dilaksanakan: toko Anda berubah",
+          "description": "Ada yang berubah di toko Anda setelah Anda menyetujui, jadi Louez tidak melakukan apa pun. Jika asisten Anda masih perlu, ia akan meminta lagi dan Anda akan melihat detail barunya."
+        },
+        "approver_not_allowed": {
+          "title": "Tidak dilaksanakan: peran Anda berubah",
+          "description": "Saat asisten Anda mencoba, peran Anda di toko tidak lagi mengizinkannya, jadi tidak ada yang dilakukan."
+        },
+        "connection_revoked": {
+          "title": "Berakhir: asisten diputuskan",
+          "description": "Koneksi asisten ke Louez telah dihapus, jadi permintaan ini tidak dapat lagi dijawab atau dilaksanakan. Tidak ada yang dilakukan."
+        },
+        "expired": {
+          "title": "Permintaan ini sudah berakhir",
+          "description": "Tidak ada yang menjawab dalam satu hari, jadi tidak ada yang dilakukan. Jika asisten Anda masih perlu, ia akan meminta lagi."
+        },
+        "ended": {
+          "title": "Permintaan ini sudah selesai",
+          "description": "Tidak ada lagi yang bisa dilakukan di sini, dan tidak ada yang dilakukan. Jika asisten Anda masih perlu, ia akan meminta lagi."
+        }
       }
     }
   }

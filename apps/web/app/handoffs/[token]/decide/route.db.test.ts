@@ -123,7 +123,6 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       userId: OWNER,
       name: "Roscoff Voile",
       slug: "hd-roscoff",
-      settings: { currency: "EUR", country: "FR" },
       onboardingCompleted: true,
     });
     await db.insert(louezDb.storeMembers).values([
@@ -327,16 +326,177 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
     test("a post from another site, or without an Origin, is refused before anything is read", async () => {
       const row = await invitation();
       const fields = { decision: "approve", revision: String(row.revision), shown: shownOf(row) };
-      for (const headers of [
+      const refused: Array<Record<string, string>> = [
         { origin: "https://evil.test" },
         { origin: APP, "sec-fetch-site": "cross-site" },
         { origin: APP, "sec-fetch-site": "same-site" },
         {},
-      ]) {
+      ];
+      for (const headers of refused) {
         const response = await post(row.id, fields, { headers });
         assert.equal(response.status, 403);
         assert.equal(response.headers.get("cache-control"), "no-store");
       }
+      assert.equal((await rowOf(row.id)).status, "pending");
+    });
+  });
+
+  describe("an approval's answer", () => {
+    const BINDING = "e".repeat(64);
+
+    /** An agent's request a person must approve, as its request leaves it. */
+    async function approval() {
+      const now = new Date();
+      const [created] = await louezDb.db
+        .insert(louezDb.apiHandoffs)
+        .values({
+          storeId: STORE,
+          kind: "operation_approval",
+          subject: "f".repeat(64),
+          procedure: "dashboard.payments.record",
+          bindingHash: BINDING,
+          payload: {
+            input: { reservationId: "r1", type: "rental", amount: 40, method: "cash" },
+            preview: {
+              summary: "Record a rental payment of 40.00 € (cash) on reservation #1042.",
+              details: { number: "1042", amount: 40 },
+            },
+            scope: { domain: "payments", level: "write", role: "write" },
+            consequences: ["money"],
+          },
+          status: "pending",
+          activeSlot: 1,
+          userId: OWNER,
+          credentialKind: "api_key",
+          credentialId: KEY,
+          clientName: "Store agent",
+          tokenHash: null,
+          linkIssuedAt: now,
+          expiresAt: handoffs.linkExpiry("operation_approval", now),
+          createdAt: now,
+          updatedAt: now,
+        })
+        .$returningId();
+      return rowOf(created.id);
+    }
+
+    test("approving records the decision on the binding shown, and sends the person to the result", async () => {
+      const row = await approval();
+      const response = await post(row.id, {
+        decision: "approve",
+        revision: String(row.revision),
+        shown: BINDING,
+      });
+      assert.equal(response.status, 303);
+      assert.equal(location(response), `/handoffs/done/${row.id}`);
+      const after = await rowOf(row.id);
+      assert.equal(after.status, "approved");
+      assert.equal(after.decision, "approved");
+      assert.equal(after.decidedByUserId, OWNER);
+      assert.equal(after.bindingHash, BINDING);
+    });
+
+    test("refusing with words ends it, the words made plain text", async () => {
+      const row = await approval();
+      const response = await post(row.id, {
+        decision: "refuse",
+        reason: "Pas en espèces\r\nmerci\u202e",
+        revision: String(row.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(response), `/handoffs/done/${row.id}`);
+      const after = await rowOf(row.id);
+      assert.equal(after.status, "failed");
+      assert.equal(after.failureCode, "declined");
+      assert.equal(after.decision, "refused");
+      assert.equal(after.decisionReason, "Pas en espèces\nmerci");
+    });
+
+    test("words over 500 characters decide nothing", async () => {
+      const row = await approval();
+      const response = await post(row.id, {
+        decision: "refuse",
+        reason: "x".repeat(501),
+        revision: String(row.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(response), `/handoffs/${row.id}?error=failed`);
+      assert.equal((await rowOf(row.id)).status, "pending");
+    });
+
+    test("a stale revision or a forged binding decides nothing: the page shows the request as it is now", async () => {
+      const row = await approval();
+      for (const fields of [
+        { decision: "approve", revision: String(row.revision + 1), shown: BINDING },
+        { decision: "approve", revision: String(row.revision), shown: "0".repeat(64) },
+        { decision: "refuse", revision: String(row.revision), shown: "0".repeat(64) },
+      ]) {
+        const response = await post(row.id, fields);
+        assert.equal(location(response), `/handoffs/${row.id}?changed=1`);
+      }
+      const after = await rowOf(row.id);
+      assert.equal(after.status, "pending");
+      assert.equal(after.decision, null);
+    });
+
+    test("a missing answer, revision or binding decides nothing", async () => {
+      const row = await approval();
+      const revision = String(row.revision);
+      assert.equal(location(await post(row.id, { revision, shown: BINDING })), `/handoffs/${row.id}`);
+      assert.equal(
+        location(await post(row.id, { decision: "approve", shown: BINDING })),
+        `/handoffs/${row.id}?changed=1`,
+      );
+      assert.equal(
+        location(await post(row.id, { decision: "approve", revision })),
+        `/handoffs/${row.id}?changed=1`,
+      );
+      assert.equal(
+        location(await post(row.id, { decision: "approve", revision, shown: "not-a-binding" })),
+        `/handoffs/${row.id}?changed=1`,
+      );
+      assert.equal((await rowOf(row.id)).status, "pending");
+    });
+
+    test("an answer posted twice decides once: approve then refuse leaves it approved", async () => {
+      const row = await approval();
+      const fields = { revision: String(row.revision), shown: BINDING };
+      assert.equal(
+        location(await post(row.id, { ...fields, decision: "approve" })),
+        `/handoffs/done/${row.id}`,
+      );
+      assert.equal(
+        location(await post(row.id, { ...fields, decision: "refuse" })),
+        `/handoffs/${row.id}?error=failed`,
+      );
+      const after = await rowOf(row.id);
+      assert.equal(after.status, "approved");
+      assert.equal(after.decision, "approved");
+    });
+
+    test("another signed-in user, or a request whose connection is gone, decides nothing", async () => {
+      const row = await approval();
+      const fields = { decision: "approve", revision: String(row.revision), shown: BINDING };
+      assert.equal(
+        location(await post(row.id, fields, { user: STRANGER })),
+        `/handoffs/${row.id}?error=failed`,
+      );
+      await louezDb.db
+        .update(louezDb.apiKeys)
+        .set({ revokedAt: new Date() })
+        .where(orm.eq(louezDb.apiKeys.id, KEY));
+      assert.equal(location(await post(row.id, fields)), `/handoffs/${row.id}?error=failed`);
+      assert.equal((await rowOf(row.id)).status, "pending");
+    });
+
+    test("a post from another site is refused before anything is read", async () => {
+      const row = await approval();
+      const response = await post(
+        row.id,
+        { decision: "approve", revision: String(row.revision), shown: BINDING },
+        { headers: { origin: "https://evil.test", "sec-fetch-site": "cross-site" } },
+      );
+      assert.equal(response.status, 403);
       assert.equal((await rowOf(row.id)).status, "pending");
     });
   });
