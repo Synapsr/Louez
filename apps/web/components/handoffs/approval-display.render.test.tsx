@@ -976,7 +976,10 @@ describe("a value from the store's records stays data", () => {
     const html = pageOf(
       withValues({ turnoverBuffer: { shortfalls: [short("Kayak", 1, 0)], turnoverBufferMinutes: 90 } }),
     );
-    assert.ok(screenLines(html).includes("Kayak: 1 requested, none free with your 1 hr, 30 min turnover buffer"));
+    // Written by the runtime's own formatter where it has one ("1 hr, 30 min"),
+    // by unit otherwise ("1 hr 30 min"): one duration either way.
+    const line = screenLines(html).find((text) => text.startsWith("Kayak:"));
+    assert.match(line ?? "", /^Kayak: 1 requested, none free with your 1 hr,? 30 min turnover buffer$/);
   });
 
   test("without a display the page shows the summary, as for any other action", () => {
