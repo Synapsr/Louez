@@ -190,6 +190,10 @@ const FAILURE_MESSAGES: Record<string, string> = {
   connection_revoked:
     "The agent connection that asked for this step was revoked: its link no longer works.",
   declined: "The user declined this invitation.",
+  state_changed:
+    "The store, or the call, was no longer as the preview the user approved showed: nothing was done. Call again without the approval to ask again.",
+  approver_not_allowed:
+    "The user who approved may no longer do this action in the store: nothing was done.",
   request_changed:
     "The address got a Louez account, a membership or an invitation since the request: ask again for an up-to-date approval.",
   limit_reached: "The store's plan has no seat left for a member.",

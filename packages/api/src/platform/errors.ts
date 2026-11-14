@@ -181,9 +181,7 @@ export type ApprovalInvalidReason =
   | "expired"
   | "used"
   | "state_changed"
-  | "approver_not_allowed"
-  /** An approved approval cannot be carried out yet (until pull request 3c of the plan). */
-  | "execution_unavailable";
+  | "approver_not_allowed";
 
 /**
  * The answers of an action a person must approve

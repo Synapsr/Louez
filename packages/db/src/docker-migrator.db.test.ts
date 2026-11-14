@@ -40,6 +40,7 @@ const RELEASE = [
   "0101_api_handoffs_revision",
   "0102_api_handoffs_decision",
   "0103_api_handoffs_approval",
+  "0104_api_approval_consumption",
 ];
 
 interface Journal {
