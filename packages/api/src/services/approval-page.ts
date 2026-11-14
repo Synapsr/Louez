@@ -165,7 +165,8 @@ export async function readApprovalPage(
   const stored = approvalPayloadOf(row) ?? payload;
   const preview = shownPreview(stored.preview);
   // The screen names the store: a name that shows nothing tells no store apart.
-  const readable = approvalIsReadable(stored) && isReadableText(member.storeName);
+  // One letter or digit is a name ("UP", "Ab"): a store's name is its own.
+  const readable = approvalIsReadable(stored) && isReadableText(member.storeName, 1);
   const state = pageState(row, now, alive, readable);
   return {
     ok: true,

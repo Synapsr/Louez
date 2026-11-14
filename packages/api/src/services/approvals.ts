@@ -768,7 +768,7 @@ export async function answerApproval(
         .select({ name: stores.name })
         .from(stores)
         .where(eq(stores.id, current.storeId));
-      if (!approvalIsReadable(approvalPayloadOf(current)) || !isReadableText(store?.name ?? "")) {
+      if (!approvalIsReadable(approvalPayloadOf(current)) || !isReadableText(store?.name ?? "", 1)) {
         throw handoffErrors.decisionInvalid("unreadable");
       }
     }

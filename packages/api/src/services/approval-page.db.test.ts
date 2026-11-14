@@ -869,8 +869,12 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     // The reviewer's store name: a zero-width space and a Hangul filler.
     await rename("\u200b\u3164");
     assert.equal((await read(id)).state, "unreadable");
-    await rename("Ab");
+    // A letter under a stack of marks shows no name either.
+    await rename(`A${"\u0316".repeat(10)}`);
     assert.equal((await read(id)).state, "unreadable");
+    // A short name is a name.
+    await rename("UP");
+    assert.equal((await read(id)).state, "pending");
     await rename("Vélo Liberté");
     assert.equal((await read(id)).state, "pending");
     // A key named with nothing visible: the line names it "an API key".
