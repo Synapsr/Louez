@@ -345,6 +345,9 @@ const isoInstant = z
   .regex(ISO_DATE_TIME)
   .refine((value) => !Number.isNaN(Date.parse(value)));
 
+const isChoiceList = (list: unknown): list is ChoiceList =>
+  typeof list === "string" && Object.hasOwn(CHOICES, list);
+
 /** Each value as Louez writes it, nothing more: a key it does not know makes the display unknown. */
 const displayValue = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("text"), text: z.string() }),
@@ -361,7 +364,7 @@ const displayValue = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("duration"), minutes: z.number().int().min(1).max(525_600) }),
   z.strictObject({
     type: z.literal("choice"),
-    list: z.enum(Object.keys(CHOICES) as [ChoiceList, ...ChoiceList[]]),
+    list: z.custom<ChoiceList>(isChoiceList),
     value: z.string(),
   }),
 ]);
