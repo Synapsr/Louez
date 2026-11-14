@@ -1641,6 +1641,8 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     for (let index = 0; index < approvals.MAX_PENDING_APPROVALS; index += 1) {
       asked.push((await ask({ id: `g${index}` }, gone)).approval.id);
     }
+    for (const id of asked) await shown(id);
+    assert.equal((await inbox(session())).length, asked.length, "listed while the key lives");
     await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: gone.id });
     for (const id of asked) assert.equal((await rowOf(id)).status, "pending", "left as it was");
 
@@ -1649,14 +1651,32 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(refusal.code, "HANDOFF_DECISION_INVALID");
     assert.equal((await rowOf(asked[0] ?? "")).decision, null);
 
-    // Not listed as waiting to a session that reads the domain.
+    // Not listed as waiting to a session that reads the domain; and a newer
+    // approval of a live connection is not pushed out of a short page by them.
     assert.deepEqual(await inbox(session()), []);
+    const live = await ask({ id: "live" }, await apiKey());
+    await shown(live.approval.id);
+    const page = (await orpc.call(
+      routers.inbox.list,
+      { limit: 1 },
+      { context: session(), path: ["dashboard", "inbox", "list"] },
+    )) as { items: Array<{ id: string }> };
+    assert.deepEqual(
+      page.items.map((item) => item.id),
+      [`approval_waiting:${live.approval.id}`],
+    );
 
-    // Not counted against the store: other connections open the store's fifty.
-    let opened = 0;
+    // Not counted against the store: live connections open the store's fifty
+    // (the one above is the first).
+    let opened = 1;
     while (opened < approvals.MAX_STORE_PENDING_APPROVALS) {
       const key = await apiKey();
-      for (let index = 0; index < approvals.MAX_PENDING_APPROVALS; index += 1) {
+      for (
+        let index = 0;
+        index < approvals.MAX_PENDING_APPROVALS &&
+        opened < approvals.MAX_STORE_PENDING_APPROVALS;
+        index += 1
+      ) {
         await ask({ id: `s${opened}` }, key);
         opened += 1;
       }

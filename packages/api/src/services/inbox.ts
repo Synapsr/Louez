@@ -1707,17 +1707,42 @@ const waitingApprovals: Source = async (window, shaper) => {
       ELSE ${apiHandoffs.createdAt} END`.mapWith(apiHandoffs.createdAt);
   const since = new Date(window.now.getTime() - APPROVAL_ENDED_DAYS * DAY_MS);
   const later = alias(apiHandoffs, "later_approval");
+  const ofReader = and(
+    eq(apiHandoffs.storeId, window.storeId),
+    eq(apiHandoffs.kind, "operation_approval"),
+    whose,
+  );
+  const inTime = and(eq(apiHandoffs.status, "pending"), sql`${apiHandoffs.expiresAt} > ${now}`);
+  // An approval waits only while the connection that asked still exists
+  // (`liveConnections`): the connections that are gone are found first, so
+  // that their rows are left out before the window is cut, not after.
+  const asking = await db
+    .selectDistinct({
+      credentialKind: apiHandoffs.credentialKind,
+      credentialId: apiHandoffs.credentialId,
+    })
+    .from(apiHandoffs)
+    .where(and(ofReader, inTime));
+  const isLive = await liveConnections(asking);
+  const gone = asking.flatMap((row) =>
+    row.credentialId && !isLive(row) ? [row.credentialId] : [],
+  );
+  const waiting =
+    gone.length === 0
+      ? inTime
+      : and(
+          inTime,
+          or(isNull(apiHandoffs.credentialId), notInArray(apiHandoffs.credentialId, gone)),
+        );
   const rows = await db
     .select({ row: apiHandoffs, occurredAt: occurred, approver: users.name, email: users.email })
     .from(apiHandoffs)
     .leftJoin(users, eq(users.id, apiHandoffs.userId))
     .where(
       and(
-        eq(apiHandoffs.storeId, window.storeId),
-        eq(apiHandoffs.kind, "operation_approval"),
-        whose,
+        ofReader,
         or(
-          and(eq(apiHandoffs.status, "pending"), sql`${apiHandoffs.expiresAt} > ${now}`),
+          waiting,
           and(
             or(
               and(eq(apiHandoffs.status, "failed"), gt(apiHandoffs.failedAt, since)),
@@ -1749,14 +1774,11 @@ const waitingApprovals: Source = async (window, shaper) => {
     .limit(window.take);
 
   const { urls, store } = reader;
-  // An approval waits only while the connection that asked still exists.
-  const isLive = await liveConnections(rows.map(({ row }) => row));
   return rows.flatMap(({ row, occurredAt, approver, email }) => {
     const payload = approvalPayloadOf(row);
     if (!payload || (connection && !connectionReadsApproval(connection, row, reads))) return [];
     const view = handoffView(row, { now: window.now, urls, store });
     const waiting = view.status === "pending";
-    if (waiting && !isLive(row)) return [];
     const who = approver || email || "the user this connection acts for";
     return [
       candidate("approval_waiting", row.id, {
