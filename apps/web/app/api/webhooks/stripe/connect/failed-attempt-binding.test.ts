@@ -7,9 +7,9 @@ import {
   failedAttemptReservationId,
 } from "./failed-attempt-binding";
 
-// The binding of a rental payment's `payment_intent.payment_failed`: the deployment's
-// mode, the account that sent it, the reservation of the rows that record its
-// PaymentIntent or the one it names, in that account's store.
+// The binding of a rental payment's `payment_intent.payment_failed`: the account that
+// sent it, the reservation of the rows that record its PaymentIntent or the one it
+// names, in that account's store.
 
 const RESERVATION = "res_bound_00000000001";
 const OTHER = "res_other_00000000001";
@@ -23,8 +23,6 @@ const reservation = (id = RESERVATION, stripeAccountId: string | null = ACCOUNT)
 type Input = Parameters<typeof failedAttemptBinding<ReturnType<typeof reservation>>>[0];
 
 const bound: Input = {
-  livemode: false,
-  secretKey: "sk_test_123",
   accountId: ACCOUNT,
   namedReservationId: RESERVATION,
   recordedReservationIds: [],
@@ -41,7 +39,6 @@ describe("failedAttemptBinding", () => {
         { recordedReservationIds: [RESERVATION], namedReservationId: undefined },
       ],
       ["two rows of the reservation", { recordedReservationIds: [RESERVATION, RESERVATION] }],
-      ["live, under a live key", { livemode: true, secretKey: "sk_live_123" }],
     ];
     for (const [name, overrides] of cases) {
       const binding = failedAttemptBinding({ ...bound, ...overrides });
@@ -51,10 +48,6 @@ describe("failedAttemptBinding", () => {
 
   test("an event that disagrees is refused, in the table's order", () => {
     const cases: ReadonlyArray<readonly [Partial<Input>, FailedAttemptRefusal]> = [
-      [{ livemode: true }, "livemode_mismatch"],
-      [{ secretKey: "sk_live_123" }, "livemode_mismatch"],
-      [{ secretKey: undefined }, "livemode_mismatch"],
-      [{ livemode: true, accountId: undefined }, "livemode_mismatch"],
       [{ accountId: undefined }, "connected_account_missing"],
       [{ accountId: "" }, "connected_account_missing"],
       [{ namedReservationId: undefined, reservation: null }, "invalid_reservation_id"],

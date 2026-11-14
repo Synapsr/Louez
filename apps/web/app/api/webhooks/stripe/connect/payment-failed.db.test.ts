@@ -24,8 +24,9 @@ import type { DepositIntent } from "@/lib/reservations/util.deposit-hold-transit
 // owner's message and the platform's alert, on its reservation, in the store of the
 // account that sent it; the Checkout Session stays open, and its completion or its
 // expiry settles the payment, the booking and a marketplace attempt. A PaymentIntent a
-// `deposit_hold` row records goes to the deposit events. An event that does not agree
-// with the deployment's mode, its account or its records writes nothing. The
+// `deposit_hold` row records goes to the deposit events. An event of the other mode
+// than the deployment's key is refused by the route before any handler, and one that
+// does not agree with its account or its records writes nothing. The
 // signature check, the deployment's keys, the log, the fee runner, the senders and
 // Stripe are replaced; Stripe answers what a case sets and fails on any other call.
 // Triggers record each write with its transaction.
@@ -476,7 +477,6 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
       recordedReservationIds?: string[];
       readReservationId?: string;
       storeAccountId?: string | null;
-      livemode?: boolean;
     },
   ) => [
     "log.error",
@@ -488,12 +488,25 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
         paymentIntentId: ids.paymentIntentId,
         ...(ids.accountId !== undefined && { accountId: ids.accountId }),
         ...(ids.namedReservationId !== undefined && { namedReservationId: ids.namedReservationId }),
-        ...(ids.livemode !== undefined && { livemode: ids.livemode }),
         ...(ids.recordedReservationIds !== undefined && {
           recordedReservationIds: ids.recordedReservationIds,
         }),
         ...(ids.readReservationId !== undefined && { readReservationId: ids.readReservationId }),
         ...(ids.storeAccountId !== undefined && { storeAccountId: ids.storeAccountId }),
+      },
+    },
+  ];
+
+  /** The route's refusal of an event of the other mode, before any handler. */
+  const otherMode = (eventId: string, livemode: boolean) => [
+    "log.error",
+    {
+      stripeWebhook: {
+        event: "payment_intent.payment_failed",
+        issue: "livemode_mismatch",
+        stripeEventId: eventId,
+        accountId: ACCOUNT,
+        livemode,
       },
     },
   ];
@@ -715,15 +728,7 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
         );
 
         assert.deepEqual(await readWrites(id), []);
-        assert.deepEqual(calls, [
-          refused("livemode_mismatch", {
-            eventId,
-            paymentIntentId,
-            accountId: ACCOUNT,
-            namedReservationId: id,
-            livemode,
-          }),
-        ]);
+        assert.deepEqual(calls, [otherMode(eventId, livemode)]);
         calls.length = 0;
       }
     });
@@ -839,13 +844,7 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
           paymentIntentId,
           namedReservationId: id,
         }),
-        refused("livemode_mismatch", {
-          eventId: live,
-          paymentIntentId,
-          accountId: ACCOUNT,
-          namedReservationId: id,
-          livemode: true,
-        }),
+        otherMode(live, true),
       ]);
     });
   });

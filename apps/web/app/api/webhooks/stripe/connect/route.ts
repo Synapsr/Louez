@@ -2,7 +2,7 @@ import { completeExtensionPayment } from "@/lib/reservations/extension-service";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
@@ -191,6 +191,22 @@ export async function POST(request: Request) {
 
   // Get connected account ID from event
   const connectedAccountId = event.account;
+
+  // An event of the other mode than the deployment's key is refused before any
+  // handler, whatever its type: logged, nothing written, answered 2xx so that
+  // Stripe does not send it again.
+  if (!matchesDeploymentMode({ livemode: event.livemode, secretKey: env.STRIPE_SECRET_KEY })) {
+    log.error({
+      stripeWebhook: {
+        event: event.type,
+        issue: "livemode_mismatch",
+        stripeEventId: event.id,
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        livemode: event.livemode,
+      },
+    });
+    return NextResponse.json({ received: true });
+  }
 
   try {
     switch (event.type) {
@@ -669,39 +685,42 @@ async function handleCheckoutExpired(
   const currency = session.currency?.toUpperCase() || "EUR";
   const amount = fromStripeCents(session.amount_total || 0, currency);
 
-  // A row still pending here means nobody replaced this session: the
-  // customer simply never paid. A resumed or superseded checkout cancels its
-  // row before expiring the session, so those never reach the cancellation.
-  const abandoned = existingPayment?.status === "pending";
-
-  await db.transaction(async (tx) => {
-    if (existingPayment && abandoned) {
-      await tx
+  // A row still pending means nobody replaced this session: the customer
+  // simply never paid. A resumed or superseded checkout cancels its row before
+  // expiring the session, so those never reach the cancellation. The expiry is
+  // recorded by the delivery whose update moves the row out of pending, and only
+  // that one asks for the cancellation: another delivery of the event, even a
+  // concurrent one, finds the row cancelled under its lock and writes nothing.
+  // A session with no row, or whose row is no longer pending, records nothing.
+  const pendingPayment = existingPayment?.status === "pending" ? existingPayment : null;
+  const abandoned =
+    pendingPayment !== null &&
+    (await db.transaction(async (tx) => {
+      const [cancelled] = await tx
         .update(payments)
         .set({
           status: "cancelled",
           updatedAt: new Date(),
         })
-        .where(eq(payments.id, existingPayment.id));
+        .where(and(eq(payments.id, pendingPayment.id), eq(payments.status, "pending")));
+      if (cancelled.affectedRows === 0) return false;
       await markReservationIds(tx, [reservationId]);
-    }
-
-    // Log payment expired activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "payment_expired",
-      description: null,
-      metadata: {
-        checkoutSessionId: session.id,
-        amount,
-        currency,
-        method: "stripe",
-      },
-      // Whole seconds, as the status change below stores its `cancelled` row.
-      createdAt: toWholeSeconds(new Date()),
-    });
-  });
+      await tx.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId,
+        activityType: "payment_expired",
+        description: null,
+        metadata: {
+          checkoutSessionId: session.id,
+          amount,
+          currency,
+          method: "stripe",
+        },
+        // Whole seconds, as the status change below stores its `cancelled` row.
+        createdAt: toWholeSeconds(new Date()),
+      });
+      return true;
+    }));
 
   // A marketplace booking's attempt fails with its own session only: without
   // the payment row, nothing ties this session to the booking's checkout.
@@ -731,16 +750,16 @@ async function handleCheckoutExpired(
 /**
  * A failed payment attempt adds its line and its alert, and changes nothing else:
  * the Checkout Session stays open for another try, and its completion or its expiry
- * settles the payment, the booking and a marketplace attempt. The event acts in the
- * deployment's mode, from the account that sent it, on the reservation of the payment
- * rows that record its PaymentIntent, or the one it names when no row does. A
- * PaymentIntent a `deposit_hold` row records, or one no row records whose event states
- * a deposit hold's, goes to the deposit events, which read it from Stripe. An event
- * that does not agree with those records is logged and nothing is written; it is
- * answered 2xx, as Stripe would only send it again.
+ * settles the payment, the booking and a marketplace attempt. The route has refused
+ * an event of the other mode; this one acts from the account that sent it, on the
+ * reservation of the payment rows that record its PaymentIntent, or the one it names
+ * when no row does. A PaymentIntent a `deposit_hold` row records, or one no row records
+ * whose event states a deposit hold's, goes to the deposit events, which read it from
+ * Stripe. An event that does not agree with those records is logged and nothing is
+ * written; it is answered 2xx, as Stripe would only send it again.
  */
 async function handlePaymentFailed(
-  event: { readonly id: string; readonly livemode: boolean },
+  event: { readonly id: string },
   paymentIntent: Stripe.PaymentIntent,
   connectedAccountId: string | undefined,
 ) {
@@ -759,12 +778,7 @@ async function handlePaymentFailed(
     });
   };
 
-  // The deployment's mode and the sending account come first: they hold for a
-  // deposit hold's failed attempt too.
-  if (!matchesDeploymentMode({ livemode: event.livemode, secretKey: env.STRIPE_SECRET_KEY })) {
-    refuse("livemode_mismatch", { livemode: event.livemode });
-    return;
-  }
+  // The sending account comes first: it holds for a deposit hold's failed attempt too.
   if (!connectedAccountId) {
     refuse("connected_account_missing");
     return;
@@ -800,8 +814,6 @@ async function handlePaymentFailed(
       })
     : undefined;
   const binding = failedAttemptBinding({
-    livemode: event.livemode,
-    secretKey: env.STRIPE_SECRET_KEY,
     accountId: connectedAccountId,
     namedReservationId,
     recordedReservationIds,

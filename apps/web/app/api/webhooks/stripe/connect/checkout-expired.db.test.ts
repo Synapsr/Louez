@@ -11,6 +11,7 @@ import type { Connection, RowDataPacket } from "mysql2/promise";
 
 import {
   createTestDatabase,
+  raceOnLockedRow,
   reservationChangeTestHooks,
   skipWithoutTestDatabase,
   type TestDatabase,
@@ -26,7 +27,9 @@ import {
 // (docs/domain/reservation-changes.md, 6a-4). The event acts on the payment
 // row its session names, on that row's reservation, sent by the account that
 // row records, or its store's for a row that records none (6a-W2): a metadata
-// reservation or an account other than those is logged and writes nothing.
+// reservation or an account other than those is logged and writes nothing. The
+// expiry is recorded by the delivery that moves the payment out of pending,
+// once; an event of the other mode than the deployment's key writes nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -130,6 +133,8 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   before(async () => {
     database = await createTestDatabase("checkout_expired");
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_test";
+    // The deployment's key: a test one, so it hears test events.
+    process.env.STRIPE_SECRET_KEY = "sk_test_checkout_expired";
     louezDb = await import("@louez/db");
     route = await import("./route");
 
@@ -224,12 +229,17 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     checkoutFlow: string | null = "storefront_checkout",
     // A delivery of its own, unless the test sends one event twice.
     eventId: string = nextId("evt"),
-    // The sending account, and the whole metadata, when not the session's own.
-    overrides: { account?: string | null; metadata?: Record<string, string> } = {},
+    // The sending account, the whole metadata and the mode, when not the session's own.
+    overrides: {
+      account?: string | null;
+      metadata?: Record<string, string>;
+      livemode?: boolean;
+    } = {},
   ) => {
     const event = {
       id: eventId,
       type: "checkout.session.expired",
+      livemode: overrides.livemode ?? false,
       // null: an event that names no account.
       ...(overrides.account !== null && { account: overrides.account ?? ACCOUNT }),
       data: {
@@ -375,7 +385,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     ]);
   });
 
-  test("the same event again: another payment_expired row, the checkout already cancelled, no fee effects", async () => {
+  test("the same event again writes nothing: one payment_expired row, the checkout already cancelled, no fee effects", async () => {
     const id = await booking();
     const sessionId = await sessionPayment(id);
     const eventId = nextId("evt");
@@ -388,9 +398,76 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       body: { received: true },
     });
 
-    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(await readWrites(id), []);
     assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
     assert.equal(await readStatus(id), "cancelled");
+    assert.equal(
+      (await readActivity(id)).filter((line) => line.activityType === "payment_expired").length,
+      1,
+    );
+  });
+
+  test("the same event twice at once: one delivery cancels the payment and writes its payment_expired row, the other writes nothing", async () => {
+    const id = await booking();
+    const sessionId = await sessionPayment(id);
+    const [payment] = await louezDb.db
+      .select({ id: louezDb.payments.id })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, sessionId));
+    const eventId = nextId("evt");
+
+    // Both deliveries read the payment pending, then wait on its row.
+    const answers = await raceOnLockedRow(database, { table: "payments", id: String(payment?.id) }, [
+      () => expire(id, sessionId, undefined, eventId),
+      () => expire(id, sessionId, undefined, eventId),
+    ]);
+
+    assert.deepEqual(answers, [
+      { status: 200, body: { received: true } },
+      { status: 200, body: { received: true } },
+    ]);
+    assert.deepEqual(await readWrites(id), [
+      "1: payments pending > cancelled",
+      "1: reservation_activity + payment_expired",
+      "2: reservations status pending > cancelled",
+      "2: reservation_activity + cancelled",
+    ]);
+    assert.equal(await readStatus(id), "cancelled");
+    // The delivery that moved the payment cancelled the checkout; the other did not.
+    const cancelledBy = calls
+      .filter(([name]) => name === "log.info")
+      .map(([, logged]) => (logged as { stripeWebhook: { reservationCancelled: boolean } }))
+      .map((logged) => logged.stripeWebhook.reservationCancelled);
+    assert.deepEqual(cancelledBy.sort(), [false, true]);
+  });
+
+  test("a live event under the deployment's test key: livemode_mismatch logged, nothing written", async () => {
+    const id = await booking();
+    const sessionId = await sessionPayment(id);
+    const eventId = nextId("evt");
+
+    assert.deepEqual(await expire(id, sessionId, undefined, eventId, { livemode: true }), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(calls, [
+      [
+        "log.error",
+        {
+          stripeWebhook: {
+            event: "checkout.session.expired",
+            issue: "livemode_mismatch",
+            stripeEventId: eventId,
+            accountId: ACCOUNT,
+            livemode: true,
+          },
+        },
+      ],
+    ]);
+    assert.equal(await readStatus(id), "pending");
+    assert.deepEqual(await readActivity(id), []);
   });
 
   test("a session of another flow cancels its payment and leaves the reservation", async () => {
@@ -413,14 +490,14 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     }
   });
 
-  test("a session whose payment was no longer pending (resumed or superseded) leaves the reservation", async () => {
+  test("a session whose payment was no longer pending (resumed or superseded): nothing written, the reservation left", async () => {
     for (const status of ["cancelled", "completed"] as const) {
       const id = await booking();
       const sessionId = await sessionPayment(id, status);
 
       await expire(id, sessionId);
 
-      assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+      assert.deepEqual(await readWrites(id), []);
       assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
       assert.equal(await readStatus(id), "pending");
       calls.length = 0;
@@ -592,13 +669,13 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     assert.equal(await readStatus(id), "pending");
   });
 
-  test("a session no payment row names (a payment request's): its payment_expired row on its store's reservation, nothing else", async () => {
+  test("a session no payment row names (a payment request's): no payment moves out of pending, nothing written on its store's reservation", async () => {
     const id = await booking();
     const sessionId = nextId("cs");
 
     assert.deepEqual(await expire(id, sessionId, null), { status: 200, body: { received: true } });
 
-    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(await readWrites(id), []);
     assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
     assert.equal(await readStatus(id), "pending");
   });
@@ -620,7 +697,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       body: { received: true },
     });
 
-    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(await readWrites(id), []);
     assert.deepEqual(calls, [expiredLog(id, otherSession, false)]);
     assert.equal(await readStatus(id), "pending");
   });

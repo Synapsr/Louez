@@ -15,7 +15,8 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 // 6a-W2): a session whose payment row records the account it was created on is
 // heard from that account only, and its PaymentIntent is read on it; a row that
 // records none is heard from the store's connected account of the moment; a
-// session with no payment row keeps the store's account. A refused event writes
+// session with no payment row keeps the store's account. An event of the other mode
+// than the deployment's key is refused before it is read. A refused event writes
 // nothing and is answered 2xx. The signature check, the log, the fee runner, the
 // platform's fees, the senders, the invoicing and Stripe are replaced; Stripe
 // answers the PaymentIntent and fails on any other call.
@@ -146,6 +147,8 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
   before(async () => {
     database = await createTestDatabase("checkout_completed");
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_test";
+    // The deployment's key: a test one, so it hears test events.
+    process.env.STRIPE_SECRET_KEY = "sk_test_checkout_completed";
     louezDb = await import("@louez/db");
     route = await import("./route");
 
@@ -224,10 +227,13 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
       reservationId: booking.id,
       checkoutFlow: "storefront_checkout",
     },
+    // The event's mode, and its id when a case reads it back.
+    { livemode = false, eventId = nextId("evt") }: { livemode?: boolean; eventId?: string } = {},
   ) => {
     const event = {
-      id: nextId("evt"),
+      id: eventId,
       type: "checkout.session.completed",
+      livemode,
       ...(account !== null && { account }),
       data: {
         object: {
@@ -412,6 +418,43 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
       status: "pending",
       payments: [
         { status: "pending", stripeAccountId: PREVIOUS_ACCOUNT, stripePaymentIntentId: null },
+      ],
+    });
+    assert.equal(await historyLines(booking.id), 0);
+  });
+
+  test("a live event under the deployment's test key: livemode_mismatch logged, nothing read, written or sent", async () => {
+    const booking = await checkout(TODAY_ACCOUNT);
+    const eventId = nextId("evt");
+
+    assert.deepEqual(
+      await complete(
+        booking,
+        TODAY_ACCOUNT,
+        { reservationId: booking.id, checkoutFlow: "storefront_checkout" },
+        { livemode: true, eventId },
+      ),
+      { status: 200, body: { received: true } },
+    );
+
+    assert.deepEqual(calls, [
+      [
+        "log.error",
+        {
+          stripeWebhook: {
+            event: "checkout.session.completed",
+            issue: "livemode_mismatch",
+            stripeEventId: eventId,
+            accountId: TODAY_ACCOUNT,
+            livemode: true,
+          },
+        },
+      ],
+    ]);
+    assert.deepEqual(await stateOf(booking.id), {
+      status: "pending",
+      payments: [
+        { status: "pending", stripeAccountId: TODAY_ACCOUNT, stripePaymentIntentId: null },
       ],
     });
     assert.equal(await historyLines(booking.id), 0);
