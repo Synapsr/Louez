@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in Louez does not work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Using Louez Cloud (louez.io)? The fastest way to get help is the chat in your dashboard or https://help.louez.io.
+        Found a security issue? Do not open an issue: write to security@louez.io.
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition
+      options:
+        - Louez Cloud (louez.io)
+        - Self-hosted with the bundled docker-compose.yml
+        - Self-hosted, other deployment
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag or commit you run (self-hosted), or the date you saw the bug (Cloud).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you saw instead. Leave out your customers' personal data.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Self-hosted only, for example `docker compose logs louez --tail 200`.
+      render: shell
+  - type: input
+    id: support-ticket
+    attributes:
+      label: Support ticket
+      description: The Gleap ticket link or number, if this came from support.
