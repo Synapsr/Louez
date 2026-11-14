@@ -791,6 +791,8 @@ export async function cancelInvitation(
 export interface RemoveMemberPreview {
   summary: string;
   member: TeamMember;
+  /** Their pending invitations to the store, which the removal cancels: read under the store's lock. */
+  pendingInvitations: number;
 }
 
 /**
@@ -820,11 +822,17 @@ export async function removeMember(
     if (member.role === "owner") throw teamErrors.ownerNotRemovable(id);
 
     const who = member.name ? `${member.name} (${member.email})` : member.email;
+    // Every team write holds the store's lock: none changes them meanwhile.
+    const [pending] = await tx
+      .select({ count: count() })
+      .from(storeInvitations)
+      .where(pendingOf(caller.storeId, normalizeEmail(member.email)));
     refusal =
       (await options.confirm?.(
         {
           summary: `Remove ${who} from "${caller.store.name}". They lose access to the store at once: its customers, reservations and payments.`,
           member,
+          pendingInvitations: pending?.count ?? 0,
         },
         tx,
         removeMemberPresentation(member),

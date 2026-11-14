@@ -299,16 +299,24 @@ const remove = storeProcedure
   .output(removeMemberOutput)
   .handler(async ({ context, input, path }) => {
     const result = await removeMember(caller(context), input.id, {
-      confirm: confirmTeamChange(context, path, input, (preview) => ({
-        consequences: ["access_removed"],
-        state: {
-          id: preview.member.id,
-          userId: preview.member.userId,
-          email: preview.member.email,
-          role: preview.member.role,
-        },
-        details: { member: preview.member },
-      })),
+      confirm: confirmTeamChange(context, path, input, (preview) => {
+        // Said, and bound, when the removal also cancels invitations of theirs.
+        const cancelled =
+          preview.pendingInvitations > 0
+            ? { pendingInvitationsCancelled: preview.pendingInvitations }
+            : {};
+        return {
+          consequences: ["access_removed"],
+          state: {
+            id: preview.member.id,
+            userId: preview.member.userId,
+            email: preview.member.email,
+            role: preview.member.role,
+            ...cancelled,
+          },
+          details: { member: preview.member, ...cancelled },
+        };
+      }),
     });
     return { ...result, removed: true as const, links: teamLinks(context) };
   });
