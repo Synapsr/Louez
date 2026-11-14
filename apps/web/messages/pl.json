@@ -9901,6 +9901,72 @@
           "description": "Nie ma tu już nic do zrobienia i nic nie zostało zrobione. Jeśli asystent nadal tego potrzebuje, poprosi ponownie."
         },
         "shortened": "Podsumowanie było zbyt długie, by wyświetlić je w całości."
+      },
+      "display": {
+        "told": "Co przekazano asystentowi",
+        "headline": {
+          "recordPayment": "Zapisać otrzymaną płatność?",
+          "paidBack": "Zapisać zwrot pieniędzy klientowi?",
+          "returnDeposit": "Zapisać zwróconą kaucję?",
+          "deletePayment": "Usunąć zapisaną płatność?",
+          "removeMember": "Usunąć kogoś z zespołu?",
+          "cancelInvitation": "Anulować zaproszenie do zespołu?",
+          "confirmWithinRules": "Potwierdzić rezerwację?",
+          "confirmPastBuffer": "Potwierdzić rezerwację mimo przerwy między wynajmami?",
+          "confirmBeyondStock": "Potwierdzić rezerwację ponad stan magazynu?",
+          "confirmBeyondStockAndBuffer": "Potwierdzić rezerwację ponad stan magazynu i mimo przerwy między wynajmami?"
+        },
+        "facts": {
+          "booking": "Rezerwacja #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Rezerwacja #<v>{number}</v>",
+          "received": "<v>{type}</v>: otrzymano <v>{amount}</v> · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>",
+          "returned": "Zwrócona kaucja: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Kaucja wciąż zatrzymana przed tym zwrotem: <v>{held}</v>",
+          "recordOnly": "Louez tylko to zapisuje: żadne pieniądze nie są pobierane ani zwracane.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Zapisano <v>{atDate}</v> o <v>{atTime}</v>",
+          "leavesBalance": "Znika z salda rezerwacji i z twoich wyników.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "W zespole od <v>{sinceDate}</v>",
+          "losesAccess": "Od razu traci dostęp do twoich klientów, rezerwacji i płatności.",
+          "invited": "Zaproszenie wysłane do <v>{email}</v>",
+          "invitedOn": "Wysłane <v>{atDate}</v>",
+          "linkStops": "Link przestaje działać: ta osoba nie dołączy do zespołu.",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v>, od <v>{periodStartTime}</v> do <v>{periodEndTime}</v>} other {Od <v>{periodStartDate}</v>, <v>{periodStartTime}</v> do <v>{periodEndDate}</v>, <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: zamówiono {requested}, {available, plural, =0 {nic wolnego} other {wolne tylko #}} przy przerwie <v>{buffer}</v> między wynajmami",
+          "beyondStock": "<v>{product}</v>: zamówiono {requested}, {available, plural, =0 {nic w magazynie} other {w magazynie tylko #}}: brakuje {missing}",
+          "moreLines": "{count, plural, one {I jeszcze # pozycja poza twoimi zasadami} few {I jeszcze # pozycje poza twoimi zasadami} other {I jeszcze # pozycji poza twoimi zasadami}}: zobacz szczegóły",
+          "withinRules": "Stan magazynu i przerwa między wynajmami to pokrywają: nic ich nie przekracza.",
+          "message": "<v>{customer}</v> otrzyma {channels, select, email {e-mail} sms {SMS} other {e-mail i SMS}} „<v>{message}</v>”",
+          "messageToCustomer": "Klient otrzyma {channels, select, email {e-mail} sms {SMS} other {e-mail i SMS}} „<v>{message}</v>”",
+          "noMessage": "Klient nie dostaje żadnej wiadomości."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Wynajem",
+            "deposit": "Kaucja",
+            "deposit_hold": "Blokada kaucji",
+            "deposit_capture": "Pobrana kaucja",
+            "deposit_return": "Zwrot kaucji",
+            "damage": "Uszkodzenia",
+            "adjustment": "Korekta"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Gotówka",
+            "card": "Karta",
+            "transfer": "Przelew",
+            "check": "Czek",
+            "other": "Inna"
+          },
+          "customerMessage": {
+            "request_accepted": "prośba przyjęta",
+            "request_rejected": "prośba odrzucona",
+            "reservation_cancelled": "rezerwacja anulowana"
+          }
+        }
       }
     }
   }

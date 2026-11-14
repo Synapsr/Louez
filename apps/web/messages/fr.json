@@ -9901,6 +9901,72 @@
           "description": "Il n’y a plus rien à faire ici, et rien n’a été fait. Si votre assistant en a encore besoin, il vous redemandera."
         },
         "shortened": "Le résumé était trop long pour être affiché en entier."
+      },
+      "display": {
+        "told": "Ce que Louez a dit à votre assistant",
+        "headline": {
+          "recordPayment": "Enregistrer un paiement reçu ?",
+          "paidBack": "Enregistrer un remboursement au client ?",
+          "returnDeposit": "Enregistrer une caution rendue ?",
+          "deletePayment": "Supprimer un paiement enregistré ?",
+          "removeMember": "Retirer quelqu’un de votre équipe ?",
+          "cancelInvitation": "Annuler une invitation à votre équipe ?",
+          "confirmWithinRules": "Confirmer la réservation ?",
+          "confirmPastBuffer": "Confirmer la réservation malgré votre délai entre deux locations ?",
+          "confirmBeyondStock": "Confirmer la réservation au-delà de votre stock ?",
+          "confirmBeyondStockAndBuffer": "Confirmer la réservation au-delà de votre stock et de votre délai entre deux locations ?"
+        },
+        "facts": {
+          "booking": "Réservation #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Réservation #<v>{number}</v>",
+          "received": "<v>{type}</v> : paiement de <v>{amount}</v> reçu · <v>{method}</v>",
+          "paidBack": "<v>{type}</v> : <v>{amount}</v>, remboursés au client · <v>{method}</v>",
+          "returned": "Caution rendue : <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Caution encore détenue avant cela : <v>{held}</v>",
+          "recordOnly": "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
+          "deleted": "<v>{type}</v> : <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Enregistré le <v>{atDate}</v> à <v>{atTime}</v>",
+          "leavesBalance": "Il sort du solde de la réservation et de vos chiffres.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Membre depuis le <v>{sinceDate}</v>",
+          "losesAccess": "Perd aussitôt l’accès à vos clients, réservations et paiements.",
+          "invited": "Invitation envoyée à <v>{email}</v>",
+          "invitedOn": "Envoyée le <v>{atDate}</v>",
+          "linkStops": "Son lien ne fonctionnera plus : la personne ne rejoindra pas votre équipe.",
+          "period": "{periodSameDay, select, yes {Le <v>{periodStartDate}</v>, de <v>{periodStartTime}</v> à <v>{periodEndTime}</v>} other {Du <v>{periodStartDate}</v> à <v>{periodStartTime}</v> au <v>{periodEndDate}</v> à <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v> : {requested, plural, one {# demandé} other {# demandés}}, {available, plural, =0 {aucun libre} one {# seul libre} other {seulement # libres}} en respectant votre délai de <v>{buffer}</v>",
+          "beyondStock": "<v>{product}</v> : {requested, plural, one {# demandé} other {# demandés}}, {available, plural, =0 {aucun en stock} one {# seul en stock} other {seulement # en stock}} : {missing, plural, one {# manquant} other {# manquants}}",
+          "moreLines": "{count, plural, one {Et # autre ligne hors de vos règles} other {Et # autres lignes hors de vos règles}} : voir les détails",
+          "withinRules": "Votre stock et votre délai entre deux locations la couvrent : rien ne les dépasse.",
+          "message": "<v>{customer}</v> recevra {channels, select, email {l’e-mail} sms {le SMS} other {l’e-mail et le SMS}} « <v>{message}</v> »",
+          "messageToCustomer": "Le client recevra {channels, select, email {l’e-mail} sms {le SMS} other {l’e-mail et le SMS}} « <v>{message}</v> »",
+          "noMessage": "Aucun message n’est envoyé au client."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Location",
+            "deposit": "Caution",
+            "deposit_hold": "Empreinte de caution",
+            "deposit_capture": "Caution encaissée",
+            "deposit_return": "Caution rendue",
+            "damage": "Dommages",
+            "adjustment": "Ajustement"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Espèces",
+            "card": "Carte",
+            "transfer": "Virement",
+            "check": "Chèque",
+            "other": "Autre"
+          },
+          "customerMessage": {
+            "request_accepted": "demande acceptée",
+            "request_rejected": "demande refusée",
+            "reservation_cancelled": "réservation annulée"
+          }
+        }
       }
     }
   }

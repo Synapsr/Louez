@@ -9901,6 +9901,72 @@
           "description": "Hier gibt es nichts mehr zu tun, und es wurde nichts getan. Wenn Ihr Assistent es noch braucht, fragt er erneut."
         },
         "shortened": "Die Zusammenfassung war zu lang, um vollständig angezeigt zu werden."
+      },
+      "display": {
+        "told": "Was Ihrem Assistenten gesagt wurde",
+        "headline": {
+          "recordPayment": "Eine erhaltene Zahlung erfassen?",
+          "paidBack": "Eine Rückzahlung an den Kunden erfassen?",
+          "returnDeposit": "Eine zurückgegebene Kaution erfassen?",
+          "deletePayment": "Eine erfasste Zahlung löschen?",
+          "removeMember": "Jemanden aus Ihrem Team entfernen?",
+          "cancelInvitation": "Eine Einladung in Ihr Team zurückziehen?",
+          "confirmWithinRules": "Die Buchung bestätigen?",
+          "confirmPastBuffer": "Die Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen bestätigen?",
+          "confirmBeyondStock": "Die Buchung über Ihren Bestand hinaus bestätigen?",
+          "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?"
+        },
+        "facts": {
+          "booking": "Buchung #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Buchung #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgezahlt · <v>{method}</v>",
+          "returned": "Kaution zurückgegeben: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Bisher noch gehaltene Kaution: <v>{held}</v>",
+          "recordOnly": "Louez erfasst es nur: Es wird kein Geld abgebucht oder erstattet.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Erfasst am <v>{atDate}</v> um <v>{atTime}</v>",
+          "leavesBalance": "Sie verschwindet aus dem Saldo der Buchung und aus Ihren Zahlen.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Mitglied seit <v>{sinceDate}</v>",
+          "losesAccess": "Verliert sofort den Zugriff auf Ihre Kunden, Buchungen und Zahlungen.",
+          "invited": "Einladung an <v>{email}</v>",
+          "invitedOn": "Gesendet am <v>{atDate}</v>",
+          "linkStops": "Der Link funktioniert nicht mehr: Die Person tritt Ihrem Team nicht bei.",
+          "period": "{periodSameDay, select, yes {Am <v>{periodStartDate}</v> von <v>{periodStartTime}</v> bis <v>{periodEndTime}</v>} other {Vom <v>{periodStartDate}</v> um <v>{periodStartTime}</v> bis <v>{periodEndDate}</v> um <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: {requested} angefragt, {available, plural, =0 {keins frei} other {nur # frei}} mit Ihrer Pufferzeit von <v>{buffer}</v>",
+          "beyondStock": "<v>{product}</v>: {requested} angefragt, {available, plural, =0 {keins auf Lager} other {nur # auf Lager}}: {missing, plural, one {# fehlt} other {# fehlen}}",
+          "moreLines": "{count, plural, one {Und # weitere Position außerhalb Ihrer Regeln} other {Und # weitere Positionen außerhalb Ihrer Regeln}}: siehe Details",
+          "withinRules": "Ihr Bestand und Ihre Pufferzeit decken sie ab: Nichts geht darüber hinaus.",
+          "message": "<v>{customer}</v> erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
+          "messageToCustomer": "Der Kunde erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
+          "noMessage": "Der Kunde erhält keine Nachricht."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Miete",
+            "deposit": "Kaution",
+            "deposit_hold": "Kautionsvormerkung",
+            "deposit_capture": "Einbehaltene Kaution",
+            "deposit_return": "Kautionsrückgabe",
+            "damage": "Schäden",
+            "adjustment": "Anpassung"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Bar",
+            "card": "Karte",
+            "transfer": "Überweisung",
+            "check": "Scheck",
+            "other": "Sonstige"
+          },
+          "customerMessage": {
+            "request_accepted": "Anfrage angenommen",
+            "request_rejected": "Anfrage abgelehnt",
+            "reservation_cancelled": "Buchung storniert"
+          }
+        }
       }
     }
   }

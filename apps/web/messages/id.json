@@ -9901,6 +9901,72 @@
           "description": "Tidak ada lagi yang bisa dilakukan di sini, dan tidak ada yang dilakukan. Jika asisten Anda masih perlu, ia akan meminta lagi."
         },
         "shortened": "Ringkasan terlalu panjang untuk ditampilkan utuh."
+      },
+      "display": {
+        "told": "Yang disampaikan kepada asisten Anda",
+        "headline": {
+          "recordPayment": "Catat pembayaran yang diterima?",
+          "paidBack": "Catat uang yang dikembalikan ke pelanggan?",
+          "returnDeposit": "Catat uang jaminan yang dikembalikan?",
+          "deletePayment": "Hapus pembayaran yang tercatat?",
+          "removeMember": "Keluarkan seseorang dari tim Anda?",
+          "cancelInvitation": "Batalkan undangan ke tim Anda?",
+          "confirmWithinRules": "Konfirmasi pemesanan?",
+          "confirmPastBuffer": "Konfirmasi pemesanan meski melanggar jeda antarsewa Anda?",
+          "confirmBeyondStock": "Konfirmasi pemesanan melebihi stok Anda?",
+          "confirmBeyondStockAndBuffer": "Konfirmasi pemesanan melebihi stok dan jeda antarsewa Anda?"
+        },
+        "facts": {
+          "booking": "Pemesanan #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Pemesanan #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> diterima · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>",
+          "returned": "Uang jaminan dikembalikan: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Uang jaminan yang masih dipegang sebelum ini: <v>{held}</v>",
+          "recordOnly": "Louez hanya mencatatnya: tidak ada uang yang ditagih atau dikembalikan.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Dicatat pada <v>{atDate}</v> pukul <v>{atTime}</v>",
+          "leavesBalance": "Pembayaran ini keluar dari saldo pemesanan dan angka toko Anda.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Anggota sejak <v>{sinceDate}</v>",
+          "losesAccess": "Langsung kehilangan akses ke pelanggan, pemesanan, dan pembayaran Anda.",
+          "invited": "Undangan dikirim ke <v>{email}</v>",
+          "invitedOn": "Dikirim pada <v>{atDate}</v>",
+          "linkStops": "Tautannya tidak berfungsi lagi: orang itu tidak akan bergabung dengan tim Anda.",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v>, pukul <v>{periodStartTime}</v>–<v>{periodEndTime}</v>} other {Dari <v>{periodStartDate}</v> pukul <v>{periodStartTime}</v> sampai <v>{periodEndDate}</v> pukul <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: diminta {requested}, {available, plural, =0 {tidak ada yang kosong} other {hanya # yang kosong}} dengan jeda <v>{buffer}</v> Anda",
+          "beyondStock": "<v>{product}</v>: diminta {requested}, {available, plural, =0 {stok habis} other {stok hanya #}}: kurang {missing}",
+          "moreLines": "Dan {count} baris lagi di luar aturan Anda: lihat detailnya",
+          "withinRules": "Stok dan jeda antarsewa Anda mencukupi: tidak ada yang terlampaui.",
+          "message": "<v>{customer}</v> akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
+          "messageToCustomer": "Pelanggan akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
+          "noMessage": "Tidak ada pesan yang dikirim ke pelanggan."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Sewa",
+            "deposit": "Uang jaminan",
+            "deposit_hold": "Penahanan uang jaminan",
+            "deposit_capture": "Uang jaminan ditarik",
+            "deposit_return": "Pengembalian uang jaminan",
+            "damage": "Kerusakan",
+            "adjustment": "Penyesuaian"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Tunai",
+            "card": "Kartu",
+            "transfer": "Transfer bank",
+            "check": "Cek",
+            "other": "Lainnya"
+          },
+          "customerMessage": {
+            "request_accepted": "permintaan diterima",
+            "request_rejected": "permintaan ditolak",
+            "reservation_cancelled": "pemesanan dibatalkan"
+          }
+        }
       }
     }
   }

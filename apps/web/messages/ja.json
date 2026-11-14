@@ -9901,6 +9901,72 @@
           "description": "ここでできることはもうなく、何も行われていません。アシスタントがまだ必要であれば、改めて依頼します。"
         },
         "shortened": "要約が長すぎたため、全文を表示できませんでした。"
+      },
+      "display": {
+        "told": "アシスタントに伝えられた内容",
+        "headline": {
+          "recordPayment": "受け取った支払いを記録しますか？",
+          "paidBack": "お客様への返金を記録しますか？",
+          "returnDeposit": "返却した保証金を記録しますか？",
+          "deletePayment": "記録済みの支払いを削除しますか？",
+          "removeMember": "チームからメンバーを外しますか？",
+          "cancelInvitation": "チームへの招待を取り消しますか？",
+          "confirmWithinRules": "予約を確定しますか？",
+          "confirmPastBuffer": "レンタル間の間隔を守らずに予約を確定しますか？",
+          "confirmBeyondStock": "在庫を超えて予約を確定しますか？",
+          "confirmBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約を確定しますか？"
+        },
+        "facts": {
+          "booking": "予約 #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "予約 #<v>{number}</v>",
+          "received": "<v>{type}</v>：<v>{amount}</v> を受領 · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>：<v>{amount}</v>、お客様に返金 · <v>{method}</v>",
+          "returned": "保証金の返却：<v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "これまで預かっていた保証金：<v>{held}</v>",
+          "recordOnly": "Louez は記録するだけで、請求も返金も行いません。",
+          "deleted": "<v>{type}</v>：<v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "<v>{atDate}</v> <v>{atTime}</v> に記録",
+          "leavesBalance": "予約の残高と集計から外れます。",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "<v>{sinceDate}</v> からのメンバー",
+          "losesAccess": "お客様、予約、支払いへのアクセスをすぐに失います。",
+          "invited": "<v>{email}</v> への招待",
+          "invitedOn": "<v>{atDate}</v> に送信",
+          "linkStops": "招待リンクは使えなくなり、チームには参加しません。",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>〜<v>{periodEndTime}</v>} other {<v>{periodStartDate}</v> <v>{periodStartTime}</v> から <v>{periodEndDate}</v> <v>{periodEndTime}</v> まで}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>：{requested} 点の依頼、間隔 <v>{buffer}</v> を守ると{available, plural, =0 {空きなし} other {空きは # 点のみ}}",
+          "beyondStock": "<v>{product}</v>：{requested} 点の依頼、{available, plural, =0 {在庫なし} other {在庫は # 点のみ}}：{missing} 点不足",
+          "moreLines": "ほかにルールを超える明細が {count} 件あります：詳細をご覧ください",
+          "withinRules": "在庫とレンタル間の間隔の範囲内です：超えるものはありません。",
+          "message": "<v>{customer}</v> 様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
+          "messageToCustomer": "お客様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
+          "noMessage": "お客様にメッセージは送られません。"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "レンタル料",
+            "deposit": "保証金",
+            "deposit_hold": "保証金の仮押さえ",
+            "deposit_capture": "保証金の徴収",
+            "deposit_return": "保証金の返却",
+            "damage": "損害",
+            "adjustment": "調整"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "現金",
+            "card": "カード",
+            "transfer": "銀行振込",
+            "check": "小切手",
+            "other": "その他"
+          },
+          "customerMessage": {
+            "request_accepted": "リクエスト承認",
+            "request_rejected": "リクエスト不承認",
+            "reservation_cancelled": "予約キャンセル"
+          }
+        }
       }
     }
   }

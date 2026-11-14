@@ -2,6 +2,7 @@ import { useFormatter, useTranslations } from "next-intl";
 
 import type { ApprovalPage, ApprovalPageState } from "@louez/api/services/approval-page";
 
+import { ApprovalDisplay } from "@/components/handoffs/approval-display";
 import { ApprovalPreviewSummary } from "@/components/handoffs/approval-preview-summary";
 import { HandoffCard } from "@/components/handoffs/handoff-card";
 import { HandoffDisclosure } from "@/components/handoffs/handoff-disclosure";
@@ -12,10 +13,12 @@ export type EndedApprovalState = Exclude<ApprovalPageState, "pending" | "unreada
 /**
  * Where an agent's request stands once it is out of the person's hands,
  * true to its row, in one line: approved, carried out, lapsed, refused, or
- * ended without being carried out. On request, in a closed disclosure: what
- * that means and what the person can still do (most often nothing, as the
- * assistant asks again if it still needs to), the request it was about, and
- * the person's own words if they gave any.
+ * ended without being carried out; under it, for a request that carries a
+ * display, its headline and facts as the person read them. On request, in a
+ * closed disclosure: what that means and what the person can still do (most
+ * often nothing, as the assistant asks again if it still needs to), the
+ * request it was about (with a display, the sentence the assistant was
+ * given), and the person's own words if they gave any.
  */
 export const OperationApprovalDone = ({
   approval,
@@ -38,12 +41,20 @@ export const OperationApprovalDone = ({
   return (
     <HandoffCard title={t(`done.${state}.title`)}>
       <div className="w-full">
+        {approval.display && (
+          <div className="mb-4">
+            <ApprovalDisplay display={approval.display} timeZone={approval.store.timeZone} />
+          </div>
+        )}
         <HandoffDisclosure label={t("details")}>
           <p className="text-muted-foreground text-sm">{t(`done.${state}.description`, { when })}</p>
           {approval.preview && (
             <section className="space-y-1">
               <h2 className="text-muted-foreground text-xs font-medium">{t("done.request")}</h2>
               <p className="text-muted-foreground text-sm wrap-break-word">{approval.store.name}</p>
+              {approval.display && (
+                <h3 className="text-muted-foreground text-xs font-medium">{t("display.told")}</h3>
+              )}
               <ApprovalPreviewSummary preview={approval.preview} />
               {approval.preview.truncated && (
                 <p className="text-muted-foreground text-xs">{t("done.shortened")}</p>

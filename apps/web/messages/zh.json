@@ -9901,6 +9901,72 @@
           "description": "这里已无事可做，也未执行任何操作。如果助手仍有需要，它会重新请求。"
         },
         "shortened": "摘要太长，无法完整显示。"
+      },
+      "display": {
+        "told": "告诉你的助手的内容",
+        "headline": {
+          "recordPayment": "记录一笔已收款项？",
+          "paidBack": "记录退还给客户的款项？",
+          "returnDeposit": "记录已退还的押金？",
+          "deletePayment": "删除一笔已记录的款项？",
+          "removeMember": "将某人移出你的团队？",
+          "cancelInvitation": "取消一份团队邀请？",
+          "confirmWithinRules": "确认这笔预订？",
+          "confirmPastBuffer": "不顾两次租赁之间的间隔，确认这笔预订？",
+          "confirmBeyondStock": "超出库存确认这笔预订？",
+          "confirmBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，确认这笔预订？"
+        },
+        "facts": {
+          "booking": "预订 #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "预订 #<v>{number}</v>",
+          "received": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "returned": "已退押金：<v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "此前仍持有的押金：<v>{held}</v>",
+          "recordOnly": "Louez 只做记录：不会扣款，也不会退款。",
+          "deleted": "<v>{type}</v>：<v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "记录于 <v>{atDate}</v> <v>{atTime}</v>",
+          "leavesBalance": "它将从预订余额和你的数据中移除。",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "自 <v>{sinceDate}</v> 起为成员",
+          "losesAccess": "立即失去访问你的客户、预订和款项的权限。",
+          "invited": "发送给 <v>{email}</v> 的邀请",
+          "invitedOn": "发送于 <v>{atDate}</v>",
+          "linkStops": "邀请链接将失效：此人不会加入你的团队。",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>–<v>{periodEndTime}</v>} other {从 <v>{periodStartDate}</v> <v>{periodStartTime}</v> 到 <v>{periodEndDate}</v> <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>：需要 {requested} 件，按 <v>{buffer}</v> 的间隔{available, plural, =0 {没有空闲} other {仅空闲 # 件}}",
+          "beyondStock": "<v>{product}</v>：需要 {requested} 件，{available, plural, =0 {没有库存} other {库存仅 # 件}}：缺 {missing} 件",
+          "moreLines": "还有 {count} 行超出你的规则：请查看详情",
+          "withinRules": "库存和两次租赁之间的间隔都够用：没有任何超出。",
+          "message": "<v>{customer}</v> 将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
+          "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
+          "noMessage": "不会向客户发送任何消息。"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "租金",
+            "deposit": "押金",
+            "deposit_hold": "押金预授权",
+            "deposit_capture": "扣取的押金",
+            "deposit_return": "退还押金",
+            "damage": "损坏赔偿",
+            "adjustment": "调整"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "现金",
+            "card": "银行卡",
+            "transfer": "银行转账",
+            "check": "支票",
+            "other": "其他"
+          },
+          "customerMessage": {
+            "request_accepted": "请求已接受",
+            "request_rejected": "请求已拒绝",
+            "reservation_cancelled": "预订已取消"
+          }
+        }
       }
     }
   }

@@ -9901,6 +9901,72 @@
           "description": "Здесь больше нечего делать, и ничего не сделано. Если ассистенту это ещё нужно, он попросит снова."
         },
         "shortened": "Описание было слишком длинным, чтобы показать его целиком."
+      },
+      "display": {
+        "told": "Что было передано вашему ассистенту",
+        "headline": {
+          "recordPayment": "Записать полученный платёж?",
+          "paidBack": "Записать возврат денег клиенту?",
+          "returnDeposit": "Записать возвращённый залог?",
+          "deletePayment": "Удалить записанный платёж?",
+          "removeMember": "Удалить человека из вашей команды?",
+          "cancelInvitation": "Отменить приглашение в вашу команду?",
+          "confirmWithinRules": "Подтвердить бронирование?",
+          "confirmPastBuffer": "Подтвердить бронирование, несмотря на ваш перерыв между арендами?",
+          "confirmBeyondStock": "Подтвердить бронирование сверх вашего запаса?",
+          "confirmBeyondStockAndBuffer": "Подтвердить бронирование сверх вашего запаса и вашего перерыва между арендами?"
+        },
+        "facts": {
+          "booking": "Бронирование №<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Бронирование №<v>{number}</v>",
+          "received": "<v>{type}</v>: получено <v>{amount}</v> · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>",
+          "returned": "Залог возвращён: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Залог, удерживаемый до этого: <v>{held}</v>",
+          "recordOnly": "Louez только записывает это: деньги не списываются и не возвращаются.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Записано <v>{atDate}</v> в <v>{atTime}</v>",
+          "leavesBalance": "Он исчезнет из баланса бронирования и из ваших показателей.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "В команде с <v>{sinceDate}</v>",
+          "losesAccess": "Сразу теряет доступ к вашим клиентам, бронированиям и платежам.",
+          "invited": "Приглашение отправлено на <v>{email}</v>",
+          "invitedOn": "Отправлено <v>{atDate}</v>",
+          "linkStops": "Ссылка перестанет работать: человек не войдёт в вашу команду.",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v>, с <v>{periodStartTime}</v> до <v>{periodEndTime}</v>} other {С <v>{periodStartDate}</v>, <v>{periodStartTime}</v> по <v>{periodEndDate}</v>, <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: запрошено {requested}, {available, plural, =0 {свободных нет} other {свободно только #}} с учётом вашего перерыва <v>{buffer}</v>",
+          "beyondStock": "<v>{product}</v>: запрошено {requested}, {available, plural, =0 {в наличии нет} other {в наличии только #}}: не хватает {missing}",
+          "moreLines": "{count, plural, one {И ещё # позиция вне ваших правил} few {И ещё # позиции вне ваших правил} other {И ещё # позиций вне ваших правил}}: см. подробности",
+          "withinRules": "Ваш запас и перерыв между арендами это покрывают: ничего не превышено.",
+          "message": "<v>{customer}</v> получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
+          "messageToCustomer": "Клиент получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
+          "noMessage": "Клиенту ничего не отправляется."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Аренда",
+            "deposit": "Залог",
+            "deposit_hold": "Блокировка залога",
+            "deposit_capture": "Удержанный залог",
+            "deposit_return": "Возврат залога",
+            "damage": "Ущерб",
+            "adjustment": "Корректировка"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Наличные",
+            "card": "Карта",
+            "transfer": "Банковский перевод",
+            "check": "Чек",
+            "other": "Другое"
+          },
+          "customerMessage": {
+            "request_accepted": "запрос принят",
+            "request_rejected": "запрос отклонён",
+            "reservation_cancelled": "бронирование отменено"
+          }
+        }
       }
     }
   }
