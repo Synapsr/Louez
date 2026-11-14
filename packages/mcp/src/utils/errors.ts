@@ -103,15 +103,17 @@ function confirmationText(tool: string, details: Record<string, unknown>): strin
  * then does not repeat as JSON (the structured content still holds them).
  */
 function headOf(tool: string, facts: ToolErrorFacts): { text: string; spelledOut: boolean } {
-  if (!facts.details) return { text: facts.message, spelledOut: false };
-  if (facts.code === "CONFIRMATION_REQUIRED") {
-    return { text: confirmationText(tool, facts.details), spelledOut: true };
-  }
   const approval = APPROVAL_TEXTS.get(facts.code);
-  if (!approval) return { text: facts.message, spelledOut: false };
-  const words = approval(tool, facts.details);
-  // An approval answer not of its shape: its message may hold the preview's
-  // sentence, so it is quoted as data, never printed as lines of its own.
+  if (!approval) {
+    if (facts.details && facts.code === "CONFIRMATION_REQUIRED") {
+      return { text: confirmationText(tool, facts.details), spelledOut: true };
+    }
+    return { text: facts.message, spelledOut: false };
+  }
+  const words = facts.details ? approval(tool, facts.details) : null;
+  // An approval answer without details, or not of its shape: its message may
+  // hold the preview's sentence, so it is quoted as data, never printed as
+  // lines of its own.
   if (!words) return { text: `Louez answered: ${quoted(facts.message)}`, spelledOut: false };
   return { text: words, spelledOut: facts.code === "APPROVAL_REQUIRED" };
 }

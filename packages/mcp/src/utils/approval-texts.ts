@@ -153,11 +153,11 @@ export function approvalRecentlyDeclinedText(tool: string, details: Record<strin
 /** `APPROVALS_FULL`, by `details.limit`: which limit is reached, and what ends it. */
 const APPROVALS_FULL_TEXTS: Readonly<Record<string, (tool: string, seconds: number) => string>> = {
   connection_open: (tool, seconds) =>
-    `Too many requests of this connection already wait for the user's approval, so this one was not sent to them, and nothing was done. The user approves or refuses the waiting ones from their links (inbox_list lists them); otherwise the first ends in ${seconds} seconds. Then call ${tool} again.`,
+    `Too many requests of this connection are open (waiting for the user's answer, or approved and not carried out yet), so this one was not sent to the user, and nothing was done. Carry out or let lapse the approved ones, and let the user answer the waiting ones from their links. Call ${tool} again in ${seconds} seconds or more: it is refused again while as many are still open.`,
   connection_per_hour: (tool, seconds) =>
     `This connection asked for too many approvals within an hour, so this request was not sent to the user, and nothing was done. Call ${tool} again in ${seconds} seconds or more.`,
   store_open: (tool, seconds) =>
-    `Too many requests wait for an approval in this store, from this connection or others, so this one was not sent to the user, and nothing was done. One of them ends in ${seconds} seconds at the latest. Then call ${tool} again.`,
+    `Too many requests are open in this store (waiting for an answer, or approved and not carried out yet), from this connection or others, so this one was not sent to the user, and nothing was done. Call ${tool} again in ${seconds} seconds or more: it is refused again while as many are still open.`,
 };
 
 /** `APPROVALS_FULL`: a limit on approval requests is reached; this one was not requested. */

@@ -1044,7 +1044,7 @@ describe(
       const { retryAfterSeconds } = errorOf(viaMcp).details as { retryAfterSeconds: number };
       assert.equal(
         text(viaMcp),
-        `Too many requests of this connection already wait for the user's approval, so this one was not sent to them, and nothing was done. The user approves or refuses the waiting ones from their links (inbox_list lists them); otherwise the first ends in ${retryAfterSeconds} seconds. Then call ${TOOL} again.\ncode: APPROVALS_FULL\nretryable: true\ndetails: ${JSON.stringify({ limit: "connection_open", retryAfterSeconds })}`,
+        `Too many requests of this connection are open (waiting for the user's answer, or approved and not carried out yet), so this one was not sent to the user, and nothing was done. Carry out or let lapse the approved ones, and let the user answer the waiting ones from their links. Call ${TOOL} again in ${retryAfterSeconds} seconds or more: it is refused again while as many are still open.\ncode: APPROVALS_FULL\nretryable: true\ndetails: ${JSON.stringify({ limit: "connection_open", retryAfterSeconds })}`,
       );
     });
 
