@@ -1,5 +1,18 @@
+import { z } from "zod";
+
 import { plainText } from "../contracts/handoffs";
 import { isConsequence, type Consequence } from "../platform/approval-rule";
+import {
+  CHOICES,
+  FACTS,
+  FACTS_MAX,
+  HEADLINES,
+  isChoice,
+  type ChoiceList,
+  type DisplayValue,
+  type FactKey,
+  type HeadlineKey,
+} from "./approval-display";
 
 /**
  * What an operation's approval shows a person of the preview Louez stored,
@@ -162,11 +175,16 @@ const detailsStayOnTheirLines = (entries: readonly ShownDetail[]): boolean =>
  * is `unreadable` on its page, and its decision refuses an approval of it
  * under its lock; refusing it stays possible.
  */
-export function approvalIsReadable(payload: { preview?: unknown } | null | undefined): boolean {
+export function approvalIsReadable(
+  payload: { preview?: unknown; display?: unknown } | null | undefined,
+): boolean {
   const preview = shownPreview(payload?.preview);
   if (preview === null || preview.truncated) return false;
   if ((preview.summary.match(VISIBLE) ?? []).length < VISIBLE_MIN) return false;
-  return staysOnItsLine(preview.summary) && detailsStayOnTheirLines(preview.details);
+  if (!staysOnItsLine(preview.summary) || !detailsStayOnTheirLines(preview.details)) return false;
+  // A display the page shows must read whole too; one it cannot read as
+  // Louez wrote it is not shown, and the summary decides alone.
+  return shownDisplay(payload?.display)?.readable ?? true;
 }
 
 /** The consequences that are not a plain change the store can put back. */
@@ -305,4 +323,126 @@ function labelOf(key: string): string {
     .map((word) => (/^[A-Z0-9]{2,}$/.test(word) ? word : word.toLowerCase()));
   const text = words.join(" ");
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// --- The display: what the page shows first, when the request carries one ---
+
+/** A display as the page shows it: its keys, and its values with each text on one line. */
+export interface ShownDisplay {
+  headline: { key: HeadlineKey; values: Record<string, DisplayValue> };
+  facts: Array<{ key: FactKey; values: Record<string, DisplayValue> }>;
+}
+
+/**
+ * The most characters a text value of a display shows, once on one line: a
+ * product's name of a few hundred characters still wraps on a phone; past
+ * this, the request cannot be shown whole.
+ */
+export const DISPLAY_TEXT_MAX = 500;
+
+const isoInstant = z
+  .string()
+  .regex(ISO_DATE_TIME)
+  .refine((value) => !Number.isNaN(Date.parse(value)));
+
+/** Each value as Louez writes it, nothing more: a key it does not know makes the display unknown. */
+const displayValue = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("text"), text: z.string() }),
+  z.strictObject({
+    type: z.literal("money"),
+    amount: z.string().regex(/^-?\d{1,12}(?:\.\d{1,4})?$/),
+    currency: z.string().regex(/^[A-Z]{3}$/),
+  }),
+  z.strictObject({ type: z.literal("dateTime"), at: isoInstant }),
+  z
+    .strictObject({ type: z.literal("dateRange"), start: isoInstant, end: isoInstant })
+    .refine((range) => Date.parse(range.start) <= Date.parse(range.end)),
+  z.strictObject({ type: z.literal("count"), value: z.number().int().min(0).max(1_000_000) }),
+  z.strictObject({ type: z.literal("duration"), minutes: z.number().int().min(1).max(525_600) }),
+  z.strictObject({
+    type: z.literal("choice"),
+    list: z.enum(Object.keys(CHOICES) as [ChoiceList, ...ChoiceList[]]),
+    value: z.string(),
+  }),
+]);
+
+const displayLine = z.strictObject({
+  key: z.string(),
+  values: z.record(z.string(), displayValue),
+  ref: z.string().optional(),
+});
+
+const storedDisplay = z.strictObject({
+  headline: displayLine.omit({ ref: true }),
+  facts: z.array(displayLine).min(1).max(FACTS_MAX),
+});
+
+type ValueSpecs = Record<string, { type: string; list?: ChoiceList }>;
+
+/**
+ * A line's values, as its key declares them, or null: every value its key
+ * names, of the type and the list it names, a choice one of its list's, and
+ * no value its key does not name.
+ */
+function valuesAsDeclared(
+  specs: ValueSpecs,
+  values: Record<string, z.infer<typeof displayValue>>,
+): Record<string, DisplayValue> | null {
+  const names = Object.keys(specs);
+  if (Object.keys(values).length !== names.length) return null;
+  const shown: Record<string, DisplayValue> = {};
+  for (const name of names) {
+    const spec = specs[name];
+    const value = values[name];
+    if (!spec || !value || value.type !== spec.type) return null;
+    if (value.type === "choice") {
+      if (value.list !== spec.list || !isChoice(value.list, value.value)) return null;
+      shown[name] = { type: "choice", list: value.list, value: value.value };
+    } else {
+      shown[name] = value.type === "text" ? { type: "text", text: oneLine(value.text) } : value;
+    }
+  }
+  return shown;
+}
+
+const hasKey = <T extends object>(table: T, key: string): key is Extract<keyof T, string> =>
+  Object.hasOwn(table, key);
+
+/** Whether a text value shows whole, on its line: something to read, within `DISPLAY_TEXT_MAX`. */
+const textReads = (value: string) =>
+  value !== "" && [...value].length <= DISPLAY_TEXT_MAX && staysOnItsLine(value);
+
+/**
+ * The display an approval carries, as the page shows it, or null when it
+ * carries none or one Louez cannot read as it writes them (a key or a value
+ * it does not know, a value of another type, more facts than it shows: an
+ * older or forged payload). The page then shows the summary, as for any
+ * other action. `readable` is false when a text value shows nothing, runs
+ * past `DISPLAY_TEXT_MAX` or draws off its line: the request then cannot be
+ * approved (`approvalIsReadable`).
+ */
+export function shownDisplay(
+  stored: unknown,
+): { display: ShownDisplay; readable: boolean } | null {
+  if (stored === undefined || stored === null) return null;
+  const parsed = storedDisplay.safeParse(stored);
+  if (!parsed.success) return null;
+  const { headline, facts } = parsed.data;
+  if (!hasKey(HEADLINES, headline.key)) return null;
+  const headlineValues = valuesAsDeclared(HEADLINES[headline.key], headline.values);
+  if (!headlineValues) return null;
+  const shownFacts: ShownDisplay["facts"] = [];
+  for (const line of facts) {
+    if (!hasKey(FACTS, line.key)) return null;
+    const values = valuesAsDeclared(FACTS[line.key], line.values);
+    if (!values) return null;
+    shownFacts.push({ key: line.key, values });
+  }
+  const texts = [headlineValues, ...shownFacts.map((line) => line.values)].flatMap((values) =>
+    Object.values(values).flatMap((value) => (value.type === "text" ? [value.text] : [])),
+  );
+  return {
+    display: { headline: { key: headline.key, values: headlineValues }, facts: shownFacts },
+    readable: texts.every(textReads),
+  };
 }

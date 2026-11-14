@@ -37,6 +37,8 @@ import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirm
 import { sha256, stableStringify } from "../platform/hash";
 import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platform/effects";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
+import type { ApprovalPresentation } from "./approval-display";
+import { confirmOverridePresentation } from "./approval-presentations";
 import { resolveDateChangeRequests } from "./date-change-requests";
 import {
   CUSTOMER_STATUS_NOTIFICATION,
@@ -142,10 +144,17 @@ export interface StatusChangePreview {
   recipientsHash: string;
 }
 
-/** Asks the caller to confirm, under the change's locks: null goes on, a refusal stops, raised once the change's transaction is over. */
+/**
+ * Asks the caller to confirm, under the change's locks: null goes on, a
+ * refusal stops, raised once the change's transaction is over.
+ * `presentation` is what a person reads first, built from the preview
+ * itself, for the branches a person approves (a confirmation sent with an
+ * override); null for the others.
+ */
 export type StatusConfirmStep = (
   preview: StatusChangePreview,
   tx: Transaction,
+  presentation: ApprovalPresentation | null,
 ) => Promise<ConfirmationRefusal | null>;
 
 export interface StatusChangeRequest {
@@ -559,7 +568,7 @@ export async function changeStoreReservationStatus(
               : null,
         });
         if (options.confirm && statusChangeIsSensitive(from, to)) {
-          const refusal = await options.confirm(preview, tx);
+          const refusal = await options.confirm(preview, tx, confirmOverridePresentation(preview));
           // Committed: the new preview stays recorded for its token.
           if (refusal) return { kind: "confirm", refusal };
         }

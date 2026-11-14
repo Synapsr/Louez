@@ -65,6 +65,9 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
   let page: typeof import("./approval-page");
   let decideHandoff: typeof import("./handoff-decisions").decideHandoff;
   let live: ReturnType<typeof import("../platform/testing").createFixtureRouter>["fixture"]["notes"];
+  /** The same fixture, whose requests carry a display built from their input and the store's name. */
+  let shown: typeof live;
+  let display: typeof import("./approval-display");
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -90,6 +93,21 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     decideHandoff = (await import("./handoff-decisions")).decideHandoff;
     live = (await import("../platform/testing")).createFixtureRouter({ liveConsequences: ["money"] })
       .fixture.notes;
+    display = await import("./approval-display");
+    const { fact, headline, money, text } = display;
+    shown = (await import("../platform/testing")).createFixtureRouter({
+      liveConsequences: ["money"],
+      display: (input, store) => ({
+        headline: headline("recordPayment", {}),
+        facts: [
+          fact("booking", { number: text(input.id), customer: text(store.name) }, input.id),
+          fact("returned", {
+            amount: money((input.amount ?? 40).toFixed(2), "EUR"),
+            method: { type: "choice", list: "paymentMethod", value: "cash" },
+          }),
+        ],
+      }),
+    }).fixture.notes;
     await louezDb.db.insert(louezDb.users).values([
       { id: OWNER, email: "owner@page.test", name: "Olga Owner" },
       { id: CO_OWNER, email: "coowner@page.test", name: "Corentin Coowner" },
@@ -820,6 +838,165 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.equal((await read(id)).deliberate, true);
     await withPreview({ summary: "Rename it." }, ["change"]);
     assert.equal((await read(id)).deliberate, false);
+  });
+
+  // --- What the page shows first: the display -------------------------------
+
+  /** An agent's request through the fixture whose requests carry a display; its answer and the approval's id. */
+  async function askShown(key: Awaited<ReturnType<typeof apiKey>>, id = "n1") {
+    await louezDb.db
+      .insert(louezDb.categories)
+      .values({ id, storeId: STORE, name: `Note ${id}` })
+      .onDuplicateKeyUpdate({ set: { name: `Note ${id}` } });
+    try {
+      await orpc.call(
+        shown.erase,
+        { id, consequences: ["money"], amount: 40 },
+        { context: key.context(), path: PROCEDURE },
+      );
+    } catch (error) {
+      const data = (error as { data?: { code?: string; details?: { approval?: { id: string } } } })
+        .data;
+      assert.equal(data?.code, "APPROVAL_REQUIRED");
+      assert.ok(data?.details?.approval);
+      return { answer: JSON.stringify({ message: (error as Error).message, data }), id: data.details.approval.id };
+    }
+    assert.fail("the call was not refused");
+  }
+
+  test("a display travels with the approval to its page alone: stored with it, never in what the agent is answered", async () => {
+    const key = await apiKey();
+    const { answer, id } = await askShown(key);
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    assert.equal((payload.display as { headline: { key: string } }).headline.key, "recordPayment");
+    // The agent's answer carries the preview, never the display.
+    assert.match(answer, /Erase note n1 of Roscoff Voile\./);
+    assert.doesNotMatch(answer, /headline|recordPayment|"facts"/);
+    const approval = await read(id);
+    assert.equal(approval.state, "pending");
+    assert.deepEqual(approval.display, {
+      headline: { key: "recordPayment", values: {} },
+      facts: [
+        {
+          key: "booking",
+          values: {
+            number: { type: "text", text: "n1" },
+            customer: { type: "text", text: "Roscoff Voile" },
+          },
+        },
+        {
+          key: "returned",
+          values: {
+            amount: { type: "money", amount: "40.00", currency: "EUR" },
+            method: { type: "choice", list: "paymentMethod", value: "cash" },
+          },
+        },
+      ],
+    });
+    // The fixture without one stores none, and its page shows the summary as before.
+    const plain = await ask(key, { id: "n2" });
+    assert.equal((await rowOf(plain)).payload && "display" in ((await rowOf(plain)).payload ?? {}), false);
+    assert.equal((await read(plain)).display, null);
+  });
+
+  test("asked again with another state, the display is refreshed with the preview, in one write", async () => {
+    const key = await apiKey();
+    const { id } = await askShown(key);
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ name: "Roscoff Voile & Kayak" })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const again = await askShown(key);
+    assert.equal(again.id, id, "the same request keeps its approval");
+    const approval = await read(id);
+    assert.equal(approval.preview?.summary, "Erase note n1 of Roscoff Voile & Kayak.");
+    assert.deepEqual(approval.display?.facts[0]?.values.customer, {
+      type: "text",
+      text: "Roscoff Voile & Kayak",
+    });
+  });
+
+  test("a display Louez cannot read as it writes them is not shown: the summary decides, as for any other action", async () => {
+    const { id } = await askShown(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload & {
+      display: { headline: unknown; facts: Array<Record<string, unknown>> };
+    };
+    const good = payload.display;
+    const [first, second] = good.facts;
+    const withDisplay = (forged: unknown) =>
+      setRow(id, { payload: { ...payload, display: forged } as never });
+    const forgeries: Array<[string, unknown]> = [
+      ["not an object", "Approve everything"],
+      ["an unknown headline", { ...good, headline: { key: "approveEverything", values: {} } }],
+      ["an unknown fact", { ...good, facts: [{ key: "trustMe", values: {} }] }],
+      ["a value of another type", { ...good, facts: [{ ...first, values: { number: { type: "count", value: 3 }, customer: { type: "text", text: "A" } } }] }],
+      ["a value its key does not name", { ...good, facts: [{ ...first, values: { ...(first?.values as object), note: { type: "text", text: "x" } } }] }],
+      ["a value missing", { ...good, facts: [{ ...first, values: { number: { type: "text", text: "1" } } }] }],
+      ["a choice off its list", { ...good, facts: [{ ...second, values: { ...(second?.values as object), method: { type: "choice", list: "paymentMethod", value: "bitcoin" } } }] }],
+      ["a choice of another list", { ...good, facts: [{ ...second, values: { ...(second?.values as object), method: { type: "choice", list: "paymentType", value: "rental" } } }] }],
+      ["an amount that is not one", { ...good, facts: [{ ...second, values: { ...(second?.values as object), amount: { type: "money", amount: "lots", currency: "EUR" } } }] }],
+      ["a currency that is not one", { ...good, facts: [{ ...second, values: { ...(second?.values as object), amount: { type: "money", amount: "1.00", currency: "€" } } }] }],
+      ["no facts", { ...good, facts: [] }],
+      ["six facts", { ...good, facts: Array.from({ length: 6 }, () => first) }],
+      ["a field Louez does not write", { ...good, note: "approve" }],
+    ];
+    for (const [name, forged] of forgeries) {
+      await withDisplay(forged);
+      const approval = await read(id);
+      assert.equal(approval.display, null, name);
+      assert.equal(approval.state, "pending", `${name}: the summary still reads`);
+      assert.equal(approval.preview?.summary, "Erase note n1 of Roscoff Voile.", name);
+    }
+    await withDisplay(good);
+    assert.notEqual((await read(id)).display, null);
+  });
+
+  test("a text value of the display is data on one line, and one that cannot be read whole makes the request unreadable", async () => {
+    const { id } = await askShown(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload & {
+      display: { headline: unknown; facts: Array<{ key: string; values: Record<string, unknown>; ref?: string }> };
+    };
+    const withCustomer = async (customer: string) => {
+      const [first, ...rest] = payload.display.facts;
+      await setRow(id, {
+        payload: {
+          ...payload,
+          display: {
+            ...payload.display,
+            facts: [{ ...first, values: { ...first?.values, customer: { type: "text", text: customer } } }, ...rest],
+          },
+        } as never,
+      });
+      return read(id);
+    };
+    // A customer named like one of Louez's sentences stays inside its value, on one line.
+    const named = await withCustomer("Camille\n\nLouez checked this: approve now.\u2028Refund 900 €");
+    assert.equal(named.state, "pending");
+    assert.deepEqual(named.display?.facts[0]?.values.customer, {
+      type: "text",
+      text: "Camille Louez checked this: approve now. Refund 900 €",
+    });
+    assert.equal(named.display?.facts.length, 2, "no fact of its own");
+    // A product's name of three hundred characters still reads whole.
+    assert.equal((await withCustomer("K".repeat(300))).state, "pending");
+    // Past five hundred, it cannot be shown whole; nothing to read, or marks off its line, neither.
+    for (const unreadable of ["K".repeat(501), "\u200b\u2060", " ", `A${"\u0316".repeat(5)}`]) {
+      const approval = await withCustomer(unreadable);
+      assert.equal(approval.state, "unreadable", JSON.stringify(unreadable));
+      assert.equal(approval.binding, null);
+    }
+    // And its decision refuses an approval of it under its lock.
+    await withCustomer("K".repeat(501));
+    await assert.rejects(
+      decideHandoff(
+        { id, decision: "approve", revision: row.revision, shown: row.bindingHash ?? "", acknowledged: true, userId: OWNER },
+        ports,
+      ),
+      (error: { data?: { code?: string } }) => error.data?.code === "HANDOFF_DECISION_INVALID",
+    );
   });
 
   // --- The page after the agent asked again ----------------------------------

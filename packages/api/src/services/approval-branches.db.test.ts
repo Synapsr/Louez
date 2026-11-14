@@ -29,6 +29,11 @@ mock.module("@louez/auth", { namedExports: { auth: {}, authInstance: { api: {} }
 // API key asks: what the agent receives (the answer's message and details,
 // the token aside) and what its token is bound to, pinned byte for byte.
 // Nothing a person's display adds may change one of them.
+//
+// Each branch also hands its check what a person reads first (`display`,
+// services/approval-display.ts), built from the same values in the same
+// call: captured here as the check receives it, it is pinned too, and read
+// back as the page reads it.
 
 const OWNER = "ab_owner_user_000001";
 const MEMBER_USER = "ab_member_user_00001";
@@ -97,6 +102,28 @@ const BRANCHES = [
   },
 ] as const;
 
+/** The display each branch hands its check, as JSON. */
+const DISPLAYS: Record<(typeof BRANCHES)[number]["name"], string> = {
+  "a payment recorded":
+    "{\"headline\":{\"key\":\"recordPayment\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"received\",\"values\":{\"type\":{\"type\":\"choice\",\"list\":\"paymentType\",\"value\":\"rental\"},\"amount\":{\"type\":\"money\",\"amount\":\"120.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"cash\"}}},{\"key\":\"recordOnly\",\"values\":{}}]}",
+  "a negative adjustment recorded":
+    "{\"headline\":{\"key\":\"paidBack\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"paidBack\",\"values\":{\"type\":{\"type\":\"choice\",\"list\":\"paymentType\",\"value\":\"adjustment\"},\"amount\":{\"type\":\"money\",\"amount\":\"-20.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"card\"}}},{\"key\":\"recordOnly\",\"values\":{}}]}",
+  "a deposit return recorded":
+    "{\"headline\":{\"key\":\"returnDeposit\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"returned\",\"values\":{\"amount\":{\"type\":\"money\",\"amount\":\"150.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"transfer\"}}},{\"key\":\"depositHeld\",\"values\":{\"held\":{\"type\":\"money\",\"amount\":\"300.00\",\"currency\":\"EUR\"}}},{\"key\":\"recordOnly\",\"values\":{}}]}",
+  "a payment deleted":
+    "{\"headline\":{\"key\":\"deletePayment\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"deleted\",\"values\":{\"type\":{\"type\":\"choice\",\"list\":\"paymentType\",\"value\":\"rental\"},\"amount\":{\"type\":\"money\",\"amount\":\"80.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"cash\"}},\"ref\":\"ab_payment_000000001\"},{\"key\":\"recordedOn\",\"values\":{\"at\":{\"type\":\"dateTime\",\"at\":\"2026-11-12T15:30:00.000Z\"}}},{\"key\":\"leavesBalance\",\"values\":{}}]}",
+  "a member removed":
+    "{\"headline\":{\"key\":\"removeMember\",\"values\":{}},\"facts\":[{\"key\":\"member\",\"values\":{\"name\":{\"type\":\"text\",\"text\":\"Lucas Bernard\"},\"email\":{\"type\":\"text\",\"text\":\"lucas.bernard@ab.test\"}},\"ref\":\"ab_membership_000001\"},{\"key\":\"memberSince\",\"values\":{\"since\":{\"type\":\"dateTime\",\"at\":\"2026-03-03T09:00:00.000Z\"}}},{\"key\":\"losesAccess\",\"values\":{}}]}",
+  "an invitation cancelled":
+    "{\"headline\":{\"key\":\"cancelInvitation\",\"values\":{}},\"facts\":[{\"key\":\"invited\",\"values\":{\"email\":{\"type\":\"text\",\"text\":\"nina.roux@ab.test\"}},\"ref\":\"ab_invitation_000001\"},{\"key\":\"invitedOn\",\"values\":{\"at\":{\"type\":\"dateTime\",\"at\":\"2026-11-02T08:30:00.000Z\"}}},{\"key\":\"linkStops\",\"values\":{}}]}",
+  "a booking confirmed past the turnover buffer, a message goes":
+    "{\"headline\":{\"key\":\"confirmPastBuffer\",\"values\":{\"to\":{\"type\":\"choice\",\"list\":\"reservationStatus\",\"value\":\"confirmed\"}}},\"facts\":[{\"key\":\"booking\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00094\"},\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"}},\"ref\":\"ab_reservation_00002\"},{\"key\":\"period\",\"values\":{\"period\":{\"type\":\"dateRange\",\"start\":\"2026-12-13T13:00:00.000Z\",\"end\":\"2026-12-17T13:00:00.000Z\"},\"total\":{\"type\":\"money\",\"amount\":\"98.00\",\"currency\":\"EUR\"}}},{\"key\":\"pastBuffer\",\"values\":{\"product\":{\"type\":\"text\",\"text\":\"Kayak biplace\"},\"requested\":{\"type\":\"count\",\"value\":1},\"available\":{\"type\":\"count\",\"value\":0},\"buffer\":{\"type\":\"duration\",\"minutes\":120}}},{\"key\":\"message\",\"values\":{\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"},\"message\":{\"type\":\"choice\",\"list\":\"customerMessage\",\"value\":\"request_accepted\"},\"channels\":{\"type\":\"choice\",\"list\":\"messageChannels\",\"value\":\"email\"}}}]}",
+  "a booking confirmed beyond the stock, no message":
+    "{\"headline\":{\"key\":\"confirmBeyondStock\",\"values\":{\"to\":{\"type\":\"choice\",\"list\":\"reservationStatus\",\"value\":\"confirmed\"}}},\"facts\":[{\"key\":\"booking\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00095\"},\"customer\":{\"type\":\"text\",\"text\":\"Bo Ray\"}},\"ref\":\"ab_reservation_00003\"},{\"key\":\"period\",\"values\":{\"period\":{\"type\":\"dateRange\",\"start\":\"2026-12-13T13:00:00.000Z\",\"end\":\"2026-12-17T13:00:00.000Z\"},\"total\":{\"type\":\"money\",\"amount\":\"98.00\",\"currency\":\"EUR\"}}},{\"key\":\"beyondStock\",\"values\":{\"product\":{\"type\":\"text\",\"text\":\"Paddle\"},\"requested\":{\"type\":\"count\",\"value\":2},\"available\":{\"type\":\"count\",\"value\":1},\"missing\":{\"type\":\"count\",\"value\":1}}},{\"key\":\"noMessage\",\"values\":{}}]}",
+  "a booking confirmed with both flags, nothing short, a message goes":
+    "{\"headline\":{\"key\":\"confirmWithinRules\",\"values\":{\"to\":{\"type\":\"choice\",\"list\":\"reservationStatus\",\"value\":\"confirmed\"}}},\"facts\":[{\"key\":\"booking\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00096\"},\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"}},\"ref\":\"ab_reservation_00004\"},{\"key\":\"period\",\"values\":{\"period\":{\"type\":\"dateRange\",\"start\":\"2026-12-13T13:00:00.000Z\",\"end\":\"2026-12-17T13:00:00.000Z\"},\"total\":{\"type\":\"money\",\"amount\":\"98.00\",\"currency\":\"EUR\"}}},{\"key\":\"withinRules\",\"values\":{}},{\"key\":\"message\",\"values\":{\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"},\"message\":{\"type\":\"choice\",\"list\":\"customerMessage\",\"value\":\"request_accepted\"},\"channels\":{\"type\":\"choice\",\"list\":\"messageChannels\",\"value\":\"email\"}}}]}",
+};
+
 /** What each branch answers an agent today, as JSON: the message, the details but the token, the binding. */
 const ANSWERS: Record<(typeof BRANCHES)[number]["name"], string> = {
   "a payment recorded":
@@ -127,6 +154,9 @@ describe("the six branches a person will approve, as an agent is answered (datab
   let orm: typeof import("drizzle-orm");
   let permissions: typeof import("../platform/permissions");
   let routers: Record<string, Record<string, unknown>>;
+  let preview: typeof import("./approval-preview");
+  /** What the last call handed `checkConfirmation` as its display. */
+  let displays: unknown[] = [];
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -151,6 +181,19 @@ describe("the six branches a person will approve, as an agent is answered (datab
     louezDb = await import("@louez/db");
     orm = await import("drizzle-orm");
     permissions = await import("../platform/permissions");
+    preview = await import("./approval-preview");
+    // The check as it is, with the display each call hands it kept.
+    const confirmation: Record<string, unknown> = await import("../platform/confirmation");
+    const check = confirmation.checkConfirmation as (input: { display?: unknown }) => unknown;
+    mock.module(import.meta.resolve("../platform/confirmation"), {
+      namedExports: {
+        ...confirmation,
+        checkConfirmation: (input: { display?: unknown }) => {
+          displays.push(input.display);
+          return check(input);
+        },
+      },
+    });
     routers = {
       team: (await import("../routers/dashboard/team")).dashboardTeamRouter,
       reservations: (await import("../routers/dashboard/reservations"))
@@ -340,6 +383,7 @@ describe("the six branches a person will approve, as an agent is answered (datab
       | undefined;
     assert.ok(procedure, `${branch.path.join(".")} is a procedure`);
     let error: unknown = null;
+    displays = [];
     try {
       await procedure["~orpc"].handler({
         context: await context(),
@@ -361,6 +405,19 @@ describe("the six branches a person will approve, as an agent is answered (datab
       message: (error as Error).message,
       details,
       bindingHash: row.bindingHash,
+    });
+  }
+
+  for (const branch of BRANCHES) {
+    test(`${branch.name}: its check gets a display the page shows, kept out of the answer`, async () => {
+      const answer = await answerOf(branch);
+      assert.equal(displays.length, 1);
+      const [display] = displays;
+      assert.equal(JSON.stringify(display), DISPLAYS[branch.name]);
+      const shown = preview.shownDisplay(display);
+      assert.ok(shown?.readable, "the page reads it whole");
+      // Nothing of it reaches the agent.
+      assert.doesNotMatch(answer, /headline|"facts"|"key":/);
     });
   }
 

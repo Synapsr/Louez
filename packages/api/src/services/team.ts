@@ -41,6 +41,8 @@ import {
   type HandoffRequester,
 } from "./handoffs";
 import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
+import type { ApprovalPresentation } from "./approval-display";
+import { cancelInvitationPresentation, removeMemberPresentation } from "./approval-presentations";
 
 /**
  * The store's team: its members and pending invitations, and the writes the
@@ -61,10 +63,15 @@ export interface TeamCaller {
   ports: Pick<ApiPorts, "team" | "afterCommit">;
 }
 
-/** Asks for the confirmation under the write's lock: null to go on, else the refusal to raise once the transaction is over. */
+/**
+ * Asks for the confirmation under the write's lock: null to go on, else the
+ * refusal to raise once the transaction is over. `presentation` is what a
+ * person reads first, built from the preview's own values.
+ */
 type Confirm<TPreview> = (
   preview: TPreview,
   tx: Transaction,
+  presentation?: ApprovalPresentation,
 ) => Promise<ConfirmationRefusal | null>;
 
 const DAY_MS = 86_400_000;
@@ -763,6 +770,7 @@ export async function cancelInvitation(
           invitation,
         },
         tx,
+        cancelInvitationPresentation(invitation),
       )) ?? null;
     if (refusal) return null;
 
@@ -819,6 +827,7 @@ export async function removeMember(
           member,
         },
         tx,
+        removeMemberPresentation(member),
       )) ?? null;
     if (refusal) return null;
 

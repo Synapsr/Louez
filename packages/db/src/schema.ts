@@ -4538,6 +4538,12 @@ export interface ApiApprovalPayload {
   input: unknown;
   /** The preview Louez computed for that call: one sentence and the facts to check. */
   preview: { summary: string; details?: Record<string, unknown> };
+  /**
+   * What the approval's page shows first, when the branch built one: a
+   * headline and typed facts (packages/api `ApprovalDisplay`), read by the
+   * page alone, which checks it before it shows it.
+   */
+  display?: unknown;
   /** The procedure's scope (packages/api `ProcedureScope`): its domain, level and member permission. */
   scope: { domain: string; level: "read" | "write"; role?: string; anyOf?: readonly string[] };
   /** What the branch does (packages/api `Consequence`), as it declared them. */

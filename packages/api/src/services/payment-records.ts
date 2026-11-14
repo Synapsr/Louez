@@ -24,6 +24,12 @@ import {
   type ConfirmationRefusal,
 } from "../platform/confirmation";
 import type { PaymentRecordsPort } from "../platform/ports";
+import type { ApprovalPresentation } from "./approval-display";
+import {
+  deletePaymentPresentation,
+  recordDepositReturnPresentation,
+  recordPaymentPresentation,
+} from "./approval-presentations";
 
 /**
  * The payments a store records by hand, as an agent or the in-app assistant
@@ -48,11 +54,16 @@ export interface PaymentRecordsCaller {
   /**
    * Asks for the confirmation in the write's transaction: null goes on, an
    * error stops. A new preview is recorded in that transaction, which then
-   * commits.
+   * commits. `presentation` is what a person reads first, built from the
+   * preview's own values (services/approval-presentations.ts).
    */
   confirm: (
     tx: Transaction,
-    confirmation: { preview: ConfirmationPreview; state: unknown },
+    confirmation: {
+      preview: ConfirmationPreview;
+      state: unknown;
+      presentation?: ApprovalPresentation | null;
+    },
   ) => Promise<ConfirmationRefusal | null>;
 }
 
@@ -97,11 +108,23 @@ const unconfirmed = (confirmation: ConfirmationRefusal) => ({ ok: false as const
 
 async function lockedReservation(tx: Transaction, storeId: string, id: string) {
   const [row] = await tx
-    .select({ id: reservations.id, number: reservations.number, status: reservations.status })
+    .select({
+      id: reservations.id,
+      number: reservations.number,
+      status: reservations.status,
+      currency: reservations.currency,
+    })
     .from(reservations)
     .where(and(eq(reservations.id, id), eq(reservations.storeId, storeId)));
   return row ?? null;
 }
+
+/**
+ * The reservation's currency, frozen when it was created; the store's for a
+ * reservation older than its own (`reservations.currency`).
+ */
+const currencyOf = (caller: PaymentRecordsCaller, reservation: { currency: string | null }) =>
+  reservation.currency ?? caller.storeSettings?.currency ?? "EUR";
 
 /** Not a number, or zero; then a negative amount outside an adjustment. */
 function recordAmountRefusal(input: RecordPaymentInput): Error | null {
@@ -124,18 +147,20 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
       );
     }
 
+    const details = {
+      reservationId: input.reservationId,
+      number: reservation.number,
+      type: input.type,
+      amount: input.amount,
+      method: input.method,
+    };
     const refusal = await caller.confirm(tx, {
       preview: {
         summary: `Record a ${input.type} payment of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
-        details: {
-          reservationId: input.reservationId,
-          number: reservation.number,
-          type: input.type,
-          amount: input.amount,
-          method: input.method,
-        },
+        details,
       },
       state: { status: reservation.status },
+      presentation: recordPaymentPresentation(details, currencyOf(caller, reservation)),
     });
     if (refusal) return unconfirmed(refusal);
 
@@ -204,18 +229,20 @@ export async function recordDepositReturn(
     const returned = completed("deposit_return");
     const returnable = collected - returned;
 
+    const details = {
+      reservationId: input.reservationId,
+      number: reservation.number,
+      amount: input.amount,
+      method: input.method,
+      returnable: returnable.toFixed(2),
+    };
     const refusal = await caller.confirm(tx, {
       preview: {
         summary: `Record a deposit return of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
-        details: {
-          reservationId: input.reservationId,
-          number: reservation.number,
-          amount: input.amount,
-          method: input.method,
-          returnable: returnable.toFixed(2),
-        },
+        details,
       },
       state: { returnable: returnable.toFixed(2) },
+      presentation: recordDepositReturnPresentation(details, currencyOf(caller, reservation)),
     });
     if (refusal) return unconfirmed(refusal);
 
@@ -267,7 +294,11 @@ async function storePayment(executor: Database | Transaction, storeId: string, i
       amount: payments.amount,
       method: payments.method,
       status: payments.status,
+      currency: payments.currency,
+      paidAt: payments.paidAt,
+      createdAt: payments.createdAt,
       number: reservations.number,
+      reservationCurrency: reservations.currency,
     })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
@@ -289,18 +320,27 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
     const payment = await storePayment(tx, storeId, input.paymentId);
     if (!payment) return refused(paymentRecordErrors.paymentNotFound(input.paymentId));
 
+    const details = {
+      paymentId: input.paymentId,
+      number: payment.number,
+      type: payment.type,
+      amount: payment.amount,
+      method: payment.method,
+    };
     const refusal = await caller.confirm(tx, {
       preview: {
         summary: `Delete the ${payment.type} payment of ${money(payment.amount)} (${payment.method}) on reservation #${payment.number}.`,
-        details: {
-          paymentId: input.paymentId,
-          number: payment.number,
-          type: payment.type,
-          amount: payment.amount,
-          method: payment.method,
-        },
+        details,
       },
       state: { amount: payment.amount, status: payment.status },
+      presentation: deletePaymentPresentation(details, {
+        reservationId: payment.reservationId,
+        // The payment's own currency, else its reservation's, else the store's.
+        currency:
+          payment.currency ??
+          currencyOf(caller, { currency: payment.reservationCurrency }),
+        recordedAt: payment.paidAt ?? payment.createdAt,
+      }),
     });
     if (refusal) return unconfirmed(refusal);
 

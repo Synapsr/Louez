@@ -596,11 +596,17 @@ async function answerOpen(
   return null;
 }
 
-/** What the approval's row holds of the request: the input, the preview shown, the scope. */
+/**
+ * What the approval's row holds of the request: the input, the preview
+ * shown, and the display its page shows first when the branch built one,
+ * both from the one call that asked, the scope. A request asked again
+ * stores both again.
+ */
 function payloadOf(request: ApprovalToRequest): ApiApprovalPayload {
   return {
     input: request.input,
     preview: request.preview,
+    ...(request.display ? { display: request.display } : {}),
     scope: request.scope,
     consequences: [...request.consequences],
   };
