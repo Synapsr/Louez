@@ -9801,6 +9801,12 @@
           "description": "L’adresse a maintenant un compte Louez, une invitation ou une place dans l’équipe. Demandez à votre agent de refaire la demande."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Cette demande ne peut pas encore être traitée ici",
+        "description": "Louez ne peut pas encore vous montrer cette demande pour que vous l’approuviez, et rien n’a été fait. Vous pouvez revenir à votre agent IA."
+      }
     }
   }
 }

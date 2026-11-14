@@ -19,6 +19,7 @@ import {
   reservations,
   storeIntegrations,
   storeInvitations,
+  users,
   type ReservationGateReason,
 } from "@louez/db";
 import {
@@ -51,10 +52,11 @@ import {
   type ListInboxInput,
 } from "../contracts/inbox";
 import type { ResourceLinks } from "../contracts/links";
+import { databaseNow } from "../platform/database-clock";
 import { platformErrors } from "../platform/errors";
 import { sanitizeError } from "../platform/sanitize-error";
 import { OPERATION_LEASE_SECONDS } from "../platform/operations";
-import type { ApiDomain } from "../platform/permissions";
+import { API_DOMAINS, type ApiDomain } from "../platform/permissions";
 import {
   dashboardPageLinks,
   productLinks,
@@ -63,9 +65,15 @@ import {
   type LinkStore,
 } from "../platform/links";
 import type { LogPort, ProductImageOperation, UrlsPort } from "../platform/ports";
-import { HANDOFF_KINDS } from "../contracts/handoffs";
+import { STEP_KINDS, type StepKind } from "../contracts/handoffs";
 import { CAPACITY_VERDICT_ACTIVITY_TYPES } from "../contracts/reservations";
-import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffUrl, handoffView } from "./handoffs";
+import {
+  HANDOFF_KIND_DOMAINS,
+  HANDOFF_WAIT_MS,
+  approvalPayloadOf,
+  handoffUrl,
+  handoffView,
+} from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
@@ -109,6 +117,10 @@ const EINVOICE_DAYS = 90;
 const OPERATION_DAYS = 7;
 /** Failed handoffs older than this are left out. */
 const HANDOFF_FAILURE_DAYS = 7;
+/** Approvals that ended without being carried out (refused, expired, revoked) older than this are left out. */
+const APPROVAL_ENDED_DAYS = 7;
+/** What makes a pending approval a warning: money, a stock override, a person's access. */
+const APPROVAL_WARNINGS: readonly string[] = ["money", "stock_override", "access_removed"];
 /** Failed image jobs older than this are left out. */
 const IMAGE_JOB_FAILURE_DAYS = 7;
 
@@ -133,6 +145,8 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   operation_unknown: [],
   // Each handoff by its kind's domain (HANDOFF_KIND_DOMAINS), in its source and acknowledgement.
   handoff_waiting: [],
+  // Each approval to the connection that asked, or by its procedure's domain, in its source and acknowledgement.
+  approval_waiting: [],
   invitation_not_sent: ["team"],
   image_job_failed: ["products"],
 };
@@ -1555,7 +1569,7 @@ const offlineStore = async (window: Window, shaper: Shaper): Promise<Candidate[]
 };
 
 /** The tool that starts each kind of handoff again, or gives an expired one another day. */
-const HANDOFF_START_TOOLS = {
+const HANDOFF_START_TOOLS: Record<StepKind, string> = {
   stripe_connect_onboarding: "payments_start_stripe_onboarding",
   stripe_dashboard: "payments_open_stripe_dashboard",
   billing_card_setup: "billing_start_card_setup",
@@ -1571,7 +1585,7 @@ const HANDOFF_START_TOOLS = {
  * Its link is the step's page, where the user takes it or reads how it ended.
  */
 const waitingHandoffs: Source = async (window, shaper) => {
-  const kinds = HANDOFF_KINDS.filter((kind) => shaper.reader.reads[HANDOFF_KIND_DOMAINS[kind]]);
+  const kinds = STEP_KINDS.filter((kind) => shaper.reader.reads[HANDOFF_KIND_DOMAINS[kind]]);
   if (kinds.length === 0) return [];
   const hold = sql.raw(String(HANDOFF_WAIT_MS / 1000));
   const occurred = sql<Date>`CASE
@@ -1621,6 +1635,8 @@ const waitingHandoffs: Source = async (window, shaper) => {
   return rows.map(({ row, occurredAt }) => {
     const view = handoffView(row, { now: window.now, urls, store });
     const waiting = view.status === "pending" || view.status === "opened";
+    // Read among the step kinds alone (`kinds`).
+    const kind = row.kind as StepKind;
     return candidate("handoff_waiting", row.id, {
       severity: row.kind === "billing_card_setup" || !waiting ? "warning" : "info",
       occurredAt,
@@ -1637,10 +1653,116 @@ const waitingHandoffs: Source = async (window, shaper) => {
       },
       // A card Stripe had not confirmed on the return: asking it again may finish it.
       tools: view.confirming
-        ? ["handoffs_refresh", "handoffs_get", HANDOFF_START_TOOLS[row.kind]]
-        : ["handoffs_get", HANDOFF_START_TOOLS[row.kind]],
+        ? ["handoffs_refresh", "handoffs_get", HANDOFF_START_TOOLS[kind]]
+        : ["handoffs_get", HANDOFF_START_TOOLS[kind]],
       links: { dashboard: handoffUrl(urls, row.id) },
     });
+  });
+};
+
+/**
+ * An agent's request for a person's approval: pending at once (a warning for
+ * money, an override or a person's access), or ended without being carried
+ * out (refused, expired, approved and not carried out within its hour, its
+ * connection revoked) for 7 days, unless the same request was asked again
+ * since. It shows to the connection that asked, and to a dashboard session
+ * that reads its procedure's domain; another connection sees none, as it
+ * reads none (`handoffs_get`). It names the request (its preview's summary)
+ * and who may approve it, and links to its page.
+ */
+const waitingApprovals: Source = async (window, shaper) => {
+  const { reader } = shaper;
+  const domains = API_DOMAINS.filter((domain) => reader.reads[domain]);
+  const whose =
+    reader.operationsOf !== null
+      ? eq(apiHandoffs.credentialId, reader.operationsOf)
+      : domains.length > 0
+        ? inArray(
+            sql<string>`JSON_UNQUOTE(JSON_EXTRACT(${apiHandoffs.payload}, '$.scope.domain'))`,
+            domains,
+          )
+        : null;
+  if (!whose) return [];
+  const now = at(window.now);
+  const occurred = sql<Date>`CASE
+      WHEN ${apiHandoffs.status} = 'failed' THEN ${apiHandoffs.failedAt}
+      WHEN ${apiHandoffs.expiresAt} <= ${now} THEN ${apiHandoffs.expiresAt}
+      ELSE ${apiHandoffs.createdAt} END`.mapWith(apiHandoffs.createdAt);
+  const since = new Date(window.now.getTime() - APPROVAL_ENDED_DAYS * DAY_MS);
+  const later = alias(apiHandoffs, "later_approval");
+  const rows = await db
+    .select({ row: apiHandoffs, occurredAt: occurred, approver: users.name, email: users.email })
+    .from(apiHandoffs)
+    .leftJoin(users, eq(users.id, apiHandoffs.userId))
+    .where(
+      and(
+        eq(apiHandoffs.storeId, window.storeId),
+        eq(apiHandoffs.kind, "operation_approval"),
+        whose,
+        or(
+          and(eq(apiHandoffs.status, "pending"), sql`${apiHandoffs.expiresAt} > ${now}`),
+          and(
+            or(
+              and(eq(apiHandoffs.status, "failed"), gt(apiHandoffs.failedAt, since)),
+              and(
+                inArray(apiHandoffs.status, ["pending", "approved"]),
+                sql`${apiHandoffs.expiresAt} <= ${now}`,
+                gt(apiHandoffs.expiresAt, since),
+              ),
+            ),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(later)
+                .where(
+                  and(
+                    eq(later.storeId, apiHandoffs.storeId),
+                    eq(later.kind, apiHandoffs.kind),
+                    eq(later.subject, apiHandoffs.subject),
+                    gt(later.createdAt, apiHandoffs.createdAt),
+                  ),
+                ),
+            ),
+          ),
+        ),
+        inWindow(window, "approval_waiting", occurred, apiHandoffs.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, apiHandoffs.id))
+    .limit(window.take);
+
+  const { urls, store } = reader;
+  return rows.flatMap(({ row, occurredAt, approver, email }) => {
+    const payload = approvalPayloadOf(row);
+    if (!payload) return [];
+    const view = handoffView(row, { now: window.now, urls, store });
+    const waiting = view.status === "pending";
+    const who = approver || email || "the user this connection acts for";
+    return [
+      candidate("approval_waiting", row.id, {
+        severity:
+          !waiting ||
+          payload.consequences.some((consequence) => APPROVAL_WARNINGS.includes(consequence))
+            ? "warning"
+            : "info",
+        occurredAt,
+        summary: waiting
+          ? `${payload.preview.summary} It waits for ${who} to approve it in Louez, from its link.`
+          : `${payload.preview.summary} ${view.summary}`,
+        reservation: null,
+        details: {
+          handoffId: row.id,
+          procedure: row.procedure,
+          domain: payload.scope.domain,
+          status: view.status,
+          expiresAt: row.expiresAt.toISOString(),
+          failureCode: view.failure?.code ?? null,
+        },
+        // The connection that asked reads it; a session decides it on its page.
+        tools: reader.operationsOf !== null ? ["handoffs_get"] : [],
+        links: { dashboard: handoffUrl(urls, row.id) },
+      }),
+    ];
   });
 };
 
@@ -1813,6 +1935,7 @@ const SOURCES: Record<InboxItemType, Source> = {
   message_not_sent: unsentMessages,
   operation_unknown: unknownOperations,
   handoff_waiting: waitingHandoffs,
+  approval_waiting: waitingApprovals,
   invitation_not_sent: unsentInvitations,
   image_job_failed: failedImageJobs,
 };
@@ -1827,17 +1950,6 @@ const positionOf = (entry: Candidate): Position => ({
   k: entry.item.type,
   r: entry.recordId,
 });
-
-/** The database's clock, as every row is dated with it. */
-async function databaseNow(): Promise<Date> {
-  const [result] = await db.execute(sql`SELECT DATE_FORMAT(NOW(3), '%Y-%m-%dT%H:%i:%s.%f') AS now`);
-  const row: unknown = Array.isArray(result) ? result[0] : undefined;
-  const text =
-    row && typeof row === "object" && "now" in row && typeof row.now === "string" ? row.now : "";
-  // The sessions run in UTC (docs/architecture/api-and-agents.md, the outbox).
-  const now = new Date(`${text.slice(0, 23)}Z`);
-  return Number.isNaN(now.getTime()) ? new Date() : now;
-}
 
 interface Occurrence {
   type: InboxItemType;

@@ -9,10 +9,20 @@ import {
 } from "@louez/db";
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 
+import { requestApproval } from "../services/approvals";
 import type { ScopedActor } from "./actor";
-import { CONSEQUENCES, confirmationStep, isConsequence, type Consequences } from "./approval-rule";
+import {
+  APPROVAL_LIVE,
+  CONSEQUENCES,
+  confirmationStep,
+  isConsequence,
+  type Consequence,
+  type Consequences,
+} from "./approval-rule";
 import { apiError, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
+import type { ProcedureScope } from "./permissions";
+import type { UrlsPort } from "./ports";
 
 /** Header that carries a confirmation token. The MCP bridge maps its `confirmationToken` argument onto it. */
 export const CONFIRMATION_HEADER = "louez-confirmation";
@@ -46,8 +56,14 @@ export interface ConfirmationPreview {
  * This proves the caller saw the preview. It does not prove a human approved:
  * the same agent can send both calls. A person's approval is planned for the
  * actions a person must approve (docs/architecture/api-and-agents.md).
+ *
+ * It takes no `executor`: it throws, and a refusal thrown inside a
+ * transaction would roll back the preview it records with it. A write that
+ * asks under its lock, and every branch a person may have to approve, asks
+ * with `checkConfirmation`, and throws its refusal once its transaction
+ * committed.
  */
-export async function requireConfirmation<Check extends ConfirmationCheck>(
+export async function requireConfirmation<Check extends ConfirmationCheck & { executor?: never }>(
   input: KnownCheck<Check>,
 ): Promise<void> {
   const refusal = await checkConfirmation(input);
@@ -81,17 +97,42 @@ export interface ConfirmationCheck {
   /**
    * The transaction the operation runs in, when it asks under a lock: the
    * token is consumed, or the new preview recorded, on its connection, so a
-   * lock holder never waits for another connection of the pool.
+   * lock holder never waits for another connection of the pool. A branch a
+   * person approves needs it: its approval is written there.
    */
   executor?: Transaction;
+  /**
+   * What a person's approval of this branch is about, for a branch that may
+   * need one (a person's level, for a consequence that is live): the
+   * consequential facts that make the request's identity (the records acted
+   * on, the amount and its currency, the target status, a hash of each
+   * recipient; never free text such as notes or a reason), the right the
+   * action needs (the procedure's scope, which the approver must hold), and
+   * the URLs its link is built with. Asked for an approval without it, the
+   * call throws.
+   */
+  approval?: {
+    facts: Record<string, unknown>;
+    scope: ProcedureScope;
+    urls: UrlsPort;
+  };
+  /**
+   * The consequences live for this call: `APPROVAL_LIVE` when absent, as for
+   * every procedure Louez serves. Only the transport tests' fixture router
+   * names it (platform/testing.ts), from the option it is built with, to
+   * run an approval before any consequence is live; no request reaches it,
+   * and it is refused in production.
+   */
+  liveConsequences?: readonly Consequence[];
   now?: Date;
 }
 
 /**
  * `requireConfirmation` without the throw: null when the operation may go
- * on, else the error to answer. A new preview is recorded on `executor`, so
- * a caller inside a transaction must commit it (not roll back) and throw the
- * error once the transaction is over.
+ * on, else the error to answer. A new preview, or a person's approval, is
+ * recorded on `executor`, so a caller inside a transaction must commit it
+ * (not roll back) and throw the error once the transaction is over: the
+ * refusal is the write's only trace, as nothing of it ran (`isRefusal`).
  */
 export async function checkConfirmation<Check extends ConfirmationCheck>(input: KnownCheck<Check>) {
   // The type asks for at least one, each a consequence the rule knows; a value
@@ -105,15 +146,18 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(input: 
       `${input.procedure}: a confirmation declares the consequences of its branch, at least one, each one of ${CONSEQUENCES.join(", ")}.`,
     );
   }
-  const step = confirmationStep(input.consequences, input.actor.credential);
-  if (step === "none") return null;
-  if (step === "approval") {
-    // No consequence is live before a person's approval exists: never reached.
-    throw new Error(`${input.procedure}: a person's approval is not built yet.`);
+  if (input.liveConsequences !== undefined && process.env.NODE_ENV === "production") {
+    throw new Error(
+      `${input.procedure}: live consequences are the transport tests' fixture's alone.`,
+    );
   }
+  const step = confirmationStep(
+    input.consequences,
+    input.actor.credential,
+    input.liveConsequences ?? APPROVAL_LIVE,
+  );
+  if (step === "none") return null;
 
-  const executor = input.executor ?? db;
-  const now = input.now ?? new Date();
   const bindingHash = sha256(
     stableStringify({
       userId: input.actor.credential.userId,
@@ -124,8 +168,33 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(input: 
       state: input.state,
     }),
   );
-
   const token = input.headers.get(CONFIRMATION_HEADER);
+
+  if (step === "approval") {
+    // The approval is written in the write's transaction, under its locks,
+    // and its refusal returned: the caller's commit keeps it.
+    if (!input.executor || !input.approval) {
+      throw new Error(
+        `${input.procedure}: a branch a person approves asks with its transaction (executor) and what the approval is about (approval).`,
+      );
+    }
+    return requestApproval({
+      tx: input.executor,
+      actor: input.actor,
+      procedure: input.procedure,
+      input: input.input,
+      preview: input.preview,
+      consequences: input.consequences,
+      facts: input.approval.facts,
+      scope: input.approval.scope,
+      urls: input.approval.urls,
+      bindingHash,
+      presented: token,
+    });
+  }
+
+  const executor = input.executor ?? db;
+  const now = input.now ?? new Date();
   if (token) {
     const [result] = await executor
       .update(apiConfirmations)

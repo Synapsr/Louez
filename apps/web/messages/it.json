@@ -9801,6 +9801,12 @@
           "description": "L’indirizzo ora ha un account Louez, un invito o un posto nel team. Chiedi al tuo agente di ripetere la richiesta."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Questa richiesta non può ancora essere gestita qui",
+        "description": "Louez non può ancora mostrarti questa richiesta da approvare, e non è stato fatto nulla. Puoi tornare al tuo agente IA."
+      }
     }
   }
 }

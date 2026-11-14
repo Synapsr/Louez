@@ -9801,6 +9801,12 @@
           "description": "Die Adresse hat jetzt ein Louez-Konto, eine Einladung oder einen Platz im Team. Bitten Sie Ihren Agenten, die Anfrage zu wiederholen."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Diese Anfrage kann hier noch nicht beantwortet werden",
+        "description": "Louez kann Ihnen diese Anfrage noch nicht zur Freigabe zeigen, und es wurde nichts ausgeführt. Sie können zu Ihrem KI-Agenten zurückkehren."
+      }
     }
   }
 }

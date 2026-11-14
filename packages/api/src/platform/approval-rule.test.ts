@@ -138,6 +138,49 @@ describe("the compatibility adapter", () => {
   });
 });
 
+describe("a consequence made live (the fixture's alone)", () => {
+  const key = (confirmSensitive: boolean) => ({ kind: "api_key" as const, confirmSensitive });
+
+  test("a live consequence at a person's level asks for an approval; the others are as before", () => {
+    for (const consequences of DECLARATIONS) {
+      for (const kind of KINDS) {
+        for (const confirmSensitive of OPTIONS) {
+          if (kind === "session" && confirmSensitive) continue;
+          const credential = { kind, confirmSensitive };
+          for (const live of CONSEQUENCES) {
+            const step = confirmationStep(consequences, credential, [live]);
+            const person =
+              consequences.includes(live) && approvalLevel([live], credential) === "person";
+            const label = `${consequences.join(" + ")}, ${kind}, option ${confirmSensitive ? "on" : "off"}, ${live} live`;
+            if (person) assert.equal(step, "approval", label);
+            else assert.equal(step, confirmationStep(consequences, credential), label);
+          }
+        }
+      }
+    }
+  });
+
+  test("a consequence below a person's level asks no approval, live or not", () => {
+    assert.equal(confirmationStep(["change"], key(true), ["change"]), "token");
+    assert.equal(confirmationStep(["credits"], key(true), ["credits"]), "token");
+    // Option off, a deletion asks nobody: making it live asks nobody either.
+    assert.equal(confirmationStep(["deletion"], key(false), ["deletion"]), "none");
+    assert.equal(
+      confirmationStep(["money"], { kind: "session", confirmSensitive: false }, ["money"]),
+      "none",
+      "a session is never asked",
+    );
+  });
+
+  test("the default is the live list Louez serves", () => {
+    assert.equal(
+      confirmationStep(["money"], key(true)),
+      confirmationStep(["money"], key(true), APPROVAL_LIVE),
+    );
+    assert.equal(confirmationStep(["money"], key(true), ["money"]), "approval");
+  });
+});
+
 describe("mayApprove", () => {
   const STORE = "store_a";
   const PRODUCTS_WRITE: ProcedureScope = { domain: "products", level: "write" };

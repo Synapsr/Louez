@@ -9801,6 +9801,12 @@
           "description": "O endereço tem agora uma conta Louez, um convite ou um lugar na equipa. Peça ao seu agente para fazer o pedido de novo."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Este pedido ainda não pode ser respondido aqui",
+        "description": "O Louez ainda não pode mostrar este pedido para a sua aprovação, e nada foi feito. Pode voltar ao seu agente de IA."
+      }
     }
   }
 }

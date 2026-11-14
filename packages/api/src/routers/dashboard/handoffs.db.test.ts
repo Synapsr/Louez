@@ -167,6 +167,8 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
   let handoffs: typeof import("../../services/handoffs");
   let inbox: typeof import("../../services/inbox");
   let HANDOFF_KINDS: typeof import("../../contracts/handoffs").HANDOFF_KINDS;
+  // The kinds issued as a link (an operation's approval is requested by its write: approvals.db.test.ts).
+  let STEP_KINDS: typeof import("../../contracts/handoffs").STEP_KINDS;
   let HANDOFF_TTL_HOURS: number;
   let routers: {
     payments: typeof import("./payments").dashboardPaymentsRouter;
@@ -201,7 +203,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     apiKeys = await import("../../services/api-keys");
     handoffs = await import("../../services/handoffs");
     inbox = await import("../../services/inbox");
-    ({ HANDOFF_KINDS, HANDOFF_TTL_HOURS } = await import("../../contracts/handoffs"));
+    ({ HANDOFF_KINDS, STEP_KINDS, HANDOFF_TTL_HOURS } = await import("../../contracts/handoffs"));
     routers = {
       payments: (await import("./payments")).dashboardPaymentsRouter,
       billing: (await import("./billing")).dashboardBillingRouter,
@@ -1065,7 +1067,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       clientName: null,
     };
     const steps = {} as Record<HandoffKind, string>;
-    for (const kind of HANDOFF_KINDS) {
+    for (const kind of STEP_KINDS) {
       const issued = await handoffs.issueHandoff(requester, kind, {
         urls: ports.urls,
         now,
@@ -1113,11 +1115,11 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
           reads: READS[domain] ?? [],
         })),
       )),
-      { label: "the owner's session", context: () => session(OWNER), reads: [...HANDOFF_KINDS] },
-      { label: "a member's session", context: () => session(MEMBER), reads: [...HANDOFF_KINDS] },
+      { label: "the owner's session", context: () => session(OWNER), reads: [...STEP_KINDS] },
+      { label: "a member's session", context: () => session(MEMBER), reads: [...STEP_KINDS] },
     ];
     for (const caller of callers) {
-      for (const kind of HANDOFF_KINDS) {
+      for (const kind of STEP_KINDS) {
         const label = `${caller.label}, ${kind}`;
         const read = client(caller.context()).handoffs.get({ id: steps[kind] });
         if (caller.reads.includes(kind)) {
@@ -1136,7 +1138,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const first = new Date(Date.now() - HOUR);
     const steps = await oneStepOfEachKind(first);
     const lifetime = HANDOFF_TTL_HOURS * HOUR;
-    for (const kind of HANDOFF_KINDS) {
+    for (const kind of STEP_KINDS) {
       const row = await handoffs.getHandoffRow(STORE, steps[kind]);
       assert.equal(row.expiresAt.getTime() - first.getTime(), lifetime, kind);
       assert.equal(row.linkIssuedAt.getTime(), first.getTime(), kind);
@@ -1144,7 +1146,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Asked again: the same step, as long again from the new request.
     const again = new Date();
     const same = await oneStepOfEachKind(again);
-    for (const kind of HANDOFF_KINDS) {
+    for (const kind of STEP_KINDS) {
       assert.equal(same[kind], steps[kind], kind);
       const row = await handoffs.getHandoffRow(STORE, steps[kind]);
       assert.equal(row.expiresAt.getTime() - again.getTime(), lifetime, kind);
@@ -1155,7 +1157,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(Object.keys(handoffs.HANDOFF_LIFETIMES).sort(), [...HANDOFF_KINDS].sort());
     const now = new Date(Date.now() - HOUR);
     const steps = await oneStepOfEachKind(now);
-    for (const kind of HANDOFF_KINDS) {
+    for (const kind of STEP_KINDS) {
       const row = await handoffs.getHandoffRow(STORE, steps[kind]);
       assert.equal(row.expiresAt.getTime(), handoffs.linkExpiry(kind, now).getTime(), kind);
     }
@@ -1181,7 +1183,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
         );
     const unknown = await refusal("x".repeat(21));
     assert.equal(unknown?.code, "HANDOFF_NOT_FOUND");
-    for (const kind of HANDOFF_KINDS) {
+    for (const kind of STEP_KINDS) {
       assert.deepEqual(await refusal(steps[kind]), unknown, kind);
     }
   });

@@ -9801,6 +9801,12 @@
           "description": "该地址现在已有 Louez 账户、邀请或团队席位。请让您的代理重新提出请求。"
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "此请求暂时无法在此处答复",
+        "description": "Louez 目前还无法显示此请求供您批准，且尚未执行任何操作。您可以返回您的 AI 助手。"
+      }
     }
   }
 }

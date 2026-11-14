@@ -68,7 +68,11 @@ const FILES = [
  * with the consequences it declares as written, branch by branch.
  */
 const DECLARED: Record<string, readonly string[]> = {
-  "packages/api/src/platform/testing.ts#createFixtureRouter": ['["deletion"]'],
+  // `remove`, then `erase`, whose test input names the consequences it runs with.
+  "packages/api/src/platform/testing.ts#createFixtureRouter": [
+    '["deletion"]',
+    "input.consequences",
+  ],
   "packages/api/src/routers/dashboard/categories.ts#remove": ['["deletion"]'],
   "packages/api/src/routers/dashboard/online-store.ts#updateSlug": [
     'preview.online ? ["deletion"] : ["change"]',
@@ -396,6 +400,39 @@ describe("the inventory of the places that ask for a confirmation", () => {
       assert.ok(declared.length > 0, `${place}: the consequences are written at the call`);
       assert.equal(spread, false, `${place}: a spread shares the object of its consequences`);
     }
+  });
+
+  test("only the transport tests' fixture makes a consequence live", () => {
+    // `checkConfirmation` reads `liveConsequences`, the fixture sets it, and
+    // nothing else outside tests names it; the rule's live list reaches the
+    // adapter from `checkConfirmation` alone.
+    const naming = sourceFiles()
+      .filter((file) => !isTest(file))
+      .filter((file) =>
+        /\bliveConsequences\b/.test(codeOnly(readFileSync(join(REPO, file), "utf8"))),
+      );
+    assert.deepEqual(naming, [
+      "packages/api/src/platform/confirmation.ts",
+      "packages/api/src/platform/testing.ts",
+    ]);
+    const stepping = sourceFiles()
+      .filter((file) => !isTest(file))
+      .filter((file) =>
+        /\bconfirmationStep\s*\(/.test(codeOnly(readFileSync(join(REPO, file), "utf8"))),
+      );
+    assert.deepEqual(stepping, [
+      "packages/api/src/platform/approval-rule.ts",
+      "packages/api/src/platform/confirmation.ts",
+    ]);
+    // And the fixture is no module of the app's: only tests import it.
+    const importing = sourceFiles()
+      .filter((file) => !isTest(file))
+      .filter((file) =>
+        /["'](?:\.\/|@louez\/api\/platform\/|\.\.\/platform\/|\.\.\/\.\.\/platform\/)testing["']/.test(
+          codeOnly(readFileSync(join(REPO, file), "utf8"), true),
+        ),
+      );
+    assert.deepEqual(importing, []);
   });
 
   test("every sensitive procedure calls an asking function, or says why it does not", () => {

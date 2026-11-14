@@ -7,8 +7,8 @@ import {
   handoffErrors,
   refreshHandoffInput,
   refreshHandoffOutput,
-  type HandoffKind,
   type HandoffLink,
+  type StepKind,
 } from "../../contracts/handoffs";
 import { platformErrors } from "../../platform/errors";
 import { API_DOMAINS, allows } from "../../platform/permissions";
@@ -45,16 +45,27 @@ const OTHER_DOMAINS = API_DOMAINS.filter((domain) => domain !== "settings");
 /**
  * The store's step, for a caller who reads its domain. A step of a domain the
  * caller does not read answers as an id no step has: an id says nothing to
- * who may not read the step.
+ * who may not read the step. An operation's approval is read by the
+ * connection that asked for it, and by nobody else on any transport, its
+ * domain's readers included: it holds the request's input and preview, which
+ * are that connection's (its approver reads it on its page, signed in).
  */
 async function readableHandoff(context: ProductContext, id: string) {
   const row = await getHandoffRow(context.actor.storeId, id);
-  if (!mayRead(context, handoffDomain(row))) throw handoffErrors.notFound(id);
-  return row;
+  const { credential } = context.actor;
+  if (
+    row.kind === "operation_approval" &&
+    (row.credentialKind !== credential.kind || row.credentialId !== credential.id)
+  ) {
+    throw handoffErrors.notFound(id);
+  }
+  const domain = handoffDomain(row);
+  if (!domain || !mayRead(context, domain)) throw handoffErrors.notFound(id);
+  return { row, domain };
 }
 
 /** Starts or resumes a handoff for the caller, bound to their user and connection. */
-export function startHandoff(context: ProductContext, kind: HandoffKind): Promise<HandoffLink> {
+export function startHandoff(context: ProductContext, kind: StepKind): Promise<HandoffLink> {
   const { actor, ports } = context;
   return issueHandoff(
     {
@@ -86,7 +97,7 @@ const get = storeProcedure
   .input(getHandoffInput)
   .output(getHandoffOutput)
   .handler(async ({ context, input }) => {
-    const row = await readableHandoff(context, input.id);
+    const { row } = await readableHandoff(context, input.id);
     return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
   });
 
@@ -117,8 +128,9 @@ const refresh = storeProcedure
   .input(refreshHandoffInput)
   .output(refreshHandoffOutput)
   .handler(async ({ context, input }) => {
-    let row = await readableHandoff(context, input.id);
-    const domain = handoffDomain(row);
+    const readable = await readableHandoff(context, input.id);
+    const { domain } = readable;
+    let { row } = readable;
     const { role, credential } = context.actor;
     if (!allows(role, credential.scopes, { ...REFRESH_SCOPE, domain, anyOf: [] })) {
       throw platformErrors.permissionDenied(`${domain}:write`);

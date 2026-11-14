@@ -9801,6 +9801,12 @@
           "description": "Het adres heeft nu een Louez-account, een uitnodiging of een plek in het team. Vraag je agent het opnieuw aan te vragen."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Dit verzoek kan hier nog niet worden beantwoord",
+        "description": "Louez kan dit verzoek nog niet ter goedkeuring tonen, en er is niets gedaan. Je kunt teruggaan naar je AI-agent."
+      }
     }
   }
 }

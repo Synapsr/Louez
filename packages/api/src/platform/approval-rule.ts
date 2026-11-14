@@ -105,16 +105,20 @@ export type ConfirmationStep = "approval" | "token" | "none";
  * a token confirms every branch; with it off, it still confirms money,
  * access taken away, stock overrides and priced credit spending, and runs
  * the rest directly.
+ *
+ * `live` is `APPROVAL_LIVE` for every procedure Louez serves; the transport
+ * tests' fixture alone names others, to run an approval before any
+ * consequence is live (`liveConsequences`, platform/confirmation.ts).
  */
 export function confirmationStep(
   consequences: readonly Consequence[],
   credential: Pick<Credential, "kind" | "confirmSensitive">,
+  live: readonly Consequence[] = APPROVAL_LIVE,
 ): ConfirmationStep {
   const level = approvalLevel(consequences, credential);
   if (level === "none") return "none";
   const needsPerson = consequences.some(
-    (consequence) =>
-      APPROVAL_LIVE.includes(consequence) && levelOf(consequence, credential) === "person",
+    (consequence) => live.includes(consequence) && levelOf(consequence, credential) === "person",
   );
   return needsPerson ? "approval" : "token";
 }

@@ -9801,6 +9801,12 @@
           "description": "Alamat ini kini punya akun Louez, undangan, atau tempat di tim. Minta agen Anda untuk mengajukannya lagi."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Permintaan ini belum dapat dijawab di sini",
+        "description": "Louez belum dapat menampilkan permintaan ini untuk Anda setujui, dan belum ada yang dilakukan. Anda dapat kembali ke agen AI Anda."
+      }
     }
   }
 }

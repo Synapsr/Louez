@@ -1,4 +1,4 @@
-import type { HandoffKind } from "../../contracts/handoffs";
+import type { StepKind } from "../../contracts/handoffs";
 import {
   INBOX_ACKNOWLEDGE_MAX,
   INBOX_PAGE_DEFAULT,
@@ -9,7 +9,7 @@ import {
   listInboxOutput,
   type InboxItemType,
 } from "../../contracts/inbox";
-import { allows, type ApiDomain } from "../../platform/permissions";
+import { API_DOMAINS, allows, type ApiDomain } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
 import { withheldProcedurePaths } from "../../platform/withheld-procedures";
 import { HANDOFF_KIND_DOMAINS } from "../../services/handoffs";
@@ -35,19 +35,9 @@ import { mayRead, type ProductContext } from "./product-context";
  * payments, no payment item; without reservations, no reservation item.
  */
 
-const READ_DOMAINS = [
-  "reservations",
-  "customers",
-  "payments",
-  "products",
-  "settings",
-  "integrations",
-  "billing",
-  "team",
-] as const satisfies readonly ApiDomain[];
-
+/** What the caller reads, domain by domain: every domain, as an approval shows by its procedure's. */
 const reads = (context: ProductContext): InboxRights =>
-  Object.fromEntries(READ_DOMAINS.map((domain) => [domain, mayRead(context, domain)]));
+  Object.fromEntries(API_DOMAINS.map((domain) => [domain, mayRead(context, domain)]));
 
 /** Beside reservations, the domains whose read shows an item on their own. */
 const OPENED_BY = [
@@ -139,11 +129,14 @@ const acknowledge = storeProcedure
               : mayWrite("reservations") || ACKNOWLEDGED_UNDER.some(mayWrite))
           );
         },
-        // A handoff is acknowledged under its kind's domain.
+        // A handoff is acknowledged under its kind's domain, an approval under its procedure's.
         refusedFor: (item) => {
-          if (item.type !== "handoff_waiting") return null;
-          const kind = item.details.kind as HandoffKind;
-          const domain = HANDOFF_KIND_DOMAINS[kind];
+          const domain =
+            item.type === "handoff_waiting"
+              ? HANDOFF_KIND_DOMAINS[item.details.kind as StepKind]
+              : item.type === "approval_waiting"
+                ? (item.details.domain as ApiDomain)
+                : null;
           return domain && !mayWrite(domain) ? domain : null;
         },
       },

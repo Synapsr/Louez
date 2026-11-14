@@ -9801,6 +9801,12 @@
           "description": "Adres ma teraz konto Louez, zaproszenie lub miejsce w zespole. Poproś agenta, aby ponowił prośbę."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Na tę prośbę nie można jeszcze tutaj odpowiedzieć",
+        "description": "Louez nie może jeszcze pokazać tej prośby do zatwierdzenia i nic nie zostało zrobione. Możesz wrócić do swojego agenta AI."
+      }
     }
   }
 }

@@ -47,6 +47,8 @@ export const INBOX_ITEM_TYPES = [
   "operation_unknown",
   /** A step handed to the user (Stripe, the billing card, a team invitation's approval) waiting for an hour, expired or failed. */
   "handoff_waiting",
+  /** An agent's request waiting for a person's approval, or one refused, expired or ended without being carried out. */
+  "approval_waiting",
   /** A team invitation's e-mail that never went out, for an invitation still pending. */
   "invitation_not_sent",
   /** An AI photo enhancement or background removal that failed (nothing was charged). */

@@ -9801,6 +9801,12 @@
           "description": "La dirección ya tiene una cuenta de Louez, una invitación o un lugar en el equipo. Pide a tu agente que vuelva a solicitarlo."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "Esta solicitud aún no se puede responder aquí",
+        "description": "Louez aún no puede mostrarte esta solicitud para que la apruebes, y no se ha hecho nada. Puedes volver a tu agente de IA."
+      }
     }
   }
 }

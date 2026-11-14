@@ -19,9 +19,10 @@ import type { ConfirmationCheck, checkConfirmation, requireConfirmation } from "
 export function probes(
   ask: typeof requireConfirmation,
   check: typeof checkConfirmation,
-  rest: Omit<ConfirmationCheck, "consequences">,
+  rest: Omit<ConfirmationCheck, "consequences" | "executor">,
   untyped: any,
   online: boolean,
+  tx: NonNullable<ConfirmationCheck["executor"]>,
 ) {
   // @ts-expect-error: no consequences
   void ask({ ...rest });
@@ -37,10 +38,13 @@ export function probes(
   void ask({ ...rest, consequences: ["money"], ...untyped });
   // @ts-expect-error: an untyped check
   void ask(untyped);
+  // @ts-expect-error: the throwing form takes no transaction, whose rollback would lose what it records
+  void ask({ ...rest, consequences: ["money"], executor: tx });
 
   // What compiles: one or more consequences, per branch.
   void ask({ ...rest, consequences: ["money"] });
   void check({ ...rest, consequences: ["stock_override", "customer_message"] });
+  void check({ ...rest, consequences: ["money"], executor: tx });
   void ask({ ...rest, consequences: online ? ["deletion"] : ["change"] });
 }
 

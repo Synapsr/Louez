@@ -9801,6 +9801,12 @@
           "description": "The address now has a Louez account, an invitation or a place in the team. Ask your agent to request it again."
         }
       }
+    },
+    "operation_approval": {
+      "unavailable": {
+        "title": "This request can't be answered here yet",
+        "description": "Louez can't show this request for your approval yet, and nothing was done. You can go back to your AI agent."
+      }
     }
   }
 }

@@ -34,7 +34,12 @@ import { enqueueEffects } from "../platform/effects";
 import { isApiError, platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import type { ApiEvent, ApiEventStore, ApiPorts, UrlsPort } from "../platform/ports";
-import { invitationShown, issueHandoff, type HandoffRequester } from "./handoffs";
+import {
+  invitationPayloadOf,
+  invitationShown,
+  issueHandoff,
+  type HandoffRequester,
+} from "./handoffs";
 
 /**
  * The store's team: its members and pending invitations, and the writes the
@@ -336,6 +341,7 @@ const decided = (approval: Approval, outcome: HandoffDecisionOutcome, now: Date)
 async function lockApproval(tx: Transaction, storeId: string, handoffId: string) {
   const [row] = await tx
     .select({
+      kind: apiHandoffs.kind,
       userId: apiHandoffs.userId,
       revision: apiHandoffs.revision,
       payload: apiHandoffs.payload,
@@ -350,7 +356,8 @@ async function lockApproval(tx: Transaction, storeId: string, handoffId: string)
       ),
     )
     .for("update");
-  return row ?? null;
+  if (!row) return null;
+  return { ...row, payload: invitationPayloadOf(row) };
 }
 
 /**
@@ -598,13 +605,10 @@ async function endApproval(
  * the owner's words, in the statement that ends the approval.
  */
 export async function answerInvitation(
-  row: {
-    id: string;
-    storeId: string;
-    userId: string;
-    revision: number;
-    payload: ApiHandoffPayload | null;
-  },
+  row: Pick<
+    typeof apiHandoffs.$inferSelect,
+    "id" | "kind" | "storeId" | "userId" | "revision" | "payload"
+  >,
   input: {
     decision: "approve" | "refuse";
     reason: string | null;
@@ -616,7 +620,8 @@ export async function answerInvitation(
   ports: Pick<ApiPorts, "team" | "afterCommit">,
   now = new Date(),
 ) {
-  if (!row.payload) throw handoffErrors.decisionInvalid("invalid");
+  const payload = invitationPayloadOf(row);
+  if (!payload) throw handoffErrors.decisionInvalid("invalid");
   const approval = {
     handoffId: row.id,
     userId: input.userId,
@@ -625,7 +630,7 @@ export async function answerInvitation(
     reason: input.reason,
     storeId: row.storeId,
   };
-  if (!stillShown({ ...row, payload: row.payload }, approval)) {
+  if (!stillShown({ ...row, payload }, approval)) {
     throw handoffErrors.decisionInvalid("changed");
   }
 
@@ -650,7 +655,7 @@ export async function answerInvitation(
   if (!store) throw platformErrors.noStore();
   const caller: TeamCaller = { storeId: store.id, userId: input.userId, store, ports };
   try {
-    const result = await inviteMember(caller, { email: row.payload.email }, { approval, now });
+    const result = await inviteMember(caller, { email: payload.email }, { approval, now });
     return {
       handoffId: row.id,
       decision: "approved" as const,
