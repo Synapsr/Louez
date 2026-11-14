@@ -290,7 +290,11 @@ export function confirmOverridePresentation(
   // holds it, the one snapshot the binding and the outbox read.
   const email = messages.find((entry) => entry.channel === "email")?.to;
   const phone = messages.find((entry) => entry.channel === "sms")?.to;
-  const addressed = customer && messages.every((entry) => entry.to) ? customer : null;
+  // Whoever the preview names, even by a name that shows nothing: the
+  // destination is then on the display, and the name's own fact makes the
+  // request unreadable, so it cannot be approved without it.
+  const addressed =
+    preview.customer && messages.every((entry) => entry.to) ? preview.customer : null;
   const told = !message
     ? fact("noMessage", {})
     : !addressed

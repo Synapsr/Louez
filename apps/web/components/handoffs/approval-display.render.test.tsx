@@ -1023,6 +1023,20 @@ describe("a value from the store's records stays data", () => {
     });
   }
 
+  test("a customer whose name shows nothing: the destination is not dropped, and the request cannot be approved", () => {
+    for (const name of [" ", "\u200b", ""]) {
+      const { presentation } = withValues({
+        customer: { name, email: EMAIL },
+        messages: [{ message: "request_accepted", channel: "email", to: EMAIL }],
+      });
+      const told = presentation?.display.facts.at(-1);
+      // The fact that names where the message goes, never the one without a destination.
+      assert.equal(told?.key, "message", JSON.stringify(name));
+      assert.ok(JSON.stringify(told).includes(EMAIL), JSON.stringify(name));
+      assert.equal(shownDisplay(presentation?.display)?.readable, false, JSON.stringify(name));
+    }
+  });
+
   test("a message on both channels takes one place: the lines past the rules keep theirs", () => {
     const html = pageOf(
       withValues({
