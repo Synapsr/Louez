@@ -60,11 +60,13 @@ function isEmbedPath(pathname: string): boolean {
 
 /**
  * The handoff page itself, `/handoffs/<token>`: the one document whose form leaves for a
- * provider. Not `done`, `return` or `refresh` pages, which sit one level deeper. The
- * `resume` route matches too: it answers with a redirect, never a document.
+ * provider. With or without a trailing slash, as Next serves the page under both (no
+ * redirect between them, `skipTrailingSlashRedirect`). Not `done`, `return` or `refresh`
+ * pages, which sit one level deeper. The `resume` route matches too: it answers with a
+ * redirect, never a document.
  */
 function isHandoffPagePath(pathname: string): boolean {
-  return /^\/handoffs\/[^/]+$/.test(pathname);
+  return /^\/handoffs\/[^/]+\/?$/.test(pathname);
 }
 
 function withRuntimeSecurityHeaders(

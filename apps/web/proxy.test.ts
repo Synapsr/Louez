@@ -172,12 +172,22 @@ describe("proxy billing gate", () => {
       /form-action ([^;]*)/.exec(
         (await visit(path, host)).headers.get("content-security-policy") ?? "",
       )?.[1];
-    for (const path of [`/handoffs/${token}`, `/handoffs/${token}?retry=1`]) {
+    for (const path of [
+      `/handoffs/${token}`,
+      `/handoffs/${token}?retry=1`,
+      `/handoffs/${token}?changed=1`,
+      // Next serves the page under this spelling too, without a redirect.
+      `/handoffs/${token}/`,
+      `/handoffs/${token}/?retry=1`,
+    ]) {
       assert.equal(await formAction(path), "'self' https:", path);
       assert.equal(await formAction(path, "shop.localhost:3000"), "'self' https:", path);
     }
     for (const path of [
       `/handoffs/${token}/continue`,
+      `/handoffs/${token}/decide`,
+      `/handoffs/${token}/sign-in`,
+      `/handoffs/done/${"a".repeat(21)}/`,
       `/handoffs/done/${"a".repeat(21)}`,
       `/handoffs/return/${"a".repeat(21)}/${"t".repeat(43)}`,
       "/dashboard",
