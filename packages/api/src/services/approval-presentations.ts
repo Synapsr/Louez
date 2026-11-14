@@ -66,6 +66,9 @@ export function storedAmount(raw: string): string | null {
   return sign && units !== BigInt(0) ? `-${text}` : text;
 }
 
+/** A stored amount that is zero: the row of an amount too small for its two decimals. */
+const holdsNothing = (stored: string) => parseFloat(stored) === 0;
+
 /** A computed or stored decimal the page shows as it is (a total, a balance): a plain decimal. */
 const plainDecimal = (raw: string): string | null =>
   /^-?\d{1,12}(?:\.\d{1,4})?$/.test(raw) ? raw : null;
@@ -119,9 +122,10 @@ export function recordPaymentPresentation(
   if (!isChoice("paymentType", type) || !isChoice("paymentMethod", method)) return null;
   // The writer judges the amount as sent, before any rounding: zero is
   // refused, and so is a negative amount outside an adjustment. A request it
-  // would refuse gets no display, whatever its rounded amount reads.
+  // would refuse gets no display, whatever its rounded amount reads; nor does
+  // one whose row would hold zero, which no wording here says truly.
   const sent = parseFloat(details.amount);
-  if (Number.isNaN(sent) || sent === 0) return null;
+  if (Number.isNaN(sent) || sent === 0 || holdsNothing(amount)) return null;
   const said = RECORDED[type](sent < 0);
   if (!said) return null;
   const values = {
@@ -148,7 +152,11 @@ export function recordPaymentPresentation(
   };
 }
 
-/** A deposit the store gave back, recorded (`dashboard.payments.recordDepositReturn`). */
+/**
+ * A deposit the store gave back, recorded (`dashboard.payments.recordDepositReturn`).
+ * `balance` is the deposit still held, as the number the writer compares the
+ * amount with: the text in `details.returnable` is that number rounded.
+ */
 export function recordDepositReturnPresentation(
   details: {
     reservationId: string;
@@ -158,6 +166,7 @@ export function recordDepositReturnPresentation(
     returnable: string;
   },
   currency: string,
+  balance: number,
 ): ApprovalPresentation | null {
   const amount = storedAmount(details.amount);
   const held = plainDecimal(details.returnable);
@@ -165,9 +174,11 @@ export function recordDepositReturnPresentation(
   if (!amount || !held || !CURRENCY.test(currency) || !isChoice("paymentMethod", method)) {
     return null;
   }
-  // The writer takes a return above zero, judged as sent: one it would refuse gets no display.
+  // The writer takes a return above zero and within the deposit still held,
+  // judged as sent: one it would refuse gets no display, nor one whose row
+  // would hold zero.
   const sent = parseFloat(details.amount);
-  if (Number.isNaN(sent) || sent <= 0) return null;
+  if (Number.isNaN(sent) || sent <= 0 || sent > balance || holdsNothing(amount)) return null;
   return {
     display: {
       headline: headline("returnDeposit", {}),

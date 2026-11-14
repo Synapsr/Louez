@@ -82,7 +82,7 @@ describe("an identifier is hidden only when a readable name identifies the same 
     );
   });
 
-  test("a heading that shows nothing names nothing: the item keeps its identifier, and the request is unreadable", () => {
+  test("a heading that shows nothing names nothing: the item keeps its identifier", () => {
     const unseen = "\u200d\ufe0f";
     for (const item of [
       { id: "p_1", name: unseen },

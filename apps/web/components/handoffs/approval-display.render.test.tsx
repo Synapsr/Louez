@@ -153,6 +153,7 @@ const BRANCHES: Array<{
     presentation: recordDepositReturnPresentation(
       { reservationId: RESERVATION, number: "R-00094", amount: "150.00", method: "transfer", returnable: "300.00" },
       "EUR",
+      300,
     ),
   },
   {
@@ -772,17 +773,47 @@ describe("a payment recorded through the generic write says what the writer reco
     for (const type of ["rental", "damage", "deposit", "deposit_return", "adjustment"]) {
       for (const zero of ["0", "0.00", "-0"]) assert.equal(recorded(type, zero), null, `${type} ${zero}`);
     }
-    // An adjustment may be negative; a small positive amount is accepted as it will be stored.
-    assert.ok(recorded("adjustment", "-0.004"));
-    assert.ok(recorded("rental", "0.004"));
     // A deposit return must be above zero.
-    const returned = (amount: string) =>
+    const returned = (amount: string, balance = 300) =>
       recordDepositReturnPresentation(
-        { reservationId: RESERVATION, number: "R-00094", amount, method: "cash", returnable: "300.00" },
+        { reservationId: RESERVATION, number: "R-00094", amount, method: "cash", returnable: balance.toFixed(2) },
         "EUR",
+        balance,
       );
     for (const refused of ["0", "-0.004", "-150.00"]) assert.equal(returned(refused), null, refused);
     assert.ok(returned("150.00"));
+  });
+
+  test("a return above the deposit still held shows no display, by the amount as sent and the balance as counted", () => {
+    const returned = (amount: string, balance: number) =>
+      recordDepositReturnPresentation(
+        { reservationId: RESERVATION, number: "R-00094", amount, method: "cash", returnable: balance.toFixed(2) },
+        "EUR",
+        balance,
+      );
+    // Both would read "300.00 of 300.00" once rounded; the writer refuses the first.
+    assert.equal(returned("300.004", 300), null);
+    assert.equal(returned("300.00", 299.996), null);
+    assert.equal(returned("300.01", 300), null);
+    assert.equal(screenOf(returned("300.00", 300))[2], "Deposit given back: €300.00 · Cash");
+  });
+
+  test("an amount whose row would hold zero shows no display: no wording says it truly", () => {
+    // The writer accepts these, and the row holds 0.00.
+    assert.equal(recorded("adjustment", "-0.004"), null);
+    assert.equal(recorded("adjustment", "0.004"), null);
+    assert.equal(recorded("rental", "0.004"), null);
+    assert.equal(
+      recordDepositReturnPresentation(
+        { reservationId: RESERVATION, number: "R-00094", amount: "0.004", method: "cash", returnable: "300.00" },
+        "EUR",
+        300,
+      ),
+      null,
+    );
+    // From half a cent, the row holds a cent, and the display says so with its sign.
+    assert.match(screenOf(recorded("adjustment", "-0.006"))[2] ?? "", /€0\.01/);
+    assert.match(screenOf(recorded("rental", "0.005"))[2] ?? "", /€0\.01 received/);
   });
 
   test("the amount shown is the amount the row holds, every digit of it and no other", () => {
@@ -809,6 +840,7 @@ describe("a payment recorded through the generic write says what the writer reco
     const held = recordDepositReturnPresentation(
       { reservationId: RESERVATION, number: "R-00094", amount: "1.494", method: "cash", returnable: "3.50" },
       "JPY",
+      3.5,
     );
     assert.deepEqual(screenOf(held).slice(2, 4), ["Deposit given back: ¥1.49 · Cash", "Deposit still held before this: ¥3.50"]);
     const deleted = deletePaymentPresentation(

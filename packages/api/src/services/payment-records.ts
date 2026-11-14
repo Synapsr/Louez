@@ -244,7 +244,7 @@ export async function recordDepositReturn(
         details,
       },
       state: { returnable: returnable.toFixed(2) },
-      presentation: recordDepositReturnPresentation(details, currencyOf(caller, reservation)),
+      presentation: recordDepositReturnPresentation(details, currencyOf(caller, reservation), returnable),
     });
     if (refusal) return unconfirmed(refusal);
 
