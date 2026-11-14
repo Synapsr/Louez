@@ -164,6 +164,11 @@ export interface ApprovalAnswer {
   pollAfterSeconds: number;
   /** What the person decided: null while pending. */
   decision: { outcome: "approved"; at: string; reason: string | null } | null;
+  /**
+   * An approved approval only: whether this call, and the store, are still as
+   * the preview the person approved showed (its binding is the call's).
+   */
+  stillAsApproved?: boolean;
 }
 
 /**
@@ -176,7 +181,9 @@ export type ApprovalInvalidReason =
   | "expired"
   | "used"
   | "state_changed"
-  | "approver_not_allowed";
+  | "approver_not_allowed"
+  /** An approved approval cannot be carried out yet (until pull request 3c of the plan). */
+  | "execution_unavailable";
 
 /**
  * The answers of an action a person must approve
@@ -184,12 +191,19 @@ export type ApprovalInvalidReason =
  * refusal: nothing of the write happened.
  */
 export const approvalErrors = {
+  /**
+   * The request's approval, as it stands. Approved, the preview is the one
+   * the person approved, and `stillAsApproved` says whether this call is.
+   */
   required: (
     preview: { summary: string; details?: Record<string, unknown> },
     approval: ApprovalAnswer,
   ) =>
     apiError("PRECONDITION_FAILED", "APPROVAL_REQUIRED", {
-      message: `${preview.summary} Nothing was done yet. The user approves it in Louez, signed in, from this link: ${approval.url}`,
+      message:
+        approval.status === "approved"
+          ? `The user approved: ${preview.summary} Nothing was done yet.${approval.stillAsApproved ? "" : " This call, or the store, is no longer as the preview the user approved showed."}`
+          : `${preview.summary} Nothing was done yet. The user approves it in Louez, signed in, from this link: ${approval.url}`,
       details: { preview, approval, confirmationToken: approval.id },
     }),
   pending: (approval: ApprovalAnswer) =>

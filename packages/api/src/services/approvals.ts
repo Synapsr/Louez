@@ -1,17 +1,20 @@
 import {
+  apiAgentGrants,
   apiHandoffs,
+  apiKeys,
   db,
+  isDuplicateKeyError,
   lockStoreRow,
   storeMembers,
   unmarkSetupWrite,
   type ApiApprovalPayload,
   type Transaction,
 } from "@louez/db";
-import { and, count, eq, gt, inArray, isNull, max, min } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNull, min } from "drizzle-orm";
 import type { ORPCError } from "@orpc/server";
 
 import { handoffErrors } from "../contracts/handoffs";
-import type { ScopedActor } from "../platform/actor";
+import type { Credential, ScopedActor } from "../platform/actor";
 import { mayApprove, type Consequences } from "../platform/approval-rule";
 import { databaseNow } from "../platform/database-clock";
 import {
@@ -45,14 +48,23 @@ import {
  * presented with a call runs nothing, and no procedure Louez serves asks for
  * one (`APPROVAL_LIVE` is empty, platform/approval-rule.ts).
  *
- * Revocation never takes the store's lock: it ends the rows of a connection
- * in one statement, after the decision that holds them, or before it, which
- * then finds them ended (`failCredentialHandoffs`).
+ * The locks, in the order every holder takes them:
  *
- * Every rule reads the database's clock on the transaction's connection,
- * under the store row's lock, which every writer of an approval holds:
- * requests, decisions and the caps are ordered by it. Expiry is computed
- * from `expires_at` (`statusOf`), never written by a job.
+ * - A request runs inside the caller's write, which already holds its domain
+ *   locks (a reservation, its products and units). It takes the requesting
+ *   credential's row (`lockCredential`: the API key's or the OAuth grant's),
+ *   then approval rows of that credential. Never the store's row, which
+ *   other writers take before their domain locks (products, settings).
+ * - A decision takes the store's row, then the approval's row: no domain lock
+ *   and no credential lock. It meets a request only on the approval's row,
+ *   and the conditional statements on that row settle who wins.
+ * - A revocation ends a connection's rows in one statement, after its
+ *   credential's own statement (`failCredentialHandoffs`): the credential's
+ *   row, then approval rows, the request's order, each held alone.
+ *
+ * Every time an approval's rules read is the database's clock, read on the
+ * transaction's connection. Expiry is computed from `expires_at`
+ * (`statusOf`), never written by a job.
  */
 
 const KIND = "operation_approval" as const;
@@ -64,7 +76,11 @@ const HOUR_MS = 3_600_000;
 export const MAX_PENDING_APPROVALS = 10;
 /** New approvals one connection may request in one store within an hour. */
 export const APPROVAL_REQUESTS_PER_HOUR = 30;
-/** Open approvals one store may hold, whatever the connection. */
+/**
+ * Open approvals one store may hold, whatever the connection. Counted
+ * without a lock the store's connections share: requests of several
+ * connections at once may pass it by at most one approval each.
+ */
 export const MAX_STORE_PENDING_APPROVALS = 50;
 /** After a person refused a request, the same request is refused this long. */
 export const APPROVAL_COOL_DOWN_MS = HOUR_MS;
@@ -109,7 +125,10 @@ export function coolDownEnd(
   return end > now ? end : null;
 }
 
-/** What the caps count, under the store's lock: each with when its first entry frees. */
+/**
+ * What the caps count, each with when its first entry frees: the
+ * connection's under its credential's lock, the store's without a lock.
+ */
 export interface ApprovalCounts {
   /** The connection's open approvals in the store, and the earliest expiry among them. */
   connectionOpen: { count: number; firstEnd: Date | null };
@@ -183,7 +202,7 @@ type HandoffRow = typeof apiHandoffs.$inferSelect;
 /**
  * The approval a call at a person's level asks for, as the refusal it
  * answers with: nothing of the write happens. On the write's transaction,
- * under the store row's lock, on the database's clock.
+ * under the requesting credential's row lock, on the database's clock.
  *
  * - No approval id (a confirmation token is not one), no open approval of
  *   the same identity: a new one, `pending`, within the caps and outside the
@@ -191,11 +210,13 @@ type HandoffRow = typeof apiHandoffs.$inferSelect;
  * - The same request while one is pending: the same id and link, its
  *   preview and binding refreshed, its revision raised, its time to decide
  *   counted again.
- * - While one is approved: unchanged, its binding and decision intact.
+ * - While one is approved: unchanged, its binding and decision intact; the
+ *   answer shows the preview the person approved, and whether this call is
+ *   still as it showed (`stillAsApproved`).
  * - An approval id: read only, never changed. Pending, refused, expired, or
  *   not this request's (another credential's, store's or procedure's, or
  *   no approval at all: the same answer) each say so; approved, it cannot be
- *   carried out yet, and the call throws without running.
+ *   carried out yet (`execution_unavailable`), and nothing runs.
  *
  * The caller returns the refusal out of its transaction, which commits the
  * approval, and throws it once that transaction is over (`checkConfirmation`).
@@ -204,7 +225,7 @@ export async function requestApproval(
   request: ApprovalRequest,
 ): Promise<ORPCError<string, ApiErrorData>> {
   const { tx, actor } = request;
-  if (!(await lockStoreRow(tx, actor.storeId))) throw platformErrors.noStore();
+  if (!(await lockCredential(tx, actor.credential))) return platformErrors.unauthenticated();
   // Refused: the write sets nothing up, though its transaction commits the approval.
   await unmarkSetupWrite(tx);
   const now = await databaseNow(tx);
@@ -214,27 +235,104 @@ export async function requestApproval(
     procedure: request.procedure,
     facts: request.facts,
   });
+  // Every approval of the connection in the store, as committed, locked.
+  const own = await connectionApprovals(tx, actor);
 
   const presented =
     request.presented && APPROVAL_ID.test(request.presented) ? request.presented : null;
-  if (presented) return answerPresented(request, presented, subject, now);
+  if (presented) return answerPresented(request, own, presented, subject, now);
 
-  const [open] = await tx
+  const open = own.find((row) => row.subject === subject && row.activeSlot === 1);
+  if (open) {
+    const answered = await answerOpen(request, open, now);
+    if (answered) return answered;
+  }
+
+  const asksAgainAt = coolDownEnd(lastRefusal(own, subject, now), now);
+  if (asksAgainAt) return approvalErrors.recentlyDeclined(asksAgainAt, now);
+  const full = approvalsFull(await countApprovals(tx, actor, own, now), now);
+  if (full) return approvalErrors.full(full.limit, full.retryAt, now);
+
+  let createdId: string;
+  try {
+    const [created] = await tx
+      .insert(apiHandoffs)
+      .values({
+        storeId: actor.storeId,
+        kind: KIND,
+        subject,
+        procedure: request.procedure,
+        bindingHash: request.bindingHash,
+        payload: payloadOf(request),
+        status: "pending",
+        activeSlot: 1,
+        userId: actor.credential.userId,
+        credentialKind: actor.credential.kind,
+        credentialId: actor.credential.id,
+        clientName: actor.credential.clientName,
+        // Its link is its id: no secret was ever given for it.
+        tokenHash: null,
+        linkIssuedAt: now,
+        expiresAt: linkExpiry(KIND, now),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .$returningId();
+    createdId = created.id;
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) throw error;
+    return answerDuplicate(request, subject, error);
+  }
+  return approvalErrors.required(request.preview, answerOf(await reread(tx, createdId), request));
+}
+
+/**
+ * The unique key's backstop. Under its credential's lock a request reads
+ * every row of its connection, so an open approval of its identity it did
+ * not see is one a writer put there without that credential's columns,
+ * never through this path. It is the same request while one is open: the
+ * answer gives it as it is and changes nothing (locking it here could wait
+ * on a decision that waits on this insert's own key check).
+ */
+async function answerDuplicate(request: ApprovalRequest, subject: string, error: unknown) {
+  const [existing] = await request.tx
     .select()
     .from(apiHandoffs)
     .where(
       and(
-        eq(apiHandoffs.storeId, actor.storeId),
+        eq(apiHandoffs.storeId, request.actor.storeId),
         eq(apiHandoffs.kind, KIND),
         eq(apiHandoffs.subject, subject),
         eq(apiHandoffs.activeSlot, 1),
       ),
-    )
-    .for("update");
-  if (open && statusOf(open, now) === "approved") {
-    return approvalErrors.required(request.preview, answerOf(open, request.urls));
+    );
+  if (!existing) throw error;
+  const answer = answerOf(existing, request);
+  const preview =
+    answer.status === "approved"
+      ? (approvalPayloadOf(existing)?.preview ?? request.preview)
+      : request.preview;
+  return approvalErrors.required(preview, answer);
+}
+
+/**
+ * The open approval of an identity found: answered as it stands, or, once
+ * expired, freed of its slot for a new one (null: go on and create it).
+ */
+async function answerOpen(
+  request: ApprovalRequest,
+  open: HandoffRow,
+  now: Date,
+): Promise<ORPCError<string, ApiErrorData> | null> {
+  const { tx, actor } = request;
+  const status = statusOf(open, now);
+  if (status === "approved") {
+    // What the person approved, never this call's preview, and whether this
+    // call is still as that preview showed (`stillAsApproved`).
+    const approved = approvalPayloadOf(open)?.preview ?? request.preview;
+    return approvalErrors.required(approved, answerOf(open, request));
   }
-  if (open && statusOf(open, now) === "pending") {
+  if (status === "pending") {
     await tx
       .update(apiHandoffs)
       .set({
@@ -247,87 +345,108 @@ export async function requestApproval(
         updatedAt: now,
       })
       .where(eq(apiHandoffs.id, open.id));
-    return approvalErrors.required(
-      request.preview,
-      answerOf(await reread(tx, open.id), request.urls),
-    );
+    return approvalErrors.required(request.preview, answerOf(await reread(tx, open.id), request));
   }
-  if (open) {
-    // Expired, as its row still says: it gives up its slot to the new request.
-    await tx
-      .update(apiHandoffs)
-      .set({ activeSlot: null, updatedAt: now })
-      .where(eq(apiHandoffs.id, open.id));
-  }
-
-  const asksAgainAt = coolDownEnd(await lastRefusal(tx, actor.storeId, subject, now), now);
-  if (asksAgainAt) return approvalErrors.recentlyDeclined(asksAgainAt, now);
-  const full = approvalsFull(await countApprovals(tx, actor, now), now);
-  if (full) return approvalErrors.full(full.limit, full.retryAt, now);
-
-  const [created] = await tx
-    .insert(apiHandoffs)
-    .values({
-      storeId: actor.storeId,
-      kind: KIND,
-      subject,
-      procedure: request.procedure,
-      bindingHash: request.bindingHash,
-      payload: payloadOf(request),
-      status: "pending",
-      activeSlot: 1,
-      userId: actor.credential.userId,
-      credentialKind: actor.credential.kind,
-      credentialId: actor.credential.id,
-      clientName: actor.credential.clientName,
-      // Its link is its id: no secret was ever given for it.
-      tokenHash: null,
-      linkIssuedAt: now,
-      expiresAt: linkExpiry(KIND, now),
-      createdAt: now,
-      updatedAt: now,
-    })
-    .$returningId();
-  return approvalErrors.required(
-    request.preview,
-    answerOf(await reread(tx, created.id), request.urls),
-  );
+  // Expired, as its row still says: it gives up its slot to the new request.
+  await tx
+    .update(apiHandoffs)
+    .set({ activeSlot: null, updatedAt: now })
+    .where(eq(apiHandoffs.id, open.id));
+  return null;
 }
 
 /**
- * A call that presents an approval id: read under its lock, changed never.
- * An id this caller did not ask for, in this store, for this procedure and
- * this request, answers as no approval at all.
+ * Locks the requesting credential's row, the API key's or the OAuth grant's:
+ * every request of one connection, and so every request of one identity
+ * (an identity includes its credential), waits for the one before it here.
+ * False when the credential is gone or revoked: it asks for nothing more.
+ *
+ * The order: the caller's domain locks, then this row, then the
+ * connection's approval rows. Its other holders take no domain lock and
+ * nothing a request holds before it: a key's own statements (its use, its
+ * option, its revocation, each a single statement), a grant's update and
+ * revocation (the grant's row, then its stores and tokens), and the
+ * revocation's end of its approvals, which comes after the credential's
+ * statement and in a statement of its own (`failCredentialHandoffs`). A
+ * session has no such row: no request runs for one (the in-app assistant
+ * asks nothing at a person's level before pull request 10 of the plan).
  */
-async function answerPresented(
-  request: ApprovalRequest,
-  id: string,
-  subject: string,
-  now: Date,
-): Promise<ORPCError<string, ApiErrorData>> {
-  const { tx, actor } = request;
-  const [row] = await tx
+async function lockCredential(tx: Transaction, credential: Credential): Promise<boolean> {
+  if (credential.kind === "api_key" && credential.id) {
+    const [key] = await tx
+      .select({ revokedAt: apiKeys.revokedAt })
+      .from(apiKeys)
+      .where(eq(apiKeys.id, credential.id))
+      .for("update");
+    return key !== undefined && key.revokedAt === null;
+  }
+  if (credential.kind === "oauth" && credential.id) {
+    const [grant] = await tx
+      .select({ id: apiAgentGrants.id })
+      .from(apiAgentGrants)
+      .where(eq(apiAgentGrants.id, credential.id))
+      .for("update");
+    return grant !== undefined;
+  }
+  throw new Error(
+    `A ${credential.kind} credential has no row an approval's request can lock: it requests none.`,
+  );
+}
+
+const CREDENTIAL_INDEX = "api_handoffs_credential_idx";
+
+/**
+ * Every approval of the connection in the store, locked, through the index
+ * led by the credential (`api_handoffs_credential_idx`). A locking read
+ * reads what is committed, whatever the snapshot of the caller's
+ * transaction, so the rows the connection's earlier requests committed are
+ * all here. The index's columns never change once written: a decision or a
+ * revocation changes a row's status and slot, never these entries, so the
+ * request locks entries no one else changes, then their rows, and a
+ * decision locks a row by its key alone. Under REPEATABLE READ the read also
+ * locks the gap up to the next entry: a request of the connection that
+ * sorts next waits for this one there, which waits for nothing of it.
+ */
+async function connectionApprovals(tx: Transaction, actor: ScopedActor) {
+  return tx
     .select()
-    .from(apiHandoffs)
+    .from(apiHandoffs, { forceIndex: CREDENTIAL_INDEX })
     .where(
       and(
-        eq(apiHandoffs.id, id),
-        eq(apiHandoffs.storeId, actor.storeId),
-        eq(apiHandoffs.kind, KIND),
         eq(apiHandoffs.credentialKind, actor.credential.kind),
         actor.credential.id === null
           ? isNull(apiHandoffs.credentialId)
           : eq(apiHandoffs.credentialId, actor.credential.id),
-        eq(apiHandoffs.procedure, request.procedure),
-        eq(apiHandoffs.subject, subject),
+        eq(apiHandoffs.storeId, actor.storeId),
+        eq(apiHandoffs.kind, KIND),
       ),
     )
     .for("update");
+}
+
+/**
+ * A call that presents an approval id: read, changed never. An id this
+ * caller did not ask for, in this store, for this procedure and this
+ * request, answers as no approval at all.
+ */
+function answerPresented(
+  request: ApprovalRequest,
+  own: HandoffRow[],
+  id: string,
+  subject: string,
+  now: Date,
+): ORPCError<string, ApiErrorData> {
+  const row = own.find(
+    (candidate) =>
+      candidate.id === id &&
+      candidate.procedure === request.procedure &&
+      candidate.subject === subject,
+  );
   if (!row) return approvalErrors.invalid("other_request");
   switch (statusOf(row, now)) {
     case "pending":
     case "opened":
-      return approvalErrors.pending(answerOf(row, request.urls));
+      return approvalErrors.pending(answerOf(row, request));
     case "expired":
       return approvalErrors.invalid("expired");
     case "completed":
@@ -338,10 +457,8 @@ async function answerPresented(
         : approvalErrors.invalid("other_request");
     case "approved":
       // Where pull request 3c consumes it, in this transaction. Until then an
-      // approval runs nothing: the call fails, and nothing is written.
-      throw new Error(
-        `${request.procedure}: an approved approval cannot be carried out yet; nothing was done.`,
-      );
+      // approval runs nothing: a refusal, so the call's key runs again.
+      return approvalErrors.invalid("execution_unavailable");
   }
 }
 
@@ -361,76 +478,82 @@ async function reread(tx: Transaction, id: string): Promise<HandoffRow> {
   return row;
 }
 
-/** The approval as the agent's answer shows it. */
-function answerOf(row: HandoffRow, urls: UrlsPort): ApprovalAnswer {
+/**
+ * The approval as the agent's answer shows it. An approved one also says
+ * whether this call, and the store, are still as the preview the person
+ * approved showed: its binding is the call's.
+ */
+function answerOf(row: HandoffRow, request: ApprovalRequest): ApprovalAnswer {
+  const approved = row.status === "approved";
   return {
     id: row.id,
-    url: handoffUrl(urls, row.id),
-    status: row.status === "approved" ? "approved" : "pending",
+    url: handoffUrl(request.urls, row.id),
+    status: approved ? "approved" : "pending",
     expiresAt: row.expiresAt.toISOString(),
     pollAfterSeconds: APPROVAL_POLL_SECONDS,
     decision:
       row.decision === "approved" && row.decidedAt
         ? { outcome: "approved", at: row.decidedAt.toISOString(), reason: row.decisionReason }
         : null,
+    ...(approved ? { stillAsApproved: row.bindingHash === request.bindingHash } : {}),
   };
 }
 
-/** When the person last refused this same request within the cool-down, read under the store's lock. */
-async function lastRefusal(tx: Transaction, storeId: string, subject: string, now: Date) {
-  const [row] = await tx
-    .select({ at: max(apiHandoffs.decidedAt) })
-    .from(apiHandoffs)
-    .where(
-      and(
-        eq(apiHandoffs.storeId, storeId),
-        eq(apiHandoffs.kind, KIND),
-        eq(apiHandoffs.subject, subject),
-        eq(apiHandoffs.decision, "refused"),
-        gt(apiHandoffs.decidedAt, new Date(now.getTime() - APPROVAL_COOL_DOWN_MS)),
-      ),
-    )
-    .for("share");
-  return row?.at ?? null;
+/** When the person last refused this same request within the cool-down, from the connection's rows. */
+function lastRefusal(own: HandoffRow[], subject: string, now: Date): Date | null {
+  const since = now.getTime() - APPROVAL_COOL_DOWN_MS;
+  const refusals = own
+    .filter((row) => row.subject === subject && row.decision === "refused")
+    .map((row) => row.decidedAt?.getTime() ?? 0)
+    .filter((at) => at > since);
+  return refusals.length > 0 ? new Date(Math.max(...refusals)) : null;
 }
 
-/** The caps' counts, read under the store's lock with locking reads: every committed approval counts. */
+/**
+ * The caps' counts. The connection's own, from its rows read under its
+ * credential's lock: exact, as every request of the connection waits for
+ * the one before it. The store's, read without a lock, as no lock is
+ * shared by the store's connections: requests of several connections at
+ * once may each miss what the others add, so the store's cap may be passed
+ * by at most one approval per connection requesting at that moment
+ * (`MAX_STORE_PENDING_APPROVALS`).
+ */
 async function countApprovals(
   tx: Transaction,
   actor: ScopedActor,
+  own: HandoffRow[],
   now: Date,
 ): Promise<ApprovalCounts> {
-  const ofStore = and(eq(apiHandoffs.storeId, actor.storeId), eq(apiHandoffs.kind, KIND));
-  const ofConnection = and(
-    ofStore,
-    eq(apiHandoffs.credentialKind, actor.credential.kind),
-    actor.credential.id === null
-      ? isNull(apiHandoffs.credentialId)
-      : eq(apiHandoffs.credentialId, actor.credential.id),
-  );
-  const open = and(
-    eq(apiHandoffs.activeSlot, 1),
-    inArray(apiHandoffs.status, ["pending", "approved"]),
-    gt(apiHandoffs.expiresAt, now),
-  );
-  const [connectionOpen] = await tx
-    .select({ count: count(), first: min(apiHandoffs.expiresAt) })
-    .from(apiHandoffs)
-    .where(and(ofConnection, open))
-    .for("share");
-  const [lastHour] = await tx
-    .select({ count: count(), first: min(apiHandoffs.createdAt) })
-    .from(apiHandoffs)
-    .where(and(ofConnection, gt(apiHandoffs.createdAt, new Date(now.getTime() - HOUR_MS))))
-    .for("share");
+  const isOpen = (row: HandoffRow) =>
+    row.activeSlot === 1 &&
+    (row.status === "pending" || row.status === "approved") &&
+    row.expiresAt > now;
+  const ownOpen = own.filter(isOpen);
+  const hourAgo = now.getTime() - HOUR_MS;
+  const lastHour = own.filter((row) => row.createdAt.getTime() > hourAgo);
+  const earliest = (dates: Date[]) =>
+    dates.length > 0 ? new Date(Math.min(...dates.map((date) => date.getTime()))) : null;
   const [storeOpen] = await tx
     .select({ count: count(), first: min(apiHandoffs.expiresAt) })
     .from(apiHandoffs)
-    .where(and(ofStore, open))
-    .for("share");
+    .where(
+      and(
+        eq(apiHandoffs.storeId, actor.storeId),
+        eq(apiHandoffs.kind, KIND),
+        eq(apiHandoffs.activeSlot, 1),
+        inArray(apiHandoffs.status, ["pending", "approved"]),
+        gt(apiHandoffs.expiresAt, now),
+      ),
+    );
   return {
-    connectionOpen: { count: connectionOpen?.count ?? 0, firstEnd: connectionOpen?.first ?? null },
-    connectionLastHour: { count: lastHour?.count ?? 0, firstAt: lastHour?.first ?? null },
+    connectionOpen: {
+      count: ownOpen.length,
+      firstEnd: earliest(ownOpen.map((row) => row.expiresAt)),
+    },
+    connectionLastHour: {
+      count: lastHour.length,
+      firstAt: earliest(lastHour.map((row) => row.createdAt)),
+    },
     storeOpen: { count: storeOpen?.count ?? 0, firstEnd: storeOpen?.first ?? null },
   };
 }

@@ -71,6 +71,7 @@ import {
   HANDOFF_KIND_DOMAINS,
   HANDOFF_WAIT_MS,
   approvalPayloadOf,
+  connectionReadsApproval,
   handoffUrl,
   handoffView,
 } from "./handoffs";
@@ -175,6 +176,12 @@ export interface InboxReader {
    * session every operation of the store (null).
    */
   operationsOf: string | null;
+  /**
+   * The key or the token that reads, for a connection; absent for a
+   * dashboard session. Its own approvals show to it, in the domains it reads
+   * (`connectionReadsApproval`).
+   */
+  connection?: { kind: string; id: string | null };
   /**
    * Procedures the caller's agent never reaches, by capability id
    * (`ClientWithholding.capabilities`): no item names their tool, and a
@@ -1672,17 +1679,24 @@ const waitingHandoffs: Source = async (window, shaper) => {
  */
 const waitingApprovals: Source = async (window, shaper) => {
   const { reader } = shaper;
-  const domains = API_DOMAINS.filter((domain) => reader.reads[domain]);
-  const whose =
-    reader.operationsOf !== null
-      ? eq(apiHandoffs.credentialId, reader.operationsOf)
-      : domains.length > 0
-        ? inArray(
-            sql<string>`JSON_UNQUOTE(JSON_EXTRACT(${apiHandoffs.payload}, '$.scope.domain'))`,
-            domains,
-          )
-        : null;
-  if (!whose) return [];
+  const reads = (domain: ApiDomain) => reader.reads[domain] === true;
+  const domains = API_DOMAINS.filter(reads);
+  const { connection } = reader;
+  // A connection reads its own, in the domains it reads; a session, any in those domains.
+  if (domains.length === 0 || (reader.operationsOf !== null && !connection)) return [];
+  const inDomains = inArray(
+    sql<string>`JSON_UNQUOTE(JSON_EXTRACT(${apiHandoffs.payload}, '$.scope.domain'))`,
+    domains,
+  );
+  const whose = connection
+    ? and(
+        eq(apiHandoffs.credentialKind, connection.kind),
+        connection.id === null
+          ? isNull(apiHandoffs.credentialId)
+          : eq(apiHandoffs.credentialId, connection.id),
+        inDomains,
+      )
+    : inDomains;
   const now = at(window.now);
   const occurred = sql<Date>`CASE
       WHEN ${apiHandoffs.status} = 'failed' THEN ${apiHandoffs.failedAt}
@@ -1734,7 +1748,7 @@ const waitingApprovals: Source = async (window, shaper) => {
   const { urls, store } = reader;
   return rows.flatMap(({ row, occurredAt, approver, email }) => {
     const payload = approvalPayloadOf(row);
-    if (!payload) return [];
+    if (!payload || (connection && !connectionReadsApproval(connection, row, reads))) return [];
     const view = handoffView(row, { now: window.now, urls, store });
     const waiting = view.status === "pending";
     const who = approver || email || "the user this connection acts for";
@@ -1759,7 +1773,7 @@ const waitingApprovals: Source = async (window, shaper) => {
           failureCode: view.failure?.code ?? null,
         },
         // The connection that asked reads it; a session decides it on its page.
-        tools: reader.operationsOf !== null ? ["handoffs_get"] : [],
+        tools: connection ? ["handoffs_get"] : [],
         links: { dashboard: handoffUrl(urls, row.id) },
       }),
     ];

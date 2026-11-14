@@ -869,6 +869,7 @@ export const SCHEMA_NAMES = {
     "api_effects_reservation_idx",
     "api_effects_store_idx",
     "api_handoffs_active_unique",
+    "api_handoffs_credential_idx",
     "api_handoffs_store_idx",
     "api_handoffs_token_unique",
     "api_handoffs_updated_idx",

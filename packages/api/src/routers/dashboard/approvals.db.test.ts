@@ -277,6 +277,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     expiresAt: string;
     pollAfterSeconds: number;
     decision: { outcome: string; at: string; reason: string | null } | null;
+    stillAsApproved?: boolean;
   }
 
   /** Asks for an approval: the call must answer APPROVAL_REQUIRED. */
@@ -555,36 +556,62 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(await storeDescription(), null);
   });
 
-  test("an approved approval asked again keeps its binding and decision; presented, it runs nothing yet", async () => {
+  test("an approved approval asked again keeps its binding and decision, and answers with the preview the person approved", async () => {
     const key = await apiKey();
-    const asked = await ask({ id: "n1" }, key, { "idempotency-key": "k-approved" });
+    const asked = await ask({ id: "n1" }, key);
+    const approvedPreview = asked.details.preview;
     await decide(asked.approval.id, "approve", { reason: "Go ahead" });
     const approved = await rowOf(asked.approval.id);
     assert.equal(approved.status, "approved");
 
-    // The store moves, and the agent asks again without the id: unchanged.
-    await renameStore("Roscoff Glisse");
-    const again = await ask({ id: "n1", note: "reworded" }, key);
-    assert.equal(again.approval.id, asked.approval.id);
-    assert.equal(again.approval.status, "approved");
-    assert.equal(again.approval.decision?.outcome, "approved");
-    assert.equal(again.approval.decision?.reason, "Go ahead");
+    // Asked again as it was: the approved preview, and still as approved.
+    const same = await ask({ id: "n1" }, key);
+    assert.equal(same.approval.id, asked.approval.id);
+    assert.equal(same.approval.status, "approved");
+    assert.equal(same.approval.decision?.outcome, "approved");
+    assert.equal(same.approval.decision?.reason, "Go ahead");
+    assert.equal(same.approval.stillAsApproved, true);
+    assert.deepEqual(same.details.preview, approvedPreview);
     assert.deepEqual(await rowOf(asked.approval.id), approved, "binding and decision intact");
 
-    // Presented with the call: it cannot be carried out yet, and nothing runs.
+    // The store moves: the answer still shows what the person approved, and says it no longer holds.
+    await renameStore("Roscoff Glisse");
+    const changed = await ask({ id: "n1" }, key);
+    assert.equal(changed.approval.id, asked.approval.id);
+    assert.equal(changed.approval.stillAsApproved, false);
+    assert.deepEqual(changed.details.preview, approvedPreview, "never this call's preview");
+    assert.match(changed.message, /^The user approved: Erase note n1 of Roscoff Voile\./);
+    assert.match(changed.message, /no longer as the preview the user approved showed/);
+    assert.deepEqual(await rowOf(asked.approval.id), approved, "binding and decision intact");
+  });
+
+  test("an approved approval presented before it can be carried out is a refusal: nothing runs, and the key runs again", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    await decide(asked.approval.id, "approve");
+    const approved = await rowOf(asked.approval.id);
+
     const presented = await failure(
       erase(
         { id: "n1" },
         key.context({ "louez-confirmation": asked.approval.id, "idempotency-key": "k-approved" }),
       ),
     );
-    // An unexpected error, never a refusal nor an answer: every transport answers 500.
-    assert.equal(presented.code, undefined, "no answer a caller could take for its write's");
-    assert.match(presented.message, /cannot be carried out yet; nothing was done/);
+    assert.equal(presented.code, "APPROVAL_INVALID");
+    assert.equal(presented.status, 412);
+    assert.deepEqual(presented.details, { reason: "execution_unavailable" });
     assert.equal(await storeDescription(), null, "the write did not run");
     assert.deepEqual(await rowOf(asked.approval.id), approved, "the approval did not change");
-    const [operation] = await operations();
-    assert.notEqual(operation?.status, "succeeded");
+    const keyed = async () =>
+      (await operations()).filter((operation) => operation.idempotencyKey === "k-approved");
+    const [operation] = await keyed();
+    assert.equal(operation?.status, "failed", "a refusal: its key may run again");
+    assert.equal(operation?.error?.code, "APPROVAL_INVALID");
+
+    // The same key runs again, and is answered, not told its outcome is unknown.
+    const again = await ask({ id: "n1" }, key, { "idempotency-key": "k-approved" });
+    assert.equal(again.approval.id, asked.approval.id);
+    assert.equal((await keyed()).length, 1, "one record for the key");
   });
 
   test("a leaked id: another credential, store, procedure or request learns nothing and changes nothing", async () => {
@@ -823,13 +850,14 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   /**
    * Waits until `statements` statements matching `pattern` wait in the
    * processlist: what is running there while a test holds a lock can only be
-   * waiting for it.
+   * waiting for it. Its own statement holds the pattern too: it is left out.
    */
   async function lockWait(pattern: string, statements = 1) {
     for (let tries = 0; tries < 500; tries += 1) {
       const [found] = (await louezDb.db.execute(
         orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
-          WHERE db = DATABASE() AND command = 'Query' AND info LIKE ${pattern}`,
+          WHERE db = DATABASE() AND command = 'Query' AND id <> CONNECTION_ID()
+          AND info LIKE ${pattern}`,
       )) as unknown as [Array<{ n: number | string }>];
       if (Number(found[0]?.n) >= statements) return;
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -837,13 +865,13 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     throw new Error(`no statement waited for a lock: ${pattern}`);
   }
 
-  test("the agent asks again while the person's click waits for the store's lock: the click decides nothing", async () => {
+  test("the agent asks again while the person's click waits for the approval's row: the click decides nothing", async () => {
     const key = await apiKey();
     const asked = await ask({ id: "n1" }, key);
     const page = await rowOf(asked.approval.id);
 
-    // The repeated request, through the code that requests, holds the store's
-    // lock until the click's statement waits for it.
+    // The repeated request, through the code that requests, holds the
+    // approval's row until the click's statement waits for it.
     let release: () => void = () => {};
     const held = new Promise<void>((resolve) => {
       release = resolve;
@@ -890,7 +918,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     });
     await repeatedNow;
     const click = failure(decide(asked.approval.id, "approve", { revision: page.revision }));
-    await lockWait("%`stores`%for update%");
+    await lockWait("%from `api_handoffs`%for update%");
     release();
     await repeat;
     const refusal = await click;
@@ -900,6 +928,188 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(row.revision, page.revision + 1);
     assert.equal(row.bindingHash, page.bindingHash);
     assert.equal(row.decision, null);
+  });
+
+  /** The actor a key's call resolves to, for the request's code called directly. */
+  const actorOf = (key: Key, kind: "api_key" | "session" = "api_key") => ({
+    transport: "mcp" as const,
+    isPlatformAdmin: false,
+    storeId: STORE,
+    credential: {
+      kind,
+      id: kind === "session" ? null : key.id,
+      clientName: "Store agent",
+      userId: OWNER,
+      email: null,
+      storeId: STORE,
+      stores: null,
+      scopes: null,
+      confirmSensitive: true,
+      bundles: null,
+    },
+  });
+
+  const requestOf = (tx: Parameters<typeof approvals.requestApproval>[0]["tx"], key: Key) => ({
+    tx,
+    actor: actorOf(key),
+    procedure: PROCEDURE,
+    input: { id: "n1", consequences: ["money"], amount: 40 },
+    preview: { summary: "Erase note n1 of Roscoff Voile." },
+    consequences: ["money"] as ["money"],
+    facts: { id: "n1", amount: 40, recipient: null },
+    scope: { domain: "categories" as const, level: "write" as const, role: "delete" as const },
+    bindingHash: "b".repeat(64),
+    urls: ports.urls,
+    presented: null,
+  });
+
+  /** Holds a row's lock (`lock`) in a transaction of the test's until `release` is called. */
+  function holdLock(
+    lock: (tx: Parameters<Parameters<typeof louezDb.db.transaction>[0]>[0]) => Promise<unknown>,
+  ) {
+    let release: () => void = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let ready: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const done = louezDb.db.transaction(async (tx) => {
+      await lock(tx);
+      ready();
+      await released;
+    });
+    return { held, release, done };
+  }
+
+  test("a request takes no store lock: a writer holding the store row, then waiting for the request's domain lock, does not deadlock", async () => {
+    const key = await apiKey();
+    await louezDb.db
+      .insert(louezDb.categories)
+      .values({ id: "ap_category_00000001", storeId: STORE, name: "Dériveurs" });
+    // A writer in the order products and settings take: the store row first,
+    // then (once released) the domain lock the request takes.
+    let release: () => void = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let ready: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const writer = louezDb.db.transaction(async (tx) => {
+      await tx
+        .select({ id: louezDb.stores.id })
+        .from(louezDb.stores)
+        .where(orm.eq(louezDb.stores.id, STORE))
+        .for("update");
+      ready();
+      await released;
+      await tx
+        .select({ id: louezDb.categories.id })
+        .from(louezDb.categories)
+        .where(orm.eq(louezDb.categories.storeId, STORE))
+        .for("update");
+    });
+    await held;
+    // The request takes its domain lock (the store's categories), then asks.
+    const request = failure(erase({ id: "n1" }, key.context()));
+    const settled = await Promise.race([
+      request.then(() => "answered" as const),
+      lockWait("%from `stores`%for update%").then(() => "waits for the store row" as const),
+    ]);
+    release();
+    assert.equal(settled, "answered", "the request completes while the store row is held");
+    assert.equal((await request).code, "APPROVAL_REQUIRED");
+    await writer; // no deadlock was raised
+    assert.equal((await rows()).length, 1);
+  });
+
+  test("a request that waits for its credential while the person approves finds the approval approved, and leaves it", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    const holder = holdLock((tx) =>
+      tx
+        .select({ id: louezDb.apiKeys.id })
+        .from(louezDb.apiKeys)
+        .where(orm.eq(louezDb.apiKeys.id, key.id))
+        .for("update"),
+    );
+    await holder.held;
+    const again = failure(erase({ id: "n1" }, key.context()));
+    await lockWait("%from `api_keys`%for update%");
+    // The decision takes no credential lock: it goes through meanwhile.
+    await decide(asked.approval.id, "approve");
+    const approved = await rowOf(asked.approval.id);
+    holder.release();
+    await holder.done;
+    const answer = await again;
+    assert.equal(answer.code, "APPROVAL_REQUIRED");
+    assert.equal((answer.details.approval as ApprovalDetails).status, "approved");
+    assert.deepEqual(await rowOf(asked.approval.id), approved, "left as decided");
+  });
+
+  test("the unique key's backstop: an open row of the identity the credential's read cannot see is the same request", async () => {
+    const key = await apiKey();
+    const other = await apiKey();
+    const subject = approvals.approvalIdentity({
+      credential: { kind: "api_key", id: key.id },
+      storeId: STORE,
+      procedure: PROCEDURE,
+      facts: { id: "n1", amount: 40, recipient: null },
+    });
+    // A writer that never took the credential's lock, and wrote the identity
+    // under another credential's columns.
+    const now = new Date();
+    await louezDb.db.insert(louezDb.apiHandoffs).values({
+      storeId: STORE,
+      kind: "operation_approval",
+      subject,
+      procedure: PROCEDURE,
+      bindingHash: "c".repeat(64),
+      payload: {
+        input: {},
+        preview: { summary: "Planted." },
+        scope: { domain: "categories", level: "write", role: "delete" },
+        consequences: ["money"],
+      },
+      status: "pending",
+      activeSlot: 1,
+      userId: OWNER,
+      credentialKind: "api_key",
+      credentialId: other.id,
+      clientName: null,
+      tokenHash: null,
+      linkIssuedAt: now,
+      expiresAt: new Date(now.getTime() + LIFETIME.actMs),
+    });
+    const [planted] = await rows();
+    assert.ok(planted);
+    const asked = await ask({ id: "n1" }, key);
+    assert.equal(asked.approval.id, planted.id, "the open approval of the identity");
+    assert.deepEqual(await rows(), [planted], "nothing written");
+  });
+
+  test("a credential without a row to lock requests nothing: a session's request fails", async () => {
+    const key = await apiKey();
+    await assert.rejects(
+      louezDb.db.transaction((tx) =>
+        approvals.requestApproval({ ...requestOf(tx, key), actor: actorOf(key, "session") }),
+      ),
+      /no row an approval's request can lock/,
+    );
+    assert.deepEqual(await rows(), []);
+  });
+
+  test("a revoked key's request, its credential locked, asks for nothing", async () => {
+    const key = await apiKey();
+    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
+    const refusal = await louezDb.db.transaction((tx) =>
+      approvals.requestApproval(requestOf(tx, key)),
+    );
+    assert.equal(refusal.data?.code, "UNAUTHENTICATED");
+    assert.deepEqual(await rows(), []);
   });
 
   // --- Refusals, cool-down, expiry ----------------------------------------------
@@ -974,36 +1184,98 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
 
   // --- Revocation -------------------------------------------------------------
 
-  test("a revoked connection ends its approvals, pending and approved; a decision racing it leaves it ended", async () => {
+  test("a revoked connection ends its approvals, pending and approved; another key's stay", async () => {
     const key = await apiKey();
     const pending = await ask({ id: "n1" }, key);
     const approved = await ask({ id: "n2" }, key);
     await decide(approved.approval.id, "approve");
-    const racing = await ask({ id: "n3" }, key);
     const other = await apiKey();
     const untouched = await ask({ id: "n1" }, other);
 
-    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
-    const [decision] = await Promise.allSettled([
-      decide(racing.approval.id, "approve"),
-      handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }),
-    ]);
-    for (const id of [pending.approval.id, approved.approval.id, racing.approval.id]) {
+    await revoke(key);
+    for (const id of [pending.approval.id, approved.approval.id]) {
       const row = await rowOf(id);
       assert.equal(row.status, "failed", id);
       assert.equal(row.failureCode, "connection_revoked", id);
       assert.equal(row.activeSlot, null, id);
     }
     assert.equal((await rowOf(approved.approval.id)).decision, "approved", "its decision stays");
-    if (decision?.status === "fulfilled") {
-      assert.equal((await rowOf(racing.approval.id)).decision, "approved");
-    }
     assert.equal((await rowOf(untouched.approval.id)).status, "pending", "another key's stays");
     // The revoked key no longer authenticates: its approval cannot be presented.
     const revoked = await failure(
       erase({ id: "n2" }, key.context({ "louez-confirmation": approved.approval.id })),
     );
     assert.equal(revoked.code, "UNAUTHENTICATED");
+  });
+
+  /** A key's revocation, as the dashboard's procedure runs it: the key, then its hand-offs. */
+  const revoke = async (key: Key) => {
+    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
+    await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id });
+  };
+
+  /**
+   * Holds the store row's lock until `release` is called: a decision past its
+   * first checks waits there, before its checks under the lock.
+   */
+  const holdStoreRow = () =>
+    holdLock((tx) =>
+      tx
+        .select({ id: louezDb.stores.id })
+        .from(louezDb.stores)
+        .where(orm.eq(louezDb.stores.id, STORE))
+        .for("update"),
+    );
+
+  test("revoked while the click waits for the store's lock, past its first checks: nothing is approved, and it ends revoked", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    const lock = holdStoreRow();
+    await lock.held;
+    // The click passes its first checks (the key still exists), then waits for the store's lock.
+    const click = failure(decide(asked.approval.id, "approve"));
+    await lockWait("%from `stores`%for update%");
+    // The revocation's first statement commits meanwhile; its hand-offs' comes after the click.
+    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
+    lock.release();
+    await lock.done;
+    const refusal = await click;
+    assert.equal(refusal.code, "HANDOFF_DECISION_INVALID");
+    assert.equal(refusal.details.reason, "not_allowed");
+    assert.equal((await rowOf(asked.approval.id)).decision, null, "nothing approved");
+    await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id });
+    const row = await rowOf(asked.approval.id);
+    assert.equal(row.status, "failed");
+    assert.equal(row.failureCode, "connection_revoked");
+    assert.equal(row.decision, null);
+  });
+
+  test("revoked whole while the click waits: the click finds it ended", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    const lock = holdStoreRow();
+    await lock.held;
+    const click = failure(decide(asked.approval.id, "approve"));
+    await lockWait("%from `stores`%for update%");
+    await revoke(key);
+    lock.release();
+    await lock.done;
+    assert.equal((await click).details.reason, "finished");
+    const row = await rowOf(asked.approval.id);
+    assert.equal(row.failureCode, "connection_revoked");
+    assert.equal(row.decision, null);
+  });
+
+  test("approved first, then revoked: the approved approval ends revoked, its decision kept", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    await decide(asked.approval.id, "approve");
+    await revoke(key);
+    const row = await rowOf(asked.approval.id);
+    assert.equal(row.status, "failed");
+    assert.equal(row.failureCode, "connection_revoked");
+    assert.equal(row.activeSlot, null);
+    assert.equal(row.decision, "approved");
   });
 
   // --- Caps -------------------------------------------------------------------
@@ -1089,6 +1361,33 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(full.details.limit, "store_open");
     // Another store is not full.
     await ask({ id: "n0" }, await apiKey({ storeId: OTHER_STORE }));
+  });
+
+  test("the store's cap, counted without a lock, is passed by at most one approval per connection requesting at once", async () => {
+    const keys: Key[] = [];
+    for (let index = 0; index < 8; index += 1) keys.push(await apiKey());
+    for (const [position, key] of keys.slice(0, 5).entries()) {
+      const count =
+        position === 4 ? approvals.MAX_PENDING_APPROVALS - 1 : approvals.MAX_PENDING_APPROVALS;
+      for (let index = 0; index < count; index += 1) await ask({ id: `n${index}` }, key);
+    }
+    const before = approvals.MAX_STORE_PENDING_APPROVALS - 1;
+    assert.equal((await rows()).length, before);
+    const racing = keys.slice(5);
+    const answers = await Promise.all(
+      racing.map((key) => failure(erase({ id: "n-race" }, key.context()))),
+    );
+    for (const answer of answers) {
+      assert.ok(["APPROVAL_REQUIRED", "APPROVALS_FULL"].includes(answer.code ?? ""), answer.code);
+    }
+    const created = answers.filter((answer) => answer.code === "APPROVAL_REQUIRED").length;
+    assert.ok(created >= 1, "the first fits");
+    const open = (await rows()).length;
+    assert.ok(open <= before + racing.length, `${open}: at most one per racing connection`);
+    // Once they are counted, the next one waits.
+    const after = await failure(erase({ id: "n-after" }, keys[5]?.context() ?? session()));
+    assert.equal(after.code, "APPROVALS_FULL");
+    assert.equal(after.details.limit, "store_open");
   });
 
   // --- The request path's own guards ------------------------------------------------
@@ -1215,5 +1514,72 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       items.map((item) => item.id),
       [`approval_waiting:${again.approval.id}`],
     );
+  });
+
+  test("approval_waiting: a connection that no longer reads the approval's domain no longer sees it, nor reads it", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    await shown(asked.approval.id);
+    assert.equal((await inbox(key.context())).length, 1);
+    // The key's rights narrowed: categories no longer read.
+    await louezDb.db
+      .update(louezDb.apiKeys)
+      .set({ permissions: { ...rights, categories: "none" } })
+      .where(orm.eq(louezDb.apiKeys.id, key.id));
+    assert.deepEqual(await inbox(key.context()), []);
+    assert.equal((await failure(get(asked.approval.id, key.context()))).code, "HANDOFF_NOT_FOUND");
+  });
+
+  // --- The clocks ----------------------------------------------------------------
+
+  /**
+   * Runs `check` with the application's clock moved by `offsetMs` from the
+   * database's: an approval's times are read on the database's clock alone.
+   */
+  async function withApplicationClock(offsetMs: number, check: () => Promise<void>) {
+    mock.timers.enable({ apis: ["Date"], now: Date.now() + offsetMs });
+    try {
+      await check();
+    } finally {
+      mock.timers.reset();
+    }
+  }
+
+  test("the application's clock ahead of the database's: an approval still in time reads pending and is decided", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    await shown(asked.approval.id);
+    await withApplicationClock(LIFETIME.actMs + 3_600_000, async () => {
+      assert.equal((await get(asked.approval.id, key.context())).status, "pending");
+      const page = await handoffs.readHandoffLink(asked.approval.id, OWNER);
+      assert.equal(page.ok, true, "the page");
+      const [item] = await inbox(key.context());
+      assert.equal(item?.details.status, "pending", "the inbox");
+      assert.equal((await decide(asked.approval.id, "approve")).decision, "approved");
+      // Approved: its hour is read on the database's clock too.
+      assert.equal((await get(asked.approval.id, key.context())).status, "approved");
+      const answer = await ask({ id: "n1" }, key);
+      assert.equal(answer.approval.status, "approved", "a request");
+    });
+  });
+
+  test("the application's clock behind the database's: an approval past its day reads expired and is decided by nobody", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    await age(asked.approval.id, LIFETIME.actMs + 60_000);
+    await withApplicationClock(-(LIFETIME.actMs + 3_600_000), async () => {
+      assert.equal((await get(asked.approval.id, key.context())).status, "expired");
+      const page = await handoffs.readHandoffLink(asked.approval.id, OWNER);
+      assert.equal(page.ok === false && page.reason, "expired", "the page");
+      const [item] = await inbox(key.context());
+      assert.equal(item?.details.status, "expired", "the inbox");
+      const refusal = await failure(decide(asked.approval.id, "approve"));
+      assert.equal(refusal.details.reason, "expired", "the decision's first checks");
+      const presented = await failure(
+        erase({ id: "n1" }, key.context({ "louez-confirmation": asked.approval.id })),
+      );
+      assert.deepEqual(presented.details, { reason: "expired" }, "a presented id");
+    });
+    assert.equal((await rowOf(asked.approval.id)).decision, null);
   });
 });

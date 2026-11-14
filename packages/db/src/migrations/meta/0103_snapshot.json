@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "15e6a2fc-a0a5-4a36-a694-096b9471875e",
+  "id": "5c4d4946-20ec-4234-b681-8a63d68d62a8",
   "prevId": "f2d35fd6-b265-49d9-9dcc-d37921c48a47",
   "tables": {
     "account_departure_reason_counters": {
@@ -1733,6 +1733,17 @@
           "name": "api_handoffs_updated_idx",
           "columns": [
             "updated_at"
+          ],
+          "isUnique": false
+        },
+        "api_handoffs_credential_idx": {
+          "name": "api_handoffs_credential_idx",
+          "columns": [
+            "credential_kind",
+            "credential_id",
+            "store_id",
+            "kind",
+            "created_at"
           ],
           "isUnique": false
         }

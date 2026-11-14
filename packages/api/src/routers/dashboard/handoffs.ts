@@ -18,10 +18,12 @@ import { decideHandoff } from "../../services/handoff-decisions";
 import {
   HANDOFF_CHECK_LEASE_SECONDS,
   getHandoffRow,
+  connectionReadsApproval,
   handoffDomain,
   handoffView,
   issueHandoff,
   settlePendingCardSetup,
+  stepNow,
   upgradeStoredView,
 } from "../../services/handoffs";
 import { mayRead, type ProductContext } from "./product-context";
@@ -47,16 +49,17 @@ const OTHER_DOMAINS = API_DOMAINS.filter((domain) => domain !== "settings");
  * The store's step, for a caller who reads its domain. A step of a domain the
  * caller does not read answers as an id no step has: an id says nothing to
  * who may not read the step. An operation's approval is read by the
- * connection that asked for it, and by nobody else on any transport, its
- * domain's readers included: it holds the request's input and preview, which
- * are that connection's (its approver reads it on its page, signed in).
+ * connection that asked for it while it reads its domain
+ * (`connectionReadsApproval`), and by nobody else on any transport, its
+ * domain's other readers included: it holds the request's input and
+ * preview, which are that connection's (its approver reads it on its page,
+ * signed in).
  */
 async function readableHandoff(context: Pick<ProductContext, "actor">, id: string) {
   const row = await getHandoffRow(context.actor.storeId, id);
-  const { credential } = context.actor;
   if (
     row.kind === "operation_approval" &&
-    (row.credentialKind !== credential.kind || row.credentialId !== credential.id)
+    !connectionReadsApproval(context.actor.credential, row, (domain) => mayRead(context, domain))
   ) {
     throw handoffErrors.notFound(id);
   }
@@ -99,7 +102,8 @@ const get = storeProcedure
   .output(getHandoffOutput)
   .handler(async ({ context, input }) => {
     const { row } = await readableHandoff(context, input.id);
-    return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
+    const now = await stepNow(row, new Date());
+    return handoffView(row, { now, urls: context.ports.urls, store: context.store });
   });
 
 /** Settling a step saves what the user did there: the right to change its domain. */
@@ -154,7 +158,8 @@ const refresh = storeProcedure
       await refreshableHandoff(context.actor, input.id),
       context.ports,
     );
-    return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
+    const now = await stepNow(row, new Date());
+    return handoffView(row, { now, urls: context.ports.urls, store: context.store });
   });
 
 /**

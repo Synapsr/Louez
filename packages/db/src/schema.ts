@@ -4645,6 +4645,19 @@ export const apiHandoffs = mysqlTable(
     storeIdx: index("api_handoffs_store_idx").on(table.storeId, table.createdAt),
     // The retention deletes the oldest first.
     updatedIdx: index("api_handoffs_updated_idx").on(table.updatedAt),
+    /**
+     * A connection's own steps, led by the credential: an approval's request
+     * reads its connection's approvals through it under that credential's
+     * row lock, so the ranges it locks are that connection's alone
+     * (packages/api services/approvals.ts); a revocation ends them through it.
+     */
+    credentialIdx: index("api_handoffs_credential_idx").on(
+      table.credentialKind,
+      table.credentialId,
+      table.storeId,
+      table.kind,
+      table.createdAt,
+    ),
   }),
 );
 

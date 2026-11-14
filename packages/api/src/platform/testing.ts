@@ -2,7 +2,7 @@
  * A fixture router for the transport tests (exposure, OpenAPI, MCP bridge,
  * parity). Not served by the app.
  */
-import { db, stores } from "@louez/db";
+import { categories, db, stores } from "@louez/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -122,6 +122,13 @@ export function createFixtureRouter(options: { liveConsequences?: readonly Conse
           .from(stores)
           .where(eq(stores.id, context.actor.storeId));
         if (!store) throw platformErrors.noStore();
+        // Its domain's lock, taken before it asks, as a write under its lock
+        // does: the store's categories.
+        await tx
+          .select({ id: categories.id })
+          .from(categories)
+          .where(eq(categories.storeId, context.actor.storeId))
+          .for("update");
         const refusal = await checkConfirmation({
           consequences: input.consequences,
           executor: tx,

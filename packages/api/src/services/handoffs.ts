@@ -28,6 +28,7 @@ import {
   type StepKind,
 } from "../contracts/handoffs";
 import { mayApprove } from "../platform/approval-rule";
+import { databaseNow } from "../platform/database-clock";
 import { isApiError, platformErrors, readAfterCommit } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import { logProviderError } from "../platform/sanitize-error";
@@ -106,6 +107,32 @@ export function approvalPayloadOf(
     return null;
   }
   return row.payload as ApprovalPayload;
+}
+
+/**
+ * Whether a connection reads an approval: the one that asked for it, while
+ * it reads the approval's procedure domain. `handoffs_get` and the inbox
+ * give an approval to a connection by this rule alone.
+ */
+export function connectionReadsApproval(
+  credential: { kind: string; id: string | null },
+  row: Pick<HandoffRow, "kind" | "payload" | "credentialKind" | "credentialId">,
+  reads: (domain: ApiDomain) => boolean,
+): boolean {
+  if (row.kind !== "operation_approval") return false;
+  if (row.credentialKind !== credential.kind || row.credentialId !== credential.id) return false;
+  const domain = handoffDomain(row);
+  return domain !== null && reads(domain);
+}
+
+/**
+ * The clock a step's times are read on. An approval's rules date and read
+ * its times on the database's clock (services/approvals.ts), so every reader
+ * of an approval does too; the other kinds keep the clock they are given,
+ * the application's, as before.
+ */
+export async function stepNow(row: Pick<HandoffRow, "kind">, now: Date): Promise<Date> {
+  return row.kind === "operation_approval" ? databaseNow() : now;
 }
 
 /** An invitation's payload, or null for another kind. */
@@ -696,9 +723,11 @@ async function rowOfLink(link: string) {
  * repeated request or another user starting over raises the revision, so a
  * click on a page that showed an earlier one changes nothing; and a step
  * that became another user's is never changed by the user it was shown to,
- * whatever its revision. Every write that raises the revision holds the
- * row's lock under the store row's lock, so the comparison and the raise
- * are ordered.
+ * whatever its revision. Every write that raises a provider step's or an
+ * invitation's revision holds the row's lock under the store row's lock, so
+ * the comparison and the raise are ordered. (An approval's request raises
+ * its revision under its credential's lock, and its decision compares it in
+ * a conditional statement on the row: services/approvals.ts.)
  */
 export const atShownRevision = (id: string, revision: number, userId: string) =>
   and(eq(apiHandoffs.id, id), eq(apiHandoffs.revision, revision), eq(apiHandoffs.userId, userId));
@@ -774,7 +803,7 @@ export async function readHandoffLink(
   const row = await rowOfLink(link);
   if (!row) return { ok: false, reason: "invalid", row: null };
   if (!isStepUser(row, userId)) return NOT_THEIRS;
-  const status = statusOf(row, now);
+  const status = statusOf(row, await stepNow(row, now));
   if (status === "completed" || status === "failed") return { ok: false, reason: "finished", row };
   if (status === "expired") return { ok: false, reason: "expired", row };
   return checkUser(row, userId);

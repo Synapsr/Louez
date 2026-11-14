@@ -67,6 +67,9 @@ const readerOf = async (context: ProductContext): Promise<InboxReader> => {
     hostedBy: context.ports.hostedBy?.() ?? null,
     reads: reads(context),
     operationsOf: credential.kind === "session" ? null : (credential.id ?? credential.userId),
+    ...(credential.kind === "session"
+      ? {}
+      : { connection: { kind: credential.kind, id: credential.id } }),
     withheld: credential.withheld?.capabilities,
     withheldProcedures: await withheldProcedurePaths(credential.withheld),
     log: context.ports.log,
