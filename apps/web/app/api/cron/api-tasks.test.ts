@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 
+import { closeNetworkForSuite } from "@/lib/testing/network-guard";
+
+closeNetworkForSuite();
+
 // Each task's function is replaced by one that names it, so the test reads
 // which function each task runs without a database or the senders' modules.
 const called: string[] = [];

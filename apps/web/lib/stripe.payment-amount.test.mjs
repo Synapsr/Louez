@@ -5,6 +5,9 @@ import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 
 const { validateStripePaymentAmount } = createRequire(import.meta.url)("@louez/utils");
+const { closeNetworkForSuite } = createRequire(import.meta.url)("./testing/network-guard.ts");
+
+closeNetworkForSuite();
 const source = readFileSync(new URL("./stripe.ts", import.meta.url), "utf8");
 // The sessions' lifetime, as the module declares it.
 const CHECKOUT_SESSION_LIFETIME_SECONDS = runInNewContext(

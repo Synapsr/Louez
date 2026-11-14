@@ -13,6 +13,8 @@ import {
   waitForLockWaits,
 } from "@louez/db/testing";
 
+import { closeNetworkForSuite } from "@/lib/testing/network-guard";
+
 // The customer's online payment of a reservation: charged in the reservation's
 // currency, frozen when it was made, whatever the store's is now, and only a
 // payment in that currency has paid it (invariants M2 and M6). A resumed
@@ -67,6 +69,9 @@ const SLUG = "pay-session";
 const CUSTOMER = "customer_pay_session";
 
 describe("the customer's payment session (database)", { skip: skipWithoutTestDatabase() }, () => {
+  // No test of this suite reaches a provider: Stripe is a fake.
+  closeNetworkForSuite();
+
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let paymentSession: typeof import("./payment-session");

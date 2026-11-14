@@ -42,7 +42,8 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Abandoned checkouts: every minute, before the API effects. An online checkout
  *   still pending whose newest session is past its lifetime and less than 48 hours
  *   old: its sessions are read at Stripe, a paid one recorded, and a checkout whose
- *   sessions all expired cancelled; at most 20 a run (lib/reservations/abandoned-checkouts.ts)
+ *   sessions all expired cancelled; at most 20 a run, drawn at random
+ *   (lib/reservations/abandoned-checkouts.ts)
  * - API effects: every minute, alongside the other tasks so none of them holds it back
  *   (retries the outbox rows of committed writes: customer messages, notifications,
  *   analytics events; deletes done rows after 30 days; packages/api platform/effects.ts)

@@ -13,6 +13,8 @@ import {
   waitForLockWaits,
 } from "@louez/db/testing";
 
+import { closeNetworkForSuite } from "@/lib/testing/network-guard";
+
 // The marketplace's checkout through its adapter and the customer's payment
 // session, on a migrated database, against the marketplace's failure of the
 // same booking. The checkout holds the booking's attempt while its adapter
@@ -62,6 +64,8 @@ describe(
   "the marketplace's checkout and its failure (database)",
   { skip: skipWithoutTestDatabase() },
   () => {
+    // No test of this suite reaches a provider: Stripe is a fake.
+    closeNetworkForSuite();
     let database: TestDatabase;
     let louezDb: typeof import("@louez/db");
     let services: typeof import("@louez/api/services");

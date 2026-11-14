@@ -19,6 +19,8 @@ import {
   waitForLockWaits,
 } from "@louez/db/testing";
 
+import { closeNetworkForSuite } from "@/lib/testing/network-guard";
+
 // The Connect webhook's `checkout.session.expired` on a migrated database, its
 // POST run whole: the session's payment cancelled with its `payment_expired`
 // row, the marketplace attempt failed, then the abandoned checkout cancelled,
@@ -148,6 +150,9 @@ const WRITE_LOG = [
 ];
 
 describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase() }, () => {
+  // No test of this suite reaches a provider: Stripe and the senders are fakes.
+  closeNetworkForSuite();
+
   let database: TestDatabase;
   let raw: Connection;
   let louezDb: typeof import("@louez/db");

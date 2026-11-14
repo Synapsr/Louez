@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
 import { after, afterEach, before, describe, test } from "node:test";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import {
   createTestDatabase,
@@ -11,10 +11,12 @@ import {
   type TestDatabase,
 } from "@louez/db/testing";
 
+import { closeNetworkForSuite, withoutProviderSettings } from "@/lib/testing/network-guard";
+
 // The cron's pass over abandoned online checkouts, on a migrated database: what
 // it looks at (an online checkout still pending, no rental payment completed,
 // its newest session past a session's lifetime and a margin, and under 48
-// hours old, at most a batch a run, oldest first), what it reads at Stripe
+// hours old, at most a batch a run, drawn at random), what it reads at Stripe
 // (every unsettled session, never expired), and what it records (a paid session
 // as the customer's return records it; every session expired, each pending row
 // as the expiry handler records it, then the checkout's cancellation), against
@@ -23,7 +25,8 @@ import {
 
 process.env.SKIP_ENV_VALIDATION = "true";
 process.env.STRIPE_SECRET_KEY = "sk_test_stub";
-delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
+// The completion's senders run for real here: unconfigured, they reach no provider.
+withoutProviderSettings();
 // The store is billed by nobody here: no fee is planned, and none is asked of a service.
 delete process.env.LOUEZ_BILLING;
 delete process.env.BILLING_SERVICE_URL;
@@ -64,6 +67,8 @@ describe(
   "the pass over abandoned checkouts (database)",
   { skip: skipWithoutTestDatabase() },
   () => {
+    // No test of this suite reaches a provider: Stripe is a fake.
+    closeNetworkForSuite();
     let database: TestDatabase;
     let louezDb: typeof import("@louez/db");
     let pass: typeof import("./abandoned-checkouts");
@@ -75,6 +80,8 @@ describe(
     const stripeCalls: string[] = [];
     /** Runs as Stripe is asked something: a test's moment. */
     let onStripeCall: ((call: string) => Promise<void>) | null = null;
+    /** The pass's run lines, as it logs them. */
+    const runLines: Array<Record<string, unknown>> = [];
 
     before(async () => {
       database = await createTestDatabase("abandoned_checkouts");
@@ -82,6 +89,11 @@ describe(
       louezDb = await import("@louez/db");
       paymentSession = await import("./payment-session");
       pass = await import("./abandoned-checkouts");
+      // The pass's log: its run lines are kept, every other line dropped.
+      const { log } = await import("@/lib/evlog");
+      Reflect.set(log, "warn", (event: { abandonedCheckouts?: Record<string, unknown> }) => {
+        if (event.abandonedCheckouts) runLines.push(event.abandonedCheckouts);
+      });
       const { getStripe } = await import("@/lib/stripe/client");
       const sessions = getStripe().checkout.sessions;
       const call = async (name: string) => {
@@ -149,6 +161,7 @@ describe(
 
     afterEach(async () => {
       atStripe.clear();
+      runLines.length = 0;
       stripeCalls.length = 0;
       onStripeCall = null;
       // Each case leaves nothing for the next one's pass to look at.
@@ -331,10 +344,9 @@ describe(
       assert.equal((await stateOf(old.id)).status, "pending");
     });
 
-    test("at most a batch a run, oldest first", async () => {
+    test("at most a batch a run", async () => {
       const checkouts = [];
       for (let index = 0; index <= pass.ABANDONED_CHECKOUTS_PER_RUN; index += 1) {
-        // The first is the youngest.
         checkouts.push(await checkout([{ status: "pending", age: (40 + index) * MINUTE }]));
       }
 
@@ -344,9 +356,40 @@ describe(
       );
 
       assert.equal(stripeCalls.length, pass.ABANDONED_CHECKOUTS_PER_RUN);
-      const [youngest, ...others] = checkouts;
-      assert.equal((await stateOf(String(youngest?.id))).status, "pending", "the youngest waits");
-      for (const { id } of others) assert.equal((await stateOf(id)).status, "cancelled");
+      const statuses = await Promise.all(
+        checkouts.map(async ({ id }) => (await stateOf(id)).status),
+      );
+      assert.equal(statuses.filter((status) => status === "pending").length, 1, "one waits");
+    });
+
+    test("checkouts that stay unreadable do not keep another out: drawn at random, it is settled within a few runs; each run logs one line", async () => {
+      // More unreadable checkouts than a batch, all older than the readable one,
+      // which a batch drawn oldest first would never reach.
+      const unreadable = pass.ABANDONED_CHECKOUTS_PER_RUN + 5;
+      for (let index = 0; index < unreadable; index += 1) {
+        const { sessions } = await checkout([{ status: "pending", age: (50 + index) * MINUTE }]);
+        atStripe.set(String(sessions[0]), "unreachable");
+      }
+      const readable = await checkout([{ status: "pending", age: 40 * MINUTE }]);
+
+      // The draw is RAND(seed), one seed a run, so the runs are the same each
+      // time. With 26 checkouts and a batch of 20, a checkout is left out of a
+      // run drawn at random with probability 6/26, and out of 19 runs with
+      // (6/26)^19, under 1e-12: 19 runs bound the wait.
+      const bound = 19;
+      let runs = 0;
+      while ((await stateOf(readable.id)).status === "pending" && runs < bound) {
+        runs += 1;
+        await pass.settleAbandonedCheckouts({ order: sql`RAND(${runs})` });
+      }
+
+      assert.equal((await stateOf(readable.id)).status, "cancelled", `within ${bound} runs`);
+      assert.equal(runLines.length, runs, "one line a run");
+      for (const line of runLines) {
+        assert.equal(line.event, "run_skipped");
+        assert.ok(Number(line.unreadable) > 0);
+        assert.ok((line.reservationIds as string[]).length <= 5, JSON.stringify(line));
+      }
     });
 
     test("two runs at once: each record written once, the checkout cancelled once", async () => {

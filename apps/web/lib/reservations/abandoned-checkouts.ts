@@ -1,4 +1,4 @@
-import { type SQL, and, asc, eq, exists, gt, gte, isNotNull, notExists, sql } from "drizzle-orm";
+import { type SQL, and, eq, exists, gt, gte, isNotNull, notExists, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 
 import {
@@ -33,8 +33,22 @@ const LOOK_AFTER_LIFETIME_MS = 5 * 60 * 1000;
  * before the pass existed, is not looked at.
  */
 const ABANDONED_CHECKOUT_REACH_MS = 48 * 60 * 60 * 1000;
-/** Most checkouts one run looks at, oldest first. */
+/** Most checkouts one run looks at, drawn at random from those in the window. */
 export const ABANDONED_CHECKOUTS_PER_RUN = 20;
+/** Most reservation ids a run's log line names. */
+const LOGGED_IDS_PER_RUN = 5;
+
+/**
+ * The order a run draws its batch in: at random, so checkouts that stay
+ * unreadable (a store whose Stripe account is gone) cannot hold every run while
+ * others wait. With N checkouts in the window and a batch of B, one is left out
+ * of a run with probability 1 - B/N, and out of k runs with (1 - B/N)^k. MySQL
+ * sorts only the filtered set: the pending online checkouts whose newest session
+ * is in the 48-hour window, found through `reservations_status_idx` (the status)
+ * and `payments_reservation_idx` (each reservation's payments), so a sort by
+ * RAND() stays small.
+ */
+const RANDOM_ORDER = sql`RAND()`;
 
 export type AbandonedCheckoutOutcome = "confirmed" | "cancelled" | "left" | "unreadable";
 
@@ -42,10 +56,10 @@ export type AbandonedCheckoutOutcome = "confirmed" | "cancelled" | "left" | "unr
  * The online checkouts no event will settle: a reservation from the storefront's
  * online checkout, still `pending`, with no rental payment `completed`, whose
  * newest rental session was created more than a session's lifetime and a margin
- * ago and less than 48 hours ago, oldest first. The age decides only when the
- * pass looks; Stripe says what became of each session.
+ * ago and less than 48 hours ago, a batch in `order` (at random). The age
+ * decides only when the pass looks; Stripe says what became of each session.
  */
-export async function findAbandonedCheckouts(now: Date) {
+export async function findAbandonedCheckouts(now: Date, order: SQL = RANDOM_ORDER) {
   const lookBefore = new Date(
     now.getTime() - CHECKOUT_SESSION_LIFETIME_SECONDS * 1000 - LOOK_AFTER_LIFETIME_MS,
   );
@@ -87,11 +101,7 @@ export async function findAbandonedCheckouts(now: Date) {
         notExists(sessionRows(gte(sessionRow.createdAt, lookBefore))),
       ),
     )
-    .orderBy(
-      asc(
-        sql`(SELECT MAX(newest.created_at) FROM payments newest WHERE newest.reservation_id = ${reservations.id} AND newest.payment_type = 'rental' AND newest.stripe_checkout_session_id IS NOT NULL)`,
-      ),
-    )
+    .orderBy(order)
     .limit(ABANDONED_CHECKOUTS_PER_RUN);
 }
 
@@ -183,11 +193,16 @@ export async function settleAbandonedCheckout(checkout: {
 
 /**
  * The cron's pass over abandoned checkouts. Each checkout is its own unit: one
- * that fails is logged and the others go on. It holds no transaction across a
+ * that fails is counted and the others go on. It holds no transaction across a
  * Stripe call, and two runs at once write each record once: the conditional
- * updates and the reservation's lock make the second a no-op.
+ * updates and the reservation's lock make the second a no-op. A run that left
+ * checkouts unread or failed logs one line: its counts and a few of their ids.
+ * `order` is for tests, to draw the batch deterministically.
  */
-export async function settleAbandonedCheckouts(now: Date = new Date()) {
+export async function settleAbandonedCheckouts({
+  now = new Date(),
+  order,
+}: { now?: Date; order?: SQL } = {}) {
   const counts: Record<AbandonedCheckoutOutcome | "failed", number> = {
     confirmed: 0,
     cancelled: 0,
@@ -195,25 +210,30 @@ export async function settleAbandonedCheckouts(now: Date = new Date()) {
     unreadable: 0,
     failed: 0,
   };
-  for (const checkout of await findAbandonedCheckouts(now)) {
+  const skipped: string[] = [];
+  // The first failure's kind only: a provider's message may name an account.
+  let firstError: string | undefined;
+  for (const checkout of await findAbandonedCheckouts(now, order)) {
     try {
       const outcome = await settleAbandonedCheckout(checkout);
       counts[outcome] += 1;
-      if (outcome === "unreadable") {
-        log.warn({
-          abandonedCheckouts: { event: "sessions_unreadable", reservationId: checkout.id },
-        });
-      }
+      if (outcome === "unreadable") skipped.push(checkout.id);
     } catch (error) {
       counts.failed += 1;
-      log.error({
-        abandonedCheckouts: {
-          event: "checkout_failed",
-          reservationId: checkout.id,
-          error: error instanceof Error ? error.message : String(error),
-        },
-      });
+      skipped.push(checkout.id);
+      firstError ??= error instanceof Error ? error.name : "unknown";
     }
+  }
+  if (skipped.length > 0) {
+    log.warn({
+      abandonedCheckouts: {
+        event: "run_skipped",
+        unreadable: counts.unreadable,
+        failed: counts.failed,
+        reservationIds: skipped.slice(0, LOGGED_IDS_PER_RUN),
+        ...(firstError && { firstError }),
+      },
+    });
   }
   return counts;
 }

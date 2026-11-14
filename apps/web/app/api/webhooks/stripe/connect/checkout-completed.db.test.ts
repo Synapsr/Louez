@@ -11,6 +11,8 @@ import type Stripe from "stripe";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import { closeNetworkForSuite, withoutProviderSettings } from "@/lib/testing/network-guard";
+
 // The Connect webhook's `checkout.session.completed` on a migrated database, its
 // POST run whole, for the account it hears (docs/domain/reservation-changes.md,
 // 6a-W2): a session whose payment row records the account it was created on is
@@ -23,6 +25,10 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 // signature check, the log, the fee runner, the platform's fees, the senders,
 // the invoicing and Stripe are replaced; the webhook's Stripe answers the
 // PaymentIntent and fails on any other call.
+
+// The completion's senders run for real here (the stubs below do not reach that
+// module's own imports): unconfigured, they reach no provider.
+withoutProviderSettings();
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-completed-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -142,6 +148,9 @@ const PREVIOUS_ACCOUNT = "acct_checkout_completed_previous";
 const TODAY_ACCOUNT = "acct_checkout_completed_today";
 
 describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabase() }, () => {
+  // No test of this suite reaches a provider: Stripe is a fake, the senders unconfigured.
+  closeNetworkForSuite();
+
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let route: typeof import("./route");
