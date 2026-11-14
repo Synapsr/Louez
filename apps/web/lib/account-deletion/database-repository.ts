@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHmac } from "node:crypto";
 
-import { db, isBillingSyncEnabled, markBillingDirty } from "@louez/db";
+import { db, isBillingSyncEnabled, lockStoreProductRows, markBillingDirty } from "@louez/db";
 import * as schema from "@louez/db";
 import type { BillingMark, Transaction } from "@louez/db";
 import { type Column, and, count, eq, gt, inArray, ne, notInArray, or, sql } from "drizzle-orm";
@@ -548,8 +548,30 @@ const purgeOwnedData = async (
     }
 
     await beforePurge();
+    // The purge's locks, in this order: the stores' products, then their
+    // reservations, then the reservations' rows as it deletes them. A status change
+    // that moves stock, the unit assignment, the move and the extension take a
+    // reservation's products, then the reservation (`lockReservationInTransaction`);
+    // the expired checkout, the reservation, its payment, then its history. Each
+    // store's products are taken by id, through the store's index, as those take
+    // them; with the billing service, before `lockFinalSnapshotFacts` runs.
+    for (const storeId of [...storeIds].sort()) {
+      await lockStoreProductRows(transaction, storeId);
+    }
     // Before the first plain read, which fixes what the closing snapshots see.
     await lockFinalSnapshotFacts(transaction, storeIds);
+    // The stores' reservations, by id, with the billing service or without; with it,
+    // `lockFinalSnapshotFacts` has locked them already.
+    const reservationRows =
+      storeIds.length > 0
+        ? await transaction
+            .select({ id: schema.reservations.id })
+            .from(schema.reservations)
+            .where(inArray(schema.reservations.storeId, storeIds))
+            .orderBy(schema.reservations.id)
+            .for("update")
+        : [];
+    const reservationIds = reservationRows.map((row) => row.id);
 
     // Read before the referral rows go; marked last, after the stores rows it updates.
     const otherMarks = await otherStoreBillingMarks(transaction, context.user.id, storeIds);
@@ -558,14 +580,6 @@ const purgeOwnedData = async (
 
     const legalRecordsRetained = await archiveLegalRecords(transaction, storeIds);
 
-    const reservationRows =
-      storeIds.length > 0
-        ? await transaction
-            .select({ id: schema.reservations.id })
-            .from(schema.reservations)
-            .where(inArray(schema.reservations.storeId, storeIds))
-        : [];
-    const reservationIds = reservationRows.map((row) => row.id);
     const customerRows =
       storeIds.length > 0
         ? await transaction

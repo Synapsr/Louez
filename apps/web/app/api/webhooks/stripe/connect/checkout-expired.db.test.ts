@@ -11,9 +11,12 @@ import type { Connection, RowDataPacket } from "mysql2/promise";
 
 import {
   createTestDatabase,
+  raceOnLockedRow,
+  raceOnOpenTransaction,
   reservationChangeTestHooks,
   skipWithoutTestDatabase,
   type TestDatabase,
+  waitForLockWaits,
 } from "@louez/db/testing";
 
 // The Connect webhook's `checkout.session.expired` on a migrated database, its
@@ -26,7 +29,14 @@ import {
 // (docs/domain/reservation-changes.md, 6a-4). The event acts on the payment
 // row its session names, on that row's reservation, sent by the account that
 // row records, or its store's for a row that records none (6a-W2): a metadata
-// reservation or an account other than those is logged and writes nothing.
+// reservation or an account other than those is logged and writes nothing. The
+// expiry is recorded by the delivery that moves the payment out of pending,
+// once; a payment request's session, which has no payment row, records its
+// expiry once per session; an event of the other mode than the deployment's key
+// writes nothing. Each write takes the reservation's row, then its payment, then
+// its history; the account deletion takes the store's products, then its
+// reservations, then their rows: the two run one after the other, billing sync off
+// as here, and a reservation gone by then is written nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -125,13 +135,17 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   let raw: Connection;
   let louezDb: typeof import("@louez/db");
   let route: typeof import("./route");
+  let deletion: typeof import("@/lib/account-deletion/database-repository");
   let counter = 0;
 
   before(async () => {
     database = await createTestDatabase("checkout_expired");
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_test";
+    // The deployment's key: a test one, so it hears test events.
+    process.env.STRIPE_SECRET_KEY = "sk_test_checkout_expired";
     louezDb = await import("@louez/db");
     route = await import("./route");
+    deletion = await import("@/lib/account-deletion/database-repository");
 
     raw = await database.connect();
     for (const statement of WRITE_LOG) await raw.query(statement);
@@ -224,12 +238,17 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     checkoutFlow: string | null = "storefront_checkout",
     // A delivery of its own, unless the test sends one event twice.
     eventId: string = nextId("evt"),
-    // The sending account, and the whole metadata, when not the session's own.
-    overrides: { account?: string | null; metadata?: Record<string, string> } = {},
+    // The sending account, the whole metadata and the mode, when not the session's own.
+    overrides: {
+      account?: string | null;
+      metadata?: Record<string, string>;
+      livemode?: boolean;
+    } = {},
   ) => {
     const event = {
       id: eventId,
       type: "checkout.session.expired",
+      livemode: overrides.livemode ?? false,
       // null: an event that names no account.
       ...(overrides.account !== null && { account: overrides.account ?? ACCOUNT }),
       data: {
@@ -375,7 +394,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     ]);
   });
 
-  test("the same event again: another payment_expired row, the checkout already cancelled, no fee effects", async () => {
+  test("the same event again writes nothing: one payment_expired row, the checkout already cancelled, no fee effects", async () => {
     const id = await booking();
     const sessionId = await sessionPayment(id);
     const eventId = nextId("evt");
@@ -388,9 +407,77 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       body: { received: true },
     });
 
-    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(await readWrites(id), []);
     assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
     assert.equal(await readStatus(id), "cancelled");
+    assert.equal(
+      (await readActivity(id)).filter((line) => line.activityType === "payment_expired").length,
+      1,
+    );
+  });
+
+  test("the same event twice at once: one delivery cancels the payment and writes its payment_expired row, the other writes nothing", async () => {
+    const id = await booking();
+    const sessionId = await sessionPayment(id);
+    const [payment] = await louezDb.db
+      .select({ id: louezDb.payments.id })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, sessionId));
+    const eventId = nextId("evt");
+
+    // Both deliveries read the payment pending, then wait on its row.
+    const answers = await raceOnLockedRow(database, { table: "payments", id: String(payment?.id) }, [
+      () => expire(id, sessionId, undefined, eventId),
+      () => expire(id, sessionId, undefined, eventId),
+    ]);
+
+    assert.deepEqual(answers, [
+      { status: 200, body: { received: true } },
+      { status: 200, body: { received: true } },
+    ]);
+    assert.deepEqual(await readWrites(id), [
+      "1: payments pending > cancelled",
+      "1: reservation_activity + payment_expired",
+      "2: reservations status pending > cancelled",
+      "2: reservation_activity + cancelled",
+    ]);
+    assert.equal(await readStatus(id), "cancelled");
+    // The delivery that moved the payment cancelled the checkout; the other did not.
+    const cancelledBy = calls
+      .filter(([name]) => name === "log.info")
+      .map(([, logged]) => (logged as { stripeWebhook: { reservationCancelled: boolean } }))
+      .map((logged) => logged.stripeWebhook.reservationCancelled);
+    assert.deepEqual(cancelledBy.sort(), [false, true]);
+  });
+
+  test("a live event under the deployment's test key: livemode_mismatch logged, nothing written", async () => {
+    const id = await booking();
+    const sessionId = await sessionPayment(id);
+    const eventId = nextId("evt");
+
+    assert.deepEqual(await expire(id, sessionId, undefined, eventId, { livemode: true }), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(calls, [
+      [
+        "log.error",
+        {
+          stripeWebhook: {
+            event: "checkout.session.expired",
+            issue: "livemode_mismatch",
+            stripeEventId: eventId,
+            objectId: sessionId,
+            accountId: ACCOUNT,
+            livemode: true,
+          },
+        },
+      ],
+    ]);
+    assert.equal(await readStatus(id), "pending");
+    assert.deepEqual(await readActivity(id), []);
   });
 
   test("a session of another flow cancels its payment and leaves the reservation", async () => {
@@ -413,14 +500,14 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     }
   });
 
-  test("a session whose payment was no longer pending (resumed or superseded) leaves the reservation", async () => {
+  test("a session whose payment was no longer pending (resumed or superseded): nothing written, the reservation left", async () => {
     for (const status of ["cancelled", "completed"] as const) {
       const id = await booking();
       const sessionId = await sessionPayment(id, status);
 
       await expire(id, sessionId);
 
-      assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+      assert.deepEqual(await readWrites(id), []);
       assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
       assert.equal(await readStatus(id), "pending");
       calls.length = 0;
@@ -592,18 +679,95 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     assert.equal(await readStatus(id), "pending");
   });
 
-  test("a session no payment row names (a payment request's): its payment_expired row on its store's reservation, nothing else", async () => {
+  /** A payment request's session metadata: its reservation and its request, no flow. */
+  const paymentRequest = (reservationId: string) => ({
+    metadata: { reservationId, paymentRequestId: nextId("prq") },
+  });
+
+  test("a payment request's session, which no payment row names: its payment_expired row on its store's reservation, nothing else", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+
+    assert.deepEqual(await expire(id, sessionId, null, undefined, paymentRequest(id)), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
+    assert.equal(await readStatus(id), "pending");
+    assert.deepEqual(await readActivity(id), [paymentExpired(sessionId)]);
+  });
+
+  test("a payment request's session expiry delivered again writes nothing: one payment_expired row", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+    const eventId = nextId("evt");
+    const metadata = paymentRequest(id);
+    await expire(id, sessionId, null, eventId, metadata);
+    calls.length = 0;
+    await raw.query("TRUNCATE TABLE test_writes");
+
+    assert.deepEqual(await expire(id, sessionId, null, eventId, metadata), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
+    assert.deepEqual(await readActivity(id), [paymentExpired(sessionId)]);
+  });
+
+  test("a payment request's session expiry delivered twice at once: one payment_expired row", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+    const eventId = nextId("evt");
+    const metadata = paymentRequest(id);
+
+    // Both deliveries have read the reservation, then wait on its row.
+    const answers = await raceOnLockedRow(database, { table: "reservations", id }, [
+      () => expire(id, sessionId, null, eventId, metadata),
+      () => expire(id, sessionId, null, eventId, metadata),
+    ]);
+
+    assert.deepEqual(answers, [
+      { status: 200, body: { received: true } },
+      { status: 200, body: { received: true } },
+    ]);
+    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(await readActivity(id), [paymentExpired(sessionId)]);
+  });
+
+  test("two expired sessions of a payment request's reservation: a payment_expired row each", async () => {
+    const id = await booking();
+    const first = nextId("cs");
+    const second = nextId("cs");
+
+    await expire(id, first, null, undefined, paymentRequest(id));
+    await expire(id, second, null, undefined, paymentRequest(id));
+
+    assert.deepEqual(await readWrites(id), [
+      "1: reservation_activity + payment_expired",
+      "2: reservation_activity + payment_expired",
+    ]);
+    const sessions = (await readActivity(id)).map(
+      (line) => (line.metadata as { checkoutSessionId: string }).checkoutSessionId,
+    );
+    assert.deepEqual(sessions.sort(), [first, second].sort());
+  });
+
+  test("a session no payment row and no payment request names: nothing written", async () => {
     const id = await booking();
     const sessionId = nextId("cs");
 
     assert.deepEqual(await expire(id, sessionId, null), { status: 200, body: { received: true } });
 
-    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(await readWrites(id), []);
     assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
     assert.equal(await readStatus(id), "pending");
   });
 
-  test("a session no payment row names leaves a marketplace booking and its attempt as they are", async () => {
+  test("a payment request's session, which no payment row names, leaves a marketplace booking and its attempt as they are", async () => {
     const id = await booking("marketplace");
     // The booking's own checkout, still open.
     await sessionPayment(id);
@@ -615,7 +779,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     );
     const otherSession = nextId("cs");
 
-    assert.deepEqual(await expire(id, otherSession, null), {
+    assert.deepEqual(await expire(id, otherSession, null, undefined, paymentRequest(id)), {
       status: 200,
       body: { received: true },
     });
@@ -750,6 +914,94 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
         ],
       ]);
       assert.equal(await readStatus(id), "pending");
+      calls.length = 0;
+    }
+  });
+  /** "committed", or the driver's error, such as a deadlock. */
+  const settle = (promise: Promise<unknown>) =>
+    promise.then(
+      () => "committed",
+      (error: unknown) => {
+        const cause = error instanceof Error ? error.cause : undefined;
+        if (cause instanceof Error) return cause.message;
+        return error instanceof Error ? error.message : String(error);
+      },
+    );
+
+  test("a payment request's expiry and the deletion of its store's account, at once: one after the other, no deadlock, nothing left of the reservation", async () => {
+    const userId = nextId("user");
+    const storeId = nextId("store_del");
+    const accountId = nextId("acct_del");
+    await louezDb.db.insert(louezDb.users).values({ id: userId, email: `${userId}@example.test` });
+    await louezDb.db.insert(louezDb.stores).values({
+      id: storeId,
+      userId,
+      name: "Deleted",
+      slug: storeId.replace(/_/g, "-"),
+      stripeAccountId: accountId,
+    });
+    await louezDb.db.insert(louezDb.storeMembers).values({ storeId, userId, role: "owner" });
+    const id = await booking("online", storeId);
+    const sessionId = nextId("cs");
+    const context = await deletion.accountDeletionRepository.getContext(userId);
+    assert.ok(context, "the user exists");
+
+    // The expiry's answer and the deletion's outcome.
+    const [expiry, purge] = await raceOnOpenTransaction<unknown>(
+      database,
+      async (holder) => {
+        await holder.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      },
+      [
+        // The expiry waits on the reservation's row first, then the deletion starts.
+        () =>
+          expire(id, sessionId, null, undefined, { ...paymentRequest(id), account: accountId }),
+        async () => {
+          await waitForLockWaits(raw, database.name, 1);
+          return settle(
+            deletion.accountDeletionRepository.purgeOwnedData(context, {
+              beforePurge: async () => undefined,
+            }),
+          );
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      calls.filter(([name]) => name === "log.error"),
+      [],
+      "no deadlock, nor any other failure",
+    );
+    assert.deepEqual(
+      { expiry, purge },
+      { expiry: { status: 200, body: { received: true } }, purge: "committed" },
+    );
+    assert.equal(await readStatus(id), undefined, "the reservation went with its store");
+    assert.deepEqual(await readActivity(id), [], "no history line outlives its reservation");
+  });
+
+  test("an expiry whose reservation is deleted before its lock writes nothing and answers 200", async () => {
+    for (const kind of ["payment request", "storefront checkout"] as const) {
+      const id = await booking();
+      const sessionId = kind === "payment request" ? nextId("cs") : await sessionPayment(id);
+
+      // The expiry reads the reservation, then waits on its row, which goes.
+      const [answer] = await raceOnOpenTransaction(
+        database,
+        async (holder) => {
+          await holder.query("DELETE FROM reservations WHERE id = ?", [id]);
+        },
+        [
+          () =>
+            kind === "payment request"
+              ? expire(id, sessionId, null, undefined, paymentRequest(id))
+              : expire(id, sessionId),
+        ],
+      );
+
+      assert.deepEqual(answer, { status: 200, body: { received: true } }, kind);
+      assert.deepEqual(await readWrites(id), [], kind);
+      assert.deepEqual(await readActivity(id), [], kind);
       calls.length = 0;
     }
   });

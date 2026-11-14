@@ -12,6 +12,7 @@ const variantUtils: Record<string, unknown> = require("@louez/utils");
 mock.module("@louez/utils", { namedExports: variantUtils });
 mock.module("@louez/db", {
   namedExports: {
+    lockStoreProductRows: async () => {},
     productUnits: {},
     products: {},
     reservationItems: {},

@@ -5,6 +5,8 @@ import {
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
+  lockProductRows,
+  lockStoreProductRows,
   lockStoreRow,
   marketplaceCatalogTombstones,
   nextProductSlug,
@@ -801,6 +803,13 @@ export async function createProduct(actor: ProductActor, input: CreateProductInp
 
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
+    // The accessories the new product names, by id, before any write: a link
+    // to a product takes that product's row for its foreign-key check.
+    await lockProductRows(
+      tx,
+      storeId,
+      (data.accessories ?? []).map((link) => link.accessoryId),
+    );
     categoryIds = await resolveCategoryIds(tx, storeId, data);
 
     await tx.insert(products).values({
@@ -1155,6 +1164,10 @@ export async function updateProduct(
     db.transaction(async (tx) => {
       refusal = null;
       await lockStoreProducts(tx, storeId);
+      // The store's products, by id, before this one's row: the save rewrites
+      // the product's accessory links, known only once the product is read,
+      // and each link takes its accessory's row for its foreign-key check.
+      await lockStoreProductRows(tx, storeId);
       // Every lock before the first plain read: InnoDB reads at the snapshot of
       // that first read, so a reservation committed while this waited for the
       // product's row must not be missed. Checkout locks the product first,
@@ -1934,7 +1947,7 @@ export async function duplicateProduct(actor: ProductActor, id: string) {
  * already held among themselves, so a list showing part of the catalog
  * (filters, page) leaves every other product in its place; then every
  * position is renumbered so no two products share one. Ids of other stores
- * are ignored.
+ * are ignored. Locks: the store's row, then the products that move, by id.
  */
 export async function reorderProducts(actor: ProductActor, ids: readonly string[]) {
   const { storeId } = actor;
@@ -1957,6 +1970,11 @@ export async function reorderProducts(actor: ProductActor, ids: readonly string[
       reorderedSet.has(row.id) ? reordered[next++] : row.id,
     );
     const before = new Map(current.map((row) => [row.id, row.displayOrder]));
+    // The rows about to move, locked in id order before any is written: the
+    // order a reservation's writers take their products in, whatever the
+    // order the catalog is put in.
+    const moved = finalOrder.filter((id, index) => before.get(id) !== index);
+    await lockProductRows(tx, storeId, moved);
     const now = new Date();
     for (const [index, id] of finalOrder.entries()) {
       if (before.get(id) === index) continue;

@@ -37,11 +37,12 @@ import {
   loadExtensionReservation,
   parseExtensionEnd,
   quoteExtension,
+  runExtensionQuote,
   type ExtensionReservation,
 } from "./extension-quote";
 
-// Retried once on deadlock, like the other reservation writers that take
-// several row locks.
+// The transactions that lock the reservation alone, without its products, are
+// retried once on deadlock. The quote and its write run in `runExtensionQuote`.
 const extensionTransaction = <T>(work: (tx: Transaction) => Promise<T>) =>
   retryOnceOnDeadlock(() => db.transaction(work, { isolationLevel: "read committed" }));
 
@@ -107,13 +108,7 @@ export const startExtension = async (input: {
   endDate: string;
   expectedSupplement: number;
 }) => {
-  const result = await extensionTransaction(async (tx) => {
-    const reservation = await loadExtensionReservation(
-      tx,
-      input.storeId,
-      input.reservationId,
-      input.customerId,
-    );
+  const result = await runExtensionQuote(input, async (tx, reservation) => {
     const end = parseExtensionEnd(input.endDate, reservation.store.settings?.timezone ?? "UTC");
     if (reservation.endDate.getTime() === end.getTime()) {
       const completed = reservation.activity.flatMap((row) => {
@@ -293,8 +288,8 @@ export const completeExtensionPayment = async (
   const charge = intent.latest_charge;
   // v3 fee keys were written on the PaymentIntent only; v4 is on both.
   const feeFacts = readFeeMetadata(intent.metadata) ?? readFeeMetadata(session.metadata);
-  const result = await extensionTransaction(async (tx) => {
-    const reservation = await loadExtensionReservation(tx, store.id, reservationId);
+  const scope = { storeId: store.id, reservationId };
+  const result = await runExtensionQuote(scope, async (tx, reservation) => {
     const attempt = getExtensionAttempt(
       reservation.activity.find((row) => row.id === id)?.metadata,
     );

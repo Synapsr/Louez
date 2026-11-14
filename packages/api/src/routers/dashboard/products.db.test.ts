@@ -5,7 +5,9 @@ import { after, before, beforeEach, describe, mock, test } from "node:test";
 import {
   createTestDatabase,
   raceOnOpenTransaction,
+  readLockWaiters,
   skipWithoutTestDatabase,
+  waitForLockWaits,
   type TestDatabase,
 } from "@louez/db/testing";
 
@@ -1321,6 +1323,88 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       run("update", input, context({ "louez-confirmation": tokenOf(asked) })),
       "CONFIRMATION_INVALID",
     );
+  });
+
+  test("a reorder locks the products it moves by id, whatever order it puts them in", async () => {
+    for (const name of ["Aa", "Bb"]) await run("create", { name, price: "1" }, session());
+    const holder = await database.connect();
+    try {
+      // By id as the database sorts it: the order a reservation's writers lock products in.
+      const [sorted] = await holder.query(
+        "SELECT id FROM products WHERE store_id = ? ORDER BY id",
+        [STORE],
+      );
+      const [low, high] = (sorted as Array<{ id: string }>).map((row) => row.id);
+      assert.ok(low && high);
+      await run("reorder", { ids: [low, high] }, session());
+
+      // The catalog is put in the opposite order while another connection holds the higher id.
+      await holder.beginTransaction();
+      await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [high]);
+      const reordering = run("reorder", { ids: [high, low] }, session());
+      await waitForLockWaits(holder, database.name, 1);
+      const [waiter] = await readLockWaiters(holder, database.name);
+      await holder.commit();
+      await reordering;
+      // Asserted once the call has ended, so a failing run leaves none running.
+      assert.deepEqual(waiter?.waitsFor, [{ table: "products", id: high }]);
+      const held = waiter?.holds.filter((lock) => lock.table === "products").map((lock) => lock.id);
+      assert.deepEqual([...new Set(held)], [low], "the lower id is held while the higher is awaited");
+    } finally {
+      await holder.end();
+    }
+  });
+
+  test("a save that links accessories holds their products, by id, before it writes any", async () => {
+    for (const name of ["Aa", "Bb", "Cc"]) await run("create", { name, price: "1" }, session());
+    const holder = await database.connect();
+    try {
+      const [sorted] = await holder.query("SELECT id FROM products WHERE store_id = ? ORDER BY id", [
+        STORE,
+      ]);
+      const [low, middle, high] = (sorted as Array<{ id: string }>).map((row) => row.id);
+      assert.ok(low && middle && high);
+      const accessory = (accessoryId: string) => ({ accessoryId, required: false, quantity: 1 });
+      /** The product rows the call held while it waited for `low`, held by another connection. */
+      const heldWhileWaiting = async (call: () => Promise<unknown>) => {
+        await holder.beginTransaction();
+        await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [low]);
+        const calling = call();
+        await waitForLockWaits(holder, database.name, 1);
+        const [waiter] = await readLockWaiters(holder, database.name);
+        await holder.commit();
+        await calling;
+        const ids = (locks: Array<{ table: string; id: string }> = []) => [
+          ...new Set(locks.filter((lock) => lock.table === "products").map((lock) => lock.id)),
+        ];
+        // Asserted once the call has ended, so a failing run leaves none running.
+        assert.deepEqual(ids(waiter?.waitsFor), [low]);
+        return ids(waiter?.holds);
+      };
+
+      // An update of the highest product that names the lowest as its accessory.
+      assert.deepEqual(
+        await heldWhileWaiting(() =>
+          run("update", { id: high, accessories: [accessory(low)] }, session()),
+        ),
+        [],
+        "the update holds no product before the lowest",
+      );
+      // A creation that names its accessories highest first.
+      assert.deepEqual(
+        await heldWhileWaiting(() =>
+          run(
+            "create",
+            { name: "Dd", price: "1", accessories: [accessory(middle), accessory(low)] },
+            session(),
+          ),
+        ),
+        [],
+        "the creation holds no product before the lowest",
+      );
+    } finally {
+      await holder.end();
+    }
   });
 
   test("two reorders at once leave one of the two orders, every place taken once", async () => {

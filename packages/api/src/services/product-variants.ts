@@ -1,5 +1,6 @@
 import {
   db,
+  lockStoreProductRows,
   productUnits,
   products,
   variantDefinitions,
@@ -428,12 +429,7 @@ export async function withdrawVariantFromProducts(
     await lockStoreProducts(tx, storeId);
     // Every product of the store, before the first plain read: the preview
     // names the products the withdrawal then changes.
-    await tx
-      .select({ id: products.id })
-      .from(products)
-      .where(eq(products.storeId, storeId))
-      .orderBy(asc(products.id))
-      .for("update");
+    await lockStoreProductRows(tx, storeId);
     const definition = await findDefinition(tx, storeId, id);
     if (options.confirm) {
       const using = productsUsing(await readStoreUsage(tx, storeId), definition);

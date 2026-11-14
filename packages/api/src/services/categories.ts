@@ -1,6 +1,7 @@
 import {
   categories,
   db,
+  lockProductRows,
   lockStoreRow,
   nextCategorySlug,
   productCategories,
@@ -356,9 +357,13 @@ export async function deleteCategory(
       .innerJoin(products, eq(products.id, productCategories.productId))
       .where(and(eq(products.storeId, storeId), eq(productCategories.categoryId, input.id)));
 
+    // The products the deletion then writes, by id, before its first write:
+    // the links are read in their own order, not the products'.
+    const affectedIds = affectedLinks.map((link) => link.productId);
+    await lockProductRows(tx, storeId, affectedIds);
+
     await tx.delete(productCategories).where(eq(productCategories.categoryId, input.id));
 
-    const affectedIds = affectedLinks.map((link) => link.productId);
     if (affectedIds.length > 0) {
       if (replacementId) {
         const alreadyLinked = new Set(

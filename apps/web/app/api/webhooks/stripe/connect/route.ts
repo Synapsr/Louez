@@ -2,7 +2,7 @@ import { completeExtensionPayment } from "@/lib/reservations/extension-service";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
@@ -10,7 +10,7 @@ import { failMarketplaceBookingAttempt } from "@louez/api/services";
 import { completeActiveHandoff } from "@louez/api/services/handoffs";
 import { writeConnectColumns } from "@louez/api/services/stripe-connect";
 import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
-import { db, markReservationIds, toWholeSeconds } from "@louez/db";
+import { type Transaction, db, markReservationIds, toWholeSeconds } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
@@ -191,6 +191,25 @@ export async function POST(request: Request) {
 
   // Get connected account ID from event
   const connectedAccountId = event.account;
+
+  // An event of the other mode than the deployment's key is refused before any
+  // handler, whatever its type: logged with the id of its object, nothing written,
+  // answered 2xx so that Stripe does not send it again.
+  if (!matchesDeploymentMode({ livemode: event.livemode, secretKey: env.STRIPE_SECRET_KEY })) {
+    const object = event.data.object;
+    const objectId = "id" in object ? object.id : undefined;
+    log.error({
+      stripeWebhook: {
+        event: event.type,
+        issue: "livemode_mismatch",
+        stripeEventId: event.id,
+        ...(typeof objectId === "string" && { objectId }),
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        livemode: event.livemode,
+      },
+    });
+    return NextResponse.json({ received: true });
+  }
 
   try {
     switch (event.type) {
@@ -669,39 +688,81 @@ async function handleCheckoutExpired(
   const currency = session.currency?.toUpperCase() || "EUR";
   const amount = fromStripeCents(session.amount_total || 0, currency);
 
-  // A row still pending here means nobody replaced this session: the
-  // customer simply never paid. A resumed or superseded checkout cancels its
-  // row before expiring the session, so those never reach the cancellation.
-  const abandoned = existingPayment?.status === "pending";
+  // The session's line in the reservation's history: its id, amount and currency.
+  const expiredLine = (): typeof reservationActivity.$inferInsert => ({
+    id: nanoid(),
+    reservationId,
+    activityType: "payment_expired",
+    description: null,
+    metadata: {
+      checkoutSessionId: session.id,
+      amount,
+      currency,
+      method: "stripe",
+    },
+    // Whole seconds, as the status change below stores its `cancelled` row.
+    createdAt: toWholeSeconds(new Date()),
+  });
 
-  await db.transaction(async (tx) => {
-    if (existingPayment && abandoned) {
-      await tx
+  // Each write below takes the reservation's row, then its payment, then its history;
+  // the account deletion, a store's products, then its reservations, then their rows:
+  // the two run one after the other. A reservation gone by then is written nothing.
+  const lockReservation = async (tx: Transaction): Promise<boolean> => {
+    const [locked] = await tx
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(eq(reservations.id, reservationId))
+      .for("update");
+    return locked !== undefined;
+  };
+
+  // A row still pending is a payment this session has not settled: the customer
+  // never paid, or a resumed checkout has expired the session at Stripe and not
+  // yet cancelled the row (it expires the session first, then cancels the row:
+  // lib/reservations/payment-session.ts). The expiry is recorded by the delivery
+  // whose update moves the row out of pending, and only that one asks for the
+  // cancellation: another delivery of the event, even a concurrent one, finds the
+  // row cancelled under its lock and writes nothing. A session whose row is
+  // already cancelled or completed records nothing.
+  const pendingPayment = existingPayment?.status === "pending" ? existingPayment : null;
+  const abandoned =
+    pendingPayment !== null &&
+    (await db.transaction(async (tx) => {
+      if (!(await lockReservation(tx))) return false;
+      const [cancelled] = await tx
         .update(payments)
         .set({
           status: "cancelled",
           updatedAt: new Date(),
         })
-        .where(eq(payments.id, existingPayment.id));
+        .where(and(eq(payments.id, pendingPayment.id), eq(payments.status, "pending")));
+      if (cancelled.affectedRows === 0) return false;
       await markReservationIds(tx, [reservationId]);
-    }
+      await tx.insert(reservationActivity).values(expiredLine());
+      return true;
+    }));
 
-    // Log payment expired activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "payment_expired",
-      description: null,
-      metadata: {
-        checkoutSessionId: session.id,
-        amount,
-        currency,
-        method: "stripe",
-      },
-      // Whole seconds, as the status change below stores its `cancelled` row.
-      createdAt: toWholeSeconds(new Date()),
+  // A payment request's session has no payment row until it is paid: its line,
+  // which tells the store why no money came, is written once per session. Under
+  // the reservation's lock, a second delivery of the event, even a concurrent
+  // one, finds the line its session id names and writes nothing.
+  if (!existingPayment && session.metadata?.paymentRequestId) {
+    await db.transaction(async (tx) => {
+      if (!(await lockReservation(tx))) return;
+      const [recorded] = await tx
+        .select({ id: reservationActivity.id })
+        .from(reservationActivity)
+        .where(
+          and(
+            eq(reservationActivity.reservationId, reservationId),
+            eq(reservationActivity.activityType, "payment_expired"),
+            sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.checkoutSessionId')) = ${session.id}`,
+          ),
+        )
+        .limit(1);
+      if (!recorded) await tx.insert(reservationActivity).values(expiredLine());
     });
-  });
+  }
 
   // A marketplace booking's attempt fails with its own session only: without
   // the payment row, nothing ties this session to the booking's checkout.
@@ -731,16 +792,16 @@ async function handleCheckoutExpired(
 /**
  * A failed payment attempt adds its line and its alert, and changes nothing else:
  * the Checkout Session stays open for another try, and its completion or its expiry
- * settles the payment, the booking and a marketplace attempt. The event acts in the
- * deployment's mode, from the account that sent it, on the reservation of the payment
- * rows that record its PaymentIntent, or the one it names when no row does. A
- * PaymentIntent a `deposit_hold` row records, or one no row records whose event states
- * a deposit hold's, goes to the deposit events, which read it from Stripe. An event
- * that does not agree with those records is logged and nothing is written; it is
- * answered 2xx, as Stripe would only send it again.
+ * settles the payment, the booking and a marketplace attempt. The route has refused
+ * an event of the other mode; this one acts from the account that sent it, on the
+ * reservation of the payment rows that record its PaymentIntent, or the one it names
+ * when no row does. A PaymentIntent a `deposit_hold` row records, or one no row records
+ * whose event states a deposit hold's, goes to the deposit events, which read it from
+ * Stripe. An event that does not agree with those records is logged and nothing is
+ * written; it is answered 2xx, as Stripe would only send it again.
  */
 async function handlePaymentFailed(
-  event: { readonly id: string; readonly livemode: boolean },
+  event: { readonly id: string },
   paymentIntent: Stripe.PaymentIntent,
   connectedAccountId: string | undefined,
 ) {
@@ -759,12 +820,7 @@ async function handlePaymentFailed(
     });
   };
 
-  // The deployment's mode and the sending account come first: they hold for a
-  // deposit hold's failed attempt too.
-  if (!matchesDeploymentMode({ livemode: event.livemode, secretKey: env.STRIPE_SECRET_KEY })) {
-    refuse("livemode_mismatch", { livemode: event.livemode });
-    return;
-  }
+  // The sending account comes first: it holds for a deposit hold's failed attempt too.
   if (!connectedAccountId) {
     refuse("connected_account_missing");
     return;
@@ -800,8 +856,6 @@ async function handlePaymentFailed(
       })
     : undefined;
   const binding = failedAttemptBinding({
-    livemode: event.livemode,
-    secretKey: env.STRIPE_SECRET_KEY,
     accountId: connectedAccountId,
     namedReservationId,
     recordedReservationIds,

@@ -1,6 +1,6 @@
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 
-import { loadConsumableReservedQuantities } from "@louez/db";
+import { loadConsumableReservedQuantities, lockProductRows } from "@louez/db";
 import type { BlockingReservationStatus, Database, Transaction } from "@louez/db";
 import {
   getBlockingReservationStatuses,
@@ -106,13 +106,7 @@ export const lockReservationProducts = async (
     return new Map();
   }
 
-  const requestedProductIdSql = sql.join(
-    requestedProductIds.map((productId) => sql`${productId}`),
-    sql`, `,
-  );
-  await tx.execute(
-    sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${storeId} FOR UPDATE`,
-  );
+  await lockProductRows(tx, storeId, requestedProductIds);
 
   const lockedProducts = await tx.query.products.findMany({
     where: and(eq(products.storeId, storeId), inArray(products.id, requestedProductIds)),
