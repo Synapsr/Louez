@@ -1934,7 +1934,7 @@ export async function duplicateProduct(actor: ProductActor, id: string) {
  * already held among themselves, so a list showing part of the catalog
  * (filters, page) leaves every other product in its place; then every
  * position is renumbered so no two products share one. Ids of other stores
- * are ignored.
+ * are ignored. Locks: the store's row, then the products that move, by id.
  */
 export async function reorderProducts(actor: ProductActor, ids: readonly string[]) {
   const { storeId } = actor;
@@ -1957,6 +1957,18 @@ export async function reorderProducts(actor: ProductActor, ids: readonly string[
       reorderedSet.has(row.id) ? reordered[next++] : row.id,
     );
     const before = new Map(current.map((row) => [row.id, row.displayOrder]));
+    // The rows about to move, locked in id order before any is written: the
+    // order a reservation's writers take their products in, whatever the
+    // order the catalog is put in.
+    const moved = finalOrder.filter((id, index) => before.get(id) !== index);
+    if (moved.length > 0) {
+      await tx
+        .select({ id: products.id })
+        .from(products)
+        .where(and(eq(products.storeId, storeId), inArray(products.id, moved)))
+        .orderBy(asc(products.id))
+        .for("update");
+    }
     const now = new Date();
     for (const [index, id] of finalOrder.entries()) {
       if (before.get(id) === index) continue;

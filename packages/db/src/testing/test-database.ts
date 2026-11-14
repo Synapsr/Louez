@@ -208,7 +208,8 @@ export interface LockWaiter {
  * The transactions of the database that wait on a lock, each with its row
  * locks, granted or waiting, on primary keys. An exclusive lock taken through
  * another index locks the row's primary key too, so these are all the rows it
- * locks for writing.
+ * locks for writing. A lock on the gap before a row alone (a range read at
+ * REPEATABLE READ takes them) is not a lock on that row, and is left out.
  * Read while a holder keeps the calls waiting, it shows the order in which a
  * call takes its locks, whether or not that order ends in a deadlock.
  */
@@ -220,7 +221,8 @@ export async function readLockWaiters(
     `SELECT ENGINE_TRANSACTION_ID AS transactionId, OBJECT_NAME AS tableName,
             LOCK_DATA AS lockData, LOCK_STATUS AS status
      FROM performance_schema.data_locks
-     WHERE OBJECT_SCHEMA = ? AND LOCK_TYPE = 'RECORD' AND INDEX_NAME = 'PRIMARY'`,
+     WHERE OBJECT_SCHEMA = ? AND LOCK_TYPE = 'RECORD' AND INDEX_NAME = 'PRIMARY'
+       AND LOCK_MODE NOT LIKE '%,GAP%'`,
     [databaseName],
   );
   const byTransaction = new Map<string, LockWaiter>();
