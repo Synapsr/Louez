@@ -12,9 +12,11 @@ import type { Connection, RowDataPacket } from "mysql2/promise";
 import {
   createTestDatabase,
   raceOnLockedRow,
+  raceOnOpenTransaction,
   reservationChangeTestHooks,
   skipWithoutTestDatabase,
   type TestDatabase,
+  waitForLockWaits,
 } from "@louez/db/testing";
 
 // The Connect webhook's `checkout.session.expired` on a migrated database, its
@@ -31,7 +33,9 @@ import {
 // expiry is recorded by the delivery that moves the payment out of pending,
 // once; a payment request's session, which has no payment row, records its
 // expiry once per session; an event of the other mode than the deployment's key
-// writes nothing.
+// writes nothing. Each write takes the reservation's row first, as the account
+// deletion does: the two run one after the other, billing sync off as here, and
+// a reservation gone by then is written nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -130,6 +134,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   let raw: Connection;
   let louezDb: typeof import("@louez/db");
   let route: typeof import("./route");
+  let deletion: typeof import("@/lib/account-deletion/database-repository");
   let counter = 0;
 
   before(async () => {
@@ -139,6 +144,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     process.env.STRIPE_SECRET_KEY = "sk_test_checkout_expired";
     louezDb = await import("@louez/db");
     route = await import("./route");
+    deletion = await import("@/lib/account-deletion/database-repository");
 
     raw = await database.connect();
     for (const statement of WRITE_LOG) await raw.query(statement);
@@ -907,6 +913,94 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
         ],
       ]);
       assert.equal(await readStatus(id), "pending");
+      calls.length = 0;
+    }
+  });
+  /** "committed", or the driver's error, such as a deadlock. */
+  const settle = (promise: Promise<unknown>) =>
+    promise.then(
+      () => "committed",
+      (error: unknown) => {
+        const cause = error instanceof Error ? error.cause : undefined;
+        if (cause instanceof Error) return cause.message;
+        return error instanceof Error ? error.message : String(error);
+      },
+    );
+
+  test("a payment request's expiry and the deletion of its store's account, at once: one after the other, no deadlock, nothing left of the reservation", async () => {
+    const userId = nextId("user");
+    const storeId = nextId("store_del");
+    const accountId = nextId("acct_del");
+    await louezDb.db.insert(louezDb.users).values({ id: userId, email: `${userId}@example.test` });
+    await louezDb.db.insert(louezDb.stores).values({
+      id: storeId,
+      userId,
+      name: "Deleted",
+      slug: storeId.replace(/_/g, "-"),
+      stripeAccountId: accountId,
+    });
+    await louezDb.db.insert(louezDb.storeMembers).values({ storeId, userId, role: "owner" });
+    const id = await booking("online", storeId);
+    const sessionId = nextId("cs");
+    const context = await deletion.accountDeletionRepository.getContext(userId);
+    assert.ok(context, "the user exists");
+
+    // The expiry's answer and the deletion's outcome.
+    const [expiry, purge] = await raceOnOpenTransaction<unknown>(
+      database,
+      async (holder) => {
+        await holder.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      },
+      [
+        // The expiry waits on the reservation's row first, then the deletion starts.
+        () =>
+          expire(id, sessionId, null, undefined, { ...paymentRequest(id), account: accountId }),
+        async () => {
+          await waitForLockWaits(raw, database.name, 1);
+          return settle(
+            deletion.accountDeletionRepository.purgeOwnedData(context, {
+              beforePurge: async () => undefined,
+            }),
+          );
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      calls.filter(([name]) => name === "log.error"),
+      [],
+      "no deadlock, nor any other failure",
+    );
+    assert.deepEqual(
+      { expiry, purge },
+      { expiry: { status: 200, body: { received: true } }, purge: "committed" },
+    );
+    assert.equal(await readStatus(id), undefined, "the reservation went with its store");
+    assert.deepEqual(await readActivity(id), [], "no history line outlives its reservation");
+  });
+
+  test("an expiry whose reservation is deleted before its lock writes nothing and answers 200", async () => {
+    for (const kind of ["payment request", "storefront checkout"] as const) {
+      const id = await booking();
+      const sessionId = kind === "payment request" ? nextId("cs") : await sessionPayment(id);
+
+      // The expiry reads the reservation, then waits on its row, which goes.
+      const [answer] = await raceOnOpenTransaction(
+        database,
+        async (holder) => {
+          await holder.query("DELETE FROM reservations WHERE id = ?", [id]);
+        },
+        [
+          () =>
+            kind === "payment request"
+              ? expire(id, sessionId, null, undefined, paymentRequest(id))
+              : expire(id, sessionId),
+        ],
+      );
+
+      assert.deepEqual(answer, { status: 200, body: { received: true } }, kind);
+      assert.deepEqual(await readWrites(id), [], kind);
+      assert.deepEqual(await readActivity(id), [], kind);
       calls.length = 0;
     }
   });

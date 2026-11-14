@@ -15,7 +15,7 @@ failed deletion is not counted.
 
 Platform accounts receive a single-use email link. Opening the link is not destructive: the signed-in owner must confirm once more on the Louez page. The token stays in the URL fragment, is moved to session storage, and is never sent in a referrer or server log. Standalone accounts confirm with their current password.
 
-Before sending a platform email, Louez checks that the legal archive and the configured processor-erasure credentials are available. The final deletion starts a database transaction, locks and rechecks the owned Stores and their memberships, then removes external resources before archiving the legally required records and purging the active database. If the locked check finds a shared Store, no external cleanup starts.
+Before sending a platform email, Louez checks that the legal archive and the configured processor-erasure credentials are available. The final deletion starts a database transaction, locks and rechecks the owned Stores and their memberships, then removes external resources, locks the Stores' reservations (by id, before any of their rows is deleted: every writer of a reservation's rows takes the reservation first), archives the legally required records and purges the active database. If the locked check finds a shared Store, no external cleanup starts.
 
 ## What is retained
 

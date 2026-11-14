@@ -550,6 +550,20 @@ const purgeOwnedData = async (
     await beforePurge();
     // Before the first plain read, which fixes what the closing snapshots see.
     await lockFinalSnapshotFacts(transaction, storeIds);
+    // Every writer takes a reservation's row before its child rows (its history, its
+    // payments, its items): the purge locks the stores' reservations, by id, before
+    // it deletes any of their rows, with the billing service or without. With it,
+    // `lockFinalSnapshotFacts` has locked them already.
+    const reservationRows =
+      storeIds.length > 0
+        ? await transaction
+            .select({ id: schema.reservations.id })
+            .from(schema.reservations)
+            .where(inArray(schema.reservations.storeId, storeIds))
+            .orderBy(schema.reservations.id)
+            .for("update")
+        : [];
+    const reservationIds = reservationRows.map((row) => row.id);
 
     // Read before the referral rows go; marked last, after the stores rows it updates.
     const otherMarks = await otherStoreBillingMarks(transaction, context.user.id, storeIds);
@@ -558,14 +572,6 @@ const purgeOwnedData = async (
 
     const legalRecordsRetained = await archiveLegalRecords(transaction, storeIds);
 
-    const reservationRows =
-      storeIds.length > 0
-        ? await transaction
-            .select({ id: schema.reservations.id })
-            .from(schema.reservations)
-            .where(inArray(schema.reservations.storeId, storeIds))
-        : [];
-    const reservationIds = reservationRows.map((row) => row.id);
     const customerRows =
       storeIds.length > 0
         ? await transaction

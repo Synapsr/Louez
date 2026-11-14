@@ -10,7 +10,7 @@ import { failMarketplaceBookingAttempt } from "@louez/api/services";
 import { completeActiveHandoff } from "@louez/api/services/handoffs";
 import { writeConnectColumns } from "@louez/api/services/stripe-connect";
 import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
-import { db, markReservationIds, toWholeSeconds } from "@louez/db";
+import { type Transaction, db, markReservationIds, toWholeSeconds } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
@@ -704,17 +704,31 @@ async function handleCheckoutExpired(
     createdAt: toWholeSeconds(new Date()),
   });
 
-  // A row still pending means nobody replaced this session: the customer
-  // simply never paid. A resumed or superseded checkout cancels its row before
-  // expiring the session, so those never reach the cancellation. The expiry is
-  // recorded by the delivery whose update moves the row out of pending, and only
-  // that one asks for the cancellation: another delivery of the event, even a
-  // concurrent one, finds the row cancelled under its lock and writes nothing.
-  // A session whose row is no longer pending records nothing.
+  // Each write below takes the reservation's row first, before its payment and its
+  // history, as every writer of a reservation's rows does (the account deletion
+  // among them). A reservation gone by then has nothing left to write on.
+  const lockReservation = async (tx: Transaction): Promise<boolean> => {
+    const [locked] = await tx
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(eq(reservations.id, reservationId))
+      .for("update");
+    return locked !== undefined;
+  };
+
+  // A row still pending is a payment this session has not settled: the customer
+  // never paid, or a resumed checkout has expired the session at Stripe and not
+  // yet cancelled the row (it expires the session first, then cancels the row:
+  // lib/reservations/payment-session.ts). The expiry is recorded by the delivery
+  // whose update moves the row out of pending, and only that one asks for the
+  // cancellation: another delivery of the event, even a concurrent one, finds the
+  // row cancelled under its lock and writes nothing. A session whose row is
+  // already cancelled or completed records nothing.
   const pendingPayment = existingPayment?.status === "pending" ? existingPayment : null;
   const abandoned =
     pendingPayment !== null &&
     (await db.transaction(async (tx) => {
+      if (!(await lockReservation(tx))) return false;
       const [cancelled] = await tx
         .update(payments)
         .set({
@@ -734,11 +748,7 @@ async function handleCheckoutExpired(
   // one, finds the line its session id names and writes nothing.
   if (!existingPayment && session.metadata?.paymentRequestId) {
     await db.transaction(async (tx) => {
-      await tx
-        .select({ id: reservations.id })
-        .from(reservations)
-        .where(eq(reservations.id, reservationId))
-        .for("update");
+      if (!(await lockReservation(tx))) return;
       const [recorded] = await tx
         .select({ id: reservationActivity.id })
         .from(reservationActivity)
