@@ -53,11 +53,11 @@ class CheckoutStillPayableError extends Error {}
  * left alone. The fee effects run through `runReservationEffects` after commit.
  * It locks the reservation alone: a pending checkout gives back no stock. Still
  * busy after the owner entry's runs, it throws and the webhook answers non-2xx,
- * as a lost deadlock did before. Stripe sends the event again, but nothing runs
- * this cancellation again: the first delivery committed the session's payment
- * as cancelled, so the redelivery reads the checkout as not abandoned and skips
- * it, and the reservation stays pending (docs/domain/reservation-changes.md,
- * "Open, not in this lot").
+ * as a lost deadlock did before. Stripe sends the event again, and the
+ * redelivery, which finds the session's expiry recorded (its `payment_expired`
+ * row), runs this cancellation again: it cancels a reservation still pending,
+ * and changes nothing on one already cancelled
+ * (docs/domain/reservation-changes.md, "System: abandoned checkout").
  */
 const cancelAbandonedCheckout = async (
   { reservationId, checkoutSessionId }: { reservationId: string; checkoutSessionId: string },

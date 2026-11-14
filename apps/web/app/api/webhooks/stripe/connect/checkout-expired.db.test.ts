@@ -31,12 +31,16 @@ import {
 // row records, or its store's for a row that records none (6a-W2): a metadata
 // reservation or an account other than those is logged and writes nothing. The
 // expiry is recorded by the delivery that moves the payment out of pending,
-// once; a payment request's session, which has no payment row, records its
-// expiry once per session; an event of the other mode than the deployment's key
-// writes nothing. Each write takes the reservation's row, then its payment, then
-// its history; the account deletion takes the store's products, then its
-// reservations, then their rows: the two run one after the other, billing sync off
-// as here, and a reservation gone by then is written nothing.
+// once, and every delivery of a recorded expiry asks for the checkout's
+// cancellation, so a redelivery finishes one that failed; a session a resumed
+// checkout replaced finds its row no longer pending and cancels nothing,
+// whenever its expiry comes; a payment request's session, which has no payment
+// row, records its expiry once per session; an event of the other mode than the
+// deployment's key writes nothing. Each write takes the reservation's row, then
+// its payment, then its history; the account deletion takes the store's
+// products, then its reservations, then their rows: the two run one after the
+// other, billing sync off as here, and a reservation gone by then is written
+// nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -52,6 +56,10 @@ const STUBBED = new Set([
 
 type Call = [name: string, ...args: unknown[]];
 const calls: Call[] = [];
+/** The payment session's calls to Stripe, which is a fake: no network. */
+const stripeCalls: string[] = [];
+/** Runs as the payment session asks Stripe for something: a moment of the resume. */
+let onStripeCall: ((call: string) => Promise<void>) | null = null;
 /** How many commits wrote rows so far; set once the database exists. */
 let commitsSoFar: () => Promise<number> = async () => 0;
 
@@ -107,6 +115,11 @@ const OTHER_ACCOUNT = "acct_checkout_expired_other";
 /** A store that left PREVIOUS_ACCOUNT for its account of today. */
 const RECONNECTED_STORE = "store_chk_exp_moved";
 const PREVIOUS_ACCOUNT = "acct_checkout_expired_previous";
+/** A store that takes payments online, and its customer: a checkout can be resumed in it. */
+const RESUME_STORE = "store_chk_exp_resume";
+const RESUME_SLUG = "checkout-expired-resume";
+const RESUME_ACCOUNT = "acct_checkout_expired_resume";
+const RESUME_CUSTOMER = "cus_chk_exp_resume";
 
 const TRX = `(SELECT CONCAT(THREAD_ID, ':', EVENT_ID) FROM performance_schema.events_transactions_current WHERE THREAD_ID = PS_CURRENT_THREAD_ID())`;
 const WRITE_LOG = [
@@ -136,6 +149,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   let louezDb: typeof import("@louez/db");
   let route: typeof import("./route");
   let deletion: typeof import("@/lib/account-deletion/database-repository");
+  let paymentSession: typeof import("@/lib/reservations/payment-session");
   let counter = 0;
 
   before(async () => {
@@ -146,6 +160,19 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     louezDb = await import("@louez/db");
     route = await import("./route");
     deletion = await import("@/lib/account-deletion/database-repository");
+    paymentSession = await import("@/lib/reservations/payment-session");
+    const { getStripe } = await import("@/lib/stripe/client");
+    Reflect.set(getStripe().checkout.sessions, "create", async () => {
+      const id = `cs_resumed_${++counter}`;
+      stripeCalls.push(`create ${id}`);
+      await onStripeCall?.(`create ${id}`);
+      return { id, url: `https://checkout.stripe.test/${id}`, expires_at: 1_900_000_000 };
+    });
+    Reflect.set(getStripe().checkout.sessions, "expire", async (id: string) => {
+      stripeCalls.push(`expire ${id}`);
+      await onStripeCall?.(`expire ${id}`);
+      return { id, status: "expired" };
+    });
 
     raw = await database.connect();
     for (const statement of WRITE_LOG) await raw.query(statement);
@@ -178,7 +205,23 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
         slug: "checkout-expired-moved",
         stripeAccountId: "acct_checkout_expired_today",
       },
+      {
+        id: RESUME_STORE,
+        userId: "resume-owner",
+        name: "Resume",
+        slug: RESUME_SLUG,
+        stripeAccountId: RESUME_ACCOUNT,
+        stripeChargesEnabled: true,
+        settings: { reservationMode: "payment", currency: "EUR", advanceNoticeMinutes: 0 },
+      },
     ]);
+    await louezDb.db.insert(louezDb.customers).values({
+      id: RESUME_CUSTOMER,
+      storeId: RESUME_STORE,
+      email: "renter@resume.test",
+      firstName: "Renter",
+      lastName: "Resume",
+    });
   });
 
   after(async () => {
@@ -189,18 +232,24 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
 
   beforeEach(async () => {
     calls.length = 0;
+    stripeCalls.length = 0;
+    onStripeCall = null;
     reservationChangeTestHooks().beforeReservationLock = null;
     await raw.query("TRUNCATE TABLE test_writes");
   });
 
   const nextId = (prefix: string) => `${prefix}_${++counter}`;
 
-  async function booking(source: "online" | "marketplace" = "online", storeId = STORE) {
+  async function booking(
+    source: "online" | "marketplace" = "online",
+    storeId = STORE,
+    customerId = "customer",
+  ) {
     const id = nextId("exp");
     await louezDb.db.insert(louezDb.reservations).values({
       id,
       storeId,
-      customerId: "customer",
+      customerId,
       number: id,
       status: "pending",
       startDate: new Date("2026-02-01T09:00:00Z"),
@@ -573,7 +622,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     ]);
   });
 
-  test("a cancellation still busy after three runs answers 500 and logs it; its payment stays cancelled, and the event again leaves the checkout pending", async () => {
+  test("a cancellation still busy after three runs answers 500 and logs it; its payment stays cancelled, and the event again cancels the checkout", async () => {
     const id = await booking();
     const sessionId = await sessionPayment(id);
     let runs = 0;
@@ -607,15 +656,120 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     assert.equal(logged.stripeWebhook.issue, "handler_failed");
     assert.equal(await readStatus(id), "pending");
 
-    // Stripe sends the event again: the payment is no longer pending, so the
-    // cancellation is skipped and the checkout stays pending (section 5).
+    // Stripe sends the event again: the session's expiry is recorded, so the
+    // redelivery finishes the cancellation, and records the expiry no second time.
     calls.length = 0;
+    await raw.query("TRUNCATE TABLE test_writes");
     assert.deepEqual(await expire(id, sessionId, undefined, eventId), {
       status: 200,
       body: { received: true },
     });
-    assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
-    assert.equal(await readStatus(id), "pending");
+    assert.deepEqual(await readWrites(id), [
+      "1: reservations status pending > cancelled",
+      "1: reservation_activity + cancelled",
+    ]);
+    assert.deepEqual(calls, [
+      [
+        "runReservationEffects",
+        [{ type: "legacy_fee.void", storeId: STORE, reservationId: id }],
+        { afterCommits: 1 },
+      ],
+      expiredLog(id, sessionId, true),
+    ]);
+    assert.equal(await readStatus(id), "cancelled");
+    assert.deepEqual(
+      (await readActivity(id)).map((line) => line.activityType),
+      ["cancelled", "payment_expired"],
+    );
+  });
+
+  /** A storefront checkout of the store that takes payments, its session's payment open. */
+  async function resumableCheckout() {
+    const id = await booking("online", RESUME_STORE, RESUME_CUSTOMER);
+    const sessionId = await sessionPayment(id, "pending", RESUME_ACCOUNT);
+    return { id, sessionId };
+  }
+
+  /** The checkout's payment resumed, as the cancelled page asks for it. */
+  const resume = (reservationId: string) =>
+    paymentSession.createReservationPaymentSessionForCustomer(
+      RESUME_SLUG,
+      reservationId,
+      RESUME_CUSTOMER,
+      "checkout_resume",
+      { allowPendingReservation: true, chargeAmount: 10 },
+    );
+
+  /** The reservation's payments: their status and session, by session. */
+  async function paymentsOf(id: string) {
+    const rows = await louezDb.db
+      .select({
+        status: louezDb.payments.status,
+        session: louezDb.payments.stripeCheckoutSessionId,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, id));
+    return rows.sort((a, b) => String(a.session).localeCompare(String(b.session)));
+  }
+
+  test("the expiry of a session a resumed checkout replaced never cancels the checkout, whenever it comes; one handled before the resume cancels it as before", async () => {
+    const moments = [
+      "before the resume",
+      "its row cancelled, its session not yet expired at Stripe",
+      "the new session created, not yet installed",
+      "the new session installed",
+    ] as const;
+    for (const moment of moments) {
+      const { id, sessionId } = await resumableCheckout();
+      const deliver = () =>
+        expire(id, sessionId, undefined, undefined, { account: RESUME_ACCOUNT });
+      let delivered: Awaited<ReturnType<typeof expire>> | undefined;
+      onStripeCall = async (call) => {
+        if (
+          (moment === "its row cancelled, its session not yet expired at Stripe" &&
+            call === `expire ${sessionId}`) ||
+          (moment === "the new session created, not yet installed" && call.startsWith("create "))
+        ) {
+          delivered = await deliver();
+        }
+      };
+      if (moment === "before the resume") delivered = await deliver();
+      const result = await resume(id);
+      onStripeCall = null;
+      if (moment === "the new session installed") delivered = await deliver();
+
+      assert.deepEqual(delivered, { status: 200, body: { received: true } }, moment);
+      if (moment === "before the resume") {
+        assert.deepEqual(result, { error: "errors.invalidStatus" }, moment);
+        assert.deepEqual(stripeCalls, [], moment);
+        assert.equal(await readStatus(id), "cancelled", moment);
+        assert.deepEqual(await paymentsOf(id), [{ status: "cancelled", session: sessionId }]);
+      } else {
+        assert.ok(!("error" in result), `${moment}: ${JSON.stringify(result)}`);
+        assert.equal(await readStatus(id), "pending", moment);
+        assert.deepEqual(
+          await paymentsOf(id),
+          [
+            { status: "cancelled", session: sessionId },
+            { status: "pending", session: result.sessionId },
+          ],
+          moment,
+        );
+        // The replaced session's expiry recorded nothing.
+        assert.deepEqual(
+          (await readActivity(id)).map((line) => line.activityType),
+          ["payment_initiated"],
+          moment,
+        );
+        assert.deepEqual(
+          calls.filter(([name]) => name === "log.info"),
+          [expiredLog(id, sessionId, false)],
+          moment,
+        );
+      }
+      calls.length = 0;
+      stripeCalls.length = 0;
+    }
   });
 
   test("an event whose reservation disagrees with its payment's, in the same store: logged, nothing written on either", async () => {

@@ -339,6 +339,33 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
     assert.ok(completedLog(booking.id), JSON.stringify(calls));
   });
 
+  test("a session paid after a resumed checkout cancelled its row: recorded and confirmed", async () => {
+    const booking = await checkout(TODAY_ACCOUNT);
+    // The resume cancels the open row before it expires the session at Stripe;
+    // the customer paid it meanwhile.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ status: "cancelled" })
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, booking.sessionId));
+
+    assert.deepEqual(await complete(booking, TODAY_ACCOUNT), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await stateOf(booking.id), {
+      status: "confirmed",
+      payments: [
+        {
+          status: "completed",
+          stripeAccountId: TODAY_ACCOUNT,
+          stripePaymentIntentId: `pi_${booking.id}`,
+        },
+      ],
+    });
+    assert.ok(completedLog(booking.id), JSON.stringify(calls));
+  });
+
   test("a session its row records under the previous account, sent by the store's account of today: connected_account_mismatch logged, nothing written", async () => {
     const booking = await checkout(PREVIOUS_ACCOUNT);
 

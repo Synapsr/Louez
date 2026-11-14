@@ -716,16 +716,33 @@ async function handleCheckoutExpired(
     return locked !== undefined;
   };
 
+  // The `payment_expired` line that names this session: the record that it
+  // expired. A session a resumed checkout replaced has its row cancelled by that
+  // checkout and no such line.
+  const findExpiredLine = async (executor: Pick<Transaction, "select">) => {
+    const [recorded] = await executor
+      .select({ id: reservationActivity.id })
+      .from(reservationActivity)
+      .where(
+        and(
+          eq(reservationActivity.reservationId, reservationId),
+          eq(reservationActivity.activityType, "payment_expired"),
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.checkoutSessionId')) = ${session.id}`,
+        ),
+      )
+      .limit(1);
+    return recorded !== undefined;
+  };
+
   // A row still pending is a payment this session has not settled: the customer
-  // never paid, or a resumed checkout has expired the session at Stripe and not
-  // yet cancelled the row (it expires the session first, then cancels the row:
-  // lib/reservations/payment-session.ts). The expiry is recorded by the delivery
-  // whose update moves the row out of pending, and only that one asks for the
-  // cancellation: another delivery of the event, even a concurrent one, finds the
-  // row cancelled under its lock and writes nothing. A session whose row is
-  // already cancelled or completed records nothing.
+  // never paid. The expiry is recorded by the delivery whose update moves the row
+  // out of pending: another delivery of the event, even a concurrent one, finds
+  // the row cancelled under its lock and records nothing. A resumed checkout
+  // cancels its old session's row before it expires that session at Stripe
+  // (lib/reservations/payment-session.ts), so that session's expiry finds the row
+  // no longer pending and records nothing.
   const pendingPayment = existingPayment?.status === "pending" ? existingPayment : null;
-  const abandoned =
+  const recordedNow =
     pendingPayment !== null &&
     (await db.transaction(async (tx) => {
       if (!(await lockReservation(tx))) return false;
@@ -741,6 +758,12 @@ async function handleCheckoutExpired(
       await tx.insert(reservationActivity).values(expiredLine());
       return true;
     }));
+  // The checkout is abandoned when this session's expiry is recorded, by this
+  // delivery or by an earlier one whose cancellation of the reservation did not
+  // finish: every delivery asks for it, and the entry, idempotent, cancels a
+  // reservation still pending with no other open or paid rental payment.
+  const abandoned =
+    existingPayment !== undefined && (recordedNow || (await findExpiredLine(db)));
 
   // A payment request's session has no payment row until it is paid: its line,
   // which tells the store why no money came, is written once per session. Under
@@ -749,18 +772,7 @@ async function handleCheckoutExpired(
   if (!existingPayment && session.metadata?.paymentRequestId) {
     await db.transaction(async (tx) => {
       if (!(await lockReservation(tx))) return;
-      const [recorded] = await tx
-        .select({ id: reservationActivity.id })
-        .from(reservationActivity)
-        .where(
-          and(
-            eq(reservationActivity.reservationId, reservationId),
-            eq(reservationActivity.activityType, "payment_expired"),
-            sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.checkoutSessionId')) = ${session.id}`,
-          ),
-        )
-        .limit(1);
-      if (!recorded) await tx.insert(reservationActivity).values(expiredLine());
+      if (!(await findExpiredLine(tx))) await tx.insert(reservationActivity).values(expiredLine());
     });
   }
 

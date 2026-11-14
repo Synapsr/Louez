@@ -9,7 +9,9 @@ import {
   payments,
   reservationActivity,
   reservations,
+  runReservationOnlyChange,
   stores,
+  type Transaction,
 } from "@louez/db";
 import { validateStripePaymentAmount } from "@louez/utils";
 
@@ -24,7 +26,7 @@ import {
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
-import { isRentalPaid } from "@/lib/reservations/util.payment-status";
+import { hasRentalPaymentInProgress, isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
@@ -121,27 +123,61 @@ export async function createReservationPaymentSessionForCustomer(
       };
     }
 
-    const pendingPayments = reservation.payments.filter(
-      (payment) => payment.type === "rental" && payment.status === "pending",
-    );
-    for (const pending of pendingPayments) {
-      if (pending.stripeCheckoutSessionId) {
-        try {
-          await getStripe().checkout.sessions.expire(pending.stripeCheckoutSessionId, {
-            stripeAccount: stripeAccountId,
-          });
-        } catch {
-          // Session may already be expired or completed.
-        }
+    // The reservation as its lock holds it: the status and the payments each
+    // write below decides on, read again under that lock.
+    const scope = { reservationId, storeId: store.id };
+    const readPayable = async (
+      tx: Transaction,
+    ): Promise<
+      { refusal: string } | { refusal: null; payments: (typeof payments.$inferSelect)[] }
+    > => {
+      const [locked] = await tx
+        .select({ status: reservations.status })
+        .from(reservations)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+      if (!locked || !allowedStatuses.includes(locked.status)) {
+        return { refusal: "errors.invalidStatus" };
       }
-      await db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(payments)
+        .where(eq(payments.reservationId, reservationId));
+      if (isRentalPaid(rows, currency)) return { refusal: "errors.alreadyPaid" };
+      return { refusal: null, payments: rows };
+    };
+    const expireSession = async (sessionId: string) => {
+      try {
+        await getStripe().checkout.sessions.expire(sessionId, { stripeAccount: stripeAccountId });
+      } catch {
+        // Session may already be expired or completed.
+      }
+    };
+
+    // The rental's open payments are cancelled before their sessions are expired
+    // at Stripe: an expiry of a session replaced here finds its row no longer
+    // pending and cancels nothing.
+    const replaced = await runReservationOnlyChange(scope, async (tx) => {
+      const payable = await readPayable(tx);
+      if (payable.refusal !== null) return { refusal: payable.refusal, sessionIds: [] };
+      const open = payable.payments.filter(
+        (payment) => payment.type === "rental" && payment.status === "pending",
+      );
+      for (const payment of open) {
         await tx
           .update(payments)
           .set({ status: "cancelled", updatedAt: new Date() })
-          .where(and(eq(payments.id, pending.id), eq(payments.reservationId, reservation.id)));
-        await markReservation(tx, reservation);
-      });
-    }
+          .where(and(eq(payments.id, payment.id), eq(payments.status, "pending")));
+      }
+      if (open.length > 0) await markReservation(tx, reservation);
+      return {
+        refusal: null,
+        sessionIds: open.flatMap((payment) =>
+          payment.stripeCheckoutSessionId ? [payment.stripeCheckoutSessionId] : [],
+        ),
+      };
+    });
+    if (replaced.refusal !== null) return { error: replaced.refusal };
+    for (const sessionId of replaced.sessionIds) await expireSession(sessionId);
 
     const lineItems = [
       {
@@ -193,34 +229,51 @@ export async function createReservationPaymentSessionForCustomer(
       ...(source === "checkout_resume" ? { checkoutFlow: "storefront_checkout" as const } : {}),
     });
 
-    // The pending payment and its activity land together or not at all.
+    // The pending payment and its activity land together, and only on a
+    // reservation still payable, with no other open or paid rental payment;
+    // otherwise the session just created is expired and nothing is written.
     const now = new Date();
-    await db.transaction(async (tx) => {
-      await tx.insert(payments).values({
-        id: nanoid(),
-        reservationId,
-        amount: chargeAmount.toFixed(2),
-        type: "rental",
-        method: "stripe",
-        status: "pending",
-        stripeCheckoutSessionId: sessionId,
-        // The account the session was created on: its lifecycle is read on it.
-        stripeAccountId,
-        origin: "customer_session",
-        currency,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await markReservation(tx, reservation);
+    let refusal: string | null;
+    try {
+      refusal = await runReservationOnlyChange(scope, async (tx) => {
+        const payable = await readPayable(tx);
+        if (payable.refusal !== null) return payable.refusal;
+        // Another payment of the rental started meanwhile: this one is not installed.
+        if (hasRentalPaymentInProgress(payable.payments)) return "errors.paymentSessionError";
+        await tx.insert(payments).values({
+          id: nanoid(),
+          reservationId,
+          amount: chargeAmount.toFixed(2),
+          type: "rental",
+          method: "stripe",
+          status: "pending",
+          stripeCheckoutSessionId: sessionId,
+          // The account the session was created on: its lifecycle is read on it.
+          stripeAccountId,
+          origin: "customer_session",
+          currency,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await markReservation(tx, reservation);
 
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
-        reservationId,
-        activityType: "payment_initiated",
-        metadata: { checkoutSessionId: sessionId, source },
-        createdAt: now,
+        await tx.insert(reservationActivity).values({
+          id: nanoid(),
+          reservationId,
+          activityType: "payment_initiated",
+          metadata: { checkoutSessionId: sessionId, source },
+          createdAt: now,
+        });
+        return null;
       });
-    });
+    } catch (error) {
+      await expireSession(sessionId);
+      throw error;
+    }
+    if (refusal) {
+      await expireSession(sessionId);
+      return { error: refusal };
+    }
 
     await captureProductServerEvent({
       distinctId: customerId,
