@@ -391,15 +391,15 @@ const updateStatus = storeProcedure
     description: [
       "Changes a reservation's status, with the same effects as in the dashboard:",
       "",
-      "- `confirmed` confirms a request or a quote: its items leave the stock, the customer gets the acceptance message and the insurance contract is created.",
+      "- `confirmed` confirms a request or a quote: its items leave the stock and the customer gets the acceptance message. For a reservation with insurance, Louez then creates the insurance contract; a failure comes back in `warnings`, and the confirmation stands.",
       "- `rejected` rejects a request; the customer gets the rejection message, with `rejectionReason`.",
       "- `ongoing` marks it picked up. Refused with `CONTRACT_UNSIGNED` when the store requires a signed contract and the customer has not signed.",
       "- `completed` marks it returned.",
       "- `cancelled` cancels it, as `POST /reservations/{id}/cancel` does.",
       "",
-      "The customer's messages go out on the channels the store set for each. Confirming, rejecting and cancelling ask for a confirmation first (412 `CONFIRMATION_REQUIRED`), with a preview of the messages and the stock.",
+      "The customer's messages go out on the channels the store set for each. On a key set to ask for confirmations (the default), confirming a request or a quote, rejecting and cancelling first answer 412 `CONFIRMATION_REQUIRED`, with a preview of the messages and the stock; on a key whose confirmations are off, they run at once.",
       "",
-      "A confirmation the stock cannot cover answers `RESERVATION_INSUFFICIENT_CAPACITY`, with each short line in `details.shortfalls`. The same request with `allowOverbooking: true` confirms over the stock: it always asks for a confirmation, even with a key whose confirmations are off, and its token holds only while the shortfalls stay as previewed. Lines that fit the stock but not the turnover buffer the store keeps between rentals answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes it the same way, for this confirmation only. Each flag passes only its own refusal, and neither passes `RESERVATION_UNITS_UNAVAILABLE` or a consumable out of stock.",
+      "A confirmation the stock cannot cover answers `RESERVATION_INSUFFICIENT_CAPACITY`, with each short line in `details.shortfalls`. The same request with `allowOverbooking: true` confirms over the stock: it always answers 412 `CONFIRMATION_REQUIRED` first, even on a key whose confirmations are off, and its token holds only while the shortfalls stay as previewed. Lines that fit the stock but not the turnover buffer the store keeps between rentals answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes it the same way, for this confirmation only. Each flag passes only its own refusal, and neither passes `RESERVATION_UNITS_UNAVAILABLE` or a consumable out of stock.",
       "",
       "Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links.dashboard`.",
     ].join("\n"),
@@ -441,7 +441,7 @@ const cancel = storeProcedure
     method: "POST",
     path: "/reservations/{id}/cancel",
     description:
-      "Cancels a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled, and the customer gets the cancellation message on the channels the store set. Nothing is refunded or released, and the message does not mention a refund. Asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), with a preview of the customer, the dates, what was paid and the message. Returns the change and the reservation's `links.dashboard`.",
+      "Cancels a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract, if it has one, is cancelled, and the customer gets the cancellation message on the channels the store set. Nothing is refunded or released, and the message does not mention a refund. On a key set to ask for confirmations (the default), it first answers 412 `CONFIRMATION_REQUIRED`, with a preview of the customer, the dates, what was paid and the message; on a key whose confirmations are off, it runs at once. Returns the change and the reservation's `links.dashboard`.",
   })
   .input(cancelReservationInput)
   .output(statusChangeOutput)

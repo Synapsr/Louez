@@ -140,7 +140,7 @@ const startStripeOnboarding = storeProcedure
   .route({
     method: "POST",
     path: "/payments/stripe/onboarding",
-    description: `Starts connecting the store to Stripe so it takes online payments, or finishes a setup left midway. Stripe asks the person for their identity and bank details on its own pages, which only they can fill in. ${REST_HANDOFF_HELP} The step fails with \`failure.code\` \`store_email_required\` when the store has no contact e-mail, which \`PATCH /settings/store-info\` sets. Once it is completed, \`POST /payments/stripe/sync\` reads where Stripe stands: Stripe may still review the details before charges are enabled, and the online store takes requests rather than payments until then. Refused with \`STRIPE_ALREADY_CONNECTED\` when the store already takes payments, and \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe.`,
+    description: `Starts connecting the store to Stripe so it takes online payments, or finishes a setup left midway. Stripe asks the person for their identity and bank details on its own pages, which only they can fill in. ${REST_HANDOFF_HELP} When a Stripe account must be created for the store, the step fails with \`failure.code\` \`store_email_required\` if neither the store's contact e-mail (\`PATCH /settings/store-info\` sets it) nor its owner's is usable. Once it is completed, \`POST /payments/stripe/sync\` reads where Stripe stands: Stripe may still review the details before charges are enabled, and the online store takes requests rather than payments until then. Refused with \`STRIPE_ALREADY_CONNECTED\` when the store already takes payments, and \`STRIPE_NOT_CONFIGURED\` when this Louez has no Stripe.`,
   })
   .input(startStripeOnboardingInput)
   .output(startStripeOnboardingOutput)
@@ -290,7 +290,7 @@ const record = storeProcedure
   .route({
     method: "POST",
     path: "/reservations/{reservationId}/payments",
-    description: `Records a payment the store collected itself (cash, card, transfer, check or other) on a reservation, or money it paid back, as a negative \`adjustment\`. It moves no money. Refused for an amount of zero, a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+    description: `Records a payment row the store handled itself on a reservation: its \`type\` (\`rental\`, \`deposit\`, \`deposit_return\`, \`damage\` or \`adjustment\`), its amount and how it was paid (cash, card, transfer, check or other). Money the store paid back is a negative \`adjustment\`. It moves no money. A \`deposit_return\` recorded here is not checked against the deposit collected: to record a deposit given back against that balance, use \`POST /reservations/{reservationId}/deposit-returns\`. Refused for an amount of zero, a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
   })
   .input(recordPaymentInput)
   .output(recordPaymentOutput)
@@ -318,7 +318,7 @@ const recordDepositReturnProcedure = storeProcedure
   .route({
     method: "POST",
     path: "/reservations/{reservationId}/deposit-returns",
-    description: `Records a deposit the store has already given back: the amount and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused with \`DEPOSIT_RETURN_EXCEEDS_BALANCE\` above the deposit collected and not yet returned. ${REST_ALWAYS_CONFIRMED} showing that balance. ${REST_LINKS_NOTE}`,
+    description: `Records a deposit the store has already given back: the amount and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused with \`DEPOSIT_RETURN_EXCEEDS_BALANCE\` above the returnable balance: the reservation's completed \`deposit\` rows minus its completed \`deposit_return\` rows. Stripe deposit holds and captures are not in that balance. The check is this operation's own: a \`deposit_return\` recorded with \`POST /reservations/{reservationId}/payments\` is not checked. ${REST_ALWAYS_CONFIRMED} showing that balance. ${REST_LINKS_NOTE}`,
   })
   .input(recordDepositReturnInput)
   .output(recordDepositReturnOutput)

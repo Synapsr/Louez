@@ -573,7 +573,7 @@ const uploadImageProcedure = storeProcedure
     method: "POST",
     path: "/products/images",
     description:
-      "Uploads a product image (JPEG, PNG, GIF or WebP) in one call, from exactly one of: its bytes as base64 in `contentBase64` (or a `data:image/…;base64,` URL), 5 MB at most once decoded; or a public HTTPS `imageUrl`, which Louez downloads, 15 MB at most. Both or neither answer `UPLOAD_SOURCE_INVALID`. The type is read from the bytes, and a `contentType` sent must match it. An `imageUrl` must answer 200 with the image within 10 seconds and 3 redirects; private and local addresses are refused, and a download that fails answers `UPLOAD_URL_UNREACHABLE`. Each call stores a new image and changes no product. Returns the image's public `url`, which a product takes in its `images` (`POST /products`, `PATCH /products/{id}`).",
+      "Uploads a product image (JPEG, PNG, GIF or WebP) in one call, from exactly one of: its bytes as base64 in `contentBase64` (or a `data:image/…;base64,` URL), 5 MB at most once decoded; or a public HTTPS `imageUrl`, which Louez downloads, 15 MB at most. Both or neither answer `UPLOAD_SOURCE_INVALID`. The type is read from the bytes: with `contentBase64`, a `contentType` sent must match them; with `imageUrl`, the type is only detected from the bytes downloaded. An `imageUrl` must answer 200 with the image, following at most 3 redirects, each request within 10 seconds; private and local addresses are refused, and a download that fails answers `UPLOAD_URL_UNREACHABLE`. Each call stores a new image and changes no product. Returns the image's public `url`, which a product takes in its `images` (`POST /products`, `PATCH /products/{id}`).",
   })
   .input(uploadImageInput)
   .output(completeImageUploadOutput)

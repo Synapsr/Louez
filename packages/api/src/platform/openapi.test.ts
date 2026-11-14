@@ -1075,14 +1075,29 @@ describe("the public reference", () => {
 
   test("gives every operation a text of its own, written for developers, without an assistant's words", async () => {
     const assistantWording = [
-      /\bgive the user\b/i,
+      // What an assistant is told to do for the person it helps.
+      /\b(?:show|give|tell|ask|offer|remind|send)\b(?:\s+(?:it|them|this|these|that))?\s+(?:to\s+)?the user\b/i,
+      /\b(?:show|give|tell)\s+(?:it|them|the \w+)\s+to the user\b/i,
       /\bto the user\b/i,
+      /\bthe user (?:wants|asks|chose|agrees|says|decides|confirms)\b/i,
+      /\bonce they agree\b/i,
+      /\b(?:ask|tell) them\b/i,
+      // The words of the MCP transport.
       /\btools?\b/i,
       /\bMCP\b/,
       /\bconnection\b/i,
       /\bagents?\b/i,
       /\bstoreId\b/,
     ];
+    // Every MCP tool name: the exposed procedures' and the hand-written tools'.
+    const { capabilities } = await import("./inventory");
+    const toolNames = new Set([
+      ...procedures.map(({ meta }) => meta.mcp.name),
+      ...capabilities.flatMap(({ sources }) =>
+        sources.filter(({ kind }) => kind === "mcp-tool").map(({ name }) => name),
+      ),
+    ]);
+    assert.ok(toolNames.has("products_get") && toolNames.has("check_availability"));
     for (const { path, meta, operation } of await servedProcedures()) {
       // `.route({ description })`; the tool keeps `meta.mcp.description`.
       assert.ok(operation.description, `${path} has a REST text`);
@@ -1090,6 +1105,28 @@ describe("the public reference", () => {
       for (const word of assistantWording) {
         assert.doesNotMatch(operation.description, word, `${path} says ${word}`);
       }
+      for (const word of operation.description.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g) ?? []) {
+        assert.ok(!toolNames.has(word), `${path} names the tool ${word}`);
+      }
+    }
+    // The guard catches what it is meant to.
+    const caught = (text: string) =>
+      assistantWording.some((word) => word.test(text)) ||
+      (text.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g) ?? []).some((word) => toolNames.has(word));
+    for (const text of [
+      "Show the user the preview.",
+      "Call products_get first.",
+      "Give it to the user as is.",
+      "Ask the user which one.",
+      "When the user wants a refund.",
+    ]) {
+      assert.ok(caught(text), `the guard catches "${text}"`);
+    }
+    for (const text of [
+      "It opens for the Louez user the key belongs to.",
+      "Send the same request again with the token.",
+    ]) {
+      assert.ok(!caught(text), `the guard lets "${text}" through`);
     }
   });
 
