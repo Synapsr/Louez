@@ -266,7 +266,7 @@ describe("the approval's page", () => {
     const html = renderPage({ consequences: ["customer_message", "stock_override"] });
     const shown = visible(html);
     assert.match(shown, /Approve booking past your stock\?/);
-    assert.match(shown, /Goes past your stock limit\.\s*Sends a message to a customer: it can’t be taken back\./);
+    assert.match(shown, /Allows a booking past your stock or your turnover buffer\.\s*Sends a message to a customer: it can’t be taken back\./);
     const alerts = tags(html, "div").filter((div) => div["data-slot"] === "alert");
     assert.equal(alerts.length, 1);
     assert.match(alerts[0]?.class ?? "", /border-warning/);

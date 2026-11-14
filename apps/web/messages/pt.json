@@ -9820,7 +9820,7 @@
       "stake": {
         "access_removed": "Remove um acesso à sua loja.",
         "money": "Altera o dinheiro registado para a sua loja.",
-        "stock_override": "Ultrapassa o limite do seu stock.",
+        "stock_override": "Permite uma reserva acima do stock disponível ou sem respeitar a sua margem entre alugueres.",
         "deletion": "Elimina definitivamente: não se pode desfazer.",
         "customer_message": "Envia uma mensagem a um cliente: não se pode retirar.",
         "credits": "Gasta créditos: não são devolvidos."

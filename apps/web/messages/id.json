@@ -9820,7 +9820,7 @@
       "stake": {
         "access_removed": "Mencabut sebuah akses ke toko Anda.",
         "money": "Mengubah uang yang tercatat untuk toko Anda.",
-        "stock_override": "Melampaui batas stok Anda.",
+        "stock_override": "Mengizinkan pemesanan yang melebihi stok tersedia atau tidak mematuhi jeda antarsewa Anda.",
         "deletion": "Menghapus secara permanen: tidak dapat dibatalkan.",
         "customer_message": "Mengirim pesan ke pelanggan: tidak dapat ditarik kembali.",
         "credits": "Memakai kredit: tidak dikembalikan."

@@ -9818,9 +9818,9 @@
       "provenanceAssistant": "<place>{store}</place> · asked by an AI assistant",
       "trustShort": "Only Louez’s summary counts.",
       "stake": {
-        "access_removed": "Removes an access to your store.",
+        "access_removed": "Revokes access to your store.",
         "money": "Changes the money recorded for your store.",
-        "stock_override": "Goes past your stock limit.",
+        "stock_override": "Allows a booking past your stock or your turnover buffer.",
         "deletion": "Deletes for good: it can’t be undone.",
         "customer_message": "Sends a message to a customer: it can’t be taken back.",
         "credits": "Spends credits: they aren’t given back."

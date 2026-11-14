@@ -9820,7 +9820,7 @@
       "stake": {
         "access_removed": "Entzieht einen Zugang zu Ihrem Shop.",
         "money": "Ändert das für Ihren Shop erfasste Geld.",
-        "stock_override": "Überschreitet die Grenze Ihres Bestands.",
+        "stock_override": "Erlaubt eine Buchung über den verfügbaren Bestand hinaus oder ohne Einhaltung Ihrer Pufferzeit zwischen zwei Vermietungen.",
         "deletion": "Löscht endgültig: Das lässt sich nicht rückgängig machen.",
         "customer_message": "Sendet eine Nachricht an einen Kunden: Sie lässt sich nicht zurückholen.",
         "credits": "Verbraucht Guthaben: Es wird nicht zurückgegeben."

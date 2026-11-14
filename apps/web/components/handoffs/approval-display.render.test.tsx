@@ -587,7 +587,7 @@ describe("what a person reads first, for the actions a person approves", () => {
       "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
       "Camille Simon recevra l’e-mail « demande acceptée »",
       "Seul le résumé de Louez fait foi.",
-      "Dépasse la limite de votre stock.",
+      "Autorise une réservation au-delà de votre stock ou sans respecter votre délai entre deux locations.",
       "Envoie un message à un client : impossible de le reprendre.",
       "Détails",
       "Ajouter un mot pour votre assistant",

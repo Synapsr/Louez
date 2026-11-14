@@ -9820,7 +9820,7 @@
       "stake": {
         "access_removed": "Trekt een toegang tot je winkel in.",
         "money": "Wijzigt het geld dat voor je winkel is geregistreerd.",
-        "stock_override": "Gaat over de grens van je voorraad.",
+        "stock_override": "Staat een boeking toe boven je beschikbare voorraad of zonder de ingestelde tijd tussen twee verhuren aan te houden.",
         "deletion": "Verwijdert definitief: dit is niet terug te draaien.",
         "customer_message": "Stuurt een bericht naar een klant: dit is niet terug te halen.",
         "credits": "Besteedt tegoed: je krijgt het niet terug."

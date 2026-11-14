@@ -9819,8 +9819,8 @@
       "trustShort": "Liczy się tylko podsumowanie Louez.",
       "stake": {
         "access_removed": "Odbiera dostęp do Twojego sklepu.",
-        "money": "Zmienia pieniądze zapisane dla Twojego sklepu.",
-        "stock_override": "Przekracza limit Twojego magazynu.",
+        "money": "Zmienia zapisy dotyczące płatności w Twoim sklepie.",
+        "stock_override": "Pozwala potwierdzić rezerwację ponad dostępny stan magazynu lub bez zachowania przerwy między wynajmami.",
         "deletion": "Usuwa na stałe: nie da się tego cofnąć.",
         "customer_message": "Wysyła wiadomość do klienta: nie da się jej wycofać.",
         "credits": "Wydaje kredyty: nie są zwracane."

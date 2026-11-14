@@ -20,7 +20,9 @@ import { HandoffDisclosure } from "@/components/handoffs/handoff-disclosure";
  * request carries names the page, and the note says each in a sentence of
  * its own, in this order. A sentence says "cannot be undone" only where
  * that is true of the consequence (a deletion, a message sent, credits
- * spent), not of a payment recorded or an access removed.
+ * spent), not of a payment recorded or an access removed. The stock
+ * sentence says what the override allows, not that something is short: the
+ * consequence is carried by the override itself, even with nothing short.
  */
 const ORDER = [
   "access_removed",

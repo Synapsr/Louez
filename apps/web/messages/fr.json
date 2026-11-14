@@ -9820,7 +9820,7 @@
       "stake": {
         "access_removed": "Retire un accès à votre boutique.",
         "money": "Modifie l’argent enregistré pour votre boutique.",
-        "stock_override": "Dépasse la limite de votre stock.",
+        "stock_override": "Autorise une réservation au-delà de votre stock ou sans respecter votre délai entre deux locations.",
         "deletion": "Supprime définitivement : impossible d’annuler.",
         "customer_message": "Envoie un message à un client : impossible de le reprendre.",
         "credits": "Dépense des crédits : ils ne sont pas rendus."

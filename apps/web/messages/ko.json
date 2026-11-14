@@ -9818,9 +9818,9 @@
       "provenanceAssistant": "<place>{store}</place> · AI 어시스턴트의 요청",
       "trustShort": "유효한 것은 Louez의 요약뿐입니다.",
       "stake": {
-        "access_removed": "매장에 대한 접근 권한 하나를 제거합니다.",
-        "money": "매장에 기록된 금액이 변경됩니다.",
-        "stock_override": "재고 한도를 넘습니다.",
+        "access_removed": "스토어 접근 권한을 회수합니다.",
+        "money": "스토어에 기록된 금액이 변경됩니다.",
+        "stock_override": "이용 가능한 재고를 초과하거나 대여 사이 간격을 지키지 않는 예약을 허용합니다.",
         "deletion": "완전히 삭제합니다. 되돌릴 수 없습니다.",
         "customer_message": "고객에게 메시지를 보냅니다. 취소할 수 없습니다.",
         "credits": "크레딧을 사용합니다. 돌려받을 수 없습니다."

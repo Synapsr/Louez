@@ -9818,9 +9818,9 @@
       "provenanceAssistant": "<place>{store}</place>・AIアシスタントからの依頼",
       "trustShort": "有効なのはLouezの要約だけです。",
       "stake": {
-        "access_removed": "お店へのアクセスを1件取り消します。",
-        "money": "お店に記録されている金額が変わります。",
-        "stock_override": "在庫の上限を超えます。",
+        "access_removed": "ストアへのアクセス権を取り消します。",
+        "money": "ストアに記録されている金額が変わります。",
+        "stock_override": "利用可能な在庫を超える予約や、レンタル間の間隔を守らない予約を許可します。",
         "deletion": "完全に削除します。取り消せません。",
         "customer_message": "お客様にメッセージを送信します。取り消せません。",
         "credits": "クレジットを使用します。返還されません。"

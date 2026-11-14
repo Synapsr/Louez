@@ -9818,9 +9818,9 @@
       "provenanceAssistant": "<place>{store}</place> · 由 AI 助手请求",
       "trustShort": "只有 Louez 的摘要才算数。",
       "stake": {
-        "access_removed": "移除一项对你商店的访问权限。",
-        "money": "更改你商店已记录的资金。",
-        "stock_override": "超出你的库存上限。",
+        "access_removed": "撤销对你店铺的访问权限。",
+        "money": "更改你店铺记录的付款信息。",
+        "stock_override": "允许确认超出可用库存或不满足两次租赁间隔要求的预订。",
         "deletion": "永久删除：无法撤销。",
         "customer_message": "向客户发送消息：无法撤回。",
         "credits": "消耗点数：不会退还。"
