@@ -1557,17 +1557,34 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     const key = await apiKey();
     await addNote("n1");
     const id = await approvedFor({ id: "n1" }, key);
-    await louezDb.db.execute(
-      orm.sql`UPDATE api_handoffs SET expires_at = NOW(3) + INTERVAL 1 SECOND WHERE id = ${id}`,
-    );
     const actor = keyActor(key.id);
-    const paused = pausedErase();
+    // The hour is cut short so that it passes while the call holds the row.
+    // A call that did not consume in time is refused as expired and changes
+    // nothing: the hour is then cut again, so no scheduling delay fails this.
+    let paused = pausedErase();
     let call: Promise<{ erased: boolean }> | null = null;
+    for (let attempt = 0; ; attempt += 1) {
+      await louezDb.db.execute(
+        orm.sql`UPDATE api_handoffs SET expires_at = NOW(3) + INTERVAL 2 SECOND WHERE id = ${id}`,
+      );
+      paused = pausedErase();
+      const started = erase({ id: "n1" }, key.context(presenting(id)), paused.notes);
+      const consumed = await Promise.race([
+        paused.hasAsked.then(() => true),
+        started.then(
+          () => false,
+          () => false,
+        ),
+      ]);
+      if (consumed) {
+        call = started;
+        break;
+      }
+      assert.ok(attempt < 10, "the call never consumed its approval within its time");
+    }
     let repeat: Promise<Refusal> | null = null;
     try {
       // Consumed in time, then the hour passes while the call holds the row.
-      call = erase({ id: "n1" }, key.context(presenting(id)), paused.notes);
-      await paused.hasAsked;
       await untilExpired(id);
       const refusal = await louezDb.db.transaction((tx) => checkErase(tx, actor, new Headers()));
       assert.ok(refusal);
