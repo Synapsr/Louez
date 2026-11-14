@@ -12,6 +12,7 @@ import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import {
   buildDemoSecurityHeaders,
   buildEmbedSecurityHeaders,
+  buildHandoffSecurityHeaders,
   buildSecurityHeaders,
 } from "@/lib/util.security-headers";
 import { isValidReferralCode } from "@louez/utils/referral-code";
@@ -57,6 +58,15 @@ function isEmbedPath(pathname: string): boolean {
   );
 }
 
+/**
+ * The handoff page itself, `/handoffs/<token>`: the one document whose form leaves for a
+ * provider. Not `done`, `return` or `refresh` pages, which sit one level deeper. The
+ * `resume` route matches too: it answers with a redirect, never a document.
+ */
+function isHandoffPagePath(pathname: string): boolean {
+  return /^\/handoffs\/[^/]+$/.test(pathname);
+}
+
 function withRuntimeSecurityHeaders(
   response: NextResponse,
   pathname: string,
@@ -76,7 +86,9 @@ function withRuntimeSecurityHeaders(
     ? buildDemoSecurityHeaders(options)
     : isEmbedPath(pathname)
       ? buildEmbedSecurityHeaders(options)
-      : buildSecurityHeaders(options);
+      : isHandoffPagePath(pathname)
+        ? buildHandoffSecurityHeaders(options)
+        : buildSecurityHeaders(options);
 
   for (const { key, value } of securityHeaders) {
     response.headers.set(key, value);

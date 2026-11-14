@@ -166,6 +166,27 @@ describe("proxy billing gate", () => {
     assert.equal(forged.status, 400);
   });
 
+  test("only the handoff page itself may send its form to the provider", async () => {
+    const token = `${"a".repeat(21)}${"s".repeat(43)}`;
+    const formAction = async (path: string, host?: string) =>
+      /form-action ([^;]*)/.exec(
+        (await visit(path, host)).headers.get("content-security-policy") ?? "",
+      )?.[1];
+    for (const path of [`/handoffs/${token}`, `/handoffs/${token}?retry=1`]) {
+      assert.equal(await formAction(path), "'self' https:", path);
+      assert.equal(await formAction(path, "shop.localhost:3000"), "'self' https:", path);
+    }
+    for (const path of [
+      `/handoffs/${token}/continue`,
+      `/handoffs/done/${"a".repeat(21)}`,
+      `/handoffs/return/${"a".repeat(21)}/${"t".repeat(43)}`,
+      "/dashboard",
+      "/dashboard/settings/payments",
+    ]) {
+      assert.equal(await formAction(path), "'self'", path);
+    }
+  });
+
   test("OpenAI's domain check reaches its route untouched, on every host and mode", async () => {
     const path = "/.well-known/openai-apps-challenge";
     const check = async (host: string) => {
