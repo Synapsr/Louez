@@ -1,10 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import * as nodeModule from "node:module";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { after, before, beforeEach, describe, test } from "node:test";
-import { pathToFileURL } from "node:url";
 
 import { NextRequest } from "next/server";
 
@@ -13,32 +8,21 @@ import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import {
+  BROWSER_POST,
+  SESSION_HEADER,
+  stubHandoffRoutes,
+} from "@/lib/handoffs/test-handoff-routes";
+
 // A person's answer posted from a step's page, through the route's own code
 // (`POST /handoffs/<id>/decide`) on a migrated database: the same-origin
 // check, the fields the page posts, and `handoffs.decide` called as the
-// signed-in user. The session is read from a test header (Better Auth stays
-// out) and the app's ports are the API's test ports.
+// signed-in user. Every answer is posted with the headers a browser sends
+// from a hand-off page (`BROWSER_POST`: `Origin: null`, as the pages send no
+// referrer). The session is read from a test header (Better Auth stays out)
+// and the app's ports are the API's test ports.
 
-const SESSION_HEADER = "x-test-session-user";
-const directory = mkdtempSync(join(tmpdir(), "louez-handoff-decide-"));
-after(() => rmSync(directory, { recursive: true }));
-const authStubPath = join(directory, "auth.mjs");
-writeFileSync(
-  authStubPath,
-  `export const auth = {};
-export const mcpOAuth = null;
-export const authInstance = {
-  api: {
-    getSession: async ({ headers }) => {
-      const id = headers.get(${JSON.stringify(SESSION_HEADER)});
-      return id ? { user: { id, email: id + "@decide.test" } } : null;
-    },
-  },
-};`,
-);
-const portsStubPath = join(directory, "ports.cjs");
-writeFileSync(portsStubPath, "module.exports = { apiPorts: globalThis.__louezDecidePorts };");
-Reflect.set(globalThis, "__louezDecidePorts", {
+stubHandoffRoutes({
   planFeatures: async () => ({ apiAccess: true }),
   runReservationEffects: async () => {},
   insurance: { createContract: async () => null, cancelContract: async () => {} },
@@ -49,25 +33,6 @@ Reflect.set(globalThis, "__louezDecidePorts", {
   afterCommit: () => {},
   team: { collaboratorLimit: async () => 10, emailConfigured: () => true },
 });
-Reflect.get(
-  nodeModule,
-  "registerHooks",
-)({
-  resolve(
-    specifier: string,
-    context: unknown,
-    next: (specifier: string, context: unknown) => unknown,
-  ) {
-    if (specifier === "server-only") return { url: "node:module", shortCircuit: true };
-    if (specifier === "@louez/auth") {
-      return { url: pathToFileURL(authStubPath).href, shortCircuit: true };
-    }
-    if (specifier === "@/lib/api/ports") {
-      return { url: pathToFileURL(portsStubPath).href, shortCircuit: true };
-    }
-    return next(specifier, context);
-  },
-});
 
 const APP = "https://app.louez.test";
 process.env.NEXT_PUBLIC_APP_URL = APP;
@@ -77,7 +42,6 @@ const OWNER = "hd_owner_user_000001";
 const STRANGER = "hd_stranger_user_001";
 const STORE = "hd_store_a_000000001";
 const KEY = "hd_api_key_000000001";
-const SAME_ORIGIN = { origin: APP, "sec-fetch-site": "same-origin" };
 
 describe("a step's answer posted to its route (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
@@ -197,7 +161,7 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded",
-          ...(options.headers ?? SAME_ORIGIN),
+          ...(options.headers ?? BROWSER_POST),
           ...(user ? { [SESSION_HEADER]: user } : {}),
         },
         body: new URLSearchParams(fields),
@@ -323,13 +287,31 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       assert.equal((await rowOf(row.id)).status, "pending");
     });
 
+    test("a post that names this app's origin, as a page that sends its referrer would, is accepted", async () => {
+      const row = await invitation();
+      const fields = { decision: "refuse", revision: String(row.revision), shown: shownOf(row) };
+      for (const headers of [{ origin: APP, "sec-fetch-site": "same-origin" }, { origin: APP }]) {
+        await louezDb.db
+          .update(louezDb.apiHandoffs)
+          .set({ status: "pending", activeSlot: 1, decision: null, failureCode: null })
+          .where(orm.eq(louezDb.apiHandoffs.id, row.id));
+        const response = await post(row.id, fields, { headers });
+        assert.equal(location(response), `/handoffs/done/${row.id}`, JSON.stringify(headers));
+      }
+    });
+
     test("a post from another site, or without an Origin, is refused before anything is read", async () => {
       const row = await invitation();
       const fields = { decision: "approve", revision: String(row.revision), shown: shownOf(row) };
       const refused: Array<Record<string, string>> = [
         { origin: "https://evil.test" },
+        { origin: "https://evil.test", "sec-fetch-site": "same-origin" },
         { origin: APP, "sec-fetch-site": "cross-site" },
         { origin: APP, "sec-fetch-site": "same-site" },
+        // A hidden origin counts only with the browser's own same-origin.
+        { origin: "null" },
+        { origin: "null", "sec-fetch-site": "cross-site" },
+        { origin: "null", "sec-fetch-site": "same-site" },
         {},
       ];
       for (const headers of refused) {
@@ -489,14 +471,20 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       assert.equal((await rowOf(row.id)).status, "pending");
     });
 
-    test("a post from another site is refused before anything is read", async () => {
+    test("a post from another site, or a hidden origin the browser does not vouch for, is refused", async () => {
       const row = await approval();
-      const response = await post(
-        row.id,
-        { decision: "approve", revision: String(row.revision), shown: BINDING },
-        { headers: { origin: "https://evil.test", "sec-fetch-site": "cross-site" } },
-      );
-      assert.equal(response.status, 403);
+      for (const headers of [
+        { origin: "https://evil.test", "sec-fetch-site": "cross-site" },
+        { origin: "null" },
+        { origin: "null", "sec-fetch-site": "cross-site" },
+      ]) {
+        const response = await post(
+          row.id,
+          { decision: "approve", revision: String(row.revision), shown: BINDING },
+          { headers },
+        );
+        assert.equal(response.status, 403, JSON.stringify(headers));
+      }
       assert.equal((await rowOf(row.id)).status, "pending");
     });
   });
