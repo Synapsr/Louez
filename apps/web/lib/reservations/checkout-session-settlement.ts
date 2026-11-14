@@ -187,14 +187,22 @@ export async function readCheckoutSessionState(
 /** At most this many sessions of one reservation are read at Stripe at once. */
 const SESSION_READS_AT_ONCE = 5;
 
-/** `readCheckoutSessionState` for each session, a few at once, in their order. */
+/**
+ * `readCheckoutSessionState` for each session, a few at once, in their order.
+ * `stop` is asked before each group: once it says so, the sessions left are
+ * not read and come back `unknown`, as a session Stripe did not answer for.
+ */
 export async function readCheckoutSessionStates<Session extends CheckoutSessionAtStripe>(
   sessions: readonly Session[],
-  options: { expire: boolean; request?: CheckoutSessionReadOptions },
+  options: { expire: boolean; request?: CheckoutSessionReadOptions; stop?: () => boolean },
 ): Promise<Array<Session & CheckoutSessionState>> {
   const states: Array<Session & CheckoutSessionState> = [];
   for (let start = 0; start < sessions.length; start += SESSION_READS_AT_ONCE) {
     const batch = sessions.slice(start, start + SESSION_READS_AT_ONCE);
+    if (options.stop?.()) {
+      states.push(...batch.map((session) => ({ ...session, state: "unknown" as const })));
+      continue;
+    }
     const read = await Promise.all(
       batch.map(async (session) => ({
         ...session,

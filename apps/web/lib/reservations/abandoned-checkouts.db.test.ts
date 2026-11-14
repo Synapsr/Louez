@@ -508,10 +508,10 @@ describe(
       for (let index = 0; index < 3; index += 1) {
         await checkout([{ status: "pending", age: (40 + index) * MINUTE }]);
       }
-      // The run starts at 0 and takes its first checkout then; the clock reads past
-      // the budget from the second checkout on.
+      // The run starts at 0, takes its first checkout and reads that one's session
+      // then; the clock reads past the budget from the second checkout on.
       let reads = 0;
-      const clock = () => (reads++ < 2 ? 0 : pass.ABANDONED_CHECKOUTS_RUN_BUDGET_MS);
+      const clock = () => (reads++ < 3 ? 0 : pass.ABANDONED_CHECKOUTS_RUN_BUDGET_MS);
 
       assert.deepEqual(
         await pass.settleAbandonedCheckouts({ clock }),
@@ -519,6 +519,35 @@ describe(
       );
       assert.equal(runLines.length, 1);
       assert.equal(runLines[0]?.waiting, 2);
+    });
+
+    test("a checkout whose many sessions answer slowly keeps no settled checkout waiting, and its reads stop at the budget", async () => {
+      // Twenty-six sessions to read, more than the budget allows at a second each.
+      const slow = await checkout(
+        Array.from({ length: 26 }, (_, index) => ({
+          status: "cancelled" as const,
+          age: (40 + index) * MINUTE,
+        })),
+      );
+      for (const session of slow.sessions) atStripe.set(session, "unreachable");
+      const settled = await checkout([{ status: "cancelled", age: 40 * MINUTE, settled: true }]);
+      // Each read costs a second of the run's clock.
+      const clock = () => readOptions.length * 1000;
+
+      for (let run = 0; run < 3; run += 1) {
+        readOptions.length = 0;
+        const result = await pass.settleAbandonedCheckouts({ clock });
+        // The settled checkout is cancelled by the first run, whatever the other costs.
+        assert.equal((await stateOf(settled.id)).status, "cancelled", `run ${run}`);
+        assert.equal(result.waiting, 0, `run ${run}`);
+        assert.equal(result.unreadable, 1, `run ${run}`);
+        // No group of reads starts once the budget is spent.
+        assert.ok(
+          readOptions.length <= pass.ABANDONED_CHECKOUTS_RUN_BUDGET_MS / 1000 + 4,
+          `run ${run}: ${readOptions.length} reads`,
+        );
+      }
+      assert.equal((await stateOf(slow.id)).status, "pending");
     });
 
     test("two runs at once: each record written once, the checkout cancelled once", async () => {

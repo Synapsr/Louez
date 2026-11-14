@@ -229,7 +229,11 @@ const lookBefore = (now: Date) =>
  */
 export async function settleAbandonedCheckout(
   checkout: { id: string; storeId: string; branch?: AbandonedCheckoutBranch },
-  { now = new Date(), request = ABANDONED_CHECKOUT_READ } = {},
+  {
+    now = new Date(),
+    request = ABANDONED_CHECKOUT_READ,
+    stop,
+  }: { now?: Date; request?: CheckoutSessionReadOptions; stop?: () => boolean } = {},
 ): Promise<AbandonedCheckoutOutcome> {
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, checkout.storeId),
@@ -276,7 +280,7 @@ export async function settleAbandonedCheckout(
       account,
     });
   }
-  const states = await readCheckoutSessionStates(sessions, { expire: false, request });
+  const states = await readCheckoutSessionStates(sessions, { expire: false, request, stop });
 
   for (const session of states) {
     if (session.state !== "expired") continue;
@@ -318,8 +322,10 @@ export async function settleAbandonedCheckout(
  * The cron's pass over abandoned checkouts: those with an unsettled session to
  * read at Stripe, and those whose sessions are all settled, with no payment
  * left, to cancel (`findAbandonedCheckouts`). Each checkout is its own unit: one
- * that fails is counted and the others go on. Once its time budget is spent it
- * takes no new checkout: those left wait for the next run. It holds no
+ * that fails is counted and the others go on. Those to cancel go first: they
+ * cost no Stripe call. Once its time budget is spent it takes no new checkout
+ * and reads no further session of the one it is on: those left wait for the
+ * next run. It holds no
  * transaction across a Stripe call, and two runs at once write each record once:
  * the conditional updates and the reservation's lock make the second a no-op. A
  * run that left checkouts unread, failed or waiting logs one line: its counts and
@@ -348,14 +354,22 @@ export async function settleAbandonedCheckouts({
   const skipped: string[] = [];
   // The first failure's kind only: a provider's message may name an account.
   let firstError: string | undefined;
-  for (const checkout of await findAbandonedCheckouts(now, order)) {
-    if (clock() >= deadline) {
+  const spent = () => clock() >= deadline;
+  // The checkouts to cancel first: they ask Stripe nothing, so a provider that
+  // answers slowly for the others cannot keep them waiting run after run.
+  const batch = await findAbandonedCheckouts(now, order);
+  const ordered = [
+    ...batch.filter(({ branch }) => branch === "settled"),
+    ...batch.filter(({ branch }) => branch !== "settled"),
+  ];
+  for (const checkout of ordered) {
+    if (spent()) {
       counts.waiting += 1;
       skipped.push(checkout.id);
       continue;
     }
     try {
-      const outcome = await settleAbandonedCheckout(checkout, { now, request });
+      const outcome = await settleAbandonedCheckout(checkout, { now, request, stop: spent });
       counts[outcome] += 1;
       if (outcome === "unreadable") skipped.push(checkout.id);
     } catch (error) {
