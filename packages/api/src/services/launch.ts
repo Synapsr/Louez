@@ -38,6 +38,7 @@ import type { Credential, Transport } from "../platform/actor";
 import type { ApiEvent, UrlsPort } from "../platform/ports";
 import type { ConfirmStep } from "./products";
 import { storedBusinessHours, type SettingsActor } from "./settings";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * A store's launch. The checklist says what the store still lacks before
@@ -650,7 +651,7 @@ export async function goLive(
   },
 ): Promise<GoLiveResult> {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const result = await db.transaction(async (tx) => {
     if (!(await lockStoreRow(tx, storeId))) throw platformErrors.noStore();
@@ -761,7 +762,7 @@ export async function goLive(
     };
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!result) throw platformErrors.noStore();
 
   const store = { ...actor.store, slug: result.slug };

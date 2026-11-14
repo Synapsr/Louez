@@ -478,8 +478,17 @@ export async function revokeGrant(input: { userId: string; id: string }): Promis
     const grant = await ownGrant(tx, input.userId, input.id);
     await tx.delete(apiAgentGrants).where(eq(apiAgentGrants.id, grant.id));
   });
-  // The links it handed to the user stop working.
-  await failCredentialHandoffs({ kind: "oauth", id: input.id });
+  // The links it handed to the user stop working. Every store the grant
+  // could act in is the user's, read once the grant is gone: a request that
+  // found the grant still there found its user a member of a store read here.
+  const memberOf = await db
+    .select({ storeId: storeMembers.storeId })
+    .from(storeMembers)
+    .where(eq(storeMembers.userId, input.userId));
+  await failCredentialHandoffs(
+    { kind: "oauth", id: input.id },
+    memberOf.map((row) => row.storeId),
+  );
 }
 
 /** The user's grants, newest first, with their stores and their last action. */

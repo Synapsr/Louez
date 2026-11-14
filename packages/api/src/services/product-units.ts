@@ -36,6 +36,7 @@ import {
 } from "./products";
 import { getUnitConflicts, type UnitConflict } from "./unit-conflicts";
 import { buildUnitEvent, updateUnits } from "./unit-mutations";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * A product's units: downtimes, retirement, reinstatement and their details,
@@ -260,7 +261,7 @@ export async function declareDowntime(
   if (endsAt && input.startsAt >= endsAt) throw productUnitErrors.downtimeDates();
   const note = normalizeNullableText(input.note);
   const ref = await findUnit(storeId, input.unitId);
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let result: { downtimeId: string; conflicts: UnitConflict[] } = { downtimeId: "", conflicts: [] };
 
   await retryOnceOnDeadlock(() =>
@@ -331,7 +332,7 @@ export async function declareDowntime(
     }),
   );
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   unitChanged(actor, ref.productId);
   return result;
 }
@@ -348,7 +349,7 @@ export async function updateDowntime(
 ) {
   const { storeId } = actor;
   const ref = await findDowntime(storeId, input.downtimeId);
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let conflictsFound: UnitConflict[] = [];
 
   await retryOnceOnDeadlock(() =>
@@ -427,7 +428,7 @@ export async function updateDowntime(
     }),
   );
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   unitChanged(actor, ref.productId);
   return { downtimeId: ref.id, conflicts: conflictsFound };
 }
@@ -486,7 +487,7 @@ export async function deleteDowntime(
 ) {
   const { storeId } = actor;
   const ref = await findDowntime(storeId, downtimeId);
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   await retryOnceOnDeadlock(() =>
     db.transaction(async (tx) => {
@@ -531,7 +532,7 @@ export async function deleteDowntime(
     }),
   );
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   unitChanged(actor, ref.productId);
   return { downtimeId: ref.id };
 }
@@ -552,7 +553,7 @@ export async function retireUnit(
   const { storeId } = actor;
   const note = normalizeNullableText(input.note);
   const ref = await findUnit(storeId, input.unitId);
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let conflictsFound: UnitConflict[] = [];
 
   await retryOnceOnDeadlock(() =>
@@ -604,7 +605,7 @@ export async function retireUnit(
     }),
   );
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   unitChanged(actor, ref.productId);
   return { unitId: ref.id, conflicts: conflictsFound };
 }

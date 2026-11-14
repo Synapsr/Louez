@@ -48,6 +48,14 @@ export default async function HandoffDonePage({ params }: { params: Promise<{ id
 
   const { row } = checked;
   const status = statusOf(row, new Date());
+  if (row.kind === "operation_approval") {
+    return (
+      <HandoffCard
+        title={t("operation_approval.unavailable.title")}
+        description={t("operation_approval.unavailable.description")}
+      />
+    );
+  }
   if (row.kind === "team_invitation") {
     // An owner's answer to an agent's invitation: there is no provider.
     const answer =

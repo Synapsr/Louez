@@ -5,9 +5,9 @@ import { resourceLinksSchema } from "./links";
 
 /**
  * Handoffs: a step only the human can take (Stripe's identity checks, a
- * billing card, approving a team invitation), started by an agent. The agent
- * gets the step's page in Louez, gives its link to the user, then reads the
- * handoff until it is done.
+ * billing card, approving a team invitation, approving an agent's
+ * operation), started by an agent. The agent gets the step's page in Louez,
+ * gives its link to the user, then reads the handoff until it is done.
  */
 
 export const HANDOFF_KINDS = [
@@ -15,16 +15,32 @@ export const HANDOFF_KINDS = [
   "stripe_dashboard",
   "billing_card_setup",
   "team_invitation",
+  "operation_approval",
 ] as const;
 export type HandoffKind = (typeof HANDOFF_KINDS)[number];
 
+/** The kinds a provider or a page settles as before approvals: every kind but an operation's approval. */
+export type StepKind = Exclude<HandoffKind, "operation_approval">;
+export const STEP_KINDS = HANDOFF_KINDS.filter(
+  (kind): kind is StepKind => kind !== "operation_approval",
+);
+
 /**
- * `pending`: the link is out, the user has not continued to the provider.
+ * `pending`: the link is out, the user has not continued to the provider (or
+ * not decided, for an approval).
  * `opened`: the user continued, the provider's flow is not finished.
+ * `approved`: a person approved an operation, which the agent has not carried out yet.
  * `expired`: the link ran out before the step was done; ask for a new one.
  * `completed`, `failed`: the end.
  */
-export const HANDOFF_STATUSES = ["pending", "opened", "completed", "expired", "failed"] as const;
+export const HANDOFF_STATUSES = [
+  "pending",
+  "opened",
+  "completed",
+  "expired",
+  "failed",
+  "approved",
+] as const;
 export type HandoffStatus = (typeof HANDOFF_STATUSES)[number];
 
 /** How long a link works after each request, for every kind today (`HANDOFF_LIFETIMES`). */

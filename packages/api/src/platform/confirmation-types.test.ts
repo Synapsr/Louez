@@ -7,7 +7,13 @@ import { basename, dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import type { ConfirmationCheck, checkConfirmation, requireConfirmation } from "./confirmation";
+import type {
+  ConfirmationCheck,
+  ConfirmationRefusal,
+  checkConfirmation,
+  raiseConfirmation,
+  requireConfirmation,
+} from "./confirmation";
 
 // A place that asks for a confirmation declares the consequences of its
 // branch, or does not compile: the compiler checks this file, and each line
@@ -19,9 +25,10 @@ import type { ConfirmationCheck, checkConfirmation, requireConfirmation } from "
 export function probes(
   ask: typeof requireConfirmation,
   check: typeof checkConfirmation,
-  rest: Omit<ConfirmationCheck, "consequences">,
+  rest: Omit<ConfirmationCheck, "consequences" | "executor">,
   untyped: any,
   online: boolean,
+  tx: NonNullable<ConfirmationCheck["executor"]>,
 ) {
   // @ts-expect-error: no consequences
   void ask({ ...rest });
@@ -37,11 +44,45 @@ export function probes(
   void ask({ ...rest, consequences: ["money"], ...untyped });
   // @ts-expect-error: an untyped check
   void ask(untyped);
+  // @ts-expect-error: the throwing form takes no transaction, whose rollback would lose what it records
+  void ask({ ...rest, consequences: ["money"], executor: tx });
 
   // What compiles: one or more consequences, per branch.
   void ask({ ...rest, consequences: ["money"] });
   void check({ ...rest, consequences: ["stock_override", "customer_message"] });
+  void check({ ...rest, consequences: ["money"], executor: tx });
   void ask({ ...rest, consequences: online ? ["deletion"] : ["change"] });
+}
+
+/**
+ * Never called: what a refusal allows. It is no `Error`, so a caller written
+ * for `Error | null` (that would throw it under its locks, or drop the
+ * approval it holds) does not compile; nobody but the platform builds one;
+ * `raiseConfirmation` alone turns it into what the call fails with.
+ */
+export async function refusals(
+  check: typeof checkConfirmation,
+  raise: typeof raiseConfirmation,
+  Refusal: typeof ConfirmationRefusal,
+  rest: Omit<ConfirmationCheck, "consequences" | "executor">,
+  tx: NonNullable<ConfirmationCheck["executor"]>,
+) {
+  // @ts-expect-error: a refusal is no Error
+  const asError: Error | null = await check({ ...rest, consequences: ["money"], executor: tx });
+  void asError;
+  // @ts-expect-error: a confirm step that answers an Error cannot hand one on
+  const step: () => Promise<Error | null> = () => check({ ...rest, consequences: ["money"] });
+  void step;
+  // @ts-expect-error: only the platform builds one
+  void new Refusal(null, null);
+  // @ts-expect-error: nor through its factory, whose key is the module's own
+  void Refusal.of(Symbol("forged"), null, null);
+  // @ts-expect-error: raised only when there is one
+  await raise(null);
+
+  // What compiles: the refusal returned, then raised once the transaction is over.
+  const refusal = await check({ ...rest, consequences: ["money"], executor: tx });
+  if (refusal) await raise(refusal);
 }
 
 test("a confirmation without its consequences does not compile", () => {

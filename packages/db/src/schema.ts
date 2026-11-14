@@ -4509,7 +4509,8 @@ export type ApiHandoffKind =
   | "stripe_connect_onboarding"
   | "stripe_dashboard"
   | "billing_card_setup"
-  | "team_invitation";
+  | "team_invitation"
+  | "operation_approval";
 
 /** What a handoff carries for its page, by kind: the invitation an owner approves. */
 export interface ApiHandoffPayload {
@@ -4518,6 +4519,22 @@ export interface ApiHandoffPayload {
   role: "member";
   /** The address had a Louez account when the agent asked: approving adds them at once. */
   joinsAtOnce: boolean;
+}
+
+/**
+ * What a person's approval of an operation carries (`operation_approval`,
+ * packages/api services/approvals.ts): the request as the agent sent it,
+ * the preview Louez showed for it, and the right the action needs.
+ */
+export interface ApiApprovalPayload {
+  /** The procedure's input, exactly as the requesting call sent it. */
+  input: unknown;
+  /** The preview Louez computed for that call: one sentence and the facts to check. */
+  preview: { summary: string; details?: Record<string, unknown> };
+  /** The procedure's scope (packages/api `ProcedureScope`): its domain, level and member permission. */
+  scope: { domain: string; level: "read" | "write"; role?: string; anyOf?: readonly string[] };
+  /** What the branch does (packages/api `Consequence`), as it declared them. */
+  consequences: readonly string[];
 }
 
 /**
@@ -4530,7 +4547,9 @@ export interface ApiHandoffPayload {
  * handoff (pending or opened) per store, kind and subject: `active_slot` is 1
  * while it is, null after, so the unique key holds only the active one. The
  * subject is empty for a store-wide step (Stripe, the billing card) and names
- * what the step is about otherwise (a team invitation: its address's hash).
+ * what the step is about otherwise (a team invitation: its address's hash;
+ * an operation's approval: the request's identity). An approval is open,
+ * and holds its slot, while pending or approved.
  */
 export const apiHandoffs = mysqlTable(
   "api_handoffs",
@@ -4541,15 +4560,28 @@ export const apiHandoffs = mysqlTable(
     /** What the step is about within its kind: empty, or a team invitation's address hash. */
     subject: varchar("subject", { length: 64 }).default("").notNull(),
     /** What the page shows and the step acts on, for the kinds that need it. */
-    payload: json("payload").$type<ApiHandoffPayload>(),
+    payload: json("payload").$type<ApiHandoffPayload | ApiApprovalPayload>(),
+    /** An approval's procedure, by its router path (`dashboard.payments.record`); null for the other kinds. */
+    procedure: varchar("procedure", { length: 128 }),
+    /**
+     * An approval's binding, SHA-256 hex: the user, the credential, the
+     * store, the procedure, the exact input and the state its preview showed.
+     * A decision names the binding its page showed, and a different one
+     * decides nothing. Null for the other kinds.
+     */
+    bindingHash: varchar("binding_hash", { length: 64 }),
     /**
      * Raised each time the payload or the binding changes (a repeated
      * request, another user starting over): a decision names the revision
      * its page showed, and a different one decides nothing.
      */
     revision: int("revision", { unsigned: true }).default(1).notNull(),
-    /** `expired` is not stored: an active handoff past `expires_at` reads as expired. */
-    status: mysqlEnum("status", ["pending", "opened", "completed", "failed"])
+    /**
+     * `expired` is not stored: an active handoff past `expires_at` reads as
+     * expired. `approved` is an approval a person approved, which the agent
+     * has not carried out yet.
+     */
+    status: mysqlEnum("status", ["pending", "opened", "completed", "failed", "approved"])
       .default("pending")
       .notNull(),
     activeSlot: tinyint("active_slot"),
@@ -4561,10 +4593,16 @@ export const apiHandoffs = mysqlTable(
     clientName: varchar("client_name", { length: 100 }),
     /**
      * SHA-256 of a secret, hex: a link given before links were addressed by id
-     * carried it after the id; a new row's secret is given to nobody.
+     * carried it after the id; a new row's secret is given to nobody. Null
+     * for an approval, whose link has only ever been its id.
      */
-    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    tokenHash: varchar("token_hash", { length: 64 }),
     linkIssuedAt: timestamp("link_issued_at", { mode: "date", fsp: 3 }).notNull(),
+    /**
+     * When the step's current state stops working: its link, or an
+     * approval's time to decide while pending and to carry it out once
+     * approved.
+     */
     expiresAt: timestamp("expires_at", { mode: "date", fsp: 3 }).notNull(),
     openedAt: timestamp("opened_at", { mode: "date", fsp: 3 }),
     /** SHA-256 of the state the provider's return must carry, hex; set when the user continues. */
@@ -4607,6 +4645,18 @@ export const apiHandoffs = mysqlTable(
     storeIdx: index("api_handoffs_store_idx").on(table.storeId, table.createdAt),
     // The retention deletes the oldest first.
     updatedIdx: index("api_handoffs_updated_idx").on(table.updatedAt),
+    /**
+     * A connection's own steps, led by the credential: a revocation ends them
+     * through it (packages/api `failCredentialHandoffs`), reading and locking
+     * that connection's rows alone, never every row of the table.
+     */
+    credentialIdx: index("api_handoffs_credential_idx").on(
+      table.credentialKind,
+      table.credentialId,
+      table.storeId,
+      table.kind,
+      table.createdAt,
+    ),
   }),
 );
 

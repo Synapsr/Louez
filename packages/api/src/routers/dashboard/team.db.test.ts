@@ -12,6 +12,7 @@ import type { BaseContext } from "../../context";
 import { INVITATION_EMAILS_PER_DAY, MAX_OPEN_INVITATION_APPROVALS } from "../../contracts/team";
 import { sha256 } from "../../platform/hash";
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { lockWaitsOn } from "../../platform/test-lock-waits";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
@@ -804,21 +805,12 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
   }
 
   /**
-   * Resolves once a statement of this test's database whose text is `LIKE
-   * pattern` is in progress: while the lock it needs is held at a barrier, it
-   * can only be waiting for that lock.
+   * Resolves once `waiting` transactions wait for a lock on a row of
+   * `table`: a real lock wait (platform/test-lock-waits.ts), never a
+   * statement's text.
    */
-  async function lockWait(pattern: string, statements = 1) {
-    for (let tries = 0; tries < 500; tries += 1) {
-      const [rows] = (await louezDb.db.execute(
-        orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
-          WHERE db = DATABASE() AND command = 'Query' AND info LIKE ${pattern}`,
-      )) as unknown as [Array<{ n: number | string }>];
-      if (Number(rows[0]?.n) >= statements) return;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    throw new Error(`no statement waited for a lock: ${pattern}`);
-  }
+  const lockWait = (table: string, waiting = 1) =>
+    lockWaitsOn(louezDb.db, table, { count: waiting });
 
   test("the agent's request committed while the owner's click waits for the store's lock: the click decides nothing", async () => {
     const context = await apiKey();
@@ -857,7 +849,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       (error: unknown) => error as { data?: { code?: string; details?: { reason?: string } } },
     );
     try {
-      await lockWait("select%from `stores`%for update");
+      await lockWait("stores");
     } finally {
       gate.open();
       await repeat;
@@ -944,7 +936,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
         (error: unknown) => error as { data?: { code?: string; details?: { reason?: string } } },
       );
       try {
-        await lockWait("select%from `stores`%for update");
+        await lockWait("stores");
       } finally {
         gate.open();
         await handedOver;
@@ -1490,7 +1482,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
         decide({ id: token, decision: second, reason: "second", ...page }, session()),
       ]);
       try {
-        await lockWait("select%from `stores`%for update", 2);
+        await lockWait("stores", 2);
       } finally {
         gate.open();
         await held;

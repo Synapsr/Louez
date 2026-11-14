@@ -1794,7 +1794,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
 
   // --- Rights and isolation ---------------------------------------------------
 
-  test("without payments read, no payment item; without reservations and settings, no inbox", async () => {
+  test("without payments read, no payment item; without reservations and settings, no item but its own approvals", async () => {
     const id = await reservation("confirmed", {
       depositStatus: "authorized",
       depositExpiresAt: ahead(DAY),
@@ -1808,8 +1808,9 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.ok(!types.has("payment_failed"));
     assert.ok(!types.has("deposit_expiring"));
 
+    // Products alone open the inbox to the approvals of products, and to nothing else.
     const productsOnly = await apiKey({ ...none, products: "read" });
-    await rejects(list(productsOnly()), "PERMISSION_DENIED");
+    assert.deepEqual((await list(productsOnly())).items, []);
   });
 
   test("a key of one store never sees another store's items", async () => {

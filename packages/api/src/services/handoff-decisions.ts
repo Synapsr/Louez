@@ -1,6 +1,7 @@
 import { decisionReason, handoffErrors, type HandoffKind } from "../contracts/handoffs";
 import type { ApiPorts } from "../platform/ports";
-import { HANDOFF_DECISION_SCOPES, readHandoffLink } from "./handoffs";
+import { answerApproval } from "./approvals";
+import { decisionScopeOf, readHandoffLink } from "./handoffs";
 import { answerInvitation } from "./team";
 
 /**
@@ -10,7 +11,8 @@ import { answerInvitation } from "./team";
  * still decide it (`mayActOnStep`, by `mayApprove`), the step neither ended
  * nor expired, then hands the answer to its kind. A kind with no decision on
  * its page (a provider's step) is refused. Each kind holds its own fences,
- * compared under the store's lock: the revision and what the page showed.
+ * compared under the store's lock: the revision and what the page showed
+ * (an invitation's `invitationShown`, an approval's binding).
  */
 
 /** What answering a step did: the step, the decision, and what approving it carried out. */
@@ -21,9 +23,18 @@ export interface HandoffDecided {
   effectIds: string[];
 }
 
+/** How a kind decided on its page takes the person's answer, as `decideHandoff` hands it over. */
+type Answer = (
+  row: Parameters<typeof answerInvitation>[0],
+  input: Parameters<typeof answerInvitation>[1],
+  ports: Pick<ApiPorts, "team" | "afterCommit">,
+  now: Date,
+) => Promise<HandoffDecided>;
+
 /** How each kind decided on its page takes the answer; the other kinds have none. */
-const ANSWERS: Partial<Record<HandoffKind, typeof answerInvitation>> = {
+const ANSWERS: Partial<Record<HandoffKind, Answer>> = {
   team_invitation: answerInvitation,
+  operation_approval: (row, input) => answerApproval(row, input),
 };
 
 export async function decideHandoff(
@@ -44,7 +55,7 @@ export async function decideHandoff(
   if (!checked.ok) throw handoffErrors.decisionInvalid(checked.reason);
   const { row } = checked;
   const answer = ANSWERS[row.kind];
-  if (!answer || !HANDOFF_DECISION_SCOPES[row.kind]) throw handoffErrors.decisionInvalid("invalid");
+  if (!answer || !decisionScopeOf(row)) throw handoffErrors.decisionInvalid("invalid");
   return answer(
     row,
     {

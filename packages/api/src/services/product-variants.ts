@@ -34,6 +34,7 @@ import {
   selectProductsUsingVariant,
   type VariantAxisRef,
 } from "./variant-axes";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * The store's variant catalog, moved from the dashboard's variants router.
@@ -378,7 +379,7 @@ export async function deleteVariantDefinition(
   id: string,
   options: { confirm?: ConfirmStep<VariantDeletionPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
     const definition = await getDefinition(tx, storeId, id);
@@ -406,7 +407,7 @@ export async function deleteVariantDefinition(
       .delete(variantDefinitions)
       .where(and(eq(variantDefinitions.id, id), eq(variantDefinitions.storeId, storeId)));
   });
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   return { id };
 }
 
@@ -421,7 +422,7 @@ export async function withdrawVariantFromProducts(
   options: { confirm?: ConfirmStep<VariantWithdrawalPreview> } = {},
 ) {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let affectedProductCount = 0;
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
@@ -460,7 +461,7 @@ export async function withdrawVariantFromProducts(
     });
     affectedProductCount = removed.productIds.length;
   });
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (affectedProductCount > 0) emit(actor, { type: "products.changed", store: eventStore(actor) });
   return { id, affectedProductCount };
 }
@@ -578,7 +579,7 @@ export async function deleteVariantValue(
   id: string,
   options: { confirm?: ConfirmStep<VariantValueDeletionPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
     const value = await findValue(tx, storeId, id);
@@ -608,6 +609,6 @@ export async function deleteVariantValue(
     }
     await tx.delete(variantValues).where(eq(variantValues.id, id));
   });
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   return { id };
 }

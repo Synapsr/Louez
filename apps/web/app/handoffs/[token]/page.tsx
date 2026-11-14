@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   handoffDonePath,
   handoffPath,
+  invitationPayloadOf,
   invitationShown,
   readHandoffLink,
 } from "@louez/api/services/handoffs";
@@ -64,7 +65,18 @@ export default async function HandoffPage({
     );
   }
 
-  const { kind, payload, revision } = checked.row;
+  const { kind, revision } = checked.row;
+  // An operation's approval is decided on its page from pull request 4 of the
+  // plan; until then its approver, and only them, reads that it is not available.
+  if (kind === "operation_approval") {
+    return (
+      <HandoffCard
+        title={t("operation_approval.unavailable.title")}
+        description={t("operation_approval.unavailable.description")}
+      />
+    );
+  }
+  const payload = invitationPayloadOf(checked.row);
   const query = await searchParams;
   const changed = query.changed !== undefined ? t("refused.changed.description") : null;
   if (kind === "team_invitation") {

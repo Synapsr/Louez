@@ -7,8 +7,8 @@ import {
   handoffErrors,
   refreshHandoffInput,
   refreshHandoffOutput,
-  type HandoffKind,
   type HandoffLink,
+  type StepKind,
 } from "../../contracts/handoffs";
 import type { StoreActor } from "../../platform/actor";
 import { platformErrors } from "../../platform/errors";
@@ -18,10 +18,12 @@ import { decideHandoff } from "../../services/handoff-decisions";
 import {
   HANDOFF_CHECK_LEASE_SECONDS,
   getHandoffRow,
+  connectionReadsApproval,
   handoffDomain,
   handoffView,
   issueHandoff,
   settlePendingCardSetup,
+  stepNow,
   upgradeStoredView,
 } from "../../services/handoffs";
 import { mayRead, type ProductContext } from "./product-context";
@@ -46,16 +48,28 @@ const OTHER_DOMAINS = API_DOMAINS.filter((domain) => domain !== "settings");
 /**
  * The store's step, for a caller who reads its domain. A step of a domain the
  * caller does not read answers as an id no step has: an id says nothing to
- * who may not read the step.
+ * who may not read the step. An operation's approval is read by the
+ * connection that asked for it while it reads its domain
+ * (`connectionReadsApproval`), and by nobody else on any transport, its
+ * domain's other readers included: it holds the request's input and
+ * preview, which are that connection's (its approver reads it on its page,
+ * signed in).
  */
 async function readableHandoff(context: Pick<ProductContext, "actor">, id: string) {
   const row = await getHandoffRow(context.actor.storeId, id);
-  if (!mayRead(context, handoffDomain(row))) throw handoffErrors.notFound(id);
-  return row;
+  if (
+    row.kind === "operation_approval" &&
+    !connectionReadsApproval(context.actor.credential, row, (domain) => mayRead(context, domain))
+  ) {
+    throw handoffErrors.notFound(id);
+  }
+  const domain = handoffDomain(row);
+  if (!domain || !mayRead(context, domain)) throw handoffErrors.notFound(id);
+  return { row, domain };
 }
 
 /** Starts or resumes a handoff for the caller, bound to their user and connection. */
-export function startHandoff(context: ProductContext, kind: HandoffKind): Promise<HandoffLink> {
+export function startHandoff(context: ProductContext, kind: StepKind): Promise<HandoffLink> {
   const { actor, ports } = context;
   return issueHandoff(
     {
@@ -87,8 +101,9 @@ const get = storeProcedure
   .input(getHandoffInput)
   .output(getHandoffOutput)
   .handler(async ({ context, input }) => {
-    const row = await readableHandoff(context, input.id);
-    return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
+    const { row } = await readableHandoff(context, input.id);
+    const now = await stepNow(row, new Date());
+    return handoffView(row, { now, urls: context.ports.urls, store: context.store });
   });
 
 /** Settling a step saves what the user did there: the right to change its domain. */
@@ -104,8 +119,7 @@ const REFRESH_SCOPE = {
  * The handler's check, and the one a stored answer is replayed behind.
  */
 async function refreshableHandoff(actor: StoreActor, id: string) {
-  const row = await readableHandoff({ actor }, id);
-  const domain = handoffDomain(row);
+  const { row, domain } = await readableHandoff({ actor }, id);
   if (!allows(actor.role, actor.credential.scopes, { ...REFRESH_SCOPE, domain, anyOf: [] })) {
     throw platformErrors.permissionDenied(`${domain}:write`);
   }
@@ -144,7 +158,8 @@ const refresh = storeProcedure
       await refreshableHandoff(context.actor, input.id),
       context.ports,
     );
-    return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
+    const now = await stepNow(row, new Date());
+    return handoffView(row, { now, urls: context.ports.urls, store: context.store });
   });
 
 /**

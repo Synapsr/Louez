@@ -34,7 +34,13 @@ import { enqueueEffects } from "../platform/effects";
 import { isApiError, platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import type { ApiEvent, ApiEventStore, ApiPorts, UrlsPort } from "../platform/ports";
-import { invitationShown, issueHandoff, type HandoffRequester } from "./handoffs";
+import {
+  invitationPayloadOf,
+  invitationShown,
+  issueHandoff,
+  type HandoffRequester,
+} from "./handoffs";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * The store's team: its members and pending invitations, and the writes the
@@ -55,8 +61,11 @@ export interface TeamCaller {
   ports: Pick<ApiPorts, "team" | "afterCommit">;
 }
 
-/** Asks for the confirmation under the write's lock: null to go on, else the refusal to throw. */
-type Confirm<TPreview> = (preview: TPreview, tx: Transaction) => Promise<Error | null>;
+/** Asks for the confirmation under the write's lock: null to go on, else the refusal to raise once the transaction is over. */
+type Confirm<TPreview> = (
+  preview: TPreview,
+  tx: Transaction,
+) => Promise<ConfirmationRefusal | null>;
 
 const DAY_MS = 86_400_000;
 
@@ -336,6 +345,7 @@ const decided = (approval: Approval, outcome: HandoffDecisionOutcome, now: Date)
 async function lockApproval(tx: Transaction, storeId: string, handoffId: string) {
   const [row] = await tx
     .select({
+      kind: apiHandoffs.kind,
       userId: apiHandoffs.userId,
       revision: apiHandoffs.revision,
       payload: apiHandoffs.payload,
@@ -350,7 +360,8 @@ async function lockApproval(tx: Transaction, storeId: string, handoffId: string)
       ),
     )
     .for("update");
-  return row ?? null;
+  if (!row) return null;
+  return { ...row, payload: invitationPayloadOf(row) };
 }
 
 /**
@@ -598,13 +609,10 @@ async function endApproval(
  * the owner's words, in the statement that ends the approval.
  */
 export async function answerInvitation(
-  row: {
-    id: string;
-    storeId: string;
-    userId: string;
-    revision: number;
-    payload: ApiHandoffPayload | null;
-  },
+  row: Pick<
+    typeof apiHandoffs.$inferSelect,
+    "id" | "kind" | "storeId" | "userId" | "revision" | "payload"
+  >,
   input: {
     decision: "approve" | "refuse";
     reason: string | null;
@@ -616,7 +624,8 @@ export async function answerInvitation(
   ports: Pick<ApiPorts, "team" | "afterCommit">,
   now = new Date(),
 ) {
-  if (!row.payload) throw handoffErrors.decisionInvalid("invalid");
+  const payload = invitationPayloadOf(row);
+  if (!payload) throw handoffErrors.decisionInvalid("invalid");
   const approval = {
     handoffId: row.id,
     userId: input.userId,
@@ -625,7 +634,7 @@ export async function answerInvitation(
     reason: input.reason,
     storeId: row.storeId,
   };
-  if (!stillShown({ ...row, payload: row.payload }, approval)) {
+  if (!stillShown({ ...row, payload }, approval)) {
     throw handoffErrors.decisionInvalid("changed");
   }
 
@@ -650,7 +659,7 @@ export async function answerInvitation(
   if (!store) throw platformErrors.noStore();
   const caller: TeamCaller = { storeId: store.id, userId: input.userId, store, ports };
   try {
-    const result = await inviteMember(caller, { email: row.payload.email }, { approval, now });
+    const result = await inviteMember(caller, { email: payload.email }, { approval, now });
     return {
       handoffId: row.id,
       decision: "approved" as const,
@@ -741,7 +750,7 @@ export async function cancelInvitation(
   options: { confirm?: Confirm<CancelInvitationPreview>; now?: Date } = {},
 ) {
   const now = options.now ?? new Date();
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
@@ -764,7 +773,7 @@ export async function cancelInvitation(
     return { id, email: invitation.email };
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.changed", store: eventStore(caller) });
   return result;
@@ -787,7 +796,7 @@ export async function removeMember(
   id: string,
   options: { confirm?: Confirm<RemoveMemberPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
@@ -823,7 +832,7 @@ export async function removeMember(
     return { id, userId: member.userId, email: member.email };
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.changed", store: eventStore(caller) });
   return result;

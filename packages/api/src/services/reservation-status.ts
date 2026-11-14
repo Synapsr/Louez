@@ -33,6 +33,7 @@ import {
   type StatusChangeOutput,
 } from "../contracts/reservations";
 import type { Credential, Transport } from "../platform/actor";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 import { sha256, stableStringify } from "../platform/hash";
 import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platform/effects";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
@@ -141,11 +142,11 @@ export interface StatusChangePreview {
   recipientsHash: string;
 }
 
-/** Asks the caller to confirm, under the change's locks: null goes on, an error stops. */
+/** Asks the caller to confirm, under the change's locks: null goes on, a refusal stops, raised once the change's transaction is over. */
 export type StatusConfirmStep = (
   preview: StatusChangePreview,
   tx: Transaction,
-) => Promise<Error | null>;
+) => Promise<ConfirmationRefusal | null>;
 
 export interface StatusChangeRequest {
   id: string;
@@ -470,7 +471,7 @@ function refusalError(locked: LockedReservation, to: ReservationStatus) {
 type TransactionOutcome =
   | { kind: "not_found" }
   | { kind: "refused"; error: Error }
-  | { kind: "confirm"; error: Error }
+  | { kind: "confirm"; refusal: ConfirmationRefusal }
   | {
       kind: "changed";
       locked: LockedReservation;
@@ -560,7 +561,7 @@ export async function changeStoreReservationStatus(
         if (options.confirm && statusChangeIsSensitive(from, to)) {
           const refusal = await options.confirm(preview, tx);
           // Committed: the new preview stays recorded for its token.
-          if (refusal) return { kind: "confirm", error: refusal };
+          if (refusal) return { kind: "confirm", refusal };
         }
 
         const warnings =
@@ -671,6 +672,7 @@ export async function changeStoreReservationStatus(
   }
 
   if (outcome.kind === "not_found") throw reservationErrors.notFound(id);
+  if (outcome.kind === "confirm") return raiseConfirmation(outcome.refusal);
   if (outcome.kind !== "changed") throw outcome.error;
 
   // Right after commit: the pay-as-you-go fee is recorded or voided.

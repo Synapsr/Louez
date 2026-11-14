@@ -152,6 +152,98 @@ export const platformErrors = {
     }),
 } as const;
 
+/** How long an agent waits between two reads of an approval it waits for (`handoffs_get`). */
+export const APPROVAL_POLL_SECONDS = 30;
+
+/** An approval as an answer shows it: the agent gives `url` to the user, then reads it by `id`. */
+export interface ApprovalAnswer {
+  id: string;
+  url: string;
+  status: "pending" | "approved";
+  expiresAt: string;
+  pollAfterSeconds: number;
+  /** What the person decided: null while pending. */
+  decision: { outcome: "approved"; at: string; reason: string | null } | null;
+  /**
+   * An approved approval only: whether this call, and the store, are still as
+   * the preview the person approved showed (its binding is the call's).
+   */
+  stillAsApproved?: boolean;
+}
+
+/**
+ * Why an approval id sent with a call does not let it run: it names another
+ * request (or none, for this caller), it expired, it was used, the store no
+ * longer is as approved, or the person who approved may no longer.
+ */
+export type ApprovalInvalidReason =
+  | "other_request"
+  | "expired"
+  | "used"
+  | "state_changed"
+  | "approver_not_allowed"
+  /** An approved approval cannot be carried out yet (until pull request 3c of the plan). */
+  | "execution_unavailable";
+
+/**
+ * The answers of an action a person must approve
+ * (docs/architecture/api-and-agents.md, "A person's approval"). Each is a
+ * refusal: nothing of the write happened.
+ */
+export const approvalErrors = {
+  /**
+   * The request's approval, as it stands. Approved, the preview is the one
+   * the person approved, and `stillAsApproved` says whether this call is.
+   */
+  required: (
+    preview: { summary: string; details?: Record<string, unknown> },
+    approval: ApprovalAnswer,
+  ) =>
+    apiError("PRECONDITION_FAILED", "APPROVAL_REQUIRED", {
+      message:
+        approval.status === "approved"
+          ? `The user approved: ${preview.summary} Nothing was done yet.${approval.stillAsApproved ? "" : " This call, or the store, is no longer as the preview the user approved showed."}`
+          : `${preview.summary} Nothing was done yet. The user approves it in Louez, signed in, from this link: ${approval.url}`,
+      details: { preview, approval, confirmationToken: approval.id },
+    }),
+  pending: (approval: ApprovalAnswer) =>
+    apiError("PRECONDITION_FAILED", "APPROVAL_PENDING", {
+      message: `The user has not decided yet. Nothing was done. Read the approval again in ${approval.pollAfterSeconds} seconds.`,
+      retryable: true,
+      details: { approval },
+    }),
+  declined: (approvalId: string, reason: string | null) =>
+    apiError("CONFLICT", "APPROVAL_DECLINED", {
+      message: reason
+        ? "The user refused this action, and nothing was done. Their words are in details.reason."
+        : "The user refused this action, and nothing was done.",
+      details: { approvalId, reason },
+    }),
+  invalid: (reason: ApprovalInvalidReason) =>
+    apiError("PRECONDITION_FAILED", "APPROVAL_INVALID", {
+      message:
+        "This approval does not let this call run, and nothing was done. Call again without it to ask the user again, with the preview as it is now.",
+      details: { reason },
+    }),
+  recentlyDeclined: (retryAt: Date, now: Date) =>
+    apiError("CONFLICT", "APPROVAL_RECENTLY_DECLINED", {
+      message: `The user refused this same request a moment ago, and nothing was done. It may be asked again from ${retryAt.toISOString()}.`,
+      details: {
+        retryAt: retryAt.toISOString(),
+        retryAfterSeconds: Math.max(1, Math.ceil((retryAt.getTime() - now.getTime()) / 1000)),
+      },
+    }),
+  full: (limit: string, retryAt: Date, now: Date) =>
+    apiError("TOO_MANY_REQUESTS", "APPROVALS_FULL", {
+      message: "Too many requests wait for the user's approval. Nothing was done: retry later.",
+      retryable: true,
+      details: {
+        limit,
+        retryAfterSeconds: Math.max(1, Math.ceil((retryAt.getTime() - now.getTime()) / 1000)),
+      },
+    }),
+} as const;
+
 /** True when an error is one of ours, whatever transport threw it. */
 export function isApiError(error: unknown): error is ORPCError<string, ApiErrorData> {
   return (
@@ -188,8 +280,10 @@ export const OPERATION_STATE_CODES: ReadonlySet<string> = new Set([
  * the transaction that rolls its writes back, or after undoing what it wrote.
  * The one exception is the refusal's own trace (the preview row of
  * `CONFIRMATION_REQUIRED`, with the setup mark of the store it locked; the
- * activity line of `DEPOSIT_ATTEMPT_NEEDS_STRIPE`), which records that the
- * write did not happen. A refusal raised after a write whose undoing failed
+ * approval of `APPROVAL_REQUIRED`, written once the write's transaction is
+ * over, in a transaction of its own; the activity line of
+ * `DEPOSIT_ATTEMPT_NEEDS_STRIPE`), which records that the write did not
+ * happen. A refusal raised after a write whose undoing failed
  * is raised as an ordinary error carrying both (`uploadImage`,
  * services/uploads.ts); a read after a commit goes through `readAfterCommit`.
  */

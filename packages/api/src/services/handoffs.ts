@@ -8,6 +8,7 @@ import {
   lockStoreRow,
   storeMembers,
   stores,
+  type ApiApprovalPayload,
   type ApiHandoffPayload,
   type Transaction,
 } from "@louez/db";
@@ -24,14 +25,16 @@ import {
   type HandoffLink,
   type HandoffStatus,
   type HandoffView,
+  type StepKind,
 } from "../contracts/handoffs";
 import { mayApprove } from "../platform/approval-rule";
+import { databaseNow } from "../platform/database-clock";
 import { isApiError, platformErrors, readAfterCommit } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import { logProviderError } from "../platform/sanitize-error";
 import { dashboardPageLinks, type DashboardLinkStore } from "../platform/links";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
-import type { ApiDomain, ProcedureScope } from "../platform/permissions";
+import { API_DOMAINS, type ApiDomain, type ProcedureScope } from "../platform/permissions";
 import { startConnectOnboarding, syncConnectStatus, type ConnectStore } from "./stripe-connect";
 
 /**
@@ -60,24 +63,97 @@ const HOUR_MS = 3_600_000;
 /** An active handoff shows in the inbox this long after its link went out. */
 export const HANDOFF_WAIT_MS = HOUR_MS;
 
-/** The domain each kind belongs to: who may read it, and the bundle its tool is in. */
-export const HANDOFF_KIND_DOMAINS: Record<HandoffKind, ApiDomain> = {
+/**
+ * The domain each kind belongs to: who may read it, and the bundle its tool
+ * is in. An operation's approval belongs to its procedure's domain, which
+ * its row holds (`approvalPayloadOf`).
+ */
+export const HANDOFF_KIND_DOMAINS: Record<StepKind, ApiDomain> = {
   stripe_connect_onboarding: "settings",
   stripe_dashboard: "settings",
   billing_card_setup: "billing",
   team_invitation: "team",
 };
 
-/** The domain whose read access shows a step: its kind's. */
-export function handoffDomain(row: Pick<HandoffRow, "kind">): ApiDomain {
+/**
+ * The domain whose read access shows a step: its kind's, or an approval's
+ * procedure's. An approval whose row names no domain Louez knows has none:
+ * nobody reads it by its domain.
+ */
+export function handoffDomain(row: Pick<HandoffRow, "kind" | "payload">): ApiDomain | null {
+  if (row.kind === "operation_approval") return approvalPayloadOf(row)?.scope.domain ?? null;
   return HANDOFF_KIND_DOMAINS[row.kind];
+}
+
+/** What an approval's row carries, its scope read as a procedure's scope. */
+export interface ApprovalPayload extends Omit<ApiApprovalPayload, "scope"> {
+  scope: ProcedureScope;
+}
+
+/**
+ * An approval's payload, or null for another kind, or a payload that does
+ * not name a domain and a level Louez knows: such a row is decided and read
+ * by nobody (`mayActOnStep`, `handoffDomain`).
+ */
+export function approvalPayloadOf(
+  row: Pick<HandoffRow, "kind" | "payload">,
+): ApprovalPayload | null {
+  if (row.kind !== "operation_approval" || !row.payload || !("scope" in row.payload)) return null;
+  const { scope } = row.payload;
+  if (
+    !(API_DOMAINS as readonly string[]).includes(scope.domain) ||
+    (scope.level !== "read" && scope.level !== "write")
+  ) {
+    return null;
+  }
+  return row.payload as ApprovalPayload;
+}
+
+/**
+ * Whether a connection reads an approval: the one that asked for it, while
+ * it reads the approval's procedure domain. `handoffs_get` and the inbox
+ * give an approval to a connection by this rule alone.
+ */
+export function connectionReadsApproval(
+  credential: { kind: string; id: string | null },
+  row: Pick<HandoffRow, "kind" | "payload" | "credentialKind" | "credentialId">,
+  reads: (domain: ApiDomain) => boolean,
+): boolean {
+  if (row.kind !== "operation_approval") return false;
+  if (row.credentialKind !== credential.kind || row.credentialId !== credential.id) return false;
+  const domain = handoffDomain(row);
+  return domain !== null && reads(domain);
+}
+
+/**
+ * The clock a step's times are read on. An approval's rules date and read
+ * its times on the database's clock (services/approvals.ts), so every reader
+ * of an approval does too; the other kinds keep the clock they are given,
+ * the application's, as before.
+ */
+export async function stepNow(row: Pick<HandoffRow, "kind">, now: Date): Promise<Date> {
+  return row.kind === "operation_approval" ? databaseNow() : now;
+}
+
+/** An invitation's payload, or null for another kind. */
+export function invitationPayloadOf(
+  row: Pick<HandoffRow, "kind" | "payload">,
+): ApiHandoffPayload | null {
+  if (row.kind !== "team_invitation" || !row.payload || !("email" in row.payload)) return null;
+  return row.payload;
 }
 
 /** How long a kind gives the person, counted from each request of the step. */
 export interface HandoffLifetimes {
   /** The link works this long: to continue to the provider, or to decide on the page. */
   actMs: number;
+  /** Once a person approved: how long the agent has to carry it out (an operation's approval). */
+  executeMs?: number;
 }
+
+/** An operation's approval: a day to decide, counted from each request, then an hour to carry it out. */
+export const APPROVAL_DECIDE_HOURS = 24;
+export const APPROVAL_EXECUTE_HOURS = 1;
 
 /**
  * Each kind's lifetimes. A lifetime bounds the link, never the provider: a
@@ -89,6 +165,10 @@ export const HANDOFF_LIFETIMES: Record<HandoffKind, HandoffLifetimes> = {
   stripe_dashboard: { actMs: HANDOFF_TTL_HOURS * HOUR_MS },
   billing_card_setup: { actMs: HANDOFF_TTL_HOURS * HOUR_MS },
   team_invitation: { actMs: HANDOFF_TTL_HOURS * HOUR_MS },
+  operation_approval: {
+    actMs: APPROVAL_DECIDE_HOURS * HOUR_MS,
+    executeMs: APPROVAL_EXECUTE_HOURS * HOUR_MS,
+  },
 };
 
 /** When a step's link stops working, for a request at `requestedAt`. */
@@ -96,14 +176,39 @@ export function linkExpiry(kind: HandoffKind, requestedAt: Date): Date {
   return new Date(requestedAt.getTime() + HANDOFF_LIFETIMES[kind].actMs);
 }
 
+/** Until when an approval approved at `approvedAt` may be carried out. */
+export function executionExpiry(
+  approvedAt: Date,
+  lifetimes = HANDOFF_LIFETIMES.operation_approval,
+) {
+  return new Date(approvedAt.getTime() + (lifetimes.executeMs ?? 0));
+}
+
 /**
  * The kinds a person decides on the step's page, with the right deciding
- * needs: an invitation is decided as the team's manager. The other kinds
- * have no decision: the person goes on to the provider.
+ * needs: an invitation is decided as the team's manager, an operation's
+ * approval with the right its procedure needs (`decisionScopeOf`). The other
+ * kinds have no decision: the person goes on to the provider.
  */
-export const HANDOFF_DECISION_SCOPES: Partial<Record<HandoffKind, ProcedureScope>> = {
+export const HANDOFF_DECISION_SCOPES: Partial<Record<StepKind, ProcedureScope>> = {
   team_invitation: { domain: "team", level: "write", role: "manage_members" },
 };
+
+/**
+ * The right deciding the step needs, for a kind decided on its page: the
+ * kind's, or an approval's procedure's scope. Undefined for a provider's
+ * step, and for an approval whose row names no scope Louez knows.
+ */
+export function decisionScopeOf(
+  row: Pick<HandoffRow, "kind" | "payload">,
+): ProcedureScope | undefined {
+  if (row.kind === "operation_approval") return approvalPayloadOf(row)?.scope;
+  return HANDOFF_DECISION_SCOPES[row.kind];
+}
+
+/** Whether a person decides the kind on the step's page, rather than go on to a provider. */
+export const isDecidedOnPage = (kind: HandoffKind) =>
+  kind === "operation_approval" || HANDOFF_DECISION_SCOPES[kind] !== undefined;
 
 /** Who may take a provider's step in the store: the dashboard's own rule for each flow. */
 export function mayTakeStep(kind: HandoffKind, role: MemberRole): boolean {
@@ -119,12 +224,13 @@ export function mayTakeStep(kind: HandoffKind, role: MemberRole): boolean {
  * provider (`mayTakeStep`).
  */
 export function mayActOnStep(
-  row: Pick<HandoffRow, "kind" | "storeId" | "userId">,
+  row: Pick<HandoffRow, "kind" | "storeId" | "userId" | "payload">,
   userId: string,
   role: MemberRole | null,
 ): boolean {
-  const scope = HANDOFF_DECISION_SCOPES[row.kind];
-  if (scope) {
+  if (isDecidedOnPage(row.kind)) {
+    const scope = decisionScopeOf(row);
+    if (!scope) return false;
     return mayApprove(
       { userId, storeId: row.storeId, role },
       { storeId: row.storeId, requesterUserId: row.userId, scope },
@@ -138,6 +244,8 @@ const PAGES: Record<HandoffKind, `/dashboard${string}`> = {
   stripe_dashboard: "/dashboard/settings/payments",
   billing_card_setup: "/dashboard/settings/billing",
   team_invitation: "/dashboard/team",
+  // The dashboard has no page of an approval yet: its link is the step's page (`url`).
+  operation_approval: "/dashboard",
 };
 
 type HandoffRow = typeof apiHandoffs.$inferSelect;
@@ -151,14 +259,33 @@ export interface HandoffRequester {
   clientName: string | null;
 }
 
+/**
+ * Where a step stands at `now`. Expiry is computed, never written: an open
+ * step past `expires_at` reads as expired (an approval: not decided within
+ * its day, or approved and not carried out within its hour).
+ */
 export function statusOf(row: Pick<HandoffRow, "status" | "expiresAt">, now: Date): HandoffStatus {
-  if ((row.status === "pending" || row.status === "opened") && row.expiresAt <= now) {
-    return "expired";
-  }
+  if (isOpenStatus(row.status) && row.expiresAt <= now) return "expired";
   return row.status;
 }
 
-const SUMMARIES: Record<HandoffKind, Record<HandoffStatus, string>> = {
+/** The stored states of a step that is not over: an approval approved is still open. */
+const OPEN = ["pending", "opened", "approved"] as const;
+const isOpenStatus = (status: HandoffRow["status"]) => (OPEN as readonly string[]).includes(status);
+
+/** The states a step of a kind other than an approval takes. */
+type StepStatus = Exclude<HandoffStatus, "approved">;
+
+const APPROVAL_SUMMARIES: Record<HandoffStatus, string> = {
+  pending: "The request waits for the user to approve it, signed in to Louez, from the link.",
+  opened: "The request waits for the user to approve it, signed in to Louez, from the link.",
+  approved: "The user approved the request.",
+  completed: "The approved request was carried out.",
+  expired: "The approval expired before it was carried out: ask again.",
+  failed: "The request was not approved.",
+};
+
+const SUMMARIES: Record<StepKind, Record<StepStatus, string>> = {
   stripe_connect_onboarding: {
     pending: "The link to connect Stripe is waiting for the user to open it.",
     opened: "The user started Stripe's identity checks and has not finished them yet.",
@@ -202,12 +329,14 @@ function decisionOf(
 
 /** The view's sentence: where the step stands, and why it failed. */
 function summaryOf(row: HandoffRow, status: HandoffStatus): string {
+  const summaries = row.kind === "operation_approval" ? APPROVAL_SUMMARIES : SUMMARIES[row.kind];
   if (status === "failed" && row.failureCode) {
-    const failed =
-      row.decision === "approved" ? APPROVED_NOT_CARRIED_OUT : SUMMARIES[row.kind].failed;
+    const failed = row.decision === "approved" ? APPROVED_NOT_CARRIED_OUT : summaries.failed;
     return `${failed} ${handoffFailureMessage(row.failureCode)}`;
   }
-  return isConfirming(row, status) ? CONFIRMING_SUMMARY : SUMMARIES[row.kind][status];
+  if (isConfirming(row, status)) return CONFIRMING_SUMMARY;
+  // Only an approval is ever approved; another kind's row cannot hold it.
+  return status === "approved" ? APPROVAL_SUMMARIES.approved : summaries[status];
 }
 
 const CONFIRMING_SUMMARY = "The user is back from Stripe, which has not confirmed the card yet.";
@@ -238,7 +367,7 @@ export function handoffView(
         ? { code: row.failureCode, message: handoffFailureMessage(row.failureCode) }
         : null,
     confirming: isConfirming(row, status),
-    invitation: row.kind === "team_invitation" && row.payload ? row.payload : null,
+    invitation: invitationPayloadOf(row),
     url: handoffUrl(context.urls, row.id),
     decision: decisionOf(row),
     summary: summaryOf(row, status),
@@ -285,6 +414,7 @@ export const handoffDonePath = (id: string) => `/handoffs/done/${encodeURICompon
 
 const newSecret = () => randomBytes(32).toString("base64url");
 
+/** The states of a provider's step or an invitation not over: an approval also stays open once approved (`OPEN`). */
 const ACTIVE = ["pending", "opened"] as const;
 
 /** No attempt in flight: what a new click, or another user, starts from. */
@@ -335,7 +465,8 @@ const leaseEnd = () =>
  */
 export async function issueHandoff(
   requester: HandoffRequester,
-  kind: HandoffKind,
+  // An approval is requested once its write is over (services/approvals.ts).
+  kind: StepKind,
   context: {
     urls: UrlsPort;
     now?: Date;
@@ -480,29 +611,48 @@ export async function failHandoff(
 }
 
 /**
- * Ends the active handoffs a revoked connection asked for: its links stop
- * working at once, and the step may be asked for again.
+ * Ends the open handoffs a revoked connection asked for, an approval already
+ * approved included: its links stop working at once, an approval it holds
+ * can never be carried out, and the step may be asked for again.
+ *
+ * `storeIds` are the stores the connection could act in. Each of them, and
+ * each store it already has an open step in, is taken in a transaction of
+ * its own: the store's row first, then the connection's open steps there.
+ * Every writer that opens a step holds its store's row, so a step a request
+ * was opening while the connection was revoked is committed, and ended here,
+ * or its request finds the connection gone under that lock. No two store
+ * rows are ever held together.
  */
 export async function failCredentialHandoffs(
   credential: { kind: "api_key" | "oauth"; id: string },
+  storeIds: readonly string[],
   now = new Date(),
 ): Promise<void> {
-  await db
-    .update(apiHandoffs)
-    .set({
-      status: "failed",
-      failedAt: now,
-      failureCode: "connection_revoked",
-      activeSlot: null,
-      updatedAt: now,
-    })
-    .where(
-      and(
-        eq(apiHandoffs.credentialKind, credential.kind),
-        eq(apiHandoffs.credentialId, credential.id),
-        inArray(apiHandoffs.status, [...ACTIVE]),
-      ),
-    );
+  const ofCredential = and(
+    eq(apiHandoffs.credentialKind, credential.kind),
+    eq(apiHandoffs.credentialId, credential.id),
+    inArray(apiHandoffs.status, [...OPEN]),
+  );
+  const open = await db
+    .selectDistinct({ storeId: apiHandoffs.storeId })
+    .from(apiHandoffs)
+    .where(ofCredential);
+  const stores = new Set([...storeIds, ...open.map((row) => row.storeId)]);
+  for (const storeId of [...stores].sort()) {
+    await db.transaction(async (tx) => {
+      await lockStoreRow(tx, storeId);
+      await tx
+        .update(apiHandoffs)
+        .set({
+          status: "failed",
+          failedAt: now,
+          failureCode: "connection_revoked",
+          activeSlot: null,
+          updatedAt: now,
+        })
+        .where(and(eq(apiHandoffs.storeId, storeId), ofCredential));
+    });
+  }
 }
 
 /**
@@ -591,9 +741,11 @@ async function rowOfLink(link: string) {
  * repeated request or another user starting over raises the revision, so a
  * click on a page that showed an earlier one changes nothing; and a step
  * that became another user's is never changed by the user it was shown to,
- * whatever its revision. Every write that raises the revision holds the
- * row's lock under the store row's lock, so the comparison and the raise
- * are ordered.
+ * whatever its revision. Every write that raises a provider step's or an
+ * invitation's revision holds the row's lock under the store row's lock, so
+ * the comparison and the raise are ordered. (An approval's request raises
+ * its revision under the store row's lock too, and its decision compares it
+ * in a conditional statement on the row: services/approvals.ts.)
  */
 export const atShownRevision = (id: string, revision: number, userId: string) =>
   and(eq(apiHandoffs.id, id), eq(apiHandoffs.revision, revision), eq(apiHandoffs.userId, userId));
@@ -610,18 +762,71 @@ export function invitationShown(payload: ApiHandoffPayload): string {
   return sha256(JSON.stringify([payload.email, payload.role, payload.joinsAtOnce]));
 }
 
-/** Whether the connection that asked for the step still exists: a revoked agent's link stops. */
-async function connectionAlive(row: HandoffRow): Promise<boolean> {
+/**
+ * `connectionAlive` for many steps at once: a test of whether a step's
+ * connection still exists (a session's always, a key not revoked, a grant
+ * not deleted). A step whose connection is gone is inert whatever its row
+ * still says: it is not decided (`mayStillApprove`), not counted against a
+ * cap, not listed as waiting. `failCredentialHandoffs` marks such rows when
+ * a connection is revoked; nothing rests on it having run.
+ */
+export async function liveConnections(
+  rows: ReadonlyArray<Pick<HandoffRow, "credentialKind" | "credentialId">>,
+  executor: Transaction | typeof db = db,
+): Promise<(row: Pick<HandoffRow, "credentialKind" | "credentialId">) => boolean> {
+  const idsOf = (kind: HandoffRow["credentialKind"]) => [
+    ...new Set(
+      rows.flatMap((row) =>
+        row.credentialKind === kind && row.credentialId ? [row.credentialId] : [],
+      ),
+    ),
+  ];
+  const keyIds = idsOf("api_key");
+  const grantIds = idsOf("oauth");
+  const keys = keyIds.length
+    ? await executor
+        .select({ id: apiKeys.id })
+        .from(apiKeys)
+        .where(and(inArray(apiKeys.id, keyIds), isNull(apiKeys.revokedAt)))
+    : [];
+  const grants = grantIds.length
+    ? await executor
+        .select({ id: apiAgentGrants.id })
+        .from(apiAgentGrants)
+        .where(inArray(apiAgentGrants.id, grantIds))
+    : [];
+  const live = {
+    api_key: new Set(keys.map((key) => key.id)),
+    oauth: new Set(grants.map((grant) => grant.id)),
+  };
+  return (row) => {
+    if (!row.credentialId) return row.credentialKind === "session";
+    if (row.credentialKind === "api_key" || row.credentialKind === "oauth") {
+      return live[row.credentialKind].has(row.credentialId);
+    }
+    return false;
+  };
+}
+
+/**
+ * Whether the connection that asked for the step still exists: a revoked
+ * agent's link stops. On `executor`, a transaction's own connection when a
+ * decision reads it under its lock.
+ */
+export async function connectionAlive(
+  row: Pick<HandoffRow, "credentialKind" | "credentialId">,
+  executor: Transaction | typeof db = db,
+): Promise<boolean> {
   if (!row.credentialId) return row.credentialKind === "session";
   if (row.credentialKind === "api_key") {
-    const [key] = await db
+    const [key] = await executor
       .select({ id: apiKeys.id })
       .from(apiKeys)
       .where(and(eq(apiKeys.id, row.credentialId), isNull(apiKeys.revokedAt)));
     return key !== undefined;
   }
   if (row.credentialKind === "oauth") {
-    const [grant] = await db
+    const [grant] = await executor
       .select({ id: apiAgentGrants.id })
       .from(apiAgentGrants)
       .where(eq(apiAgentGrants.id, row.credentialId));
@@ -662,7 +867,7 @@ export async function readHandoffLink(
   const row = await rowOfLink(link);
   if (!row) return { ok: false, reason: "invalid", row: null };
   if (!isStepUser(row, userId)) return NOT_THEIRS;
-  const status = statusOf(row, now);
+  const status = statusOf(row, await stepNow(row, now));
   if (status === "completed" || status === "failed") return { ok: false, reason: "finished", row };
   if (status === "expired") return { ok: false, reason: "expired", row };
   return checkUser(row, userId);
@@ -684,8 +889,8 @@ export async function continueHandoff(
 ): Promise<HandoffCheck & { state?: string }> {
   const checked = await readHandoffLink(link, userId, now);
   if (!checked.ok) return checked;
-  // No provider: an invitation is approved or declined on its page (services/team.ts).
-  if (checked.row.kind === "team_invitation") return { ok: false, reason: "invalid", row: null };
+  // No provider: an invitation or an approval is decided on its page (`handoffs.decide`).
+  if (isDecidedOnPage(checked.row.kind)) return { ok: false, reason: "invalid", row: null };
   const changed = { ok: false, reason: "changed", row: checked.row } as const;
   if (checked.row.revision !== revision) return changed;
   const state = newSecret();
