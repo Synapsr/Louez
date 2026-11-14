@@ -9941,7 +9941,7 @@
           "beyondStock": "<v>{product}</v>: {requested} angefragt, {available, plural, =0 {keins auf Lager} other {nur # auf Lager}}: {missing, plural, one {# fehlt} other {# fehlen}}",
           "moreLines": "{count, plural, one {Und # weitere Position außerhalb Ihrer Regeln} other {Und # weitere Positionen außerhalb Ihrer Regeln}}: siehe Details",
           "withinRules": "Ihr Bestand und Ihre Pufferzeit decken sie ab: Nichts geht darüber hinaus.",
-          "message": "<v>{customer}</v> erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
+          "message": "<v>{customer}</v> erhält {channels, select, sms {die SMS} other {die E-Mail}} „<v>{message}</v>“ an <v>{to}</v>",
           "messageToCustomer": "Der Kunde erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
           "noMessage": "Der Kunde erhält keine Nachricht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",

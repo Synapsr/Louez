@@ -1091,6 +1091,70 @@ describe(
       assert.equal(await each.written(seed), 0);
     });
 
+    test("where a message goes is on the page's screen, and reaches an agent only in the preview it may already read", async () => {
+      const seed = await seedStore();
+      const address = `bo${seed.k}@lb.test`;
+      await reachable(seed, address);
+      const each = branch("A6");
+      /** Everything an agent receives, on both transports, as text. */
+      const received = async (authorization: string) => {
+        const { method, path, body } = each.rest(seed);
+        const response = await rest(method, path, body, { authorization });
+        const mcpAnswer = await mcp(authorization, each.tool, each.args(seed));
+        return { rest: await response.text(), mcp: JSON.stringify(mcpAnswer) };
+      };
+
+      // A key that may read customers: the preview says where, as before; the
+      // display, with the address on its screen, stays the page's.
+      const reading = await received(seed.authorization);
+      for (const answer of [reading.rest, reading.mcp]) {
+        assert.ok(answer.includes(address), "the preview's own `to`");
+        assert.doesNotMatch(answer, /headline|"facts"|"key":/);
+      }
+      const [stored] = await louezDb.db
+        .select({ payload: louezDb.apiHandoffs.payload })
+        .from(louezDb.apiHandoffs)
+        .where(orm.eq(louezDb.apiHandoffs.storeId, seed.store));
+      assert.ok(stored);
+      const { display } = stored.payload as {
+        display?: { facts: Array<{ key: string; values: Json }> };
+      };
+      const told = display?.facts.find((fact) => fact.key === "message");
+      assert.deepEqual(told?.values.to, { type: "text", text: address });
+
+      // A key that may not: no address anywhere it reads, nor on the screen its display makes.
+      const blind = await apiKeys.createApiKey({
+        db: louezDb.db,
+        storeId: seed.store,
+        userId: seed.owner,
+        name: "Blind agent",
+        permissions: {
+          reservations: "write",
+          products: "read",
+          customers: "none",
+          categories: "read",
+          payments: "read",
+          analytics: "read",
+          settings: "read",
+          team: "read",
+        },
+      });
+      const unaware = await received(`Bearer ${blind.key}`);
+      for (const answer of [unaware.rest, unaware.mcp]) {
+        assert.ok(answer.includes("APPROVAL_REQUIRED"), answer.slice(0, 200));
+        assert.ok(!answer.includes(address), "no address reaches it");
+      }
+      const rows = await louezDb.db
+        .select({
+          payload: louezDb.apiHandoffs.payload,
+          credentialId: louezDb.apiHandoffs.credentialId,
+        })
+        .from(louezDb.apiHandoffs)
+        .where(orm.eq(louezDb.apiHandoffs.credentialId, blind.id));
+      assert.equal(rows.length, 1);
+      assert.ok(!JSON.stringify(rows[0]?.payload).includes(address), "nor its stored request");
+    });
+
     test("an address changed since the approval voids it", async () => {
       const seed = await seedStore();
       const each = branch("A6");

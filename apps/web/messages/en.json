@@ -9941,7 +9941,7 @@
           "beyondStock": "<v>{product}</v>: {requested} requested, {available, plural, =0 {none in stock} other {only # in stock}}: {missing} missing",
           "moreLines": "{count, plural, one {And # more line past your rules} other {And # more lines past your rules}}: see Details",
           "withinRules": "Your stock and your turnover buffer cover it: nothing goes past them.",
-          "message": "<v>{customer}</v> will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
+          "message": "<v>{customer}</v> will receive the “<v>{message}</v>” {channels, select, sms {text message} other {email}} at <v>{to}</v>",
           "messageToCustomer": "The customer will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
           "noMessage": "No message goes to the customer.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> collected · <v>{method}</v>",

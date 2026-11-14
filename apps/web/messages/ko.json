@@ -9941,7 +9941,7 @@
           "beyondStock": "<v>{product}</v>: {requested}개 요청, {available, plural, =0 {재고 없음} other {재고 #개뿐}}: {missing}개 부족",
           "moreLines": "{count, plural, other {규칙을 넘는 항목이 #개 더 있습니다}}: 세부 정보를 확인하세요",
           "withinRules": "재고와 대여 사이 간격 안에서 처리됩니다: 넘는 것이 없습니다.",
-          "message": "<v>{customer}</v> 님에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
+          "message": "<v>{customer}</v> 님(<v>{to}</v>)에게 ‘<v>{message}</v>’ {channels, select, sms {문자가} other {이메일이}} 갑니다",
           "messageToCustomer": "고객에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
           "noMessage": "고객에게 메시지가 가지 않습니다.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> 받음 · <v>{method}</v>",

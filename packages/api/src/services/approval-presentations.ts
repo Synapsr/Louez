@@ -284,22 +284,31 @@ export function confirmOverridePresentation(
   ];
   const customer = preview.customer && oneLine(preview.customer.name) ? preview.customer : null;
   const message = messages[0]?.message ?? null;
-  const channels = channelsOf(messages);
-  const told = message
-    ? customer
-      ? fact("message", {
-          customer: text(customer.name),
-          message: choice("customerMessage", message),
-          channels: choice("messageChannels", channels),
-        })
-      : fact("messageToCustomer", {
-          message: choice("customerMessage", message),
-          channels: choice("messageChannels", channels),
-        })
-    : fact("noMessage", {});
+  // Where each message goes, to a person who may read customers: as the
+  // preview holds it, the one snapshot the binding and the outbox read.
+  const addressed = customer && messages.every((entry) => entry.to) ? customer : null;
+  const told = !message
+    ? [fact("noMessage", {})]
+    : addressed
+      ? messages.map((entry) =>
+          fact("message", {
+            customer: text(addressed.name),
+            message: choice("customerMessage", entry.message),
+            channels: choice("messageChannels", entry.channel),
+            to: text(entry.to ?? ""),
+          }),
+        )
+      : [
+          fact("messageToCustomer", {
+            message: choice("customerMessage", message),
+            channels: choice("messageChannels", channelsOf(messages)),
+          }),
+        ];
+  // The channels as the screen names them: one per message when it says where each goes.
+  const channels = addressed ? messages.map((entry) => entry.channel) : [channelsOf(messages)];
 
-  // The record, the dates and the message hold three places; the lines share the rest.
-  const room = FACTS_MAX - 3;
+  // The record, the dates and the messages hold their places; the lines share the rest.
+  const room = FACTS_MAX - 2 - told.length;
   const departures =
     lines.length === 0
       ? [fact("withinRules", {})]
@@ -332,7 +341,7 @@ export function confirmOverridePresentation(
           total: money(total, reservation.currency),
         }),
         ...departures,
-        told,
+        ...told,
       ],
     },
     facts: {

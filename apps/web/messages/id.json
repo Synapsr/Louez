@@ -9941,7 +9941,7 @@
           "beyondStock": "<v>{product}</v>: diminta {requested}, {available, plural, =0 {stok habis} other {stok hanya #}}: kurang {missing}",
           "moreLines": "{count, plural, other {Dan # baris lagi di luar aturan Anda}}: lihat detailnya",
           "withinRules": "Stok dan jeda antarsewa Anda mencukupi: tidak ada yang terlampaui.",
-          "message": "<v>{customer}</v> akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
+          "message": "<v>{customer}</v> akan menerima {channels, select, sms {SMS} other {email}} “<v>{message}</v>” di <v>{to}</v>",
           "messageToCustomer": "Pelanggan akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
           "noMessage": "Tidak ada pesan yang dikirim ke pelanggan.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> diterima · <v>{method}</v>",

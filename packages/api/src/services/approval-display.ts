@@ -164,13 +164,17 @@ export const FACTS = {
   moreLines: { count: COUNT },
   /** Sent with an override, nothing short: the stock and the buffer cover it. */
   withinRules: {},
-  /** "Camille Simon will receive the “request accepted” email" */
+  /**
+   * "Camille Simon will receive the “request accepted” email at
+   * camille@example.com": one per message, each with where it goes.
+   */
   message: {
     customer: TEXT,
     message: choiceOf("customerMessage"),
     channels: choiceOf("messageChannels"),
+    to: TEXT,
   },
-  /** The same, the customer unnamed. */
+  /** The customer unnamed, and where it goes unsaid: one fact for every channel. */
   messageToCustomer: {
     message: choiceOf("customerMessage"),
     channels: choiceOf("messageChannels"),

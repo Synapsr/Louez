@@ -9941,7 +9941,7 @@
           "beyondStock": "<v>{product}</v>：{requested} 点の依頼、{available, plural, =0 {在庫なし} other {在庫は # 点のみ}}：{missing} 点不足",
           "moreLines": "{count, plural, other {ほかにルールを超える明細が # 件あります}}：詳細をご覧ください",
           "withinRules": "在庫とレンタル間の間隔の範囲内です：超えるものはありません。",
-          "message": "<v>{customer}</v> 様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
+          "message": "<v>{customer}</v> 様（<v>{to}</v>）に「<v>{message}</v>」の{channels, select, sms {SMS} other {メール}}が届きます",
           "messageToCustomer": "お客様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
           "noMessage": "お客様にメッセージは送られません。",
           "depositCollected": "<v>{type}</v>：<v>{amount}</v> を受領 · <v>{method}</v>",

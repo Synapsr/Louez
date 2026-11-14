@@ -9941,7 +9941,7 @@
           "beyondStock": "<v>{product}</v>: {requested, plural, one {# richiesto} other {# richiesti}}, {available, plural, =0 {nessuno disponibile} other {solo # disponibili}}: {missing, plural, one {ne manca #} other {ne mancano #}}",
           "moreLines": "{count, plural, one {E # altra riga fuori dalle tue regole} other {E altre # righe fuori dalle tue regole}}: vedi i dettagli",
           "withinRules": "La tua disponibilità e il tuo margine tra due noleggi la coprono: niente li supera.",
-          "message": "<v>{customer}</v> riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
+          "message": "<v>{customer}</v> riceverà {channels, select, sms {l’SMS} other {l’email}} «<v>{message}</v>» {channels, select, sms {al numero} other {all’indirizzo}} <v>{to}</v>",
           "messageToCustomer": "Il cliente riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
           "noMessage": "Al cliente non viene inviato alcun messaggio.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> incassati · <v>{method}</v>",

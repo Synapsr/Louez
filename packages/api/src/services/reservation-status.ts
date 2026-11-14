@@ -338,14 +338,20 @@ function customerMessageOf(
   return null;
 }
 
-/** The customer's address on a message's channel: the e-mail, or the phone number. */
-const addressOf = (channel: "email" | "sms", locked: Pick<LockedReservation, "customer">) =>
-  (channel === "email" ? locked.customer?.email : locked.customer?.phone) ?? undefined;
+/**
+ * The customer's address on a message's channel, the e-mail or the phone
+ * number, as the change's snapshot holds it: the one the outbox sends to,
+ * the binding hashes, and the preview and its display show.
+ */
+const addressOf = (channel: "email" | "sms", locked: Pick<LockedReservation, "snapshot">) => {
+  const { customer } = locked.snapshot;
+  return (channel === "email" ? customer?.email : customer?.phone) ?? undefined;
+};
 
 /** Where each message goes: its channel, and the customer's address on it. */
 const recipientsOf = (
   messages: StatusChangePreview["messages"],
-  locked: Pick<LockedReservation, "customer">,
+  locked: Pick<LockedReservation, "snapshot">,
 ): Array<{ channel: "email" | "sms"; to: string | undefined }> =>
   messages.map((entry) => ({ channel: entry.channel, to: addressOf(entry.channel, locked) }));
 
