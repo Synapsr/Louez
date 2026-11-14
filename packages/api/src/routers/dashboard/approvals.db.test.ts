@@ -1326,6 +1326,58 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal((await rows()).length, 0, "no approval for a revoked connection");
   });
 
+  test("a member removed while their request waits for the store's lock opens nothing", async () => {
+    const key = await apiKey();
+    const lock = holdStoreRow();
+    await lock.held;
+    const asking = failure(erase({ id: "n1" }, key.context()));
+    try {
+      await lockWait("stores");
+      // The requester leaves the store; nobody could decide what they ask.
+      await louezDb.db
+        .delete(louezDb.storeMembers)
+        .where(
+          orm.and(
+            orm.eq(louezDb.storeMembers.storeId, STORE),
+            orm.eq(louezDb.storeMembers.userId, OWNER),
+          ),
+        );
+    } finally {
+      lock.release();
+      await lock.done;
+    }
+    assert.equal((await asking).code, "NO_STORE_ACCESS");
+    assert.equal((await rows()).length, 0, "no approval nobody could decide");
+  });
+
+  test("a revocation's cleanup takes one store at a time: a store's steps are ended while another store's row is held", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
+    const lock = holdLock((tx) =>
+      tx
+        .select({ id: louezDb.stores.id })
+        .from(louezDb.stores)
+        .where(orm.eq(louezDb.stores.id, OTHER_STORE))
+        .for("update"),
+    );
+    await lock.held;
+    let cleaned: Promise<void> = Promise.resolve();
+    try {
+      cleaned = handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }, [
+        STORE,
+        OTHER_STORE,
+      ]);
+      // It waits for the other store's row, the first store's steps already ended.
+      await lockWait("stores");
+      assert.equal((await rowOf(asked.approval.id)).failureCode, "connection_revoked");
+    } finally {
+      lock.release();
+      await lock.done;
+    }
+    await cleaned;
+  });
+
   test("a revocation's cleanup waits for the store's row: a step being opened is committed before it, and ended by it", async () => {
     const key = await apiKey();
     const lock = holdStoreRow();

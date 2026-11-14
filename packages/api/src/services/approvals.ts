@@ -50,9 +50,9 @@ import {
  * but an approval row by its key (`answerPresentedApproval`). So a request
  * never waits for the store's row while a caller's domain lock is held, and
  * every writer of a store's approvals but a revocation is ordered by that
- * row. A revocation's cleanup (`failCredentialHandoffs`) is a transaction of
- * its own too: the rows of the connection's stores first, in id order, then
- * the connection's open steps.
+ * row. A revocation's cleanup (`failCredentialHandoffs`) takes each of the
+ * connection's stores in a transaction of its own: the store's row, then the
+ * connection's open steps there. No approval code holds two store rows.
  *
  * Every time an approval's rules read is the database's clock, read once
  * the lock it waits for is held. Expiry is computed from `expires_at`
@@ -259,6 +259,12 @@ export async function requestApproval(
     if (!(await connectionAlive({ credentialKind, credentialId }, tx))) {
       return platformErrors.unauthenticated();
     }
+    // Its approver is the connection's own user: an approval nobody could
+    // decide is not opened. A member removed since the call was
+    // authenticated gets the answer their next call gets; team writes hold
+    // the store's row, so the membership read here is the one that counts.
+    const requester = await requesterStanding(tx, request);
+    if (requester) return requester;
     const now = await databaseNow(tx);
     const subject = subjectOf(request);
 
@@ -314,6 +320,29 @@ export async function requestApproval(
       answerOf(await reread(tx, created.id), request),
     );
   });
+}
+
+/**
+ * Why the request's own user could not decide what it asks, as their
+ * membership stands under the store's lock: no longer in the store, or
+ * without the right the action needs. Null when they could (`mayApprove`).
+ */
+async function requesterStanding(
+  tx: Transaction,
+  request: ApprovalToRequest,
+): Promise<ORPCError<string, ApiErrorData> | null> {
+  const { storeId, credential } = request.actor;
+  const [member] = await tx
+    .select({ role: storeMembers.role })
+    .from(storeMembers)
+    .where(and(eq(storeMembers.storeId, storeId), eq(storeMembers.userId, credential.userId)));
+  if (!member) return platformErrors.noStore();
+  const allowed = mayApprove(
+    { userId: credential.userId, storeId, role: member.role },
+    { storeId, requesterUserId: credential.userId, scope: request.scope },
+  );
+  const { domain, level } = request.scope;
+  return allowed ? null : platformErrors.permissionDenied(`${domain}:${level}`);
 }
 
 /** The request's identity (`approvalIdentity`). */

@@ -615,11 +615,13 @@ export async function failHandoff(
  * approved included: its links stop working at once, an approval it holds
  * can never be carried out, and the step may be asked for again.
  *
- * `storeIds` are the stores the connection could act in. Their rows are
- * locked first, in id order, with those of the stores it already has an open
- * step in: every writer that opens a step holds its store's row, so a step a
- * request was opening while the connection was revoked is committed, and
- * ended here, or its request finds the connection gone under that lock.
+ * `storeIds` are the stores the connection could act in. Each of them, and
+ * each store it already has an open step in, is taken in a transaction of
+ * its own: the store's row first, then the connection's open steps there.
+ * Every writer that opens a step holds its store's row, so a step a request
+ * was opening while the connection was revoked is committed, and ended here,
+ * or its request finds the connection gone under that lock. No two store
+ * rows are ever held together.
  */
 export async function failCredentialHandoffs(
   credential: { kind: "api_key" | "oauth"; id: string },
@@ -631,25 +633,26 @@ export async function failCredentialHandoffs(
     eq(apiHandoffs.credentialId, credential.id),
     inArray(apiHandoffs.status, [...OPEN]),
   );
-  await db.transaction(async (tx) => {
-    const open = await tx
-      .selectDistinct({ storeId: apiHandoffs.storeId })
-      .from(apiHandoffs)
-      .where(ofCredential);
-    const stores = new Set([...storeIds, ...open.map((row) => row.storeId)]);
-    for (const storeId of [...stores].sort()) await lockStoreRow(tx, storeId);
-    // An update reads what is committed now, whatever this transaction read before.
-    await tx
-      .update(apiHandoffs)
-      .set({
-        status: "failed",
-        failedAt: now,
-        failureCode: "connection_revoked",
-        activeSlot: null,
-        updatedAt: now,
-      })
-      .where(ofCredential);
-  });
+  const open = await db
+    .selectDistinct({ storeId: apiHandoffs.storeId })
+    .from(apiHandoffs)
+    .where(ofCredential);
+  const stores = new Set([...storeIds, ...open.map((row) => row.storeId)]);
+  for (const storeId of [...stores].sort()) {
+    await db.transaction(async (tx) => {
+      await lockStoreRow(tx, storeId);
+      await tx
+        .update(apiHandoffs)
+        .set({
+          status: "failed",
+          failedAt: now,
+          failureCode: "connection_revoked",
+          activeSlot: null,
+          updatedAt: now,
+        })
+        .where(and(eq(apiHandoffs.storeId, storeId), ofCredential));
+    });
+  }
 }
 
 /**
