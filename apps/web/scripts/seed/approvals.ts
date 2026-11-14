@@ -5,8 +5,10 @@
  * DEVELOPMENT ONLY - it writes only to a database on this machine
  * (DATABASE_URL's host localhost, 127.0.0.1 or ::1), only when its command
  * says so (--write-sample-data), and never when NODE_ENV is production
- * (`sampleDataRefusal`, ./approvals-guard.ts). Anything else exits, saying
- * why, before anything connects to the database.
+ * (`checkSampleDatabase`, ./approvals-guard.ts), with no query string or
+ * fragment in DATABASE_URL, and it connects with the fields that guard
+ * checked, never the URL itself. Anything else exits, saying why, before
+ * anything connects to the database.
  *
  * No procedure Louez serves asks for a person's approval yet (APPROVAL_LIVE
  * is empty), so nothing else creates one. This writes, for a store and one of
@@ -26,7 +28,7 @@ import "../load-dotenv";
 
 import { parseArgs } from "node:util";
 
-import { WRITE_SAMPLES_FLAG, sampleDataRefusal } from "./approvals-guard";
+import { WRITE_SAMPLES_FLAG, checkSampleDatabase } from "./approvals-guard";
 
 function fail(message: string): never {
   console.error(`\x1b[31mERROR: ${message}\x1b[0m`);
@@ -54,17 +56,19 @@ ${WRITE_SAMPLES_FLAG}.`);
 }
 
 // Before anything connects: the database modules are loaded only past it.
-const refusal = sampleDataRefusal({
+const verdict = checkSampleDatabase({
   databaseUrl: process.env.DATABASE_URL,
   nodeEnv: process.env.NODE_ENV,
   flagged: values["write-sample-data"] === true,
 });
-if (refusal) fail(refusal);
+if (!verdict.ok) fail(verdict.reason);
+const { connection } = verdict;
 const { email, store } = values;
 
-// Loaded only now: the database modules, and the writes.
+// Loaded only now: the database modules, and the writes, on the fields the
+// guard checked.
 import("./approvals-write")
-  .then(({ writeSampleApprovals }) => writeSampleApprovals(email, store))
+  .then(({ writeSampleApprovals }) => writeSampleApprovals(connection, email, store))
   .then(() => process.exit(0))
   .catch((error: unknown) => {
     console.error(error);

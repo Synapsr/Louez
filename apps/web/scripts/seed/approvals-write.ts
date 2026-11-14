@@ -1,24 +1,45 @@
 /**
  * What the sample approvals script writes, loaded by `approvals.ts` only once
- * its guard (`sampleDataRefusal`) let it: nothing here is loaded, and nothing
- * connects to a database, before that.
+ * its guard (`checkSampleDatabase`) let it: nothing here is loaded, and
+ * nothing connects to a database, before that. It connects on a pool of its
+ * own, opened with the fields the guard checked (`SampleConnection`), never
+ * with DATABASE_URL: the app's own pool is never queried here.
  */
 import { createHash, randomBytes } from "node:crypto";
 
 import { and, desc, eq, or } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 
+import * as schema from "@louez/db/schema";
 import {
   apiHandoffs,
   apiKeys,
   customers,
-  db,
   reservations,
   storeMembers,
   stores,
   users,
   type ApiApprovalPayload,
-} from "@louez/db";
+} from "@louez/db/schema";
 import { handoffPath, linkExpiry } from "@louez/api/services/handoffs";
+
+import type { SampleConnection } from "./approvals-guard";
+
+/** The database the samples are written to: a pool on exactly `connection`'s fields. */
+export function openSampleDatabase(connection: SampleConnection) {
+  const pool = mysql.createPool({
+    host: connection.host,
+    port: connection.port,
+    user: connection.user,
+    password: connection.password,
+    database: connection.database,
+    connectionLimit: 1,
+    // Drizzle writes every timestamp in UTC, as the app's pool does.
+    timezone: "Z",
+  });
+  return { pool, db: drizzle(pool, { schema, mode: "default" }) };
+}
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 const random = () => sha256(randomBytes(32).toString("hex"));
@@ -39,7 +60,24 @@ interface Sample {
  * `email`, and prints their page URLs. Only `approvals.ts` calls it, once its
  * guard let it.
  */
-export async function writeSampleApprovals(email: string, storeRef: string) {
+export async function writeSampleApprovals(
+  connection: SampleConnection,
+  email: string,
+  storeRef: string,
+) {
+  const { pool, db } = openSampleDatabase(connection);
+  try {
+    await writeSamples(db, email, storeRef);
+  } finally {
+    await pool.end();
+  }
+}
+
+async function writeSamples(
+  db: ReturnType<typeof openSampleDatabase>["db"],
+  email: string,
+  storeRef: string,
+) {
   const [user] = await db
     .select({ id: users.id })
     .from(users)
