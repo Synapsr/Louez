@@ -2,6 +2,12 @@ import Stripe from "stripe";
 import { validateStripePaymentAmount } from "@louez/utils";
 import { stripe, getStripe } from "./stripe/client";
 
+/**
+ * How long a Checkout Session Louez creates for a reservation stays payable,
+ * from its creation by Louez's clock (`expires_at`).
+ */
+export const CHECKOUT_SESSION_LIFETIME_SECONDS = 30 * 60;
+
 export { stripe, getStripe };
 
 // ============================================================================
@@ -134,7 +140,7 @@ export async function createCheckoutSession({
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || "auto",
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
+    expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_SESSION_LIFETIME_SECONDS,
     // Create customer on connected account for future charges (deposit hold)
     customer_creation: "always",
     metadata: {
@@ -265,7 +271,7 @@ export async function createPaymentRequestSession({
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || "auto",
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
+    expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_SESSION_LIFETIME_SECONDS,
     metadata: {
       ...paymentReference.metadata,
       ...feeMetadata,

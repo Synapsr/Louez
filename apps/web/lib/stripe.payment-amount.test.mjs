@@ -6,6 +6,10 @@ import { runInNewContext } from "node:vm";
 
 const { validateStripePaymentAmount } = createRequire(import.meta.url)("@louez/utils");
 const source = readFileSync(new URL("./stripe.ts", import.meta.url), "utf8");
+// The sessions' lifetime, as the module declares it.
+const CHECKOUT_SESSION_LIFETIME_SECONDS = runInNewContext(
+  /export const CHECKOUT_SESSION_LIFETIME_SECONDS = ([^;]+);/.exec(source)[1],
+);
 const fixture = (name, nextName) => {
   const compiled = stripTypeScriptTypes(
     source
@@ -39,6 +43,7 @@ const fixture = (name, nextName) => {
       description: "Test",
     }),
     Date,
+    CHECKOUT_SESSION_LIFETIME_SECONDS,
   });
   return { fn, calls };
 };

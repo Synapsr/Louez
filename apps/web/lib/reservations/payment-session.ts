@@ -32,9 +32,22 @@ import {
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { hasRentalPaymentInProgress, isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
+import {
+  CHECKOUT_SESSION_LIFETIME_SECONDS,
+  createCheckoutSession,
+  toStripeCents,
+} from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
+
+/**
+ * Added to a session's lifetime before its row is taken as too old to be paid.
+ * The session's expiry is set by this server's clock and enforced by Stripe's;
+ * another server of the app may have written the row, and an older row's time
+ * is the database's. Five minutes covers a drift between those clocks well past
+ * what time synchronisation leaves, and costs at most a few more Stripe calls.
+ */
+const SESSION_CLOCK_MARGIN_MS = 5 * 60 * 1000;
 
 export async function createReservationPaymentSessionForCustomer(
   storeSlug: string,
@@ -158,13 +171,14 @@ export async function createReservationPaymentSessionForCustomer(
       }
     };
     /**
-     * Whether a replaced session can no longer be paid ("expired"), was paid
-     * ("complete"), or neither is known ("unknown"), on the account it lives on.
+     * Whether an earlier session of the rental can no longer be paid
+     * ("expired"), was paid ("complete"), or neither is known ("unknown"), on
+     * the account it lives on.
      * Stripe expires only an open session, one whose payment has not started; an
      * expire that fails leaves the session expired already, complete, or not
      * reached: its retrieve says which.
      */
-    const settleReplacedSession = async ({
+    const settleEarlierSession = async ({
       sessionId,
       account,
     }: {
@@ -190,12 +204,28 @@ export async function createReservationPaymentSessionForCustomer(
 
     // The rental's open payments are cancelled before their sessions are expired
     // at Stripe: an expiry of a session replaced here finds its row no longer
-    // pending and cancels nothing.
+    // pending and cancels nothing. With them, every rental session of the
+    // reservation that could still be paid is settled at Stripe below: a row
+    // cancelled earlier (by an earlier call that could not settle its session,
+    // or by an expiry) whose session is younger than a session's lifetime.
     const replaced = await runReservationOnlyChange(scope, async (tx) => {
       const payable = await readPayable(tx);
       if (payable.refusal !== null) return { refusal: payable.refusal, sessions: [] };
       const open = payable.payments.filter(
         (payment) => payment.type === "rental" && payment.status === "pending",
+      );
+      // A row is written by this server's clock after its session is created, as
+      // here: its age, read on the same clock, is at most its session's. A row
+      // older than the lifetime and the margin names a session Stripe has
+      // expired, and is not read there.
+      const payableSince = new Date(
+        Date.now() - CHECKOUT_SESSION_LIFETIME_SECONDS * 1000 - SESSION_CLOCK_MARGIN_MS,
+      );
+      const recent = payable.payments.filter(
+        (payment) =>
+          payment.type === "rental" &&
+          payment.status === "cancelled" &&
+          payment.createdAt > payableSince,
       );
       for (const payment of open) {
         await tx
@@ -208,7 +238,7 @@ export async function createReservationPaymentSessionForCustomer(
         refusal: null,
         // Each session on the account its row records, the one it was created on;
         // a row that records none, on the store's.
-        sessions: open.flatMap((payment) =>
+        sessions: [...open, ...recent].flatMap((payment) =>
           payment.stripeCheckoutSessionId
             ? [
                 {
@@ -226,11 +256,11 @@ export async function createReservationPaymentSessionForCustomer(
       };
     });
     if (replaced.refusal !== null) return { error: replaced.refusal };
-    // No second session for a rental whose replaced session was paid, or may
-    // have been: its completion, when delivered, completes the row cancelled
-    // above and confirms the reservation.
+    // No second session for a rental whose earlier session was paid, or may
+    // have been: its completion, when delivered, completes its cancelled row
+    // and confirms the reservation.
     const settled: string[] = [];
-    for (const session of replaced.sessions) settled.push(await settleReplacedSession(session));
+    for (const session of replaced.sessions) settled.push(await settleEarlierSession(session));
     if (settled.includes("complete")) return { error: "errors.alreadyPaid" };
     if (settled.includes("unknown")) return { error: "errors.paymentSessionError" };
 
