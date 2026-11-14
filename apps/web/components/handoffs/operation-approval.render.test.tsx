@@ -254,12 +254,12 @@ describe("the approval's result", () => {
     const expected: Record<EndedApprovalState, RegExp> = {
       approved: /Approved Your assistant can now carry it out\. If it doesn’t, your approval lapses in 59 minutes and nothing is done\./,
       completed: /Done Your assistant carried it out 5 minutes ago\./,
-      approved_expired: /Approved, but never carried out .*nothing was done\. If it still needs to, it will ask you again\./,
+      approved_expired: /Your approval lapsed Your approval lapsed after an hour\. If your assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done\. Reload this page later to see which\./,
       refused: /Refused Nothing was done\./,
-      state_changed: /Not carried out: your store changed .*Louez did nothing\. If your assistant still needs this, it will ask again/,
+      state_changed: /Not carried out: the request no longer matched What your assistant asked, or your store, no longer matched what you approved, so nothing was done\. It will ask again if it still needs it\./,
       approver_not_allowed: /Not carried out: your role changed .*nothing was done\./,
-      connection_revoked: /Ended: the assistant was disconnected .*can no longer be answered or carried out\. Nothing was done\./,
-      expired: /This request lapsed Nobody answered within a day, so nothing was done\./,
+      connection_revoked: /Ended: the assistant was disconnected .*can no longer be answered or carried out\. If the assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done\. Reload this page later to see which\./,
+      expired: /This request lapsed Nobody answered within a day, so the request lapsed\. If an answer was being recorded at that very moment, this page shows it once reloaded; otherwise nothing is done/,
       ended: /This request ended .*nothing was done\./,
     };
     for (const [state, sentence] of Object.entries(expected) as Array<[EndedApprovalState, RegExp]>) {

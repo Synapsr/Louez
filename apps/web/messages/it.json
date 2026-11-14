@@ -9879,16 +9879,16 @@
           "description": "Il tuo assistente l’ha eseguita {when}. Puoi tornare alla chat."
         },
         "approved_expired": {
-          "title": "Approvato, ma mai eseguito",
-          "description": "Il tuo assistente non l’ha eseguita entro un’ora, quindi non è stato fatto nulla. Se ne ha ancora bisogno, te lo chiederà di nuovo."
+          "title": "La tua approvazione è scaduta",
+          "description": "La tua approvazione è scaduta dopo un’ora. Se il tuo assistente la stava già eseguendo in quel momento, potrebbe ancora portarla a termine; altrimenti non viene fatto nulla. Ricarica questa pagina più tardi per sapere com’è andata."
         },
         "refused": {
           "title": "Rifiutato",
           "description": "Non è stato fatto nulla. Il tuo assistente vede la tua risposta e dovrà chiedertelo di nuovo per riprovare."
         },
         "state_changed": {
-          "title": "Non eseguito: il tuo negozio è cambiato",
-          "description": "Qualcosa è cambiato nel tuo negozio dopo la tua approvazione, quindi Louez non ha fatto nulla. Se il tuo assistente ne ha ancora bisogno, lo chiederà di nuovo e vedrai i nuovi dettagli."
+          "title": "Non eseguito: la richiesta non corrispondeva più",
+          "description": "Ciò che ha chiesto il tuo assistente, o il tuo negozio, non corrispondeva più a ciò che hai approvato, quindi non è stato fatto nulla. Lo chiederà di nuovo se ne ha ancora bisogno."
         },
         "approver_not_allowed": {
           "title": "Non eseguito: il tuo ruolo è cambiato",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Terminato: l’assistente è stato scollegato",
-          "description": "La connessione dell’assistente a Louez è stata rimossa, quindi questa richiesta non può più essere né accolta né eseguita. Non è stato fatto nulla."
+          "description": "La connessione dell’assistente a Louez è stata rimossa, quindi questa richiesta non può più essere né accolta né eseguita. Se l’assistente la stava già eseguendo in quel momento, potrebbe ancora portarla a termine; altrimenti non viene fatto nulla. Ricarica questa pagina più tardi per sapere com’è andata."
         },
         "expired": {
           "title": "Questa richiesta è scaduta",
-          "description": "Nessuno ha risposto entro un giorno, quindi non è stato fatto nulla. Se il tuo assistente ne ha ancora bisogno, lo chiederà di nuovo."
+          "description": "Nessuno ha risposto entro un giorno, quindi la richiesta è scaduta. Se proprio in quel momento si stava registrando una risposta, questa pagina la mostrerà una volta ricaricata; altrimenti non viene fatto nulla, e il tuo assistente lo chiederà di nuovo se ne ha ancora bisogno."
         },
         "ended": {
           "title": "Questa richiesta è terminata",

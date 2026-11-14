@@ -9879,16 +9879,16 @@
           "description": "Your assistant carried it out {when}. You can go back to the chat."
         },
         "approved_expired": {
-          "title": "Approved, but never carried out",
-          "description": "Your assistant didn’t carry it out within the hour, so nothing was done. If it still needs to, it will ask you again."
+          "title": "Your approval lapsed",
+          "description": "Your approval lapsed after an hour. If your assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done. Reload this page later to see which."
         },
         "refused": {
           "title": "Refused",
           "description": "Nothing was done. Your assistant sees your answer, and needs to ask you again to try once more."
         },
         "state_changed": {
-          "title": "Not carried out: your store changed",
-          "description": "Something in your store changed after you approved, so Louez did nothing. If your assistant still needs this, it will ask again and you will see the new details."
+          "title": "Not carried out: the request no longer matched",
+          "description": "What your assistant asked, or your store, no longer matched what you approved, so nothing was done. It will ask again if it still needs it."
         },
         "approver_not_allowed": {
           "title": "Not carried out: your role changed",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Ended: the assistant was disconnected",
-          "description": "The assistant’s connection to Louez was removed, so this request can no longer be answered or carried out. Nothing was done."
+          "description": "The assistant’s connection to Louez was removed, so this request can no longer be answered or carried out. If the assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done. Reload this page later to see which."
         },
         "expired": {
           "title": "This request lapsed",
-          "description": "Nobody answered within a day, so nothing was done. If your assistant still needs this, it will ask again."
+          "description": "Nobody answered within a day, so the request lapsed. If an answer was being recorded at that very moment, this page shows it once reloaded; otherwise nothing is done, and your assistant will ask again if it still needs this."
         },
         "ended": {
           "title": "This request ended",

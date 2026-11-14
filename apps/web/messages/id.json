@@ -9879,16 +9879,16 @@
           "description": "Asisten Anda melaksanakannya {when}. Anda dapat kembali ke obrolan."
         },
         "approved_expired": {
-          "title": "Disetujui, tetapi tidak pernah dilaksanakan",
-          "description": "Asisten Anda tidak melaksanakannya dalam satu jam, jadi tidak ada yang dilakukan. Jika masih perlu, asisten akan meminta lagi."
+          "title": "Persetujuan Anda telah berakhir",
+          "description": "Persetujuan Anda berakhir setelah satu jam. Jika asisten Anda sudah sedang melaksanakannya pada saat itu, ia mungkin masih menyelesaikannya; jika tidak, tidak ada yang dilakukan. Muat ulang halaman ini nanti untuk melihat mana yang terjadi."
         },
         "refused": {
           "title": "Ditolak",
           "description": "Tidak ada yang dilakukan. Asisten Anda melihat jawaban Anda dan harus meminta lagi untuk mencoba kembali."
         },
         "state_changed": {
-          "title": "Tidak dilaksanakan: toko Anda berubah",
-          "description": "Ada yang berubah di toko Anda setelah Anda menyetujui, jadi Louez tidak melakukan apa pun. Jika asisten Anda masih perlu, ia akan meminta lagi dan Anda akan melihat detail barunya."
+          "title": "Tidak dilaksanakan: permintaan tidak lagi cocok",
+          "description": "Apa yang diminta asisten Anda, atau toko Anda, tidak lagi cocok dengan yang Anda setujui, jadi tidak ada yang dilakukan. Asisten akan meminta lagi jika masih perlu."
         },
         "approver_not_allowed": {
           "title": "Tidak dilaksanakan: peran Anda berubah",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Berakhir: asisten diputuskan",
-          "description": "Koneksi asisten ke Louez telah dihapus, jadi permintaan ini tidak dapat lagi dijawab atau dilaksanakan. Tidak ada yang dilakukan."
+          "description": "Koneksi asisten ke Louez telah dihapus, jadi permintaan ini tidak dapat lagi dijawab atau dilaksanakan. Jika asisten sudah sedang melaksanakannya pada saat itu, ia mungkin masih menyelesaikannya; jika tidak, tidak ada yang dilakukan. Muat ulang halaman ini nanti untuk melihat mana yang terjadi."
         },
         "expired": {
           "title": "Permintaan ini sudah berakhir",
-          "description": "Tidak ada yang menjawab dalam satu hari, jadi tidak ada yang dilakukan. Jika asisten Anda masih perlu, ia akan meminta lagi."
+          "description": "Tidak ada yang menjawab dalam satu hari, jadi permintaan ini berakhir. Jika ada jawaban yang sedang disimpan tepat pada saat itu, halaman ini menampilkannya setelah dimuat ulang; jika tidak, tidak ada yang dilakukan, dan asisten Anda akan meminta lagi jika masih perlu."
         },
         "ended": {
           "title": "Permintaan ini sudah selesai",

@@ -9879,16 +9879,16 @@
           "description": "Votre assistant l’a réalisée {when}. Vous pouvez retourner à la conversation."
         },
         "approved_expired": {
-          "title": "Approuvé, mais jamais réalisé",
-          "description": "Votre assistant ne l’a pas réalisée dans l’heure : rien n’a été fait. S’il en a encore besoin, il vous la redemandera."
+          "title": "Votre accord a expiré",
+          "description": "Votre accord a expiré au bout d’une heure. Si votre assistant était déjà en train de réaliser la demande à ce moment-là, il peut encore aller au bout ; sinon, rien n’est fait. Rechargez cette page plus tard pour savoir ce qu’il en est."
         },
         "refused": {
           "title": "Refusé",
           "description": "Rien n’a été fait. Votre assistant voit votre réponse, et doit vous redemander pour réessayer."
         },
         "state_changed": {
-          "title": "Non réalisé : votre boutique a changé",
-          "description": "Quelque chose a changé dans votre boutique après votre accord : Louez n’a donc rien fait. Si votre assistant en a encore besoin, il vous redemandera et vous verrez le nouveau détail."
+          "title": "Non réalisé : la demande ne correspondait plus",
+          "description": "Ce que votre assistant a demandé, ou votre boutique, ne correspondait plus à ce que vous avez approuvé : rien n’a donc été fait. Il vous redemandera s’il en a encore besoin."
         },
         "approver_not_allowed": {
           "title": "Non réalisé : votre rôle a changé",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Terminé : l’assistant a été déconnecté",
-          "description": "La connexion de l’assistant à Louez a été supprimée : cette demande ne peut plus être ni acceptée ni réalisée. Rien n’a été fait."
+          "description": "La connexion de l’assistant à Louez a été supprimée : cette demande ne peut plus être ni acceptée ni réalisée. Si l’assistant était déjà en train de la réaliser à ce moment-là, il peut encore aller au bout ; sinon, rien n’est fait. Rechargez cette page plus tard pour savoir ce qu’il en est."
         },
         "expired": {
           "title": "Cette demande a expiré",
-          "description": "Personne n’a répondu dans la journée : rien n’a été fait. Si votre assistant en a encore besoin, il vous redemandera."
+          "description": "Personne n’a répondu dans la journée : la demande a expiré. Si une réponse était en train d’être enregistrée à ce moment précis, cette page l’affichera une fois rechargée ; sinon, rien n’est fait, et votre assistant vous redemandera s’il en a encore besoin."
         },
         "ended": {
           "title": "Cette demande est terminée",

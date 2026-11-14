@@ -9879,16 +9879,16 @@
           "description": "Tu asistente lo llevó a cabo {when}. Puedes volver al chat."
         },
         "approved_expired": {
-          "title": "Aprobado, pero nunca realizado",
-          "description": "Tu asistente no lo llevó a cabo en una hora, así que no se hizo nada. Si todavía lo necesita, te lo volverá a pedir."
+          "title": "Tu aprobación ha caducado",
+          "description": "Tu aprobación caducó al cabo de una hora. Si tu asistente ya lo estaba llevando a cabo en ese momento, puede que aún termine; si no, no se hace nada. Recarga esta página más tarde para saber qué pasó."
         },
         "refused": {
           "title": "Rechazado",
           "description": "No se ha hecho nada. Tu asistente ve tu respuesta y tendrá que volver a pedírtelo para intentarlo de nuevo."
         },
         "state_changed": {
-          "title": "No realizado: tu tienda ha cambiado",
-          "description": "Algo cambió en tu tienda después de tu aprobación, así que Louez no hizo nada. Si tu asistente todavía lo necesita, lo volverá a pedir y verás el nuevo detalle."
+          "title": "No realizado: la solicitud ya no coincidía",
+          "description": "Lo que pidió tu asistente, o tu tienda, ya no coincidía con lo que aprobaste, así que no se hizo nada. Volverá a pedirlo si todavía lo necesita."
         },
         "approver_not_allowed": {
           "title": "No realizado: tu rol ha cambiado",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Terminado: el asistente se desconectó",
-          "description": "Se eliminó la conexión del asistente con Louez, así que esta solicitud ya no se puede responder ni llevar a cabo. No se hizo nada."
+          "description": "Se eliminó la conexión del asistente con Louez, así que esta solicitud ya no se puede responder ni llevar a cabo. Si el asistente ya la estaba llevando a cabo en ese momento, puede que aún termine; si no, no se hace nada. Recarga esta página más tarde para saber qué pasó."
         },
         "expired": {
           "title": "Esta solicitud ha caducado",
-          "description": "Nadie respondió en un día, así que no se hizo nada. Si tu asistente todavía lo necesita, lo volverá a pedir."
+          "description": "Nadie respondió en un día, así que la solicitud caducó. Si en ese mismo momento se estaba guardando una respuesta, esta página la mostrará al recargarla; si no, no se hace nada, y tu asistente volverá a pedirlo si todavía lo necesita."
         },
         "ended": {
           "title": "Esta solicitud ha terminado",

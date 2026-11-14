@@ -9879,16 +9879,16 @@
           "description": "Asystent wykonał to {when}. Możesz wrócić do czatu."
         },
         "approved_expired": {
-          "title": "Zatwierdzono, ale nie wykonano",
-          "description": "Asystent nie wykonał tego w ciągu godziny, więc nic nie zostało zrobione. Jeśli nadal tego potrzebuje, poprosi ponownie."
+          "title": "Twoja zgoda wygasła",
+          "description": "Twoja zgoda wygasła po godzinie. Jeśli asystent właśnie wtedy to wykonywał, może jeszcze dokończyć; w przeciwnym razie nic się nie stanie. Odśwież tę stronę później, by sprawdzić, jak jest."
         },
         "refused": {
           "title": "Odrzucono",
           "description": "Nic nie zostało zrobione. Asystent widzi Twoją odpowiedź i musi poprosić ponownie, aby spróbować jeszcze raz."
         },
         "state_changed": {
-          "title": "Nie wykonano: Twój sklep się zmienił",
-          "description": "Po Twojej zgodzie coś zmieniło się w sklepie, więc Louez nic nie zrobił. Jeśli asystent nadal tego potrzebuje, poprosi ponownie i zobaczysz nowe szczegóły."
+          "title": "Nie wykonano: prośba już się nie zgadzała",
+          "description": "To, o co prosił asystent, lub Twój sklep, nie zgadzało się już z tym, co zatwierdziłeś, więc nic nie zostało zrobione. Poprosi ponownie, jeśli nadal tego potrzebuje."
         },
         "approver_not_allowed": {
           "title": "Nie wykonano: Twoja rola się zmieniła",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Zakończono: asystent został odłączony",
-          "description": "Połączenie asystenta z Louez zostało usunięte, więc tej prośby nie można już ani zatwierdzić, ani wykonać. Nic nie zostało zrobione."
+          "description": "Połączenie asystenta z Louez zostało usunięte, więc tej prośby nie można już ani zatwierdzić, ani wykonać. Jeśli asystent właśnie wtedy ją wykonywał, może jeszcze dokończyć; w przeciwnym razie nic się nie stanie. Odśwież tę stronę później, by sprawdzić, jak jest."
         },
         "expired": {
           "title": "Ta prośba wygasła",
-          "description": "Nikt nie odpowiedział w ciągu doby, więc nic nie zostało zrobione. Jeśli asystent nadal tego potrzebuje, poprosi ponownie."
+          "description": "Nikt nie odpowiedział w ciągu doby, więc prośba wygasła. Jeśli właśnie w tej chwili zapisywano odpowiedź, ta strona pokaże ją po odświeżeniu; w przeciwnym razie nic się nie stanie, a asystent poprosi ponownie, jeśli nadal tego potrzebuje."
         },
         "ended": {
           "title": "Ta prośba została zakończona",

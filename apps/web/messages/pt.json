@@ -9879,16 +9879,16 @@
           "description": "O seu assistente realizou-o {when}. Pode voltar à conversa."
         },
         "approved_expired": {
-          "title": "Aprovado, mas nunca realizado",
-          "description": "O seu assistente não o realizou dentro de uma hora, por isso nada foi feito. Se ainda precisar, voltará a pedir-lhe."
+          "title": "A sua aprovação expirou",
+          "description": "A sua aprovação expirou ao fim de uma hora. Se o seu assistente já o estava a realizar nesse momento, pode ainda concluir; caso contrário, nada é feito. Recarregue esta página mais tarde para saber o que aconteceu."
         },
         "refused": {
           "title": "Recusado",
           "description": "Nada foi feito. O seu assistente vê a sua resposta e terá de voltar a pedir-lhe para tentar de novo."
         },
         "state_changed": {
-          "title": "Não realizado: a sua loja mudou",
-          "description": "Algo mudou na sua loja depois da sua aprovação, por isso o Louez não fez nada. Se o seu assistente ainda precisar, voltará a pedir e verá os novos detalhes."
+          "title": "Não realizado: o pedido já não correspondia",
+          "description": "O que o seu assistente pediu, ou a sua loja, já não correspondia ao que aprovou, por isso nada foi feito. Voltará a pedir se ainda precisar."
         },
         "approver_not_allowed": {
           "title": "Não realizado: a sua função mudou",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Terminado: o assistente foi desligado",
-          "description": "A ligação do assistente ao Louez foi removida, por isso este pedido já não pode ser respondido nem realizado. Nada foi feito."
+          "description": "A ligação do assistente ao Louez foi removida, por isso este pedido já não pode ser respondido nem realizado. Se o assistente já o estava a realizar nesse momento, pode ainda concluir; caso contrário, nada é feito. Recarregue esta página mais tarde para saber o que aconteceu."
         },
         "expired": {
           "title": "Este pedido expirou",
-          "description": "Ninguém respondeu no prazo de um dia, por isso nada foi feito. Se o seu assistente ainda precisar, voltará a pedir."
+          "description": "Ninguém respondeu no prazo de um dia, por isso o pedido expirou. Se nesse preciso momento estava a ser registada uma resposta, esta página mostra-a depois de recarregada; caso contrário, nada é feito, e o seu assistente voltará a pedir se ainda precisar."
         },
         "ended": {
           "title": "Este pedido terminou",

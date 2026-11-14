@@ -9879,16 +9879,16 @@
           "description": "Ihr Assistent hat es {when} ausgeführt. Sie können zum Chat zurückkehren."
         },
         "approved_expired": {
-          "title": "Genehmigt, aber nie ausgeführt",
-          "description": "Ihr Assistent hat es nicht innerhalb einer Stunde ausgeführt, daher wurde nichts getan. Wenn er es noch braucht, fragt er Sie erneut."
+          "title": "Ihre Zustimmung ist verfallen",
+          "description": "Ihre Zustimmung ist nach einer Stunde verfallen. Wenn Ihr Assistent es in diesem Moment bereits ausführte, kann er es noch abschließen; sonst passiert nichts. Laden Sie diese Seite später neu, um zu sehen, was zutrifft."
         },
         "refused": {
           "title": "Abgelehnt",
           "description": "Es wurde nichts getan. Ihr Assistent sieht Ihre Antwort und muss Sie erneut fragen, um es noch einmal zu versuchen."
         },
         "state_changed": {
-          "title": "Nicht ausgeführt: Ihr Shop hat sich geändert",
-          "description": "Nach Ihrer Zustimmung hat sich etwas in Ihrem Shop geändert, daher hat Louez nichts getan. Wenn Ihr Assistent es noch braucht, fragt er erneut und Sie sehen die neuen Details."
+          "title": "Nicht ausgeführt: Die Anfrage passte nicht mehr",
+          "description": "Was Ihr Assistent angefragt hat, oder Ihr Shop, entsprach nicht mehr dem, was Sie genehmigt haben, daher wurde nichts getan. Er fragt erneut, wenn er es noch braucht."
         },
         "approver_not_allowed": {
           "title": "Nicht ausgeführt: Ihre Rolle hat sich geändert",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Beendet: Der Assistent wurde getrennt",
-          "description": "Die Verbindung des Assistenten zu Louez wurde entfernt, daher kann diese Anfrage weder beantwortet noch ausgeführt werden. Es wurde nichts getan."
+          "description": "Die Verbindung des Assistenten zu Louez wurde entfernt, daher kann diese Anfrage weder beantwortet noch ausgeführt werden. Wenn der Assistent sie in diesem Moment bereits ausführte, kann er sie noch abschließen; sonst passiert nichts. Laden Sie diese Seite später neu, um zu sehen, was zutrifft."
         },
         "expired": {
           "title": "Diese Anfrage ist verfallen",
-          "description": "Niemand hat innerhalb eines Tages geantwortet, daher wurde nichts getan. Wenn Ihr Assistent es noch braucht, fragt er erneut."
+          "description": "Niemand hat innerhalb eines Tages geantwortet, daher ist die Anfrage verfallen. Wurde genau in diesem Moment eine Antwort gespeichert, zeigt diese Seite sie nach dem Neuladen; sonst passiert nichts, und Ihr Assistent fragt erneut, wenn er es noch braucht."
         },
         "ended": {
           "title": "Diese Anfrage ist beendet",

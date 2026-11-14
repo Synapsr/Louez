@@ -9879,16 +9879,16 @@
           "description": "Je assistent heeft het {when} uitgevoerd. Je kunt terug naar de chat."
         },
         "approved_expired": {
-          "title": "Goedgekeurd, maar nooit uitgevoerd",
-          "description": "Je assistent heeft het niet binnen het uur uitgevoerd, dus er is niets gedaan. Heeft hij het nog nodig, dan vraagt hij het je opnieuw."
+          "title": "Je goedkeuring is vervallen",
+          "description": "Je goedkeuring is na een uur vervallen. Was je assistent het op dat moment al aan het uitvoeren, dan kan hij het nog afmaken; anders gebeurt er niets. Laad deze pagina later opnieuw om te zien welke van de twee."
         },
         "refused": {
           "title": "Geweigerd",
           "description": "Er is niets gedaan. Je assistent ziet je antwoord en moet het je opnieuw vragen om het nog eens te proberen."
         },
         "state_changed": {
-          "title": "Niet uitgevoerd: je winkel is veranderd",
-          "description": "Er is iets in je winkel veranderd nadat je goedkeurde, dus Louez heeft niets gedaan. Heeft je assistent het nog nodig, dan vraagt hij het opnieuw en zie je de nieuwe details."
+          "title": "Niet uitgevoerd: het verzoek klopte niet meer",
+          "description": "Wat je assistent vroeg, of je winkel, kwam niet meer overeen met wat je goedkeurde, dus er is niets gedaan. Hij vraagt het opnieuw als hij het nog nodig heeft."
         },
         "approver_not_allowed": {
           "title": "Niet uitgevoerd: je rol is veranderd",
@@ -9896,11 +9896,11 @@
         },
         "connection_revoked": {
           "title": "Beëindigd: de assistent is losgekoppeld",
-          "description": "De koppeling van de assistent met Louez is verwijderd, dus dit verzoek kan niet meer worden beantwoord of uitgevoerd. Er is niets gedaan."
+          "description": "De koppeling van de assistent met Louez is verwijderd, dus dit verzoek kan niet meer worden beantwoord of uitgevoerd. Was de assistent het op dat moment al aan het uitvoeren, dan kan hij het nog afmaken; anders gebeurt er niets. Laad deze pagina later opnieuw om te zien welke van de twee."
         },
         "expired": {
           "title": "Dit verzoek is vervallen",
-          "description": "Niemand heeft binnen een dag geantwoord, dus er is niets gedaan. Heeft je assistent het nog nodig, dan vraagt hij het opnieuw."
+          "description": "Niemand heeft binnen een dag geantwoord, dus het verzoek is vervallen. Werd er op precies dat moment een antwoord opgeslagen, dan toont deze pagina het na opnieuw laden; anders gebeurt er niets, en je assistent vraagt het opnieuw als hij het nog nodig heeft."
         },
         "ended": {
           "title": "Dit verzoek is beëindigd",
