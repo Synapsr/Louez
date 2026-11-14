@@ -4912,7 +4912,11 @@
           "categories": "类别",
           "payments": "付款方式",
           "analytics": "分析",
-          "settings": "设置"
+          "settings": "设置",
+          "online_store": "网上商店",
+          "team": "团队",
+          "billing": "订阅",
+          "integrations": "集成"
         },
         "levels": {
           "none": "无法访问",

@@ -4913,7 +4913,11 @@
           "categories": "Catégories",
           "payments": "Paiements",
           "analytics": "Analyses",
-          "settings": "Paramètres"
+          "settings": "Paramètres",
+          "online_store": "Boutique en ligne",
+          "team": "Équipe",
+          "billing": "Abonnement",
+          "integrations": "Intégrations"
         },
         "levels": {
           "none": "Aucun accès",

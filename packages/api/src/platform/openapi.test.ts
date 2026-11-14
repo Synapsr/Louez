@@ -1063,7 +1063,7 @@ describe("the public reference", () => {
 
   test("says, on each operation no API key can call, that an API key is refused", async () => {
     const { accountRefusal, allows, normalizeScopes } = await import("./permissions");
-    const { apiKeyPermissionsSchema } = await import("../routers/dashboard/api-keys");
+    const { apiKeyPermissionsSchema } = await import("../contracts/api-keys");
     // The widest key there can be: write on every domain a key may hold.
     const scopes = normalizeScopes(
       Object.fromEntries(

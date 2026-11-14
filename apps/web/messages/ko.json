@@ -4912,7 +4912,11 @@
           "categories": "카테고리",
           "payments": "결제",
           "analytics": "해석학",
-          "settings": "설정"
+          "settings": "설정",
+          "online_store": "온라인 상점",
+          "team": "팀",
+          "billing": "구독",
+          "integrations": "통합"
         },
         "levels": {
           "none": "접근 불가",

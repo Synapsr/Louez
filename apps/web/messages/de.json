@@ -4776,7 +4776,11 @@
           "categories": "Kategorien",
           "payments": "Zahlungen",
           "analytics": "Analysen",
-          "settings": "Einstellungen"
+          "settings": "Einstellungen",
+          "online_store": "Online-Shop",
+          "team": "Team",
+          "billing": "Abonnement",
+          "integrations": "Integrationen"
         },
         "levels": {
           "none": "Kein Zugriff",
