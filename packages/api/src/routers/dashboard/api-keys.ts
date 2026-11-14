@@ -99,7 +99,7 @@ const revoke = credentials
     try {
       await revokeApiKey({ db, storeId: context.actor.storeId, keyId: input.keyId });
       // The links it handed to the user stop working.
-      await failCredentialHandoffs({ kind: "api_key", id: input.keyId });
+      await failCredentialHandoffs({ kind: "api_key", id: input.keyId }, [context.actor.storeId]);
       return { success: true as const };
     } catch (error) {
       throw toORPCError(error);

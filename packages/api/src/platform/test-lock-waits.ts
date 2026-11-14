@@ -23,9 +23,12 @@ export async function lockWaitsOn(
   table: string,
   options: { count?: number; timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<void> {
+  const count = options.count ?? 1;
+  if (!Number.isInteger(count) || count < 1) {
+    throw new Error("A lock observer waits for at least one waiter.");
+  }
   if (observing) throw new Error("Another lock observer is running: await or cancel it first.");
   observing = true;
-  const count = options.count ?? 1;
   // A monotonic clock: a test may move the date.
   const deadline = performance.now() + (options.timeoutMs ?? 5_000);
   try {

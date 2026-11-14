@@ -614,27 +614,42 @@ export async function failHandoff(
  * Ends the open handoffs a revoked connection asked for, an approval already
  * approved included: its links stop working at once, an approval it holds
  * can never be carried out, and the step may be asked for again.
+ *
+ * `storeIds` are the stores the connection could act in. Their rows are
+ * locked first, in id order, with those of the stores it already has an open
+ * step in: every writer that opens a step holds its store's row, so a step a
+ * request was opening while the connection was revoked is committed, and
+ * ended here, or its request finds the connection gone under that lock.
  */
 export async function failCredentialHandoffs(
   credential: { kind: "api_key" | "oauth"; id: string },
+  storeIds: readonly string[],
   now = new Date(),
 ): Promise<void> {
-  await db
-    .update(apiHandoffs)
-    .set({
-      status: "failed",
-      failedAt: now,
-      failureCode: "connection_revoked",
-      activeSlot: null,
-      updatedAt: now,
-    })
-    .where(
-      and(
-        eq(apiHandoffs.credentialKind, credential.kind),
-        eq(apiHandoffs.credentialId, credential.id),
-        inArray(apiHandoffs.status, [...OPEN]),
-      ),
-    );
+  const ofCredential = and(
+    eq(apiHandoffs.credentialKind, credential.kind),
+    eq(apiHandoffs.credentialId, credential.id),
+    inArray(apiHandoffs.status, [...OPEN]),
+  );
+  await db.transaction(async (tx) => {
+    const open = await tx
+      .selectDistinct({ storeId: apiHandoffs.storeId })
+      .from(apiHandoffs)
+      .where(ofCredential);
+    const stores = new Set([...storeIds, ...open.map((row) => row.storeId)]);
+    for (const storeId of [...stores].sort()) await lockStoreRow(tx, storeId);
+    // An update reads what is committed now, whatever this transaction read before.
+    await tx
+      .update(apiHandoffs)
+      .set({
+        status: "failed",
+        failedAt: now,
+        failureCode: "connection_revoked",
+        activeSlot: null,
+        updatedAt: now,
+      })
+      .where(ofCredential);
+  });
 }
 
 /**

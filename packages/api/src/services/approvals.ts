@@ -50,8 +50,9 @@ import {
  * but an approval row by its key (`answerPresentedApproval`). So a request
  * never waits for the store's row while a caller's domain lock is held, and
  * every writer of a store's approvals but a revocation is ordered by that
- * row. A revocation ends a connection's rows in one statement of its own
- * (`failCredentialHandoffs`), holding nothing else.
+ * row. A revocation's cleanup (`failCredentialHandoffs`) is a transaction of
+ * its own too: the rows of the connection's stores first, in id order, then
+ * the connection's open steps.
  *
  * Every time an approval's rules read is the database's clock, read once
  * the lock it waits for is held. Expiry is computed from `expires_at`
@@ -250,6 +251,14 @@ export async function requestApproval(
     if (!(await lockStoreRow(tx, actor.storeId))) return platformErrors.noStore();
     // Refused: the write sets nothing up.
     await unmarkSetupWrite(tx);
+    // Read under the store's lock, which a revocation's cleanup takes too
+    // (`failCredentialHandoffs`): a connection revoked since the call was
+    // authenticated opens nothing, and one revoked after this read has what
+    // it opens here ended by that cleanup.
+    const { kind: credentialKind, id: credentialId } = actor.credential;
+    if (!(await connectionAlive({ credentialKind, credentialId }, tx))) {
+      return platformErrors.unauthenticated();
+    }
     const now = await databaseNow(tx);
     const subject = subjectOf(request);
 
@@ -319,8 +328,7 @@ const subjectOf = (request: ApprovalToRequest) =>
 /**
  * The open approval of an identity found, under the store's lock: answered
  * as it stands, or, once expired, freed of its slot for a new one (null: go
- * on and create it). A revocation, which takes no store lock, may have
- * ended it meanwhile: each update holds only while the row is still open,
+ * on and create it). Each update holds only while the row is still open,
  * and one that changes nothing goes on as if none was open.
  */
 async function answerOpen(

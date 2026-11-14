@@ -1230,7 +1230,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   /** A key's revocation, as the dashboard's procedure runs it: the key, then its hand-offs. */
   const revoke = async (key: Key) => {
     await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
-    await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id });
+    await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }, [STORE]);
   };
 
   /**
@@ -1253,16 +1253,19 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     await lock.held;
     // The click passes its first checks (the key still exists), then waits for the store's lock.
     const click = failure(decide(asked.approval.id, "approve"));
-    await lockWait("stores");
-    // The revocation's first statement commits meanwhile; its hand-offs' comes after the click.
-    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
-    lock.release();
-    await lock.done;
+    try {
+      await lockWait("stores");
+      // The revocation's first statement commits meanwhile; its hand-offs' comes after the click.
+      await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
+    } finally {
+      lock.release();
+      await lock.done;
+    }
     const refusal = await click;
     assert.equal(refusal.code, "HANDOFF_DECISION_INVALID");
     assert.equal(refusal.details.reason, "not_allowed");
     assert.equal((await rowOf(asked.approval.id)).decision, null, "nothing approved");
-    await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id });
+    await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }, [STORE]);
     const row = await rowOf(asked.approval.id);
     assert.equal(row.status, "failed");
     assert.equal(row.failureCode, "connection_revoked");
@@ -1275,11 +1278,20 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     const lock = holdStoreRow();
     await lock.held;
     const click = failure(decide(asked.approval.id, "approve"));
-    await lockWait("stores");
-    await revoke(key);
-    lock.release();
-    await lock.done;
-    assert.equal((await click).details.reason, "finished");
+    // The revocation's cleanup waits for the store's row too, behind the click.
+    let revoked: Promise<void> = Promise.resolve();
+    try {
+      await lockWait("stores");
+      await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
+      revoked = handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }, [STORE]);
+      await lockWait("stores", 2);
+    } finally {
+      lock.release();
+      await lock.done;
+    }
+    await revoked;
+    const refusal = await click;
+    assert.ok(["not_allowed", "finished"].includes(String(refusal.details.reason)));
     const row = await rowOf(asked.approval.id);
     assert.equal(row.failureCode, "connection_revoked");
     assert.equal(row.decision, null);
@@ -1295,6 +1307,46 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(row.failureCode, "connection_revoked");
     assert.equal(row.activeSlot, null);
     assert.equal(row.decision, "approved");
+  });
+
+  test("a connection revoked while its request waits for the store's lock opens nothing", async () => {
+    const key = await apiKey();
+    const lock = holdStoreRow();
+    await lock.held;
+    // The call is authenticated and its write's transaction over: the request waits for the store.
+    const asking = failure(erase({ id: "n1" }, key.context()));
+    try {
+      await lockWait("stores");
+      await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
+    } finally {
+      lock.release();
+      await lock.done;
+    }
+    assert.equal((await asking).code, "UNAUTHENTICATED");
+    assert.equal((await rows()).length, 0, "no approval for a revoked connection");
+  });
+
+  test("a revocation's cleanup waits for the store's row: a step being opened is committed before it, and ended by it", async () => {
+    const key = await apiKey();
+    const lock = holdStoreRow();
+    await lock.held;
+    let cleaned: Promise<void> = Promise.resolve();
+    try {
+      // A request holds the store's row while it opens its approval: here the holder stands for it.
+      cleaned = handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }, [STORE]);
+      await lockWait("stores");
+    } finally {
+      lock.release();
+      await lock.done;
+    }
+    await cleaned;
+
+    // And with a step opened first: the cleanup, run from the store alone, ends it.
+    const other = await apiKey();
+    const asked = await ask({ id: "n2" }, other);
+    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: other.id });
+    await handoffs.failCredentialHandoffs({ kind: "api_key", id: other.id }, []);
+    assert.equal((await rowOf(asked.approval.id)).failureCode, "connection_revoked");
   });
 
   // --- Caps -------------------------------------------------------------------

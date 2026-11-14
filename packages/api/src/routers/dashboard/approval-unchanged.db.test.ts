@@ -413,7 +413,7 @@ describe(
       assert.equal(decided.decision?.outcome, "refused");
 
       await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
-      await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id });
+      await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }, [STORE]);
       const rows = new Map((await handoffRows()).map((row) => [row.id, row]));
       assert.equal(rows.get(waitingId)?.status, "failed");
       assert.equal(rows.get(waitingId)?.failureCode, "connection_revoked");
@@ -451,7 +451,7 @@ describe(
       assert.equal((await get(id, key.context())).status, "opened");
 
       await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
-      await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id });
+      await handoffs.failCredentialHandoffs({ kind: "api_key", id: key.id }, [STORE]);
       const [revoked] = await handoffRows();
       assert.equal(revoked?.status, "failed");
       assert.equal(revoked?.failureCode, "connection_revoked");
