@@ -812,7 +812,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     for (let tries = 0; tries < 500; tries += 1) {
       const [rows] = (await louezDb.db.execute(
         orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
-          WHERE db = DATABASE() AND command = 'Query' AND info LIKE ${pattern}`,
+          WHERE db = DATABASE() AND command = 'Query' AND id <> CONNECTION_ID()
+          AND info LIKE ${pattern}`,
       )) as unknown as [Array<{ n: number | string }>];
       if (Number(rows[0]?.n) >= statements) return;
       await new Promise((resolve) => setTimeout(resolve, 10));
