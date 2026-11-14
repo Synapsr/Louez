@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "一个 API 密钥",
       "unnamedAgent": "一个 AI 助手",
       "checked": "Louez 核对的内容",
+      "messageDestinationOnFile": "消息发送到客户存档的联系方式。",
       "values": {
         "yes": "是",
         "no": "否",

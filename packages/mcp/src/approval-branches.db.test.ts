@@ -48,6 +48,8 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 // approval is required asks for the approval.
 
 const LIVE = ["money", "stock_override", "access_removed"] as const;
+/** The consequences live for every check: `LIVE`, or none for a test of the token flow. */
+let live: readonly string[] = LIVE;
 
 type ToolResult = Awaited<ReturnType<Client["callTool"]>>;
 type Json = Record<string, unknown>;
@@ -70,6 +72,9 @@ interface Seed {
   invitation: string;
   open: string;
   pending: string;
+  buffered: string;
+  both: string;
+  withOil: string;
   consumable: string;
   payment: string;
   keyId: string;
@@ -86,6 +91,7 @@ describe(
     let apiKeys: typeof import("@louez/api/services");
     let hash: typeof import("@louez/api/platform/hash");
     let readApprovalPage: typeof import("@louez/api/services/approval-page").readApprovalPage;
+    let OVERRIDES_SAID: typeof import("@louez/api/services/approval-presentations").OVERRIDES_SAID;
     let rest: (
       method: string,
       path: string,
@@ -158,11 +164,12 @@ describe(
       mock.module(import.meta.resolve("@louez/api/platform/confirmation"), {
         namedExports: {
           ...confirmation,
-          checkConfirmation: (input: object) => check({ ...input, liveConsequences: LIVE }),
+          checkConfirmation: (input: object) => check({ ...input, liveConsequences: live }),
         },
       });
 
       ({ readApprovalPage } = await import("@louez/api/services/approval-page"));
+      ({ OVERRIDES_SAID } = await import("@louez/api/services/approval-presentations"));
       const { appRouter } = await import("@louez/api/router");
       const { createExposure } = await import("@louez/api/platform/exposure");
       const { createOpenApiHandler, handleOpenApiRequest } =
@@ -246,6 +253,9 @@ describe(
         invitation: `lb_invite_${k}`,
         open: `lb_open_${k}`,
         pending: `lb_pending_${k}`,
+        buffered: `lb_buffer_${k}`,
+        both: `lb_both_${k}`,
+        withOil: `lb_oil_res_${k}`,
         consumable: `lb_consum_${k}`,
         payment: `lb_payment_${k}`,
       };
@@ -267,7 +277,7 @@ describe(
           pendingBlocksAvailability: false,
           advanceNoticeMinutes: 0,
           minRentalMinutes: 0,
-          turnoverBufferMinutes: 0,
+          turnoverBufferMinutes: 120,
         },
       });
       await db.insert(louezDb.storeMembers).values([
@@ -288,15 +298,20 @@ describe(
       await db
         .insert(louezDb.customers)
         .values({ id: customer, storeId: ids.store, email: "", firstName: "Bo", lastName: "Ray" });
-      const reservation = (id: string, number: string, status: "pending" | "confirmed") =>
+      const reservation = (
+        id: string,
+        number: string,
+        status: "pending" | "confirmed",
+        dates = { start: "2026-12-13T13:00:00.000Z", end: "2026-12-17T13:00:00.000Z" },
+      ) =>
         db.insert(louezDb.reservations).values({
           id,
           storeId: ids.store,
           customerId: customer,
           number,
           status,
-          startDate: new Date("2026-12-13T13:00:00.000Z"),
-          endDate: new Date("2026-12-17T13:00:00.000Z"),
+          startDate: new Date(dates.start),
+          endDate: new Date(dates.end),
           subtotalAmount: "98.00",
           depositAmount: "300.00",
           totalAmount: "98.00",
@@ -323,21 +338,26 @@ describe(
         },
       ]);
       // Two paddles asked of one: confirmed beyond the stock, on purpose.
-      const product = (id: string, name: string, stockKind: "rental" | "consumable") =>
+      const product = (
+        id: string,
+        name: string,
+        stockKind: "rental" | "consumable",
+        quantity = 1,
+      ) =>
         db.insert(louezDb.products).values({
           id,
           storeId: ids.store,
           name,
           price: "10.00",
           pricingMode: "day",
-          quantity: 1,
+          quantity,
           ...(stockKind === "consumable" ? { stockKind } : {}),
         });
-      const line = (reservationId: string, productId: string, name: string) =>
+      const line = (reservationId: string, productId: string, name: string, quantity = 2) =>
         db.insert(louezDb.reservationItems).values({
           reservationId,
           productId,
-          quantity: 2,
+          quantity,
           unitPrice: "49.00",
           depositPerUnit: "0.00",
           totalPrice: "98.00",
@@ -350,6 +370,25 @@ describe(
       await product(`lb_gas_${k}`, "Gas bottle", "consumable");
       await reservation(ids.consumable, `R-${k}3`, "pending");
       await line(ids.consumable, `lb_gas_${k}`, "Gas bottle");
+      // One kayak, held until an hour before by an earlier booking: free only
+      // without the 120-minute turnover buffer.
+      await product(`lb_kayak_${k}`, "Kayak", "rental");
+      await reservation(`lb_earlier_${k}`, `R-${k}4`, "confirmed", {
+        start: "2026-12-12T13:00:00.000Z",
+        end: "2026-12-13T12:00:00.000Z",
+      });
+      await line(`lb_earlier_${k}`, `lb_kayak_${k}`, "Kayak", 1);
+      await reservation(ids.buffered, `R-${k}5`, "pending");
+      await line(ids.buffered, `lb_kayak_${k}`, "Kayak", 1);
+      // Both: two paddles of one, and the kayak past the buffer.
+      await reservation(ids.both, `R-${k}6`, "pending");
+      await line(ids.both, `lb_paddle_${k}`, "Paddle");
+      await line(ids.both, `lb_kayak_${k}`, "Kayak", 1);
+      // Two paddles of one, and one can of oil of five: a consumable the stock covers.
+      await product(`lb_oil_${k}`, "Oil can", "consumable", 5);
+      await reservation(ids.withOil, `R-${k}7`, "pending");
+      await line(ids.withOil, `lb_paddle_${k}`, "Paddle");
+      await line(ids.withOil, `lb_oil_${k}`, "Oil can", 1);
 
       const created = await apiKeys.createApiKey({
         db,
@@ -517,9 +556,51 @@ describe(
           status: "confirmed",
           overrides: ["stock"],
           message: null,
-          recipients: [],
         }),
         written: async (seed) => ((await statusOf(seed.pending)) === "confirmed" ? 1 : 0),
+      },
+      {
+        name: "A6b, a booking confirmed past the turnover buffer",
+        family: "status",
+        procedure: "dashboard.reservations.updateStatus",
+        tool: "reservations_update_status",
+        rest: (seed) => ({
+          method: "POST",
+          path: `/reservations/${seed.buffered}/status`,
+          body: { status: "confirmed", overrideTurnoverBuffer: true },
+        }),
+        args: (seed) => ({ id: seed.buffered, status: "confirmed", overrideTurnoverBuffer: true }),
+        facts: (seed) => ({
+          reservation: seed.buffered,
+          status: "confirmed",
+          overrides: ["turnover_buffer"],
+          message: null,
+        }),
+        written: async (seed) => ((await statusOf(seed.buffered)) === "confirmed" ? 1 : 0),
+      },
+      {
+        name: "A6c, a booking confirmed beyond the stock and past the buffer",
+        family: "status",
+        procedure: "dashboard.reservations.updateStatus",
+        tool: "reservations_update_status",
+        rest: (seed) => ({
+          method: "POST",
+          path: `/reservations/${seed.both}/status`,
+          body: { status: "confirmed", allowOverbooking: true, overrideTurnoverBuffer: true },
+        }),
+        args: (seed) => ({
+          id: seed.both,
+          status: "confirmed",
+          allowOverbooking: true,
+          overrideTurnoverBuffer: true,
+        }),
+        facts: (seed) => ({
+          reservation: seed.both,
+          status: "confirmed",
+          overrides: ["stock", "turnover_buffer"],
+          message: null,
+        }),
+        written: async (seed) => ((await statusOf(seed.both)) === "confirmed" ? 1 : 0),
       },
     ];
     const branch = (name: string) => {
@@ -638,23 +719,25 @@ describe(
               }),
             ),
           );
-          // The page reads the display, which holds each identity fact (the
-          // records by their ref; who receives a message and which override,
-          // as the page's own test holds them).
+          // The page reads the display, which holds each identity fact: the
+          // records by their ref, the overrides as the headline says them.
           const page = await readApprovalPage(id, seed.owner);
           assert.ok(page.ok, JSON.stringify(page));
           assert.equal(page.approval.state, "pending");
           assert.ok(page.approval.display, "the page shows the display");
           const stored = (row.payload as { display?: { headline: Json; facts: Json[] } }).display;
           assert.ok(stored);
-          const shown = new Set(
-            [stored.headline, ...stored.facts].flatMap((line) => [
+          const headlineKey = String(stored.headline.key);
+          const shown = new Set([
+            ...[stored.headline, ...stored.facts].flatMap((line) => [
               ...leaves(line.values),
               ...(typeof line.ref === "string" ? [line.ref] : []),
             ]),
-          );
+            ...(Object.hasOwn(OVERRIDES_SAID, headlineKey)
+              ? OVERRIDES_SAID[headlineKey as keyof typeof OVERRIDES_SAID]
+              : []),
+          ]);
           for (const [name, value] of Object.entries(each.facts(seed))) {
-            if (name === "recipients" || name === "overrides" || name === "message") continue;
             for (const leaf of leaves(value))
               assert.ok(shown.has(leaf), `${name} (${leaf}) is shown`);
           }
@@ -770,6 +853,66 @@ describe(
       }
     });
 
+    /** The confirmation over the stock of the booking with an oil can, as A6 asks it. */
+    const withOil = (): Branch => ({
+      ...branch("A6"),
+      rest: (seed) => ({
+        method: "POST",
+        path: `/reservations/${seed.withOil}/status`,
+        body: { status: "confirmed", allowOverbooking: true },
+      }),
+      args: (seed) => ({ id: seed.withOil, status: "confirmed", allowOverbooking: true }),
+      written: async (seed) => ((await statusOf(seed.withOil)) === "confirmed" ? 1 : 0),
+    });
+    /** The oil line raised from one can to four: the dates, the total and the shortfalls stay as they were. */
+    const raiseOil = (seed: Seed) =>
+      louezDb.db
+        .update(louezDb.reservationItems)
+        .set({ quantity: 4 })
+        .where(
+          orm.and(
+            orm.eq(louezDb.reservationItems.reservationId, seed.withOil),
+            orm.eq(louezDb.reservationItems.productId, `lb_oil_${seed.k}`),
+          ),
+        );
+    const oilLeft = async (seed: Seed) =>
+      (
+        await louezDb.db
+          .select({ quantity: louezDb.products.quantity })
+          .from(louezDb.products)
+          .where(orm.eq(louezDb.products.id, `lb_oil_${seed.k}`))
+      )[0]?.quantity;
+
+    test("an override's approval binds the stock it takes: a consumable line raised since voids it", async () => {
+      const seed = await seedStore();
+      const each = withOil();
+      const id = await ask("rest", each, seed);
+      await decide(seed, id, "approve");
+      await raiseOil(seed);
+      const presented = await send("rest", each, seed, id);
+      assert.equal(presented.code, "APPROVAL_INVALID", JSON.stringify(presented));
+      assert.deepEqual(presented.details, { reason: "state_changed" });
+      assert.equal(await each.written(seed), 0);
+      assert.equal(await oilLeft(seed), 5, "no oil taken");
+    });
+
+    test("a status change's token binds the stock it takes: a line changed since answers CONFIRMATION_INVALID", async () => {
+      live = [];
+      try {
+        const seed = await seedStore();
+        const each = withOil();
+        const asked = await send("rest", each, seed);
+        assert.equal(asked.code, "CONFIRMATION_REQUIRED", JSON.stringify(asked));
+        await raiseOil(seed);
+        const presented = await send("rest", each, seed, String(asked.details?.confirmationToken));
+        assert.equal(presented.code, "CONFIRMATION_INVALID");
+        assert.equal(await each.written(seed), 0);
+        assert.equal(await oilLeft(seed), 5);
+      } finally {
+        live = LIVE;
+      }
+    });
+
     /** Each payment write with its record's id sent in upper case. */
     const UPPER: Array<[string, (seed: Seed) => string]> = [
       ["A1", (seed) => `/reservations/${seed.open.toUpperCase()}/payments`],
@@ -789,6 +932,48 @@ describe(
         assert.equal(await each.written(seed), 0);
       });
     }
+
+    /** The booking's customer, given an e-mail address: the confirmation sends them a message. */
+    const reachable = (seed: Seed, email: string) =>
+      louezDb.db
+        .update(louezDb.customers)
+        .set({ email })
+        .where(orm.eq(louezDb.customers.id, `lb_customer_${seed.k}`));
+
+    test("where a message goes is bound, never the request's identity, and shown in the details", async () => {
+      const seed = await seedStore();
+      const each = branch("A6");
+      await reachable(seed, `bo${seed.k}@lb.test`);
+      const id = await ask("rest", each, seed);
+      const page = await readApprovalPage(id, seed.owner);
+      assert.ok(page.ok);
+      // The message's own entry says where it goes (the customer's group names them anyway).
+      assert.ok(
+        JSON.stringify(page.approval.preview?.details).includes(
+          `{"label":"To","value":{"kind":"text","text":"bo${seed.k}@lb.test"}}`,
+        ),
+        JSON.stringify(page.approval.preview?.details),
+      );
+      await decide(seed, id, "refuse");
+      // Another address: the same request, refused within the hour.
+      await reachable(seed, `ray${seed.k}@lb.test`);
+      const asked = await send("rest", each, seed);
+      assert.equal(asked.code, "APPROVAL_RECENTLY_DECLINED", JSON.stringify(asked));
+      assert.equal(await each.written(seed), 0);
+    });
+
+    test("an address changed since the approval voids it", async () => {
+      const seed = await seedStore();
+      const each = branch("A6");
+      await reachable(seed, `bo${seed.k}@lb.test`);
+      const id = await ask("rest", each, seed);
+      await decide(seed, id, "approve");
+      await reachable(seed, `ray${seed.k}@lb.test`);
+      const presented = await send("rest", each, seed, id);
+      assert.equal(presented.code, "APPROVAL_INVALID", JSON.stringify(presented));
+      assert.deepEqual(presented.details, { reason: "state_changed" });
+      assert.equal(await each.written(seed), 0);
+    });
 
     test("a dashboard session is asked nothing: each of the six runs directly", async () => {
       const seed = await seedStore();

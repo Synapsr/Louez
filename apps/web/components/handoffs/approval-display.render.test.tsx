@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, test } from "node:test";
@@ -23,9 +22,9 @@ import {
   recordDepositReturnPresentation,
   recordPaymentPresentation,
   removeMemberPresentation,
-  type MessageRecipient,
+  OVERRIDES_SAID,
 } from "@louez/api/services/approval-presentations";
-import { shownDisplay } from "@louez/api/services/approval-preview";
+import { shownDisplay, shownPreview } from "@louez/api/services/approval-preview";
 import type { StatusChangePreview } from "@louez/api/services/reservation-status";
 
 import { sampleApprovals } from "../../scripts/seed/approvals-samples";
@@ -68,7 +67,7 @@ const statusPreview = (overrides: Partial<StatusChangePreview> = {}): StatusChan
     currency: "EUR",
   },
   customer: { name: "Camille Simon", email: "camille.simon@example.com" },
-  messages: [{ message: "request_accepted", channel: "email" }],
+  messages: [{ message: "request_accepted", channel: "email", to: "camille.simon@example.com" }],
   reducesAvailability: true,
   overbooking: null,
   turnoverBuffer: {
@@ -80,6 +79,7 @@ const statusPreview = (overrides: Partial<StatusChangePreview> = {}): StatusChan
   money: null,
   insuranceContract: null,
   recipientsHash: "0".repeat(64),
+  demand: [],
   ...overrides,
 });
 
@@ -91,15 +91,10 @@ const short = (productName: string, requested: number, available: number) => ({
   available,
 });
 
-/** Where the customer's messages go: the addresses the store holds, as written in its records. */
-const ADDRESSES = { email: " Camille.Simon@Example.com", sms: "+33 6 12 34 56 78" } as const;
-const recipientsOf = (preview: StatusChangePreview): MessageRecipient[] =>
-  preview.messages.map((entry) => ({ channel: entry.channel, to: ADDRESSES[entry.channel] }));
-
-/** A status change's presentation, as the service builds it: from its preview and where its messages go. */
+/** A status change's presentation, as the service builds it: from its preview. */
 const confirmed = (preview: StatusChangePreview) => ({
   preview,
-  presentation: confirmOverridePresentation(preview, recipientsOf(preview)),
+  presentation: confirmOverridePresentation(preview),
 });
 
 /** A payment recorded through the generic write, on booking R-00094 in euros. */
@@ -206,8 +201,8 @@ const BRANCHES: Array<{
     ...confirmed(
       statusPreview({
         messages: [
-          { message: "request_accepted", channel: "email" },
-          { message: "request_accepted", channel: "sms" },
+          { message: "request_accepted", channel: "email", to: "camille.simon@example.com" },
+          { message: "request_accepted", channel: "sms", to: "+33 6 12 34 56 78" },
         ],
         overbooking: { shortfalls: [short("Paddle", 3, 0)] },
       }),
@@ -226,7 +221,9 @@ const BRANCHES: Array<{
   {
     name: "a booking confirmed past the buffer, the customer not shown to the agent",
     summary: "Change reservation #R-00094 …",
-    ...confirmed(statusPreview({ customer: null })),
+    ...confirmed(
+      statusPreview({ customer: null, messages: [{ message: "request_accepted", channel: "email" }] }),
+    ),
   },
 ];
 
@@ -653,20 +650,22 @@ describe("the guarantee: each fact of a request's identity is among what the pag
       const presentation = branch.presentation;
       assert.ok(presentation);
       const { display, facts } = presentation;
-      // What the screen always shows, line by line, with the record each line is about.
+      // What the screen always shows, line by line, with the record each line
+      // is about, and the overrides a confirmation's headline says.
+      const said = (key: string): readonly string[] =>
+        Object.hasOwn(OVERRIDES_SAID, key) ? OVERRIDES_SAID[key as keyof typeof OVERRIDES_SAID] : [];
       const lines = [display.headline, ...display.facts].map((line) => ({
         line,
-        leaves: [...leaves(line.values), ...("ref" in line && line.ref ? [line.ref] : [])],
+        leaves: [
+          ...leaves(line.values),
+          ...("ref" in line && line.ref ? [line.ref] : []),
+          ...(line === display.headline ? said(line.key) : []),
+        ],
       }));
       const html = pageOf(branch);
       const screen = screenLines(html);
+      // Every fact, without exception.
       for (const [name, identity] of Object.entries(facts)) {
-        // Who receives a message is held as a hash of each recipient: the
-        // screen shows them in the form the caller may see (below).
-        if (name === "recipients") continue;
-        // Which override is asked for: the screen shows each line it passes,
-        // or that nothing goes past the store's rules (below).
-        if (name === "overrides") continue;
         for (const leaf of leaves(identity)) {
           const index = lines.findIndex((candidate) => candidate.leaves.includes(leaf));
           assert.ok(index >= 0, `the identity fact ${name} (${leaf}) is on no line the page always shows`);
@@ -678,51 +677,51 @@ describe("the guarantee: each fact of a request's identity is among what the pag
     });
   }
 
-  // A status change's recipients: each one in the identity, as the hash of
-  // its channel and its address, and each one on the screen, named when
-  // the caller may read customers, in the neutral wording otherwise.
-  const hashOf = (channel: "email" | "sms", to: string) =>
-    createHash("sha256").update(JSON.stringify({ channel, to })).digest("hex");
-  const EXPECTED = {
-    email: hashOf("email", "camille.simon@example.com"),
-    sms: hashOf("sms", "+33612345678"),
-  };
+  // A status change's recipients: where a message goes is no part of the
+  // identity (the binding holds it). The screen says that it goes, and to
+  // whom as the caller may see them; the details say where: the address or
+  // number to a caller who may read customers, the contact details on file
+  // otherwise.
   for (const branch of BRANCHES.filter((candidate) => candidate.preview)) {
-    test(`${branch.name}: each recipient is in the identity and on the screen`, () => {
+    test(`${branch.name}: where each message goes is in the details, never in the identity`, () => {
       const { preview, presentation } = branch;
       assert.ok(preview && presentation);
-      assert.deepEqual(
-        presentation.facts.recipients,
-        preview.messages.map((entry) => EXPECTED[entry.channel]).sort(),
-        "each recipient, hashed",
-      );
-      const message = screenLines(pageOf(branch)).at(-1) ?? "";
+      assert.ok(!("recipients" in presentation.facts));
+      assert.doesNotMatch(JSON.stringify(presentation.facts), /@|\+33/);
+      const { summary, recipientsHash: _hash, demand: _demand, ...details } = preview;
+      const stored = shownPreview({ summary, details });
+      assert.ok(stored);
+      const html = pageOf(branch, "en", { preview: stored });
+      const message = screenLines(html).at(-1) ?? "";
+      const inDetails = detailsOf(html);
       if (preview.messages.length === 0) {
         assert.equal(message, "No message goes to the customer.");
+        assert.ok(!inDetails.includes("contact details on file"));
       } else if (preview.customer) {
         assert.ok(message.startsWith(`${preview.customer.name} will receive`), message);
+        for (const entry of preview.messages) {
+          assert.ok(entry.to && inDetails.includes(entry.to), `${entry.channel}: ${inDetails}`);
+        }
+        assert.ok(!inDetails.includes("contact details on file"));
       } else {
         assert.ok(message.startsWith("The customer will receive"), message);
+        assert.ok(inDetails.includes("Messages go to the customer’s contact details on file."), inDetails);
+        assert.doesNotMatch(JSON.stringify(stored.details), /@|\+33/);
       }
     });
   }
 
-  // A confirmation's overrides: in the identity, each one asked for; on the
-  // screen, each line one of them passes, and no line of one not asked for.
+  // A confirmation's overrides: in the identity, each one that passes
+  // something, as the headline says; a flag that passes nothing, not at all.
   for (const branch of BRANCHES.filter((candidate) => candidate.preview)) {
-    test(`${branch.name}: each override is in the identity, and what it passes on the screen`, () => {
+    test(`${branch.name}: the identity names each override that passes something, and no other`, () => {
       const { preview, presentation } = branch;
       assert.ok(preview && presentation);
-      const asked = [
-        ...(preview.overbooking ? ["stock"] : []),
-        ...(preview.turnoverBuffer ? ["turnover_buffer"] : []),
+      const passing = [
+        ...((preview.overbooking?.shortfalls.length ?? 0) > 0 ? ["stock"] : []),
+        ...((preview.turnoverBuffer?.shortfalls.length ?? 0) > 0 ? ["turnover_buffer"] : []),
       ];
-      assert.deepEqual(presentation.facts.overrides, asked);
-      const keys = presentation.display.facts.map((line) => line.key);
-      if (keys.includes("beyondStock")) assert.ok(asked.includes("stock"));
-      if (keys.includes("pastBuffer")) assert.ok(asked.includes("turnover_buffer"));
-      const passed = (preview.overbooking?.shortfalls.length ?? 0) + (preview.turnoverBuffer?.shortfalls.length ?? 0);
-      if (passed === 0) assert.ok(keys.includes("withinRules"), "nothing goes past the rules, and the screen says so");
+      assert.deepEqual(presentation.facts.overrides, passing);
     });
   }
 

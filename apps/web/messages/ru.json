@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "API-ключ",
       "unnamedAgent": "ИИ-ассистент",
       "checked": "Что проверил Louez",
+      "messageDestinationOnFile": "Сообщения уходят на сохранённые контакты клиента.",
       "values": {
         "yes": "Да",
         "no": "Нет",

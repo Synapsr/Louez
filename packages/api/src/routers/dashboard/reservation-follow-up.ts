@@ -88,9 +88,11 @@ const RESERVATIONS_WRITE: ProcedureScope = { domain: "reservations", level: "wri
  * The confirmation of a status change, bound to what its preview shows (the
  * status it starts from, the dates, the amounts, the messages, the money and
  * the shortfalls booked over or confirmed past the turnover buffer, and that
- * buffer) and to where the messages go. A change since (the reservation
- * moved, a payment recorded, a setting that stops a message, the customer's
- * email or phone, a shortfall that grew or changed) voids the token. A
+ * buffer), to where the messages go, and to the stock the change takes (each
+ * line's product and quantity, and a consumable's units). A change since (the
+ * reservation moved, a payment recorded, a setting that stops a message, the
+ * customer's email or phone, a shortfall that grew or changed, a line
+ * changed) voids the token. A
  * confirmation sent with either override is a stock override, even when
  * nothing is short (decision D2 and slice 5,
  * docs/domain/reservation-changes.md); a message to the customer is one too.
@@ -101,10 +103,10 @@ const statusConfirmation = (context: ProductContext, path: readonly string[], in
     path,
     input,
     (preview: StatusChangePreview) => {
-      const { summary: _summary, recipientsHash, ...details } = preview;
-      // The recipients are bound even where the preview may not show them.
+      const { summary: _summary, recipientsHash, demand, ...details } = preview;
+      // The recipients and the stock demand are bound, and never shown.
       return {
-        state: { ...details, recipientsHash },
+        state: { ...details, recipientsHash, demand },
         details,
         consequences: statusChangeConsequences(preview),
       };

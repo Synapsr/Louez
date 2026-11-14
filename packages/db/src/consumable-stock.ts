@@ -338,6 +338,60 @@ export async function checkReservationConsumables(
   await checkedStockPlan(tx, grant.reservationId, grant.storeId, 'consume')
 }
 
+/** One line of a reservation's stock demand, as a status change takes it (`readReservationStockDemand`). */
+export interface ReservationDemandLine {
+  line: string
+  product: string
+  quantity: number
+  /** A consumable's units already taken, and what the change takes (negative: gives back). */
+  consumable?: { consumed: number; takes: number }
+}
+
+/**
+ * The reservation's stock demand as a status change will take it, under its
+ * products' lock (`runReservationChange`): per line with a product, the
+ * product and the quantity, and for a consumable what is already consumed
+ * and what `action` takes (`consume`: up to the quantity; `restore`: all of
+ * it back; null: nothing), in the lines' id order. A confirmation binds it,
+ * so a line changed since its preview voids the preview's token or approval.
+ * Writes nothing.
+ */
+export async function readReservationStockDemand(
+  tx: Transaction,
+  lock: ReservationProductsLock,
+  action: 'consume' | 'restore' | null,
+): Promise<ReservationDemandLine[]> {
+  const grant = assertReservationLock(tx, lock, ['products'])
+  const rows = await tx
+    .select({
+      line: reservationItems.id,
+      product: products.id,
+      quantity: reservationItems.quantity,
+      consumed: reservationItems.consumedQuantity,
+      stockKind: products.stockKind,
+    })
+    .from(reservationItems)
+    .innerJoin(products, eq(reservationItems.productId, products.id))
+    .where(
+      and(
+        eq(reservationItems.reservationId, grant.reservationId),
+        eq(products.storeId, grant.storeId),
+      ),
+    )
+    .orderBy(reservationItems.id)
+    .for('update')
+  return rows.map(({ line, product, quantity, consumed, stockKind }) => {
+    if (stockKind !== 'consumable') return { line, product, quantity }
+    const takes =
+      action === 'consume'
+        ? Math.max(consumed, quantity) - consumed
+        : action === 'restore'
+          ? -consumed
+          : 0
+    return { line, product, quantity, consumable: { consumed, takes } }
+  })
+}
+
 /** Gives the reservation's consumables back, under its products' lock (`runReservationChange`). */
 export async function restoreReservationStock(
   tx: Transaction,

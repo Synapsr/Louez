@@ -87,8 +87,10 @@ export const APPROVAL_COOL_DOWN_MS = HOUR_MS;
 /**
  * The identity of a request: the credential that asks, the store, the
  * procedure and the consequential facts the procedure declares with its
- * preview (the records acted on, the amount and its currency, the target
- * status, a hash of each recipient), never free text. Two requests that
+ * preview (the records acted on, by the ids read from their rows, the amount
+ * and its currency, the target status), never free text nor what the state
+ * makes of the request (where a message goes, a shortfall), which the
+ * binding holds. Two requests that
  * differ only in their wording are one; it decides uniqueness, the caps and
  * the cool-down. A SHA-256, hex.
  */

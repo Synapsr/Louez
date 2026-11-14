@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "APIキー",
       "unnamedAgent": "AIアシスタント",
       "checked": "Louezが確認した内容",
+      "messageDestinationOnFile": "メッセージは顧客の登録済みの連絡先に送られます。",
       "values": {
         "yes": "はい",
         "no": "いいえ",

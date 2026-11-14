@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "Klucz API",
       "unnamedAgent": "Asystent AI",
       "checked": "Co Louez sprawdził",
+      "messageDestinationOnFile": "Wiadomości trafiają na zapisane dane kontaktowe klienta.",
       "values": {
         "yes": "Tak",
         "no": "Nie",

@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "Ein API-Schlüssel",
       "unnamedAgent": "Ein KI-Assistent",
       "checked": "Was Louez geprüft hat",
+      "messageDestinationOnFile": "Nachrichten gehen an die hinterlegten Kontaktdaten des Kunden.",
       "values": {
         "yes": "Ja",
         "no": "Nein",

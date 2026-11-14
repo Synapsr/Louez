@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "Une clé d’API",
       "unnamedAgent": "Un assistant IA",
       "checked": "Ce que Louez a vérifié",
+      "messageDestinationOnFile": "Les messages partent vers les coordonnées enregistrées du client.",
       "values": {
         "yes": "Oui",
         "no": "Non",

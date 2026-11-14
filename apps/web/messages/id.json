@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "Sebuah kunci API",
       "unnamedAgent": "Sebuah asisten AI",
       "checked": "Yang diperiksa Louez",
+      "messageDestinationOnFile": "Pesan dikirim ke kontak pelanggan yang tersimpan.",
       "values": {
         "yes": "Ya",
         "no": "Tidak",

@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "Een API-sleutel",
       "unnamedAgent": "Een AI-assistent",
       "checked": "Wat Louez heeft gecontroleerd",
+      "messageDestinationOnFile": "Berichten gaan naar de opgeslagen contactgegevens van de klant.",
       "values": {
         "yes": "Ja",
         "no": "Nee",

@@ -73,7 +73,7 @@ export function sampleApprovals({
       currency,
     },
     customer: { name: reservation.customer, email: reservation.email },
-    messages: [{ message: "request_accepted", channel: "email" }],
+    messages: [{ message: "request_accepted", channel: "email", to: reservation.email }],
     reducesAvailability: true,
     overbooking: null,
     turnoverBuffer: {
@@ -91,8 +91,14 @@ export function sampleApprovals({
     money: null,
     insuranceContract: null,
     recipientsHash: "0".repeat(64),
+    demand: [],
   };
-  const { summary: bookingSummary, recipientsHash: _recipientsHash, ...bookingDetails } = booking;
+  const {
+    summary: bookingSummary,
+    recipientsHash: _recipientsHash,
+    demand: _demand,
+    ...bookingDetails
+  } = booking;
 
   return [
     {
@@ -115,9 +121,7 @@ export function sampleApprovals({
       payload: {
         input: { id: reservation.id, status: "confirmed", overrideTurnoverBuffer: true },
         preview: { summary: bookingSummary, details: bookingDetails },
-        display: confirmOverridePresentation(booking, [
-          { channel: "email", to: reservation.email },
-        ])?.display,
+        display: confirmOverridePresentation(booking)?.display,
         scope: { domain: "reservations", level: "write" },
         consequences: ["stock_override", "customer_message"],
       },

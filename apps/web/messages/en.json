@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "An API key",
       "unnamedAgent": "An AI assistant",
       "checked": "What Louez checked",
+      "messageDestinationOnFile": "Messages go to the customer’s contact details on file.",
       "values": {
         "yes": "Yes",
         "no": "No",

@@ -188,8 +188,9 @@ export interface ConfirmationCheck {
    * What a person's approval of this branch is about, for a branch that may
    * need one (a person's level, for a consequence that is live): the
    * consequential facts that make the request's identity (the records acted
-   * on, the amount and its currency, the target status, a hash of each
-   * recipient; never free text such as notes or a reason), the right the
+   * on, by the ids read from their rows, the amount and its currency, the
+   * target status; never free text such as notes or a reason, nor where a
+   * message goes, which the binding holds), each shown on the page, the right the
    * action needs (the procedure's scope, which the approver must hold), and
    * the URLs its link is built with. Asked for an approval without it, the
    * call throws.

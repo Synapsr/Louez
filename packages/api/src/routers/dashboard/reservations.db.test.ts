@@ -929,7 +929,10 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     const preview = previewOf(refusal);
     assert.match(preview.summary, /Ada Lovelace/);
     assert.match(preview.summary, /request accepted/);
-    assert.deepEqual(preview.details.messages, [{ message: "request_accepted", channel: "email" }]);
+    // Where it goes, to a key that may read customers.
+    assert.deepEqual(preview.details.messages, [
+      { message: "request_accepted", channel: "email", to: "ada@rs.test" },
+    ]);
     assert.equal(preview.details.reducesAvailability, true);
     assert.equal(await statusOf(id), "pending", "nothing was done");
     assert.equal((await outbox()).length, 0, "no message is queued before the confirmation");
@@ -1357,7 +1360,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.equal(preview.details.money?.rentalPaid, "20.00");
     assert.equal(preview.details.money?.refundedAutomatically, false);
     assert.deepEqual(preview.details.messages, [
-      { message: "reservation_cancelled", channel: "email" },
+      { message: "reservation_cancelled", channel: "email", to: "ada@rs.test" },
     ]);
     assert.match(
       preview.summary,

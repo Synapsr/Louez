@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "API 키",
       "unnamedAgent": "AI 어시스턴트",
       "checked": "Louez가 확인한 내용",
+      "messageDestinationOnFile": "메시지는 고객의 등록된 연락처로 발송됩니다.",
       "values": {
         "yes": "예",
         "no": "아니요",

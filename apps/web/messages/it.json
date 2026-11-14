@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "Una chiave API",
       "unnamedAgent": "Un assistente IA",
       "checked": "Cosa ha verificato Louez",
+      "messageDestinationOnFile": "I messaggi vanno ai recapiti del cliente registrati.",
       "values": {
         "yes": "Sì",
         "no": "No",
