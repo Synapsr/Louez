@@ -208,7 +208,7 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       const row = await invitation();
       const response = await post(row.id, {
         decision: "refuse",
-        reason: "  Not this one\r\n<b>sorry</b>‮  ",
+        reason: "  Not this one\r\n<b>sorry</b>\u202e  ",
         revision: String(row.revision),
         shown: shownOf(row),
       });
@@ -333,7 +333,10 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
     const BINDING = "e".repeat(64);
 
     /** An agent's request a person must approve, as its request leaves it: money, unless said otherwise. */
-    async function approval(consequences: string[] = ["money"]) {
+    async function approval(
+      consequences: unknown = ["money"],
+      summary = "Record a rental payment of 40.00 € (cash) on reservation #1042.",
+    ) {
       const now = new Date();
       const [created] = await louezDb.db
         .insert(louezDb.apiHandoffs)
@@ -345,12 +348,9 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
           bindingHash: BINDING,
           payload: {
             input: { reservationId: "r1", type: "rental", amount: 40, method: "cash" },
-            preview: {
-              summary: "Record a rental payment of 40.00 € (cash) on reservation #1042.",
-              details: { number: "1042", amount: 40 },
-            },
+            preview: { summary, details: { number: "1042", amount: 40 } },
             scope: { domain: "payments", level: "write", role: "write" },
-            consequences,
+            consequences: consequences as string[],
           },
           status: "pending",
           activeSlot: 1,
@@ -454,6 +454,52 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       });
       assert.equal(location(blind), `/handoffs/${unknown.id}?acknowledge=1`);
       assert.equal((await rowOf(unknown.id)).status, "pending");
+    });
+
+    test("a request its page cannot show whole is not approved by a forged post; refusing it still works", async () => {
+      // The reviewer's summary: 1,001 characters, one more than the page shows.
+      const row = await approval(["money"], `Record ${"a".repeat(993)}.`);
+      assert.equal([...`Record ${"a".repeat(993)}.`].length, 1_001);
+      const response = await post(row.id, {
+        decision: "approve",
+        acknowledged: "yes",
+        revision: String(row.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(response), `/handoffs/${row.id}?error=failed`);
+      const after = await rowOf(row.id);
+      assert.equal(after.status, "pending");
+      assert.equal(after.decision, null);
+      const refused = await post(row.id, {
+        decision: "refuse",
+        revision: String(row.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(refused), `/handoffs/done/${row.id}`);
+      assert.equal((await rowOf(row.id)).decision, "refused");
+    });
+
+    test("a partly malformed list of consequences asks for the box; only a list of known plain changes does not", async () => {
+      for (const consequences of [["change", {}], [], "change", ["change", "nope"]]) {
+        await louezDb.db.delete(louezDb.apiHandoffs);
+        const row = await approval(consequences);
+        const response = await post(row.id, {
+          decision: "approve",
+          revision: String(row.revision),
+          shown: BINDING,
+        });
+        assert.equal(location(response), `/handoffs/${row.id}?acknowledge=1`, JSON.stringify(consequences));
+        assert.equal((await rowOf(row.id)).status, "pending");
+      }
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const plain = await approval(["change"]);
+      const response = await post(plain.id, {
+        decision: "approve",
+        revision: String(plain.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(response), `/handoffs/done/${plain.id}`);
+      assert.equal((await rowOf(plain.id)).status, "approved");
     });
 
     test("a stale revision or a forged binding decides nothing: the page shows the request as it is now", async () => {

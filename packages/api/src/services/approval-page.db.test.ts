@@ -407,9 +407,9 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
         ...payload,
         preview: {
           summary:
-            "Record 40.00 ‮00.04‬ EUR for <b>Ann</b> [click](https://evil.test)\u0007\r\nthen stop.",
+            "Record 40.00 \u202e00.04\u202c EUR for <b>Ann</b> [click](https://evil.test)\u0007\r\nthen stop.",
           details: {
-            customerName: "⁧שרה⁩ <img src=x onerror=alert(1)>",
+            customerName: "\u2067שרה\u2069 <img src=x onerror=alert(1)>",
             amount_paid: 40.5,
             refunded: false,
             sent: true,
@@ -512,6 +512,96 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.equal(preview.truncated, false);
   });
 
+  test("blank fillers draw no space of their own; what renders nothing goes; an emoji stays whole", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    const summaryOf = async (summary: string) => {
+      await setRow(id, { payload: { ...payload, preview: { ...payload.preview, summary } } });
+      return (await read(id)).preview?.summary;
+    };
+    // The reviewer's inputs: a hundred Hangul fillers (U+3164, then U+FFA0) under the bound.
+    for (const filler of ["\u3164", "\uffa0", "\u115f", "\u1160", "\u2800"]) {
+      assert.equal(
+        await summaryOf(`Pay Ann${filler.repeat(100)}Louez checked this payment…`),
+        "Pay Ann Louez checked this payment…",
+        filler.codePointAt(0)?.toString(16),
+      );
+    }
+    // Default-ignorable characters are removed, not turned into a space.
+    assert.equal(await summaryOf("Pa\u200bid \u2060in\u00ad full\ufeff."), "Paid in full.");
+    // A family joined by ZWJ, a heart in its emoji form (VS16), a ZWNJ inside a word: kept.
+    const kept = "Ann 👨\u200d👩\u200d👧 ❤\ufe0f می\u200cخواهم";
+    assert.equal(await summaryOf(`For ${kept}.`), `For ${kept}.`);
+    // The bound is counted once on one line: 998 characters, 5,000 fillers and one more is 1,000.
+    const collapsed = await read(id);
+    assert.equal(collapsed.state, "pending");
+    const long = `${"x".repeat(998)}${"\u3164".repeat(5_000)}y`;
+    assert.equal(await summaryOf(long), `${"x".repeat(998)} y`);
+    const whole = await read(id);
+    assert.equal(whole.preview?.truncated, false);
+    assert.equal(whole.state, "pending");
+  });
+
+  test("the box is asked for unless every stored consequence is known and none asks for it", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    const deliberate = async (consequences: unknown) => {
+      await setRow(id, { payload: { ...payload, consequences } as never });
+      return (await read(id)).deliberate;
+    };
+    for (const stored of [["change", {}], [], "change", ["change", "nope"], null, [null]]) {
+      assert.equal(await deliberate(stored), true, JSON.stringify(stored));
+    }
+    assert.equal(await deliberate(["change"]), false);
+    assert.equal(await deliberate(["change", "change"]), false);
+    assert.equal(await deliberate(["change", "money"]), true);
+  });
+
+  test("carried out between the row's read and the connection's: the page says carried out", async () => {
+    const key = await apiKey();
+    const id = await ask(key);
+    await setRow(id, { status: "approved", decision: "approved", decidedAt: new Date() });
+    const answer = await page.readApprovalPage(id, OWNER, {
+      // The agent's call carries it out and commits, then the key is revoked.
+      afterRow: async () => {
+        await setRow(id, { status: "completed", completedAt: new Date(), activeSlot: null });
+        await louezDb.db
+          .update(louezDb.apiKeys)
+          .set({ revokedAt: new Date() })
+          .where(orm.eq(louezDb.apiKeys.id, key.id));
+      },
+    });
+    assert.ok(answer.ok);
+    assert.equal(answer.approval.state, "completed");
+    // Revoked while still approved: revoked, as before.
+    const other = await ask(await apiKey(OWNER, "Other agent"), { id: "n2" });
+    await setRow(other, { status: "approved", decision: "approved", decidedAt: new Date() });
+    await louezDb.db.update(louezDb.apiKeys).set({ revokedAt: new Date() });
+    assert.equal((await read(other)).state, "connection_revoked");
+  });
+
+  test("the clock is read before the row: carried out just after the clock read, it reads carried out, not lapsed", async () => {
+    const id = await ask(await apiKey());
+    // Approved, its hour about to end.
+    await setRow(id, {
+      status: "approved",
+      decision: "approved",
+      decidedAt: new Date(),
+      expiresAt: new Date(Date.now() + 1_500),
+    });
+    const answer = await page.readApprovalPage(id, OWNER, {
+      afterClock: async () => {
+        await setRow(id, { status: "completed", completedAt: new Date(), activeSlot: null });
+        // Past the hour by the time the row is read.
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+      },
+    });
+    assert.ok(answer.ok);
+    assert.equal(answer.approval.state, "completed");
+  });
+
   test("a summary too long to show whole is cut, says so, and cannot be approved", async () => {
     const id = await ask(await apiKey());
     const row = await rowOf(id);
@@ -563,7 +653,7 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
       details: [],
     });
 
-    for (const unreadable of [null, "Erase it.", { details: {} }, { summary: 4 }, { summary: " ‮ " }]) {
+    for (const unreadable of [null, "Erase it.", { details: {} }, { summary: 4 }, { summary: " \u202e " }]) {
       await withPreview(unreadable);
       const approval = await read(id);
       assert.equal(approval.state, "unreadable", JSON.stringify(unreadable));

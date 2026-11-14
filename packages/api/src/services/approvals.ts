@@ -25,6 +25,7 @@ import {
   type ApprovalAnswer,
 } from "../platform/errors";
 import { sha256, stableStringify } from "../platform/hash";
+import { approvalIsReadable } from "./approval-preview";
 import type { HandoffDecided } from "./handoff-decisions";
 import {
   approvalPayloadOf,
@@ -757,6 +758,11 @@ export async function answerApproval(
     if (status !== "pending") throw handoffErrors.decisionInvalid("finished");
     if (current.revision !== input.revision || current.bindingHash !== input.shown) {
       throw handoffErrors.decisionInvalid("changed");
+    }
+    // What its page cannot show whole is not approved, whatever was posted;
+    // read on the row as locked. A refusal stays possible.
+    if (input.decision === "approve" && !approvalIsReadable(approvalPayloadOf(current))) {
+      throw handoffErrors.decisionInvalid("unreadable");
     }
     if (!(await mayStillApprove(tx, current, input.userId))) {
       throw handoffErrors.decisionInvalid("not_allowed");

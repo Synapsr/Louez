@@ -1,6 +1,6 @@
 import { decisionReason, handoffErrors, type HandoffKind } from "../contracts/handoffs";
 import type { ApiPorts } from "../platform/ports";
-import { approvalAsksToTick } from "./approval-page";
+import { approvalAsksToTick } from "./approval-preview";
 import { answerApproval } from "./approvals";
 import { decisionScopeOf, readHandoffLink } from "./handoffs";
 import { answerInvitation } from "./team";
@@ -15,8 +15,8 @@ import { answerInvitation } from "./team";
  * compared under the store's lock: the revision and what the page showed
  * (an invitation's `invitationShown`, an approval's binding). An approval
  * whose consequences ask for it is approved only with the box ticked
- * (`acknowledged`, `approvalAsksToTick`): an approval posted without it
- * decides nothing, a refusal never needs it.
+ * (`acknowledged`, `approvalAsksToTick`, the page's own rule): an approval
+ * posted without it decides nothing, a refusal never needs it.
  */
 
 /** What answering a step did: the step, the decision, and what approving it carried out. */
@@ -64,7 +64,12 @@ export async function decideHandoff(
   if (!answer || !decisionScopeOf(row)) throw handoffErrors.decisionInvalid("invalid");
   // Read before the kind's lock: a repeated request that changes what the
   // approval asks raises its revision, which the kind compares under it.
-  if (input.decision === "approve" && !input.acknowledged && approvalAsksToTick(row)) {
+  if (
+    row.kind === "operation_approval" &&
+    input.decision === "approve" &&
+    !input.acknowledged &&
+    approvalAsksToTick(row.payload && "consequences" in row.payload ? row.payload.consequences : null)
+  ) {
     throw handoffErrors.decisionInvalid("not_acknowledged");
   }
   return answer(

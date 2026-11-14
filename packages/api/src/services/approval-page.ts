@@ -2,11 +2,27 @@ import { apiHandoffs, db, storeMembers, stores } from "@louez/db";
 import { and, eq } from "drizzle-orm";
 
 import type { AgentClient } from "../contracts/agent-connections";
-import { plainText, type HandoffDecision } from "../contracts/handoffs";
-import { isConsequence, type Consequence } from "../platform/approval-rule";
+import type { HandoffDecision } from "../contracts/handoffs";
+import type { Consequence } from "../platform/approval-rule";
 import { databaseNow } from "../platform/database-clock";
 import { grantClient } from "./agent-grants";
+import {
+  approvalAsksToTick,
+  approvalIsReadable,
+  knownConsequences,
+  oneLine,
+  shownPreview,
+  type ShownPreview,
+} from "./approval-preview";
 import { approvalPayloadOf, connectionAlive, mayActOnStep, statusOf } from "./handoffs";
+
+export {
+  SUMMARY_MAX,
+  oneLine,
+  type ShownDetail,
+  type ShownPreview,
+  type ShownValue,
+} from "./approval-preview";
 
 /**
  * What the page of an operation's approval (`/handoffs/<id>`) and its result
@@ -29,8 +45,8 @@ type HandoffRow = typeof apiHandoffs.$inferSelect;
 /**
  * Where an approval stands for its page. `pending` alone is decided there;
  * `unreadable` is a pending approval whose stored preview Louez cannot show
- * whole (no sentence, or one too long to show: `ShownPreview.truncated`),
- * which nobody may approve without reading it.
+ * whole (`approvalIsReadable`: no sentence, or one too long to show,
+ * `ShownPreview.truncated`), which nobody may approve without reading it.
  */
 export type ApprovalPageState =
   | "pending"
@@ -52,28 +68,6 @@ export type ApprovalPageState =
   /** Ended for a reason this page does not name. */
   | "ended";
 
-/** A value of the preview's details, as text a page shows. */
-export type ShownValue =
-  | { kind: "text"; text: string }
-  | { kind: "yes" }
-  | { kind: "no" }
-  | { kind: "none" }
-  | { kind: "list"; entries: ShownDetail[] };
-
-/** One line of the preview's details; an empty label for a value with no name. */
-export interface ShownDetail {
-  label: string;
-  value: ShownValue;
-}
-
-export interface ShownPreview {
-  /** One line, at most `SUMMARY_MAX` characters, an ellipsis last when it was cut. */
-  summary: string;
-  /** The stored summary was longer than `SUMMARY_MAX`: the page cannot show it whole. */
-  truncated: boolean;
-  details: ShownDetail[];
-}
-
 /** Who asks: an assistant connected over OAuth, or an API key, by the name it had when it asked. */
 export type ApprovalAgent =
   | { kind: "oauth"; name: string | null; client: AgentClient | null }
@@ -91,7 +85,7 @@ export interface ApprovalPage {
   preview: ShownPreview | null;
   /** What the action does, as the procedure declared it; the ones Louez does not know are left out. */
   consequences: Consequence[];
-  /** Whether approving it asks for a deliberate step: anything but a plain change, or nothing known. */
+  /** Whether approving it asks for the box (`approvalAsksToTick`, from the consequences as stored). */
   deliberate: boolean;
   /** When Louez computed the preview: the agent's last request. */
   computedAt: Date;
@@ -110,20 +104,34 @@ export type ApprovalPageRead =
 
 const APPROVAL_ID = /^[A-Za-z0-9_-]{21}$/;
 
-/** The consequences that are not a plain change the store can put back. */
-const ASK_TO_TICK: ReadonlySet<Consequence> = new Set([
-  "money",
-  "stock_override",
-  "access_removed",
-  "deletion",
-  "customer_message",
-  "credits",
-]);
+/** Where a test holds a read of the page between its steps, to order a write between them. */
+export interface ApprovalPageSeams {
+  /** After the database's clock is read, before the row is. */
+  afterClock?: () => Promise<void>;
+  /** After the row is read, before its connection is. */
+  afterRow?: () => Promise<void>;
+}
 
-export async function readApprovalPage(id: string, userId: string): Promise<ApprovalPageRead> {
+/**
+ * The page's read, in this order. The database's clock first, then the row:
+ * whatever committed before the clock was read is in the row read after it,
+ * so a request read as lapsed (`expired`, `approved_expired`) had not been
+ * carried out, nor decided, when its time was judged. Then its connection:
+ * found gone while the row read as pending or approved, the row is read
+ * again, after the connection, and judged on that second read, so a call
+ * that carried it out and committed before the connection was removed reads
+ * `completed`, never `connection_revoked`.
+ */
+export async function readApprovalPage(
+  id: string,
+  userId: string,
+  seams: ApprovalPageSeams = {},
+): Promise<ApprovalPageRead> {
   if (!APPROVAL_ID.test(id)) return { ok: false, reason: "invalid" };
-  const [row] = await db.select().from(apiHandoffs).where(eq(apiHandoffs.id, id));
-  if (!row || row.kind !== "operation_approval") return { ok: false, reason: "invalid" };
+  const now = await databaseNow();
+  await seams.afterClock?.();
+  let row = await approvalRow(id);
+  if (!row) return { ok: false, reason: "invalid" };
   if (row.userId !== userId) return { ok: false, reason: "other_user" };
   const [member] = await db
     .select({ role: storeMembers.role, storeName: stores.name })
@@ -135,11 +143,16 @@ export async function readApprovalPage(id: string, userId: string): Promise<Appr
     return { ok: false, reason: "not_allowed" };
   }
 
-  const now = await databaseNow();
+  await seams.afterRow?.();
   const alive = await connectionAlive(row);
-  const preview = shownPreview(payload.preview);
-  const consequences = knownConsequences(payload.consequences);
-  const state = pageState(row, now, alive, preview !== null && !preview.truncated);
+  const open = (candidate: HandoffRow) => {
+    const status = statusOf(candidate, now);
+    return status === "pending" || status === "approved";
+  };
+  if (!alive && open(row)) row = (await approvalRow(id)) ?? row;
+  const stored = approvalPayloadOf(row) ?? payload;
+  const preview = shownPreview(stored.preview);
+  const state = pageState(row, now, alive, approvalIsReadable(stored));
   return {
     ok: true,
     approval: {
@@ -150,8 +163,8 @@ export async function readApprovalPage(id: string, userId: string): Promise<Appr
       store: { id: row.storeId, name: member.storeName },
       agent: await agentOf(row),
       preview,
-      consequences,
-      deliberate: asksToTick(consequences),
+      consequences: knownConsequences(stored.consequences),
+      deliberate: approvalAsksToTick(stored.consequences),
       computedAt: row.linkIssuedAt,
       expiresAt: row.expiresAt,
       now,
@@ -162,6 +175,11 @@ export async function readApprovalPage(id: string, userId: string): Promise<Appr
           : null,
     },
   };
+}
+
+async function approvalRow(id: string): Promise<HandoffRow | null> {
+  const [row] = await db.select().from(apiHandoffs).where(eq(apiHandoffs.id, id));
+  return row && row.kind === "operation_approval" ? row : null;
 }
 
 /** Where the row stands for its page, at `now` on the database's clock. */
@@ -206,112 +224,4 @@ async function agentOf(row: HandoffRow): Promise<ApprovalAgent> {
     return { kind: "oauth", name, client: await grantClient(row.userId, row.credentialId) };
   }
   return { kind: "api_key", name };
-}
-
-const knownConsequences = (stored: unknown): Consequence[] =>
-  Array.isArray(stored) ? [...new Set(stored.filter(isConsequence))] : [];
-
-/**
- * Whether approving asks the person to tick that they read what Louez will
- * do: anything but a plain change, or no consequence Louez knows.
- */
-const asksToTick = (consequences: readonly Consequence[]) =>
-  consequences.length === 0 || consequences.some((consequence) => ASK_TO_TICK.has(consequence));
-
-/**
- * Whether an approval is approved only with the box ticked: the page shows
- * it (`deliberate`), and `handoffs.decide` refuses an approval of it that
- * did not post it (services/handoff-decisions.ts). False for another kind.
- */
-export function approvalAsksToTick(row: Pick<HandoffRow, "kind" | "payload">): boolean {
-  if (row.kind !== "operation_approval") return false;
-  const payload = row.payload && "consequences" in row.payload ? row.payload : null;
-  return asksToTick(knownConsequences(payload?.consequences));
-}
-
-/** The most of a summary the page shows, in characters, once on one line. */
-export const SUMMARY_MAX = 1_000;
-
-/**
- * Every run of white space: line breaks, tabs, the line and paragraph
- * separators, no-break and zero-width spaces, the word joiner.
- */
-const WHITE_SPACE = /[\s\u180e\u200b\u2060\ufeff]+/gu;
-
-/**
- * Text as one line of plain text (`plainText`): every run of white space one
- * space. Text from the store's records (a customer's name) then cannot draw
- * lines of its own inside what Louez says.
- */
-export const oneLine = (raw: string) => plainText(raw).replace(WHITE_SPACE, " ").trim();
-
-/**
- * The stored preview as text, whatever it holds: its summary on one line,
- * cut at `SUMMARY_MAX` characters with an ellipsis (`truncated`), and its
- * details, each string on one line (`oneLine`), numbers written as
- * JavaScript writes them, the names of the details spelled out
- * ("reservationId" reads "Reservation id"). The details come in the order
- * the database keeps a JSON object's keys (MySQL sorts them by length), not
- * the order the procedure wrote them. Null when it has no summary to show:
- * an approval whose preview cannot be read whole is not approved on its page.
- */
-export function shownPreview(stored: unknown): ShownPreview | null {
-  if (!isRecord(stored)) return null;
-  const { summary, details } = stored;
-  if (typeof summary !== "string") return null;
-  const characters = [...oneLine(summary)];
-  if (characters.length === 0) return null;
-  const truncated = characters.length > SUMMARY_MAX;
-  const text = truncated
-    ? `${characters.slice(0, SUMMARY_MAX - 1).join("").trimEnd()}…`
-    : characters.join("");
-  const shown = { summary: text, truncated };
-  if (details === undefined || details === null) return { ...shown, details: [] };
-  if (isRecord(details)) return { ...shown, details: entriesOf(details, 1) };
-  return { ...shown, details: [{ label: "", value: shownValue(details, 1) }] };
-}
-
-/** Past four levels of lists, a value is shown as its JSON text. */
-const MAX_DEPTH = 4;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-function entriesOf(record: Record<string, unknown>, depth: number): ShownDetail[] {
-  return Object.entries(record).map(([key, value]) => ({
-    label: labelOf(key),
-    value: shownValue(value, depth + 1),
-  }));
-}
-
-function shownValue(value: unknown, depth: number): ShownValue {
-  if (value === null || value === undefined) return { kind: "none" };
-  if (value === true) return { kind: "yes" };
-  if (value === false) return { kind: "no" };
-  if (typeof value === "string") return { kind: "text", text: oneLine(value) };
-  if (typeof value === "number" || typeof value === "bigint") {
-    return { kind: "text", text: String(value) };
-  }
-  if (depth > MAX_DEPTH) return { kind: "text", text: oneLine(JSON.stringify(value) ?? "") };
-  if (Array.isArray(value)) {
-    return {
-      kind: "list",
-      entries: value.map((entry, index) => ({
-        label: String(index + 1),
-        value: shownValue(entry, depth + 1),
-      })),
-    };
-  }
-  if (isRecord(value)) return { kind: "list", entries: entriesOf(value, depth) };
-  return { kind: "text", text: oneLine(String(value)) };
-}
-
-/** A detail's name spelled out: "reservationId" and "reservation_id" read "Reservation id". */
-function labelOf(key: string): string {
-  const words = oneLine(key)
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
 }
