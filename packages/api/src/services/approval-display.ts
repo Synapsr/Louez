@@ -46,7 +46,7 @@ export type TextValue = { type: "text"; text: string };
 /**
  * An amount as a decimal string ("-20.00", "1500.00") and its ISO currency:
  * the value its row holds, every digit of which the page shows, and no
- * other (`storedAmount`, services/approval-presentations.ts).
+ * other (`paymentAmount`, services/payment-amount.ts).
  */
 export type MoneyValue = { type: "money"; amount: string; currency: string };
 /** An instant, ISO 8601 with its offset: the page writes it in the store's time zone. */

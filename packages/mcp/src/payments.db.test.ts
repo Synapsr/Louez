@@ -507,6 +507,8 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
         type: "rental",
         amount: "80.00",
         method: "transfer",
+        // Written with the row: shown before it is.
+        notes: "Paid by wire",
       },
     });
     assert.deepEqual(recorded, [], "nothing was done yet");
@@ -822,7 +824,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.equal(await confirmationCount(), asked, "nothing was asked");
   });
 
-  test("each refusal comes after the confirmation, with its message, and writes nothing", async () => {
+  test("each refusal comes before anything is asked, with its message, and writes nothing", async () => {
     const authorization = await key();
     const open = await reservation();
     const cancelled = await reservation("cancelled");
@@ -833,8 +835,15 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const before = await paymentsOf(open.id);
 
     const refused = (code: string, message: string) => ({ code, message, retryable: false });
+    const asked = () =>
+      louezDb.db
+        .select({ id: louezDb.apiConfirmations.id })
+        .from(louezDb.apiConfirmations)
+        .where(orm.eq(louezDb.apiConfirmations.storeId, STORE));
+    const previews = (await asked()).length;
+    // Refused whatever the user would answer: refused at once, nothing asked.
     const record = (reservationId: string, type: string, amount: string) =>
-      confirmed(authorization, "record_payment", { reservationId, type, amount, method: "cash" });
+      mcpCall(authorization, "record_payment", { reservationId, type, amount, method: "cash" });
 
     assert.deepEqual(
       refusal(await record(open.id, "rental", "0")),
@@ -844,6 +853,14 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       refusal(await record(open.id, "rental", "abc")),
       refused("PAYMENT_AMOUNT_INVALID", "Amount must be a non-zero number."),
     );
+    // An amount is a plain decimal of at most two decimals, as its row holds it.
+    for (const amount of ["1e2", "+5", " 5", "5.", ".5", "12abc", "0.004", "1.234", "100000000"]) {
+      assert.deepEqual(
+        refusal(await record(open.id, "adjustment", amount)),
+        refused("PAYMENT_AMOUNT_INVALID", "Amount must be a non-zero number."),
+        JSON.stringify(amount),
+      );
+    }
     assert.deepEqual(
       refusal(await record(open.id, "rental", "-5.00")),
       refused(
@@ -861,7 +878,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     );
 
     const giveBack = (amount: string) =>
-      confirmed(authorization, "record_deposit_return", {
+      mcpCall(authorization, "record_deposit_return", {
         reservationId: open.id,
         amount,
         method: "cash",
@@ -875,6 +892,10 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       refused("DEPOSIT_RETURN_AMOUNT_INVALID", "Amount must be greater than zero."),
     );
     assert.deepEqual(
+      refusal(await giveBack("10.005")),
+      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "Amount must be greater than zero."),
+    );
+    assert.deepEqual(
       refusal(await giveBack("30.01")),
       refused(
         "DEPOSIT_RETURN_EXCEEDS_BALANCE",
@@ -883,13 +904,14 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     );
 
     assert.deepEqual(
-      refusal(await confirmed(authorization, "delete_payment", { paymentId: charged })),
+      refusal(await mcpCall(authorization, "delete_payment", { paymentId: charged })),
       refused(
         "PAYMENT_STRIPE_NOT_DELETABLE",
         "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
       ),
     );
 
+    assert.equal((await asked()).length, previews, "no preview was recorded");
     assert.deepEqual(recorded, []);
     assert.deepEqual(await paymentsOf(open.id), before);
     assert.deepEqual(await paymentsOf(cancelled.id), []);
@@ -984,7 +1006,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
   test("two deposit returns sent together cannot both pass the returnable balance", async () => {
     // Each within the balance alone, both over it. Each was previewed at
     // 50.00; the second to take the reservation's lock reads the balance the
-    // first left, so its token no longer holds, and asked again it is refused.
+    // first left, and is refused by it before its token is read.
     const authorization = await key();
     const { id } = await reservation();
     await payment(id, { type: "deposit", amount: "50.00" });
@@ -1014,20 +1036,16 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.equal(lost.length, 1);
     const [loser] = lost;
     assert.ok(loser);
-    assert.equal(refusal(loser).code, "CONFIRMATION_INVALID");
+    assert.equal(refusal(loser).code, "DEPOSIT_RETURN_EXCEEDS_BALANCE");
     const returns = (await paymentsOf(id)).filter((row) => row.type === "deposit_return");
     assert.equal(returns.length, 1);
 
-    // Asked again, the other return previews what is left, and is refused.
+    // Sent again, the other return is refused at once, with what is left.
     const left = (50 - Number(returns[0]?.amount)).toFixed(2);
     const other = returns[0]?.amount === "30.00" ? forty : thirty;
-    const again = confirmation(await mcpCall(authorization, "record_deposit_return", other));
-    assert.equal((again.preview as { details: Json }).details.returnable, left);
-    const refused = await mcpCall(authorization, "record_deposit_return", {
-      ...other,
-      confirmationToken: again.token,
-    });
+    const refused = await mcpCall(authorization, "record_deposit_return", other);
     assert.equal(refusal(refused).code, "DEPOSIT_RETURN_EXCEEDS_BALANCE");
+    assert.match(refusal(refused).message ?? "", new RegExp(`max returnable: €${left}\\.`));
     assert.equal((await paymentsOf(id)).filter((row) => row.type === "deposit_return").length, 1);
   });
 

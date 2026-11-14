@@ -31,6 +31,7 @@ import {
   recordDepositReturnPresentation,
   recordPaymentPresentation,
 } from "./approval-presentations";
+import { depositReturnAmount, recordedPaymentAmount } from "./payment-amount";
 
 /**
  * The payments a store records by hand, as an agent or the in-app assistant
@@ -41,9 +42,14 @@ import {
  * reservation run one after the other, and each reads what the other
  * committed: a deposit return reads the balance the one before it left.
  *
+ * Each refuses what it would refuse whatever anyone answered (the amount,
+ * the reservation's status, the deposit's balance, a Stripe payment) before
+ * it asks, so nobody is asked to approve what cannot happen, and once it has
+ * asked it only writes: a refusal never follows an approval carried out.
+ *
  * Kept as the hand-written tools had it: the amounts written in euros in the
- * previews and messages (`money`), the confirmation asked before the checks
- * of the amount and the status, no history line, and the refusals' messages.
+ * previews and messages (`money`), no history line, and the refusals'
+ * messages.
  */
 
 /** Who writes, on which store, and how the confirmation is asked. */
@@ -128,14 +134,32 @@ async function lockedReservation(tx: Transaction, storeId: string, id: string) {
 const currencyOf = (caller: PaymentRecordsCaller, reservation: { currency: string | null }) =>
   normalizeCurrency(reservation.currency, normalizeCurrency(caller.storeSettings?.currency));
 
-/** Not a number, or zero; then a negative amount outside an adjustment. */
+/**
+ * What the write's row takes from the store's settings, bound with its
+ * preview: the currency it records the payment in (the reservation's, else
+ * the store's as read for this call) and, for a rental, the tax settings its
+ * insurance share is computed with. A change of either between a preview
+ * and the call that carries it out voids that preview's token or approval.
+ */
+const settingsBound = (
+  caller: PaymentRecordsCaller,
+  reservation: { currency: string | null },
+  type: RecordPaymentInput["type"],
+) => ({
+  currency: currencyOf(caller, reservation),
+  ...(type === "rental" ? { tax: caller.storeSettings?.tax ?? null } : {}),
+});
+
+/** The notes a write records, shown with its preview when there are any. */
+const notesOf = (notes: string | undefined) => (notes ? { notes } : {});
+
+/** The amount's text (`paymentAmount`), then a negative amount outside an adjustment. */
 function recordAmountRefusal(input: RecordPaymentInput): Error | null {
-  const amount = parseFloat(input.amount);
-  if (isNaN(amount) || amount === 0) return paymentRecordErrors.amountInvalid();
-  if (amount < 0 && input.type !== "adjustment") {
-    return paymentRecordErrors.negativeOutsideAdjustment();
-  }
-  return null;
+  const verdict = recordedPaymentAmount(input.amount, input.type);
+  if (verdict.ok) return null;
+  return verdict.refusal === "amount_invalid"
+    ? paymentRecordErrors.amountInvalid()
+    : paymentRecordErrors.negativeOutsideAdjustment();
 }
 
 /** Records a payment received, or paid back as a negative adjustment. */
@@ -149,6 +173,13 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
       );
     }
 
+    // Refused whatever anyone answers: before asking.
+    const amountRefusal = recordAmountRefusal(input);
+    if (amountRefusal) return refused(amountRefusal);
+    if (reservation.status === "cancelled" || reservation.status === "rejected") {
+      return refused(paymentRecordErrors.reservationClosed(reservation.status));
+    }
+
     const details = {
       reservationId: input.reservationId,
       number: reservation.number,
@@ -159,18 +190,12 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
     const refusal = await caller.confirm(tx, {
       preview: {
         summary: `Record a ${input.type} payment of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
-        details,
+        details: { ...details, ...notesOf(input.notes) },
       },
-      state: { status: reservation.status },
+      state: { status: reservation.status, ...settingsBound(caller, reservation, input.type) },
       presentation: recordPaymentPresentation(details, currencyOf(caller, reservation)),
     });
     if (refusal) return unconfirmed(refusal);
-
-    const amountRefusal = recordAmountRefusal(input);
-    if (amountRefusal) return refused(amountRefusal);
-    if (reservation.status === "cancelled" || reservation.status === "rejected") {
-      return refused(paymentRecordErrors.reservationClosed(reservation.status));
-    }
 
     await caller.port.insert(tx, {
       reservationId: reservation.id,
@@ -196,10 +221,10 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
   });
 }
 
-/** Not a number, zero or below. */
+/** The amount's text (`paymentAmount`), or zero and below; the balance is judged under the lock. */
 function returnAmountRefusal(input: RecordDepositReturnInput): Error | null {
-  const amount = parseFloat(input.amount);
-  return isNaN(amount) || amount <= 0 ? paymentRecordErrors.depositReturnAmountInvalid() : null;
+  const verdict = depositReturnAmount(input.amount, Infinity);
+  return verdict.ok ? null : paymentRecordErrors.depositReturnAmountInvalid();
 }
 
 /**
@@ -231,6 +256,23 @@ export async function recordDepositReturn(
     const returned = completed("deposit_return");
     const returnable = collected - returned;
 
+    // Refused whatever anyone answers: before asking.
+    const verdict = depositReturnAmount(input.amount, returnable);
+    if (!verdict.ok) {
+      return refused(
+        verdict.refusal === "amount_invalid"
+          ? paymentRecordErrors.depositReturnAmountInvalid()
+          : paymentRecordErrors.depositReturnExceedsBalance(
+              {
+                collected: collected.toFixed(2),
+                returned: returned.toFixed(2),
+                returnable: returnable.toFixed(2),
+              },
+              money,
+            ),
+      );
+    }
+
     const details = {
       reservationId: input.reservationId,
       number: reservation.number,
@@ -241,27 +283,15 @@ export async function recordDepositReturn(
     const refusal = await caller.confirm(tx, {
       preview: {
         summary: `Record a deposit return of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
-        details,
+        details: { ...details, ...notesOf(input.notes) },
       },
-      state: { returnable: returnable.toFixed(2) },
+      state: {
+        returnable: returnable.toFixed(2),
+        ...settingsBound(caller, reservation, "deposit_return"),
+      },
       presentation: recordDepositReturnPresentation(details, currencyOf(caller, reservation), returnable),
     });
     if (refusal) return unconfirmed(refusal);
-
-    const amountRefusal = returnAmountRefusal(input);
-    if (amountRefusal) return refused(amountRefusal);
-    if (parseFloat(input.amount) > returnable) {
-      return refused(
-        paymentRecordErrors.depositReturnExceedsBalance(
-          {
-            collected: collected.toFixed(2),
-            returned: returned.toFixed(2),
-            returnable: returnable.toFixed(2),
-          },
-          money,
-        ),
-      );
-    }
 
     await caller.port.insert(tx, {
       reservationId: reservation.id,
@@ -321,6 +351,9 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
   return underReservationLock(storeId, found.reservationId, async (tx) => {
     const payment = await storePayment(tx, storeId, input.paymentId);
     if (!payment) return refused(paymentRecordErrors.paymentNotFound(input.paymentId));
+    // Refused whatever anyone answers: before asking.
+    if (payment.method === "stripe")
+      return refused(paymentRecordErrors.stripePaymentNotDeletable());
 
     const details = {
       paymentId: input.paymentId,
@@ -346,9 +379,6 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
       }),
     });
     if (refusal) return unconfirmed(refusal);
-
-    if (payment.method === "stripe")
-      return refused(paymentRecordErrors.stripePaymentNotDeletable());
 
     await tx
       .delete(payments)

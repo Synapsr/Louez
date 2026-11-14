@@ -765,10 +765,11 @@ describe("a payment recorded through the generic write says what the writer reco
     }
   });
 
-  test("the write judges the amount as sent: one it refuses shows no display, whatever it rounds to", () => {
-    // A negative amount that rounds to zero is still negative, and refused outside an adjustment.
-    for (const type of ["rental", "damage", "deposit", "deposit_return"]) {
-      assert.equal(recorded(type, "-0.004"), null, type);
+  test("an amount the write refuses shows no display: more than two decimals, whatever it would round to", () => {
+    for (const type of ["rental", "damage", "deposit", "deposit_return", "adjustment"]) {
+      for (const amount of ["-0.004", "0.004", "1.234", "-20.005"]) {
+        assert.equal(recorded(type, amount), null, `${type} ${amount}`);
+      }
     }
     // Zero is refused for every type.
     for (const type of ["rental", "damage", "deposit", "deposit_return", "adjustment"]) {
@@ -792,15 +793,14 @@ describe("a payment recorded through the generic write says what the writer reco
         "EUR",
         balance,
       );
-    // Both would read "300.00 of 300.00" once rounded; the writer refuses the first.
-    assert.equal(returned("300.004", 300), null);
+    // A balance counted past its cents: "300.00 of 300.00" once rounded, and still refused.
     assert.equal(returned("300.00", 299.996), null);
     assert.equal(returned("300.01", 300), null);
     assert.equal(screenOf(returned("300.00", 300))[2], "Deposit given back: €300.00 · Cash");
   });
 
-  test("an amount whose row would hold zero shows no display: no wording says it truly", () => {
-    // The writer accepts these, and the row holds 0.00.
+  test("an amount of less than a cent shows no display: the write refuses it", () => {
+    // The write refuses them: more than two decimals.
     assert.equal(recorded("adjustment", "-0.004"), null);
     assert.equal(recorded("adjustment", "0.004"), null);
     assert.equal(recorded("rental", "0.004"), null);
@@ -812,9 +812,9 @@ describe("a payment recorded through the generic write says what the writer reco
       ),
       null,
     );
-    // From half a cent, the row holds a cent, and the display says so with its sign.
-    assert.match(screenOf(recorded("adjustment", "-0.006"))[2] ?? "", /€0\.01/);
-    assert.match(screenOf(recorded("rental", "0.005"))[2] ?? "", /€0\.01 received/);
+    // A cent is shown as a cent, with its sign.
+    assert.match(screenOf(recorded("adjustment", "-0.01"))[2] ?? "", /-€0\.01/);
+    assert.match(screenOf(recorded("rental", "0.01"))[2] ?? "", /€0\.01 received/);
   });
 
   test("the amount shown is the amount the row holds, every digit of it and no other", () => {
@@ -822,9 +822,8 @@ describe("a payment recorded through the generic write says what the writer reco
       // Yen has no minor unit, the row keeps two decimals: 1.49 stays 1.49.
       ["1.49", "JPY", "Rental: ¥1.49 received · Cash"],
       ["1500", "JPY", "Rental: ¥1,500 received · Cash"],
-      // Dinars have three, the row two: 1.234 is held, and shown, as 1.23.
-      ["1.234", "KWD", "Rental: KWD 1.23 received · Cash"],
-      ["1.235", "KWD", "Rental: KWD 1.24 received · Cash"],
+      // Dinars have three, the row two: an amount of two decimals is shown with two.
+      ["1.23", "KWD", "Rental: KWD 1.23 received · Cash"],
       ["120", "EUR", "Rental: €120.00 received · Cash"],
       ["120.5", "EUR", "Rental: €120.50 received · Cash"],
     ];
@@ -832,14 +831,14 @@ describe("a payment recorded through the generic write says what the writer reco
       assert.equal(screenOf(recorded("rental", amount, "cash", currency))[2], line, `${amount} ${currency}`);
     }
     assert.equal(
-      screenOf(recorded("adjustment", "-20.005", "card"))[2],
-      "Adjustment: -€20.01, paid back to the customer · Card",
+      screenOf(recorded("adjustment", "-20.5", "card"))[2],
+      "Adjustment: -€20.50, paid back to the customer · Card",
     );
     // The identity holds the same amount as the row.
-    assert.equal(recorded("rental", "1.234", "cash", "KWD")?.facts.amount, "1.23");
+    assert.equal(recorded("rental", "1.2", "cash", "KWD")?.facts.amount, "1.20");
     // A deposit's balance, a deleted payment's amount and a booking's total are read from their rows: shown as held.
     const held = recordDepositReturnPresentation(
-      { reservationId: RESERVATION, number: "R-00094", amount: "1.494", method: "cash", returnable: "3.50" },
+      { reservationId: RESERVATION, number: "R-00094", amount: "1.49", method: "cash", returnable: "3.50" },
       "JPY",
       3.5,
     );
