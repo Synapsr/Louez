@@ -279,6 +279,26 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     return call(input);
   }
 
+  /** A person's answer on a step's page, as its route posts it (`handoffs.decide`). */
+  const decide = (
+    input: {
+      id: string;
+      decision: "approve" | "refuse";
+      reason?: string;
+      revision: number;
+      shown: string;
+    },
+    context: BaseContext,
+  ) =>
+    orpc.call(handoffsRouter.decide, input, {
+      context,
+      path: ["dashboard", "handoffs", "decide"],
+    }) as Promise<{
+      handoffId: string;
+      decision: "approved" | "refused";
+      outcome: "invited" | "added" | null;
+    }>;
+
   async function rejects(promise: Promise<unknown>, code: string) {
     let caught: unknown;
     try {
@@ -514,9 +534,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       assert.equal((await effectRows()).length, 0);
       assert.equal((await louezDb.db.select().from(louezDb.apiConfirmations)).length, 0);
 
-      const decided = await run(
-        "decideInvitation",
-        { token: tokenOf(asked.approval.url), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval.url))) },
+      const decided = await decide(
+        { id: tokenOf(asked.approval.url), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval.url))) },
         session(),
       );
       assert.deepEqual(decided, {
@@ -533,8 +552,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       const seen = await readHandoff(asked.approval.handoff.id, context());
       assert.equal(seen.status, "completed");
       await rejects(
-        run("decideInvitation", { token: tokenOf(asked.approval.url), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval.url))) }, session()),
-        "TEAM_APPROVAL_INVALID",
+        decide({ id: tokenOf(asked.approval.url), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval.url))) }, session()),
+        "HANDOFF_DECISION_INVALID",
       );
       assert.equal((await invitations()).length, 1);
     }
@@ -545,9 +564,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal(asked.approval?.handoff.invitation?.joinsAtOnce, true);
     assert.deepEqual(await memberIds(), [CO_OWNER, MEMBER, OWNER].sort());
 
-    const decided = await run(
-      "decideInvitation",
-      { token: tokenOf(asked.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) },
+    const decided = await decide(
+      { id: tokenOf(asked.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) },
       session(),
     );
     assert.equal(decided.outcome, "added");
@@ -560,15 +578,15 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     for (const context of [(await apiKey({ confirm: false }))(), (await agent())()]) {
       await rejects(
-        run("decideInvitation", { token, decision: "approve", ...(await pageAnswer(token)) }, context),
+        decide({ id: token, decision: "approve", ...(await pageAnswer(token)) }, context),
         "SESSION_ONLY",
       );
     }
     // Another store's owner, and the store's other owner: the link is not theirs.
     for (const userId of [STRANGER, CO_OWNER]) {
       const refused = await rejects(
-        run("decideInvitation", { token, decision: "approve", ...(await pageAnswer(token)) }, session(userId)),
-        "TEAM_APPROVAL_INVALID",
+        decide({ id: token, decision: "approve", ...(await pageAnswer(token)) }, session(userId)),
+        "HANDOFF_DECISION_INVALID",
       );
       assert.equal(refused.data.details?.reason, "other_user");
     }
@@ -578,8 +596,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .set({ role: "member" })
       .where(orm.eq(louezDb.storeMembers.id, membership(OWNER)));
     const demoted = await rejects(
-      run("decideInvitation", { token, decision: "approve", ...(await pageAnswer(token)) }, session()),
-      "TEAM_APPROVAL_INVALID",
+      decide({ id: token, decision: "approve", ...(await pageAnswer(token)) }, session()),
+      "HANDOFF_DECISION_INVALID",
     );
     assert.equal(demoted.data.details?.reason, "not_allowed");
 
@@ -609,8 +627,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .delete(louezDb.storeMembers)
       .where(orm.eq(louezDb.storeMembers.id, membership(CO_OWNER)));
     const removed = await rejects(
-      run("decideInvitation", { token, decision: "approve", ...(await pageAnswer(token)) }, session(CO_OWNER)),
-      "TEAM_APPROVAL_INVALID",
+      decide({ id: token, decision: "approve", ...(await pageAnswer(token)) }, session(CO_OWNER)),
+      "HANDOFF_DECISION_INVALID",
     );
     assert.equal(removed.data.details?.reason, "not_allowed");
     await louezDb.db
@@ -623,8 +641,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .set({ revokedAt: new Date() })
       .where(orm.eq(louezDb.apiKeys.id, created.id));
     const revoked = await rejects(
-      run("decideInvitation", { token, decision: "approve", ...(await pageAnswer(token)) }, session(CO_OWNER)),
-      "TEAM_APPROVAL_INVALID",
+      decide({ id: token, decision: "approve", ...(await pageAnswer(token)) }, session(CO_OWNER)),
+      "HANDOFF_DECISION_INVALID",
     );
     assert.equal(revoked.data.details?.reason, "invalid");
 
@@ -635,12 +653,11 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
   test("a declined approval creates nothing, and the agent reads why", async () => {
     const context = await agent();
     const asked = await run("invite", { email: "new@tm.test" }, context());
-    const decided = await run(
-      "decideInvitation",
-      { token: tokenOf(asked.approval?.url ?? ""), decision: "decline", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) },
+    const decided = await decide(
+      { id: tokenOf(asked.approval?.url ?? ""), decision: "refuse", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) },
       session(),
     );
-    assert.equal(decided.decision, "declined");
+    assert.equal(decided.decision, "refused");
     assert.equal((await invitations()).length, 0);
     const seen = await readHandoff(asked.approval?.handoff.id ?? "", context());
     assert.equal(seen.status, "failed");
@@ -661,8 +678,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .where(orm.eq(louezDb.apiHandoffs.id, id));
 
     const refused = await rejects(
-      run("decideInvitation", { token: tokenOf(asked.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) }, session()),
-      "TEAM_APPROVAL_INVALID",
+      decide({ id: tokenOf(asked.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) }, session()),
+      "HANDOFF_DECISION_INVALID",
     );
     assert.equal(refused.data.details?.reason, "expired");
     assert.equal((await readHandoff(id, context())).status, "expired");
@@ -670,9 +687,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     const again = await run("invite", { email: "new@tm.test" }, context());
     assert.equal(again.approval?.handoff.id, id, "the same approval");
-    await run(
-      "decideInvitation",
-      { token: tokenOf(again.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(again.approval?.url ?? ""))) },
+    await decide(
+      { id: tokenOf(again.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(again.approval?.url ?? ""))) },
       session(),
     );
     assert.equal((await invitations()).length, 1);
@@ -689,10 +705,10 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal((await pageAnswer(token)).revision, page.revision + 1);
     assert.equal((await handoffs()).length, 1);
 
-    for (const decision of ["approve", "decline"] as const) {
+    for (const decision of ["approve", "refuse"] as const) {
       const stale = await rejects(
-        run("decideInvitation", { token, decision, ...page }, session()),
-        "TEAM_APPROVAL_INVALID",
+        decide({ id: token, decision, ...page }, session()),
+        "HANDOFF_DECISION_INVALID",
       );
       assert.equal(stale.data.details?.reason, "changed");
     }
@@ -700,9 +716,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal((await handoffs())[0]?.status, "pending");
 
     // The page shows it again: that answer decides.
-    await run(
-      "decideInvitation",
-      { token, decision: "approve", ...(await pageAnswer(token)) },
+    await decide(
+      { id: token, decision: "approve", ...(await pageAnswer(token)) },
       session(),
     );
     assert.equal((await invitations()).length, 1);
@@ -727,8 +742,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal(again.approval?.handoff.invitation?.joinsAtOnce, true);
 
     const stale = await rejects(
-      run("decideInvitation", { token, decision: "approve", ...page }, session()),
-      "TEAM_APPROVAL_INVALID",
+      decide({ id: token, decision: "approve", ...page }, session()),
+      "HANDOFF_DECISION_INVALID",
     );
     assert.equal(stale.data.details?.reason, "changed");
     assert.deepEqual(await memberIds(), [CO_OWNER, MEMBER, OWNER].sort(), "nobody added");
@@ -737,9 +752,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal(row?.status, "pending", "the approval waits for the owner's answer");
 
     // The owner reads "adds at once" and approves that.
-    const decided = await run(
-      "decideInvitation",
-      { token, decision: "approve", ...(await pageAnswer(token)) },
+    const decided = await decide(
+      { id: token, decision: "approve", ...(await pageAnswer(token)) },
       session(),
     );
     assert.equal(decided.outcome, "added");
@@ -752,28 +766,28 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     // What the page showed, forged.
     const forgedShown = await rejects(
-      run("decideInvitation", { token, decision: "approve", ...page, shown: "f".repeat(64) }, session()),
-      "TEAM_APPROVAL_INVALID",
+      decide({ id: token, decision: "approve", ...page, shown: "f".repeat(64) }, session()),
+      "HANDOFF_DECISION_INVALID",
     );
     assert.equal(forgedShown.data.details?.reason, "changed");
     for (const forged of [page.revision + 1, page.revision + 1000]) {
       const refused = await rejects(
-        run("decideInvitation", { token, decision: "approve", ...page, revision: forged }, session()),
-        "TEAM_APPROVAL_INVALID",
+        decide({ id: token, decision: "approve", ...page, revision: forged }, session()),
+        "HANDOFF_DECISION_INVALID",
       );
       assert.equal(refused.data.details?.reason, "changed");
     }
     // An id no approval has.
     const guessed = await rejects(
-      run("decideInvitation", { token: "Zz".repeat(10) + "Z", decision: "approve", revision: 1, shown: "0".repeat(64) }, session()),
-      "TEAM_APPROVAL_INVALID",
+      decide({ id: "Zz".repeat(10) + "Z", decision: "approve", revision: 1, shown: "0".repeat(64) }, session()),
+      "HANDOFF_DECISION_INVALID",
     );
     assert.equal(guessed.data.details?.reason, "invalid");
     assert.equal((await invitations()).length, 0);
 
     const answers = await Promise.allSettled([
-      run("decideInvitation", { token, decision: "approve", ...page }, session()),
-      run("decideInvitation", { token, decision: "approve", ...page }, session()),
+      decide({ id: token, decision: "approve", ...page }, session()),
+      decide({ id: token, decision: "approve", ...page }, session()),
     ]);
     assert.equal(answers.filter((answer) => answer.status === "fulfilled").length, 1);
     assert.equal((await invitations()).length, 1, "one invitation");
@@ -794,13 +808,13 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
    * pattern` is in progress: while the lock it needs is held at a barrier, it
    * can only be waiting for that lock.
    */
-  async function lockWait(pattern: string) {
+  async function lockWait(pattern: string, statements = 1) {
     for (let tries = 0; tries < 500; tries += 1) {
       const [rows] = (await louezDb.db.execute(
         orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
           WHERE db = DATABASE() AND command = 'Query' AND info LIKE ${pattern}`,
       )) as unknown as [Array<{ n: number | string }>];
-      if (Number(rows[0]?.n) > 0) return;
+      if (Number(rows[0]?.n) >= statements) return;
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     throw new Error(`no statement waited for a lock: ${pattern}`);
@@ -838,7 +852,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     );
     await entered.wait;
     // The click read the page's revision, and waits for the store's lock.
-    const click = run("decideInvitation", { token, decision: "approve", ...page }, session()).then(
+    const click = decide({ id: token, decision: "approve", ...page }, session()).then(
       () => null,
       (error: unknown) => error as { data?: { code?: string; details?: { reason?: string } } },
     );
@@ -850,7 +864,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     }
 
     const refused = await click;
-    assert.equal(refused?.data?.code, "TEAM_APPROVAL_INVALID");
+    assert.equal(refused?.data?.code, "HANDOFF_DECISION_INVALID");
     assert.equal(refused?.data?.details?.reason, "changed");
     const [after] = await handoffs();
     assert.equal(after?.status, "pending");
@@ -862,14 +876,14 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     const context = await apiKey();
     const asked = await run("invite", { email: "new@tm.test" }, context());
     const token = tokenOf(asked.approval?.url ?? "");
-    await run("decideInvitation", { token, decision: "approve", ...(await pageAnswer(token)) }, session());
+    await decide({ id: token, decision: "approve", ...(await pageAnswer(token)) }, session());
     await rejects(run("invite", { email: "new@tm.test" }, context()), "TEAM_INVITATION_ALREADY_SENT");
     assert.equal((await invitations()).length, 1);
     assert.equal((await handoffs())[0]?.status, "completed");
   });
 
   test("an approval rewritten without its revision raised (the previous code's repeat): the owner's click decides nothing", async () => {
-    for (const decision of ["approve", "decline"] as const) {
+    for (const decision of ["approve", "refuse"] as const) {
       await louezDb.db.delete(louezDb.apiHandoffs);
       const email = `tm_new_old_${decision}@tm.test`;
       const asked = await run("invite", { email }, (await agent())());
@@ -892,8 +906,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       assert.equal((await pageAnswer(token)).revision, page.revision, "the revision was not raised");
 
       const refused = await rejects(
-        run("decideInvitation", { token, decision, ...page }, session()),
-        "TEAM_APPROVAL_INVALID",
+        decide({ id: token, decision, ...page }, session()),
+        "HANDOFF_DECISION_INVALID",
       );
       assert.equal(refused.data.details?.reason, "changed", decision);
       assert.deepEqual(await memberIds(), [CO_OWNER, MEMBER, OWNER].sort(), "nobody added");
@@ -903,7 +917,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
   });
 
   test("an approval that became another owner's while the click waited, its revision left as shown: the click decides nothing", async () => {
-    for (const decision of ["approve", "decline"] as const) {
+    for (const decision of ["approve", "refuse"] as const) {
       await louezDb.db.delete(louezDb.apiHandoffs);
       const asked = await run("invite", { email: `tm_moved_${decision}@tm.test` }, (await agent())());
       const token = tokenOf(asked.approval?.url ?? "");
@@ -925,7 +939,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       });
       await entered.wait;
       // The click read the approval as the first owner's, and waits for the store's lock.
-      const click = run("decideInvitation", { token, decision, ...page }, session()).then(
+      const click = decide({ id: token, decision, ...page }, session()).then(
         () => null,
         (error: unknown) => error as { data?: { code?: string; details?: { reason?: string } } },
       );
@@ -937,7 +951,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       }
 
       const refused = await click;
-      assert.equal(refused?.data?.code, "TEAM_APPROVAL_INVALID", decision);
+      assert.equal(refused?.data?.code, "HANDOFF_DECISION_INVALID", decision);
       assert.equal(refused?.data?.details?.reason, "changed", decision);
       const [after] = await handoffs();
       assert.equal(after?.userId, CO_OWNER, decision);
@@ -975,8 +989,8 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
         assert.deepEqual(await handoffService.readHandoffLink(token, user), nothing, label);
         assert.deepEqual(await handoffService.readHandoffForUser(id, user), nothing, label);
         const refused = await rejects(
-          run("decideInvitation", { token, decision: "approve", ...page }, session(user)),
-          "TEAM_APPROVAL_INVALID",
+          decide({ id: token, decision: "approve", ...page }, session(user)),
+          "HANDOFF_DECISION_INVALID",
         );
         assert.deepEqual(refused.data.details, { reason: "other_user" }, label);
         assert.equal(refused.message, "This approval link no longer works, or is not for this account.");
@@ -1073,7 +1087,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       "stripe_connect_onboarding",
       { urls: ports.urls },
     );
-    await rejects(readHandoff(stripe.handoff.id, teamOnly()), "PERMISSION_DENIED");
+    await rejects(readHandoff(stripe.handoff.id, teamOnly()), "HANDOFF_NOT_FOUND");
 
     // Both have waited more than an hour.
     await louezDb.db
@@ -1127,12 +1141,400 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     await louezDb.db.insert(louezDb.users).values({ id: "tm_new_late_user_001", email: "tm_new_late@tm.test" });
 
     await rejects(
-      run("decideInvitation", { token: tokenOf(asked.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) }, session()),
+      decide({ id: tokenOf(asked.approval?.url ?? ""), decision: "approve", ...(await pageAnswer(tokenOf(asked.approval?.url ?? ""))) }, session()),
       "TEAM_APPROVAL_CHANGED",
     );
     assert.deepEqual(await memberIds(), [CO_OWNER, MEMBER, OWNER].sort());
     const seen = await readHandoff(asked.approval?.handoff.id ?? "", context());
     assert.equal(seen.failure?.code, "request_changed");
+  });
+
+  // --- Each answer, as the step records it -------------------------------------
+
+  /**
+   * The owner's answers and what each leaves for the agent to read: sent,
+   * added at once, declined, and approved but no longer possible (the seats
+   * full, the address got an account, the day's e-mails spent).
+   */
+  const ANSWERS = [
+    {
+      label: "approved, sent by e-mail",
+      email: "tm_new_sent@tm.test",
+      decision: "approve",
+      answer: { decision: "approved", outcome: "invited" },
+      status: "completed",
+      failure: null,
+    },
+    {
+      label: "approved, added at once",
+      email: "existing@tm.test",
+      decision: "approve",
+      answer: { decision: "approved", outcome: "added" },
+      status: "completed",
+      failure: null,
+    },
+    {
+      label: "declined",
+      email: "tm_new_declined@tm.test",
+      decision: "refuse",
+      answer: { decision: "refused", outcome: null },
+      status: "failed",
+      failure: "declined",
+    },
+    {
+      label: "approved, the seats full since",
+      email: "tm_new_full@tm.test",
+      decision: "approve",
+      before: () => {
+        collaboratorLimit = 1;
+      },
+      refusal: "TEAM_LIMIT_REACHED",
+      status: "failed",
+      failure: "limit_reached",
+    },
+    {
+      label: "approved, the address got an account since",
+      email: "tm_new_account@tm.test",
+      decision: "approve",
+      before: () =>
+        louezDb.db.insert(louezDb.users).values({ id: "tm_new_account_user1", email: "tm_new_account@tm.test" }),
+      refusal: "TEAM_APPROVAL_CHANGED",
+      status: "failed",
+      failure: "request_changed",
+    },
+    {
+      label: "approved, the day's e-mails spent since",
+      email: "tm_new_quota@tm.test",
+      decision: "approve",
+      before: () =>
+        louezDb.db.insert(louezDb.apiEffects).values(
+          Array.from({ length: INVITATION_EMAILS_PER_DAY }, (_, index) => ({
+            id: `tm_eff_spent_${String(index).padStart(7, "0")}`,
+            storeId: STORE,
+            type: "team.invitationEmail",
+            payload: { invitationId: "gone", store: { name: "x", logoUrl: null, country: null }, inviterName: "x" },
+            status: "sent" as const,
+          })),
+        ),
+      refusal: "TEAM_INVITATION_EMAIL_LIMIT",
+      status: "failed",
+      failure: "email_limit",
+    },
+  ] as const;
+
+  test("each answer of the owner leaves the step as the agent then reads it", async () => {
+    for (const answer of ANSWERS) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      await louezDb.db.delete(louezDb.storeInvitations);
+      await louezDb.db.delete(louezDb.apiEffects);
+      collaboratorLimit = null;
+      const context = await agent();
+      const asked = await run("invite", { email: answer.email }, context());
+      const id = asked.approval?.handoff.id ?? "";
+      const token = tokenOf(asked.approval?.url ?? "");
+      if ("before" in answer) await answer.before();
+      const people = async () => (await invitations()).length + (await memberIds()).length;
+      const peopleBefore = await people();
+
+      const posted = decide({ id: token, decision: answer.decision, ...(await pageAnswer(token)) }, session());
+      if ("refusal" in answer) {
+        await rejects(posted, answer.refusal);
+      } else {
+        assert.deepEqual(await posted, { handoffId: id, ...answer.answer }, answer.label);
+      }
+      const seen = await readHandoff(id, context());
+      assert.equal(seen.status, answer.status, answer.label);
+      assert.equal(seen.failure?.code ?? null, answer.failure, answer.label);
+      const [row] = await handoffs();
+      assert.equal(row?.activeSlot, null, answer.label);
+      assert.equal(
+        await people(),
+        peopleBefore + (answer.status === "completed" ? 1 : 0),
+        `${answer.label}: one invitation or one member more, or nothing`,
+      );
+    }
+  });
+
+  test("approve and decline posted at once: one of them decides, and the step says which", async () => {
+    for (let round = 0; round < 4; round += 1) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      await louezDb.db.delete(louezDb.storeInvitations);
+      const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
+      const token = tokenOf(asked.approval?.url ?? "");
+      const page = await pageAnswer(token);
+      const answers = await Promise.allSettled([
+        decide({ id: token, decision: "approve", ...page }, session()),
+        decide({ id: token, decision: "refuse", ...page }, session()),
+      ]);
+      const decided = answers.filter((answer) => answer.status === "fulfilled");
+      assert.equal(decided.length, 1, `round ${round}: one answer decides`);
+      const [row] = await handoffs();
+      if (decided[0]?.value.decision === "approved") {
+        assert.equal(row?.status, "completed");
+        assert.equal((await invitations()).length, 1);
+      } else {
+        assert.equal(row?.status, "failed");
+        assert.equal(row?.failureCode, "declined");
+        assert.equal((await invitations()).length, 0);
+      }
+    }
+  });
+
+  test("a provider step's id posted as an answer by its own user decides nothing", async () => {
+    const stripe = await issueHandoff(
+      { storeId: STORE, userId: OWNER, credentialKind: "session", credentialId: null, clientName: null },
+      "stripe_connect_onboarding",
+      { urls: ports.urls },
+    );
+    const refused = await rejects(
+      decide({ id: stripe.handoff.id, decision: "approve", revision: 1, shown: "0".repeat(64) },
+        session(),
+      ),
+      "HANDOFF_DECISION_INVALID",
+    );
+    assert.equal(refused.data.details?.reason, "invalid");
+    const [row] = await handoffs();
+    assert.equal(row?.status, "pending");
+    assert.equal(row?.revision, 1);
+    assert.equal(row?.activeSlot, 1);
+  });
+
+  // --- The decision, as the row records it and the agent reads it ----------------
+
+  type Decision = { outcome: string; at: Date; reason: string | null } | null;
+  const readDecision = async (id: string, context: BaseContext) =>
+    (
+      (await orpc.call(handoffsRouter.get, { id }, {
+        context,
+        path: ["dashboard", "handoffs", "get"],
+      })) as { decision: Decision; summary: string }
+    );
+
+  test("each answer records the decision, its time, who decided and their words, in the statement that ends the step", async () => {
+    for (const answer of ANSWERS) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      await louezDb.db.delete(louezDb.storeInvitations);
+      await louezDb.db.delete(louezDb.apiEffects);
+      await louezDb.db.delete(louezDb.storeMembers).where(orm.eq(louezDb.storeMembers.userId, EXISTING));
+      collaboratorLimit = null;
+      const context = await agent();
+      const asked = await run("invite", { email: answer.email }, context());
+      const id = asked.approval?.handoff.id ?? "";
+      assert.equal(asked.approval?.handoff.decision, null, `${answer.label}: undecided`);
+      const token = tokenOf(asked.approval?.url ?? "");
+      if ("before" in answer) await answer.before();
+      const reason = `Words for ${answer.label}`;
+      const posted = decide({ id: token, decision: answer.decision, reason, ...(await pageAnswer(token)) }, session());
+      if ("refusal" in answer) await rejects(posted, answer.refusal);
+      else await posted;
+
+      const outcome = answer.decision === "approve" ? "approved" : "refused";
+      const seen = await readDecision(id, context());
+      assert.equal(seen.decision?.outcome, outcome, answer.label);
+      assert.equal(seen.decision?.reason, reason, answer.label);
+      const [row] = await handoffs();
+      assert.equal(row?.decidedByUserId, OWNER, answer.label);
+      assert.equal(seen.decision?.at.getTime(), row?.decidedAt?.getTime(), answer.label);
+      // Written with the outcome it describes, at the same instant.
+      const ended = row?.status === "completed" ? row.completedAt : row?.failedAt;
+      assert.equal(row?.decidedAt?.getTime(), ended?.getTime(), answer.label);
+      if ("refusal" in answer) {
+        // Approved, and not carried out: never told as a refusal.
+        assert.match(seen.summary, /^The user approved, but it could not be carried out\./, answer.label);
+      }
+    }
+  });
+
+  test("the agent reads the decision; so does another credential of the store that reads the team; nobody else", async () => {
+    const context = await agent();
+    const asked = await run("invite", { email: "new@tm.test" }, context());
+    const id = asked.approval?.handoff.id ?? "";
+    const token = tokenOf(asked.approval?.url ?? "");
+    await decide({ id: token, decision: "refuse", reason: "Not before the season starts.", ...(await pageAnswer(token)) }, session());
+
+    const expected = { outcome: "refused", reason: "Not before the season starts." };
+    const requester = await readDecision(id, context());
+    assert.deepEqual({ outcome: requester.decision?.outcome, reason: requester.decision?.reason }, expected);
+    const teamReader = await apiKey({ userId: MEMBER, permissions: { ...teamWrite, team: "read" } });
+    assert.deepEqual((await readDecision(id, teamReader())).decision, requester.decision);
+
+    const settingsOnly = await apiKey({ permissions: { ...teamWrite, team: "none", settings: "read" } });
+    await rejects(readDecision(id, settingsOnly()), "HANDOFF_NOT_FOUND");
+    const otherStore = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: THIRD_STORE,
+      userId: STRANGER,
+      name: "Elsewhere",
+      permissions: teamWrite,
+    });
+    await rejects(
+      readDecision(id, {
+        headers: new Headers({ authorization: `Bearer ${otherStore.key}` }),
+        transport: "openapi" as const,
+        ports,
+        receipt: {},
+      }),
+      "HANDOFF_NOT_FOUND",
+    );
+  });
+
+  test("the person's words are plain text: trimmed, control characters dropped, markup kept as characters, at most 500", async () => {
+    const cases: Array<[string, string | null]> = [
+      ["", null],
+      ["   \n\t  ", null],
+      ["  <b>Not</b> <script>alert(1)</script> yet  ", "<b>Not</b> <script>alert(1)</script> yet"],
+      ["Line one\r\nLine two\u0007\u202E", "Line one\nLine two"],
+      ["x".repeat(500), "x".repeat(500)],
+      // As a form posts 500 characters with a line break: the break is one character.
+      [`${"x".repeat(498)}\r\ny`, `${"x".repeat(498)}\ny`],
+      // A character outside the basic plane is one character, as the column counts it.
+      ["\u{1F6B2}".repeat(500), "\u{1F6B2}".repeat(500)],
+    ];
+    for (const [posted, stored] of cases) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const context = await agent();
+      const asked = await run("invite", { email: "new@tm.test" }, context());
+      const token = tokenOf(asked.approval?.url ?? "");
+      await decide({ id: token, decision: "refuse", reason: posted, ...(await pageAnswer(token)) }, session());
+      const seen = await readDecision(asked.approval?.handoff.id ?? "", context());
+      assert.equal(seen.decision?.reason, stored, JSON.stringify(posted));
+    }
+
+    // 501 characters decide nothing, however they are written.
+    await louezDb.db.delete(louezDb.apiHandoffs);
+    const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
+    const token = tokenOf(asked.approval?.url ?? "");
+    for (const tooLong of ["x".repeat(501), "\u{1F6B2}".repeat(501), `${"x".repeat(499)}\r\ny`]) {
+      await rejects(
+        decide({ id: token, decision: "approve", reason: tooLong, ...(await pageAnswer(token)) }, session()),
+        "BAD_REQUEST",
+      );
+    }
+    const [row] = await handoffs();
+    assert.equal(row?.status, "pending");
+    assert.equal(row?.decision, null);
+    assert.equal((await invitations()).length, 0);
+  });
+
+  test("an answer that decides nothing records nothing: forged, stale, another user's, a provider step's", async () => {
+    const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
+    const token = tokenOf(asked.approval?.url ?? "");
+    const page = await pageAnswer(token);
+    const reason = "Should never be kept.";
+    for (const [input, context] of [
+      [{ ...page, shown: "f".repeat(64) }, session()],
+      [{ ...page, revision: page.revision + 1 }, session()],
+      [page, session(CO_OWNER)],
+    ] as const) {
+      await rejects(decide({ id: token, decision: "refuse", reason, ...input }, context), "HANDOFF_DECISION_INVALID");
+    }
+    const stripe = await issueHandoff(
+      { storeId: STORE, userId: OWNER, credentialKind: "session", credentialId: null, clientName: null },
+      "stripe_connect_onboarding",
+      { urls: ports.urls },
+    );
+    await rejects(
+      decide({ id: stripe.handoff.id, decision: "approve", reason, revision: 1, shown: "0".repeat(64) }, session()),
+      "HANDOFF_DECISION_INVALID",
+    );
+    for (const row of await handoffs()) {
+      assert.equal(row.status, "pending", row.kind);
+      assert.equal(row.decision, null, row.kind);
+      assert.equal(row.decisionReason, null, row.kind);
+    }
+  });
+
+  test("another user gets one answer for any step: an invitation's or a provider's", async () => {
+    const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
+    const stripe = await issueHandoff(
+      { storeId: STORE, userId: OWNER, credentialKind: "session", credentialId: null, clientName: null },
+      "stripe_connect_onboarding",
+      { urls: ports.urls },
+    );
+    const answers = [];
+    for (const id of [asked.approval?.handoff.id ?? "", stripe.handoff.id]) {
+      const refused = await rejects(
+        decide({ id, decision: "approve", revision: 1, shown: "0".repeat(64) }, session(CO_OWNER)),
+        "HANDOFF_DECISION_INVALID",
+      );
+      answers.push({ code: refused.data.code, message: refused.message, details: refused.data.details });
+    }
+    assert.deepEqual(answers[0], answers[1]);
+    assert.deepEqual(answers[0]?.details, { reason: "other_user" });
+  });
+
+  test("answers posted at once: one decides, and the row records that one's decision and words, once", async () => {
+    for (const [first, second] of [
+      ["approve", "refuse"],
+      ["refuse", "refuse"],
+      ["approve", "approve"],
+    ] as const) {
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      await louezDb.db.delete(louezDb.storeInvitations);
+      const asked = await run("invite", { email: "new@tm.test" }, (await agent())());
+      const token = tokenOf(asked.approval?.url ?? "");
+      const page = await pageAnswer(token);
+      // Both answers read the step as their page showed it, then wait for the
+      // store's lock, held here until both are seen waiting: neither answer
+      // finished before the other started.
+      const entered = barrier();
+      const gate = barrier();
+      const held = louezDb.db.transaction(async (tx) => {
+        await tx.execute(orm.sql`SELECT id FROM stores WHERE id = ${STORE} FOR UPDATE`);
+        entered.open();
+        await gate.wait;
+      });
+      await entered.wait;
+      const posted = Promise.allSettled([
+        decide({ id: token, decision: first, reason: "first", ...page }, session()),
+        decide({ id: token, decision: second, reason: "second", ...page }, session()),
+      ]);
+      try {
+        await lockWait("select%from `stores`%for update", 2);
+      } finally {
+        gate.open();
+        await held;
+      }
+      const answers = await posted;
+      const won = answers.findIndex((answer) => answer.status === "fulfilled");
+      assert.equal(answers.filter((answer) => answer.status === "fulfilled").length, 1);
+      const [row] = await handoffs();
+      const decided = answers[won];
+      assert.equal(row?.decision, decided?.status === "fulfilled" ? decided.value.decision : null);
+      assert.equal(row?.decisionReason, won === 0 ? "first" : "second");
+      assert.equal(row?.status, row?.decision === "approved" ? "completed" : "failed");
+      assert.equal((await invitations()).length, row?.decision === "approved" ? 1 : 0);
+    }
+  });
+
+  test("a step that ended before decisions were recorded shows none: its status and failure say how it ended", async () => {
+    const context = await agent();
+    const asked = await run("invite", { email: "new@tm.test" }, context());
+    const id = asked.approval?.handoff.id ?? "";
+    // As the code before ended it: failed, declined, no decision columns.
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ status: "failed", failedAt: new Date(), failureCode: "declined", activeSlot: null })
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    const seen = (await readHandoff(id, context())) as Awaited<ReturnType<typeof readHandoff>> & { decision: Decision };
+    assert.equal(seen.status, "failed");
+    assert.equal(seen.failure?.code, "declined");
+    assert.equal(seen.decision, null);
+  });
+
+  test("an invitation's answer stored before views carried decision replays with it", async () => {
+    const KEY = "tm-invite-before-decision";
+    const context = await apiKey();
+    const first = await run("invite", { email: "new@tm.test" }, context({ "idempotency-key": KEY }));
+    const byKey = orm.eq(louezDb.apiOperations.idempotencyKey, KEY);
+    await louezDb.db
+      .update(louezDb.apiOperations)
+      .set({ result: orm.sql`JSON_REMOVE(${louezDb.apiOperations.result}, '$.approval.handoff.decision')` })
+      .where(byKey);
+    const replayContext = context({ "idempotency-key": KEY });
+    const replayed = await run("invite", { email: "new@tm.test" }, replayContext);
+    assert.equal(replayContext.receipt.replayed, true);
+    assert.deepEqual(replayed, first);
   });
 
   // --- A removed member never comes back through an old invitation -----------

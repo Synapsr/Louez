@@ -49,6 +49,28 @@ export function postedShown(form: FormData): string | null {
   return typeof value === "string" && /^[0-9a-f]{64}$/.test(value) ? value : null;
 }
 
+/**
+ * The answer a step's page posted: approve or refuse. A page served before
+ * refusals were named so posts `decline`, which is the same answer. Null for
+ * anything else: the click decides nothing.
+ */
+export function postedDecision(form: FormData): "approve" | "refuse" | null {
+  const value = form.get("decision");
+  if (value === "approve") return "approve";
+  if (value === "refuse" || value === "decline") return "refuse";
+  return null;
+}
+
+/**
+ * The person's own words posted with their answer, as typed; the procedure
+ * holds its length and makes it plain text (`decisionReason`). Undefined
+ * when none was posted.
+ */
+export function postedReason(form: FormData): string | undefined {
+  const value = form.get("reason");
+  return typeof value === "string" ? value : undefined;
+}
+
 /** Where the login sends the user back: the handoff path kept in a cookie. */
 export const HANDOFF_RESUME_PATH = "/handoffs/resume";
 export const HANDOFF_RESUME_COOKIE = "louez_handoff_next";

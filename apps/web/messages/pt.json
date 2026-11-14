@@ -9768,6 +9768,10 @@
       "access": "Um membro vê os clientes, as reservas e os pagamentos da loja, e pode alterar produtos e reservas.",
       "approve": "Aprovar o convite",
       "decline": "Recusar",
+      "reason": {
+        "label": "Uma palavra para o seu agente (opcional)",
+        "hint": "O seu agente de IA lê-a com a sua resposta. No máximo {max} caracteres."
+      },
       "error": {
         "failed": "Não foi possível enviar o convite. Recarregue a página para ver como está."
       },

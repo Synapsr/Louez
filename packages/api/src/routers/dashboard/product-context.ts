@@ -36,7 +36,7 @@ export function productActor(context: ProductContext): ProductActor {
 }
 
 /** Whether the caller may read a domain: the member's role, cut down to the connection's scopes. */
-export function mayRead(context: ProductContext, domain: ApiDomain) {
+export function mayRead(context: Pick<ProductContext, "actor">, domain: ApiDomain) {
   return allows(context.actor.role, context.actor.credential.scopes, { domain, level: "read" });
 }
 

@@ -108,7 +108,7 @@ async function recordWrite<T extends { output: unknown }>(input: {
   rawInput: unknown;
   dispatchEffects?: (ids: readonly string[]) => void;
   run: () => T | PromiseLike<T>;
-  replay: (output: unknown) => T;
+  replay: (output: unknown) => T | PromiseLike<T>;
 }): Promise<T> {
   let ran: T | undefined;
   const { actor } = input;
@@ -136,7 +136,7 @@ async function recordWrite<T extends { output: unknown }>(input: {
       return ran.output;
     },
   );
-  return ran ?? input.replay(result);
+  return ran ?? (await input.replay(result));
 }
 
 /**
@@ -265,10 +265,19 @@ export const storeProcedure = authenticated.use(
       dispatchEffects: ports.dispatchEffects,
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
-      replay: (result) =>
-        output(meta.upgradeReplay ? meta.upgradeReplay(result, ports.urls) : result) as Awaited<
-          ReturnType<typeof next<typeof nextContext>>
-        >,
+      replay: async (result) => {
+        // A stored answer goes only to a caller the handler would answer now;
+        // refused, nothing was replayed, and the receipt says so.
+        try {
+          await meta.authorizeReplay?.(result, storeActor);
+        } catch (error) {
+          if (context.receipt) context.receipt.replayed = false;
+          throw error;
+        }
+        return output(
+          meta.upgradeReplay ? meta.upgradeReplay(result, ports.urls) : result,
+        ) as Awaited<ReturnType<typeof next<typeof nextContext>>>;
+      },
     });
   },
 );

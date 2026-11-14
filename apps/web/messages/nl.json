@@ -9768,6 +9768,10 @@
       "access": "Een lid ziet de klanten, reserveringen en betalingen van de winkel en kan producten en reserveringen wijzigen.",
       "approve": "Uitnodiging goedkeuren",
       "decline": "Weigeren",
+      "reason": {
+        "label": "Een woord voor je agent (optioneel)",
+        "hint": "Je AI-agent leest het bij je antwoord. Hoogstens {max} tekens."
+      },
       "error": {
         "failed": "De uitnodiging kon niet worden verstuurd. Laad de pagina opnieuw om te zien hoe het ervoor staat."
       },

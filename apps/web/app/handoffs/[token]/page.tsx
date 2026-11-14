@@ -29,7 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
  * sign in first. The page itself changes nothing: a link preview that loads
  * it starts no step. The user continues with a form that posts to
  * `continue`, which sends them to the provider; a team invitation is
- * approved or declined with a form that posts to `decide`. Each form posts
+ * approved or refused, with the owner's words if they add any, with a form
+ * that posts to `decide`. Each form posts
  * the revision the page showed, and an invitation's form what it showed of
  * it (`invitationShown`): a step that changed since decides nothing, and the
  * page shows it again with a note.

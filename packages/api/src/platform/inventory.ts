@@ -337,6 +337,16 @@ export const capabilities = [
     plan: { lot: "6" },
     migrated: true,
   },
+  {
+    // A person's answer on a step's page (an agent's team invitation): a
+    // session only, so no agent grants itself access or decides for a person.
+    id: "handoffs.decide",
+    sources: [procedure("handoffs", "decide")],
+    kind: "write",
+    sensitive: "send",
+    plan: { lot: "6" },
+    actors: ["session"],
+  },
 
   // --- Background jobs (7): work a call starts, such as an AI photo -------
   {
@@ -2012,7 +2022,7 @@ export const capabilities = [
   {
     // Always as a member, never an owner (Téo's decision, 2026-11-09). An
     // agent's invitation creates nothing until an owner approves it from a
-    // link (team.approveInvitation). No procedure changes a role.
+    // link (handoffs.decide). No procedure changes a role.
     id: "team.inviteMember",
     sources: [procedure("team", "invite")],
     kind: "write",
@@ -2034,16 +2044,6 @@ export const capabilities = [
     id: "team.getInvitationLink",
     sources: [procedure("team", "invitationLink")],
     kind: "read",
-    plan: { lot: "8" },
-    actors: ["session"],
-  },
-  {
-    // An owner approves or declines an agent's invitation from its link's
-    // page: a session only, so no agent grants itself access.
-    id: "team.approveInvitation",
-    sources: [procedure("team", "decideInvitation")],
-    kind: "write",
-    sensitive: "send",
     plan: { lot: "8" },
     actors: ["session"],
   },

@@ -9768,6 +9768,10 @@
       "access": "Un membro vede i clienti, le prenotazioni e i pagamenti del negozio, e può modificare prodotti e prenotazioni.",
       "approve": "Approva l’invito",
       "decline": "Rifiuta",
+      "reason": {
+        "label": "Due parole per il tuo agente (facoltativo)",
+        "hint": "Il tuo agente IA le legge con la tua risposta. Al massimo {max} caratteri."
+      },
       "error": {
         "failed": "Non è stato possibile inviare l’invito. Ricarica la pagina per vedere a che punto è."
       },

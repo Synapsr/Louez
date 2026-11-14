@@ -9768,6 +9768,10 @@
       "access": "Członek widzi klientów, rezerwacje i płatności sklepu oraz może zmieniać produkty i rezerwacje.",
       "approve": "Zatwierdź zaproszenie",
       "decline": "Odrzuć",
+      "reason": {
+        "label": "Kilka słów dla agenta (opcjonalnie)",
+        "hint": "Twój agent AI przeczyta je razem z odpowiedzią. Najwyżej {max} znaków."
+      },
       "error": {
         "failed": "Nie udało się wysłać zaproszenia. Odśwież stronę, aby zobaczyć jego stan."
       },

@@ -9768,6 +9768,10 @@
       "access": "Anggota dapat melihat pelanggan, reservasi, dan pembayaran toko, serta dapat mengubah produk dan reservasi.",
       "approve": "Setujui undangan",
       "decline": "Tolak",
+      "reason": {
+        "label": "Pesan untuk agen Anda (opsional)",
+        "hint": "Agen AI Anda membacanya bersama jawaban Anda. Paling banyak {max} karakter."
+      },
       "error": {
         "failed": "Undangan tidak dapat dikirim. Muat ulang halaman ini untuk melihat statusnya."
       },

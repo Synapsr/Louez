@@ -12,6 +12,7 @@ import type {
   StripeConnectClient,
 } from "../../adapters/stripe-connect";
 import type { BillingStatus } from "../../contracts/billing";
+import type { HandoffKind } from "../../contracts/handoffs";
 import type { BaseContext } from "../../context";
 import type { BillingCardSetupState, BillingPort } from "../../platform/ports";
 
@@ -165,6 +166,8 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
   let apiKeys: typeof import("../../services/api-keys");
   let handoffs: typeof import("../../services/handoffs");
   let inbox: typeof import("../../services/inbox");
+  let HANDOFF_KINDS: typeof import("../../contracts/handoffs").HANDOFF_KINDS;
+  let HANDOFF_TTL_HOURS: number;
   let routers: {
     payments: typeof import("./payments").dashboardPaymentsRouter;
     billing: typeof import("./billing").dashboardBillingRouter;
@@ -198,6 +201,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     apiKeys = await import("../../services/api-keys");
     handoffs = await import("../../services/handoffs");
     inbox = await import("../../services/inbox");
+    ({ HANDOFF_KINDS, HANDOFF_TTL_HOURS } = await import("../../contracts/handoffs"));
     routers = {
       payments: (await import("./payments")).dashboardPaymentsRouter,
       billing: (await import("./billing")).dashboardBillingRouter,
@@ -1039,7 +1043,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const billingOnly = await apiKey({ ...agentRights, settings: "none", billing: "read" });
     await rejects(
       client(billingOnly()).handoffs.get({ id: started.handoff.id }),
-      "PERMISSION_DENIED",
+      "HANDOFF_NOT_FOUND",
     );
     const reader = await apiKey({ ...agentRights, settings: "read", billing: "none" });
     assert.equal(
@@ -1049,6 +1053,137 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Starting one needs settings write and manage_settings.
     await rejects(client(reader()).payments.startStripeOnboarding({}), "PERMISSION_DENIED");
     await rejects(client(session(MEMBER)).payments.startStripeOnboarding({}), "PERMISSION_DENIED");
+  });
+
+  /** A step of each kind in the store, asked for by the owner's session. */
+  async function oneStepOfEachKind(now?: Date) {
+    const requester = {
+      storeId: STORE,
+      userId: OWNER,
+      credentialKind: "session",
+      credentialId: null,
+      clientName: null,
+    };
+    const steps = {} as Record<HandoffKind, string>;
+    for (const kind of HANDOFF_KINDS) {
+      const issued = await handoffs.issueHandoff(requester, kind, {
+        urls: ports.urls,
+        now,
+        prepare:
+          kind === "team_invitation"
+            ? async () => ({ email: "new@ho.test", role: "member", joinsAtOnce: false })
+            : undefined,
+      });
+      steps[kind] = issued.handoff.id;
+    }
+    return steps;
+  }
+
+  test("who reads which step: each credential reads the kinds of the domains it reads, and only those", async () => {
+    const steps = await oneStepOfEachKind();
+    const none: Permissions = {
+      reservations: "none",
+      products: "none",
+      customers: "none",
+      categories: "none",
+      payments: "none",
+      analytics: "none",
+      settings: "none",
+      online_store: "none",
+      integrations: "none",
+      team: "none",
+      billing: "none",
+    };
+    const domains = Object.keys(none) as Array<keyof Permissions>;
+    // Who reads which step, written out: settings reads Stripe's steps, billing
+    // the card, the team an invitation's approval; a session reads every step.
+    // A caller who reads no domain is refused before any step is looked at; one
+    // who reads another domain gets the answer an id no step has gets.
+    const READS: Record<string, HandoffKind[]> = {
+      settings: ["stripe_connect_onboarding", "stripe_dashboard"],
+      billing: ["billing_card_setup"],
+      team: ["team_invitation"],
+    };
+    const callers: Array<{ label: string; context: () => BaseContext; reads: HandoffKind[] }> = [
+      { label: "no domain", context: await apiKey(none), reads: [] },
+      ...(await Promise.all(
+        domains.map(async (domain) => ({
+          label: `${domain} read`,
+          context: await apiKey({ ...none, [domain]: "read" }),
+          reads: READS[domain] ?? [],
+        })),
+      )),
+      { label: "the owner's session", context: () => session(OWNER), reads: [...HANDOFF_KINDS] },
+      { label: "a member's session", context: () => session(MEMBER), reads: [...HANDOFF_KINDS] },
+    ];
+    for (const caller of callers) {
+      for (const kind of HANDOFF_KINDS) {
+        const label = `${caller.label}, ${kind}`;
+        const read = client(caller.context()).handoffs.get({ id: steps[kind] });
+        if (caller.reads.includes(kind)) {
+          assert.equal((await read).kind, kind, label);
+        } else {
+          await rejects(
+            read,
+            caller.label === "no domain" ? "PERMISSION_DENIED" : "HANDOFF_NOT_FOUND",
+          );
+        }
+      }
+    }
+  });
+
+  test("every kind's link lasts as long from each request: a day, as before", async () => {
+    const first = new Date(Date.now() - HOUR);
+    const steps = await oneStepOfEachKind(first);
+    const lifetime = HANDOFF_TTL_HOURS * HOUR;
+    for (const kind of HANDOFF_KINDS) {
+      const row = await handoffs.getHandoffRow(STORE, steps[kind]);
+      assert.equal(row.expiresAt.getTime() - first.getTime(), lifetime, kind);
+      assert.equal(row.linkIssuedAt.getTime(), first.getTime(), kind);
+    }
+    // Asked again: the same step, as long again from the new request.
+    const again = new Date();
+    const same = await oneStepOfEachKind(again);
+    for (const kind of HANDOFF_KINDS) {
+      assert.equal(same[kind], steps[kind], kind);
+      const row = await handoffs.getHandoffRow(STORE, steps[kind]);
+      assert.equal(row.expiresAt.getTime() - again.getTime(), lifetime, kind);
+    }
+  });
+
+  test("each kind declares its lifetime, and its link lasts that long from each request", async () => {
+    assert.deepEqual(Object.keys(handoffs.HANDOFF_LIFETIMES).sort(), [...HANDOFF_KINDS].sort());
+    const now = new Date(Date.now() - HOUR);
+    const steps = await oneStepOfEachKind(now);
+    for (const kind of HANDOFF_KINDS) {
+      const row = await handoffs.getHandoffRow(STORE, steps[kind]);
+      assert.equal(row.expiresAt.getTime(), handoffs.linkExpiry(kind, now).getTime(), kind);
+    }
+  });
+
+  test("handoffs_get opens to any domain's read: a step of a domain not read answers as an id no step has", async () => {
+    const steps = await oneStepOfEachKind();
+    const reservationsOnly = await apiKey({
+      ...agentRights,
+      settings: "none",
+      billing: "none",
+      team: "none",
+    });
+    const refusal = (id: string) =>
+      client(reservationsOnly())
+        .handoffs.get({ id })
+        .then(
+          () => null,
+          (error: { data?: { code?: string }; message?: string }) => ({
+            code: error.data?.code,
+            message: error.message?.replaceAll(id, "<id>"),
+          }),
+        );
+    const unknown = await refusal("x".repeat(21));
+    assert.equal(unknown?.code, "HANDOFF_NOT_FOUND");
+    for (const kind of HANDOFF_KINDS) {
+      assert.deepEqual(await refusal(steps[kind]), unknown, kind);
+    }
   });
 
   // --- Stripe -------------------------------------------------------------------
@@ -1808,6 +1943,40 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.equal(!gone.ok && gone.reason, "invalid");
   });
 
+  test("a stored refresh answer replays only to a caller who may still settle the step", async () => {
+    const agent = await apiKey();
+    const attempt = await cardAttempt(agent);
+    billing.state.outcome = "pending";
+    await (
+      await returning(attempt.id, attempt.state, "cs_test_1")
+    )();
+    await endLease(attempt.id);
+    const KEY = "ho-refresh-replay-rights";
+    const withKey = () => {
+      const context = agent();
+      context.headers.set("idempotency-key", KEY);
+      return context;
+    };
+    const first = await client(withKey()).handoffs.refresh({ id: attempt.id });
+    assert.deepEqual(await client(withKey()).handoffs.refresh({ id: attempt.id }), first);
+
+    // The connection keeps the right that opens the procedure, and loses the
+    // step's domain: its stored answer answers as the step itself does now.
+    const narrowed = (billingRight: "none" | "read") =>
+      louezDb.db
+        .update(louezDb.apiKeys)
+        .set({ permissions: { ...agentRights, settings: "write", billing: billingRight } })
+        .where(orm.eq(louezDb.apiKeys.storeId, STORE));
+    await narrowed("none");
+    await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
+    const refused = withKey();
+    await rejects(client(refused).handoffs.refresh({ id: attempt.id }), "HANDOFF_NOT_FOUND");
+    assert.notEqual(refused.receipt.replayed, true, "nothing was replayed");
+    await narrowed("read");
+    await rejects(client(agent()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
+    await rejects(client(withKey()).handoffs.refresh({ id: attempt.id }), "PERMISSION_DENIED");
+  });
+
   test("a refresh answer stored before views carried url replays with it, and asks the provider nothing", async () => {
     const agent = await apiKey();
     const attempt = await cardAttempt(agent);
@@ -1843,6 +2012,32 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(replayed, first);
     assert.equal(billing.state.finished.length, asked, "the provider was not asked again");
     assert.equal((await handoffs.getHandoffRow(STORE, attempt.id)).status, "opened");
+  });
+
+  test("answers stored before views carried decision replay with decision null", async () => {
+    const agent = await apiKey();
+    const KEY = "ho-start-before-decision";
+    const context = agent();
+    context.headers.set("idempotency-key", KEY);
+    const first = await client(context).payments.startStripeOnboarding({});
+    assert.equal(first.handoff.decision, null);
+
+    // The answer as the code before kept it: no decision.
+    const byKey = orm.eq(louezDb.apiOperations.idempotencyKey, KEY);
+    await louezDb.db
+      .update(louezDb.apiOperations)
+      .set({
+        result: orm.sql`JSON_REMOVE(${louezDb.apiOperations.result}, '$.handoff.decision')`,
+      })
+      .where(byKey);
+    const [stored] = await louezDb.db.select().from(louezDb.apiOperations).where(byKey);
+    assert.equal(JSON.stringify(stored?.result).includes('"decision"'), false);
+
+    const replayContext = agent();
+    replayContext.headers.set("idempotency-key", KEY);
+    const replayed = await client(replayContext).payments.startStripeOnboarding({});
+    assert.equal(replayContext.receipt?.replayed, true);
+    assert.deepEqual(replayed, first);
   });
 
   test("an answer that starts a step replays with its idempotency key, and holds no secret", async () => {

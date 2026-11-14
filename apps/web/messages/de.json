@@ -9768,6 +9768,10 @@
       "access": "Ein Mitglied sieht die Kunden, Reservierungen und Zahlungen des Shops und kann Produkte und Reservierungen ändern.",
       "approve": "Einladung genehmigen",
       "decline": "Ablehnen",
+      "reason": {
+        "label": "Eine Nachricht an Ihren Agenten (optional)",
+        "hint": "Ihr KI-Agent liest sie mit Ihrer Antwort. Höchstens {max} Zeichen."
+      },
       "error": {
         "failed": "Die Einladung konnte nicht verschickt werden. Laden Sie die Seite neu, um den Stand zu sehen."
       },

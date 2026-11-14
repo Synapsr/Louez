@@ -7,6 +7,7 @@ import {
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
 import { assertCardSetupAllowed, getBillingStatus } from "../../services/billing";
+import { upgradeStoredLink } from "../../services/handoffs";
 import { HANDOFF_HELP, startHandoff } from "./handoffs";
 
 /**
@@ -50,6 +51,8 @@ const startCardSetup = storeProcedure
   .meta({
     capability: "billing.startCardSetup",
     scope: WRITE,
+    // Its answers stored before views carried `decision` replay with it.
+    upgradeReplay: upgradeStoredLink,
     mcp: {
       name: "billing_start_card_setup",
       title: "Add Billing Card",

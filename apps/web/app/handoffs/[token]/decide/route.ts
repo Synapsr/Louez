@@ -6,20 +6,27 @@ import { handoffDonePath, handoffPath } from "@louez/api/services/handoffs";
 import { createRouterClient } from "@orpc/server";
 
 import { apiPorts } from "@/lib/api/ports";
-import { postedRevision, postedShown, redirectTo, toLogin } from "@/lib/handoffs/handoff-response";
+import {
+  postedDecision,
+  postedReason,
+  postedRevision,
+  postedShown,
+  redirectTo,
+  toLogin,
+} from "@/lib/handoffs/handoff-response";
 import { isSameOriginPost } from "@/lib/util.active-store-link";
 
 import { env } from "@/env";
 
 /**
- * An owner approves or declines an agent's team invitation, from its page's
- * form. Only from this app's pages (Origin, and Sec-Fetch-Site when sent), so
- * another site cannot answer with the owner's cookie. It calls the
- * session-only procedure `team.decideInvitation` as the signed-in user, with
- * the revision and the invitation the page showed; the procedure checks the
- * link, the user, their right to manage the team, and that the request is
- * still what the page showed. A request changed since
- * the page showed it decides nothing: the page shows it again.
+ * A person approves or refuses a step on its page (an agent's team
+ * invitation), with their own words if they add any. Only from this app's
+ * pages (Origin, and Sec-Fetch-Site when sent), so another site cannot answer
+ * with the owner's cookie. It calls the session-only procedure
+ * `handoffs.decide` as the signed-in user, with the revision and what the
+ * page showed; the procedure checks whose step it is, that they may still
+ * decide it, and that the request is still what the page showed. A request
+ * changed since the page showed it decides nothing: the page shows it again.
  */
 export async function POST(
   request: NextRequest,
@@ -33,24 +40,30 @@ export async function POST(
   const page = handoffPath(token);
 
   const form = await request.formData();
-  const decision = form.get("decision");
-  if (decision !== "approve" && decision !== "decline") return redirectTo(page, 303);
+  const decision = postedDecision(form);
+  if (decision === null) return redirectTo(page, 303);
   const revision = postedRevision(form);
   const shown = postedShown(form);
   if (revision === null || shown === null) return redirectTo(`${page}?changed=1`, 303);
 
-  const team = createRouterClient(appRouter.dashboard.team, {
+  const handoffs = createRouterClient(appRouter.dashboard.handoffs, {
     context: { headers: request.headers, transport: "rpc", ports: apiPorts },
-    path: ["dashboard", "team"],
+    path: ["dashboard", "handoffs"],
   });
   try {
-    const decided = await team.decideInvitation({ token, decision, revision, shown });
+    const decided = await handoffs.decide({
+      id: token,
+      decision,
+      reason: postedReason(form),
+      revision,
+      shown,
+    });
     return redirectTo(handoffDonePath(decided.handoffId), 303);
   } catch (error) {
     const { code, details } =
       (error as { data?: { code?: unknown; details?: { reason?: unknown } } }).data ?? {};
     if (code === "UNAUTHENTICATED") return toLogin(page, 303);
-    if (code === "TEAM_APPROVAL_INVALID" && details?.reason === "changed") {
+    if (code === "HANDOFF_DECISION_INVALID" && details?.reason === "changed") {
       return redirectTo(`${page}?changed=1`, 303);
     }
     // An approval the answer ended (changed since, no seat, the day's

@@ -9768,6 +9768,10 @@
       "access": "Un membre voit les clients, les réservations et les paiements de la boutique, et peut modifier les produits et les réservations.",
       "approve": "Approuver l’invitation",
       "decline": "Refuser",
+      "reason": {
+        "label": "Un mot pour votre agent (facultatif)",
+        "hint": "Votre agent IA le lit avec votre réponse. {max} caractères au plus."
+      },
       "error": {
         "failed": "L’invitation n’a pas pu partir. Rechargez la page pour voir où elle en est."
       },

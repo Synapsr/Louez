@@ -1,4 +1,4 @@
-import type { CredentialKind } from "./actor";
+import type { CredentialKind, StoreActor } from "./actor";
 import type { ProcedureScope } from "./permissions";
 import type { UrlsPort } from "./ports";
 
@@ -159,6 +159,13 @@ export interface ApiMeta {
    * run again.
    */
   upgradeReplay?: (stored: unknown, urls: UrlsPort) => unknown;
+  /**
+   * A store write whose handler decides, from the record it reads, whether
+   * the caller may have its answer: the same check before a stored answer is
+   * replayed, as the caller stands now. It throws what the handler would;
+   * nothing is replayed then. The write does not run again.
+   */
+  authorizeReplay?: (stored: unknown, actor: StoreActor) => Promise<void>;
   /**
    * Largest request body this procedure legitimately takes, when it is more
    * than the transports take by default (2 MiB on `/api/v1`, 4 MiB on
