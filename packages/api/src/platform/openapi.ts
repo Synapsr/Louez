@@ -29,6 +29,7 @@ import { reportUnexpectedErrors } from "./error-reporting";
 import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
 import { apiError, type ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
+import { REFERENCE_TAGS } from "./openapi-tags";
 import { sha256 } from "./hash";
 import {
   MAX_IDEMPOTENCY_KEY_LENGTH,
@@ -496,6 +497,7 @@ const openApiDocumentOptions = {
     description: OPENAPI_DESCRIPTION,
   },
   security: [{ apiKey: [] }],
+  tags: REFERENCE_TAGS,
   components: {
     securitySchemes: {
       apiKey: {

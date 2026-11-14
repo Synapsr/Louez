@@ -9,6 +9,7 @@ import {
   type McpBundle,
   type McpExposure,
 } from "./meta";
+import { referenceGroupOf } from "./openapi-tags";
 import type { ProcedureScope } from "./permissions";
 
 /**
@@ -298,7 +299,7 @@ const responseRef = (name: string) => ({ $ref: `#/components/responses/${name}` 
 function documented(
   meta: ExposedMeta,
   operation: OpenAPI.OperationObject,
-  options: { ownOperationId: boolean; checksBody: boolean },
+  options: { ownOperationId: boolean; checksBody: boolean; routePath?: string },
 ): OpenAPI.OperationObject {
   const parameters = [...(operation.parameters ?? [])];
   const isWrite = meta.scope?.level === "write";
@@ -333,7 +334,13 @@ function documented(
     operationId: options.ownOperationId ? operation.operationId : meta.mcp.name,
     summary: operation.summary ?? meta.mcp.title,
     description: operation.description ?? meta.mcp.description,
-    tags: operation.tags ?? [meta.scope?.domain ?? "account"],
+    // The reference's group of its route (openapi-tags.ts); the scope's
+    // domain for a route no group holds, such as a test fixture's.
+    tags: operation.tags ?? [
+      (options.routePath ? referenceGroupOf(options.routePath) : undefined) ??
+        meta.scope?.domain ??
+        "account",
+    ],
     parameters,
     responses,
   };
@@ -354,6 +361,7 @@ function withDocumentation(procedure: AnyProcedure, meta: ExposedMeta): AnyProce
           ownOperationId: def.route.operationId !== undefined,
           // oRPC reads a GET's input from the query string only.
           checksBody: (def.route.method ?? "POST") !== "GET",
+          routePath: def.route.path,
         }),
     },
   });

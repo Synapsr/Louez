@@ -307,6 +307,7 @@ describe("the public reference", () => {
     summary?: string;
     description?: string;
     security?: unknown[];
+    tags?: string[];
     parameters?: Array<Ref & { name?: string; in?: string }>;
     requestBody?: { content: Record<string, unknown> };
     responses: Record<string, Ref & { headers?: Record<string, unknown> }>;
@@ -316,6 +317,7 @@ describe("the public reference", () => {
     info: { title: string; version: string; description: string };
     servers: Array<{ url: string }>;
     security: unknown[];
+    tags: Array<{ name: string; description: string }>;
     paths: Record<string, Record<string, Operation>>;
     components: {
       schemas: Record<string, { required?: string[]; properties?: Record<string, unknown> }>;
@@ -493,6 +495,36 @@ describe("the public reference", () => {
     );
     assert.deepEqual([...served].sort(), [...exposedNames].sort());
     assert.equal(new Set(served).size, served.length, "each operation once");
+  });
+
+  test("groups each operation by the record it acts on, in a group the menu declares with its sentence", async () => {
+    const document = await fetchDocument();
+    const { REFERENCE_GROUPS } = await import("./openapi-tags");
+    assert.deepEqual(
+      document.tags,
+      REFERENCE_GROUPS.map(({ name, description }) => ({ name, description })),
+    );
+    const names = new Set(document.tags.map(({ name }) => name));
+    const used = new Set<string>();
+    for (const { route, operation } of operationsOf(document)) {
+      assert.equal(operation.tags?.length, 1, `${route} is in one group`);
+      const [group] = operation.tags ?? [];
+      assert.ok(names.has(group), `${route} is in a declared group, not ${group}`);
+      used.add(group);
+    }
+    assert.deepEqual(
+      [...names].filter((name) => !used.has(name)),
+      [],
+      "no group is empty",
+    );
+    const groupOf = (method: string, path: string) => document.paths[path]?.[method]?.tags?.[0];
+    assert.equal(groupOf("get", "/reservations/{id}"), "Reservations");
+    assert.equal(groupOf("post", "/reservations/{reservationId}/payments"), "Payments");
+    assert.equal(groupOf("post", "/payments/stripe/onboarding"), "Stripe");
+    assert.equal(groupOf("get", "/products/{id}/units"), "Units");
+    assert.equal(groupOf("post", "/products/units/{unitId}/retire"), "Units");
+    assert.equal(groupOf("get", "/products/{productId}/seasonal-pricings"), "Seasonal pricing");
+    assert.equal(groupOf("patch", "/products/{id}"), "Products");
   });
 
   test("states its numbers and names from the code they come from", async () => {
