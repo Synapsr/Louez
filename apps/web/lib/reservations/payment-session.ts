@@ -29,25 +29,17 @@ import {
   checkoutSessionAccount,
   isSessionCreationRow,
 } from "@/lib/reservations/checkout-session-account";
+import {
+  expiredSessionIds,
+  readCheckoutSessionStates,
+  recordPaidCheckoutSession,
+} from "@/lib/reservations/checkout-session-settlement";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { hasRentalPaymentInProgress, isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import {
-  CHECKOUT_SESSION_LIFETIME_SECONDS,
-  createCheckoutSession,
-  toStripeCents,
-} from "@/lib/stripe";
+import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
-
-/**
- * Added to a session's lifetime before its row is taken as too old to be paid.
- * The session's expiry is set by this server's clock and enforced by Stripe's;
- * another server of the app may have written the row, and an older row's time
- * is the database's. Five minutes covers a drift between those clocks well past
- * what time synchronisation leaves, and costs at most a few more Stripe calls.
- */
-const SESSION_CLOCK_MARGIN_MS = 5 * 60 * 1000;
 
 export async function createReservationPaymentSessionForCustomer(
   storeSlug: string,
@@ -189,65 +181,26 @@ export async function createReservationPaymentSessionForCustomer(
         // Session may already be expired or completed.
       }
     };
-    /**
-     * Whether an earlier session of the rental can no longer be paid
-     * ("expired"), was paid ("complete"), or neither is known ("unknown"), on
-     * the account it lives on. Stripe's contract: an expire that succeeds leaves
-     * a session that can no longer complete; one that fails names a session
-     * already expired, complete, or one Stripe was not reached for: its
-     * retrieve says which.
-     */
-    const settleEarlierSession = async ({
-      sessionId,
-      account,
-    }: {
-      sessionId: string;
-      account: string;
-    }): Promise<"expired" | "complete" | "unknown"> => {
-      try {
-        await getStripe().checkout.sessions.expire(sessionId, { stripeAccount: account });
-        return "expired";
-      } catch {
-        // Not open any more, or Stripe not reached: read it.
-      }
-      try {
-        const session = await getStripe().checkout.sessions.retrieve(sessionId, {
-          stripeAccount: account,
-        });
-        if (session.status === "complete" || session.payment_status === "paid") return "complete";
-        return session.status === "expired" ? "expired" : "unknown";
-      } catch {
-        return "unknown";
-      }
-    };
-
     // The rental's open payments are cancelled before their sessions are expired
     // at Stripe: an expiry of a session replaced here finds its row no longer
-    // pending and cancels nothing. Their sessions, and those of the rows the age
-    // rule below takes, are settled at Stripe after the commit.
+    // pending and cancels nothing. A row so cancelled stays `cancelled`. Every
+    // rental session of the reservation not yet settled (its row neither
+    // `completed` nor named by a `payment_expired` line) is read at Stripe after
+    // the commit: the ones replaced here, and the `cancelled` ones an earlier
+    // call replaced, whatever their age.
     const replaced = await reservationTransaction(async (tx) => {
       const payable = await readPayable(tx);
       if (payable.refusal !== null) return { refusal: payable.refusal, sessions: [] };
+      const expired = await expiredSessionIds(tx, reservationId);
       const open = payable.payments.filter(
         (payment) => payment.type === "rental" && payment.status === "pending",
       );
-      // A call that cannot settle a session puts its row back to pending below,
-      // so a `cancelled` row names a session known to be expired, except one this
-      // call's process left: it died between this commit and the end of the
-      // settling. Such a row is taken again while its session could still be
-      // paid by its deadline: a row is written by this server's clock after its
-      // session is created, so its age, read on the same clock, is at most its
-      // session's. This cannot cover such a row whose session was paid before its
-      // deadline and is not yet recorded, once it is older than the lifetime and
-      // the margin.
-      const payableSince = new Date(
-        Date.now() - CHECKOUT_SESSION_LIFETIME_SECONDS * 1000 - SESSION_CLOCK_MARGIN_MS,
-      );
-      const recent = payable.payments.filter(
+      const unsettled = payable.payments.filter(
         (payment) =>
           payment.type === "rental" &&
           payment.status === "cancelled" &&
-          payment.createdAt > payableSince,
+          payment.stripeCheckoutSessionId !== null &&
+          !expired.has(payment.stripeCheckoutSessionId),
       );
       for (const payment of open) {
         await tx
@@ -260,11 +213,10 @@ export async function createReservationPaymentSessionForCustomer(
         refusal: null,
         // Each session on the account its row records, the one it was created on;
         // a row that records none, on the store's.
-        sessions: [...open, ...recent].flatMap((payment) =>
+        sessions: [...open, ...unsettled].flatMap((payment) =>
           payment.stripeCheckoutSessionId
             ? [
                 {
-                  paymentId: payment.id,
                   sessionId: payment.stripeCheckoutSessionId,
                   account: checkoutSessionAccount({
                     recordedAccountId: isSessionCreationRow(payment)
@@ -279,33 +231,36 @@ export async function createReservationPaymentSessionForCustomer(
       };
     });
     if (replaced.refusal !== null) return { error: replaced.refusal };
-    // No second session for a rental whose earlier session was paid, or may
-    // have been. A row is left `cancelled` only when its session is known to be
-    // expired: the others are put back to pending, each only if still
-    // `cancelled` (one a completion has completed since stays so), and the
-    // reservation is as before this call. The completion, when delivered,
-    // completes the row; a later call asks Stripe again; a session still open
-    // that expires is the expiry's, as any abandoned checkout.
-    const settled = [];
-    for (const session of replaced.sessions) {
-      settled.push({ ...session, state: await settleEarlierSession(session) });
-    }
-    const unsettled = settled.filter(({ state }) => state !== "expired");
-    if (unsettled.length > 0) {
-      await reservationTransaction(async (tx) => {
-        for (const { paymentId } of unsettled) {
-          await tx
-            .update(payments)
-            .set({ status: "pending", updatedAt: new Date() })
-            .where(and(eq(payments.id, paymentId), eq(payments.status, "cancelled")));
+    // A new session only when each of those is known to be expired. One found
+    // paid is recorded now, as the customer's return records it, and the call
+    // answers that the rental is paid; one whose state is unknown leaves the rows
+    // as they are, and the next call asks Stripe again.
+    const states = await readCheckoutSessionStates(replaced.sessions, { expire: true });
+    const paid = states.filter(({ state }) => state === "complete");
+    if (paid.length > 0) {
+      // The marketplace's checkout holds the booking's attempt: recording takes
+      // the reservation's lock and the attempt, so it is left to the session's
+      // completion, and the next call reads the session again.
+      if (!callerHoldsMarketplaceAttempt) {
+        for (const { sessionId } of paid) {
+          try {
+            await recordPaidCheckoutSession({ storeId: store.id, reservationId, sessionId });
+          } catch (error) {
+            log.error({
+              checkout: {
+                event: "paid_session_record_failed",
+                reservationId,
+                sessionId,
+                error: error instanceof Error ? error.message : String(error),
+              },
+            });
+          }
         }
-        await markReservation(tx, reservation);
-      });
-      return {
-        error: unsettled.some(({ state }) => state === "complete")
-          ? "errors.alreadyPaid"
-          : "errors.paymentSessionError",
-      };
+      }
+      return { error: "errors.alreadyPaid" };
+    }
+    if (states.some(({ state }) => state === "unknown")) {
+      return { error: "errors.paymentSessionError" };
     }
 
     const lineItems = [

@@ -5,6 +5,7 @@ import { pruneInboxAcknowledgements } from "@louez/api/services/inbox";
 
 import { runApiEffectsCron } from "@/lib/api/effects";
 import { runApiJobsCron } from "@/lib/api/jobs";
+import { settleAbandonedCheckouts } from "@/lib/reservations/abandoned-checkouts";
 import { runDepositReleaseDebtsCron } from "@/lib/reservations/deposit-hold-debts";
 
 import type { IsolatedTask } from "./isolated-tasks";
@@ -12,7 +13,8 @@ import type { IsolatedTask } from "./isolated-tasks";
 /**
  * The agent-ready API's tasks, on every cron call: the releases of deposit holds
  * Louez owes and whose outbox row is gone or abandoned get a new one
- * (lib/reservations/deposit-hold-debts.ts), then the outbox, then the
+ * (lib/reservations/deposit-hold-debts.ts), then the online checkouts no event
+ * will settle, at most 20 a run (lib/reservations/abandoned-checkouts.ts), then the outbox, then the
  * purges past their retention, each on its own and each bounded per run (the
  * inbox's acknowledgements, the handoffs, the writes' records after 12 months,
  * the OAuth tokens 7 days after they lapse), then the background jobs (those
@@ -25,6 +27,11 @@ export function apiTasks(): IsolatedTask[] {
       task: "deposit-release-debts",
       key: "depositReleaseDebts",
       run: () => runDepositReleaseDebtsCron(),
+    },
+    {
+      task: "abandoned-checkouts",
+      key: "abandonedCheckouts",
+      run: () => settleAbandonedCheckouts(),
     },
     { task: "api-effects", key: "apiEffects", run: () => runApiEffectsCron() },
     {

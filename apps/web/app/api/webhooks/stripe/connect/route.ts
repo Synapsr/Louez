@@ -2,15 +2,14 @@ import { completeExtensionPayment } from "@/lib/reservations/extension-service";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { and, eq, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { failMarketplaceBookingAttempt } from "@louez/api/services";
 import { completeActiveHandoff } from "@louez/api/services/handoffs";
 import { writeConnectColumns } from "@louez/api/services/stripe-connect";
 import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
-import { type Transaction, db, markReservationIds, toWholeSeconds } from "@louez/db";
+import { db } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
@@ -25,12 +24,17 @@ import {
   recordReservationFee,
 } from "@/lib/pay-as-you-go";
 import { maybeGrantReferrerReward } from "@/lib/referral/rewards";
-import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
 import {
   checkoutSessionAccount,
   isSessionCreationRow,
 } from "@/lib/reservations/checkout-session-account";
+import {
+  checkoutSessionExpiredLine,
+  hasExpiredLine,
+  lockReservationRow,
+  recordCheckoutSessionExpiry,
+} from "@/lib/reservations/checkout-session-settlement";
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
 import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
@@ -685,55 +689,6 @@ async function handleCheckoutExpired(
   );
   if (!valid) return;
 
-  const currency = session.currency?.toUpperCase() || "EUR";
-  const amount = fromStripeCents(session.amount_total || 0, currency);
-
-  // The session's line in the reservation's history: its id, amount and currency.
-  const expiredLine = (): typeof reservationActivity.$inferInsert => ({
-    id: nanoid(),
-    reservationId,
-    activityType: "payment_expired",
-    description: null,
-    metadata: {
-      checkoutSessionId: session.id,
-      amount,
-      currency,
-      method: "stripe",
-    },
-    // Whole seconds, as the status change below stores its `cancelled` row.
-    createdAt: toWholeSeconds(new Date()),
-  });
-
-  // Each write below takes the reservation's row, then its payment, then its history;
-  // the account deletion, a store's products, then its reservations, then their rows:
-  // the two run one after the other. A reservation gone by then is written nothing.
-  const lockReservation = async (tx: Transaction): Promise<boolean> => {
-    const [locked] = await tx
-      .select({ id: reservations.id })
-      .from(reservations)
-      .where(eq(reservations.id, reservationId))
-      .for("update");
-    return locked !== undefined;
-  };
-
-  // The `payment_expired` line that names this session: the record that it
-  // expired. A session a resumed checkout replaced has its row cancelled by that
-  // checkout and no such line.
-  const findExpiredLine = async (executor: Pick<Transaction, "select">) => {
-    const [recorded] = await executor
-      .select({ id: reservationActivity.id })
-      .from(reservationActivity)
-      .where(
-        and(
-          eq(reservationActivity.reservationId, reservationId),
-          eq(reservationActivity.activityType, "payment_expired"),
-          sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.checkoutSessionId')) = ${session.id}`,
-        ),
-      )
-      .limit(1);
-    return recorded !== undefined;
-  };
-
   // A row still pending is a payment this session has not settled: the customer
   // never paid. The expiry is recorded by the delivery whose update moves the row
   // out of pending: another delivery of the event, even a concurrent one, finds
@@ -741,29 +696,16 @@ async function handleCheckoutExpired(
   // cancels its old session's row before it expires that session at Stripe
   // (lib/reservations/payment-session.ts), so that session's expiry finds the row
   // no longer pending and records nothing.
-  const pendingPayment = existingPayment?.status === "pending" ? existingPayment : null;
   const recordedNow =
-    pendingPayment !== null &&
-    (await db.transaction(async (tx) => {
-      if (!(await lockReservation(tx))) return false;
-      const [cancelled] = await tx
-        .update(payments)
-        .set({
-          status: "cancelled",
-          updatedAt: new Date(),
-        })
-        .where(and(eq(payments.id, pendingPayment.id), eq(payments.status, "pending")));
-      if (cancelled.affectedRows === 0) return false;
-      await markReservationIds(tx, [reservationId]);
-      await tx.insert(reservationActivity).values(expiredLine());
-      return true;
-    }));
+    existingPayment?.status === "pending" &&
+    (await recordCheckoutSessionExpiry({ reservationId, paymentId: existingPayment.id, session }));
   // The checkout is abandoned when this session's expiry is recorded, by this
   // delivery or by an earlier one whose cancellation of the reservation did not
   // finish: every delivery asks for it, and the entry, idempotent, cancels a
   // reservation still pending with no other open or paid rental payment.
   const abandoned =
-    existingPayment !== undefined && (recordedNow || (await findExpiredLine(db)));
+    existingPayment !== undefined &&
+    (recordedNow || (await hasExpiredLine(db, reservationId, session.id)));
 
   // A payment request's session has no payment row until it is paid: its line,
   // which tells the store why no money came, is written once per session. Under
@@ -771,8 +713,12 @@ async function handleCheckoutExpired(
   // one, finds the line its session id names and writes nothing.
   if (!existingPayment && session.metadata?.paymentRequestId) {
     await db.transaction(async (tx) => {
-      if (!(await lockReservation(tx))) return;
-      if (!(await findExpiredLine(tx))) await tx.insert(reservationActivity).values(expiredLine());
+      if (!(await lockReservationRow(tx, reservationId))) return;
+      if (!(await hasExpiredLine(tx, reservationId, session.id))) {
+        await tx
+          .insert(reservationActivity)
+          .values(checkoutSessionExpiredLine(reservationId, session));
+      }
     });
   }
 

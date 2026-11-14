@@ -162,6 +162,22 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
     // longer expires it, and reads it complete.
     const { getStripe } = await import("@/lib/stripe/client");
     const sessionsApi = getStripe().checkout.sessions;
+    // The customer's return, through which a resume records a paid session, reads
+    // the session's PaymentIntent on this client.
+    Reflect.set(
+      getStripe().paymentIntents,
+      "retrieve",
+      async (id: string, _params: unknown, options?: Stripe.RequestOptions) => {
+        calls.push(["stripe.paymentIntents.retrieve", id, options?.stripeAccount]);
+        return {
+          id,
+          customer: "cus_stripe_ada",
+          payment_method: "pm_card_ada",
+          metadata: {},
+          latest_charge: { id: `ch_${id}`, created: 1_800_000_000 },
+        };
+      },
+    );
     Reflect.set(
       sessionsApi,
       "create",
@@ -174,9 +190,22 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
       resumeCalls.push(["expire", id, options?.stripeAccount]);
       throw new Error("This Checkout Session is not in an expireable state.");
     });
+    // A session id here is `cs_` and its reservation's id; read paid, as the
+    // checkout's session it is.
     Reflect.set(sessionsApi, "retrieve", async (id: string, options?: Stripe.RequestOptions) => {
       resumeCalls.push(["retrieve", id, options?.stripeAccount]);
-      return { id, status: "complete", payment_status: "paid" };
+      const reservationId = id.slice("cs_".length);
+      return {
+        id,
+        status: "complete",
+        payment_status: "paid",
+        payment_intent: `pi_${reservationId}`,
+        customer: "cus_stripe_ada",
+        amount_total: 1000,
+        currency: "eur",
+        metadata: { reservationId, checkoutFlow: "storefront_checkout" },
+        expires_at: 1_900_000_000,
+      };
     });
 
     await louezDb.db.insert(louezDb.stores).values({
@@ -394,11 +423,18 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
     assert.ok(completedLog(booking.id), JSON.stringify(calls));
   });
 
-  test("a resume whose replaced session was paid at Stripe, its completion not yet delivered: no second session, errors.alreadyPaid; then the completion records it and confirms", async () => {
-    // The session was created on the account the store has left since.
-    const booking = await checkout(PREVIOUS_ACCOUNT);
+  /** The reservation's history lines of one type. */
+  async function linesOf(id: string, activityType: string) {
+    const lines = await louezDb.db
+      .select({ activityType: louezDb.reservationActivity.activityType })
+      .from(louezDb.reservationActivity)
+      .where(eq(louezDb.reservationActivity.reservationId, id));
+    return lines.filter((line) => line.activityType === activityType).length;
+  }
 
-    const result = await paymentSession.createReservationPaymentSessionForCustomer(
+  /** The customer resumes the booking's payment from the checkout's cancelled page. */
+  const resume = (booking: { id: string }) =>
+    paymentSession.createReservationPaymentSessionForCustomer(
       "checkout-completed",
       booking.id,
       "cus_completed",
@@ -406,81 +442,61 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
       { allowPendingReservation: true, chargeAmount: 10 },
     );
 
-    assert.deepEqual(result, { error: "errors.alreadyPaid" });
-    // Expired, then read, on the account its row records; no session created.
+  const recordedAndConfirmed = (booking: { id: string }, account: string) => ({
+    status: "confirmed",
+    payments: [
+      { status: "completed", stripeAccountId: account, stripePaymentIntentId: `pi_${booking.id}` },
+    ],
+  });
+
+  test("a resume whose replaced session was paid at Stripe, its completion not yet delivered: recorded at once and confirmed, errors.alreadyPaid, no session created; the webhook later writes nothing twice", async () => {
+    // The session was created on the account the store has left since.
+    const booking = await checkout(PREVIOUS_ACCOUNT);
+
+    assert.deepEqual(await resume(booking), { error: "errors.alreadyPaid" });
+
+    // Expired, then read, on the account its row records; read again, as the
+    // customer's return reads it, to record it; no session created.
     assert.deepEqual(resumeCalls, [
       ["expire", booking.sessionId, PREVIOUS_ACCOUNT],
       ["retrieve", booking.sessionId, PREVIOUS_ACCOUNT],
+      ["retrieve", booking.sessionId, PREVIOUS_ACCOUNT],
     ]);
-    // Its row as before the resume: pending, nothing else.
-    assert.deepEqual(await stateOf(booking.id), {
-      status: "pending",
-      payments: [
-        { status: "pending", stripeAccountId: PREVIOUS_ACCOUNT, stripePaymentIntentId: null },
-      ],
-    });
+    assert.deepEqual(stripeReads(), [
+      ["stripe.paymentIntents.retrieve", `pi_${booking.id}`, PREVIOUS_ACCOUNT],
+    ]);
+    assert.deepEqual(await stateOf(booking.id), recordedAndConfirmed(booking, PREVIOUS_ACCOUNT));
+    assert.equal(await linesOf(booking.id, "payment_received"), 1);
 
+    // The completion's event, delivered later: the payment is found recorded.
     assert.deepEqual(await complete(booking, PREVIOUS_ACCOUNT), {
       status: 200,
       body: { received: true },
     });
 
-    assert.deepEqual(await stateOf(booking.id), {
-      status: "confirmed",
-      payments: [
-        {
-          status: "completed",
-          stripeAccountId: PREVIOUS_ACCOUNT,
-          stripePaymentIntentId: `pi_${booking.id}`,
-        },
-      ],
-    });
+    assert.deepEqual(await stateOf(booking.id), recordedAndConfirmed(booking, PREVIOUS_ACCOUNT));
+    assert.equal(await linesOf(booking.id, "payment_received"), 1, "one payment_received line");
+    assert.equal(await linesOf(booking.id, "confirmed"), 1, "one confirmation line");
   });
 
-  test("a session paid before its deadline and not yet recorded, older than its lifetime: two resumes in a row each answer errors.alreadyPaid and leave its row pending; then its completion records it", async () => {
+  test("a session paid and not yet recorded, older than any session's lifetime: the first resume records it and confirms, every resume answers errors.alreadyPaid, none creates a session", async () => {
     const booking = await checkout(TODAY_ACCOUNT);
-    // Created forty minutes ago: past a session's lifetime and the clocks' margin.
+    // Created forty minutes ago: past a session's lifetime.
     await louezDb.db
       .update(louezDb.payments)
       .set({ createdAt: new Date(Date.now() - 40 * 60 * 1000) })
       .where(eq(louezDb.payments.stripeCheckoutSessionId, booking.sessionId));
-    const resume = () =>
-      paymentSession.createReservationPaymentSessionForCustomer(
-        "checkout-completed",
-        booking.id,
-        "cus_completed",
-        "checkout_resume",
-        { allowPendingReservation: true, chargeAmount: 10 },
-      );
 
-    for (const run of ["first", "second"]) {
-      assert.deepEqual(await resume(), { error: "errors.alreadyPaid" }, run);
-      assert.deepEqual(
-        (await stateOf(booking.id)).payments.map((payment) => payment.status),
-        ["pending"],
-        `${run}: the row back to pending`,
-      );
-    }
+    assert.deepEqual(await resume(booking), { error: "errors.alreadyPaid" }, "first");
+    assert.deepEqual(await stateOf(booking.id), recordedAndConfirmed(booking, TODAY_ACCOUNT));
+    assert.deepEqual(await resume(booking), { error: "errors.alreadyPaid" }, "second");
+
     assert.ok(
       resumeCalls.every(([call]) => call !== "create"),
       `no session created: ${JSON.stringify(resumeCalls)}`,
     );
-
-    assert.deepEqual(await complete(booking, TODAY_ACCOUNT), {
-      status: 200,
-      body: { received: true },
-    });
-
-    assert.deepEqual(await stateOf(booking.id), {
-      status: "confirmed",
-      payments: [
-        {
-          status: "completed",
-          stripeAccountId: TODAY_ACCOUNT,
-          stripePaymentIntentId: `pi_${booking.id}`,
-        },
-      ],
-    });
+    assert.deepEqual(await stateOf(booking.id), recordedAndConfirmed(booking, TODAY_ACCOUNT));
+    assert.equal(await linesOf(booking.id, "payment_received"), 1);
   });
 
   test("a session its row records under the previous account, sent by the store's account of today: connected_account_mismatch logged, nothing written", async () => {

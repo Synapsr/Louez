@@ -14,6 +14,9 @@ mock.module("@/lib/api/effects", {
 mock.module("@/lib/reservations/deposit-hold-debts", {
   namedExports: { runDepositReleaseDebtsCron: fake("runDepositReleaseDebtsCron") },
 });
+mock.module("@/lib/reservations/abandoned-checkouts", {
+  namedExports: { settleAbandonedCheckouts: fake("settleAbandonedCheckouts") },
+});
 mock.module("@/lib/api/jobs", {
   namedExports: { runApiJobsCron: fake("runApiJobsCron") },
 });
@@ -30,7 +33,7 @@ mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
 
-test("every cron call requeues the deposit releases owed, runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
+test("every cron call requeues the deposit releases owed, settles the abandoned checkouts, runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
   const { apiTasks } = await import("./api-tasks");
   const tasks = apiTasks();
   const results = [];
@@ -40,6 +43,11 @@ test("every cron call requeues the deposit releases owed, runs the outbox, each 
       task: "deposit-release-debts",
       key: "depositReleaseDebts",
       runs: "runDepositReleaseDebtsCron",
+    },
+    {
+      task: "abandoned-checkouts",
+      key: "abandonedCheckouts",
+      runs: "settleAbandonedCheckouts",
     },
     { task: "api-effects", key: "apiEffects", runs: "runApiEffectsCron" },
     {

@@ -42,6 +42,13 @@ export type SystemReservationStatusRequest =
       expectedAmount?: string;
     };
 
+/**
+ * The source of a reservation made by the storefront's online checkout: the only
+ * one the system's checkout cancellations, and the scheduled pass over abandoned
+ * checkouts, act on. A marketplace booking has its own expiry.
+ */
+export const ONLINE_CHECKOUT_SOURCE = "online";
+
 /** Thrown under the lock to leave a checkout that can still be paid. */
 class CheckoutStillPayableError extends Error {}
 
@@ -67,7 +74,11 @@ const cancelAbandonedCheckout = async (
     columns: { storeId: true, status: true, source: true },
     where: eq(reservations.id, reservationId),
   });
-  if (!reservation || reservation.status !== "pending" || reservation.source !== "online") {
+  if (
+    !reservation ||
+    reservation.status !== "pending" ||
+    reservation.source !== ONLINE_CHECKOUT_SOURCE
+  ) {
     return false;
   }
 
@@ -144,7 +155,11 @@ const cancelFailedCheckout = async (
       .from(reservations)
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
       .for("update");
-    if (!reservation || reservation.status !== "pending" || reservation.source !== "online") {
+    if (
+      !reservation ||
+      reservation.status !== "pending" ||
+      reservation.source !== ONLINE_CHECKOUT_SOURCE
+    ) {
       return null;
     }
     if (expectedAmount !== undefined && reservation.totalAmount !== expectedAmount) return null;

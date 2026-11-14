@@ -58,8 +58,12 @@ type Call = [name: string, ...args: unknown[]];
 const calls: Call[] = [];
 /** The payment session's calls to Stripe, which is a fake: no network. */
 const stripeCalls: string[] = [];
-/** Runs as the payment session asks Stripe for something: a moment of the resume. */
-let onStripeCall: ((call: string) => Promise<void>) | null = null;
+/**
+ * Runs as the payment session or the scheduled pass asks Stripe for something: a
+ * moment of the resume. It answers "fail" to make that call fail, "expired" to
+ * read the session expired; a call it leaves succeeds, and a read reads expired.
+ */
+let onStripeCall: ((call: string) => Promise<"fail" | void>) | null = null;
 /** How many commits wrote rows so far; set once the database exists. */
 let commitsSoFar: () => Promise<number> = async () => 0;
 
@@ -150,6 +154,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   let route: typeof import("./route");
   let deletion: typeof import("@/lib/account-deletion/database-repository");
   let paymentSession: typeof import("@/lib/reservations/payment-session");
+  let abandoned: typeof import("@/lib/reservations/abandoned-checkouts");
   let counter = 0;
 
   before(async () => {
@@ -161,6 +166,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     route = await import("./route");
     deletion = await import("@/lib/account-deletion/database-repository");
     paymentSession = await import("@/lib/reservations/payment-session");
+    abandoned = await import("@/lib/reservations/abandoned-checkouts");
     const { getStripe } = await import("@/lib/stripe/client");
     Reflect.set(getStripe().checkout.sessions, "create", async () => {
       const id = `cs_resumed_${++counter}`;
@@ -170,8 +176,23 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     });
     Reflect.set(getStripe().checkout.sessions, "expire", async (id: string) => {
       stripeCalls.push(`expire ${id}`);
-      await onStripeCall?.(`expire ${id}`);
+      if ((await onStripeCall?.(`expire ${id}`)) === "fail") {
+        throw new Error("This Checkout Session is not in an expireable state.");
+      }
       return { id, status: "expired" };
+    });
+    Reflect.set(getStripe().checkout.sessions, "retrieve", async (id: string) => {
+      stripeCalls.push(`retrieve ${id}`);
+      if ((await onStripeCall?.(`retrieve ${id}`)) === "fail") {
+        throw new Error("Stripe not reached");
+      }
+      return {
+        id,
+        status: "expired",
+        payment_status: "unpaid",
+        amount_total: 1000,
+        currency: "eur",
+      };
     });
 
     raw = await database.connect();
@@ -770,6 +791,72 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       calls.length = 0;
       stripeCalls.length = 0;
     }
+  });
+
+  test("a resume refused for an unknown session while another installs its successor: one pending rental row, and the successor's expiry cancels the checkout", async () => {
+    const { id, sessionId: first } = await resumableCheckout();
+    let successor: Awaited<ReturnType<typeof resume>> | undefined;
+    let firstExpireAsked = false;
+    // Resume X has cancelled the first session's row and asks Stripe to expire it:
+    // meanwhile resume Y runs whole, expires that session and installs its own.
+    // Then X's expire fails, and X cannot read the session.
+    onStripeCall = async (call) => {
+      if (call === `expire ${first}` && !firstExpireAsked) {
+        firstExpireAsked = true;
+        successor = await resume(id);
+        return "fail";
+      }
+      if (call === `retrieve ${first}`) return "fail";
+    };
+
+    assert.deepEqual(await resume(id), { error: "errors.paymentSessionError" });
+    onStripeCall = null;
+
+    assert.ok(successor && !("error" in successor), JSON.stringify(successor));
+    assert.deepEqual(await paymentsOf(id), [
+      { status: "cancelled", session: first },
+      { status: "pending", session: successor.sessionId },
+    ]);
+
+    // The successor's session expires unpaid: the checkout is cancelled.
+    assert.deepEqual(
+      await expire(id, String(successor.sessionId), undefined, undefined, {
+        account: RESUME_ACCOUNT,
+      }),
+      { status: 200, body: { received: true } },
+    );
+    assert.equal(await readStatus(id), "cancelled");
+  });
+
+  test("an expiry delivered while a refused resume holds its row cancelled: the row stays cancelled, and the scheduled pass later cancels the checkout", async () => {
+    const { id, sessionId } = await resumableCheckout();
+    // Created forty minutes ago: its session's lifetime is over.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ createdAt: new Date(Date.now() - 40 * 60 * 1000) })
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, sessionId));
+    // The session's expiry is delivered after the resume cancelled its row; then
+    // the resume can neither expire nor read the session.
+    let delivered: Awaited<ReturnType<typeof expire>> | undefined;
+    onStripeCall = async (call) => {
+      if (call === `expire ${sessionId}`) {
+        delivered = await expire(id, sessionId, undefined, undefined, { account: RESUME_ACCOUNT });
+        return "fail";
+      }
+      if (call === `retrieve ${sessionId}`) return "fail";
+    };
+
+    assert.deepEqual(await resume(id), { error: "errors.paymentSessionError" });
+    onStripeCall = null;
+
+    assert.deepEqual(delivered, { status: 200, body: { received: true } });
+    assert.deepEqual(await paymentsOf(id), [{ status: "cancelled", session: sessionId }]);
+    assert.equal(await readStatus(id), "pending");
+
+    // The scheduled pass reads the session at Stripe, expired, and cancels the checkout.
+    await abandoned.settleAbandonedCheckouts();
+    assert.equal(await readStatus(id), "cancelled");
+    assert.deepEqual(await paymentsOf(id), [{ status: "cancelled", session: sessionId }]);
   });
 
   test("an event whose reservation disagrees with its payment's, in the same store: logged, nothing written on either", async () => {
