@@ -1084,20 +1084,28 @@ describe("the public reference", () => {
       /\b(?:ask|tell) them\b/i,
       // The words of the MCP transport.
       /\btools?\b/i,
-      /\bMCP\b/,
+      /\bMCP\b/i,
       /\bconnection\b/i,
       /\bagents?\b/i,
-      /\bstoreId\b/,
+      /\bstoreId\b/i,
     ];
-    // Every MCP tool name: the exposed procedures' and the hand-written tools'.
+    // Every MCP tool name, in lower case: the exposed procedures' and the hand-written tools'.
     const { capabilities } = await import("./inventory");
-    const toolNames = new Set([
-      ...procedures.map(({ meta }) => meta.mcp.name),
-      ...capabilities.flatMap(({ sources }) =>
-        sources.filter(({ kind }) => kind === "mcp-tool").map(({ name }) => name),
-      ),
-    ]);
+    const toolNames = new Set(
+      [
+        ...procedures.map(({ meta }) => meta.mcp.name),
+        ...capabilities.flatMap(({ sources }) =>
+          sources.filter(({ kind }) => kind === "mcp-tool").map(({ name }) => name),
+        ),
+      ].map((name) => name.toLowerCase()),
+    );
     assert.ok(toolNames.has("products_get") && toolNames.has("check_availability"));
+    // The whole identifiers of a text that are a tool's name, whatever their case:
+    // a longer identifier that merely contains one is not.
+    const toolsNamed = (text: string) =>
+      (text.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/gi) ?? []).filter((word) =>
+        toolNames.has(word.toLowerCase()),
+      );
     for (const { path, meta, operation } of await servedProcedures()) {
       // `.route({ description })`; the tool keeps `meta.mcp.description`.
       assert.ok(operation.description, `${path} has a REST text`);
@@ -1105,26 +1113,26 @@ describe("the public reference", () => {
       for (const word of assistantWording) {
         assert.doesNotMatch(operation.description, word, `${path} says ${word}`);
       }
-      for (const word of operation.description.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g) ?? []) {
-        assert.ok(!toolNames.has(word), `${path} names the tool ${word}`);
-      }
+      assert.deepEqual(toolsNamed(operation.description), [], `${path} names no tool`);
     }
     // The guard catches what it is meant to.
     const caught = (text: string) =>
-      assistantWording.some((word) => word.test(text)) ||
-      (text.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g) ?? []).some((word) => toolNames.has(word));
+      assistantWording.some((word) => word.test(text)) || toolsNamed(text).length > 0;
     for (const text of [
       "Show the user the preview.",
       "Call products_get first.",
       "Give it to the user as is.",
       "Ask the user which one.",
       "When the user wants a refund.",
+      "Call PRODUCTS_GET first.",
+      "Use mcp for this request.",
     ]) {
       assert.ok(caught(text), `the guard catches "${text}"`);
     }
     for (const text of [
       "It opens for the Louez user the key belongs to.",
       "Send the same request again with the token.",
+      "The answer's `my_products_get` field is a longer identifier.",
     ]) {
       assert.ok(!caught(text), `the guard lets "${text}" through`);
     }

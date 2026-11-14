@@ -441,7 +441,7 @@ const cancel = storeProcedure
     method: "POST",
     path: "/reservations/{id}/cancel",
     description:
-      "Cancels a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract, if it has one, is cancelled, and the customer gets the cancellation message on the channels the store set. Nothing is refunded or released, and the message does not mention a refund. On a key set to ask for confirmations (the default), it first answers 412 `CONFIRMATION_REQUIRED`, with a preview of the customer, the dates, what was paid and the message; on a key whose confirmations are off, it runs at once. Returns the change and the reservation's `links.dashboard`.",
+      "Cancels a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock and the customer gets the cancellation message on the channels the store set. If the reservation has an insurance contract, Louez asks the insurer to cancel it; if that fails, the reservation is cancelled all the same and the answer does not say so. Nothing is refunded or released, and the message does not mention a refund. On a key set to ask for confirmations (the default), it first answers 412 `CONFIRMATION_REQUIRED`, with a preview of the customer, the dates, what was paid and the message; on a key whose confirmations are off, it runs at once. Returns the change and the reservation's `links.dashboard`.",
   })
   .input(cancelReservationInput)
   .output(statusChangeOutput)
