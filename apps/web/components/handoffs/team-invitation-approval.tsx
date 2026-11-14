@@ -2,9 +2,9 @@ import { useTranslations } from "next-intl";
 
 import { DECISION_REASON_MAX } from "@louez/api/contracts/handoffs";
 import type { ApiHandoffPayload } from "@louez/db";
-import { Button, Label, Textarea } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
+import { HandoffDecisionForm } from "@/components/handoffs/handoff-decision-form";
 
 interface TeamInvitationApprovalProps {
   /** Where the form posts the owner's answer. */
@@ -38,42 +38,23 @@ export const TeamInvitationApproval = ({
 
   return (
     <HandoffCard title={t("title")} description={t("description", { email, store })} note={note}>
-      <form method="post" action={action} className="w-full space-y-4">
+      <HandoffDecisionForm
+        action={action}
+        revision={revision}
+        shown={shown}
+        labels={{
+          approve: t("approve"),
+          refuse: t("decline"),
+          reason: t("reason.label"),
+          reasonHint: t("reason.hint", { max: DECISION_REASON_MAX }),
+        }}
+      >
         <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
           <li>{t("role")}</li>
           <li>{invitation.joinsAtOnce ? t("joinsAtOnce", { email }) : t("byEmail", { email })}</li>
           <li>{t("access")}</li>
         </ul>
-        <input type="hidden" name="revision" value={revision} />
-        <input type="hidden" name="shown" value={shown} />
-        <div className="space-y-2">
-          <Label htmlFor="handoff-reason">{t("reason.label")}</Label>
-          <Textarea
-            id="handoff-reason"
-            name="reason"
-            maxLength={DECISION_REASON_MAX}
-            rows={2}
-            aria-describedby="handoff-reason-hint"
-          />
-          <p id="handoff-reason-hint" className="text-muted-foreground text-xs">
-            {t("reason.hint", { max: DECISION_REASON_MAX })}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="submit"
-            name="decision"
-            value="refuse"
-            variant="outline"
-            className="w-full sm:w-auto"
-          >
-            {t("decline")}
-          </Button>
-          <Button type="submit" name="decision" value="approve" className="w-full sm:w-auto">
-            {t("approve")}
-          </Button>
-        </div>
-      </form>
+      </HandoffDecisionForm>
     </HandoffCard>
   );
 };

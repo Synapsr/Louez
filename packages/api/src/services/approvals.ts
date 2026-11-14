@@ -5,6 +5,7 @@ import {
   db,
   lockStoreRow,
   storeMembers,
+  stores,
   unmarkSetupWrite,
   type ApiApprovalPayload,
   type Transaction,
@@ -25,6 +26,7 @@ import {
   type ApprovalAnswer,
 } from "../platform/errors";
 import { sha256, stableStringify } from "../platform/hash";
+import { approvalIsReadable, isReadableText } from "./approval-preview";
 import type { HandoffDecided } from "./handoff-decisions";
 import {
   approvalPayloadOf,
@@ -292,7 +294,7 @@ const ENDED_BY_EXECUTION = ["state_changed", "approver_not_allowed"] as const;
 function endedAnswer(row: HandoffRow): ORPCError<string, ApiErrorData> {
   if (row.failureCode === "declined") return approvalErrors.declined(row.id, row.decisionReason);
   const code = ENDED_BY_EXECUTION.find((reason) => reason === row.failureCode);
-  // Revoked, or closed as no longer possible: no approval of this call.
+  // Revoked, or ended any other way: no approval of this call.
   return approvalErrors.invalid(code ?? "other_request");
 }
 
@@ -430,9 +432,10 @@ async function completeApproval(
  *   still as it showed (`stillAsApproved`).
  *
  * What the request stores was computed under the write's locks a moment
- * before: the page computes the preview again when it loads and when the
- * person clicks (pull request 4), and the execution compares the binding
- * again under the write's locks (`carryOutPresentedApproval`).
+ * before: the page shows that preview with when it was computed
+ * (services/approval-page.ts), the decision records the binding the page
+ * showed, and the execution computes the binding again under the write's
+ * locks and refuses another one (`carryOutPresentedApproval`).
  */
 export async function requestApproval(
   request: ApprovalToRequest,
@@ -756,6 +759,18 @@ export async function answerApproval(
     if (status !== "pending") throw handoffErrors.decisionInvalid("finished");
     if (current.revision !== input.revision || current.bindingHash !== input.shown) {
       throw handoffErrors.decisionInvalid("changed");
+    }
+    // What its page cannot show whole is not approved, whatever was posted:
+    // its preview read on the row as locked, and the store's name its page
+    // names it by, read under the store's lock. A refusal stays possible.
+    if (input.decision === "approve") {
+      const [store] = await tx
+        .select({ name: stores.name })
+        .from(stores)
+        .where(eq(stores.id, current.storeId));
+      if (!approvalIsReadable(approvalPayloadOf(current)) || !isReadableText(store?.name ?? "", 1)) {
+        throw handoffErrors.decisionInvalid("unreadable");
+      }
     }
     if (!(await mayStillApprove(tx, current, input.userId))) {
       throw handoffErrors.decisionInvalid("not_allowed");

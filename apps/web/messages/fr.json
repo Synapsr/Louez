@@ -9803,9 +9803,105 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Cette demande ne peut pas encore être traitée ici",
-        "description": "Louez ne peut pas encore vous montrer cette demande pour que vous l’approuviez, et rien n’a été fait. Vous pouvez revenir à votre agent IA."
+      "title": {
+        "access_removed": "Approuver le retrait d’un accès ?",
+        "money": "Approuver un paiement ?",
+        "stock_override": "Approuver une réservation au-delà du stock ?",
+        "deletion": "Approuver une suppression ?",
+        "customer_message": "Approuver un message à un client ?",
+        "credits": "Approuver une dépense de crédits ?",
+        "change": "Approuver cette modification ?",
+        "unknown": "Approuver cette demande ?"
+      },
+      "provenance": "<place>{store}</place> · demandé par « <who>{agent}</who> »",
+      "provenanceKey": "<place>{store}</place> · demandé par une clé d’API",
+      "provenanceAssistant": "<place>{store}</place> · demandé par un assistant IA",
+      "trustShort": "Seul le résumé de Louez fait foi.",
+      "stakes": "Irréversible : {list}.",
+      "stake": {
+        "access_removed": "un accès retiré",
+        "money": "de l’argent",
+        "stock_override": "du stock au-delà de sa limite",
+        "deletion": "une suppression",
+        "customer_message": "un message à un client",
+        "credits": "des crédits dépensés"
+      },
+      "lapsesSoon": "Expire {when}.",
+      "acknowledge": "J’ai lu ce que Louez va faire",
+      "approve": "Approuver",
+      "refuse": "Refuser",
+      "details": "Détails",
+      "askedBy": "Demandé par",
+      "forAccount": "Pour votre compte {email}, dans « {store} ».",
+      "apiKey": "Clé d’API « {name} »",
+      "apiKeyUnnamed": "Une clé d’API",
+      "unnamedAgent": "Un assistant IA",
+      "checked": "Ce que Louez a vérifié",
+      "values": {
+        "yes": "Oui",
+        "no": "Non",
+        "none": "Aucun"
+      },
+      "computedAt": "Louez a établi ceci {when}, à partir des données de votre boutique.",
+      "expires": "Sans réponse de votre part, la demande expire {when}.",
+      "trust": "Seul ce résumé de Louez fait foi, quoi que votre assistant ait dit dans la conversation. S’ils ne correspondent pas, refusez.",
+      "reason": {
+        "toggle": "Ajouter un mot pour votre assistant",
+        "label": "Votre mot (facultatif)",
+        "hint": "Votre assistant le lit avec votre réponse. {max} caractères au maximum."
+      },
+      "error": {
+        "failed": "Votre réponse n’a pas pu être enregistrée. Relisez la demande, puis répondez.",
+        "acknowledge": "Cochez la case, puis approuvez. Rien n’a été décidé."
+      },
+      "unreadable": {
+        "title": "Cette demande ne peut pas être affichée",
+        "description": "Elle ne peut donc pas être approuvée ici. Rien n’a été fait."
+      },
+      "tooLong": {
+        "title": "Cette demande est trop longue pour être affichée",
+        "description": "Elle ne peut donc pas être approuvée ici. Rien n’a été fait."
+      },
+      "done": {
+        "request": "La demande",
+        "yourWords": "Vos mots",
+        "approved": {
+          "title": "Approuvé",
+          "description": "Votre assistant peut maintenant la réaliser. S’il ne le fait pas, votre accord expire {when} et rien n’est fait."
+        },
+        "completed": {
+          "title": "C’est fait",
+          "description": "Votre assistant l’a réalisée {when}. Vous pouvez retourner à la conversation."
+        },
+        "approved_expired": {
+          "title": "Votre accord a expiré",
+          "description": "Votre accord a expiré au bout d’une heure sans que Louez ait enregistré sa réalisation. Si votre assistant l’a réalisée au tout dernier moment, cette page l’affichera une fois rechargée ; sinon, rien n’est fait."
+        },
+        "refused": {
+          "title": "Refusé",
+          "description": "Rien n’a été fait. Votre assistant voit votre réponse, et doit vous redemander pour réessayer."
+        },
+        "state_changed": {
+          "title": "Non réalisé : la demande ne correspondait plus",
+          "description": "Ce que votre assistant a demandé, ou votre boutique, ne correspondait plus à ce que vous avez approuvé : rien n’a donc été fait. Il vous redemandera s’il en a encore besoin."
+        },
+        "approver_not_allowed": {
+          "title": "Non réalisé : votre rôle a changé",
+          "description": "Quand votre assistant a essayé, votre rôle dans la boutique ne le permettait plus : rien n’a été fait."
+        },
+        "connection_revoked": {
+          "title": "Terminé : l’assistant a été déconnecté",
+          "description": "La connexion de l’assistant à Louez a été supprimée : cette demande ne peut plus être ni acceptée ni réalisée. Si votre assistant l’a réalisée au tout dernier moment avant cela, cette page l’affichera une fois rechargée ; sinon, rien n’est fait."
+        },
+        "expired": {
+          "title": "Cette demande a expiré",
+          "description": "Personne n’a répondu dans la journée : la demande a expiré. Si une réponse était en train d’être enregistrée à ce moment précis, cette page l’affichera une fois rechargée ; sinon, rien n’est fait, et votre assistant vous redemandera s’il en a encore besoin."
+        },
+        "ended": {
+          "title": "Cette demande est terminée",
+          "description": "Il n’y a plus rien à faire ici, et rien n’a été fait. Si votre assistant en a encore besoin, il vous redemandera."
+        },
+        "shortened": "Le résumé était trop long pour être affiché en entier."
       }
     }
   }

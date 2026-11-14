@@ -305,6 +305,21 @@ export async function describeClient(
   return { client: toAgentClient(row, redirectUri), directory: directoryClientOf(row) };
 }
 
+/**
+ * The client of one of the user's grants, as the consent page shows a
+ * client: for a page that names the agent a grant acts as. Null once the
+ * grant is gone, or for another user's grant.
+ */
+export async function grantClient(userId: string, grantId: string): Promise<AgentClient | null> {
+  const [row] = await db
+    .select(clientColumns)
+    .from(apiAgentGrants)
+    .innerJoin(oauthClients, eq(oauthClients.clientId, apiAgentGrants.clientId))
+    .where(and(eq(apiAgentGrants.userId, userId), eq(apiAgentGrants.id, grantId)))
+    .limit(1);
+  return row ? toAgentClient(row, null) : null;
+}
+
 /** The terms already granted to a client, for the consent page to start from. */
 export async function currentTerms(input: {
   userId: string;

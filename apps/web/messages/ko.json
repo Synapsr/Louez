@@ -9803,9 +9803,105 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "이 요청은 아직 여기에서 답할 수 없습니다",
-        "description": "Louez는 아직 이 요청을 승인용으로 보여 줄 수 없으며, 아무 작업도 수행되지 않았습니다. AI 에이전트로 돌아가셔도 됩니다."
+      "title": {
+        "access_removed": "접근 권한 제거를 승인할까요?",
+        "money": "결제를 승인할까요?",
+        "stock_override": "재고를 초과하는 예약을 승인할까요?",
+        "deletion": "삭제를 승인할까요?",
+        "customer_message": "고객에게 보내는 메시지를 승인할까요?",
+        "credits": "크레딧 사용을 승인할까요?",
+        "change": "이 변경을 승인할까요?",
+        "unknown": "이 요청을 승인할까요?"
+      },
+      "provenance": "<place>{store}</place> · “<who>{agent}</who>”의 요청",
+      "provenanceKey": "<place>{store}</place> · API 키의 요청",
+      "provenanceAssistant": "<place>{store}</place> · AI 어시스턴트의 요청",
+      "trustShort": "유효한 것은 Louez의 요약뿐입니다.",
+      "stakes": "되돌릴 수 없음: {list}.",
+      "stake": {
+        "access_removed": "접근 권한 제거",
+        "money": "금액",
+        "stock_override": "한도를 넘는 재고",
+        "deletion": "삭제",
+        "customer_message": "고객 메시지",
+        "credits": "크레딧 사용"
+      },
+      "lapsesSoon": "{when} 만료됩니다.",
+      "acknowledge": "Louez가 할 일을 읽었습니다",
+      "approve": "승인",
+      "refuse": "거절",
+      "details": "자세히",
+      "askedBy": "요청한 곳",
+      "forAccount": "회원님의 계정({email}), “{store}”에서의 요청입니다.",
+      "apiKey": "API 키 “{name}”",
+      "apiKeyUnnamed": "API 키",
+      "unnamedAgent": "AI 어시스턴트",
+      "checked": "Louez가 확인한 내용",
+      "values": {
+        "yes": "예",
+        "no": "아니요",
+        "none": "없음"
+      },
+      "computedAt": "Louez가 스토어 데이터를 바탕으로 {when} 계산했습니다.",
+      "expires": "답하지 않으면 이 요청은 {when} 만료됩니다.",
+      "trust": "채팅에서 어시스턴트가 뭐라고 했든, 유효한 것은 Louez의 이 요약뿐입니다. 서로 다르면 거절하세요.",
+      "reason": {
+        "toggle": "어시스턴트에게 메모 남기기",
+        "label": "메모 (선택)",
+        "hint": "어시스턴트가 답변과 함께 읽습니다. 최대 {max}자입니다."
+      },
+      "error": {
+        "failed": "답변을 저장하지 못했습니다. 요청을 다시 읽은 뒤 답해 주세요.",
+        "acknowledge": "체크한 뒤 승인하세요. 아직 아무것도 결정되지 않았습니다."
+      },
+      "unreadable": {
+        "title": "이 요청을 표시할 수 없습니다",
+        "description": "그래서 여기서 승인할 수 없습니다. 아무 작업도 하지 않았습니다."
+      },
+      "tooLong": {
+        "title": "이 요청은 너무 길어 표시할 수 없습니다",
+        "description": "그래서 여기서 승인할 수 없습니다. 아무 작업도 하지 않았습니다."
+      },
+      "done": {
+        "request": "요청 내용",
+        "yourWords": "남긴 말",
+        "approved": {
+          "title": "승인됨",
+          "description": "이제 어시스턴트가 실행할 수 있습니다. 실행하지 않으면 승인은 {when} 만료되고 아무 일도 일어나지 않습니다."
+        },
+        "completed": {
+          "title": "완료됨",
+          "description": "어시스턴트가 {when} 실행했습니다. 채팅으로 돌아가셔도 됩니다."
+        },
+        "approved_expired": {
+          "title": "승인이 만료되었습니다",
+          "description": "Louez에 실행 기록이 남지 않은 채 승인이 1시간 후 만료되었습니다. 어시스턴트가 마지막 순간에 실행했다면 새로 고친 뒤 이 페이지에 표시되고, 그렇지 않다면 아무 작업도 하지 않습니다."
+        },
+        "refused": {
+          "title": "거절됨",
+          "description": "아무 작업도 하지 않았습니다. 어시스턴트는 답변을 볼 수 있으며, 다시 시도하려면 다시 요청해야 합니다."
+        },
+        "state_changed": {
+          "title": "실행되지 않음: 요청이 더 이상 일치하지 않았습니다",
+          "description": "어시스턴트가 요청한 내용이나 스토어가 승인한 내용과 더 이상 일치하지 않아 아무 작업도 하지 않았습니다. 아직 필요하면 다시 요청합니다."
+        },
+        "approver_not_allowed": {
+          "title": "실행되지 않음: 역할이 바뀌었습니다",
+          "description": "어시스턴트가 실행하려 할 때 스토어에서의 역할로는 더 이상 허용되지 않아 아무 작업도 하지 않았습니다."
+        },
+        "connection_revoked": {
+          "title": "종료됨: 어시스턴트 연결이 해제되었습니다",
+          "description": "어시스턴트와 Louez의 연결이 삭제되어 이 요청은 더 이상 답하거나 실행할 수 없습니다. 어시스턴트가 그 직전 마지막 순간에 실행했다면 새로 고친 뒤 이 페이지에 표시되고, 그렇지 않다면 아무 작업도 하지 않습니다."
+        },
+        "expired": {
+          "title": "이 요청은 만료되었습니다",
+          "description": "하루 안에 아무도 답하지 않아 요청이 만료되었습니다. 바로 그 순간 답변이 기록되고 있었다면 새로 고친 뒤 이 페이지에 표시되고, 그렇지 않다면 아무 작업도 하지 않으며 어시스턴트가 아직 필요하면 다시 요청합니다."
+        },
+        "ended": {
+          "title": "이 요청은 종료되었습니다",
+          "description": "여기서 더 할 수 있는 일은 없으며, 아무 작업도 하지 않았습니다. 어시스턴트가 아직 필요하면 다시 요청합니다."
+        },
+        "shortened": "요약이 너무 길어 전부 표시하지 못했습니다."
       }
     }
   }

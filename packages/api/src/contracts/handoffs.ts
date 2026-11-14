@@ -63,14 +63,21 @@ const keepLayout = (character: string) =>
   character === "\n" || character === "\t" ? character : "";
 
 /**
+ * Text as a page shows it: plain text whatever it holds (markup stays
+ * characters, never HTML), line breaks written `\n`, control characters and
+ * the marks that reorder text on screen dropped, trimmed.
+ */
+export function plainText(raw: string): string {
+  return raw.replace(/\r\n?/g, "\n").replace(NOT_TEXT, keepLayout).trim();
+}
+
+/**
  * A person's words with their decision, as stored and read back: plain text
- * whatever it holds (markup stays characters, never HTML), line breaks
- * written `\n`, control characters dropped, trimmed. Null when nothing is
- * left.
+ * (`plainText`). Null when nothing is left.
  */
 export function decisionReason(raw: string | null | undefined): string | null {
   if (raw === null || raw === undefined) return null;
-  const text = raw.replace(/\r\n?/g, "\n").replace(NOT_TEXT, keepLayout).trim();
+  const text = plainText(raw);
   return text === "" ? null : text;
 }
 
@@ -175,6 +182,11 @@ export const decideHandoffInput = z.object({
   revision: z.number().int().positive(),
   /** The kind's digest of what the page showed (`invitationShown`): another one decides nothing. */
   shown: z.string().regex(/^[0-9a-f]{64}$/),
+  /**
+   * The page's box "I have read what Louez will do" was ticked: an approval
+   * whose consequences ask for it is not approved without it.
+   */
+  acknowledged: z.boolean().optional(),
 });
 export const decideHandoffOutput = z.object({
   /** The step the agent reads with handoffs_get. */
@@ -221,8 +233,17 @@ export const handoffErrors = {
       message:
         reason === "changed"
           ? "The request changed since the page showed it, and nothing was decided: look at it again, then answer."
-          : "This approval link no longer works, or is not for this account.",
-      i18nKey: `handoff.refused.${reason}.title`,
+          : reason === "not_acknowledged"
+            ? "Tick that you read what Louez will do, then approve: nothing was decided."
+            : reason === "unreadable"
+              ? "Louez cannot show this request whole, so it cannot be approved: nothing was decided."
+              : "This approval link no longer works, or is not for this account.",
+      i18nKey:
+        reason === "not_acknowledged"
+          ? "handoff.operation_approval.error.acknowledge"
+          : reason === "unreadable"
+            ? "handoff.operation_approval.unreadable.title"
+            : `handoff.refused.${reason}.title`,
       details: { reason },
     }),
 };

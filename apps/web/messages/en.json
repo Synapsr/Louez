@@ -9803,9 +9803,105 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "This request can't be answered here yet",
-        "description": "Louez can't show this request for your approval yet, and nothing was done. You can go back to your AI agent."
+      "title": {
+        "access_removed": "Approve removing access?",
+        "money": "Approve a payment?",
+        "stock_override": "Approve booking past your stock?",
+        "deletion": "Approve a deletion?",
+        "customer_message": "Approve a message to a customer?",
+        "credits": "Approve spending credits?",
+        "change": "Approve this change?",
+        "unknown": "Approve this request?"
+      },
+      "provenance": "<place>{store}</place> · asked by “<who>{agent}</who>”",
+      "provenanceKey": "<place>{store}</place> · asked by an API key",
+      "provenanceAssistant": "<place>{store}</place> · asked by an AI assistant",
+      "trustShort": "Only Louez’s summary counts.",
+      "stakes": "Can’t be undone: {list}.",
+      "stake": {
+        "access_removed": "access removed",
+        "money": "money",
+        "stock_override": "stock past its limit",
+        "deletion": "a deletion",
+        "customer_message": "a message to a customer",
+        "credits": "credits spent"
+      },
+      "lapsesSoon": "Lapses {when}.",
+      "acknowledge": "I’ve read what Louez will do",
+      "approve": "Approve",
+      "refuse": "Refuse",
+      "details": "Details",
+      "askedBy": "Asked by",
+      "forAccount": "For your account {email}, in “{store}”.",
+      "apiKey": "API key “{name}”",
+      "apiKeyUnnamed": "An API key",
+      "unnamedAgent": "An AI assistant",
+      "checked": "What Louez checked",
+      "values": {
+        "yes": "Yes",
+        "no": "No",
+        "none": "None"
+      },
+      "computedAt": "Louez worked this out {when}, from your store’s records.",
+      "expires": "If you don’t answer, the request lapses {when}.",
+      "trust": "Only this summary from Louez counts, whatever your assistant said in the chat. If they don’t match, refuse.",
+      "reason": {
+        "toggle": "Add a note for your assistant",
+        "label": "Your note (optional)",
+        "hint": "Your assistant reads it with your answer. {max} characters at most."
+      },
+      "error": {
+        "failed": "Your answer could not be recorded. Look at the request again, then answer.",
+        "acknowledge": "Tick the box, then approve. Nothing was decided."
+      },
+      "unreadable": {
+        "title": "This request can’t be shown",
+        "description": "So it can’t be approved here. Nothing was done."
+      },
+      "tooLong": {
+        "title": "This request is too long to show",
+        "description": "So it can’t be approved here. Nothing was done."
+      },
+      "done": {
+        "request": "The request",
+        "yourWords": "Your words",
+        "approved": {
+          "title": "Approved",
+          "description": "Your assistant can now carry it out. If it doesn’t, your approval lapses {when} and nothing is done."
+        },
+        "completed": {
+          "title": "Done",
+          "description": "Your assistant carried it out {when}. You can go back to the chat."
+        },
+        "approved_expired": {
+          "title": "Your approval lapsed",
+          "description": "Your approval lapsed after an hour without Louez recording that it was carried out. If your assistant carried it out at the very last moment, this page shows it once reloaded; otherwise nothing is done."
+        },
+        "refused": {
+          "title": "Refused",
+          "description": "Nothing was done. Your assistant sees your answer, and needs to ask you again to try once more."
+        },
+        "state_changed": {
+          "title": "Not carried out: the request no longer matched",
+          "description": "What your assistant asked, or your store, no longer matched what you approved, so nothing was done. It will ask again if it still needs it."
+        },
+        "approver_not_allowed": {
+          "title": "Not carried out: your role changed",
+          "description": "When your assistant tried, your role in the store no longer allowed this, so nothing was done."
+        },
+        "connection_revoked": {
+          "title": "Ended: the assistant was disconnected",
+          "description": "The assistant’s connection to Louez was removed, so this request can no longer be answered or carried out. If your assistant carried it out at the very last moment before that, this page shows it once reloaded; otherwise nothing is done."
+        },
+        "expired": {
+          "title": "This request lapsed",
+          "description": "Nobody answered within a day, so the request lapsed. If an answer was being recorded at that very moment, this page shows it once reloaded; otherwise nothing is done, and your assistant will ask again if it still needs this."
+        },
+        "ended": {
+          "title": "This request ended",
+          "description": "Nothing more can be done with it here, and nothing was done. If your assistant still needs this, it will ask again."
+        },
+        "shortened": "The summary was too long to show whole."
       }
     }
   }

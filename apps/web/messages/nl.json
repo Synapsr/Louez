@@ -9803,9 +9803,105 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Dit verzoek kan hier nog niet worden beantwoord",
-        "description": "Louez kan dit verzoek nog niet ter goedkeuring tonen, en er is niets gedaan. Je kunt teruggaan naar je AI-agent."
+      "title": {
+        "access_removed": "Intrekken van toegang goedkeuren?",
+        "money": "Betaling goedkeuren?",
+        "stock_override": "Boeking boven je voorraad goedkeuren?",
+        "deletion": "Verwijdering goedkeuren?",
+        "customer_message": "Bericht aan een klant goedkeuren?",
+        "credits": "Besteden van tegoed goedkeuren?",
+        "change": "Deze wijziging goedkeuren?",
+        "unknown": "Dit verzoek goedkeuren?"
+      },
+      "provenance": "<place>{store}</place> · gevraagd door ‘<who>{agent}</who>’",
+      "provenanceKey": "<place>{store}</place> · gevraagd door een API-sleutel",
+      "provenanceAssistant": "<place>{store}</place> · gevraagd door een AI-assistent",
+      "trustShort": "Alleen de samenvatting van Louez telt.",
+      "stakes": "Niet terug te draaien: {list}.",
+      "stake": {
+        "access_removed": "ingetrokken toegang",
+        "money": "geld",
+        "stock_override": "voorraad boven de grens",
+        "deletion": "een verwijdering",
+        "customer_message": "een bericht aan een klant",
+        "credits": "besteed tegoed"
+      },
+      "lapsesSoon": "Vervalt {when}.",
+      "acknowledge": "Ik heb gelezen wat Louez gaat doen",
+      "approve": "Goedkeuren",
+      "refuse": "Weigeren",
+      "details": "Details",
+      "askedBy": "Gevraagd door",
+      "forAccount": "Voor je account {email}, in ‘{store}’.",
+      "apiKey": "API-sleutel ‘{name}’",
+      "apiKeyUnnamed": "Een API-sleutel",
+      "unnamedAgent": "Een AI-assistent",
+      "checked": "Wat Louez heeft gecontroleerd",
+      "values": {
+        "yes": "Ja",
+        "no": "Nee",
+        "none": "Geen"
+      },
+      "computedAt": "Louez heeft dit {when} berekend uit de gegevens van je winkel.",
+      "expires": "Als je niet antwoordt, vervalt het verzoek {when}.",
+      "trust": "Alleen deze samenvatting van Louez telt, wat je assistent in de chat ook zei. Komen ze niet overeen, weiger dan.",
+      "reason": {
+        "toggle": "Een notitie voor je assistent toevoegen",
+        "label": "Je notitie (optioneel)",
+        "hint": "Je assistent leest het met je antwoord. Hoogstens {max} tekens."
+      },
+      "error": {
+        "failed": "Je antwoord kon niet worden opgeslagen. Lees het verzoek opnieuw en antwoord dan.",
+        "acknowledge": "Vink het vakje aan en keur dan goed. Er is niets besloten."
+      },
+      "unreadable": {
+        "title": "Dit verzoek kan niet worden getoond",
+        "description": "Het kan hier dus niet worden goedgekeurd. Er is niets gedaan."
+      },
+      "tooLong": {
+        "title": "Dit verzoek is te lang om te tonen",
+        "description": "Het kan hier dus niet worden goedgekeurd. Er is niets gedaan."
+      },
+      "done": {
+        "request": "Het verzoek",
+        "yourWords": "Je woorden",
+        "approved": {
+          "title": "Goedgekeurd",
+          "description": "Je assistent kan het nu uitvoeren. Doet hij dat niet, dan vervalt je goedkeuring {when} en gebeurt er niets."
+        },
+        "completed": {
+          "title": "Klaar",
+          "description": "Je assistent heeft het {when} uitgevoerd. Je kunt terug naar de chat."
+        },
+        "approved_expired": {
+          "title": "Je goedkeuring is vervallen",
+          "description": "Je goedkeuring is na een uur vervallen zonder dat Louez heeft vastgelegd dat het is uitgevoerd. Heeft je assistent het op het allerlaatste moment uitgevoerd, dan toont deze pagina dat na opnieuw laden; anders gebeurt er niets."
+        },
+        "refused": {
+          "title": "Geweigerd",
+          "description": "Er is niets gedaan. Je assistent ziet je antwoord en moet het je opnieuw vragen om het nog eens te proberen."
+        },
+        "state_changed": {
+          "title": "Niet uitgevoerd: het verzoek klopte niet meer",
+          "description": "Wat je assistent vroeg, of je winkel, kwam niet meer overeen met wat je goedkeurde, dus er is niets gedaan. Hij vraagt het opnieuw als hij het nog nodig heeft."
+        },
+        "approver_not_allowed": {
+          "title": "Niet uitgevoerd: je rol is veranderd",
+          "description": "Toen je assistent het probeerde, stond je rol in de winkel dit niet meer toe, dus er is niets gedaan."
+        },
+        "connection_revoked": {
+          "title": "Beëindigd: de assistent is losgekoppeld",
+          "description": "De koppeling van de assistent met Louez is verwijderd, dus dit verzoek kan niet meer worden beantwoord of uitgevoerd. Heeft je assistent het op het allerlaatste moment daarvoor uitgevoerd, dan toont deze pagina dat na opnieuw laden; anders gebeurt er niets."
+        },
+        "expired": {
+          "title": "Dit verzoek is vervallen",
+          "description": "Niemand heeft binnen een dag geantwoord, dus het verzoek is vervallen. Werd er op precies dat moment een antwoord opgeslagen, dan toont deze pagina het na opnieuw laden; anders gebeurt er niets, en je assistent vraagt het opnieuw als hij het nog nodig heeft."
+        },
+        "ended": {
+          "title": "Dit verzoek is beëindigd",
+          "description": "Hier valt niets meer te doen, en er is niets gedaan. Heeft je assistent het nog nodig, dan vraagt hij het opnieuw."
+        },
+        "shortened": "De samenvatting was te lang om volledig te tonen."
       }
     }
   }

@@ -4,12 +4,15 @@ import { redirect } from "next/navigation";
 
 import {
   handoffDonePath,
+  handoffPath,
   isConfirming,
   readHandoffForUser,
   statusOf,
 } from "@louez/api/services/handoffs";
+import { readApprovalPage } from "@louez/api/services/approval-page";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
+import { OperationApprovalDone } from "@/components/handoffs/operation-approval-done";
 import { auth } from "@/lib/auth";
 import { createLoginUrl } from "@/lib/utils/util.url";
 
@@ -26,8 +29,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * Where the user lands once back from the provider: the step is done and
- * they can go back to their agent, or it is not finished yet. Shown only to
- * the user the handoff is for.
+ * they can go back to their agent, or it is not finished yet; and where an
+ * answered step stands (an invitation, an agent's request a person
+ * approved or refused). Shown only to the user the handoff is for.
  */
 export default async function HandoffDonePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,6 +41,31 @@ export default async function HandoffDonePage({ params }: { params: Promise<{ id
 
   const t = await getTranslations("handoff");
   const checked = await readHandoffForUser(id, userId);
+  // An operation's approval, as its row says, even once its connection is
+  // gone (`readApprovalPage`): a request still to answer is on its page.
+  if (checked.row?.kind === "operation_approval") {
+    const read = await readApprovalPage(checked.row.id, userId);
+    if (!read.ok) {
+      return (
+        <HandoffCard
+          title={t(`refused.${read.reason}.title`)}
+          description={t(`refused.${read.reason}.description`)}
+        />
+      );
+    }
+    const { approval } = read;
+    if (approval.state === "pending") redirect(handoffPath(approval.id));
+    if (approval.state === "unreadable") {
+      const why = approval.preview?.truncated ? "tooLong" : "unreadable";
+      return (
+        <HandoffCard
+          title={t(`operation_approval.${why}.title`)}
+          description={t(`operation_approval.${why}.description`)}
+        />
+      );
+    }
+    return <OperationApprovalDone approval={approval} state={approval.state} />;
+  }
   if (!checked.ok) {
     return (
       <HandoffCard
@@ -48,14 +77,6 @@ export default async function HandoffDonePage({ params }: { params: Promise<{ id
 
   const { row } = checked;
   const status = statusOf(row, new Date());
-  if (row.kind === "operation_approval") {
-    return (
-      <HandoffCard
-        title={t("operation_approval.unavailable.title")}
-        description={t("operation_approval.unavailable.description")}
-      />
-    );
-  }
   if (row.kind === "team_invitation") {
     // An owner's answer to an agent's invitation: there is no provider.
     const answer =

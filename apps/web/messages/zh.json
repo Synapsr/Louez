@@ -9803,9 +9803,105 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "此请求暂时无法在此处答复",
-        "description": "Louez 目前还无法显示此请求供您批准，且尚未执行任何操作。您可以返回您的 AI 助手。"
+      "title": {
+        "access_removed": "批准移除访问权限？",
+        "money": "批准一笔付款？",
+        "stock_override": "批准超出库存的预订？",
+        "deletion": "批准删除？",
+        "customer_message": "批准发给客户的消息？",
+        "credits": "批准使用点数？",
+        "change": "批准此项修改？",
+        "unknown": "批准此请求？"
+      },
+      "provenance": "<place>{store}</place> · 由“<who>{agent}</who>”请求",
+      "provenanceKey": "<place>{store}</place> · 由 API 密钥请求",
+      "provenanceAssistant": "<place>{store}</place> · 由 AI 助手请求",
+      "trustShort": "只有 Louez 的摘要才算数。",
+      "stakes": "无法撤销：{list}。",
+      "stake": {
+        "access_removed": "移除访问权限",
+        "money": "资金",
+        "stock_override": "超出上限的库存",
+        "deletion": "删除",
+        "customer_message": "发给客户的消息",
+        "credits": "消耗点数"
+      },
+      "lapsesSoon": "{when}失效。",
+      "acknowledge": "我已阅读 Louez 将执行的操作",
+      "approve": "批准",
+      "refuse": "拒绝",
+      "details": "详情",
+      "askedBy": "请求方",
+      "forAccount": "代表你的账号 {email}，在“{store}”中。",
+      "apiKey": "API 密钥“{name}”",
+      "apiKeyUnnamed": "一个 API 密钥",
+      "unnamedAgent": "一个 AI 助手",
+      "checked": "Louez 核对的内容",
+      "values": {
+        "yes": "是",
+        "no": "否",
+        "none": "无"
+      },
+      "computedAt": "Louez 于{when}根据你店铺的数据得出以上内容。",
+      "expires": "如果你不回复，此请求将于{when}失效。",
+      "trust": "无论助手在聊天中怎么说，只有 Louez 的这份摘要才算数。如果两者不一致，请拒绝。",
+      "reason": {
+        "toggle": "给助手留言",
+        "label": "你的留言（可选）",
+        "hint": "助手会连同你的回复一起读到。最多 {max} 个字符。"
+      },
+      "error": {
+        "failed": "无法保存你的回复。请重新阅读请求后再回复。",
+        "acknowledge": "请先勾选，再批准。尚未做出任何决定。"
+      },
+      "unreadable": {
+        "title": "无法显示此请求",
+        "description": "因此不能在这里批准。未执行任何操作。"
+      },
+      "tooLong": {
+        "title": "此请求太长，无法显示",
+        "description": "因此不能在这里批准。未执行任何操作。"
+      },
+      "done": {
+        "request": "请求内容",
+        "yourWords": "你的留言",
+        "approved": {
+          "title": "已批准",
+          "description": "你的助手现在可以执行了。如果它没有执行，你的批准将于{when}失效，且不会执行任何操作。"
+        },
+        "completed": {
+          "title": "已完成",
+          "description": "你的助手已于{when}执行。你可以回到聊天了。"
+        },
+        "approved_expired": {
+          "title": "你的批准已失效",
+          "description": "你的批准在一小时后失效，Louez 未记录到它已执行。如果助手在最后一刻执行了，重新加载后此页面会显示；否则不会执行任何操作。"
+        },
+        "refused": {
+          "title": "已拒绝",
+          "description": "未执行任何操作。你的助手能看到你的回复，若要再试，需要重新请求你。"
+        },
+        "state_changed": {
+          "title": "未执行：请求已不一致",
+          "description": "助手请求的内容或你的店铺，已与你批准的内容不一致，因此未执行任何操作。如仍有需要，它会重新请求。"
+        },
+        "approver_not_allowed": {
+          "title": "未执行：你的角色已变化",
+          "description": "助手尝试执行时，你在店铺中的角色已不再允许此操作，因此未执行任何操作。"
+        },
+        "connection_revoked": {
+          "title": "已结束：助手已断开连接",
+          "description": "助手与 Louez 的连接已被移除，因此此请求无法再回复或执行。如果助手在此之前的最后一刻执行了，重新加载后此页面会显示；否则不会执行任何操作。"
+        },
+        "expired": {
+          "title": "此请求已失效",
+          "description": "一天内无人回复，因此请求已失效。如果恰好在那一刻有回复正在记录，重新加载后此页面会显示；否则不会执行任何操作，助手如仍有需要会重新请求。"
+        },
+        "ended": {
+          "title": "此请求已结束",
+          "description": "这里已无事可做，也未执行任何操作。如果助手仍有需要，它会重新请求。"
+        },
+        "shortened": "摘要太长，无法完整显示。"
       }
     }
   }

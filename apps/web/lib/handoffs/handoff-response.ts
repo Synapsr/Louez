@@ -71,6 +71,14 @@ export function postedReason(form: FormData): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+/**
+ * Whether the page's box "I have read what Louez will do" was ticked: a
+ * checkbox posts its value only when it is.
+ */
+export function postedAcknowledged(form: FormData): boolean {
+  return form.get("acknowledged") === "yes";
+}
+
 /** Where the login sends the user back: the handoff path kept in a cookie. */
 export const HANDOFF_RESUME_PATH = "/handoffs/resume";
 export const HANDOFF_RESUME_COOKIE = "louez_handoff_next";

@@ -9803,9 +9803,105 @@
       }
     },
     "operation_approval": {
-      "unavailable": {
-        "title": "Diese Anfrage kann hier noch nicht beantwortet werden",
-        "description": "Louez kann Ihnen diese Anfrage noch nicht zur Freigabe zeigen, und es wurde nichts ausgeführt. Sie können zu Ihrem KI-Agenten zurückkehren."
+      "title": {
+        "access_removed": "Entzug eines Zugangs genehmigen?",
+        "money": "Zahlung genehmigen?",
+        "stock_override": "Buchung über den Bestand hinaus genehmigen?",
+        "deletion": "Löschung genehmigen?",
+        "customer_message": "Nachricht an einen Kunden genehmigen?",
+        "credits": "Verbrauch von Guthaben genehmigen?",
+        "change": "Diese Änderung genehmigen?",
+        "unknown": "Diese Anfrage genehmigen?"
+      },
+      "provenance": "<place>{store}</place> · angefragt von „<who>{agent}</who>“",
+      "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
+      "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
+      "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
+      "stakes": "Nicht rückgängig zu machen: {list}.",
+      "stake": {
+        "access_removed": "ein entzogener Zugang",
+        "money": "Geld",
+        "stock_override": "Bestand über seiner Grenze",
+        "deletion": "eine Löschung",
+        "customer_message": "eine Nachricht an einen Kunden",
+        "credits": "verbrauchtes Guthaben"
+      },
+      "lapsesSoon": "Verfällt {when}.",
+      "acknowledge": "Ich habe gelesen, was Louez tun wird",
+      "approve": "Genehmigen",
+      "refuse": "Ablehnen",
+      "details": "Details",
+      "askedBy": "Angefragt von",
+      "forAccount": "Für Ihr Konto {email}, in „{store}“.",
+      "apiKey": "API-Schlüssel „{name}“",
+      "apiKeyUnnamed": "Ein API-Schlüssel",
+      "unnamedAgent": "Ein KI-Assistent",
+      "checked": "Was Louez geprüft hat",
+      "values": {
+        "yes": "Ja",
+        "no": "Nein",
+        "none": "Keine"
+      },
+      "computedAt": "Louez hat dies {when} aus den Daten Ihres Shops ermittelt.",
+      "expires": "Ohne Antwort verfällt die Anfrage {when}.",
+      "trust": "Es zählt nur diese Zusammenfassung von Louez, egal was Ihr Assistent im Chat gesagt hat. Wenn beides nicht übereinstimmt, lehnen Sie ab.",
+      "reason": {
+        "toggle": "Eine Notiz für Ihren Assistenten hinzufügen",
+        "label": "Ihre Notiz (optional)",
+        "hint": "Ihr Assistent liest es mit Ihrer Antwort. Höchstens {max} Zeichen."
+      },
+      "error": {
+        "failed": "Ihre Antwort konnte nicht gespeichert werden. Lesen Sie die Anfrage noch einmal und antworten Sie dann.",
+        "acknowledge": "Setzen Sie das Häkchen und genehmigen Sie dann. Es wurde nichts entschieden."
+      },
+      "unreadable": {
+        "title": "Diese Anfrage kann nicht angezeigt werden",
+        "description": "Daher kann sie hier nicht genehmigt werden. Es wurde nichts getan."
+      },
+      "tooLong": {
+        "title": "Diese Anfrage ist zu lang zum Anzeigen",
+        "description": "Daher kann sie hier nicht genehmigt werden. Es wurde nichts getan."
+      },
+      "done": {
+        "request": "Die Anfrage",
+        "yourWords": "Ihre Worte",
+        "approved": {
+          "title": "Genehmigt",
+          "description": "Ihr Assistent kann es jetzt ausführen. Tut er es nicht, verfällt Ihre Zustimmung {when} und nichts passiert."
+        },
+        "completed": {
+          "title": "Erledigt",
+          "description": "Ihr Assistent hat es {when} ausgeführt. Sie können zum Chat zurückkehren."
+        },
+        "approved_expired": {
+          "title": "Ihre Zustimmung ist verfallen",
+          "description": "Ihre Zustimmung ist nach einer Stunde verfallen, ohne dass Louez eine Ausführung erfasst hat. Hat Ihr Assistent sie im allerletzten Moment ausgeführt, zeigt diese Seite das nach dem Neuladen; sonst passiert nichts."
+        },
+        "refused": {
+          "title": "Abgelehnt",
+          "description": "Es wurde nichts getan. Ihr Assistent sieht Ihre Antwort und muss Sie erneut fragen, um es noch einmal zu versuchen."
+        },
+        "state_changed": {
+          "title": "Nicht ausgeführt: Die Anfrage passte nicht mehr",
+          "description": "Was Ihr Assistent angefragt hat, oder Ihr Shop, entsprach nicht mehr dem, was Sie genehmigt haben, daher wurde nichts getan. Er fragt erneut, wenn er es noch braucht."
+        },
+        "approver_not_allowed": {
+          "title": "Nicht ausgeführt: Ihre Rolle hat sich geändert",
+          "description": "Als Ihr Assistent es versuchte, erlaubte Ihre Rolle im Shop das nicht mehr, daher wurde nichts getan."
+        },
+        "connection_revoked": {
+          "title": "Beendet: Der Assistent wurde getrennt",
+          "description": "Die Verbindung des Assistenten zu Louez wurde entfernt, daher kann diese Anfrage weder beantwortet noch ausgeführt werden. Hat Ihr Assistent sie im allerletzten Moment davor ausgeführt, zeigt diese Seite das nach dem Neuladen; sonst passiert nichts."
+        },
+        "expired": {
+          "title": "Diese Anfrage ist verfallen",
+          "description": "Niemand hat innerhalb eines Tages geantwortet, daher ist die Anfrage verfallen. Wurde genau in diesem Moment eine Antwort gespeichert, zeigt diese Seite sie nach dem Neuladen; sonst passiert nichts, und Ihr Assistent fragt erneut, wenn er es noch braucht."
+        },
+        "ended": {
+          "title": "Diese Anfrage ist beendet",
+          "description": "Hier gibt es nichts mehr zu tun, und es wurde nichts getan. Wenn Ihr Assistent es noch braucht, fragt er erneut."
+        },
+        "shortened": "Die Zusammenfassung war zu lang, um vollständig angezeigt zu werden."
       }
     }
   }
