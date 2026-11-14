@@ -536,7 +536,7 @@ describe(
 
       for (let run = 0; run < 3; run += 1) {
         readOptions.length = 0;
-        const result = await pass.settleAbandonedCheckouts({ clock });
+        const result = await pass.settleAbandonedCheckouts({ clock, first: "settled" });
         // The settled checkout is cancelled by the first run, whatever the other costs.
         assert.equal((await stateOf(settled.id)).status, "cancelled", `run ${run}`);
         assert.equal(result.waiting, 0, `run ${run}`);
@@ -548,6 +548,41 @@ describe(
         );
       }
       assert.equal((await stateOf(slow.id)).status, "pending");
+    });
+
+    test("a cancellation that waits out the budget keeps no checkout to read waiting: which question goes first is drawn for each run", async () => {
+      const settled = await checkout([{ status: "cancelled", age: 40 * MINUTE, settled: true }]);
+      const toRead = await checkout([{ status: "pending", age: 40 * MINUTE }]);
+      // The settled checkout's cancellation waits for its reservation's lock past
+      // the run's budget, then fails, as on a lock wait timeout.
+      let elapsed = 0;
+      reservationChangeTestHooks().beforeReservationLock = async (scope) => {
+        if (scope.reservationId !== settled.id) return;
+        elapsed = pass.ABANDONED_CHECKOUTS_RUN_BUDGET_MS;
+        throw new Error("Lock wait timeout exceeded");
+      };
+      const clock = () => elapsed;
+
+      // Settled first: its wait spends the budget, the checkout to read waits.
+      assert.deepEqual(
+        await pass.settleAbandonedCheckouts({ clock, first: "settled" }),
+        counts({ failed: 1, waiting: 1 }),
+      );
+      assert.equal((await stateOf(toRead.id)).status, "pending");
+
+      // The draw, as the run makes it: one half of the runs take the checkouts to read first.
+      elapsed = 0;
+      const random = mock.method(Math, "random", () => 0.9);
+      try {
+        assert.deepEqual(
+          await pass.settleAbandonedCheckouts({ clock }),
+          counts({ cancelled: 1, failed: 1 }),
+        );
+      } finally {
+        random.mock.restore();
+      }
+      assert.equal((await stateOf(toRead.id)).status, "cancelled");
+      assert.equal((await stateOf(settled.id)).status, "pending");
     });
 
     test("two runs at once: each record written once, the checkout cancelled once", async () => {

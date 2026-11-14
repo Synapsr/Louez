@@ -322,25 +322,27 @@ export async function settleAbandonedCheckout(
  * The cron's pass over abandoned checkouts: those with an unsettled session to
  * read at Stripe, and those whose sessions are all settled, with no payment
  * left, to cancel (`findAbandonedCheckouts`). Each checkout is its own unit: one
- * that fails is counted and the others go on. Those to cancel go first: they
- * cost no Stripe call. Once its time budget is spent it takes no new checkout
+ * that fails is counted and the others go on. Which of the two questions goes
+ * first is drawn for each run (`first`). Once its time budget is spent it takes no new checkout
  * and reads no further session of the one it is on: those left wait for the
  * next run. It holds no
  * transaction across a Stripe call, and two runs at once write each record once:
  * the conditional updates and the reservation's lock make the second a no-op. A
  * run that left checkouts unread, failed or waiting logs one line: its counts and
- * a few of their ids. `order`, `clock` and `request` are for tests.
+ * a few of their ids. `order`, `clock`, `request` and `first` are for tests.
  */
 export async function settleAbandonedCheckouts({
   now = new Date(),
   order,
   clock = Date.now,
   request = ABANDONED_CHECKOUT_READ,
+  first = Math.random() < 0.5 ? "settled" : "unsettled",
 }: {
   now?: Date;
   order?: SQL;
   clock?: () => number;
   request?: CheckoutSessionReadOptions;
+  first?: AbandonedCheckoutBranch;
 } = {}) {
   const deadline = clock() + ABANDONED_CHECKOUTS_RUN_BUDGET_MS;
   const counts: Record<AbandonedCheckoutOutcome | "failed" | "waiting", number> = {
@@ -355,12 +357,14 @@ export async function settleAbandonedCheckouts({
   // The first failure's kind only: a provider's message may name an account.
   let firstError: string | undefined;
   const spent = () => clock() >= deadline;
-  // The checkouts to cancel first: they ask Stripe nothing, so a provider that
-  // answers slowly for the others cannot keep them waiting run after run.
+  // Which question's checkouts go first is drawn for each run. Either can
+  // spend a run's budget on its own (sessions that answer at their timeout; a
+  // cancellation waiting for a reservation's lock), so neither is always
+  // first: the other is kept waiting k runs in a row with probability 2^-k.
   const batch = await findAbandonedCheckouts(now, order);
   const ordered = [
-    ...batch.filter(({ branch }) => branch === "settled"),
-    ...batch.filter(({ branch }) => branch !== "settled"),
+    ...batch.filter(({ branch }) => branch === first),
+    ...batch.filter(({ branch }) => branch !== first),
   ];
   for (const checkout of ordered) {
     if (spent()) {
