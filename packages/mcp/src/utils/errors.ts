@@ -3,6 +3,7 @@ import type { McpRequestContext } from "../auth/context";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { ORPCError } from "@orpc/server";
 
+import { APPROVAL_TEXTS } from "./approval-texts";
 import { TRANSLATION_KEY, TRANSLATION_KEY_MESSAGES, unknownKeyMessage } from "./error-messages";
 
 /**
@@ -96,21 +97,35 @@ function confirmationText(tool: string, details: Record<string, unknown>): strin
 }
 
 /**
+ * The text an error opens with: the bridge's own words for a confirmation
+ * request and a person's approval (`APPROVAL_TEXTS`), else its message.
+ * `spelledOut`: the words give every detail the model needs, which the text
+ * then does not repeat as JSON (the structured content still holds them).
+ */
+function headOf(tool: string, facts: ToolErrorFacts): { text: string; spelledOut: boolean } {
+  if (!facts.details) return { text: facts.message, spelledOut: false };
+  if (facts.code === "CONFIRMATION_REQUIRED") {
+    return { text: confirmationText(tool, facts.details), spelledOut: true };
+  }
+  const words = APPROVAL_TEXTS.get(facts.code)?.(tool, facts.details);
+  if (!words) return { text: facts.message, spelledOut: false };
+  return { text: words, spelledOut: facts.code === "APPROVAL_REQUIRED" };
+}
+
+/**
  * A failed call as a tool result: `isError: true`, a text block with the
  * message, the code, whether to retry and the details, and the same facts as
  * structured content. A confirmation request spells out the preview and the
- * token, so a model can ask the human and call again.
+ * token, so a model can ask the human and call again; a person's approval,
+ * its link and how to wait for it.
  */
 export function errorResult(tool: string, error: unknown): CallToolResult {
   const facts = isFacts(error) ? error : errorFacts(error);
   // Kept out of the answer, so logged here, redacted.
   if (facts === UNEXPECTED) logProviderError(`[mcp] ${tool} failed unexpectedly`, error);
-  const head =
-    facts.code === "CONFIRMATION_REQUIRED" && facts.details
-      ? confirmationText(tool, facts.details)
-      : facts.message;
-  const lines = [head, `code: ${facts.code}`, `retryable: ${facts.retryable}`];
-  if (facts.details && facts.code !== "CONFIRMATION_REQUIRED") {
+  const head = headOf(tool, facts);
+  const lines = [head.text, `code: ${facts.code}`, `retryable: ${facts.retryable}`];
+  if (facts.details && !head.spelledOut) {
     lines.push(`details: ${JSON.stringify(facts.details)}`);
   }
   return {
