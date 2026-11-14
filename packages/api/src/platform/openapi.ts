@@ -20,6 +20,7 @@ import { onError, ORPCError, type AnyProcedure, type AnyRouter } from "@orpc/ser
 import { FetchHandler } from "@orpc/server/fetch";
 import { StandardHandler, type StandardHandlerOptions } from "@orpc/server/standard";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { z } from "zod";
 
 import type { BaseContext } from "../context";
 import { resolveAccountActor } from "./actor";
@@ -765,12 +766,43 @@ export function createApiReference(router: AnyRouter): ApiReference {
 }
 
 /**
+ * The refusals that answer `Retry-After`, from their `details.retryAfterSeconds`:
+ * too many approvals wait for the person (429). `RATE_LIMITED` gives its
+ * seconds in its details only; `APPROVAL_RECENTLY_DECLINED` is no retry
+ * (409): when it may be asked again is in its details, for the caller to
+ * put to its user.
+ */
+export const RETRY_AFTER_CODES: ReadonlySet<string> = new Set(["APPROVALS_FULL"]);
+
+/** The part of an error's body `Retry-After` is read from. */
+const retryAfterBody = z.object({
+  data: z.object({
+    code: z.string(),
+    details: z.object({ retryAfterSeconds: z.number().int().positive() }),
+  }),
+});
+
+/** The `Retry-After` of an error answer, when its code is one of `RETRY_AFTER_CODES`. */
+async function retryAfterOf(response: Response): Promise<string | null> {
+  if (response.status !== 429) return null;
+  const body = retryAfterBody.safeParse(
+    await response
+      .clone()
+      .json()
+      .catch(() => null),
+  );
+  if (!body.success || !RETRY_AFTER_CODES.has(body.data.data.code)) return null;
+  return String(body.data.data.details.retryAfterSeconds);
+}
+
+/**
  * Serves one request with an API key: the transport is `openapi`, and a write
  * answers with its receipt in the `Louez-Operation-Id` header (and
  * `Louez-Replayed: true` when an idempotency key replayed it). Errors keep
- * oRPC's JSON shape, with our `data` (code, retryable, i18nKey, details).
- * With `reference`, it also serves the OpenAPI document and its reference
- * page, to anyone; their server is this deployment's `ports.urls`. A body in
+ * oRPC's JSON shape, with our `data` (code, retryable, i18nKey, details),
+ * and `Retry-After` for the codes of `RETRY_AFTER_CODES`. With `reference`,
+ * it also serves the OpenAPI document and its reference page, to anyone;
+ * their server is this deployment's `ports.urls`. A body in
  * a media type its operation does not take (`requestBodyMediaTypes`), or any
  * body but an empty one or `{}` where it takes none, gets 415 before the
  * operation runs; a field named as a path parameter with another value gets
@@ -897,6 +929,8 @@ export async function handleOpenApiRequest(
       context: { headers: request.headers, transport: "openapi", ports: options.ports, receipt },
     });
     if (!response) return undefined;
+    const retryAfter = await retryAfterOf(response);
+    if (retryAfter) response.headers.set("Retry-After", retryAfter);
     if (receipt.operationId) {
       response.headers.set(OPERATION_ID_HEADER, receipt.operationId);
       if (receipt.replayed) response.headers.set(REPLAYED_HEADER, "true");

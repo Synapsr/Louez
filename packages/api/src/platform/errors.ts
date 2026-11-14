@@ -183,6 +183,19 @@ export type ApprovalInvalidReason =
   | "state_changed"
   | "approver_not_allowed";
 
+/** What `APPROVAL_INVALID` says, by its reason: why the approval does not let the call run. */
+export const APPROVAL_INVALID_MESSAGES: Readonly<Record<ApprovalInvalidReason, string>> = {
+  state_changed:
+    "The store, or this call, changed since the user approved, so the approval no longer lets it run, and nothing was done. Call again without it to ask the user again, with the preview as it is now.",
+  expired:
+    "This approval expired before it was carried out, and nothing was done. Call again without it to ask the user again, with the preview as it is now.",
+  used: "This approval was already used: the action it approved was carried out once, and this call did nothing. Call again without it to ask the user again, with the preview as it is now.",
+  approver_not_allowed:
+    "The user who approved may no longer do this in the store, so the approval no longer lets it run, and nothing was done.",
+  other_request:
+    "This approval does not let this call run, and nothing was done. Call again without it to ask the user again, with the preview as it is now.",
+};
+
 /**
  * The answers of an action a person must approve
  * (docs/architecture/api-and-agents.md, "A person's approval"). Each is a
@@ -219,8 +232,7 @@ export const approvalErrors = {
     }),
   invalid: (reason: ApprovalInvalidReason) =>
     apiError("PRECONDITION_FAILED", "APPROVAL_INVALID", {
-      message:
-        "This approval does not let this call run, and nothing was done. Call again without it to ask the user again, with the preview as it is now.",
+      message: APPROVAL_INVALID_MESSAGES[reason],
       details: { reason },
     }),
   recentlyDeclined: (retryAt: Date, now: Date) =>
@@ -233,7 +245,7 @@ export const approvalErrors = {
     }),
   full: (limit: string, retryAt: Date, now: Date) =>
     apiError("TOO_MANY_REQUESTS", "APPROVALS_FULL", {
-      message: "Too many requests wait for the user's approval. Nothing was done: retry later.",
+      message: "A limit on approval requests is reached. Nothing was done: retry later.",
       retryable: true,
       details: {
         limit,
