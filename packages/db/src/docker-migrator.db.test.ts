@@ -39,6 +39,7 @@ const RELEASE = [
   "0100_deposit_hold_release_and_attempt",
   "0101_api_handoffs_revision",
   "0102_api_handoffs_decision",
+  "0103_api_handoffs_approval",
 ];
 
 interface Journal {
