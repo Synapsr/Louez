@@ -131,7 +131,7 @@ describe("API keys made from the dashboard (database)", { skip: skipWithoutTestD
     assert.equal(slug.available, true);
   });
 
-  test("a key that holds reservations only is refused the team", async () => {
+  test("a key that holds reservations only is refused the team, the billing and the online store", async () => {
     const api = await keyFromForm("Reservations only", {
       reservations: "write",
       products: "none",
@@ -143,6 +143,8 @@ describe("API keys made from the dashboard (database)", { skip: skipWithoutTestD
     });
 
     await deniedPermission(api.team.listMembers({}));
+    await deniedPermission(api.billing.getStatus({}));
+    await deniedPermission(api.onlineStore.checkSlugAvailability({ slug: "ak-free-slug" }));
     await api.reservations.list({});
   });
 });
