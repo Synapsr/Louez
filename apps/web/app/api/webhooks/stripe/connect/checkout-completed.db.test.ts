@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { after, before, beforeEach, describe, test } from "node:test";
 
 import { eq } from "drizzle-orm";
+import type Stripe from "stripe";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
@@ -17,9 +18,11 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 // records none is heard from the store's connected account of the moment; a
 // session with no payment row keeps the store's account. An event of the other mode
 // than the deployment's key is refused before it is read. A refused event writes
-// nothing and is answered 2xx. The signature check, the log, the fee runner, the
-// platform's fees, the senders, the invoicing and Stripe are replaced; Stripe
-// answers the PaymentIntent and fails on any other call.
+// nothing and is answered 2xx. A resumed payment whose replaced session was paid
+// gets no second session, and that session's completion records it. The
+// signature check, the log, the fee runner, the platform's fees, the senders,
+// the invoicing and Stripe are replaced; the webhook's Stripe answers the
+// PaymentIntent and fails on any other call.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-completed-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -142,6 +145,9 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let route: typeof import("./route");
+  let paymentSession: typeof import("@/lib/reservations/payment-session");
+  /** The payment session's calls to Stripe, with the account each was made on. */
+  const resumeCalls: [string, string, string | undefined][] = [];
   let counter = 0;
 
   before(async () => {
@@ -151,6 +157,27 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
     process.env.STRIPE_SECRET_KEY = "sk_test_checkout_completed";
     louezDb = await import("@louez/db");
     route = await import("./route");
+    paymentSession = await import("@/lib/reservations/payment-session");
+    // The payment session's Stripe: a replaced session was paid, so Stripe no
+    // longer expires it, and reads it complete.
+    const { getStripe } = await import("@/lib/stripe/client");
+    const sessionsApi = getStripe().checkout.sessions;
+    Reflect.set(
+      sessionsApi,
+      "create",
+      async (_params: unknown, options?: Stripe.RequestOptions) => {
+        resumeCalls.push(["create", "", options?.stripeAccount]);
+        throw new Error("No session is created here");
+      },
+    );
+    Reflect.set(sessionsApi, "expire", async (id: string, options?: Stripe.RequestOptions) => {
+      resumeCalls.push(["expire", id, options?.stripeAccount]);
+      throw new Error("This Checkout Session is not in an expireable state.");
+    });
+    Reflect.set(sessionsApi, "retrieve", async (id: string, options?: Stripe.RequestOptions) => {
+      resumeCalls.push(["retrieve", id, options?.stripeAccount]);
+      return { id, status: "complete", payment_status: "paid" };
+    });
 
     await louezDb.db.insert(louezDb.stores).values({
       id: STORE,
@@ -178,6 +205,7 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
 
   beforeEach(() => {
     calls.length = 0;
+    resumeCalls.length = 0;
   });
 
   // A reservation id of Louez's shape: 21 characters.
@@ -364,6 +392,49 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
       ],
     });
     assert.ok(completedLog(booking.id), JSON.stringify(calls));
+  });
+
+  test("a resume whose replaced session was paid at Stripe, its completion not yet delivered: no second session, errors.alreadyPaid; then the completion records it and confirms", async () => {
+    // The session was created on the account the store has left since.
+    const booking = await checkout(PREVIOUS_ACCOUNT);
+
+    const result = await paymentSession.createReservationPaymentSessionForCustomer(
+      "checkout-completed",
+      booking.id,
+      "cus_completed",
+      "checkout_resume",
+      { allowPendingReservation: true, chargeAmount: 10 },
+    );
+
+    assert.deepEqual(result, { error: "errors.alreadyPaid" });
+    // Expired, then read, on the account its row records; no session created.
+    assert.deepEqual(resumeCalls, [
+      ["expire", booking.sessionId, PREVIOUS_ACCOUNT],
+      ["retrieve", booking.sessionId, PREVIOUS_ACCOUNT],
+    ]);
+    // Its row as the resume left it: cancelled, nothing else.
+    assert.deepEqual(await stateOf(booking.id), {
+      status: "pending",
+      payments: [
+        { status: "cancelled", stripeAccountId: PREVIOUS_ACCOUNT, stripePaymentIntentId: null },
+      ],
+    });
+
+    assert.deepEqual(await complete(booking, PREVIOUS_ACCOUNT), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await stateOf(booking.id), {
+      status: "confirmed",
+      payments: [
+        {
+          status: "completed",
+          stripeAccountId: PREVIOUS_ACCOUNT,
+          stripePaymentIntentId: `pi_${booking.id}`,
+        },
+      ],
+    });
   });
 
   test("a session its row records under the previous account, sent by the store's account of today: connected_account_mismatch logged, nothing written", async () => {

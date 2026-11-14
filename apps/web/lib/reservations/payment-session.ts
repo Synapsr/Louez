@@ -25,6 +25,10 @@ import {
   toAnalyticsAmountCents,
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import {
+  checkoutSessionAccount,
+  isSessionCreationRow,
+} from "@/lib/reservations/checkout-session-account";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { hasRentalPaymentInProgress, isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -145,11 +149,42 @@ export async function createReservationPaymentSessionForCustomer(
       if (isRentalPaid(rows, currency)) return { refusal: "errors.alreadyPaid" };
       return { refusal: null, payments: rows };
     };
+    /** Expires a session this call created and will not hand out: it is open, or gone. */
     const expireSession = async (sessionId: string) => {
       try {
         await getStripe().checkout.sessions.expire(sessionId, { stripeAccount: stripeAccountId });
       } catch {
         // Session may already be expired or completed.
+      }
+    };
+    /**
+     * Whether a replaced session can no longer be paid ("expired"), was paid
+     * ("complete"), or neither is known ("unknown"), on the account it lives on.
+     * Stripe expires only an open session, one whose payment has not started; an
+     * expire that fails leaves the session expired already, complete, or not
+     * reached: its retrieve says which.
+     */
+    const settleReplacedSession = async ({
+      sessionId,
+      account,
+    }: {
+      sessionId: string;
+      account: string;
+    }): Promise<"expired" | "complete" | "unknown"> => {
+      try {
+        await getStripe().checkout.sessions.expire(sessionId, { stripeAccount: account });
+        return "expired";
+      } catch {
+        // Not open any more, or Stripe not reached: read it.
+      }
+      try {
+        const session = await getStripe().checkout.sessions.retrieve(sessionId, {
+          stripeAccount: account,
+        });
+        if (session.status === "complete" || session.payment_status === "paid") return "complete";
+        return session.status === "expired" ? "expired" : "unknown";
+      } catch {
+        return "unknown";
       }
     };
 
@@ -158,7 +193,7 @@ export async function createReservationPaymentSessionForCustomer(
     // pending and cancels nothing.
     const replaced = await runReservationOnlyChange(scope, async (tx) => {
       const payable = await readPayable(tx);
-      if (payable.refusal !== null) return { refusal: payable.refusal, sessionIds: [] };
+      if (payable.refusal !== null) return { refusal: payable.refusal, sessions: [] };
       const open = payable.payments.filter(
         (payment) => payment.type === "rental" && payment.status === "pending",
       );
@@ -171,13 +206,33 @@ export async function createReservationPaymentSessionForCustomer(
       if (open.length > 0) await markReservation(tx, reservation);
       return {
         refusal: null,
-        sessionIds: open.flatMap((payment) =>
-          payment.stripeCheckoutSessionId ? [payment.stripeCheckoutSessionId] : [],
+        // Each session on the account its row records, the one it was created on;
+        // a row that records none, on the store's.
+        sessions: open.flatMap((payment) =>
+          payment.stripeCheckoutSessionId
+            ? [
+                {
+                  sessionId: payment.stripeCheckoutSessionId,
+                  account: checkoutSessionAccount({
+                    recordedAccountId: isSessionCreationRow(payment)
+                      ? payment.stripeAccountId
+                      : null,
+                    storeAccountId: stripeAccountId,
+                  }),
+                },
+              ]
+            : [],
         ),
       };
     });
     if (replaced.refusal !== null) return { error: replaced.refusal };
-    for (const sessionId of replaced.sessionIds) await expireSession(sessionId);
+    // No second session for a rental whose replaced session was paid, or may
+    // have been: its completion, when delivered, completes the row cancelled
+    // above and confirms the reservation.
+    const settled: string[] = [];
+    for (const session of replaced.sessions) settled.push(await settleReplacedSession(session));
+    if (settled.includes("complete")) return { error: "errors.alreadyPaid" };
+    if (settled.includes("unknown")) return { error: "errors.paymentSessionError" };
 
     const lineItems = [
       {

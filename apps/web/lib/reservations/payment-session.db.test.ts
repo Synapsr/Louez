@@ -19,9 +19,10 @@ import {
 // checkout cancels the rental's open payments, then expires their sessions, then
 // creates its own, and installs it only on a reservation that, under its lock,
 // is still payable and has no other open or paid rental payment; otherwise it
-// expires the session it created (docs/domain/reservation-changes.md). Stripe is
-// a fake that notes the sessions it is asked to create and to expire: no
-// network. The database is real.
+// expires the session it created; a replaced session it cannot expire is read,
+// and one paid, or whose state it cannot read, gets no second session
+// (docs/domain/reservation-changes.md). Stripe is a fake that notes the sessions
+// it is asked to create, expire and read: no network. The database is real.
 
 process.env.SKIP_ENV_VALIDATION = "true";
 // The Stripe client is built from this key, then its session creation is replaced.
@@ -68,6 +69,13 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
   const accounts: (string | undefined)[] = [];
   /** The sessions expired at Stripe, in order. */
   const expired: string[] = [];
+  /** The sessions read at Stripe, in order. */
+  const retrieved: string[] = [];
+  /**
+   * What Stripe answers about a replaced session: by default it expires it. Else
+   * the expire fails, and the retrieve answers that state, or fails too.
+   */
+  let replacedAtStripe: "expirable" | "open" | "complete" | "expired" | "unreachable" = "expirable";
   /** Runs after a session is created, before its payment is installed: a test's moment. */
   let afterCreate: (() => Promise<void>) | null = null;
 
@@ -88,9 +96,23 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
         return { id, url: `https://checkout.stripe.test/${id}`, expires_at: 1_900_000_000 };
       },
     );
+    // A session this test created is open; another is the replaced one.
+    const created = (id: string) => sessions.some((_, index) => id === `cs_pay_${index + 1}`);
     Reflect.set(getStripe().checkout.sessions, "expire", async (id: string) => {
+      if (!created(id) && replacedAtStripe !== "expirable") {
+        throw new Error("This Checkout Session is not in an expireable state.");
+      }
       expired.push(id);
       return { id, status: "expired" };
+    });
+    Reflect.set(getStripe().checkout.sessions, "retrieve", async (id: string) => {
+      retrieved.push(id);
+      if (replacedAtStripe === "unreachable") throw new Error("Stripe not reached");
+      return {
+        id,
+        status: replacedAtStripe,
+        payment_status: replacedAtStripe === "complete" ? "paid" : "unpaid",
+      };
     });
 
     // The store has moved to dollars since its reservations were booked.
@@ -121,6 +143,8 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     sessions.length = 0;
     accounts.length = 0;
     expired.length = 0;
+    retrieved.length = 0;
+    replacedAtStripe = "expirable";
     afterCreate = null;
   });
 
@@ -427,5 +451,42 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
         { status: "pending", session: winner },
       ],
     });
+  });
+
+  test("a replaced session Stripe no longer expires, read as expired: a new session, as when it expires it", async () => {
+    const { id, openSession } = await openCheckout();
+    replacedAtStripe = "expired";
+
+    const result = await resume(id);
+
+    assert.ok(!("error" in result), JSON.stringify(result));
+    assert.deepEqual(retrieved, [openSession]);
+    assert.equal(sessions.length, 1);
+    assert.deepEqual(await stateOf(id), {
+      status: "pending",
+      payments: [
+        { status: "cancelled", session: openSession },
+        { status: "pending", session: "cs_pay_1" },
+      ],
+    });
+  });
+
+  test("a replaced session neither expired nor read: no new session, errors.paymentSessionError", async () => {
+    for (const state of ["unreachable", "open"] as const) {
+      const { id, openSession } = await openCheckout();
+      replacedAtStripe = state;
+
+      const result = await resume(id);
+
+      assert.deepEqual(result, { error: "errors.paymentSessionError" }, state);
+      assert.deepEqual(retrieved, [openSession], state);
+      assert.equal(sessions.length, 0, `${state}: no session created`);
+      assert.deepEqual(
+        await stateOf(id),
+        { status: "pending", payments: [{ status: "cancelled", session: openSession }] },
+        state,
+      );
+      retrieved.length = 0;
+    }
   });
 });
