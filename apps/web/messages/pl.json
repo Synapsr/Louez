@@ -9553,7 +9553,7 @@
     },
     "confirm": {
       "label": "Proś o potwierdzenie przed działaniami wrażliwymi",
-      "description": "Przed usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić; ma polecenie najpierw Ci go pokazać. Zapisanie, zwrot lub usunięcie płatności, wydanie kredytów AI, potwierdzenie rezerwacji ponad dostępny stan lub z pominięciem bufora rotacji, usunięcie członka i anulowanie zaproszenia zawsze wymagają potwierdzenia, nawet gdy to jest wyłączone."
+      "description": "Przed usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić; ma polecenie najpierw Ci go pokazać. Zapisanie, zwrot lub usunięcie płatności, potwierdzenie rezerwacji ponad dostępny stan lub z pominięciem bufora rotacji, usunięcie członka i anulowanie zaproszenia czekają na Twoją zgodę, nawet gdy to jest wyłączone: agent daje Ci link, a Ty zatwierdzasz lub odrzucasz na stronie Louez, na swoim koncie. Wydanie kredytów AI zawsze wymaga potwierdzenia, nawet gdy to jest wyłączone."
     },
     "bundlesTitle": "Wyświetlane narzędzia",
     "bundlesHint": "Agent widzi te zestawy narzędzi. Później możesz dodać kolejne.",

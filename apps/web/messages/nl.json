@@ -9553,7 +9553,7 @@
     },
     "confirm": {
       "label": "Om bevestiging vragen vóór gevoelige acties",
-      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling registreren, terugstorten of verwijderen, AI-tegoed uitgeven, een reservering bevestigen boven de beschikbare voorraad of binnen de omlooptijdbuffer, een lid verwijderen en een uitnodiging intrekken vragen altijd om bevestiging, ook als dit uit staat."
+      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling registreren, terugstorten of verwijderen, een reservering bevestigen boven de beschikbare voorraad of binnen de omlooptijdbuffer, een lid verwijderen en een uitnodiging intrekken wachten op uw goedkeuring, ook als dit uit staat: de agent geeft u een link, en u keurt goed of weigert op een Louez-pagina, ingelogd op uw account. AI-tegoed uitgeven vraagt altijd om bevestiging, ook als dit uit staat."
     },
     "bundlesTitle": "Getoonde tools",
     "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",
