@@ -4877,7 +4877,7 @@
         "noKeys": "Aucune clé API. Créez-en une pour commencer.",
         "keyRevoked": "Clé API révoquée.",
         "lastUsed": "Dernière utilisation",
-        "confirmSensitive": "Confirmer avant les actions sensibles",
+        "confirmSensitive": "Confirmations facultatives (les approbations restent obligatoires)",
         "confirmSensitiveSaved": "Réglage enregistré",
         "endpointsTitle": "Points d'accès",
         "endpointsDescription": "Utilisez ces points d'accès pour vous connecter aux données de votre boutique.",
@@ -9553,7 +9553,7 @@
     },
     "confirm": {
       "label": "Demander une confirmation avant les actions sensibles",
-      "description": "Avant une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer ; il a pour consigne de vous le montrer d’abord. Enregistrer, rendre ou supprimer un paiement, confirmer une réservation au-delà du stock disponible ou malgré la marge de rotation, retirer un membre et annuler une invitation attendent votre approbation, même désactivé : l’agent vous donne un lien, et vous approuvez ou refusez sur une page Louez, depuis votre compte. Dépenser des crédits IA demande toujours une confirmation, même désactivé."
+      "description": "Avant une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer ; il a pour consigne de vous le montrer d’abord. Enregistrer un paiement ou une restitution de caution déjà effectuée, supprimer un paiement, confirmer une réservation au-delà du stock disponible ou malgré la marge de rotation, retirer un membre et annuler une invitation nécessitent votre approbation, même si cette option est désactivée : l’agent vous donne un lien, et vous approuvez ou refusez sur une page Louez, depuis votre compte. Dépenser des crédits IA demande toujours une confirmation, même désactivé."
     },
     "bundlesTitle": "Outils affichés",
     "bundlesHint": "L’agent voit ces ensembles d’outils. Vous pourrez en ajouter plus tard.",

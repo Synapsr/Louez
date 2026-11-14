@@ -413,7 +413,7 @@ describe("MCP directory conformance", () => {
     // The approval: its code, the link for the user, how to follow it and carry it out.
     assert.match(
       essentials,
-      /APPROVAL_REQUIRED \(give the user its link; handoffs_get says when they approved\): call again with its confirmationToken only once they agree\./,
+      /APPROVAL_REQUIRED: give approval\.url to the user; retry with approval\.id as confirmationToken only after handoffs_get says approved\./,
     );
   });
 
@@ -431,7 +431,10 @@ describe("MCP directory conformance", () => {
     assert.match(instructions, /need the user's approval, whatever the connection's setting/);
     assert.match(instructions, /handoffs_get with the approval's id then says where it stands/);
     assert.match(instructions, /the approval's id as confirmationToken carries the action out, once/);
-    assert.match(instructions, /APPROVAL_DECLINED/);
+    // After a refusal: tell the user, stop, and ask again only if they ask.
+    assert.match(instructions, /if refused, tell the user nothing was done and stop/);
+    assert.match(instructions, /Request another approval only if the user asks, and respect retryAt/);
+    assert.match(instructions, /if completed, do not execute it again\./);
     // The team's removals no longer answer a confirmation.
     assert.doesNotMatch(instructions, /team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED/);
   });
@@ -453,6 +456,10 @@ describe("MCP directory conformance", () => {
         assert.deepEqual(argument, APPROVAL_ARGUMENT, tool.name);
         assert.match(tool.description ?? "", /answers APPROVAL_REQUIRED with/, tool.name);
         assert.match(tool.description ?? "", /handoffs_get with the approval's id/, tool.name);
+        // Each reason its own instruction: a used approval is never a reason to ask again.
+        assert.match(tool.description ?? "", /used means the action already ran, so read the record before acting again/, tool.name);
+        assert.match(tool.description ?? "", /The action's own refusals .* answer first/, tool.name);
+        assert.doesNotMatch(tool.description ?? "", /the same call without it asks the user again/, tool.name);
         assert.doesNotMatch(tool.description ?? "", /token proves|always asks for a confirmation/, tool.name);
       } else if (argument !== undefined) {
         assert.deepEqual(argument, CONFIRMATION_ARGUMENT, tool.name);
@@ -547,7 +554,8 @@ describe("MCP directory conformance", () => {
       const essentials = serverInstructions(ctx, ["daily"]).slice(0, INSTRUCTIONS_ESSENTIALS_MAX);
       assert.match(essentials, /^Louez runs rental stores/, name);
       assert.match(essentials, /never build or guess a Louez URL/, name);
-      assert.match(essentials, /confirmationToken only once they agree\./, name);
+      assert.match(essentials, /confirmationToken if the user agrees\./, name);
+      assert.match(essentials, /only after handoffs_get says approved\.$/m, name);
       if (name === "severalStores" || name === "severalStoresOneNamed") {
         assert.match(essentials, /call stores_list first/, name);
       }

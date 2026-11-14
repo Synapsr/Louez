@@ -4740,7 +4740,7 @@
         "noKeys": "Nessuna chiave API. Creane una per iniziare.",
         "keyRevoked": "Chiave API revocata.",
         "lastUsed": "Ultimo utilizzo",
-        "confirmSensitive": "Conferma prima delle azioni sensibili",
+        "confirmSensitive": "Conferme facoltative (le approvazioni restano obbligatorie)",
         "confirmSensitiveSaved": "Impostazione salvata",
         "endpointsTitle": "Endpoint",
         "endpointsDescription": "Usa questi endpoint per accedere ai dati del tuo negozio.",
@@ -9553,7 +9553,7 @@
     },
     "confirm": {
       "label": "Chiedi conferma prima delle azioni sensibili",
-      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare, restituire o eliminare un pagamento, confermare una prenotazione oltre lo stock disponibile o il margine di rotazione, rimuovere un membro e annullare un invito attendono la sua approvazione, anche se disattivato: l’agente le dà un link e lei approva o rifiuta su una pagina di Louez, dal suo account. Spendere crediti IA chiede sempre conferma, anche se disattivato."
+      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare un pagamento o una restituzione del deposito già effettuata, eliminare un pagamento, confermare una prenotazione oltre lo stock disponibile o senza rispettare il margine di rotazione, rimuovere un membro e annullare un invito richiedono la sua approvazione, anche con questa opzione disattivata: l’agente le dà un link e lei approva o rifiuta su una pagina di Louez, dal suo account. Spendere crediti IA chiede sempre conferma, anche se disattivato."
     },
     "bundlesTitle": "Strumenti mostrati",
     "bundlesHint": "L’agente vede questi gruppi di strumenti. Potrà aggiungerne altri in seguito.",

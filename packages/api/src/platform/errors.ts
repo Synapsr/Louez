@@ -189,7 +189,7 @@ export const APPROVAL_INVALID_MESSAGES: Readonly<Record<ApprovalInvalidReason, s
     "The store, or this call, changed since the user approved, so the approval no longer lets it run, and nothing was done. Call again without it to ask the user again, with the preview as it is now.",
   expired:
     "This approval expired before it was carried out, and nothing was done. Call again without it to ask the user again, with the preview as it is now.",
-  used: "This approval was already used: the action it approved was carried out once, and this call did nothing. Call again without it to ask the user again, with the preview as it is now.",
+  used: "This approval was already used: the action it approved was carried out once, and this call did nothing. Check the record before asking for the action again.",
   approver_not_allowed:
     "The user who approved may no longer do this in the store, so the approval no longer lets it run, and nothing was done.",
   other_request:
@@ -219,7 +219,7 @@ export const approvalErrors = {
     }),
   pending: (approval: ApprovalAnswer) =>
     apiError("PRECONDITION_FAILED", "APPROVAL_PENDING", {
-      message: `The user has not decided yet. Nothing was done. Read the approval again with GET /handoffs/${approval.id} in ${approval.pollAfterSeconds} seconds.`,
+      message: `The approval has not been decided yet. Nothing was done. Read its status again in ${approval.pollAfterSeconds} seconds.`,
       retryable: true,
       details: { approval },
     }),

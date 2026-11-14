@@ -480,6 +480,12 @@ describe(
         "`APPROVAL_INVALID` (412)",
         "`APPROVAL_RECENTLY_DECLINED` (409)",
         "`APPROVALS_FULL` (429, with `Retry-After`)",
+        // Each reason of APPROVAL_INVALID, and no more, with its own instruction.
+        "For `used`, the action already ran",
+        "For `approver_not_allowed`",
+        "For `expired` or `state_changed`",
+        "For `other_request`",
+        "The operation's own refusals come first",
       ]) {
         assert.ok(section.includes(fact), `the section says ${fact}`);
       }

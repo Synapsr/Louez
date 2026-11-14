@@ -4740,7 +4740,7 @@
         "noKeys": "Nog geen API-sleutels. Maak er een aan om te beginnen.",
         "keyRevoked": "API-sleutel ingetrokken.",
         "lastUsed": "Laatst gebruikt",
-        "confirmSensitive": "Bevestigen vóór gevoelige acties",
+        "confirmSensitive": "Optionele bevestigingen (verplichte goedkeuring blijft nodig)",
         "confirmSensitiveSaved": "Instelling opgeslagen",
         "endpointsTitle": "Eindpunten",
         "endpointsDescription": "Gebruik deze endpoints om toegang te krijgen tot uw winkelgegevens.",
@@ -9553,7 +9553,7 @@
     },
     "confirm": {
       "label": "Om bevestiging vragen vóór gevoelige acties",
-      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling registreren, terugstorten of verwijderen, een reservering bevestigen boven de beschikbare voorraad of binnen de omlooptijdbuffer, een lid verwijderen en een uitnodiging intrekken wachten op uw goedkeuring, ook als dit uit staat: de agent geeft u een link, en u keurt goed of weigert op een Louez-pagina, ingelogd op uw account. AI-tegoed uitgeven vraagt altijd om bevestiging, ook als dit uit staat."
+      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling of een al uitgevoerde terugbetaling van de borg registreren, een betaling verwijderen, een reservering bevestigen boven de beschikbare voorraad of binnen de omlooptijdbuffer, een lid verwijderen en een uitnodiging intrekken vereisen uw goedkeuring, ook als deze instelling uit staat: de agent geeft u een link, en u keurt de actie goed of wijst deze af op een Louez-pagina, ingelogd op uw account. AI-tegoed uitgeven vraagt altijd om bevestiging, ook als dit uit staat."
     },
     "bundlesTitle": "Getoonde tools",
     "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",

@@ -4876,7 +4876,7 @@
         "noKeys": "Belum ada kunci API. Buat satu untuk memulai.",
         "keyRevoked": "Kunci API dicabut.",
         "lastUsed": "Terakhir digunakan",
-        "confirmSensitive": "Konfirmasi sebelum tindakan sensitif",
+        "confirmSensitive": "Konfirmasi opsional (persetujuan wajib tetap berlaku)",
         "confirmSensitiveSaved": "Pengaturan disimpan",
         "endpointsTitle": "Titik akhir",
         "endpointsDescription": "Gunakan titik akhir ini untuk terhubung ke data penyimpanan Anda.",
@@ -9553,7 +9553,7 @@
     },
     "confirm": {
       "label": "Minta konfirmasi sebelum tindakan sensitif",
-      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat, mengembalikan, atau menghapus pembayaran, mengonfirmasi reservasi melebihi stok yang tersedia atau melewati buffer turnover, mengeluarkan anggota, dan membatalkan undangan menunggu persetujuan Anda, meski ini dimatikan: agen memberi Anda tautan, lalu Anda menyetujui atau menolaknya di halaman Louez, dari akun Anda. Memakai kredit AI selalu meminta konfirmasi, meski ini dimatikan."
+      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat pembayaran atau pengembalian deposit yang sudah dilakukan, menghapus pembayaran, mengonfirmasi reservasi melebihi stok yang tersedia atau tanpa memenuhi buffer turnover, mengeluarkan anggota, dan membatalkan undangan memerlukan persetujuan Anda, meskipun pengaturan ini dimatikan: agen memberi Anda tautan, lalu Anda menyetujui atau menolaknya di halaman Louez setelah masuk ke akun Anda. Memakai kredit AI selalu meminta konfirmasi, meski ini dimatikan."
     },
     "bundlesTitle": "Alat yang ditampilkan",
     "bundlesHint": "Agen melihat kumpulan alat ini. Anda dapat menambahkan lainnya nanti.",

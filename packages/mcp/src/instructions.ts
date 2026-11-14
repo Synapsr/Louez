@@ -37,7 +37,7 @@ const handoffHelp = (billing: boolean) =>
  * transport"): how the agent follows one to its end.
  */
 const APPROVAL_HELP =
-  "Recording a payment or a deposit return and deleting a payment (record_payment, record_deposit_return, delete_payment), removing a member or cancelling an invitation (team_remove_member, team_cancel_invitation), and confirming a reservation with allowOverbooking or overrideTurnoverBuffer (reservations_update_status) need the user's approval, whatever the connection's setting: the first call does nothing and answers APPROVAL_REQUIRED with a preview and a link. Give the user the link as it is: they approve or refuse in Louez, signed in. handoffs_get with the approval's id then says where it stands, until approved, completed, failed or expired; a call every minute or so is enough. Once it is approved, the same tool with the same arguments and the approval's id as confirmationToken carries the action out, once. A refusal answers APPROVAL_DECLINED, with the user's words if they gave any; a call without the id asks again.";
+  "Recording a payment or a deposit return and deleting a payment (record_payment, record_deposit_return, delete_payment), removing a member or cancelling an invitation (team_remove_member, team_cancel_invitation), and confirming a reservation with allowOverbooking or overrideTurnoverBuffer (reservations_update_status) need the user's approval, whatever the connection's setting: the first call does nothing and answers APPROVAL_REQUIRED with a preview and a link. Give the user the link as it is: they approve or refuse in Louez, signed in. handoffs_get with the approval's id then says where it stands, until approved, completed, failed or expired; a call every minute or so is enough. Once it is approved, the same tool with the same arguments and the approval's id as confirmationToken carries the action out, once. If handoffs_get returns failed, read failure and decision; if refused, tell the user nothing was done and stop. Calling the write with a refused approval answers APPROVAL_DECLINED. Request another approval only if the user asks, and respect retryAt if APPROVAL_RECENTLY_DECLINED is returned. If expired, request a new approval only if the action is still wanted; if completed, do not execute it again.";
 
 /** The new store's address check, for a client that creates stores. */
 const STORE_SLUG_HELP = "stores_check_slug_availability before stores_create, ";
@@ -100,7 +100,7 @@ const LINKS_ESSENTIAL =
 
 /** Sensitive actions confirm with the user first, or wait for their approval in Louez. */
 const CONFIRMATION_ESSENTIAL =
-  "A sensitive action may answer CONFIRMATION_REQUIRED (show the user the preview) or APPROVAL_REQUIRED (give the user its link; handoffs_get says when they approved): call again with its confirmationToken only once they agree.";
+  "CONFIRMATION_REQUIRED: show the preview; retry with its confirmationToken if the user agrees. APPROVAL_REQUIRED: give approval.url to the user; retry with approval.id as confirmationToken only after handoffs_get says approved.";
 
 /**
  * The server's instructions. The essentials first, within

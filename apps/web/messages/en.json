@@ -4877,7 +4877,7 @@
         "noKeys": "No API keys yet. Create one to get started.",
         "keyRevoked": "API key revoked.",
         "lastUsed": "Last used",
-        "confirmSensitive": "Confirm before sensitive actions",
+        "confirmSensitive": "Optional confirmations (required approvals still apply)",
         "confirmSensitiveSaved": "Setting saved",
         "endpointsTitle": "Endpoints",
         "endpointsDescription": "Use these endpoints to connect to your store data.",
@@ -9553,7 +9553,7 @@
     },
     "confirm": {
       "label": "Ask for confirmation before sensitive actions",
-      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording, returning or deleting a payment, confirming a reservation beyond the available stock or past the turnover buffer, removing a member and cancelling an invitation wait for your approval, even with this off: the agent gives you a link, and you approve or refuse on a Louez page, signed in to your account. Spending AI credits always asks for a confirmation, even with this off."
+      "description": "Before a deletion or a message to a customer, the agent first gets a preview and has to confirm; it is told to show it to you first. Recording a payment or a deposit return you have already made, deleting a payment, confirming a reservation beyond the available stock or past the turnover buffer, removing a member and cancelling an invitation wait for your approval, even with this off: the agent gives you a link, and you approve or refuse on a Louez page, signed in to your account. Spending AI credits always asks for a confirmation, even with this off."
     },
     "bundlesTitle": "Tools shown",
     "bundlesHint": "The agent sees these tool sets. You can add more later.",

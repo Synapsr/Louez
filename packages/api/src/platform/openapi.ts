@@ -385,7 +385,7 @@ export const COMMON_ERROR_CODES = [
   [
     412,
     "APPROVAL_INVALID",
-    "The approval sent no longer lets the write run (`details.reason`): call again without it to ask again.",
+    "The approval does not authorize this request. Check `details.reason` and follow the “Approvals” section before retrying.",
   ],
   [413, "REQUEST_TOO_LARGE", "The body is larger than the operation takes (`details.maxBytes`)."],
   [
@@ -451,11 +451,11 @@ Recording a payment or a deposit return, deleting a payment, removing a member, 
 3. Read \`GET /handoffs/{id}\` with the approval's id every \`pollAfterSeconds\` (${APPROVAL_POLL_SECONDS}) seconds or more, until its \`status\` is \`approved\`, \`completed\`, \`failed\` or \`expired\`, and no later than \`expiresAt\`; \`decision\` says what the owner decided, when, and their words. Only the key that asked reads its approval. It returns neither the input nor the operation: keep the request you sent.
 4. Approved, send the same request again, with the same input and the approval's id in the \`Louez-Confirmation\` header, within ${APPROVAL_EXECUTE_TIME}. It runs once, if the store is still as the preview showed, and answers as the operation always does. The same \`Idempotency-Key\` may be kept for the whole flow.
 
-The other answers, each with nothing done:
+The operation's own refusals come first: a request that fails them, such as an approved deletion sent again (\`PAYMENT_NOT_FOUND\`) or a deposit return above what is left (\`DEPOSIT_RETURN_EXCEEDS_BALANCE\`), answers that refusal whatever approval it carries. An approval error comes only for a request that is otherwise still valid. The other answers, each with nothing done:
 
 - \`APPROVAL_PENDING\` (412, retryable): the approval sent is not decided yet.
 - \`APPROVAL_DECLINED\` (409): the owner refused; \`details.reason\` holds their words, if any, as plain text.
-- \`APPROVAL_INVALID\` (412): the approval sent no longer lets the write run. \`details.reason\` says why: \`state_changed\` (the store or the input is no longer as approved), \`expired\`, \`used\`, \`approver_not_allowed\` (the owner may no longer do it) or \`other_request\`. The same request without it asks again, with the preview as it is now.
+- \`APPROVAL_INVALID\` (412): inspect \`details.reason\`. For \`used\`, the action already ran: check the current record before requesting another action. For \`approver_not_allowed\`, the key’s owner can no longer authorize it; someone allowed must act in Louez. For \`expired\` or \`state_changed\`, send the request without \`Louez-Confirmation\` for a new preview and approval. For \`other_request\`, use this request’s approval, or omit the header to request one.
 - \`APPROVAL_RECENTLY_DECLINED\` (409): the owner refused the same request less than ${APPROVAL_COOL_DOWN_TIME} ago; it may be asked again from \`details.retryAt\`.
 - \`APPROVALS_FULL\` (429, with \`Retry-After\`): a key holds at most ${MAX_PENDING_APPROVALS} open approvals and makes at most ${APPROVAL_REQUESTS_PER_HOUR} requests an hour in its store, and a store holds at most ${MAX_STORE_PENDING_APPROVALS} open approvals.
 
