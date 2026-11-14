@@ -12,6 +12,7 @@
     "db:seed": "tsx scripts/seed/index.ts",
     "db:seed:demo": "tsx scripts/seed/demo/index.ts",
     "db:seed:demo:images": "tsx scripts/seed/demo/upload-images.ts",
+    "db:seed:approvals": "tsx scripts/seed/approvals.ts",
     "marketplace:cohort-backfill": "node --import tsx scripts/run-reeent-cohort-backfill.ts",
     "marketplace:default-publication": "node --import tsx scripts/run-marketplace-default-publication.ts",
     "variants:sync-inactive": "node --import tsx scripts/run-variant-axes-backfill.ts",
