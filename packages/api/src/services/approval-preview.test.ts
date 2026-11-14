@@ -82,6 +82,18 @@ describe("an identifier is hidden only when a readable name identifies the same 
     );
   });
 
+  test("a heading that shows nothing names nothing: the item keeps its identifier, and the request is unreadable", () => {
+    const unseen = "\u200d\ufe0f";
+    for (const item of [
+      { id: "p_1", name: unseen },
+      { productId: "p_1", product: unseen },
+    ]) {
+      const details = { lines: [item] };
+      assert.match(flat(detailsOf(details)), /p_1/, JSON.stringify(Object.keys(item)));
+    }
+    assert.equal(flat(detailsOf({ lines: [{ id: "p_1", name: "K" }] })), "Lines K");
+  });
+
   test("a digest is never shown", () => {
     assert.equal(flat(detailsOf({ recipientsHash: "f".repeat(64), number: "R-1" })), "Number R-1");
   });

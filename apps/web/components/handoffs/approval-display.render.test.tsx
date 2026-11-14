@@ -763,6 +763,28 @@ describe("a payment recorded through the generic write says what the writer reco
     }
   });
 
+  test("the write judges the amount as sent: one it refuses shows no display, whatever it rounds to", () => {
+    // A negative amount that rounds to zero is still negative, and refused outside an adjustment.
+    for (const type of ["rental", "damage", "deposit", "deposit_return"]) {
+      assert.equal(recorded(type, "-0.004"), null, type);
+    }
+    // Zero is refused for every type.
+    for (const type of ["rental", "damage", "deposit", "deposit_return", "adjustment"]) {
+      for (const zero of ["0", "0.00", "-0"]) assert.equal(recorded(type, zero), null, `${type} ${zero}`);
+    }
+    // An adjustment may be negative; a small positive amount is accepted as it will be stored.
+    assert.ok(recorded("adjustment", "-0.004"));
+    assert.ok(recorded("rental", "0.004"));
+    // A deposit return must be above zero.
+    const returned = (amount: string) =>
+      recordDepositReturnPresentation(
+        { reservationId: RESERVATION, number: "R-00094", amount, method: "cash", returnable: "300.00" },
+        "EUR",
+      );
+    for (const refused of ["0", "-0.004", "-150.00"]) assert.equal(returned(refused), null, refused);
+    assert.ok(returned("150.00"));
+  });
+
   test("the amount shown is the amount the row holds, every digit of it and no other", () => {
     const cases: Array<[string, string, string]> = [
       // Yen has no minor unit, the row keeps two decimals: 1.49 stays 1.49.

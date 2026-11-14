@@ -429,7 +429,9 @@ function shownValue(value: unknown, depth: number, dated = false): ShownValue | 
     const entries = value.flatMap((item, index): ShownDetail[] => {
       const named = isRecord(item) ? NAME_KEYS.find((key) => typeof item[key] === "string") : undefined;
       const title = named && isRecord(item) ? oneLine(String(item[named])) : "";
-      if (named && title && isRecord(item)) {
+      // A heading names its item only when it can be read: otherwise the item
+      // keeps every entry, its identifier and its unreadable name included.
+      if (named && isReadableText(title, 1) && isRecord(item)) {
         const { [named]: _name, ...rest } = item;
         const group = entriesOf(rest, depth + 1, { key: named });
         return group.length > 0

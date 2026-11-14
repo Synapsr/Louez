@@ -117,7 +117,12 @@ export function recordPaymentPresentation(
   const { type, method } = details;
   if (!amount || !CURRENCY.test(currency) || !isRecordedType(type)) return null;
   if (!isChoice("paymentType", type) || !isChoice("paymentMethod", method)) return null;
-  const said = RECORDED[type](amount.startsWith("-"));
+  // The writer judges the amount as sent, before any rounding: zero is
+  // refused, and so is a negative amount outside an adjustment. A request it
+  // would refuse gets no display, whatever its rounded amount reads.
+  const sent = parseFloat(details.amount);
+  if (Number.isNaN(sent) || sent === 0) return null;
+  const said = RECORDED[type](sent < 0);
   if (!said) return null;
   const values = {
     type: choice("paymentType", type),
@@ -160,6 +165,9 @@ export function recordDepositReturnPresentation(
   if (!amount || !held || !CURRENCY.test(currency) || !isChoice("paymentMethod", method)) {
     return null;
   }
+  // The writer takes a return above zero, judged as sent: one it would refuse gets no display.
+  const sent = parseFloat(details.amount);
+  if (Number.isNaN(sent) || sent <= 0) return null;
   return {
     display: {
       headline: headline("returnDeposit", {}),
