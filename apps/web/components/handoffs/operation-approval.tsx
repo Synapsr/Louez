@@ -16,8 +16,13 @@ import { HandoffDecisionForm } from "@/components/handoffs/handoff-decision-form
 import { HandoffDisclosure } from "@/components/handoffs/handoff-disclosure";
 
 /**
- * The consequences that cannot be undone, the gravest first: the first one a
- * request carries names the page, and the note names them all, in this order.
+ * The consequences a person weighs, the gravest first: the first one a
+ * request carries names the page, and the note says each in a sentence of
+ * its own, in this order. A sentence says "cannot be undone" only where
+ * that is true of the consequence (a deletion, a message sent, credits
+ * spent), not of a payment recorded or an access removed. The stock
+ * sentence says what the override allows, not that something is short: the
+ * consequence is carried by the override itself, even with nothing short.
  */
 const ORDER = [
   "access_removed",
@@ -46,7 +51,7 @@ interface OperationApprovalProps {
  * not, decided from one screen: what kind of action, in which store and
  * asked by whom (one line under the title, so an owner of two stores knows
  * which one), what Louez will do, that only Louez's summary counts, what
- * cannot be undone, the lapse when it is close, the box when one is
+ * it weighs, the lapse when it is close, the box when one is
  * required, and the two buttons. When the request carries a display (the
  * actions a person must approve), its headline is the page's title, one
  * question, and what Louez will do is its facts, in the person's language;
@@ -116,12 +121,11 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
           <Alert variant="warning" role="note">
             <WarningIcon aria-hidden="true" />
             <AlertTitle>
-              {t("stakes", {
-                list: format.list(
-                  stakes.map((stake) => t(`stake.${stake}`)),
-                  { type: "conjunction" },
-                ),
-              })}
+              {stakes.map((stake) => (
+                <span key={stake} className="block">
+                  {t(`stake.${stake}`)}
+                </span>
+              ))}
             </AlertTitle>
           </Alert>
         )}

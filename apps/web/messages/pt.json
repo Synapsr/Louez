@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · pedido por uma chave de API",
       "provenanceAssistant": "<place>{store}</place> · pedido por um assistente de IA",
       "trustShort": "Só conta o resumo do Louez.",
-      "stakes": "Não se pode desfazer: {list}.",
       "stake": {
-        "access_removed": "um acesso removido",
-        "money": "dinheiro",
-        "stock_override": "stock acima do limite",
-        "deletion": "uma eliminação",
-        "customer_message": "uma mensagem a um cliente",
-        "credits": "créditos gastos"
+        "access_removed": "Remove um acesso à sua loja.",
+        "money": "Altera o dinheiro registado para a sua loja.",
+        "stock_override": "Permite uma reserva acima do stock disponível ou sem respeitar a sua margem entre alugueres.",
+        "deletion": "Elimina definitivamente: não se pode desfazer.",
+        "customer_message": "Envia uma mensagem a um cliente: não se pode retirar.",
+        "credits": "Gasta créditos: não são devolvidos."
       },
       "lapsesSoon": "Expira {when}.",
       "acknowledge": "Li o que o Louez vai fazer",
