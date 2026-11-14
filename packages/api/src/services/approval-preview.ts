@@ -265,10 +265,49 @@ const DIGEST_KEY = /Hash$|_hash$/;
 
 /**
  * The keys of technical identifiers: hidden when their group names the same
- * record another way (`NAMING_ENDINGS`), shown otherwise, as then nothing
- * else says which record it is.
+ * record another way, readably (`namedOtherwise`), shown otherwise, as then
+ * nothing else says which record it is.
  */
 const IDENTIFIER_KEY = /^id$|Id$|_id$/;
+
+/** What an identifier's key is about: `""` for a bare `id`, `customer` for `customerId` or `customer_id`. */
+const subjectOf = (key: string) =>
+  key === "id" ? "" : key.endsWith("_id") ? key.slice(0, -3) : key.slice(0, -2);
+
+/** A value that names a record to a person: a number, or a text with a letter or a digit to read. */
+const readableName = (value: unknown) =>
+  (typeof value === "number" && Number.isFinite(value)) ||
+  (typeof value === "string" && isReadableText(value, 1));
+
+/**
+ * Whether the group names readably the very record an identifier is about:
+ * for `customerId` (or `customer_id`), an entry `customerName`,
+ * `customerNumber`, `customerEmail`, `customerTitle` or `customerLabel` (or
+ * their snake-case forms), or the item's own heading when it was taken from
+ * `customer` or one of those; for a bare `id`, a bare `name`, `number`,
+ * `email`, `title` or `label`, or the item's own heading. Another record
+ * named in the group (`productName` next to `customerId`) names the
+ * customer not at all.
+ */
+function namedOtherwise(
+  key: string,
+  record: Record<string, unknown>,
+  heading: { key: string } | null,
+): boolean {
+  const subject = subjectOf(key);
+  const snake = key.endsWith("_id");
+  const namers = NAMING_ENDINGS.map((ending) =>
+    subject === ""
+      ? ending
+      : snake
+        ? `${subject}_${ending}`
+        : `${subject}${ending.charAt(0).toUpperCase()}${ending.slice(1)}`,
+  );
+  if (heading && (subject === "" || heading.key === subject || namers.includes(heading.key))) {
+    return true;
+  }
+  return namers.some((namer) => readableName(record[namer]));
+}
 
 /**
  * Whether a key ends with one of `endings`: the key itself ("amount"), a
@@ -334,29 +373,23 @@ const amountOf = (value: unknown): number | null => {
 
 /**
  * An object's entries, as a page shows them: digests left out, empty values
- * left out, identifiers left out when the group names the record another
- * way (`named`: the group's heading does, or one of its entries under
- * `NAMING_ENDINGS`); amounts under `AMOUNT_ENDINGS`, in a group that names
- * its currency, in that currency (the currency itself then said by them).
+ * left out, each identifier left out when the group names that same record
+ * readably (`namedOtherwise`: `heading` is the key the item's own heading
+ * was taken from, for an item of a list); amounts under `AMOUNT_ENDINGS`,
+ * in a group that names its currency, in that currency (the currency
+ * itself then said by them).
  */
 function entriesOf(
   record: Record<string, unknown>,
   depth: number,
-  named = false,
+  heading: { key: string } | null = null,
 ): ShownDetail[] {
   const code = typeof record.currency === "string" ? record.currency.trim() : "";
   const currency = CURRENCY.test(code) ? code.toUpperCase() : null;
-  const namesIt =
-    named ||
-    Object.entries(record).some(
-      ([key, value]) =>
-        !IDENTIFIER_KEY.test(key) &&
-        endsWithWord(key, NAMING_ENDINGS) &&
-        (typeof value === "number" || (typeof value === "string" && oneLine(value) !== "")),
-    );
   const entries: ShownDetail[] = [];
   for (const [key, value] of Object.entries(record)) {
-    if (DIGEST_KEY.test(key) || (namesIt && IDENTIFIER_KEY.test(key))) continue;
+    if (DIGEST_KEY.test(key)) continue;
+    if (IDENTIFIER_KEY.test(key) && namedOtherwise(key, record, heading)) continue;
     const amount = currency && endsWithWord(key, AMOUNT_ENDINGS) ? amountOf(value) : null;
     if (currency && key === "currency" && amountsIn(record)) continue;
     const shown: ShownValue | null =
@@ -376,9 +409,11 @@ const amountsIn = (record: Record<string, unknown>) =>
 
 /**
  * A value as a page shows it, or null when there is nothing to show (null,
- * an empty text, an object with nothing to show). An empty list is a fact
- * ("no message") and shows as a group with no entries. `dated`: its key
- * names a date, so an ISO text under it is one.
+ * an empty text, an object with nothing to show, a list whose items all
+ * had nothing to show). A list stored empty is a fact ("no message") and
+ * shows as a group with no entries; an item named by a heading and with
+ * nothing else to show is its heading alone. `dated`: its key names a
+ * date, so an ISO text under it is one.
  */
 function shownValue(value: unknown, depth: number, dated = false): ShownValue | null {
   if (value === null || value === undefined) return null;
@@ -396,13 +431,15 @@ function shownValue(value: unknown, depth: number, dated = false): ShownValue | 
       const title = named && isRecord(item) ? oneLine(String(item[named])) : "";
       if (named && title && isRecord(item)) {
         const { [named]: _name, ...rest } = item;
-        const group = entriesOf(rest, depth + 1, true);
-        return [{ label: title, value: { kind: "group", entries: group } }];
+        const group = entriesOf(rest, depth + 1, { key: named });
+        return group.length > 0
+          ? [{ label: title, value: { kind: "group", entries: group } }]
+          : [{ label: "", value: { kind: "text", text: title } }];
       }
       const shown = shownValue(item, depth + 1);
       return shown ? [{ label: String(index + 1), value: shown }] : [];
     });
-    return { kind: "group", entries };
+    return entries.length > 0 || value.length === 0 ? { kind: "group", entries } : null;
   }
   if (isRecord(value)) {
     const entries = entriesOf(value, depth);
@@ -527,9 +564,13 @@ function valuesAsDeclared(
 const hasKey = <T extends object>(table: T, key: string): key is Extract<keyof T, string> =>
   Object.hasOwn(table, key);
 
-/** Whether a text value shows whole, on its line: something to read, within `DISPLAY_TEXT_MAX`. */
+/**
+ * Whether a text value shows whole, on its line: what a name needs to say
+ * something (`isReadableText`, one letter or digit: a name of joiners and
+ * variation selectors says nothing), within `DISPLAY_TEXT_MAX`.
+ */
 const textReads = (value: string) =>
-  value !== "" && [...value].length <= DISPLAY_TEXT_MAX && staysOnItsLine(value);
+  [...value].length <= DISPLAY_TEXT_MAX && isReadableText(value, 1);
 
 /**
  * The display an approval carries, as the page shows it, or null when it

@@ -425,14 +425,20 @@ describe("the approval's page", () => {
       assert.ok(preview);
       const html = renderPage({ preview, consequences: [...sample.payload.consequences] as never });
       const details = textOf(disclosures(html)[0]?.body ?? "");
-      assert.doesNotMatch(details, /res_7Hk2|sample_membership|\bId\b|T\d{2}:\d{2}:\d{2}|\.000Z/, sample.label);
+      // An identifier is hidden only where its own record is named readably: the
+      // payment's reservationId has no reservationNumber beside it (its bare
+      // `number` names a bare `id`), so it is shown; the booking's and the
+      // member's records are named, so their ids are not.
+      const shownIds = sample.procedure === "dashboard.payments.record" ? /sample_membership/ : /res_7Hk2|sample_membership/;
+      assert.doesNotMatch(details, shownIds, sample.label);
+      assert.doesNotMatch(details, /\bId\b|T\d{2}:\d{2}:\d{2}|\.000Z/, sample.label);
       assert.ok(checkedList(html).length > 0, sample.label);
       assert.doesNotMatch(checkedList(html), NARROW, sample.label);
     }
     const [payment, booking, removal] = samples.map((sample) =>
       textOf(disclosures(renderPage({ preview: shownPreview(sample.payload.preview) ?? PREVIEW }))[0]?.body ?? ""),
     );
-    assert.match(payment ?? "", /What Louez checked .*Number 1042/);
+    assert.match(payment ?? "", /What Louez checked .*Reservation id res_7Hk2pQ9xLmN4vB1cD3eF Number 1042/);
     assert.match(payment ?? "", /Amount 120/);
     assert.match(booking ?? "", /Reservation .*Number 1042/);
     assert.match(booking ?? "", /Start date Nov 21, 2026, 10:00 AM/);

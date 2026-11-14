@@ -732,9 +732,13 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
             { label: "Start date", value: { kind: "date", iso: "2026-11-21T09:00:00.000Z", dateOnly: false } },
             { label: "End date", value: { kind: "date", iso: "2026-11-23", dateOnly: true } },
             { label: "Total amount", value: { kind: "money", amount: 180, currency: "EUR" } },
+            // The reservation's number names the reservation, not its customer.
+            { label: "Customer id", value: { kind: "text", text: "cus_1" } },
           ],
         },
       },
+      // Nothing beside it names that reservation (an e-mail names another thing).
+      { label: "Reservation id", value: { kind: "text", text: "res_abc" } },
       { label: "Product SKU", value: { kind: "text", text: "KAY-2" } },
       { label: "Vat ID", value: { kind: "text", text: "FR123" } },
       {
@@ -867,11 +871,12 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
       ),
       [{ label: "Customer name", value: { kind: "text", text: "Ann" } }],
     );
-    // An item named by its heading needs no identifier either.
+    // An item named by its heading needs no identifier either; left with
+    // nothing else, it is its heading alone, never "None".
     assert.deepEqual(await detailsOf({ lines: [{ product: "Kayak", productId: "p_1" }] }), [
       {
         label: "Lines",
-        value: { kind: "group", entries: [{ label: "Kayak", value: { kind: "group", entries: [] } }] },
+        value: { kind: "group", entries: [{ label: "", value: { kind: "text", text: "Kayak" } }] },
       },
     ]);
     // null and empty texts stay left out.
@@ -1135,20 +1140,26 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     // A product's name of three hundred characters still reads whole.
     assert.equal((await withCustomer("K".repeat(300))).state, "pending");
     // Past five hundred, it cannot be shown whole; nothing to read, or marks off its line, neither.
-    for (const unreadable of ["K".repeat(501), "\u200b\u2060", " ", `A${"\u0316".repeat(5)}`]) {
+    for (const unreadable of ["K".repeat(501), "\u200b\u2060", "\u200d\ufe0f", "\u200d", " ", `A${"\u0316".repeat(5)}`]) {
       const approval = await withCustomer(unreadable);
       assert.equal(approval.state, "unreadable", JSON.stringify(unreadable));
       assert.equal(approval.binding, null);
     }
-    // And its decision refuses an approval of it under its lock.
-    await withCustomer("K".repeat(501));
-    await assert.rejects(
-      decideHandoff(
-        { id, decision: "approve", revision: row.revision, shown: row.bindingHash ?? "", acknowledged: true, userId: OWNER },
-        ports,
-      ),
-      (error: { data?: { code?: string } }) => error.data?.code === "HANDOFF_DECISION_INVALID",
-    );
+    // And its decision refuses an approval of it under its lock: a name too
+    // long to show, and a name of a joiner and a variation selector, which
+    // survives `oneLine` and shows nothing.
+    for (const unreadable of ["K".repeat(501), "\u200d\ufe0f"]) {
+      await withCustomer(unreadable);
+      await assert.rejects(
+        decideHandoff(
+          { id, decision: "approve", revision: row.revision, shown: row.bindingHash ?? "", acknowledged: true, userId: OWNER },
+          ports,
+        ),
+        (error: { data?: { code?: string } }) => error.data?.code === "HANDOFF_DECISION_INVALID",
+        JSON.stringify(unreadable),
+      );
+      assert.equal((await rowOf(id)).status, "pending", "nothing decided");
+    }
   });
 
   // --- The page after the agent asked again ----------------------------------
