@@ -9813,6 +9813,9 @@
         "change": "Approve this change?",
         "unknown": "Approve this request?"
       },
+      "provenance": "{store} · asked by “{agent}”",
+      "provenanceKey": "{store} · asked by an API key",
+      "provenanceAssistant": "{store} · asked by an AI assistant",
       "trustShort": "Only Louez’s summary counts.",
       "stakes": "Can’t be undone: {list}.",
       "stake": {
@@ -9836,8 +9839,7 @@
       "checked": "What Louez checked",
       "values": {
         "yes": "Yes",
-        "no": "No",
-        "none": "Not set"
+        "no": "No"
       },
       "computedAt": "Louez worked this out {when}, from your store’s records.",
       "expires": "If you don’t answer, the request lapses {when}.",

@@ -9813,6 +9813,9 @@
         "change": "¿Aprobar este cambio?",
         "unknown": "¿Aprobar esta solicitud?"
       },
+      "provenance": "{store} · lo pide «{agent}»",
+      "provenanceKey": "{store} · lo pide una clave de API",
+      "provenanceAssistant": "{store} · lo pide un asistente de IA",
       "trustShort": "Solo cuenta el resumen de Louez.",
       "stakes": "No se puede deshacer: {list}.",
       "stake": {
@@ -9836,8 +9839,7 @@
       "checked": "Lo que Louez ha comprobado",
       "values": {
         "yes": "Sí",
-        "no": "No",
-        "none": "Sin indicar"
+        "no": "No"
       },
       "computedAt": "Louez lo calculó {when}, a partir de los datos de tu tienda.",
       "expires": "Si no respondes, la solicitud caduca {when}.",

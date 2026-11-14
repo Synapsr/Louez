@@ -9813,6 +9813,9 @@
         "change": "Aprovar esta alteração?",
         "unknown": "Aprovar este pedido?"
       },
+      "provenance": "{store} · pedido por «{agent}»",
+      "provenanceKey": "{store} · pedido por uma chave de API",
+      "provenanceAssistant": "{store} · pedido por um assistente de IA",
       "trustShort": "Só conta o resumo do Louez.",
       "stakes": "Não se pode desfazer: {list}.",
       "stake": {
@@ -9836,8 +9839,7 @@
       "checked": "O que o Louez verificou",
       "values": {
         "yes": "Sim",
-        "no": "Não",
-        "none": "Não indicado"
+        "no": "Não"
       },
       "computedAt": "O Louez calculou isto {when}, a partir dos dados da sua loja.",
       "expires": "Se não responder, o pedido expira {when}.",

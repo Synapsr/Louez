@@ -9813,6 +9813,9 @@
         "change": "Одобрить это изменение?",
         "unknown": "Одобрить этот запрос?"
       },
+      "provenance": "{store} · запрос от «{agent}»",
+      "provenanceKey": "{store} · запрос от API-ключа",
+      "provenanceAssistant": "{store} · запрос от ИИ-ассистента",
       "trustShort": "Значение имеет только описание от Louez.",
       "stakes": "Нельзя отменить: {list}.",
       "stake": {
@@ -9836,8 +9839,7 @@
       "checked": "Что проверил Louez",
       "values": {
         "yes": "Да",
-        "no": "Нет",
-        "none": "Не указано"
+        "no": "Нет"
       },
       "computedAt": "Louez рассчитал это {when} по данным вашего магазина.",
       "expires": "Если вы не ответите, запрос истечёт {when}.",

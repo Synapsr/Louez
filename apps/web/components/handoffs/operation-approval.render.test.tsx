@@ -7,9 +7,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 
 import type { ApprovalPage, ShownPreview } from "@louez/api/services/approval-page";
+import { approvalIsReadable, shownPreview } from "@louez/api/services/approval-preview";
 
 import messages from "@/messages/en.json";
 
+import { sampleApprovals } from "../../scripts/seed/approvals-samples";
 import { OperationApproval } from "./operation-approval";
 import { OperationApprovalDone, type EndedApprovalState } from "./operation-approval-done";
 
@@ -28,9 +30,8 @@ const PREVIEW: ShownPreview = {
   truncated: false,
   details: [
     { label: "Number", value: { kind: "text", text: "1042" } },
-    { label: "Amount", value: { kind: "text", text: "40" } },
+    { label: "Amount", value: { kind: "number", value: 40 } },
     { label: "Refunded", value: { kind: "no" } },
-    { label: "Note", value: { kind: "none" } },
   ],
 };
 
@@ -40,8 +41,8 @@ const approval = (overrides: Partial<ApprovalPage> = {}) =>
     state: "pending",
     revision: 2,
     binding: "e".repeat(64),
-    store: { id: "store_000000000000001", name: "Roscoff Voile" },
-    agent: { kind: "api_key", name: "Store agent" },
+    store: { id: "store_000000000000001", name: "Roscoff Voile", timeZone: "Europe/Paris" },
+    agent: { kind: "api_key", name: "Store agent", shownName: "Store agent" },
     preview: PREVIEW,
     consequences: ["money"],
     deliberate: true,
@@ -95,16 +96,26 @@ const disclosures = (html: string) =>
     body: match[2] ?? "",
   }));
 
+/** The markup of what Louez checked: from its first list to its last. */
+const checkedList = (html: string) => {
+  const start = html.indexOf("<dl");
+  return start < 0 ? "" : html.slice(start, html.lastIndexOf("</dl>") + 5);
+};
+/** Classes that size a column, box each cell, or let a word break at any letter. */
+const NARROW =
+  /<table|grid-cols|basis-|(?<![-\w])w-(?:\d|\[)|min-w-\[|max-w-\[|divide-y|wrap-anywhere|break-all/;
+
 /** An attribute of a tag, whatever its case (React writes `formNoValidate`). */
 const has = (attributes: Record<string, string>, name: string) =>
   Object.keys(attributes).some((key) => key.toLowerCase() === name);
 
 describe("the approval's page", () => {
-  test("the screen holds the title, the sentence, the short safety line, the stake, the box and the two buttons, and nothing else", () => {
+  test("the screen holds the title, where and who asks, the sentence, the short safety line, the stake, the box and the two buttons, and nothing else", () => {
     const shown = visible(renderPage());
     let from = 0;
     for (const part of [
       "Approve a payment?",
+      "Roscoff Voile · asked by “Store agent”",
       "Record a rental payment of 40.00 € (cash) on reservation #1042.",
       "Only Louez’s summary counts.",
       "Can’t be undone: money.",
@@ -123,7 +134,7 @@ describe("the approval's page", () => {
       "Asked by",
       "API key “Store agent”",
       "olga@roscoff.test",
-      "Roscoff Voile",
+      "in “Roscoff Voile”",
       "What Louez checked",
       "Number",
       "3 minutes ago",
@@ -152,8 +163,8 @@ describe("the approval's page", () => {
       "For your account olga@roscoff.test, in “Roscoff Voile”.",
       "What Louez checked",
       "Number 1042",
+      "Amount 40",
       "Refunded No",
-      "Note Not set",
       "Louez worked this out 3 minutes ago, from your store’s records.",
       "If you don’t answer, the request lapses in 23 hours.",
       "Only this summary from Louez counts, whatever your assistant said in the chat. If they don’t match, refuse.",
@@ -273,30 +284,112 @@ describe("the approval's page", () => {
     assert.doesNotMatch(html, /href="https:\/\/evil/);
     assert.match(html, /Customer &lt;i&gt;/);
     assert.match(html, /<bdi[^>]*>שרה &lt;img src=x&gt;<\/bdi>/);
-    // A long word breaks on a phone rather than widening the page.
-    assert.match(html, /<p class="[^"]*wrap-anywhere[^"]*">Pay/);
+    // A long word breaks on a phone rather than widening the page, as a last resort.
+    assert.match(html, /<p class="[^"]*wrap-break-word[^"]*">Pay/);
   });
 
-  test("nested details are shown as nested lists", () => {
+  test("the summary's box and each value's box clip what they would draw past themselves", () => {
+    const html = renderPage();
+    const [summary] = tags(html, "p").filter((p) => (p.class ?? "").includes("text-base"));
+    assert.match(summary?.class ?? "", /\boverflow-hidden\b/);
+    const values = tags(html, "dd").filter((dd) => !(dd.class ?? "").includes("border-l"));
+    assert.ok(values.length >= 3);
+    assert.ok(values.every((dd) => /\boverflow-hidden\b/.test(dd.class ?? "")));
+  });
+
+  test("the details are a flat list: groups under a heading, no table, no column, values written as a person writes them", () => {
     const html = renderPage({
       preview: {
         summary: "Confirm it.",
         truncated: false,
         details: [
           {
-            label: "Lines",
+            label: "Reservation",
             value: {
-              kind: "list",
-              entries: [{ label: "1", value: { kind: "text", text: "Kayak, 2 asked, 1 free" } }],
+              kind: "group",
+              entries: [
+                { label: "Number", value: { kind: "text", text: "1042" } },
+                { label: "Start date", value: { kind: "date", iso: "2026-11-21T09:00:00.000Z", dateOnly: false } },
+                { label: "End date", value: { kind: "date", iso: "2026-11-23", dateOnly: true } },
+                { label: "Total amount", value: { kind: "money", amount: 180, currency: "EUR" } },
+              ],
             },
           },
-          { label: "Empty", value: { kind: "list", entries: [] } },
+          {
+            label: "Shortfalls",
+            value: {
+              kind: "group",
+              entries: [
+                {
+                  label: "Kayak biplace",
+                  value: {
+                    kind: "group",
+                    entries: [
+                      { label: "Requested", value: { kind: "number", value: 2 } },
+                      { label: "Available", value: { kind: "number", value: 1 } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+          { label: "Reduces availability", value: { kind: "yes" } },
+          { label: "Buffer", value: { kind: "number", value: 1200 } },
         ],
       },
     });
-    assert.equal(tags(html, "dl").length, 2);
-    assert.match(textOf(html), /Lines 1 Kayak, 2 asked, 1 free/);
-    assert.match(textOf(html), /Empty Not set/);
+    const details = textOf(disclosures(html)[0]?.body ?? "");
+    // Paris time: 09:00 UTC is 10:00; a date alone is that day, whatever the zone.
+    assert.match(details, /Reservation Number 1042 Start date Nov 21, 2026, 10:00 AM End date Nov 23, 2026 Total amount €180\.00/);
+    assert.match(details, /Shortfalls Kayak biplace Requested 2 Available 1/);
+    assert.match(details, /Reduces availability Yes/);
+    assert.match(details, /Buffer 1,200/);
+    assert.doesNotMatch(details, /T09:00|\.000Z|2026-11/);
+    // No table, no fixed column, no box around each cell.
+    assert.ok(checkedList(html).length > 0);
+    assert.doesNotMatch(checkedList(html), NARROW);
+    // Groups are set in by a rule on one side, never boxed.
+    // Reservation, Shortfalls, and the named item Kayak biplace.
+    const groups = tags(html, "dd").filter((dd) => (dd.class ?? "").includes("border-l"));
+    assert.equal(groups.length, 3);
+  });
+
+  test("the three sample requests' details render flat, with no identifier and no raw date", () => {
+    const samples = sampleApprovals({
+      storeName: "Vélo Liberté",
+      currency: "EUR",
+      reservation: {
+        id: "res_7Hk2pQ9xLmN4vB1cD3eF",
+        number: "1042",
+        startDate: "2026-11-21T09:00:00.000Z",
+        endDate: "2026-11-23T18:00:00.000Z",
+        totalAmount: "180.00",
+        customer: "Camille Martin",
+        email: "camille.martin@example.com",
+      },
+    });
+    assert.equal(samples.length, 3);
+    for (const sample of samples) {
+      assert.ok(approvalIsReadable(sample.payload), sample.label);
+      const preview = shownPreview(sample.payload.preview);
+      assert.ok(preview);
+      const html = renderPage({ preview, consequences: [...sample.payload.consequences] as never });
+      const details = textOf(disclosures(html)[0]?.body ?? "");
+      assert.doesNotMatch(details, /res_7Hk2|sample_membership|\bId\b|T\d{2}:\d{2}:\d{2}|\.000Z/, sample.label);
+      assert.ok(checkedList(html).length > 0, sample.label);
+      assert.doesNotMatch(checkedList(html), NARROW, sample.label);
+    }
+    const [payment, booking, removal] = samples.map((sample) =>
+      textOf(disclosures(renderPage({ preview: shownPreview(sample.payload.preview) ?? PREVIEW }))[0]?.body ?? ""),
+    );
+    assert.match(payment ?? "", /What Louez checked .*Number 1042/);
+    assert.match(payment ?? "", /Amount 120/);
+    assert.match(booking ?? "", /Reservation .*Number 1042/);
+    assert.match(booking ?? "", /Start date Nov 21, 2026, 10:00 AM/);
+    assert.match(booking ?? "", /Total amount €180\.00/);
+    assert.match(booking ?? "", /Kayak biplace Requested 2 Available 1/);
+    assert.match(booking ?? "", /Customer .*Name Camille Martin .*Email camille\.martin@example\.com/);
+    assert.match(removal ?? "", /Member .*Name Lucas Bernard .*Email lucas\.bernard@example\.com/);
   });
 
   test("an assistant connected over OAuth is named, in the details, as the consent page names it", () => {
@@ -304,6 +397,7 @@ describe("the approval's page", () => {
       agent: {
         kind: "oauth",
         name: "Claude",
+        shownName: "Claude",
         client: {
           clientId: "https://claude.ai/oauth/client.json",
           name: "Claude",
@@ -321,11 +415,15 @@ describe("the approval's page", () => {
     assert.match(inside, /Claude/);
     assert.match(inside, /Name declared by claude\.ai/);
     assert.match(inside, /Verified/);
-    assert.doesNotMatch(visible(html), /Claude/);
-    const unknown = textOf(renderPage({ agent: { kind: "oauth", name: null, client: null } }));
-    assert.match(unknown, /An AI assistant/);
-    const unnamedKey = textOf(renderPage({ agent: { kind: "api_key", name: null } }));
-    assert.match(unnamedKey, /An API key/);
+    // On the screen, its name alone, under the title.
+    assert.match(visible(html), /Roscoff Voile · asked by “Claude”/);
+    assert.doesNotMatch(visible(html), /Name declared|Verified/);
+    const unknown = renderPage({ agent: { kind: "oauth", name: null, client: null, shownName: null } });
+    assert.match(textOf(unknown), /An AI assistant/);
+    assert.match(visible(unknown), /Roscoff Voile · asked by an AI assistant/);
+    const unnamedKey = renderPage({ agent: { kind: "api_key", name: null, shownName: null } });
+    assert.match(textOf(unnamedKey), /An API key/);
+    assert.match(visible(unnamedKey), /Roscoff Voile · asked by an API key/);
   });
 
   test("a request that changed while the page was open says so on the screen", () => {

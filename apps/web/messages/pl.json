@@ -9813,6 +9813,9 @@
         "change": "Zatwierdzić tę zmianę?",
         "unknown": "Zatwierdzić tę prośbę?"
       },
+      "provenance": "{store} · prośba od „{agent}”",
+      "provenanceKey": "{store} · prośba od klucza API",
+      "provenanceAssistant": "{store} · prośba od asystenta AI",
       "trustShort": "Liczy się tylko podsumowanie Louez.",
       "stakes": "Nie da się cofnąć: {list}.",
       "stake": {
@@ -9836,8 +9839,7 @@
       "checked": "Co Louez sprawdził",
       "values": {
         "yes": "Tak",
-        "no": "Nie",
-        "none": "Brak"
+        "no": "Nie"
       },
       "computedAt": "Louez obliczył to {when} na podstawie danych Twojego sklepu.",
       "expires": "Jeśli nie odpowiesz, prośba wygaśnie {when}.",

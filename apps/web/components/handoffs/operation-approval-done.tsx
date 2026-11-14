@@ -43,7 +43,7 @@ export const OperationApprovalDone = ({
           {approval.preview && (
             <section className="space-y-1">
               <h2 className="text-muted-foreground text-xs font-medium">{t("done.request")}</h2>
-              <p className="text-muted-foreground text-sm wrap-anywhere">{approval.store.name}</p>
+              <p className="text-muted-foreground text-sm wrap-break-word">{approval.store.name}</p>
               <ApprovalPreviewSummary preview={approval.preview} />
               {approval.preview.truncated && (
                 <p className="text-muted-foreground text-xs">{t("done.shortened")}</p>
@@ -53,7 +53,7 @@ export const OperationApprovalDone = ({
           {words && (
             <section className="space-y-1">
               <h2 className="text-muted-foreground text-xs font-medium">{t("done.yourWords")}</h2>
-              <p className="text-sm whitespace-pre-line wrap-anywhere">{words}</p>
+              <p className="text-sm whitespace-pre-line wrap-break-word">{words}</p>
             </section>
           )}
         </HandoffDisclosure>

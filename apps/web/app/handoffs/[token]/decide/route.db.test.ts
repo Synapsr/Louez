@@ -479,6 +479,27 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       assert.equal((await rowOf(row.id)).decision, "refused");
     });
 
+    test("a summary that shows nothing, or whose marks spill off its line, is not approved by a forged post", async () => {
+      for (const summary of [
+        "\u200d".repeat(100),
+        "\ufe0f".repeat(100),
+        "\ufffc".repeat(100),
+        `Pay A${"\u0316".repeat(100)} 40 EUR`,
+      ]) {
+        await louezDb.db.delete(louezDb.apiHandoffs);
+        const row = await approval(["money"], summary);
+        const response = await post(row.id, {
+          decision: "approve",
+          acknowledged: "yes",
+          revision: String(row.revision),
+          shown: BINDING,
+        });
+        const code = summary.codePointAt(summary.length > 10 ? 5 : 0)?.toString(16);
+        assert.equal(location(response), `/handoffs/${row.id}?error=failed`, code);
+        assert.equal((await rowOf(row.id)).status, "pending", code);
+      }
+    });
+
     test("a partly malformed list of consequences asks for the box; only a list of known plain changes does not", async () => {
       for (const consequences of [["change", {}], [], "change", ["change", "nope"]]) {
         await louezDb.db.delete(louezDb.apiHandoffs);

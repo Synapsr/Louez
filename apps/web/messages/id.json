@@ -9813,6 +9813,9 @@
         "change": "Setujui perubahan ini?",
         "unknown": "Setujui permintaan ini?"
       },
+      "provenance": "{store} · diminta oleh “{agent}”",
+      "provenanceKey": "{store} · diminta oleh kunci API",
+      "provenanceAssistant": "{store} · diminta oleh asisten AI",
       "trustShort": "Hanya ringkasan Louez yang berlaku.",
       "stakes": "Tidak dapat dibatalkan: {list}.",
       "stake": {
@@ -9836,8 +9839,7 @@
       "checked": "Yang diperiksa Louez",
       "values": {
         "yes": "Ya",
-        "no": "Tidak",
-        "none": "Tidak diisi"
+        "no": "Tidak"
       },
       "computedAt": "Louez menghitung ini {when} dari data toko Anda.",
       "expires": "Jika Anda tidak menjawab, permintaan ini berakhir {when}.",

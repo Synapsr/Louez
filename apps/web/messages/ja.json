@@ -9813,6 +9813,9 @@
         "change": "この変更を承認しますか？",
         "unknown": "この依頼を承認しますか？"
       },
+      "provenance": "{store}・「{agent}」からの依頼",
+      "provenanceKey": "{store}・APIキーからの依頼",
+      "provenanceAssistant": "{store}・AIアシスタントからの依頼",
       "trustShort": "有効なのはLouezの要約だけです。",
       "stakes": "取り消せません：{list}。",
       "stake": {
@@ -9836,8 +9839,7 @@
       "checked": "Louezが確認した内容",
       "values": {
         "yes": "はい",
-        "no": "いいえ",
-        "none": "未設定"
+        "no": "いいえ"
       },
       "computedAt": "Louezがストアのデータをもとに{when}算出しました。",
       "expires": "回答がない場合、この依頼は{when}に失効します。",

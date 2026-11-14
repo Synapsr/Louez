@@ -41,13 +41,17 @@ interface OperationApprovalProps {
 
 /**
  * An agent's request a person approves or refuses, on a phone as often as
- * not, decided from one screen: what kind of action, the one sentence of
- * what Louez will do, that only Louez's summary counts, what cannot be
- * undone, the lapse when it is close, the box when one is required, and the
- * two buttons. Everything else is on request, in closed disclosures: who
- * asks and for which account, what Louez checked, when it worked it out and
- * when the request lapses, the fuller safety sentence ("Details"), and the
- * words for the assistant ("Add a note"), which are posted either way. The
+ * not, decided from one screen: what kind of action, in which store and
+ * asked by whom (one line under the title, so an owner of two stores knows
+ * which one), the one sentence of what Louez will do, that only Louez's
+ * summary counts, what cannot be undone, the lapse when it is close, the box
+ * when one is required, and the two buttons. Everything else is on request,
+ * in closed disclosures: who asks in full and for which account, what Louez
+ * checked, when it worked it out and when the request lapses, the fuller
+ * safety sentence ("Details"), and the words for the assistant ("Add a
+ * note"), which are posted either way. Until previews are built from
+ * templates (pull request 6b), the details are where a fact absent from the
+ * sentence is found. The
  * answer posts the revision and the binding shown, so it decides what the
  * person read.
  */
@@ -60,7 +64,17 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
   const lapsesSoon = approval.expiresAt.getTime() - approval.now.getTime() <= LAPSE_SOON_MS;
 
   return (
-    <HandoffCard title={t(`title.${headline}`)} note={note}>
+    <HandoffCard
+      title={t(`title.${headline}`)}
+      description={
+        approval.agent.shownName
+          ? t("provenance", { store: approval.store.name, agent: approval.agent.shownName })
+          : t(approval.agent.kind === "api_key" ? "provenanceKey" : "provenanceAssistant", {
+              store: approval.store.name,
+            })
+      }
+      note={note}
+    >
       <HandoffDecisionForm
         action={action}
         revision={approval.revision}
@@ -100,14 +114,17 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
           <section className="space-y-1">
             <h2 className="text-muted-foreground text-xs font-medium">{t("askedBy")}</h2>
             <ApprovalAgentName agent={approval.agent} />
-            <p className="text-muted-foreground text-sm wrap-anywhere">
+            <p className="text-muted-foreground text-sm wrap-break-word">
               {t("forAccount", { email, store: approval.store.name })}
             </p>
           </section>
           {approval.preview.details.length > 0 && (
             <section className="space-y-1">
               <h2 className="text-muted-foreground text-xs font-medium">{t("checked")}</h2>
-              <ApprovalDetails entries={approval.preview.details} />
+              <ApprovalDetails
+                entries={approval.preview.details}
+                timeZone={approval.store.timeZone}
+              />
             </section>
           )}
           <p className="text-muted-foreground text-sm">

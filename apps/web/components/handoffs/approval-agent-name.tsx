@@ -14,5 +14,5 @@ export const ApprovalAgentName = ({ agent }: { agent: ApprovalAgent }) => {
         ? t("apiKey", { name: agent.name })
         : t("apiKeyUnnamed")
       : (agent.name ?? t("unnamedAgent"));
-  return <p className="text-sm font-medium wrap-anywhere">{name}</p>;
+  return <p className="text-sm font-medium wrap-break-word">{name}</p>;
 };
