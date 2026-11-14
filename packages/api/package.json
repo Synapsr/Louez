@@ -15,6 +15,7 @@
     "./services/agent-client-icons": "./src/services/agent-client-icons.ts",
     "./services/agent-grants": "./src/services/agent-grants.ts",
     "./services/analytics": "./src/services/analytics.ts",
+    "./services/approval-page": "./src/services/approval-page.ts",
     "./services/capacity-verdict": "./src/services/capacity-verdict.ts",
     "./services/categories": "./src/services/categories.ts",
     "./services/customer-fields": "./src/services/customer-fields.ts",

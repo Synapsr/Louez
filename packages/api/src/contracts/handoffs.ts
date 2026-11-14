@@ -63,14 +63,21 @@ const keepLayout = (character: string) =>
   character === "\n" || character === "\t" ? character : "";
 
 /**
+ * Text as a page shows it: plain text whatever it holds (markup stays
+ * characters, never HTML), line breaks written `\n`, control characters and
+ * the marks that reorder text on screen dropped, trimmed.
+ */
+export function plainText(raw: string): string {
+  return raw.replace(/\r\n?/g, "\n").replace(NOT_TEXT, keepLayout).trim();
+}
+
+/**
  * A person's words with their decision, as stored and read back: plain text
- * whatever it holds (markup stays characters, never HTML), line breaks
- * written `\n`, control characters dropped, trimmed. Null when nothing is
- * left.
+ * (`plainText`). Null when nothing is left.
  */
 export function decisionReason(raw: string | null | undefined): string | null {
   if (raw === null || raw === undefined) return null;
-  const text = raw.replace(/\r\n?/g, "\n").replace(NOT_TEXT, keepLayout).trim();
+  const text = plainText(raw);
   return text === "" ? null : text;
 }
 
