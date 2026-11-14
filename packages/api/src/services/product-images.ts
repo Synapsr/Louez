@@ -18,7 +18,11 @@ import { z } from "zod";
 import type { JobView } from "../contracts/jobs";
 import { productErrors, productImageErrors } from "../contracts/products";
 import type { StoreActor } from "../platform/actor";
-import { checkConfirmation } from "../platform/confirmation";
+import {
+  checkConfirmation,
+  raiseConfirmation,
+  type ConfirmationRefusal,
+} from "../platform/confirmation";
 import { platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import {
@@ -280,7 +284,7 @@ export async function startImageJob(
   const kind = IMAGE_JOB_KINDS[operation];
   const slotKey = slotKeyOf(input.id, input.imageUrl);
 
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let queued: string | null = null;
   const job = await db.transaction(async (tx) => {
     if (!(await lockStoreRow(tx, actor.storeId))) throw platformErrors.noStore();
@@ -399,7 +403,7 @@ export async function startImageJob(
     return row ?? null;
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   // The job was queued and committed, so no refusal: its key must never queue another.
   if (!job) throw new Error("The job was queued, but it could not be read back.");
   if (queued) ports.dispatchJobs?.([queued]);

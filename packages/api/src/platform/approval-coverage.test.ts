@@ -108,6 +108,37 @@ const DECLARED: Record<string, readonly string[]> = {
   "packages/api/src/services/product-images.ts#startImageJob": ['["credits"]'],
 };
 
+/**
+ * Each place that raises a refusal (`raiseConfirmation`), by file and the
+ * top-level declaration it sits in, as many times as it calls it: each once
+ * its write's transaction is over (an approval is requested then).
+ */
+const RAISES: Record<string, number> = {
+  "packages/api/src/platform/confirmation.ts#requireConfirmation": 1,
+  "packages/api/src/platform/testing.ts#createFixtureRouter": 1,
+  "packages/api/src/services/categories.ts#deleteCategory": 1,
+  "packages/api/src/services/launch.ts#goLive": 1,
+  "packages/api/src/services/legal-profile.ts#upsertLegalProfile": 1,
+  "packages/api/src/services/online-store.ts#updateStoreSlug": 1,
+  "packages/api/src/services/payment-records.ts#underReservationLock": 1,
+  "packages/api/src/services/product-images.ts#startImageJob": 1,
+  "packages/api/src/services/product-seasonal-pricing.ts#deleteSeasonalPricing": 1,
+  "packages/api/src/services/product-units.ts#declareDowntime": 1,
+  "packages/api/src/services/product-units.ts#updateDowntime": 1,
+  "packages/api/src/services/product-units.ts#deleteDowntime": 1,
+  "packages/api/src/services/product-units.ts#retireUnit": 1,
+  "packages/api/src/services/product-variants.ts#deleteVariantDefinition": 1,
+  "packages/api/src/services/product-variants.ts#withdrawVariantFromProducts": 1,
+  "packages/api/src/services/product-variants.ts#deleteVariantValue": 1,
+  "packages/api/src/services/products.ts#updateProduct": 1,
+  "packages/api/src/services/products.ts#updateProductStatus": 1,
+  "packages/api/src/services/products.ts#deleteProduct": 1,
+  "packages/api/src/services/reservation-status.ts#changeStoreReservationStatus": 1,
+  "packages/api/src/services/settings.ts#writeUnderLock": 1,
+  "packages/api/src/services/team.ts#cancelInvitation": 1,
+  "packages/api/src/services/team.ts#removeMember": 1,
+};
+
 /** Sensitive procedures that never ask, and why. */
 const NEVER_ASKS: Record<string, string> = {
   "reservations.resolveDepositAttempt": "a dashboard session only: the user clicked",
@@ -400,6 +431,32 @@ describe("the inventory of the places that ask for a confirmation", () => {
       assert.ok(declared.length > 0, `${place}: the consequences are written at the call`);
       assert.equal(spread, false, `${place}: a spread shares the object of its consequences`);
     }
+  });
+
+  test("each place that raises a refusal is in this table, and none throws one", () => {
+    const raises: Record<string, number> = {};
+    const throwing: string[] = [];
+    for (const file of sourceFiles().filter((file) => !isTest(file))) {
+      const code = codeOnly(readFileSync(join(REPO, file), "utf8"));
+      for (const call of code.matchAll(/\braiseConfirmation\s*\(/g)) {
+        // Its own definition is no call.
+        if (/function\s+$/.test(code.slice(Math.max(0, call.index - 10), call.index))) continue;
+        const place = `${file}#${declarationAt(code, call.index)}`;
+        raises[place] = (raises[place] ?? 0) + 1;
+      }
+      // A refusal is no Error: thrown, it would never be raised. (A file that
+      // does not import the confirmation's module holds none.)
+      const source = codeOnly(readFileSync(join(REPO, file), "utf8"), true);
+      if (!/["'][./\w@-]*\/?confirmation["']/.test(source)) continue;
+      for (const thrown of code.matchAll(
+        /\bthrow\s+([\w.#]*(?:[rR]efusal|[cC]onfirmation)[\w.#]*)\s*;/g,
+      )) {
+        if (file.endsWith("platform/confirmation.ts") && thrown[1] === "refusal.#answer") continue;
+        throwing.push(`${file}: throw ${thrown[1]}`);
+      }
+    }
+    assert.deepEqual(raises, RAISES);
+    assert.deepEqual(throwing, []);
   });
 
   test("only the transport tests' fixture makes a consequence live", () => {

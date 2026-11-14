@@ -2,12 +2,12 @@
  * A fixture router for the transport tests (exposure, OpenAPI, MCP bridge,
  * parity). Not served by the app.
  */
-import { categories, db, stores } from "@louez/db";
+import { categories, db, retryTransactionOnDeadlock, stores } from "@louez/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { CONSEQUENCES, type Consequence } from "./approval-rule";
-import { checkConfirmation, requireConfirmation } from "./confirmation";
+import { checkConfirmation, raiseConfirmation, requireConfirmation } from "./confirmation";
 import { platformErrors } from "./errors";
 import { sha256 } from "./hash";
 import type { ProcedureScope } from "./permissions";
@@ -31,9 +31,19 @@ const ERASE_SCOPE: ProcedureScope = { domain: "categories", level: "write", role
  * `liveConsequences` makes consequences live for `erase` alone, as
  * `APPROVAL_LIVE` will for the procedures Louez serves; nothing else names
  * them, and no request can (`checkConfirmation` refuses them in production).
+ * `deadlocksBeforeCommit` makes `erase`'s transaction fail that many times
+ * with a deadlock once it has asked, as a write retried on a deadlock does;
+ * `whileAsked` runs in that transaction once it has asked, its locks held.
  */
-export function createFixtureRouter(options: { liveConsequences?: readonly Consequence[] } = {}) {
+export function createFixtureRouter(
+  options: {
+    liveConsequences?: readonly Consequence[];
+    deadlocksBeforeCommit?: number;
+    whileAsked?: () => Promise<void>;
+  } = {},
+) {
   let runs = 0;
+  let deadlocks = options.deadlocksBeforeCommit ?? 0;
 
   const list = storeProcedure
     .meta({
@@ -113,54 +123,65 @@ export function createFixtureRouter(options: { liveConsequences?: readonly Conse
     )
     .output(z.object({ id: z.string(), erased: z.boolean(), runs: z.number() }))
     .handler(async ({ context, input, path }) => {
-      const outcome = await db.transaction(async (tx) => {
-        // What the preview shows: the store's name, read before anything is
-        // locked, so the transaction's snapshot predates what the approval
-        // reads under its own lock, as a write under another lock would.
-        const [store] = await tx
-          .select({ name: stores.name })
-          .from(stores)
-          .where(eq(stores.id, context.actor.storeId));
-        if (!store) throw platformErrors.noStore();
-        // Its domain's lock, taken before it asks, as a write under its lock
-        // does: the store's categories.
-        await tx
-          .select({ id: categories.id })
-          .from(categories)
-          .where(eq(categories.storeId, context.actor.storeId))
-          .for("update");
-        const refusal = await checkConfirmation({
-          consequences: input.consequences,
-          executor: tx,
-          actor: context.actor,
-          headers: context.headers,
-          procedure: path.join("."),
-          input,
-          state: { name: store.name },
-          preview: {
-            summary: `Erase note ${input.id} of ${store.name}.`,
-            details: { id: input.id, amount: input.amount ?? null },
-          },
-          approval: {
-            facts: {
-              id: input.id,
-              amount: input.amount ?? null,
-              recipient: input.recipient ? sha256(input.recipient) : null,
-            },
-            scope: ERASE_SCOPE,
-            urls: context.ports.urls,
-          },
-          liveConsequences: options.liveConsequences,
-        });
-        // Refused: the transaction commits what the refusal recorded, and nothing else.
-        if (refusal) return { refusal };
-        await tx
-          .update(stores)
-          .set({ description: `erased ${input.id}` })
-          .where(eq(stores.id, context.actor.storeId));
-        return { refusal: null };
-      });
-      if (outcome.refusal) throw outcome.refusal;
+      const outcome = await retryTransactionOnDeadlock(
+        () =>
+          db.transaction(async (tx) => {
+            // What the preview shows: the store's name, read before its lock.
+            const [store] = await tx
+              .select({ name: stores.name })
+              .from(stores)
+              .where(eq(stores.id, context.actor.storeId));
+            if (!store) throw platformErrors.noStore();
+            // Its domain's lock, taken before it asks, as a write under its lock
+            // does: the store's categories.
+            await tx
+              .select({ id: categories.id })
+              .from(categories)
+              .where(eq(categories.storeId, context.actor.storeId))
+              .for("update");
+            const refusal = await checkConfirmation({
+              consequences: input.consequences,
+              executor: tx,
+              actor: context.actor,
+              headers: context.headers,
+              procedure: path.join("."),
+              input,
+              state: { name: store.name },
+              preview: {
+                summary: `Erase note ${input.id} of ${store.name}.`,
+                details: { id: input.id, amount: input.amount ?? null },
+              },
+              approval: {
+                facts: {
+                  id: input.id,
+                  amount: input.amount ?? null,
+                  recipient: input.recipient ? sha256(input.recipient) : null,
+                },
+                scope: ERASE_SCOPE,
+                urls: context.ports.urls,
+              },
+              liveConsequences: options.liveConsequences,
+            });
+            await options.whileAsked?.();
+            if (refusal && deadlocks > 0) {
+              deadlocks -= 1;
+              throw Object.assign(new Error("Deadlock found when trying to get lock"), {
+                code: "ER_LOCK_DEADLOCK",
+                errno: 1213,
+              });
+            }
+            // Refused: the transaction commits what the refusal recorded, and nothing else.
+            if (refusal) return { refusal };
+            await tx
+              .update(stores)
+              .set({ description: `erased ${input.id}` })
+              .where(eq(stores.id, context.actor.storeId));
+            return { refusal: null };
+          }),
+        { sleep: async () => {} },
+      );
+      // Raised once its transaction is over: an approval is requested then.
+      if (outcome.refusal) return raiseConfirmation(outcome.refusal);
       runs += 1;
       return { id: input.id, erased: true, runs };
     });

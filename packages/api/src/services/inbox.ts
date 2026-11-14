@@ -171,6 +171,8 @@ export interface InboxReader {
   hostedBy: "lumycloud" | null;
   /** What the caller may read: the member's role cut down to the connection's scopes. */
   reads: InboxRights;
+  /** The types the caller lists; absent: every type its reads show. */
+  types?: readonly InboxItemType[];
   /**
    * Whose operations show: a connection sees its own (its key), a dashboard
    * session every operation of the store (null).
@@ -2115,7 +2117,9 @@ export async function listInbox(
     now,
     take: limit + 1,
   };
-  const types = INBOX_ITEM_TYPES.filter((type) => mayShow(reader.reads, type));
+  const types = INBOX_ITEM_TYPES.filter(
+    (type) => mayShow(reader.reads, type) && (reader.types?.includes(type) ?? true),
+  );
   const { entries: merged, failures } = await readWindow(reader, types, window);
   for (const failure of failures) logSourceFailure(reader, failure);
   const page = merged.slice(0, limit);

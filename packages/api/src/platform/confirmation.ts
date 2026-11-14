@@ -8,8 +8,9 @@ import {
   type Transaction,
 } from "@louez/db";
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
+import type { ORPCError } from "@orpc/server";
 
-import { requestApproval } from "../services/approvals";
+import { answerPresentedApproval, requestApproval } from "../services/approvals";
 import type { ScopedActor } from "./actor";
 import {
   APPROVAL_LIVE,
@@ -19,7 +20,7 @@ import {
   type Consequence,
   type Consequences,
 } from "./approval-rule";
-import { apiError, platformErrors } from "./errors";
+import { apiError, platformErrors, type ApiErrorData } from "./errors";
 import { sha256, stableStringify } from "./hash";
 import type { ProcedureScope } from "./permissions";
 import type { UrlsPort } from "./ports";
@@ -67,7 +68,75 @@ export async function requireConfirmation<Check extends ConfirmationCheck & { ex
   input: KnownCheck<Check>,
 ): Promise<void> {
   const refusal = await checkConfirmation(input);
-  if (refusal) throw refusal;
+  if (refusal) await raiseConfirmation(refusal);
+}
+
+/** A person's approval to request, as the write computed it under its locks. */
+export interface ApprovalToRequest {
+  actor: ScopedActor;
+  procedure: string;
+  input: unknown;
+  preview: ConfirmationPreview;
+  consequences: Consequences;
+  /** The consequential facts that make the request's identity (`approvalIdentity`). */
+  facts: Record<string, unknown>;
+  /** The right the action needs: its procedure's scope, which `mayApprove` asks of the approver. */
+  scope: ProcedureScope;
+  /** The binding a token would carry: user, credential, store, procedure, input and state. */
+  bindingHash: string;
+  urls: UrlsPort;
+}
+
+/**
+ * Why a write may not run yet, as `checkConfirmation` answers it: an answer
+ * to give (a new token, a token or an approval id that does not let it run),
+ * or a person's approval to request. It is not an `Error`, and nothing but
+ * `raiseConfirmation` reads it: the caller returns it out of its
+ * transaction, then raises it once that transaction has ended, so an
+ * approval is never requested under the caller's locks.
+ */
+export class ConfirmationRefusal {
+  readonly #answer: ORPCError<string, ApiErrorData> | null;
+  readonly #request: ApprovalToRequest | null;
+
+  private constructor(
+    answer: ORPCError<string, ApiErrorData> | null,
+    request: ApprovalToRequest | null,
+  ) {
+    this.#answer = answer;
+    this.#request = request;
+  }
+
+  /** Built by this module alone: `MODULE` is not exported. */
+  static of(
+    _key: typeof MODULE,
+    answer: ORPCError<string, ApiErrorData> | null,
+    request: ApprovalToRequest | null,
+  ) {
+    return new ConfirmationRefusal(answer, request);
+  }
+
+  /** Read by `raiseConfirmation` alone. */
+  static async raise(_key: typeof MODULE, refusal: ConfirmationRefusal): Promise<never> {
+    if (refusal.#answer) throw refusal.#answer;
+    if (!refusal.#request) throw new Error("A confirmation refusal holds nothing to raise.");
+    throw await requestApproval(refusal.#request);
+  }
+}
+
+/** The key only this module holds, to build and read a `ConfirmationRefusal`. */
+const MODULE: unique symbol = Symbol("confirmation");
+
+/**
+ * Turns what `checkConfirmation` refused into the error the call fails with:
+ * the answer as it is, or, for a person's approval, the approval requested
+ * in a transaction of its own (the store row's lock first, then approval
+ * rows: `requestApproval`), then its answer (`APPROVAL_REQUIRED`,
+ * `APPROVALS_FULL`, `APPROVAL_RECENTLY_DECLINED`). Called once the write's
+ * transaction has ended, never inside it: the only way a refusal is thrown.
+ */
+export function raiseConfirmation(refusal: ConfirmationRefusal): Promise<never> {
+  return ConfirmationRefusal.raise(MODULE, refusal);
 }
 
 /**
@@ -98,7 +167,8 @@ export interface ConfirmationCheck {
    * The transaction the operation runs in, when it asks under a lock: the
    * token is consumed, or the new preview recorded, on its connection, so a
    * lock holder never waits for another connection of the pool. A branch a
-   * person approves needs it: its approval is written there.
+   * person approves needs it: an approval id the call presents is read
+   * there, and carried out there from pull request 3c of the plan.
    */
   executor?: Transaction;
   /**
@@ -129,12 +199,17 @@ export interface ConfirmationCheck {
 
 /**
  * `requireConfirmation` without the throw: null when the operation may go
- * on, else the error to answer. A new preview, or a person's approval, is
- * recorded on `executor`, so a caller inside a transaction must commit it
- * (not roll back) and throw the error once the transaction is over: the
- * refusal is the write's only trace, as nothing of it ran (`isRefusal`).
+ * on, else a `ConfirmationRefusal`. A new preview is recorded on `executor`,
+ * so a caller inside a transaction must commit it (not roll back), then
+ * raise the refusal (`raiseConfirmation`) once the transaction is over: the
+ * refusal is the write's only trace, as nothing of it ran (`isRefusal`). A
+ * person's approval is never written here: under the caller's locks this
+ * only computes what to request, or reads the approval id the call
+ * presents; `raiseConfirmation` requests it after the transaction.
  */
-export async function checkConfirmation<Check extends ConfirmationCheck>(input: KnownCheck<Check>) {
+export async function checkConfirmation<Check extends ConfirmationCheck>(
+  input: KnownCheck<Check>,
+): Promise<ConfirmationRefusal | null> {
   // The type asks for at least one, each a consequence the rule knows; a value
   // forced past it is a bug here, and must never read as "nothing to ask".
   if (
@@ -171,15 +246,14 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(input: 
   const token = input.headers.get(CONFIRMATION_HEADER);
 
   if (step === "approval") {
-    // The approval is written in the write's transaction, under its locks,
-    // and its refusal returned: the caller's commit keeps it.
     if (!input.executor || !input.approval) {
       throw new Error(
         `${input.procedure}: a branch a person approves asks with its transaction (executor) and what the approval is about (approval).`,
       );
     }
-    return requestApproval({
-      tx: input.executor,
+    // Refused either way: the write sets nothing up.
+    await unmarkSetupWrite(input.executor);
+    const request: ApprovalToRequest = {
       actor: input.actor,
       procedure: input.procedure,
       input: input.input,
@@ -187,10 +261,16 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(input: 
       consequences: input.consequences,
       facts: input.approval.facts,
       scope: input.approval.scope,
-      urls: input.approval.urls,
       bindingHash,
-      presented: token,
-    });
+      urls: input.approval.urls,
+    };
+    // An approval id: answered from its row, read by its key, changed never.
+    // Nothing else is read or locked here: the approval is requested once
+    // the caller's transaction is over (`raiseConfirmation`).
+    const presented = token ? await answerPresentedApproval(input.executor, request, token) : null;
+    return presented
+      ? ConfirmationRefusal.of(MODULE, presented, null)
+      : ConfirmationRefusal.of(MODULE, null, request);
   }
 
   const executor = input.executor ?? db;
@@ -211,7 +291,7 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(input: 
       );
     if (result.affectedRows !== 1) {
       if (input.executor) await unmarkSetupWrite(input.executor);
-      return platformErrors.confirmationInvalid();
+      return ConfirmationRefusal.of(MODULE, platformErrors.confirmationInvalid(), null);
     }
     // The write ran on a preview the caller accepted (the setup analytics say so).
     const operation = currentApiOperation();
@@ -240,12 +320,16 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(input: 
     expiresAt,
   });
 
-  return apiError("PRECONDITION_FAILED", "CONFIRMATION_REQUIRED", {
-    message: `${input.preview.summary} Nothing was done yet. To go ahead, call again with the same input and this confirmation token.`,
-    details: {
-      preview: input.preview,
-      confirmationToken: id,
-      expiresAt: expiresAt.toISOString(),
-    },
-  });
+  return ConfirmationRefusal.of(
+    MODULE,
+    apiError("PRECONDITION_FAILED", "CONFIRMATION_REQUIRED", {
+      message: `${input.preview.summary} Nothing was done yet. To go ahead, call again with the same input and this confirmation token.`,
+      details: {
+        preview: input.preview,
+        confirmationToken: id,
+        expiresAt: expiresAt.toISOString(),
+      },
+    }),
+    null,
+  );
 }

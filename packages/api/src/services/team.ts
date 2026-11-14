@@ -40,6 +40,7 @@ import {
   issueHandoff,
   type HandoffRequester,
 } from "./handoffs";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * The store's team: its members and pending invitations, and the writes the
@@ -60,8 +61,11 @@ export interface TeamCaller {
   ports: Pick<ApiPorts, "team" | "afterCommit">;
 }
 
-/** Asks for the confirmation under the write's lock: null to go on, else the refusal to throw. */
-type Confirm<TPreview> = (preview: TPreview, tx: Transaction) => Promise<Error | null>;
+/** Asks for the confirmation under the write's lock: null to go on, else the refusal to raise once the transaction is over. */
+type Confirm<TPreview> = (
+  preview: TPreview,
+  tx: Transaction,
+) => Promise<ConfirmationRefusal | null>;
 
 const DAY_MS = 86_400_000;
 
@@ -746,7 +750,7 @@ export async function cancelInvitation(
   options: { confirm?: Confirm<CancelInvitationPreview>; now?: Date } = {},
 ) {
   const now = options.now ?? new Date();
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
@@ -769,7 +773,7 @@ export async function cancelInvitation(
     return { id, email: invitation.email };
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.changed", store: eventStore(caller) });
   return result;
@@ -792,7 +796,7 @@ export async function removeMember(
   id: string,
   options: { confirm?: Confirm<RemoveMemberPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
@@ -828,7 +832,7 @@ export async function removeMember(
     return { id, userId: member.userId, email: member.email };
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.changed", store: eventStore(caller) });
   return result;

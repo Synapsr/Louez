@@ -18,7 +18,11 @@ import {
   type RecordPaymentInput,
 } from "../contracts/payment-records";
 import { reservationErrors } from "../contracts/reservations";
-import type { ConfirmationPreview } from "../platform/confirmation";
+import {
+  raiseConfirmation,
+  type ConfirmationPreview,
+  type ConfirmationRefusal,
+} from "../platform/confirmation";
 import type { PaymentRecordsPort } from "../platform/ports";
 
 /**
@@ -49,7 +53,7 @@ export interface PaymentRecordsCaller {
   confirm: (
     tx: Transaction,
     confirmation: { preview: ConfirmationPreview; state: unknown },
-  ) => Promise<Error | null>;
+  ) => Promise<ConfirmationRefusal | null>;
 }
 
 /**
@@ -61,7 +65,10 @@ export function money(amount: string | number): string {
   return new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" }).format(value);
 }
 
-type Outcome<T> = { ok: true; value: T } | { ok: false; error: Error };
+type Outcome<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: Error }
+  | { ok: false; confirmation: ConfirmationRefusal };
 
 /**
  * Runs `work` under the reservation's lock. A refusal returns rather than
@@ -80,11 +87,13 @@ async function underReservationLock<T>(
     if (isReservationChangeBusyError(error)) throw reservationErrors.busy(reservationId);
     throw error;
   }
-  if (!outcome.ok) throw outcome.error;
-  return outcome.value;
+  if (outcome.ok) return outcome.value;
+  if ("confirmation" in outcome) return raiseConfirmation(outcome.confirmation);
+  throw outcome.error;
 }
 
 const refused = (error: Error) => ({ ok: false as const, error });
+const unconfirmed = (confirmation: ConfirmationRefusal) => ({ ok: false as const, confirmation });
 
 async function lockedReservation(tx: Transaction, storeId: string, id: string) {
   const [row] = await tx
@@ -128,7 +137,7 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
       },
       state: { status: reservation.status },
     });
-    if (refusal) return refused(refusal);
+    if (refusal) return unconfirmed(refusal);
 
     const amountRefusal = recordAmountRefusal(input);
     if (amountRefusal) return refused(amountRefusal);
@@ -208,7 +217,7 @@ export async function recordDepositReturn(
       },
       state: { returnable: returnable.toFixed(2) },
     });
-    if (refusal) return refused(refusal);
+    if (refusal) return unconfirmed(refusal);
 
     const amountRefusal = returnAmountRefusal(input);
     if (amountRefusal) return refused(amountRefusal);
@@ -293,7 +302,7 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
       },
       state: { amount: payment.amount, status: payment.status },
     });
-    if (refusal) return refused(refusal);
+    if (refusal) return unconfirmed(refusal);
 
     if (payment.method === "stripe")
       return refused(paymentRecordErrors.stripePaymentNotDeletable());

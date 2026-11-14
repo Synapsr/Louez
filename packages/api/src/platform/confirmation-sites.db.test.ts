@@ -63,7 +63,7 @@ const UNTIL = new Date("2027-03-03T09:00:00.000Z");
 const STOPPED = "the service stand-in stopped here";
 
 type Kind = "session" | "api_key" | "oauth";
-type Confirm = (preview: unknown, tx: unknown) => Promise<Error | null>;
+type Confirm = (preview: unknown, tx: unknown) => Promise<unknown>;
 
 /** The service functions that take a `confirm` step, by module. */
 const STAND_INS: Record<string, string[]> = {
@@ -108,7 +108,7 @@ let emitted: Array<readonly Consequence[]> = [];
 
 /** The status changes run through the real service, which stops once it has asked. */
 let throughStatusService = false;
-let statusAsked: { preview: StatusPreview; refusal: Error | null } | null = null;
+let statusAsked: { preview: StatusPreview; refusal: unknown } | null = null;
 
 interface StatusPreview {
   messages: unknown[];
@@ -1265,12 +1265,23 @@ describe(
       );
       const confirm = captured as Confirm | null;
       assert.ok(confirm, `${site.path.join(".")} handed its confirmation to the service`);
-      let refusal: Error | null = null;
+      let refusal: unknown = null;
       await louezDb.db.transaction(async (tx) => {
         refusal = await confirm(branch.preview, tx);
       });
-      return refusal;
+      return answerOf(refusal);
     }
+
+    /** What a refusal answers, read as a caller raises it: once its transaction is over. */
+    const answerOf = async (refusal: unknown): Promise<Error | null> =>
+      refusal
+        ? confirmation
+            .raiseConfirmation(refusal as Parameters<typeof confirmation.raiseConfirmation>[0])
+            .then(
+              () => null,
+              (error: unknown) => error as Error,
+            )
+        : null;
 
     const CASES: Array<{ kind: Kind; confirmSensitive: boolean }> = [
       // A session's option is always off: the dashboard has its own dialogs.
@@ -1520,10 +1531,11 @@ describe(
                 continue;
               }
               assert.equal(error?.message, STOPPED, `${label}: the service asked`);
-              const asked = statusAsked as { preview: StatusPreview; refusal: Error | null } | null;
+              const asked = statusAsked as { preview: StatusPreview; refusal: unknown } | null;
               assert.ok(asked, `${label}: the service asked`);
               // The reservation took the branch the row names.
-              const { preview, refusal } = asked;
+              const { preview } = asked;
+              const refusal = await answerOf(asked.refusal);
               assert.equal(preview.messages.length > 0, row.message, `${label}: a message`);
               const takesStock = row.to === "confirmed";
               assert.equal(

@@ -82,6 +82,7 @@ import {
 } from "./product-unit-capacity";
 import { syncProductCombinationKeys } from "./variant-axes";
 import { createUnits, deleteUnits, updateUnits, type UpdateUnitMutation } from "./unit-mutations";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * Products of a store: the business rules behind the products procedures,
@@ -107,8 +108,11 @@ export interface ProductActor {
   afterCommit: (event: ApiEvent) => void;
 }
 
-/** Asks the caller to confirm, under the write's lock: null goes on, an error stops. */
-export type ConfirmStep<TPreview> = (preview: TPreview, tx: Transaction) => Promise<Error | null>;
+/** Asks the caller to confirm, under the write's lock: null goes on, a refusal stops, raised once the transaction is over. */
+export type ConfirmStep<TPreview> = (
+  preview: TPreview,
+  tx: Transaction,
+) => Promise<ConfirmationRefusal | null>;
 
 /** Where a store's product images live in storage; `isOwnedImageUrl` checks the prefix. */
 const productImagePrefix = (storeId: string) => `${storeId}/products`;
@@ -1144,7 +1148,7 @@ export async function updateProduct(
   const { storeId } = actor;
   const pendingBlocksAvailability = actor.store.settings?.pendingBlocksAvailability ?? true;
   const blockingStatuses = getBlockingReservationStatuses(pendingBlocksAvailability);
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let savedName = "";
 
   await retryOnceOnDeadlock(() =>
@@ -1363,7 +1367,7 @@ export async function updateProduct(
     }),
   );
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
 
   emit(actor, {
     type: "product.updated",
@@ -1672,7 +1676,7 @@ export async function updateProductStatus(
   options: { confirm?: ConfirmStep<ProductStatusPreview> } = {},
 ) {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let previousStatus: StoredProduct["status"] = null;
   let slug: string | null = null;
 
@@ -1731,7 +1735,7 @@ export async function updateProductStatus(
     }
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   emit(actor, { type: "products.changed", store: eventStore(actor) });
   return { id: input.id, status: input.status, previousStatus, slug };
 }
@@ -1758,7 +1762,7 @@ export async function deleteProduct(
   options: { confirm?: ConfirmStep<ProductDeletionPreview> } = {},
 ) {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let deletedUnitCount = 0;
 
   await db.transaction(async (tx) => {
@@ -1836,7 +1840,7 @@ export async function deleteProduct(
     deletedUnitCount = units.length;
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   emit(actor, { type: "products.changed", store: eventStore(actor) });
   return { id, deletedUnitCount };
 }

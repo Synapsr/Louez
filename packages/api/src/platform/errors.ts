@@ -280,8 +280,8 @@ export const OPERATION_STATE_CODES: ReadonlySet<string> = new Set([
  * the transaction that rolls its writes back, or after undoing what it wrote.
  * The one exception is the refusal's own trace (the preview row of
  * `CONFIRMATION_REQUIRED`, with the setup mark of the store it locked; the
- * approval of `APPROVAL_REQUIRED`, written in the write's transaction, which
- * commits it before the refusal is thrown; the activity line of
+ * approval of `APPROVAL_REQUIRED`, written once the write's transaction is
+ * over, in a transaction of its own; the activity line of
  * `DEPOSIT_ATTEMPT_NEEDS_STRIPE`), which records that the write did not
  * happen. A refusal raised after a write whose undoing failed
  * is raised as an ordinary error carrying both (`uploadImage`,

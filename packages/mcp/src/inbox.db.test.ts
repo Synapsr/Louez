@@ -194,7 +194,7 @@ describe("inbox tools (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.match(instructions, /inbox_list[^\n]*nextCursor[^\n]*returns only what is new/);
     assert.match(instructions, /If the user asks you to keep an eye on the store/);
 
-    // Settings alone lists it; products alone does not.
+    // Settings alone lists it; products alone too, for the approvals of products alone.
     const settingsOnly = await withClient(
       await key({ ...reader, reservations: "none", customers: "none", settings: "read" }),
       async (mcp) => (await mcp.listTools()).tools.map((tool) => tool.name),
@@ -204,7 +204,7 @@ describe("inbox tools (database)", { skip: skipWithoutTestDatabase() }, () => {
       await key({ ...reader, reservations: "none", customers: "none", products: "read" }),
       async (mcp) => (await mcp.listTools()).tools.map((tool) => tool.name),
     );
-    assert.ok(!productsOnly.includes("inbox_list"));
+    assert.ok(productsOnly.includes("inbox_list"));
   });
 
   test("an agent polls on MCP and acknowledges on OpenAPI, with the same answers", async () => {

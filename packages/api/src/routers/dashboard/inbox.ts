@@ -1,6 +1,7 @@
 import type { StepKind } from "../../contracts/handoffs";
 import {
   INBOX_ACKNOWLEDGE_MAX,
+  INBOX_ITEM_TYPES,
   INBOX_PAGE_DEFAULT,
   INBOX_PAGE_MAX,
   acknowledgeInboxInput,
@@ -29,10 +30,13 @@ import { mayRead, type ProductContext } from "./product-context";
  * The inbox, on every transport: `inbox_list` and `inbox_acknowledge` on MCP,
  * `/api/v1/inbox` on OpenAPI. The logic is in services/inbox.ts.
  *
- * It opens to a caller who may read reservations, settings or integrations,
- * and shows each type of item only to a caller who may read what it shows
- * (INBOX_ITEM_DOMAINS): without customers, no customer's name; without
- * payments, no payment item; without reservations, no reservation item.
+ * It shows the whole inbox to a caller who may read reservations, settings,
+ * integrations, billing or the team, and each type of item only to a caller
+ * who may read what it shows (INBOX_ITEM_DOMAINS): without customers, no
+ * customer's name; without payments, no payment item; without reservations,
+ * no reservation item. It also opens to a caller who reads any other domain,
+ * for the approvals of that domain alone (`listedTypes`), as an approval
+ * belongs to its procedure's domain, which can be any.
  */
 
 /** What the caller reads, domain by domain: every domain, as an approval shows by its procedure's. */
@@ -59,6 +63,42 @@ const ACKNOWLEDGED_UNDER = [
   "team",
 ] as const satisfies readonly ApiDomain[];
 
+/** Every domain but reservations: each opens the inbox, for its approvals at least. */
+const ANY_OTHER_DOMAIN = API_DOMAINS.filter((domain) => domain !== "reservations");
+
+/**
+ * The types a caller lists: each type whose domains it reads, as before
+ * approvals, for a caller the inbox opened to then (reservations or
+ * `OPENED_BY` read); an approval for any caller, by its domain and whose it
+ * is (`connectionReadsApproval`, in its source). So a caller that reads only
+ * another domain lists its approvals, and nothing else.
+ */
+export function listedTypes(reads: InboxRights): InboxItemType[] {
+  const opensWholeInbox = reads.reservations === true || OPENED_BY.some((domain) => reads[domain]);
+  return INBOX_ITEM_TYPES.filter(
+    (type) => mayShow(reads, type) && (type === "approval_waiting" || opensWholeInbox),
+  );
+}
+
+/**
+ * Whether a caller acknowledges items of a type: one whose domains it reads,
+ * with write access to the type's first domain, as before approvals, for a
+ * caller that acknowledged then (reservations or `ACKNOWLEDGED_UNDER` write). An
+ * approval is acknowledged with write access to its procedure's domain, as
+ * any item is to its own (`refusedFor`), whatever else the caller writes.
+ */
+export function acknowledgesType(
+  type: InboxItemType,
+  reads: InboxRights,
+  mayWrite: (domain: ApiDomain) => boolean,
+): boolean {
+  if (!mayShow(reads, type)) return false;
+  if (type === "approval_waiting") return true;
+  if (!(mayWrite("reservations") || ACKNOWLEDGED_UNDER.some(mayWrite))) return false;
+  const [first] = INBOX_ITEM_DOMAINS[type];
+  return first ? mayWrite(first) : true;
+}
+
 const readerOf = async (context: ProductContext): Promise<InboxReader> => {
   const { credential } = context.actor;
   return {
@@ -66,6 +106,7 @@ const readerOf = async (context: ProductContext): Promise<InboxReader> => {
     urls: context.ports.urls,
     hostedBy: context.ports.hostedBy?.() ?? null,
     reads: reads(context),
+    types: listedTypes(reads(context)),
     operationsOf: credential.kind === "session" ? null : (credential.id ?? credential.userId),
     ...(credential.kind === "session"
       ? {}
@@ -79,7 +120,8 @@ const readerOf = async (context: ProductContext): Promise<InboxReader> => {
 const list = storeProcedure
   .meta({
     capability: "inbox.list",
-    scope: { domain: "reservations", level: "read", anyOf: OPENED_BY },
+    // Any domain's read opens it; the handler shows only the types the caller lists (`listedTypes`).
+    scope: { domain: "reservations", level: "read", anyOf: ANY_OTHER_DOMAIN },
     mcp: {
       name: "inbox_list",
       title: "List Inbox",
@@ -98,7 +140,8 @@ Without cursor, it returns the whole inbox, oldest first. With the nextCursor of
 const acknowledge = storeProcedure
   .meta({
     capability: "inbox.acknowledge",
-    scope: { domain: "reservations", level: "write", anyOf: ACKNOWLEDGED_UNDER },
+    // Any domain's write opens it; the handler acknowledges only what the caller may (`acknowledgesType`).
+    scope: { domain: "reservations", level: "write", anyOf: ANY_OTHER_DOMAIN },
     mcp: {
       name: "inbox_acknowledge",
       title: "Mark Inbox Items Handled",
@@ -123,15 +166,7 @@ const acknowledge = storeProcedure
         userId: actor.credential.userId,
         credentialId: actor.credential.id,
         clientName: actor.credential.clientName,
-        may: (type: InboxItemType) => {
-          const [first] = INBOX_ITEM_DOMAINS[type];
-          return (
-            mayShow(reader.reads, type) &&
-            (first
-              ? mayWrite(first)
-              : mayWrite("reservations") || ACKNOWLEDGED_UNDER.some(mayWrite))
-          );
-        },
+        may: (type: InboxItemType) => acknowledgesType(type, reader.reads, mayWrite),
         // A handoff is acknowledged under its kind's domain, an approval under its procedure's.
         refusedFor: (item) => {
           const domain =

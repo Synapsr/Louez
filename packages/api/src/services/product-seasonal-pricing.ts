@@ -20,6 +20,7 @@ import {
 import { readAfterCommit } from "../platform/errors";
 import type { ApiEvent } from "../platform/ports";
 import { lockStoreProducts, type ConfirmStep, type ProductActor } from "./products";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * Seasonal prices of a product: a base price and tiers that replace the
@@ -369,7 +370,7 @@ export async function deleteSeasonalPricing(
   id: string,
   options: { confirm?: ConfirmStep<SeasonalPricingDeletionPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let productId = "";
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, actor.storeId);
@@ -406,7 +407,7 @@ export async function deleteSeasonalPricing(
     await tx.delete(productSeasonalPricing).where(eq(productSeasonalPricing.id, id));
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   emit(actor, productId);
   return { id, productId };
 }

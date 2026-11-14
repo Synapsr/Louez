@@ -465,7 +465,7 @@ const leaseEnd = () =>
  */
 export async function issueHandoff(
   requester: HandoffRequester,
-  // An approval is requested under the write's own lock (services/approvals.ts).
+  // An approval is requested once its write is over (services/approvals.ts).
   kind: StepKind,
   context: {
     urls: UrlsPort;
@@ -726,8 +726,8 @@ async function rowOfLink(link: string) {
  * whatever its revision. Every write that raises a provider step's or an
  * invitation's revision holds the row's lock under the store row's lock, so
  * the comparison and the raise are ordered. (An approval's request raises
- * its revision under its credential's lock, and its decision compares it in
- * a conditional statement on the row: services/approvals.ts.)
+ * its revision under the store row's lock too, and its decision compares it
+ * in a conditional statement on the row: services/approvals.ts.)
  */
 export const atShownRevision = (id: string, revision: number, userId: string) =>
   and(eq(apiHandoffs.id, id), eq(apiHandoffs.revision, revision), eq(apiHandoffs.userId, userId));

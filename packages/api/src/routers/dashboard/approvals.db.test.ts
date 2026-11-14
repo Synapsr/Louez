@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
+import { createTestAccessTokens } from "@louez/auth/testing";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import type { BaseContext } from "../../context";
@@ -9,6 +10,7 @@ import type { Consequence } from "../../platform/approval-rule";
 
 import { sha256 } from "../../platform/hash";
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { lockWaitsOn } from "../../platform/test-lock-waits";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
@@ -28,9 +30,13 @@ for (const name of [
 }
 
 const SESSION_HEADER = "x-test-session-user";
+const ISSUER = "https://app.louez.test/api/auth";
+const RESOURCE = "https://app.louez.test/api/mcp";
+let tokens: Awaited<ReturnType<typeof createTestAccessTokens>>;
 mock.module("@louez/auth", {
   namedExports: {
     auth: {},
+    verifyMcpAccessToken: (token: string) => tokens.verify(token),
     authInstance: {
       api: {
         getSession: async ({ headers }: { headers: Headers }) => {
@@ -44,7 +50,7 @@ mock.module("@louez/auth", {
 
 // A person's approval of an agent's operation, end to end on the database,
 // through the transport tests' fixture (`fixture.notes.erase`) with `money`
-// made live for it alone: requested in the write's transaction, read,
+// made live for it alone: requested once the write's transaction is over, read,
 // decided on its page, refused, expired and revoked; its identity, its caps
 // and its cool-down; who reads it and who decides it; the inbox. Nothing is
 // carried out yet: an approved approval presented with a call runs nothing.
@@ -58,6 +64,7 @@ const STRANGER = "ap_stranger_user_001";
 const STORE = "ap_store_a_000000001";
 const OTHER_STORE = "ap_store_b_000000001";
 const PROCEDURE = "fixture.notes.erase";
+const CLIENT = "https://claude.ap.test/oauth/client.json";
 
 describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
@@ -68,11 +75,13 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   let handoffs: typeof import("../../services/handoffs");
   let approvals: typeof import("../../services/approvals");
   let confirmation: typeof import("../../platform/confirmation");
+  let grants: typeof import("../../services/agent-grants");
   let routers: {
     handoffs: typeof import("./handoffs").dashboardHandoffsRouter;
     inbox: typeof import("./inbox").dashboardInboxRouter;
   };
   type Fixture = ReturnType<typeof import("../../platform/testing").createFixtureRouter>;
+  let fixtureRouter: typeof import("../../platform/testing").createFixtureRouter;
   let live: Fixture["fixture"]["notes"];
   let notLive: Fixture["fixture"]["notes"];
   let LIFETIME: { actMs: number; executeMs?: number };
@@ -91,6 +100,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   };
 
   before(async () => {
+    tokens = await createTestAccessTokens({ issuer: ISSUER, audience: RESOURCE });
     database = await createTestDatabase("api_approvals");
     louezDb = await import("@louez/db");
     orpc = await import("@orpc/server");
@@ -99,13 +109,14 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     handoffs = await import("../../services/handoffs");
     approvals = await import("../../services/approvals");
     confirmation = await import("../../platform/confirmation");
+    grants = await import("../../services/agent-grants");
     routers = {
       handoffs: (await import("./handoffs")).dashboardHandoffsRouter,
       inbox: (await import("./inbox")).dashboardInboxRouter,
     };
-    const { createFixtureRouter } = await import("../../platform/testing");
-    live = createFixtureRouter({ liveConsequences: ["money"] }).fixture.notes;
-    notLive = createFixtureRouter().fixture.notes;
+    fixtureRouter = (await import("../../platform/testing")).createFixtureRouter;
+    live = fixtureRouter({ liveConsequences: ["money"] }).fixture.notes;
+    notLive = fixtureRouter().fixture.notes;
     LIFETIME = handoffs.HANDOFF_LIFETIMES.operation_approval;
     await louezDb.db.insert(louezDb.users).values([
       { id: OWNER, email: "owner@ap.test", name: "Olga Owner" },
@@ -113,6 +124,13 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       { id: MEMBER, email: "member@ap.test", name: "Malo Member" },
       { id: STRANGER, email: "stranger@ap.test", name: "Sven Stranger" },
     ]);
+    await louezDb.db.insert(louezDb.oauthClients).values({
+      clientId: CLIENT,
+      name: "Claude",
+      uri: "https://claude.ap.test",
+      clientDiscoveryId: "cimd",
+      redirectUris: JSON.stringify(["https://client.ap.test/callback"]),
+    });
   });
 
   after(async () => {
@@ -127,7 +145,9 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       louezDb.apiOperations,
       louezDb.apiConfirmations,
       louezDb.apiKeys,
+      louezDb.apiAgentGrants,
       louezDb.apiRateLimits,
+      louezDb.categories,
       louezDb.inboxAcknowledgements,
       louezDb.storeMembers,
       louezDb.stores,
@@ -213,6 +233,36 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
         receipt: {},
       }),
     };
+  }
+
+  /** What the owner consents to for the agent: categories written, in this store. */
+  const grantTerms = {
+    stores: { all: false as const, ids: [STORE] },
+    preset: "write" as const,
+    confirmSensitive: true,
+    bundles: ["catalog" as const],
+  };
+
+  /** The owner's grant to the agent, saved as the consent page saves it. */
+  async function saveAgentGrant() {
+    const saved = await grants.saveGrant({ userId: OWNER, clientId: CLIENT, terms: grantTerms });
+    return saved.id;
+  }
+
+  /** An agent over OAuth, with the owner's grant, acting on STORE. */
+  async function oauthAgent() {
+    const grant = await grants.loadActiveGrant({ userId: OWNER, clientId: CLIENT });
+    const token = await tokens.sign({
+      userId: OWNER,
+      clientId: CLIENT,
+      grantId: grant?.id ?? null,
+    });
+    return (headers: Record<string, string> = {}): BaseContext => ({
+      headers: new Headers({ authorization: `Bearer ${token}`, "louez-store": STORE, ...headers }),
+      transport: "mcp",
+      ports,
+      receipt: {},
+    });
   }
 
   const session = (user = OWNER, store = STORE): BaseContext => ({
@@ -658,7 +708,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
         bundles: null,
       },
     };
-    const otherProcedure = await louezDb.db.transaction((tx) =>
+    const otherRefusal = await louezDb.db.transaction((tx) =>
       confirmation.checkConfirmation({
         consequences: ["money"],
         executor: tx,
@@ -676,18 +726,8 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
         liveConsequences: ["money"],
       }),
     );
-    assert.ok(otherProcedure);
-    same(
-      {
-        code: (otherProcedure as { data?: { code?: string } }).data?.code,
-        status: undefined,
-        message: otherProcedure.message,
-        details:
-          (otherProcedure as { data?: { details?: Record<string, unknown> } }).data?.details ?? {},
-        retryable: undefined,
-      },
-      "another procedure",
-    );
+    assert.ok(otherRefusal);
+    same(await failure(confirmation.raiseConfirmation(otherRefusal)), "another procedure");
     // A procedure that asks for the token reads it as an unknown token.
     const token = await failure(erase({ id: "n1" }, key.context(presenting), notLive));
     assert.equal(token.code, "CONFIRMATION_INVALID");
@@ -847,126 +887,17 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(row.status, won === "approved" ? "approved" : "failed");
   });
 
+  /** Resolves once `waiting` transactions wait for a lock on a row of `table`: a real lock wait. */
+  const lockWait = (table: string, waiting = 1) =>
+    lockWaitsOn(louezDb.db, table, { count: waiting });
+
+  type Tx = Parameters<Parameters<typeof louezDb.db.transaction>[0]>[0];
+
   /**
-   * Waits until `statements` statements matching `pattern` wait in the
-   * processlist: what is running there while a test holds a lock can only be
-   * waiting for it. Its own statement holds the pattern too: it is left out.
+   * Holds what `lock` locks, in a transaction of the test's, until `release`
+   * is called; every test releases it in `finally`, then awaits `done`.
    */
-  async function lockWait(pattern: string, statements = 1) {
-    for (let tries = 0; tries < 500; tries += 1) {
-      const [found] = (await louezDb.db.execute(
-        orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
-          WHERE db = DATABASE() AND command = 'Query' AND id <> CONNECTION_ID()
-          AND info LIKE ${pattern}`,
-      )) as unknown as [Array<{ n: number | string }>];
-      if (Number(found[0]?.n) >= statements) return;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    throw new Error(`no statement waited for a lock: ${pattern}`);
-  }
-
-  test("the agent asks again while the person's click waits for the approval's row: the click decides nothing", async () => {
-    const key = await apiKey();
-    const asked = await ask({ id: "n1" }, key);
-    const page = await rowOf(asked.approval.id);
-
-    // The repeated request, through the code that requests, holds the
-    // approval's row until the click's statement waits for it.
-    let release: () => void = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    let repeated: (() => void) | null = null;
-    const repeatedNow = new Promise<void>((resolve) => {
-      repeated = resolve;
-    });
-    const repeat = louezDb.db.transaction(async (tx) => {
-      const actor = {
-        transport: "mcp" as const,
-        isPlatformAdmin: false,
-        storeId: STORE,
-        credential: {
-          kind: "api_key" as const,
-          id: key.id,
-          clientName: "Store agent",
-          userId: OWNER,
-          email: null,
-          storeId: STORE,
-          stores: null,
-          scopes: null,
-          confirmSensitive: true,
-          bundles: null,
-        },
-      };
-      const refusal = await approvals.requestApproval({
-        tx,
-        actor,
-        procedure: PROCEDURE,
-        input: { id: "n1", consequences: ["money"], amount: 40 },
-        preview: { summary: "Erase note n1 of Roscoff Voile." },
-        consequences: ["money"],
-        facts: { id: "n1", amount: 40, recipient: null },
-        scope: { domain: "categories", level: "write", role: "delete" },
-        // The same request exactly: only its revision moves.
-        bindingHash: page.bindingHash ?? "",
-        urls: ports.urls,
-        presented: null,
-      });
-      assert.equal(refusal.data?.code, "APPROVAL_REQUIRED");
-      repeated?.();
-      await held;
-    });
-    await repeatedNow;
-    const click = failure(decide(asked.approval.id, "approve", { revision: page.revision }));
-    await lockWait("%from `api_handoffs`%for update%");
-    release();
-    await repeat;
-    const refusal = await click;
-    assert.equal(refusal.details.reason, "changed");
-    const row = await rowOf(asked.approval.id);
-    assert.equal(row.status, "pending");
-    assert.equal(row.revision, page.revision + 1);
-    assert.equal(row.bindingHash, page.bindingHash);
-    assert.equal(row.decision, null);
-  });
-
-  /** The actor a key's call resolves to, for the request's code called directly. */
-  const actorOf = (key: Key, kind: "api_key" | "session" = "api_key") => ({
-    transport: "mcp" as const,
-    isPlatformAdmin: false,
-    storeId: STORE,
-    credential: {
-      kind,
-      id: kind === "session" ? null : key.id,
-      clientName: "Store agent",
-      userId: OWNER,
-      email: null,
-      storeId: STORE,
-      stores: null,
-      scopes: null,
-      confirmSensitive: true,
-      bundles: null,
-    },
-  });
-
-  const requestOf = (tx: Parameters<typeof approvals.requestApproval>[0]["tx"], key: Key) => ({
-    tx,
-    actor: actorOf(key),
-    procedure: PROCEDURE,
-    input: { id: "n1", consequences: ["money"], amount: 40 },
-    preview: { summary: "Erase note n1 of Roscoff Voile." },
-    consequences: ["money"] as ["money"],
-    facts: { id: "n1", amount: 40, recipient: null },
-    scope: { domain: "categories" as const, level: "write" as const, role: "delete" as const },
-    bindingHash: "b".repeat(64),
-    urls: ports.urls,
-    presented: null,
-  });
-
-  /** Holds a row's lock (`lock`) in a transaction of the test's until `release` is called. */
-  function holdLock(
-    lock: (tx: Parameters<Parameters<typeof louezDb.db.transaction>[0]>[0]) => Promise<unknown>,
-  ) {
+  function holdLock(lock: (tx: Tx) => Promise<unknown>) {
     let release: () => void = () => {};
     const released = new Promise<void>((resolve) => {
       release = resolve;
@@ -983,133 +914,221 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     return { held, release, done };
   }
 
-  test("a request takes no store lock: a writer holding the store row, then waiting for the request's domain lock, does not deadlock", async () => {
+  const holdApprovalRow = (id: string) =>
+    holdLock((tx) =>
+      tx
+        .select({ id: louezDb.apiHandoffs.id })
+        .from(louezDb.apiHandoffs)
+        .where(orm.eq(louezDb.apiHandoffs.id, id))
+        .for("update"),
+    );
+
+  test("the agent asks again while the person's click waits for the store's lock: the refresh commits first, and the click decides nothing", async () => {
     const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    const page = await rowOf(asked.approval.id);
+    // The approval's row held: the repeated request takes the store's lock,
+    // then waits for the row to refresh it; the click waits for the store's lock.
+    const row = holdApprovalRow(asked.approval.id);
+    await row.held;
+    let repeat: Promise<Refusal> | null = null;
+    let click: Promise<Refusal> | null = null;
+    try {
+      repeat = failure(erase({ id: "n1" }, key.context()));
+      await lockWait("api_handoffs");
+      click = failure(decide(asked.approval.id, "approve", { revision: page.revision }));
+      await lockWait("stores");
+    } finally {
+      row.release();
+      await row.done;
+    }
+    assert.equal((await repeat).code, "APPROVAL_REQUIRED");
+    const refusal = await click;
+    assert.equal(refusal.details.reason, "changed");
+    const after = await rowOf(asked.approval.id);
+    assert.equal(after.status, "pending");
+    assert.equal(after.revision, page.revision + 1);
+    assert.equal(after.bindingHash, page.bindingHash, "the same request exactly");
+    assert.equal(after.decision, null);
+  });
+
+  test("a click that waited for the approval's row past its expiry is refused as expired, and decides nothing", async () => {
+    const key = await apiKey();
+    const asked = await ask({ id: "n1" }, key);
+    // A second left to decide, on the database's clock.
+    await louezDb.db.execute(
+      orm.sql`UPDATE api_handoffs SET expires_at = NOW(3) + INTERVAL 1 SECOND WHERE id = ${asked.approval.id}`,
+    );
+    const row = holdApprovalRow(asked.approval.id);
+    await row.held;
+    let click: Promise<Refusal> | null = null;
+    try {
+      click = failure(decide(asked.approval.id, "approve"));
+      await lockWait("api_handoffs");
+      // The database's clock passes the expiry while the click waits.
+      for (;;) {
+        const [passed] = (await louezDb.db.execute(
+          orm.sql`SELECT expires_at <= NOW(3) AS passed FROM api_handoffs WHERE id = ${asked.approval.id}`,
+        )) as unknown as [Array<{ passed: number }>];
+        if (Number(passed[0]?.passed) === 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    } finally {
+      row.release();
+      await row.done;
+    }
+    const refusal = await click;
+    assert.equal(refusal.code, "HANDOFF_DECISION_INVALID");
+    assert.equal(refusal.details.reason, "expired");
+    const after = await rowOf(asked.approval.id);
+    assert.equal(after.status, "pending");
+    assert.equal(after.decision, null);
+  });
+
+  test("a request's write ends before its approval waits for the store's row: a writer holding that row, then the write's domain lock, does not deadlock", async () => {
     await louezDb.db
       .insert(louezDb.categories)
       .values({ id: "ap_category_00000001", storeId: STORE, name: "Dériveurs" });
-    // A writer in the order products and settings take: the store row first,
-    // then (once released) the domain lock the request takes.
-    let release: () => void = () => {};
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
+    // The request's write pauses once it has asked, its domain lock held.
+    let resume: () => void = () => {};
+    const resumed = new Promise<void>((resolve) => {
+      resume = resolve;
     });
-    let ready: () => void = () => {};
-    const held = new Promise<void>((resolve) => {
-      ready = resolve;
+    let asked: () => void = () => {};
+    const hasAsked = new Promise<void>((resolve) => {
+      asked = resolve;
     });
+    const notes = fixtureRouter({
+      liveConsequences: ["money"],
+      whileAsked: async () => {
+        asked();
+        await resumed;
+      },
+    }).fixture.notes;
+    const key = await apiKey();
+    // A writer in the order products and settings take: the store's row, then its domain.
+    const gate = () => {
+      let open: () => void = () => {};
+      const opened = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      return { open, opened };
+    };
+    const holdsStore = gate();
+    const goForDomain = gate();
+    const gotDomain = gate();
+    const writerDone = gate();
     const writer = louezDb.db.transaction(async (tx) => {
       await tx
         .select({ id: louezDb.stores.id })
         .from(louezDb.stores)
         .where(orm.eq(louezDb.stores.id, STORE))
         .for("update");
-      ready();
-      await released;
+      holdsStore.open();
+      await goForDomain.opened;
       await tx
         .select({ id: louezDb.categories.id })
         .from(louezDb.categories)
         .where(orm.eq(louezDb.categories.storeId, STORE))
         .for("update");
+      gotDomain.open();
+      await writerDone.opened;
     });
-    await held;
-    // The request takes its domain lock (the store's categories), then asks.
-    const request = failure(erase({ id: "n1" }, key.context()));
-    const settled = await Promise.race([
-      request.then(() => "answered" as const),
-      lockWait("%from `stores`%for update%").then(() => "waits for the store row" as const),
-    ]);
-    release();
-    assert.equal(settled, "answered", "the request completes while the store row is held");
+    await holdsStore.opened;
+    let request: Promise<Refusal> | null = null;
+    try {
+      request = failure(erase({ id: "n1" }, key.context(), notes));
+      await hasAsked;
+      // The writer, holding the store's row, waits for the domain lock the write holds.
+      goForDomain.open();
+      await lockWait("categories");
+      // The write goes on: it ends without waiting for the store's row.
+      resume();
+      await gotDomain.opened;
+      // Then the request waits for the store's row, its write's locks all released.
+      await lockWait("stores");
+    } finally {
+      resume();
+      goForDomain.open();
+      writerDone.open();
+      await writer; // no deadlock was raised
+    }
     assert.equal((await request).code, "APPROVAL_REQUIRED");
-    await writer; // no deadlock was raised
     assert.equal((await rows()).length, 1);
   });
 
-  test("a request that waits for its credential while the person approves finds the approval approved, and leaves it", async () => {
-    const key = await apiKey();
-    const asked = await ask({ id: "n1" }, key);
-    const holder = holdLock((tx) =>
+  test("an agent's request racing its grant's update and a new consent: no deadlock", async () => {
+    const grantId = await saveAgentGrant();
+    const context = await oauthAgent();
+    const store = holdLock((tx) =>
       tx
-        .select({ id: louezDb.apiKeys.id })
-        .from(louezDb.apiKeys)
-        .where(orm.eq(louezDb.apiKeys.id, key.id))
+        .select({ id: louezDb.stores.id })
+        .from(louezDb.stores)
+        .where(orm.eq(louezDb.stores.id, STORE))
         .for("update"),
     );
-    await holder.held;
-    const again = failure(erase({ id: "n1" }, key.context()));
-    await lockWait("%from `api_keys`%for update%");
-    // The decision takes no credential lock: it goes through meanwhile.
-    await decide(asked.approval.id, "approve");
-    const approved = await rowOf(asked.approval.id);
-    holder.release();
-    await holder.done;
-    const answer = await again;
-    assert.equal(answer.code, "APPROVAL_REQUIRED");
-    assert.equal((answer.details.approval as ApprovalDetails).status, "approved");
-    assert.deepEqual(await rowOf(asked.approval.id), approved, "left as decided");
+    await store.held;
+    let request: Promise<Refusal> | null = null;
+    let update: Promise<unknown> | null = null;
+    let consent: Promise<unknown> | null = null;
+    try {
+      // The request's write is over: its own transaction waits for the store's row.
+      request = failure(erase({ id: "n1" }, context()));
+      await lockWait("stores");
+      // The grant's writers hold the grant's row, then check the store's row
+      // as a foreign key of the grant's stores.
+      update = grants.updateGrant({
+        userId: OWNER,
+        id: grantId,
+        patch: { stores: { all: false, ids: [STORE] } },
+      });
+      await lockWait("stores", 2);
+      consent = grants.saveGrant({ userId: OWNER, clientId: CLIENT, terms: grantTerms });
+    } finally {
+      store.release();
+      await store.done;
+    }
+    assert.equal((await request).code, "APPROVAL_REQUIRED");
+    await update;
+    await consent;
+    const [row] = await rows();
+    assert.equal(row?.credentialKind, "oauth");
+    assert.equal(row?.credentialId, grantId);
   });
 
-  test("the unique key's backstop: an open row of the identity the credential's read cannot see is the same request", async () => {
+  test("a write retried on a deadlock requests its approval once, after the transaction that refused it", async () => {
+    const notes = fixtureRouter({ liveConsequences: ["money"], deadlocksBeforeCommit: 1 }).fixture
+      .notes;
     const key = await apiKey();
-    const other = await apiKey();
-    const subject = approvals.approvalIdentity({
-      credential: { kind: "api_key", id: key.id },
-      storeId: STORE,
-      procedure: PROCEDURE,
-      facts: { id: "n1", amount: 40, recipient: null },
-    });
-    // A writer that never took the credential's lock, and wrote the identity
-    // under another credential's columns.
-    const now = new Date();
-    await louezDb.db.insert(louezDb.apiHandoffs).values({
-      storeId: STORE,
-      kind: "operation_approval",
-      subject,
-      procedure: PROCEDURE,
-      bindingHash: "c".repeat(64),
-      payload: {
-        input: {},
-        preview: { summary: "Planted." },
-        scope: { domain: "categories", level: "write", role: "delete" },
-        consequences: ["money"],
-      },
-      status: "pending",
-      activeSlot: 1,
-      userId: OWNER,
-      credentialKind: "api_key",
-      credentialId: other.id,
-      clientName: null,
-      tokenHash: null,
-      linkIssuedAt: now,
-      expiresAt: new Date(now.getTime() + LIFETIME.actMs),
-    });
-    const [planted] = await rows();
-    assert.ok(planted);
-    const asked = await ask({ id: "n1" }, key);
-    assert.equal(asked.approval.id, planted.id, "the open approval of the identity");
-    assert.deepEqual(await rows(), [planted], "nothing written");
-  });
-
-  test("a credential without a row to lock requests nothing: a session's request fails", async () => {
-    const key = await apiKey();
-    await assert.rejects(
-      louezDb.db.transaction((tx) =>
-        approvals.requestApproval({ ...requestOf(tx, key), actor: actorOf(key, "session") }),
-      ),
-      /no row an approval's request can lock/,
+    const asked = await failure(
+      erase({ id: "n1" }, key.context({ "idempotency-key": "retried" }), notes),
     );
-    assert.deepEqual(await rows(), []);
+    assert.equal(asked.code, "APPROVAL_REQUIRED");
+    const [row] = await rows();
+    assert.equal(row?.revision, 1, "requested once, not once per attempt");
+    assert.equal((await rows()).length, 1);
+    assert.equal(await storeDescription(), null);
   });
 
-  test("a revoked key's request, its credential locked, asks for nothing", async () => {
+  test("a request that fails after the write's transaction leaves nothing: the call fails, and a new call requests it", async () => {
     const key = await apiKey();
-    await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
-    const refusal = await louezDb.db.transaction((tx) =>
-      approvals.requestApproval(requestOf(tx, key)),
-    );
-    assert.equal(refusal.data?.code, "UNAUTHENTICATED");
-    assert.deepEqual(await rows(), []);
+    // The approvals' table gone for a moment: the request fails once the write is over.
+    await louezDb.db.execute(orm.sql`RENAME TABLE api_handoffs TO api_handoffs_away`);
+    let failed: Refusal | null = null;
+    try {
+      failed = await failure(erase({ id: "n1" }, key.context({ "idempotency-key": "lost" })));
+    } finally {
+      await louezDb.db.execute(orm.sql`RENAME TABLE api_handoffs_away TO api_handoffs`);
+    }
+    assert.ok(failed);
+    assert.notEqual(failed.code, "APPROVAL_REQUIRED");
+    assert.deepEqual(await rows(), [], "nothing written");
+    assert.equal(await storeDescription(), null, "nothing of the write either");
+    const [operation] = await operations();
+    assert.notEqual(operation?.status, "succeeded");
+    // Another call requests it.
+    const again = await ask({ id: "n1" }, key);
+    assert.equal((await rowOf(again.approval.id)).status, "pending");
   });
 
   // --- Refusals, cool-down, expiry ----------------------------------------------
@@ -1234,7 +1253,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     await lock.held;
     // The click passes its first checks (the key still exists), then waits for the store's lock.
     const click = failure(decide(asked.approval.id, "approve"));
-    await lockWait("%from `stores`%for update%");
+    await lockWait("stores");
     // The revocation's first statement commits meanwhile; its hand-offs' comes after the click.
     await apiKeys.revokeApiKey({ db: louezDb.db, storeId: STORE, keyId: key.id });
     lock.release();
@@ -1256,7 +1275,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     const lock = holdStoreRow();
     await lock.held;
     const click = failure(decide(asked.approval.id, "approve"));
-    await lockWait("%from `stores`%for update%");
+    await lockWait("stores");
     await revoke(key);
     lock.release();
     await lock.done;
@@ -1363,31 +1382,41 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     await ask({ id: "n0" }, await apiKey({ storeId: OTHER_STORE }));
   });
 
-  test("the store's cap, counted without a lock, is passed by at most one approval per connection requesting at once", async () => {
+  test("the store's cap is exact under requests of several connections at once: from 49 open, exactly 50", async () => {
     const keys: Key[] = [];
-    for (let index = 0; index < 8; index += 1) keys.push(await apiKey());
+    for (let index = 0; index < 9; index += 1) keys.push(await apiKey());
     for (const [position, key] of keys.slice(0, 5).entries()) {
       const count =
         position === 4 ? approvals.MAX_PENDING_APPROVALS - 1 : approvals.MAX_PENDING_APPROVALS;
       for (let index = 0; index < count; index += 1) await ask({ id: `n${index}` }, key);
     }
-    const before = approvals.MAX_STORE_PENDING_APPROVALS - 1;
-    assert.equal((await rows()).length, before);
-    const racing = keys.slice(5);
+    assert.equal((await rows()).length, approvals.MAX_STORE_PENDING_APPROVALS - 1);
     const answers = await Promise.all(
-      racing.map((key) => failure(erase({ id: "n-race" }, key.context()))),
+      keys.slice(5).map((key) => failure(erase({ id: "n-race" }, key.context()))),
     );
-    for (const answer of answers) {
-      assert.ok(["APPROVAL_REQUIRED", "APPROVALS_FULL"].includes(answer.code ?? ""), answer.code);
+    const codes = answers.map((answer) => answer.code).sort();
+    assert.deepEqual(codes, [
+      "APPROVALS_FULL",
+      "APPROVALS_FULL",
+      "APPROVALS_FULL",
+      "APPROVAL_REQUIRED",
+    ]);
+    assert.equal((await rows()).length, approvals.MAX_STORE_PENDING_APPROVALS);
+    for (const answer of answers.filter((answer) => answer.code === "APPROVALS_FULL")) {
+      assert.equal(answer.details.limit, "store_open");
     }
-    const created = answers.filter((answer) => answer.code === "APPROVAL_REQUIRED").length;
-    assert.ok(created >= 1, "the first fits");
-    const open = (await rows()).length;
-    assert.ok(open <= before + racing.length, `${open}: at most one per racing connection`);
-    // Once they are counted, the next one waits.
-    const after = await failure(erase({ id: "n-after" }, keys[5]?.context() ?? session()));
-    assert.equal(after.code, "APPROVALS_FULL");
-    assert.equal(after.details.limit, "store_open");
+  });
+
+  test("requests of three connections at once, each its first: three approvals, no deadlock", async () => {
+    const keys = [await apiKey(), await apiKey(), await apiKey()];
+    const answers = await Promise.all(
+      keys.map((key) => failure(erase({ id: "n1" }, key.context()))),
+    );
+    assert.deepEqual(
+      answers.map((answer) => answer.code),
+      ["APPROVAL_REQUIRED", "APPROVAL_REQUIRED", "APPROVAL_REQUIRED"],
+    );
+    assert.equal((await rows()).length, 3);
   });
 
   // --- The request path's own guards ------------------------------------------------
@@ -1451,6 +1480,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       unavailable?: unknown;
       items: Array<{
         id: string;
+        occurredAt: Date;
         type: string;
         severity: string;
         summary: string;
@@ -1528,6 +1558,56 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       .where(orm.eq(louezDb.apiKeys.id, key.id));
     assert.deepEqual(await inbox(key.context()), []);
     assert.equal((await failure(get(asked.approval.id, key.context()))).code, "HANDOFF_NOT_FOUND");
+  });
+
+  /** A key with one domain only, at `level`. */
+  const onlyDomain = (domain: keyof Permissions, level: "read" | "write"): Permissions => ({
+    reservations: "none",
+    products: "none",
+    customers: "none",
+    categories: "none",
+    payments: "none",
+    analytics: "none",
+    settings: "none",
+    team: "none",
+    [domain]: level,
+  });
+
+  test("approval_waiting: a key with only the approval's domain lists and acknowledges it; a key without that domain does neither", async () => {
+    const key = await apiKey({ permissions: onlyDomain("categories", "write") });
+    const asked = await ask({ id: "n1" }, key);
+    await shown(asked.approval.id);
+    const [item] = await inbox(key.context());
+    assert.ok(item, "listed with categories alone");
+    assert.equal(item.id, `approval_waiting:${asked.approval.id}`);
+
+    // A key of another domain alone opens the inbox, and finds nothing of it.
+    const other = await apiKey({ permissions: onlyDomain("products", "write") });
+    assert.deepEqual(await inbox(other.context()), []);
+    const page = (await orpc.call(
+      routers.inbox.list,
+      {},
+      {
+        context: other.context(),
+        path: ["dashboard", "inbox", "list"],
+      },
+    )) as { items: unknown[] };
+    assert.deepEqual(page.items, [], "no other item reaches it");
+    const theirs = (await orpc.call(
+      routers.inbox.acknowledge,
+      { items: [{ id: item.id, occurredAt: item.occurredAt }] },
+      { context: other.context(), path: ["dashboard", "inbox", "acknowledge"] },
+    )) as { acknowledged: number; rejected: unknown[] };
+    assert.equal(theirs.acknowledged, 0, "nor acknowledged by it: it does not hold it");
+    assert.equal(theirs.rejected.length, 1);
+
+    const mine = (await orpc.call(
+      routers.inbox.acknowledge,
+      { items: [{ id: item.id, occurredAt: item.occurredAt }] },
+      { context: key.context(), path: ["dashboard", "inbox", "acknowledge"] },
+    )) as { acknowledged: number };
+    assert.equal(mine.acknowledged, 1);
+    assert.deepEqual(await inbox(key.context()), [], "acknowledged, it leaves the inbox");
   });
 
   // --- The clocks ----------------------------------------------------------------
