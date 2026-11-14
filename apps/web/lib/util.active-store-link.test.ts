@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { activeStoreSwitchPath, dashboardReturnPath } from "./util.active-store-link";
+import {
+  activeStoreSwitchPath,
+  dashboardReturnPath,
+  isSameOriginPost,
+} from "./util.active-store-link";
 
 const at = (path: string) => new URL(path, "https://app.louez.test");
 
@@ -55,4 +59,31 @@ test("the way back is a dashboard path without the store, or the dashboard home"
   ]) {
     assert.equal(dashboardReturnPath(next), "/dashboard", String(next));
   }
+});
+
+const APP = "https://app.example";
+const posted = (headers: Record<string, string>) => isSameOriginPost(new Headers(headers), [APP]);
+
+test("a post from this app's own pages is accepted: its origin, same-origin when the browser says", () => {
+  assert.equal(posted({ origin: APP }), true);
+  assert.equal(posted({ origin: APP, "sec-fetch-site": "same-origin" }), true);
+});
+
+test("a page that sends no referrer posts with a null origin: accepted only when the browser says same-origin", () => {
+  // What a browser sends from a `no-referrer` page of this app.
+  assert.equal(posted({ origin: "null", "sec-fetch-site": "same-origin" }), true);
+  // A null origin alone says nothing, and another site's form says cross-site.
+  assert.equal(posted({ origin: "null" }), false);
+  assert.equal(posted({ origin: "null", "sec-fetch-site": "cross-site" }), false);
+  assert.equal(posted({ origin: "null", "sec-fetch-site": "same-site" }), false);
+  assert.equal(posted({ origin: "null", "sec-fetch-site": "none" }), false);
+});
+
+test("another origin, or none, is refused whatever else is sent", () => {
+  assert.equal(posted({ origin: "https://other.example" }), false);
+  assert.equal(posted({ origin: "https://other.example", "sec-fetch-site": "same-origin" }), false);
+  assert.equal(posted({ origin: APP, "sec-fetch-site": "cross-site" }), false);
+  assert.equal(posted({ origin: APP, "sec-fetch-site": "same-site" }), false);
+  assert.equal(posted({}), false);
+  assert.equal(posted({ "sec-fetch-site": "same-origin" }), false);
 });
