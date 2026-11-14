@@ -226,6 +226,8 @@ const ALWAYS_CONFIRMED =
  * back or erase money, the deletion included: they declare `money`, so every
  * key and token is asked whatever its setting, and a session never. The
  * preview's details open with its kind, as the hand-written tools showed them.
+ * The presentation's identity facts, with `PAYMENTS_WRITE`, are what a
+ * person's approval is about.
  */
 function paymentRecordsCaller(
   context: ProductContext,
@@ -254,6 +256,9 @@ function paymentRecordsCaller(
         state,
         preview: { summary: preview.summary, details: { sensitive, ...preview.details } },
         display: presentation?.display,
+        approval: presentation
+          ? { facts: presentation.facts, scope: PAYMENTS_WRITE, urls: context.ports.urls }
+          : undefined,
       }),
   };
 }

@@ -46,6 +46,7 @@ import {
   type ReservationReader,
 } from "../../services/reservations";
 import type { Consequences } from "../../platform/approval-rule";
+import type { ProcedureScope } from "../../platform/permissions";
 import { confirmUnderLock, mayRead, type ProductContext } from "./product-context";
 
 /**
@@ -80,6 +81,9 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
   ports: context.ports,
 });
 
+/** The right a status change needs: what a person's approval of one asks of the approver. */
+const RESERVATIONS_WRITE: ProcedureScope = { domain: "reservations", level: "write" };
+
 /**
  * The confirmation of a status change, bound to what its preview shows (the
  * status it starts from, the dates, the amounts, the messages, the money and
@@ -92,15 +96,21 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
  * docs/domain/reservation-changes.md); a message to the customer is one too.
  */
 const statusConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
-  confirmUnderLock(context, path, input, (preview: StatusChangePreview) => {
-    const { summary: _summary, recipientsHash, ...details } = preview;
-    // The recipients are bound even where the preview may not show them.
-    return {
-      state: { ...details, recipientsHash },
-      details,
-      consequences: statusChangeConsequences(preview),
-    };
-  });
+  confirmUnderLock(
+    context,
+    path,
+    input,
+    (preview: StatusChangePreview) => {
+      const { summary: _summary, recipientsHash, ...details } = preview;
+      // The recipients are bound even where the preview may not show them.
+      return {
+        state: { ...details, recipientsHash },
+        details,
+        consequences: statusChangeConsequences(preview),
+      };
+    },
+    RESERVATIONS_WRITE,
+  );
 
 /** What the status change the preview shows does, branch by branch. */
 function statusChangeConsequences(preview: StatusChangePreview): Consequences {
@@ -373,7 +383,7 @@ const listOverdueProcedure = storeProcedure
 const updateStatus = storeProcedure
   .meta({
     capability: "reservations.updateStatus",
-    scope: { domain: "reservations", level: "write" },
+    scope: RESERVATIONS_WRITE,
     sensitive: "send",
     mcp: {
       name: "reservations_update_status",
@@ -425,7 +435,7 @@ const updateStatus = storeProcedure
 const cancel = storeProcedure
   .meta({
     capability: "reservations.cancel",
-    scope: { domain: "reservations", level: "write" },
+    scope: RESERVATIONS_WRITE,
     sensitive: "destructive",
     mcp: {
       name: "reservations_cancel",
