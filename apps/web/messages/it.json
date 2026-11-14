@@ -9942,6 +9942,7 @@
           "moreLines": "{count, plural, one {E # altra riga fuori dalle tue regole} other {E altre # righe fuori dalle tue regole}}: vedi i dettagli",
           "withinRules": "La tua disponibilità e il tuo margine tra due noleggi la coprono: niente li supera.",
           "message": "<v>{customer}</v> riceverà {channels, select, sms {l’SMS} other {l’email}} «<v>{message}</v>» {channels, select, sms {al numero} other {all’indirizzo}} <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> riceverà l’email «<v>{message}</v>» all’indirizzo <v>{email}</v> e l’SMS al numero <v>{phone}</v>",
           "messageToCustomer": "Il cliente riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
           "noMessage": "Al cliente non viene inviato alcun messaggio.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> incassati · <v>{method}</v>",

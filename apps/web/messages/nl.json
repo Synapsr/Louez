@@ -9942,6 +9942,7 @@
           "moreLines": "{count, plural, one {En nog # regel buiten je regels} other {En nog # regels buiten je regels}}: zie de details",
           "withinRules": "Je voorraad en je tijd tussen twee verhuren dekken het: niets gaat erover.",
           "message": "<v>{customer}</v> krijgt {channels, select, sms {de sms} other {de e-mail}} ‘<v>{message}</v>’ op <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> krijgt de e-mail ‘<v>{message}</v>’ op <v>{email}</v> en de sms op <v>{phone}</v>",
           "messageToCustomer": "De klant krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
           "noMessage": "De klant krijgt geen bericht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",

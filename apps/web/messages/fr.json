@@ -9942,6 +9942,7 @@
           "moreLines": "{count, plural, one {Et # autre ligne hors de vos règles} other {Et # autres lignes hors de vos règles}} : voir les détails",
           "withinRules": "Votre stock et votre délai entre deux locations la couvrent : rien ne les dépasse.",
           "message": "<v>{customer}</v> recevra {channels, select, sms {le SMS} other {l’e-mail}} « <v>{message}</v> » {channels, select, sms {au} other {à}} <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> recevra l’e-mail « <v>{message}</v> » à <v>{email}</v> et le SMS au <v>{phone}</v>",
           "messageToCustomer": "Le client recevra {channels, select, email {l’e-mail} sms {le SMS} other {l’e-mail et le SMS}} « <v>{message}</v> »",
           "noMessage": "Aucun message n’est envoyé au client.",
           "depositCollected": "<v>{type}</v> : <v>{amount}</v> encaissés · <v>{method}</v>",

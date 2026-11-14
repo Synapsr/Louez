@@ -284,31 +284,36 @@ export function confirmOverridePresentation(
   ];
   const customer = preview.customer && oneLine(preview.customer.name) ? preview.customer : null;
   const message = messages[0]?.message ?? null;
-  // Where each message goes, to a person who may read customers: as the
-  // preview holds it, the one snapshot the binding and the outbox read.
+  const channels = channelsOf(messages);
+  // A change sends one message, on one channel or on both: one fact. To a
+  // person who may read customers it says where each goes, as the preview
+  // holds it, the one snapshot the binding and the outbox read.
+  const email = messages.find((entry) => entry.channel === "email")?.to;
+  const phone = messages.find((entry) => entry.channel === "sms")?.to;
   const addressed = customer && messages.every((entry) => entry.to) ? customer : null;
   const told = !message
-    ? [fact("noMessage", {})]
-    : addressed
-      ? messages.map((entry) =>
-          fact("message", {
+    ? fact("noMessage", {})
+    : !addressed
+      ? fact("messageToCustomer", {
+          message: choice("customerMessage", message),
+          channels: choice("messageChannels", channels),
+        })
+      : email && phone
+        ? fact("messageEmailAndText", {
             customer: text(addressed.name),
-            message: choice("customerMessage", entry.message),
-            channels: choice("messageChannels", entry.channel),
-            to: text(entry.to ?? ""),
-          }),
-        )
-      : [
-          fact("messageToCustomer", {
             message: choice("customerMessage", message),
-            channels: choice("messageChannels", channelsOf(messages)),
-          }),
-        ];
-  // The channels as the screen names them: one per message when it says where each goes.
-  const channels = addressed ? messages.map((entry) => entry.channel) : [channelsOf(messages)];
+            email: text(email),
+            phone: text(phone),
+          })
+        : fact("message", {
+            customer: text(addressed.name),
+            message: choice("customerMessage", message),
+            channels: choice("messageChannels", channels),
+            to: text(email ?? phone ?? ""),
+          });
 
-  // The record, the dates and the messages hold their places; the lines share the rest.
-  const room = FACTS_MAX - 2 - told.length;
+  // The record, the dates and the message hold three places; the lines share the rest.
+  const room = FACTS_MAX - 3;
   const departures =
     lines.length === 0
       ? [fact("withinRules", {})]
@@ -341,7 +346,7 @@ export function confirmOverridePresentation(
           total: money(total, reservation.currency),
         }),
         ...departures,
-        ...told,
+        told,
       ],
     },
     facts: {
@@ -352,7 +357,8 @@ export function confirmOverridePresentation(
       // is no part of it: the binding holds the shortfalls, so a shortage
       // that appears since voids the approval.
       overrides: [...OVERRIDES_SAID[key]],
-      // That a message goes, and on which channels, as the screen says;
+      // That a message goes, and on which channels, as the screen says them
+      // (`CHANNELS_SAID` for the fact that names both by its words);
       // where it goes is the binding's (`recipientsHash`), and the details'.
       message: message ? { message, channels } : null,
     },
@@ -371,6 +377,15 @@ export const OVERRIDES_SAID = {
   confirmPastBuffer: ["turnover_buffer"],
   confirmBeyondStockAndBuffer: ["stock", "turnover_buffer"],
 } as const satisfies Partial<Record<HeadlineKey, readonly string[]>>;
+
+/**
+ * The channels a message fact names by its words rather than by a value: the
+ * fact for a message sent on both. The request's identity holds the same
+ * channels, so each is on the screen.
+ */
+export const CHANNELS_SAID = {
+  messageEmailAndText: ["email_and_sms"],
+} as const satisfies Partial<Record<FactKey, readonly string[]>>;
 
 const lineValues = (shortfall: CapacityShortfall) => ({
   product: text(describeShortfallLine(shortfall)),

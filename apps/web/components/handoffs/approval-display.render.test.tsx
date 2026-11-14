@@ -22,6 +22,7 @@ import {
   recordDepositReturnPresentation,
   recordPaymentPresentation,
   removeMemberPresentation,
+  CHANNELS_SAID,
   OVERRIDES_SAID,
 } from "@louez/api/services/approval-presentations";
 import { shownDisplay, shownPreview } from "@louez/api/services/approval-preview";
@@ -501,18 +502,18 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Confirm the booking beyond your stock and your turnover buffer?",
       "Booking #R-00094 · Camille Simon",
       "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00",
-      // Two messages, each with where it goes: the two lines are counted in one fact.
-      "And 2 more lines past your rules: see Details",
-      "Camille Simon will receive the “request accepted” email at camille.simon@example.com",
-      "Camille Simon will receive the “request accepted” text message at +33 6 12 34 56 78",
+      "Paddle: 3 requested, none in stock: 3 missing",
+      "Kayak biplace: 2 requested, only 1 free with your 2 hr turnover buffer",
+      // One message on both channels: one fact, each destination in it.
+      "Camille Simon will receive the “request accepted” email at camille.simon@example.com and a text at +33 6 12 34 56 78",
     ],
     fr: [
       "Confirmer la réservation au-delà de votre stock et de votre délai entre deux locations ?",
       "Réservation #R-00094 · Camille Simon",
       "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
-      "Et 2 autres lignes hors de vos règles : voir les détails",
-      "Camille Simon recevra l’e-mail « demande acceptée » à camille.simon@example.com",
-      "Camille Simon recevra le SMS « demande acceptée » au +33 6 12 34 56 78",
+      "Paddle : 3 demandés, aucun en stock : 3 manquants",
+      "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
+      "Camille Simon recevra l’e-mail « demande acceptée » à camille.simon@example.com et le SMS au +33 6 12 34 56 78",
     ],
   },
   "a booking confirmed with both flags, nothing short": {
@@ -656,15 +657,20 @@ describe("the guarantee: each fact of a request's identity is among what the pag
       assert.ok(presentation);
       const { display, facts } = presentation;
       // What the screen always shows, line by line, with the record each line
-      // is about, and the overrides a confirmation's headline says.
+      // is about, the overrides a confirmation's headline says and the
+      // channels a message's words say.
       const said = (key: string): readonly string[] =>
-        Object.hasOwn(OVERRIDES_SAID, key) ? OVERRIDES_SAID[key as keyof typeof OVERRIDES_SAID] : [];
+        Object.hasOwn(OVERRIDES_SAID, key)
+          ? OVERRIDES_SAID[key as keyof typeof OVERRIDES_SAID]
+          : Object.hasOwn(CHANNELS_SAID, key)
+            ? CHANNELS_SAID[key as keyof typeof CHANNELS_SAID]
+            : [];
       const lines = [display.headline, ...display.facts].map((line) => ({
         line,
         leaves: [
           ...leaves(line.values),
           ...("ref" in line && line.ref ? [line.ref] : []),
-          ...(line === display.headline ? said(line.key) : []),
+          ...said(line.key),
         ],
       }));
       const html = pageOf(branch);
@@ -705,10 +711,12 @@ describe("the guarantee: each fact of a request's identity is among what the pag
       } else if (preview.customer) {
         assert.ok(message.startsWith(`${preview.customer.name} will receive`), message);
         const screen = screenLines(html);
+        // One fact for the messages, saying where each goes.
+        const told = screen.filter((shown) => shown.includes(" will receive "));
+        assert.equal(told.length, 1, told.join("\n"));
         for (const entry of preview.messages) {
           assert.ok(entry.to && inDetails.includes(entry.to), `${entry.channel}: ${inDetails}`);
-          // One fact per message, each saying where it goes.
-          assert.equal(screen.filter((shown) => entry.to && shown.endsWith(entry.to)).length, 1, entry.channel);
+          assert.ok(entry.to && told[0]?.includes(entry.to), entry.channel);
         }
         assert.ok(!inDetails.includes("contact details on file"));
       } else {
@@ -949,40 +957,91 @@ describe("a value from the store's records stays data", () => {
     assert.ok(html.includes(long));
   });
 
-  test("an e-mail address of 200 characters wraps inside its fact, whole and isolated", () => {
+  test("an e-mail address of 200 characters wraps inside its fact, whole and isolated, next to a phone number", () => {
     const address = `${"camille.simon.".repeat(13)}x@example.com`;
     const html = pageOf(
-      withValues({ messages: [{ message: "request_accepted", channel: "email", to: address }] }),
+      withValues({
+        messages: [
+          { message: "request_accepted", channel: "email", to: address },
+          { message: "request_accepted", channel: "sms", to: "+33 6 12 34 56 78" },
+        ],
+      }),
     );
     const items = [...html.matchAll(/<li\b class="([^"]*)"/g)].map((match) => match[1] ?? "");
     assert.ok(items.length > 0 && items.every((classes) => /\bmin-w-0\b/.test(classes) && /\boverflow-hidden\b/.test(classes) && /\bwrap-break-word\b/.test(classes)));
     const shown = html.slice(html.indexOf('<div class="min-w-0 space-y-2">'), html.indexOf("</ul>"));
     assert.doesNotMatch(shown, /(?<![-\w])w-(?:\d|\[)|min-w-\[|whitespace-nowrap|truncate|grid-cols/);
-    // Whole, in its own isolated run.
+    // Each whole, in its own isolated run.
     assert.ok(shown.includes(`>${address}</bdi>`), "the address in a bdi of its own");
+    assert.ok(shown.includes(">+33 6 12 34 56 78</bdi>"), "the number in a bdi of its own");
   });
 
   // Where a message goes, on the screen, per channel: to a person who may
   // read customers, the address or number next to the customer's name; to
   // one who may not, the customer unnamed and no address, said in the details.
+  // What a status change can send: its one message, by e-mail, by text, or both.
+  const EMAIL = "camille.simon@example.com";
+  const PHONE = "+33 6 12 34 56 78";
   const DESTINATIONS = [
-    ["email", "camille.simon@example.com", "Camille Simon will receive the “request accepted” email at camille.simon@example.com"],
-    ["sms", "+33 6 12 34 56 78", "Camille Simon will receive the “request accepted” text message at +33 6 12 34 56 78"],
+    {
+      name: "by email",
+      channels: ["email"],
+      named: "Camille Simon will receive the “request accepted” email at camille.simon@example.com",
+      unnamed: "The customer will receive the “request accepted” email",
+    },
+    {
+      name: "by text message",
+      channels: ["sms"],
+      named: "Camille Simon will receive the “request accepted” text message at +33 6 12 34 56 78",
+      unnamed: "The customer will receive the “request accepted” text message",
+    },
+    {
+      name: "by email and text message",
+      channels: ["email", "sms"],
+      named: "Camille Simon will receive the “request accepted” email at camille.simon@example.com and a text at +33 6 12 34 56 78",
+      unnamed: "The customer will receive the “request accepted” email and text message",
+    },
   ] as const;
-  for (const [channel, address, line] of DESTINATIONS) {
-    test(`a message by ${channel}: where it goes is on the screen to a person who may read customers`, () => {
-      const html = pageOf(withValues({ messages: [{ message: "request_accepted", channel, to: address }] }));
-      assert.equal(screenLines(html).at(-1), line);
+  for (const { name, channels, named, unnamed } of DESTINATIONS) {
+    const sent = (to: boolean) =>
+      channels.map((channel) => ({
+        message: "request_accepted" as const,
+        channel,
+        ...(to ? { to: channel === "email" ? EMAIL : PHONE } : {}),
+      }));
+    test(`a message ${name}: one fact, saying where it goes to a person who may read customers`, () => {
+      const html = pageOf(withValues({ messages: sent(true) }));
+      assert.equal(screenLines(html).at(-1), named);
+      assert.equal(screenLines(html).filter((line) => line.includes(" will receive ")).length, 1);
       assert.ok(!detailsOf(html).includes("contact details on file"));
     });
-    test(`a message by ${channel}: to a person who may not read customers, no address, and the details say so`, () => {
-      const html = pageOf(withValues({ customer: null, messages: [{ message: "request_accepted", channel }] }));
-      const screen = screenLines(html);
-      assert.ok(screen.at(-1)?.startsWith("The customer will receive"), screen.at(-1));
-      assert.ok(!visible(html).includes(address));
+    test(`a message ${name}: to a person who may not read customers, one fact, no address, and the details say so`, () => {
+      const html = pageOf(withValues({ customer: null, messages: sent(false) }));
+      assert.equal(screenLines(html).at(-1), unnamed);
+      assert.doesNotMatch(screenLines(html).join("\n"), /@|\+33/);
       assert.ok(detailsOf(html).includes("Messages go to the customer’s contact details on file."));
     });
   }
+
+  test("a message on both channels takes one place: the lines past the rules keep theirs", () => {
+    const html = pageOf(
+      withValues({
+        messages: [
+          { message: "request_accepted", channel: "email", to: EMAIL },
+          { message: "request_accepted", channel: "sms", to: PHONE },
+        ],
+        overbooking: { shortfalls: [short("Paddle", 2, 1), short("Gilet", 4, 2)] },
+        turnoverBuffer: { shortfalls: [short("Kayak biplace", 2, 1)], turnoverBufferMinutes: 90 },
+      }),
+    );
+    const lines = screenLines(html);
+    assert.equal(lines.length, 6, "a headline and five facts");
+    assert.deepEqual(lines.slice(3), [
+      "Paddle: 2 requested, only 1 in stock: 1 missing",
+      "And 2 more lines past your rules: see Details",
+      "Camille Simon will receive the “request accepted” email at camille.simon@example.com and a text at +33 6 12 34 56 78",
+    ]);
+  });
 
   test("a currency without minor units, and a negative adjustment, are written as such", () => {
     const yen = recordPaymentPresentation(
@@ -1160,10 +1219,13 @@ describe("the display's texts", () => {
         assert.ok(toCustomer.includes(`${channel} {`), `${locale}: messageToCustomer names ${channel}`);
       }
       assert.ok(toCustomer.includes("other {"), `${locale}: messageToCustomer names both`);
-      // Named: one fact per message, its channel and where it goes.
+      // Named, on one channel: the channel and where it goes.
       const named = texts.facts.message ?? "";
       assert.ok(named.includes("sms {") && named.includes("other {"), `${locale}: message names its channel`);
       assert.ok(named.includes("<v>{to}</v>"), `${locale}: message says where it goes, isolated`);
+      // Named, on both: each destination, each isolated.
+      const both = texts.facts.messageEmailAndText ?? "";
+      assert.ok(both.includes("<v>{email}</v>") && both.includes("<v>{phone}</v>"), `${locale}: messageEmailAndText says where each goes`);
     }
   });
 });

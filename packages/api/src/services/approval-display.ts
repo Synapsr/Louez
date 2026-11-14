@@ -166,7 +166,7 @@ export const FACTS = {
   withinRules: {},
   /**
    * "Camille Simon will receive the “request accepted” email at
-   * camille@example.com": one per message, each with where it goes.
+   * camille@example.com": a message on one channel, and where it goes.
    */
   message: {
     customer: TEXT,
@@ -174,7 +174,18 @@ export const FACTS = {
     channels: choiceOf("messageChannels"),
     to: TEXT,
   },
-  /** The customer unnamed, and where it goes unsaid: one fact for every channel. */
+  /**
+   * "Camille Simon will receive the “request accepted” email at
+   * camille@example.com and a text at +33 6 12 34 56 78": the one message a
+   * change sends on both channels, and where each goes.
+   */
+  messageEmailAndText: {
+    customer: TEXT,
+    message: choiceOf("customerMessage"),
+    email: TEXT,
+    phone: TEXT,
+  },
+  /** The customer unnamed, and where it goes unsaid: one fact, whatever its channels. */
   messageToCustomer: {
     message: choiceOf("customerMessage"),
     channels: choiceOf("messageChannels"),
