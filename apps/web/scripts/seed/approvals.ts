@@ -10,8 +10,7 @@
  * checked, never the URL itself. Anything else exits, saying why, before
  * anything connects to the database.
  *
- * No procedure Louez serves asks for a person's approval yet (APPROVAL_LIVE
- * is empty), so nothing else creates one. This writes, for a store and one of
+ * Without an agent at hand, nothing else creates one. This writes, for a store and one of
  * its owners, three pending approvals as an agent's request leaves them, one
  * of each consequence the page treats apart: a payment recorded on a
  * reservation (money), a booking confirmed over the turnover buffer (stock

@@ -88,37 +88,34 @@ export function approvalLevel(
 }
 
 /**
- * The consequences whose `person` level asks for a person's approval. The
- * others still ask for the caller's token, as before the rule: none is live
- * until the approval exists (pull requests 7 and 8 of the plan).
+ * The consequences whose `person` level asks for a person's approval: money,
+ * stock overrides and access taken away (pull request 7 of the plan). The
+ * others still ask for the caller's token, as before the rule, until each
+ * goes live (deletions and customer messages, pull request 8).
  */
-export const APPROVAL_LIVE: readonly Consequence[] = [];
+export const APPROVAL_LIVE: readonly Consequence[] = ["money", "stock_override", "access_removed"];
 
-/** How a branch is asked, until each consequence goes live. */
+/** How a branch is asked, as the live list stands. */
 export type ConfirmationStep = "approval" | "token" | "none";
 
 /**
  * The compatibility adapter: the level, as asked today. A `person` level
- * asks for a person's approval only for a live consequence that needs one;
- * otherwise it asks for the token, as the call's `always` did before. So,
- * with nothing live, a session is never asked; with the option on, a key or
- * a token confirms every branch; with it off, it still confirms money,
- * access taken away, stock overrides and priced credit spending, and runs
- * the rest directly.
- *
- * `live` is `APPROVAL_LIVE` for every procedure Louez serves; the transport
- * tests' fixture alone names others, to run an approval before any
- * consequence is live (`liveConsequences`, platform/confirmation.ts).
+ * asks for a person's approval for a live consequence; otherwise it asks for
+ * the token, as the call's `always` did before. So a session is never
+ * asked; a key or a token needs a person for money, access taken away and
+ * stock overrides, whatever its option; with the option on, it confirms
+ * every other branch with the token; with it off, it still confirms priced
+ * credit spending, and runs the rest directly.
  */
 export function confirmationStep(
   consequences: readonly Consequence[],
   credential: Pick<Credential, "kind" | "confirmSensitive">,
-  live: readonly Consequence[] = APPROVAL_LIVE,
 ): ConfirmationStep {
   const level = approvalLevel(consequences, credential);
   if (level === "none") return "none";
   const needsPerson = consequences.some(
-    (consequence) => live.includes(consequence) && levelOf(consequence, credential) === "person",
+    (consequence) =>
+      APPROVAL_LIVE.includes(consequence) && levelOf(consequence, credential) === "person",
   );
   return needsPerson ? "approval" : "token";
 }

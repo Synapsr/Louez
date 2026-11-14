@@ -100,31 +100,45 @@ describe("approvalLevel", () => {
 });
 
 describe("the compatibility adapter", () => {
-  test("no consequence is live yet", () => {
-    assert.deepEqual(APPROVAL_LIVE, []);
+  const key = (confirmSensitive: boolean) => ({ kind: "api_key" as const, confirmSensitive });
+
+  test("money, stock overrides and access taken away are live", () => {
+    assert.deepEqual(APPROVAL_LIVE, ["money", "stock_override", "access_removed"]);
   });
 
   // Row by row against the rule it replaces: for every declaration, every
-  // credential and its option, it asks exactly who was asked before, and
-  // asks with the caller's token, never a person's approval.
+  // credential and its option, it asks exactly who was asked before; a person
+  // approves where a live consequence is at a person's level, and the caller's
+  // token is asked everywhere else it was.
   for (const consequences of DECLARATIONS) {
-    test(`${consequences.join(" + ")}: asked as before`, () => {
+    test(`${consequences.join(" + ")}: asked as before, by a person where live`, () => {
       for (const kind of KINDS) {
         for (const confirmSensitive of OPTIONS) {
           if (kind === "session" && confirmSensitive) continue; // a session's option is always off
-          const step = confirmationStep(consequences, { kind, confirmSensitive });
+          const credential = { kind, confirmSensitive };
+          const step = confirmationStep(consequences, credential);
           const label = `${kind}, option ${confirmSensitive ? "on" : "off"}`;
-          assert.notEqual(step, "approval", `${label}: no approval before a consequence is live`);
-          assert.equal(step === "token", askedBefore(consequences, kind, confirmSensitive), label);
+          const person = consequences.some(
+            (consequence) =>
+              APPROVAL_LIVE.includes(consequence) &&
+              approvalLevel([consequence], credential) === "person",
+          );
+          assert.equal(step !== "none", askedBefore(consequences, kind, confirmSensitive), label);
+          if (step !== "none") assert.equal(step, person ? "approval" : "token", label);
         }
       }
     });
   }
 
-  test("each level maps to today's step", () => {
-    const key = (confirmSensitive: boolean) => ({ kind: "api_key" as const, confirmSensitive });
-    // A person's level asks for the token, as `always` did.
-    assert.equal(confirmationStep(["money"], key(false)), "token");
+  test("each level maps to its step", () => {
+    // A live consequence at a person's level: an approval, whatever the option.
+    assert.equal(confirmationStep(["money"], key(false)), "approval");
+    assert.equal(confirmationStep(["money"], key(true)), "approval");
+    assert.equal(confirmationStep(["access_removed"], { kind: "oauth", confirmSensitive: false }), "approval");
+    assert.equal(confirmationStep(["stock_override", "customer_message"], key(false)), "approval");
+    // A person's level not live yet asks for the token, as `always` did.
+    assert.equal(confirmationStep(["deletion"], key(true)), "token");
+    assert.equal(confirmationStep(["customer_message"], key(true)), "token");
     // The caller's level asks for the token.
     assert.equal(confirmationStep(["credits"], key(false)), "token");
     assert.equal(confirmationStep(["change"], key(true)), "token");
@@ -135,49 +149,6 @@ describe("the compatibility adapter", () => {
       "none",
       "a session is never asked",
     );
-  });
-});
-
-describe("a consequence made live (the fixture's alone)", () => {
-  const key = (confirmSensitive: boolean) => ({ kind: "api_key" as const, confirmSensitive });
-
-  test("a live consequence at a person's level asks for an approval; the others are as before", () => {
-    for (const consequences of DECLARATIONS) {
-      for (const kind of KINDS) {
-        for (const confirmSensitive of OPTIONS) {
-          if (kind === "session" && confirmSensitive) continue;
-          const credential = { kind, confirmSensitive };
-          for (const live of CONSEQUENCES) {
-            const step = confirmationStep(consequences, credential, [live]);
-            const person =
-              consequences.includes(live) && approvalLevel([live], credential) === "person";
-            const label = `${consequences.join(" + ")}, ${kind}, option ${confirmSensitive ? "on" : "off"}, ${live} live`;
-            if (person) assert.equal(step, "approval", label);
-            else assert.equal(step, confirmationStep(consequences, credential), label);
-          }
-        }
-      }
-    }
-  });
-
-  test("a consequence below a person's level asks no approval, live or not", () => {
-    assert.equal(confirmationStep(["change"], key(true), ["change"]), "token");
-    assert.equal(confirmationStep(["credits"], key(true), ["credits"]), "token");
-    // Option off, a deletion asks nobody: making it live asks nobody either.
-    assert.equal(confirmationStep(["deletion"], key(false), ["deletion"]), "none");
-    assert.equal(
-      confirmationStep(["money"], { kind: "session", confirmSensitive: false }, ["money"]),
-      "none",
-      "a session is never asked",
-    );
-  });
-
-  test("the default is the live list Louez serves", () => {
-    assert.equal(
-      confirmationStep(["money"], key(true)),
-      confirmationStep(["money"], key(true), APPROVAL_LIVE),
-    );
-    assert.equal(confirmationStep(["money"], key(true), ["money"]), "approval");
   });
 });
 

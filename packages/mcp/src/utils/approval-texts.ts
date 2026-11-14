@@ -5,9 +5,8 @@ import { z } from "zod";
  * that does not let it run (docs/architecture/api-and-agents.md, "A
  * person's approval"): one text per answer, in the voice of the
  * confirmation's and of a hand-off's link (`confirmationText`,
- * `handoffLine`). No procedure Louez serves asks for an approval yet
- * (`APPROVAL_LIVE` is empty), so only the transport tests' fixture reaches
- * these texts.
+ * `handoffLine`). The branches whose consequences are live
+ * (`APPROVAL_LIVE`: money, stock overrides, access taken away) reach them.
  *
  * What the store, the agent or the person wrote (the preview's sentence,
  * the person's words) is data: it is given as a quoted JSON string, on a

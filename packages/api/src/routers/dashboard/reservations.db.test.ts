@@ -70,6 +70,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
   let apiKeys: typeof import("../../services/api-keys");
   let router: typeof import("./reservations").dashboardReservationsRouter;
   let searchRouter: typeof import("./search").dashboardSearchRouter;
+  let handoffsRouter: typeof import("./handoffs").dashboardHandoffsRouter;
 
   const events: ApiEvent[] = [];
   const feeEffects: unknown[][] = [];
@@ -117,6 +118,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     apiKeys = await import("../../services/api-keys");
     ({ dashboardReservationsRouter: router } = await import("./reservations"));
     ({ dashboardSearchRouter: searchRouter } = await import("./search"));
+    ({ dashboardHandoffsRouter: handoffsRouter } = await import("./handoffs"));
 
     await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@rs.test" });
     await louezDb.db.insert(louezDb.stores).values([
@@ -159,6 +161,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     await louezDb.db.delete(louezDb.apiEffects);
     await louezDb.db.delete(louezDb.apiOperations);
     await louezDb.db.delete(louezDb.apiConfirmations);
+    await louezDb.db.delete(louezDb.apiHandoffs);
     await louezDb.db.delete(louezDb.payments);
     await louezDb.db.delete(louezDb.reservationActivity);
     await louezDb.db.delete(louezDb.reservationItems);
@@ -267,6 +270,28 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     (refusal.data.details as { confirmationToken: string }).confirmationToken;
   const previewOf = (refusal: { data: { details?: Record<string, unknown> } }) =>
     (refusal.data.details as { preview: Preview }).preview;
+  /** The owner approves an override's request on its page, the box ticked: the approval's id. */
+  async function approvedOf(refusal: { data: { details?: Record<string, unknown> } }) {
+    const id = String((refusal.data.details?.approval as { id?: string } | undefined)?.id);
+    assert.equal(tokenOf(refusal), id, "the id is what the call takes back");
+    const [row] = await louezDb.db
+      .select()
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    assert.ok(row, `approval ${id}`);
+    await orpc.call(
+      handoffsRouter.decide,
+      {
+        id,
+        decision: "approve",
+        revision: row.revision,
+        shown: String(row.bindingHash),
+        acknowledged: true,
+      },
+      { context: session(), path: ["dashboard", "handoffs", "decide"] },
+    );
+    return id;
+  }
 
   // --- Fixtures -------------------------------------------------------------
 
@@ -2016,7 +2041,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       assert.deepEqual((await confirmedRow(id))?.overbookingShortfalls, shortfalls);
     });
 
-    test("an agent books over the stock only after a preview that lists every shortfall, even with confirmations off", async () => {
+    test("an agent books over the stock only once the owner approved a preview that lists every shortfall, even with confirmations off", async () => {
       const productId = await kayakHeld(1, 1);
       const id = await asking("quote", productId);
 
@@ -2029,7 +2054,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         );
         const refusal = await rejects(
           run("updateStatus", confirmation(id, true), agent.call()),
-          "CONFIRMATION_REQUIRED",
+          "APPROVAL_REQUIRED",
         );
         assert.deepEqual(overbookingOf(refusal), { shortfalls: [shortfall(id, productId, 1, 0)] });
         assert.match(
@@ -2040,13 +2065,13 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       }
 
       const agent = await agentKey({ confirmSensitive: false });
-      const token = tokenOf(
+      const token = await approvedOf(
         await rejects(
           run("updateStatus", confirmation(id, true), agent.call()),
-          "CONFIRMATION_REQUIRED",
+          "APPROVAL_REQUIRED",
         ),
       );
-      // The token is bound to the input: no confirmation without the flag uses it.
+      // The approval is bound to the input: no confirmation without the flag uses it.
       await rejects(
         run("updateStatus", confirmation(id), agent.call({ "louez-confirmation": token })),
         "RESERVATION_INSUFFICIENT_CAPACITY",
@@ -2074,21 +2099,21 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       );
     });
 
-    test("an agent's flag on a confirmation the stock covers still asks, and books nothing over", async () => {
+    test("an agent's flag on a confirmation the stock covers still needs the owner's approval, and books nothing over", async () => {
       const productId = await kayakHeld(1, 0);
       const id = await asking("quote", productId);
       const agent = await agentKey({ confirmSensitive: false });
 
       const refusal = await rejects(
         run("updateStatus", confirmation(id, true), agent.call()),
-        "CONFIRMATION_REQUIRED",
+        "APPROVAL_REQUIRED",
       );
       assert.deepEqual(overbookingOf(refusal), { shortfalls: [] });
       assert.match(previewOf(refusal).summary, /The stock covers it/);
       await run(
         "updateStatus",
         confirmation(id, true),
-        agent.call({ "louez-confirmation": tokenOf(refusal) }),
+        agent.call({ "louez-confirmation": await approvedOf(refusal) }),
       );
       assert.deepEqual(
         {
@@ -2099,7 +2124,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       );
     });
 
-    test("a token approves the shortage it previewed, not one that grew since", async () => {
+    test("an approval approves the shortage it previewed, not one that grew since", async () => {
       // Three kayaks, one held: the quote of three is short by one.
       const productId = await kayakHeld(3, 1);
       const id = await asking("quote", productId, 3);
@@ -2107,7 +2132,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
 
       const first = await rejects(
         run("updateStatus", confirmation(id, true), agent.call()),
-        "CONFIRMATION_REQUIRED",
+        "APPROVAL_REQUIRED",
       );
       assert.deepEqual(overbookingOf(first), { shortfalls: [shortfall(id, productId, 3, 2)] });
 
@@ -2117,21 +2142,21 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         run(
           "updateStatus",
           confirmation(id, true),
-          agent.call({ "louez-confirmation": tokenOf(first) }),
+          agent.call({ "louez-confirmation": await approvedOf(first) }),
         ),
-        "CONFIRMATION_INVALID",
+        "APPROVAL_INVALID",
       );
       await nothingWritten(id, "quote");
 
       const second = await rejects(
         run("updateStatus", confirmation(id, true), agent.call()),
-        "CONFIRMATION_REQUIRED",
+        "APPROVAL_REQUIRED",
       );
       assert.deepEqual(overbookingOf(second), { shortfalls: [shortfall(id, productId, 3, 0)] });
       await run(
         "updateStatus",
         confirmation(id, true),
-        agent.call({ "louez-confirmation": tokenOf(second) }),
+        agent.call({ "louez-confirmation": await approvedOf(second) }),
       );
       assert.deepEqual((await confirmedRow(id))?.overbookingShortfalls, [
         shortfall(id, productId, 3, 0),
@@ -2370,7 +2395,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         assert.equal((await confirmedRow(id))?.turnoverBufferOverridden, undefined);
       });
 
-      test("an agent confirms past the buffer only after a preview that lists its lines, even with confirmations off", async () => {
+      test("an agent confirms past the buffer only once the owner approved a preview that lists its lines, even with confirmations off", async () => {
         const productId = await kayakInBuffer();
         const id = await asking("quote", productId);
 
@@ -2383,7 +2408,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           );
           const refusal = await rejects(
             run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), agent.call()),
-            "CONFIRMATION_REQUIRED",
+            "APPROVAL_REQUIRED",
           );
           assert.deepEqual(overridesOf(refusal), {
             overbooking: null,
@@ -2402,13 +2427,13 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         }
 
         const agent = await agentKey({ confirmSensitive: false });
-        const token = tokenOf(
+        const token = await approvedOf(
           await rejects(
             run("updateStatus", confirmWith(id, { overrideTurnoverBuffer: true }), agent.call()),
-            "CONFIRMATION_REQUIRED",
+            "APPROVAL_REQUIRED",
           ),
         );
-        // The token is bound to the input: no confirmation without the flag uses it.
+        // The approval is bound to the input: no confirmation without the flag uses it.
         await rejects(
           run("updateStatus", confirmation(id), agent.call({ "louez-confirmation": token })),
           "RESERVATION_TURNOVER_BUFFER_CONFLICT",
@@ -2446,7 +2471,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
 
         const refusal = await rejects(
           run("updateStatus", confirmWith(id, both), agent.call()),
-          "CONFIRMATION_REQUIRED",
+          "APPROVAL_REQUIRED",
         );
         assert.deepEqual(overridesOf(refusal), {
           overbooking: { shortfalls: [shortfall(id, short, 1, 0)] },
@@ -2458,7 +2483,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         await run(
           "updateStatus",
           confirmWith(id, both),
-          agent.call({ "louez-confirmation": tokenOf(refusal) }),
+          agent.call({ "louez-confirmation": await approvedOf(refusal) }),
         );
         const row = await confirmedRow(id);
         assert.deepEqual(
@@ -2467,7 +2492,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         );
       });
 
-      test("a token confirms past the buffer it previewed, not a buffer shortfall that appeared since", async () => {
+      test("an approval confirms past the buffer it previewed, not a buffer shortfall that appeared since", async () => {
         // Two kayaks of one each: only the first is short with the buffer.
         const first = await kayakInBuffer();
         const second = await product(1);
@@ -2479,7 +2504,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
 
         const preview = await rejects(
           run("updateStatus", confirmWith(id, flag), agent.call()),
-          "CONFIRMATION_REQUIRED",
+          "APPROVAL_REQUIRED",
         );
         assert.deepEqual(overridesOf(preview).turnoverBuffer?.shortfalls, [
           shortfall(id, first, 1, 0),
@@ -2491,22 +2516,22 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           run(
             "updateStatus",
             confirmWith(id, flag),
-            agent.call({ "louez-confirmation": tokenOf(preview) }),
+            agent.call({ "louez-confirmation": await approvedOf(preview) }),
           ),
-          "CONFIRMATION_INVALID",
+          "APPROVAL_INVALID",
         );
         await nothingWritten(id, "quote");
 
         const again = await rejects(
           run("updateStatus", confirmWith(id, flag), agent.call()),
-          "CONFIRMATION_REQUIRED",
+          "APPROVAL_REQUIRED",
         );
         const both = [shortfall(id, first, 1, 0), shortfall(id, second, 1, 0)];
         assert.deepEqual(overridesOf(again).turnoverBuffer?.shortfalls, both);
         await run(
           "updateStatus",
           confirmWith(id, flag),
-          agent.call({ "louez-confirmation": tokenOf(again) }),
+          agent.call({ "louez-confirmation": await approvedOf(again) }),
         );
         assert.deepEqual((await confirmedRow(id))?.turnoverBufferShortfalls, both);
       });
@@ -2960,7 +2985,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
           row: "overbookingShortfalls",
         },
       ] as const) {
-        test(`a token for ${flag} names the line short, and is void once the shortage moves to the other line`, async () => {
+        test(`an approval for ${flag} names the line short, and is void once the shortage moves to the other line`, async () => {
           const { quoteId, sLine, lLine, short, neighbourTakesL } = await twoSizesQuote(endsBefore);
           await withBuffer(BUFFER);
           const agent = await agentKey({});
@@ -2968,29 +2993,29 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
 
           const first = await rejects(
             run("updateStatus", change, agent.call()),
-            "CONFIRMATION_REQUIRED",
+            "APPROVAL_REQUIRED",
           );
           assert.deepEqual(linesOf(first, list), [short(sLine, "S")]);
           // The summary names the line's choice, for the agent to show.
           assert.match(previewOf(first).summary, /\(size: S\), 2 asked, 1 free/);
 
           // The neighbour now wants an L: the S line fits, the L line is short
-          // by as much. The token saw the S line short, not the L one.
+          // by as much. The approval saw the S line short, not the L one.
           await neighbourTakesL();
           await rejects(
-            run("updateStatus", change, agent.call({ "louez-confirmation": tokenOf(first) })),
-            "CONFIRMATION_INVALID",
+            run("updateStatus", change, agent.call({ "louez-confirmation": await approvedOf(first) })),
+            "APPROVAL_INVALID",
           );
           await nothingWritten(quoteId, "quote");
 
           const second = await rejects(
             run("updateStatus", change, agent.call()),
-            "CONFIRMATION_REQUIRED",
+            "APPROVAL_REQUIRED",
           );
           assert.deepEqual(linesOf(second, list), [short(lLine, "L")]);
           assert.match(previewOf(second).summary, /\(size: L\), 2 asked, 1 free/);
 
-          await run("updateStatus", change, agent.call({ "louez-confirmation": tokenOf(second) }));
+          await run("updateStatus", change, agent.call({ "louez-confirmation": await approvedOf(second) }));
           // The confirmation's row names the line it passed, and what it chose.
           assert.deepEqual((await confirmedRow(quoteId))?.[row], [short(lLine, "L")]);
         });
@@ -3080,7 +3105,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         { flag: "overrideTurnoverBuffer", list: "turnoverBuffer", endsBefore: HOUR },
         { flag: "allowOverbooking", list: "overbooking", endsBefore: null },
       ] as const) {
-        test(`a token for ${flag} names the choice the stock check reads, and is void once the product loses that attribute`, async () => {
+        test(`an approval for ${flag} names the choice the stock check reads, and is void once the product loses that attribute`, async () => {
           const { quoteId, short, withdrawColour } = await redSmallQuote(endsBefore);
           await withBuffer(BUFFER);
           const agent = await agentKey({});
@@ -3088,24 +3113,24 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
 
           const first = await rejects(
             run("updateStatus", change, agent.call()),
-            "CONFIRMATION_REQUIRED",
+            "APPROVAL_REQUIRED",
           );
           assert.deepEqual(linesOf(first, list), [short({ size: "S", color: "red" })]);
           assert.match(previewOf(first).summary, /\(size: S, color: red\), 1 asked, 0 free/);
 
           // The colour goes: the line now asks any S, and is as short as
-          // before, one asked and none free. The token saw a red S short.
+          // before, one asked and none free. The approval saw a red S short.
           await withdrawColour();
           await rejects(
-            run("updateStatus", change, agent.call({ "louez-confirmation": tokenOf(first) })),
-            "CONFIRMATION_INVALID",
+            run("updateStatus", change, agent.call({ "louez-confirmation": await approvedOf(first) })),
+            "APPROVAL_INVALID",
           );
           await nothingWritten(quoteId, "quote");
 
           // The next preview names what the line asks today, not its stored colour.
           const second = await rejects(
             run("updateStatus", change, agent.call()),
-            "CONFIRMATION_REQUIRED",
+            "APPROVAL_REQUIRED",
           );
           assert.deepEqual(linesOf(second, list), [short({ size: "S" })]);
           assert.match(previewOf(second).summary, /\(size: S\), 1 asked, 0 free/);

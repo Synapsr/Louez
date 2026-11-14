@@ -27,12 +27,10 @@ mock.module(apiDependencyUrl("@louez/auth"), {
   },
 });
 
-// The six branches a person approves once pull request 7 switches them on
-// (docs/architecture/api-and-agents.md, "Pull requests", 7), each run whole on
-// its real procedure, with the switch turned on by this test alone: every
-// check their helpers make runs with `money`, `stock_override` and
-// `access_removed` live (`liveConsequences`, which `checkConfirmation`
-// refuses in production), as `APPROVAL_LIVE` will hold them. Through the
+// The six branches a person approves (docs/architecture/api-and-agents.md,
+// "Pull requests", 7), each run whole on its real procedure, with the switch
+// as Louez serves it: `money`, `stock_override` and `access_removed` are in
+// `APPROVAL_LIVE`. Through the
 // real OpenAPI handler of /api/v1 and the real MCP handler of /api/mcp, with
 // an owner's API key; the person decides through the dashboard's RPC
 // handler with their session, as the approval's page does.
@@ -46,10 +44,6 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 // is refused, writes nothing, and leaves the approval approved; a dashboard
 // session runs directly. A confirmation token sent back where a person's
 // approval is required asks for the approval.
-
-const LIVE = ["money", "stock_override", "access_removed"] as const;
-/** The consequences live for every check: `LIVE`, or none for a test of the token flow. */
-let live: readonly string[] = LIVE;
 
 type ToolResult = Awaited<ReturnType<Client["callTool"]>>;
 type Json = Record<string, unknown>;
@@ -155,18 +149,6 @@ describe(
       orm = await import("drizzle-orm");
       apiKeys = await import("@louez/api/services");
       hash = await import("@louez/api/platform/hash");
-
-      // The switch, for this test alone: the check as it is, with the three
-      // consequences live, before any procedure is loaded.
-      const confirmation: Record<string, unknown> =
-        await import("@louez/api/platform/confirmation");
-      const check = confirmation.checkConfirmation as (input: object) => unknown;
-      mock.module(import.meta.resolve("@louez/api/platform/confirmation"), {
-        namedExports: {
-          ...confirmation,
-          checkConfirmation: (input: object) => check({ ...input, liveConsequences: live }),
-        },
-      });
 
       ({ readApprovalPage } = await import("@louez/api/services/approval-page"));
       ({ OVERRIDES_SAID } = await import("@louez/api/services/approval-presentations"));
@@ -896,21 +878,40 @@ describe(
       assert.equal(await oilLeft(seed), 5, "no oil taken");
     });
 
+    /** A confirmation without a flag, which the caller confirms with its token: the paddle line lowered to the one in stock. */
+    const withOilCovered = async (seed: Seed): Promise<Branch> => {
+      await louezDb.db
+        .update(louezDb.reservationItems)
+        .set({ quantity: 1 })
+        .where(
+          orm.and(
+            orm.eq(louezDb.reservationItems.reservationId, seed.withOil),
+            orm.eq(louezDb.reservationItems.productId, `lb_paddle_${seed.k}`),
+          ),
+        );
+      const each = withOil();
+      return {
+        ...each,
+        rest: (s) => ({
+          method: "POST",
+          path: `/reservations/${s.withOil}/status`,
+          body: { status: "confirmed" },
+        }),
+        args: (s) => ({ id: s.withOil, status: "confirmed" }),
+      };
+    };
+
     test("a status change's token binds the stock it takes: a line changed since answers CONFIRMATION_INVALID", async () => {
-      live = [];
-      try {
-        const seed = await seedStore();
-        const each = withOil();
-        const asked = await send("rest", each, seed);
-        assert.equal(asked.code, "CONFIRMATION_REQUIRED", JSON.stringify(asked));
-        await raiseOil(seed);
-        const presented = await send("rest", each, seed, String(asked.details?.confirmationToken));
-        assert.equal(presented.code, "CONFIRMATION_INVALID");
-        assert.equal(await each.written(seed), 0);
-        assert.equal(await oilLeft(seed), 5);
-      } finally {
-        live = LIVE;
-      }
+      // Without a flag a confirmation is no override: the token, as before the switch.
+      const seed = await seedStore();
+      const each = await withOilCovered(seed);
+      const asked = await send("rest", each, seed);
+      assert.equal(asked.code, "CONFIRMATION_REQUIRED", JSON.stringify(asked));
+      await raiseOil(seed);
+      const presented = await send("rest", each, seed, String(asked.details?.confirmationToken));
+      assert.equal(presented.code, "CONFIRMATION_INVALID");
+      assert.equal(await each.written(seed), 0);
+      assert.equal(await oilLeft(seed), 5);
     });
 
     /**
@@ -1008,25 +1009,29 @@ describe(
       )[0]?.bindingHash;
 
     test("the stock a status change binds names which: a line moved to another size and unit answers CONFIRMATION_INVALID", async () => {
-      live = [];
-      try {
-        const seed = await seedStore();
-        const { each, toSizeL } = await wetsuit(seed);
-        const asked = await send("rest", each, seed);
-        assert.equal(asked.code, "CONFIRMATION_REQUIRED", JSON.stringify(asked));
-        // Read again, unchanged: the same binding.
-        const again = await send("rest", each, seed);
-        assert.equal(
-          await bindingOf(again.details?.confirmationToken),
-          await bindingOf(asked.details?.confirmationToken),
-        );
-        await toSizeL();
-        const presented = await send("rest", each, seed, String(asked.details?.confirmationToken));
-        assert.equal(presented.code, "CONFIRMATION_INVALID", JSON.stringify(presented));
-        assert.equal(await each.written(seed), 0);
-      } finally {
-        live = LIVE;
-      }
+      // Without a flag, a confirmation the stock covers asks for the token.
+      const seed = await seedStore();
+      const { each: override, toSizeL } = await wetsuit(seed);
+      const each: Branch = {
+        ...override,
+        rest: (s) => {
+          const request = override.rest(s);
+          return { ...request, body: { status: "confirmed" } };
+        },
+        args: (s) => ({ id: (override.args(s) as { id: string }).id, status: "confirmed" }),
+      };
+      const asked = await send("rest", each, seed);
+      assert.equal(asked.code, "CONFIRMATION_REQUIRED", JSON.stringify(asked));
+      // Read again, unchanged: the same binding.
+      const again = await send("rest", each, seed);
+      assert.equal(
+        await bindingOf(again.details?.confirmationToken),
+        await bindingOf(asked.details?.confirmationToken),
+      );
+      await toSizeL();
+      const presented = await send("rest", each, seed, String(asked.details?.confirmationToken));
+      assert.equal(presented.code, "CONFIRMATION_INVALID", JSON.stringify(presented));
+      assert.equal(await each.written(seed), 0);
     });
 
     test("the stock an override's approval binds names which: a line moved to another size and unit voids it", async () => {

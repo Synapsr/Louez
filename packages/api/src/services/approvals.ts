@@ -45,8 +45,8 @@ import {
  * approves or refuses on its page, signed in, and which the agent then
  * carries out with its id. This module requests it, once the write's own
  * transaction is over, records the person's decision, and carries it out
- * inside the write that presents it, once (`carryOutPresentedApproval`). No
- * procedure Louez serves asks for one yet (`APPROVAL_LIVE` is empty,
+ * inside the write that presents it, once (`carryOutPresentedApproval`). A
+ * branch asks for one when it declares a live consequence (`APPROVAL_LIVE`,
  * platform/approval-rule.ts).
  *
  * The lock rule: approval code takes the store row only as the first lock

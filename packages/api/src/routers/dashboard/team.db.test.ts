@@ -288,6 +288,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       reason?: string;
       revision: number;
       shown: string;
+      acknowledged?: boolean;
     },
     context: BaseContext,
   ) =>
@@ -299,6 +300,28 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       decision: "approved" | "refused";
       outcome: "invited" | "added" | null;
     }>;
+
+  /** The owner approves an agent's request on its page, the box ticked: its id. */
+  async function approveRequest(refused: { data: { details?: Record<string, unknown> } }) {
+    const id = String((refused.data.details?.approval as { id?: string } | undefined)?.id);
+    assert.equal(refused.data.details?.confirmationToken, id, "the id is what the call takes back");
+    const [row] = await louezDb.db
+      .select()
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    assert.ok(row, `approval ${id}`);
+    await decide(
+      {
+        id,
+        decision: "approve",
+        revision: row.revision,
+        shown: String(row.bindingHash),
+        acknowledged: true,
+      },
+      session(),
+    );
+    return id;
+  }
 
   async function rejects(promise: Promise<unknown>, code: string) {
     let caught: unknown;
@@ -1796,21 +1819,22 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
   // --- Cancel ---------------------------------------------------------------
 
-  test("cancelling an invitation always asks an agent, names the person, and stops the link", async () => {
+  test("cancelling an invitation needs the owner's approval for an agent, names the person, and stops the link", async () => {
     const { invitation } = await run("invite", { email: "new@tm.test" }, session());
     const context = await apiKey({ confirm: false });
 
     const refused = await rejects(
       run("cancelInvitation", { id: invitation.id }, context()),
-      "CONFIRMATION_REQUIRED",
+      "APPROVAL_REQUIRED",
     );
     assert.match(refused.message, /new@tm\.test/);
     assert.equal((await invitations())[0]?.status, "pending");
 
+    const approved = await approveRequest(refused);
     const result = await run(
       "cancelInvitation",
       { id: invitation.id },
-      context({ "louez-confirmation": refused.data.details?.confirmationToken ?? "" }),
+      context({ "louez-confirmation": approved }),
     );
     assert.deepEqual(
       { id: result.id, email: result.email, cancelled: result.cancelled },
@@ -1841,11 +1865,11 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
   // --- Remove ---------------------------------------------------------------
 
-  test("removing a member always asks an agent, names the person, and binds the token to them", async () => {
+  test("removing a member needs the owner's approval for an agent, names the person, and binds the approval to them", async () => {
     for (const context of [await apiKey({ confirm: false }), await agent({ confirm: false })]) {
       const refused = await rejects(
         run("removeMember", { id: membership(MEMBER) }, context()),
-        "CONFIRMATION_REQUIRED",
+        "APPROVAL_REQUIRED",
       );
       assert.match(refused.message, /Maël Member \(member@tm\.test\)/);
       assert.match(refused.message, /lose access/);
@@ -1855,30 +1879,32 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       assert.equal(preview.details.member.email, "member@tm.test");
       assert.ok((await memberIds()).includes(MEMBER), "nothing happened yet");
 
-      // The same token for someone else: refused.
+      // The same approval for someone else: another request's, so it lets nothing run.
+      const approved = await approveRequest(refused);
       await louezDb.db.insert(louezDb.storeMembers).values({
         id: "tm_m_existing_000001",
         storeId: STORE,
         userId: EXISTING,
         role: "member",
       });
-      const token = refused.data.details?.confirmationToken ?? "";
-      await rejects(
-        run("removeMember", { id: "tm_m_existing_000001" }, context({ "louez-confirmation": token })),
-        "CONFIRMATION_INVALID",
+      const other = await rejects(
+        run(
+          "removeMember",
+          { id: "tm_m_existing_000001" },
+          context({ "louez-confirmation": approved }),
+        ),
+        "APPROVAL_INVALID",
       );
+      assert.deepEqual(other.data.details, { reason: "other_request" });
+      assert.ok((await memberIds()).includes(EXISTING), "the other member stays");
       await louezDb.db
         .delete(louezDb.storeMembers)
         .where(orm.eq(louezDb.storeMembers.id, "tm_m_existing_000001"));
 
-      const again = await rejects(
-        run("removeMember", { id: membership(MEMBER) }, context()),
-        "CONFIRMATION_REQUIRED",
-      );
       const result = await run(
         "removeMember",
         { id: membership(MEMBER) },
-        context({ "louez-confirmation": again.data.details?.confirmationToken ?? "" }),
+        context({ "louez-confirmation": approved }),
       );
       assert.deepEqual(
         { userId: result.userId, email: result.email, removed: result.removed },

@@ -406,20 +406,45 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     assert.equal(toolError(missing)?.code, "TEAM_MEMBER_NOT_FOUND");
   });
 
-  test("removing a member: the dashboard runs it directly; an agent confirms first, on OpenAPI and MCP", async () => {
+  test("removing a member: the dashboard runs it directly; an agent's needs the owner's approval, on OpenAPI and MCP", async () => {
     const authorization = await key({ ...readOnly, team: "write" }, false);
     const viaOpenApi = await openApi("DELETE", `/team/members/${MEMBER_ID}`, null, {
       authorization,
     });
     assert.equal(viaOpenApi.status, 412);
+    const asked = (await viaOpenApi.json()) as {
+      data: { code: string; details: { approval: { id: string } } };
+    };
+    assert.equal(asked.data.code, "APPROVAL_REQUIRED");
 
+    // The same request on MCP: the same approval, whatever the transport.
     const first = await mcpCall(authorization, "team_remove_member", { id: MEMBER_ID });
-    assert.equal(toolError(first)?.code, "CONFIRMATION_REQUIRED");
+    assert.equal(toolError(first)?.code, "APPROVAL_REQUIRED");
     assert.match(text(first), /Maël Member \(member@tt\.test\)/);
+    const approvalId = String(toolError(first)?.details?.confirmationToken);
+    assert.equal(approvalId, asked.data.details.approval.id);
+    assert.ok(
+      (await louezDb.db.select().from(louezDb.storeMembers)).some((member) => member.id === MEMBER_ID),
+      "nothing was done yet",
+    );
+    const row = (await louezDb.db.select().from(louezDb.apiHandoffs)).find(
+      (handoff) => handoff.id === approvalId,
+    );
+    assert.ok(row);
+    await decideWith(
+      { [SESSION_HEADER]: OWNER },
+      {
+        id: approvalId,
+        decision: "approve",
+        revision: row.revision,
+        shown: row.bindingHash,
+        acknowledged: true,
+      },
+    );
     const done = output(
       await mcpCall(authorization, "team_remove_member", {
         id: MEMBER_ID,
-        confirmationToken: toolError(first)?.details?.confirmationToken,
+        confirmationToken: approvalId,
       }),
     );
     assert.equal(done.removed, true);
