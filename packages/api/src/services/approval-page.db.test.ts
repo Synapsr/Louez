@@ -216,6 +216,17 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
 
   const hourAgo = () => new Date(Date.now() - 3_600_000);
 
+  /** MySQL keeps each object's keys in its own order: entries compared by label, at every level. */
+  type Entry = { label: string; value: { kind: string; entries?: Entry[]; [field: string]: unknown } };
+  const sortedEntries = (entries: readonly unknown[] | undefined): Entry[] =>
+    [...((entries ?? []) as Entry[])]
+      .map((entry) =>
+        entry.value.entries
+          ? { ...entry, value: { ...entry.value, entries: sortedEntries(entry.value.entries) } }
+          : entry,
+      )
+      .sort((a, b) => a.label.localeCompare(b.label));
+
   // --- The approver's page ----------------------------------------------------
 
   test("the approver reads the preview Louez stored, when it was computed, what is at stake and what to post", async () => {
@@ -228,8 +239,11 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.deepEqual(approval.preview, {
       summary: "Erase note n1 of Roscoff Voile.",
       truncated: false,
-      // The note's id is a technical identifier: left out.
-      details: [{ label: "Amount", value: { kind: "number", value: 40 } }],
+      // The note's id is all that says which note it is: shown.
+      details: [
+        { label: "Id", value: { kind: "text", text: "n1" } },
+        { label: "Amount", value: { kind: "number", value: 40 } },
+      ],
     });
     assert.deepEqual(approval.consequences, ["money"]);
     assert.equal(approval.deliberate, true);
@@ -734,7 +748,141 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
         },
       },
       { label: "Email", value: { kind: "text", text: "ann@example.com" } },
+      // An empty list is a fact; an identifier alone in its group is all that names it.
+      { label: "Nothing", value: { kind: "group", entries: [] } },
+      {
+        label: "Also nothing",
+        value: { kind: "group", entries: [{ label: "Id", value: { kind: "text", text: "x" } }] },
+      },
     ] as Entry[]));
+  });
+
+  test("marks are counted per character as a person sees it, whatever sits between them", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    const stateOf = async (summary: string, details: unknown = { amount: 40 }) => {
+      await setRow(id, { payload: { ...payload, preview: { summary, details } } as never });
+      return (await read(id)).state;
+    };
+    // The reviewer's input: a hundred marks on one character, each run broken by a kept joiner.
+    const stack = `Pay A${"\u0316\u200d".repeat(100)} 40 EUR`;
+    assert.equal(await stateOf(stack), "unreadable");
+    assert.equal(await stateOf("Record a payment.", { customer: stack }), "unreadable");
+    assert.equal(await stateOf("Record a payment.", { [stack]: "Ann" }), "unreadable");
+    // An item's heading (its own name) is checked as every label is.
+    assert.equal(
+      await stateOf("Record a payment.", { lines: [{ product: stack, requested: 2 }] }),
+      "unreadable",
+    );
+    // Variation selectors choose a form and stack nothing: an emoji keeps its own.
+    assert.equal(await stateOf(`Pay ❤${"\ufe0f".repeat(6)} 40 EUR`), "pending");
+  });
+
+  test("a value is formatted only when its own key says what it is", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    const detailsOf = async (details: unknown) => {
+      await setRow(id, { payload: { ...payload, preview: { summary: "Confirm it.", details } } as never });
+      return (await read(id)).preview?.details;
+    };
+    // The reviewer's inputs: a quantity next to a currency, a product named like a date.
+    assert.deepEqual(
+      sortedEntries(await detailsOf({ currency: "EUR", quantity: 2 })),
+      sortedEntries([
+        { label: "Currency", value: { kind: "text", text: "EUR" } },
+        { label: "Quantity", value: { kind: "number", value: 2 } },
+      ]),
+    );
+    assert.deepEqual(await detailsOf({ product: "2026-11-21" }), [
+      { label: "Product", value: { kind: "text", text: "2026-11-21" } },
+    ]);
+    // Keys that say what they are: amounts in their currency, dates as dates.
+    assert.deepEqual(
+      sortedEntries(
+        await detailsOf({
+          currency: "EUR",
+          totalAmount: "180.00",
+          rental_paid: 40,
+          fee: 2,
+          startsAt: "2026-11-21T09:00:00.000Z",
+          endDate: "2026-11-23",
+          note: "2026-11-24",
+        }),
+      ),
+      sortedEntries([
+        { label: "Total amount", value: { kind: "money", amount: 180, currency: "EUR" } },
+        { label: "Rental paid", value: { kind: "money", amount: 40, currency: "EUR" } },
+        { label: "Fee", value: { kind: "money", amount: 2, currency: "EUR" } },
+        { label: "Starts at", value: { kind: "date", iso: "2026-11-21T09:00:00.000Z", dateOnly: false } },
+        { label: "End date", value: { kind: "date", iso: "2026-11-23", dateOnly: true } },
+        { label: "Note", value: { kind: "text", text: "2026-11-24" } },
+      ]),
+    );
+    // A date key holding something else stays as stored.
+    assert.deepEqual(await detailsOf({ startDate: "soon" }), [
+      { label: "Start date", value: { kind: "text", text: "soon" } },
+    ]);
+  });
+
+  test("an identifier alone says which record it is, and an empty list says there is none", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    const detailsOf = async (details: unknown) => {
+      await setRow(id, { payload: { ...payload, preview: { summary: "Confirm it.", details } } as never });
+      return (await read(id)).preview?.details;
+    };
+    // The reviewer's input: both entries are shown.
+    assert.deepEqual(
+      sortedEntries(await detailsOf({ customerId: "customer_42", messages: [] })),
+      sortedEntries([
+        { label: "Customer id", value: { kind: "text", text: "customer_42" } },
+        { label: "Messages", value: { kind: "group", entries: [] } },
+      ]),
+    );
+    // Named another way in its group, the identifier goes; a digest always does.
+    assert.deepEqual(
+      sortedEntries(
+        await detailsOf({ customerId: "customer_42", customerName: "Ann", recipientsHash: "f".repeat(64) }),
+      ),
+      [{ label: "Customer name", value: { kind: "text", text: "Ann" } }],
+    );
+    // An item named by its heading needs no identifier either.
+    assert.deepEqual(await detailsOf({ lines: [{ product: "Kayak", productId: "p_1" }] }), [
+      {
+        label: "Lines",
+        value: { kind: "group", entries: [{ label: "Kayak", value: { kind: "group", entries: [] } }] },
+      },
+    ]);
+    // null and empty texts stay left out.
+    assert.deepEqual(await detailsOf({ note: null, comment: " ", messages: [] }), [
+      { label: "Messages", value: { kind: "group", entries: [] } },
+    ]);
+  });
+
+  test("the store's name must say which store it is; who asks with a name that shows nothing is named by its kind", async () => {
+    const id = await ask(await apiKey());
+    const rename = (name: string) =>
+      louezDb.db.update(louezDb.stores).set({ name }).where(orm.eq(louezDb.stores.id, STORE));
+    // The reviewer's store name: a zero-width space and a Hangul filler.
+    await rename("\u200b\u3164");
+    assert.equal((await read(id)).state, "unreadable");
+    await rename("Ab");
+    assert.equal((await read(id)).state, "unreadable");
+    await rename("Vélo Liberté");
+    assert.equal((await read(id)).state, "pending");
+    // A key named with nothing visible: the line names it "an API key".
+    await setRow(id, { clientName: "\u200b\u3164" });
+    const approval = await read(id);
+    assert.equal(approval.agent.shownName, null);
+    assert.equal(approval.state, "pending");
+    // A name that is not empty but shows no readable letter: named by its kind too.
+    await setRow(id, { clientName: `A${"\u0316".repeat(10)}` });
+    assert.equal((await read(id)).agent.shownName, null);
+    await setRow(id, { clientName: "Sample assistant" });
+    assert.equal((await read(id)).agent.shownName, "Sample assistant");
   });
 
   test("the store's time zone writes its dates; an unknown one is UTC", async () => {
