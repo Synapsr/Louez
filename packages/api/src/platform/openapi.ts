@@ -70,12 +70,17 @@ const REFERENCE_SCRIPT = {
 
 /**
  * The reference's layout over Scalar's, by its class names in the pinned
- * version: where Scalar shows two columns, the introduction's text takes the
+ * version. Where Scalar shows two columns, the introduction's text takes the
  * width and its cards (server, key, client) a narrow column, rather than half
- * each. Narrower, Scalar stacks them, and this rule stays out of it.
+ * each; narrower, Scalar stacks them, and this rule stays out of it. The
+ * introduction's tables size their columns to their content, rather than
+ * evenly, and their first two (the error table's status and code) never wrap.
  */
-const REFERENCE_CSS =
-  "@container references-container (width > 900px) { .introduction-section .section-column:nth-of-type(2) { flex: 0 0 340px; } }";
+const REFERENCE_CSS = [
+  "@container references-container (width > 900px) { .introduction-section .section-column:nth-of-type(2) { flex: 0 0 340px; } }",
+  ".introduction-section .markdown table { table-layout: auto; }",
+  ".introduction-section .markdown :is(td, th):nth-child(-n + 2) { white-space: nowrap; }",
+].join("\n");
 
 /**
  * How long a client or a shared cache may keep the document and the
