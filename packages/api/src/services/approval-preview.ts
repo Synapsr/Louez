@@ -11,15 +11,23 @@ import { isConsequence, type Consequence } from "../platform/approval-rule";
  * (`answerApproval`, services/approvals.ts) all read them from here.
  */
 
-/** A value of the preview's details, as text a page shows. */
+/**
+ * A value of the preview's details, as a page writes it: the kind is read
+ * from the value itself, the page formats it in its own locale.
+ */
 export type ShownValue =
   | { kind: "text"; text: string }
+  | { kind: "number"; value: number }
   | { kind: "yes" }
   | { kind: "no" }
-  | { kind: "none" }
-  | { kind: "list"; entries: ShownDetail[] };
+  /** An ISO date (`dateOnly`) or date-time, which the page writes in the store's time zone. */
+  | { kind: "date"; iso: string; dateOnly: boolean }
+  /** A number in a group that names its currency: an amount in that currency. */
+  | { kind: "money"; amount: number; currency: string }
+  /** An object, or a list, as a titled group of entries. */
+  | { kind: "group"; entries: ShownDetail[] };
 
-/** One line of the preview's details; an empty label for a value with no name. */
+/** One entry of the preview's details; an empty label for a value with no name. */
 export interface ShownDetail {
   label: string;
   value: ShownValue;
@@ -54,9 +62,11 @@ const BLANK = /[\p{White_Space}\u115f\u1160\u3164\uffa0\u2800]+/gu;
  * family emoji into one, and the variation selectors (U+FE00 to U+FE0F,
  * U+E0100 to U+E01EF), which choose a character's form (a heart drawn as an
  * emoji). Both draw nothing of their own. The tag characters go: an emoji
- * subdivision flag (England's) shows as a black flag.
+ * subdivision flag (England's) shows as a black flag. The object replacement
+ * character (U+FFFC), which stands for an object the text does not hold and
+ * draws nothing readable, goes with them.
  */
-const IGNORABLE = /\p{Default_Ignorable_Code_Point}/gu;
+const IGNORABLE = /[\p{Default_Ignorable_Code_Point}\ufffc]/gu;
 
 /** The default-ignorable characters that shape text, kept: ZWNJ, ZWJ and the variation selectors. */
 const shapesText = (character: string) => {
@@ -85,12 +95,13 @@ export const oneLine = (raw: string) =>
 /**
  * The stored preview as text, whatever it holds: its summary on one line,
  * cut at `SUMMARY_MAX` characters, counted once on one line, with an
- * ellipsis (`truncated`), and its details, each string on one line,
- * numbers written as JavaScript writes them, the names of the details
- * spelled out ("reservationId" reads "Reservation id"). The details come in
- * the order the database keeps a JSON object's keys (MySQL sorts them by
- * length), not the order the procedure wrote them. Null when it has no
- * summary to show.
+ * ellipsis (`truncated`), and its details as a person reads them
+ * (`shownValue`): each string on one line, dates, amounts, numbers and
+ * yes or no told apart for the page to write in its locale, nothing empty,
+ * no technical identifier, the names of the details spelled out
+ * ("turnoverBuffer" reads "Turnover buffer"). The details come in the order
+ * the database keeps a JSON object's keys (MySQL sorts them by length), not
+ * the order the procedure wrote them. Null when it has no summary to show.
  */
 export function shownPreview(stored: unknown): ShownPreview | null {
   if (!isRecord(stored)) return null;
@@ -103,20 +114,59 @@ export function shownPreview(stored: unknown): ShownPreview | null {
     ? `${characters.slice(0, SUMMARY_MAX - 1).join("").trimEnd()}…`
     : characters.join("");
   const shown = { summary: text, truncated };
-  if (details === undefined || details === null) return { ...shown, details: [] };
   if (isRecord(details)) return { ...shown, details: entriesOf(details, 1) };
-  return { ...shown, details: [{ label: "", value: shownValue(details, 1) }] };
+  const value = shownValue(details, 1);
+  return { ...shown, details: value ? [{ label: "", value }] : [] };
 }
 
 /**
- * Whether an approval can be approved: its page shows its preview whole (a
- * sentence, within `SUMMARY_MAX`). One that cannot is `unreadable` on its
- * page, and its decision refuses an approval of it under its lock; refusing
- * it stays possible.
+ * The fewest letters or digits a summary holds to say anything: a word of
+ * three letters in any script (an ideograph is a letter), while a run of
+ * joiners, variation selectors or symbols holds none.
+ */
+export const VISIBLE_MIN = 3;
+
+/**
+ * The most combining marks one character carries in the scripts Louez's
+ * stores write in: Vietnamese stacks two (ệ, ở), Thai two or three (a vowel
+ * and a tone mark above a consonant), Arabic with harakat two or three
+ * (shadda with a vowel, sometimes a small alef), Hebrew with points up to
+ * four with cantillation. Past that, the marks draw above and below the line
+ * over what surrounds them.
+ */
+export const MARK_RUN_MAX = 4;
+const MARK_RUN = new RegExp(String.raw`\p{M}{${MARK_RUN_MAX + 1},}`, "u");
+const VISIBLE = /[\p{L}\p{N}]/gu;
+
+/** Whether a text draws within its line: no character carries more marks than `MARK_RUN_MAX`. */
+const staysOnItsLine = (text: string) => !MARK_RUN.test(text);
+
+/** Whether every label and text value of the details stays on its line. */
+const detailsStayOnTheirLines = (entries: readonly ShownDetail[]): boolean =>
+  entries.every(
+    ({ label, value }) =>
+      staysOnItsLine(label) &&
+      (value.kind === "text"
+        ? staysOnItsLine(value.text)
+        : value.kind === "group"
+          ? detailsStayOnTheirLines(value.entries)
+          : true),
+  );
+
+/**
+ * Whether an approval can be approved: its page shows its preview whole and
+ * readable. A sentence within `SUMMARY_MAX`, holding at least `VISIBLE_MIN`
+ * letters or digits once on one line (a summary of joiners, variation
+ * selectors or U+FFFC shows nothing), and no character in it or in the
+ * details carrying more than `MARK_RUN_MAX` combining marks. One that is not
+ * is `unreadable` on its page, and its decision refuses an approval of it
+ * under its lock; refusing it stays possible.
  */
 export function approvalIsReadable(payload: { preview?: unknown } | null | undefined): boolean {
   const preview = shownPreview(payload?.preview);
-  return preview !== null && !preview.truncated;
+  if (preview === null || preview.truncated) return false;
+  if ((preview.summary.match(VISIBLE) ?? []).length < VISIBLE_MIN) return false;
+  return staysOnItsLine(preview.summary) && detailsStayOnTheirLines(preview.details);
 }
 
 /** The consequences that are not a plain change the store can put back. */
@@ -146,47 +196,113 @@ export function approvalAsksToTick(stored: unknown): boolean {
 export const knownConsequences = (stored: unknown): Consequence[] =>
   Array.isArray(stored) ? [...new Set(stored.filter(isConsequence))] : [];
 
-/** Past four levels of lists, a value is shown as its JSON text. */
+/** Past four levels of groups, a value is shown as its JSON text. */
 const MAX_DEPTH = 4;
+
+/**
+ * The keys of technical identifiers and digests, never shown: a record is
+ * named by its number or its name, which the preview carries next to them.
+ */
+const HIDDEN_KEY = /^id$|Id$|_id$|Hash$|_hash$/;
+
+/** The keys an item of a list is named by, when it has one: its group's title. */
+const NAME_KEYS = ["name", "title", "label", "productName", "product"] as const;
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_TIME =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+const CURRENCY = /^[A-Za-z]{3}$/;
+const DECIMAL = /^-?\d+\.\d+$/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+/** An amount next to a currency: a finite number, or a decimal written as text ("180.00"). */
+const amountOf = (value: unknown): number | null => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && DECIMAL.test(value.trim())) return Number(value.trim());
+  return null;
+};
+
+/**
+ * An object's entries, as a page shows them: technical identifiers left
+ * out, empty values left out, and, in an object that names its currency,
+ * every amount an amount of money in it (the currency itself then said by
+ * the amounts).
+ */
 function entriesOf(record: Record<string, unknown>, depth: number): ShownDetail[] {
-  return Object.entries(record).map(([key, value]) => ({
-    label: labelOf(key),
-    value: shownValue(value, depth + 1),
-  }));
+  const code = typeof record.currency === "string" ? record.currency.trim() : "";
+  const currency = CURRENCY.test(code) ? code.toUpperCase() : null;
+  const entries: ShownDetail[] = [];
+  for (const [key, value] of Object.entries(record)) {
+    if (HIDDEN_KEY.test(key) || (currency && key === "currency")) continue;
+    const amount = currency ? amountOf(value) : null;
+    const shown: ShownValue | null =
+      currency && amount !== null
+        ? { kind: "money", amount, currency }
+        : shownValue(value, depth + 1);
+    if (shown) entries.push({ label: labelOf(key), value: shown });
+  }
+  return entries;
 }
 
-function shownValue(value: unknown, depth: number): ShownValue {
-  if (value === null || value === undefined) return { kind: "none" };
+/** A value as a page shows it, or null when there is nothing to show (empty, or only identifiers). */
+function shownValue(value: unknown, depth: number): ShownValue | null {
+  if (value === null || value === undefined) return null;
   if (value === true) return { kind: "yes" };
   if (value === false) return { kind: "no" };
-  if (typeof value === "string") return { kind: "text", text: oneLine(value) };
-  if (typeof value === "number" || typeof value === "bigint") {
-    return { kind: "text", text: String(value) };
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? { kind: "number", value } : { kind: "text", text: String(value) };
   }
-  if (depth > MAX_DEPTH) return { kind: "text", text: oneLine(JSON.stringify(value) ?? "") };
+  if (typeof value === "bigint") return { kind: "text", text: String(value) };
+  if (typeof value === "string") return textValue(value);
+  if (depth > MAX_DEPTH) return textValue(JSON.stringify(value) ?? "");
   if (Array.isArray(value)) {
-    return {
-      kind: "list",
-      entries: value.map((entry, index) => ({
-        label: String(index + 1),
-        value: shownValue(entry, depth + 1),
-      })),
-    };
+    const entries = value.flatMap((item, index): ShownDetail[] => {
+      const named = isRecord(item) ? NAME_KEYS.find((key) => typeof item[key] === "string") : undefined;
+      const title = named && isRecord(item) ? oneLine(String(item[named])) : "";
+      if (named && title && isRecord(item)) {
+        const { [named]: _name, ...rest } = item;
+        const group = entriesOf(rest, depth + 1);
+        return [{ label: title, value: { kind: "group", entries: group } }];
+      }
+      const shown = shownValue(item, depth + 1);
+      return shown ? [{ label: String(index + 1), value: shown }] : [];
+    });
+    return entries.length > 0 ? { kind: "group", entries } : null;
   }
-  if (isRecord(value)) return { kind: "list", entries: entriesOf(value, depth) };
-  return { kind: "text", text: oneLine(String(value)) };
+  if (isRecord(value)) {
+    const entries = entriesOf(value, depth);
+    return entries.length > 0 ? { kind: "group", entries } : null;
+  }
+  return textValue(String(value));
 }
 
-/** A detail's name spelled out: "reservationId" and "reservation_id" read "Reservation id". */
+/** A text on one line: a date when it is one, nothing when it is empty. */
+function textValue(raw: string): ShownValue | null {
+  const text = oneLine(raw);
+  if (text === "") return null;
+  if (ISO_DATE.test(text) && !Number.isNaN(Date.parse(text))) {
+    return { kind: "date", iso: text, dateOnly: true };
+  }
+  if (ISO_DATE_TIME.test(text) && !Number.isNaN(Date.parse(text))) {
+    return { kind: "date", iso: text, dateOnly: false };
+  }
+  return { kind: "text", text };
+}
+
+/**
+ * A detail's name spelled out, abbreviations kept: "turnoverBufferMinutes"
+ * reads "Turnover buffer minutes", "reservation_number" "Reservation
+ * number", "vatID" "Vat ID" and "productSKU" "Product SKU".
+ */
 function labelOf(key: string): string {
   const words = oneLine(key)
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((word) => (/^[A-Z0-9]{2,}$/.test(word) ? word : word.toLowerCase()));
+  const text = words.join(" ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

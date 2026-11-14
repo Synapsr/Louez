@@ -68,10 +68,16 @@ export type ApprovalPageState =
   /** Ended for a reason this page does not name. */
   | "ended";
 
-/** Who asks: an assistant connected over OAuth, or an API key, by the name it had when it asked. */
+/**
+ * Who asks: an assistant connected over OAuth, or an API key, by the name it
+ * had when it asked. `shownName` is the name the page's always-visible line
+ * gives it, on one line: a connected assistant's as the consent page names
+ * it (its vendor's when its codes reach one vendor alone, else the name it
+ * declared), an API key's own; null when it has none.
+ */
 export type ApprovalAgent =
-  | { kind: "oauth"; name: string | null; client: AgentClient | null }
-  | { kind: "api_key"; name: string | null };
+  | { kind: "oauth"; name: string | null; client: AgentClient | null; shownName: string | null }
+  | { kind: "api_key"; name: string | null; shownName: string | null };
 
 export interface ApprovalPage {
   id: string;
@@ -79,7 +85,12 @@ export interface ApprovalPage {
   /** The revision and the binding the page shows: what a decision posts. Only while it is decidable. */
   revision: number;
   binding: string | null;
-  store: { id: string; name: string };
+  /**
+   * The store, its name on one line, and the time zone its dates are written
+   * in: the store's own (`settings.timezone`), else UTC, as the store's
+   * figures are (services/analytics.ts).
+   */
+  store: { id: string; name: string; timeZone: string };
   agent: ApprovalAgent;
   /** The preview Louez stored, as text; null when it cannot be shown. */
   preview: ShownPreview | null;
@@ -134,7 +145,7 @@ export async function readApprovalPage(
   if (!row) return { ok: false, reason: "invalid" };
   if (row.userId !== userId) return { ok: false, reason: "other_user" };
   const [member] = await db
-    .select({ role: storeMembers.role, storeName: stores.name })
+    .select({ role: storeMembers.role, storeName: stores.name, settings: stores.settings })
     .from(storeMembers)
     .innerJoin(stores, eq(stores.id, storeMembers.storeId))
     .where(and(eq(storeMembers.storeId, row.storeId), eq(storeMembers.userId, userId)));
@@ -160,7 +171,11 @@ export async function readApprovalPage(
       state,
       revision: row.revision,
       binding: state === "pending" ? row.bindingHash : null,
-      store: { id: row.storeId, name: member.storeName },
+      store: {
+        id: row.storeId,
+        name: oneLine(member.storeName),
+        timeZone: timeZoneOf(member.settings?.timezone),
+      },
       agent: await agentOf(row),
       preview,
       consequences: knownConsequences(stored.consequences),
@@ -221,7 +236,19 @@ function pageState(
 async function agentOf(row: HandoffRow): Promise<ApprovalAgent> {
   const name = row.clientName ? oneLine(row.clientName) || null : null;
   if (row.credentialKind === "oauth" && row.credentialId) {
-    return { kind: "oauth", name, client: await grantClient(row.userId, row.credentialId) };
+    const client = await grantClient(row.userId, row.credentialId);
+    const declared = client?.destination?.name ?? client?.name ?? name;
+    return { kind: "oauth", name, client, shownName: declared ? oneLine(declared) || null : null };
   }
-  return { kind: "api_key", name };
+  return { kind: "api_key", name, shownName: name };
+}
+
+/** The store's time zone when it names one the runtime knows, else UTC. */
+function timeZoneOf(stored: unknown): string {
+  if (typeof stored !== "string" || stored.trim() === "") return "UTC";
+  try {
+    return new Intl.DateTimeFormat("en", { timeZone: stored.trim() }).resolvedOptions().timeZone;
+  } catch {
+    return "UTC";
+  }
 }

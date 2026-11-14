@@ -228,10 +228,8 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.deepEqual(approval.preview, {
       summary: "Erase note n1 of Roscoff Voile.",
       truncated: false,
-      details: [
-        { label: "Id", value: { kind: "text", text: "n1" } },
-        { label: "Amount", value: { kind: "text", text: "40" } },
-      ],
+      // The note's id is a technical identifier: left out.
+      details: [{ label: "Amount", value: { kind: "number", value: 40 } }],
     });
     assert.deepEqual(approval.consequences, ["money"]);
     assert.equal(approval.deliberate, true);
@@ -240,8 +238,12 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.ok(approval.now.getTime() >= row.linkIssuedAt.getTime());
     assert.equal(approval.revision, row.revision);
     assert.equal(approval.binding, row.bindingHash);
-    assert.deepEqual(approval.store, { id: STORE, name: "Roscoff Voile" });
-    assert.deepEqual(approval.agent, { kind: "api_key", name: "Store agent" });
+    assert.deepEqual(approval.store, { id: STORE, name: "Roscoff Voile", timeZone: "UTC" });
+    assert.deepEqual(approval.agent, {
+      kind: "api_key",
+      name: "Store agent",
+      shownName: "Store agent",
+    });
     assert.equal(approval.decision, null);
   });
 
@@ -276,6 +278,8 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
       approval.agent.kind === "oauth" ? approval.agent.client?.declaredBy : null,
       "claude.pg.test",
     );
+    // The always-visible line names it as the consent page does.
+    assert.equal(approval.agent.shownName, "Claude");
   });
 
   // --- Who reads it -----------------------------------------------------------
@@ -432,23 +436,21 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
       [...entries].sort((a, b) => a.label.localeCompare(b.label));
     assert.deepEqual(byLabel(preview.details), byLabel([
       { label: "Customer name", value: { kind: "text", text: "שרה <img src=x onerror=alert(1)>" } },
-      { label: "Amount paid", value: { kind: "text", text: "40.5" } },
+      { label: "Amount paid", value: { kind: "number", value: 40.5 } },
       { label: "Refunded", value: { kind: "no" } },
       { label: "Sent", value: { kind: "yes" } },
-      { label: "Note", value: { kind: "none" } },
+      // `note: null` is left out.
       {
         label: "Lines",
         value: {
-          kind: "list",
+          kind: "group",
           entries: [
+            // An item named by its product.
             {
-              label: "1",
+              label: "Kayak",
               value: {
-                kind: "list",
-                entries: [
-                  { label: "Available", value: { kind: "text", text: "0" } },
-                  { label: "Product name", value: { kind: "text", text: "Kayak" } },
-                ],
+                kind: "group",
+                entries: [{ label: "Available", value: { kind: "number", value: 0 } }],
               },
             },
           ],
@@ -457,17 +459,17 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
       {
         label: "Deep",
         value: {
-          kind: "list",
+          kind: "group",
           entries: [
             {
               label: "A",
               value: {
-                kind: "list",
+                kind: "group",
                 entries: [
                   {
                     label: "B",
                     value: {
-                      kind: "list",
+                      kind: "group",
                       entries: [{ label: "C", value: { kind: "text", text: '{"d":"deepest"}' } }],
                     },
                   },
@@ -530,6 +532,8 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     }
     // Default-ignorable characters are removed, not turned into a space.
     assert.equal(await summaryOf("Pa\u200bid \u2060in\u00ad full\ufeff."), "Paid in full.");
+    // The object replacement character stands for nothing the text holds: removed too.
+    assert.equal(await summaryOf("Paid\ufffc in\ufffc\ufffc full."), "Paid in full.");
     // A family joined by ZWJ, a heart in its emoji form (VS16), a ZWNJ inside a word: kept.
     const kept = "Ann 👨\u200d👩\u200d👧 ❤\ufe0f می\u200cخواهم";
     assert.equal(await summaryOf(`For ${kept}.`), `For ${kept}.`);
@@ -602,6 +606,151 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.equal(answer.approval.state, "completed");
   });
 
+  test("a summary that shows nothing, or whose marks spill off its line, cannot be approved", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    const stateOf = async (summary: string, details: unknown = { amount: 40 }) => {
+      await setRow(id, { payload: { ...payload, preview: { summary, details } } as never });
+      return (await read(id)).state;
+    };
+    // The reviewer's three inputs: joiners, variation selectors, object replacement characters.
+    for (const blank of ["\u200d", "\ufe0f", "\ufffc"]) {
+      assert.equal(await stateOf(blank.repeat(100)), "unreadable", blank.codePointAt(0)?.toString(16));
+    }
+    // Fewer than three letters or digits says nothing; three do.
+    assert.equal(await stateOf("ab"), "unreadable");
+    assert.equal(await stateOf("Pay"), "pending");
+    // A ZWJ inside real text is kept, and the text stays readable.
+    assert.equal(await stateOf("Pay Ann 👨\u200d👩\u200d👧 40 EUR"), "pending");
+    // The reviewer's stack of combining marks, in the summary or in a value.
+    const stack = `Pay A${"\u0316".repeat(100)} 40 EUR`;
+    assert.equal(await stateOf(stack), "unreadable");
+    assert.equal(await stateOf("Record a payment.", { customer: stack }), "unreadable");
+    assert.equal(await stateOf("Record a payment.", { [`Na${"\u0301".repeat(5)}me`]: "Ann" }), "unreadable");
+    // Four marks on one character stay readable; five do not.
+    assert.equal(await stateOf(`Pay A${"\u0316".repeat(4)} 40 EUR`), "pending");
+    assert.equal(await stateOf(`Pay A${"\u0316".repeat(5)} 40 EUR`), "unreadable");
+    // Scripts with their normal marks stay readable: Vietnamese, Arabic with harakat, pointed Hebrew, Thai.
+    for (const text of [
+      "Thanh toán 120.000 ₫ cho Nguyễn Văn Đức, đặt chỗ số 1042.",
+      "دَفْعُ مِئَةٍ وَعِشْرِينَ يُورُو لِلْحَجْزِ ١٠٤٢",
+      "תַּשְׁלוּם שֶׁל מֵאָה וְעֶשְׂרִים אֵירוֹ",
+      "ชำระเงิน ๑๒๐ ยูโร สำหรับการจองที่ ๑๐๔๒",
+    ]) {
+      assert.equal(await stateOf(text, { customer: text }), "pending", text);
+    }
+  });
+
+  test("the details read as a person writes them: no identifier, nothing empty, dates, amounts and named items told apart", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    await setRow(id, {
+      payload: {
+        ...payload,
+        preview: {
+          summary: "Confirm reservation #1042.",
+          details: {
+            reservationId: "res_abc",
+            recipientsHash: "f".repeat(64),
+            reservation: {
+              id: "res_abc",
+              number: "1042",
+              startDate: "2026-11-21T09:00:00.000Z",
+              endDate: "2026-11-23",
+              totalAmount: "180.00",
+              currency: "eur",
+              customer_id: "cus_1",
+            },
+            note: null,
+            empty: "",
+            nothing: [],
+            alsoNothing: { id: "x" },
+            productSKU: "KAY-2",
+            vatID: "FR123",
+            shortfalls: [
+              { product: "Kayak biplace", requested: 2, available: 1 },
+              { requested: 1, available: 0 },
+            ],
+            email: "ann@example.com",
+          },
+        },
+      },
+    });
+    const { preview } = await read(id);
+    assert.ok(preview);
+    // MySQL keeps each object's keys in its own order: every group compared by label.
+    type Entry = { label: string; value: { kind: string; entries?: Entry[]; [field: string]: unknown } };
+    const sorted = (entries: readonly Entry[]): Entry[] =>
+      [...entries]
+        .map((entry) =>
+          entry.value.entries
+            ? { ...entry, value: { ...entry.value, entries: sorted(entry.value.entries) } }
+            : entry,
+        )
+        .sort((a, b) => a.label.localeCompare(b.label));
+    assert.deepEqual(sorted(preview.details as Entry[]), sorted([
+      {
+        label: "Reservation",
+        value: {
+          kind: "group",
+          entries: [
+            { label: "Number", value: { kind: "text", text: "1042" } },
+            { label: "Start date", value: { kind: "date", iso: "2026-11-21T09:00:00.000Z", dateOnly: false } },
+            { label: "End date", value: { kind: "date", iso: "2026-11-23", dateOnly: true } },
+            { label: "Total amount", value: { kind: "money", amount: 180, currency: "EUR" } },
+          ],
+        },
+      },
+      { label: "Product SKU", value: { kind: "text", text: "KAY-2" } },
+      { label: "Vat ID", value: { kind: "text", text: "FR123" } },
+      {
+        label: "Shortfalls",
+        value: {
+          kind: "group",
+          entries: [
+            {
+              label: "Kayak biplace",
+              value: {
+                kind: "group",
+                entries: [
+                  { label: "Requested", value: { kind: "number", value: 2 } },
+                  { label: "Available", value: { kind: "number", value: 1 } },
+                ],
+              },
+            },
+            {
+              label: "2",
+              value: {
+                kind: "group",
+                entries: [
+                  { label: "Requested", value: { kind: "number", value: 1 } },
+                  { label: "Available", value: { kind: "number", value: 0 } },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      { label: "Email", value: { kind: "text", text: "ann@example.com" } },
+    ] as Entry[]));
+  });
+
+  test("the store's time zone writes its dates; an unknown one is UTC", async () => {
+    const id = await ask(await apiKey());
+    const zone = async (timezone: string | undefined) => {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: { currency: "EUR", country: "FR", ...(timezone ? { timezone } : {}) } as never })
+        .where(orm.eq(louezDb.stores.id, STORE));
+      return (await read(id)).store.timeZone;
+    };
+    assert.equal(await zone("Europe/Paris"), "Europe/Paris");
+    assert.equal(await zone("Not/AZone"), "UTC");
+    assert.equal(await zone(undefined), "UTC");
+  });
+
   test("a summary too long to show whole is cut, says so, and cannot be approved", async () => {
     const id = await ask(await apiKey());
     const row = await rowOf(id);
@@ -638,10 +787,10 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
       {
         label: "",
         value: {
-          kind: "list",
+          kind: "group",
           entries: [
             { label: "1", value: { kind: "text", text: "a" } },
-            { label: "2", value: { kind: "text", text: "2" } },
+            { label: "2", value: { kind: "number", value: 2 } },
           ],
         },
       },
