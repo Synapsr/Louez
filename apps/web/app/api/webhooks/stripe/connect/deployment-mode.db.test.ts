@@ -14,9 +14,10 @@ import type { DepositIntent } from "@/lib/reservations/util.deposit-hold-transit
 
 // The Connect webhook's POST, run whole, for an event of the other mode than the
 // deployment's key (docs/domain/reservation-changes.md, 6a-W1): the route refuses it
-// before any handler, whatever its type, logs it, writes nothing, sends nothing,
-// calls no Stripe API, and answers 2xx. Each case sets the rows its handler would
-// write in the deployment's mode: a deposit hold, a paid charge, a connected store.
+// before any handler, whatever its type, logs it with the id of its object, writes
+// nothing, sends nothing, calls no Stripe API, and answers 2xx. Each case sets the
+// rows its handler would write in the deployment's mode: a deposit hold, a paid
+// charge, a connected store.
 // `checkout-completed.db.test.ts`, `checkout-expired.db.test.ts` and
 // `payment-failed.db.test.ts` hold the same case for their events. The signature
 // check, the deployment's keys, the log, the fee runner, the senders and Stripe are
@@ -409,6 +410,7 @@ describe("an event of the other mode (database)", { skip: skipWithoutTestDatabas
                 event: type,
                 issue: "livemode_mismatch",
                 stripeEventId: eventId,
+                objectId: object.id,
                 accountId: ACCOUNT,
                 livemode,
               },

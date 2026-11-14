@@ -2,7 +2,7 @@ import { completeExtensionPayment } from "@/lib/reservations/extension-service";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
@@ -193,14 +193,17 @@ export async function POST(request: Request) {
   const connectedAccountId = event.account;
 
   // An event of the other mode than the deployment's key is refused before any
-  // handler, whatever its type: logged, nothing written, answered 2xx so that
-  // Stripe does not send it again.
+  // handler, whatever its type: logged with the id of its object, nothing written,
+  // answered 2xx so that Stripe does not send it again.
   if (!matchesDeploymentMode({ livemode: event.livemode, secretKey: env.STRIPE_SECRET_KEY })) {
+    const object = event.data.object;
+    const objectId = "id" in object ? object.id : undefined;
     log.error({
       stripeWebhook: {
         event: event.type,
         issue: "livemode_mismatch",
         stripeEventId: event.id,
+        ...(typeof objectId === "string" && { objectId }),
         ...(connectedAccountId && { accountId: connectedAccountId }),
         livemode: event.livemode,
       },
@@ -685,13 +688,29 @@ async function handleCheckoutExpired(
   const currency = session.currency?.toUpperCase() || "EUR";
   const amount = fromStripeCents(session.amount_total || 0, currency);
 
+  // The session's line in the reservation's history: its id, amount and currency.
+  const expiredLine = () => ({
+    id: nanoid(),
+    reservationId,
+    activityType: "payment_expired" as const,
+    description: null,
+    metadata: {
+      checkoutSessionId: session.id,
+      amount,
+      currency,
+      method: "stripe",
+    },
+    // Whole seconds, as the status change below stores its `cancelled` row.
+    createdAt: toWholeSeconds(new Date()),
+  });
+
   // A row still pending means nobody replaced this session: the customer
   // simply never paid. A resumed or superseded checkout cancels its row before
   // expiring the session, so those never reach the cancellation. The expiry is
   // recorded by the delivery whose update moves the row out of pending, and only
   // that one asks for the cancellation: another delivery of the event, even a
   // concurrent one, finds the row cancelled under its lock and writes nothing.
-  // A session with no row, or whose row is no longer pending, records nothing.
+  // A session whose row is no longer pending records nothing.
   const pendingPayment = existingPayment?.status === "pending" ? existingPayment : null;
   const abandoned =
     pendingPayment !== null &&
@@ -705,22 +724,35 @@ async function handleCheckoutExpired(
         .where(and(eq(payments.id, pendingPayment.id), eq(payments.status, "pending")));
       if (cancelled.affectedRows === 0) return false;
       await markReservationIds(tx, [reservationId]);
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
-        reservationId,
-        activityType: "payment_expired",
-        description: null,
-        metadata: {
-          checkoutSessionId: session.id,
-          amount,
-          currency,
-          method: "stripe",
-        },
-        // Whole seconds, as the status change below stores its `cancelled` row.
-        createdAt: toWholeSeconds(new Date()),
-      });
+      await tx.insert(reservationActivity).values(expiredLine());
       return true;
     }));
+
+  // A payment request's session has no payment row until it is paid: its line,
+  // which tells the store why no money came, is written once per session. Under
+  // the reservation's lock, a second delivery of the event, even a concurrent
+  // one, finds the line its session id names and writes nothing.
+  if (!existingPayment && session.metadata?.paymentRequestId) {
+    await db.transaction(async (tx) => {
+      await tx
+        .select({ id: reservations.id })
+        .from(reservations)
+        .where(eq(reservations.id, reservationId))
+        .for("update");
+      const [recorded] = await tx
+        .select({ id: reservationActivity.id })
+        .from(reservationActivity)
+        .where(
+          and(
+            eq(reservationActivity.reservationId, reservationId),
+            eq(reservationActivity.activityType, "payment_expired"),
+            sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.checkoutSessionId')) = ${session.id}`,
+          ),
+        )
+        .limit(1);
+      if (!recorded) await tx.insert(reservationActivity).values(expiredLine());
+    });
+  }
 
   // A marketplace booking's attempt fails with its own session only: without
   // the payment row, nothing ties this session to the booking's checkout.

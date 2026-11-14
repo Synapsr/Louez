@@ -445,6 +445,7 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
             event: "checkout.session.completed",
             issue: "livemode_mismatch",
             stripeEventId: eventId,
+            objectId: booking.sessionId,
             accountId: TODAY_ACCOUNT,
             livemode: true,
           },

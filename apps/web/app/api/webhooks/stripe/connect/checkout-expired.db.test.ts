@@ -29,7 +29,9 @@ import {
 // row records, or its store's for a row that records none (6a-W2): a metadata
 // reservation or an account other than those is logged and writes nothing. The
 // expiry is recorded by the delivery that moves the payment out of pending,
-// once; an event of the other mode than the deployment's key writes nothing.
+// once; a payment request's session, which has no payment row, records its
+// expiry once per session; an event of the other mode than the deployment's key
+// writes nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -460,6 +462,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
             event: "checkout.session.expired",
             issue: "livemode_mismatch",
             stripeEventId: eventId,
+            objectId: sessionId,
             accountId: ACCOUNT,
             livemode: true,
           },
@@ -669,7 +672,84 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     assert.equal(await readStatus(id), "pending");
   });
 
-  test("a session no payment row names (a payment request's): no payment moves out of pending, nothing written on its store's reservation", async () => {
+  /** A payment request's session metadata: its reservation and its request, no flow. */
+  const paymentRequest = (reservationId: string) => ({
+    metadata: { reservationId, paymentRequestId: nextId("prq") },
+  });
+
+  test("a payment request's session, which no payment row names: its payment_expired row on its store's reservation, nothing else", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+
+    assert.deepEqual(await expire(id, sessionId, null, undefined, paymentRequest(id)), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
+    assert.equal(await readStatus(id), "pending");
+    assert.deepEqual(await readActivity(id), [paymentExpired(sessionId)]);
+  });
+
+  test("a payment request's session expiry delivered again writes nothing: one payment_expired row", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+    const eventId = nextId("evt");
+    const metadata = paymentRequest(id);
+    await expire(id, sessionId, null, eventId, metadata);
+    calls.length = 0;
+    await raw.query("TRUNCATE TABLE test_writes");
+
+    assert.deepEqual(await expire(id, sessionId, null, eventId, metadata), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
+    assert.deepEqual(await readActivity(id), [paymentExpired(sessionId)]);
+  });
+
+  test("a payment request's session expiry delivered twice at once: one payment_expired row", async () => {
+    const id = await booking();
+    const sessionId = nextId("cs");
+    const eventId = nextId("evt");
+    const metadata = paymentRequest(id);
+
+    // Both deliveries have read the reservation, then wait on its row.
+    const answers = await raceOnLockedRow(database, { table: "reservations", id }, [
+      () => expire(id, sessionId, null, eventId, metadata),
+      () => expire(id, sessionId, null, eventId, metadata),
+    ]);
+
+    assert.deepEqual(answers, [
+      { status: 200, body: { received: true } },
+      { status: 200, body: { received: true } },
+    ]);
+    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
+    assert.deepEqual(await readActivity(id), [paymentExpired(sessionId)]);
+  });
+
+  test("two expired sessions of a payment request's reservation: a payment_expired row each", async () => {
+    const id = await booking();
+    const first = nextId("cs");
+    const second = nextId("cs");
+
+    await expire(id, first, null, undefined, paymentRequest(id));
+    await expire(id, second, null, undefined, paymentRequest(id));
+
+    assert.deepEqual(await readWrites(id), [
+      "1: reservation_activity + payment_expired",
+      "2: reservation_activity + payment_expired",
+    ]);
+    const sessions = (await readActivity(id)).map(
+      (line) => (line.metadata as { checkoutSessionId: string }).checkoutSessionId,
+    );
+    assert.deepEqual(sessions.sort(), [first, second].sort());
+  });
+
+  test("a session no payment row and no payment request names: nothing written", async () => {
     const id = await booking();
     const sessionId = nextId("cs");
 
@@ -680,7 +760,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     assert.equal(await readStatus(id), "pending");
   });
 
-  test("a session no payment row names leaves a marketplace booking and its attempt as they are", async () => {
+  test("a payment request's session, which no payment row names, leaves a marketplace booking and its attempt as they are", async () => {
     const id = await booking("marketplace");
     // The booking's own checkout, still open.
     await sessionPayment(id);
@@ -692,12 +772,12 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     );
     const otherSession = nextId("cs");
 
-    assert.deepEqual(await expire(id, otherSession, null), {
+    assert.deepEqual(await expire(id, otherSession, null, undefined, paymentRequest(id)), {
       status: 200,
       body: { received: true },
     });
 
-    assert.deepEqual(await readWrites(id), []);
+    assert.deepEqual(await readWrites(id), ["1: reservation_activity + payment_expired"]);
     assert.deepEqual(calls, [expiredLog(id, otherSession, false)]);
     assert.equal(await readStatus(id), "pending");
   });

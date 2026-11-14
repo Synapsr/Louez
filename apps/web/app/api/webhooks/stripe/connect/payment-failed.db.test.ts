@@ -498,13 +498,14 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
   ];
 
   /** The route's refusal of an event of the other mode, before any handler. */
-  const otherMode = (eventId: string, livemode: boolean) => [
+  const otherMode = (eventId: string, paymentIntentId: string, livemode: boolean) => [
     "log.error",
     {
       stripeWebhook: {
         event: "payment_intent.payment_failed",
         issue: "livemode_mismatch",
         stripeEventId: eventId,
+        objectId: paymentIntentId,
         accountId: ACCOUNT,
         livemode,
       },
@@ -728,7 +729,7 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
         );
 
         assert.deepEqual(await readWrites(id), []);
-        assert.deepEqual(calls, [otherMode(eventId, livemode)]);
+        assert.deepEqual(calls, [otherMode(eventId, paymentIntentId, livemode)]);
         calls.length = 0;
       }
     });
@@ -844,7 +845,7 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
           paymentIntentId,
           namedReservationId: id,
         }),
-        otherMode(live, true),
+        otherMode(live, paymentIntentId, true),
       ]);
     });
   });
