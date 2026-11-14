@@ -515,7 +515,7 @@ describe(
         .where(orm.eq(t.id, id));
     };
 
-    /** The person's answer on the approval's page: `handoffs.decide`, with their session, on RPC. */
+    /** The person's answer on the approval's page: `handoffs.decide`, with their session, on RPC, the box ticked as the page posts it. */
     async function decide(id: string, decision: "approve" | "refuse", reason?: string) {
       const row = await rowOf(id);
       return rpc(OWNER, "dashboard.handoffs.decide", {
@@ -523,6 +523,7 @@ describe(
         decision,
         revision: row.revision,
         shown: row.bindingHash,
+        acknowledged: true,
         ...(reason === undefined ? {} : { reason }),
       });
     }
