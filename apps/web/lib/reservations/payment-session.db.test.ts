@@ -20,12 +20,14 @@ import { closeNetworkForSuite } from "@/lib/testing/network-guard";
 // payment in that currency has paid it (invariants M2 and M6). A resumed
 // checkout cancels the rental's open payments, then expires their sessions, then
 // creates its own, and installs it only on a reservation that, under its lock,
-// is still payable and has no other open or paid rental payment; otherwise it
-// expires the session it created. Each rental session not yet settled (the ones
-// it replaces, and the `cancelled` ones no `payment_expired` line names, whatever
-// their age) is expired, or read when Stripe no longer expires it; when one's
-// state is unknown, no session is created, the rows stay `cancelled`, and the
-// next call asks again (docs/domain/reservation-changes.md). A session found
+// is still payable, has no other open or paid rental payment and no unsettled
+// session; otherwise it expires the session it created. Each unsettled rental
+// session (the ones it replaces, and the `cancelled` ones Stripe has not said
+// are over, whatever their age) is expired, or read when Stripe no longer
+// expires it, and marked settled once Stripe says it is over; a marked one is
+// never read again. When one's state is unknown, no session is created, the
+// rows stay `cancelled`, and the next call asks again
+// (docs/domain/reservation-changes.md). A session found
 // paid is recorded through the completion, whose suite covers it. Stripe is a
 // fake that notes the sessions it is asked to create, expire and read: no
 // network. The database is real.
@@ -353,6 +355,18 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     return { status: reservation?.status, payments: rows };
   }
 
+  /** The sessions of the reservation whose rows are marked settled, sorted. */
+  async function settledOf(reservationId: string) {
+    const rows = await louezDb.db
+      .select({
+        session: louezDb.payments.stripeCheckoutSessionId,
+        settledAt: louezDb.payments.sessionSettledAt,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, reservationId));
+    return rows.flatMap(({ session, settledAt }) => (settledAt ? [String(session)] : [])).sort();
+  }
+
   /**
    * Runs `statements` in a transaction on another connection, which keeps their
    * locks until a transaction waits on one of them, then commits. Resolves once
@@ -506,7 +520,11 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
   });
 
   /** A rental payment of the reservation, cancelled, whose session was created `ageMs` ago. */
-  async function earlierSession(reservationId: string, ageMs: number) {
+  async function earlierSession(
+    reservationId: string,
+    ageMs: number,
+    { settled = false }: { settled?: boolean } = {},
+  ) {
     const session = `cs_earlier_${++counter}`;
     await louezDb.db.insert(louezDb.payments).values({
       id: `pay_${session}`,
@@ -519,19 +537,11 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
       stripeAccountId: "acct_pay_session",
       origin: "customer_session",
       currency: "EUR",
+      sessionSettledAt: settled ? new Date(Date.now() - ageMs) : null,
       createdAt: new Date(Date.now() - ageMs),
     });
     return session;
   }
-
-  /** The `payment_expired` line the expiry of `session` writes. */
-  const expiryLine = (reservationId: string, session: string) =>
-    louezDb.db.insert(louezDb.reservationActivity).values({
-      id: `act_${session}`,
-      reservationId,
-      activityType: "payment_expired",
-      metadata: { checkoutSessionId: session, amount: 100, currency: "EUR", method: "stripe" },
-    });
 
   test("a resume refused for an unknown session leaves its row cancelled: the next one asks Stripe again", async () => {
     const outcomes = [
@@ -579,12 +589,11 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     }
   });
 
-  test("a cancelled session no payment_expired line names is read at Stripe whatever its age; one a line names is not", async () => {
+  test("an unsettled session is read at Stripe whatever its age, and marked once Stripe says it is over; a settled one is never read", async () => {
     const { id, openSession } = await openCheckout();
     // Two hours old: past any session's lifetime.
     const unsettled = await earlierSession(id, 2 * 60 * 60 * 1000);
-    const settled = await earlierSession(id, 2 * 60 * 60 * 1000);
-    await expiryLine(id, settled);
+    const settled = await earlierSession(id, 2 * 60 * 60 * 1000, { settled: true });
     // Stripe no longer expires an earlier session, and reads it expired.
     replacedAtStripe = "expired";
 
@@ -593,6 +602,26 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     assert.ok(!("error" in result), JSON.stringify(result));
     assert.deepEqual(expireAsked.sort(), [openSession, unsettled].sort());
     assert.deepEqual(retrieved.sort(), [openSession, unsettled].sort());
+    assert.ok(!expireAsked.includes(settled) && !retrieved.includes(settled));
     assert.equal(sessions.length, 1);
+    assert.deepEqual(await settledOf(id), [openSession, settled, unsettled].sort());
+  });
+
+  test("four resumes in a row: once earlier sessions are marked, each asks Stripe about its predecessor alone, then creates its own", async () => {
+    const { id, openSession } = await openCheckout();
+    let previous = openSession;
+    for (let run = 1; run <= 4; run += 1) {
+      expireAsked.length = 0;
+      retrieved.length = 0;
+      const before = sessions.length;
+
+      const result = await resume(id);
+
+      assert.ok(!("error" in result), `${run}: ${JSON.stringify(result)}`);
+      assert.deepEqual(expireAsked, [previous], `resume ${run}: its predecessor expired`);
+      assert.deepEqual(retrieved, [], `resume ${run}: nothing read`);
+      assert.equal(sessions.length, before + 1, `resume ${run}: one session created`);
+      previous = String(result.sessionId);
+    }
   });
 });

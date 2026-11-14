@@ -34,9 +34,11 @@ import { closeNetworkForSuite } from "@/lib/testing/network-guard";
 // reservation or an account other than those is logged and writes nothing. The
 // expiry is recorded by the delivery that moves the payment out of pending,
 // once, and every delivery of a recorded expiry asks for the checkout's
-// cancellation, so a redelivery finishes one that failed; a session a resumed
-// checkout replaced finds its row no longer pending and cancels nothing,
-// whenever its expiry comes; a payment request's session, which has no payment
+// cancellation, so a redelivery finishes one that failed; every expiry marks its
+// row's session settled; a session a resumed checkout replaced finds its row no
+// longer pending and cancels nothing, whenever its expiry comes; the checkout is
+// not cancelled while one of its rental sessions is unsettled; a payment
+// request's session, which has no payment
 // row, records its expiry once per session; an event of the other mode than the
 // deployment's key writes nothing. Each write takes the reservation's row, then
 // its payment, then its history; the account deletion takes the store's
@@ -159,7 +161,6 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   let route: typeof import("./route");
   let deletion: typeof import("@/lib/account-deletion/database-repository");
   let paymentSession: typeof import("@/lib/reservations/payment-session");
-  let abandoned: typeof import("@/lib/reservations/abandoned-checkouts");
   let counter = 0;
 
   before(async () => {
@@ -171,7 +172,6 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     route = await import("./route");
     deletion = await import("@/lib/account-deletion/database-repository");
     paymentSession = await import("@/lib/reservations/payment-session");
-    abandoned = await import("@/lib/reservations/abandoned-checkouts");
     const { getStripe } = await import("@/lib/stripe/client");
     Reflect.set(getStripe().checkout.sessions, "create", async () => {
       const id = `cs_resumed_${++counter}`;
@@ -575,14 +575,18 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     }
   });
 
-  test("a session whose payment was no longer pending (resumed or superseded): nothing written, the reservation left", async () => {
-    for (const status of ["cancelled", "completed"] as const) {
+  test("a session whose payment was no longer pending: a replaced one's row marked settled, a paid one's left; no line, the reservation left", async () => {
+    for (const [status, writes] of [
+      ["cancelled", ["1: payments cancelled > cancelled"]],
+      ["completed", []],
+    ] as const) {
       const id = await booking();
       const sessionId = await sessionPayment(id, status);
 
       await expire(id, sessionId);
 
-      assert.deepEqual(await readWrites(id), []);
+      assert.deepEqual(await readWrites(id), writes, status);
+      assert.deepEqual(await settledSessions(id), status === "cancelled" ? [sessionId] : [], status);
       assert.deepEqual(calls, [expiredLog(id, sessionId, false)]);
       assert.equal(await readStatus(id), "pending");
       calls.length = 0;
@@ -726,6 +730,18 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       { allowPendingReservation: true, chargeAmount: 10 },
     );
 
+  /** The sessions of the reservation whose rows are marked settled, sorted. */
+  async function settledSessions(id: string) {
+    const rows = await louezDb.db
+      .select({
+        session: louezDb.payments.stripeCheckoutSessionId,
+        settledAt: louezDb.payments.sessionSettledAt,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, id));
+    return rows.flatMap(({ session, settledAt }) => (settledAt ? [String(session)] : [])).sort();
+  }
+
   /** The reservation's payments: their status and session, by session. */
   async function paymentsOf(id: string) {
     const rows = await louezDb.db
@@ -833,13 +849,8 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
     assert.equal(await readStatus(id), "cancelled");
   });
 
-  test("an expiry delivered while a refused resume holds its row cancelled: the row stays cancelled, and the scheduled pass later cancels the checkout", async () => {
+  test("an expiry delivered while a refused resume holds its row cancelled: the row marked settled, no line, nothing cancelled; a later resume does not read that session", async () => {
     const { id, sessionId } = await resumableCheckout();
-    // Created forty minutes ago: its session's lifetime is over.
-    await louezDb.db
-      .update(louezDb.payments)
-      .set({ createdAt: new Date(Date.now() - 40 * 60 * 1000) })
-      .where(eq(louezDb.payments.stripeCheckoutSessionId, sessionId));
     // The session's expiry is delivered after the resume cancelled its row; then
     // the resume can neither expire nor read the session.
     let delivered: Awaited<ReturnType<typeof expire>> | undefined;
@@ -856,12 +867,61 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
 
     assert.deepEqual(delivered, { status: 200, body: { received: true } });
     assert.deepEqual(await paymentsOf(id), [{ status: "cancelled", session: sessionId }]);
+    assert.deepEqual(await settledSessions(id), [sessionId]);
+    assert.deepEqual(
+      (await readActivity(id)).map((line) => line.activityType),
+      [],
+      "no payment_expired line",
+    );
     assert.equal(await readStatus(id), "pending");
 
-    // The scheduled pass reads the session at Stripe, expired, and cancels the checkout.
-    await abandoned.settleAbandonedCheckouts();
+    // The next resume does not ask Stripe about that session again.
+    stripeCalls.length = 0;
+    const next = await resume(id);
+    assert.ok(!("error" in next), JSON.stringify(next));
+    assert.ok(
+      stripeCalls.every((call) => !call.endsWith(` ${sessionId}`)),
+      JSON.stringify(stripeCalls),
+    );
+  });
+
+  test("an expiry while a replaced session is unsettled: its row recorded, the checkout left; delivered again once that session is marked, the checkout cancelled", async () => {
+    const { id, sessionId } = await resumableCheckout();
+    // A session an earlier resume replaced, which Stripe has not said is over.
+    const replaced = nextId("cs");
+    await louezDb.db.insert(louezDb.payments).values({
+      id: nextId("pay"),
+      reservationId: id,
+      amount: "10.00",
+      type: "rental",
+      method: "stripe",
+      status: "cancelled",
+      stripeCheckoutSessionId: replaced,
+      stripeAccountId: RESUME_ACCOUNT,
+    });
+    const eventId = nextId("evt");
+
+    assert.deepEqual(
+      await expire(id, sessionId, undefined, eventId, { account: RESUME_ACCOUNT }),
+      { status: 200, body: { received: true } },
+    );
+    assert.deepEqual(calls.at(-1), expiredLog(id, sessionId, false));
+    assert.equal(await readStatus(id), "pending");
+    assert.deepEqual(await settledSessions(id), [sessionId]);
+
+    // Stripe says the replaced session is over (a resume's read, or the pass's);
+    // the event delivered again finishes the cancellation.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ sessionSettledAt: new Date() })
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, replaced));
+    calls.length = 0;
+    assert.deepEqual(
+      await expire(id, sessionId, undefined, eventId, { account: RESUME_ACCOUNT }),
+      { status: 200, body: { received: true } },
+    );
+    assert.deepEqual(calls.at(-1), expiredLog(id, sessionId, true));
     assert.equal(await readStatus(id), "cancelled");
-    assert.deepEqual(await paymentsOf(id), [{ status: "cancelled", session: sessionId }]);
   });
 
   test("an event whose reservation disagrees with its payment's, in the same store: logged, nothing written on either", async () => {

@@ -18,8 +18,16 @@ mock.module("@/lib/api/effects", {
 mock.module("@/lib/reservations/deposit-hold-debts", {
   namedExports: { runDepositReleaseDebtsCron: fake("runDepositReleaseDebtsCron") },
 });
+/** While set, the abandoned checkouts' pass waits on its provider for ever. */
+let passHangs = false;
 mock.module("@/lib/reservations/abandoned-checkouts", {
-  namedExports: { settleAbandonedCheckouts: fake("settleAbandonedCheckouts") },
+  namedExports: {
+    settleAbandonedCheckouts: async () => {
+      called.push("settleAbandonedCheckouts");
+      if (passHangs) await new Promise(() => {});
+      return "settleAbandonedCheckouts";
+    },
+  },
 });
 mock.module("@/lib/api/jobs", {
   namedExports: { runApiJobsCron: fake("runApiJobsCron") },
@@ -37,7 +45,7 @@ mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
 
-test("every cron call requeues the deposit releases owed, settles the abandoned checkouts, runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
+test("every cron call requeues the deposit releases owed, runs the outbox, each purge of the agent-ready API, its background jobs, then settles the abandoned checkouts", async () => {
   const { apiTasks } = await import("./api-tasks");
   const tasks = apiTasks();
   const results = [];
@@ -47,11 +55,6 @@ test("every cron call requeues the deposit releases owed, settles the abandoned 
       task: "deposit-release-debts",
       key: "depositReleaseDebts",
       runs: "runDepositReleaseDebtsCron",
-    },
-    {
-      task: "abandoned-checkouts",
-      key: "abandonedCheckouts",
-      runs: "settleAbandonedCheckouts",
     },
     { task: "api-effects", key: "apiEffects", runs: "runApiEffectsCron" },
     {
@@ -63,6 +66,36 @@ test("every cron call requeues the deposit releases owed, settles the abandoned 
     { task: "api-operations", key: "apiOperations", runs: "purgeOperations" },
     { task: "oauth-tokens", key: "oauthTokens", runs: "purgeOAuthTokens" },
     { task: "api-jobs", key: "apiJobs", runs: "runApiJobsCron" },
+    {
+      task: "abandoned-checkouts",
+      key: "abandonedCheckouts",
+      runs: "settleAbandonedCheckouts",
+    },
   ]);
   assert.equal(called.length, tasks.length);
+});
+
+test("a pass over abandoned checkouts that hangs on its provider holds no other task back: each has run before it", async () => {
+  const { apiTasks } = await import("./api-tasks");
+  const { runIsolatedTasks } = await import("./isolated-tasks");
+  called.length = 0;
+  passHangs = true;
+  const quiet = { error() {} };
+
+  // Never awaited: the pass never ends.
+  void runIsolatedTasks(apiTasks(), { request: quiet, event: quiet });
+  while (!called.includes("settleAbandonedCheckouts")) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  assert.deepEqual(called, [
+    "runDepositReleaseDebtsCron",
+    "runApiEffectsCron",
+    "pruneInboxAcknowledgements",
+    "purgeHandoffs",
+    "purgeOperations",
+    "purgeOAuthTokens",
+    "runApiJobsCron",
+    "settleAbandonedCheckouts",
+  ]);
 });

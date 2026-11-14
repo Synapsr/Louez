@@ -10,6 +10,7 @@ import {
   reservations,
   toWholeSeconds,
   type Transaction,
+  unsettledCheckoutSession,
 } from "@louez/db";
 
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
@@ -18,10 +19,11 @@ import { getStripe } from "@/lib/stripe/client";
 
 /**
  * What Louez records of a rental Checkout Session, and what it reads of one at
- * Stripe. A session is settled when Louez has recorded what became of it: its
- * payment row is `completed`, or a `payment_expired` line names it. Used by the
- * Connect webhook's `checkout.session.expired`, the customer's resumed payment
- * and the scheduled pass over abandoned checkouts.
+ * Stripe. A session is settled when Louez knows what became of it: its row was
+ * paid, or it is marked (`payments.session_settled_at`) because Stripe said it can
+ * no longer be paid (`unsettledCheckoutSession`, `@louez/db`). Used by the Connect
+ * webhook's `checkout.session.expired`, the customer's resumed payment and the
+ * scheduled pass over abandoned checkouts.
  */
 
 /** The session's fields its `payment_expired` line records. */
@@ -91,29 +93,14 @@ export async function hasExpiredLine(
   return recorded !== undefined;
 }
 
-/** The sessions the reservation's `payment_expired` lines name. */
-export async function expiredSessionIds(
-  executor: Pick<Transaction, "select">,
-  reservationId: string,
-): Promise<Set<string>> {
-  const lines = await executor
-    .select({ sessionId: expiredLineSession })
-    .from(reservationActivity)
-    .where(
-      and(
-        eq(reservationActivity.reservationId, reservationId),
-        eq(reservationActivity.activityType, "payment_expired"),
-      ),
-    );
-  return new Set(lines.flatMap(({ sessionId }) => (sessionId ? [sessionId] : [])));
-}
-
 /**
- * Records that a session expired unpaid: under the reservation's lock, its row
- * moves from `pending` to `cancelled` by an update conditional on `pending`, and
+ * Records that a session expired, under the reservation's lock. A `pending` row
+ * moves to `cancelled` and is marked by one update conditional on `pending`, and
  * only when that update moved it, the `payment_expired` line is written in the
- * same transaction. Returns whether this call recorded it: another delivery,
- * even a concurrent one, finds the row cancelled and records nothing.
+ * same transaction: the checkout's expiry, whose cancellation the caller asks
+ * for. A row no longer `pending` (a session a resume replaced) is marked alone,
+ * when unsettled: no line, nothing else. Returns whether this call recorded a
+ * checkout's expiry: another delivery, even a concurrent one, records nothing.
  */
 export async function recordCheckoutSessionExpiry({
   reservationId,
@@ -126,11 +113,18 @@ export async function recordCheckoutSessionExpiry({
 }): Promise<boolean> {
   return db.transaction(async (tx) => {
     if (!(await lockReservationRow(tx, reservationId))) return false;
+    const now = new Date();
     const [cancelled] = await tx
       .update(payments)
-      .set({ status: "cancelled", updatedAt: new Date() })
+      .set({ status: "cancelled", sessionSettledAt: now, updatedAt: now })
       .where(and(eq(payments.id, paymentId), eq(payments.status, "pending")));
-    if (cancelled.affectedRows === 0) return false;
+    if (cancelled.affectedRows === 0) {
+      await tx
+        .update(payments)
+        .set({ sessionSettledAt: now })
+        .where(and(eq(payments.id, paymentId), unsettledCheckoutSession));
+      return false;
+    }
     await markReservationIds(tx, [reservationId]);
     await tx.insert(reservationActivity).values(checkoutSessionExpiredLine(reservationId, session));
     return true;
@@ -142,6 +136,12 @@ export interface CheckoutSessionAtStripe {
   sessionId: string;
   account: string;
 }
+
+/** Per-request options of a read, such as a short timeout and no retry. */
+export type CheckoutSessionReadOptions = Pick<
+  Stripe.RequestOptions,
+  "timeout" | "maxNetworkRetries"
+>;
 
 export type CheckoutSessionState =
   | { state: "expired"; session: ExpiredCheckoutSession }
@@ -157,11 +157,12 @@ export type CheckoutSessionState =
  */
 export async function readCheckoutSessionState(
   { sessionId, account }: CheckoutSessionAtStripe,
-  { expire }: { expire: boolean },
+  { expire, request = {} }: { expire: boolean; request?: CheckoutSessionReadOptions },
 ): Promise<CheckoutSessionState> {
   if (expire) {
     try {
       const session = await getStripe().checkout.sessions.expire(sessionId, {
+        ...request,
         stripeAccount: account,
       });
       return { state: "expired", session };
@@ -171,6 +172,7 @@ export async function readCheckoutSessionState(
   }
   try {
     const session = await getStripe().checkout.sessions.retrieve(sessionId, {
+      ...request,
       stripeAccount: account,
     });
     if (session.status === "complete" || session.payment_status === "paid") {
@@ -188,7 +190,7 @@ const SESSION_READS_AT_ONCE = 5;
 /** `readCheckoutSessionState` for each session, a few at once, in their order. */
 export async function readCheckoutSessionStates<Session extends CheckoutSessionAtStripe>(
   sessions: readonly Session[],
-  options: { expire: boolean },
+  options: { expire: boolean; request?: CheckoutSessionReadOptions },
 ): Promise<Array<Session & CheckoutSessionState>> {
   const states: Array<Session & CheckoutSessionState> = [];
   for (let start = 0; start < sessions.length; start += SESSION_READS_AT_ONCE) {

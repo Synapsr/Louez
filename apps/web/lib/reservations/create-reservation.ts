@@ -53,6 +53,7 @@ import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { normalizePhoneNumber } from "@/lib/sms/phone";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 import { getStripe } from "@/lib/stripe/client";
 
 import { applyPromoCode, consumePromoCode, type AppliedPromoCode } from "./apply-promo-code";
@@ -1292,7 +1293,12 @@ export const createReservation = async (
           store,
           reservationId: written.reservationId,
         });
-        paymentUrl = resumed.ok ? resumed.url : null;
+        // Found paid: the customer goes to the reservation, as the return sends them.
+        paymentUrl = resumed.ok
+          ? resumed.url
+          : resumed.error === "already_paid"
+            ? getStorefrontUrl(store.slug, `/account/reservations/${written.reservationId}`)
+            : null;
       } else {
         paymentUrl = await startCheckoutPayment({
           store,

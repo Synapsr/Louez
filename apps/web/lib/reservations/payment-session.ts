@@ -5,6 +5,8 @@ import { nanoid } from "nanoid";
 
 import {
   db,
+  isUnsettledCheckoutSession,
+  markCheckoutSessionSettled,
   markReservation,
   payments,
   reservationActivity,
@@ -30,7 +32,6 @@ import {
   isSessionCreationRow,
 } from "@/lib/reservations/checkout-session-account";
 import {
-  expiredSessionIds,
   readCheckoutSessionStates,
   recordPaidCheckoutSession,
 } from "@/lib/reservations/checkout-session-settlement";
@@ -183,24 +184,16 @@ export async function createReservationPaymentSessionForCustomer(
     };
     // The rental's open payments are cancelled before their sessions are expired
     // at Stripe: an expiry of a session replaced here finds its row no longer
-    // pending and cancels nothing. A row so cancelled stays `cancelled`. Every
-    // rental session of the reservation not yet settled (its row neither
-    // `completed` nor named by a `payment_expired` line) is read at Stripe after
-    // the commit: the ones replaced here, and the `cancelled` ones an earlier
-    // call replaced, whatever their age.
+    // pending and cancels nothing. A row so cancelled stays `cancelled`. The
+    // rental's unsettled sessions (`isUnsettledCheckoutSession`: the ones replaced
+    // here, and those an earlier call replaced and Stripe has not yet said are
+    // over) are read at Stripe after the commit; a session once marked settled is
+    // not read again.
     const replaced = await reservationTransaction(async (tx) => {
       const payable = await readPayable(tx);
       if (payable.refusal !== null) return { refusal: payable.refusal, sessions: [] };
-      const expired = await expiredSessionIds(tx, reservationId);
       const open = payable.payments.filter(
         (payment) => payment.type === "rental" && payment.status === "pending",
-      );
-      const unsettled = payable.payments.filter(
-        (payment) =>
-          payment.type === "rental" &&
-          payment.status === "cancelled" &&
-          payment.stripeCheckoutSessionId !== null &&
-          !expired.has(payment.stripeCheckoutSessionId),
       );
       for (const payment of open) {
         await tx
@@ -213,10 +206,11 @@ export async function createReservationPaymentSessionForCustomer(
         refusal: null,
         // Each session on the account its row records, the one it was created on;
         // a row that records none, on the store's.
-        sessions: [...open, ...unsettled].flatMap((payment) =>
+        sessions: payable.payments.filter(isUnsettledCheckoutSession).flatMap((payment) =>
           payment.stripeCheckoutSessionId
             ? [
                 {
+                  paymentId: payment.id,
                   sessionId: payment.stripeCheckoutSessionId,
                   account: checkoutSessionAccount({
                     recordedAccountId: isSessionCreationRow(payment)
@@ -231,11 +225,15 @@ export async function createReservationPaymentSessionForCustomer(
       };
     });
     if (replaced.refusal !== null) return { error: replaced.refusal };
-    // A new session only when each of those is known to be expired. One found
-    // paid is recorded now, as the customer's return records it, and the call
-    // answers that the rental is paid; one whose state is unknown leaves the rows
-    // as they are, and the next call asks Stripe again.
+    // A new session only when each of those is known to be over. One Stripe says
+    // is over is marked settled, by an update of its row alone. One found paid is
+    // recorded now, as the customer's return records it, and the call answers
+    // that the rental is paid; one whose state is unknown leaves the rows as they
+    // are, and the next call asks Stripe again.
     const states = await readCheckoutSessionStates(replaced.sessions, { expire: true });
+    for (const { paymentId, state } of states) {
+      if (state === "expired") await markCheckoutSessionSettled(db, paymentId);
+    }
     const paid = states.filter(({ state }) => state === "complete");
     if (paid.length > 0) {
       // The marketplace's checkout holds the booking's attempt: recording takes
@@ -314,16 +312,24 @@ export async function createReservationPaymentSessionForCustomer(
     });
 
     // The pending payment and its activity land together, and only on a
-    // reservation still payable, with no other open or paid rental payment;
-    // otherwise the session just created is expired and nothing is written.
+    // reservation still payable, with no other open or paid rental payment and no
+    // unsettled rental session (another call may have given the customer one it is
+    // now replacing); otherwise the session just created is expired and nothing is
+    // written.
     const now = new Date();
     let refusal: string | null;
     try {
       refusal = await reservationTransaction(async (tx) => {
         const payable = await readPayable(tx);
         if (payable.refusal !== null) return payable.refusal;
-        // Another payment of the rental started meanwhile: this one is not installed.
-        if (hasRentalPaymentInProgress(payable.payments)) return "errors.paymentSessionError";
+        // Another payment of the rental started meanwhile, or a session of it may
+        // still be paid: this one is not installed.
+        if (
+          hasRentalPaymentInProgress(payable.payments) ||
+          payable.payments.some(isUnsettledCheckoutSession)
+        ) {
+          return "errors.paymentSessionError";
+        }
         await tx.insert(payments).values({
           id: nanoid(),
           reservationId,

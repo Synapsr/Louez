@@ -508,6 +508,32 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
     assert.equal(await linesOf(booking.id, "payment_received"), 1);
   });
 
+  test("a payment claimed whose confirmation did not run: called again, the completion confirms the reservation and writes no payment_received line", async () => {
+    const booking = await checkout(TODAY_ACCOUNT);
+    // The claim committed, then the call stopped before the rest: the payment
+    // completed, the reservation pending, no payment_received line.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ status: "completed", stripePaymentIntentId: `pi_${booking.id}` })
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, booking.sessionId));
+    const { recordPaidCheckoutSession } =
+      await import("@/lib/reservations/checkout-session-settlement");
+
+    const completion = await recordPaidCheckoutSession({
+      storeId: STORE,
+      reservationId: booking.id,
+      sessionId: booking.sessionId,
+    });
+
+    assert.deepEqual(completion, {
+      status: "completed",
+      claimed: false,
+      reservationConfirmed: true,
+    });
+    assert.equal((await stateOf(booking.id)).status, "confirmed");
+    assert.equal(await linesOf(booking.id, "payment_received"), 0, "the line is never written");
+  });
+
   test("a session its row records under the previous account, sent by the store's account of today: connected_account_mismatch logged, nothing written", async () => {
     const booking = await checkout(PREVIOUS_ACCOUNT);
 

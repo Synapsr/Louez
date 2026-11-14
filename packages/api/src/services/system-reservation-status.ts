@@ -9,8 +9,9 @@ import {
   toWholeSeconds,
   type ChangeReservationStatusResult,
   type ReservationEffectRunner,
+  unsettledCheckoutSession,
 } from "@louez/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 /**
@@ -57,7 +58,9 @@ class CheckoutStillPayableError extends Error {}
  * is not a booking: the pending reservation is cancelled so it stops holding
  * stock and the owner does not keep a "payment in progress" that never ends.
  * Anything already confirmed, paid, or paid through another open session is
- * left alone. The fee effects run through `runReservationEffects` after commit.
+ * left alone, and so is a checkout one of whose rental sessions is unsettled
+ * (`unsettledCheckoutSession`): Stripe may still take its payment, and a resume
+ * may be replacing it. The fee effects run through `runReservationEffects` after commit.
  * It locks the reservation alone: a pending checkout gives back no stock. Still
  * busy after the owner entry's runs, it throws and the webhook answers non-2xx,
  * as a lost deadlock did before. Stripe sends the event again, and the
@@ -87,16 +90,21 @@ const cancelAbandonedCheckout = async (
     change = await runReservationOnlyChange(
       { reservationId, storeId: reservation.storeId },
       async (tx, lock) => {
-        // Under the lock, with a locking read: a payment claimed or a session
-        // opened since the read above is seen.
+        // Under the lock, with a locking read: a payment claimed, a session
+        // opened or a session a resume is replacing since the read above is seen.
         const [payment] = await tx
           .select({ id: payments.id })
           .from(payments)
           .where(
             and(
               eq(payments.reservationId, reservationId),
-              eq(payments.type, "rental"),
-              inArray(payments.status, ["pending", "completed"]),
+              or(
+                and(
+                  eq(payments.type, "rental"),
+                  inArray(payments.status, ["pending", "completed"]),
+                ),
+                unsettledCheckoutSession,
+              ),
             ),
           )
           .limit(1)

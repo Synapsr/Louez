@@ -689,15 +689,16 @@ async function handleCheckoutExpired(
   );
   if (!valid) return;
 
-  // A row still pending is a payment this session has not settled: the customer
-  // never paid. The expiry is recorded by the delivery whose update moves the row
-  // out of pending: another delivery of the event, even a concurrent one, finds
-  // the row cancelled under its lock and records nothing. A resumed checkout
-  // cancels its old session's row before it expires that session at Stripe
+  // The session's row is marked settled, pending or replaced alike. A row still pending
+  // is a payment this session has not settled: the customer never paid. The
+  // checkout's expiry is recorded by the delivery whose update moves the row out
+  // of pending: another delivery of the event, even a concurrent one, finds the
+  // row cancelled under its lock and records nothing. A resumed checkout cancels
+  // its old session's row before it expires that session at Stripe
   // (lib/reservations/payment-session.ts), so that session's expiry finds the row
-  // no longer pending and records nothing.
+  // no longer pending: it marks it, and records nothing else.
   const recordedNow =
-    existingPayment?.status === "pending" &&
+    existingPayment !== undefined &&
     (await recordCheckoutSessionExpiry({ reservationId, paymentId: existingPayment.id, session }));
   // The checkout is abandoned when this session's expiry is recorded, by this
   // delivery or by an earlier one whose cancellation of the reservation did not

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { CreditCardIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -13,7 +14,10 @@ interface ResumePaymentButtonProps {
   reservationId: string;
 }
 
-type ResumeError = Extract<ResumeCheckoutPaymentResult, { ok: false }>["error"];
+type ResumeError = Exclude<
+  Extract<ResumeCheckoutPaymentResult, { ok: false }>["error"],
+  "already_paid"
+>;
 
 const ERROR_MESSAGE_KEYS: Record<
   ResumeError,
@@ -28,17 +32,22 @@ const ERROR_MESSAGE_KEYS: Record<
 /** Primary action of the cancelled page: back to Stripe, same reservation. */
 export const ResumePaymentButton = ({ slug, reservationId }: ResumePaymentButtonProps) => {
   const t = useTranslations("storefront.checkout.cancelled");
+  const router = useRouter();
   const resume = useMutation({
     mutationFn: () => resumeCheckoutPayment({ slug, reservationId }),
     onSuccess: (result) => {
       if (result.ok) {
         window.location.assign(result.url);
+      } else if (result.error === "already_paid") {
+        // The page shows a booking whose payment is recorded as paid.
+        router.refresh();
       }
     },
   });
 
+  const paid = resume.data && !resume.data.ok && resume.data.error === "already_paid";
   const failure =
-    resume.data && !resume.data.ok
+    resume.data && !resume.data.ok && resume.data.error !== "already_paid"
       ? t(`errors.${ERROR_MESSAGE_KEYS[resume.data.error]}`)
       : resume.isError
         ? t("errors.sessionFailed")
@@ -56,6 +65,7 @@ export const ResumePaymentButton = ({ slug, reservationId }: ResumePaymentButton
         <CreditCardIcon data-slot="icon" />
         {t("resume")}
       </Button>
+      {paid ? <p className="text-xs text-muted-foreground">{t("alreadyPaidTitle")}</p> : null}
       {failure ? <p className="text-xs text-destructive">{failure}</p> : null}
     </div>
   );

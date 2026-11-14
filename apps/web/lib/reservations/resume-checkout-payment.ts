@@ -13,7 +13,12 @@ export type ResumeCheckoutPaymentResult =
   | { ok: true; url: string }
   | {
       ok: false;
-      error: "not_found" | "invalid_status" | "payment_unavailable" | "session_failed";
+      error:
+        | "not_found"
+        | "invalid_status"
+        | "payment_unavailable"
+        | "already_paid"
+        | "session_failed";
     };
 
 interface ResumeCheckoutPaymentStore {
@@ -95,6 +100,8 @@ export const resumeCheckoutPayment = async ({
   );
 
   if ("error" in result) {
+    // A session of the rental was found paid (and recorded, when it could be).
+    if (result.error === "errors.alreadyPaid") return { ok: false, error: "already_paid" };
     return { ok: false, error: "session_failed" };
   }
   if (!result.paymentUrl) {
