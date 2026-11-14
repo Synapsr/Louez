@@ -18,6 +18,7 @@ import type { BillingCardSetupState, BillingPort } from "../../platform/ports";
 
 import { sha256 } from "../../platform/hash";
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { lockWaitsOn } from "../../platform/test-lock-waits";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
@@ -809,22 +810,12 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
   });
 
   /**
-   * Resolves once a statement of this test's database whose text is `LIKE
-   * pattern` is in progress: while the lock it needs is held at a barrier, it
-   * can only be waiting for that lock.
+   * Resolves once `waiting` transactions wait for a lock on a row of
+   * `table`: a real lock wait (platform/test-lock-waits.ts), never a
+   * statement's text.
    */
-  async function lockWait(pattern: string) {
-    for (let tries = 0; tries < 500; tries += 1) {
-      const [rows] = (await louezDb.db.execute(
-        orm.sql`SELECT COUNT(*) AS n FROM information_schema.processlist
-          WHERE db = DATABASE() AND command = 'Query' AND id <> CONNECTION_ID()
-          AND info LIKE ${pattern}`,
-      )) as unknown as [Array<{ n: number | string }>];
-      if (Number(rows[0]?.n) > 0) return;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    throw new Error(`no statement waited for a lock: ${pattern}`);
-  }
+  const lockWait = (table: string, waiting = 1) =>
+    lockWaitsOn(louezDb.db, table, { count: waiting });
 
   test("the agent's request committed between the page's read and the click's write: the click continues nothing", async () => {
     const agent = await apiKey();
@@ -858,7 +849,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // The click read the step at the page's revision, and its write waits for the row.
     const click = continueAs(link, OWNER, shown);
     try {
-      await lockWait("update `api_handoffs`%");
+      await lockWait("api_handoffs");
     } finally {
       gate.open();
       await repeat;
@@ -900,7 +891,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // The click read the step as the first owner's, and its write waits for the row.
     const click = continueAs(link, OWNER, shown);
     try {
-      await lockWait("update `api_handoffs`%");
+      await lockWait("api_handoffs");
     } finally {
       gate.open();
       await handedOver;
