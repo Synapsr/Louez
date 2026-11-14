@@ -548,11 +548,22 @@ const purgeOwnedData = async (
     }
 
     await beforePurge();
+    // The purge's locks, in this order: the stores' products, then their
+    // reservations, then the reservations' rows as it deletes them. A status change
+    // that moves stock takes a reservation's products, then the reservation
+    // (`lockReservationInTransaction`); the expired checkout takes the reservation,
+    // then its payment, then its history. Each store's products are taken by id,
+    // through the store's index, as that status change takes them; with the billing
+    // service, before `lockFinalSnapshotFacts` takes the reservations.
+    for (const storeId of [...storeIds].sort()) {
+      await transaction.execute(
+        sql`SELECT id FROM products FORCE INDEX (products_store_idx)
+            WHERE store_id = ${storeId} ORDER BY id FOR UPDATE`,
+      );
+    }
     // Before the first plain read, which fixes what the closing snapshots see.
     await lockFinalSnapshotFacts(transaction, storeIds);
-    // Every writer takes a reservation's row before its child rows (its history, its
-    // payments, its items): the purge locks the stores' reservations, by id, before
-    // it deletes any of their rows, with the billing service or without. With it,
+    // The stores' reservations, by id, with the billing service or without; with it,
     // `lockFinalSnapshotFacts` has locked them already.
     const reservationRows =
       storeIds.length > 0

@@ -704,9 +704,9 @@ async function handleCheckoutExpired(
     createdAt: toWholeSeconds(new Date()),
   });
 
-  // Each write below takes the reservation's row first, before its payment and its
-  // history, as every writer of a reservation's rows does (the account deletion
-  // among them). A reservation gone by then has nothing left to write on.
+  // Each write below takes the reservation's row, then its payment, then its history;
+  // the account deletion, a store's products, then its reservations, then their rows:
+  // the two run one after the other. A reservation gone by then is written nothing.
   const lockReservation = async (tx: Transaction): Promise<boolean> => {
     const [locked] = await tx
       .select({ id: reservations.id })

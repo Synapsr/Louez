@@ -33,9 +33,10 @@ import {
 // expiry is recorded by the delivery that moves the payment out of pending,
 // once; a payment request's session, which has no payment row, records its
 // expiry once per session; an event of the other mode than the deployment's key
-// writes nothing. Each write takes the reservation's row first, as the account
-// deletion does: the two run one after the other, billing sync off as here, and
-// a reservation gone by then is written nothing.
+// writes nothing. Each write takes the reservation's row, then its payment, then
+// its history; the account deletion takes the store's products, then its
+// reservations, then their rows: the two run one after the other, billing sync off
+// as here, and a reservation gone by then is written nothing.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-checkout-expired-"));
 const stubsPath = join(directory, "stubs.cjs");

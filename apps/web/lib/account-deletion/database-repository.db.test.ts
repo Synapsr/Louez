@@ -5,13 +5,19 @@ import { after, before, describe, test } from "node:test";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  reservationChangeTestHooks,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 // The purge changes other stores' billing snapshots, and marks them in its
 // transaction (louez-billing docs/api, README §5.2). It also writes the deleted
 // store's final snapshot (§5.5, final-snapshots.db.test.ts covers its reservations),
 // the queue rows outlive the store, and a reservation it purges without a final
-// snapshot is raised once it commits.
+// snapshot is raised once it commits. It takes its stores' products before their
+// reservations, as a status change that moves stock does.
 
 // The repository imports "server-only", which throws outside Next.
 Reflect.get(
@@ -441,5 +447,109 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
       .from(louezDb.smsLogs)
       .where(eq(louezDb.smsLogs.storeId, RACE_SMS_STORE));
     assert.deepEqual(left, [], "the store's SMS went with it");
+  });
+
+  test("a status change that moves stock and the purge of its store, at once: one after the other, no deadlock nor restart, billing sync off and on", async () => {
+    const hooks = reservationChangeTestHooks();
+    for (const billing of ["off", "on"] as const) {
+      const userId = `user_race_stock_${billing}`;
+      const storeId = `store_race_stock_${billing}`;
+      const productId = `prd_race_stock_${billing}`;
+      const reservationId = `res_race_stock_${billing}`;
+      await louezDb.db
+        .insert(louezDb.users)
+        .values({ id: userId, email: `race-stock-${billing}@example.test` });
+      await louezDb.db
+        .insert(louezDb.stores)
+        .values({ id: storeId, userId, name: "Stock", slug: `race-stock-${billing}` });
+      await louezDb.db.insert(louezDb.storeMembers).values({ storeId, userId, role: "owner" });
+      await louezDb.db.insert(louezDb.products).values({
+        id: productId,
+        storeId,
+        name: "Consumable",
+        price: "1.00",
+        pricingMode: "day",
+        stockKind: "consumable",
+        quantity: 5,
+      });
+      await louezDb.db.insert(louezDb.reservations).values({
+        id: reservationId,
+        storeId,
+        customerId: "customer_race_stock",
+        number: `R-STOCK-${billing}`,
+        status: "pending",
+        startDate: new Date("2026-11-20T09:00:00Z"),
+        endDate: new Date("2026-11-22T09:00:00Z"),
+        subtotalAmount: "2.00",
+        depositAmount: "0.00",
+        totalAmount: "2.00",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: `itm_race_stock_${billing}`,
+        reservationId,
+        productId,
+        quantity: 2,
+        unitPrice: "1.00",
+        depositPerUnit: "0.00",
+        totalPrice: "2.00",
+        productSnapshot: { name: "Consumable", description: null, images: [] },
+      });
+      const context = await repository.accountDeletionRepository.getContext(userId);
+      assert.ok(context, "the user exists");
+      if (billing === "off") process.env.LOUEZ_BILLING = "";
+      hooks.restarts = 0;
+      let purge: Promise<string> = Promise.resolve("not started");
+      try {
+        // The confirmation holds the product's lock when it reaches the reservation's:
+        // the purge starts then, and the confirmation goes on once the purge waits.
+        hooks.beforeReservationLock = async (scope) => {
+          if (scope.reservationId !== reservationId) return;
+          // Once: a run that starts over finds the purge started.
+          hooks.beforeReservationLock = null;
+          purge = settle(
+            repository.accountDeletionRepository.purgeOwnedData(context, {
+              beforePurge: async () => undefined,
+            }),
+          );
+          await lockWait();
+        };
+        const change = await settle(
+          louezDb.runReservationChange({ reservationId, storeId }, (tx, lock) =>
+            louezDb.changeReservationStatus(tx, {
+              reservationId,
+              storeId,
+              to: "confirmed",
+              actor: "store_user",
+              actorUserId: null,
+              lock,
+            }),
+          ),
+        );
+
+        assert.deepEqual(
+          { change, purge: await purge, restarts: hooks.restarts },
+          { change: "committed", purge: "committed", restarts: 0 },
+          `billing sync ${billing}`,
+        );
+      } finally {
+        hooks.beforeReservationLock = null;
+        process.env.LOUEZ_BILLING = "cloud";
+      }
+      const left = await Promise.all([
+        louezDb.db
+          .select({ id: louezDb.reservations.id })
+          .from(louezDb.reservations)
+          .where(eq(louezDb.reservations.id, reservationId)),
+        louezDb.db
+          .select({ id: louezDb.products.id })
+          .from(louezDb.products)
+          .where(eq(louezDb.products.id, productId)),
+        louezDb.db
+          .select({ id: louezDb.stores.id })
+          .from(louezDb.stores)
+          .where(eq(louezDb.stores.id, storeId)),
+      ]);
+      assert.deepEqual(left, [[], [], []], `billing sync ${billing}: the store went whole`);
+    }
   });
 });
