@@ -80,39 +80,106 @@ const tags = (html: string, tag: string) =>
 
 const textOf = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
+const DISCLOSURE = /<details\b([^>]*)>([\s\S]*?)<\/details>/g;
+/** The page as a person sees it before opening anything: every disclosure's body left out. */
+const visible = (html: string) =>
+  textOf(html.replace(DISCLOSURE, (_whole, attributes: string, body: string) => {
+    const summary = /<summary\b[^>]*>([\s\S]*?)<\/summary>/.exec(body)?.[1] ?? "";
+    return /\bopen\b/.test(attributes) ? body : `<summary>${summary}</summary>`;
+  }));
+/** Each disclosure: whether it is open, what its summary says, and its body. */
+const disclosures = (html: string) =>
+  [...html.matchAll(DISCLOSURE)].map((match) => ({
+    open: /\bopen\b/.test(match[1] ?? ""),
+    label: textOf(/<summary\b[^>]*>([\s\S]*?)<\/summary>/.exec(match[2] ?? "")?.[1] ?? "").trim(),
+    body: match[2] ?? "",
+  }));
+
+/** An attribute of a tag, whatever its case (React writes `formNoValidate`). */
+const has = (attributes: Record<string, string>, name: string) =>
+  Object.keys(attributes).some((key) => key.toLowerCase() === name);
+
 describe("the approval's page", () => {
-  test("what Louez will do comes first, then what is at stake, who asks, the details and the time", () => {
-    const html = renderPage();
-    const text = textOf(html);
-    assert.match(text, /Approve a payment action\?/);
-    assert.match(
-      text,
-      /Your AI assistant asks for your approval in “Roscoff Voile”\. It acts for your account \(olga@roscoff\.test\): nothing happens unless you approve\./,
-    );
-    // Each part found after the one before it.
+  test("the screen holds the title, the sentence, the short safety line, the stake, the box and the two buttons, and nothing else", () => {
+    const shown = visible(renderPage());
     let from = 0;
     for (const part of [
-      "What Louez will do if you approve",
+      "Approve a payment?",
       "Record a rental payment of 40.00 € (cash) on reservation #1042.",
-      "Money",
-      "Asked by",
-      "API key “Store agent”",
-      "What Louez checked",
-      "Louez worked this out 3 minutes ago, from your store’s records.",
-      "If you don’t answer, the request lapses in 23 hours.",
-      "Only this summary from Louez counts, whatever your assistant said in the chat.",
-      "A word for your assistant (optional)",
-      "I have read what Louez will do",
+      "Only Louez’s summary counts.",
+      "Can’t be undone: money.",
+      "Details",
+      "Add a note for your assistant",
+      "I’ve read what Louez will do",
       "Refuse",
       "Approve",
     ]) {
-      const at = text.indexOf(part, from);
+      const at = shown.indexOf(part, from);
       assert.ok(at >= from, `shows ${part}, after what comes before it`);
       from = at + part.length;
     }
-    assert.match(text, /Number 1042/);
-    assert.match(text, /Refunded No/);
-    assert.match(text, /Note Not set/);
+    // Context is on request only.
+    for (const hidden of [
+      "Asked by",
+      "API key “Store agent”",
+      "olga@roscoff.test",
+      "Roscoff Voile",
+      "What Louez checked",
+      "Number",
+      "3 minutes ago",
+      "in 23 hours",
+      "whatever your assistant said in the chat",
+      "Your note (optional)",
+      "Lapses",
+    ]) {
+      assert.ok(!shown.includes(hidden), `${hidden} is not on the screen`);
+    }
+  });
+
+  test("two disclosures, closed: the details (who asks, for whom, what Louez checked, when, the full safety sentence), and the note", () => {
+    const html = renderPage();
+    const [details, note, ...more] = disclosures(html);
+    assert.equal(more.length, 0);
+    assert.ok(details && note);
+    assert.equal(details.open, false);
+    assert.equal(note.open, false);
+    assert.equal(details.label, "Details");
+    assert.equal(note.label, "Add a note for your assistant");
+    const inside = textOf(details.body);
+    for (const part of [
+      "Asked by",
+      "API key “Store agent”",
+      "For your account olga@roscoff.test, in “Roscoff Voile”.",
+      "What Louez checked",
+      "Number 1042",
+      "Refunded No",
+      "Note Not set",
+      "Louez worked this out 3 minutes ago, from your store’s records.",
+      "If you don’t answer, the request lapses in 23 hours.",
+      "Only this summary from Louez counts, whatever your assistant said in the chat. If they don’t match, refuse.",
+    ]) {
+      assert.ok(inside.includes(part), `the details hold ${part}`);
+    }
+    assert.match(textOf(note.body), /Your note \(optional\)/);
+  });
+
+  test("the note is a field of the form inside its closed disclosure, posted whether it was opened or not", () => {
+    const html = renderPage();
+    const form = /<form\b[^>]*>([\s\S]*)<\/form>/.exec(html)?.[1] ?? "";
+    const [, note] = disclosures(form);
+    assert.ok(note && !note.open);
+    const [reason] = tags(note.body, "textarea");
+    assert.equal(reason?.name, "reason");
+    assert.equal(reason?.maxLength, "500");
+    // Nothing keeps it from being posted: not disabled, and no form of its own.
+    assert.ok(reason && !has(reason, "disabled") && !has(reason, "form"));
+  });
+
+  test("the lapse shows on the screen only when less than an hour is left", () => {
+    assert.match(visible(renderPage({ expiresAt: minutes(40) })), /Lapses in 40 minutes\./);
+    assert.match(visible(renderPage({ expiresAt: minutes(60) })), /Lapses in 1 hour\./);
+    assert.doesNotMatch(visible(renderPage({ expiresAt: minutes(61) })), /Lapses/);
+    assert.doesNotMatch(visible(renderPage()), /Lapses/);
   });
 
   test("the form posts the answer with the revision and the binding shown", () => {
@@ -128,8 +195,7 @@ describe("the approval's page", () => {
         ["shown", "e".repeat(64)],
       ],
     );
-    assert.equal(tags(html, "textarea")[0]?.maxLength, "500");
-    // Besides the two buttons, only the box posts: "yes" once ticked.
+    // Besides the two buttons and the note, only the box posts: "yes" once ticked.
     const named = tags(html, "input").filter((input) => input.name);
     assert.deepEqual(
       named.map((input) => input.name),
@@ -138,10 +204,6 @@ describe("the approval's page", () => {
     const [box] = tags(html, "input").filter((input) => input.type === "checkbox");
     assert.equal(box?.value, "yes");
   });
-
-  /** An attribute of a tag, whatever its case (React writes `formNoValidate`). */
-  const has = (attributes: Record<string, string>, name: string) =>
-    Object.keys(attributes).some((key) => key.toLowerCase() === name);
 
   test("money, a stock override or an access removed waits for the box, in the browser itself: a required checkbox, Refuse skips it", () => {
     for (const consequences of [["money"], ["stock_override"], ["access_removed"]] as const) {
@@ -161,32 +223,38 @@ describe("the approval's page", () => {
       // Approve only looks dimmed while the form is invalid: nothing blocks a ticked form.
       assert.match(buttons[1]?.class ?? "", /group-has-\[:invalid\]:opacity-60/);
       assert.match(tags(html, "form")[0]?.class ?? "", /\bgroup\b/);
-      assert.match(textOf(html), /I have read what Louez will do/);
+      assert.match(visible(html), /I’ve read what Louez will do/);
     }
   });
 
   test("a plain change asks for no box, names no stake, and Approve is ready", () => {
     const html = renderPage({ consequences: ["change"], deliberate: false });
-    const text = textOf(html);
-    assert.match(text, /Approve this change\?/);
-    assert.doesNotMatch(text, /I have read what Louez will do/);
+    const shown = visible(html);
+    assert.match(shown, /Approve this change\?/);
+    assert.doesNotMatch(shown, /I’ve read what Louez will do|Can’t be undone/);
     assert.doesNotMatch(html, /data-slot="alert"/);
     assert.equal(tags(html, "input").filter((input) => input.type === "checkbox").length, 0);
     const buttons = tags(html, "button");
     assert.ok(buttons.every((button) => !has(button, "disabled") && !has(button, "formnovalidate")));
   });
 
-  test("the gravest consequence names the page; each is shown, what cannot be put back as a warning", () => {
+  test("nothing Louez knows of what it does: asked as a request, with the box, and no stake named", () => {
+    const shown = visible(renderPage({ consequences: [], deliberate: true }));
+    assert.match(shown, /Approve this request\?/);
+    assert.match(shown, /I’ve read what Louez will do/);
+    assert.doesNotMatch(shown, /Can’t be undone/);
+  });
+
+  test("the gravest consequence names the page; the stake is one line, as a warning, naming each in order", () => {
     const html = renderPage({ consequences: ["customer_message", "stock_override"] });
-    const text = textOf(html);
-    assert.match(text, /Approve booking over your stock\?/);
-    assert.ok(text.indexOf("Stock") < text.indexOf("Message"));
+    const shown = visible(html);
+    assert.match(shown, /Approve booking past your stock\?/);
+    assert.match(shown, /Can’t be undone: stock past its limit and a message to a customer\./);
     const alerts = tags(html, "div").filter((div) => div["data-slot"] === "alert");
-    assert.equal(alerts.length, 2);
+    assert.equal(alerts.length, 1);
     assert.match(alerts[0]?.class ?? "", /border-warning/);
-    assert.match(alerts[1]?.class ?? "", /border-info/);
-    // Shown as notes, not announced as errors.
-    assert.ok(alerts.every((alert) => alert.role === "note"));
+    // Shown as a note, not announced as an error.
+    assert.equal(alerts[0]?.role, "note");
   });
 
   test("the preview's text stays text: one paragraph, markup escaped, each detail value isolated on one line", () => {
@@ -231,7 +299,7 @@ describe("the approval's page", () => {
     assert.match(textOf(html), /Empty Not set/);
   });
 
-  test("an assistant connected over OAuth is named as the consent page names it", () => {
+  test("an assistant connected over OAuth is named, in the details, as the consent page names it", () => {
     const html = renderPage({
       agent: {
         kind: "oauth",
@@ -248,60 +316,64 @@ describe("the approval's page", () => {
         },
       },
     });
-    const text = textOf(html);
-    assert.match(text, /Claude/);
-    assert.match(text, /Name declared by claude\.ai/);
-    assert.match(text, /Verified/);
+    const [details] = disclosures(html);
+    const inside = textOf(details?.body ?? "");
+    assert.match(inside, /Claude/);
+    assert.match(inside, /Name declared by claude\.ai/);
+    assert.match(inside, /Verified/);
+    assert.doesNotMatch(visible(html), /Claude/);
     const unknown = textOf(renderPage({ agent: { kind: "oauth", name: null, client: null } }));
     assert.match(unknown, /An AI assistant/);
     const unnamedKey = textOf(renderPage({ agent: { kind: "api_key", name: null } }));
     assert.match(unnamedKey, /An API key/);
   });
 
-  test("a request that changed while the page was open says so above the request as it is now", () => {
+  test("a request that changed while the page was open says so on the screen", () => {
     const html = renderPage({}, "This request changed while you were reading");
     assert.match(html, /role="alert"[^>]*>This request changed while you were reading</);
+    assert.match(visible(html), /This request changed while you were reading/);
   });
 });
 
 describe("the approval's result", () => {
+  const renderDoneHtml = (state: EndedApprovalState, overrides: Partial<ApprovalPage> = {}) =>
+    wrap(<OperationApprovalDone approval={approval({ state, ...overrides })} state={state} />);
   const renderDone = (state: EndedApprovalState, overrides: Partial<ApprovalPage> = {}) =>
-    textOf(wrap(<OperationApprovalDone approval={approval({ state, ...overrides })} state={state} />));
+    textOf(renderDoneHtml(state, overrides));
 
-  test("each state says where the request stands and what, if anything, is left to do", () => {
-    const expected: Record<EndedApprovalState, RegExp> = {
-      approved: /Approved Your assistant can now carry it out\. If it doesn’t, your approval lapses in 59 minutes and nothing is done\./,
-      completed: /Done Your assistant carried it out 5 minutes ago\./,
-      approved_expired: /Your approval lapsed Your approval lapsed after an hour\. If your assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done\. Reload this page later to see which\./,
-      refused: /Refused Nothing was done\./,
-      state_changed: /Not carried out: the request no longer matched What your assistant asked, or your store, no longer matched what you approved, so nothing was done\. It will ask again if it still needs it\./,
-      approver_not_allowed: /Not carried out: your role changed .*nothing was done\./,
-      connection_revoked: /Ended: the assistant was disconnected .*can no longer be answered or carried out\. If the assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done\. Reload this page later to see which\./,
-      expired: /This request lapsed Nobody answered within a day, so the request lapsed\. If an answer was being recorded at that very moment, this page shows it once reloaded; otherwise nothing is done/,
-      ended: /This request ended .*nothing was done\./,
+  test("the screen says the outcome in one line; what it means is in the closed details", () => {
+    const expected: Record<EndedApprovalState, [string, RegExp]> = {
+      approved: ["Approved", /Your assistant can now carry it out\. If it doesn’t, your approval lapses in 59 minutes and nothing is done\./],
+      completed: ["Done", /Your assistant carried it out 5 minutes ago\./],
+      approved_expired: ["Your approval lapsed", /Your approval lapsed after an hour without Louez recording that it was carried out\. If your assistant carried it out at the very last moment, this page shows it once reloaded; otherwise nothing is done\./],
+      refused: ["Refused", /Nothing was done\./],
+      state_changed: ["Not carried out: the request no longer matched", /What your assistant asked, or your store, no longer matched what you approved, so nothing was done\. It will ask again if it still needs it\./],
+      approver_not_allowed: ["Not carried out: your role changed", /nothing was done\./],
+      connection_revoked: ["Ended: the assistant was disconnected", /The assistant’s connection to Louez was removed, so this request can no longer be answered or carried out\. If your assistant carried it out at the very last moment before that, this page shows it once reloaded; otherwise nothing is done\./],
+      expired: ["This request lapsed", /Nobody answered within a day, so the request lapsed\. If an answer was being recorded at that very moment, this page shows it once reloaded; otherwise nothing is done/],
+      ended: ["This request ended", /nothing was done\./],
     };
-    for (const [state, sentence] of Object.entries(expected) as Array<[EndedApprovalState, RegExp]>) {
-      const text = renderDone(state, {
-        expiresAt: minutes(59),
-        completedAt: minutes(-5),
-      });
-      assert.match(text, sentence, state);
-      // The request it was about follows, with its store.
-      assert.match(text, /The request Roscoff Voile Record a rental payment of 40\.00 €/, state);
+    for (const [state, [title, meaning]] of Object.entries(expected) as Array<
+      [EndedApprovalState, [string, RegExp]]
+    >) {
+      const html = renderDoneHtml(state, { expiresAt: minutes(59), completedAt: minutes(-5) });
+      assert.equal(visible(html).trim(), `${title} Details`, state);
+      const [details, ...more] = disclosures(html);
+      assert.equal(more.length, 0, state);
+      assert.ok(details && !details.open, state);
+      const inside = textOf(details.body);
+      assert.match(inside, meaning, state);
+      // The request it was about, with its store.
+      assert.match(inside, /The request Roscoff Voile Record a rental payment of 40\.00 €/, state);
     }
   });
 
-  test("a refusal shows the person's own words, as text", () => {
-    const html = wrap(
-      <OperationApprovalDone
-        approval={approval({
-          state: "refused",
-          decision: { outcome: "refused", at: minutes(-1), reason: "Pas en <b>espèces</b>" },
-        })}
-        state="refused"
-      />,
-    );
-    assert.match(textOf(html), /Your words Pas en &lt;b&gt;espèces&lt;\/b&gt;/);
+  test("the person's own words, in the details, as text", () => {
+    const html = renderDoneHtml("refused", {
+      decision: { outcome: "refused", at: minutes(-1), reason: "Pas en <b>espèces</b>" },
+    });
+    assert.match(textOf(disclosures(html)[0]?.body ?? ""), /Your words Pas en &lt;b&gt;espèces&lt;\/b&gt;/);
+    assert.doesNotMatch(visible(html), /Your words/);
     assert.doesNotMatch(renderDone("state_changed"), /Your words/);
     const approvedWithWords = renderDone("approved", {
       decision: { outcome: "approved", at: minutes(-1), reason: "Oui, en espèces" },

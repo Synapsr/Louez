@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "批准移除访问权限？",
-        "money": "批准一项付款操作？",
+        "money": "批准一笔付款？",
         "stock_override": "批准超出库存的预订？",
         "deletion": "批准删除？",
         "customer_message": "批准发给客户的消息？",
         "credits": "批准使用点数？",
-        "change": "批准此项修改？"
+        "change": "批准此项修改？",
+        "unknown": "批准此请求？"
       },
-      "description": "你的 AI 助手在“{store}”中请求你的批准。它以你的账号（{email}）操作：在你批准之前，什么都不会发生。",
+      "trustShort": "只有 Louez 的摘要才算数。",
+      "stakes": "无法撤销：{list}。",
+      "stake": {
+        "access_removed": "移除访问权限",
+        "money": "资金",
+        "stock_override": "超出上限的库存",
+        "deletion": "删除",
+        "customer_message": "发给客户的消息",
+        "credits": "消耗点数"
+      },
+      "lapsesSoon": "{when}失效。",
+      "acknowledge": "我已阅读 Louez 将执行的操作",
+      "approve": "批准",
+      "refuse": "拒绝",
+      "details": "详情",
       "askedBy": "请求方",
+      "forAccount": "代表你的账号 {email}，在“{store}”中。",
       "apiKey": "API 密钥“{name}”",
       "apiKeyUnnamed": "一个 API 密钥",
       "unnamedAgent": "一个 AI 助手",
-      "what": "你批准后 Louez 将执行的操作",
-      "details": "Louez 核对的内容",
+      "checked": "Louez 核对的内容",
       "values": {
         "yes": "是",
         "no": "否",
         "none": "未填写"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "访问权限",
-          "description": "有人将失去对你店铺的访问权限。"
-        },
-        "money": {
-          "title": "资金",
-          "description": "这会更改你店铺记录的款项。"
-        },
-        "stock_override": {
-          "title": "库存",
-          "description": "这会超出你的库存或准备时间进行预订：可能有多位客户指望同一件物品。"
-        },
-        "deletion": {
-          "title": "删除",
-          "description": "某项内容将被删除且无法恢复。"
-        },
-        "customer_message": {
-          "title": "消息",
-          "description": "一位客户会收到你店铺发出的消息。"
-        },
-        "credits": {
-          "title": "点数",
-          "description": "这会消耗你店铺的点数。"
-        }
-      },
       "computedAt": "Louez 于{when}根据你店铺的数据得出以上内容。",
       "expires": "如果你不回复，此请求将于{when}失效。",
       "trust": "无论助手在聊天中怎么说，只有 Louez 的这份摘要才算数。如果两者不一致，请拒绝。",
-      "acknowledge": "我已阅读 Louez 将执行的操作",
-      "approve": "批准",
-      "refuse": "拒绝",
       "reason": {
-        "label": "给助手留言（可选）",
+        "toggle": "给助手留言",
+        "label": "你的留言（可选）",
         "hint": "助手会连同你的回复一起读到。最多 {max} 个字符。"
       },
       "error": {
         "failed": "无法保存你的回复。请重新阅读请求后再回复。",
-        "acknowledge": "请勾选以确认你已阅读 Louez 将执行的操作，然后再批准。尚未做出任何决定。"
+        "acknowledge": "请先勾选，再批准。尚未做出任何决定。"
       },
       "unreadable": {
         "title": "无法显示此请求",
-        "description": "Louez 无法显示此请求的详情，因此不能在这里批准。未执行任何操作。你的助手可以重新请求。"
+        "description": "因此不能在这里批准。未执行任何操作。"
       },
       "tooLong": {
         "title": "此请求太长，无法显示",
-        "description": "Louez 的摘要太长，无法在此页面完整显示，因此不能在这里批准。未执行任何操作。你的助手可以重新请求。"
+        "description": "因此不能在这里批准。未执行任何操作。"
       },
       "done": {
         "request": "请求内容",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "你的批准已失效",
-          "description": "你的批准在一小时后失效。如果助手当时已在执行，它可能仍会完成；否则不会执行任何操作。稍后重新加载此页面即可知道结果。"
+          "description": "你的批准在一小时后失效，Louez 未记录到它已执行。如果助手在最后一刻执行了，重新加载后此页面会显示；否则不会执行任何操作。"
         },
         "refused": {
           "title": "已拒绝",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "已结束：助手已断开连接",
-          "description": "助手与 Louez 的连接已被移除，因此此请求无法再回复或执行。如果助手当时已在执行，它可能仍会完成；否则不会执行任何操作。稍后重新加载此页面即可知道结果。"
+          "description": "助手与 Louez 的连接已被移除，因此此请求无法再回复或执行。如果助手在此之前的最后一刻执行了，重新加载后此页面会显示；否则不会执行任何操作。"
         },
         "expired": {
           "title": "此请求已失效",

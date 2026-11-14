@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "Entzug eines Zugangs genehmigen?",
-        "money": "Zahlungsvorgang genehmigen?",
+        "money": "Zahlung genehmigen?",
         "stock_override": "Buchung über den Bestand hinaus genehmigen?",
         "deletion": "Löschung genehmigen?",
         "customer_message": "Nachricht an einen Kunden genehmigen?",
         "credits": "Verbrauch von Guthaben genehmigen?",
-        "change": "Diese Änderung genehmigen?"
+        "change": "Diese Änderung genehmigen?",
+        "unknown": "Diese Anfrage genehmigen?"
       },
-      "description": "Ihr KI-Assistent bittet in „{store}“ um Ihre Zustimmung. Er handelt für Ihr Konto ({email}): Nichts passiert, solange Sie nicht zustimmen.",
+      "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
+      "stakes": "Nicht rückgängig zu machen: {list}.",
+      "stake": {
+        "access_removed": "ein entzogener Zugang",
+        "money": "Geld",
+        "stock_override": "Bestand über seiner Grenze",
+        "deletion": "eine Löschung",
+        "customer_message": "eine Nachricht an einen Kunden",
+        "credits": "verbrauchtes Guthaben"
+      },
+      "lapsesSoon": "Verfällt {when}.",
+      "acknowledge": "Ich habe gelesen, was Louez tun wird",
+      "approve": "Genehmigen",
+      "refuse": "Ablehnen",
+      "details": "Details",
       "askedBy": "Angefragt von",
+      "forAccount": "Für Ihr Konto {email}, in „{store}“.",
       "apiKey": "API-Schlüssel „{name}“",
       "apiKeyUnnamed": "Ein API-Schlüssel",
       "unnamedAgent": "Ein KI-Assistent",
-      "what": "Was Louez tut, wenn Sie zustimmen",
-      "details": "Was Louez geprüft hat",
+      "checked": "Was Louez geprüft hat",
       "values": {
         "yes": "Ja",
         "no": "Nein",
         "none": "Nicht angegeben"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "Zugang",
-          "description": "Jemand verliert den Zugang zu Ihrem Shop."
-        },
-        "money": {
-          "title": "Geld",
-          "description": "Das ändert das für Ihren Shop erfasste Geld."
-        },
-        "stock_override": {
-          "title": "Bestand",
-          "description": "Das bucht über Ihren Bestand oder Ihre Vorbereitungszeit hinaus: Mehrere Kunden könnten mit demselben Artikel rechnen."
-        },
-        "deletion": {
-          "title": "Löschung",
-          "description": "Etwas wird gelöscht und kann nicht wiederhergestellt werden."
-        },
-        "customer_message": {
-          "title": "Nachricht",
-          "description": "Ein Kunde erhält eine Nachricht von Ihrem Shop."
-        },
-        "credits": {
-          "title": "Guthaben",
-          "description": "Das verbraucht Guthaben Ihres Shops."
-        }
-      },
       "computedAt": "Louez hat dies {when} aus den Daten Ihres Shops ermittelt.",
       "expires": "Ohne Antwort verfällt die Anfrage {when}.",
       "trust": "Es zählt nur diese Zusammenfassung von Louez, egal was Ihr Assistent im Chat gesagt hat. Wenn beides nicht übereinstimmt, lehnen Sie ab.",
-      "acknowledge": "Ich habe gelesen, was Louez tun wird",
-      "approve": "Genehmigen",
-      "refuse": "Ablehnen",
       "reason": {
-        "label": "Ein Wort für Ihren Assistenten (optional)",
+        "toggle": "Eine Notiz für Ihren Assistenten hinzufügen",
+        "label": "Ihre Notiz (optional)",
         "hint": "Ihr Assistent liest es mit Ihrer Antwort. Höchstens {max} Zeichen."
       },
       "error": {
         "failed": "Ihre Antwort konnte nicht gespeichert werden. Lesen Sie die Anfrage noch einmal und antworten Sie dann.",
-        "acknowledge": "Setzen Sie das Häkchen, um zu bestätigen, dass Sie gelesen haben, was Louez tun wird, und genehmigen Sie dann. Es wurde nichts entschieden."
+        "acknowledge": "Setzen Sie das Häkchen und genehmigen Sie dann. Es wurde nichts entschieden."
       },
       "unreadable": {
         "title": "Diese Anfrage kann nicht angezeigt werden",
-        "description": "Louez kann die Details dieser Anfrage nicht anzeigen, daher kann sie hier nicht genehmigt werden. Es wurde nichts getan. Ihr Assistent kann erneut fragen."
+        "description": "Daher kann sie hier nicht genehmigt werden. Es wurde nichts getan."
       },
       "tooLong": {
         "title": "Diese Anfrage ist zu lang zum Anzeigen",
-        "description": "Die Zusammenfassung von Louez ist zu lang, um auf dieser Seite vollständig angezeigt zu werden, daher kann die Anfrage hier nicht genehmigt werden. Es wurde nichts getan. Ihr Assistent kann erneut fragen."
+        "description": "Daher kann sie hier nicht genehmigt werden. Es wurde nichts getan."
       },
       "done": {
         "request": "Die Anfrage",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "Ihre Zustimmung ist verfallen",
-          "description": "Ihre Zustimmung ist nach einer Stunde verfallen. Wenn Ihr Assistent es in diesem Moment bereits ausführte, kann er es noch abschließen; sonst passiert nichts. Laden Sie diese Seite später neu, um zu sehen, was zutrifft."
+          "description": "Ihre Zustimmung ist nach einer Stunde verfallen, ohne dass Louez eine Ausführung erfasst hat. Hat Ihr Assistent sie im allerletzten Moment ausgeführt, zeigt diese Seite das nach dem Neuladen; sonst passiert nichts."
         },
         "refused": {
           "title": "Abgelehnt",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "Beendet: Der Assistent wurde getrennt",
-          "description": "Die Verbindung des Assistenten zu Louez wurde entfernt, daher kann diese Anfrage weder beantwortet noch ausgeführt werden. Wenn der Assistent sie in diesem Moment bereits ausführte, kann er sie noch abschließen; sonst passiert nichts. Laden Sie diese Seite später neu, um zu sehen, was zutrifft."
+          "description": "Die Verbindung des Assistenten zu Louez wurde entfernt, daher kann diese Anfrage weder beantwortet noch ausgeführt werden. Hat Ihr Assistent sie im allerletzten Moment davor ausgeführt, zeigt diese Seite das nach dem Neuladen; sonst passiert nichts."
         },
         "expired": {
           "title": "Diese Anfrage ist verfallen",

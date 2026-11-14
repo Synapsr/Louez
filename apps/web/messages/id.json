@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "Setujui pencabutan akses?",
-        "money": "Setujui tindakan pembayaran?",
+        "money": "Setujui pembayaran?",
         "stock_override": "Setujui pemesanan melebihi stok?",
         "deletion": "Setujui penghapusan?",
         "customer_message": "Setujui pesan ke pelanggan?",
         "credits": "Setujui penggunaan kredit?",
-        "change": "Setujui perubahan ini?"
+        "change": "Setujui perubahan ini?",
+        "unknown": "Setujui permintaan ini?"
       },
-      "description": "Asisten AI Anda meminta persetujuan Anda di “{store}”. Asisten bertindak untuk akun Anda ({email}): tidak ada yang terjadi sebelum Anda menyetujui.",
+      "trustShort": "Hanya ringkasan Louez yang berlaku.",
+      "stakes": "Tidak dapat dibatalkan: {list}.",
+      "stake": {
+        "access_removed": "akses yang dicabut",
+        "money": "uang",
+        "stock_override": "stok melebihi batas",
+        "deletion": "penghapusan",
+        "customer_message": "pesan ke pelanggan",
+        "credits": "kredit yang terpakai"
+      },
+      "lapsesSoon": "Berakhir {when}.",
+      "acknowledge": "Saya sudah membaca apa yang akan dilakukan Louez",
+      "approve": "Setujui",
+      "refuse": "Tolak",
+      "details": "Detail",
       "askedBy": "Diminta oleh",
+      "forAccount": "Untuk akun Anda {email}, di “{store}”.",
       "apiKey": "Kunci API “{name}”",
       "apiKeyUnnamed": "Sebuah kunci API",
       "unnamedAgent": "Sebuah asisten AI",
-      "what": "Yang akan dilakukan Louez jika Anda menyetujui",
-      "details": "Yang diperiksa Louez",
+      "checked": "Yang diperiksa Louez",
       "values": {
         "yes": "Ya",
         "no": "Tidak",
         "none": "Tidak diisi"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "Akses",
-          "description": "Seseorang kehilangan akses ke toko Anda."
-        },
-        "money": {
-          "title": "Uang",
-          "description": "Ini mengubah uang yang tercatat untuk toko Anda."
-        },
-        "stock_override": {
-          "title": "Stok",
-          "description": "Ini memesan melebihi stok atau waktu persiapan Anda: beberapa pelanggan bisa mengandalkan barang yang sama."
-        },
-        "deletion": {
-          "title": "Penghapusan",
-          "description": "Sesuatu dihapus dan tidak dapat dikembalikan."
-        },
-        "customer_message": {
-          "title": "Pesan",
-          "description": "Seorang pelanggan menerima pesan dari toko Anda."
-        },
-        "credits": {
-          "title": "Kredit",
-          "description": "Ini menggunakan kredit toko Anda."
-        }
-      },
       "computedAt": "Louez menghitung ini {when} dari data toko Anda.",
       "expires": "Jika Anda tidak menjawab, permintaan ini berakhir {when}.",
       "trust": "Hanya ringkasan dari Louez ini yang berlaku, apa pun yang dikatakan asisten Anda di obrolan. Jika tidak cocok, tolak.",
-      "acknowledge": "Saya sudah membaca apa yang akan dilakukan Louez",
-      "approve": "Setujui",
-      "refuse": "Tolak",
       "reason": {
-        "label": "Pesan untuk asisten Anda (opsional)",
+        "toggle": "Tambahkan catatan untuk asisten Anda",
+        "label": "Catatan Anda (opsional)",
         "hint": "Asisten Anda membacanya bersama jawaban Anda. Maksimal {max} karakter."
       },
       "error": {
         "failed": "Jawaban Anda tidak dapat disimpan. Baca kembali permintaannya, lalu jawab.",
-        "acknowledge": "Centang kotak untuk mengonfirmasi bahwa Anda sudah membaca apa yang akan dilakukan Louez, lalu setujui. Belum ada yang diputuskan."
+        "acknowledge": "Centang kotaknya, lalu setujui. Belum ada yang diputuskan."
       },
       "unreadable": {
         "title": "Permintaan ini tidak dapat ditampilkan",
-        "description": "Louez tidak dapat menampilkan detail permintaan ini, jadi tidak dapat disetujui di sini. Tidak ada yang dilakukan. Asisten Anda dapat meminta lagi."
+        "description": "Jadi tidak dapat disetujui di sini. Tidak ada yang dilakukan."
       },
       "tooLong": {
         "title": "Permintaan ini terlalu panjang untuk ditampilkan",
-        "description": "Ringkasan dari Louez terlalu panjang untuk ditampilkan utuh di halaman ini, jadi permintaan ini tidak dapat disetujui di sini. Tidak ada yang dilakukan. Asisten Anda dapat meminta lagi."
+        "description": "Jadi tidak dapat disetujui di sini. Tidak ada yang dilakukan."
       },
       "done": {
         "request": "Permintaan",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "Persetujuan Anda telah berakhir",
-          "description": "Persetujuan Anda berakhir setelah satu jam. Jika asisten Anda sudah sedang melaksanakannya pada saat itu, ia mungkin masih menyelesaikannya; jika tidak, tidak ada yang dilakukan. Muat ulang halaman ini nanti untuk melihat mana yang terjadi."
+          "description": "Persetujuan Anda berakhir setelah satu jam tanpa Louez mencatat bahwa permintaan itu dilaksanakan. Jika asisten Anda melaksanakannya pada detik terakhir, halaman ini menampilkannya setelah dimuat ulang; jika tidak, tidak ada yang dilakukan."
         },
         "refused": {
           "title": "Ditolak",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "Berakhir: asisten diputuskan",
-          "description": "Koneksi asisten ke Louez telah dihapus, jadi permintaan ini tidak dapat lagi dijawab atau dilaksanakan. Jika asisten sudah sedang melaksanakannya pada saat itu, ia mungkin masih menyelesaikannya; jika tidak, tidak ada yang dilakukan. Muat ulang halaman ini nanti untuk melihat mana yang terjadi."
+          "description": "Koneksi asisten ke Louez telah dihapus, jadi permintaan ini tidak dapat lagi dijawab atau dilaksanakan. Jika asisten Anda melaksanakannya pada detik terakhir sebelum itu, halaman ini menampilkannya setelah dimuat ulang; jika tidak, tidak ada yang dilakukan."
         },
         "expired": {
           "title": "Permintaan ini sudah berakhir",

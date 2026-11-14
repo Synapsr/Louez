@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "Aprovar a remoção de um acesso?",
-        "money": "Aprovar uma operação de pagamento?",
+        "money": "Aprovar um pagamento?",
         "stock_override": "Aprovar uma reserva acima do stock?",
         "deletion": "Aprovar uma eliminação?",
         "customer_message": "Aprovar uma mensagem a um cliente?",
         "credits": "Aprovar um gasto de créditos?",
-        "change": "Aprovar esta alteração?"
+        "change": "Aprovar esta alteração?",
+        "unknown": "Aprovar este pedido?"
       },
-      "description": "O seu assistente de IA pede a sua aprovação em «{store}». Age pela sua conta ({email}): nada acontece enquanto não aprovar.",
+      "trustShort": "Só conta o resumo do Louez.",
+      "stakes": "Não se pode desfazer: {list}.",
+      "stake": {
+        "access_removed": "um acesso removido",
+        "money": "dinheiro",
+        "stock_override": "stock acima do limite",
+        "deletion": "uma eliminação",
+        "customer_message": "uma mensagem a um cliente",
+        "credits": "créditos gastos"
+      },
+      "lapsesSoon": "Expira {when}.",
+      "acknowledge": "Li o que o Louez vai fazer",
+      "approve": "Aprovar",
+      "refuse": "Recusar",
+      "details": "Detalhes",
       "askedBy": "Pedido por",
+      "forAccount": "Para a sua conta {email}, em «{store}».",
       "apiKey": "Chave de API «{name}»",
       "apiKeyUnnamed": "Uma chave de API",
       "unnamedAgent": "Um assistente de IA",
-      "what": "O que o Louez fará se aprovar",
-      "details": "O que o Louez verificou",
+      "checked": "O que o Louez verificou",
       "values": {
         "yes": "Sim",
         "no": "Não",
         "none": "Não indicado"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "Acesso",
-          "description": "Alguém perde o acesso à sua loja."
-        },
-        "money": {
-          "title": "Dinheiro",
-          "description": "Isto altera o dinheiro registado na sua loja."
-        },
-        "stock_override": {
-          "title": "Stock",
-          "description": "Isto reserva acima do seu stock ou do seu tempo de preparação: vários clientes podem contar com o mesmo artigo."
-        },
-        "deletion": {
-          "title": "Eliminação",
-          "description": "Algo é eliminado e não poderá ser recuperado."
-        },
-        "customer_message": {
-          "title": "Mensagem",
-          "description": "Um cliente recebe uma mensagem da sua loja."
-        },
-        "credits": {
-          "title": "Créditos",
-          "description": "Isto gasta créditos da sua loja."
-        }
-      },
       "computedAt": "O Louez calculou isto {when}, a partir dos dados da sua loja.",
       "expires": "Se não responder, o pedido expira {when}.",
       "trust": "Só conta este resumo do Louez, diga o que disser o seu assistente na conversa. Se não coincidirem, recuse.",
-      "acknowledge": "Li o que o Louez vai fazer",
-      "approve": "Aprovar",
-      "refuse": "Recusar",
       "reason": {
-        "label": "Uma palavra para o seu assistente (opcional)",
+        "toggle": "Adicionar uma nota para o seu assistente",
+        "label": "A sua nota (opcional)",
         "hint": "O seu assistente lê-a com a sua resposta. No máximo {max} caracteres."
       },
       "error": {
         "failed": "Não foi possível registar a sua resposta. Leia o pedido novamente e responda.",
-        "acknowledge": "Marque a caixa para confirmar que leu o que o Louez vai fazer e depois aprove. Nada foi decidido."
+        "acknowledge": "Marque a caixa e depois aprove. Nada foi decidido."
       },
       "unreadable": {
         "title": "Este pedido não pode ser mostrado",
-        "description": "O Louez não consegue mostrar os detalhes deste pedido, por isso não pode ser aprovado aqui. Nada foi feito. O seu assistente pode voltar a pedir."
+        "description": "Por isso não pode ser aprovado aqui. Nada foi feito."
       },
       "tooLong": {
         "title": "Este pedido é demasiado longo para ser mostrado",
-        "description": "O resumo do Louez é demasiado longo para ser mostrado por inteiro nesta página, por isso o pedido não pode ser aprovado aqui. Nada foi feito. O seu assistente pode voltar a pedir."
+        "description": "Por isso não pode ser aprovado aqui. Nada foi feito."
       },
       "done": {
         "request": "O pedido",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "A sua aprovação expirou",
-          "description": "A sua aprovação expirou ao fim de uma hora. Se o seu assistente já o estava a realizar nesse momento, pode ainda concluir; caso contrário, nada é feito. Recarregue esta página mais tarde para saber o que aconteceu."
+          "description": "A sua aprovação expirou ao fim de uma hora sem que o Louez registasse a sua realização. Se o seu assistente a realizou no último momento, esta página mostra-o depois de recarregada; caso contrário, nada é feito."
         },
         "refused": {
           "title": "Recusado",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "Terminado: o assistente foi desligado",
-          "description": "A ligação do assistente ao Louez foi removida, por isso este pedido já não pode ser respondido nem realizado. Se o assistente já o estava a realizar nesse momento, pode ainda concluir; caso contrário, nada é feito. Recarregue esta página mais tarde para saber o que aconteceu."
+          "description": "A ligação do assistente ao Louez foi removida, por isso este pedido já não pode ser respondido nem realizado. Se o seu assistente o realizou no último momento antes disso, esta página mostra-o depois de recarregada; caso contrário, nada é feito."
         },
         "expired": {
           "title": "Este pedido expirou",

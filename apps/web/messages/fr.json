@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "Approuver le retrait d’un accès ?",
-        "money": "Approuver une opération de paiement ?",
+        "money": "Approuver un paiement ?",
         "stock_override": "Approuver une réservation au-delà du stock ?",
         "deletion": "Approuver une suppression ?",
         "customer_message": "Approuver un message à un client ?",
         "credits": "Approuver une dépense de crédits ?",
-        "change": "Approuver cette modification ?"
+        "change": "Approuver cette modification ?",
+        "unknown": "Approuver cette demande ?"
       },
-      "description": "Votre assistant IA vous demande votre accord dans « {store} ». Il agit pour votre compte ({email}) : rien ne se passe tant que vous n’approuvez pas.",
+      "trustShort": "Seul le résumé de Louez fait foi.",
+      "stakes": "Irréversible : {list}.",
+      "stake": {
+        "access_removed": "un accès retiré",
+        "money": "de l’argent",
+        "stock_override": "du stock au-delà de sa limite",
+        "deletion": "une suppression",
+        "customer_message": "un message à un client",
+        "credits": "des crédits dépensés"
+      },
+      "lapsesSoon": "Expire {when}.",
+      "acknowledge": "J’ai lu ce que Louez va faire",
+      "approve": "Approuver",
+      "refuse": "Refuser",
+      "details": "Détails",
       "askedBy": "Demandé par",
+      "forAccount": "Pour votre compte {email}, dans « {store} ».",
       "apiKey": "Clé d’API « {name} »",
       "apiKeyUnnamed": "Une clé d’API",
       "unnamedAgent": "Un assistant IA",
-      "what": "Ce que Louez fera si vous approuvez",
-      "details": "Ce que Louez a vérifié",
+      "checked": "Ce que Louez a vérifié",
       "values": {
         "yes": "Oui",
         "no": "Non",
         "none": "Non renseigné"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "Accès",
-          "description": "Quelqu’un perd l’accès à votre boutique."
-        },
-        "money": {
-          "title": "Argent",
-          "description": "Cela modifie l’argent enregistré pour votre boutique."
-        },
-        "stock_override": {
-          "title": "Stock",
-          "description": "Cela réserve au-delà de votre stock ou de votre temps de préparation : des clients risquent de compter sur le même article."
-        },
-        "deletion": {
-          "title": "Suppression",
-          "description": "Un élément est supprimé et ne pourra pas être récupéré."
-        },
-        "customer_message": {
-          "title": "Message",
-          "description": "Un client reçoit un message de votre boutique."
-        },
-        "credits": {
-          "title": "Crédits",
-          "description": "Cela dépense des crédits de votre boutique."
-        }
-      },
       "computedAt": "Louez a établi ceci {when}, à partir des données de votre boutique.",
       "expires": "Sans réponse de votre part, la demande expire {when}.",
       "trust": "Seul ce résumé de Louez fait foi, quoi que votre assistant ait dit dans la conversation. S’ils ne correspondent pas, refusez.",
-      "acknowledge": "J’ai lu ce que Louez va faire",
-      "approve": "Approuver",
-      "refuse": "Refuser",
       "reason": {
-        "label": "Un mot pour votre assistant (facultatif)",
+        "toggle": "Ajouter un mot pour votre assistant",
+        "label": "Votre mot (facultatif)",
         "hint": "Votre assistant le lit avec votre réponse. {max} caractères au maximum."
       },
       "error": {
         "failed": "Votre réponse n’a pas pu être enregistrée. Relisez la demande, puis répondez.",
-        "acknowledge": "Cochez la case pour confirmer que vous avez lu ce que Louez va faire, puis approuvez. Rien n’a été décidé."
+        "acknowledge": "Cochez la case, puis approuvez. Rien n’a été décidé."
       },
       "unreadable": {
         "title": "Cette demande ne peut pas être affichée",
-        "description": "Louez ne peut pas afficher le détail de cette demande : elle ne peut donc pas être approuvée ici. Rien n’a été fait. Votre assistant peut vous la redemander."
+        "description": "Elle ne peut donc pas être approuvée ici. Rien n’a été fait."
       },
       "tooLong": {
         "title": "Cette demande est trop longue pour être affichée",
-        "description": "Le résumé de Louez est trop long pour être affiché en entier sur cette page : la demande ne peut donc pas être approuvée ici. Rien n’a été fait. Votre assistant peut vous la redemander."
+        "description": "Elle ne peut donc pas être approuvée ici. Rien n’a été fait."
       },
       "done": {
         "request": "La demande",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "Votre accord a expiré",
-          "description": "Votre accord a expiré au bout d’une heure. Si votre assistant était déjà en train de réaliser la demande à ce moment-là, il peut encore aller au bout ; sinon, rien n’est fait. Rechargez cette page plus tard pour savoir ce qu’il en est."
+          "description": "Votre accord a expiré au bout d’une heure sans que Louez ait enregistré sa réalisation. Si votre assistant l’a réalisée au tout dernier moment, cette page l’affichera une fois rechargée ; sinon, rien n’est fait."
         },
         "refused": {
           "title": "Refusé",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "Terminé : l’assistant a été déconnecté",
-          "description": "La connexion de l’assistant à Louez a été supprimée : cette demande ne peut plus être ni acceptée ni réalisée. Si l’assistant était déjà en train de la réaliser à ce moment-là, il peut encore aller au bout ; sinon, rien n’est fait. Rechargez cette page plus tard pour savoir ce qu’il en est."
+          "description": "La connexion de l’assistant à Louez a été supprimée : cette demande ne peut plus être ni acceptée ni réalisée. Si votre assistant l’a réalisée au tout dernier moment avant cela, cette page l’affichera une fois rechargée ; sinon, rien n’est fait."
         },
         "expired": {
           "title": "Cette demande a expiré",

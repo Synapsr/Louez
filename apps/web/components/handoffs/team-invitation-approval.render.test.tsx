@@ -67,6 +67,8 @@ test("the form posts the answer, the revision and the digest shown to the decide
   assert.equal(tags(html, "input").filter((input) => input.type === "checkbox").length, 0);
   assert.ok(buttons.every((button) => !Object.keys(button).some((key) => /novalidate/i.test(key))));
   assert.doesNotMatch(html, /required/);
+  // Its note is on the form itself, not folded away.
+  assert.doesNotMatch(html, /<details/);
   assert.match(html, />Decline<\/span><\/button>/);
   assert.match(html, />Approve the invitation<\/span><\/button>/);
 });

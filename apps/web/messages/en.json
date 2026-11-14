@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "Approve removing access?",
-        "money": "Approve a payment action?",
-        "stock_override": "Approve booking over your stock?",
+        "money": "Approve a payment?",
+        "stock_override": "Approve booking past your stock?",
         "deletion": "Approve a deletion?",
         "customer_message": "Approve a message to a customer?",
         "credits": "Approve spending credits?",
-        "change": "Approve this change?"
+        "change": "Approve this change?",
+        "unknown": "Approve this request?"
       },
-      "description": "Your AI assistant asks for your approval in “{store}”. It acts for your account ({email}): nothing happens unless you approve.",
+      "trustShort": "Only Louez’s summary counts.",
+      "stakes": "Can’t be undone: {list}.",
+      "stake": {
+        "access_removed": "access removed",
+        "money": "money",
+        "stock_override": "stock past its limit",
+        "deletion": "a deletion",
+        "customer_message": "a message to a customer",
+        "credits": "credits spent"
+      },
+      "lapsesSoon": "Lapses {when}.",
+      "acknowledge": "I’ve read what Louez will do",
+      "approve": "Approve",
+      "refuse": "Refuse",
+      "details": "Details",
       "askedBy": "Asked by",
+      "forAccount": "For your account {email}, in “{store}”.",
       "apiKey": "API key “{name}”",
       "apiKeyUnnamed": "An API key",
       "unnamedAgent": "An AI assistant",
-      "what": "What Louez will do if you approve",
-      "details": "What Louez checked",
+      "checked": "What Louez checked",
       "values": {
         "yes": "Yes",
         "no": "No",
         "none": "Not set"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "Access",
-          "description": "Someone loses access to your store."
-        },
-        "money": {
-          "title": "Money",
-          "description": "This changes the money recorded for your store."
-        },
-        "stock_override": {
-          "title": "Stock",
-          "description": "This books past your stock or your turnover time: customers may count on the same item."
-        },
-        "deletion": {
-          "title": "Deletion",
-          "description": "Something is deleted and cannot be brought back."
-        },
-        "customer_message": {
-          "title": "Message",
-          "description": "A customer gets a message from your store."
-        },
-        "credits": {
-          "title": "Credits",
-          "description": "This spends your store’s credits."
-        }
-      },
       "computedAt": "Louez worked this out {when}, from your store’s records.",
       "expires": "If you don’t answer, the request lapses {when}.",
       "trust": "Only this summary from Louez counts, whatever your assistant said in the chat. If they don’t match, refuse.",
-      "acknowledge": "I have read what Louez will do",
-      "approve": "Approve",
-      "refuse": "Refuse",
       "reason": {
-        "label": "A word for your assistant (optional)",
+        "toggle": "Add a note for your assistant",
+        "label": "Your note (optional)",
         "hint": "Your assistant reads it with your answer. {max} characters at most."
       },
       "error": {
         "failed": "Your answer could not be recorded. Look at the request again, then answer.",
-        "acknowledge": "Tick the box to confirm you read what Louez will do, then approve. Nothing was decided."
+        "acknowledge": "Tick the box, then approve. Nothing was decided."
       },
       "unreadable": {
         "title": "This request can’t be shown",
-        "description": "Louez can’t show the details of this request, so it can’t be approved here. Nothing was done. Your assistant can ask again."
+        "description": "So it can’t be approved here. Nothing was done."
       },
       "tooLong": {
         "title": "This request is too long to show",
-        "description": "Louez’s summary of this request is too long to show whole on this page, so it can’t be approved here. Nothing was done. Your assistant can ask again."
+        "description": "So it can’t be approved here. Nothing was done."
       },
       "done": {
         "request": "The request",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "Your approval lapsed",
-          "description": "Your approval lapsed after an hour. If your assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done. Reload this page later to see which."
+          "description": "Your approval lapsed after an hour without Louez recording that it was carried out. If your assistant carried it out at the very last moment, this page shows it once reloaded; otherwise nothing is done."
         },
         "refused": {
           "title": "Refused",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "Ended: the assistant was disconnected",
-          "description": "The assistant’s connection to Louez was removed, so this request can no longer be answered or carried out. If the assistant was already carrying it out at that moment, it may still finish; otherwise nothing is done. Reload this page later to see which."
+          "description": "The assistant’s connection to Louez was removed, so this request can no longer be answered or carried out. If your assistant carried it out at the very last moment before that, this page shows it once reloaded; otherwise nothing is done."
         },
         "expired": {
           "title": "This request lapsed",

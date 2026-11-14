@@ -2,7 +2,8 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@louez
 
 interface HandoffCardProps {
   title: string;
-  description: string;
+  /** One or two sentences under the title; none when the title says it all. */
+  description?: string;
   /** A note under the description, such as a provider that did not answer. */
   note?: string | null;
   /** The form or button that moves the step on; none on a closing page. */
@@ -14,7 +15,7 @@ export const HandoffCard = ({ title, description, note, children }: HandoffCardP
   <Card>
     <CardHeader className="space-y-2 p-5 sm:p-6">
       <CardTitle className="text-xl">{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
+      {description && <CardDescription>{description}</CardDescription>}
       {note && (
         <p className="text-destructive text-sm" role="alert">
           {note}

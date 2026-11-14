@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "Zatwierdzić odebranie dostępu?",
-        "money": "Zatwierdzić operację płatniczą?",
+        "money": "Zatwierdzić płatność?",
         "stock_override": "Zatwierdzić rezerwację ponad stan magazynu?",
         "deletion": "Zatwierdzić usunięcie?",
         "customer_message": "Zatwierdzić wiadomość do klienta?",
         "credits": "Zatwierdzić wydanie kredytów?",
-        "change": "Zatwierdzić tę zmianę?"
+        "change": "Zatwierdzić tę zmianę?",
+        "unknown": "Zatwierdzić tę prośbę?"
       },
-      "description": "Twój asystent AI prosi o zgodę w „{store}”. Działa w imieniu Twojego konta ({email}): nic się nie stanie, dopóki nie zatwierdzisz.",
+      "trustShort": "Liczy się tylko podsumowanie Louez.",
+      "stakes": "Nie da się cofnąć: {list}.",
+      "stake": {
+        "access_removed": "odebrany dostęp",
+        "money": "pieniądze",
+        "stock_override": "magazyn ponad limit",
+        "deletion": "usunięcie",
+        "customer_message": "wiadomość do klienta",
+        "credits": "wydane kredyty"
+      },
+      "lapsesSoon": "Wygasa {when}.",
+      "acknowledge": "Rozumiem, co zrobi Louez",
+      "approve": "Zatwierdź",
+      "refuse": "Odrzuć",
+      "details": "Szczegóły",
       "askedBy": "Prośba od",
+      "forAccount": "Dla Twojego konta {email}, w „{store}”.",
       "apiKey": "Klucz API „{name}”",
       "apiKeyUnnamed": "Klucz API",
       "unnamedAgent": "Asystent AI",
-      "what": "Co Louez zrobi, jeśli zatwierdzisz",
-      "details": "Co Louez sprawdził",
+      "checked": "Co Louez sprawdził",
       "values": {
         "yes": "Tak",
         "no": "Nie",
         "none": "Brak"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "Dostęp",
-          "description": "Ktoś traci dostęp do Twojego sklepu."
-        },
-        "money": {
-          "title": "Pieniądze",
-          "description": "To zmienia pieniądze zapisane dla Twojego sklepu."
-        },
-        "stock_override": {
-          "title": "Magazyn",
-          "description": "To rezerwuje ponad Twój stan magazynu lub czas przygotowania: kilku klientów może liczyć na ten sam przedmiot."
-        },
-        "deletion": {
-          "title": "Usunięcie",
-          "description": "Coś zostanie usunięte i nie da się tego przywrócić."
-        },
-        "customer_message": {
-          "title": "Wiadomość",
-          "description": "Klient otrzyma wiadomość od Twojego sklepu."
-        },
-        "credits": {
-          "title": "Kredyty",
-          "description": "To wydaje kredyty Twojego sklepu."
-        }
-      },
       "computedAt": "Louez obliczył to {when} na podstawie danych Twojego sklepu.",
       "expires": "Jeśli nie odpowiesz, prośba wygaśnie {when}.",
       "trust": "Liczy się tylko to podsumowanie od Louez, bez względu na to, co asystent napisał na czacie. Jeśli się nie zgadzają, odrzuć.",
-      "acknowledge": "Rozumiem, co zrobi Louez",
-      "approve": "Zatwierdź",
-      "refuse": "Odrzuć",
       "reason": {
-        "label": "Kilka słów dla asystenta (opcjonalnie)",
+        "toggle": "Dodaj notatkę dla asystenta",
+        "label": "Twoja notatka (opcjonalnie)",
         "hint": "Asystent przeczyta je razem z Twoją odpowiedzią. Maksymalnie {max} znaków."
       },
       "error": {
         "failed": "Nie udało się zapisać Twojej odpowiedzi. Przeczytaj prośbę jeszcze raz i odpowiedz.",
-        "acknowledge": "Zaznacz pole, aby potwierdzić, że wiesz, co zrobi Louez, a potem zatwierdź. Nic nie zostało zdecydowane."
+        "acknowledge": "Zaznacz pole, a potem zatwierdź. Nic nie zostało zdecydowane."
       },
       "unreadable": {
         "title": "Tej prośby nie można wyświetlić",
-        "description": "Louez nie może wyświetlić szczegółów tej prośby, więc nie można jej tu zatwierdzić. Nic nie zostało zrobione. Asystent może poprosić ponownie."
+        "description": "Dlatego nie można jej tu zatwierdzić. Nic nie zostało zrobione."
       },
       "tooLong": {
         "title": "Ta prośba jest zbyt długa, by ją wyświetlić",
-        "description": "Podsumowanie Louez jest zbyt długie, by wyświetlić je w całości na tej stronie, więc nie można jej tu zatwierdzić. Nic nie zostało zrobione. Asystent może poprosić ponownie."
+        "description": "Dlatego nie można jej tu zatwierdzić. Nic nie zostało zrobione."
       },
       "done": {
         "request": "Prośba",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "Twoja zgoda wygasła",
-          "description": "Twoja zgoda wygasła po godzinie. Jeśli asystent właśnie wtedy to wykonywał, może jeszcze dokończyć; w przeciwnym razie nic się nie stanie. Odśwież tę stronę później, by sprawdzić, jak jest."
+          "description": "Twoja zgoda wygasła po godzinie, a Louez nie odnotował jej wykonania. Jeśli asystent wykonał ją w ostatniej chwili, ta strona pokaże to po odświeżeniu; w przeciwnym razie nic się nie stanie."
         },
         "refused": {
           "title": "Odrzucono",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "Zakończono: asystent został odłączony",
-          "description": "Połączenie asystenta z Louez zostało usunięte, więc tej prośby nie można już ani zatwierdzić, ani wykonać. Jeśli asystent właśnie wtedy ją wykonywał, może jeszcze dokończyć; w przeciwnym razie nic się nie stanie. Odśwież tę stronę później, by sprawdzić, jak jest."
+          "description": "Połączenie asystenta z Louez zostało usunięte, więc tej prośby nie można już ani zatwierdzić, ani wykonać. Jeśli asystent wykonał ją w ostatniej chwili przed tym, ta strona pokaże to po odświeżeniu; w przeciwnym razie nic się nie stanie."
         },
         "expired": {
           "title": "Ta prośba wygasła",

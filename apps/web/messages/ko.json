@@ -9805,72 +9805,59 @@
     "operation_approval": {
       "title": {
         "access_removed": "접근 권한 제거를 승인할까요?",
-        "money": "결제 작업을 승인할까요?",
+        "money": "결제를 승인할까요?",
         "stock_override": "재고를 초과하는 예약을 승인할까요?",
         "deletion": "삭제를 승인할까요?",
         "customer_message": "고객에게 보내는 메시지를 승인할까요?",
         "credits": "크레딧 사용을 승인할까요?",
-        "change": "이 변경을 승인할까요?"
+        "change": "이 변경을 승인할까요?",
+        "unknown": "이 요청을 승인할까요?"
       },
-      "description": "AI 어시스턴트가 “{store}”에서 승인을 요청합니다. 어시스턴트는 회원님의 계정({email})으로 작업합니다. 승인하기 전에는 아무 일도 일어나지 않습니다.",
+      "trustShort": "유효한 것은 Louez의 요약뿐입니다.",
+      "stakes": "되돌릴 수 없음: {list}.",
+      "stake": {
+        "access_removed": "접근 권한 제거",
+        "money": "금액",
+        "stock_override": "한도를 넘는 재고",
+        "deletion": "삭제",
+        "customer_message": "고객 메시지",
+        "credits": "크레딧 사용"
+      },
+      "lapsesSoon": "{when} 만료됩니다.",
+      "acknowledge": "Louez가 할 일을 읽었습니다",
+      "approve": "승인",
+      "refuse": "거절",
+      "details": "자세히",
       "askedBy": "요청한 곳",
+      "forAccount": "회원님의 계정({email}), “{store}”에서의 요청입니다.",
       "apiKey": "API 키 “{name}”",
       "apiKeyUnnamed": "API 키",
       "unnamedAgent": "AI 어시스턴트",
-      "what": "승인하면 Louez가 하는 일",
-      "details": "Louez가 확인한 내용",
+      "checked": "Louez가 확인한 내용",
       "values": {
         "yes": "예",
         "no": "아니요",
         "none": "없음"
       },
-      "consequence": {
-        "access_removed": {
-          "title": "접근",
-          "description": "누군가 스토어에 대한 접근 권한을 잃습니다."
-        },
-        "money": {
-          "title": "돈",
-          "description": "스토어에 기록된 금액이 바뀝니다."
-        },
-        "stock_override": {
-          "title": "재고",
-          "description": "재고나 준비 시간을 넘겨 예약합니다. 여러 고객이 같은 상품을 기대할 수 있습니다."
-        },
-        "deletion": {
-          "title": "삭제",
-          "description": "삭제된 항목은 되돌릴 수 없습니다."
-        },
-        "customer_message": {
-          "title": "메시지",
-          "description": "고객이 스토어로부터 메시지를 받습니다."
-        },
-        "credits": {
-          "title": "크레딧",
-          "description": "스토어의 크레딧을 사용합니다."
-        }
-      },
       "computedAt": "Louez가 스토어 데이터를 바탕으로 {when} 계산했습니다.",
       "expires": "답하지 않으면 이 요청은 {when} 만료됩니다.",
       "trust": "채팅에서 어시스턴트가 뭐라고 했든, 유효한 것은 Louez의 이 요약뿐입니다. 서로 다르면 거절하세요.",
-      "acknowledge": "Louez가 할 일을 읽었습니다",
-      "approve": "승인",
-      "refuse": "거절",
       "reason": {
-        "label": "어시스턴트에게 남길 말 (선택)",
+        "toggle": "어시스턴트에게 메모 남기기",
+        "label": "메모 (선택)",
         "hint": "어시스턴트가 답변과 함께 읽습니다. 최대 {max}자입니다."
       },
       "error": {
         "failed": "답변을 저장하지 못했습니다. 요청을 다시 읽은 뒤 답해 주세요.",
-        "acknowledge": "Louez가 할 일을 읽었음을 확인하려면 체크한 뒤 승인하세요. 아직 아무것도 결정되지 않았습니다."
+        "acknowledge": "체크한 뒤 승인하세요. 아직 아무것도 결정되지 않았습니다."
       },
       "unreadable": {
         "title": "이 요청을 표시할 수 없습니다",
-        "description": "Louez가 이 요청의 세부 내용을 표시할 수 없어 여기서 승인할 수 없습니다. 아무 작업도 하지 않았습니다. 어시스턴트가 다시 요청할 수 있습니다."
+        "description": "그래서 여기서 승인할 수 없습니다. 아무 작업도 하지 않았습니다."
       },
       "tooLong": {
         "title": "이 요청은 너무 길어 표시할 수 없습니다",
-        "description": "Louez의 요약이 너무 길어 이 페이지에 전부 표시할 수 없으므로 여기서 승인할 수 없습니다. 아무 작업도 하지 않았습니다. 어시스턴트가 다시 요청할 수 있습니다."
+        "description": "그래서 여기서 승인할 수 없습니다. 아무 작업도 하지 않았습니다."
       },
       "done": {
         "request": "요청 내용",
@@ -9885,7 +9872,7 @@
         },
         "approved_expired": {
           "title": "승인이 만료되었습니다",
-          "description": "승인은 1시간 후 만료되었습니다. 그 시점에 어시스턴트가 이미 실행 중이었다면 끝까지 완료될 수 있고, 그렇지 않다면 아무 작업도 하지 않습니다. 나중에 이 페이지를 새로 고치면 어느 쪽인지 확인할 수 있습니다."
+          "description": "Louez에 실행 기록이 남지 않은 채 승인이 1시간 후 만료되었습니다. 어시스턴트가 마지막 순간에 실행했다면 새로 고친 뒤 이 페이지에 표시되고, 그렇지 않다면 아무 작업도 하지 않습니다."
         },
         "refused": {
           "title": "거절됨",
@@ -9901,7 +9888,7 @@
         },
         "connection_revoked": {
           "title": "종료됨: 어시스턴트 연결이 해제되었습니다",
-          "description": "어시스턴트와 Louez의 연결이 삭제되어 이 요청은 더 이상 답하거나 실행할 수 없습니다. 그 시점에 어시스턴트가 이미 실행 중이었다면 끝까지 완료될 수 있고, 그렇지 않다면 아무 작업도 하지 않습니다. 나중에 이 페이지를 새로 고치면 어느 쪽인지 확인할 수 있습니다."
+          "description": "어시스턴트와 Louez의 연결이 삭제되어 이 요청은 더 이상 답하거나 실행할 수 없습니다. 어시스턴트가 그 직전 마지막 순간에 실행했다면 새로 고친 뒤 이 페이지에 표시되고, 그렇지 않다면 아무 작업도 하지 않습니다."
         },
         "expired": {
           "title": "이 요청은 만료되었습니다",
