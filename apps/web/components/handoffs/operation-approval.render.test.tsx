@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, test } from "node:test";
@@ -424,14 +425,20 @@ describe("the approval's page", () => {
       assert.ok(preview);
       const html = renderPage({ preview, consequences: [...sample.payload.consequences] as never });
       const details = textOf(disclosures(html)[0]?.body ?? "");
-      assert.doesNotMatch(details, /res_7Hk2|sample_membership|\bId\b|T\d{2}:\d{2}:\d{2}|\.000Z/, sample.label);
+      // An identifier is hidden only where its own record is named readably: the
+      // payment's reservationId has no reservationNumber beside it (its bare
+      // `number` names a bare `id`), so it is shown; the booking's and the
+      // member's records are named, so their ids are not.
+      const shownIds = sample.procedure === "dashboard.payments.record" ? /sample_membership/ : /res_7Hk2|sample_membership/;
+      assert.doesNotMatch(details, shownIds, sample.label);
+      assert.doesNotMatch(details, /\bId\b|T\d{2}:\d{2}:\d{2}|\.000Z/, sample.label);
       assert.ok(checkedList(html).length > 0, sample.label);
       assert.doesNotMatch(checkedList(html), NARROW, sample.label);
     }
     const [payment, booking, removal] = samples.map((sample) =>
       textOf(disclosures(renderPage({ preview: shownPreview(sample.payload.preview) ?? PREVIEW }))[0]?.body ?? ""),
     );
-    assert.match(payment ?? "", /What Louez checked .*Number 1042/);
+    assert.match(payment ?? "", /What Louez checked .*Reservation id res_7Hk2pQ9xLmN4vB1cD3eF Number 1042/);
     assert.match(payment ?? "", /Amount 120/);
     assert.match(booking ?? "", /Reservation .*Number 1042/);
     assert.match(booking ?? "", /Start date Nov 21, 2026, 10:00 AM/);
@@ -539,6 +546,33 @@ describe("the approval's result", () => {
   test("a request whose preview cannot be read shows no recap", () => {
     assert.doesNotMatch(renderDone("expired", { preview: null }), /The request/);
   });
+});
+
+describe("an approval without a display", () => {
+  // Any action but the six pull request 7 switches, and every older row: the
+  // page and its result exactly as they were, to the byte.
+  const digest = (html: string) => createHash("sha256").update(html).digest("hex");
+  const PAGES: Array<[string, () => string, string]> = [
+    ["the page", () => renderPage(), "1f417ea0119e58e13a1662cdda9060a95fefcb0155f210eab453a039c49fd465"],
+    ["the page with a note", () => renderPage({}, "This request changed while you were reading"), "ef58f7bff8c0d920f2241dea3ed8c8363081ac1550fb2022a039d43fb22ab3cb"],
+    [
+      "the result",
+      () =>
+        wrap(
+          <OperationApprovalDone
+            approval={approval({ state: "refused", decision: { outcome: "refused", at: minutes(-1), reason: "Non" } })}
+            state="refused"
+          />,
+        ),
+      "a9c927d8c680a3ea22e8d3cd5a761cd3b2170b43ca2812a388f5cff00f9bb85c",
+    ],
+  ];
+  for (const [name, render, expected] of PAGES) {
+    test(`${name} is as it was`, () => {
+      const html = render();
+      assert.equal(digest(html), expected);
+    });
+  }
 });
 
 describe("the texts", () => {

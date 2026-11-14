@@ -9902,6 +9902,75 @@
           "description": "Qui non c’è più niente da fare, e non è stato fatto nulla. Se il tuo assistente ne ha ancora bisogno, lo chiederà di nuovo."
         },
         "shortened": "Il riepilogo era troppo lungo per essere mostrato per intero."
+      },
+      "display": {
+        "told": "Cosa è stato detto al tuo assistente",
+        "headline": {
+          "recordPayment": "Registrare un pagamento ricevuto?",
+          "paidBack": "Registrare un rimborso al cliente?",
+          "returnDeposit": "Registrare un deposito restituito?",
+          "deletePayment": "Eliminare un pagamento registrato?",
+          "removeMember": "Togliere qualcuno dal tuo team?",
+          "cancelInvitation": "Annullare un invito al tuo team?",
+          "confirmWithinRules": "Confermare la prenotazione?",
+          "confirmPastBuffer": "Confermare la prenotazione nonostante il tuo margine tra due noleggi?",
+          "confirmBeyondStock": "Confermare la prenotazione oltre la tua disponibilità?",
+          "confirmBeyondStockAndBuffer": "Confermare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?",
+          "recordDeposit": "Registrare un deposito incassato?"
+        },
+        "facts": {
+          "booking": "Prenotazione #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Prenotazione #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> ricevuti · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, rimborsati al cliente · <v>{method}</v>",
+          "returned": "Deposito restituito: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Deposito ancora trattenuto prima di questo: <v>{held}</v>",
+          "recordOnly": "Louez lo registra soltanto: nessun importo viene addebitato o rimborsato.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Registrato il <v>{atDate}</v> alle <v>{atTime}</v>",
+          "leavesBalance": "Esce dal saldo della prenotazione e dai tuoi dati.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Membro dal <v>{sinceDate}</v>",
+          "losesAccess": "Perde subito l’accesso ai tuoi clienti, prenotazioni e pagamenti.",
+          "invited": "Invito inviato a <v>{email}</v>",
+          "invitedOn": "Inviato il <v>{atDate}</v>",
+          "linkStops": "Il suo link smette di funzionare: non entrerà nel tuo team.",
+          "period": "{periodSameDay, select, yes {Il <v>{periodStartDate}</v>, dalle <v>{periodStartTime}</v> alle <v>{periodEndTime}</v>} other {Dal <v>{periodStartDate}</v> alle <v>{periodStartTime}</v> al <v>{periodEndDate}</v> alle <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: {requested, plural, one {# richiesto} other {# richiesti}}, {available, plural, =0 {nessuno libero} one {solo # libero} other {solo # liberi}} rispettando il tuo margine di <v>{buffer}</v>",
+          "beyondStock": "<v>{product}</v>: {requested, plural, one {# richiesto} other {# richiesti}}, {available, plural, =0 {nessuno disponibile} other {solo # disponibili}}: {missing, plural, one {ne manca #} other {ne mancano #}}",
+          "moreLines": "{count, plural, one {E # altra riga fuori dalle tue regole} other {E altre # righe fuori dalle tue regole}}: vedi i dettagli",
+          "withinRules": "La tua disponibilità e il tuo margine tra due noleggi la coprono: niente li supera.",
+          "message": "<v>{customer}</v> riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
+          "messageToCustomer": "Il cliente riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
+          "noMessage": "Al cliente non viene inviato alcun messaggio.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> incassati · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, restituiti al cliente · <v>{method}</v>"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Noleggio",
+            "deposit": "Deposito",
+            "deposit_hold": "Pre-autorizzazione del deposito",
+            "deposit_capture": "Deposito incassato",
+            "deposit_return": "Restituzione del deposito",
+            "damage": "Danni",
+            "adjustment": "Rettifica"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Contanti",
+            "card": "Carta",
+            "transfer": "Bonifico",
+            "check": "Assegno",
+            "other": "Altro"
+          },
+          "customerMessage": {
+            "request_accepted": "richiesta accettata",
+            "request_rejected": "richiesta rifiutata",
+            "reservation_cancelled": "prenotazione annullata"
+          }
+        }
       }
     }
   }

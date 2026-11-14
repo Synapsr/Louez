@@ -12,7 +12,9 @@ import {
   isReadableText,
   knownConsequences,
   oneLine,
+  shownDisplay,
   shownPreview,
+  type ShownDisplay,
   type ShownPreview,
 } from "./approval-preview";
 import { approvalPayloadOf, connectionAlive, mayActOnStep, statusOf } from "./handoffs";
@@ -21,6 +23,7 @@ export {
   SUMMARY_MAX,
   oneLine,
   type ShownDetail,
+  type ShownDisplay,
   type ShownPreview,
   type ShownValue,
 } from "./approval-preview";
@@ -95,6 +98,13 @@ export interface ApprovalPage {
   agent: ApprovalAgent;
   /** The preview Louez stored, as text; null when it cannot be shown. */
   preview: ShownPreview | null;
+  /**
+   * What the page shows first, when the request carries a display Louez
+   * reads as it writes them (`shownDisplay`): its headline and facts, each
+   * text on one line. Null otherwise (any other action, an older or unknown
+   * payload): the page shows the summary, as it always did.
+   */
+  display: ShownDisplay | null;
   /** What the action does, as the procedure declared it; the ones Louez does not know are left out. */
   consequences: Consequence[];
   /** Whether approving it asks for the box (`approvalAsksToTick`, from the consequences as stored). */
@@ -164,6 +174,7 @@ export async function readApprovalPage(
   if (!alive && open(row)) row = (await approvalRow(id)) ?? row;
   const stored = approvalPayloadOf(row) ?? payload;
   const preview = shownPreview(stored.preview);
+  const display = shownDisplay(stored.display)?.display ?? null;
   // The screen names the store: a name that shows nothing tells no store apart.
   // One letter or digit is a name ("UP", "Ab"): a store's name is its own.
   const readable = approvalIsReadable(stored) && isReadableText(member.storeName, 1);
@@ -182,6 +193,7 @@ export async function readApprovalPage(
       },
       agent: await agentOf(row),
       preview,
+      display,
       consequences: knownConsequences(stored.consequences),
       deliberate: approvalAsksToTick(stored.consequences),
       computedAt: row.linkIssuedAt,

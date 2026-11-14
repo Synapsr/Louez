@@ -31,6 +31,7 @@ import {
   type ActorStore,
 } from "../../platform/procedures";
 import type { StoreActor } from "../../platform/actor";
+import type { ApprovalPresentation } from "../../services/approval-display";
 import { upgradeStoredLink } from "../../services/handoffs";
 import {
   acceptInvitation,
@@ -110,7 +111,11 @@ function confirmTeamChange<TPreview extends { summary: string }>(
     consequences: Consequences;
   },
 ) {
-  return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
+  return (
+    preview: TPreview,
+    tx: Parameters<typeof checkConfirmation>[0]["executor"],
+    presentation?: ApprovalPresentation,
+  ) => {
     const { state, details, consequences } = describe(preview);
     return checkConfirmation({
       consequences,
@@ -121,6 +126,7 @@ function confirmTeamChange<TPreview extends { summary: string }>(
       input,
       state: { state, summary: preview.summary },
       preview: { summary: preview.summary, details },
+      display: presentation?.display,
     });
   };
 }

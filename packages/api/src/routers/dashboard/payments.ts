@@ -243,7 +243,7 @@ function paymentRecordsCaller(
     storeId: context.actor.storeId,
     storeSettings: context.store.settings ?? null,
     port,
-    confirm: (tx, { preview, state }) =>
+    confirm: (tx, { preview, state, presentation }) =>
       checkConfirmation({
         consequences: ["money"],
         executor: tx,
@@ -253,6 +253,7 @@ function paymentRecordsCaller(
         input,
         state,
         preview: { summary: preview.summary, details: { sensitive, ...preview.details } },
+        display: presentation?.display,
       }),
   };
 }

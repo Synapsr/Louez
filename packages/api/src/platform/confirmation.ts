@@ -10,6 +10,7 @@ import {
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 import type { ORPCError } from "@orpc/server";
 
+import type { ApprovalDisplay } from "../services/approval-display";
 import { carryOutPresentedApproval, requestApproval } from "../services/approvals";
 import type { ScopedActor } from "./actor";
 import {
@@ -77,6 +78,8 @@ export interface ApprovalToRequest {
   procedure: string;
   input: unknown;
   preview: ConfirmationPreview;
+  /** What a person reads first on the approval's page, when the branch builds one: stored, never answered. */
+  display?: ApprovalDisplay;
   consequences: Consequences;
   /** The consequential facts that make the request's identity (`approvalIdentity`). */
   facts: Record<string, unknown>;
@@ -156,6 +159,16 @@ export interface ConfirmationCheck {
   input: unknown;
   state: unknown;
   preview: ConfirmationPreview;
+  /**
+   * What a person reads first on the approval's page: a headline and a few
+   * typed facts (services/approval-display.ts), built by the same call as
+   * the preview, from its values. It is stored with an approval the call
+   * requests, and only the page reads it: never an answer's details, never
+   * `handoffs_get` nor the inbox. It is not part of the binding: it is
+   * derived from the input and the state the binding covers. Without it, the
+   * page shows the preview's summary.
+   */
+  display?: ApprovalDisplay;
   /**
    * What the branch about to run does (`Consequence`, platform/approval-rule.ts),
    * declared with its preview: who is asked follows from it. Never inferred
@@ -259,6 +272,7 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(
       procedure: input.procedure,
       input: input.input,
       preview: input.preview,
+      display: input.display,
       consequences: input.consequences,
       facts: input.approval.facts,
       scope: input.approval.scope,

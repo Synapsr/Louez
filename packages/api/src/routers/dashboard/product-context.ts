@@ -5,6 +5,7 @@ import { allows, type ApiDomain } from "../../platform/permissions";
 import type { StoreActor } from "../../platform/actor";
 import type { ActorStore } from "../../platform/procedures";
 import type { ApiPorts } from "../../platform/ports";
+import type { ApprovalPresentation } from "../../services/approval-display";
 import type { ProductActor } from "../../services/products";
 
 /**
@@ -51,7 +52,9 @@ export function requireReservationsAndCustomers(context: ProductContext) {
  * A confirmation asked under the write's lock, bound to what the preview
  * shows: `state`, and the summary and details themselves, so a name or a
  * date the caller was shown that changes since voids the token. `describe`
- * declares the consequences of the branch the preview shows.
+ * declares the consequences of the branch the preview shows. A branch a
+ * person approves hands, with its preview, what the person reads first
+ * (`presentation`): its display is stored with the approval, never bound.
  */
 export function confirmUnderLock<TPreview extends { summary: string }>(
   context: ProductContext,
@@ -63,7 +66,11 @@ export function confirmUnderLock<TPreview extends { summary: string }>(
     consequences: Consequences;
   },
 ) {
-  return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
+  return (
+    preview: TPreview,
+    tx: Parameters<typeof checkConfirmation>[0]["executor"],
+    presentation?: ApprovalPresentation | null,
+  ) => {
     const { state, details, consequences } = describe(preview);
     return checkConfirmation({
       consequences,
@@ -74,6 +81,7 @@ export function confirmUnderLock<TPreview extends { summary: string }>(
       input,
       state: { state, summary: preview.summary, details: details ?? null },
       preview: { summary: preview.summary, details },
+      display: presentation?.display,
     });
   };
 }

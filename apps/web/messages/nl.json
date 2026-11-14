@@ -9902,6 +9902,75 @@
           "description": "Hier valt niets meer te doen, en er is niets gedaan. Heeft je assistent het nog nodig, dan vraagt hij het opnieuw."
         },
         "shortened": "De samenvatting was te lang om volledig te tonen."
+      },
+      "display": {
+        "told": "Wat je assistent te horen kreeg",
+        "headline": {
+          "recordPayment": "Een ontvangen betaling registreren?",
+          "paidBack": "Een terugbetaling aan de klant registreren?",
+          "returnDeposit": "Een teruggegeven borg registreren?",
+          "deletePayment": "Een geregistreerde betaling verwijderen?",
+          "removeMember": "Iemand uit je team verwijderen?",
+          "cancelInvitation": "Een uitnodiging voor je team intrekken?",
+          "confirmWithinRules": "De boeking bevestigen?",
+          "confirmPastBuffer": "De boeking bevestigen ondanks je tijd tussen twee verhuren?",
+          "confirmBeyondStock": "De boeking bevestigen boven je voorraad?",
+          "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?",
+          "recordDeposit": "Een ontvangen borg registreren?"
+        },
+        "facts": {
+          "booking": "Boeking #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Boeking #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, terugbetaald aan de klant · <v>{method}</v>",
+          "returned": "Borg teruggegeven: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Borg die je hiervoor nog had: <v>{held}</v>",
+          "recordOnly": "Louez registreert het alleen: er wordt geen geld afgeschreven of terugbetaald.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Geregistreerd op <v>{atDate}</v> om <v>{atTime}</v>",
+          "leavesBalance": "Het verdwijnt uit het saldo van de boeking en uit je cijfers.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Lid sinds <v>{sinceDate}</v>",
+          "losesAccess": "Verliest meteen de toegang tot je klanten, boekingen en betalingen.",
+          "invited": "Uitnodiging verstuurd naar <v>{email}</v>",
+          "invitedOn": "Verstuurd op <v>{atDate}</v>",
+          "linkStops": "De link werkt niet meer: die persoon komt niet in je team.",
+          "period": "{periodSameDay, select, yes {Op <v>{periodStartDate}</v>, van <v>{periodStartTime}</v> tot <v>{periodEndTime}</v>} other {Van <v>{periodStartDate}</v> om <v>{periodStartTime}</v> tot <v>{periodEndDate}</v> om <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: {requested} gevraagd, {available, plural, =0 {geen vrij} other {maar # vrij}} met je tijd van <v>{buffer}</v> tussen twee verhuren",
+          "beyondStock": "<v>{product}</v>: {requested} gevraagd, {available, plural, =0 {geen op voorraad} other {maar # op voorraad}}: {missing} te weinig",
+          "moreLines": "{count, plural, one {En nog # regel buiten je regels} other {En nog # regels buiten je regels}}: zie de details",
+          "withinRules": "Je voorraad en je tijd tussen twee verhuren dekken het: niets gaat erover.",
+          "message": "<v>{customer}</v> krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
+          "messageToCustomer": "De klant krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
+          "noMessage": "De klant krijgt geen bericht.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Huur",
+            "deposit": "Borg",
+            "deposit_hold": "Borgreservering",
+            "deposit_capture": "Ingehouden borg",
+            "deposit_return": "Teruggave borg",
+            "damage": "Schade",
+            "adjustment": "Aanpassing"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Contant",
+            "card": "Kaart",
+            "transfer": "Overboeking",
+            "check": "Cheque",
+            "other": "Anders"
+          },
+          "customerMessage": {
+            "request_accepted": "aanvraag geaccepteerd",
+            "request_rejected": "aanvraag afgewezen",
+            "reservation_cancelled": "boeking geannuleerd"
+          }
+        }
       }
     }
   }

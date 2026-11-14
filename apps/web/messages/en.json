@@ -9902,6 +9902,75 @@
           "description": "Nothing more can be done with it here, and nothing was done. If your assistant still needs this, it will ask again."
         },
         "shortened": "The summary was too long to show whole."
+      },
+      "display": {
+        "told": "What your assistant was told",
+        "headline": {
+          "recordPayment": "Record a payment received?",
+          "paidBack": "Record money paid back to the customer?",
+          "returnDeposit": "Record a deposit given back?",
+          "deletePayment": "Delete a recorded payment?",
+          "removeMember": "Remove someone from your team?",
+          "cancelInvitation": "Cancel an invitation to your team?",
+          "confirmWithinRules": "Confirm the booking?",
+          "confirmPastBuffer": "Confirm the booking despite your turnover buffer?",
+          "confirmBeyondStock": "Confirm the booking beyond your stock?",
+          "confirmBeyondStockAndBuffer": "Confirm the booking beyond your stock and your turnover buffer?",
+          "recordDeposit": "Record a deposit collected?"
+        },
+        "facts": {
+          "booking": "Booking #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Booking #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> received · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, paid back to the customer · <v>{method}</v>",
+          "returned": "Deposit given back: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Deposit still held before this: <v>{held}</v>",
+          "recordOnly": "Louez only records it: no money is charged or refunded.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Recorded on <v>{atDate}</v> at <v>{atTime}</v>",
+          "leavesBalance": "It leaves the booking’s balance and your figures.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Member since <v>{sinceDate}</v>",
+          "losesAccess": "Loses access at once to your customers, bookings and payments.",
+          "invited": "Invitation sent to <v>{email}</v>",
+          "invitedOn": "Sent on <v>{atDate}</v>",
+          "linkStops": "Their link stops working: they won’t join your team.",
+          "period": "{periodSameDay, select, yes {On <v>{periodStartDate}</v>, from <v>{periodStartTime}</v> to <v>{periodEndTime}</v>} other {From <v>{periodStartDate}</v> at <v>{periodStartTime}</v> to <v>{periodEndDate}</v> at <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: {requested} requested, {available, plural, =0 {none free} other {only # free}} with your <v>{buffer}</v> turnover buffer",
+          "beyondStock": "<v>{product}</v>: {requested} requested, {available, plural, =0 {none in stock} other {only # in stock}}: {missing} missing",
+          "moreLines": "{count, plural, one {And # more line past your rules} other {And # more lines past your rules}}: see Details",
+          "withinRules": "Your stock and your turnover buffer cover it: nothing goes past them.",
+          "message": "<v>{customer}</v> will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
+          "messageToCustomer": "The customer will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
+          "noMessage": "No message goes to the customer.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> collected · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, given back to the customer · <v>{method}</v>"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Rental",
+            "deposit": "Deposit",
+            "deposit_hold": "Deposit hold",
+            "deposit_capture": "Deposit kept",
+            "deposit_return": "Deposit return",
+            "damage": "Damages",
+            "adjustment": "Adjustment"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Cash",
+            "card": "Card",
+            "transfer": "Bank transfer",
+            "check": "Check",
+            "other": "Other"
+          },
+          "customerMessage": {
+            "request_accepted": "request accepted",
+            "request_rejected": "request declined",
+            "reservation_cancelled": "booking cancelled"
+          }
+        }
       }
     }
   }

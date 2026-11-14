@@ -1,5 +1,18 @@
+import { z } from "zod";
+
 import { plainText } from "../contracts/handoffs";
 import { isConsequence, type Consequence } from "../platform/approval-rule";
+import {
+  CHOICES,
+  FACTS,
+  FACTS_MAX,
+  HEADLINES,
+  isChoice,
+  type ChoiceList,
+  type DisplayValue,
+  type FactKey,
+  type HeadlineKey,
+} from "./approval-display";
 
 /**
  * What an operation's approval shows a person of the preview Louez stored,
@@ -206,10 +219,15 @@ const detailsStayOnTheirLines = (entries: readonly ShownDetail[]): boolean =>
  * is `unreadable` on its page, and its decision refuses an approval of it
  * under its lock; refusing it stays possible.
  */
-export function approvalIsReadable(payload: { preview?: unknown } | null | undefined): boolean {
+export function approvalIsReadable(
+  payload: { preview?: unknown; display?: unknown } | null | undefined,
+): boolean {
   const preview = shownPreview(payload?.preview);
   if (preview === null || preview.truncated) return false;
-  return isReadableText(preview.summary) && detailsStayOnTheirLines(preview.details);
+  if (!isReadableText(preview.summary) || !detailsStayOnTheirLines(preview.details)) return false;
+  // A display the page shows must read whole too; one it cannot read as
+  // Louez wrote it is not shown, and the summary decides alone.
+  return shownDisplay(payload?.display)?.readable ?? true;
 }
 
 /** The consequences that are not a plain change the store can put back. */
@@ -247,10 +265,49 @@ const DIGEST_KEY = /Hash$|_hash$/;
 
 /**
  * The keys of technical identifiers: hidden when their group names the same
- * record another way (`NAMING_ENDINGS`), shown otherwise, as then nothing
- * else says which record it is.
+ * record another way, readably (`namedOtherwise`), shown otherwise, as then
+ * nothing else says which record it is.
  */
 const IDENTIFIER_KEY = /^id$|Id$|_id$/;
+
+/** What an identifier's key is about: `""` for a bare `id`, `customer` for `customerId` or `customer_id`. */
+const subjectOf = (key: string) =>
+  key === "id" ? "" : key.endsWith("_id") ? key.slice(0, -3) : key.slice(0, -2);
+
+/** A value that names a record to a person: a number, or a text with a letter or a digit to read. */
+const readableName = (value: unknown) =>
+  (typeof value === "number" && Number.isFinite(value)) ||
+  (typeof value === "string" && isReadableText(value, 1));
+
+/**
+ * Whether the group names readably the very record an identifier is about:
+ * for `customerId` (or `customer_id`), an entry `customerName`,
+ * `customerNumber`, `customerEmail`, `customerTitle` or `customerLabel` (or
+ * their snake-case forms), or the item's own heading when it was taken from
+ * `customer` or one of those; for a bare `id`, a bare `name`, `number`,
+ * `email`, `title` or `label`, or the item's own heading. Another record
+ * named in the group (`productName` next to `customerId`) names the
+ * customer not at all.
+ */
+function namedOtherwise(
+  key: string,
+  record: Record<string, unknown>,
+  heading: { key: string } | null,
+): boolean {
+  const subject = subjectOf(key);
+  const snake = key.endsWith("_id");
+  const namers = NAMING_ENDINGS.map((ending) =>
+    subject === ""
+      ? ending
+      : snake
+        ? `${subject}_${ending}`
+        : `${subject}${ending.charAt(0).toUpperCase()}${ending.slice(1)}`,
+  );
+  if (heading && (subject === "" || heading.key === subject || namers.includes(heading.key))) {
+    return true;
+  }
+  return namers.some((namer) => readableName(record[namer]));
+}
 
 /**
  * Whether a key ends with one of `endings`: the key itself ("amount"), a
@@ -316,29 +373,23 @@ const amountOf = (value: unknown): number | null => {
 
 /**
  * An object's entries, as a page shows them: digests left out, empty values
- * left out, identifiers left out when the group names the record another
- * way (`named`: the group's heading does, or one of its entries under
- * `NAMING_ENDINGS`); amounts under `AMOUNT_ENDINGS`, in a group that names
- * its currency, in that currency (the currency itself then said by them).
+ * left out, each identifier left out when the group names that same record
+ * readably (`namedOtherwise`: `heading` is the key the item's own heading
+ * was taken from, for an item of a list); amounts under `AMOUNT_ENDINGS`,
+ * in a group that names its currency, in that currency (the currency
+ * itself then said by them).
  */
 function entriesOf(
   record: Record<string, unknown>,
   depth: number,
-  named = false,
+  heading: { key: string } | null = null,
 ): ShownDetail[] {
   const code = typeof record.currency === "string" ? record.currency.trim() : "";
   const currency = CURRENCY.test(code) ? code.toUpperCase() : null;
-  const namesIt =
-    named ||
-    Object.entries(record).some(
-      ([key, value]) =>
-        !IDENTIFIER_KEY.test(key) &&
-        endsWithWord(key, NAMING_ENDINGS) &&
-        (typeof value === "number" || (typeof value === "string" && oneLine(value) !== "")),
-    );
   const entries: ShownDetail[] = [];
   for (const [key, value] of Object.entries(record)) {
-    if (DIGEST_KEY.test(key) || (namesIt && IDENTIFIER_KEY.test(key))) continue;
+    if (DIGEST_KEY.test(key)) continue;
+    if (IDENTIFIER_KEY.test(key) && namedOtherwise(key, record, heading)) continue;
     const amount = currency && endsWithWord(key, AMOUNT_ENDINGS) ? amountOf(value) : null;
     if (currency && key === "currency" && amountsIn(record)) continue;
     const shown: ShownValue | null =
@@ -358,9 +409,11 @@ const amountsIn = (record: Record<string, unknown>) =>
 
 /**
  * A value as a page shows it, or null when there is nothing to show (null,
- * an empty text, an object with nothing to show). An empty list is a fact
- * ("no message") and shows as a group with no entries. `dated`: its key
- * names a date, so an ISO text under it is one.
+ * an empty text, an object with nothing to show, a list whose items all
+ * had nothing to show). A list stored empty is a fact ("no message") and
+ * shows as a group with no entries; an item named by a heading and with
+ * nothing else to show is its heading alone. `dated`: its key names a
+ * date, so an ISO text under it is one.
  */
 function shownValue(value: unknown, depth: number, dated = false): ShownValue | null {
   if (value === null || value === undefined) return null;
@@ -376,15 +429,19 @@ function shownValue(value: unknown, depth: number, dated = false): ShownValue | 
     const entries = value.flatMap((item, index): ShownDetail[] => {
       const named = isRecord(item) ? NAME_KEYS.find((key) => typeof item[key] === "string") : undefined;
       const title = named && isRecord(item) ? oneLine(String(item[named])) : "";
-      if (named && title && isRecord(item)) {
+      // A heading names its item only when it can be read: otherwise the item
+      // keeps every entry, its identifier and its unreadable name included.
+      if (named && isReadableText(title, 1) && isRecord(item)) {
         const { [named]: _name, ...rest } = item;
-        const group = entriesOf(rest, depth + 1, true);
-        return [{ label: title, value: { kind: "group", entries: group } }];
+        const group = entriesOf(rest, depth + 1, { key: named });
+        return group.length > 0
+          ? [{ label: title, value: { kind: "group", entries: group } }]
+          : [{ label: "", value: { kind: "text", text: title } }];
       }
       const shown = shownValue(item, depth + 1);
       return shown ? [{ label: String(index + 1), value: shown }] : [];
     });
-    return { kind: "group", entries };
+    return entries.length > 0 || value.length === 0 ? { kind: "group", entries } : null;
   }
   if (isRecord(value)) {
     const entries = entriesOf(value, depth);
@@ -421,4 +478,133 @@ function labelOf(key: string): string {
     .map((word) => (/^[A-Z0-9]{2,}$/.test(word) ? word : word.toLowerCase()));
   const text = words.join(" ");
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// --- The display: what the page shows first, when the request carries one ---
+
+/** A display as the page shows it: its keys, and its values with each text on one line. */
+export interface ShownDisplay {
+  headline: { key: HeadlineKey; values: Record<string, DisplayValue> };
+  facts: Array<{ key: FactKey; values: Record<string, DisplayValue> }>;
+}
+
+/**
+ * The most characters a text value of a display shows, once on one line: a
+ * product's name of a few hundred characters still wraps on a phone; past
+ * this, the request cannot be shown whole.
+ */
+export const DISPLAY_TEXT_MAX = 500;
+
+const isoInstant = z
+  .string()
+  .regex(ISO_DATE_TIME)
+  .refine((value) => !Number.isNaN(Date.parse(value)));
+
+const isChoiceList = (list: unknown): list is ChoiceList =>
+  typeof list === "string" && Object.hasOwn(CHOICES, list);
+
+/** Each value as Louez writes it, nothing more: a key it does not know makes the display unknown. */
+const displayValue = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("text"), text: z.string() }),
+  z.strictObject({
+    type: z.literal("money"),
+    amount: z.string().regex(/^-?\d{1,12}(?:\.\d{1,4})?$/),
+    currency: z.string().regex(/^[A-Z]{3}$/),
+  }),
+  z.strictObject({ type: z.literal("dateTime"), at: isoInstant }),
+  z
+    .strictObject({ type: z.literal("dateRange"), start: isoInstant, end: isoInstant })
+    .refine((range) => Date.parse(range.start) <= Date.parse(range.end)),
+  z.strictObject({ type: z.literal("count"), value: z.number().int().min(0).max(1_000_000) }),
+  z.strictObject({ type: z.literal("duration"), minutes: z.number().int().min(1).max(525_600) }),
+  z.strictObject({
+    type: z.literal("choice"),
+    list: z.custom<ChoiceList>(isChoiceList),
+    value: z.string(),
+  }),
+]);
+
+const displayLine = z.strictObject({
+  key: z.string(),
+  values: z.record(z.string(), displayValue),
+  ref: z.string().optional(),
+});
+
+const storedDisplay = z.strictObject({
+  headline: displayLine.omit({ ref: true }),
+  facts: z.array(displayLine).min(1).max(FACTS_MAX),
+});
+
+type ValueSpecs = Record<string, { type: string; list?: ChoiceList }>;
+
+/**
+ * A line's values, as its key declares them, or null: every value its key
+ * names, of the type and the list it names, a choice one of its list's, and
+ * no value its key does not name.
+ */
+function valuesAsDeclared(
+  specs: ValueSpecs,
+  values: Record<string, z.infer<typeof displayValue>>,
+): Record<string, DisplayValue> | null {
+  const names = Object.keys(specs);
+  if (Object.keys(values).length !== names.length) return null;
+  const shown: Record<string, DisplayValue> = {};
+  for (const name of names) {
+    const spec = specs[name];
+    const value = values[name];
+    if (!spec || !value || value.type !== spec.type) return null;
+    if (value.type === "choice") {
+      if (value.list !== spec.list || !isChoice(value.list, value.value)) return null;
+      shown[name] = { type: "choice", list: value.list, value: value.value };
+    } else {
+      shown[name] = value.type === "text" ? { type: "text", text: oneLine(value.text) } : value;
+    }
+  }
+  return shown;
+}
+
+const hasKey = <T extends object>(table: T, key: string): key is Extract<keyof T, string> =>
+  Object.hasOwn(table, key);
+
+/**
+ * Whether a text value shows whole, on its line: what a name needs to say
+ * something (`isReadableText`, one letter or digit: a name of joiners and
+ * variation selectors says nothing), within `DISPLAY_TEXT_MAX`.
+ */
+const textReads = (value: string) =>
+  [...value].length <= DISPLAY_TEXT_MAX && isReadableText(value, 1);
+
+/**
+ * The display an approval carries, as the page shows it, or null when it
+ * carries none or one Louez cannot read as it writes them (a key or a value
+ * it does not know, a value of another type, more facts than it shows: an
+ * older or forged payload). The page then shows the summary, as for any
+ * other action. `readable` is false when a text value shows nothing, runs
+ * past `DISPLAY_TEXT_MAX` or draws off its line: the request then cannot be
+ * approved (`approvalIsReadable`).
+ */
+export function shownDisplay(
+  stored: unknown,
+): { display: ShownDisplay; readable: boolean } | null {
+  if (stored === undefined || stored === null) return null;
+  const parsed = storedDisplay.safeParse(stored);
+  if (!parsed.success) return null;
+  const { headline, facts } = parsed.data;
+  if (!hasKey(HEADLINES, headline.key)) return null;
+  const headlineValues = valuesAsDeclared(HEADLINES[headline.key], headline.values);
+  if (!headlineValues) return null;
+  const shownFacts: ShownDisplay["facts"] = [];
+  for (const line of facts) {
+    if (!hasKey(FACTS, line.key)) return null;
+    const values = valuesAsDeclared(FACTS[line.key], line.values);
+    if (!values) return null;
+    shownFacts.push({ key: line.key, values });
+  }
+  const texts = [headlineValues, ...shownFacts.map((line) => line.values)].flatMap((values) =>
+    Object.values(values).flatMap((value) => (value.type === "text" ? [value.text] : [])),
+  );
+  return {
+    display: { headline: { key: headline.key, values: headlineValues }, facts: shownFacts },
+    readable: texts.every(textReads),
+  };
 }

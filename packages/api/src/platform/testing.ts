@@ -12,6 +12,7 @@ import { checkConfirmation, raiseConfirmation, requireConfirmation } from "./con
 import { platformErrors } from "./errors";
 import { sha256 } from "./hash";
 import type { ProcedureScope } from "./permissions";
+import type { ApprovalDisplay } from "../services/approval-display";
 import { storeProcedure } from "./procedures";
 
 /** The fixture's paths, in the order a registry would list them. */
@@ -39,13 +40,16 @@ const ERASE_SCOPE: ProcedureScope = { domain: "categories", level: "write", role
  * `deadlocksBeforeCommit` makes `erase`'s transaction fail that many times
  * with a deadlock once it has asked (refused or let through), as a write
  * retried on a deadlock does;
- * `whileAsked` runs in that transaction once it has asked, its locks held.
+ * `whileAsked` runs in that transaction once it has asked, its locks held;
+ * `display` builds what a person reads first from the input, as a branch a
+ * person approves builds it from its preview's values.
  */
 export function createFixtureRouter(
   options: {
     liveConsequences?: readonly Consequence[];
     deadlocksBeforeCommit?: number;
     whileAsked?: () => Promise<void>;
+    display?: (input: { id: string; amount?: number }, store: { name: string }) => ApprovalDisplay;
   } = {},
 ) {
   let runs = 0;
@@ -157,6 +161,7 @@ export function createFixtureRouter(
                 summary: `Erase note ${input.id} of ${store.name}.`,
                 details: { id: input.id, amount: input.amount ?? null },
               },
+              display: options.display?.(input, store),
               approval: {
                 facts: {
                   id: input.id,

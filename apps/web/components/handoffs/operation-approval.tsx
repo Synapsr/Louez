@@ -9,6 +9,7 @@ import { WarningIcon } from "@louez/ui/icons";
 
 import { ApprovalAgentName } from "@/components/handoffs/approval-agent-name";
 import { ApprovalDetails } from "@/components/handoffs/approval-details";
+import { ApprovalDisplay } from "@/components/handoffs/approval-display";
 import { ApprovalPreviewSummary } from "@/components/handoffs/approval-preview-summary";
 import { HandoffCard } from "@/components/handoffs/handoff-card";
 import { HandoffDecisionForm } from "@/components/handoffs/handoff-decision-form";
@@ -44,17 +45,19 @@ interface OperationApprovalProps {
  * An agent's request a person approves or refuses, on a phone as often as
  * not, decided from one screen: what kind of action, in which store and
  * asked by whom (one line under the title, so an owner of two stores knows
- * which one), the one sentence of what Louez will do, that only Louez's
- * summary counts, what cannot be undone, the lapse when it is close, the box
- * when one is required, and the two buttons. Everything else is on request,
- * in closed disclosures: who asks in full and for which account, what Louez
- * checked, when it worked it out and when the request lapses, the fuller
- * safety sentence ("Details"), and the words for the assistant ("Add a
- * note"), which are posted either way. Until previews are built from
- * templates (pull request 6b), the details are where a fact absent from the
- * sentence is found. The
- * answer posts the revision and the binding shown, so it decides what the
- * person read.
+ * which one), what Louez will do, that only Louez's summary counts, what
+ * cannot be undone, the lapse when it is close, the box when one is
+ * required, and the two buttons. When the request carries a display (the
+ * actions a person must approve), its headline is the page's title, one
+ * question, and what Louez will do is its facts, in the person's language;
+ * otherwise the title names the kind of action and what Louez will do is
+ * its one sentence. Everything
+ * else is on request, in closed disclosures: who asks in full and for which
+ * account, the sentence the assistant was given (with a display), what
+ * Louez checked, when it worked it out and when the request lapses, the
+ * fuller safety sentence ("Details"), and the words for the assistant ("Add
+ * a note"), which are posted either way. The answer posts the revision and
+ * the binding shown, so it decides what the person read.
  */
 export const OperationApproval = ({ action, approval, email, note }: OperationApprovalProps) => {
   const t = useTranslations("handoff.operation_approval");
@@ -66,7 +69,11 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
 
   return (
     <HandoffCard
-      title={t(`title.${headline}`)}
+      title={
+        approval.display
+          ? t(`display.headline.${approval.display.headline.key}`)
+          : t(`title.${headline}`)
+      }
       description={
         // Each name bounded and isolated: a long or right-to-left name
         // pushes and reorders nothing else on the line.
@@ -98,7 +105,11 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
         }}
       >
         <div className="space-y-1">
-          <ApprovalPreviewSummary preview={approval.preview} />
+          {approval.display ? (
+            <ApprovalDisplay display={approval.display} timeZone={approval.store.timeZone} />
+          ) : (
+            <ApprovalPreviewSummary preview={approval.preview} />
+          )}
           <p className="text-muted-foreground text-xs">{t("trustShort")}</p>
         </div>
         {stakes.length > 0 && (
@@ -127,6 +138,14 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
               {t("forAccount", { email, store: approval.store.name })}
             </p>
           </section>
+          {approval.display && (
+            <section className="space-y-1">
+              <h2 className="text-muted-foreground text-xs font-medium">{t("display.told")}</h2>
+              <p className="text-muted-foreground overflow-hidden text-sm wrap-break-word">
+                {approval.preview.summary}
+              </p>
+            </section>
+          )}
           {approval.preview.details.length > 0 && (
             <section className="space-y-1">
               <h2 className="text-muted-foreground text-xs font-medium">{t("checked")}</h2>

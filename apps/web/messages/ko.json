@@ -9902,6 +9902,75 @@
           "description": "여기서 더 할 수 있는 일은 없으며, 아무 작업도 하지 않았습니다. 어시스턴트가 아직 필요하면 다시 요청합니다."
         },
         "shortened": "요약이 너무 길어 전부 표시하지 못했습니다."
+      },
+      "display": {
+        "told": "어시스턴트에게 전달된 내용",
+        "headline": {
+          "recordPayment": "받은 결제를 기록할까요?",
+          "paidBack": "고객에게 돌려준 금액을 기록할까요?",
+          "returnDeposit": "돌려준 보증금을 기록할까요?",
+          "deletePayment": "기록된 결제를 삭제할까요?",
+          "removeMember": "팀에서 멤버를 내보낼까요?",
+          "cancelInvitation": "팀 초대를 취소할까요?",
+          "confirmWithinRules": "예약을 확정할까요?",
+          "confirmPastBuffer": "대여 사이 간격을 지키지 않고 예약을 확정할까요?",
+          "confirmBeyondStock": "재고를 넘겨 예약을 확정할까요?",
+          "confirmBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 확정할까요?",
+          "recordDeposit": "받은 보증금을 기록할까요?"
+        },
+        "facts": {
+          "booking": "예약 #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "예약 #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> 받음 · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>",
+          "returned": "보증금 반환: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "이전까지 보관 중인 보증금: <v>{held}</v>",
+          "recordOnly": "Louez는 기록만 합니다. 청구도 환불도 하지 않습니다.",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v> 결제",
+          "recordedOn": "<v>{atDate}</v> <v>{atTime}</v>에 기록됨",
+          "leavesBalance": "예약 잔액과 매장 수치에서 빠집니다.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "<v>{sinceDate}</v>부터 멤버",
+          "losesAccess": "고객, 예약, 결제에 대한 접근 권한을 즉시 잃습니다.",
+          "invited": "<v>{email}</v>에게 보낸 초대",
+          "invitedOn": "<v>{atDate}</v>에 보냄",
+          "linkStops": "초대 링크가 더 이상 작동하지 않아 팀에 합류하지 않습니다.",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>~<v>{periodEndTime}</v>} other {<v>{periodStartDate}</v> <v>{periodStartTime}</v>부터 <v>{periodEndDate}</v> <v>{periodEndTime}</v>까지}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: {requested}개 요청, <v>{buffer}</v> 간격을 지키면 {available, plural, =0 {남는 것 없음} other {#개만 남음}}",
+          "beyondStock": "<v>{product}</v>: {requested}개 요청, {available, plural, =0 {재고 없음} other {재고 #개뿐}}: {missing}개 부족",
+          "moreLines": "{count, plural, other {규칙을 넘는 항목이 #개 더 있습니다}}: 세부 정보를 확인하세요",
+          "withinRules": "재고와 대여 사이 간격 안에서 처리됩니다: 넘는 것이 없습니다.",
+          "message": "<v>{customer}</v> 님에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
+          "messageToCustomer": "고객에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
+          "noMessage": "고객에게 메시지가 가지 않습니다.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> 받음 · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "대여료",
+            "deposit": "보증금",
+            "deposit_hold": "보증금 가승인",
+            "deposit_capture": "보증금 청구",
+            "deposit_return": "보증금 반환",
+            "damage": "손해",
+            "adjustment": "조정"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "현금",
+            "card": "카드",
+            "transfer": "계좌이체",
+            "check": "수표",
+            "other": "기타"
+          },
+          "customerMessage": {
+            "request_accepted": "요청 수락",
+            "request_rejected": "요청 거절",
+            "reservation_cancelled": "예약 취소"
+          }
+        }
       }
     }
   }
