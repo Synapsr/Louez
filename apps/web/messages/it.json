@@ -9861,11 +9861,16 @@
         "hint": "Il tuo assistente le legge con la tua risposta. Al massimo {max} caratteri."
       },
       "error": {
-        "failed": "Non è stato possibile registrare la tua risposta. Rileggi la richiesta, poi rispondi."
+        "failed": "Non è stato possibile registrare la tua risposta. Rileggi la richiesta, poi rispondi.",
+        "acknowledge": "Spunta la casella per confermare di aver letto cosa farà Louez, poi approva. Non è stato deciso nulla."
       },
       "unreadable": {
         "title": "Questa richiesta non può essere mostrata",
         "description": "Louez non può mostrare i dettagli di questa richiesta, quindi non può essere approvata qui. Non è stato fatto nulla. Il tuo assistente può chiederlo di nuovo."
+      },
+      "tooLong": {
+        "title": "Questa richiesta è troppo lunga da mostrare",
+        "description": "Il riepilogo di Louez è troppo lungo per essere mostrato per intero in questa pagina, quindi la richiesta non può essere approvata qui. Non è stato fatto nulla. Il tuo assistente può chiederlo di nuovo."
       },
       "done": {
         "request": "La richiesta",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Questa richiesta è terminata",
           "description": "Qui non c’è più niente da fare, e non è stato fatto nulla. Se il tuo assistente ne ha ancora bisogno, lo chiederà di nuovo."
-        }
+        },
+        "shortened": "Il riepilogo era troppo lungo per essere mostrato per intero."
       }
     }
   }

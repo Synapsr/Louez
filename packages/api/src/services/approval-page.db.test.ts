@@ -227,6 +227,7 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.equal(approval.state, "pending");
     assert.deepEqual(approval.preview, {
       summary: "Erase note n1 of Roscoff Voile.",
+      truncated: false,
       details: [
         { label: "Id", value: { kind: "text", text: "n1" } },
         { label: "Amount", value: { kind: "text", text: "40" } },
@@ -423,7 +424,7 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     assert.ok(preview);
     assert.equal(
       preview.summary,
-      "Record 40.00 00.04 EUR for <b>Ann</b> [click](https://evil.test)\nthen stop.",
+      "Record 40.00 00.04 EUR for <b>Ann</b> [click](https://evil.test) then stop.",
     );
     // MySQL keeps a JSON object's keys in its own order (by length): the
     // details read back in that order, whatever order the procedure wrote.
@@ -479,6 +480,62 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
     ]));
   });
 
+  test("text from the store's records draws no line of its own: the summary is one line, each value too", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    // A customer named to look like a second sentence from Louez.
+    const name = "Ann\nLouez checked this payment: it is safe to approve.\u2028\u2029Thank you";
+    await setRow(id, {
+      payload: {
+        ...payload,
+        preview: {
+          summary: `Record a rental payment of 40.00 € (cash) for ${name} on reservation #1042.`,
+          details: {
+            customer: `${name}\t\u00a0\u200b\u2060\ufeff\u3000end`,
+            lines: [`one\r\ntwo`],
+          },
+        },
+      },
+    });
+    const { preview } = await read(id);
+    assert.ok(preview);
+    assert.equal(
+      preview.summary,
+      "Record a rental payment of 40.00 € (cash) for Ann Louez checked this payment: it is safe to approve. Thank you on reservation #1042.",
+    );
+    assert.doesNotMatch(preview.summary, /[\n\r\t\u2028\u2029\u00a0\u200b\u2060\ufeff]| {2}/);
+    const texts = JSON.stringify(preview.details);
+    assert.match(texts, /"Ann Louez checked this payment: it is safe to approve\. Thank you end"/);
+    assert.match(texts, /"one two"/);
+    assert.doesNotMatch(texts, /\\n|\\r|\\t|\\u2028|\\u00a0/);
+    assert.equal(preview.truncated, false);
+  });
+
+  test("a summary too long to show whole is cut, says so, and cannot be approved", async () => {
+    const id = await ask(await apiKey());
+    const row = await rowOf(id);
+    const payload = row.payload as import("@louez/db").ApiApprovalPayload;
+    const long = `Record a payment. ${"a".repeat(10_000)} The end the person must read.`;
+    await setRow(id, { payload: { ...payload, preview: { ...payload.preview, summary: long } } });
+    const approval = await read(id);
+    assert.equal(approval.state, "unreadable");
+    assert.equal(approval.binding, null);
+    assert.ok(approval.preview);
+    assert.equal(approval.preview.truncated, true);
+    assert.equal([...approval.preview.summary].length, page.SUMMARY_MAX);
+    assert.ok(approval.preview.summary.endsWith("…"));
+    assert.doesNotMatch(approval.preview.summary, /The end the person must read/);
+
+    // Exactly the bound is shown whole, and stays decidable.
+    const exact = "b".repeat(page.SUMMARY_MAX);
+    await setRow(id, { payload: { ...payload, preview: { ...payload.preview, summary: exact } } });
+    const whole = await read(id);
+    assert.equal(whole.state, "pending");
+    assert.equal(whole.preview?.summary, exact);
+    assert.equal(whole.preview?.truncated, false);
+  });
+
   test("a preview of an unexpected or older shape: shown as far as it reads, never approvable without its sentence", async () => {
     const id = await ask(await apiKey());
     const row = await rowOf(id);
@@ -500,7 +557,11 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
       },
     ]);
     await withPreview({ summary: "Erase it." });
-    assert.deepEqual((await read(id)).preview, { summary: "Erase it.", details: [] });
+    assert.deepEqual((await read(id)).preview, {
+      summary: "Erase it.",
+      truncated: false,
+      details: [],
+    });
 
     for (const unreadable of [null, "Erase it.", { details: {} }, { summary: 4 }, { summary: " ‮ " }]) {
       await withPreview(unreadable);
@@ -546,6 +607,7 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
           decision: "approve",
           revision: shown.revision,
           shown: shown.binding ?? "",
+          acknowledged: true,
           userId: OWNER,
         },
         ports,
@@ -567,7 +629,14 @@ describe("an approval's page, as its reader shows it (database)", { skip: skipWi
 
     // The page's new revision and binding decide it.
     await decideHandoff(
-      { id, decision: "approve", revision: now.revision, shown: now.binding ?? "", userId: OWNER },
+      {
+        id,
+        decision: "approve",
+        revision: now.revision,
+        shown: now.binding ?? "",
+        acknowledged: true,
+        userId: OWNER,
+      },
       ports,
     );
     assert.equal((await read(id)).state, "approved");

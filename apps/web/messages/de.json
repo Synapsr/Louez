@@ -9861,11 +9861,16 @@
         "hint": "Ihr Assistent liest es mit Ihrer Antwort. Höchstens {max} Zeichen."
       },
       "error": {
-        "failed": "Ihre Antwort konnte nicht gespeichert werden. Lesen Sie die Anfrage noch einmal und antworten Sie dann."
+        "failed": "Ihre Antwort konnte nicht gespeichert werden. Lesen Sie die Anfrage noch einmal und antworten Sie dann.",
+        "acknowledge": "Setzen Sie das Häkchen, um zu bestätigen, dass Sie gelesen haben, was Louez tun wird, und genehmigen Sie dann. Es wurde nichts entschieden."
       },
       "unreadable": {
         "title": "Diese Anfrage kann nicht angezeigt werden",
         "description": "Louez kann die Details dieser Anfrage nicht anzeigen, daher kann sie hier nicht genehmigt werden. Es wurde nichts getan. Ihr Assistent kann erneut fragen."
+      },
+      "tooLong": {
+        "title": "Diese Anfrage ist zu lang zum Anzeigen",
+        "description": "Die Zusammenfassung von Louez ist zu lang, um auf dieser Seite vollständig angezeigt zu werden, daher kann die Anfrage hier nicht genehmigt werden. Es wurde nichts getan. Ihr Assistent kann erneut fragen."
       },
       "done": {
         "request": "Die Anfrage",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Diese Anfrage ist beendet",
           "description": "Hier gibt es nichts mehr zu tun, und es wurde nichts getan. Wenn Ihr Assistent es noch braucht, fragt er erneut."
-        }
+        },
+        "shortened": "Die Zusammenfassung war zu lang, um vollständig angezeigt zu werden."
       }
     }
   }

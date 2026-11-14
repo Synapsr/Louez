@@ -9861,11 +9861,16 @@
         "hint": "Tu asistente las lee con tu respuesta. {max} caracteres como máximo."
       },
       "error": {
-        "failed": "No se pudo guardar tu respuesta. Vuelve a leer la solicitud y responde."
+        "failed": "No se pudo guardar tu respuesta. Vuelve a leer la solicitud y responde.",
+        "acknowledge": "Marca la casilla para confirmar que has leído lo que va a hacer Louez y luego aprueba. No se ha decidido nada."
       },
       "unreadable": {
         "title": "Esta solicitud no se puede mostrar",
         "description": "Louez no puede mostrar el detalle de esta solicitud, así que no se puede aprobar aquí. No se ha hecho nada. Tu asistente puede volver a pedirlo."
+      },
+      "tooLong": {
+        "title": "Esta solicitud es demasiado larga para mostrarla",
+        "description": "El resumen de Louez es demasiado largo para mostrarlo entero en esta página, así que la solicitud no se puede aprobar aquí. No se ha hecho nada. Tu asistente puede volver a pedirlo."
       },
       "done": {
         "request": "La solicitud",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Esta solicitud ha terminado",
           "description": "Aquí ya no queda nada por hacer, y no se hizo nada. Si tu asistente todavía lo necesita, lo volverá a pedir."
-        }
+        },
+        "shortened": "El resumen era demasiado largo para mostrarlo entero."
       }
     }
   }

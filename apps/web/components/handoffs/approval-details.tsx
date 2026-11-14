@@ -4,8 +4,9 @@ import type { ShownDetail } from "@louez/api/services/approval-page";
 
 /**
  * The details of an approval's preview, as text, a nested list in its own
- * list. Each text value is its own isolated run (`bdi`): a name written right
- * to left cannot move the text around it. A level's labels are its keys, or
+ * list: one value per box, each on one line (`oneLine`). Each text value is
+ * its own isolated run (`bdi`): a name written right to left cannot move the
+ * text around it. A level's labels are its keys, or
  * its items' places, so each is unique within it.
  */
 export const ApprovalDetails = ({ entries }: { entries: ShownDetail[] }) => {
@@ -17,7 +18,7 @@ export const ApprovalDetails = ({ entries }: { entries: ShownDetail[] }) => {
           {label && <dt className="text-muted-foreground wrap-anywhere">{label}</dt>}
           <dd className={label ? "min-w-0" : "min-w-0 sm:col-span-2"}>
             {value.kind === "text" ? (
-              <bdi className="whitespace-pre-line wrap-anywhere">{value.text}</bdi>
+              <bdi className="wrap-anywhere">{value.text}</bdi>
             ) : value.kind === "list" && value.entries.length > 0 ? (
               <ApprovalDetails entries={value.entries} />
             ) : value.kind === "yes" || value.kind === "no" ? (

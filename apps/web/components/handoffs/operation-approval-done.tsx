@@ -45,6 +45,9 @@ export const OperationApprovalDone = ({
             </h2>
             <p className="text-muted-foreground text-sm wrap-anywhere">{approval.store.name}</p>
             <ApprovalPreviewSummary preview={approval.preview} />
+            {approval.preview.truncated && (
+              <p className="text-muted-foreground text-xs">{t("shortened")}</p>
+            )}
           </section>
           {words && (
             <section className="space-y-1">

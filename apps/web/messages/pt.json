@@ -9861,11 +9861,16 @@
         "hint": "O seu assistente lê-a com a sua resposta. No máximo {max} caracteres."
       },
       "error": {
-        "failed": "Não foi possível registar a sua resposta. Leia o pedido novamente e responda."
+        "failed": "Não foi possível registar a sua resposta. Leia o pedido novamente e responda.",
+        "acknowledge": "Marque a caixa para confirmar que leu o que o Louez vai fazer e depois aprove. Nada foi decidido."
       },
       "unreadable": {
         "title": "Este pedido não pode ser mostrado",
         "description": "O Louez não consegue mostrar os detalhes deste pedido, por isso não pode ser aprovado aqui. Nada foi feito. O seu assistente pode voltar a pedir."
+      },
+      "tooLong": {
+        "title": "Este pedido é demasiado longo para ser mostrado",
+        "description": "O resumo do Louez é demasiado longo para ser mostrado por inteiro nesta página, por isso o pedido não pode ser aprovado aqui. Nada foi feito. O seu assistente pode voltar a pedir."
       },
       "done": {
         "request": "O pedido",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Este pedido terminou",
           "description": "Já não há nada a fazer aqui, e nada foi feito. Se o seu assistente ainda precisar, voltará a pedir."
-        }
+        },
+        "shortened": "O resumo era demasiado longo para ser mostrado por inteiro."
       }
     }
   }

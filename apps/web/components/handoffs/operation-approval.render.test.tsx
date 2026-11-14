@@ -25,6 +25,7 @@ const minutes = (count: number) => new Date(NOW.getTime() + count * 60_000);
 
 const PREVIEW: ShownPreview = {
   summary: "Record a rental payment of 40.00 € (cash) on reservation #1042.",
+  truncated: false,
   details: [
     { label: "Number", value: { kind: "text", text: "1042" } },
     { label: "Amount", value: { kind: "text", text: "40" } },
@@ -128,26 +129,38 @@ describe("the approval's page", () => {
       ],
     );
     assert.equal(tags(html, "textarea")[0]?.maxLength, "500");
-    // Nothing but the two buttons posts an answer; the box to tick posts nothing.
+    // Besides the two buttons, only the box posts: "yes" once ticked.
     const named = tags(html, "input").filter((input) => input.name);
     assert.deepEqual(
       named.map((input) => input.name),
-      ["revision", "shown"],
+      ["revision", "shown", "acknowledged"],
     );
+    const [box] = tags(html, "input").filter((input) => input.type === "checkbox");
+    assert.equal(box?.value, "yes");
   });
 
-  test("money, a stock override or an access removed waits for the box: a tap on Approve alone does nothing", () => {
+  /** An attribute of a tag, whatever its case (React writes `formNoValidate`). */
+  const has = (attributes: Record<string, string>, name: string) =>
+    Object.keys(attributes).some((key) => key.toLowerCase() === name);
+
+  test("money, a stock override or an access removed waits for the box, in the browser itself: a required checkbox, Refuse skips it", () => {
     for (const consequences of [["money"], ["stock_override"], ["access_removed"]] as const) {
       const html = renderPage({ consequences: [...consequences], deliberate: true });
+      const [box] = tags(html, "input").filter((input) => input.type === "checkbox");
+      assert.ok(box && has(box, "required"), consequences[0]);
+      assert.equal(box.name, "acknowledged");
       const buttons = tags(html, "button").filter((button) => button.name === "decision");
       assert.deepEqual(
-        buttons.map((button) => [button.value, "disabled" in button]),
+        buttons.map((button) => [button.value, has(button, "formnovalidate"), has(button, "disabled")]),
         [
-          ["refuse", false],
-          ["approve", true],
+          ["refuse", true, false],
+          ["approve", false, false],
         ],
         consequences[0],
       );
+      // Approve only looks dimmed while the form is invalid: nothing blocks a ticked form.
+      assert.match(buttons[1]?.class ?? "", /group-has-\[:invalid\]:opacity-60/);
+      assert.match(tags(html, "form")[0]?.class ?? "", /\bgroup\b/);
       assert.match(textOf(html), /I have read what Louez will do/);
     }
   });
@@ -158,8 +171,9 @@ describe("the approval's page", () => {
     assert.match(text, /Approve this change\?/);
     assert.doesNotMatch(text, /I have read what Louez will do/);
     assert.doesNotMatch(html, /data-slot="alert"/);
-    const approve = tags(html, "button").find((button) => button.value === "approve");
-    assert.ok(approve && !("disabled" in approve));
+    assert.equal(tags(html, "input").filter((input) => input.type === "checkbox").length, 0);
+    const buttons = tags(html, "button");
+    assert.ok(buttons.every((button) => !has(button, "disabled") && !has(button, "formnovalidate")));
   });
 
   test("the gravest consequence names the page; each is shown, what cannot be put back as a warning", () => {
@@ -175,14 +189,17 @@ describe("the approval's page", () => {
     assert.ok(alerts.every((alert) => alert.role === "note"));
   });
 
-  test("the preview's text stays text: markup is escaped, each detail value is isolated", () => {
+  test("the preview's text stays text: one paragraph, markup escaped, each detail value isolated on one line", () => {
     const html = renderPage({
       preview: {
-        summary: "Pay <b>Ann</b> [now](https://evil.test)\nthen stop",
+        summary: "Pay <b>Ann</b> [now](https://evil.test) then stop",
+        truncated: false,
         details: [{ label: "Customer <i>", value: { kind: "text", text: "שרה <img src=x>" } }],
       },
     });
-    assert.match(html, /Pay &lt;b&gt;Ann&lt;\/b&gt; \[now\]\(https:\/\/evil\.test\)\nthen stop/);
+    assert.match(html, /<p class="[^"]*">Pay &lt;b&gt;Ann&lt;\/b&gt; \[now\]\(https:\/\/evil\.test\) then stop<\/p>/);
+    // Nothing on the page keeps a line break the text holds.
+    assert.doesNotMatch(html, /whitespace-pre|<br/);
     assert.doesNotMatch(html, /<b>Ann/);
     assert.doesNotMatch(html, /<img src=x>/);
     assert.doesNotMatch(html, /href="https:\/\/evil/);
@@ -196,6 +213,7 @@ describe("the approval's page", () => {
     const html = renderPage({
       preview: {
         summary: "Confirm it.",
+        truncated: false,
         details: [
           {
             label: "Lines",
@@ -289,6 +307,14 @@ describe("the approval's result", () => {
       decision: { outcome: "approved", at: minutes(-1), reason: "Oui, en espèces" },
     });
     assert.match(approvedWithWords, /Your words Oui, en espèces/);
+  });
+
+  test("a summary too long to show whole says so under it", () => {
+    const text = renderDone("expired", {
+      preview: { summary: "Record a payment…", truncated: true, details: [] },
+    });
+    assert.match(text, /Record a payment… The summary was too long to show whole\./);
+    assert.doesNotMatch(renderDone("expired"), /too long/);
   });
 
   test("a request whose preview cannot be read shows no recap", () => {

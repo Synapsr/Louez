@@ -182,6 +182,11 @@ export const decideHandoffInput = z.object({
   revision: z.number().int().positive(),
   /** The kind's digest of what the page showed (`invitationShown`): another one decides nothing. */
   shown: z.string().regex(/^[0-9a-f]{64}$/),
+  /**
+   * The page's box "I have read what Louez will do" was ticked: an approval
+   * whose consequences ask for it is not approved without it.
+   */
+  acknowledged: z.boolean().optional(),
 });
 export const decideHandoffOutput = z.object({
   /** The step the agent reads with handoffs_get. */
@@ -228,8 +233,13 @@ export const handoffErrors = {
       message:
         reason === "changed"
           ? "The request changed since the page showed it, and nothing was decided: look at it again, then answer."
-          : "This approval link no longer works, or is not for this account.",
-      i18nKey: `handoff.refused.${reason}.title`,
+          : reason === "not_acknowledged"
+            ? "Tick that you read what Louez will do, then approve: nothing was decided."
+            : "This approval link no longer works, or is not for this account.",
+      i18nKey:
+        reason === "not_acknowledged"
+          ? "handoff.operation_approval.error.acknowledge"
+          : `handoff.refused.${reason}.title`,
       details: { reason },
     }),
 };

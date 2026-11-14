@@ -56,10 +56,11 @@ export default async function HandoffDonePage({ params }: { params: Promise<{ id
     const { approval } = read;
     if (approval.state === "pending") redirect(handoffPath(approval.id));
     if (approval.state === "unreadable") {
+      const why = approval.preview?.truncated ? "tooLong" : "unreadable";
       return (
         <HandoffCard
-          title={t("operation_approval.unreadable.title")}
-          description={t("operation_approval.unreadable.description")}
+          title={t(`operation_approval.${why}.title`)}
+          description={t(`operation_approval.${why}.description`)}
         />
       );
     }

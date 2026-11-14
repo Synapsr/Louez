@@ -63,6 +63,10 @@ test("the form posts the answer, the revision and the digest shown to the decide
     ],
   );
   assert.ok(buttons.every((button) => !("disabled" in button)));
+  // No box to tick, so nothing for the browser to validate, and no answer skips it.
+  assert.equal(tags(html, "input").filter((input) => input.type === "checkbox").length, 0);
+  assert.ok(buttons.every((button) => !Object.keys(button).some((key) => /novalidate/i.test(key))));
+  assert.doesNotMatch(html, /required/);
   assert.match(html, />Decline<\/span><\/button>/);
   assert.match(html, />Approve the invitation<\/span><\/button>/);
 });

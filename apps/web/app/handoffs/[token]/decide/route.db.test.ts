@@ -149,11 +149,17 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
     return rowOf(created.id);
   }
 
+  /** What is set of these entries: a field or a header left out is not sent. */
+  const sent = (entries: Record<string, string | undefined>) =>
+    Object.fromEntries(
+      Object.entries(entries).filter((entry): entry is [string, string] => entry[1] !== undefined),
+    );
+
   /** The page's form, posted by `user` with these fields and headers. */
   function post(
     id: string,
-    fields: Record<string, string>,
-    options: { user?: string | null; headers?: Record<string, string> } = {},
+    fields: Record<string, string | undefined>,
+    options: { user?: string | null; headers?: Record<string, string | undefined> } = {},
   ) {
     const user = options.user === undefined ? OWNER : options.user;
     return route.POST(
@@ -161,10 +167,10 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded",
-          ...(options.headers ?? BROWSER_POST),
+          ...sent(options.headers ?? BROWSER_POST),
           ...(user ? { [SESSION_HEADER]: user } : {}),
         },
-        body: new URLSearchParams(fields),
+        body: new URLSearchParams(sent(fields)),
       }),
       { params: Promise.resolve({ token: id }) },
     );
@@ -326,8 +332,8 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
   describe("an approval's answer", () => {
     const BINDING = "e".repeat(64);
 
-    /** An agent's request a person must approve, as its request leaves it. */
-    async function approval() {
+    /** An agent's request a person must approve, as its request leaves it: money, unless said otherwise. */
+    async function approval(consequences: string[] = ["money"]) {
       const now = new Date();
       const [created] = await louezDb.db
         .insert(louezDb.apiHandoffs)
@@ -344,7 +350,7 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
               details: { number: "1042", amount: 40 },
             },
             scope: { domain: "payments", level: "write", role: "write" },
-            consequences: ["money"],
+            consequences,
           },
           status: "pending",
           activeSlot: 1,
@@ -366,6 +372,7 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       const row = await approval();
       const response = await post(row.id, {
         decision: "approve",
+        acknowledged: "yes",
         revision: String(row.revision),
         shown: BINDING,
       });
@@ -406,11 +413,54 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       assert.equal((await rowOf(row.id)).status, "pending");
     });
 
+    test("money approved without the box ticked decides nothing: back to the page, which asks for it", async () => {
+      const row = await approval();
+      const fields = { decision: "approve", revision: String(row.revision), shown: BINDING };
+      for (const box of [{}, { acknowledged: "" }, { acknowledged: "on" }, { acknowledged: "no" }]) {
+        const response = await post(row.id, { ...fields, ...box });
+        assert.equal(location(response), `/handoffs/${row.id}?acknowledge=1`, JSON.stringify(box));
+      }
+      const after = await rowOf(row.id);
+      assert.equal(after.status, "pending");
+      assert.equal(after.decision, null);
+      // Ticked, the same answer decides it.
+      const ticked = await post(row.id, { ...fields, acknowledged: "yes" });
+      assert.equal(location(ticked), `/handoffs/done/${row.id}`);
+      assert.equal((await rowOf(row.id)).status, "approved");
+    });
+
+    test("a refusal never needs the box, and a plain change asks for none", async () => {
+      const refused = await approval();
+      await post(refused.id, { decision: "refuse", revision: String(refused.revision), shown: BINDING });
+      assert.equal((await rowOf(refused.id)).decision, "refused");
+
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const change = await approval(["change"]);
+      const response = await post(change.id, {
+        decision: "approve",
+        revision: String(change.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(response), `/handoffs/done/${change.id}`);
+      assert.equal((await rowOf(change.id)).status, "approved");
+
+      // Nothing Louez knows of what it does: the box, as for money.
+      await louezDb.db.delete(louezDb.apiHandoffs);
+      const unknown = await approval(["teleport"]);
+      const blind = await post(unknown.id, {
+        decision: "approve",
+        revision: String(unknown.revision),
+        shown: BINDING,
+      });
+      assert.equal(location(blind), `/handoffs/${unknown.id}?acknowledge=1`);
+      assert.equal((await rowOf(unknown.id)).status, "pending");
+    });
+
     test("a stale revision or a forged binding decides nothing: the page shows the request as it is now", async () => {
       const row = await approval();
       for (const fields of [
-        { decision: "approve", revision: String(row.revision + 1), shown: BINDING },
-        { decision: "approve", revision: String(row.revision), shown: "0".repeat(64) },
+        { decision: "approve", acknowledged: "yes", revision: String(row.revision + 1), shown: BINDING },
+        { decision: "approve", acknowledged: "yes", revision: String(row.revision), shown: "0".repeat(64) },
         { decision: "refuse", revision: String(row.revision), shown: "0".repeat(64) },
       ]) {
         const response = await post(row.id, fields);
@@ -444,7 +494,7 @@ describe("a step's answer posted to its route (database)", { skip: skipWithoutTe
       const row = await approval();
       const fields = { revision: String(row.revision), shown: BINDING };
       assert.equal(
-        location(await post(row.id, { ...fields, decision: "approve" })),
+        location(await post(row.id, { ...fields, decision: "approve", acknowledged: "yes" })),
         `/handoffs/done/${row.id}`,
       );
       assert.equal(

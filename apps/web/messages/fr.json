@@ -9861,11 +9861,16 @@
         "hint": "Votre assistant le lit avec votre réponse. {max} caractères au maximum."
       },
       "error": {
-        "failed": "Votre réponse n’a pas pu être enregistrée. Relisez la demande, puis répondez."
+        "failed": "Votre réponse n’a pas pu être enregistrée. Relisez la demande, puis répondez.",
+        "acknowledge": "Cochez la case pour confirmer que vous avez lu ce que Louez va faire, puis approuvez. Rien n’a été décidé."
       },
       "unreadable": {
         "title": "Cette demande ne peut pas être affichée",
         "description": "Louez ne peut pas afficher le détail de cette demande : elle ne peut donc pas être approuvée ici. Rien n’a été fait. Votre assistant peut vous la redemander."
+      },
+      "tooLong": {
+        "title": "Cette demande est trop longue pour être affichée",
+        "description": "Le résumé de Louez est trop long pour être affiché en entier sur cette page : la demande ne peut donc pas être approuvée ici. Rien n’a été fait. Votre assistant peut vous la redemander."
       },
       "done": {
         "request": "La demande",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Cette demande est terminée",
           "description": "Il n’y a plus rien à faire ici, et rien n’a été fait. Si votre assistant en a encore besoin, il vous redemandera."
-        }
+        },
+        "shortened": "Le résumé était trop long pour être affiché en entier."
       }
     }
   }

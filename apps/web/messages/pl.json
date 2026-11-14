@@ -9861,11 +9861,16 @@
         "hint": "Asystent przeczyta je razem z Twoją odpowiedzią. Maksymalnie {max} znaków."
       },
       "error": {
-        "failed": "Nie udało się zapisać Twojej odpowiedzi. Przeczytaj prośbę jeszcze raz i odpowiedz."
+        "failed": "Nie udało się zapisać Twojej odpowiedzi. Przeczytaj prośbę jeszcze raz i odpowiedz.",
+        "acknowledge": "Zaznacz pole, aby potwierdzić, że wiesz, co zrobi Louez, a potem zatwierdź. Nic nie zostało zdecydowane."
       },
       "unreadable": {
         "title": "Tej prośby nie można wyświetlić",
         "description": "Louez nie może wyświetlić szczegółów tej prośby, więc nie można jej tu zatwierdzić. Nic nie zostało zrobione. Asystent może poprosić ponownie."
+      },
+      "tooLong": {
+        "title": "Ta prośba jest zbyt długa, by ją wyświetlić",
+        "description": "Podsumowanie Louez jest zbyt długie, by wyświetlić je w całości na tej stronie, więc nie można jej tu zatwierdzić. Nic nie zostało zrobione. Asystent może poprosić ponownie."
       },
       "done": {
         "request": "Prośba",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Ta prośba została zakończona",
           "description": "Nie ma tu już nic do zrobienia i nic nie zostało zrobione. Jeśli asystent nadal tego potrzebuje, poprosi ponownie."
-        }
+        },
+        "shortened": "Podsumowanie było zbyt długie, by wyświetlić je w całości."
       }
     }
   }

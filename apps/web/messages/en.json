@@ -9861,11 +9861,16 @@
         "hint": "Your assistant reads it with your answer. {max} characters at most."
       },
       "error": {
-        "failed": "Your answer could not be recorded. Look at the request again, then answer."
+        "failed": "Your answer could not be recorded. Look at the request again, then answer.",
+        "acknowledge": "Tick the box to confirm you read what Louez will do, then approve. Nothing was decided."
       },
       "unreadable": {
         "title": "This request can’t be shown",
         "description": "Louez can’t show the details of this request, so it can’t be approved here. Nothing was done. Your assistant can ask again."
+      },
+      "tooLong": {
+        "title": "This request is too long to show",
+        "description": "Louez’s summary of this request is too long to show whole on this page, so it can’t be approved here. Nothing was done. Your assistant can ask again."
       },
       "done": {
         "request": "The request",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "This request ended",
           "description": "Nothing more can be done with it here, and nothing was done. If your assistant still needs this, it will ask again."
-        }
+        },
+        "shortened": "The summary was too long to show whole."
       }
     }
   }

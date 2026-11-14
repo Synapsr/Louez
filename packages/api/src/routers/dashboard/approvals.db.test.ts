@@ -382,7 +382,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
       .where(orm.eq(t.id, id));
   };
 
-  /** A person's answer on the approval's page, as its route posts it. */
+  /** A person's answer on the approval's page, as its route posts it: the box ticked. */
   async function decide(
     id: string,
     decision: "approve" | "refuse",
@@ -396,6 +396,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
         decision,
         revision: options.revision ?? row.revision,
         shown: options.shown ?? row.bindingHash ?? "0".repeat(64),
+        acknowledged: true,
         ...(options.reason ? { reason: options.reason } : {}),
       },
       { context: session(options.user ?? OWNER), path: ["dashboard", "handoffs", "decide"] },

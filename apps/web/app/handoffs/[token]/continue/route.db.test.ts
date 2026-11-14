@@ -115,11 +115,23 @@ describe("a Stripe step continued from its page (database)", { skip: skipWithout
     return row;
   }
 
-  const post = (id: string, revision: number, headers: Record<string, string> = BROWSER_POST) =>
+  const post = (
+    id: string,
+    revision: number,
+    headers: Record<string, string | undefined> = BROWSER_POST,
+  ) =>
     route.POST(
       new NextRequest(new URL(`/handoffs/${id}/continue`, APP), {
         method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          // A header left out is not sent.
+          ...Object.fromEntries(
+            Object.entries(headers).filter(
+              (entry): entry is [string, string] => entry[1] !== undefined,
+            ),
+          ),
+        },
         body: new URLSearchParams({ revision: String(revision) }),
       }),
       { params: Promise.resolve({ token: id }) },

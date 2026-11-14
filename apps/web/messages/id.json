@@ -9861,11 +9861,16 @@
         "hint": "Asisten Anda membacanya bersama jawaban Anda. Maksimal {max} karakter."
       },
       "error": {
-        "failed": "Jawaban Anda tidak dapat disimpan. Baca kembali permintaannya, lalu jawab."
+        "failed": "Jawaban Anda tidak dapat disimpan. Baca kembali permintaannya, lalu jawab.",
+        "acknowledge": "Centang kotak untuk mengonfirmasi bahwa Anda sudah membaca apa yang akan dilakukan Louez, lalu setujui. Belum ada yang diputuskan."
       },
       "unreadable": {
         "title": "Permintaan ini tidak dapat ditampilkan",
         "description": "Louez tidak dapat menampilkan detail permintaan ini, jadi tidak dapat disetujui di sini. Tidak ada yang dilakukan. Asisten Anda dapat meminta lagi."
+      },
+      "tooLong": {
+        "title": "Permintaan ini terlalu panjang untuk ditampilkan",
+        "description": "Ringkasan dari Louez terlalu panjang untuk ditampilkan utuh di halaman ini, jadi permintaan ini tidak dapat disetujui di sini. Tidak ada yang dilakukan. Asisten Anda dapat meminta lagi."
       },
       "done": {
         "request": "Permintaan",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Permintaan ini sudah selesai",
           "description": "Tidak ada lagi yang bisa dilakukan di sini, dan tidak ada yang dilakukan. Jika asisten Anda masih perlu, ia akan meminta lagi."
-        }
+        },
+        "shortened": "Ringkasan terlalu panjang untuk ditampilkan utuh."
       }
     }
   }

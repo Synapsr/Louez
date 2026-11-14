@@ -7,6 +7,7 @@ import { createRouterClient } from "@orpc/server";
 
 import { apiPorts } from "@/lib/api/ports";
 import {
+  postedAcknowledged,
   postedDecision,
   postedReason,
   postedRevision,
@@ -59,6 +60,7 @@ export async function POST(
       reason: postedReason(form),
       revision,
       shown,
+      acknowledged: postedAcknowledged(form),
     });
     return redirectTo(handoffDonePath(decided.handoffId), 303);
   } catch (error) {
@@ -67,6 +69,10 @@ export async function POST(
     if (code === "UNAUTHENTICATED") return toLogin(page, 303);
     if (code === "HANDOFF_DECISION_INVALID" && details?.reason === "changed") {
       return redirectTo(`${page}?changed=1`, 303);
+    }
+    // Approved without the box the request asks for: back to the page, which asks for it.
+    if (code === "HANDOFF_DECISION_INVALID" && details?.reason === "not_acknowledged") {
+      return redirectTo(`${page}?acknowledge=1`, 303);
     }
     // An invitation the answer ended (changed since, no seat, the day's
     // e-mails spent), or a request decided or lapsed meanwhile, sends the

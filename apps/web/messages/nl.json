@@ -9861,11 +9861,16 @@
         "hint": "Je assistent leest het met je antwoord. Hoogstens {max} tekens."
       },
       "error": {
-        "failed": "Je antwoord kon niet worden opgeslagen. Lees het verzoek opnieuw en antwoord dan."
+        "failed": "Je antwoord kon niet worden opgeslagen. Lees het verzoek opnieuw en antwoord dan.",
+        "acknowledge": "Vink het vakje aan om te bevestigen dat je hebt gelezen wat Louez gaat doen, en keur dan goed. Er is niets besloten."
       },
       "unreadable": {
         "title": "Dit verzoek kan niet worden getoond",
         "description": "Louez kan de details van dit verzoek niet tonen, dus het kan hier niet worden goedgekeurd. Er is niets gedaan. Je assistent kan het opnieuw vragen."
+      },
+      "tooLong": {
+        "title": "Dit verzoek is te lang om te tonen",
+        "description": "De samenvatting van Louez is te lang om op deze pagina volledig te tonen, dus het verzoek kan hier niet worden goedgekeurd. Er is niets gedaan. Je assistent kan het opnieuw vragen."
       },
       "done": {
         "request": "Het verzoek",
@@ -9905,7 +9910,8 @@
         "ended": {
           "title": "Dit verzoek is beëindigd",
           "description": "Hier valt niets meer te doen, en er is niets gedaan. Heeft je assistent het nog nodig, dan vraagt hij het opnieuw."
-        }
+        },
+        "shortened": "De samenvatting was te lang om volledig te tonen."
       }
     }
   }

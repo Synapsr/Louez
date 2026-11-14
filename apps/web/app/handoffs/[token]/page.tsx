@@ -44,7 +44,7 @@ export default async function HandoffPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ retry?: string; error?: string; changed?: string }>;
+  searchParams: Promise<{ retry?: string; error?: string; changed?: string; acknowledge?: string }>;
 }) {
   const { token } = await params;
   const path = handoffPath(token);
@@ -72,10 +72,12 @@ export default async function HandoffPage({
     }
     const { approval } = read;
     if (approval.state === "unreadable") {
+      // Too long to show whole, or no sentence at all: never approved unread.
+      const why = approval.preview?.truncated ? "tooLong" : "unreadable";
       return (
         <HandoffCard
-          title={t("operation_approval.unreadable.title")}
-          description={t("operation_approval.unreadable.description")}
+          title={t(`operation_approval.${why}.title`)}
+          description={t(`operation_approval.${why}.description`)}
         />
       );
     }
@@ -89,7 +91,12 @@ export default async function HandoffPage({
         approval={{ ...approval, preview, binding }}
         email={session.user?.email ?? ""}
         note={
-          changed ?? (query.error !== undefined ? t("operation_approval.error.failed") : null)
+          changed ??
+          (query.acknowledge !== undefined
+            ? t("operation_approval.error.acknowledge")
+            : query.error !== undefined
+              ? t("operation_approval.error.failed")
+              : null)
         }
       />
     );
