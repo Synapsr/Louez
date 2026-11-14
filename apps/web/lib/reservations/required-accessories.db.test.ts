@@ -176,14 +176,13 @@ describe(
       };
       // The extension's stock check, as `quoteExtension` runs it once priced.
       const extend = (reservationId: string) =>
-        louezDb.db.transaction(async (tx) => {
-          const reservation = await extension.loadExtensionReservation(tx, STORE, reservationId);
-          await extension.checkExtensionInventory(
+        extension.runExtensionQuote({ storeId: STORE, reservationId }, (tx, reservation) =>
+          extension.checkExtensionInventory(
             tx,
             reservation,
             new Date(END.getTime() + 24 * 3_600_000),
-          );
-        });
+          ),
+        );
 
       await assert.rejects(extend(await booking([bike])), (error: unknown) => {
         assert.ok(error instanceof extension.ExtensionError);

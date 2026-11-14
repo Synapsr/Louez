@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · demandé par une clé d’API",
       "provenanceAssistant": "<place>{store}</place> · demandé par un assistant IA",
       "trustShort": "Seul le résumé de Louez fait foi.",
-      "stakes": "Irréversible : {list}.",
       "stake": {
-        "access_removed": "un accès retiré",
-        "money": "de l’argent",
-        "stock_override": "du stock au-delà de sa limite",
-        "deletion": "une suppression",
-        "customer_message": "un message à un client",
-        "credits": "des crédits dépensés"
+        "access_removed": "Retire un accès à votre boutique.",
+        "money": "Modifie l’argent enregistré pour votre boutique.",
+        "stock_override": "Autorise une réservation au-delà de votre stock ou sans respecter votre délai entre deux locations.",
+        "deletion": "Supprime définitivement : impossible d’annuler.",
+        "customer_message": "Envoie un message à un client : impossible de le reprendre.",
+        "credits": "Dépense des crédits : ils ne sont pas rendus."
       },
       "lapsesSoon": "Expire {when}.",
       "acknowledge": "J’ai lu ce que Louez va faire",

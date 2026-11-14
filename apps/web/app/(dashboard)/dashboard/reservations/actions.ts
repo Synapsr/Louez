@@ -29,11 +29,13 @@ import {
   insertReservation,
   isStoreNotAcceptingReservationsError,
   isStripeRefundPaymentSql,
+  lockReservationInTransaction,
   markReservation,
   reconcileReservationStock,
   reservationStatusConsumesStock,
-  retryOnceOnDeadlock,
+  type ReservationTransaction,
   retryTransactionOnDeadlock,
+  runReservationTransaction,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
@@ -4763,27 +4765,22 @@ export async function assignUnitsToReservationItem(
     );
     const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
 
-    const assignUnits = async (tx: Transaction) => {
-      // Locks come first, as locking reads only, in the order of the other
-      // reservation writers (reservation, then product, then units). The
-      // first consistent read happens after them, so every validation below
-      // sees what was committed before the locks were taken.
+    const assignUnits = async (tx: Transaction, owner: ReservationTransaction) => {
+      // Locks come first, in the lock order of every reservation writer: the
+      // reservation's products by id, then the reservation, then the units by
+      // id. The owner entry runs READ COMMITTED, so every validation below,
+      // under these locks, reads the latest commit.
+      await lockReservationInTransaction(owner, {
+        reservationId: item.reservationId,
+        storeId: store.id,
+      });
       const [lockedReservation] = await tx
         .select({ id: reservations.id })
         .from(reservations)
-        .where(and(eq(reservations.id, item.reservationId), eq(reservations.storeId, store.id)))
-        .for("update");
+        .where(and(eq(reservations.id, item.reservationId), eq(reservations.storeId, store.id)));
 
       if (!lockedReservation) {
         return { error: "errors.notFound" };
-      }
-
-      if (item.productId) {
-        await tx
-          .select({ id: products.id })
-          .from(products)
-          .where(and(eq(products.id, item.productId), eq(products.storeId, store.id)))
-          .for("update");
       }
 
       const sortedLockUnitIds = [...new Set(selectedUnitIds)].sort((a, b) =>
@@ -4798,10 +4795,6 @@ export async function assignUnitsToReservationItem(
           .orderBy(productUnits.id)
           .for("update");
       }
-
-      const lockedProductsById = item.productId
-        ? await lockReservationProducts(tx, store.id, [item.productId])
-        : new Map();
 
       const [currentItem] = await tx
         .select({
@@ -4821,6 +4814,12 @@ export async function assignUnitsToReservationItem(
       if (!currentItem) {
         return { error: "errors.notFound" };
       }
+
+      // A line of the reservation found under its lock: its product is one the
+      // lock above holds already.
+      const lockedProductsById = currentItem.productId
+        ? await lockReservationProducts(tx, store.id, [currentItem.productId])
+        : new Map();
 
       if (selectedUnitIds.length > currentItem.quantity) {
         return { error: "errors.tooManyUnitsAssigned" };
@@ -5105,7 +5104,9 @@ export async function assignUnitsToReservationItem(
         ),
       };
     };
-    const assignmentResult = await retryOnceOnDeadlock(() => db.transaction(assignUnits));
+    const assignmentResult = await runReservationTransaction(assignUnits, {
+      reservationId: item.reservationId,
+    });
 
     if ("error" in assignmentResult && assignmentResult.error) {
       return assignmentResult;

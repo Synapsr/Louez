@@ -175,6 +175,22 @@ export const buildEmbedSecurityHeaders = (options: SecurityHeadersOptions): Secu
         : header,
     );
 
+/**
+ * The handoff page (app/handoffs/[token]): its form posts to the page's own `continue` route,
+ * which answers with a redirect to the provider (Stripe's onboarding or dashboard, the billing
+ * card set-up). Chrome holds every redirect after a form submission to `form-action`, so under
+ * `'self'` the user stays on the page while the step is recorded as opened. Any https address
+ * may receive it: the provider's address is only known once the user continues, and providers
+ * move between their own hosts, so a list of hosts would break without a sound. The page holds
+ * no field for another form to collect beyond what it shows. Every other directive is the app's.
+ */
+export const buildHandoffSecurityHeaders = (options: SecurityHeadersOptions): SecurityHeader[] =>
+  buildSecurityHeaders(options).map((header) =>
+    header.key === "Content-Security-Policy"
+      ? { ...header, value: header.value.replace(/form-action[^;]*/, "form-action 'self' https:") }
+      : header,
+  );
+
 /** Fixture-only frames can be embedded by the marketing site. Business routes keep SAMEORIGIN. */
 export const buildDemoSecurityHeaders = (options: SecurityHeadersOptions): SecurityHeader[] => {
   const appOrigin = getOrigin(options.appUrl) ?? `https://app.${options.appDomain}`;

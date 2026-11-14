@@ -10,6 +10,8 @@ import {
   getBlockingReservationStatuses,
   buildUnitRentableDuringPredicate,
   findBusyUnitIds,
+  lockReservationInTransaction,
+  runReservationTransaction,
   type Transaction,
 } from "@louez/db";
 import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
@@ -34,23 +36,12 @@ export const money = (value: number | null): string | null =>
   value === null ? null : value.toFixed(2);
 export const cents = (value: number | string) => Math.round(Number(value) * 100);
 
-export const loadExtensionReservation = async (
+const readExtensionReservation = async (
   tx: Transaction,
   storeId: string,
   reservationId: string,
   customerId?: string,
 ) => {
-  await tx
-    .select({ id: reservations.id })
-    .from(reservations)
-    .where(
-      and(
-        eq(reservations.id, reservationId),
-        eq(reservations.storeId, storeId),
-        customerId ? eq(reservations.customerId, customerId) : undefined,
-      ),
-    )
-    .for("update");
   const reservation = await tx.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
@@ -68,7 +59,53 @@ export const loadExtensionReservation = async (
   if (!reservation) throw new ExtensionError("notFound");
   return reservation;
 };
-export type ExtensionReservation = Awaited<ReturnType<typeof loadExtensionReservation>>;
+export type ExtensionReservation = Awaited<ReturnType<typeof readExtensionReservation>>;
+
+/**
+ * The reservation's row locked alone, then the reservation read: for a
+ * transaction that locks no product. One that quotes or checks the stock runs
+ * in `runExtensionQuote`.
+ */
+export const loadExtensionReservation = async (
+  tx: Transaction,
+  storeId: string,
+  reservationId: string,
+  customerId?: string,
+) => {
+  await tx
+    .select({ id: reservations.id })
+    .from(reservations)
+    .where(
+      and(
+        eq(reservations.id, reservationId),
+        eq(reservations.storeId, storeId),
+        customerId ? eq(reservations.customerId, customerId) : undefined,
+      ),
+    )
+    .for("update");
+  return readExtensionReservation(tx, storeId, reservationId, customerId);
+};
+
+/**
+ * A transaction that quotes an extension, and may write it: the owner entry of
+ * `@louez/db`, which locks the reservation's products by id, then the
+ * reservation (`lockReservationInTransaction`), before `work` reads it. The
+ * quote's stock check then locks the units. A product added to the reservation
+ * meanwhile starts the whole transaction over, three runs in all, then
+ * `ReservationChangeBusyError`; `work` holds no outside effect.
+ */
+export const runExtensionQuote = <T>(
+  scope: { storeId: string; reservationId: string; customerId?: string },
+  work: (tx: Transaction, reservation: ExtensionReservation) => Promise<T>,
+) =>
+  runReservationTransaction(
+    async (tx, owner) => {
+      const { storeId, reservationId, customerId } = scope;
+      await lockReservationInTransaction(owner, { storeId, reservationId });
+      return work(tx, await readExtensionReservation(tx, storeId, reservationId, customerId));
+    },
+    { reservationId: scope.reservationId },
+  );
 
 export const extensionFingerprint = (reservation: ExtensionReservation) =>
   createHash("sha256")

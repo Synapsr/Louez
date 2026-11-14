@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · prośba od klucza API",
       "provenanceAssistant": "<place>{store}</place> · prośba od asystenta AI",
       "trustShort": "Liczy się tylko podsumowanie Louez.",
-      "stakes": "Nie da się cofnąć: {list}.",
       "stake": {
-        "access_removed": "odebrany dostęp",
-        "money": "pieniądze",
-        "stock_override": "magazyn ponad limit",
-        "deletion": "usunięcie",
-        "customer_message": "wiadomość do klienta",
-        "credits": "wydane kredyty"
+        "access_removed": "Odbiera dostęp do Twojego sklepu.",
+        "money": "Zmienia zapisy dotyczące płatności w Twoim sklepie.",
+        "stock_override": "Pozwala potwierdzić rezerwację ponad dostępny stan magazynu lub bez zachowania przerwy między wynajmami.",
+        "deletion": "Usuwa na stałe: nie da się tego cofnąć.",
+        "customer_message": "Wysyła wiadomość do klienta: nie da się jej wycofać.",
+        "credits": "Wydaje kredyty: nie są zwracane."
       },
       "lapsesSoon": "Wygasa {when}.",
       "acknowledge": "Rozumiem, co zrobi Louez",

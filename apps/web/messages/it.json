@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · richiesto da una chiave API",
       "provenanceAssistant": "<place>{store}</place> · richiesto da un assistente IA",
       "trustShort": "Conta solo il riepilogo di Louez.",
-      "stakes": "Non si può annullare: {list}.",
       "stake": {
-        "access_removed": "un accesso revocato",
-        "money": "denaro",
-        "stock_override": "disponibilità oltre il limite",
-        "deletion": "un’eliminazione",
-        "customer_message": "un messaggio a un cliente",
-        "credits": "crediti spesi"
+        "access_removed": "Revoca un accesso al tuo negozio.",
+        "money": "Modifica il denaro registrato per il tuo negozio.",
+        "stock_override": "Consente una prenotazione oltre la disponibilità o senza rispettare il tuo margine tra due noleggi.",
+        "deletion": "Elimina in modo definitivo: non si può annullare.",
+        "customer_message": "Invia un messaggio a un cliente: non si può ritirare.",
+        "credits": "Spende crediti: non vengono restituiti."
       },
       "lapsesSoon": "Scade {when}.",
       "acknowledge": "Ho letto cosa farà Louez",

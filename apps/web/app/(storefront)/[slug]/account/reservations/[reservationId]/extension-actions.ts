@@ -7,9 +7,9 @@ import { db, stores } from "@louez/db";
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import {
   ExtensionError,
-  loadExtensionReservation,
   parseExtensionEnd,
   quoteExtension,
+  runExtensionQuote,
 } from "@/lib/reservations/extension-quote";
 import { cancelExtension, startExtension } from "@/lib/reservations/extension-service";
 import { log } from "@/lib/evlog";
@@ -46,21 +46,15 @@ export const previewRentalExtension = async (input: z.infer<typeof periodSchema>
   try {
     const parsed = periodSchema.parse(input);
     const identity = await resolve(parsed);
-    const preview = await db.transaction(
-      async (tx) => {
-        const reservation = await loadExtensionReservation(
-          tx,
-          identity.storeId,
-          parsed.reservationId,
-          identity.customerId,
-        );
+    const preview = await runExtensionQuote(
+      { ...identity, reservationId: parsed.reservationId },
+      async (tx, reservation) => {
         const end = parseExtensionEnd(
           parsed.endDate,
           reservation.store.settings?.timezone ?? "UTC",
         );
         return (await quoteExtension(tx, reservation, end)).preview;
       },
-      { isolationLevel: "read committed" },
     );
     return { preview };
   } catch (error) {
