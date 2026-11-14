@@ -124,7 +124,7 @@ describe("the approval's page", () => {
       "Roscoff Voile · asked by “Store agent”",
       "Record a rental payment of 40.00 € (cash) on reservation #1042.",
       "Only Louez’s summary counts.",
-      "Can’t be undone: money.",
+      "Changes the money recorded for your store.",
       "Details",
       "Add a note for your assistant",
       "I’ve read what Louez will do",
@@ -248,7 +248,7 @@ describe("the approval's page", () => {
     const html = renderPage({ consequences: ["change"], deliberate: false });
     const shown = visible(html);
     assert.match(shown, /Approve this change\?/);
-    assert.doesNotMatch(shown, /I’ve read what Louez will do|Can’t be undone/);
+    assert.doesNotMatch(shown, /I’ve read what Louez will do|Changes the money|can’t be/);
     assert.doesNotMatch(html, /data-slot="alert"/);
     assert.equal(tags(html, "input").filter((input) => input.type === "checkbox").length, 0);
     const buttons = tags(html, "button");
@@ -259,14 +259,14 @@ describe("the approval's page", () => {
     const shown = visible(renderPage({ consequences: [], deliberate: true }));
     assert.match(shown, /Approve this request\?/);
     assert.match(shown, /I’ve read what Louez will do/);
-    assert.doesNotMatch(shown, /Can’t be undone/);
+    assert.doesNotMatch(shown, /Changes the money|can’t be/);
   });
 
-  test("the gravest consequence names the page; the stake is one line, as a warning, naming each in order", () => {
+  test("the gravest consequence names the page; the stakes are one warning, each a sentence of its own, in order", () => {
     const html = renderPage({ consequences: ["customer_message", "stock_override"] });
     const shown = visible(html);
     assert.match(shown, /Approve booking past your stock\?/);
-    assert.match(shown, /Can’t be undone: stock past its limit and a message to a customer\./);
+    assert.match(shown, /Allows a booking past your stock or your turnover buffer\.\s*Sends a message to a customer: it can’t be taken back\./);
     const alerts = tags(html, "div").filter((div) => div["data-slot"] === "alert");
     assert.equal(alerts.length, 1);
     assert.match(alerts[0]?.class ?? "", /border-warning/);
@@ -550,11 +550,12 @@ describe("the approval's result", () => {
 
 describe("an approval without a display", () => {
   // Any action but the six pull request 7 switches, and every older row: the
-  // page and its result exactly as they were, to the byte.
+  // page and its result exactly as they were, to the byte. A digest changes
+  // only with a change meant for every approval page (the stake sentences).
   const digest = (html: string) => createHash("sha256").update(html).digest("hex");
   const PAGES: Array<[string, () => string, string]> = [
-    ["the page", () => renderPage(), "1f417ea0119e58e13a1662cdda9060a95fefcb0155f210eab453a039c49fd465"],
-    ["the page with a note", () => renderPage({}, "This request changed while you were reading"), "ef58f7bff8c0d920f2241dea3ed8c8363081ac1550fb2022a039d43fb22ab3cb"],
+    ["the page", () => renderPage(), "206666bd294383a3faf9ef20f39a1aecb43372f79d0865c42a4fc8e0a281be9b"],
+    ["the page with a note", () => renderPage({}, "This request changed while you were reading"), "ab85b33ae1a6c7e0f8658c697abcdef5a59629191020beb8a9515e5dbba5c7b4"],
     [
       "the result",
       () =>
