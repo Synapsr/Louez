@@ -9938,7 +9938,7 @@
           "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v>, pukul <v>{periodStartTime}</v>–<v>{periodEndTime}</v>} other {Dari <v>{periodStartDate}</v> pukul <v>{periodStartTime}</v> sampai <v>{periodEndDate}</v> pukul <v>{periodEndTime}</v>}} · <v>{total}</v>",
           "pastBuffer": "<v>{product}</v>: diminta {requested}, {available, plural, =0 {tidak ada yang kosong} other {hanya # yang kosong}} dengan jeda <v>{buffer}</v> Anda",
           "beyondStock": "<v>{product}</v>: diminta {requested}, {available, plural, =0 {stok habis} other {stok hanya #}}: kurang {missing}",
-          "moreLines": "Dan {count} baris lagi di luar aturan Anda: lihat detailnya",
+          "moreLines": "{count, plural, other {Dan # baris lagi di luar aturan Anda}}: lihat detailnya",
           "withinRules": "Stok dan jeda antarsewa Anda mencukupi: tidak ada yang terlampaui.",
           "message": "<v>{customer}</v> akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
           "messageToCustomer": "Pelanggan akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",

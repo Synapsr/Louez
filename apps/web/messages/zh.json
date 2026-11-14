@@ -9938,7 +9938,7 @@
           "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>–<v>{periodEndTime}</v>} other {从 <v>{periodStartDate}</v> <v>{periodStartTime}</v> 到 <v>{periodEndDate}</v> <v>{periodEndTime}</v>}} · <v>{total}</v>",
           "pastBuffer": "<v>{product}</v>：需要 {requested} 件，按 <v>{buffer}</v> 的间隔{available, plural, =0 {没有空闲} other {仅空闲 # 件}}",
           "beyondStock": "<v>{product}</v>：需要 {requested} 件，{available, plural, =0 {没有库存} other {库存仅 # 件}}：缺 {missing} 件",
-          "moreLines": "还有 {count} 行超出你的规则：请查看详情",
+          "moreLines": "{count, plural, other {还有 # 行超出你的规则}}：请查看详情",
           "withinRules": "库存和两次租赁之间的间隔都够用：没有任何超出。",
           "message": "<v>{customer}</v> 将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
           "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",

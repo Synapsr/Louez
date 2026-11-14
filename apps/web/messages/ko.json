@@ -9938,7 +9938,7 @@
           "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>~<v>{periodEndTime}</v>} other {<v>{periodStartDate}</v> <v>{periodStartTime}</v>부터 <v>{periodEndDate}</v> <v>{periodEndTime}</v>까지}} · <v>{total}</v>",
           "pastBuffer": "<v>{product}</v>: {requested}개 요청, <v>{buffer}</v> 간격을 지키면 {available, plural, =0 {남는 것 없음} other {#개만 남음}}",
           "beyondStock": "<v>{product}</v>: {requested}개 요청, {available, plural, =0 {재고 없음} other {재고 #개뿐}}: {missing}개 부족",
-          "moreLines": "규칙을 넘는 항목이 {count}개 더 있습니다: 세부 정보를 확인하세요",
+          "moreLines": "{count, plural, other {규칙을 넘는 항목이 #개 더 있습니다}}: 세부 정보를 확인하세요",
           "withinRules": "재고와 대여 사이 간격 안에서 처리됩니다: 넘는 것이 없습니다.",
           "message": "<v>{customer}</v> 님에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
           "messageToCustomer": "고객에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",

@@ -9938,7 +9938,7 @@
           "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>〜<v>{periodEndTime}</v>} other {<v>{periodStartDate}</v> <v>{periodStartTime}</v> から <v>{periodEndDate}</v> <v>{periodEndTime}</v> まで}} · <v>{total}</v>",
           "pastBuffer": "<v>{product}</v>：{requested} 点の依頼、間隔 <v>{buffer}</v> を守ると{available, plural, =0 {空きなし} other {空きは # 点のみ}}",
           "beyondStock": "<v>{product}</v>：{requested} 点の依頼、{available, plural, =0 {在庫なし} other {在庫は # 点のみ}}：{missing} 点不足",
-          "moreLines": "ほかにルールを超える明細が {count} 件あります：詳細をご覧ください",
+          "moreLines": "{count, plural, other {ほかにルールを超える明細が # 件あります}}：詳細をご覧ください",
           "withinRules": "在庫とレンタル間の間隔の範囲内です：超えるものはありません。",
           "message": "<v>{customer}</v> 様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
           "messageToCustomer": "お客様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
