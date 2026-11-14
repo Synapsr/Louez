@@ -139,6 +139,16 @@ const RAISES: Record<string, number> = {
   "packages/api/src/services/team.ts#removeMember": 1,
 };
 
+/**
+ * The places that await a refusal and run something before they return it,
+ * each with why nothing is written in between. Everywhere else, the
+ * statement right after the awaited check returns on a refusal.
+ */
+const AWAITS_BEFORE_RETURNING: Record<string, string> = {
+  "packages/api/src/platform/testing.ts#createFixtureRouter":
+    "the transport tests' fixture runs its hooks (`whileAsked`, a deadlock) first: neither writes",
+};
+
 /** Sensitive procedures that never ask, and why. */
 const NEVER_ASKS: Record<string, string> = {
   "reservations.resolveDepositAttempt": "a dashboard session only: the user clicked",
@@ -457,6 +467,51 @@ describe("the inventory of the places that ask for a confirmation", () => {
     }
     assert.deepEqual(raises, RAISES);
     assert.deepEqual(throwing, []);
+  });
+
+  test("a refusal a check returns is returned before anything is written, never dropped", () => {
+    // A check returns its refusal (`checkConfirmation`, or a service's
+    // `confirm` callback built on it), so nothing but the code after it keeps
+    // a write from running: each call is passed on (`return`, `=>`), or
+    // awaited into a name, and the very next statement returns on it
+    // (`if (refusal) return …`; `requireConfirmation` raises it).
+    const call =
+      /\b(?:[\w$]+(?:\??\.[\w$]+)*\??\.)?(checkConfirmation|confirm)\s*(?:\?\.)?\s*(?:<[^()]*>)?\(/g;
+    const loose: string[] = [];
+    const awaited = new Set<string>();
+    for (const file of sourceFiles()) {
+      if (isTest(file) || !file.startsWith("packages/api/src/")) continue;
+      const text = readFileSync(join(REPO, file), "utf8");
+      const code = codeOnly(text);
+      for (const match of code.matchAll(call)) {
+        const before = code.slice(0, match.index);
+        if (/\bfunction\s+$/.test(before)) continue;
+        const where = `${file}:${text.slice(0, match.index).split("\n").length}`;
+        const place = `${file}#${declarationAt(code, match.index)}`;
+        if (/(?:\breturn|=>)\s*$/.test(before)) continue;
+        if (!/\bawait\s+\(?\s*$/.test(before.replace(/\(\s*$/, ""))) {
+          loose.push(`${where}: ${match[1]} called, neither awaited nor passed on`);
+          continue;
+        }
+        awaited.add(place);
+        if (place in AWAITS_BEFORE_RETURNING) continue;
+        const name = /([\w$]+)\s*=\s*\(?\s*await\s+\(?\s*$/.exec(before)?.[1];
+        const open = match.index + match[0].length - 1;
+        const end = /^\s*\)?\s*(?:\?\?\s*null\s*)?;/.exec(code.slice(closing(code, open) + 1));
+        const next = end ? code.slice(closing(code, open) + 1 + end[0].length) : "";
+        const returns =
+          name &&
+          new RegExp(
+            `^\\s*if\\s*\\(\\s*${name}\\s*\\)\\s*(?:return\\b|await\\s+raiseConfirmation\\s*\\(\\s*${name}\\s*\\))`,
+          ).test(next);
+        if (!returns) loose.push(`${where}: its refusal is not returned by the next statement`);
+      }
+    }
+    assert.deepEqual(loose, []);
+    assert.ok(awaited.size > 15, `${awaited.size} places await a check`);
+    for (const place of Object.keys(AWAITS_BEFORE_RETURNING)) {
+      assert.ok(awaited.has(place), `${place} no longer awaits a check: take it out of the table`);
+    }
   });
 
   test("only the transport tests' fixture makes a consequence live", () => {
