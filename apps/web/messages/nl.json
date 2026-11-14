@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · gevraagd door een API-sleutel",
       "provenanceAssistant": "<place>{store}</place> · gevraagd door een AI-assistent",
       "trustShort": "Alleen de samenvatting van Louez telt.",
-      "stakes": "Niet terug te draaien: {list}.",
       "stake": {
-        "access_removed": "ingetrokken toegang",
-        "money": "geld",
-        "stock_override": "voorraad boven de grens",
-        "deletion": "een verwijdering",
-        "customer_message": "een bericht aan een klant",
-        "credits": "besteed tegoed"
+        "access_removed": "Trekt een toegang tot je winkel in.",
+        "money": "Wijzigt het geld dat voor je winkel is geregistreerd.",
+        "stock_override": "Gaat over de grens van je voorraad.",
+        "deletion": "Verwijdert definitief: dit is niet terug te draaien.",
+        "customer_message": "Stuurt een bericht naar een klant: dit is niet terug te halen.",
+        "credits": "Besteedt tegoed: je krijgt het niet terug."
       },
       "lapsesSoon": "Vervalt {when}.",
       "acknowledge": "Ik heb gelezen wat Louez gaat doen",

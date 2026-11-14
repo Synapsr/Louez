@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · diminta oleh kunci API",
       "provenanceAssistant": "<place>{store}</place> · diminta oleh asisten AI",
       "trustShort": "Hanya ringkasan Louez yang berlaku.",
-      "stakes": "Tidak dapat dibatalkan: {list}.",
       "stake": {
-        "access_removed": "akses yang dicabut",
-        "money": "uang",
-        "stock_override": "stok melebihi batas",
-        "deletion": "penghapusan",
-        "customer_message": "pesan ke pelanggan",
-        "credits": "kredit yang terpakai"
+        "access_removed": "Mencabut sebuah akses ke toko Anda.",
+        "money": "Mengubah uang yang tercatat untuk toko Anda.",
+        "stock_override": "Melampaui batas stok Anda.",
+        "deletion": "Menghapus secara permanen: tidak dapat dibatalkan.",
+        "customer_message": "Mengirim pesan ke pelanggan: tidak dapat ditarik kembali.",
+        "credits": "Memakai kredit: tidak dikembalikan."
       },
       "lapsesSoon": "Berakhir {when}.",
       "acknowledge": "Saya sudah membaca apa yang akan dilakukan Louez",

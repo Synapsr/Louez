@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place>・APIキーからの依頼",
       "provenanceAssistant": "<place>{store}</place>・AIアシスタントからの依頼",
       "trustShort": "有効なのはLouezの要約だけです。",
-      "stakes": "取り消せません：{list}。",
       "stake": {
-        "access_removed": "アクセスの取り消し",
-        "money": "お金",
-        "stock_override": "上限を超える在庫",
-        "deletion": "削除",
-        "customer_message": "お客様へのメッセージ",
-        "credits": "クレジットの使用"
+        "access_removed": "お店へのアクセスを1件取り消します。",
+        "money": "お店に記録されている金額が変わります。",
+        "stock_override": "在庫の上限を超えます。",
+        "deletion": "完全に削除します。取り消せません。",
+        "customer_message": "お客様にメッセージを送信します。取り消せません。",
+        "credits": "クレジットを使用します。返還されません。"
       },
       "lapsesSoon": "{when}に失効します。",
       "acknowledge": "Louezが行うことを読みました",

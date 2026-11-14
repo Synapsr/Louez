@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · запрос от API-ключа",
       "provenanceAssistant": "<place>{store}</place> · запрос от ИИ-ассистента",
       "trustShort": "Значение имеет только описание от Louez.",
-      "stakes": "Нельзя отменить: {list}.",
       "stake": {
-        "access_removed": "лишение доступа",
-        "money": "деньги",
-        "stock_override": "запас сверх предела",
-        "deletion": "удаление",
-        "customer_message": "сообщение клиенту",
-        "credits": "расход кредитов"
+        "access_removed": "Лишает одного доступа к вашему магазину.",
+        "money": "Меняет деньги, записанные для вашего магазина.",
+        "stock_override": "Превышает предел вашего запаса.",
+        "deletion": "Удаляет навсегда: это нельзя отменить.",
+        "customer_message": "Отправляет сообщение клиенту: его нельзя отозвать.",
+        "credits": "Расходует кредиты: они не возвращаются."
       },
       "lapsesSoon": "Истекает {when}.",
       "acknowledge": "Мне понятно, что сделает Louez",

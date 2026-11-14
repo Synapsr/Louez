@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
       "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
       "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
-      "stakes": "Nicht rückgängig zu machen: {list}.",
       "stake": {
-        "access_removed": "ein entzogener Zugang",
-        "money": "Geld",
-        "stock_override": "Bestand über seiner Grenze",
-        "deletion": "eine Löschung",
-        "customer_message": "eine Nachricht an einen Kunden",
-        "credits": "verbrauchtes Guthaben"
+        "access_removed": "Entzieht einen Zugang zu Ihrem Shop.",
+        "money": "Ändert das für Ihren Shop erfasste Geld.",
+        "stock_override": "Überschreitet die Grenze Ihres Bestands.",
+        "deletion": "Löscht endgültig: Das lässt sich nicht rückgängig machen.",
+        "customer_message": "Sendet eine Nachricht an einen Kunden: Sie lässt sich nicht zurückholen.",
+        "credits": "Verbraucht Guthaben: Es wird nicht zurückgegeben."
       },
       "lapsesSoon": "Verfällt {when}.",
       "acknowledge": "Ich habe gelesen, was Louez tun wird",

@@ -587,7 +587,8 @@ describe("what a person reads first, for the actions a person approves", () => {
       "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
       "Camille Simon recevra l’e-mail « demande acceptée »",
       "Seul le résumé de Louez fait foi.",
-      "Irréversible : du stock au-delà de sa limite et un message à un client.",
+      "Dépasse la limite de votre stock.",
+      "Envoie un message à un client : impossible de le reprendre.",
       "Détails",
       "Ajouter un mot pour votre assistant",
       "J’ai lu ce que Louez va faire",
@@ -867,7 +868,7 @@ describe("one question on the page", () => {
     const html = pageOf(branch);
     assert.match(html, /data-slot="card-title">Record a payment received\?<\/div><div class="[^"]*" data-slot="card-description"><bdi>Vélo Liberté<\/bdi> · asked by/);
     assert.ok(!visible(html).includes("Approve a payment?"), "no second question");
-    assert.match(visible(html), /Can’t be undone: money\./);
+    assert.match(visible(html), /Changes the money recorded for your store\./);
   });
 
   test("without a display, the title names the kind of action, as before", () => {

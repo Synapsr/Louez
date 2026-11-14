@@ -9817,14 +9817,13 @@
       "provenanceKey": "<place>{store}</place> · asked by an API key",
       "provenanceAssistant": "<place>{store}</place> · asked by an AI assistant",
       "trustShort": "Only Louez’s summary counts.",
-      "stakes": "Can’t be undone: {list}.",
       "stake": {
-        "access_removed": "access removed",
-        "money": "money",
-        "stock_override": "stock past its limit",
-        "deletion": "a deletion",
-        "customer_message": "a message to a customer",
-        "credits": "credits spent"
+        "access_removed": "Removes an access to your store.",
+        "money": "Changes the money recorded for your store.",
+        "stock_override": "Goes past your stock limit.",
+        "deletion": "Deletes for good: it can’t be undone.",
+        "customer_message": "Sends a message to a customer: it can’t be taken back.",
+        "credits": "Spends credits: they aren’t given back."
       },
       "lapsesSoon": "Lapses {when}.",
       "acknowledge": "I’ve read what Louez will do",
