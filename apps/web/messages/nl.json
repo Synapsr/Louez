@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "De boeking bevestigen?",
           "confirmPastBuffer": "De boeking bevestigen ondanks je tijd tussen twee verhuren?",
           "confirmBeyondStock": "De boeking bevestigen boven je voorraad?",
-          "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?"
+          "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?",
+          "recordDeposit": "Een ontvangen borg registreren?"
         },
         "facts": {
           "booking": "Boeking #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "Je voorraad en je tijd tussen twee verhuren dekken het: niets gaat erover.",
           "message": "<v>{customer}</v> krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
           "messageToCustomer": "De klant krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
-          "noMessage": "De klant krijgt geen bericht."
+          "noMessage": "De klant krijgt geen bericht.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

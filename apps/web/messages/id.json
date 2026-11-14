@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Konfirmasi pemesanan?",
           "confirmPastBuffer": "Konfirmasi pemesanan meski melanggar jeda antarsewa Anda?",
           "confirmBeyondStock": "Konfirmasi pemesanan melebihi stok Anda?",
-          "confirmBeyondStockAndBuffer": "Konfirmasi pemesanan melebihi stok dan jeda antarsewa Anda?"
+          "confirmBeyondStockAndBuffer": "Konfirmasi pemesanan melebihi stok dan jeda antarsewa Anda?",
+          "recordDeposit": "Catat uang jaminan yang diterima?"
         },
         "facts": {
           "booking": "Pemesanan #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "Stok dan jeda antarsewa Anda mencukupi: tidak ada yang terlampaui.",
           "message": "<v>{customer}</v> akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
           "messageToCustomer": "Pelanggan akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
-          "noMessage": "Tidak ada pesan yang dikirim ke pelanggan."
+          "noMessage": "Tidak ada pesan yang dikirim ke pelanggan.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> diterima · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

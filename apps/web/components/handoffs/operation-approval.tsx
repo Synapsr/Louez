@@ -47,9 +47,11 @@ interface OperationApprovalProps {
  * asked by whom (one line under the title, so an owner of two stores knows
  * which one), what Louez will do, that only Louez's summary counts, what
  * cannot be undone, the lapse when it is close, the box when one is
- * required, and the two buttons. What Louez will do is its headline and its
- * facts, in the person's language, when the request carries a display (the
- * actions a person must approve); otherwise its one sentence. Everything
+ * required, and the two buttons. When the request carries a display (the
+ * actions a person must approve), its headline is the page's title, one
+ * question, and what Louez will do is its facts, in the person's language;
+ * otherwise the title names the kind of action and what Louez will do is
+ * its one sentence. Everything
  * else is on request, in closed disclosures: who asks in full and for which
  * account, the sentence the assistant was given (with a display), what
  * Louez checked, when it worked it out and when the request lapses, the
@@ -67,7 +69,11 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
 
   return (
     <HandoffCard
-      title={t(`title.${headline}`)}
+      title={
+        approval.display
+          ? t(`display.headline.${approval.display.headline.key}`)
+          : t(`title.${headline}`)
+      }
       description={
         // Each name bounded and isolated: a long or right-to-left name
         // pushes and reorders nothing else on the line.

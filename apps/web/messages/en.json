@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Confirm the booking?",
           "confirmPastBuffer": "Confirm the booking despite your turnover buffer?",
           "confirmBeyondStock": "Confirm the booking beyond your stock?",
-          "confirmBeyondStockAndBuffer": "Confirm the booking beyond your stock and your turnover buffer?"
+          "confirmBeyondStockAndBuffer": "Confirm the booking beyond your stock and your turnover buffer?",
+          "recordDeposit": "Record a deposit collected?"
         },
         "facts": {
           "booking": "Booking #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "Your stock and your turnover buffer cover it: nothing goes past them.",
           "message": "<v>{customer}</v> will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
           "messageToCustomer": "The customer will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
-          "noMessage": "No message goes to the customer."
+          "noMessage": "No message goes to the customer.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> collected · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, given back to the customer · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

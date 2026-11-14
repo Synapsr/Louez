@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Potwierdzić rezerwację?",
           "confirmPastBuffer": "Potwierdzić rezerwację mimo przerwy między wynajmami?",
           "confirmBeyondStock": "Potwierdzić rezerwację ponad stan magazynu?",
-          "confirmBeyondStockAndBuffer": "Potwierdzić rezerwację ponad stan magazynu i mimo przerwy między wynajmami?"
+          "confirmBeyondStockAndBuffer": "Potwierdzić rezerwację ponad stan magazynu i mimo przerwy między wynajmami?",
+          "recordDeposit": "Zapisać pobraną kaucję?"
         },
         "facts": {
           "booking": "Rezerwacja #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "Stan magazynu i przerwa między wynajmami to pokrywają: nic ich nie przekracza.",
           "message": "<v>{customer}</v> otrzyma {channels, select, email {e-mail} sms {SMS} other {e-mail i SMS}} „<v>{message}</v>”",
           "messageToCustomer": "Klient otrzyma {channels, select, email {e-mail} sms {SMS} other {e-mail i SMS}} „<v>{message}</v>”",
-          "noMessage": "Klient nie dostaje żadnej wiadomości."
+          "noMessage": "Klient nie dostaje żadnej wiadomości.",
+          "depositCollected": "<v>{type}</v>: pobrano <v>{amount}</v> · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

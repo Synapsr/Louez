@@ -43,7 +43,11 @@ export const OperationApprovalDone = ({
       <div className="w-full">
         {approval.display && (
           <div className="mb-4">
-            <ApprovalDisplay display={approval.display} timeZone={approval.store.timeZone} />
+            <ApprovalDisplay
+              display={approval.display}
+              timeZone={approval.store.timeZone}
+              withHeadline
+            />
           </div>
         )}
         <HandoffDisclosure label={t("details")}>

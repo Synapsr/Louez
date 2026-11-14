@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "确认这笔预订？",
           "confirmPastBuffer": "不顾两次租赁之间的间隔，确认这笔预订？",
           "confirmBeyondStock": "超出库存确认这笔预订？",
-          "confirmBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，确认这笔预订？"
+          "confirmBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，确认这笔预订？",
+          "recordDeposit": "记录一笔已收押金？"
         },
         "facts": {
           "booking": "预订 #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "库存和两次租赁之间的间隔都够用：没有任何超出。",
           "message": "<v>{customer}</v> 将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
           "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
-          "noMessage": "不会向客户发送任何消息。"
+          "noMessage": "不会向客户发送任何消息。",
+          "depositCollected": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

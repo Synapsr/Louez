@@ -38,7 +38,7 @@ import { sha256, stableStringify } from "../platform/hash";
 import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platform/effects";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import type { ApprovalPresentation } from "./approval-display";
-import { confirmOverridePresentation } from "./approval-presentations";
+import { confirmOverridePresentation, type MessageRecipient } from "./approval-presentations";
 import { resolveDateChangeRequests } from "./date-change-requests";
 import {
   CUSTOMER_STATUS_NOTIFICATION,
@@ -323,6 +323,16 @@ function customerMessageOf(
   return null;
 }
 
+/** Where each message goes: its channel, and the customer's address on it. */
+const recipientsOf = (
+  messages: StatusChangePreview["messages"],
+  locked: Pick<LockedReservation, "customer">,
+): MessageRecipient[] =>
+  messages.map((entry) => ({
+    channel: entry.channel,
+    to: entry.channel === "email" ? locked.customer?.email : locked.customer?.phone,
+  }));
+
 /** Each message as the preview names it. */
 const MESSAGE_NAMES: Record<CustomerStatusMessage, string> = {
   request_accepted: "request accepted",
@@ -458,13 +468,7 @@ async function buildPreview(
     insuranceContract,
     // Where the messages go, and in which language.
     recipientsHash: sha256(
-      stableStringify({
-        locale: locked.locale,
-        recipients: messages.map((entry) => ({
-          channel: entry.channel,
-          to: entry.channel === "email" ? locked.customer?.email : locked.customer?.phone,
-        })),
-      }),
+      stableStringify({ locale: locked.locale, recipients: recipientsOf(messages, locked) }),
     ),
   };
 }
@@ -568,7 +572,11 @@ export async function changeStoreReservationStatus(
               : null,
         });
         if (options.confirm && statusChangeIsSensitive(from, to)) {
-          const refusal = await options.confirm(preview, tx, confirmOverridePresentation(preview));
+          const refusal = await options.confirm(
+            preview,
+            tx,
+            confirmOverridePresentation(preview, recipientsOf(preview.messages, locked)),
+          );
           // Committed: the new preview stays recorded for its token.
           if (refusal) return { kind: "confirm", refusal };
         }

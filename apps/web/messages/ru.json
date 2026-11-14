@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Подтвердить бронирование?",
           "confirmPastBuffer": "Подтвердить бронирование, несмотря на ваш перерыв между арендами?",
           "confirmBeyondStock": "Подтвердить бронирование сверх вашего запаса?",
-          "confirmBeyondStockAndBuffer": "Подтвердить бронирование сверх вашего запаса и вашего перерыва между арендами?"
+          "confirmBeyondStockAndBuffer": "Подтвердить бронирование сверх вашего запаса и вашего перерыва между арендами?",
+          "recordDeposit": "Записать полученный залог?"
         },
         "facts": {
           "booking": "Бронирование №<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "Ваш запас и перерыв между арендами это покрывают: ничего не превышено.",
           "message": "<v>{customer}</v> получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
           "messageToCustomer": "Клиент получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
-          "noMessage": "Клиенту ничего не отправляется."
+          "noMessage": "Клиенту ничего не отправляется.",
+          "depositCollected": "<v>{type}</v>: получено <v>{amount}</v> · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

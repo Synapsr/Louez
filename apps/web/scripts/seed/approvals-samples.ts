@@ -115,7 +115,9 @@ export function sampleApprovals({
       payload: {
         input: { id: reservation.id, status: "confirmed", overrideTurnoverBuffer: true },
         preview: { summary: bookingSummary, details: bookingDetails },
-        display: confirmOverridePresentation(booking)?.display,
+        display: confirmOverridePresentation(booking, [
+          { channel: "email", to: reservation.email },
+        ])?.display,
         scope: { domain: "reservations", level: "write" },
         consequences: ["stock_override", "customer_message"],
       },

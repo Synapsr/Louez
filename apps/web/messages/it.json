@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Confermare la prenotazione?",
           "confirmPastBuffer": "Confermare la prenotazione nonostante il tuo margine tra due noleggi?",
           "confirmBeyondStock": "Confermare la prenotazione oltre la tua disponibilità?",
-          "confirmBeyondStockAndBuffer": "Confermare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?"
+          "confirmBeyondStockAndBuffer": "Confermare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?",
+          "recordDeposit": "Registrare un deposito incassato?"
         },
         "facts": {
           "booking": "Prenotazione #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "La tua disponibilità e il tuo margine tra due noleggi la coprono: niente li supera.",
           "message": "<v>{customer}</v> riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
           "messageToCustomer": "Il cliente riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
-          "noMessage": "Al cliente non viene inviato alcun messaggio."
+          "noMessage": "Al cliente non viene inviato alcun messaggio.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> incassati · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, restituiti al cliente · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

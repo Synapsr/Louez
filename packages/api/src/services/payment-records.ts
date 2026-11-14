@@ -9,6 +9,7 @@ import {
   type Transaction,
 } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
+import { normalizeCurrency } from "@louez/utils";
 import { and, eq } from "drizzle-orm";
 
 import {
@@ -121,10 +122,11 @@ async function lockedReservation(tx: Transaction, storeId: string, id: string) {
 
 /**
  * The reservation's currency, frozen when it was created; the store's for a
- * reservation older than its own (`reservations.currency`).
+ * reservation older than its own (`reservations.currency`): the one the
+ * writer records the payment in (apps/web `reservationCurrency`).
  */
 const currencyOf = (caller: PaymentRecordsCaller, reservation: { currency: string | null }) =>
-  reservation.currency ?? caller.storeSettings?.currency ?? "EUR";
+  normalizeCurrency(reservation.currency, normalizeCurrency(caller.storeSettings?.currency));
 
 /** Not a number, or zero; then a negative amount outside an adjustment. */
 function recordAmountRefusal(input: RecordPaymentInput): Error | null {
@@ -336,9 +338,10 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
       presentation: deletePaymentPresentation(details, {
         reservationId: payment.reservationId,
         // The payment's own currency, else its reservation's, else the store's.
-        currency:
-          payment.currency ??
+        currency: normalizeCurrency(
+          payment.currency,
           currencyOf(caller, { currency: payment.reservationCurrency }),
+        ),
         recordedAt: payment.paidAt ?? payment.createdAt,
       }),
     });

@@ -43,7 +43,11 @@ export type ChoiceList = keyof typeof CHOICES;
 export const LABELLED_CHOICES = ["paymentType", "paymentMethod", "customerMessage"] as const;
 
 export type TextValue = { type: "text"; text: string };
-/** An amount as a decimal string ("-20.00", "1500") and its ISO currency. */
+/**
+ * An amount as a decimal string ("-20.00", "1500.00") and its ISO currency:
+ * the value its row holds, every digit of which the page shows, and no
+ * other (`storedAmount`, services/approval-presentations.ts).
+ */
 export type MoneyValue = { type: "money"; amount: string; currency: string };
 /** An instant, ISO 8601 with its offset: the page writes it in the store's time zone. */
 export type DateTimeValue = { type: "dateTime"; at: string };
@@ -89,6 +93,8 @@ export const HEADLINES = {
   recordPayment: {},
   /** A negative adjustment: money the store paid back. */
   paidBack: {},
+  /** A deposit the store collected, recorded through the generic write. */
+  recordDeposit: {},
   returnDeposit: {},
   deletePayment: {},
   removeMember: {},
@@ -110,7 +116,19 @@ export const FACTS = {
   received: { type: choiceOf("paymentType"), amount: MONEY, method: choiceOf("paymentMethod") },
   /** A negative adjustment: "Adjustment: -€20.00, paid back to the customer · Card" */
   paidBack: { type: choiceOf("paymentType"), amount: MONEY, method: choiceOf("paymentMethod") },
-  /** "€150.00 of deposit given back · Transfer" */
+  /** "Deposit: €300.00 collected · Card" */
+  depositCollected: {
+    type: choiceOf("paymentType"),
+    amount: MONEY,
+    method: choiceOf("paymentMethod"),
+  },
+  /** "Deposit return: €150.00, given back to the customer · Cash" */
+  depositGivenBack: {
+    type: choiceOf("paymentType"),
+    amount: MONEY,
+    method: choiceOf("paymentMethod"),
+  },
+  /** "Deposit given back: €150.00 · Transfer" */
   returned: { amount: MONEY, method: choiceOf("paymentMethod") },
   /** "Deposit still held before this: €300.00" */
   depositHeld: { held: MONEY },

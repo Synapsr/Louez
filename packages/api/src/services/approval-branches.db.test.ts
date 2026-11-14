@@ -408,6 +408,61 @@ describe("the six branches a person will approve, as an agent is answered (datab
     });
   }
 
+  test("the amount a display shows is the amount the row holds: MySQL's own `decimal(10,2)`", async () => {
+    const { storedAmount } = await import("./approval-presentations");
+    // As the writer hands it the column: the amount as it was sent
+    // (apps/web lib/reservations/dashboard-payment-writes.ts).
+    const sent = [
+      "1.49",
+      "1.234",
+      "1.235",
+      "1.245",
+      "-20.005",
+      "-20.004",
+      "-0.004",
+      "0.004",
+      "120",
+      "120.5",
+      "007.5",
+      "1500.00",
+      "99999999.99",
+      "99999999.994",
+    ];
+    for (const [index, amount] of sent.entries()) {
+      const id = `ab_amount_${String(index).padStart(11, "0")}`;
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId: PAID,
+        amount,
+        type: "rental",
+        method: "cash",
+        status: "pending",
+        currency: "JPY",
+      });
+      const [row] = await louezDb.db
+        .select({ amount: louezDb.payments.amount })
+        .from(louezDb.payments)
+        .where(orm.eq(louezDb.payments.id, id));
+      assert.equal(storedAmount(amount), row?.amount, amount);
+      await louezDb.db.delete(louezDb.payments).where(orm.eq(louezDb.payments.id, id));
+    }
+    // Past eight integer digits the column refuses it, and no display shows it.
+    for (const amount of ["99999999.995", "100000000"]) {
+      await assert.rejects(
+        louezDb.db.insert(louezDb.payments).values({
+          id: "ab_amount_out_of_range",
+          reservationId: PAID,
+          amount,
+          type: "rental",
+          method: "cash",
+          status: "pending",
+        }),
+        amount,
+      );
+      assert.equal(storedAmount(amount), null, amount);
+    }
+  });
+
   for (const branch of BRANCHES) {
     test(`${branch.name}: its check gets a display the page shows, kept out of the answer`, async () => {
       const answer = await answerOf(branch);

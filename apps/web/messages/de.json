@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Die Buchung bestätigen?",
           "confirmPastBuffer": "Die Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen bestätigen?",
           "confirmBeyondStock": "Die Buchung über Ihren Bestand hinaus bestätigen?",
-          "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?"
+          "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?",
+          "recordDeposit": "Eine erhaltene Kaution erfassen?"
         },
         "facts": {
           "booking": "Buchung #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "Ihr Bestand und Ihre Pufferzeit decken sie ab: Nichts geht darüber hinaus.",
           "message": "<v>{customer}</v> erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
           "messageToCustomer": "Der Kunde erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
-          "noMessage": "Der Kunde erhält keine Nachricht."
+          "noMessage": "Der Kunde erhält keine Nachricht.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

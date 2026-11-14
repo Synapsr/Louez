@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, test } from "node:test";
@@ -6,6 +7,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 
+import { RECORDED_PAYMENT_TYPES } from "@louez/api/contracts/payment-records";
 import {
   CHOICES,
   FACTS,
@@ -21,6 +23,7 @@ import {
   recordDepositReturnPresentation,
   recordPaymentPresentation,
   removeMemberPresentation,
+  type MessageRecipient,
 } from "@louez/api/services/approval-presentations";
 import { shownDisplay } from "@louez/api/services/approval-preview";
 import type { StatusChangePreview } from "@louez/api/services/reservation-status";
@@ -88,23 +91,61 @@ const short = (productName: string, requested: number, available: number) => ({
   available,
 });
 
+/** Where the customer's messages go: the addresses the store holds, as written in its records. */
+const ADDRESSES = { email: " Camille.Simon@Example.com", sms: "+33 6 12 34 56 78" } as const;
+const recipientsOf = (preview: StatusChangePreview): MessageRecipient[] =>
+  preview.messages.map((entry) => ({ channel: entry.channel, to: ADDRESSES[entry.channel] }));
+
+/** A status change's presentation, as the service builds it: from its preview and where its messages go. */
+const confirmed = (preview: StatusChangePreview) => ({
+  preview,
+  presentation: confirmOverridePresentation(preview, recipientsOf(preview)),
+});
+
+/** A payment recorded through the generic write, on booking R-00094 in euros. */
+const recorded = (type: string, amount: string, method = "cash", currency = "EUR") =>
+  recordPaymentPresentation(
+    { reservationId: RESERVATION, number: "R-00094", type, amount, method },
+    currency,
+  );
+
 /** The six branches, with realistic values, as their services build them; the summary their agent reads. */
-const BRANCHES: Array<{ name: string; summary: string; presentation: ApprovalPresentation | null }> = [
+const BRANCHES: Array<{
+  name: string;
+  summary: string;
+  presentation: ApprovalPresentation | null;
+  /** For a status change: the preview it was built from, which says who the customer is to the caller. */
+  preview?: StatusChangePreview;
+}> = [
   {
     name: "a payment recorded",
     summary: "Record a rental payment of €120.00 (cash) on reservation #R-00094.",
-    presentation: recordPaymentPresentation(
-      { reservationId: RESERVATION, number: "R-00094", type: "rental", amount: "120.00", method: "cash" },
-      "EUR",
-    ),
+    presentation: recorded("rental", "120.00"),
+  },
+  {
+    name: "damages paid",
+    summary: "Record a damage payment of €45.00 (card) on reservation #R-00094.",
+    presentation: recorded("damage", "45.00", "card"),
+  },
+  {
+    name: "a deposit collected through the generic write",
+    summary: "Record a deposit payment of €300.00 (card) on reservation #R-00094.",
+    presentation: recorded("deposit", "300.00", "card"),
+  },
+  {
+    name: "a deposit given back through the generic write",
+    summary: "Record a deposit_return payment of €150.00 (cash) on reservation #R-00094.",
+    presentation: recorded("deposit_return", "150.00"),
+  },
+  {
+    name: "a positive adjustment",
+    summary: "Record a adjustment payment of €15.00 (transfer) on reservation #R-00094.",
+    presentation: recorded("adjustment", "15.00", "transfer"),
   },
   {
     name: "a negative adjustment",
     summary: "Record a adjustment payment of -€20.00 (card) on reservation #R-00094.",
-    presentation: recordPaymentPresentation(
-      { reservationId: RESERVATION, number: "R-00094", type: "adjustment", amount: "-20.00", method: "card" },
-      "EUR",
-    ),
+    presentation: recorded("adjustment", "-20.00", "card"),
   },
   {
     name: "a deposit return",
@@ -144,12 +185,12 @@ const BRANCHES: Array<{ name: string; summary: string; presentation: ApprovalPre
   {
     name: "a booking confirmed past the turnover buffer, a message goes",
     summary: statusPreview().summary,
-    presentation: confirmOverridePresentation(statusPreview()),
+    ...confirmed(statusPreview()),
   },
   {
     name: "a booking confirmed beyond the stock, no message",
     summary: "Change reservation #R-00095 … The stock cannot cover it…",
-    presentation: confirmOverridePresentation(
+    ...confirmed(
       statusPreview({
         customer: { name: "Bo Ray", email: "" },
         messages: [],
@@ -161,7 +202,7 @@ const BRANCHES: Array<{ name: string; summary: string; presentation: ApprovalPre
   {
     name: "a booking confirmed beyond the stock and the buffer, by email and text message",
     summary: "Change reservation #R-00094 …",
-    presentation: confirmOverridePresentation(
+    ...confirmed(
       statusPreview({
         messages: [
           { message: "request_accepted", channel: "email" },
@@ -174,7 +215,7 @@ const BRANCHES: Array<{ name: string; summary: string; presentation: ApprovalPre
   {
     name: "a booking confirmed with both flags, nothing short",
     summary: "Change reservation #R-00094 …",
-    presentation: confirmOverridePresentation(
+    ...confirmed(
       statusPreview({
         overbooking: { shortfalls: [] },
         turnoverBuffer: { shortfalls: [], turnoverBufferMinutes: 120 },
@@ -184,9 +225,16 @@ const BRANCHES: Array<{ name: string; summary: string; presentation: ApprovalPre
   {
     name: "a booking confirmed past the buffer, the customer not shown to the agent",
     summary: "Change reservation #R-00094 …",
-    presentation: confirmOverridePresentation(statusPreview({ customer: null })),
+    ...confirmed(statusPreview({ customer: null })),
   },
 ];
+
+/** A branch by its name. */
+const branchNamed = (name: string) => {
+  const found = BRANCHES.find((candidate) => candidate.name === name);
+  assert.ok(found, name);
+  return found;
+};
 
 const PREVIEW = (summary: string): ShownPreview => ({
   summary,
@@ -266,7 +314,8 @@ const detailsOf = (html: string) => textOf([...html.matchAll(DISCLOSURE)][0]?.[2
 /** The headline and each fact, as the screen shows them, one text each. */
 const screenLines = (html: string) => {
   const shown = visibleHtml(html);
-  const headline = /<p class="text-foreground text-base leading-snug[^"]*">([\s\S]*?)<\/p>/.exec(shown)?.[1];
+  // With a display, the headline is the page's title.
+  const headline = /data-slot="card-title">([\s\S]*?)<\/div>/.exec(shown)?.[1];
   const facts = [...shown.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map((match) => textOf(match[1] ?? ""));
   return [textOf(headline ?? ""), ...facts];
 };
@@ -284,6 +333,62 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Enregistrer un paiement reçu ?",
       "Réservation #R-00094",
       "Location : paiement de 120,00 € reçu · Espèces",
+      "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
+    ],
+  },
+  "damages paid": {
+    en: [
+      "Record a payment received?",
+      "Booking #R-00094",
+      "Damages: €45.00 received · Card",
+      "Louez only records it: no money is charged or refunded.",
+    ],
+    fr: [
+      "Enregistrer un paiement reçu ?",
+      "Réservation #R-00094",
+      "Dommages : paiement de 45,00 € reçu · Carte",
+      "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
+    ],
+  },
+  "a deposit collected through the generic write": {
+    en: [
+      "Record a deposit collected?",
+      "Booking #R-00094",
+      "Deposit: €300.00 collected · Card",
+      "Louez only records it: no money is charged or refunded.",
+    ],
+    fr: [
+      "Enregistrer une caution encaissée ?",
+      "Réservation #R-00094",
+      "Caution : 300,00 € encaissés · Carte",
+      "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
+    ],
+  },
+  "a deposit given back through the generic write": {
+    en: [
+      "Record a deposit given back?",
+      "Booking #R-00094",
+      "Deposit return: €150.00, given back to the customer · Cash",
+      "Louez only records it: no money is charged or refunded.",
+    ],
+    fr: [
+      "Enregistrer une caution rendue ?",
+      "Réservation #R-00094",
+      "Caution rendue : 150,00 € remis au client · Espèces",
+      "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
+    ],
+  },
+  "a positive adjustment": {
+    en: [
+      "Record a payment received?",
+      "Booking #R-00094",
+      "Adjustment: €15.00 received · Bank transfer",
+      "Louez only records it: no money is charged or refunded.",
+    ],
+    fr: [
+      "Enregistrer un paiement reçu ?",
+      "Réservation #R-00094",
+      "Ajustement : paiement de 15,00 € reçu · Virement",
       "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
     ],
   },
@@ -466,15 +571,16 @@ describe("what a person reads first, for the actions a person approves", () => {
     });
   }
 
-  test("the screen holds, in order, the title, where and who asks, the headline, the facts, the short safety line, the stake, the box and the buttons", () => {
-    const branch = BRANCHES[6];
-    assert.ok(branch);
+  test("the screen holds, in order, the headline as its title, where and who asks, the facts, the short safety line, the stake, the box and the buttons", () => {
+    const branch = branchNamed("a booking confirmed past the turnover buffer, a message goes");
     const screen = visible(pageOf(branch, "fr", { consequences: ["stock_override", "customer_message"] }));
     let from = 0;
+    // One question: the headline is the title, and the kind of action is not asked again.
+    assert.ok(!screen.includes("Approuver une réservation au-delà du stock ?"));
+    assert.equal(screen.split("?").length - 1, 1, "one question on the screen");
     for (const part of [
-      "Approuver une réservation au-delà du stock ?",
-      "Vélo Liberté · demandé par « Sample assistant »",
       "Confirmer la réservation malgré votre délai entre deux locations ?",
+      "Vélo Liberté · demandé par « Sample assistant »",
       "Réservation #R-00094 · Camille Simon",
       "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
       "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
@@ -494,8 +600,7 @@ describe("what a person reads first, for the actions a person approves", () => {
   });
 
   test("the result page shows the headline and the facts under its outcome title, and the agent's sentence in its details", () => {
-    const branch = BRANCHES[0];
-    assert.ok(branch);
+    const branch = branchNamed("a payment recorded");
     const shown = shownDisplay(branch.presentation?.display);
     const html = wrap(
       "en",
@@ -554,6 +659,9 @@ describe("the guarantee: each fact of a request's identity is among what the pag
       const html = pageOf(branch);
       const screen = screenLines(html);
       for (const [name, identity] of Object.entries(facts)) {
+        // Who receives a message is held as a hash of each recipient: the
+        // screen shows them in the form the caller may see (below).
+        if (name === "recipients") continue;
         for (const leaf of leaves(identity)) {
           const index = lines.findIndex((candidate) => candidate.leaves.includes(leaf));
           assert.ok(index >= 0, `the identity fact ${name} (${leaf}) is on no line the page always shows`);
@@ -565,8 +673,37 @@ describe("the guarantee: each fact of a request's identity is among what the pag
     });
   }
 
+  // A status change's recipients: each one in the identity, as the hash of
+  // its channel and its address, and each one on the screen, named when
+  // the caller may read customers, in the neutral wording otherwise.
+  const hashOf = (channel: "email" | "sms", to: string) =>
+    createHash("sha256").update(JSON.stringify({ channel, to })).digest("hex");
+  const EXPECTED = {
+    email: hashOf("email", "camille.simon@example.com"),
+    sms: hashOf("sms", "+33612345678"),
+  };
+  for (const branch of BRANCHES.filter((candidate) => candidate.preview)) {
+    test(`${branch.name}: each recipient is in the identity and on the screen`, () => {
+      const { preview, presentation } = branch;
+      assert.ok(preview && presentation);
+      assert.deepEqual(
+        presentation.facts.recipients,
+        preview.messages.map((entry) => EXPECTED[entry.channel]).sort(),
+        "each recipient, hashed",
+      );
+      const message = screenLines(pageOf(branch)).at(-1) ?? "";
+      if (preview.messages.length === 0) {
+        assert.equal(message, "No message goes to the customer.");
+      } else if (preview.customer) {
+        assert.ok(message.startsWith(`${preview.customer.name} will receive`), message);
+      } else {
+        assert.ok(message.startsWith("The customer will receive"), message);
+      }
+    });
+  }
+
   test("a fact of the identity the display does not show fails it", () => {
-    const presentation = BRANCHES[0]?.presentation;
+    const presentation = branchNamed("a payment recorded").presentation;
     assert.ok(presentation);
     const forged = { ...presentation, facts: { ...presentation.facts, notes: "paid at the counter" } };
     const shown = new Set([presentation.display.headline, ...presentation.display.facts].flatMap((line) => [
@@ -577,10 +714,125 @@ describe("the guarantee: each fact of a request's identity is among what the pag
   });
 });
 
+describe("a payment recorded through the generic write says what the writer records", () => {
+  const screenOf = (presentation: ApprovalPresentation | null, locale = "en") =>
+    screenLines(pageOf({ name: "a payment", summary: "Record a payment …", presentation }, locale));
+
+  test("each type the write accepts has its own headline and fact, money in, a deposit collected, a deposit given back, an adjustment either way", () => {
+    const expected: Record<string, { en: string[]; fr: string[] }> = {
+      rental: {
+        en: ["Record a payment received?", "Booking #R-00094", "Rental: €120.00 received · Cash"],
+        fr: ["Enregistrer un paiement reçu ?", "Réservation #R-00094", "Location : paiement de 120,00 € reçu · Espèces"],
+      },
+      damage: {
+        en: ["Record a payment received?", "Booking #R-00094", "Damages: €120.00 received · Cash"],
+        fr: ["Enregistrer un paiement reçu ?", "Réservation #R-00094", "Dommages : paiement de 120,00 € reçu · Espèces"],
+      },
+      deposit: {
+        en: ["Record a deposit collected?", "Booking #R-00094", "Deposit: €120.00 collected · Cash"],
+        fr: ["Enregistrer une caution encaissée ?", "Réservation #R-00094", "Caution : 120,00 € encaissés · Espèces"],
+      },
+      deposit_return: {
+        en: ["Record a deposit given back?", "Booking #R-00094", "Deposit return: €120.00, given back to the customer · Cash"],
+        fr: ["Enregistrer une caution rendue ?", "Réservation #R-00094", "Caution rendue : 120,00 € remis au client · Espèces"],
+      },
+      adjustment: {
+        en: ["Record a payment received?", "Booking #R-00094", "Adjustment: €120.00 received · Cash"],
+        fr: ["Enregistrer un paiement reçu ?", "Réservation #R-00094", "Ajustement : paiement de 120,00 € reçu · Espèces"],
+      },
+    };
+    assert.deepEqual(Object.keys(expected).sort(), [...RECORDED_PAYMENT_TYPES].sort(), "every type the write accepts");
+    for (const type of RECORDED_PAYMENT_TYPES) {
+      for (const locale of ["en", "fr"] as const) {
+        assert.deepEqual(screenOf(recorded(type, "120.00"), locale).slice(0, 3), expected[type]?.[locale], `${type}, ${locale}`);
+      }
+    }
+    assert.deepEqual(screenOf(recorded("adjustment", "-20.00", "card")).slice(0, 3), [
+      "Record money paid back to the customer?",
+      "Booking #R-00094",
+      "Adjustment: -€20.00, paid back to the customer · Card",
+    ]);
+  });
+
+  test("a sign the write refuses, or a type it does not record, shows no display: the summary decides", () => {
+    for (const type of ["rental", "damage", "deposit", "deposit_return"]) {
+      assert.equal(recorded(type, "-20.00"), null, type);
+    }
+    for (const type of ["deposit_hold", "deposit_capture", "refund", "toString", "__proto__"]) {
+      assert.equal(recorded(type, "20.00"), null, type);
+    }
+  });
+
+  test("the amount shown is the amount the row holds, every digit of it and no other", () => {
+    const cases: Array<[string, string, string]> = [
+      // Yen has no minor unit, the row keeps two decimals: 1.49 stays 1.49.
+      ["1.49", "JPY", "Rental: ¥1.49 received · Cash"],
+      ["1500", "JPY", "Rental: ¥1,500 received · Cash"],
+      // Dinars have three, the row two: 1.234 is held, and shown, as 1.23.
+      ["1.234", "KWD", "Rental: KWD 1.23 received · Cash"],
+      ["1.235", "KWD", "Rental: KWD 1.24 received · Cash"],
+      ["120", "EUR", "Rental: €120.00 received · Cash"],
+      ["120.5", "EUR", "Rental: €120.50 received · Cash"],
+    ];
+    for (const [amount, currency, line] of cases) {
+      assert.equal(screenOf(recorded("rental", amount, "cash", currency))[2], line, `${amount} ${currency}`);
+    }
+    assert.equal(
+      screenOf(recorded("adjustment", "-20.005", "card"))[2],
+      "Adjustment: -€20.01, paid back to the customer · Card",
+    );
+    // The identity holds the same amount as the row.
+    assert.equal(recorded("rental", "1.234", "cash", "KWD")?.facts.amount, "1.23");
+    // A deposit's balance, a deleted payment's amount and a booking's total are read from their rows: shown as held.
+    const held = recordDepositReturnPresentation(
+      { reservationId: RESERVATION, number: "R-00094", amount: "1.494", method: "cash", returnable: "3.50" },
+      "JPY",
+    );
+    assert.deepEqual(screenOf(held).slice(2, 4), ["Deposit given back: ¥1.49 · Cash", "Deposit still held before this: ¥3.50"]);
+    const deleted = deletePaymentPresentation(
+      { paymentId: "pay_1", number: "R-00094", type: "rental", amount: "0.75", method: "cash" },
+      { reservationId: RESERVATION, currency: "JPY", recordedAt: new Date("2026-11-12T15:30:00.000Z") },
+    );
+    assert.equal(screenOf(deleted)[2], "Rental: ¥0.75 · Cash");
+    const booking = confirmed(
+      statusPreview({ reservation: { ...statusPreview().reservation, totalAmount: "9800.50", currency: "JPY" } }),
+    );
+    assert.match(screenOf(booking.presentation)[2] ?? "", /· ¥9,800\.50$/);
+  });
+
+  test("a text the column would not hold as written shows no display", () => {
+    for (const amount of [" 120.00", "+120", "1e2", "120.00 ", "100000000.00", "12,50", ""]) {
+      assert.equal(recorded("rental", amount), null, JSON.stringify(amount));
+    }
+  });
+});
+
+describe("one question on the page", () => {
+  test("with a display, its headline is the page's title, the provenance line right under it, and the stake still said", () => {
+    const branch = branchNamed("a payment recorded");
+    const html = pageOf(branch);
+    assert.match(html, /data-slot="card-title">Record a payment received\?<\/div><div class="[^"]*" data-slot="card-description"><bdi>Vélo Liberté<\/bdi> · asked by/);
+    assert.ok(!visible(html).includes("Approve a payment?"), "no second question");
+    assert.match(visible(html), /Can’t be undone: money\./);
+  });
+
+  test("without a display, the title names the kind of action, as before", () => {
+    const html = wrap(
+      "en",
+      <OperationApproval
+        action="/handoffs/abcdefghijklmnopqrstu/decide"
+        approval={approval({ preview: PREVIEW("Record a rental payment.") })}
+        email="olga@velo-liberte.test"
+        note={null}
+      />,
+    );
+    assert.match(html, /data-slot="card-title">Approve a payment\?<\/div>/);
+  });
+});
+
 describe("a value from the store's records stays data", () => {
   const withValues = (overrides: Partial<StatusChangePreview>) => {
-    const presentation = confirmOverridePresentation(statusPreview(overrides));
-    return { name: "a booking", summary: "Change reservation …", presentation };
+    return { name: "a booking", summary: "Change reservation …", ...confirmed(statusPreview(overrides)) };
   };
 
   test("a customer named like one of Louez's sentences stays inside one value of one fact", () => {
@@ -596,7 +848,7 @@ describe("a value from the store's records stays data", () => {
   });
 
   test("a name in another script, or another direction, is isolated", () => {
-    const html = pageOf(withValues({ customer: { name: "سارة‮أحمد", email: "s@example.com" } }));
+    const html = pageOf(withValues({ customer: { name: "سارة\u202eأحمد", email: "s@example.com" } }));
     assert.match(html, /<bdi class="text-foreground font-medium">سارة/);
   });
 
@@ -620,7 +872,7 @@ describe("a value from the store's records stays data", () => {
     );
     const html = pageOf({ name: "yen", summary: "Record …", presentation: yen });
     assert.ok(screenLines(html).includes("Rental: ¥1,500 received · Cash"));
-    const back = pageOf(BRANCHES[1] as (typeof BRANCHES)[number], "fr");
+    const back = pageOf(branchNamed("a negative adjustment"), "fr");
     assert.equal(screenLines(back)[0], "Enregistrer un remboursement au client ?");
     assert.ok(screenLines(back).includes("Ajustement : -20,00 €, remboursés au client · Carte"));
   });

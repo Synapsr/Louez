@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Confirmer la réservation ?",
           "confirmPastBuffer": "Confirmer la réservation malgré votre délai entre deux locations ?",
           "confirmBeyondStock": "Confirmer la réservation au-delà de votre stock ?",
-          "confirmBeyondStockAndBuffer": "Confirmer la réservation au-delà de votre stock et de votre délai entre deux locations ?"
+          "confirmBeyondStockAndBuffer": "Confirmer la réservation au-delà de votre stock et de votre délai entre deux locations ?",
+          "recordDeposit": "Enregistrer une caution encaissée ?"
         },
         "facts": {
           "booking": "Réservation #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "Votre stock et votre délai entre deux locations la couvrent : rien ne les dépasse.",
           "message": "<v>{customer}</v> recevra {channels, select, email {l’e-mail} sms {le SMS} other {l’e-mail et le SMS}} « <v>{message}</v> »",
           "messageToCustomer": "Le client recevra {channels, select, email {l’e-mail} sms {le SMS} other {l’e-mail et le SMS}} « <v>{message}</v> »",
-          "noMessage": "Aucun message n’est envoyé au client."
+          "noMessage": "Aucun message n’est envoyé au client.",
+          "depositCollected": "<v>{type}</v> : <v>{amount}</v> encaissés · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v> : <v>{amount}</v> remis au client · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

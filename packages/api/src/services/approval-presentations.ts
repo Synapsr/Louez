@@ -1,4 +1,6 @@
+import type { RECORDED_PAYMENT_TYPES } from "../contracts/payment-records";
 import { describeShortfallLine, type CapacityShortfall } from "../contracts/reservations";
+import { sha256, stableStringify } from "../platform/hash";
 import {
   FACTS_MAX,
   choice,
@@ -13,6 +15,8 @@ import {
   text,
   type ApprovalPresentation,
   type DisplayFact,
+  type FactKey,
+  type HeadlineKey,
 } from "./approval-display";
 import { oneLine } from "./approval-preview";
 import type { StatusChangePreview } from "./reservation-status";
@@ -32,29 +36,89 @@ import type { StatusChangePreview } from "./reservation-status";
  * page's tests build their displays with these same functions.
  */
 
-/** An amount as the write reads it: a decimal written as text, at most four decimals. */
-const AMOUNT = /^-?\d{1,12}(?:\.\d{1,4})?$/;
 const CURRENCY = /^[A-Za-z]{3}$/;
 
-const amountOf = (raw: string): string | null => {
-  const trimmed = raw.trim();
-  return AMOUNT.test(trimmed) ? trimmed : null;
+/** The digits a payment's amount keeps: `payments.amount`, `decimal(10,2)`. */
+const AMOUNT_PRECISION = 10;
+const AMOUNT_SCALE = 2;
+
+/**
+ * The amount a `decimal(10,2)` column holds once the write assigns it the
+ * text it was given, as MySQL assigns it: a plain decimal ("1.234",
+ * "-20.005", "007.5") rounded half away from zero to two decimals, every
+ * decimal written ("120" holds "120.00"), no negative zero; null for a text
+ * MySQL would not store as written (spaces, a sign `+`, an exponent) or
+ * one past the column's eight integer digits, which the write refuses. The
+ * writer hands the column the amount as it was sent
+ * (apps/web lib/reservations/dashboard-payment-writes.ts), so this is the
+ * amount the row will hold, which the display shows, digit for digit
+ * (approval-branches.db.test.ts compares it with the rows MySQL writes).
+ */
+export function storedAmount(raw: string): string | null {
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(raw);
+  if (!match) return null;
+  const [, sign, whole = "", fraction = ""] = match;
+  let units = BigInt(whole + (fraction + "0".repeat(AMOUNT_SCALE)).slice(0, AMOUNT_SCALE));
+  if ((fraction.charAt(AMOUNT_SCALE) || "0") >= "5") units += BigInt(1);
+  if (units >= BigInt(10) ** BigInt(AMOUNT_PRECISION)) return null;
+  const digits = units.toString().padStart(AMOUNT_SCALE + 1, "0");
+  const text = `${digits.slice(0, -AMOUNT_SCALE)}.${digits.slice(-AMOUNT_SCALE)}`;
+  return sign && units !== BigInt(0) ? `-${text}` : text;
+}
+
+/** A computed or stored decimal the page shows as it is (a total, a balance): a plain decimal. */
+const plainDecimal = (raw: string): string | null =>
+  /^-?\d{1,12}(?:\.\d{1,4})?$/.test(raw) ? raw : null;
+
+type RecordedPaymentType = (typeof RECORDED_PAYMENT_TYPES)[number];
+
+/**
+ * What a payment recorded through the generic write says, by the type the
+ * writer records it as and the amount's sign: its headline and its fact.
+ * Total over the types the write accepts (`RECORDED_PAYMENT_TYPES`): a type
+ * added there does not compile until it is said here. Null where the write
+ * refuses the sign (a negative amount outside an adjustment), so nothing
+ * is shown that the writer would not write.
+ */
+const RECORDED: Record<
+  RecordedPaymentType,
+  (negative: boolean) => { headline: HeadlineKey; fact: FactKey } | null
+> = {
+  // Money that comes in.
+  rental: (negative) => (negative ? null : { headline: "recordPayment", fact: "received" }),
+  damage: (negative) => (negative ? null : { headline: "recordPayment", fact: "received" }),
+  // A deposit collected, a deposit given back.
+  deposit: (negative) => (negative ? null : { headline: "recordDeposit", fact: "depositCollected" }),
+  deposit_return: (negative) =>
+    negative ? null : { headline: "returnDeposit", fact: "depositGivenBack" },
+  // An adjustment, in either direction.
+  adjustment: (negative) =>
+    negative
+      ? { headline: "paidBack", fact: "paidBack" }
+      : { headline: "recordPayment", fact: "received" },
 };
+
+const isRecordedType = (type: string): type is RecordedPaymentType => Object.hasOwn(RECORDED, type);
 
 /** The booking a payment is recorded on, named by its number. */
 const bookingNumber = (reservationId: string, number: string) =>
   fact("bookingNumber", { number: text(number) }, reservationId);
 
-/** A payment recorded on a reservation (`dashboard.payments.record`). */
+/**
+ * A payment recorded on a reservation (`dashboard.payments.record`): said as
+ * what the writer records, by its type (`RECORDED`), with the amount its
+ * row will hold (`storedAmount`).
+ */
 export function recordPaymentPresentation(
   details: { reservationId: string; number: string; type: string; amount: string; method: string },
   currency: string,
 ): ApprovalPresentation | null {
-  const amount = amountOf(details.amount);
+  const amount = storedAmount(details.amount);
   const { type, method } = details;
-  if (!amount || !CURRENCY.test(currency) || !isChoice("paymentType", type)) return null;
-  if (!isChoice("paymentMethod", method)) return null;
-  const paidBack = type === "adjustment" && Number(amount) < 0;
+  if (!amount || !CURRENCY.test(currency) || !isRecordedType(type)) return null;
+  if (!isChoice("paymentType", type) || !isChoice("paymentMethod", method)) return null;
+  const said = RECORDED[type](amount.startsWith("-"));
+  if (!said) return null;
   const values = {
     type: choice("paymentType", type),
     amount: money(amount, currency),
@@ -62,10 +126,10 @@ export function recordPaymentPresentation(
   };
   return {
     display: {
-      headline: headline(paidBack ? "paidBack" : "recordPayment", {}),
+      headline: headline(said.headline, {}),
       facts: [
         bookingNumber(details.reservationId, details.number),
-        fact(paidBack ? "paidBack" : "received", values),
+        fact(said.fact, values),
         fact("recordOnly", {}),
       ],
     },
@@ -90,8 +154,8 @@ export function recordDepositReturnPresentation(
   },
   currency: string,
 ): ApprovalPresentation | null {
-  const amount = amountOf(details.amount);
-  const held = amountOf(details.returnable);
+  const amount = storedAmount(details.amount);
+  const held = plainDecimal(details.returnable);
   const { method } = details;
   if (!amount || !held || !CURRENCY.test(currency) || !isChoice("paymentMethod", method)) {
     return null;
@@ -123,7 +187,8 @@ export function deletePaymentPresentation(
   details: { paymentId: string; number: string; type: string; amount: string; method: string },
   record: { reservationId: string; currency: string; recordedAt: Date },
 ): ApprovalPresentation | null {
-  const amount = amountOf(details.amount);
+  // Read from its row: the amount it holds.
+  const amount = plainDecimal(details.amount);
   const { type, method } = details;
   const { currency } = record;
   if (!amount || !CURRENCY.test(currency) || !isChoice("paymentType", type)) return null;
@@ -212,10 +277,12 @@ const channelsOf = (messages: StatusChangePreview["messages"]) => {
  */
 export function confirmOverridePresentation(
   preview: StatusChangePreview,
+  recipients: readonly MessageRecipient[],
 ): ApprovalPresentation | null {
   const { reservation, overbooking, turnoverBuffer, messages } = preview;
   if (reservation.to !== "confirmed" || (!overbooking && !turnoverBuffer)) return null;
-  const total = amountOf(reservation.totalAmount);
+  // Read from its row: the total it holds.
+  const total = plainDecimal(reservation.totalAmount);
   if (!total || !CURRENCY.test(reservation.currency)) return null;
 
   const beyondStock = overbooking?.shortfalls ?? [];
@@ -291,8 +358,37 @@ export function confirmOverridePresentation(
       reservation: reservation.id,
       status: reservation.to,
       message: message ? { message, channels } : null,
+      recipients: recipientHashes(recipients),
     },
   };
+}
+
+/** Where a customer message goes: its channel and the address it goes to, as the store holds it. */
+export interface MessageRecipient {
+  channel: "email" | "sms";
+  to: string | null | undefined;
+}
+
+/**
+ * Who a status change's messages go to, as the request's identity holds
+ * them: per recipient, the SHA-256 (hex) of the canonical JSON of its
+ * channel and its address, the e-mail trimmed and lowercased, the phone
+ * number with its blanks removed (`{"channel":"email","to":"camille@example.com"}`),
+ * sorted. Never the address itself, and never the message's language,
+ * which the binding covers (`recipientsHash`).
+ */
+export function recipientHashes(recipients: readonly MessageRecipient[]): string[] {
+  return recipients
+    .map(({ channel, to }) => {
+      const address = (to ?? "").trim();
+      return sha256(
+        stableStringify({
+          channel,
+          to: channel === "email" ? address.toLowerCase() : address.replace(/\s+/g, ""),
+        }),
+      );
+    })
+    .sort();
 }
 
 const lineValues = (shortfall: CapacityShortfall) => ({

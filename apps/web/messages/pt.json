@@ -9915,7 +9915,8 @@
           "confirmWithinRules": "Confirmar a reserva?",
           "confirmPastBuffer": "Confirmar a reserva apesar da sua margem entre alugueres?",
           "confirmBeyondStock": "Confirmar a reserva acima do seu stock?",
-          "confirmBeyondStockAndBuffer": "Confirmar a reserva acima do seu stock e da sua margem entre alugueres?"
+          "confirmBeyondStockAndBuffer": "Confirmar a reserva acima do seu stock e da sua margem entre alugueres?",
+          "recordDeposit": "Registar uma caução recebida?"
         },
         "facts": {
           "booking": "Reserva #<v>{number}</v> · <v>{customer}</v>",
@@ -9942,7 +9943,9 @@
           "withinRules": "O seu stock e a sua margem entre alugueres cobrem-na: nada os ultrapassa.",
           "message": "<v>{customer}</v> vai receber {channels, select, email {o email} sms {o SMS} other {o email e o SMS}} «<v>{message}</v>»",
           "messageToCustomer": "O cliente vai receber {channels, select, email {o email} sms {o SMS} other {o email e o SMS}} «<v>{message}</v>»",
-          "noMessage": "Nenhuma mensagem é enviada ao cliente."
+          "noMessage": "Nenhuma mensagem é enviada ao cliente.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> recebidos · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>"
         },
         "choices": {
           "paymentType": {

@@ -34,6 +34,27 @@ function writeDuration(minutes: number, format: DisplayFormat): string {
     .join(" ");
 }
 
+/**
+ * An amount with exactly the digits its row holds: as many decimals as the
+ * stored value has (`"1.49"` in yen is ¥1.49, never ¥1), and no decimal it
+ * does not (`"1.23"` in dinars is KWD 1.23, never 1.230). Only decimals
+ * that are all zeros past the currency's own are left off (`"1500.00"` in
+ * yen is ¥1,500, `"3.50"` ¥3.50), as they change nothing the row holds.
+ */
+function writeMoney(amount: string, currency: string, format: DisplayFormat): string {
+  const fraction = amount.split(".")[1] ?? "";
+  const customary =
+    new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
+      .maximumFractionDigits ?? fraction.length;
+  const decimals = /^0*$/.test(fraction) ? Math.min(customary, fraction.length) : fraction.length;
+  return format.number(Number(amount), {
+    style: "currency",
+    currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
 /** The day an instant falls on in the store's time zone, to tell a range within one day. */
 const dayOf = (at: Date, timeZone: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(at);
@@ -60,10 +81,7 @@ export function displayArguments(
         written[name] = value.text;
         break;
       case "money":
-        written[name] = format.number(Number(value.amount), {
-          style: "currency",
-          currency: value.currency,
-        });
+        written[name] = writeMoney(value.amount, value.currency, format);
         break;
       case "dateTime":
         written[name] = format.dateTime(new Date(value.at), { ...DATE, ...TIME, timeZone });
