@@ -11,6 +11,7 @@ import {
   type StepKind,
 } from "../../contracts/handoffs";
 import type { StoreActor } from "../../platform/actor";
+import { APPROVAL_DECIDE_TIME, APPROVAL_EXECUTE_TIME } from "../../platform/approval-help";
 import { platformErrors } from "../../platform/errors";
 import { API_DOMAINS, allows } from "../../platform/permissions";
 import { accountProcedure, missingTransport, storeProcedure } from "../../platform/procedures";
@@ -95,15 +96,17 @@ const get = storeProcedure
     mcp: {
       name: "handoffs_get",
       title: "Get Handoff Status",
-      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; calling the tool that started it again opens the same link for another day) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). \`url\` is the step's link, the same the tool that started it returned, for the user to open signed in to Louez. For a team invitation's approval, \`decision\` says what the user decided (approved or refused), when, and their own words if they gave any (\`reason\`, plain text); null until they answer. An approved invitation that could not go out stays approved there, and \`failure\` says why. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval; without it, the id answers as not found.`,
+      description: `Where a step handed to the user stands, by the id the tool that started it returned. A provider step or an invitation is pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; calling the tool that started it again opens the same link for another day) or failed (with why). An approval of an action the user must approve (approval.id of an APPROVAL_REQUIRED answer) is pending (not decided yet), approved (the user approved and the action is not carried out yet), completed (carried out), failed (refused, or ended: \`failure\` says why) or expired (undecided within ${APPROVAL_DECIDE_TIME}, or approved and not carried out within ${APPROVAL_EXECUTE_TIME}). Only the connection that asked reads its approval, and the result holds neither the call's arguments nor its tool. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once a provider step is completed, the result is where it leads (payments_sync_stripe_status, billing_get_status). \`url\` is the step's link, the same the tool that started it returned, for the user to open signed in to Louez. For a team invitation's or an action's approval, \`decision\` says what the user decided (approved or refused), when, and their own words if they gave any (\`reason\`, plain text); null until they answer. An approved invitation that could not go out stays approved there, and \`failure\` says why. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval, the action's own for an action's approval (payments, team or reservations); without it, the id answers as not found.`,
       bundle: "daily",
+      // Any bundle's tool may ask for an approval, which only this reads.
+      everyBundle: true,
       annotations: { idempotentHint: true },
     },
   })
   .route({
     method: "GET",
     path: "/handoffs/{id}",
-    description: `Returns where a step taken in a browser stands, by the \`handoff.id\` the operation that started it returned: \`pending\` (the link waits), \`opened\` (the person is on the provider's page), \`completed\`, \`expired\` (the link ran out; calling the operation that started it again gives the same link for another ${HANDOFF_TTL_HOURS} hours) or \`failed\`, with \`failure\` saying why. It only reads. \`confirming\` is true while the person came back from Stripe with a billing card Stripe has not confirmed yet; \`POST /handoffs/{id}/refresh\` asks Stripe again. \`url\` is the step's link, the same the starting operation returned. Once completed, the result is read where the step leads: \`POST /payments/stripe/sync\` for Stripe, \`GET /billing\` for the billing card. For a \`team_invitation\` step, \`decision\` holds what was decided on its page (\`approved\` or \`refused\`), when, and the \`reason\` given, as plain text; it is null until then. Needs a key that can read the step's domain: settings for Stripe, billing for the billing card, team for a team invitation; otherwise, and for an id the store does not have, it answers \`HANDOFF_NOT_FOUND\`.`,
+    description: `Returns where a step taken in a browser stands, by the \`handoff.id\` the operation that started it returned: \`pending\` (the link waits), \`opened\` (the person is on the provider's page), \`completed\`, \`expired\` (the link ran out; calling the operation that started it again gives the same link for another ${HANDOFF_TTL_HOURS} hours) or \`failed\`, with \`failure\` saying why. It only reads. \`confirming\` is true while the person came back from Stripe with a billing card Stripe has not confirmed yet; \`POST /handoffs/{id}/refresh\` asks Stripe again. \`url\` is the step's link, the same the starting operation returned. Once completed, the result is read where the step leads: \`POST /payments/stripe/sync\` for Stripe, \`GET /billing\` for the billing card. For an approval (\`operation_approval\`, by the \`data.details.approval.id\` of an \`APPROVAL_REQUIRED\` answer): \`pending\` until the key's owner decides, \`approved\` once they approved and until the write is carried out, \`completed\` once the same request carried it out, \`failed\` when they refused or it ended (\`failure.code\`: \`declined\`, \`state_changed\`, \`approver_not_allowed\` or \`connection_revoked\`), \`expired\` when undecided within ${APPROVAL_DECIDE_TIME} or not carried out within ${APPROVAL_EXECUTE_TIME} of the approval. Only the key that asked reads its approval, and the answer holds neither the request's input nor its operation: keep the request you sent. For a \`team_invitation\` step or an approval, \`decision\` holds what was decided on its page (\`approved\` or \`refused\`), when, and the \`reason\` given, as plain text; it is null until then. Needs a key that can read the step's domain: settings for Stripe, billing for the billing card, team for a team invitation, the write's own for an approval (payments, team or reservations); otherwise, and for an id the store does not have, it answers \`HANDOFF_NOT_FOUND\`.`,
   })
   .input(getHandoffInput)
   .output(getHandoffOutput)
@@ -183,7 +186,8 @@ const refresh = storeProcedure
 const decide = accountProcedure
   .meta({
     capability: "handoffs.decide",
-    // The only kind decided on its page today is a team invitation's approval.
+    // A team invitation's approval or an operation's: who may decide is each
+    // kind's own rule (`mayApprove` for an operation's), in `decideHandoff`.
     scope: { domain: "team", level: "write" },
     actors: ["session"],
     // A page opened from a link given before links were addressed by id posts its secret: nothing is replayed.

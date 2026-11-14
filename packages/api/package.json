@@ -19,6 +19,7 @@
     "./services/approval-page": "./src/services/approval-page.ts",
     "./services/approval-presentations": "./src/services/approval-presentations.ts",
     "./services/approval-preview": "./src/services/approval-preview.ts",
+    "./services/approvals": "./src/services/approvals.ts",
     "./services/capacity-verdict": "./src/services/capacity-verdict.ts",
     "./services/categories": "./src/services/categories.ts",
     "./services/customer-fields": "./src/services/customer-fields.ts",

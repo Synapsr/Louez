@@ -45,6 +45,7 @@ import {
   updateReservationNotes,
   type ReservationReader,
 } from "../../services/reservations";
+import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
 import type { Consequences } from "../../platform/approval-rule";
 import type { ProcedureScope } from "../../platform/permissions";
 import { confirmUnderLock, mayRead, type ProductContext } from "./product-context";
@@ -92,7 +93,7 @@ const RESERVATIONS_WRITE: ProcedureScope = { domain: "reservations", level: "wri
  * line's product and quantity, and a consumable's units). A change since (the
  * reservation moved, a payment recorded, a setting that stops a message, the
  * customer's email or phone, a shortfall that grew or changed, a line
- * changed) voids the token. A
+ * changed) voids the token or the approval. A
  * confirmation sent with either override is a stock override, even when
  * nothing is short (decision D2 and slice 5,
  * docs/domain/reservation-changes.md); a message to the customer is one too.
@@ -387,11 +388,11 @@ const updateStatus = storeProcedure
     capability: "reservations.updateStatus",
     scope: RESERVATIONS_WRITE,
     sensitive: "send",
+    personApproval: true,
     mcp: {
       name: "reservations_update_status",
       title: "Change Reservation Status",
-      description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. A confirmation the stock cannot cover answers RESERVATION_INSUFFICIENT_CAPACITY with each line short (details.shortfalls: each short line by its reservationItemId, with its product, its combination or the attributes it chose, requested, available). The same input with allowOverbooking: true books over the stock, for when the user chose to: it always answers CONFIRMATION_REQUIRED first, even on a connection whose confirmations are off, with a preview listing every shortfall, and its token holds only while the shortfalls stay as previewed. The token proves the preview was seen, not that a person approved it. A confirmation refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock but not the turnover buffer the store keeps between rentals, details.shortfalls counted with the buffer) is confirmed all the same with overrideTurnoverBuffer: true, for when the user chose a shorter turnaround: it asks the same way, its preview lists those lines and the buffer, and it covers this confirmation only. Neither flag passes the other's refusal: a reservation short both ways needs both, and one preview lists both. Neither passes RESERVATION_UNITS_UNAVAILABLE or a consumable out of stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
+      description: `Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming without either flag below, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. A confirmation the stock cannot cover answers RESERVATION_INSUFFICIENT_CAPACITY with each line short (details.shortfalls: each short line by its reservationItemId, with its product, its combination or the attributes it chose, requested, available). The same input with allowOverbooking: true books over the stock, for when the user chose to: its preview lists every shortfall, and the approval holds only while the shortfalls stay as previewed. A confirmation refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock but not the turnover buffer the store keeps between rentals, details.shortfalls counted with the buffer) is confirmed all the same with overrideTurnoverBuffer: true, for when the user chose a shorter turnaround: its preview lists those lines and the buffer, and it covers this confirmation only. Neither flag passes the other's refusal: a reservation short both ways needs both, and one preview lists both. Neither passes RESERVATION_UNITS_UNAVAILABLE or a consumable out of stock. Confirming with either flag, even when nothing is short, is the user's to approve. ${approvalAsked("that preview")} Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's \`links\`, its dashboard page to give the user.`,
       bundle: "daily",
       effect: "overwrite",
       reach: "customer",
@@ -409,9 +410,11 @@ const updateStatus = storeProcedure
       "- `completed` marks it returned.",
       "- `cancelled` cancels it, as `POST /reservations/{id}/cancel` does.",
       "",
-      "The customer's messages go out on the channels the store set for each. On a key set to ask for confirmations (the default), confirming a request or a quote, rejecting and cancelling first answer 412 `CONFIRMATION_REQUIRED`, with a preview of the messages and the stock; on a key whose confirmations are off, they run at once.",
+      "The customer's messages go out on the channels the store set for each. On a key set to ask for confirmations (the default), confirming a request or a quote without either flag below, rejecting and cancelling first answer 412 `CONFIRMATION_REQUIRED`, with a preview of the messages and the stock; on a key whose confirmations are off, they run at once.",
       "",
-      "A confirmation the stock cannot cover answers `RESERVATION_INSUFFICIENT_CAPACITY`, with each short line in `details.shortfalls`. The same request with `allowOverbooking: true` confirms over the stock: it always answers 412 `CONFIRMATION_REQUIRED` first, even on a key whose confirmations are off, and its token holds only while the shortfalls stay as previewed. Lines that fit the stock but not the turnover buffer the store keeps between rentals answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes it the same way, for this confirmation only. Each flag passes only its own refusal, and neither passes `RESERVATION_UNITS_UNAVAILABLE` or a consumable out of stock.",
+      "A confirmation the stock cannot cover answers `RESERVATION_INSUFFICIENT_CAPACITY`, with each short line in `details.shortfalls`. The same request with `allowOverbooking: true` confirms over the stock: its preview lists every shortfall, and the approval holds only while the shortfalls stay as previewed. Lines that fit the stock but not the turnover buffer the store keeps between rentals answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes it, for this confirmation only, with a preview of those lines and the buffer. Each flag passes only its own refusal, and neither passes `RESERVATION_UNITS_UNAVAILABLE` or a consumable out of stock.",
+      "",
+      `Confirming with either flag, even when nothing is short, is the key's owner's to approve. ${restApprovalAsked("the preview")}`,
       "",
       "Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links.dashboard`.",
     ].join("\n"),

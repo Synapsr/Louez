@@ -219,7 +219,7 @@ export const approvalErrors = {
     }),
   pending: (approval: ApprovalAnswer) =>
     apiError("PRECONDITION_FAILED", "APPROVAL_PENDING", {
-      message: `The user has not decided yet. Nothing was done. Read the approval again in ${approval.pollAfterSeconds} seconds.`,
+      message: `The user has not decided yet. Nothing was done. Read the approval again with GET /handoffs/${approval.id} in ${approval.pollAfterSeconds} seconds.`,
       retryable: true,
       details: { approval },
     }),

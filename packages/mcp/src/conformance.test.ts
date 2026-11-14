@@ -410,6 +410,96 @@ describe("MCP directory conformance", () => {
     assert.match(essentials, /^Louez runs rental stores/);
     assert.match(essentials, /`links`/);
     assert.match(essentials, /CONFIRMATION_REQUIRED/);
+    // The approval: its code, the link for the user, how to follow it and carry it out.
+    assert.match(
+      essentials,
+      /APPROVAL_REQUIRED \(give the user its link; handoffs_get says when they approved\): call again with its confirmationToken only once they agree\./,
+    );
+  });
+
+  test("the instructions say which actions the user approves on a page, and how one is followed", () => {
+    for (const name of [
+      "record_payment",
+      "record_deposit_return",
+      "delete_payment",
+      "team_remove_member",
+      "team_cancel_invitation",
+      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status)",
+    ]) {
+      assert.ok(instructions.includes(name), name);
+    }
+    assert.match(instructions, /need the user's approval, whatever the connection's setting/);
+    assert.match(instructions, /handoffs_get with the approval's id then says where it stands/);
+    assert.match(instructions, /the approval's id as confirmationToken carries the action out, once/);
+    assert.match(instructions, /APPROVAL_DECLINED/);
+    // The team's removals no longer answer a confirmation.
+    assert.doesNotMatch(instructions, /team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED/);
+  });
+
+  test("a tool a person approves says, in its description and its argument, how its approval goes", async () => {
+    const { APPROVAL_ARGUMENT, CONFIRMATION_ARGUMENT } = await import("./bridge");
+    const APPROVING = [
+      "record_payment",
+      "record_deposit_return",
+      "delete_payment",
+      "team_remove_member",
+      "team_cancel_invitation",
+      "reservations_update_status",
+    ];
+    for (const tool of tools) {
+      const argument = (tool.inputSchema.properties as Record<string, unknown> | undefined)
+        ?.confirmationToken;
+      if (APPROVING.includes(tool.name)) {
+        assert.deepEqual(argument, APPROVAL_ARGUMENT, tool.name);
+        assert.match(tool.description ?? "", /answers APPROVAL_REQUIRED with/, tool.name);
+        assert.match(tool.description ?? "", /handoffs_get with the approval's id/, tool.name);
+        assert.doesNotMatch(tool.description ?? "", /token proves|always asks for a confirmation/, tool.name);
+      } else if (argument !== undefined) {
+        assert.deepEqual(argument, CONFIRMATION_ARGUMENT, tool.name);
+        assert.doesNotMatch(tool.description ?? "", /APPROVAL_REQUIRED/, tool.name);
+      }
+    }
+    const handoffs = tools.find((tool) => tool.name === "handoffs_get");
+    assert.match(handoffs?.description ?? "", /An approval of an action the user must approve/);
+    assert.match(handoffs?.description ?? "", /Only the connection that asked reads its approval/);
+  });
+
+  test("a connection granted the team bundle alone lists handoffs_get, which reads the approvals its tools ask for", async () => {
+    const { Client, InMemoryTransport } = await import("@modelcontextprotocol/client");
+    const { appRouter } = await import("@louez/api/router");
+    const { createExposure } = await import("@louez/api/platform/exposure");
+    const { createMcpServer } = await import("./server");
+    const { testRequestContext } = await import("./testing/request-context");
+    const base = testRequestContext({
+      storeId: "store_team_only",
+      userId: "user_team_only",
+      permissions: { team: "write" },
+    });
+    const listed = async (bundles: Array<"team">) => {
+      const ctx = {
+        ...base,
+        actor: {
+          ...base.actor,
+          credential: { ...base.actor.credential, kind: "oauth" as const, bundles },
+        },
+      };
+      const server = createMcpServer(ctx, createExposure(appRouter).procedures);
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      await server.connect(serverTransport);
+      const teamClient = new Client({ name: "team-only", version: "0.0.0" });
+      await teamClient.connect(clientTransport);
+      try {
+        return (await teamClient.listTools()).tools.map((tool) => tool.name);
+      } finally {
+        await teamClient.close();
+      }
+    };
+    const team = await listed(["team"]);
+    assert.ok(team.includes("team_remove_member"), "the team's tools");
+    assert.ok(team.includes("handoffs_get"), "and the tool that reads their approvals");
+    // Only provider steps need a refresh: it stays in its own bundle.
+    assert.ok(!team.includes("handoffs_refresh"));
+    assert.ok(!team.includes("record_payment"), "the other bundles stay out");
   });
 
   test("the instructions set no schedule and give the model no orders", () => {

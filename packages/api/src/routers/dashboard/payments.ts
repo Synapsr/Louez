@@ -20,6 +20,7 @@ import {
   syncStripeStatusOutput,
   type StripeStatus,
 } from "../../contracts/stripe-connect";
+import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
 import { checkConfirmation } from "../../platform/confirmation";
 import { apiError } from "../../platform/errors";
 import { dashboardPageLinks, reservationLinks } from "../../platform/links";
@@ -217,14 +218,12 @@ const syncStripeStatus = storeProcedure
 
 const PAYMENTS_WRITE: ProcedureScope = { domain: "payments", level: "write" };
 
-const ALWAYS_CONFIRMED =
-  "It always asks for a confirmation, whatever the connection's confirmation setting: the first call answers CONFIRMATION_REQUIRED with a preview";
-
 /**
  * What the payment writes take from their context: the app's writer, and
  * the confirmation asked in the write's transaction. All three record, give
  * back or erase money, the deletion included: they declare `money`, so every
- * key and token is asked whatever its setting, and a session never. The
+ * key and token needs a person's approval whatever its setting, and a
+ * session is never asked. The
  * preview's details open with its kind, as the hand-written tools showed them.
  * The presentation's identity facts, with `PAYMENTS_WRITE`, are what a
  * person's approval is about.
@@ -271,9 +270,6 @@ function reservationLinksFor(context: ProductContext, reservationId: string) {
 }
 
 /** The REST reference's own texts (`.route({ description })`), for a developer. */
-const REST_ALWAYS_CONFIRMED =
-  "It always asks for a confirmation first (412 `CONFIRMATION_REQUIRED`), whatever the key's confirmation setting, with a preview";
-
 const REST_LINKS_NOTE =
   "Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.";
 
@@ -285,10 +281,11 @@ const record = storeProcedure
     capability: "reservations.recordPayment",
     scope: PAYMENTS_WRITE,
     sensitive: "money",
+    personApproval: true,
     mcp: {
       name: "record_payment",
       title: "Record Payment",
-      description: `Record a payment the store received by hand on a reservation (cash, card, transfer, check or other), or money it paid back as a negative adjustment: adds it to the reservation's payments. It moves no money. Refused, before anything is asked, for an amount that is zero or not a plain decimal with at most 8 digits before the point and 2 after (such as "150" or "-20.50"), a negative amount of another type than adjustment, and a cancelled or rejected reservation. ${ALWAYS_CONFIRMED} of the payment. ${LINKS_NOTE}`,
+      description: `Record a payment the store received by hand on a reservation (cash, card, transfer, check or other), or money it paid back as a negative adjustment: adds it to the reservation's payments. It moves no money. Refused, before anything is asked, for an amount that is zero or not a plain decimal with at most 8 digits before the point and 2 after (such as "150" or "-20.50"), a negative amount of another type than adjustment, and a cancelled or rejected reservation. ${approvalAsked("a preview of the payment")} ${LINKS_NOTE}`,
       bundle: "daily",
       effect: "additive",
     },
@@ -296,7 +293,7 @@ const record = storeProcedure
   .route({
     method: "POST",
     path: "/reservations/{reservationId}/payments",
-    description: `Records a payment row the store handled itself on a reservation: its \`type\` (\`rental\`, \`deposit\`, \`deposit_return\`, \`damage\` or \`adjustment\`), its amount and how it was paid (cash, card, transfer, check or other). Money the store paid back is a negative \`adjustment\`. It moves no money. A \`deposit_return\` recorded here is not checked against the deposit collected: to record a deposit given back against that balance, use \`POST /reservations/{reservationId}/deposit-returns\`. Refused, before anything is asked, for an amount that is zero or not a plain decimal with at most 8 digits before the point and 2 after (\`PAYMENT_AMOUNT_INVALID\`), a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+    description: `Records a payment row the store handled itself on a reservation: its \`type\` (\`rental\`, \`deposit\`, \`deposit_return\`, \`damage\` or \`adjustment\`), its amount and how it was paid (cash, card, transfer, check or other). Money the store paid back is a negative \`adjustment\`. It moves no money. A \`deposit_return\` recorded here is not checked against the deposit collected: to record a deposit given back against that balance, use \`POST /reservations/{reservationId}/deposit-returns\`. Refused, before anything is asked, for an amount that is zero or not a plain decimal with at most 8 digits before the point and 2 after (\`PAYMENT_AMOUNT_INVALID\`), a negative amount of another type than \`adjustment\`, and a cancelled or rejected reservation. ${restApprovalAsked("a preview of the payment")} ${REST_LINKS_NOTE}`,
   })
   .input(recordPaymentInput)
   .output(recordPaymentOutput)
@@ -313,10 +310,11 @@ const recordDepositReturnProcedure = storeProcedure
     capability: "reservations.returnDeposit",
     scope: PAYMENTS_WRITE,
     sensitive: "money",
+    personApproval: true,
     mcp: {
       name: "record_deposit_return",
       title: "Record Deposit Return",
-      description: `Record a deposit return the store has already made: adds it to the reservation's payments, as the amount given back and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused above the deposit collected and not yet returned. ${ALWAYS_CONFIRMED} showing that balance. ${LINKS_NOTE}`,
+      description: `Record a deposit return the store has already made: adds it to the reservation's payments, as the amount given back and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused above the deposit collected and not yet returned. ${approvalAsked("a preview showing that balance")} ${LINKS_NOTE}`,
       bundle: "daily",
       effect: "additive",
     },
@@ -324,7 +322,7 @@ const recordDepositReturnProcedure = storeProcedure
   .route({
     method: "POST",
     path: "/reservations/{reservationId}/deposit-returns",
-    description: `Records a deposit the store has already given back: the amount and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused with \`DEPOSIT_RETURN_EXCEEDS_BALANCE\` above the returnable balance: the reservation's completed \`deposit\` rows minus its completed \`deposit_return\` rows. Stripe deposit holds and captures are not in that balance. The check is this operation's own: a \`deposit_return\` recorded with \`POST /reservations/{reservationId}/payments\` is not checked. ${REST_ALWAYS_CONFIRMED} showing that balance. ${REST_LINKS_NOTE}`,
+    description: `Records a deposit the store has already given back: the amount and how (cash, card, transfer, check or other). It moves no money: nothing is refunded or released, through Stripe or otherwise. Refused with \`DEPOSIT_RETURN_EXCEEDS_BALANCE\` above the returnable balance: the reservation's completed \`deposit\` rows minus its completed \`deposit_return\` rows. Stripe deposit holds and captures are not in that balance. The check is this operation's own: a \`deposit_return\` recorded with \`POST /reservations/{reservationId}/payments\` is not checked. ${restApprovalAsked("a preview showing that balance")} ${REST_LINKS_NOTE}`,
   })
   .input(recordDepositReturnInput)
   .output(recordDepositReturnOutput)
@@ -341,10 +339,11 @@ const deletePaymentProcedure = storeProcedure
     capability: "reservations.deletePayment",
     scope: PAYMENTS_WRITE,
     sensitive: "destructive",
+    personApproval: true,
     mcp: {
       name: "delete_payment",
       title: "Delete Payment",
-      description: `Delete a payment of a reservation: it leaves the reservation's balance and the billing figures. A Stripe payment is refused: its refunds are made in Stripe. ${ALWAYS_CONFIRMED} of the payment. ${LINKS_NOTE}`,
+      description: `Delete a payment of a reservation: it leaves the reservation's balance and the billing figures. A Stripe payment is refused: its refunds are made in Stripe. ${approvalAsked("a preview of the payment")} ${LINKS_NOTE}`,
       bundle: "daily",
       effect: "delete",
     },
@@ -352,7 +351,7 @@ const deletePaymentProcedure = storeProcedure
   .route({
     method: "DELETE",
     path: "/payments/{paymentId}",
-    description: `Deletes a payment recorded on a reservation: it leaves the reservation's balance and the billing figures. A payment made through Stripe is refused: refund it in Stripe. ${REST_ALWAYS_CONFIRMED} of the payment. ${REST_LINKS_NOTE}`,
+    description: `Deletes a payment recorded on a reservation: it leaves the reservation's balance and the billing figures. A payment made through Stripe is refused: refund it in Stripe. ${restApprovalAsked("a preview of the payment")} ${REST_LINKS_NOTE}`,
   })
   .input(deletePaymentInput)
   .output(deletePaymentOutput)

@@ -38,6 +38,16 @@ export const CONFIRMATION_ARGUMENT = {
 } as const;
 
 /**
+ * The same argument on a tool a person approves (`meta.personApproval`): it
+ * carries an approval's id as it carries a token.
+ */
+export const APPROVAL_ARGUMENT = {
+  type: "string",
+  description:
+    "Leave it out on the first call. Where the user must approve, the tool answers APPROVAL_REQUIRED with a link for them and an approval: once handoffs_get says it is approved, call again with the same arguments and the approval's id here. Where it asks for a confirmation instead, it answers CONFIRMATION_REQUIRED with a preview and a token: after the user confirms, call again with the same arguments and the token.",
+} as const;
+
+/**
  * The arguments of a tool: the procedure's input, plus the headers it maps.
  * Only listed: the procedure validates the input, as it does for RPC and
  * OpenAPI, so every transport answers a bad input with the same error.
@@ -54,7 +64,11 @@ function toolInputSchema(entry: ExposedProcedure, ctx: McpRequestContext): Tool[
         "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
     };
   }
-  if (entry.meta.sensitive) properties.confirmationToken = CONFIRMATION_ARGUMENT;
+  if (entry.meta.sensitive) {
+    properties.confirmationToken = entry.meta.personApproval
+      ? APPROVAL_ARGUMENT
+      : CONFIRMATION_ARGUMENT;
+  }
   return { ...entry.inputJsonSchema, properties } as Tool["inputSchema"];
 }
 
@@ -175,7 +189,8 @@ export function registerExposedTools(
         !isWithheld(ctx, entry.meta.capability) &&
         (entry.meta.account
           ? isAccountToolListed(ctx, entry.meta.scope)
-          : entry.meta.scope !== undefined && isListed(ctx, entry.meta.scope, bundle)),
+          : entry.meta.scope !== undefined &&
+            isListed(ctx, entry.meta.scope, entry.meta.mcp.everyBundle ? null : bundle)),
       call: (args) => callProcedure(entry, ctx, args),
     });
   }

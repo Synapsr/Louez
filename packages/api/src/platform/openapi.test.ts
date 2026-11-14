@@ -565,8 +565,8 @@ describe("the public reference", () => {
     const text = info.description;
     for (const sentence of [
       "- It succeeded: the retry returns its stored result without running it again, with `Louez-Replayed: true`.",
-      "- Louez refused it before doing it, for instance `CONFIRMATION_REQUIRED`, `PERMISSION_DENIED` or `RESERVATION_BUSY`: the retry runs the write again.",
-      "- Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers `OPERATION_OUTCOME_UNKNOWN` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation, call it without the token for a new preview, as the old token is spent if the write went through.",
+      "- Louez refused it before doing it, for instance `CONFIRMATION_REQUIRED`, `APPROVAL_REQUIRED`, `PERMISSION_DENIED` or `RESERVATION_BUSY`: the retry runs the write again. So one key serves a write's whole approval, from the first call to the one that carries it out.",
+      "- Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers `OPERATION_OUTCOME_UNKNOWN` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation or an approval, call it without the token or the approval's id for a new preview, as either is spent if the write went through.",
       "- It still runs: the retry answers `OPERATION_IN_PROGRESS`; retry shortly with the same key.",
       "If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was.",
     ]) {
@@ -588,7 +588,7 @@ describe("the public reference", () => {
 
   test("its table of common codes holds each with the status the platform answers", async () => {
     const { info } = await fetchDocument();
-    const { platformErrors } = await import("./errors");
+    const { approvalErrors, platformErrors } = await import("./errors");
     const { largeBodyBusy } = await import("./large-bodies");
     const { answerPage } = await import("./answer-pages");
     const thrown = (run: () => unknown) => {
@@ -636,6 +636,26 @@ describe("the public reference", () => {
       // Asked inside a handler, with a token written to the database.
       CONFIRMATION_REQUIRED: 412,
       CONFIRMATION_INVALID: platformErrors.confirmationInvalid().status,
+      APPROVAL_REQUIRED: approvalErrors.required({ summary: "x" }, {
+        id: "a",
+        url: "u",
+        status: "pending",
+        expiresAt: "t",
+        pollAfterSeconds: 30,
+        decision: null,
+      }).status,
+      APPROVAL_PENDING: approvalErrors.pending({
+        id: "a",
+        url: "u",
+        status: "pending",
+        expiresAt: "t",
+        pollAfterSeconds: 30,
+        decision: null,
+      }).status,
+      APPROVAL_INVALID: approvalErrors.invalid("used").status,
+      APPROVAL_DECLINED: approvalErrors.declined("a", null).status,
+      APPROVAL_RECENTLY_DECLINED: approvalErrors.recentlyDeclined(new Date(1), new Date(0)).status,
+      APPROVALS_FULL: approvalErrors.full("connectionOpen", new Date(1), new Date(0)).status,
       REQUEST_TOO_LARGE: tooLarge.status,
       UNSUPPORTED_MEDIA_TYPE: unsupported.status,
       PATH_PARAMETER_CONFLICT: conflicting.status,
@@ -808,7 +828,13 @@ describe("the public reference", () => {
         `${path}: 415`,
       );
       assert.equal(responses["401"]?.$ref, ref("Unauthorized"), `${path}: 401`);
-      assert.equal(responses["429"]?.$ref, ref("RateLimited"), `${path}: 429`);
+      // An operation a person approves documents the approval's answers.
+      const person = meta.personApproval === true;
+      assert.equal(
+        responses["429"]?.$ref,
+        ref(person ? "ApprovalsFull" : "RateLimited"),
+        `${path}: 429`,
+      );
       assert.equal(
         responses["403"]?.$ref,
         meta.scope ? ref("Forbidden") : undefined,
@@ -816,8 +842,13 @@ describe("the public reference", () => {
       );
       assert.equal(
         responses["412"]?.$ref,
-        meta.sensitive ? ref("ConfirmationRequired") : undefined,
+        person ? ref("ApprovalRequired") : meta.sensitive ? ref("ConfirmationRequired") : undefined,
         `${path}: 412`,
+      );
+      assert.equal(
+        responses["409"]?.$ref,
+        person ? ref("ApprovalDeclined") : undefined,
+        `${path}: 409`,
       );
     }
   });

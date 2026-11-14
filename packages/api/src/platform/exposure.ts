@@ -239,6 +239,9 @@ function toolProblems(path: string, meta: ApiMeta, mcp: McpExposure): string[] {
   if (mcp.profile && meta.scope?.level === "write") {
     problems.push(`${path}: a profile tool only reads`);
   }
+  if (meta.personApproval && !meta.sensitive) {
+    problems.push(`${path}: a procedure a person approves is sensitive`);
+  }
   return problems;
 }
 
@@ -294,7 +297,9 @@ const responseRef = (name: string) => ({ $ref: `#/components/responses/${name}` 
  * a scope is checked; 412 where a confirmation may be asked; 415 on every
  * method but GET, whose body is checked: one in a content type the operation
  * does not take, or any body where it takes none), and `default` for the
- * others.
+ * others. One a person approves (`meta.personApproval`) documents the
+ * approval's answers instead: its 412 codes, 409 for a refusal, and a 429
+ * that may carry `Retry-After`.
  */
 function documented(
   meta: ExposedMeta,
@@ -323,9 +328,14 @@ function documented(
   responses["401"] = responseRef("Unauthorized");
   // A procedure without a scope (`stores_list`) refuses no connection.
   if (meta.scope) responses["403"] = responseRef("Forbidden");
-  if (meta.sensitive) responses["412"] = responseRef("ConfirmationRequired");
+  if (meta.personApproval) {
+    responses["409"] = responseRef("ApprovalDeclined");
+    responses["412"] = responseRef("ApprovalRequired");
+  } else if (meta.sensitive) {
+    responses["412"] = responseRef("ConfirmationRequired");
+  }
   if (options.checksBody) responses["415"] = responseRef("UnsupportedMediaType");
-  responses["429"] = responseRef("RateLimited");
+  responses["429"] = responseRef(meta.personApproval ? "ApprovalsFull" : "RateLimited");
   responses.default = responseRef("Error");
 
   return {
