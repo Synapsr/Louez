@@ -84,10 +84,18 @@ export const activeStoreConfirmPath = (storeId: string, next: string): string =>
  * Whether a POST comes from this app's own pages: an `Origin` among
  * `origins`, and, when the browser sends it, `Sec-Fetch-Site: same-origin`.
  * A request without an `Origin` is refused.
+ *
+ * A page that sends no referrer (`Referrer-Policy: no-referrer`, as the
+ * hand-off pages do) has its own forms posted with `Origin: null`: the
+ * browser hides the origin with the referrer (Fetch, "serializing a request
+ * origin"). It still says where the post comes from in `Sec-Fetch-Site`,
+ * a header no page can set: `null` is accepted with `same-origin` there,
+ * and only then.
  */
 export const isSameOriginPost = (headers: Headers, origins: readonly string[]): boolean => {
   const site = headers.get("sec-fetch-site");
   if (site !== null && site !== "same-origin") return false;
   const origin = headers.get("origin");
-  return origin !== null && origins.includes(origin);
+  if (origin !== null && origins.includes(origin)) return true;
+  return origin === "null" && site === "same-origin";
 };
