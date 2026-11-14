@@ -98,10 +98,11 @@ export const paymentRecordErrors = {
       message: "Payment not found.",
       details: { id },
     }),
-  /** Not a number, or zero. */
+  /** Not a plain decimal of at most 8 digits before the point and 2 after, or zero (`paymentAmount`). */
   amountInvalid: () =>
     apiError("BAD_REQUEST", "PAYMENT_AMOUNT_INVALID", {
-      message: "Amount must be a non-zero number.",
+      message:
+        'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50").',
       i18nKey: "errors.invalidAmount",
     }),
   negativeOutsideAdjustment: () =>
@@ -118,10 +119,11 @@ export const paymentRecordErrors = {
     apiError("CONFLICT", "PAYMENT_STRIPE_NOT_DELETABLE", {
       message: "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
     }),
-  /** Not a number, zero or below. */
+  /** Not a plain decimal of at most 8 digits before the point and 2 after, or zero and below (`paymentAmount`). */
   depositReturnAmountInvalid: () =>
     apiError("BAD_REQUEST", "DEPOSIT_RETURN_AMOUNT_INVALID", {
-      message: "Amount must be greater than zero.",
+      message:
+        'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00").',
       i18nKey: "errors.invalidAmount",
     }),
   depositReturnExceedsBalance: (balance: DepositBalance, money: (amount: string) => string) =>

@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "Una clave de API",
       "unnamedAgent": "Un asistente de IA",
       "checked": "Lo que Louez ha comprobado",
+      "messageDestinationOnFile": "Los mensajes van a los datos de contacto registrados del cliente.",
       "values": {
         "yes": "Sí",
         "no": "No",
@@ -9940,7 +9941,8 @@
           "beyondStock": "<v>{product}</v>: {requested, plural, one {# pedido} other {# pedidos}}, {available, plural, =0 {ninguno en stock} other {solo # en stock}}: {missing, plural, one {falta #} other {faltan #}}",
           "moreLines": "{count, plural, one {Y # línea más fuera de tus reglas} other {Y # líneas más fuera de tus reglas}}: mira los detalles",
           "withinRules": "Tu stock y tu margen entre alquileres la cubren: nada los supera.",
-          "message": "<v>{customer}</v> recibirá {channels, select, email {el email} sms {el SMS} other {el email y el SMS}} «<v>{message}</v>»",
+          "message": "<v>{customer}</v> recibirá {channels, select, sms {el SMS} other {el email}} «<v>{message}</v>» en <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> recibirá el email «<v>{message}</v>» en <v>{email}</v> y el SMS en <v>{phone}</v>",
           "messageToCustomer": "El cliente recibirá {channels, select, email {el email} sms {el SMS} other {el email y el SMS}} «<v>{message}</v>»",
           "noMessage": "No se envía ningún mensaje al cliente.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> cobrados · <v>{method}</v>",

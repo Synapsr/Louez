@@ -119,7 +119,6 @@ async function lockedReservation(tx: Transaction, storeId: string, id: string) {
       id: reservations.id,
       number: reservations.number,
       status: reservations.status,
-      currency: reservations.currency,
     })
     .from(reservations)
     .where(and(eq(reservations.id, id), eq(reservations.storeId, storeId)));
@@ -128,27 +127,34 @@ async function lockedReservation(tx: Transaction, storeId: string, id: string) {
 
 /**
  * The reservation's currency, frozen when it was created; the store's for a
- * reservation older than its own (`reservations.currency`): the one the
- * writer records the payment in (apps/web `reservationCurrency`).
+ * reservation older than its own (`reservations.currency`): what a deleted
+ * payment without a currency of its own is shown in.
  */
 const currencyOf = (caller: PaymentRecordsCaller, reservation: { currency: string | null }) =>
   normalizeCurrency(reservation.currency, normalizeCurrency(caller.storeSettings?.currency));
 
 /**
- * What the write's row takes from the store's settings, bound with its
- * preview: the currency it records the payment in (the reservation's, else
- * the store's as read for this call) and, for a rental, the tax settings its
- * insurance share is computed with. A change of either between a preview
- * and the call that carries it out voids that preview's token or approval.
+ * The billing facts the row will take (its currency, gross and insurance
+ * share), computed by the app's writer under the reservation's lock from the
+ * reservation, its lines and the store's settings as the call read them.
+ * The write binds them with its preview, shows their currency, and hands the
+ * writer these very values: a change between a preview and the call that
+ * carries it out voids its token or approval when it changes the facts; one
+ * that leaves them the same writes the same row, and does not.
  */
-const settingsBound = (
+const factsOf = (
+  tx: Transaction,
   caller: PaymentRecordsCaller,
-  reservation: { currency: string | null },
-  type: RecordPaymentInput["type"],
-) => ({
-  currency: currencyOf(caller, reservation),
-  ...(type === "rental" ? { tax: caller.storeSettings?.tax ?? null } : {}),
-});
+  reservationId: string,
+  input: { type: RecordPaymentInput["type"]; amount: string },
+) =>
+  caller.port.facts(tx, {
+    reservationId,
+    storeId: caller.storeId,
+    storeSettings: caller.storeSettings,
+    type: input.type,
+    amount: input.amount,
+  });
 
 /** The notes a write records, shown with its preview when there are any. */
 const notesOf = (notes: string | undefined) => (notes ? { notes } : {});
@@ -180,8 +186,10 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
       return refused(paymentRecordErrors.reservationClosed(reservation.status));
     }
 
+    const facts = await factsOf(tx, caller, reservation.id, input);
+    // The reservation as read: one record, whatever case its id was sent in.
     const details = {
-      reservationId: input.reservationId,
+      reservationId: reservation.id,
       number: reservation.number,
       type: input.type,
       amount: input.amount,
@@ -192,21 +200,21 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
         summary: `Record a ${input.type} payment of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
         details: { ...details, ...notesOf(input.notes) },
       },
-      state: { status: reservation.status, ...settingsBound(caller, reservation, input.type) },
-      presentation: recordPaymentPresentation(details, currencyOf(caller, reservation)),
+      state: { status: reservation.status, facts },
+      presentation: recordPaymentPresentation(details, facts.currency),
     });
     if (refusal) return unconfirmed(refusal);
 
     await caller.port.insert(tx, {
       reservationId: reservation.id,
       storeId,
-      storeSettings: caller.storeSettings,
       type: input.type,
       method: input.method,
       amount: input.amount,
       origin: "manual",
       paidAt: new Date(),
       notes: input.notes ?? null,
+      facts,
     });
     return {
       ok: true,
@@ -273,8 +281,13 @@ export async function recordDepositReturn(
       );
     }
 
+    const facts = await factsOf(tx, caller, reservation.id, {
+      type: "deposit_return",
+      amount: input.amount,
+    });
+    // The reservation as read: one record, whatever case its id was sent in.
     const details = {
-      reservationId: input.reservationId,
+      reservationId: reservation.id,
       number: reservation.number,
       amount: input.amount,
       method: input.method,
@@ -285,24 +298,21 @@ export async function recordDepositReturn(
         summary: `Record a deposit return of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
         details: { ...details, ...notesOf(input.notes) },
       },
-      state: {
-        returnable: returnable.toFixed(2),
-        ...settingsBound(caller, reservation, "deposit_return"),
-      },
-      presentation: recordDepositReturnPresentation(details, currencyOf(caller, reservation), returnable),
+      state: { returnable: returnable.toFixed(2), facts },
+      presentation: recordDepositReturnPresentation(details, facts.currency, returnable),
     });
     if (refusal) return unconfirmed(refusal);
 
     await caller.port.insert(tx, {
       reservationId: reservation.id,
       storeId,
-      storeSettings: caller.storeSettings,
       type: "deposit_return",
       method: input.method,
       amount: input.amount,
       origin: "deposit",
       paidAt: new Date(),
       notes: input.notes ?? null,
+      facts,
     });
     return {
       ok: true,
@@ -355,8 +365,9 @@ export async function deletePayment(caller: PaymentRecordsCaller, input: DeleteP
     if (payment.method === "stripe")
       return refused(paymentRecordErrors.stripePaymentNotDeletable());
 
+    // The payment as read: one record, whatever case its id was sent in.
     const details = {
-      paymentId: input.paymentId,
+      paymentId: payment.id,
       number: payment.number,
       type: payment.type,
       amount: payment.amount,

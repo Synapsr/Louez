@@ -86,6 +86,7 @@ export {
   ConsumableStockError,
   canTransitionReservationStatus,
   checkReservationConsumables,
+  readReservationStockDemand,
   consumeReservationStock,
   getAllowedReservationStatusTransitions,
   getProductStockKindChangeBlockers,
@@ -100,6 +101,7 @@ export type {
   ConsumableStockItem,
   ConsumableStockMutationMode,
   ConsumableStockMutationPlan,
+  ReservationDemandLine,
   StockKindChangeBlocker,
 } from "./consumable-stock";
 export {
@@ -109,6 +111,7 @@ export {
   isFeeVoidingReservationStatus,
   requiresReservationGate,
   reservationStatusChangeMovesStock,
+  reservationStatusStockAction,
   toWholeSeconds,
 } from "./reservation-status";
 export { lockProductRows, lockStoreProductRows } from "./product-lock";

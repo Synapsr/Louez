@@ -196,10 +196,14 @@ export function reservationStatusChangeMovesStock(
   from: ReservationStatus,
   to: ReservationStatus,
 ): boolean {
-  return stockAction(from, to) !== null;
+  return reservationStatusStockAction(from, to) !== null;
 }
 
-function stockAction(from: ReservationStatus, to: ReservationStatus): "consume" | "restore" | null {
+/** What a change from `from` to `to` does to the consumable stock: takes it, gives it back, or nothing. */
+export function reservationStatusStockAction(
+  from: ReservationStatus,
+  to: ReservationStatus,
+): "consume" | "restore" | null {
   if (to === "confirmed" && (from === "pending" || from === "quote")) return "consume";
   if ((to === "cancelled" || to === "rejected") && (from === "confirmed" || from === "ongoing")) {
     return "restore";
@@ -253,7 +257,7 @@ export function planReservationStatusChange(
 
   return {
     changed: true,
-    stock: stockAction(from, to),
+    stock: reservationStatusStockAction(from, to),
     update: {
       status: to,
       updatedAt: input.now,

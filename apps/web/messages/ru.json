@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "API-ключ",
       "unnamedAgent": "ИИ-ассистент",
       "checked": "Что проверил Louez",
+      "messageDestinationOnFile": "Сообщения уходят на сохранённые контакты клиента.",
       "values": {
         "yes": "Да",
         "no": "Нет",
@@ -9940,7 +9941,8 @@
           "beyondStock": "<v>{product}</v>: запрошено {requested}, {available, plural, =0 {в наличии нет} other {в наличии только #}}: не хватает {missing}",
           "moreLines": "{count, plural, one {И ещё # позиция вне ваших правил} few {И ещё # позиции вне ваших правил} other {И ещё # позиций вне ваших правил}}: см. подробности",
           "withinRules": "Ваш запас и перерыв между арендами это покрывают: ничего не превышено.",
-          "message": "<v>{customer}</v> получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
+          "message": "<v>{customer}</v> получит {channels, select, sms {SMS} other {письмо}} «<v>{message}</v>» на <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> получит письмо «<v>{message}</v>» на <v>{email}</v> и SMS на <v>{phone}</v>",
           "messageToCustomer": "Клиент получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
           "noMessage": "Клиенту ничего не отправляется.",
           "depositCollected": "<v>{type}</v>: получено <v>{amount}</v> · <v>{method}</v>",

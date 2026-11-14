@@ -9836,6 +9836,7 @@
       "apiKeyUnnamed": "一个 API 密钥",
       "unnamedAgent": "一个 AI 助手",
       "checked": "Louez 核对的内容",
+      "messageDestinationOnFile": "消息发送到客户存档的联系方式。",
       "values": {
         "yes": "是",
         "no": "否",
@@ -9940,7 +9941,8 @@
           "beyondStock": "<v>{product}</v>：需要 {requested} 件，{available, plural, =0 {没有库存} other {库存仅 # 件}}：缺 {missing} 件",
           "moreLines": "{count, plural, other {还有 # 行超出你的规则}}：请查看详情",
           "withinRules": "库存和两次租赁之间的间隔都够用：没有任何超出。",
-          "message": "<v>{customer}</v> 将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
+          "message": "<v>{customer}</v>（<v>{to}</v>）将收到“<v>{message}</v>”{channels, select, sms {短信} other {邮件}}",
+          "messageEmailAndText": "<v>{customer}</v> 将收到“<v>{message}</v>”邮件（<v>{email}</v>）和短信（<v>{phone}</v>）",
           "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
           "noMessage": "不会向客户发送任何消息。",
           "depositCollected": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",

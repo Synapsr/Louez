@@ -93,14 +93,16 @@ function requirePermission(
 const PAYMENT_REFUSALS: Record<string, (details: Record<string, unknown>) => string> = {
   RESERVATION_NOT_FOUND: () => "Reservation not found",
   PAYMENT_NOT_FOUND: () => "Payment not found",
-  PAYMENT_AMOUNT_INVALID: () => "Amount must be a non-zero number",
+  PAYMENT_AMOUNT_INVALID: () =>
+    'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50")',
   PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT: () =>
     'Only "adjustment" payments can have a negative amount',
   PAYMENT_RESERVATION_CLOSED: (details) =>
     `Cannot record payment on a ${String(details.status)} reservation`,
   PAYMENT_STRIPE_NOT_DELETABLE: () =>
     "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
-  DEPOSIT_RETURN_AMOUNT_INVALID: () => "Amount must be greater than zero",
+  DEPOSIT_RETURN_AMOUNT_INVALID: () =>
+    'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00")',
   DEPOSIT_RETURN_EXCEEDS_BALANCE: (details) =>
     `Amount exceeds returnable deposit. Collected: ${String(details.collected)}, already returned: ${String(details.returned)}, max returnable: ${String(details.returnable)}`,
 };

@@ -12,6 +12,7 @@ import type { StoreSettings } from "@louez/types";
 
 import type { ReservationTotalsInput } from "@/lib/billing-sync/money";
 import {
+  type RecordedPaymentFacts,
   type RecordedPaymentType,
   grossMinorOf,
   recordedPaymentFacts,
@@ -81,15 +82,30 @@ export type RecordedPaymentInput = ReservationRef & {
 };
 
 /**
- * Inserts a payment the store records by hand, in the reservation's currency
- * rather than the column's EUR default (contract Q4), with its billing facts.
+ * The billing facts a payment recorded by hand takes (contract Q4, Q7): its
+ * currency, gross and insurance share, read from the reservation and its
+ * lines in the caller's transaction. Writes nothing. The payment procedures
+ * bind them with their preview, then hand them back to
+ * `insertRecordedPaymentWithFacts`, so the row holds what was approved.
  */
-export async function insertRecordedPayment(
+export async function recordedPaymentFactsOf(
   tx: Transaction,
-  input: RecordedPaymentInput,
-): Promise<void> {
+  input: ReservationRef & {
+    readonly storeSettings: TotalsSettings;
+    readonly type: RecordedPaymentType;
+    readonly amount: string;
+  },
+): Promise<RecordedPaymentFacts> {
   const totals = await loadTotalsInput(tx, input, input.storeSettings, input.type === "rental");
-  const facts = recordedPaymentFacts({ type: input.type, amount: input.amount, totals });
+  return recordedPaymentFacts({ type: input.type, amount: input.amount, totals });
+}
+
+/** A payment recorded by hand with the billing facts it was bound to, and the reservation's mark. */
+export async function insertRecordedPaymentWithFacts(
+  tx: Transaction,
+  input: Omit<RecordedPaymentInput, "storeSettings"> & { readonly facts: RecordedPaymentFacts },
+): Promise<void> {
+  const { facts } = input;
   await tx.insert(payments).values({
     id: input.id,
     reservationId: input.reservationId,
@@ -105,6 +121,18 @@ export async function insertRecordedPayment(
     origin: input.origin,
   });
   await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
+}
+
+/**
+ * Inserts a payment the store records by hand, in the reservation's currency
+ * rather than the column's EUR default (contract Q4), with its billing facts.
+ */
+export async function insertRecordedPayment(
+  tx: Transaction,
+  input: RecordedPaymentInput,
+): Promise<void> {
+  const facts = await recordedPaymentFactsOf(tx, input);
+  await insertRecordedPaymentWithFacts(tx, { ...input, facts });
 }
 
 export type ManualRefundInput = ReservationRef & {

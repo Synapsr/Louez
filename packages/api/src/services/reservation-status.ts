@@ -4,6 +4,8 @@ import {
   canTransitionReservationStatus,
   changeReservationStatus,
   checkReservationConsumables,
+  readReservationStockDemand,
+  reservationStatusStockAction,
   getAllowedReservationStatusTransitions,
   isReservationChangeBusyError,
   isStoreNotAcceptingReservationsError,
@@ -39,7 +41,7 @@ import { sha256, stableStringify } from "../platform/hash";
 import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platform/effects";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import type { ApprovalPresentation } from "./approval-display";
-import { confirmOverridePresentation, type MessageRecipient } from "./approval-presentations";
+import { confirmOverridePresentation } from "./approval-presentations";
 import { resolveDateChangeRequests } from "./date-change-requests";
 import {
   CUSTOMER_STATUS_NOTIFICATION,
@@ -56,6 +58,8 @@ import {
   ReservationTurnoverBufferShortfallError,
   ReservationUnitConflictError,
   checkStoreConfirmationInventory,
+  stockDemandOf,
+  type StockDemandLine,
 } from "./reservation-inventory";
 
 /**
@@ -107,8 +111,11 @@ export interface StatusChangePreview {
   };
   /** Null when the caller may not read customers. */
   customer: { name: string; email: string } | null;
-  /** The messages the customer gets: which, and on which channel. */
-  messages: Array<{ message: CustomerStatusMessage; channel: "email" | "sms" }>;
+  /**
+   * The messages the customer gets: which, on which channel, and, when the
+   * caller may read customers, the address or number it goes to.
+   */
+  messages: Array<{ message: CustomerStatusMessage; channel: "email" | "sms"; to?: string }>;
   /** The items leave the stock for these dates (a request or a quote is confirmed). */
   reducesAvailability: boolean;
   /**
@@ -143,6 +150,13 @@ export interface StatusChangePreview {
    * show them.
    */
   recipientsHash: string;
+  /**
+   * The reservation's stock demand as the change takes it, never shown
+   * (`stockDemandOf`): per line, the product, the quantity, the variant, the
+   * assigned units and a consumable's units. The confirmation binds it, so a
+   * line added, removed or changed since the preview voids its token.
+   */
+  demand: StockDemandLine[];
 }
 
 /**
@@ -324,15 +338,22 @@ function customerMessageOf(
   return null;
 }
 
+/**
+ * The customer's address on a message's channel, the e-mail or the phone
+ * number, as the change's snapshot holds it: the one the outbox sends to,
+ * the binding hashes, and the preview and its display show.
+ */
+const addressOf = (channel: "email" | "sms", locked: Pick<LockedReservation, "snapshot">) => {
+  const { customer } = locked.snapshot;
+  return (channel === "email" ? customer?.email : customer?.phone) ?? undefined;
+};
+
 /** Where each message goes: its channel, and the customer's address on it. */
 const recipientsOf = (
   messages: StatusChangePreview["messages"],
-  locked: Pick<LockedReservation, "customer">,
-): MessageRecipient[] =>
-  messages.map((entry) => ({
-    channel: entry.channel,
-    to: entry.channel === "email" ? locked.customer?.email : locked.customer?.phone,
-  }));
+  locked: Pick<LockedReservation, "snapshot">,
+): Array<{ channel: "email" | "sms"; to: string | undefined }> =>
+  messages.map((entry) => ({ channel: entry.channel, to: addressOf(entry.channel, locked) }));
 
 /** Each message as the preview names it. */
 const MESSAGE_NAMES: Record<CustomerStatusMessage, string> = {
@@ -371,9 +392,9 @@ async function buildPreview(
   caller: StatusChangeCaller,
   locked: LockedReservation,
   to: ReservationStatus,
-  overrides: Pick<StatusChangePreview, "overbooking" | "turnoverBuffer">,
+  overrides: Pick<StatusChangePreview, "overbooking" | "turnoverBuffer" | "demand">,
 ): Promise<StatusChangePreview> {
-  const { overbooking, turnoverBuffer } = overrides;
+  const { overbooking, turnoverBuffer, demand } = overrides;
   const { store } = locked.snapshot;
   // As the payment writers read it: the reservation's, else the store's, an ISO code.
   const currency = normalizeCurrency(locked.currency, normalizeCurrency(store.settings?.currency));
@@ -462,7 +483,10 @@ async function buildPreview(
       currency,
     },
     customer,
-    messages,
+    // Where each goes, to a caller who may read customers; otherwise only that it goes.
+    messages: caller.customers
+      ? messages.map((entry) => ({ ...entry, to: addressOf(entry.channel, locked) }))
+      : messages,
     reducesAvailability: takesStock(locked.status, to),
     overbooking,
     turnoverBuffer,
@@ -472,6 +496,7 @@ async function buildPreview(
     recipientsHash: sha256(
       stableStringify({ locale: locked.locale, recipients: recipientsOf(messages, locked) }),
     ),
+    demand,
   };
 }
 
@@ -568,6 +593,10 @@ export async function changeStoreReservationStatus(
         // Consumables short refuse whatever the flags, as taking them would:
         // known before the preview, as the stock is.
         if (takesStock(from, to)) await checkReservationConsumables(tx, lock);
+        // What the change takes of the stock, bound with its preview.
+        const demand = stockDemandOf(
+          await readReservationStockDemand(tx, lock, reservationStatusStockAction(from, to)),
+        );
 
         // The preview, its confirmation and the queued messages share one snapshot.
         const preview = await buildPreview(tx, caller, locked, to, {
@@ -576,13 +605,10 @@ export async function changeStoreReservationStatus(
             inventory && overrideTurnoverBuffer
               ? { shortfalls: pastBuffer, turnoverBufferMinutes: inventory.turnoverBufferMinutes }
               : null,
+          demand,
         });
         if (options.confirm && statusChangeIsSensitive(from, to)) {
-          const refusal = await options.confirm(
-            preview,
-            tx,
-            confirmOverridePresentation(preview, recipientsOf(preview.messages, locked)),
-          );
+          const refusal = await options.confirm(preview, tx, confirmOverridePresentation(preview));
           // Committed: the new preview stays recorded for its token.
           if (refusal) return { kind: "confirm", refusal };
         }

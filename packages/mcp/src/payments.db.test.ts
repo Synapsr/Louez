@@ -4,7 +4,7 @@ import { after, before, beforeEach, describe, mock, test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
-import type { RecordedPayment } from "@louez/api/platform/ports";
+import type { RecordedPayment, RecordedPaymentDraft } from "@louez/api/platform/ports";
 import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
 import {
@@ -109,6 +109,22 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     }
   };
 
+  /** A stand-in for the app's billing facts: the reservation's currency, else the store's; no gross, no share. */
+  const recordedFacts = async (
+    tx: import("@louez/db").Transaction,
+    draft: RecordedPaymentDraft,
+  ) => {
+    const [row] = await tx
+      .select({ currency: louezDb.reservations.currency })
+      .from(louezDb.reservations)
+      .where(orm.eq(louezDb.reservations.id, draft.reservationId));
+    return {
+      currency: row?.currency ?? draft.storeSettings?.currency ?? "EUR",
+      grossMinor: null,
+      insuranceShareMinor: 0,
+    };
+  };
+
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
@@ -118,7 +134,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     storage: createMemoryStorage(),
     urls: createTestUrls(),
     afterCommit: () => {},
-    paymentRecords: { insert: insertRecordedPayment },
+    paymentRecords: { facts: recordedFacts, insert: insertRecordedPayment },
   };
 
   before(async () => {
@@ -531,7 +547,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       {
         reservationId: id,
         storeId: STORE,
-        storeSettings: SETTINGS,
+        facts: { currency: "CHF", grossMinor: null, insuranceShareMinor: 0 },
         type: "rental",
         method: "transfer",
         amount: "80.00",
@@ -714,7 +730,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       {
         reservationId: id,
         storeId: STORE,
-        storeSettings: SETTINGS,
+        facts: { currency: "CHF", grossMinor: null, insuranceShareMinor: 0 },
         type: "deposit_return",
         method: "cash",
         amount: "30.00",
@@ -847,17 +863,26 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
 
     assert.deepEqual(
       refusal(await record(open.id, "rental", "0")),
-      refused("PAYMENT_AMOUNT_INVALID", "Amount must be a non-zero number."),
+      refused(
+        "PAYMENT_AMOUNT_INVALID",
+        'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50").',
+      ),
     );
     assert.deepEqual(
       refusal(await record(open.id, "rental", "abc")),
-      refused("PAYMENT_AMOUNT_INVALID", "Amount must be a non-zero number."),
+      refused(
+        "PAYMENT_AMOUNT_INVALID",
+        'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50").',
+      ),
     );
     // An amount is a plain decimal of at most two decimals, as its row holds it.
     for (const amount of ["1e2", "+5", " 5", "5.", ".5", "12abc", "0.004", "1.234", "100000000"]) {
       assert.deepEqual(
         refusal(await record(open.id, "adjustment", amount)),
-        refused("PAYMENT_AMOUNT_INVALID", "Amount must be a non-zero number."),
+        refused(
+          "PAYMENT_AMOUNT_INVALID",
+          'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50").',
+        ),
         JSON.stringify(amount),
       );
     }
@@ -885,15 +910,24 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       });
     assert.deepEqual(
       refusal(await giveBack("0")),
-      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "Amount must be greater than zero."),
+      refused(
+        "DEPOSIT_RETURN_AMOUNT_INVALID",
+        'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00").',
+      ),
     );
     assert.deepEqual(
       refusal(await giveBack("-1")),
-      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "Amount must be greater than zero."),
+      refused(
+        "DEPOSIT_RETURN_AMOUNT_INVALID",
+        'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00").',
+      ),
     );
     assert.deepEqual(
       refusal(await giveBack("10.005")),
-      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "Amount must be greater than zero."),
+      refused(
+        "DEPOSIT_RETURN_AMOUNT_INVALID",
+        'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00").',
+      ),
     );
     assert.deepEqual(
       refusal(await giveBack("30.01")),

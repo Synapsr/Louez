@@ -33,6 +33,8 @@ export type {
   PaymentRecordsPort,
   ProductImagesPort,
   RecordedPayment,
+  RecordedPaymentDraft,
+  RecordedPaymentFacts,
   StoragePort,
   UrlsPort,
 } from "./platform/ports";

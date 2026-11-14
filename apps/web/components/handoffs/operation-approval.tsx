@@ -157,6 +157,10 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
                 entries={approval.preview.details}
                 timeZone={approval.store.timeZone}
               />
+              {/* A caller who may not read customers was shown no address: the page says where it goes. */}
+              {approval.display?.facts.some((fact) => fact.key === "messageToCustomer") && (
+                <p className="text-muted-foreground text-sm">{t("messageDestinationOnFile")}</p>
+              )}
             </section>
           )}
           <p className="text-muted-foreground text-sm">

@@ -1,6 +1,5 @@
 import type { RECORDED_PAYMENT_TYPES } from "../contracts/payment-records";
 import { describeShortfallLine, type CapacityShortfall } from "../contracts/reservations";
-import { sha256, stableStringify } from "../platform/hash";
 import {
   FACTS_MAX,
   choice,
@@ -260,7 +259,6 @@ const channelsOf = (messages: StatusChangePreview["messages"]) => {
  */
 export function confirmOverridePresentation(
   preview: StatusChangePreview,
-  recipients: readonly MessageRecipient[],
 ): ApprovalPresentation | null {
   const { reservation, overbooking, turnoverBuffer, messages } = preview;
   if (reservation.to !== "confirmed" || (!overbooking && !turnoverBuffer)) return null;
@@ -287,18 +285,36 @@ export function confirmOverridePresentation(
   const customer = preview.customer && oneLine(preview.customer.name) ? preview.customer : null;
   const message = messages[0]?.message ?? null;
   const channels = channelsOf(messages);
-  const told = message
-    ? customer
-      ? fact("message", {
-          customer: text(customer.name),
+  // A change sends one message, on one channel or on both: one fact. To a
+  // person who may read customers it says where each goes, as the preview
+  // holds it, the one snapshot the binding and the outbox read.
+  const email = messages.find((entry) => entry.channel === "email")?.to;
+  const phone = messages.find((entry) => entry.channel === "sms")?.to;
+  // Whoever the preview names, even by a name that shows nothing: the
+  // destination is then on the display, and the name's own fact makes the
+  // request unreadable, so it cannot be approved without it.
+  const addressed =
+    preview.customer && messages.every((entry) => entry.to) ? preview.customer : null;
+  const told = !message
+    ? fact("noMessage", {})
+    : !addressed
+      ? fact("messageToCustomer", {
           message: choice("customerMessage", message),
           channels: choice("messageChannels", channels),
         })
-      : fact("messageToCustomer", {
-          message: choice("customerMessage", message),
-          channels: choice("messageChannels", channels),
-        })
-    : fact("noMessage", {});
+      : email && phone
+        ? fact("messageEmailAndText", {
+            customer: text(addressed.name),
+            message: choice("customerMessage", message),
+            email: text(email),
+            phone: text(phone),
+          })
+        : fact("message", {
+            customer: text(addressed.name),
+            message: choice("customerMessage", message),
+            channels: choice("messageChannels", channels),
+            to: text(email ?? phone ?? ""),
+          });
 
   // The record, the dates and the message hold three places; the lines share the rest.
   const room = FACTS_MAX - 3;
@@ -309,7 +325,7 @@ export function confirmOverridePresentation(
         ? lines
         : [...lines.slice(0, room - 1), fact("moreLines", { count: count(lines.length - room + 1) })];
 
-  const key =
+  const key: keyof typeof OVERRIDES_SAID =
     beyondStock.length > 0 && pastBuffer.length > 0
       ? "confirmBeyondStockAndBuffer"
       : beyondStock.length > 0
@@ -340,53 +356,40 @@ export function confirmOverridePresentation(
     facts: {
       reservation: reservation.id,
       status: reservation.to,
-      // Which override is asked for, so that a refusal of one never cools
-      // the other down, nor a request for one refreshes the other's. Never
-      // the shortfalls: the binding holds them.
-      overrides: overridesOf(preview),
+      // The overrides that pass something, as the headline says them: a
+      // refusal of one never cools another down. A flag that passes nothing
+      // is no part of it: the binding holds the shortfalls, so a shortage
+      // that appears since voids the approval.
+      overrides: [...OVERRIDES_SAID[key]],
+      // That a message goes, and on which channels, as the screen says them
+      // (`CHANNELS_SAID` for the fact that names both by its words);
+      // where it goes is the binding's (`recipientsHash`), and the details'.
       message: message ? { message, channels } : null,
-      recipients: recipientHashes(recipients),
     },
   };
 }
 
-/** The overrides a confirmation asks for, in a fixed order: `stock`, then `turnover_buffer`. */
-export function overridesOf(
-  preview: Pick<StatusChangePreview, "overbooking" | "turnoverBuffer">,
-): Array<"stock" | "turnover_buffer"> {
-  return [
-    ...(preview.overbooking ? (["stock"] as const) : []),
-    ...(preview.turnoverBuffer ? (["turnover_buffer"] as const) : []),
-  ];
-}
-
-/** Where a customer message goes: its channel and the address it goes to, as the store holds it. */
-export interface MessageRecipient {
-  channel: "email" | "sms";
-  to: string | null | undefined;
-}
+/**
+ * The overrides each headline of a confirmation says it passes: `stock`, a
+ * booking beyond the stock; `turnover_buffer`, one past the buffer. The
+ * request's identity holds the headline's, so each override in it is on the
+ * screen.
+ */
+export const OVERRIDES_SAID = {
+  confirmWithinRules: [],
+  confirmBeyondStock: ["stock"],
+  confirmPastBuffer: ["turnover_buffer"],
+  confirmBeyondStockAndBuffer: ["stock", "turnover_buffer"],
+} as const satisfies Partial<Record<HeadlineKey, readonly string[]>>;
 
 /**
- * Who a status change's messages go to, as the request's identity holds
- * them: per recipient, the SHA-256 (hex) of the canonical JSON of its
- * channel and its address, the e-mail trimmed and lowercased, the phone
- * number with its blanks removed (`{"channel":"email","to":"camille@example.com"}`),
- * sorted. Never the address itself, and never the message's language,
- * which the binding covers (`recipientsHash`).
+ * The channels a message fact names by its words rather than by a value: the
+ * fact for a message sent on both. The request's identity holds the same
+ * channels, so each is on the screen.
  */
-export function recipientHashes(recipients: readonly MessageRecipient[]): string[] {
-  return recipients
-    .map(({ channel, to }) => {
-      const address = (to ?? "").trim();
-      return sha256(
-        stableStringify({
-          channel,
-          to: channel === "email" ? address.toLowerCase() : address.replace(/\s+/g, ""),
-        }),
-      );
-    })
-    .sort();
-}
+export const CHANNELS_SAID = {
+  messageEmailAndText: ["email_and_sms"],
+} as const satisfies Partial<Record<FactKey, readonly string[]>>;
 
 const lineValues = (shortfall: CapacityShortfall) => ({
   product: text(describeShortfallLine(shortfall)),

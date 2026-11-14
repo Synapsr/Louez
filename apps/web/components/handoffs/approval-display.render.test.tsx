@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, test } from "node:test";
@@ -23,9 +22,10 @@ import {
   recordDepositReturnPresentation,
   recordPaymentPresentation,
   removeMemberPresentation,
-  type MessageRecipient,
+  CHANNELS_SAID,
+  OVERRIDES_SAID,
 } from "@louez/api/services/approval-presentations";
-import { shownDisplay } from "@louez/api/services/approval-preview";
+import { shownDisplay, shownPreview } from "@louez/api/services/approval-preview";
 import type { StatusChangePreview } from "@louez/api/services/reservation-status";
 
 import { sampleApprovals } from "../../scripts/seed/approvals-samples";
@@ -68,7 +68,7 @@ const statusPreview = (overrides: Partial<StatusChangePreview> = {}): StatusChan
     currency: "EUR",
   },
   customer: { name: "Camille Simon", email: "camille.simon@example.com" },
-  messages: [{ message: "request_accepted", channel: "email" }],
+  messages: [{ message: "request_accepted", channel: "email", to: "camille.simon@example.com" }],
   reducesAvailability: true,
   overbooking: null,
   turnoverBuffer: {
@@ -80,6 +80,7 @@ const statusPreview = (overrides: Partial<StatusChangePreview> = {}): StatusChan
   money: null,
   insuranceContract: null,
   recipientsHash: "0".repeat(64),
+  demand: [],
   ...overrides,
 });
 
@@ -91,15 +92,10 @@ const short = (productName: string, requested: number, available: number) => ({
   available,
 });
 
-/** Where the customer's messages go: the addresses the store holds, as written in its records. */
-const ADDRESSES = { email: " Camille.Simon@Example.com", sms: "+33 6 12 34 56 78" } as const;
-const recipientsOf = (preview: StatusChangePreview): MessageRecipient[] =>
-  preview.messages.map((entry) => ({ channel: entry.channel, to: ADDRESSES[entry.channel] }));
-
-/** A status change's presentation, as the service builds it: from its preview and where its messages go. */
+/** A status change's presentation, as the service builds it: from its preview. */
 const confirmed = (preview: StatusChangePreview) => ({
   preview,
-  presentation: confirmOverridePresentation(preview, recipientsOf(preview)),
+  presentation: confirmOverridePresentation(preview),
 });
 
 /** A payment recorded through the generic write, on booking R-00094 in euros. */
@@ -206,8 +202,8 @@ const BRANCHES: Array<{
     ...confirmed(
       statusPreview({
         messages: [
-          { message: "request_accepted", channel: "email" },
-          { message: "request_accepted", channel: "sms" },
+          { message: "request_accepted", channel: "email", to: "camille.simon@example.com" },
+          { message: "request_accepted", channel: "sms", to: "+33 6 12 34 56 78" },
         ],
         overbooking: { shortfalls: [short("Paddle", 3, 0)] },
       }),
@@ -226,7 +222,9 @@ const BRANCHES: Array<{
   {
     name: "a booking confirmed past the buffer, the customer not shown to the agent",
     summary: "Change reservation #R-00094 …",
-    ...confirmed(statusPreview({ customer: null })),
+    ...confirmed(
+      statusPreview({ customer: null, messages: [{ message: "request_accepted", channel: "email" }] }),
+    ),
   },
 ];
 
@@ -473,14 +471,14 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Booking #R-00094 · Camille Simon",
       "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00",
       "Kayak biplace: 2 requested, only 1 free with your 2 hr turnover buffer",
-      "Camille Simon will receive the “request accepted” email",
+      "Camille Simon will receive the “request accepted” email at camille.simon@example.com",
     ],
     fr: [
       "Confirmer la réservation malgré votre délai entre deux locations ?",
       "Réservation #R-00094 · Camille Simon",
       "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
       "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
-      "Camille Simon recevra l’e-mail « demande acceptée »",
+      "Camille Simon recevra l’e-mail « demande acceptée » à camille.simon@example.com",
     ],
   },
   "a booking confirmed beyond the stock, no message": {
@@ -506,7 +504,8 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00",
       "Paddle: 3 requested, none in stock: 3 missing",
       "Kayak biplace: 2 requested, only 1 free with your 2 hr turnover buffer",
-      "Camille Simon will receive the “request accepted” email and text message",
+      // One message on both channels: one fact, each destination in it.
+      "Camille Simon will receive the “request accepted” email at camille.simon@example.com and a text at +33 6 12 34 56 78",
     ],
     fr: [
       "Confirmer la réservation au-delà de votre stock et de votre délai entre deux locations ?",
@@ -514,7 +513,7 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
       "Paddle : 3 demandés, aucun en stock : 3 manquants",
       "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
-      "Camille Simon recevra l’e-mail et le SMS « demande acceptée »",
+      "Camille Simon recevra l’e-mail « demande acceptée » à camille.simon@example.com et le SMS au +33 6 12 34 56 78",
     ],
   },
   "a booking confirmed with both flags, nothing short": {
@@ -523,14 +522,14 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Booking #R-00094 · Camille Simon",
       "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00",
       "Your stock and your turnover buffer cover it: nothing goes past them.",
-      "Camille Simon will receive the “request accepted” email",
+      "Camille Simon will receive the “request accepted” email at camille.simon@example.com",
     ],
     fr: [
       "Confirmer la réservation ?",
       "Réservation #R-00094 · Camille Simon",
       "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
       "Votre stock et votre délai entre deux locations la couvrent : rien ne les dépasse.",
-      "Camille Simon recevra l’e-mail « demande acceptée »",
+      "Camille Simon recevra l’e-mail « demande acceptée » à camille.simon@example.com",
     ],
   },
   "a booking confirmed past the buffer, the customer not shown to the agent": {
@@ -585,7 +584,7 @@ describe("what a person reads first, for the actions a person approves", () => {
       "Réservation #R-00094 · Camille Simon",
       "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
       "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
-      "Camille Simon recevra l’e-mail « demande acceptée »",
+      "Camille Simon recevra l’e-mail « demande acceptée » à camille.simon@example.com",
       "Seul le résumé de Louez fait foi.",
       "Autorise une réservation au-delà de votre stock ou sans respecter votre délai entre deux locations.",
       "Envoie un message à un client : impossible de le reprendre.",
@@ -645,6 +644,10 @@ test("the three sample requests carry the displays their real branches build, wh
     ["recordPayment", "confirmPastBuffer", "removeMember"],
   );
   for (const sample of samples) assert.ok(shownDisplay(sample.payload.display)?.readable, sample.label);
+  // The booking's message says where it goes.
+  const booking = shownDisplay(samples[1]?.payload.display)?.display;
+  const told = booking?.facts.find((fact) => fact.key === "message");
+  assert.deepEqual(told?.values.to, { type: "text", text: "camille.simon@example.com" });
 });
 
 describe("the guarantee: each fact of a request's identity is among what the page always shows", () => {
@@ -653,20 +656,27 @@ describe("the guarantee: each fact of a request's identity is among what the pag
       const presentation = branch.presentation;
       assert.ok(presentation);
       const { display, facts } = presentation;
-      // What the screen always shows, line by line, with the record each line is about.
+      // What the screen always shows, line by line, with the record each line
+      // is about, the overrides a confirmation's headline says and the
+      // channels a message's words say.
+      const said = (key: string): readonly string[] =>
+        Object.hasOwn(OVERRIDES_SAID, key)
+          ? OVERRIDES_SAID[key as keyof typeof OVERRIDES_SAID]
+          : Object.hasOwn(CHANNELS_SAID, key)
+            ? CHANNELS_SAID[key as keyof typeof CHANNELS_SAID]
+            : [];
       const lines = [display.headline, ...display.facts].map((line) => ({
         line,
-        leaves: [...leaves(line.values), ...("ref" in line && line.ref ? [line.ref] : [])],
+        leaves: [
+          ...leaves(line.values),
+          ...("ref" in line && line.ref ? [line.ref] : []),
+          ...said(line.key),
+        ],
       }));
       const html = pageOf(branch);
       const screen = screenLines(html);
+      // Every fact, without exception.
       for (const [name, identity] of Object.entries(facts)) {
-        // Who receives a message is held as a hash of each recipient: the
-        // screen shows them in the form the caller may see (below).
-        if (name === "recipients") continue;
-        // Which override is asked for: the screen shows each line it passes,
-        // or that nothing goes past the store's rules (below).
-        if (name === "overrides") continue;
         for (const leaf of leaves(identity)) {
           const index = lines.findIndex((candidate) => candidate.leaves.includes(leaf));
           assert.ok(index >= 0, `the identity fact ${name} (${leaf}) is on no line the page always shows`);
@@ -678,51 +688,57 @@ describe("the guarantee: each fact of a request's identity is among what the pag
     });
   }
 
-  // A status change's recipients: each one in the identity, as the hash of
-  // its channel and its address, and each one on the screen, named when
-  // the caller may read customers, in the neutral wording otherwise.
-  const hashOf = (channel: "email" | "sms", to: string) =>
-    createHash("sha256").update(JSON.stringify({ channel, to })).digest("hex");
-  const EXPECTED = {
-    email: hashOf("email", "camille.simon@example.com"),
-    sms: hashOf("sms", "+33612345678"),
-  };
+  // A status change's recipients: where a message goes is no part of the
+  // identity (the binding holds it). The screen says that it goes, and to
+  // whom as the caller may see them; the details say where: the address or
+  // number to a caller who may read customers, the contact details on file
+  // otherwise.
   for (const branch of BRANCHES.filter((candidate) => candidate.preview)) {
-    test(`${branch.name}: each recipient is in the identity and on the screen`, () => {
+    test(`${branch.name}: where each message goes is on the screen and in the details, or neither, never in the identity`, () => {
       const { preview, presentation } = branch;
       assert.ok(preview && presentation);
-      assert.deepEqual(
-        presentation.facts.recipients,
-        preview.messages.map((entry) => EXPECTED[entry.channel]).sort(),
-        "each recipient, hashed",
-      );
-      const message = screenLines(pageOf(branch)).at(-1) ?? "";
+      assert.ok(!("recipients" in presentation.facts));
+      assert.doesNotMatch(JSON.stringify(presentation.facts), /@|\+33/);
+      const { summary, recipientsHash: _hash, demand: _demand, ...details } = preview;
+      const stored = shownPreview({ summary, details });
+      assert.ok(stored);
+      const html = pageOf(branch, "en", { preview: stored });
+      const message = screenLines(html).at(-1) ?? "";
+      const inDetails = detailsOf(html);
       if (preview.messages.length === 0) {
         assert.equal(message, "No message goes to the customer.");
+        assert.ok(!inDetails.includes("contact details on file"));
       } else if (preview.customer) {
         assert.ok(message.startsWith(`${preview.customer.name} will receive`), message);
+        const screen = screenLines(html);
+        // One fact for the messages, saying where each goes.
+        const told = screen.filter((shown) => shown.includes(" will receive "));
+        assert.equal(told.length, 1, told.join("\n"));
+        for (const entry of preview.messages) {
+          assert.ok(entry.to && inDetails.includes(entry.to), `${entry.channel}: ${inDetails}`);
+          assert.ok(entry.to && told[0]?.includes(entry.to), entry.channel);
+        }
+        assert.ok(!inDetails.includes("contact details on file"));
       } else {
         assert.ok(message.startsWith("The customer will receive"), message);
+        assert.doesNotMatch(screenLines(html).join("\n"), /@|\+33/);
+        assert.ok(inDetails.includes("Messages go to the customer’s contact details on file."), inDetails);
+        assert.doesNotMatch(JSON.stringify(stored.details), /@|\+33/);
       }
     });
   }
 
-  // A confirmation's overrides: in the identity, each one asked for; on the
-  // screen, each line one of them passes, and no line of one not asked for.
+  // A confirmation's overrides: in the identity, each one that passes
+  // something, as the headline says; a flag that passes nothing, not at all.
   for (const branch of BRANCHES.filter((candidate) => candidate.preview)) {
-    test(`${branch.name}: each override is in the identity, and what it passes on the screen`, () => {
+    test(`${branch.name}: the identity names each override that passes something, and no other`, () => {
       const { preview, presentation } = branch;
       assert.ok(preview && presentation);
-      const asked = [
-        ...(preview.overbooking ? ["stock"] : []),
-        ...(preview.turnoverBuffer ? ["turnover_buffer"] : []),
+      const passing = [
+        ...((preview.overbooking?.shortfalls.length ?? 0) > 0 ? ["stock"] : []),
+        ...((preview.turnoverBuffer?.shortfalls.length ?? 0) > 0 ? ["turnover_buffer"] : []),
       ];
-      assert.deepEqual(presentation.facts.overrides, asked);
-      const keys = presentation.display.facts.map((line) => line.key);
-      if (keys.includes("beyondStock")) assert.ok(asked.includes("stock"));
-      if (keys.includes("pastBuffer")) assert.ok(asked.includes("turnover_buffer"));
-      const passed = (preview.overbooking?.shortfalls.length ?? 0) + (preview.turnoverBuffer?.shortfalls.length ?? 0);
-      if (passed === 0) assert.ok(keys.includes("withinRules"), "nothing goes past the rules, and the screen says so");
+      assert.deepEqual(presentation.facts.overrides, passing);
     });
   }
 
@@ -941,6 +957,106 @@ describe("a value from the store's records stays data", () => {
     assert.ok(html.includes(long));
   });
 
+  test("an e-mail address of 200 characters wraps inside its fact, whole and isolated, next to a phone number", () => {
+    const address = `${"camille.simon.".repeat(13)}x@example.com`;
+    const html = pageOf(
+      withValues({
+        messages: [
+          { message: "request_accepted", channel: "email", to: address },
+          { message: "request_accepted", channel: "sms", to: "+33 6 12 34 56 78" },
+        ],
+      }),
+    );
+    const items = [...html.matchAll(/<li\b class="([^"]*)"/g)].map((match) => match[1] ?? "");
+    assert.ok(items.length > 0 && items.every((classes) => /\bmin-w-0\b/.test(classes) && /\boverflow-hidden\b/.test(classes) && /\bwrap-break-word\b/.test(classes)));
+    const shown = html.slice(html.indexOf('<div class="min-w-0 space-y-2">'), html.indexOf("</ul>"));
+    assert.doesNotMatch(shown, /(?<![-\w])w-(?:\d|\[)|min-w-\[|whitespace-nowrap|truncate|grid-cols/);
+    // Each whole, in its own isolated run.
+    assert.ok(shown.includes(`>${address}</bdi>`), "the address in a bdi of its own");
+    assert.ok(shown.includes(">+33 6 12 34 56 78</bdi>"), "the number in a bdi of its own");
+  });
+
+  // Where a message goes, on the screen, per channel: to a person who may
+  // read customers, the address or number next to the customer's name; to
+  // one who may not, the customer unnamed and no address, said in the details.
+  // What a status change can send: its one message, by e-mail, by text, or both.
+  const EMAIL = "camille.simon@example.com";
+  const PHONE = "+33 6 12 34 56 78";
+  const DESTINATIONS = [
+    {
+      name: "by email",
+      channels: ["email"],
+      named: "Camille Simon will receive the “request accepted” email at camille.simon@example.com",
+      unnamed: "The customer will receive the “request accepted” email",
+    },
+    {
+      name: "by text message",
+      channels: ["sms"],
+      named: "Camille Simon will receive the “request accepted” text message at +33 6 12 34 56 78",
+      unnamed: "The customer will receive the “request accepted” text message",
+    },
+    {
+      name: "by email and text message",
+      channels: ["email", "sms"],
+      named: "Camille Simon will receive the “request accepted” email at camille.simon@example.com and a text at +33 6 12 34 56 78",
+      unnamed: "The customer will receive the “request accepted” email and text message",
+    },
+  ] as const;
+  for (const { name, channels, named, unnamed } of DESTINATIONS) {
+    const sent = (to: boolean) =>
+      channels.map((channel) => ({
+        message: "request_accepted" as const,
+        channel,
+        ...(to ? { to: channel === "email" ? EMAIL : PHONE } : {}),
+      }));
+    test(`a message ${name}: one fact, saying where it goes to a person who may read customers`, () => {
+      const html = pageOf(withValues({ messages: sent(true) }));
+      assert.equal(screenLines(html).at(-1), named);
+      assert.equal(screenLines(html).filter((line) => line.includes(" will receive ")).length, 1);
+      assert.ok(!detailsOf(html).includes("contact details on file"));
+    });
+    test(`a message ${name}: to a person who may not read customers, one fact, no address, and the details say so`, () => {
+      const html = pageOf(withValues({ customer: null, messages: sent(false) }));
+      assert.equal(screenLines(html).at(-1), unnamed);
+      assert.doesNotMatch(screenLines(html).join("\n"), /@|\+33/);
+      assert.ok(detailsOf(html).includes("Messages go to the customer’s contact details on file."));
+    });
+  }
+
+  test("a customer whose name shows nothing: the destination is not dropped, and the request cannot be approved", () => {
+    for (const name of [" ", "\u200b", ""]) {
+      const { presentation } = withValues({
+        customer: { name, email: EMAIL },
+        messages: [{ message: "request_accepted", channel: "email", to: EMAIL }],
+      });
+      const told = presentation?.display.facts.at(-1);
+      // The fact that names where the message goes, never the one without a destination.
+      assert.equal(told?.key, "message", JSON.stringify(name));
+      assert.ok(JSON.stringify(told).includes(EMAIL), JSON.stringify(name));
+      assert.equal(shownDisplay(presentation?.display)?.readable, false, JSON.stringify(name));
+    }
+  });
+
+  test("a message on both channels takes one place: the lines past the rules keep theirs", () => {
+    const html = pageOf(
+      withValues({
+        messages: [
+          { message: "request_accepted", channel: "email", to: EMAIL },
+          { message: "request_accepted", channel: "sms", to: PHONE },
+        ],
+        overbooking: { shortfalls: [short("Paddle", 2, 1), short("Gilet", 4, 2)] },
+        turnoverBuffer: { shortfalls: [short("Kayak biplace", 2, 1)], turnoverBufferMinutes: 90 },
+      }),
+    );
+    const lines = screenLines(html);
+    assert.equal(lines.length, 6, "a headline and five facts");
+    assert.deepEqual(lines.slice(3), [
+      "Paddle: 2 requested, only 1 in stock: 1 missing",
+      "And 2 more lines past your rules: see Details",
+      "Camille Simon will receive the “request accepted” email at camille.simon@example.com and a text at +33 6 12 34 56 78",
+    ]);
+  });
+
   test("a currency without minor units, and a negative adjustment, are written as such", () => {
     const yen = recordPaymentPresentation(
       { reservationId: RESERVATION, number: "R-1", type: "rental", amount: "1500", method: "cash" },
@@ -1111,13 +1227,19 @@ describe("the display's texts", () => {
   test("a text that names its channels names each one", () => {
     for (const locale of LOCALES) {
       const texts = textsOf(locale);
-      for (const key of ["message", "messageToCustomer"]) {
-        const text = texts.facts[key] ?? "";
-        for (const channel of CHOICES.messageChannels.filter((value) => value !== "email_and_sms")) {
-          assert.ok(text.includes(`${channel} {`), `${locale}: ${key} names ${channel}`);
-        }
-        assert.ok(text.includes("other {"), `${locale}: ${key} names both`);
+      // The customer unnamed: one fact for every channel, each named, and both.
+      const toCustomer = texts.facts.messageToCustomer ?? "";
+      for (const channel of CHOICES.messageChannels.filter((value) => value !== "email_and_sms")) {
+        assert.ok(toCustomer.includes(`${channel} {`), `${locale}: messageToCustomer names ${channel}`);
       }
+      assert.ok(toCustomer.includes("other {"), `${locale}: messageToCustomer names both`);
+      // Named, on one channel: the channel and where it goes.
+      const named = texts.facts.message ?? "";
+      assert.ok(named.includes("sms {") && named.includes("other {"), `${locale}: message names its channel`);
+      assert.ok(named.includes("<v>{to}</v>"), `${locale}: message says where it goes, isolated`);
+      // Named, on both: each destination, each isolated.
+      const both = texts.facts.messageEmailAndText ?? "";
+      assert.ok(both.includes("<v>{email}</v>") && both.includes("<v>{phone}</v>"), `${locale}: messageEmailAndText says where each goes`);
     }
   });
 });

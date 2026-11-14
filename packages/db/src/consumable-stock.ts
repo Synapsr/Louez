@@ -1,3 +1,4 @@
+import type { BookingAttributeAxis, UnitAttributes } from '@louez/types'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 
 import type { Database, Transaction } from './index'
@@ -6,7 +7,7 @@ import {
   type ReservationProductsLock,
   type ReservationStockLock,
 } from './reservation-lock'
-import { products, reservationItems, reservations } from './schema'
+import { products, reservationItemUnits, reservationItems, reservations } from './schema'
 import {
   buildReservationAvailabilityPredicate,
   type BlockingReservationStatus,
@@ -336,6 +337,106 @@ export async function checkReservationConsumables(
 ): Promise<void> {
   const grant = assertReservationLock(tx, lock, ['products'])
   await checkedStockPlan(tx, grant.reservationId, grant.storeId, 'consume')
+}
+
+/**
+ * One line of a reservation's stock demand as a status change takes it, as
+ * read under its locks (`readReservationStockDemand`): what it books (the
+ * product, the quantity, the variant as the line stores it, with the
+ * product's booking axes to read it by, the units assigned to it) and, for a
+ * consumable, what is consumed and what the change takes.
+ */
+export interface ReservationDemandLine {
+  line: string
+  product: string
+  quantity: number
+  /** The line's combination: null for a line served by any unit that matches its choice. */
+  combinationKey: string | null
+  /** The attributes the line chose, as stored; read against `axes` (packages/api `stockDemandOf`). */
+  selectedAttributes: UnitAttributes | null
+  axes: BookingAttributeAxis[] | null
+  /** The ids of the units assigned to it, sorted. */
+  units: string[]
+  /** A consumable's units already taken, and what the change takes (negative: gives back). */
+  consumable?: { consumed: number; takes: number }
+}
+
+/**
+ * The reservation's stock demand as a status change will take it, under its
+ * products' lock (`runReservationChange`): per line with a product, the
+ * product, the quantity, the variant and the assigned units, and for a
+ * consumable what is already consumed and what `action` takes (`consume`:
+ * up to the quantity; `restore`: all of it back; null: nothing), in the
+ * lines' id order. A confirmation binds it (in its canonical form,
+ * packages/api `stockDemandOf`), so a line changed since its preview voids
+ * the preview's token or approval. Writes nothing.
+ */
+export async function readReservationStockDemand(
+  tx: Transaction,
+  lock: ReservationProductsLock,
+  action: 'consume' | 'restore' | null,
+): Promise<ReservationDemandLine[]> {
+  const grant = assertReservationLock(tx, lock, ['products'])
+  const rows = await tx
+    .select({
+      line: reservationItems.id,
+      product: products.id,
+      quantity: reservationItems.quantity,
+      consumed: reservationItems.consumedQuantity,
+      combinationKey: reservationItems.combinationKey,
+      selectedAttributes: reservationItems.selectedAttributes,
+      axes: products.bookingAttributeAxes,
+      stockKind: products.stockKind,
+    })
+    .from(reservationItems)
+    .innerJoin(products, eq(reservationItems.productId, products.id))
+    .where(
+      and(
+        eq(reservationItems.reservationId, grant.reservationId),
+        eq(products.storeId, grant.storeId),
+      ),
+    )
+    .orderBy(reservationItems.id)
+    .for('update')
+  const assigned =
+    rows.length === 0
+      ? []
+      : await tx
+          .select({
+            line: reservationItemUnits.reservationItemId,
+            unit: reservationItemUnits.productUnitId,
+          })
+          .from(reservationItemUnits)
+          .where(
+            inArray(
+              reservationItemUnits.reservationItemId,
+              rows.map((row) => row.line),
+            ),
+          )
+          .orderBy(reservationItemUnits.reservationItemId, reservationItemUnits.productUnitId)
+          .for('update')
+  return rows.map(({ consumed, stockKind, ...row }) => {
+    const units = assigned.flatMap((entry) =>
+      entry.line === row.line && entry.unit ? [entry.unit] : [],
+    )
+    const demand = {
+      line: row.line,
+      product: row.product,
+      quantity: row.quantity,
+      combinationKey: row.combinationKey,
+      selectedAttributes: row.selectedAttributes,
+      axes: row.axes,
+      units,
+    }
+    if (stockKind !== 'consumable') return demand
+    const takes =
+      action === 'consume'
+        ? Math.max(consumed, row.quantity) - consumed
+        : action === 'restore'
+          ? -consumed
+          : 0
+    return { ...demand, consumable: { consumed, takes } }
+  })
 }
 
 /** Gives the reservation's consumables back, under its products' lock (`runReservationChange`). */
