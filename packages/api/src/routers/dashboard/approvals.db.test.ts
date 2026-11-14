@@ -52,9 +52,9 @@ mock.module("@louez/auth", {
 // through the transport tests' fixture (`fixture.notes.erase`) with `money`
 // made live for it alone: requested once the write's transaction is over, read,
 // decided on its page, refused, expired and revoked; its identity, its caps
-// and its cool-down; who reads it and who decides it; the inbox. Nothing is
-// carried out yet: an approved approval presented with a call runs nothing.
-// Every duration is read from the rule's own constants, and time passes by
+// and its cool-down; who reads it and who decides it; the inbox; and carried
+// out by the agent's call, once, inside the write (the fixture erases a note,
+// a category of the store, under its domain's lock). Every duration is read from the rule's own constants, and time passes by
 // moving a row's dates back (the rules read the database's clock).
 
 const OWNER = "ap_owner_user_000001";
@@ -75,6 +75,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   let handoffs: typeof import("../../services/handoffs");
   let approvals: typeof import("../../services/approvals");
   let confirmation: typeof import("../../platform/confirmation");
+  let operationsModule: typeof import("../../platform/operations");
   let grants: typeof import("../../services/agent-grants");
   let routers: {
     handoffs: typeof import("./handoffs").dashboardHandoffsRouter;
@@ -109,6 +110,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     handoffs = await import("../../services/handoffs");
     approvals = await import("../../services/approvals");
     confirmation = await import("../../platform/confirmation");
+    operationsModule = await import("../../platform/operations");
     grants = await import("../../services/agent-grants");
     routers = {
       handoffs: (await import("./handoffs")).dashboardHandoffsRouter,
@@ -346,13 +348,17 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.ok(row, `approval ${id}`);
     return row;
   };
-  const storeDescription = async () => {
-    const [row] = await louezDb.db
-      .select({ description: louezDb.stores.description })
-      .from(louezDb.stores)
-      .where(orm.eq(louezDb.stores.id, STORE));
-    return row?.description ?? null;
-  };
+  /** A note the fixture's erase erases: a category of the store, by its id. */
+  const addNote = (id: string) =>
+    louezDb.db.insert(louezDb.categories).values({ id, storeId: STORE, name: `Note ${id}` });
+  /** Whether the note is still there: the fixture's write did not run. */
+  const noteExists = async (id: string) =>
+    (
+      await louezDb.db
+        .select({ id: louezDb.categories.id })
+        .from(louezDb.categories)
+        .where(orm.eq(louezDb.categories.id, id))
+    ).length === 1;
   const renameStore = (name: string) =>
     louezDb.db.update(louezDb.stores).set({ name }).where(orm.eq(louezDb.stores.id, STORE));
 
@@ -426,7 +432,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
 
   test("a call a person must approve writes the approval and does nothing else; its key runs again", async () => {
     const key = await apiKey();
-    const before = await storeDescription();
+    await addNote("n1");
     const asked = await ask({ id: "n1" }, key, { "idempotency-key": "erase-n1" });
 
     assert.equal(asked.status, 412);
@@ -468,7 +474,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(approval.expiresAt, row.expiresAt.toISOString());
 
     // Nothing else of the write remains: its own write, its token, its record.
-    assert.equal(await storeDescription(), before);
+    assert.equal(await noteExists("n1"), true);
     assert.deepEqual(await louezDb.db.select().from(louezDb.apiConfirmations), []);
     const [operation] = await operations();
     assert.equal(operation?.status, "failed");
@@ -483,14 +489,16 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
   });
 
   test("who is asked: a session never; a key with its option off still, for money; not live, the token as before", async () => {
+    await addNote("n1");
     await erase({ id: "n1" }, session());
-    assert.equal(await storeDescription(), "erased n1", "a session runs directly");
+    assert.equal(await noteExists("n1"), false, "a session runs directly");
     assert.deepEqual(await rows(), []);
 
     const off = await apiKey({ confirm: false });
     await ask({ id: "n2" }, off);
 
     const key = await apiKey();
+    await addNote("n3");
     const token = await failure(erase({ id: "n3" }, key.context(), notLive));
     assert.equal(token.code, "CONFIRMATION_REQUIRED");
     assert.match(String(token.details.confirmationToken), /^[A-Za-z0-9_-]{43}$/);
@@ -593,6 +601,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
 
   test("a call that carries a pending approval's id is told it waits, and changes nothing", async () => {
     const key = await apiKey();
+    await addNote("n1");
     const asked = await ask({ id: "n1" }, key);
     const before = await rowOf(asked.approval.id);
     const pending = await failure(
@@ -603,7 +612,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(pending.retryable, true);
     assert.equal((pending.details.approval as ApprovalDetails).id, asked.approval.id);
     assert.deepEqual(await rowOf(asked.approval.id), before, "nothing changed");
-    assert.equal(await storeDescription(), null);
+    assert.equal(await noteExists("n1"), true);
   });
 
   test("an approved approval asked again keeps its binding and decision, and answers with the preview the person approved", async () => {
@@ -633,35 +642,6 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.match(changed.message, /^The user approved: Erase note n1 of Roscoff Voile\./);
     assert.match(changed.message, /no longer as the preview the user approved showed/);
     assert.deepEqual(await rowOf(asked.approval.id), approved, "binding and decision intact");
-  });
-
-  test("an approved approval presented before it can be carried out is a refusal: nothing runs, and the key runs again", async () => {
-    const key = await apiKey();
-    const asked = await ask({ id: "n1" }, key);
-    await decide(asked.approval.id, "approve");
-    const approved = await rowOf(asked.approval.id);
-
-    const presented = await failure(
-      erase(
-        { id: "n1" },
-        key.context({ "louez-confirmation": asked.approval.id, "idempotency-key": "k-approved" }),
-      ),
-    );
-    assert.equal(presented.code, "APPROVAL_INVALID");
-    assert.equal(presented.status, 412);
-    assert.deepEqual(presented.details, { reason: "execution_unavailable" });
-    assert.equal(await storeDescription(), null, "the write did not run");
-    assert.deepEqual(await rowOf(asked.approval.id), approved, "the approval did not change");
-    const keyed = async () =>
-      (await operations()).filter((operation) => operation.idempotencyKey === "k-approved");
-    const [operation] = await keyed();
-    assert.equal(operation?.status, "failed", "a refusal: its key may run again");
-    assert.equal(operation?.error?.code, "APPROVAL_INVALID");
-
-    // The same key runs again, and is answered, not told its outcome is unknown.
-    const again = await ask({ id: "n1" }, key, { "idempotency-key": "k-approved" });
-    assert.equal(again.approval.id, asked.approval.id);
-    assert.equal((await keyed()).length, 1, "one record for the key");
   });
 
   test("a leaked id: another credential, store, procedure or request learns nothing and changes nothing", async () => {
@@ -1100,6 +1080,7 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     const notes = fixtureRouter({ liveConsequences: ["money"], deadlocksBeforeCommit: 1 }).fixture
       .notes;
     const key = await apiKey();
+    await addNote("n1");
     const asked = await failure(
       erase({ id: "n1" }, key.context({ "idempotency-key": "retried" }), notes),
     );
@@ -1107,11 +1088,12 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     const [row] = await rows();
     assert.equal(row?.revision, 1, "requested once, not once per attempt");
     assert.equal((await rows()).length, 1);
-    assert.equal(await storeDescription(), null);
+    assert.equal(await noteExists("n1"), true);
   });
 
   test("a request that fails after the write's transaction leaves nothing: the call fails, and a new call requests it", async () => {
     const key = await apiKey();
+    await addNote("n1");
     // The approvals' table gone for a moment: the request fails once the write is over.
     await louezDb.db.execute(orm.sql`RENAME TABLE api_handoffs TO api_handoffs_away`);
     let failed: Refusal | null = null;
@@ -1123,12 +1105,794 @@ describe("a person's approval (database)", { skip: skipWithoutTestDatabase() }, 
     assert.ok(failed);
     assert.notEqual(failed.code, "APPROVAL_REQUIRED");
     assert.deepEqual(await rows(), [], "nothing written");
-    assert.equal(await storeDescription(), null, "nothing of the write either");
+    assert.equal(await noteExists("n1"), true, "nothing of the write either");
     const [operation] = await operations();
     assert.notEqual(operation?.status, "succeeded");
     // Another call requests it.
     const again = await ask({ id: "n1" }, key);
     assert.equal((await rowOf(again.approval.id)).status, "pending");
+  });
+
+  // --- Carrying out -------------------------------------------------------------
+
+  const ERASE_SCOPE = { domain: "categories", level: "write", role: "delete" } as const;
+
+  /** The actor the fixture's erase sees for a key of `userId`, for a direct check. */
+  const keyActor = (keyId: string, userId = OWNER) => ({
+    transport: "mcp" as const,
+    isPlatformAdmin: false,
+    storeId: STORE,
+    credential: {
+      kind: "api_key" as const,
+      id: keyId,
+      clientName: "Store agent",
+      userId,
+      email: null,
+      storeId: STORE,
+      stores: null,
+      scopes: null,
+      confirmSensitive: true,
+      bundles: null,
+    },
+  });
+
+  /**
+   * What the fixture's erase of note n1 asks, called directly in `tx`, with
+   * no domain lock of its own: the same request, binding and identity.
+   */
+  const checkErase = (
+    tx: Tx,
+    actor: ReturnType<typeof keyActor>,
+    headers: Headers,
+    procedure = PROCEDURE,
+  ) =>
+    confirmation.checkConfirmation({
+      consequences: ["money"],
+      executor: tx,
+      actor,
+      headers,
+      procedure,
+      input: { id: "n1", consequences: ["money"], amount: 40 },
+      state: { name: "Roscoff Voile" },
+      preview: { summary: "Erase note n1 of Roscoff Voile.", details: { id: "n1", amount: 40 } },
+      approval: {
+        facts: { id: "n1", amount: 40, recipient: null },
+        scope: ERASE_SCOPE,
+        urls: ports.urls,
+      },
+      liveConsequences: ["money"],
+    });
+
+  /** A recorded write that runs `run`, as `storeProcedure` records the fixture's. */
+  const recorded = <T>(
+    actor: ReturnType<typeof keyActor>,
+    receipt: { operationId?: string },
+    run: () => Promise<T>,
+  ) =>
+    operationsModule.runOperation(
+      { actor, procedure: PROCEDURE, input: { id: "n1" }, idempotencyKey: null, receipt },
+      run,
+    );
+
+  /** The fixture's erase, pausing in its transaction once it has asked, its locks held. */
+  function pausedErase() {
+    let resume: () => void = () => {};
+    const resumed = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    let asked: () => void = () => {};
+    const hasAsked = new Promise<void>((resolve) => {
+      asked = resolve;
+    });
+    const notes = fixtureRouter({
+      liveConsequences: ["money"],
+      whileAsked: async () => {
+        asked();
+        await resumed;
+      },
+    }).fixture.notes;
+    return { notes, hasAsked, resume };
+  }
+
+  /** Asks for an erase of `input`, then the key's user approves it on its page. */
+  async function approvedFor(input: EraseInput, key: Key, user = OWNER) {
+    const asked = await ask(input, key);
+    await decide(asked.approval.id, "approve", { user });
+    return asked.approval.id;
+  }
+
+  const presenting = (id: string, headers: Record<string, string> = {}) => ({
+    "louez-confirmation": id,
+    ...headers,
+  });
+
+  /** What a person decided and what they were shown: never rewritten. */
+  const decisionOf = (row: Awaited<ReturnType<typeof rowOf>>) => ({
+    decision: row.decision,
+    decidedAt: row.decidedAt,
+    decidedByUserId: row.decidedByUserId,
+    decisionReason: row.decisionReason,
+    bindingHash: row.bindingHash,
+    payload: row.payload,
+    revision: row.revision,
+  });
+
+  const operationOfKey = async (key: string) =>
+    (await operations()).find((operation) => operation.idempotencyKey === key);
+
+  /** Waits until the database's clock passes the approval's `expires_at`. */
+  async function untilExpired(id: string) {
+    for (;;) {
+      const [passed] = (await louezDb.db.execute(
+        orm.sql`SELECT expires_at <= NOW(3) AS passed FROM api_handoffs WHERE id = ${id}`,
+      )) as unknown as [Array<{ passed: number }>];
+      if (Number(passed[0]?.passed) === 1) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  /** A team write: the store's row, then the member's role. */
+  const setRole = (userId: string, role: "owner" | "member") =>
+    louezDb.db.transaction(async (tx) => {
+      await louezDb.lockStoreRow(tx, STORE);
+      await tx
+        .update(louezDb.storeMembers)
+        .set({ role })
+        .where(
+          orm.and(
+            orm.eq(louezDb.storeMembers.storeId, STORE),
+            orm.eq(louezDb.storeMembers.userId, userId),
+          ),
+        );
+    });
+
+  test("approved, then presented with the same input: carried out once, in the write; the approval and the operation name each other", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const asked = await ask({ id: "n1" }, key, { "idempotency-key": "k-flow" });
+    await decide(asked.approval.id, "approve", { reason: "Go ahead" });
+    const before = await rowOf(asked.approval.id);
+
+    const context = key.context(presenting(asked.approval.id, { "idempotency-key": "k-flow" }));
+    const done = await erase({ id: "n1" }, context);
+    assert.equal(done.erased, true);
+    assert.equal(await noteExists("n1"), false, "the write ran");
+
+    const row = await rowOf(asked.approval.id);
+    assert.equal(row.status, "completed");
+    assert.equal(row.activeSlot, null, "its slot is free");
+    assert.ok(row.consumedAt);
+    assert.equal(row.completedAt?.getTime(), row.consumedAt.getTime());
+    assert.equal(row.updatedAt.getTime(), row.consumedAt.getTime(), "in one statement");
+    assert.ok(row.consumedAt.getTime() >= (before.decidedAt?.getTime() ?? Infinity));
+    assert.equal(row.failureCode, null);
+    assert.deepEqual(decisionOf(row), decisionOf(before), "the decision as written");
+    // The agent's operation: its key, kept for the whole flow, its credential, its receipt.
+    const records = await operations();
+    assert.equal(records.length, 1, "one record for the key");
+    const [operation] = records;
+    assert.equal(operation?.id, context.receipt?.operationId);
+    assert.equal(operation?.status, "succeeded");
+    assert.equal(operation?.idempotencyKey, "k-flow");
+    assert.equal(operation?.credentialId, key.id);
+    assert.equal(operation?.approvalId, row.id, "the operation names its approval");
+    assert.equal(row.consumedOperationId, operation?.id, "the approval names its operation");
+
+    // Read afterwards by its requester: completed, its decision as it was.
+    const view = await get(asked.approval.id, key.context());
+    assert.equal(view.status, "completed");
+    assert.equal(view.decision?.outcome, "approved");
+    assert.equal(view.decision?.reason, "Go ahead");
+    assert.equal(view.failure, null);
+    assert.equal(view.summary, "The approved request was carried out.");
+    const sibling = await apiKey();
+    assert.equal(
+      (await failure(get(asked.approval.id, sibling.context()))).code,
+      "HANDOFF_NOT_FOUND",
+    );
+
+    // Presented again under another key: used, and nothing runs.
+    await addNote("n1");
+    const used = await failure(
+      erase({ id: "n1" }, key.context(presenting(asked.approval.id, { "idempotency-key": "k-2" }))),
+    );
+    assert.equal(used.code, "APPROVAL_INVALID");
+    assert.equal(used.status, 412);
+    assert.deepEqual(used.details, { reason: "used" });
+    assert.equal(await noteExists("n1"), true);
+    assert.deepEqual(await rowOf(asked.approval.id), row, "nothing changed");
+    const second = await operationOfKey("k-2");
+    assert.equal(second?.status, "failed", "a refusal: its key runs again");
+    assert.equal(second?.approvalId, null);
+
+    // The next call without it asks again, with the preview as it is now.
+    const next = await ask({ id: "n1" }, key, { "idempotency-key": "k-2" });
+    assert.notEqual(next.approval.id, asked.approval.id);
+    assert.equal(next.approval.status, "pending");
+  });
+
+  test("the inbox stops showing an approval once carried out; one approved and left past its hour shows expired", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const done = await approvedFor({ id: "n1" }, key);
+    await erase({ id: "n1" }, key.context(presenting(done)));
+    const left = await approvedFor({ id: "n2" }, key);
+    assert.deepEqual(await inbox(key.context()), [], "approved in time, or carried out: nothing waits");
+    for (const id of [done, left]) await age(id, (LIFETIME.executeMs ?? 0) + 60_000);
+    const items = await inbox(key.context());
+    assert.deepEqual(
+      items.map((item) => item.id),
+      [`approval_waiting:${left}`],
+    );
+    assert.equal(items[0]?.details.status, "expired");
+  });
+
+  test("a replay of the agent's key answers what it stored and never reads the approval: expired, revoked, altered or gone", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const headers = presenting(id, { "idempotency-key": "k-replay" });
+    const first = await erase({ id: "n1" }, key.context(headers));
+    const replay = async (label: string) => {
+      const context = key.context(headers);
+      assert.deepEqual(await erase({ id: "n1" }, context), first, label);
+      assert.equal(context.receipt?.replayed, true, label);
+    };
+    const t = louezDb.apiHandoffs;
+    const ofId = orm.eq(t.id, id);
+    await age(id, 2 * (LIFETIME.executeMs ?? 0));
+    await replay("past its hour");
+    await louezDb.db
+      .update(t)
+      .set({ status: "failed", failureCode: "connection_revoked" })
+      .where(ofId);
+    await replay("revoked");
+    // Altered back to approved, with another binding: a read would end it.
+    await louezDb.db
+      .update(t)
+      .set({
+        status: "approved",
+        failureCode: null,
+        bindingHash: "f".repeat(64),
+        expiresAt: new Date(Date.now() + 3_600_000),
+        consumedAt: null,
+        consumedOperationId: null,
+        activeSlot: 1,
+      })
+      .where(ofId);
+    const altered = await rowOf(id);
+    await replay("altered");
+    assert.deepEqual(await rowOf(id), altered, "never read, never changed");
+    await louezDb.db.delete(t).where(ofId);
+    await replay("gone");
+    assert.equal(await noteExists("n1"), false);
+    const keyed = (await operations()).filter((operation) => operation.idempotencyKey === "k-replay");
+    assert.equal(keyed.length, 1, "one record for the key, never run again");
+  });
+
+  test("two calls carry out the same approval at once: one runs, the other is told it was used", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const call = (idempotencyKey: string) =>
+      erase({ id: "n1" }, key.context(presenting(id, { "idempotency-key": idempotencyKey })));
+    const results = await Promise.allSettled([call("k-a"), call("k-b")]);
+    const ran = results.filter((result) => result.status === "fulfilled");
+    assert.equal(ran.length, 1, "one runs");
+    const refused = results.find((result) => result.status === "rejected");
+    const reason = (refused as PromiseRejectedResult).reason as {
+      data?: { code?: string; details?: unknown };
+    };
+    assert.equal(reason.data?.code, "APPROVAL_INVALID");
+    assert.deepEqual(reason.data?.details, { reason: "used" });
+    const row = await rowOf(id);
+    assert.equal(row.status, "completed");
+    const carried = (await operations()).filter((operation) => operation.approvalId === id);
+    assert.equal(carried.length, 1);
+    assert.equal(row.consumedOperationId, carried[0]?.id);
+  });
+
+  test("two writes carry out the same approval with no lock of theirs between them: its row lets one through, the other waits there and finds it used", async () => {
+    const key = await apiKey();
+    const id = await approvedFor({ id: "n1" }, key);
+    const actor = keyActor(key.id);
+    let resume: () => void = () => {};
+    const resumed = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    let consumed: () => void = () => {};
+    const hasConsumed = new Promise<void>((resolve) => {
+      consumed = resolve;
+    });
+    const firstReceipt: { operationId?: string } = {};
+    const first = recorded(actor, firstReceipt, () =>
+      louezDb.db.transaction(async (tx) => {
+        const refusal = await checkErase(tx, actor, new Headers(presenting(id)));
+        consumed();
+        await resumed;
+        return refusal;
+      }),
+    );
+    let second: Promise<unknown> | null = null;
+    try {
+      await hasConsumed;
+      second = recorded(actor, {}, () =>
+        louezDb.db.transaction((tx) => checkErase(tx, actor, new Headers(presenting(id)))),
+      );
+      // It waits for the approval's row, which the first holds.
+      await lockWait("api_handoffs");
+    } finally {
+      resume();
+    }
+    assert.equal(await first, null, "the first carries it out");
+    const refusal = await second;
+    assert.ok(refusal instanceof confirmation.ConfirmationRefusal);
+    const answer = await failure(confirmation.raiseConfirmation(refusal));
+    assert.equal(answer.code, "APPROVAL_INVALID");
+    assert.deepEqual(answer.details, { reason: "used" });
+    const row = await rowOf(id);
+    assert.equal(row.status, "completed");
+    assert.equal(row.consumedOperationId, firstReceipt.operationId);
+  });
+
+  test("a call that waited for the approval's row past its hour is refused as expired: nothing runs, nothing is written", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    // A second left to carry it out, on the database's clock.
+    await louezDb.db.execute(
+      orm.sql`UPDATE api_handoffs SET expires_at = NOW(3) + INTERVAL 1 SECOND WHERE id = ${id}`,
+    );
+    const before = await rowOf(id);
+    const row = holdApprovalRow(id);
+    await row.held;
+    let call: Promise<Refusal> | null = null;
+    try {
+      call = failure(erase({ id: "n1" }, key.context(presenting(id))));
+      await lockWait("api_handoffs");
+      // The database's clock passes the hour while the call waits for the row.
+      await untilExpired(id);
+    } finally {
+      row.release();
+      await row.done;
+    }
+    const refusal = await call;
+    assert.equal(refusal.code, "APPROVAL_INVALID");
+    assert.deepEqual(refusal.details, { reason: "expired" });
+    assert.equal(await noteExists("n1"), true, "nothing ran");
+    assert.deepEqual(await rowOf(id), before, "expiry is computed: nothing written");
+  });
+
+  test("a revocation's cleanup first, then the call it raced: the row as locked says revoked, and nothing runs", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    // The call's domain lock held: it has read the store, then waits there.
+    const domain = holdLock((tx) =>
+      tx
+        .select({ id: louezDb.categories.id })
+        .from(louezDb.categories)
+        .where(orm.eq(louezDb.categories.storeId, STORE))
+        .for("update"),
+    );
+    await domain.held;
+    let call: Promise<Refusal> | null = null;
+    try {
+      call = failure(erase({ id: "n1" }, key.context(presenting(id))));
+      await lockWait("categories");
+      // The key, then its approvals: the store's row, then the approval's, ended.
+      await revoke(key);
+    } finally {
+      domain.release();
+      await domain.done;
+    }
+    const refusal = await call;
+    assert.equal(refusal.code, "APPROVAL_INVALID");
+    assert.deepEqual(refusal.details, { reason: "other_request" });
+    assert.equal(await noteExists("n1"), true, "nothing ran");
+    const row = await rowOf(id);
+    assert.equal(row.status, "failed");
+    assert.equal(row.failureCode, "connection_revoked");
+    assert.equal(row.decision, "approved");
+    assert.equal(row.consumedAt, null);
+  });
+
+  test("a call carries out its approval while its key is revoked: the write stands, completed, and the cleanup leaves it so", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const paused = pausedErase();
+    let call: Promise<{ erased: boolean }> | null = null;
+    let revocation: Promise<void> | null = null;
+    try {
+      call = erase({ id: "n1" }, key.context(presenting(id)), paused.notes);
+      await paused.hasAsked;
+      // The cleanup takes the store's row, then waits for the approval's, which the call holds.
+      revocation = revoke(key);
+      await lockWait("api_handoffs");
+    } finally {
+      paused.resume();
+    }
+    assert.equal((await call).erased, true);
+    await revocation;
+    assert.equal(await noteExists("n1"), false);
+    const row = await rowOf(id);
+    assert.equal(row.status, "completed", "the cleanup ends only what is still open");
+    assert.ok(row.consumedOperationId);
+    assert.equal(row.failureCode, null);
+  });
+
+  test("a repeated request while the approval is being carried out answers it as approved, and changes nothing of it", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const before = await rowOf(id);
+    const actor = keyActor(key.id);
+    const paused = pausedErase();
+    let call: Promise<{ erased: boolean }> | null = null;
+    try {
+      call = erase({ id: "n1" }, key.context(presenting(id)), paused.notes);
+      await paused.hasAsked;
+      // The same request, without the id, outside the call's domain lock: it
+      // waits for nothing the call holds, and refreshes nothing.
+      const refusal = await louezDb.db.transaction((tx) => checkErase(tx, actor, new Headers()));
+      assert.ok(refusal);
+      const repeat = await failure(confirmation.raiseConfirmation(refusal));
+      assert.equal(repeat.code, "APPROVAL_REQUIRED");
+      const answer = repeat.details.approval as ApprovalDetails;
+      assert.equal(answer.id, id);
+      assert.equal(answer.status, "approved");
+    } finally {
+      paused.resume();
+    }
+    assert.equal((await call).erased, true);
+    const row = await rowOf(id);
+    assert.equal(row.status, "completed");
+    assert.deepEqual(decisionOf(row), decisionOf(before));
+    assert.equal(row.updatedAt.getTime(), row.consumedAt?.getTime(), "written by the call alone");
+    assert.equal((await rows()).length, 1);
+  });
+
+  test("a repeated request that finds the approval past its hour while a call consumes it frees no slot: it waits for the row, then opens a new approval", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const actor = keyActor(key.id);
+    // The hour is cut short so that it passes while the call holds the row.
+    // A call that did not consume in time is refused as expired and changes
+    // nothing: the hour is then cut again, so no scheduling delay fails this.
+    let paused = pausedErase();
+    let call: Promise<{ erased: boolean }> | null = null;
+    for (let attempt = 0; ; attempt += 1) {
+      await louezDb.db.execute(
+        orm.sql`UPDATE api_handoffs SET expires_at = NOW(3) + INTERVAL 2 SECOND WHERE id = ${id}`,
+      );
+      paused = pausedErase();
+      const started = erase({ id: "n1" }, key.context(presenting(id)), paused.notes);
+      const consumed = await Promise.race([
+        paused.hasAsked.then(() => true),
+        started.then(
+          () => false,
+          () => false,
+        ),
+      ]);
+      if (consumed) {
+        call = started;
+        break;
+      }
+      assert.ok(attempt < 10, "the call never consumed its approval within its time");
+    }
+    let repeat: Promise<Refusal> | null = null;
+    try {
+      // Consumed in time, then the hour passes while the call holds the row.
+      await untilExpired(id);
+      const refusal = await louezDb.db.transaction((tx) => checkErase(tx, actor, new Headers()));
+      assert.ok(refusal);
+      // Under the store's lock, it would free the slot of a row that reads
+      // expired: it waits for the row the call holds.
+      repeat = failure(confirmation.raiseConfirmation(refusal));
+      await lockWait("api_handoffs");
+    } finally {
+      paused.resume();
+    }
+    assert.equal((await call).erased, true);
+    const answer = await repeat;
+    assert.equal(answer.code, "APPROVAL_REQUIRED");
+    const fresh = answer.details.approval as ApprovalDetails;
+    assert.notEqual(fresh.id, id);
+    assert.equal(fresh.status, "pending");
+    const row = await rowOf(id);
+    assert.equal(row.status, "completed");
+    assert.equal(row.updatedAt.getTime(), row.consumedAt?.getTime(), "the request changed nothing of it");
+  });
+
+  test("the decider loses the right after approving: the call is refused by its own rights, the approval kept; restored, it is carried out", async () => {
+    const key = await apiKey({ userId: CO_OWNER });
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key, CO_OWNER);
+    const before = await rowOf(id);
+    await setRole(CO_OWNER, "member");
+    const refused = await failure(erase({ id: "n1" }, key.context(presenting(id))));
+    assert.equal(refused.code, "PERMISSION_DENIED");
+    assert.deepEqual(await rowOf(id), before);
+    await setRole(CO_OWNER, "owner");
+    assert.equal((await erase({ id: "n1" }, key.context(presenting(id)))).erased, true);
+    assert.equal((await rowOf(id)).status, "completed");
+  });
+
+  test("the decider removed from the right once the call was let in, before its write: the approval ends approver_not_allowed, and nothing runs", async () => {
+    const key = await apiKey({ userId: CO_OWNER });
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key, CO_OWNER);
+    const before = await rowOf(id);
+    // The call is held after its rights were read (an owner), before it is counted.
+    const limiter = holdLock((tx) =>
+      tx
+        .select({ key: louezDb.apiRateLimits.key })
+        .from(louezDb.apiRateLimits)
+        .where(orm.eq(louezDb.apiRateLimits.key, `api_key:${key.id}`))
+        .for("update"),
+    );
+    await limiter.held;
+    let call: Promise<Refusal> | null = null;
+    try {
+      call = failure(
+        erase({ id: "n1" }, key.context(presenting(id, { "idempotency-key": "k-removed" }))),
+      );
+      await lockWait("api_rate_limits");
+      await setRole(CO_OWNER, "member");
+    } finally {
+      limiter.release();
+      await limiter.done;
+    }
+    const refusal = await call;
+    assert.equal(refusal.code, "APPROVAL_INVALID");
+    assert.deepEqual(refusal.details, { reason: "approver_not_allowed" });
+    assert.equal(await noteExists("n1"), true);
+    const row = await rowOf(id);
+    assert.equal(row.status, "failed");
+    assert.equal(row.failureCode, "approver_not_allowed");
+    assert.equal(row.activeSlot, null);
+    assert.deepEqual(decisionOf(row), decisionOf(before), "its decision kept");
+    assert.equal((await operationOfKey("k-removed"))?.status, "failed");
+    // Allowed again: presented, the same answer; the next call without it asks again.
+    await setRole(CO_OWNER, "owner");
+    const again = await failure(erase({ id: "n1" }, key.context(presenting(id))));
+    assert.deepEqual(again.details, { reason: "approver_not_allowed" });
+    assert.equal(await noteExists("n1"), true);
+    const next = await ask({ id: "n1" }, key, { "idempotency-key": "k-removed" });
+    assert.notEqual(next.approval.id, id);
+  });
+
+  test("the decider removed from the right while the write runs, past its read: the write stands, and the removal waits for nothing it holds", async () => {
+    const key = await apiKey({ userId: CO_OWNER });
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key, CO_OWNER);
+    const paused = pausedErase();
+    let call: Promise<{ erased: boolean }> | null = null;
+    try {
+      call = erase({ id: "n1" }, key.context(presenting(id)), paused.notes);
+      await paused.hasAsked;
+      // A team write: the store's row, then the membership; neither is the call's.
+      await setRole(CO_OWNER, "member");
+    } finally {
+      paused.resume();
+    }
+    assert.equal((await call).erased, true);
+    assert.equal((await rowOf(id)).status, "completed");
+  });
+
+  test("the store moved since the person approved: the call ends the approval state_changed, runs nothing, and the next call asks again as it is now", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const asked = await ask({ id: "n1" }, key, { "idempotency-key": "k-moved" });
+    await decide(asked.approval.id, "approve");
+    const id = asked.approval.id;
+    const before = await rowOf(id);
+    await renameStore("Roscoff Glisse");
+
+    const changed = await failure(
+      erase({ id: "n1" }, key.context(presenting(id, { "idempotency-key": "k-moved" }))),
+    );
+    assert.equal(changed.code, "APPROVAL_INVALID");
+    assert.equal(changed.status, 412);
+    assert.deepEqual(changed.details, { reason: "state_changed" });
+    assert.equal(await noteExists("n1"), true, "nothing ran");
+    const row = await rowOf(id);
+    assert.equal(row.status, "failed");
+    assert.equal(row.failureCode, "state_changed");
+    assert.equal(row.activeSlot, null);
+    assert.ok(row.failedAt);
+    assert.equal(row.consumedAt, null);
+    assert.deepEqual(decisionOf(row), decisionOf(before), "its decision kept");
+    const operation = await operationOfKey("k-moved");
+    assert.equal(operation?.status, "failed");
+    assert.equal(operation?.error?.code, "APPROVAL_INVALID");
+    assert.equal(operation?.approvalId, null);
+    const view = await get(id, key.context());
+    assert.equal(view.status, "failed");
+    assert.equal(view.failure?.code, "state_changed");
+    assert.equal(view.decision?.outcome, "approved");
+    assert.match(view.summary, /^The user approved, but it could not be carried out\./);
+
+    // Presented again: the same answer, nothing changed.
+    const again = await failure(erase({ id: "n1" }, key.context(presenting(id))));
+    assert.deepEqual(again.details, { reason: "state_changed" });
+    assert.deepEqual(await rowOf(id), row);
+    // The next call without it, under the same key: a new approval, with the preview as it is now.
+    const next = await ask({ id: "n1" }, key, { "idempotency-key": "k-moved" });
+    assert.notEqual(next.approval.id, id);
+    assert.equal((next.details.preview as { summary: string }).summary, "Erase note n1 of Roscoff Glisse.");
+  });
+
+  test("the store moved after the request computed its binding, before its row was written: approved as stored, the call finds another binding", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    let renamed = false;
+    const moving = fixtureRouter({
+      liveConsequences: ["money"],
+      whileAsked: async () => {
+        if (renamed) return;
+        renamed = true;
+        // Committed while the request's write holds its domain lock, its binding computed.
+        await renameStore("Roscoff Glisse");
+      },
+    }).fixture.notes;
+    const asked = await failure(erase({ id: "n1" }, key.context(), moving));
+    const id = (asked.details.approval as ApprovalDetails).id;
+    assert.equal((asked.details.preview as { summary: string }).summary, "Erase note n1 of Roscoff Voile.");
+    await decide(id, "approve");
+    const changed = await failure(erase({ id: "n1" }, key.context(presenting(id))));
+    assert.deepEqual(changed.details, { reason: "state_changed" });
+    assert.equal(await noteExists("n1"), true, "never a write the person did not see");
+  });
+
+  test("an approved id presented by anything but its own request is an unknown id and changes nothing; the same request reworded is another binding", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    await addNote("n2");
+    const id = await approvedFor({ id: "n1", note: "first words" }, key);
+    const before = await rowOf(id);
+    const unknown = (refusal: Refusal, label: string) => {
+      assert.equal(refusal.code, "APPROVAL_INVALID", label);
+      assert.deepEqual(refusal.details, { reason: "other_request" }, label);
+    };
+    unknown(await failure(erase({ id: "n2" }, key.context(presenting(id)))), "another record");
+    const sibling = await apiKey();
+    unknown(
+      await failure(erase({ id: "n1", note: "first words" }, sibling.context(presenting(id)))),
+      "another key of the same user",
+    );
+    const elsewhere = await apiKey({ storeId: OTHER_STORE });
+    unknown(
+      await failure(erase({ id: "n1", note: "first words" }, elsewhere.context(presenting(id)))),
+      "another store",
+    );
+    const other = await louezDb.db.transaction((tx) =>
+      checkErase(tx, keyActor(key.id), new Headers(presenting(id)), "fixture.notes.other"),
+    );
+    assert.ok(other);
+    unknown(await failure(confirmation.raiseConfirmation(other)), "another procedure");
+    assert.deepEqual(await rowOf(id), before, "nothing changed");
+    assert.equal(await noteExists("n1"), true);
+    assert.equal(await noteExists("n2"), true);
+
+    // Its own request in other words: the same identity, another exact input.
+    const reworded = await failure(
+      erase({ id: "n1", note: "other words" }, key.context(presenting(id))),
+    );
+    assert.deepEqual(reworded.details, { reason: "state_changed" });
+    assert.equal(await noteExists("n1"), true);
+  });
+
+  test("approved, then the connection narrowed: the call is refused by its own rights and the approval kept; widened again, it is carried out", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const before = await rowOf(id);
+    const setRights = (permissions: Permissions) =>
+      louezDb.db
+        .update(louezDb.apiKeys)
+        .set({ permissions })
+        .where(orm.eq(louezDb.apiKeys.id, key.id));
+    await setRights({ ...rights, categories: "read" });
+    const narrowed = await failure(erase({ id: "n1" }, key.context(presenting(id))));
+    assert.equal(narrowed.code, "PERMISSION_DENIED");
+    assert.deepEqual(await rowOf(id), before);
+    assert.equal(await noteExists("n1"), true);
+    await setRights(rights);
+    assert.equal((await erase({ id: "n1" }, key.context(presenting(id)))).erased, true);
+  });
+
+  test("a write refused by its own rule after it consumed the approval rolls the consumption back with it: still approved, its key runs again", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const before = await rowOf(id);
+    // The note is gone since the person approved; the store is as approved.
+    await louezDb.db.delete(louezDb.categories).where(orm.eq(louezDb.categories.id, "n1"));
+    const headers = presenting(id, { "idempotency-key": "k-gone" });
+    const refused = await failure(erase({ id: "n1" }, key.context(headers)));
+    assert.equal(refused.code, "CATEGORY_NOT_FOUND");
+    assert.deepEqual(await rowOf(id), before, "approved as it was: rolled back with the write");
+    const operation = await operationOfKey("k-gone");
+    assert.equal(operation?.status, "failed", "a refusal: its key runs again");
+    assert.equal(operation?.approvalId, null);
+
+    await addNote("n1");
+    assert.equal((await erase({ id: "n1" }, key.context(headers))).erased, true);
+    const row = await rowOf(id);
+    assert.equal(row.status, "completed");
+    assert.equal(row.consumedOperationId, operation?.id, "the same key's operation");
+  });
+
+  test("a write retried on a deadlock after it consumed the approval: one consumption, one write", async () => {
+    const notes = fixtureRouter({ liveConsequences: ["money"], deadlocksBeforeCommit: 1 }).fixture
+      .notes;
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const done = await erase({ id: "n1" }, key.context(presenting(id)), notes);
+    assert.equal(done.erased, true);
+    assert.equal(done.runs, 1);
+    const row = await rowOf(id);
+    assert.equal(row.status, "completed");
+    const carried = (await operations()).filter((operation) => operation.approvalId === id);
+    assert.equal(carried.length, 1);
+    assert.equal(row.consumedOperationId, carried[0]?.id);
+  });
+
+  test("a writer holding the store's row, then waiting for the domain lock a call carrying out its approval holds: the call ends without the store's row", async () => {
+    const key = await apiKey();
+    await addNote("n1");
+    const id = await approvedFor({ id: "n1" }, key);
+    const paused = pausedErase();
+    const gate = () => {
+      let open: () => void = () => {};
+      const opened = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      return { open, opened };
+    };
+    const holdsStore = gate();
+    const goForDomain = gate();
+    const gotDomain = gate();
+    const writerDone = gate();
+    // A writer in the order products and settings take: the store's row, then its domain.
+    const writer = louezDb.db.transaction(async (tx) => {
+      await tx
+        .select({ id: louezDb.stores.id })
+        .from(louezDb.stores)
+        .where(orm.eq(louezDb.stores.id, STORE))
+        .for("update");
+      holdsStore.open();
+      await goForDomain.opened;
+      await tx
+        .select({ id: louezDb.categories.id })
+        .from(louezDb.categories)
+        .where(orm.eq(louezDb.categories.storeId, STORE))
+        .for("update");
+      gotDomain.open();
+      await writerDone.opened;
+    });
+    await holdsStore.opened;
+    let call: Promise<{ erased: boolean }> | null = null;
+    try {
+      call = erase({ id: "n1" }, key.context(presenting(id)), paused.notes);
+      await paused.hasAsked;
+      goForDomain.open();
+      await lockWait("categories");
+      paused.resume();
+      // The store's row still held by the writer: the call ends all the same.
+      assert.equal((await call).erased, true);
+      await gotDomain.opened;
+    } finally {
+      paused.resume();
+      goForDomain.open();
+      writerDone.open();
+      await writer; // no deadlock was raised
+    }
+    assert.equal((await rowOf(id)).status, "completed");
   });
 
   // --- Refusals, cool-down, expiry ----------------------------------------------

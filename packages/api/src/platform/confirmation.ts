@@ -10,7 +10,7 @@ import {
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 import type { ORPCError } from "@orpc/server";
 
-import { answerPresentedApproval, requestApproval } from "../services/approvals";
+import { carryOutPresentedApproval, requestApproval } from "../services/approvals";
 import type { ScopedActor } from "./actor";
 import {
   APPROVAL_LIVE,
@@ -167,8 +167,8 @@ export interface ConfirmationCheck {
    * The transaction the operation runs in, when it asks under a lock: the
    * token is consumed, or the new preview recorded, on its connection, so a
    * lock holder never waits for another connection of the pool. A branch a
-   * person approves needs it: an approval id the call presents is read
-   * there, and carried out there from pull request 3c of the plan.
+   * person approves needs it: an approval id the call presents is carried
+   * out there, so it commits or rolls back with the write.
    */
   executor?: Transaction;
   /**
@@ -203,9 +203,12 @@ export interface ConfirmationCheck {
  * so a caller inside a transaction must commit it (not roll back), then
  * raise the refusal (`raiseConfirmation`) once the transaction is over: the
  * refusal is the write's only trace, as nothing of it ran (`isRefusal`). A
- * person's approval is never written here: under the caller's locks this
- * only computes what to request, or reads the approval id the call
- * presents; `raiseConfirmation` requests it after the transaction.
+ * person's approval is never requested here: under the caller's locks this
+ * computes what to request, or carries out the approval the call presents
+ * (null: the write goes on, and the approval commits or rolls back with
+ * it), or ends it as the call found it (another binding, a decider no
+ * longer allowed), the refusal's own trace; `raiseConfirmation` requests
+ * an approval after the transaction.
  */
 export async function checkConfirmation<Check extends ConfirmationCheck>(
   input: KnownCheck<Check>,
@@ -251,8 +254,6 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(
         `${input.procedure}: a branch a person approves asks with its transaction (executor) and what the approval is about (approval).`,
       );
     }
-    // Refused either way: the write sets nothing up.
-    await unmarkSetupWrite(input.executor);
     const request: ApprovalToRequest = {
       actor: input.actor,
       procedure: input.procedure,
@@ -264,12 +265,18 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(
       bindingHash,
       urls: input.approval.urls,
     };
-    // An approval id: answered from its row, read by its key, changed never.
-    // Nothing else is read or locked here: the approval is requested once
-    // the caller's transaction is over (`raiseConfirmation`).
-    const presented = token ? await answerPresentedApproval(input.executor, request, token) : null;
+    // An approval id: carried out here, in the caller's transaction and
+    // under its locks, the approval's row taken by its key, last; or the
+    // answer to refuse with. No other lock is taken here: an approval is
+    // requested once the caller's transaction is over (`raiseConfirmation`).
+    const presented = token
+      ? await carryOutPresentedApproval(input.executor, request, token)
+      : null;
+    if (presented?.carriedOut) return null;
+    // Refused: the write sets nothing up.
+    await unmarkSetupWrite(input.executor);
     return presented
-      ? ConfirmationRefusal.of(MODULE, presented, null)
+      ? ConfirmationRefusal.of(MODULE, presented.answer, null)
       : ConfirmationRefusal.of(MODULE, null, request);
   }
 

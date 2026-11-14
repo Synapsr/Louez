@@ -3,9 +3,10 @@
  * parity). Not served by the app.
  */
 import { categories, db, retryTransactionOnDeadlock, stores } from "@louez/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { categoryErrors } from "../contracts/categories";
 import { CONSEQUENCES, type Consequence } from "./approval-rule";
 import { checkConfirmation, raiseConfirmation, requireConfirmation } from "./confirmation";
 import { platformErrors } from "./errors";
@@ -24,15 +25,20 @@ const ERASE_SCOPE: ProcedureScope = { domain: "categories", level: "write", role
  * Procedures on the `categories` domain: a read, and two sensitive writes.
  * `remove` asks for a confirmation and counts its runs (an idempotent replay
  * does not run it again). `erase` asks as a write does, in its transaction,
- * for the consequences its input declares, and writes the store's
- * description once it may: a person's approval runs through it.
+ * under its domain's lock, for the consequences its input declares, and once
+ * it may erases the note (a category of the store, by its id) under that
+ * lock, and no other: it never takes the store's row. A note that is not
+ * there is refused (`CATEGORY_NOT_FOUND`) after it asked, and its
+ * transaction rolls back with what asking did: a person's approval runs
+ * through it.
  * Each call builds fresh procedures and a fresh counter.
  *
  * `liveConsequences` makes consequences live for `erase` alone, as
  * `APPROVAL_LIVE` will for the procedures Louez serves; nothing else names
  * them, and no request can (`checkConfirmation` refuses them in production).
  * `deadlocksBeforeCommit` makes `erase`'s transaction fail that many times
- * with a deadlock once it has asked, as a write retried on a deadlock does;
+ * with a deadlock once it has asked (refused or let through), as a write
+ * retried on a deadlock does;
  * `whileAsked` runs in that transaction once it has asked, its locks held.
  */
 export function createFixtureRouter(
@@ -163,7 +169,7 @@ export function createFixtureRouter(
               liveConsequences: options.liveConsequences,
             });
             await options.whileAsked?.();
-            if (refusal && deadlocks > 0) {
+            if (deadlocks > 0) {
               deadlocks -= 1;
               throw Object.assign(new Error("Deadlock found when trying to get lock"), {
                 code: "ER_LOCK_DEADLOCK",
@@ -172,10 +178,12 @@ export function createFixtureRouter(
             }
             // Refused: the transaction commits what the refusal recorded, and nothing else.
             if (refusal) return { refusal };
-            await tx
-              .update(stores)
-              .set({ description: `erased ${input.id}` })
-              .where(eq(stores.id, context.actor.storeId));
+            const [erased] = await tx
+              .delete(categories)
+              .where(
+                and(eq(categories.storeId, context.actor.storeId), eq(categories.id, input.id)),
+              );
+            if (erased.affectedRows !== 1) throw categoryErrors.notFound(input.id);
             return { refusal: null };
           }),
         { sleep: async () => {} },

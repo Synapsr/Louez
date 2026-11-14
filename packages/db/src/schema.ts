@@ -4355,6 +4355,12 @@ export const apiOperations = mysqlTable(
      * with the write, whatever the record's status says.
      */
     setupStoreId: varchar("setup_store_id", { length: 21 }),
+    /**
+     * The person's approval this write carried out (`api_handoffs`, kind
+     * `operation_approval`): set in the write's own transaction, with the
+     * approval's consumption, and only then. Null for every other write.
+     */
+    approvalId: varchar("approval_id", { length: 21 }),
     result: json("result"),
     error: json("error").$type<{ code: string; message: string }>(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -4368,6 +4374,7 @@ export const apiOperations = mysqlTable(
     ),
     storeCreatedIdx: index("api_operations_store_created_idx").on(table.storeId, table.createdAt),
     setupStoreIdx: index("api_operations_setup_store_idx").on(table.setupStoreId),
+    approvalIdx: index("api_operations_approval_idx").on(table.approvalId),
   }),
 );
 
@@ -4631,6 +4638,14 @@ export const apiHandoffs = mysqlTable(
     decidedByUserId: varchar("decided_by_user_id", { length: 21 }),
     /** The person's own words with their decision, plain text, if they gave any. */
     decisionReason: varchar("decision_reason", { length: 500 }),
+    /**
+     * When an approved approval was carried out, and by which operation
+     * (`api_operations`, the agent's call): written in that write's own
+     * transaction, in the statement that completes the approval, and never
+     * after. Null for every other step and state.
+     */
+    consumedAt: timestamp("consumed_at", { mode: "date", fsp: 3 }),
+    consumedOperationId: varchar("consumed_operation_id", { length: 21 }),
     createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
   },

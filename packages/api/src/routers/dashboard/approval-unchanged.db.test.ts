@@ -348,6 +348,63 @@ describe(
       assert.equal(removed.removed, true, "option off, a deletion runs directly");
     });
 
+    test("a person's level not live, through the fixture's erase: the token, as before", async () => {
+      // A note that is there, for an erase that writes once it may.
+      await louezDb.db
+        .insert(louezDb.categories)
+        .values({ id: "au_note_000000000001", storeId: STORE, name: "Note" });
+      const key = await apiKey();
+      const run = (context: BaseContext) =>
+        call<{ erased: boolean }>(
+          routers.fixture.notes.erase,
+          { id: "au_note_000000000001", consequences: ["money"], amount: 40 },
+          context,
+          ["fixture", "notes", "erase"],
+        );
+      await tokenFlow({ context: key.context, procedure: "fixture.notes.erase", run });
+    });
+
+    test("a token-confirmed write replayed by its key answers what it stored and runs nothing again", async () => {
+      // Through the fixture, which counts its runs.
+      const key = await apiKey();
+      const remove = (context: BaseContext) =>
+        call<{ id: string; removed: boolean; runs: number }>(
+          routers.fixture.notes.remove,
+          { id: "n9" },
+          context,
+          ["fixture", "notes", "remove"],
+        );
+      const asked = await failure(remove(key.context({ "idempotency-key": "k-replay" })));
+      const token = String(asked.details.confirmationToken);
+      const confirmed = { "idempotency-key": "k-replay", "louez-confirmation": token };
+      const first = await remove(key.context(confirmed));
+      const replayContext = key.context(confirmed);
+      const replayed = await remove(replayContext);
+      assert.deepEqual(replayed, first, "the stored answer");
+      assert.equal(replayContext.receipt?.replayed, true);
+      // Without the token too: a replay reads no confirmation.
+      assert.deepEqual(await remove(key.context({ "idempotency-key": "k-replay" })), first);
+      const [operation] = await operations("fixture.notes.remove");
+      assert.equal(operation?.status, "succeeded");
+      assert.equal((await operations("fixture.notes.remove")).length, 1);
+
+      // Through a real procedure: the category is gone, its answer is replayed.
+      const path = ["dashboard", "categories", "delete"];
+      const deleteCategory = (context: BaseContext) =>
+        call<unknown>(routers.categories.delete, { id: CATEGORY }, context, path);
+      const deleteAsked = await failure(deleteCategory(key.context({ "idempotency-key": "k-del" })));
+      const deleteToken = String(deleteAsked.details.confirmationToken);
+      const deleted = await deleteCategory(
+        key.context({ "idempotency-key": "k-del", "louez-confirmation": deleteToken }),
+      );
+      assert.deepEqual(await louezDb.db.select().from(louezDb.categories), []);
+      const again = key.context({ "idempotency-key": "k-del", "louez-confirmation": deleteToken });
+      assert.deepEqual(await deleteCategory(again), deleted);
+      assert.equal(again.receipt?.replayed, true);
+      const [deleteOperation] = await operations("dashboard.categories.delete");
+      assert.equal(deleteOperation?.status, "succeeded");
+    });
+
     test("a session is never asked", async () => {
       await call(routers.categories.delete, { id: CATEGORY }, session(), [
         "dashboard",

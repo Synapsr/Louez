@@ -1,5 +1,7 @@
 import {
   apiHandoffs,
+  apiOperations,
+  currentApiOperation,
   db,
   lockStoreRow,
   storeMembers,
@@ -40,20 +42,26 @@ import {
  * agent's call requests when its branch needs a person, which the person
  * approves or refuses on its page, signed in, and which the agent then
  * carries out with its id. This module requests it, once the write's own
- * transaction is over, and records the person's decision. Carrying it out
- * inside the write is the plan's next step (3c): until then an approved
- * approval presented with a call runs nothing, and no procedure Louez serves
- * asks for one (`APPROVAL_LIVE` is empty, platform/approval-rule.ts).
+ * transaction is over, records the person's decision, and carries it out
+ * inside the write that presents it, once (`carryOutPresentedApproval`). No
+ * procedure Louez serves asks for one yet (`APPROVAL_LIVE` is empty,
+ * platform/approval-rule.ts).
  *
  * The lock rule: approval code takes the store row only as the first lock
  * of a transaction of its own (a request, a decision), and an approval row
- * last; inside a caller's transaction it takes nothing, and reads nothing
- * but an approval row by its key (`answerPresentedApproval`). So a request
- * never waits for the store's row while a caller's domain lock is held, and
- * every writer of a store's approvals but a revocation is ordered by that
- * row. A revocation's cleanup (`failCredentialHandoffs`) takes each of the
+ * last; inside a caller's transaction it takes nothing but the presented
+ * approval's row, by its primary key, after the caller's domain locks, and
+ * writes nothing but that row and the call's own operation row
+ * (`carryOutPresentedApproval`); the decider's membership and the
+ * connection are plain reads there. So a write never waits for the store's
+ * row while its domain locks are held, a request never waits for it while a
+ * caller's domain lock is held, and every writer of a store's approvals but
+ * a revocation and a write that carries one out is ordered by that row. A
+ * revocation's cleanup (`failCredentialHandoffs`) takes each of the
  * connection's stores in a transaction of its own: the store's row, then the
- * connection's open steps there. No approval code holds two store rows.
+ * connection's open steps there; it meets a write that carries an approval
+ * out on the approval's row alone, and ends only what is still open. No
+ * approval code holds two store rows.
  *
  * Every time an approval's rules read is the database's clock, read once
  * the lock it waits for is held. Expiry is computed from `expires_at`
@@ -169,55 +177,238 @@ const APPROVAL_ID = /^[A-Za-z0-9_-]{21}$/;
 type HandoffRow = typeof apiHandoffs.$inferSelect;
 
 /**
- * The answer to a call that presents an approval id, in the caller's
- * transaction (`checkConfirmation`): from a read of the approval's row by
- * its key, and nothing else; it changes nothing. Null when what the call
- * presents is no approval id (a confirmation token): the call asks for one.
- * An id this caller did not ask for, in this store, for this procedure and
- * this request, answers as no approval at all. Pull request 3c consumes an
- * approved one here.
+ * What a call that presents an approval id gets, in the caller's
+ * transaction: carried out (the write goes on), or the answer to refuse it
+ * with. Null when what it presents is no approval id (a confirmation token):
+ * the call asks for one.
  */
-export async function answerPresentedApproval(
+export type PresentedApproval =
+  | { carriedOut: true }
+  | { carriedOut: false; answer: ORPCError<string, ApiErrorData> };
+
+const refused = (answer: ORPCError<string, ApiErrorData>): PresentedApproval => ({
+  carriedOut: false,
+  answer,
+});
+
+/**
+ * Carries out the approval a call presents, in the caller's transaction
+ * (`checkConfirmation`, `executor`), under the caller's own domain locks:
+ * one approval lets one write run. It takes nothing but the approval's row,
+ * by its primary key, and last; the database's clock is read once that
+ * lock is held (a statement's `NOW()` is fixed when it starts, before it
+ * waits), and every rule is read on the row as it stands under the lock:
+ *
+ * - an id this caller did not ask for, in this store, for this procedure and
+ *   this request answers as no approval at all (`other_request`), and
+ *   nothing changes;
+ * - pending, it waits; refused, it says so; expired (computed) or already
+ *   carried out (`used`), nothing changes;
+ * - approved: the binding this call computed must equal the approval's (the
+ *   exact input, and the store still as the approved preview showed), else
+ *   it ends `failed`, `state_changed`; the person who decided must still be
+ *   allowed (`deciderStillAllowed`), else it ends `failed`,
+ *   `approver_not_allowed`; the connection must still exist, else nothing
+ *   changes (its revocation ends it). Then `completed`, naming the call's
+ *   operation, and the operation naming it (`completeApproval`).
+ *
+ * An approval ended here is the refusal's own trace: the caller's
+ * transaction commits it with nothing of the write. A consumption rolls
+ * back with its write: a write that fails after it, refused by its own rule
+ * or retried on a deadlock, leaves the approval approved.
+ */
+export async function carryOutPresentedApproval(
   tx: Transaction,
   request: ApprovalToRequest,
   presented: string,
-): Promise<ORPCError<string, ApiErrorData> | null> {
+): Promise<PresentedApproval | null> {
   if (!APPROVAL_ID.test(presented)) return null;
-  const { actor } = request;
-  const [row] = await tx
-    .select()
+  // A plain read first, so that an id this caller did not ask for locks
+  // nothing (no gap of the key either): it answers as an unknown id.
+  const [seen] = await tx
+    .select({ id: apiHandoffs.id })
     .from(apiHandoffs)
-    .where(
-      and(
-        eq(apiHandoffs.id, presented),
-        eq(apiHandoffs.storeId, actor.storeId),
-        eq(apiHandoffs.kind, KIND),
-        eq(apiHandoffs.credentialKind, actor.credential.kind),
-        actor.credential.id === null
-          ? isNull(apiHandoffs.credentialId)
-          : eq(apiHandoffs.credentialId, actor.credential.id),
-        eq(apiHandoffs.procedure, request.procedure),
-        eq(apiHandoffs.subject, subjectOf(request)),
-      ),
-    );
-  if (!row) return approvalErrors.invalid("other_request");
-  switch (statusOf(row, await databaseNow(tx))) {
+    .where(and(eq(apiHandoffs.id, presented), ofRequest(request)));
+  if (!seen) return refused(approvalErrors.invalid("other_request"));
+  const row = await lockApproval(tx, seen.id);
+  // The clock once the row is held: a call that waited for it is judged
+  // when it carries the approval out, never when it began to wait.
+  const now = await databaseNow(tx);
+  // Its request again, on the row as locked.
+  if (!row || !isRequestOf(row, request)) return refused(approvalErrors.invalid("other_request"));
+  switch (statusOf(row, now)) {
     case "pending":
     case "opened":
-      return approvalErrors.pending(answerOf(row, request));
+      return refused(approvalErrors.pending(answerOf(row, request)));
     case "expired":
-      return approvalErrors.invalid("expired");
+      return refused(approvalErrors.invalid("expired"));
     case "completed":
-      return approvalErrors.invalid("used");
+      return refused(approvalErrors.invalid("used"));
     case "failed":
-      return row.failureCode === "declined"
-        ? approvalErrors.declined(row.id, row.decisionReason)
-        : approvalErrors.invalid("other_request");
+      return refused(endedAnswer(row));
     case "approved":
-      // Where pull request 3c consumes it, in this transaction. Until then an
-      // approval runs nothing: a refusal, so the call's key runs again.
-      return approvalErrors.invalid("execution_unavailable");
+      return carryOut(tx, row, request, now);
   }
+}
+
+/** The approval's row, locked by its primary key: the only lock approval code takes in a write. */
+async function lockApproval(tx: Transaction, id: string): Promise<HandoffRow | undefined> {
+  const [row] = await tx.select().from(apiHandoffs).where(eq(apiHandoffs.id, id)).for("update");
+  return row;
+}
+
+/** An approval of this request: its credential, its store, its procedure and its identity. */
+function ofRequest(request: ApprovalToRequest) {
+  const { actor } = request;
+  return and(
+    eq(apiHandoffs.storeId, actor.storeId),
+    eq(apiHandoffs.kind, KIND),
+    eq(apiHandoffs.credentialKind, actor.credential.kind),
+    actor.credential.id === null
+      ? isNull(apiHandoffs.credentialId)
+      : eq(apiHandoffs.credentialId, actor.credential.id),
+    eq(apiHandoffs.procedure, request.procedure),
+    eq(apiHandoffs.subject, subjectOf(request)),
+  );
+}
+
+/** `ofRequest`, on a row already read. */
+function isRequestOf(row: HandoffRow, request: ApprovalToRequest): boolean {
+  const { actor } = request;
+  return (
+    row.storeId === actor.storeId &&
+    row.kind === KIND &&
+    row.credentialKind === actor.credential.kind &&
+    row.credentialId === actor.credential.id &&
+    row.userId === actor.credential.userId &&
+    row.procedure === request.procedure &&
+    row.subject === subjectOf(request)
+  );
+}
+
+/** Why an approval that ended does not let the call run: refused, or ended by a call that presented it. */
+const ENDED_BY_EXECUTION = ["state_changed", "approver_not_allowed"] as const;
+
+function endedAnswer(row: HandoffRow): ORPCError<string, ApiErrorData> {
+  if (row.failureCode === "declined") return approvalErrors.declined(row.id, row.decisionReason);
+  const code = ENDED_BY_EXECUTION.find((reason) => reason === row.failureCode);
+  // Revoked, or closed as no longer possible: no approval of this call.
+  return approvalErrors.invalid(code ?? "other_request");
+}
+
+/** An approved approval, locked, presented by its own request: carried out, or ended. */
+async function carryOut(
+  tx: Transaction,
+  row: HandoffRow,
+  request: ApprovalToRequest,
+  now: Date,
+): Promise<PresentedApproval> {
+  // A connection revoked since the call was authenticated runs nothing; its
+  // cleanup ends the approval, and nothing rests on that having run.
+  if (!(await connectionAlive(row, tx))) return refused(platformErrors.unauthenticated());
+  if (row.bindingHash !== request.bindingHash) {
+    return refused(await endApproval(tx, row, "state_changed", now));
+  }
+  if (!(await deciderStillAllowed(tx, row, request))) {
+    return refused(await endApproval(tx, row, "approver_not_allowed", now));
+  }
+  return completeApproval(tx, row, request, now);
+}
+
+/**
+ * Whether the person who decided may still approve this action, as their
+ * membership is read in the caller's transaction (`mayApprove`, for the
+ * procedure's scope). A plain read, never a lock: a team write (a removal,
+ * a role change) takes the store's row, which a write must not wait for
+ * under its domain locks, so this read orders with nothing. It sees what
+ * was committed before the transaction's snapshot (its first read):
+ * a removal committed while the write runs is seen or not, and the write
+ * that did not see it is one that ran while the person was allowed, as
+ * every write in flight when a member is removed, the call's own role
+ * included (resolved when the call began).
+ */
+async function deciderStillAllowed(
+  tx: Transaction,
+  row: HandoffRow,
+  request: ApprovalToRequest,
+): Promise<boolean> {
+  const decider = row.decidedByUserId;
+  if (!decider || !approvalPayloadOf(row)) return false;
+  const [member] = await tx
+    .select({ role: storeMembers.role })
+    .from(storeMembers)
+    .where(and(eq(storeMembers.storeId, row.storeId), eq(storeMembers.userId, decider)));
+  return mayApprove(
+    { userId: decider, storeId: row.storeId, role: member?.role ?? null },
+    { storeId: row.storeId, requesterUserId: row.userId, scope: request.scope },
+  );
+}
+
+/**
+ * Ends an approved approval that this call cannot carry out, as the state
+ * table says (`state_changed`, `approver_not_allowed`), its decision kept:
+ * the caller's transaction commits it, and nothing of the write. Returns
+ * the answer to refuse with.
+ */
+async function endApproval(
+  tx: Transaction,
+  row: HandoffRow,
+  reason: (typeof ENDED_BY_EXECUTION)[number],
+  now: Date,
+): Promise<ORPCError<string, ApiErrorData>> {
+  await tx
+    .update(apiHandoffs)
+    .set({ status: "failed", failedAt: now, failureCode: reason, activeSlot: null, updatedAt: now })
+    .where(and(eq(apiHandoffs.id, row.id), eq(apiHandoffs.status, "approved")));
+  return approvalErrors.invalid(reason);
+}
+
+/**
+ * The consumption: one conditional statement on the locked row (still
+ * approved, the binding this call computed, in time on the clock read under
+ * the lock) makes it `completed`, naming the call's operation; then the
+ * operation names the approval. Both in the write's own transaction, so
+ * they commit or roll back with it. The decision columns are never
+ * written here. The operation's row is the call's own (`runOperation`
+ * holds its key while the call runs), written by its key.
+ */
+async function completeApproval(
+  tx: Transaction,
+  row: HandoffRow,
+  request: ApprovalToRequest,
+  now: Date,
+): Promise<PresentedApproval> {
+  const operation = currentApiOperation();
+  if (!operation) {
+    throw new Error(`${request.procedure}: an approval is carried out by a recorded write.`);
+  }
+  const [completed] = await tx
+    .update(apiHandoffs)
+    .set({
+      status: "completed",
+      completedAt: now,
+      consumedAt: now,
+      consumedOperationId: operation.operationId,
+      activeSlot: null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(apiHandoffs.id, row.id),
+        eq(apiHandoffs.status, "approved"),
+        eq(apiHandoffs.bindingHash, request.bindingHash),
+        gt(apiHandoffs.expiresAt, now),
+      ),
+    );
+  // Under the row's lock it holds; one row, or nothing runs.
+  if (completed.affectedRows !== 1) return refused(approvalErrors.invalid("used"));
+  await tx
+    .update(apiOperations)
+    .set({ approvalId: row.id })
+    .where(eq(apiOperations.id, operation.operationId));
+  // The write runs on a preview a person approved (the setup analytics say so).
+  operation.confirmed = true;
+  return { carriedOut: true };
 }
 
 /**
@@ -241,7 +432,7 @@ export async function answerPresentedApproval(
  * What the request stores was computed under the write's locks a moment
  * before: the page computes the preview again when it loads and when the
  * person clicks (pull request 4), and the execution compares the binding
- * again under the write's locks (3c).
+ * again under the write's locks (`carryOutPresentedApproval`).
  */
 export async function requestApproval(
   request: ApprovalToRequest,
