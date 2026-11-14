@@ -4776,7 +4776,11 @@
           "categories": "Categorieën",
           "payments": "Betalingen",
           "analytics": "Analyses",
-          "settings": "Instellingen"
+          "settings": "Instellingen",
+          "online_store": "Online winkel",
+          "team": "Team",
+          "billing": "Abonnement",
+          "integrations": "Integraties"
         },
         "levels": {
           "none": "Geen toegang",

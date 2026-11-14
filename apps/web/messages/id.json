@@ -4912,7 +4912,11 @@
           "categories": "Kategori",
           "payments": "Pembayaran",
           "analytics": "Analisis",
-          "settings": "Pengaturan"
+          "settings": "Pengaturan",
+          "online_store": "Toko daring",
+          "team": "Tim",
+          "billing": "Langganan",
+          "integrations": "Integrasi"
         },
         "levels": {
           "none": "Tidak ada akses",

@@ -4912,7 +4912,11 @@
           "categories": "Категории",
           "payments": "Платежи",
           "analytics": "Аналитика",
-          "settings": "Настройки"
+          "settings": "Настройки",
+          "online_store": "Интернет-магазин",
+          "team": "Команда",
+          "billing": "Подписка",
+          "integrations": "Интеграции"
         },
         "levels": {
           "none": "Нет доступа",

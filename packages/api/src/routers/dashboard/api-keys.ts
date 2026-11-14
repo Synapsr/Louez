@@ -1,6 +1,7 @@
 import { db } from "@louez/db";
 import { z } from "zod";
 
+import { apiKeyPermissionsSchema } from "../../contracts/api-keys";
 import { storeProcedure } from "../../platform/procedures";
 import {
   createApiKey,
@@ -10,24 +11,6 @@ import {
 } from "../../services/api-keys";
 import { failCredentialHandoffs } from "../../services/handoffs";
 import { toORPCError } from "../../utils/orpc-error";
-
-const permissionLevel = z.enum(["none", "read", "write"]);
-const analyticsPermissionLevel = z.enum(["none", "read"]);
-
-/** What an API key may be granted: a key holds no other domain. */
-export const apiKeyPermissionsSchema = z.object({
-  reservations: permissionLevel,
-  products: permissionLevel,
-  customers: permissionLevel,
-  categories: permissionLevel,
-  payments: permissionLevel,
-  analytics: analyticsPermissionLevel,
-  settings: permissionLevel,
-  online_store: permissionLevel.optional(),
-  integrations: permissionLevel.optional(),
-  team: permissionLevel.optional(),
-  billing: permissionLevel.optional(),
-});
 
 const apiKeySchema = z.object({
   id: z.string(),
