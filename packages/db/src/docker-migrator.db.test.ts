@@ -41,6 +41,7 @@ const RELEASE = [
   "0102_api_handoffs_decision",
   "0103_api_handoffs_approval",
   "0104_api_approval_consumption",
+  "0105_payment_session_settled",
 ];
 
 interface Journal {
@@ -134,6 +135,7 @@ describe("Docker migrator after the app's runner (database)", { skip: skipWithou
       ["payments", "claimed_until"],
       ["payments", "claim_token"],
       ["payments", "stripe_customer_id"],
+      ["payments", "session_settled_at"],
     ] as const) {
       assert.ok(await columnExists(table, column), `${table}.${column} exists`);
     }

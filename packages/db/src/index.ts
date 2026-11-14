@@ -116,6 +116,12 @@ export {
 } from "./reservation-status";
 export { lockProductRows, lockStoreProductRows } from "./product-lock";
 export {
+  isUnsettledCheckoutSession,
+  markCheckoutSessionSettled,
+  unsettledCheckoutSession,
+  unsettledCheckoutSessionIn,
+} from "./checkout-session";
+export {
   ReservationLockError,
   ReservationProductsChangedError,
   isReservationProductsChangedError,

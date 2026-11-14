@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 
+import { closeNetworkForSuite } from "@/lib/testing/network-guard";
+
+closeNetworkForSuite();
+
 // Each task's function is replaced by one that names it, so the test reads
 // which function each task runs without a database or the senders' modules.
 const called: string[] = [];
@@ -13,6 +17,17 @@ mock.module("@/lib/api/effects", {
 });
 mock.module("@/lib/reservations/deposit-hold-debts", {
   namedExports: { runDepositReleaseDebtsCron: fake("runDepositReleaseDebtsCron") },
+});
+/** While set, the abandoned checkouts' pass waits on its provider for ever. */
+let passHangs = false;
+mock.module("@/lib/reservations/abandoned-checkouts", {
+  namedExports: {
+    settleAbandonedCheckouts: async () => {
+      called.push("settleAbandonedCheckouts");
+      if (passHangs) await new Promise(() => {});
+      return "settleAbandonedCheckouts";
+    },
+  },
 });
 mock.module("@/lib/api/jobs", {
   namedExports: { runApiJobsCron: fake("runApiJobsCron") },
@@ -30,7 +45,7 @@ mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
 
-test("every cron call requeues the deposit releases owed, runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
+test("every cron call requeues the deposit releases owed, runs the outbox, each purge of the agent-ready API, its background jobs, then settles the abandoned checkouts", async () => {
   const { apiTasks } = await import("./api-tasks");
   const tasks = apiTasks();
   const results = [];
@@ -51,6 +66,36 @@ test("every cron call requeues the deposit releases owed, runs the outbox, each 
     { task: "api-operations", key: "apiOperations", runs: "purgeOperations" },
     { task: "oauth-tokens", key: "oauthTokens", runs: "purgeOAuthTokens" },
     { task: "api-jobs", key: "apiJobs", runs: "runApiJobsCron" },
+    {
+      task: "abandoned-checkouts",
+      key: "abandonedCheckouts",
+      runs: "settleAbandonedCheckouts",
+    },
   ]);
   assert.equal(called.length, tasks.length);
+});
+
+test("a pass over abandoned checkouts that hangs on its provider holds no other task back: each has run before it", async () => {
+  const { apiTasks } = await import("./api-tasks");
+  const { runIsolatedTasks } = await import("./isolated-tasks");
+  called.length = 0;
+  passHangs = true;
+  const quiet = { error() {} };
+
+  // Never awaited: the pass never ends.
+  void runIsolatedTasks(apiTasks(), { request: quiet, event: quiet });
+  while (!called.includes("settleAbandonedCheckouts")) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  assert.deepEqual(called, [
+    "runDepositReleaseDebtsCron",
+    "runApiEffectsCron",
+    "pruneInboxAcknowledgements",
+    "purgeHandoffs",
+    "purgeOperations",
+    "purgeOAuthTokens",
+    "runApiJobsCron",
+    "settleAbandonedCheckouts",
+  ]);
 });

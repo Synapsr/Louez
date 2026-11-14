@@ -1201,7 +1201,10 @@ async function expireAttempt(
   lock: ReservationOnlyLock,
 ): Promise<ReservationBillingEffect[]> {
   // The reservation lock first, then the attempt row, as the cancel takes them.
-  // Hold and checkout never take the reservation lock while holding the attempt.
+  // The checkout never asks for the reservation lock while it holds the attempt:
+  // its adapter tells the payment session so (`callerHoldsMarketplaceAttempt`),
+  // and the session then runs its writes without that lock (the attempt the
+  // checkout holds serialises them against this expiry, which takes it too).
   // A pending booking gives back no stock: the reservation's lock is enough.
   const change = await changeReservationStatus(tx, {
     lock,

@@ -2083,6 +2083,11 @@ export const payments = mysqlTable(
     // with, so the attempt can still be looked up once the card is detached. Null on
     // every other row, and on attempts claimed before the column.
     stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+    // A rental row's Checkout Session: when Louez learnt from Stripe that the session
+    // can no longer be paid (its `checkout.session.expired`, a read that said
+    // `expired`, or an expire Stripe accepted). Null while that is not known, on rows
+    // that name no session, and on rows written before the column.
+    sessionSettledAt: timestamp("session_settled_at", { mode: "date" }),
 
     // Currency (for multi-currency support)
     currency: varchar("currency", { length: 3 }).default("EUR"),
@@ -2103,6 +2108,11 @@ export const payments = mysqlTable(
     ),
     refundOfPaymentIdx: index("payments_refund_of_payment_idx").on(table.refundOfPaymentId),
     paymentIntentIdx: index("payments_payment_intent_idx").on(table.stripePaymentIntentId),
+    // The pass over abandoned checkouts: the rows not settled, by their age.
+    sessionSettledCreatedIdx: index("payments_session_settled_created_idx").on(
+      table.sessionSettledAt,
+      table.createdAt,
+    ),
   }),
 );
 

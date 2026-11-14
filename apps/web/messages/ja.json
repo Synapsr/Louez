@@ -9324,6 +9324,7 @@
     "invalidAmount": "無効な金額です",
     "invalidOrExpiredToken": "このリンクは無効であるか、有効期限が切れています。新しいアクセス リンクをリクエストしてください。",
     "alreadyPaid": "この予約はすでに支払われています。",
+    "invalidStatus": "この予約はオンラインでのお支払いや変更ができなくなりました。ストアにお問い合わせください。",
     "paymentNotAvailable": "この店舗ではオンライン決済はご利用いただけません。",
     "paymentSessionError": "支払いセッションの作成中にエラーが発生しました",
     "accessLinkSendFailed": "アクセスリンクの送信エラー",

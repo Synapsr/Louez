@@ -9324,6 +9324,7 @@
     "invalidAmount": "金额无效",
     "invalidOrExpiredToken": "该链接无效或已过期。请请求新的访问链接。",
     "alreadyPaid": "该预订已付款。",
+    "invalidStatus": "该预订已无法在线付款或更改。请联系商店。",
     "paymentNotAvailable": "本店不支持网上支付。",
     "paymentSessionError": "创建付款会话时出错",
     "accessLinkSendFailed": "发送访问链接时出错",

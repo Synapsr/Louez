@@ -174,6 +174,7 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
     values: {
       status: "pending" | "completed" | "failed" | "cancelled";
       stripeCheckoutSessionId?: string;
+      sessionSettledAt?: Date;
     },
   ) {
     const id = nextId("pay");
@@ -434,8 +435,12 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
 
   test("an expired checkout is cancelled and runs its effects after commit", async () => {
     const id = await createReservation("pending");
-    // The webhook cancels the expired session's payment first.
-    await addPayment(id, { status: "cancelled", stripeCheckoutSessionId: "cs_expired" });
+    // The webhook cancels the expired session's payment first, and marks its session settled.
+    await addPayment(id, {
+      status: "cancelled",
+      stripeCheckoutSessionId: "cs_expired",
+      sessionSettledAt: new Date(),
+    });
     const runs: Array<{ effects: readonly ReservationBillingEffect[]; status?: string }> = [];
 
     const cancelled = await expire(id, async (effects) => {
@@ -463,6 +468,26 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
         },
       },
     ]);
+  });
+
+  test("an expired checkout with a session a resume replaced and Stripe has not said is over is left as it is", async () => {
+    const id = await createReservation("pending");
+    await addPayment(id, {
+      status: "cancelled",
+      stripeCheckoutSessionId: "cs_expired",
+      sessionSettledAt: new Date(),
+    });
+    // Cancelled by a resume, its session unsettled: Stripe may still take its payment.
+    await addPayment(id, { status: "cancelled", stripeCheckoutSessionId: nextId("cs") });
+    let runs = 0;
+
+    const cancelled = await expire(id, async () => {
+      runs += 1;
+    });
+
+    assert.equal(cancelled, false);
+    assert.equal(runs, 0);
+    assert.equal((await readReservation(id))?.status, "pending");
   });
 
   test("an expired checkout with another open or paid payment is left as it is", async () => {

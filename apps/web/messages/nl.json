@@ -9324,6 +9324,7 @@
     "invalidAmount": "Ongeldig bedrag",
     "invalidOrExpiredToken": "Deze link is ongeldig of verlopen. Vraag een nieuwe toegangslink aan.",
     "alreadyPaid": "Deze reservering is al betaald.",
+    "invalidStatus": "Deze reservering kan niet meer online worden betaald of gewijzigd. Neem contact op met de winkel.",
     "paymentNotAvailable": "Online betaling is niet beschikbaar voor deze winkel.",
     "paymentSessionError": "Fout bij aanmaken betalingssessie",
     "accessLinkSendFailed": "Fout bij verzenden toegangslink",

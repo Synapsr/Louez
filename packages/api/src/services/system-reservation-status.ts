@@ -9,8 +9,9 @@ import {
   toWholeSeconds,
   type ChangeReservationStatusResult,
   type ReservationEffectRunner,
+  unsettledCheckoutSession,
 } from "@louez/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 /**
@@ -42,6 +43,13 @@ export type SystemReservationStatusRequest =
       expectedAmount?: string;
     };
 
+/**
+ * The source of a reservation made by the storefront's online checkout: the only
+ * one the system's checkout cancellations, and the scheduled pass over abandoned
+ * checkouts, act on. A marketplace booking has its own expiry.
+ */
+export const ONLINE_CHECKOUT_SOURCE = "online";
+
 /** Thrown under the lock to leave a checkout that can still be paid. */
 class CheckoutStillPayableError extends Error {}
 
@@ -50,14 +58,16 @@ class CheckoutStillPayableError extends Error {}
  * is not a booking: the pending reservation is cancelled so it stops holding
  * stock and the owner does not keep a "payment in progress" that never ends.
  * Anything already confirmed, paid, or paid through another open session is
- * left alone. The fee effects run through `runReservationEffects` after commit.
+ * left alone, and so is a checkout one of whose rental sessions is unsettled
+ * (`unsettledCheckoutSession`): Stripe may still take its payment, and a resume
+ * may be replacing it. The fee effects run through `runReservationEffects` after commit.
  * It locks the reservation alone: a pending checkout gives back no stock. Still
  * busy after the owner entry's runs, it throws and the webhook answers non-2xx,
- * as a lost deadlock did before. Stripe sends the event again, but nothing runs
- * this cancellation again: the first delivery committed the session's payment
- * as cancelled, so the redelivery reads the checkout as not abandoned and skips
- * it, and the reservation stays pending (docs/domain/reservation-changes.md,
- * "Open, not in this lot").
+ * as a lost deadlock did before. Stripe sends the event again, and the
+ * redelivery, which finds the session's expiry recorded (its `payment_expired`
+ * row), runs this cancellation again: it cancels a reservation still pending,
+ * and changes nothing on one already cancelled
+ * (docs/domain/reservation-changes.md, "System: abandoned checkout").
  */
 const cancelAbandonedCheckout = async (
   { reservationId, checkoutSessionId }: { reservationId: string; checkoutSessionId: string },
@@ -67,7 +77,11 @@ const cancelAbandonedCheckout = async (
     columns: { storeId: true, status: true, source: true },
     where: eq(reservations.id, reservationId),
   });
-  if (!reservation || reservation.status !== "pending" || reservation.source !== "online") {
+  if (
+    !reservation ||
+    reservation.status !== "pending" ||
+    reservation.source !== ONLINE_CHECKOUT_SOURCE
+  ) {
     return false;
   }
 
@@ -76,16 +90,21 @@ const cancelAbandonedCheckout = async (
     change = await runReservationOnlyChange(
       { reservationId, storeId: reservation.storeId },
       async (tx, lock) => {
-        // Under the lock, with a locking read: a payment claimed or a session
-        // opened since the read above is seen.
+        // Under the lock, with a locking read: a payment claimed, a session
+        // opened or a session a resume is replacing since the read above is seen.
         const [payment] = await tx
           .select({ id: payments.id })
           .from(payments)
           .where(
             and(
               eq(payments.reservationId, reservationId),
-              eq(payments.type, "rental"),
-              inArray(payments.status, ["pending", "completed"]),
+              or(
+                and(
+                  eq(payments.type, "rental"),
+                  inArray(payments.status, ["pending", "completed"]),
+                ),
+                unsettledCheckoutSession,
+              ),
             ),
           )
           .limit(1)
@@ -144,7 +163,11 @@ const cancelFailedCheckout = async (
       .from(reservations)
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
       .for("update");
-    if (!reservation || reservation.status !== "pending" || reservation.source !== "online") {
+    if (
+      !reservation ||
+      reservation.status !== "pending" ||
+      reservation.source !== ONLINE_CHECKOUT_SOURCE
+    ) {
       return null;
     }
     if (expectedAmount !== undefined && reservation.totalAmount !== expectedAmount) return null;
