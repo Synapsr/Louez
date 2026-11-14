@@ -435,11 +435,17 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
 
     assert.deepEqual(
       await recordPayment({ reservationId, type: "rental", amount: "0", method: "cash" }),
-      { error: "Amount must be a non-zero number" },
+      {
+        error:
+          'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50")',
+      },
     );
     assert.deepEqual(
       await recordPayment({ reservationId, type: "rental", amount: "abc", method: "cash" }),
-      { error: "Amount must be a non-zero number" },
+      {
+        error:
+          'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50")',
+      },
     );
     assert.deepEqual(
       await recordPayment({
@@ -460,7 +466,8 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
       { error: "Reservation not found" },
     );
     assert.deepEqual(await returnDeposit({ reservationId, amount: "0", method: "cash" }), {
-      error: "Amount must be greater than zero",
+      error:
+        'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00")',
     });
     assert.deepEqual(await returnDeposit({ reservationId, amount: "20.01", method: "cash" }), {
       error:

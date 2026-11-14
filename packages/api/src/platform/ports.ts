@@ -155,12 +155,33 @@ export interface LogPort {
   error: (event: { event: string } & Record<string, unknown>) => void;
 }
 
-/** A payment the store records by hand, as the app's writer takes it. */
+/** What the billing facts of a payment the store records by hand are computed from. */
+export interface RecordedPaymentDraft {
+  reservationId: string;
+  storeId: string;
+  /** The store's settings as the call read them: its currency and its tax settings. */
+  storeSettings: Pick<StoreSettings, "currency" | "tax"> | null;
+  type: "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
+  /** As stored, `decimal(10,2)`. */
+  amount: string;
+}
+
+/**
+ * The billing facts a recorded payment's row takes, as the app derives them
+ * (apps/web `recordedPaymentFacts`): the currency it is recorded in, its
+ * gross in minor units, and its insurance share.
+ */
+export interface RecordedPaymentFacts {
+  currency: string;
+  grossMinor: number | null;
+  insuranceShareMinor: number | null;
+}
+
+/** A payment the store records by hand, as the app's writer takes it: with the facts it was bound to. */
 export interface RecordedPayment {
   reservationId: string;
   storeId: string;
-  storeSettings: Pick<StoreSettings, "currency" | "tax"> | null;
-  type: "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
+  type: RecordedPaymentDraft["type"];
   method: "cash" | "card" | "transfer" | "check" | "other";
   /** As stored, `decimal(10,2)`. */
   amount: string;
@@ -168,14 +189,22 @@ export interface RecordedPayment {
   origin: "manual" | "deposit";
   paidAt: Date;
   notes: string | null;
+  /** The billing facts `facts` computed for it, under the same lock: the row takes them as they are. */
+  facts: RecordedPaymentFacts;
 }
 
 /** The app's writer of the payments a store records by hand (`ApiPorts.paymentRecords`). */
 export interface PaymentRecordsPort {
   /**
-   * In the caller's transaction: the payment, under a new id, in the
-   * reservation's currency with its billing facts (gross, insurance share),
-   * and the reservation's mark for the billing service.
+   * In the caller's transaction, under the reservation's lock: the billing
+   * facts the payment's row would take, read from the reservation and its
+   * lines and the store's settings. Writes nothing.
+   */
+  facts: (tx: Transaction, draft: RecordedPaymentDraft) => Promise<RecordedPaymentFacts>;
+  /**
+   * In the caller's transaction: the payment, under a new id, with the
+   * billing facts it is handed, and the reservation's mark for the billing
+   * service.
    */
   insert: (tx: Transaction, payment: RecordedPayment) => Promise<void>;
 }

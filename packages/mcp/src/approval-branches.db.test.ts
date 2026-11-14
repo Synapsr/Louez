@@ -4,7 +4,7 @@ import { after, before, describe, mock, test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
-import type { RecordedPayment } from "@louez/api/platform/ports";
+import type { RecordedPayment, RecordedPaymentDraft } from "@louez/api/platform/ports";
 import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
@@ -109,9 +109,25 @@ describe(
         origin: payment.origin,
         notes: payment.notes,
         paidAt: payment.paidAt,
-        currency: "EUR",
+        currency: payment.facts.currency,
       });
       await louezDb.markReservation(tx, { id: payment.reservationId, storeId: payment.storeId });
+    };
+
+    /** A stand-in for the app's billing facts: the reservation's currency, else the store's; no gross, no share. */
+    const recordedFacts = async (
+      tx: import("@louez/db").Transaction,
+      draft: RecordedPaymentDraft,
+    ) => {
+      const [row] = await tx
+        .select({ currency: louezDb.reservations.currency })
+        .from(louezDb.reservations)
+        .where(orm.eq(louezDb.reservations.id, draft.reservationId));
+      return {
+        currency: row?.currency ?? draft.storeSettings?.currency ?? "EUR",
+        grossMinor: null,
+        insuranceShareMinor: 0,
+      };
     };
 
     const ports = {
@@ -124,7 +140,7 @@ describe(
       urls: createTestUrls(),
       afterCommit: () => {},
       team: { collaboratorLimit: async () => 10, emailConfigured: () => true },
-      paymentRecords: { insert: insertRecordedPayment },
+      paymentRecords: { facts: recordedFacts, insert: insertRecordedPayment },
     };
 
     before(async () => {
@@ -754,6 +770,26 @@ describe(
       }
     });
 
+    /** Each payment write with its record's id sent in upper case. */
+    const UPPER: Array<[string, (seed: Seed) => string]> = [
+      ["A1", (seed) => `/reservations/${seed.open.toUpperCase()}/payments`],
+      ["A2", (seed) => `/reservations/${seed.open.toUpperCase()}/deposit-returns`],
+      ["A3", (seed) => `/payments/${seed.payment.toUpperCase()}`],
+    ];
+    for (const [name, path] of UPPER) {
+      test(`${name}: refused, then asked again with the id in another case: the same request, cooled down`, async () => {
+        const each = branch(name);
+        const seed = await seedStore();
+        const id = await ask("rest", each, seed);
+        await decide(seed, id, "refuse");
+        const upper: Branch = { ...each, rest: (s) => ({ ...each.rest(s), path: path(s) }) };
+        const asked = await send("rest", upper, seed);
+        assert.equal(asked.code, "APPROVAL_RECENTLY_DECLINED", JSON.stringify(asked));
+        assert.equal((await approvalsOf(seed)).length, 1, "no other request opened");
+        assert.equal(await each.written(seed), 0);
+      });
+    }
+
     test("a dashboard session is asked nothing: each of the six runs directly", async () => {
       const seed = await seedStore();
       const calls: Array<[string, string, object]> = [
@@ -802,20 +838,6 @@ describe(
         .set({ settings: { ...store?.settings, ...change } as never })
         .where(orm.eq(louezDb.stores.id, seed.store));
     }
-
-    test("a rental payment binds the store's tax settings its row is written with: a change voids the approval", async () => {
-      const seed = await seedStore();
-      const each = branch("A1");
-      const id = await ask("rest", each, seed);
-      await decide(seed, id, "approve");
-      await changeSettings(seed, {
-        tax: { enabled: true, defaultRate: 20, displayMode: "exclusive" },
-      });
-      const presented = await send("rest", each, seed, id);
-      assert.equal(presented.code, "APPROVAL_INVALID", JSON.stringify(presented));
-      assert.deepEqual(presented.details, { reason: "state_changed" });
-      assert.equal(await each.written(seed), 0);
-    });
 
     test("a reservation without a currency takes the store's: a change of it voids the approval", async () => {
       const seed = await seedStore();

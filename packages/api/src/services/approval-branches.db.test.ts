@@ -127,11 +127,11 @@ const DISPLAYS: Record<(typeof BRANCHES)[number]["name"], string> = {
 /** What each branch answers an agent today, as JSON: the message, the details but the token, the binding. */
 const ANSWERS: Record<(typeof BRANCHES)[number]["name"], string> = {
   "a payment recorded":
-    "{\"message\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"120.00\",\"method\":\"cash\"}}},\"bindingHash\":\"5d87769d2fa9377a228327aab39e5605eb9c9aa5222756c71dbe4f937543eab5\"}",
+    "{\"message\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"120.00\",\"method\":\"cash\"}}},\"bindingHash\":\"4d303a2b28ee7470b95e0ffae6ce8c1b93d8e5fffce8b4982a30d46df13959a7\"}",
   "a negative adjustment recorded":
-    "{\"message\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"adjustment\",\"amount\":\"-20.00\",\"method\":\"card\"}}},\"bindingHash\":\"f727731f23660af63014b9735255e162420b906d823750d740acc55bf0fe1f87\"}",
+    "{\"message\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"adjustment\",\"amount\":\"-20.00\",\"method\":\"card\"}}},\"bindingHash\":\"4b98b4a2c6e2a49d726324f98282e225a0d0d8ae247fda9845462ab259b88e4e\"}",
   "a deposit return recorded":
-    "{\"message\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"amount\":\"150.00\",\"method\":\"transfer\",\"returnable\":\"300.00\"}}},\"bindingHash\":\"b18543eb089ea5a4246431d3e12622e2a50cfbdb177219b4b20c3c49ca68e01b\"}",
+    "{\"message\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"amount\":\"150.00\",\"method\":\"transfer\",\"returnable\":\"300.00\"}}},\"bindingHash\":\"cde7042c4c506442076091d758e21dec242a4aeac60cab4df3e2fe6244eed137\"}",
   "a payment deleted":
     "{\"message\":\"Delete the rental payment of €80.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Delete the rental payment of €80.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"destructive\",\"paymentId\":\"ab_payment_000000001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"80.00\",\"method\":\"cash\"}}},\"bindingHash\":\"a6178616dd6b98fb15222101c4fe29b2d37b9c70d7c91080e5aa57005fa95671\"}",
   "a member removed":
@@ -168,8 +168,16 @@ describe("the six branches a person will approve, as an agent is answered (datab
     urls: createTestUrls(),
     afterCommit: () => {},
     team: { collaboratorLimit: async () => 10, emailConfigured: () => true },
-    // Every branch here is asked first: its writer is never reached.
+    // Every branch here is asked first: its writer is never reached. Its
+    // billing facts, as a stand-in: the reservation's currency, no gross, no share.
     paymentRecords: {
+      facts: async (tx: import("@louez/db").Transaction, draft: { reservationId: string }) => {
+        const [row] = await tx
+          .select({ currency: louezDb.reservations.currency })
+          .from(louezDb.reservations)
+          .where(orm.eq(louezDb.reservations.id, draft.reservationId));
+        return { currency: row?.currency ?? "EUR", grossMinor: null, insuranceShareMinor: 0 };
+      },
       insert: async () => {
         throw new Error("the payment writer is not reached");
       },

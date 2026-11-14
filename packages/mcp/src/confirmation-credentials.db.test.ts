@@ -5,7 +5,7 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 
 import { createTestAccessTokens } from "@louez/auth/testing";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
-import type { RecordedPayment } from "@louez/api/platform/ports";
+import type { RecordedPayment, RecordedPaymentDraft } from "@louez/api/platform/ports";
 import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
@@ -94,6 +94,22 @@ describe(
     /** The consequences each confirmation handed the rule, in order. */
     let emitted: unknown[] = [];
 
+    /** A stand-in for the app's billing facts: the reservation's currency, else the store's; no gross, no share. */
+    const recordedFacts = async (
+      tx: import("@louez/db").Transaction,
+      draft: RecordedPaymentDraft,
+    ) => {
+      const [row] = await tx
+        .select({ currency: louezDb.reservations.currency })
+        .from(louezDb.reservations)
+        .where(orm.eq(louezDb.reservations.id, draft.reservationId));
+      return {
+        currency: row?.currency ?? draft.storeSettings?.currency ?? "EUR",
+        grossMinor: null,
+        insuranceShareMinor: 0,
+      };
+    };
+
     const ports = {
       planFeatures: async () => ({ apiAccess: true }),
       runReservationEffects: async () => {},
@@ -105,6 +121,7 @@ describe(
       afterCommit: () => {},
       // The app's writer, as a stand-in: it notes the payment and writes its row.
       paymentRecords: {
+        facts: recordedFacts,
         insert: async (tx: import("@louez/db").Transaction, payment: RecordedPayment) => {
           recorded.push(payment);
           await tx.insert(louezDb.payments).values({
