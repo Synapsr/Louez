@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, test } from "node:test";
@@ -490,6 +491,33 @@ describe("the approval's result", () => {
   test("a request whose preview cannot be read shows no recap", () => {
     assert.doesNotMatch(renderDone("expired", { preview: null }), /The request/);
   });
+});
+
+describe("an approval without a display", () => {
+  // Any action but the six pull request 7 switches, and every older row: the
+  // page and its result exactly as they were, to the byte.
+  const digest = (html: string) => createHash("sha256").update(html).digest("hex");
+  const PAGES: Array<[string, () => string, string]> = [
+    ["the page", () => renderPage(), "db36b5ad9262a249b3ddb6b23f7fc6e0d3934e1f3711556bdb18d04f3eda113a"],
+    ["the page with a note", () => renderPage({}, "This request changed while you were reading"), "41ebb32f5dc8cff78d285cf9ba678b40d0934db5d932e8d2da62f20fb5e5626b"],
+    [
+      "the result",
+      () =>
+        wrap(
+          <OperationApprovalDone
+            approval={approval({ state: "refused", decision: { outcome: "refused", at: minutes(-1), reason: "Non" } })}
+            state="refused"
+          />,
+        ),
+      "a9c927d8c680a3ea22e8d3cd5a761cd3b2170b43ca2812a388f5cff00f9bb85c",
+    ],
+  ];
+  for (const [name, render, expected] of PAGES) {
+    test(`${name} is as it was`, () => {
+      const html = render();
+      assert.equal(digest(html), expected);
+    });
+  }
 });
 
 describe("the texts", () => {
