@@ -61,6 +61,11 @@ export async function createReservationPaymentSessionForCustomer(
     marketplaceSecret?: string;
     /** Trusted callers only: charge this instead of the reservation total (partial deposits). */
     chargeAmount?: number;
+    /**
+     * The verified marketplace only: its checkout holds the booking's marketplace
+     * attempt, in a transaction on another connection, while it awaits this call.
+     */
+    callerHoldsMarketplaceAttempt?: boolean;
   },
 ) {
   try {
@@ -143,6 +148,20 @@ export async function createReservationPaymentSessionForCustomer(
     // The reservation as its lock holds it: the status and the payments each
     // write below decides on, read again under that lock.
     const scope = { reservationId, storeId: store.id };
+    // The marketplace's checkout holds the booking's attempt while it awaits this
+    // call, and its expiry and failure take the reservation's lock, then the
+    // attempt: asking for the reservation's lock here, on another connection,
+    // would close a wait cycle the database cannot see. For that caller the same
+    // reads, conditions and conditional writes run without the reservation's
+    // lock: the attempt its caller holds serialises them against the
+    // marketplace's expiry and failure, which take it too. It does not serialise
+    // them against a store's cancellation of the booking from the dashboard.
+    const callerHoldsMarketplaceAttempt =
+      isVerifiedMarketplaceSource && options?.callerHoldsMarketplaceAttempt === true;
+    const reservationTransaction = <T>(work: (tx: Transaction) => Promise<T>): Promise<T> =>
+      callerHoldsMarketplaceAttempt
+        ? db.transaction(work, { isolationLevel: "read committed" })
+        : runReservationOnlyChange(scope, (tx) => work(tx));
     const readPayable = async (
       tx: Transaction,
     ): Promise<
@@ -173,10 +192,10 @@ export async function createReservationPaymentSessionForCustomer(
     /**
      * Whether an earlier session of the rental can no longer be paid
      * ("expired"), was paid ("complete"), or neither is known ("unknown"), on
-     * the account it lives on.
-     * Stripe expires only an open session, one whose payment has not started; an
-     * expire that fails leaves the session expired already, complete, or not
-     * reached: its retrieve says which.
+     * the account it lives on. Stripe's contract: an expire that succeeds leaves
+     * a session that can no longer complete; one that fails names a session
+     * already expired, complete, or one Stripe was not reached for: its
+     * retrieve says which.
      */
     const settleEarlierSession = async ({
       sessionId,
@@ -204,20 +223,23 @@ export async function createReservationPaymentSessionForCustomer(
 
     // The rental's open payments are cancelled before their sessions are expired
     // at Stripe: an expiry of a session replaced here finds its row no longer
-    // pending and cancels nothing. With them, every rental session of the
-    // reservation that could still be paid is settled at Stripe below: a row
-    // cancelled earlier (by an earlier call that could not settle its session,
-    // or by an expiry) whose session is younger than a session's lifetime.
-    const replaced = await runReservationOnlyChange(scope, async (tx) => {
+    // pending and cancels nothing. Their sessions, and those of the rows the age
+    // rule below takes, are settled at Stripe after the commit.
+    const replaced = await reservationTransaction(async (tx) => {
       const payable = await readPayable(tx);
       if (payable.refusal !== null) return { refusal: payable.refusal, sessions: [] };
       const open = payable.payments.filter(
         (payment) => payment.type === "rental" && payment.status === "pending",
       );
-      // A row is written by this server's clock after its session is created, as
-      // here: its age, read on the same clock, is at most its session's. A row
-      // older than the lifetime and the margin names a session Stripe has
-      // expired, and is not read there.
+      // A call that cannot settle a session puts its row back to pending below,
+      // so a `cancelled` row names a session known to be expired, except one this
+      // call's process left: it died between this commit and the end of the
+      // settling. Such a row is taken again while its session could still be
+      // paid by its deadline: a row is written by this server's clock after its
+      // session is created, so its age, read on the same clock, is at most its
+      // session's. This cannot cover such a row whose session was paid before its
+      // deadline and is not yet recorded, once it is older than the lifetime and
+      // the margin.
       const payableSince = new Date(
         Date.now() - CHECKOUT_SESSION_LIFETIME_SECONDS * 1000 - SESSION_CLOCK_MARGIN_MS,
       );
@@ -242,6 +264,7 @@ export async function createReservationPaymentSessionForCustomer(
           payment.stripeCheckoutSessionId
             ? [
                 {
+                  paymentId: payment.id,
                   sessionId: payment.stripeCheckoutSessionId,
                   account: checkoutSessionAccount({
                     recordedAccountId: isSessionCreationRow(payment)
@@ -257,12 +280,33 @@ export async function createReservationPaymentSessionForCustomer(
     });
     if (replaced.refusal !== null) return { error: replaced.refusal };
     // No second session for a rental whose earlier session was paid, or may
-    // have been: its completion, when delivered, completes its cancelled row
-    // and confirms the reservation.
-    const settled: string[] = [];
-    for (const session of replaced.sessions) settled.push(await settleEarlierSession(session));
-    if (settled.includes("complete")) return { error: "errors.alreadyPaid" };
-    if (settled.includes("unknown")) return { error: "errors.paymentSessionError" };
+    // have been. A row is left `cancelled` only when its session is known to be
+    // expired: the others are put back to pending, each only if still
+    // `cancelled` (one a completion has completed since stays so), and the
+    // reservation is as before this call. The completion, when delivered,
+    // completes the row; a later call asks Stripe again; a session still open
+    // that expires is the expiry's, as any abandoned checkout.
+    const settled = [];
+    for (const session of replaced.sessions) {
+      settled.push({ ...session, state: await settleEarlierSession(session) });
+    }
+    const unsettled = settled.filter(({ state }) => state !== "expired");
+    if (unsettled.length > 0) {
+      await reservationTransaction(async (tx) => {
+        for (const { paymentId } of unsettled) {
+          await tx
+            .update(payments)
+            .set({ status: "pending", updatedAt: new Date() })
+            .where(and(eq(payments.id, paymentId), eq(payments.status, "cancelled")));
+        }
+        await markReservation(tx, reservation);
+      });
+      return {
+        error: unsettled.some(({ state }) => state === "complete")
+          ? "errors.alreadyPaid"
+          : "errors.paymentSessionError",
+      };
+    }
 
     const lineItems = [
       {
@@ -320,7 +364,7 @@ export async function createReservationPaymentSessionForCustomer(
     const now = new Date();
     let refusal: string | null;
     try {
-      refusal = await runReservationOnlyChange(scope, async (tx) => {
+      refusal = await reservationTransaction(async (tx) => {
         const payable = await readPayable(tx);
         if (payable.refusal !== null) return payable.refusal;
         // Another payment of the rental started meanwhile: this one is not installed.

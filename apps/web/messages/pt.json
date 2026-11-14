@@ -9324,6 +9324,7 @@
     "invalidAmount": "Valor inválido",
     "invalidOrExpiredToken": "Este link é inválido ou expirou. Por favor solicite um novo link de acesso.",
     "alreadyPaid": "Esta reserva já foi paga.",
+    "invalidStatus": "Esta reserva não pode mais ser paga nem alterada online. Entre em contato com a loja.",
     "paymentNotAvailable": "Pagamento online não está disponível para esta loja.",
     "paymentSessionError": "Erro ao criar sessão de pagamento",
     "accessLinkSendFailed": "Erro ao enviar link de acesso",

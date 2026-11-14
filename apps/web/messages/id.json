@@ -9324,6 +9324,7 @@
     "invalidAmount": "Jumlah tidak valid",
     "invalidOrExpiredToken": "Tautan ini tidak valid atau telah kedaluwarsa. Silakan minta tautan akses baru.",
     "alreadyPaid": "Reservasi ini sudah dibayar.",
+    "invalidStatus": "Reservasi ini tidak dapat lagi dibayar atau diubah secara online. Silakan hubungi toko.",
     "paymentNotAvailable": "Pembayaran online tidak tersedia untuk toko ini.",
     "paymentSessionError": "Terjadi kesalahan saat membuat sesi pembayaran",
     "accessLinkSendFailed": "Terjadi kesalahan saat mengirim tautan akses",

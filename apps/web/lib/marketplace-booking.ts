@@ -79,6 +79,8 @@ export const marketplaceCheckoutAdapter: MarketplaceCheckoutAdapter = {
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,
         marketplaceSecret: env.MARKETPLACE_CATALOG_SECRET,
+        // `checkoutMarketplaceBooking` holds the booking's attempt while it awaits this.
+        callerHoldsMarketplaceAttempt: true,
       },
     );
 

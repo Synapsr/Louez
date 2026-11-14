@@ -9324,6 +9324,7 @@
     "invalidAmount": "Ungültiger Betrag",
     "invalidOrExpiredToken": "Dieser Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen Zugriffslink an.",
     "alreadyPaid": "Diese Reservierung ist bereits bezahlt.",
+    "invalidStatus": "Diese Reservierung kann online nicht mehr bezahlt oder geändert werden. Bitte kontaktieren Sie den Shop.",
     "paymentNotAvailable": "Online-Zahlung ist für diesen Shop nicht verfügbar.",
     "paymentSessionError": "Fehler beim Erstellen der Zahlungssitzung",
     "accessLinkSendFailed": "Fehler beim Senden des Zugriffslinks",

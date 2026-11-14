@@ -9324,6 +9324,7 @@
     "invalidAmount": "Invalid amount",
     "invalidOrExpiredToken": "This link is invalid or has expired. Please request a new access link.",
     "alreadyPaid": "This reservation is already paid.",
+    "invalidStatus": "This reservation can no longer be paid or changed online. Please contact the store.",
     "paymentNotAvailable": "Online payment is not available for this store.",
     "paymentSessionError": "Error creating payment session",
     "accessLinkSendFailed": "Error sending access link",

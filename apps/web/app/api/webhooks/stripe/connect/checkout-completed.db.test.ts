@@ -412,11 +412,11 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
       ["expire", booking.sessionId, PREVIOUS_ACCOUNT],
       ["retrieve", booking.sessionId, PREVIOUS_ACCOUNT],
     ]);
-    // Its row as the resume left it: cancelled, nothing else.
+    // Its row as before the resume: pending, nothing else.
     assert.deepEqual(await stateOf(booking.id), {
       status: "pending",
       payments: [
-        { status: "cancelled", stripeAccountId: PREVIOUS_ACCOUNT, stripePaymentIntentId: null },
+        { status: "pending", stripeAccountId: PREVIOUS_ACCOUNT, stripePaymentIntentId: null },
       ],
     });
 
@@ -431,6 +431,52 @@ describe("checkout.session.completed (database)", { skip: skipWithoutTestDatabas
         {
           status: "completed",
           stripeAccountId: PREVIOUS_ACCOUNT,
+          stripePaymentIntentId: `pi_${booking.id}`,
+        },
+      ],
+    });
+  });
+
+  test("a session paid before its deadline and not yet recorded, older than its lifetime: two resumes in a row each answer errors.alreadyPaid and leave its row pending; then its completion records it", async () => {
+    const booking = await checkout(TODAY_ACCOUNT);
+    // Created forty minutes ago: past a session's lifetime and the clocks' margin.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ createdAt: new Date(Date.now() - 40 * 60 * 1000) })
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, booking.sessionId));
+    const resume = () =>
+      paymentSession.createReservationPaymentSessionForCustomer(
+        "checkout-completed",
+        booking.id,
+        "cus_completed",
+        "checkout_resume",
+        { allowPendingReservation: true, chargeAmount: 10 },
+      );
+
+    for (const run of ["first", "second"]) {
+      assert.deepEqual(await resume(), { error: "errors.alreadyPaid" }, run);
+      assert.deepEqual(
+        (await stateOf(booking.id)).payments.map((payment) => payment.status),
+        ["pending"],
+        `${run}: the row back to pending`,
+      );
+    }
+    assert.ok(
+      resumeCalls.every(([call]) => call !== "create"),
+      `no session created: ${JSON.stringify(resumeCalls)}`,
+    );
+
+    assert.deepEqual(await complete(booking, TODAY_ACCOUNT), {
+      status: 200,
+      body: { received: true },
+    });
+
+    assert.deepEqual(await stateOf(booking.id), {
+      status: "confirmed",
+      payments: [
+        {
+          status: "completed",
+          stripeAccountId: TODAY_ACCOUNT,
           stripePaymentIntentId: `pi_${booking.id}`,
         },
       ],
