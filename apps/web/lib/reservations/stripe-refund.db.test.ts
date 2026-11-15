@@ -220,7 +220,8 @@ function fakeStripe() {
         const charge = chargeOf(accountId, chargeId);
         return {
           id: chargeId,
-          amount: charge.captured,
+          amount: charge.amount,
+          amount_captured: charge.captured,
           amount_refunded: movedMinor(charge),
           application_fee: `fee_${chargeId}`,
           payment_intent: null,

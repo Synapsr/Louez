@@ -62,6 +62,7 @@ function fakeStripe() {
         return {
           id: chargeId,
           amount: charge.amount,
+          amount_captured: charge.amount,
           amount_refunded: charge.refunded,
           application_fee: charge.feeId,
           payment_intent: null,

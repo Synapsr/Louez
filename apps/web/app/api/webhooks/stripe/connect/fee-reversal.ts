@@ -21,7 +21,10 @@ export type FeeReversalStripe = {
     chargeId: string,
     accountId: string,
   ): Promise<
-    Pick<Stripe.Charge, "id" | "amount" | "amount_refunded" | "application_fee" | "payment_intent">
+    Pick<
+      Stripe.Charge,
+      "id" | "amount" | "amount_captured" | "amount_refunded" | "application_fee" | "payment_intent"
+    >
   >;
   /** The fee, on the platform account. */
   retrieveApplicationFee(
@@ -156,7 +159,9 @@ export async function reverseFeeAtSource(input: {
         const { targetMinor, incrementMinor } = reversalAtSource({
           feeMinor: fee.amount,
           feeRefundedMinor: fee.amount_refunded,
-          chargeMinor: charge.amount,
+          // What the charge took: after a partial capture, `amount` is the
+          // authorization, more than the money the fee was taken on.
+          chargeMinor: charge.amount_captured,
           refundedMinor: charge.amount_refunded,
           disputedMinor: disputedMinor(charge.id, disputes),
         });

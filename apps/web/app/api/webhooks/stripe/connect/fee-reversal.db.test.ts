@@ -17,7 +17,10 @@ const ACCOUNT = "acct_fee_reversal";
 const RUN = randomBytes(4).toString("hex");
 
 type FakeCharge = {
+  /** What was authorized. */
   amount: number;
+  /** What was taken: less than `amount` after a partial capture. */
+  amountCaptured: number;
   amountRefunded: number;
   feeId: string | null;
   paymentIntentId: string;
@@ -40,6 +43,7 @@ function fakeStripe() {
       return {
         id: chargeId,
         amount: charge.amount,
+        amount_captured: charge.amountCaptured,
         amount_refunded: charge.amountRefunded,
         application_fee: charge.feeId,
         payment_intent: charge.paymentIntentId,
@@ -105,7 +109,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
   /** A charge with an application fee, and the legacy `res:` row Stripe took it for. */
   async function chargeWithFee(
     stripe: ReturnType<typeof fakeStripe>,
-    charge: { amount: number; fee: number; disputes?: FakeCharge["disputes"] },
+    charge: {
+      amount: number;
+      /** What was captured, when less than the amount authorized. */
+      captured?: number;
+      fee: number;
+      disputes?: FakeCharge["disputes"];
+    },
   ) {
     const n = ++counter;
     const chargeId = `ch_${RUN}_${n}`;
@@ -114,6 +124,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
     const reservationId = `res_fee_reversal_${n}`;
     stripe.charges.set(chargeId, {
       amount: charge.amount,
+      amountCaptured: charge.captured ?? charge.amount,
       amountRefunded: 0,
       feeId,
       paymentIntentId,
@@ -238,6 +249,49 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       { feeId, amount: 250, key: `appfee_reverse_${feeId}_0_250` },
       { feeId, amount: 375, key: `appfee_reverse_${feeId}_250_625` },
     ]);
+  });
+
+  test("after a partial capture, the fee follows what was captured, not what was authorized", async () => {
+    const stripe = fakeStripe();
+    // 100.00 authorized, 60.00 captured, a fee of 3.00 taken on it.
+    const full = await chargeWithFee(stripe, { amount: 10_000, captured: 6_000, fee: 300 });
+    const fullCharge = stripe.charges.get(full.chargeId);
+    assert.ok(fullCharge);
+    // All of the 60.00 refunded: the store keeps nothing, the whole fee goes back.
+    fullCharge.amountRefunded = 6_000;
+    assert.deepEqual(
+      await reversal.reverseFeeAtSource({
+        chargeId: full.chargeId,
+        accountId: ACCOUNT,
+        stripe: stripe.port,
+      }),
+      { status: "refunded", feeId: full.feeId, targetMinor: 300, incrementMinor: 300 },
+    );
+
+    // 15.00 of the 60.00 refunded: a quarter of the fee.
+    const partial = await chargeWithFee(stripe, { amount: 10_000, captured: 6_000, fee: 300 });
+    const partialCharge = stripe.charges.get(partial.chargeId);
+    assert.ok(partialCharge);
+    partialCharge.amountRefunded = 1_500;
+    assert.deepEqual(
+      await reversal.reverseFeeAtSource({
+        chargeId: partial.chargeId,
+        accountId: ACCOUNT,
+        stripe: stripe.port,
+      }),
+      { status: "refunded", feeId: partial.feeId, targetMinor: 75, incrementMinor: 75 },
+    );
+
+    // A chargeback on 30.00 of the rest counts on the same base: 15.00 + 30.00 of 60.00.
+    partialCharge.disputes = [{ id: "dp_partial", amount: 3_000, status: "needs_response" }];
+    assert.deepEqual(
+      await reversal.reverseFeeAtSource({
+        chargeId: partial.chargeId,
+        accountId: ACCOUNT,
+        stripe: stripe.port,
+      }),
+      { status: "refunded", feeId: partial.feeId, targetMinor: 225, incrementMinor: 150 },
+    );
   });
 
   test("a status Louez does not know counts", async () => {
