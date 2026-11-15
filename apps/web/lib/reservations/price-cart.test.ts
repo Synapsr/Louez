@@ -31,7 +31,7 @@ import {
   getReservationItemTaxFields,
   priceCart,
   type PricedCartLine,
-} from "./price-cart";
+} from "@louez/api/services/price-cart";
 
 // ---------------------------------------------------------------------------
 // Fixtures: raw rows as Drizzle returns them

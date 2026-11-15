@@ -3,7 +3,7 @@ import {
   type PricedCatalogLine,
   type PricingCatalog,
   type PricingCatalogLineInput,
-} from "@louez/api/services/pricing-catalog";
+} from "./pricing-catalog";
 import type { ProductTaxSettings, TaxSettings } from "@louez/types";
 import {
   calculateTaxBreakdown,

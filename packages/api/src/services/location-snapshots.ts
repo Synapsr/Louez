@@ -1,9 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq } from "drizzle-orm";
 
-import { db, storeLocations } from '@louez/db';
-import type { ReservationLocationSnapshot } from '@louez/types';
+import { db, storeLocations } from "@louez/db";
+import type { ReservationLocationSnapshot } from "@louez/types";
 
-import { formatLocationAddress } from './format-location-address';
+import { formatLocationAddress } from "@louez/utils";
 
 interface StoreForLocationSnapshot {
   id: string;
@@ -20,12 +20,12 @@ export function buildPrimaryLocationSnapshot(
   store: StoreForLocationSnapshot,
 ): ReservationLocationSnapshot {
   return {
-    type: 'primary',
+    type: "primary",
     name: store.name,
     address: store.address,
     city: null,
     postalCode: null,
-    country: store.settings?.country ?? 'FR',
+    country: store.settings?.country ?? "FR",
     latitude: store.latitude ? parseFloat(store.latitude) : null,
     longitude: store.longitude ? parseFloat(store.longitude) : null,
   };
@@ -51,29 +51,26 @@ export async function resolveReservationLocationSnapshot({
   }
 
   const location = await db.query.storeLocations.findFirst({
-    where: and(
-      eq(storeLocations.id, locationId),
-      eq(storeLocations.storeId, store.id),
-    ),
+    where: and(eq(storeLocations.id, locationId), eq(storeLocations.storeId, store.id)),
   });
 
   if (!location) {
-    throw new Error('errors.locationNotFound');
+    throw new Error("errors.locationNotFound");
   }
 
   if (requireActive && !location.isActive) {
-    throw new Error('errors.locationInactive');
+    throw new Error("errors.locationInactive");
   }
 
   return {
     locationId: location.id,
     snapshot: {
-      type: 'additional',
+      type: "additional",
       name: location.name,
       address: location.address,
       city: location.city,
       postalCode: location.postalCode,
-      country: location.country ?? store.settings?.country ?? 'FR',
+      country: location.country ?? store.settings?.country ?? "FR",
       latitude: location.latitude ? parseFloat(location.latitude) : null,
       longitude: location.longitude ? parseFloat(location.longitude) : null,
     },
@@ -95,9 +92,9 @@ export function formatReservationRouteLabel({
   returnMethod,
   pickupLocationSnapshot,
   returnLocationSnapshot,
-  deliveryLabel = 'Livraison',
-  collectionLabel = 'Recuperation',
-  fallbackLocationLabel = 'Boutique',
+  deliveryLabel = "Livraison",
+  collectionLabel = "Recuperation",
+  fallbackLocationLabel = "Boutique",
 }: {
   outboundMethod?: string | null;
   returnMethod?: string | null;
@@ -108,11 +105,11 @@ export function formatReservationRouteLabel({
   fallbackLocationLabel?: string;
 }): string {
   const pickupLabel =
-    outboundMethod === 'address'
+    outboundMethod === "address"
       ? deliveryLabel
       : pickupLocationSnapshot?.name || fallbackLocationLabel;
   const returnLabel =
-    returnMethod === 'address'
+    returnMethod === "address"
       ? collectionLabel
       : returnLocationSnapshot?.name || pickupLocationSnapshot?.name || fallbackLocationLabel;
 

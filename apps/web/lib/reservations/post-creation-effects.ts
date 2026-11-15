@@ -15,7 +15,7 @@ import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events
 
 import { reservationCurrency } from "./payment-billing-facts";
 import type { ResolvedDelivery } from "./resolve-delivery";
-import type { ReservationTotals } from "./price-cart";
+import type { ReservationTotals } from "@louez/api/services/price-cart";
 
 type StoreRow = typeof stores.$inferSelect;
 

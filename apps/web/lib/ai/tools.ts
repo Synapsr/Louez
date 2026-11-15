@@ -16,7 +16,7 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import { ORPCError, type AppRouter, type UrlsPort } from "@louez/api";
+import type { AppRouter, UrlsPort } from "@louez/api";
 import { ANALYTICS_PERIODS } from "@louez/api/contracts/analytics";
 import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
@@ -57,14 +57,18 @@ export type AIChatContext = {
   api?: AssistantApi;
 };
 
+/** The dashboard domains the assistant holds a client of: its tools reach no other. */
+export const ASSISTANT_API_DOMAINS = [
+  "analytics",
+  "categories",
+  "products",
+  "reservations",
+  "settings",
+] as const;
+
 /** The procedures the assistant calls, through a server-side client bound to the user's session. */
 export type AssistantApi = {
-  analytics: RouterClient<AppRouter["dashboard"]["analytics"]>;
-  categories: RouterClient<AppRouter["dashboard"]["categories"]>;
-  payments: RouterClient<AppRouter["dashboard"]["payments"]>;
-  products: RouterClient<AppRouter["dashboard"]["products"]>;
-  reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
-  settings: RouterClient<AppRouter["dashboard"]["settings"]>;
+  [Domain in (typeof ASSISTANT_API_DOMAINS)[number]]: RouterClient<AppRouter["dashboard"][Domain]>;
 };
 
 function assistantApi(ctx: AIChatContext): AssistantApi {
@@ -83,39 +87,6 @@ function requirePermission(
   }
   if (level === "write" && perm === "read") {
     throw new Error(`Permission denied: requires ${domain}:write (current: read)`);
-  }
-}
-
-/**
- * The chat's own words for the payment procedures' refusals, as its tools
- * answered before they called them.
- */
-const PAYMENT_REFUSALS: Record<string, (details: Record<string, unknown>) => string> = {
-  RESERVATION_NOT_FOUND: () => "Reservation not found",
-  PAYMENT_NOT_FOUND: () => "Payment not found",
-  PAYMENT_AMOUNT_INVALID: () =>
-    'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50")',
-  PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT: () =>
-    'Only "adjustment" payments can have a negative amount',
-  PAYMENT_RESERVATION_CLOSED: (details) =>
-    `Cannot record payment on a ${String(details.status)} reservation`,
-  PAYMENT_STRIPE_NOT_DELETABLE: () =>
-    "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
-  DEPOSIT_RETURN_AMOUNT_INVALID: () =>
-    'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00")',
-  DEPOSIT_RETURN_EXCEEDS_BALANCE: (details) =>
-    `Amount exceeds returnable deposit. Collected: ${String(details.collected)}, already returned: ${String(details.returned)}, max returnable: ${String(details.returnable)}`,
-};
-
-/** A payment procedure's answer, or its refusal in the chat's words; any other error is thrown. */
-async function paymentAnswer<T>(run: () => Promise<T>): Promise<T | { error: string }> {
-  try {
-    return await run();
-  } catch (error) {
-    const data = error instanceof ORPCError ? (error.data as Record<string, unknown>) : null;
-    const words = typeof data?.code === "string" ? PAYMENT_REFUSALS[data.code] : undefined;
-    if (!words) throw error;
-    return { error: words((data?.details as Record<string, unknown> | undefined) ?? {}) };
   }
 }
 
@@ -730,68 +701,6 @@ export function createAITools(ctx: AIChatContext) {
           }),
           reservationNumber: reservation.number,
         };
-      },
-    }),
-
-    record_payment: tool({
-      description: "Record a manual payment for a reservation",
-      inputSchema: z.object({
-        reservationId: z.string(),
-        type: z.enum(["rental", "deposit", "deposit_return", "damage", "adjustment"]),
-        amount: z.string().describe('Amount (e.g. "150.00")'),
-        method: z.enum(["cash", "card", "transfer", "check", "other"]),
-        notes: z.string().optional(),
-      }),
-      execute: async (input) => {
-        requirePermission(ctx, "payments", "write");
-        // The procedure, with the dashboard's writer: billing facts, currency
-        // and the reservation's mark. A session is never asked to confirm.
-        return paymentAnswer(async () => {
-          const recorded = await assistantApi(ctx).payments.record(input);
-          return {
-            success: true,
-            reservationNumber: recorded.number,
-            type: recorded.type,
-            amount: recorded.amount,
-            method: recorded.method,
-          };
-        });
-      },
-    }),
-
-    delete_payment: tool({
-      description: "Delete a manual payment record (cannot delete Stripe payments)",
-      inputSchema: z.object({
-        paymentId: z.string().describe("The payment ID to delete"),
-      }),
-      execute: async ({ paymentId }) => {
-        requirePermission(ctx, "payments", "write");
-        return paymentAnswer(async () => {
-          const deleted = await assistantApi(ctx).payments.delete({ paymentId });
-          return { success: true, reservationNumber: deleted.number };
-        });
-      },
-    }),
-
-    return_deposit: tool({
-      description: "Record a deposit return for a reservation (validates max returnable amount)",
-      inputSchema: z.object({
-        reservationId: z.string().describe("The reservation ID"),
-        amount: z.string().describe('Amount to return (e.g. "100.00")'),
-        method: z.enum(["cash", "card", "transfer", "check", "other"]).describe("Return method"),
-        notes: z.string().optional(),
-      }),
-      execute: async (input) => {
-        requirePermission(ctx, "payments", "write");
-        return paymentAnswer(async () => {
-          const recorded = await assistantApi(ctx).payments.recordDepositReturn(input);
-          return {
-            success: true,
-            reservationNumber: recorded.number,
-            amount: recorded.amount,
-            method: recorded.method,
-          };
-        });
       },
     }),
 
