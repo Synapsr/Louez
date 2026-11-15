@@ -1,6 +1,6 @@
 import type { ReservationLocationSnapshot } from '@louez/types'
 
-import { formatLocationAddress } from '@/lib/reservations/format-location-address'
+import { formatLocationAddress } from '@louez/utils'
 
 export interface StoreLegLocation {
   name: string

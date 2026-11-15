@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
-import { describe, test } from "node:test";
+import { createRequire } from "node:module";
+import { describe, mock, test } from "node:test";
 
 import type { PricingBreakdown } from "@louez/types";
 
-import { compareReservationDemand, fingerprintReservationEdit } from "./util.reservation-edit";
+// @louez/utils is a CommonJS workspace package: its named exports are not
+// statically visible to the ESM loader, so hand them over through require.
+const require = createRequire(import.meta.url);
+const utils: Record<string, unknown> = require("@louez/utils");
+
+mock.module("@louez/utils", { namedExports: utils });
+
+const { compareReservationDemand, fingerprintReservationEdit } =
+  await import("./util.reservation-edit");
 
 const START = new Date("2031-06-10T09:00:00.000Z");
 const END = new Date("2031-06-12T09:00:00.000Z");

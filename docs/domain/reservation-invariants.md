@@ -99,7 +99,7 @@ _Held._
 _Partial._ `updateReservation` refuses it, before and under its lock. No test covers it, nor a completion that lands during an edit.
 
 **T4. A reservation's number is unique in its store.**
-_Open._ The dashboard numbers with a count of the year's reservations plus one, read with no lock; the online store draws a number and checks it before the insert, a race its own comment admits (`apps/web/lib/reservations/reservation-number.ts`). The table has no unique index on store and number.
+_Open._ The dashboard numbers with a count of the year's reservations plus one, read with no lock; the online store draws a number and checks it before the insert, a race its own comment admits (`packages/api/src/services/reservation-number.ts`). The table has no unique index on store and number.
 
 **T5. A reservation's window is a real interval of the store's time.** The end is after the start, and a local date and time the customer or the store typed is one that exists in the store's time zone.
 _Partial._ The extension checks the time zone round trip, nonexistent local times included. `updateReservation` refuses only an end before the start, so it accepts a window of no length.
