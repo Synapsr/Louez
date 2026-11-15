@@ -242,6 +242,9 @@ function toolProblems(path: string, meta: ApiMeta, mcp: McpExposure): string[] {
   if (meta.personApproval && !meta.sensitive) {
     problems.push(`${path}: a procedure a person approves is sensitive`);
   }
+  if (meta.requiresIdempotencyKey && (!writes || meta.secretOutput)) {
+    problems.push(`${path}: only a write that replays requires an idempotency key`);
+  }
   return problems;
 }
 
@@ -309,7 +312,13 @@ function documented(
   const parameters = [...(operation.parameters ?? [])];
   const isWrite = meta.scope?.level === "write";
   const replays = isWrite && !meta.secretOutput;
-  if (replays) parameters.push({ $ref: "#/components/parameters/IdempotencyKey" });
+  if (replays) {
+    parameters.push({
+      $ref: meta.requiresIdempotencyKey
+        ? "#/components/parameters/IdempotencyKeyRequired"
+        : "#/components/parameters/IdempotencyKey",
+    });
+  }
   if (meta.sensitive) parameters.push({ $ref: "#/components/parameters/LouezConfirmation" });
 
   const responses: OpenAPI.ResponsesObject = { ...operation.responses };

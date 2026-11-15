@@ -1051,8 +1051,9 @@ describe("the public reference", () => {
       const writes = meta.scope?.level === "write";
       // procedures.ts passes no key to runOperation for these.
       const replays = writes && !meta.secretOutput;
+      const keyRef = meta.requiresIdempotencyKey ? "IdempotencyKeyRequired" : "IdempotencyKey";
       const takesKey = (operation.parameters ?? []).some(
-        (parameter) => parameter.$ref === "#/components/parameters/IdempotencyKey",
+        (parameter) => parameter.$ref === `#/components/parameters/${keyRef}`,
       );
       const headers = Object.keys(operation.responses["200"]?.headers ?? {});
       assert.equal(takesKey, replays, `${path}: Idempotency-Key`);

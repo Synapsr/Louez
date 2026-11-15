@@ -60,14 +60,23 @@ function toolInputSchema(entry: ExposedProcedure, ctx: McpRequestContext): Tool[
       type: "string",
       minLength: 1,
       maxLength: 100,
-      description:
-        "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
+      description: entry.meta.requiresIdempotencyKey
+        ? "Required, so that a retry never does this action twice: a new unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice."
+        : "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
     };
   }
   if (entry.meta.sensitive) {
     properties.confirmationToken = entry.meta.personApproval
       ? APPROVAL_ARGUMENT
       : CONFIRMATION_ARGUMENT;
+  }
+  if (entry.meta.requiresIdempotencyKey) {
+    const required = (entry.inputJsonSchema.required as string[] | undefined) ?? [];
+    return {
+      ...entry.inputJsonSchema,
+      properties,
+      required: [...required, "idempotencyKey"],
+    } as Tool["inputSchema"];
   }
   return { ...entry.inputJsonSchema, properties } as Tool["inputSchema"];
 }

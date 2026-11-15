@@ -231,6 +231,20 @@ describe("exposure registry", () => {
     assert.equal(served.procedures[0].meta.mcp.effect, "overwrite");
   });
 
+  test("only a write that replays may require an idempotency key", () => {
+    const write = (extra: { secretOutput?: boolean }) =>
+      valid().meta({
+        scope: { domain: "categories", level: "write" },
+        requiresIdempotencyKey: true,
+        ...extra,
+        mcp: { ...mcp("test_valid"), effect: "additive" },
+      });
+    const reason = /a: only a write that replays requires an idempotency key/;
+    rejects({ a: valid().meta({ requiresIdempotencyKey: true }) }, ["a"], reason);
+    rejects({ a: write({ secretOutput: true }) }, ["a"], reason);
+    assert.equal(exposure.createExposure({ a: write({}) } as never, ["a"]).procedures.length, 1);
+  });
+
   test("serves each procedure's output as JSON Schema, an object", () => {
     const router = testing.createFixtureRouter();
     const [list] = exposure.createExposure(router, ["fixture.notes.list"]).procedures;

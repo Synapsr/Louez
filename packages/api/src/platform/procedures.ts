@@ -88,6 +88,15 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
   if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
     throw platformErrors.permissionDenied("platform_admin");
   }
+  // A write a retry must not do twice wants a key from an agent, asked before
+  // the store, a confirmation or an operation record is read or written.
+  if (
+    meta.requiresIdempotencyKey &&
+    actor.credential.kind !== "session" &&
+    context.headers.get(IDEMPOTENCY_HEADER) === null
+  ) {
+    throw platformErrors.idempotencyKeyRequired(actor.transport);
+  }
   return next({ context: { actor } });
 });
 

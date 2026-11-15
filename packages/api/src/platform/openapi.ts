@@ -463,7 +463,7 @@ Sending the same request again while its approval is open answers with that appr
 
 ## Idempotency and receipts
 
-Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), a retry with the same key, from the same API key, for the same operation and input, answers by how the first call ended:
+Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. A write that documents it as required answers a request without it with 400 \`IDEMPOTENCY_KEY_REQUIRED\` and does nothing. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), a retry with the same key, from the same API key, for the same operation and input, answers by how the first call ended:
 
 - It succeeded: the retry returns its stored result without running it again, with \`Louez-Replayed: true\`.
 - Louez refused it before doing it, for instance \`CONFIRMATION_REQUIRED\`, \`APPROVAL_REQUIRED\`, \`PERMISSION_DENIED\` or \`RESERVATION_BUSY\`: the retry runs the write again. So one key serves a write's whole approval, from the first call to the one that carries it out.
@@ -570,6 +570,13 @@ const openApiDocumentOptions = {
         in: "header",
         required: false,
         description: `Makes this write safe to retry. While its record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months), a retry that succeeded with the same key, operation and input returns the stored result without running again; another input or operation fails with IDEMPOTENCY_KEY_REUSED.`,
+        schema: { type: "string", minLength: 1, maxLength: MAX_IDEMPOTENCY_KEY_LENGTH },
+      },
+      IdempotencyKeyRequired: {
+        name: "Idempotency-Key",
+        in: "header",
+        required: true,
+        description: `Required: a retry of this write must never do it twice, so a request without the header answers 400 IDEMPOTENCY_KEY_REQUIRED and does nothing. While its record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months), a retry that succeeded with the same key, operation and input returns the stored result without running again; another input or operation fails with IDEMPOTENCY_KEY_REUSED.`,
         schema: { type: "string", minLength: 1, maxLength: MAX_IDEMPOTENCY_KEY_LENGTH },
       },
       LouezConfirmation: {
