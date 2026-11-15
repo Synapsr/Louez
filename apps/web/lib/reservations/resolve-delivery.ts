@@ -3,7 +3,7 @@ import type { DeliverySettings } from "@louez/types";
 import { getDeliveryAvailability } from "@louez/utils";
 import type { CreateReservationDeliveryLegInput } from "@louez/validations";
 
-import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
+import { resolveReservationLocationSnapshot } from "@louez/api/services/location-snapshots";
 import {
   calculateTotalDeliveryFee,
   isDeliveryOrderAmountEligible,
