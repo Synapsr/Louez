@@ -3,12 +3,12 @@ export const GLOBAL_FLAGS = {
   "api-key": {
     value: "<key>",
     description:
-      "The API key (lz_…). Default: LOUEZ_API_KEY, then the key `louez auth login` saved.",
+      "The API key (lz_…), for this command only. Other users can see it in the list of processes, and your shell keeps it in its history: prefer LOUEZ_API_KEY, or `louez auth login`, which reads the key from standard input or asks for it. Default: LOUEZ_API_KEY, then the key `louez auth login` saved.",
   },
   "api-url": {
     value: "<url>",
     description:
-      "The API's base URL. Default: LOUEZ_API_URL, then the URL `louez auth login` saved, then https://app.louez.io/api/v1.",
+      "The API's base URL. Default: LOUEZ_API_URL, then the URL `louez auth login` saved the key with, then https://app.louez.io/api/v1. The saved key is sent to the origin it was saved for only.",
   },
   insecure: {
     value: null,

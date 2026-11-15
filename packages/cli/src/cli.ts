@@ -6,7 +6,6 @@
 import { readFileSync } from "node:fs";
 
 import {
-  UsageError,
   buildInput,
   commandWords,
   globalLookup,
@@ -30,6 +29,7 @@ import {
 import { number, record, text } from "./json.js";
 import { METHODS, isHttpMethod, type Manifest, type Operation } from "./manifest.js";
 import { manifest as generatedManifest } from "./manifest.generated.js";
+import { UsageError } from "./usage-error.js";
 
 export const EXIT = { ok: 0, api: 1, usage: 2, person: 3, network: 4 } as const;
 
@@ -63,22 +63,71 @@ export interface Io {
   readSecret(prompt: string): Promise<string>;
   readFile(path: string): Promise<string>;
   fetch: typeof fetch;
-  sleep(ms: number): Promise<void>;
+  /** Waits `ms`; resolves early when `signal` aborts. */
+  sleep(ms: number, signal?: AbortSignal): Promise<void>;
   now(): number;
+  /** The signal that ends a request waiting `ms` for its answer. */
+  timeoutSignal(ms: number): AbortSignal;
+  /** Aborts on Ctrl-C while it is watched; `stop` hands Ctrl-C back. */
+  watchInterrupt(): { signal: AbortSignal; stop(): void };
   configDir: string;
   newIdempotencyKey(): string;
   manifest?: Manifest;
 }
 
+/** The `Io` the commands use: its outputs never show a credential. */
+type Session = Io & {
+  /** Adds a credential to the ones every output hides. */
+  secret(value: string): void;
+};
+
+const REDACTED = "[redacted]";
+
+/** The values `--api-key` was given on the command line. */
+function apiKeyArguments(argv: readonly string[]): string[] {
+  const keys: string[] = [];
+  argv.forEach((token, index) => {
+    if (token.startsWith("--api-key=")) keys.push(token.slice("--api-key=".length));
+    const next = argv[index + 1];
+    if (token === "--api-key" && next !== undefined && !next.startsWith("--")) keys.push(next);
+  });
+  return keys;
+}
+
+/**
+ * Runs the command. Everything it writes, on stdout and stderr, goes through
+ * one redaction: the API key in use and every value given to `--api-key`,
+ * as they are and as JSON writes them, are replaced by "[redacted]",
+ * wherever they appear (an argument echoed in an error, an answer quoting
+ * the request).
+ */
 export async function main(io: Io): Promise<number> {
+  const secrets = new Set<string>();
+  const add = (value: string | undefined) => {
+    if (!value) return;
+    secrets.add(value);
+    secrets.add(JSON.stringify(value).slice(1, -1));
+  };
+  for (const key of apiKeyArguments(io.argv)) add(key);
+  add(io.env.LOUEZ_API_KEY);
+  const redact = (text: string) =>
+    [...secrets]
+      .sort((a, b) => b.length - a.length)
+      .reduce((out, secret) => out.split(secret).join(REDACTED), text);
+  const hide = (output: Output): Output => ({
+    write: (text: string) => output.write(redact(text)),
+    isTTY: output.isTTY,
+  });
+  const session: Session = { ...io, stdout: hide(io.stdout), stderr: hide(io.stderr), secret: add };
+
   try {
-    return await run(io);
+    return await run(session);
   } catch (error) {
     if (error instanceof UsageError) {
-      io.stderr.write(`louez: ${error.message}\nRun \`louez --help\` for usage.\n`);
+      session.stderr.write(`louez: ${error.message}\nRun \`louez --help\` for usage.\n`);
       return EXIT.usage;
     }
-    io.stderr.write(`louez: ${error instanceof Error ? error.message : String(error)}\n`);
+    session.stderr.write(`louez: ${error instanceof Error ? error.message : String(error)}\n`);
     return EXIT.api;
   }
 }
@@ -87,7 +136,7 @@ function json(value: unknown, output: Output): string {
   return `${output.isTTY ? JSON.stringify(value, null, 2) : JSON.stringify(value)}\n`;
 }
 
-async function run(io: Io): Promise<number> {
+async function run(io: Session): Promise<number> {
   const manifest = io.manifest ?? generatedManifest;
   const argv = io.argv;
   const wordIndexes = commandWords(argv, 3);
@@ -159,7 +208,7 @@ async function run(io: Io): Promise<number> {
 }
 
 /** Reads `--json`'s text: `-` is standard input, `@file` a file, anything else the JSON itself. */
-function sourceReader(io: Io) {
+function sourceReader(io: Session) {
   let stdin: Promise<string> | undefined;
   const reader = async (spec: string) => {
     if (spec === "-") return (stdin ??= io.readStdin());
@@ -185,30 +234,61 @@ interface Target {
   timeoutMs: number;
 }
 
-async function resolveTarget(io: Io, values: FlagValues, apiKeyOverride?: string): Promise<Target> {
-  const saved = await readConfig(io.configDir);
+/** An environment variable, unset when empty. */
+const envValue = (io: Session, name: string) => io.env[name] || undefined;
+
+/**
+ * Where the call goes, and with which key.
+ *
+ * - A key given for this invocation (`--api-key`, `LOUEZ_API_KEY`, or the
+ *   key `auth login` is checking) goes with the URL given for it
+ *   (`--api-url`, `LOUEZ_API_URL`) or the default one: the caller paired
+ *   them.
+ * - The saved key goes only to the origin it was saved for: with no URL
+ *   given, the saved URL; a URL given on another origin is refused, naming
+ *   both, before anything is sent. A file saved without a URL was saved for
+ *   the default one.
+ */
+async function resolveTarget(io: Session, values: FlagValues, loginKey?: string): Promise<Target> {
+  const insecure = lastValue(values, "insecure") === true;
+  const givenUrl = stringFlag(values, "api-url") ?? envValue(io, "LOUEZ_API_URL");
   const flagKey = stringFlag(values, "api-key");
-  const [apiKey, keySource] = apiKeyOverride
-    ? [apiKeyOverride, "login"]
-    : flagKey
-      ? [flagKey, "--api-key"]
-      : io.env.LOUEZ_API_KEY
-        ? [io.env.LOUEZ_API_KEY, "LOUEZ_API_KEY"]
-        : [saved.apiKey, configFile(io.configDir)];
-  if (!apiKey) {
-    throw new UsageError(
-      "No API key: set LOUEZ_API_KEY, pass --api-key, or run `louez auth login`.",
-    );
+  const envKey = envValue(io, "LOUEZ_API_KEY");
+
+  let apiKey: string;
+  let keySource: string;
+  let base: URL;
+  if (loginKey ?? flagKey ?? envKey) {
+    [apiKey, keySource] = loginKey
+      ? [loginKey, "login"]
+      : flagKey
+        ? [flagKey, "--api-key"]
+        : [envKey ?? "", "LOUEZ_API_KEY"];
+    base = resolveBaseUrl(givenUrl ?? DEFAULT_API_URL, insecure);
+  } else {
+    const { config: saved, warnings } = await readConfig(io.configDir);
+    for (const warning of warnings) io.stderr.write(`louez: ${warning}\n`);
+    if (!saved.apiKey) {
+      throw new UsageError(
+        "No API key: set LOUEZ_API_KEY, pass --api-key, or run `louez auth login`.",
+      );
+    }
+    apiKey = saved.apiKey;
+    keySource = configFile(io.configDir);
+    const savedBase = resolveBaseUrl(saved.apiUrl ?? DEFAULT_API_URL, true);
+    base = resolveBaseUrl(givenUrl ?? savedBase.href, insecure);
+    if (base.origin !== savedBase.origin) {
+      throw new UsageError(
+        `The saved key belongs to ${savedBase.origin}; it is never sent to ${base.origin}. For ${base.origin}, give its key with LOUEZ_API_KEY or --api-key, or save it with \`louez auth login --api-url ${base.href}\`.`,
+      );
+    }
   }
+  io.secret(apiKey);
   if (!/^[\x21-\x7e]+$/.test(apiKey)) {
     throw new UsageError(
       `The API key from ${keySource} holds a space or a character a key never has.`,
     );
   }
-  const base = resolveBaseUrl(
-    stringFlag(values, "api-url") ?? io.env.LOUEZ_API_URL ?? saved.apiUrl ?? DEFAULT_API_URL,
-    lastValue(values, "insecure") === true,
-  );
   const timeout = stringFlag(values, "timeout");
   const seconds = timeout === undefined ? DEFAULT_TIMEOUT_SECONDS : Number(timeout);
   if (!Number.isFinite(seconds) || seconds <= 0) {
@@ -228,7 +308,7 @@ interface Call {
   confirmation?: string;
 }
 
-function perform(io: Io, target: Target, call: Call): Promise<SendResult> {
+function perform(io: Session, target: Target, call: Call): Promise<SendResult> {
   const url = requestUrl(target.base, call.path, call.query);
   const headers = buildHeaders({
     apiKey: target.apiKey,
@@ -242,7 +322,7 @@ function perform(io: Io, target: Target, call: Call): Promise<SendResult> {
     url,
     headers,
     body: call.body,
-    timeoutMs: target.timeoutMs,
+    signal: io.timeoutSignal(target.timeoutMs),
   });
 }
 
@@ -292,7 +372,7 @@ function apiError(answer: Answer): ApiError {
 
 /** Sends the call, waits for an approval when asked to, and writes the answer. */
 async function callAndReport(
-  io: Io,
+  io: Session,
   target: Target,
   values: FlagValues,
   call: Omit<Call, "idempotencyKey" | "confirmation">,
@@ -307,6 +387,7 @@ async function callAndReport(
   const result = await perform(io, target, full);
   if (!result.ok) return networkFailure(io, target, result.error, full, givenKey === undefined);
   let answer = result.answer;
+  const rerun = await rerunHint(io.argv, stdinText?.());
 
   const { code, approval } = apiError(answer);
   if (
@@ -315,13 +396,13 @@ async function callAndReport(
     (code === "APPROVAL_REQUIRED" || code === "APPROVAL_PENDING")
   ) {
     io.stderr.write(`louez: this write needs a person's approval. Open:\n  ${approval.url}\n`);
-    const waited = await waitForApproval(io, target, approval);
+    const waited = await waitForApproval(io, target, approval, rerun);
     if (waited !== "approved") return waited;
     const again = await perform(io, target, { ...full, confirmation: approval.id });
     if (!again.ok) return networkFailure(io, target, again.error, full, givenKey === undefined);
     answer = again.answer;
   }
-  return report(io, answer, await rerunHint(io.argv, stdinText?.()));
+  return report(io, answer, rerun);
 }
 
 /** Builds the command to run again, with `--confirmation <id>`. */
@@ -377,73 +458,88 @@ export function rerunCommand(
  * exit code to end with.
  */
 async function waitForApproval(
-  io: Io,
+  io: Session,
   target: Target,
   approval: Approval,
+  rerun: Rerun,
 ): Promise<"approved" | number> {
   const seconds = Math.max(APPROVAL_POLL_SECONDS, approval.pollAfterSeconds ?? 0);
   const deadline = approval.expiresAt ? Date.parse(approval.expiresAt) : Number.NaN;
   io.stderr.write(
     `louez: waiting for the decision, checking every ${seconds} s${Number.isNaN(deadline) ? "" : ` until ${approval.expiresAt}`}. Ctrl-C stops waiting; the approval stays open.\n`,
   );
-  for (;;) {
-    await io.sleep(seconds * 1000);
-    if (io.now() >= deadline) {
-      io.stderr.write("louez: the approval expired undecided. Nothing was done.\n");
-      return EXIT.api;
-    }
-    const read = await perform(io, target, {
-      method: "GET",
-      path: `/handoffs/${encodeURIComponent(approval.id)}`,
-      idempotent: false,
-    });
-    if (!read.ok) {
-      io.stderr.write(
-        `louez: could not read the approval: ${describeNetworkError(read.error, target)}\nOnce it is approved, run the command again with --confirmation ${approval.id}.\n`,
-      );
-      return EXIT.network;
-    }
-    const { status, body } = read.answer;
-    if (status < 200 || status >= 300) {
-      io.stderr.write(json(body ?? null, io.stderr));
-      io.stderr.write(
-        `louez: could not read the approval (${status} ${apiError(read.answer).code ?? ""}).\n`,
-      );
-      return EXIT.api;
-    }
-    const handoff = record(body);
-    const handoffStatus = text(handoff?.status);
-    const failure = record(handoff?.failure);
-    switch (handoffStatus) {
-      case "pending":
-      case "opened":
-        continue;
-      case "approved":
-        io.stderr.write("louez: approved. Carrying it out.\n");
-        return "approved";
-      case "completed":
-        io.stderr.write(json(body, io.stderr));
-        io.stderr.write(
-          "louez: an earlier request already carried this approval out. Nothing was done again: read the record before acting.\n",
-        );
+  // Ctrl-C ends the wait, never the approval, and nothing is carried out.
+  const stopped = () => {
+    io.stderr.write(
+      `louez: stopped waiting. Nothing was done, and the approval stays open:\n  ${approval.url}\nOnce it is approved, run:\n  ${rerun(approval.id)}\n`,
+    );
+    return EXIT.person;
+  };
+  const interrupt = io.watchInterrupt();
+  try {
+    for (;;) {
+      await io.sleep(seconds * 1000, interrupt.signal);
+      if (interrupt.signal.aborted) return stopped();
+      if (io.now() >= deadline) {
+        io.stderr.write("louez: the approval expired undecided. Nothing was done.\n");
         return EXIT.api;
-      case "failed": {
-        io.stderr.write(json(body, io.stderr));
-        const reason = text(record(handoff?.decision)?.reason);
+      }
+      const read = await perform(io, target, {
+        method: "GET",
+        path: `/handoffs/${encodeURIComponent(approval.id)}`,
+        idempotent: false,
+      });
+      if (interrupt.signal.aborted) return stopped();
+      if (!read.ok) {
         io.stderr.write(
-          text(failure?.code) === "declined"
-            ? `louez: the person refused${reason ? `, saying ${JSON.stringify(reason)}` : ""}. Nothing was done.\n`
-            : `louez: the approval ended (${text(failure?.code) ?? "failed"}): ${text(failure?.message) ?? ""} Nothing was done.\n`,
+          `louez: could not read the approval: ${describeNetworkError(read.error, target)}\nOnce it is approved, run the command again with --confirmation ${approval.id}.\n`,
+        );
+        return EXIT.network;
+      }
+      const { status, body } = read.answer;
+      if (status < 200 || status >= 300) {
+        io.stderr.write(json(body ?? null, io.stderr));
+        io.stderr.write(
+          `louez: could not read the approval (${status} ${apiError(read.answer).code ?? ""}).\n`,
         );
         return EXIT.api;
       }
-      default:
-        io.stderr.write(json(body, io.stderr));
-        io.stderr.write(
-          `louez: the approval is ${handoffStatus ?? "unknown"}. Nothing was done.\n`,
-        );
-        return EXIT.api;
+      const handoff = record(body);
+      const handoffStatus = text(handoff?.status);
+      const failure = record(handoff?.failure);
+      switch (handoffStatus) {
+        case "pending":
+        case "opened":
+          continue;
+        case "approved":
+          io.stderr.write("louez: approved. Carrying it out.\n");
+          return "approved";
+        case "completed":
+          io.stderr.write(json(body, io.stderr));
+          io.stderr.write(
+            "louez: an earlier request already carried this approval out. Nothing was done again: read the record before acting.\n",
+          );
+          return EXIT.api;
+        case "failed": {
+          io.stderr.write(json(body, io.stderr));
+          const reason = text(record(handoff?.decision)?.reason);
+          io.stderr.write(
+            text(failure?.code) === "declined"
+              ? `louez: the person refused${reason ? `, saying ${JSON.stringify(reason)}` : ""}. Nothing was done.\n`
+              : `louez: the approval ended (${text(failure?.code) ?? "failed"}): ${text(failure?.message) ?? ""} Nothing was done.\n`,
+          );
+          return EXIT.api;
+        }
+        default:
+          io.stderr.write(json(body, io.stderr));
+          io.stderr.write(
+            `louez: the approval is ${handoffStatus ?? "unknown"}. Nothing was done.\n`,
+          );
+          return EXIT.api;
+      }
     }
+  } finally {
+    interrupt.stop();
   }
 }
 
@@ -456,7 +552,7 @@ function describeNetworkError(error: Error, target: Target): string {
 }
 
 function networkFailure(
-  io: Io,
+  io: Session,
   target: Target,
   error: Error,
   call: Call,
@@ -474,7 +570,7 @@ function networkFailure(
 }
 
 /** Writes the answer: its JSON on stdout, or the error on stderr, and the exit code. */
-function report(io: Io, answer: Answer, rerun: Rerun): number {
+function report(io: Session, answer: Answer, rerun: Rerun): number {
   const { status, headers, body } = answer;
   if (status >= 200 && status < 300) {
     if (body !== undefined) io.stdout.write(json(body, io.stdout));
@@ -523,7 +619,7 @@ function report(io: Io, answer: Answer, rerun: Rerun): number {
 
 /** `louez api <METHOD> <path>`: any operation, by method and path. */
 async function api(
-  io: Io,
+  io: Session,
   rawMethod: string | undefined,
   path: string | undefined,
   argv: readonly string[],
@@ -568,7 +664,11 @@ async function api(
 }
 
 /** `louez auth login | status | logout`. */
-async function auth(io: Io, action: string | undefined, argv: readonly string[]): Promise<number> {
+async function auth(
+  io: Session,
+  action: string | undefined,
+  argv: readonly string[],
+): Promise<number> {
   const line = parseLine(argv, globalLookup);
   if (line.positionals.length > 0)
     throw new UsageError(`Unexpected argument "${line.positionals[0]}".`);
@@ -579,7 +679,9 @@ async function auth(io: Io, action: string | undefined, argv: readonly string[])
   louez auth status   Show the store the key belongs to, and where the key comes from.
   louez auth logout   Remove the saved key.
 
-The key is saved in ${file}, readable by you alone (0600). LOUEZ_API_KEY and --api-key come before it.
+The key is saved in ${file}, readable by you alone (0600), with the API URL it was
+checked against: it is sent to that URL's origin only. A key given with LOUEZ_API_KEY or
+--api-key comes before it, and goes with LOUEZ_API_URL or --api-url, or the default URL.
 `;
     const asked = lastValue(line.values, "help") === true;
     (asked ? io.stdout : io.stderr).write(text);
@@ -594,6 +696,7 @@ The key is saved in ${file}, readable by you alone (0600). LOUEZ_API_KEY and --a
           io.stdinIsTTY ? await io.readSecret("Louez API key: ") : await io.readStdin()
         ).trim();
       }
+      io.secret(key);
       if (!key.startsWith("lz_")) throw new UsageError("A Louez API key starts with lz_.");
       const target = await resolveTarget(io, line.values, key);
       const stores = await readStores(io, target);
@@ -601,9 +704,9 @@ The key is saved in ${file}, readable by you alone (0600). LOUEZ_API_KEY and --a
         io.stderr.write("louez: the key was not saved.\n");
         return stores;
       }
-      const saved = await readConfig(io.configDir);
-      const apiUrl = stringFlag(line.values, "api-url") ?? io.env.LOUEZ_API_URL;
-      await writeConfig(io.configDir, { ...saved, apiKey: key, ...(apiUrl ? { apiUrl } : {}) });
+      // The key is saved with the URL it was checked against: it goes there only.
+      const warnings = await writeConfig(io.configDir, { apiKey: key, apiUrl: target.base.href });
+      for (const warning of warnings) io.stderr.write(`louez: ${warning}\n`);
       io.stdout.write(json({ saved: file, apiUrl: target.base.href, store: stores }, io.stdout));
       return EXIT.ok;
     }
@@ -633,7 +736,7 @@ The key is saved in ${file}, readable by you alone (0600). LOUEZ_API_KEY and --a
  * code of a failed read, its error written.
  */
 async function readStores(
-  io: Io,
+  io: Session,
   target: Target,
 ): Promise<Record<string, unknown> | null | number> {
   const call: Call = { method: "GET", path: "/stores", idempotent: false };

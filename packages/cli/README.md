@@ -30,11 +30,15 @@ louez auth status       # the store the key belongs to, and where the key comes 
 louez auth logout       # removes the saved key
 ```
 
-`louez auth login` also reads the key from standard input (`printenv MY_KEY | louez auth login`). It saves it in `config.json` under `$XDG_CONFIG_HOME/louez`, or `~/.config/louez` (on macOS too), or `%APPDATA%\louez` on Windows. The file is readable by you alone (0600).
+`louez auth login` also reads the key from standard input (`printenv MY_KEY | louez auth login`). It saves it in `config.json` under `$XDG_CONFIG_HOME/louez`, or `~/.config/louez` (on macOS too), or `%APPDATA%\louez` on Windows, with the base URL it checked the key against.
 
-The key is found in this order: `--api-key`, then `LOUEZ_API_KEY`, then the saved key. In CI or in an agent's environment, set `LOUEZ_API_KEY`.
+The key is found in this order: `--api-key`, then `LOUEZ_API_KEY`, then the saved key. In CI or in an agent's environment, set `LOUEZ_API_KEY`. Avoid `--api-key`: other users can see it in the list of processes, and your shell keeps it in its history.
 
-The base URL defaults to `https://app.louez.io/api/v1`. For a self-hosted Louez, set `LOUEZ_API_URL` or pass `--api-url` (with `louez auth login`, it is saved with the key).
+The base URL defaults to `https://app.louez.io/api/v1`. For a self-hosted Louez, set `LOUEZ_API_URL` or pass `--api-url`; `louez auth login --api-url …` saves the key for that server.
+
+**Which key goes where.** The saved key is sent only to the origin it was saved for. With no URL given, it goes to the saved URL; a command whose URL (`--api-url`, `LOUEZ_API_URL`) is on another origin stops with exit 2, naming both, and sends nothing: give that server's key with `LOUEZ_API_KEY` or `--api-key`. A key given that way goes with the URL given with it, or with the default URL, never with the saved one.
+
+**The saved file.** On Linux and macOS, the directory is 0700 and the file 0600, owned by you. The file is never written in place: the new one is written to a temporary file created in the same directory, then renamed over it, so it is never half-written and the old file never holds the new key. louez refuses a directory or a file that is a symbolic link, belongs to another user, or (for the directory) that other users can write to. It tightens to 0700 a directory others can only read, and to 0600 a file others can read, and says so; a key others could read should be revoked in Louez and replaced. On Windows, file modes do not apply: these checks are skipped, and the file keeps the protection of your user profile's folder.
 
 ## Commands
 
@@ -58,13 +62,13 @@ louez api <METHOD> <path> [--json <body>]
 
 The answer's JSON goes to standard output, and nothing else: indented on a terminal, on one line when piped. Errors go to standard error, as the API's error JSON followed by one line for a person.
 
-| Code | Meaning                                                                                                                                                        |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | The call succeeded.                                                                                                                                            |
-| 1    | The API refused or failed (its `data.code` says why), or it answered a redirect.                                                                               |
-| 2    | The command line is wrong: an unknown command or flag, a missing value, no API key, an `http://` base URL.                                                     |
-| 3    | A person must act first: a write waits for an approval (`APPROVAL_REQUIRED`, `APPROVAL_PENDING`) or for its preview to be confirmed (`CONFIRMATION_REQUIRED`). |
-| 4    | Louez could not be reached, or did not answer in time (`--timeout`, 120 seconds by default).                                                                   |
+| Code | Meaning                                                                                                                                                                                        |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | The call succeeded.                                                                                                                                                                            |
+| 1    | The API refused or failed (its `data.code` says why), or it answered a redirect.                                                                                                               |
+| 2    | The command cannot run as given, and nothing was sent: an unknown command or flag, a missing value, no API key, a URL or a path it refuses, an unsafe config file.                             |
+| 3    | A person must act first: a write waits for an approval (`APPROVAL_REQUIRED`, `APPROVAL_PENDING`) or for its preview to be confirmed (`CONFIRMATION_REQUIRED`); also when Ctrl-C ends `--wait`. |
+| 4    | Louez could not be reached, or did not answer in time (`--timeout`, 120 seconds by default).                                                                                                   |
 
 ## Examples
 
@@ -104,7 +108,7 @@ Once it is approved, run:
 Or run the same command with --wait to wait for the decision.
 ```
 
-Once they approved it on that page, the printed command carries the payment out, once. With `--wait`, the CLI reads the approval every 30 seconds (the reference's interval, or longer when the answer asks), then carries the payment out as soon as it is approved, or stops at a refusal or at expiry:
+Once they approved it on that page, the printed command carries the payment out, once. With `--wait`, the CLI reads the approval every 30 seconds (the reference's interval, or longer when the answer asks), then carries the payment out as soon as it is approved, or stops at a refusal or at expiry. Ctrl-C ends the wait without carrying anything out; the approval stays open, and the CLI prints the command to run once it is approved:
 
 ```sh
 louez payments record res_123 --type rental --amount 150.00 --method cash --wait
@@ -116,7 +120,9 @@ Every write the API lets repeat is sent with an `Idempotency-Key`: yours with `-
 
 ## Security
 
-- The key is sent only to the base URL's origin, in the `Authorization` header: never in a URL, never printed, never logged. `louez auth status` says where it comes from, not what it is.
+- The key is sent only to the base URL's origin, in the `Authorization` header, and never in a URL. The saved key goes only to the origin it was saved for (above).
+- Nothing the CLI writes shows a key: the key in use and every value given to `--api-key` are replaced by `[redacted]` wherever they appear, an error quoting the request included. `louez auth status` says where the key comes from, not what it is.
+- A request stays under the base URL's path: a path, or a path parameter, holding a `.` or `..` segment, a backslash, or an encoded slash or backslash (`%2e%2e`, `%2F`, `%5C`) is refused before anything is sent.
 - The CLI never follows a redirect, which would take the key to another server: a 3xx answer exits 1.
 - The base URL must be `https://`, except on `localhost`, `127.0.0.1`, `[::1]` or a `.localify` host; anything else needs `--insecure`.
 - The command printed for an approval never holds the key: a key given with `--api-key` is printed as `"$LOUEZ_API_KEY"`.

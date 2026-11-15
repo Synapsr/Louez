@@ -7,9 +7,8 @@
  */
 import { GLOBAL_FLAGS, isGlobalFlag } from "./globals.js";
 import type { Field, Operation } from "./manifest.js";
-
-/** A command line the CLI cannot run: exit code 2. */
-export class UsageError extends Error {}
+import { checkPathSegment } from "./http.js";
+import { UsageError } from "./usage-error.js";
 
 export type FlagValues = Map<string, Array<string | boolean>>;
 
@@ -79,7 +78,12 @@ export function parseLine(argv: readonly string[], lookup: FlagLookup): ParsedLi
     }
     if (takesValue) {
       const value = inline ?? argv[++i];
-      if (value === undefined) throw new UsageError(`--${flag} needs a value.`);
+      // A known option where the value should be is a value left out: never
+      // read it as the value (`--json --api-key lz_…`). Another token starting
+      // with a dash is a value, such as `--amount -20.00`.
+      if (value === undefined || (inline === undefined && isOption(value, lookup))) {
+        throw new UsageError(`--${flag} needs a value.`);
+      }
       add(flag, value);
     } else if (inline === undefined) {
       add(flag, true);
@@ -90,6 +94,14 @@ export function parseLine(argv: readonly string[], lookup: FlagLookup): ParsedLi
     }
   }
   return { positionals, values };
+}
+
+/** Whether `token` is `--`, `-h`, or one of the options `lookup` knows. */
+function isOption(token: string, lookup: FlagLookup): boolean {
+  if (token === "--" || token === "-h") return true;
+  if (!token.startsWith("--")) return false;
+  const [name = ""] = token.slice(2).split("=", 1);
+  return lookup(name) !== undefined || (name.startsWith("no-") && lookup(name.slice(3)) === false);
 }
 
 /** The last value given to a flag. */
@@ -225,9 +237,11 @@ export async function buildInput(
   if (args.length > operation.pathParams.length) {
     throw new UsageError(`Unexpected argument "${args[operation.pathParams.length]}".`);
   }
-  for (const [i, value] of args.entries()) {
-    if (value === "") throw new UsageError(`${names[i]} is empty.`);
-  }
+  operation.pathParams.forEach((param, i) => {
+    const value = args[i] ?? "";
+    if (value === "") throw new UsageError(`<${param.name}> is empty.`);
+    checkPathSegment(param.name, value);
+  });
 
   const jsonSpec = stringFlag(line.values, "json");
   let base: Record<string, unknown> | undefined;

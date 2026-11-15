@@ -2,7 +2,7 @@
  * The request, and where the key may go: only to the base URL's origin,
  * never in a URL, never through a redirect.
  */
-import { UsageError } from "./args.js";
+import { UsageError } from "./usage-error.js";
 
 export const DEFAULT_API_URL = "https://app.louez.io/api/v1";
 
@@ -44,20 +44,65 @@ export function resolveBaseUrl(raw: string, insecure: boolean): URL {
   return url;
 }
 
+/** `%2F` and `%5C`: a slash or a backslash, encoded inside one segment. */
+const ENCODED_SEPARATOR = /%2f|%5c/i;
+
+/** `.` or `..`, as is or percent-encoded (`%2e%2e`, `.%2E`). */
+function isDotSegment(segment: string): boolean {
+  const decoded = segment.replace(/%2e/gi, ".");
+  return decoded === "." || decoded === "..";
+}
+
 /**
- * The URL of `path` under the base URL. `path` is relative to it, so a value
- * that would leave its origin (`//host`, `https://…`) is refused.
+ * Refuses a path parameter's value that would be read as more than one
+ * segment, or as a move up or in place: `.` and `..` (also encoded), a
+ * slash or a backslash, as is or encoded.
+ */
+export function checkPathSegment(name: string, value: string): void {
+  if (isDotSegment(value) || /[/\\]/.test(value) || ENCODED_SEPARATOR.test(value)) {
+    throw new UsageError(
+      `<${name}> may not be "." or "..", nor hold a slash or a backslash, as is or encoded.`,
+    );
+  }
+}
+
+/** Whether `url` is the base URL's path, or under it, on its origin. */
+export function isUnderBase(base: URL, url: URL): boolean {
+  const basePath = base.pathname === "/" ? "" : base.pathname;
+  return (
+    url.origin === base.origin &&
+    (url.pathname === basePath || url.pathname.startsWith(`${basePath}/`))
+  );
+}
+
+/**
+ * The URL of `path`, under the base URL's path and on its origin, or a
+ * usage error and nothing sent. Its path part is refused when it is not
+ * relative to the base (`//host`, `https://…`, no leading slash), holds a
+ * space or a backslash, an encoded slash or backslash, or a `.` or `..`
+ * segment, as is or encoded; the URL built is then checked again, after the
+ * URL parser normalised it.
  */
 export function requestUrl(base: URL, path: string, query?: URLSearchParams): URL {
   if (!path.startsWith("/") || path.startsWith("//") || /[\\\s]/.test(path)) {
-    throw new UsageError(`The path "${path}" must start with a single / and hold no space.`);
+    throw new UsageError(
+      `The path "${path}" must start with a single / and hold no space or backslash.`,
+    );
+  }
+  const [pathname = "", search] = path.split("?", 2);
+  if (ENCODED_SEPARATOR.test(pathname)) {
+    throw new UsageError(`The path "${path}" may not hold an encoded slash or backslash.`);
+  }
+  if (pathname.split("/").some(isDotSegment)) {
+    throw new UsageError(`The path "${path}" may not hold a "." or ".." segment.`);
   }
   const url = new URL(base.href);
-  const [pathname = "", search] = path.split("?", 2);
-  url.pathname = `${base.pathname}${pathname}`;
+  url.pathname = `${base.pathname === "/" ? "" : base.pathname}${pathname}`;
   url.search = search ?? "";
   if (query) for (const [name, value] of query) url.searchParams.append(name, value);
-  if (url.origin !== base.origin) throw new UsageError(`The path "${path}" leaves ${base.origin}.`);
+  if (!isUnderBase(base, url)) {
+    throw new UsageError(`The path "${path}" leaves ${base.origin}${base.pathname}.`);
+  }
   return url;
 }
 
@@ -96,7 +141,8 @@ interface OutgoingRequest {
   url: URL;
   headers: Headers;
   body?: unknown;
-  timeoutMs: number;
+  /** Ends the request when it waited too long for its answer. */
+  signal: AbortSignal;
 }
 
 /**
@@ -112,7 +158,7 @@ export async function send(fetchImpl: typeof fetch, request: OutgoingRequest): P
       headers: request.headers,
       body: request.body === undefined ? undefined : JSON.stringify(request.body),
       redirect: "manual",
-      signal: AbortSignal.timeout(request.timeoutMs),
+      signal: request.signal,
     });
     text = await response.text();
   } catch (error) {

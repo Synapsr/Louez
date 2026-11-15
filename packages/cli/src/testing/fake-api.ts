@@ -113,15 +113,18 @@ export async function testIo(
     secret?: string;
     tty?: boolean;
     fetch?: typeof fetch;
-    /** Called on each sleep; advances the clock by the time asked. */
-    onSleep?: (ms: number) => void;
     startAt?: number;
+    /** Ctrl-C arrives during this sleep (1 for the first). */
+    interruptOnSleep?: number;
+    /** Every request runs out of time at once. */
+    timedOut?: boolean;
   } = {},
 ): Promise<TestIo> {
   let stdout = "";
   let stderr = "";
   let clock = options.startAt ?? Date.parse("2026-11-15T10:00:00Z");
   const sleeps: number[] = [];
+  const interrupt = new AbortController();
   return {
     argv,
     env: options.env ?? {},
@@ -136,12 +139,21 @@ export async function testIo(
       return text;
     },
     fetch: options.fetch ?? globalThis.fetch,
+    // No real waiting: a sleep moves the clock by the time asked.
     sleep: async (ms) => {
       sleeps.push(ms);
       clock += ms;
-      options.onSleep?.(ms);
+      if (sleeps.length === options.interruptOnSleep) interrupt.abort();
     },
     now: () => clock,
+    // No real timer: a request never times out, or does at once.
+    timeoutSignal: () =>
+      options.timedOut
+        ? AbortSignal.abort(
+            new DOMException("The operation was aborted due to timeout", "TimeoutError"),
+          )
+        : new AbortController().signal,
+    watchInterrupt: () => ({ signal: interrupt.signal, stop: () => {} }),
     configDir: options.configDir ?? (await tempDir()),
     newIdempotencyKey: () => "generated-key-1",
     out: () => stdout,

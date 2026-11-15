@@ -41,9 +41,12 @@ function table(rows: Array<[string, string]>): string {
 const EXIT_CODES_HELP = `Exit codes:
   0  The call succeeded; its JSON is on standard output.
   1  The API refused or failed; its error JSON and one line are on standard error.
-  2  The command line is wrong: an unknown command or flag, a missing value.
+  2  The command cannot run as given, and nothing was sent: an unknown command
+     or flag, a missing value, no API key, a URL or a path it refuses, an
+     unsafe config file.
   3  A person must act first: open the approval link printed on standard error,
-     or check the preview, then run the printed command (or use --wait).
+     or check the preview, then run the printed command (or use --wait). Also
+     when Ctrl-C ends --wait: the approval stays open.
   4  Louez could not be reached, or did not answer in time.`;
 
 const globalRows = (): Array<[string, string]> =>

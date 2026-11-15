@@ -52,8 +52,19 @@ process.exitCode = await main({
   readSecret,
   readFile: (path) => readFile(path, "utf8"),
   fetch: globalThis.fetch,
-  sleep: (ms) => sleep(ms),
+  sleep: (ms, signal) =>
+    sleep(ms, undefined, { signal }).catch((error: unknown) => {
+      // An abort ends the wait early; the caller reads the signal.
+      if (!signal?.aborted) throw error;
+    }),
   now: () => Date.now(),
+  timeoutSignal: (ms) => AbortSignal.timeout(ms),
+  watchInterrupt: () => {
+    const controller = new AbortController();
+    const onInterrupt = () => controller.abort();
+    process.once("SIGINT", onInterrupt);
+    return { signal: controller.signal, stop: () => process.off("SIGINT", onInterrupt) };
+  },
   configDir: defaultConfigDir(process.env, process.platform, homedir()),
   newIdempotencyKey: () => randomUUID(),
 });

@@ -214,6 +214,142 @@ describe("a call", () => {
   });
 });
 
+describe("a request that runs out of time", () => {
+  test("exits 4, prints the write's idempotency key to repeat it with, and sends nothing again", async () => {
+    let sent = 0;
+    // A server that never answers: the request ends only when its signal aborts.
+    const fetch: typeof globalThis.fetch = (_, init) => {
+      sent++;
+      return new Promise((_, reject) => {
+        const signal = init?.signal;
+        if (signal?.aborted) reject(signal.reason);
+        signal?.addEventListener("abort", () => reject(signal.reason));
+      });
+    };
+    const run = await louez(RECORD, {
+      env: { LOUEZ_API_URL: "https://app.louez.test/api/v1" },
+      fetch,
+      timedOut: true,
+    });
+    assert.equal(run.code, EXIT.network);
+    assert.match(run.err(), /did not answer within 120 s/);
+    assert.match(run.err(), /again with --idempotency-key generated-key-1/);
+    assert.equal(run.out(), "");
+    assert.equal(sent, 1);
+  });
+});
+
+describe("the saved key", () => {
+  /** Saves KEY for `server` with `auth login`. */
+  async function login(server: FakeApi): Promise<string> {
+    const configDir = await tempDir();
+    const run = await louez(["auth", "login"], {
+      configDir,
+      env: { LOUEZ_API_KEY: "", LOUEZ_API_URL: server.url },
+      stdin: KEY,
+    });
+    assert.equal(run.code, EXIT.ok);
+    return configDir;
+  }
+
+  test("goes only to the origin it was saved for: another URL is refused, naming both, and gets nothing", async () => {
+    const saved = await serve((_, response) => sendJson(response, 200, { items: [] }));
+    const configDir = await login(saved);
+    const other = await startFakeApi((_, response) => sendJson(response, 200, { items: [] }));
+    try {
+      for (const [argv, env] of [
+        [["stores", "list", "--api-url", other.url], { LOUEZ_API_KEY: "" }],
+        [["stores", "list"], { LOUEZ_API_KEY: "", LOUEZ_API_URL: other.url }],
+      ] as const) {
+        const run = await louez([...argv], { configDir, env });
+        assert.equal(run.code, EXIT.usage);
+        assert.match(
+          run.err(),
+          new RegExp(`belongs to ${saved.origin}; it is never sent to ${other.origin}`),
+        );
+      }
+      assert.equal(other.received.length, 0);
+      // Only login's check reached the server it was saved for.
+      assert.equal(saved.received.length, 1);
+
+      // With no URL given, the saved key goes to the URL it was saved with.
+      const call = await louez(["stores", "list"], {
+        configDir,
+        env: { LOUEZ_API_KEY: "", LOUEZ_API_URL: "" },
+      });
+      assert.equal(call.code, EXIT.ok);
+      assert.equal(saved.received.length, 2);
+    } finally {
+      await other.close();
+    }
+  });
+
+  test("an explicit key goes with the URL given with it, and the saved key never does", async () => {
+    const saved = await serve((_, response) => sendJson(response, 200, { items: [] }));
+    const configDir = await login(saved);
+    const other = await startFakeApi((_, response) => sendJson(response, 200, { items: [] }));
+    try {
+      const run = await louez(["stores", "list"], {
+        configDir,
+        env: { LOUEZ_API_KEY: "lz_other_server_key", LOUEZ_API_URL: other.url },
+      });
+      assert.equal(run.code, EXIT.ok);
+      assert.deepEqual(
+        other.received.map((request) => request.headers.authorization),
+        ["Bearer lz_other_server_key"],
+      );
+    } finally {
+      await other.close();
+    }
+  });
+});
+
+describe("credentials in what is written", () => {
+  test("a key given where a value was expected is a missing value, and never echoed", async () => {
+    let fetched = 0;
+    const fetch: typeof globalThis.fetch = async () => {
+      fetched++;
+      return Response.json({});
+    };
+    const run = await louez(
+      ["api", "POST", "/reservations", "--json", "--api-key", "lz_SECRET_1234"],
+      { fetch },
+    );
+    assert.equal(run.code, EXIT.usage);
+    assert.match(run.err(), /--json needs a value/);
+    assert.doesNotMatch(run.err() + run.out(), /lz_SECRET_1234/);
+    assert.equal(fetched, 0);
+  });
+
+  test("every key given or in use is replaced wherever it appears, an API's answer included", async () => {
+    const echoed = await louez(["stores", "list", "lz_SECRET_5678", "--api-key", "lz_SECRET_5678"]);
+    assert.equal(echoed.code, EXIT.usage);
+    assert.match(echoed.err(), /Unexpected argument "\[redacted\]"/);
+    assert.doesNotMatch(echoed.err(), /lz_SECRET_5678/);
+
+    // A server that quotes the request's credential back, in its message and as JSON.
+    await serve((request, response) =>
+      sendJson(
+        response,
+        401,
+        apiError(401, "UNAUTHENTICATED", `Not a key: ${request.headers.authorization}`, {
+          sent: request.headers.authorization,
+        }),
+      ),
+    );
+    const quoted = await louez(["stores", "list"]);
+    assert.equal(quoted.code, EXIT.api);
+    assert.match(quoted.err(), /Not a key: Bearer \[redacted\]/);
+    assert.match(quoted.err(), /"sent":"Bearer \[redacted\]"/);
+
+    // A key with a character JSON escapes is hidden in its JSON form too.
+    const escaped = await louez(["stores", "list"], { env: { LOUEZ_API_KEY: 'lz_quote"key' } });
+    assert.equal(escaped.code, EXIT.api);
+    assert.match(escaped.err(), /"sent":"Bearer \[redacted\]"/);
+    assert.doesNotMatch(escaped.err(), /lz_quote/);
+  });
+});
+
 describe("usage errors", () => {
   test("exit 2 without sending anything", async () => {
     let fetched = 0;
@@ -230,6 +366,12 @@ describe("usage errors", () => {
       [["stores", "list"], { LOUEZ_API_URL: "http://louez.example/api/v1" }, /not https/],
       [["api", "GET", "//evil.example/x"], {}, /single \//],
       [["api", "FETCH", "/x"], {}, /not one of/],
+      [["api", "GET", "/../../outside"], {}, /"\." or "\.\." segment/],
+      [["api", "GET", "/%2e%2e/outside"], {}, /"\." or "\.\." segment/],
+      [["api", "GET", "/reservations%2F..%2Foutside"], {}, /encoded slash/],
+      [["reservations", "get", ".."], {}, /may not be "\." or "\.\."/],
+      [["reservations", "get", "."], {}, /may not be "\." or "\.\."/],
+      [["reservations", "get", "a/b"], {}, /nor hold a slash/],
     ];
     for (const [argv, env, message] of cases) {
       const run = await louez(argv, { env, fetch });
@@ -431,6 +573,43 @@ describe("--wait", () => {
   });
 });
 
+describe("Ctrl-C while waiting", () => {
+  /** Reads `pending`, then `approved`: a write would be carried out on the second read. */
+  const api2 = () =>
+    serve((request, response) => {
+      if (request.method === "GET") {
+        const reads = server.received.filter((r) => r.method === "GET").length;
+        sendJson(response, 200, {
+          id: "apr_1",
+          kind: "operation_approval",
+          status: reads === 1 ? "pending" : "approved",
+          failure: null,
+          decision: null,
+        });
+      } else if (request.headers["louez-confirmation"] === "apr_1") {
+        sendJson(response, 200, payment);
+      } else {
+        sendJson(response, 412, approvalRequired("https://app.louez.test/handoffs/apr_1"));
+      }
+    });
+  let server: FakeApi;
+
+  test("ends the wait: the approval stays open, nothing is carried out, exit 3 with the command to run", async () => {
+    for (const interruptOnSleep of [1, 2]) {
+      server = await api2();
+      const run = await louez([...RECORD, "--wait"], { interruptOnSleep });
+      assert.equal(run.code, EXIT.person);
+      assert.match(run.err(), /stopped waiting\. Nothing was done, and the approval stays open/);
+      assert.match(run.err(), /--method cash --confirmation apr_1\n/);
+      // Interrupted during the first or the second wait: as many reads before it, and no write after.
+      assert.equal(server.received.filter((r) => r.method === "GET").length, interruptOnSleep - 1);
+      assert.equal(server.received.filter((r) => r.method === "POST").length, 1);
+      await server.close();
+      api = undefined;
+    }
+  });
+});
+
 describe("auth", () => {
   const stores = {
     items: [{ id: "st_1", name: "Test store", slug: "test", role: "owner", links: {} }],
@@ -509,7 +688,15 @@ describe("help", () => {
     const top = await louez(["--help"]);
     assert.equal(top.code, EXIT.ok);
     assert.match(top.out(), /\n {2}reservations +Rental requests/);
-    assert.match(top.out(), /Exit codes:\n {2}0 .*\n {2}1 .*\n {2}2 .*\n {2}3 /);
+    assert.match(
+      top.out(),
+      /Exit codes:\n {2}0 .*\n {2}1 .*\n {2}2 [\s\S]*?\n {2}3 [\s\S]*?\n {2}4 /,
+    );
+    // The key on the command line is visible to others: the option says so.
+    assert.match(
+      top.out(),
+      /--api-key <key> [\s\S]*list of processes[\s\S]*history[\s\S]*LOUEZ_API_KEY/,
+    );
 
     const group = await louez(["payments", "--help"]);
     assert.match(group.out(), /record <reservationId> +Record Payment/);

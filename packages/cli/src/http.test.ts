@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { after, describe, test } from "node:test";
 
-import { UsageError } from "./args.js";
-import { buildHeaders, requestUrl, resolveBaseUrl, send } from "./http.js";
+import { buildHeaders, isUnderBase, requestUrl, resolveBaseUrl, send } from "./http.js";
+import { UsageError } from "./usage-error.js";
 import { startFakeApi, type FakeApi } from "./testing/fake-api.js";
 
 const servers: FakeApi[] = [];
@@ -83,6 +83,47 @@ describe("the base URL", () => {
   });
 });
 
+describe("a request's path", () => {
+  const base = resolveBaseUrl("https://app.louez.io/api/v1", false);
+
+  test("never leaves the base path, whatever the spelling, and is refused before anything is built", () => {
+    for (const path of [
+      "/../../outside",
+      "/reservations/../../outside",
+      "/./reservations",
+      "/%2e%2e/outside",
+      "/%2E%2e/outside",
+      "/.%2e/outside",
+      "/%2e/reservations",
+      "/reservations/%2F/x",
+      "/reservations%2f..%2foutside",
+      "/reservations/%5C..",
+      "/reservations\\..\\outside",
+    ]) {
+      assert.throws(() => requestUrl(base, path), UsageError, path);
+    }
+    // A query is not a path: dots and encoded slashes are values there.
+    assert.equal(
+      requestUrl(base, "/search?query=..%2Fx").href,
+      "https://app.louez.io/api/v1/search?query=..%2Fx",
+    );
+  });
+
+  test("is checked again once built: under the base path, on its origin", () => {
+    assert.ok(isUnderBase(base, new URL("https://app.louez.io/api/v1")));
+    assert.ok(isUnderBase(base, new URL("https://app.louez.io/api/v1/reservations")));
+    assert.ok(!isUnderBase(base, new URL("https://app.louez.io/api/v10/reservations")));
+    assert.ok(!isUnderBase(base, new URL("https://app.louez.io/api")));
+    assert.ok(!isUnderBase(base, new URL("https://other.louez.io/api/v1/reservations")));
+    assert.ok(
+      isUnderBase(
+        resolveBaseUrl("https://louez.example", false),
+        new URL("https://louez.example/x"),
+      ),
+    );
+  });
+});
+
 describe("sending", () => {
   test("never follows a redirect: the next server gets nothing, the key least of all", async () => {
     const elsewhere = await startFakeApi((_, response) => response.end("{}"));
@@ -97,7 +138,7 @@ describe("sending", () => {
       method: "GET",
       url: new URL(`${api.url}/stores`),
       headers: buildHeaders({ apiKey: "lz_secret", userAgent: "t", hasBody: false }),
-      timeoutMs: 5000,
+      signal: new AbortController().signal,
     });
     assert.ok(result.ok);
     assert.equal(result.answer.status, 302);
@@ -112,7 +153,7 @@ describe("sending", () => {
       method: "GET",
       url: new URL(`${api.url}/stores`),
       headers: new Headers(),
-      timeoutMs: 5000,
+      signal: new AbortController().signal,
     });
     assert.equal(result.ok, false);
   });

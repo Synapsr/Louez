@@ -1,15 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import {
-  UsageError,
-  buildInput,
-  commandWords,
-  operationLookup,
-  parseLine,
-  type SourceReader,
-} from "./args.js";
+import { buildInput, commandWords, operationLookup, parseLine, type SourceReader } from "./args.js";
 import type { Operation } from "./manifest.js";
+import { UsageError } from "./usage-error.js";
 
 const recordPayment: Operation = {
   id: "record_payment",
@@ -88,13 +82,13 @@ describe("the command line", () => {
 
   test("takes path parameters as positional arguments, encoded", async () => {
     const { path } = await input(recordPayment, [
-      "res/1 ?",
+      "res 1?é",
       "--type",
       "rental",
       "--amount",
       "10.00",
     ]);
-    assert.equal(path, "/reservations/res%2F1%20%3F/payments");
+    assert.equal(path, "/reservations/res%201%3F%C3%A9/payments");
   });
 
   test("refuses a missing or an extra positional argument", async () => {
@@ -181,6 +175,41 @@ describe("the command line", () => {
       ).query.toString(),
       "status=draft&limit=2",
     );
+  });
+
+  test("reads a known option where a value should be as a missing value, but a negative number as a value", async () => {
+    for (const argv of [
+      ["r1", "--type", "rental", "--amount", "--api-key", "lz_x"],
+      ["r1", "--type", "rental", "--amount", "--no-is-active"],
+      ["r1", "--type", "rental", "--amount", "--notes=x"],
+      ["r1", "--type", "rental", "--amount", "-h"],
+      ["r1", "--type", "rental", "--amount", "--"],
+    ]) {
+      await assert.rejects(input(recordPayment, argv), /--amount needs a value/, argv.join(" "));
+    }
+    const { body } = await input(recordPayment, [
+      "r1",
+      "--type",
+      "rental",
+      "--amount",
+      "-20.00",
+      "--notes",
+      "--not-a-flag",
+    ]);
+    assert.deepEqual(body, { type: "rental", amount: "-20.00", notes: "--not-a-flag" });
+  });
+
+  test("refuses a path parameter that would be read as another segment, as is or encoded", async () => {
+    for (const value of ["..", ".", "%2e%2E", ".%2e", "%2E", "a/b", "a\\b", "a%2Fb", "a%5cb"]) {
+      await assert.rejects(
+        input(recordPayment, [value, "--type", "rental", "--amount", "1"]),
+        /may not be "\." or "\.\.", nor hold a slash or a backslash/,
+        value,
+      );
+    }
+    // A dot inside a value is a value.
+    const { path } = await input(recordPayment, ["r.1..x", "--type", "rental", "--amount", "1"]);
+    assert.equal(path, "/reservations/r.1..x/payments");
   });
 
   test("refuses what the operation does not take", async () => {
