@@ -5,17 +5,22 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 
 import { createTestAccessTokens } from "@louez/auth/testing";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
-import type { RecordedPayment, RecordedPaymentDraft } from "@louez/api/platform/ports";
+import type {
+  RecordedPayment,
+  RecordedPaymentDraft,
+  RecordedRefund,
+} from "@louez/api/platform/ports";
 import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
 
-// Who the three payment writes ask, by kind of credential and the
+// Who the four payment writes ask, by kind of credential and the
 // connection's option: an API key and an assistant's connection (OAuth),
 // option on or off, need the user's approval before each of record_payment,
-// record_deposit_return and delete_payment, through the real MCP handler, and
+// record_deposit_return, record_refund and delete_payment, through the real
+// MCP handler, and
 // the approval, once the user approved it, lets the call run once; a
 // dashboard session, through the
 // dashboard's RPC handler, runs directly. Each call declares money, the
@@ -80,6 +85,7 @@ const CASES: Array<{ kind: Kind; confirmSensitive: boolean; asked: boolean }> = 
 const RPC_NAME: Record<string, string> = {
   record_payment: "record",
   record_deposit_return: "recordDepositReturn",
+  record_refund: "recordRefund",
   delete_payment: "delete",
 };
 
@@ -97,7 +103,7 @@ describe(
     let rpc: (name: string, input: Json) => Promise<unknown>;
     /** The owner's answer on an approval's page, with their session. */
     let decide: (input: Json) => Promise<unknown>;
-    let recorded: RecordedPayment[] = [];
+    let recorded: Array<RecordedPayment | RecordedRefund> = [];
     let counter = 0;
     /** The consequences each confirmation handed the rule, in order. */
     let emitted: unknown[] = [];
@@ -141,6 +147,27 @@ describe(
             origin: payment.origin,
           });
         },
+      },
+      // The app's refund writer, as a stand-in: it notes the refund and writes its row.
+      paymentRefunds: {
+        insert: async (tx: import("@louez/db").Transaction, refund: RecordedRefund) => {
+          recorded.push(refund);
+          const [row] = await tx
+            .insert(louezDb.payments)
+            .values({
+              reservationId: refund.reservationId,
+              amount: refund.amount,
+              type: refund.type,
+              method: refund.method,
+              status: "completed",
+              origin: "manual",
+              currency: refund.currency,
+              refundOfPaymentId: refund.paymentId,
+            })
+            .$returningId();
+          return { id: String(row?.id) };
+        },
+        creditNote: async () => null,
       },
     };
 
@@ -295,6 +322,7 @@ describe(
       }
     }
 
+    /** A reservation with a deposit and a rental payment, both taken by hand. */
     async function reservationWithDeposit() {
       const id = `cc_res_${String(++counter).padStart(14, "0")}`;
       await louezDb.db.insert(louezDb.reservations).values({
@@ -319,7 +347,17 @@ describe(
           status: "completed",
         })
         .$returningId();
-      return { id, depositId: deposit.id };
+      const [rental] = await louezDb.db
+        .insert(louezDb.payments)
+        .values({
+          reservationId: id,
+          amount: "80.00",
+          type: "rental",
+          method: "card",
+          status: "completed",
+        })
+        .$returningId();
+      return { id, depositId: deposit.id, rentalId: rental.id };
     }
 
     const typesOf = async (reservationId: string) =>
@@ -336,7 +374,7 @@ describe(
         const auth = kind === "session" ? null : await authorization(kind, confirmSensitive);
         const send = (name: string, args: Json) =>
           auth === null ? sessionCall(name, args) : mcpCall(auth, name, args);
-        const { id, depositId } = await reservationWithDeposit();
+        const { id, depositId, rentalId } = await reservationWithDeposit();
         const calls = [
           {
             name: "record_payment",
@@ -349,6 +387,13 @@ describe(
             name: "record_deposit_return",
             arguments: { reservationId: id, amount: "50.00", method: "cash" },
             replay: "DEPOSIT_RETURN_EXCEEDS_BALANCE",
+          },
+          // Part of the rental given back: the same refund again is still
+          // within what is left, so the approval is what refuses it.
+          {
+            name: "record_refund",
+            arguments: { paymentId: rentalId, amount: "30.00", method: "cash" },
+            replay: "APPROVAL_INVALID",
           },
           // Once deleted, the payment is not found: refused before anything is asked.
           {
@@ -398,8 +443,8 @@ describe(
           assert.equal(again.error?.code, replay, `${call.name}: an approval works once`);
           if (replay === "APPROVAL_INVALID") assert.equal(again.error?.details?.reason, "used");
         }
-        // Each ran once: the payment, the return, and the deposit deleted.
-        assert.deepEqual(await typesOf(id), ["rental", "deposit_return"]);
+        // Each ran once: the payment, the return, the refund, and the deposit deleted.
+        assert.deepEqual(await typesOf(id), ["rental", "rental", "rental", "deposit_return"]);
       });
     }
   },

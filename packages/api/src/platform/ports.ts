@@ -82,6 +82,13 @@ export interface ApiPorts {
    */
   paymentRecords?: PaymentRecordsPort;
   /**
+   * The app's writer of a refund the store gave by hand, and of its credit
+   * note (services/payment-records.ts, `recordPaymentRefund`): the row's
+   * billing facts and the invoicing are the app's. Absent where no procedure
+   * needs it.
+   */
+  paymentRefunds?: PaymentRefundsPort;
+  /**
    * What the team procedures read from the app (services/team.ts). Absent
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
@@ -207,6 +214,49 @@ export interface PaymentRecordsPort {
    * service.
    */
   insert: (tx: Transaction, payment: RecordedPayment) => Promise<void>;
+}
+
+/**
+ * A refund the store gave by hand, as the app's writer takes it: one positive
+ * row pointing at the payment it gives back, in that payment's currency,
+ * which the approval showed. The payment it refunds keeps its amount.
+ */
+export interface RecordedRefund {
+  reservationId: string;
+  storeId: string;
+  /** The payment it gives back: the row's `refundOfPaymentId`. */
+  paymentId: string;
+  /** `deposit_return` for a kept deposit given back, `rental` otherwise. */
+  type: "rental" | "deposit_return";
+  method: RecordedPayment["method"];
+  /** As stored, `decimal(10,2)`, above zero. */
+  amount: string;
+  /** The refunded payment's currency, as the approval showed it. */
+  currency: string;
+  paidAt: Date;
+  notes: string | null;
+}
+
+/** The app's writer of the refunds a store gives by hand (`ApiPorts.paymentRefunds`). */
+export interface PaymentRefundsPort {
+  /**
+   * In the caller's transaction, under the reservation's lock: the refund's
+   * row, under a new id, and the reservation's mark for the billing service.
+   * Returns the row's id.
+   */
+  insert: (tx: Transaction, refund: RecordedRefund) => Promise<{ id: string }>;
+  /**
+   * Once the refund is committed: its credit note, when the store issues
+   * invoices. The number, or null when none was issued (invoicing off, or the
+   * note could not be produced: the refund stands). Never throws.
+   */
+  creditNote: (refund: {
+    paymentId: string;
+    refundId: string;
+    amount: string;
+    /** Who asked, for the invoicing log. */
+    source: string;
+  }) => Promise<string | null>;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */

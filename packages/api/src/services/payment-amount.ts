@@ -1,6 +1,6 @@
 /**
  * The amount a payment written by hand takes (`dashboard.payments.record`,
- * `recordDepositReturn`): a plain decimal, an optional minus sign, one to
+ * `recordDepositReturn`, `recordRefund`): a plain decimal, an optional minus sign, one to
  * eight integer digits, at most two decimals, and not zero. That is exactly
  * what its row, `payments.amount` (`decimal(10,2)`), holds as sent: no
  * rounding, no text MySQL would read otherwise ("1e2", " 5", "+5", "5.",
@@ -57,5 +57,41 @@ export function depositReturnAmount(raw: string, returnable: number): DepositRet
   const amount = paymentAmount(raw);
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
   if (parseFloat(amount) > returnable) return { ok: false, refusal: "exceeds_balance" };
+  return { ok: true, amount };
+}
+
+/**
+ * A stored or accepted amount (`decimal(10,2)`, "80.00", "-20.00") in minor
+ * units, as an exact integer: what the refund's ceiling is counted in.
+ */
+export function minorUnits(amount: string): number {
+  const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(amount.trim());
+  if (!match) return Number.NaN;
+  const [, sign = "", whole = "", fraction = ""] = match;
+  const minor = Number(whole + fraction.padEnd(2, "0"));
+  return sign ? -minor : minor;
+}
+
+/** Minor units written back as a plain decimal with two places ("-2000" is "-20.00"). */
+export function fromMinorUnits(minor: number): string {
+  const digits = String(Math.abs(minor)).padStart(3, "0");
+  return `${minor < 0 ? "-" : ""}${digits.slice(0, -2)}.${digits.slice(-2)}`;
+}
+
+export type RefundVerdict =
+  | { ok: true; amount: string }
+  | { ok: false; refusal: "amount_invalid" | "exceeds_refundable" };
+
+/**
+ * The amount of a refund given by hand (`dashboard.payments.recordRefund`),
+ * as the write judges it before it asks: `paymentAmount`, above zero, and at
+ * most `refundableMinor`, the payment's amount less the completed refunds
+ * linked to it, in minor units, as the write counts it under the
+ * reservation's lock. Its display judges it the same way.
+ */
+export function refundAmount(raw: string, refundableMinor: number): RefundVerdict {
+  const amount = paymentAmount(raw);
+  if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
+  if (minorUnits(amount) > refundableMinor) return { ok: false, refusal: "exceeds_refundable" };
   return { ok: true, amount };
 }

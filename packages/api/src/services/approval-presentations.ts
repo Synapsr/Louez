@@ -18,7 +18,13 @@ import {
   type HeadlineKey,
 } from "./approval-display";
 import { oneLine } from "./approval-preview";
-import { depositReturnAmount, recordedPaymentAmount } from "./payment-amount";
+import {
+  depositReturnAmount,
+  fromMinorUnits,
+  minorUnits,
+  recordedPaymentAmount,
+  refundAmount,
+} from "./payment-amount";
 import type { StatusChangePreview } from "./reservation-status";
 
 /**
@@ -156,6 +162,78 @@ export function recordDepositReturnPresentation(
       ],
     },
     facts: {
+      reservation: details.reservationId,
+      amount,
+      currency: currency.toUpperCase(),
+      method,
+    },
+  };
+}
+
+/**
+ * A refund the store gave by hand, recorded against one payment
+ * (`dashboard.payments.recordRefund`). Every amount is in the payment's own
+ * currency, which the refund's row takes. `refundedMinor` is what the
+ * completed refunds linked to it already gave back, as the writer counts it
+ * under the reservation's lock.
+ */
+export function recordRefundPresentation(
+  details: {
+    paymentId: string;
+    reservationId: string;
+    number: string;
+    amount: string;
+    method: string;
+  },
+  payment: {
+    type: string;
+    amount: string;
+    method: string;
+    currency: string;
+    paidAt: Date;
+    refundedMinor: number;
+    paidMinor: number;
+  },
+): ApprovalPresentation | null {
+  const refundableMinor = payment.paidMinor - payment.refundedMinor;
+  // Judged as the write judges it: a refund it refuses gets no display.
+  const verdict = refundAmount(details.amount, refundableMinor);
+  const paid = plainDecimal(payment.amount);
+  const { currency, type } = payment;
+  const { method } = details;
+  if (!verdict.ok || !paid || !CURRENCY.test(currency)) return null;
+  if (!isChoice("paymentType", type) || !isChoice("paymentMethod", payment.method)) return null;
+  if (!isChoice("paymentMethod", method)) return null;
+  const { amount } = verdict;
+  const left = refundableMinor - minorUnits(amount);
+  return {
+    display: {
+      headline: headline("recordRefund", {}),
+      facts: [
+        bookingNumber(details.reservationId, details.number),
+        fact("refundGiven", {
+          amount: money(amount, currency),
+          method: choice("paymentMethod", method),
+        }),
+        fact(
+          "refundOf",
+          {
+            type: choice("paymentType", type),
+            amount: money(paid, currency),
+            at: dateTime(payment.paidAt),
+            method: choice("paymentMethod", payment.method),
+          },
+          details.paymentId,
+        ),
+        fact("refundBalance", {
+          refunded: money(fromMinorUnits(payment.refundedMinor), currency),
+          left: money(fromMinorUnits(left), currency),
+        }),
+        fact("recordOnly", {}),
+      ],
+    },
+    facts: {
+      payment: details.paymentId,
       reservation: details.reservationId,
       amount,
       currency: currency.toUpperCase(),
