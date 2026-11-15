@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 
+import type { Transport } from "./actor";
 import { LOUEZ_ERROR_CODES } from "./error-registry";
 
 /**
@@ -132,6 +133,19 @@ export const platformErrors = {
   idempotencyConflict: () =>
     apiError("CONFLICT", "IDEMPOTENCY_KEY_REUSED", {
       message: "This idempotency key was already used with a different input.",
+    }),
+  /**
+   * A write that requires an idempotency key (`meta.requiresIdempotencyKey`),
+   * called by a key or a token without one. Each transport is told what it
+   * sends: the header on REST, the argument over MCP.
+   */
+  idempotencyKeyRequired: (transport: Transport) =>
+    apiError("BAD_REQUEST", "IDEMPOTENCY_KEY_REQUIRED", {
+      message:
+        transport === "mcp"
+          ? "This tool needs an idempotencyKey argument, so that a retry never does it twice. Nothing was done. Call again with a new unique string, such as a UUID, and pass the same one if you retry this action."
+          : "This operation needs an Idempotency-Key header, so that a retry never does it twice. Nothing was done. Send the request again with a new unique key, such as a UUID, and the same key if you retry it.",
+      details: transport === "mcp" ? { argument: "idempotencyKey" } : { header: "Idempotency-Key" },
     }),
   operationInProgress: () =>
     apiError("CONFLICT", "OPERATION_IN_PROGRESS", {
