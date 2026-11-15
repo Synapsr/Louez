@@ -1748,6 +1748,45 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.doesNotMatch(redacted?.summary ?? "", /Ada/);
   });
 
+  test("a customer e-mail of a reservation write the outbox gave up on shows, named by its type", async () => {
+    const reservationId = await reservation("quote");
+    const given = (type: string) => ({
+      id: nextId("ib_eff"),
+      storeId: STORE,
+      reservationId,
+      customerId: CUSTOMER,
+      type,
+      // Abandoned at once: a payload its sender could not read.
+      payload: { storeId: STORE },
+      status: "abandoned" as const,
+      attempts: 1,
+      nextAttemptAt: ago(HOUR),
+      createdAt: ago(3 * HOUR),
+    });
+    const rows = [
+      given("reservation.quoteEmail"),
+      given("reservation.confirmationEmail"),
+      given("reservation.modifiedEmail"),
+    ];
+    await louezDb.db.insert(louezDb.apiEffects).values(rows);
+
+    const items = ofType((await list()).items, "message_not_sent");
+    const byId = new Map(items.map((item) => [item.id, item]));
+    for (const [row, label, notification] of [
+      [rows[0], "quote", "customer_quote_sent"],
+      [rows[1], "confirmation message", "customer_reservation_confirmed"],
+      [rows[2], "modification message", "customer_reservation_modified"],
+    ] as const) {
+      const item = byId.get(`message_not_sent:${row?.id}`);
+      assert.match(item?.summary ?? "", new RegExp(`The ${label} \\(email\\) to the customer of`));
+      assert.equal(item?.severity, "warning");
+      assert.deepEqual(
+        [item?.details.audience, item?.details.channel, item?.details.notification],
+        ["customer", "email", notification],
+      );
+    }
+  });
+
   test("an operation whose outcome is unknown shows to the connection that made it and to the dashboard", async () => {
     const agent = await apiKey();
     const otherAgent = await apiKey();

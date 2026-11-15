@@ -55,12 +55,59 @@ export const createReservationInstantAccessUrl = async ({
     createdAt: now,
   });
 
+  return instantAccessUrl(storeSlug, reservationId, token, redirectPath);
+};
+
+const instantAccessUrl = (
+  storeSlug: string,
+  reservationId: string,
+  token: string,
+  redirectPath?: string,
+) => {
   const searchParams = new URLSearchParams({ token });
   if (redirectPath) {
     searchParams.set("redirect", redirectPath);
   }
-
   return getStorefrontUrl(storeSlug, `/r/${reservationId}?${searchParams.toString()}`);
+};
+
+/**
+ * `createReservationInstantAccessUrl` for a sender that may run again (an
+ * outbox row): the token's row takes the given id, so a later run links the
+ * token the first one minted, and mints no second one.
+ */
+export const ensureReservationInstantAccessUrl = async ({
+  id,
+  ...input
+}: Omit<CreateInstantAccessUrlInput, "ttlMs"> & { id: string }): Promise<string> => {
+  const [existing] = await db
+    .select({ token: verificationCodes.token })
+    .from(verificationCodes)
+    .where(
+      and(
+        eq(verificationCodes.id, id),
+        eq(verificationCodes.storeId, input.storeId),
+        eq(verificationCodes.reservationId, input.reservationId),
+      ),
+    )
+    .limit(1);
+  let token = existing?.token;
+  if (!token) {
+    token = nanoid(64);
+    const now = new Date();
+    await db.insert(verificationCodes).values({
+      id,
+      email: input.customerEmail,
+      storeId: input.storeId,
+      code: "",
+      type: "instant_access",
+      token,
+      reservationId: input.reservationId,
+      expiresAt: new Date(now.getTime() + INSTANT_ACCESS_DEFAULT_TTL_MS),
+      createdAt: now,
+    });
+  }
+  return instantAccessUrl(input.storeSlug, input.reservationId, token, input.redirectPath);
 };
 
 export type InstantAccessFailure = "invalidToken" | "reservationNotFound";

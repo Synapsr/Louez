@@ -965,6 +965,26 @@ The payload **freezes**, from what was read under the locks:
 
 The new booking's messages belong to the creation lot.
 
+**Durable kinds for the writes of the API (consumers only).** The agents' date change and creation promise messages that the dashboard sends from memory today. Their senders exist, ahead of any producer (Producer before consumer, above), in `apps/web/lib/reservations/reservation-message-effects.ts`:
+
+| Effect type                               | Message                                                         | Payload                                                         | Read when it goes out                                                                       |
+| ----------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `reservation.modifiedEmail`               | the customer's e-mail that the dates changed (previous and new) | store, reservation, address, previous period, the change's user | the store, the reservation's dates now, the customer's name                                 |
+| `reservation.quoteEmail`                  | the customer's quote e-mail, with a link that signs them in     | store, reservation, address                                     | the reservation (skipped once no longer a quote), its lines, the store's quote setting      |
+| `reservation.confirmationEmail`           | the customer's confirmation of a booking created confirmed      | store, reservation, address                                     | the reservation (skipped unless confirmed, picked up or returned), the confirmation setting |
+| `reservation.createdPlatformNotification` | the platform's notice of a new reservation, one row per channel | channel, store, reservation, the total at creation              | the store, the number, the customer's name, the reservation's currency                      |
+
+- The address is the one the write announced, frozen as the status messages freeze their recipients: the e-mail goes where the preview said. The language is the reservation's, which no writer changes after its creation; the modification e-mail keeps the store country's language, as the dashboard's.
+- `reservation.customerMessage` is not reused for the confirmation: its `customer_request_accepted` is the answer to a request, not a booking the store made, and an older worker would send that acceptance for an unknown `notification`. A new type is retried by an older worker instead (below).
+- Each sender reads its payload through its schema; a payload it refuses is `abandoned` at once, kept, and shows in the inbox (`message_not_sent`) like any customer message the outbox gave up on.
+- The e-mails key their `sent` log row, and the sign-in link its token row, on the outbox row: a retry after a success the outbox did not record sends and mints nothing again. SMTP, Discord and fromHello take no key, so a send whose record was lost (the process died after the provider accepted it) goes out twice.
+- The modification e-mail adds the `note_updated` activity row the dashboard adds on success; a failed attempt adds none, as the outbox retries it. Without SMTP, every e-mail row is `skipped` (`email_not_configured`).
+- No store notification: the dashboard sends none for a reservation the store made, and a write by an agent is the store's.
+
+**Still sent from memory.** Every producer: the dashboard's `updateReservation` (its modification e-mail, now through the session-free `sendReservationModificationEmailForStore`) and `createManualReservation` (the quote, the confirmation, the platform's notice) are unchanged. The rental extension's e-mails (`extension-service.ts`) keep their own retry on the attempt's activity row.
+
+**Release order.** A worker with no sender for a row's type throws (`dispatchEffects`, `No sender for the effect`): the row fails, is retried 1, 2, 4… minutes later, and is abandoned at its eighth attempt, about two hours on, blocking later rows of its ordering key meanwhile. These senders deploy to every worker before a producer enqueues these types.
+
 **Test.** For each path:
 
 - a forced error after the change rolls the transaction back and leaves no row;

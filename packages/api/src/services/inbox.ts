@@ -1346,12 +1346,26 @@ const rejectedEinvoices: Source = async (window, shaper) => {
   });
 };
 
-const MESSAGE_TYPES = ["reservation.customerMessage", "reservation.storeNotification"] as const;
+/** The customer e-mails whose type names their message: their payload has no channel nor notification. */
+const CUSTOMER_EMAIL_NOTIFICATION: Record<string, string> = {
+  "reservation.modifiedEmail": "customer_reservation_modified",
+  "reservation.quoteEmail": "customer_quote_sent",
+  "reservation.confirmationEmail": "customer_reservation_confirmed",
+};
+
+const MESSAGE_TYPES = [
+  "reservation.customerMessage",
+  "reservation.storeNotification",
+  ...Object.keys(CUSTOMER_EMAIL_NOTIFICATION),
+];
 
 const MESSAGE_LABELS: Record<string, string> = {
   customer_request_accepted: "acceptance message",
   customer_request_rejected: "rejection message",
   customer_reservation_cancelled: "cancellation message",
+  customer_reservation_modified: "modification message",
+  customer_quote_sent: "quote",
+  customer_reservation_confirmed: "confirmation message",
 };
 
 /** A message to a customer, or a store notification, the outbox gave up on. */
@@ -1390,9 +1404,11 @@ const unsentMessages: Source = async (window, shaper) => {
 
   return rows.map((row) => {
     const payload = row.payload ?? {};
-    const channel = typeof payload.channel === "string" ? payload.channel : null;
-    const toCustomer = row.type === "reservation.customerMessage";
-    const notification = typeof payload.notification === "string" ? payload.notification : null;
+    const email = CUSTOMER_EMAIL_NOTIFICATION[row.type];
+    const channel = email ? "email" : typeof payload.channel === "string" ? payload.channel : null;
+    const toCustomer = row.type === "reservation.customerMessage" || Boolean(email);
+    const notification =
+      email ?? (typeof payload.notification === "string" ? payload.notification : null);
     const about =
       row.reservationId && row.number && row.startDate && row.endDate
         ? aboutReservation(shaper, {
