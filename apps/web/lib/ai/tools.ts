@@ -57,13 +57,18 @@ export type AIChatContext = {
   api?: AssistantApi;
 };
 
+/** The dashboard domains the assistant holds a client of: its tools reach no other. */
+export const ASSISTANT_API_DOMAINS = [
+  "analytics",
+  "categories",
+  "products",
+  "reservations",
+  "settings",
+] as const;
+
 /** The procedures the assistant calls, through a server-side client bound to the user's session. */
 export type AssistantApi = {
-  analytics: RouterClient<AppRouter["dashboard"]["analytics"]>;
-  categories: RouterClient<AppRouter["dashboard"]["categories"]>;
-  products: RouterClient<AppRouter["dashboard"]["products"]>;
-  reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
-  settings: RouterClient<AppRouter["dashboard"]["settings"]>;
+  [Domain in (typeof ASSISTANT_API_DOMAINS)[number]]: RouterClient<AppRouter["dashboard"][Domain]>;
 };
 
 function assistantApi(ctx: AIChatContext): AssistantApi {
