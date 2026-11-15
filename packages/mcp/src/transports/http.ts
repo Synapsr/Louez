@@ -6,14 +6,12 @@ import { ORPCError } from "@orpc/server";
 import type { AccountActor } from "@louez/api/platform/actor";
 import { platformErrors } from "@louez/api/platform/errors";
 import { largeBodyBusy, takeLargeBodyPlace } from "@louez/api/platform/large-bodies";
-import { callerRefusal, STORE_HEADER } from "@louez/api/platform/procedures";
+import { STORE_HEADER } from "@louez/api/platform/procedures";
 import { consumeRateLimit, rateLimitKey, rateLimitReached } from "@louez/api/platform/rate-limit";
 
 import type { McpRequestContext } from "../auth/context";
 import { resolveMcpAccount, resolveMcpContext } from "../auth/resolve";
-import { isMissingKey } from "../bridge";
 import { createMcpServer } from "../server";
-import { errorResult } from "../utils/errors";
 
 export interface McpHttpOptions {
   /** What the app lends the procedures (`apiPorts`). */
@@ -166,17 +164,13 @@ function callsToCount(body: unknown): number {
 
 /**
  * The store a request names in its body: the `storeId` argument of its tool
- * calls, but those refused on their caller alone (`refused`), which never
- * reach a store. Every other tool call of a batch must name the same one.
+ * calls. Every tool call of a batch must name the same one.
  */
-function storeArgument(
-  body: unknown,
-  refused: ReadonlyMap<unknown, unknown>,
-): { storeId?: string } | { conflict: true } {
+function storeArgument(body: unknown): { storeId?: string } | { conflict: true } {
   const messages = Array.isArray(body) ? body : [body];
   const named = new Set<string>();
   for (const message of messages) {
-    if (typeof message !== "object" || message === null || refused.has(message)) continue;
+    if (typeof message !== "object" || message === null) continue;
     const { method, params } = message as { method?: unknown; params?: unknown };
     if (method !== "tools/call") continue;
     const storeId = (params as { arguments?: { storeId?: unknown } } | undefined)?.arguments
@@ -185,37 +179,6 @@ function storeArgument(
   }
   if (named.size > 1) return { conflict: true };
   return { storeId: [...named][0] };
-}
-
-/**
- * The tool calls of a request refused on their caller alone, before its store
- * is read: a call to a write that requires an idempotency key
- * (`meta.requiresIdempotencyKey`) without one, with what the procedure would
- * answer first (`callerRefusal`). Each is answered as its tool call.
- */
-function refusedCalls(
-  body: unknown,
-  procedures: readonly ExposedProcedure[],
-  account: AccountActor,
-): Map<unknown, { id: string | number; result: ReturnType<typeof errorResult> }> {
-  const refused = new Map<
-    unknown,
-    { id: string | number; result: ReturnType<typeof errorResult> }
-  >();
-  const messages = Array.isArray(body) ? body : [body];
-  for (const message of messages) {
-    if (typeof message !== "object" || message === null) continue;
-    const { method, id, params } = message as { method?: unknown; id?: unknown; params?: unknown };
-    if (method !== "tools/call" || (typeof id !== "string" && typeof id !== "number")) continue;
-    const call = params as { name?: unknown; arguments?: { idempotencyKey?: unknown } } | undefined;
-    const entry = procedures.find(({ meta }) => meta.mcp.name === call?.name);
-    if (!entry?.meta.requiresIdempotencyKey || !isMissingKey(call?.arguments?.idempotencyKey)) {
-      continue;
-    }
-    const refusal = callerRefusal(entry.meta, account, null);
-    if (refusal) refused.set(message, { id, result: errorResult(entry.meta.mcp.name, refusal) });
-  }
-  return refused;
 }
 
 /**
@@ -308,24 +271,8 @@ async function serveMcpRequest(
     throw error;
   }
 
-  // A tool call refused on its caller alone never waits on the store: a
-  // request of nothing else is answered here; in a batch, the bridge answers
-  // it before any refusal about the store, and it names none.
-  const refused =
-    body.kind === "json" ? refusedCalls(body.value, options.procedures, account) : new Map();
-  if (body.kind === "json" && refused.size > 0) {
-    const messages = Array.isArray(body.value) ? body.value : [body.value];
-    if (messages.every((message) => refused.has(message))) {
-      const answers = messages.map((message) => {
-        const { id, result } = refused.get(message)!;
-        return { jsonrpc: "2.0", id, result };
-      });
-      return jsonResponse(Array.isArray(body.value) ? answers : answers[0], 200);
-    }
-  }
-
   // The store: the header, else the `storeId` argument of the tool call.
-  const named = body.kind === "json" ? storeArgument(body.value, refused) : {};
+  const named = body.kind === "json" ? storeArgument(body.value) : {};
   const header = request.headers.get(STORE_HEADER) ?? undefined;
   if ("conflict" in named || (header && named.storeId && named.storeId !== header)) {
     return jsonResponse(

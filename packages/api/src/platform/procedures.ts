@@ -67,20 +67,22 @@ export function missingTransport() {
 }
 
 /**
- * An idempotency key a write that requires one accepts: absent, empty and
- * blank keys are missing (`meta.requiresIdempotencyKey`).
+ * An idempotency key a write that requires one accepts
+ * (`meta.requiresIdempotencyKey`): an absent key is missing, and so is one
+ * made of nothing but whitespace and commas, as two empty `Idempotency-Key`
+ * headers combine into `", "`.
  */
 export function hasIdempotencyKey(key: string | null | undefined): boolean {
-  return typeof key === "string" && key.trim() !== "";
+  return typeof key === "string" && key.replace(/[\s,]/g, "") !== "";
 }
 
 /**
- * What a call is refused on its caller alone, before the store or anything
- * else is read, in this order: a procedure the client's directory forbids, a
- * credential the procedure does not take, platform staff only, and a write
- * that requires an idempotency key called by a key or a token without one.
- * Null when the caller may go on. The MCP transport asks it before it
- * resolves a request's store; every procedure asks it again.
+ * What a call is refused on its caller alone, in this order: a procedure the
+ * client's directory forbids, a credential the procedure does not take,
+ * platform staff only, and a write that requires an idempotency key called by
+ * a key or a token without one. Null when the caller may go on. Every
+ * procedure asks it in `authenticated`, before it resolves its store and
+ * before its handler, so before any confirmation, approval or operation row.
  */
 export function callerRefusal(meta: ApiMeta, actor: AccountActor, idempotencyKey: string | null) {
   // A procedure the client's directory forbids is refused first, before any
@@ -95,7 +97,7 @@ export function callerRefusal(meta: ApiMeta, actor: AccountActor, idempotencyKey
     return platformErrors.permissionDenied("platform_admin");
   }
   // A write a retry must not do twice wants a key from an agent, asked before
-  // the store, a confirmation or an operation record is read or written.
+  // the handler, a confirmation, an approval or an operation record.
   if (
     meta.requiresIdempotencyKey &&
     actor.credential.kind !== "session" &&
@@ -119,7 +121,15 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
     if (actor.credential.directory) context.errorScope.directory = actor.credential.directory;
   }
   const refusal = callerRefusal(meta, actor, context.headers.get(IDEMPOTENCY_HEADER));
-  if (refusal) throw refusal;
+  if (refusal) {
+    // A keyless call spends one call of the connection's rate limit, as the
+    // call would have: the procedure counts tool calls, not the transports.
+    if (refusal.data.code === "IDEMPOTENCY_KEY_REQUIRED") {
+      const limit = await consumeRateLimit(rateLimitKey(actor.credential));
+      if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
+    }
+    throw refusal;
+  }
   return next({ context: { actor } });
 });
 /** The caller checks' middleware itself, as every procedure built on `authenticated` carries it. */

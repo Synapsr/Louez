@@ -62,7 +62,7 @@ describe(
     let grants: typeof import("@louez/api/services/agent-grants");
     let exposure: import("@louez/api/platform/exposure").Exposure;
     let rpc: { add: (input: object) => Promise<unknown> };
-    let openApi: (path: string, body: object, headers: Record<string, string>) => Promise<Response>;
+    let openApi: (path: string, body: object, headers: HeadersInit) => Promise<Response>;
     let httpOptions: import("./transports/http").McpHttpOptions;
     let handleMcpRequest: typeof import("./transports/http").handleMcpRequest;
 
@@ -185,16 +185,21 @@ describe(
       ).fixture.notes;
 
       const openApiHandler = createOpenApiHandler(exposure.router);
-      openApi = async (path, body, headers) =>
-        (await handleOpenApiRequest(
-          openApiHandler,
-          new Request(`http://louez.test/api/v1${path}`, {
-            method: "POST",
-            headers: { "content-type": "application/json", ...headers },
-            body: JSON.stringify(body),
-          }),
-          { ports },
-        )) ?? new Response(null, { status: 404 });
+      openApi = async (path, body, headers) => {
+        const sent = new Headers(headers);
+        sent.set("content-type", "application/json");
+        return (
+          (await handleOpenApiRequest(
+            openApiHandler,
+            new Request(`http://louez.test/api/v1${path}`, {
+              method: "POST",
+              headers: sent,
+              body: JSON.stringify(body),
+            }),
+            { ports },
+          )) ?? new Response(null, { status: 404 })
+        );
+      };
 
       httpOptions = { ports, procedures: exposure.procedures };
 
@@ -226,6 +231,9 @@ describe(
     });
 
     async function apiKey() {
+      return (await createdKey()).authorization;
+    }
+    async function createdKey() {
       const created = await apiKeys.createApiKey({
         db: louezDb.db,
         storeId: STORE,
@@ -241,8 +249,16 @@ describe(
           settings: "read",
         },
       });
-      return `Bearer ${created.key}`;
+      return { authorization: `Bearer ${created.key}`, id: created.id };
     }
+    /** What a key spent of its rate limit in the current window. */
+    const spent = async (keyId: string) =>
+      (
+        await louezDb.db
+          .select({ count: louezDb.apiRateLimits.count })
+          .from(louezDb.apiRateLimits)
+          .where(orm.eq(louezDb.apiRateLimits.key, `api_key:${keyId}`))
+      )[0]?.count ?? 0;
 
     async function oauthToken(storeIds: string[] = [STORE]) {
       const { id: grantId } = await grants.saveGrant({
@@ -471,102 +487,96 @@ describe(
       assert.deepEqual({ ...addKey, description: "" }, { ...copyKey, description: "" });
     });
 
-    test("over MCP the key is asked before the store: none chosen, one out of reach, a plan without the API", async () => {
-      const before = { runs, records: (await records("fixture.notes.add")).length };
-      const keyless = toolCall(1, "fixture_notes_add", { title: "Tents" });
-
-      // A grant over two stores and no store named: STORE_REQUIRED came first.
-      const twoStores = await oauthToken([STORE, OTHER_STORE]);
-      const unnamed = await answersOf(await mcpPost({ authorization: twoStores }, keyless));
-      assert.equal(codeOf(unnamed.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
-
-      // A store out of reach, named by the header (the request failed with
-      // 403) or by the argument (the call answered NO_STORE_ACCESS).
-      const key = await apiKey();
-      const byHeader = await mcpPost(
-        { authorization: key, "louez-store": STRANGER_STORE },
-        keyless,
-      );
-      assert.equal(codeOf((await answersOf(byHeader)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
-      const byArgument = await mcpPost(
-        { authorization: key },
-        toolCall(1, "fixture_notes_add", { title: "Tents", storeId: STRANGER_STORE }),
-      );
-      assert.equal(codeOf((await answersOf(byArgument)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
-
-      // A plan without API access (the request failed with 403).
-      apiAccess = false;
-      try {
-        const noPlan = await mcpPost({ authorization: key }, keyless);
-        assert.equal(codeOf((await answersOf(noPlan)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
-        // REST resolves no store before the procedure: the key comes first there too.
-        const viaRest = await openApi(
-          "/fixture/notes/add",
-          { title: "Tents" },
-          {
-            authorization: key,
-            "louez-store": STRANGER_STORE,
-          },
+    test("a keyless call with its store is refused, writes nothing, and counts on the rate limit, over MCP and REST", async () => {
+      const { authorization, id } = await createdKey();
+      const before = {
+        runs,
+        records: (await records("fixture.notes.add")).length,
+        spent: await spent(id),
+      };
+      for (const call of [1, 2, 3]) {
+        const answers = await answersOf(
+          await mcpPost({ authorization }, toolCall(call, "fixture_notes_add", { title: "Tents" })),
         );
-        assert.equal(
-          ((await viaRest.json()) as { data: { code: string } }).data.code,
-          "IDEMPOTENCY_KEY_REQUIRED",
-        );
-      } finally {
-        apiAccess = true;
+        assert.equal(codeOf(answers.get(call)), "IDEMPOTENCY_KEY_REQUIRED");
       }
-
-      // Unchanged for the unflagged write: the store answers.
-      const copy = await mcpPost(
-        { authorization: key },
-        toolCall(1, "fixture_notes_copy", { title: "Tents", storeId: STRANGER_STORE }),
-      );
-      assert.equal(codeOf((await answersOf(copy)).get(1)), "NO_STORE_ACCESS");
-      const copyByHeader = await mcpPost(
-        { authorization: key, "louez-store": STRANGER_STORE },
-        toolCall(1, "fixture_notes_copy", { title: "Tents" }),
-      );
-      assert.equal(copyByHeader.status, 403);
-
+      assert.equal((await spent(id)) - before.spent, 3, "three calls, three of the quota");
+      const viaRest = await openApi("/fixture/notes/add", { title: "Tents" }, { authorization });
+      assert.equal(viaRest.status, 400);
+      assert.equal((await spent(id)) - before.spent, 4, "REST counts the same");
       assert.equal(runs, before.runs, "nothing ran");
       assert.equal((await records("fixture.notes.add")).length, before.records, "no operation row");
     });
 
-    test("in a batch, a keyless call to a flagged tool is refused first; the other calls are as before", async () => {
+    test("over MCP the store is resolved first: a keyless call wrong about its store answers as any tool", async () => {
       const key = await apiKey();
       const before = runs;
-
-      // A store out of reach, named by the calls: the keyless call is told
-      // about its key, the other about the store, as before.
-      const outOfReach = await answersOf(
-        await mcpPost({ authorization: key }, [
+      // Named by the argument: the call answers the store's refusal.
+      const byArgument = await answersOf(
+        await mcpPost(
+          { authorization: key },
           toolCall(1, "fixture_notes_add", { title: "Tents", storeId: STRANGER_STORE }),
-          toolCall(2, "fixture_notes_copy", { title: "Tents", storeId: STRANGER_STORE }),
-        ]),
+        ),
       );
-      assert.equal(codeOf(outOfReach.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
-      assert.equal(codeOf(outOfReach.get(2)), "NO_STORE_ACCESS");
-
-      // No store chosen on a grant over two stores: the other call asks for one.
+      assert.equal(codeOf(byArgument.get(1)), "NO_STORE_ACCESS");
+      // Named by the header: the request is refused.
+      const byHeader = await mcpPost(
+        { authorization: key, "louez-store": STRANGER_STORE },
+        toolCall(1, "fixture_notes_add", { title: "Tents" }),
+      );
+      assert.equal(byHeader.status, 403);
+      // None named on a grant over two stores: the call asks for one.
       const twoStores = await oauthToken([STORE, OTHER_STORE]);
       const unnamed = await answersOf(
-        await mcpPost({ authorization: twoStores }, [
+        await mcpPost(
+          { authorization: twoStores },
           toolCall(1, "fixture_notes_add", { title: "Tents" }),
-          toolCall(2, "fixture_notes_copy", { title: "Tents" }),
-        ]),
+        ),
       );
-      assert.equal(codeOf(unnamed.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
-      assert.equal(codeOf(unnamed.get(2)), "STORE_REQUIRED");
+      assert.equal(codeOf(unnamed.get(1)), "STORE_REQUIRED");
+      // A plan without API access: the request is refused.
+      apiAccess = false;
+      try {
+        const noPlan = await mcpPost(
+          { authorization: key },
+          toolCall(1, "fixture_notes_add", { title: "Tents" }),
+        );
+        assert.equal(noPlan.status, 403);
+      } finally {
+        apiAccess = true;
+      }
+      // REST reads no store before the procedure: the key is asked first there.
+      const viaRest = await openApi(
+        "/fixture/notes/add",
+        { title: "Tents" },
+        { authorization: key, "louez-store": STRANGER_STORE },
+      );
+      assert.equal(
+        ((await viaRest.json()) as { data: { code: string } }).data.code,
+        "IDEMPOTENCY_KEY_REQUIRED",
+      );
+      assert.equal(runs, before);
+    });
 
-      // Its own store: the other call runs, the keyless one does not.
-      const ran = await answersOf(
-        await mcpPost({ authorization: key }, [
-          toolCall(1, "fixture_notes_add", { title: "Tents" }),
+    test("a batch picks its store from every call, the keyless one's included", async () => {
+      // Two calls naming two stores: the batch is refused, as for any tools.
+      const key = await apiKey();
+      const conflict = await mcpPost({ authorization: key }, [
+        toolCall(1, "fixture_notes_add", { title: "Tents", storeId: OTHER_STORE }),
+        toolCall(2, "fixture_notes_copy", { title: "Tents", storeId: STORE }),
+      ]);
+      assert.equal(conflict.status, 400);
+      const before = runs;
+      // The keyless call names the store its companion runs on.
+      const twoStores = await oauthToken([STORE, OTHER_STORE]);
+      const answers = await answersOf(
+        await mcpPost({ authorization: twoStores }, [
+          toolCall(1, "fixture_notes_add", { title: "Tents", storeId: OTHER_STORE }),
           toolCall(2, "fixture_notes_copy", { title: "Tents" }),
         ]),
       );
-      assert.equal(codeOf(ran.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
-      assert.equal(ran.get(2)?.result?.isError, undefined);
+      assert.equal(codeOf(answers.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+      assert.equal(answers.get(2)?.result?.isError, undefined, "the companion ran");
       assert.equal(runs, before + 1);
     });
 
@@ -589,16 +599,6 @@ describe(
           idempotencyKey: blank,
         });
         assert.equal(errorOf(viaMcp)?.code, "IDEMPOTENCY_KEY_REQUIRED", JSON.stringify(blank));
-        // Before the store, too.
-        const outOfReach = await mcpPost(
-          { authorization },
-          toolCall(1, "fixture_notes_add", {
-            title: "Tents",
-            idempotencyKey: blank,
-            storeId: STRANGER_STORE,
-          }),
-        );
-        assert.equal(codeOf((await answersOf(outOfReach)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
       }
       assert.equal(runs, before);
 
@@ -624,6 +624,31 @@ describe(
         idempotencyKey: 42,
       });
       assert.equal(errorOf(numeric)?.code, "INVALID_ARGUMENT");
+    });
+
+    test("a key of nothing but commas and whitespace is no key for a flagged write on REST", async () => {
+      const authorization = await apiKey();
+      const before = runs;
+      for (const headers of [
+        // Two empty headers combine into ", ".
+        [
+          ["authorization", authorization],
+          ["idempotency-key", ""],
+          ["idempotency-key", ""],
+        ],
+        [
+          ["authorization", authorization],
+          ["idempotency-key", " , ,"],
+        ],
+      ] as Array<[string, string][]>) {
+        const viaRest = await openApi("/fixture/notes/add", { title: "Tents" }, headers);
+        assert.equal(viaRest.status, 400, JSON.stringify(headers.slice(1)));
+        assert.equal(
+          ((await viaRest.json()) as { data: { code: string } }).data.code,
+          "IDEMPOTENCY_KEY_REQUIRED",
+        );
+      }
+      assert.equal(runs, before, "nothing ran");
     });
 
     test("the OpenAPI document marks the header required on flagged operations only", async () => {
