@@ -23,7 +23,13 @@ export interface Field {
   description?: string;
 }
 
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+
+export type HttpMethod = (typeof METHODS)[number];
+
+export function isHttpMethod(method: string): method is HttpMethod {
+  return METHODS.some((known) => known === method);
+}
 
 export interface Operation {
   /** The operation's `operationId`, also the name of its MCP tool. */

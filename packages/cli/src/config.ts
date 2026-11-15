@@ -7,6 +7,8 @@
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { errorCode, record, text } from "./json.js";
+
 interface SavedConfig {
   apiKey?: string;
   apiUrl?: string;
@@ -25,27 +27,23 @@ export function defaultConfigDir(
 export const configFile = (dir: string) => join(dir, "config.json");
 
 export async function readConfig(dir: string): Promise<SavedConfig> {
-  let text: string;
+  let raw: string;
   try {
-    text = await readFile(configFile(dir), "utf8");
+    raw = await readFile(configFile(dir), "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+    if (errorCode(error) === "ENOENT") return {};
     throw error;
   }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(raw);
   } catch {
     throw new Error(`${configFile(dir)} is not valid JSON: fix it or remove it.`);
   }
-  const config = (typeof parsed === "object" && parsed !== null ? parsed : {}) as Record<
-    string,
-    unknown
-  >;
-  return {
-    ...(typeof config.apiKey === "string" ? { apiKey: config.apiKey } : {}),
-    ...(typeof config.apiUrl === "string" ? { apiUrl: config.apiUrl } : {}),
-  };
+  const config = record(parsed);
+  const apiKey = text(config?.apiKey);
+  const apiUrl = text(config?.apiUrl);
+  return { ...(apiKey ? { apiKey } : {}), ...(apiUrl ? { apiUrl } : {}) };
 }
 
 export async function writeConfig(dir: string, config: SavedConfig): Promise<void> {
@@ -62,7 +60,7 @@ export async function removeConfig(dir: string): Promise<boolean> {
     await rm(configFile(dir));
     return true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    if (errorCode(error) === "ENOENT") return false;
     throw error;
   }
 }

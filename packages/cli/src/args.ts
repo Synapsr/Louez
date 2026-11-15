@@ -47,7 +47,7 @@ export function parseLine(argv: readonly string[], lookup: FlagLookup): ParsedLi
     values.set(flag, [...(values.get(flag) ?? []), value]);
 
   for (let i = 0; i < argv.length; i++) {
-    const token = argv[i]!;
+    const token = argv[i] ?? "";
     if (token === "--") {
       positionals.push(...argv.slice(i + 1));
       break;
@@ -110,11 +110,11 @@ export function stringFlag(values: FlagValues, flag: string): string | undefined
 export function commandWords(argv: readonly string[], count: number): number[] {
   const words: number[] = [];
   for (let i = 0; i < argv.length && words.length < count; i++) {
-    const token = argv[i]!;
+    const token = argv[i] ?? "";
     if (token === "--") break;
     if (token === "-h") continue;
     if (token.startsWith("--")) {
-      const flag = token.slice(2).split("=")[0]!;
+      const [flag = ""] = token.slice(2).split("=", 1);
       const takesValue = globalLookup(flag);
       if (takesValue === undefined) break;
       if (takesValue && !token.includes("=")) i++;
@@ -176,7 +176,10 @@ function convertValue(field: Field, raw: string | boolean): unknown {
 
 /** A field's value from all the times its flag was given. */
 function fieldValue(field: Field, raws: Array<string | boolean>): unknown {
-  if (!field.list) return convertValue(field, raws.at(-1)!);
+  if (!field.list) {
+    const last = raws.at(-1);
+    return last === undefined ? undefined : convertValue(field, last);
+  }
   // A JSON array, or the flag repeated.
   if (raws.length === 1 && typeof raws[0] === "string" && raws[0].trimStart().startsWith("[")) {
     const list = parseJson(raws[0], `--${field.flag}`);
@@ -205,7 +208,7 @@ function appendQuery(query: URLSearchParams, name: string, value: unknown): void
 /** Fills `{name}` in a path with the values given, encoded. */
 function fillPath(template: string, values: readonly string[]): string {
   let index = 0;
-  return template.replace(/\{[^}]+\}/g, () => encodeURIComponent(values[index++]!));
+  return template.replace(/\{[^}]+\}/g, () => encodeURIComponent(values[index++] ?? ""));
 }
 
 /** The request an operation's command line asks for. */

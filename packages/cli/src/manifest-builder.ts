@@ -12,7 +12,15 @@
  * takes its whole operationId in kebab-case instead.
  */
 import { BUILT_IN_COMMANDS, isGlobalFlag } from "./globals.js";
-import type { Field, FieldKind, Group, HttpMethod, Manifest, Operation } from "./manifest.js";
+import { record } from "./json.js";
+import {
+  isHttpMethod,
+  type Field,
+  type FieldKind,
+  type Group,
+  type Manifest,
+  type Operation,
+} from "./manifest.js";
 
 type Schema = Record<string, unknown>;
 
@@ -40,7 +48,21 @@ export interface OpenApiDocument {
   components?: { parameters?: Record<string, Parameter> };
 }
 
-const METHODS: readonly HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+/** The schemas of a list; undefined when it is not one. */
+function schemaList(value: unknown): Schema[] | undefined {
+  return Array.isArray(value)
+    ? value.flatMap((item): Schema[] => {
+        const schema = record(item);
+        return schema ? [schema] : [];
+      })
+    : undefined;
+}
+
+function strings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
 
 /** `categoryIds` → `category-ids`, `Online store` → `online-store`. */
 export function kebabCase(name: string): string {
@@ -59,7 +81,7 @@ function sameWord(a: string, b: string): boolean {
 }
 
 function startsWithWords(words: string[], prefix: string[]): boolean {
-  return prefix.length <= words.length && prefix.every((word, i) => sameWord(words[i]!, word));
+  return prefix.length <= words.length && prefix.every((word, i) => sameWord(words[i] ?? "", word));
 }
 
 /** The action of an operation of `group`, before collisions are resolved; null when nothing is left. */
@@ -80,21 +102,22 @@ export function fieldShape(
   schema: Schema | undefined,
 ): Pick<Field, "kind" | "list" | "nullable" | "enum"> {
   if (!schema) return { kind: "json" };
-  const branches = (schema.anyOf ?? schema.oneOf) as Schema[] | undefined;
-  if (Array.isArray(branches)) {
+  const branches = schemaList(schema.anyOf ?? schema.oneOf);
+  if (branches) {
     const nonNull = branches.filter((branch) => branch.type !== "null");
     const nullable = nonNull.length < branches.length ? { nullable: true as const } : {};
     if (nonNull.length === 1) return { ...fieldShape(nonNull[0]), ...nullable };
     const kinds = new Set(nonNull.map((branch) => scalarKind(branch)));
+    const [only] = kinds;
     let kind: FieldKind;
     if (kinds.has("json")) kind = "json";
-    else if (kinds.size === 1) kind = [...kinds][0]!;
+    else if (kinds.size === 1 && only) kind = only;
     else if ([...kinds].every((k) => k === "integer" || k === "number")) kind = "number";
     else if (kinds.has("boolean") && nonNull.every(isBooleanLike)) kind = "boolean";
     else kind = "string";
     return { kind, ...nullable };
   }
-  const types = Array.isArray(schema.type) ? (schema.type as string[]) : [schema.type];
+  const types: unknown[] = Array.isArray(schema.type) ? schema.type : [schema.type];
   if (types.length > 1) {
     const nonNull = types.filter((type) => type !== "null");
     const nullable = nonNull.length < types.length ? { nullable: true as const } : {};
@@ -103,16 +126,14 @@ export function fieldShape(
     return { kind: "json", ...nullable };
   }
   if (schema.type === "array") {
-    const items = schema.items as Schema | undefined;
-    const item = fieldShape(items);
+    const item = fieldShape(record(schema.items));
     if (item.kind === "json" || item.list || item.nullable) return { kind: "json" };
     return { ...item, list: true };
   }
   const kind = scalarKind(schema);
   const values = Array.isArray(schema.enum) ? schema.enum : undefined;
-  if (kind === "string" && values?.every((value) => typeof value === "string")) {
-    return { kind, enum: values as string[] };
-  }
+  const names = strings(values);
+  if (kind === "string" && values && names.length === values.length) return { kind, enum: names };
   return { kind };
 }
 
@@ -185,21 +206,21 @@ export function buildManifest(document: OpenApiDocument): Manifest {
   const operations: Operation[] = [];
   for (const [path, methods] of Object.entries(document.paths)) {
     for (const [lowerMethod, source] of Object.entries(methods)) {
-      const method = lowerMethod.toUpperCase() as HttpMethod;
-      if (!METHODS.includes(method)) continue;
+      const method = lowerMethod.toUpperCase();
+      if (!isHttpMethod(method)) continue;
       const id = source.operationId;
       if (!id) throw new Error(`${method} ${path} has no operationId`);
       const tag = source.tags?.[0];
       if (!tag) throw new Error(`${id} has no tag: the CLI names its group after it`);
       const group = kebabCase(tag);
-      if ((BUILT_IN_COMMANDS as readonly string[]).includes(group)) {
+      if (BUILT_IN_COMMANDS.some((command) => command === group)) {
         throw new Error(`The tag of ${id} gives the group "${group}", a built-in command`);
       }
 
       const parameters = (source.parameters ?? []).map((parameter) =>
         resolveParameter(document, parameter),
       );
-      const pathOrder = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]!);
+      const pathOrder = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1] ?? "");
       const pathParams = pathOrder.map((name) => {
         const parameter = parameters.find((p) => p.in === "path" && p.name === name);
         return field(name, parameter?.schema ?? { type: "string" }, true, parameter?.description);
@@ -214,17 +235,12 @@ export function buildManifest(document: OpenApiDocument): Manifest {
       if (source.requestBody) {
         if (!json) throw new Error(`${id} takes a body the CLI cannot send (not application/json)`);
         const schema = json.schema ?? {};
-        const required = new Set(
-          Array.isArray(schema.required) ? (schema.required as string[]) : [],
-        );
-        const properties =
-          schema.type === "object" && schema.properties
-            ? (schema.properties as Record<string, Schema>)
-            : {};
+        const required = new Set(strings(schema.required));
+        const properties = (schema.type === "object" && record(schema.properties)) || {};
         body = {
           required: source.requestBody.required === true,
           fields: Object.entries(properties).map(([name, property]) =>
-            field(name, property, required.has(name), undefined),
+            field(name, record(property), required.has(name), undefined),
           ),
         };
       }

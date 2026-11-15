@@ -27,7 +27,8 @@ import {
   type Answer,
   type SendResult,
 } from "./http.js";
-import type { HttpMethod, Manifest, Operation } from "./manifest.js";
+import { number, record, text } from "./json.js";
+import { METHODS, isHttpMethod, type Manifest, type Operation } from "./manifest.js";
 import { manifest as generatedManifest } from "./manifest.generated.js";
 
 export const EXIT = { ok: 0, api: 1, usage: 2, person: 3, network: 4 } as const;
@@ -40,11 +41,10 @@ export const APPROVAL_POLL_SECONDS = 30;
 
 const DEFAULT_TIMEOUT_SECONDS = 120;
 
-const VERSION: string = (
-  JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
-    version: string;
-  }
-).version;
+const VERSION =
+  text(
+    record(JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")))?.version,
+  ) ?? "0.0.0";
 
 interface Output {
   write(text: string): unknown;
@@ -91,7 +91,7 @@ async function run(io: Io): Promise<number> {
   const manifest = io.manifest ?? generatedManifest;
   const argv = io.argv;
   const wordIndexes = commandWords(argv, 3);
-  const words = wordIndexes.map((index) => argv[index]!);
+  const words = wordIndexes.map((index) => argv[index] ?? "");
   const rest = (used: number) =>
     argv.filter((_, index) => !wordIndexes.slice(0, used).includes(index));
   const first = words[0];
@@ -167,7 +167,9 @@ function sourceReader(io: Io) {
       try {
         return await io.readFile(spec.slice(1));
       } catch (error) {
-        throw new UsageError(`Cannot read ${spec.slice(1)}: ${(error as Error).message}`);
+        throw new UsageError(
+          `Cannot read ${spec.slice(1)}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
     return spec;
@@ -244,19 +246,6 @@ function perform(io: Io, target: Target, call: Call): Promise<SendResult> {
   });
 }
 
-interface ApiError {
-  code?: string;
-  message?: string;
-  data?: {
-    code?: string;
-    retryable?: boolean;
-    details?: {
-      confirmationToken?: string;
-      approval?: Approval;
-    };
-  };
-}
-
 interface Approval {
   id: string;
   url: string;
@@ -264,15 +253,41 @@ interface Approval {
   pollAfterSeconds?: number;
 }
 
-function errorBody(answer: Answer): ApiError {
-  return typeof answer.body === "object" && answer.body !== null ? (answer.body as ApiError) : {};
+/** What the CLI reads of an error's body (the reference's `Error` schema). */
+interface ApiError {
+  /** `data.code`, the code to branch on. */
+  code?: string;
+  /** The HTTP-level `code`, such as FORBIDDEN. */
+  httpCode?: string;
+  message?: string;
+  retryable: boolean;
+  confirmationToken?: string;
+  approval?: Approval;
 }
 
-function approvalOf(answer: Answer): Approval | undefined {
-  const approval = errorBody(answer).data?.details?.approval;
-  return approval && typeof approval.id === "string" && typeof approval.url === "string"
-    ? approval
-    : undefined;
+function apiError(answer: Answer): ApiError {
+  const error = record(answer.body);
+  const data = record(error?.data);
+  const details = record(data?.details);
+  const approval = record(details?.approval);
+  const id = text(approval?.id);
+  const url = text(approval?.url);
+  return {
+    code: text(data?.code),
+    httpCode: text(error?.code),
+    message: text(error?.message),
+    retryable: data?.retryable === true,
+    confirmationToken: text(details?.confirmationToken),
+    approval:
+      id && url
+        ? {
+            id,
+            url,
+            expiresAt: text(approval?.expiresAt),
+            pollAfterSeconds: number(approval?.pollAfterSeconds),
+          }
+        : undefined,
+  };
 }
 
 /** Sends the call, waits for an approval when asked to, and writes the answer. */
@@ -293,8 +308,7 @@ async function callAndReport(
   if (!result.ok) return networkFailure(io, target, result.error, full, givenKey === undefined);
   let answer = result.answer;
 
-  const code = errorBody(answer).data?.code;
-  const approval = approvalOf(answer);
+  const { code, approval } = apiError(answer);
   if (
     lastValue(values, "wait") === true &&
     approval &&
@@ -337,7 +351,7 @@ export function rerunCommand(
 ): string {
   const words: string[] = [];
   for (let i = 0; i < argv.length; i++) {
-    const token = argv[i]!;
+    const token = argv[i] ?? "";
     const [flag, inline] = token.startsWith("--") ? token.split(/=(.*)/s, 2) : [token, undefined];
     if (flag === "--confirmation") {
       if (inline === undefined) i++;
@@ -393,16 +407,14 @@ async function waitForApproval(
     if (status < 200 || status >= 300) {
       io.stderr.write(json(body ?? null, io.stderr));
       io.stderr.write(
-        `louez: could not read the approval (${status} ${errorBody(read.answer).data?.code ?? ""}).\n`,
+        `louez: could not read the approval (${status} ${apiError(read.answer).code ?? ""}).\n`,
       );
       return EXIT.api;
     }
-    const handoff = (body ?? {}) as {
-      status?: string;
-      failure?: { code?: string; message?: string } | null;
-      decision?: { reason?: string | null } | null;
-    };
-    switch (handoff.status) {
+    const handoff = record(body);
+    const handoffStatus = text(handoff?.status);
+    const failure = record(handoff?.failure);
+    switch (handoffStatus) {
       case "pending":
       case "opened":
         continue;
@@ -417,18 +429,18 @@ async function waitForApproval(
         return EXIT.api;
       case "failed": {
         io.stderr.write(json(body, io.stderr));
-        const reason = handoff.decision?.reason;
+        const reason = text(record(handoff?.decision)?.reason);
         io.stderr.write(
-          handoff.failure?.code === "declined"
+          text(failure?.code) === "declined"
             ? `louez: the person refused${reason ? `, saying ${JSON.stringify(reason)}` : ""}. Nothing was done.\n`
-            : `louez: the approval ended (${handoff.failure?.code ?? "failed"}): ${handoff.failure?.message ?? ""} Nothing was done.\n`,
+            : `louez: the approval ended (${text(failure?.code) ?? "failed"}): ${text(failure?.message) ?? ""} Nothing was done.\n`,
         );
         return EXIT.api;
       }
       default:
         io.stderr.write(json(body, io.stderr));
         io.stderr.write(
-          `louez: the approval is ${handoff.status ?? "unknown"}. Nothing was done.\n`,
+          `louez: the approval is ${handoffStatus ?? "unknown"}. Nothing was done.\n`,
         );
         return EXIT.api;
     }
@@ -439,8 +451,8 @@ function describeNetworkError(error: Error, target: Target): string {
   if (error.name === "TimeoutError") {
     return `${target.base.origin} did not answer within ${target.timeoutMs / 1000} s.`;
   }
-  const cause = (error as Error & { cause?: { code?: string; message?: string } }).cause;
-  return `${target.base.origin} could not be reached (${cause?.code ?? cause?.message ?? error.message}).`;
+  const cause = record(error.cause);
+  return `${target.base.origin} could not be reached (${text(cause?.code) ?? text(cause?.message) ?? error.message}).`;
 }
 
 function networkFailure(
@@ -481,9 +493,8 @@ function report(io: Io, answer: Answer, rerun: Rerun): number {
   }
 
   io.stderr.write(json(body ?? null, io.stderr));
-  const error = errorBody(answer);
-  const code = error.data?.code;
-  const approval = approvalOf(answer);
+  const error = apiError(answer);
+  const { code, approval } = error;
   if (code === "APPROVAL_REQUIRED" && approval) {
     io.stderr.write(
       `louez: this write needs a person's approval. Nothing was done. Open:\n  ${approval.url}\nOnce it is approved, run:\n  ${rerun(approval.id)}\nOr run the same command with --wait to wait for the decision.\n`,
@@ -496,21 +507,19 @@ function report(io: Io, answer: Answer, rerun: Rerun): number {
     );
     return EXIT.person;
   }
-  const token = error.data?.details?.confirmationToken;
+  const token = error.confirmationToken;
   if (code === "CONFIRMATION_REQUIRED" && token) {
     io.stderr.write(
       `louez: this write waits for a confirmation. Nothing was done. Check data.details.preview, then run:\n  ${rerun(token)}\n`,
     );
     return EXIT.person;
   }
-  const label = code ?? error.code ?? "";
+  const label = code ?? error.httpCode ?? "";
   io.stderr.write(
-    `louez: ${status}${label ? ` ${label}` : ""}: ${error.message ?? "the API refused the request."}${error.data?.retryable ? " (retryable)" : ""}\n`,
+    `louez: ${status}${label ? ` ${label}` : ""}: ${error.message ?? "the API refused the request."}${error.retryable ? " (retryable)" : ""}\n`,
   );
   return EXIT.api;
 }
-
-const METHODS: readonly HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
 /** `louez api <METHOD> <path>`: any operation, by method and path. */
 async function api(
@@ -527,8 +536,8 @@ async function api(
     );
     return asked ? EXIT.ok : EXIT.usage;
   }
-  const method = rawMethod.toUpperCase() as HttpMethod;
-  if (!METHODS.includes(method))
+  const method = rawMethod.toUpperCase();
+  if (!isHttpMethod(method))
     throw new UsageError(`"${rawMethod}" is not one of ${METHODS.join(", ")}.`);
   if (path === undefined) throw new UsageError("Missing <path>, such as /reservations.");
   if (line.positionals.length > 0)
@@ -631,8 +640,7 @@ async function readStores(
   const result = await perform(io, target, call);
   if (!result.ok) return networkFailure(io, target, result.error, call, false);
   if (result.answer.status !== 200) return report(io, result.answer, () => "");
-  const items = (result.answer.body as { items?: Array<Record<string, unknown>> } | undefined)
-    ?.items;
-  const store = items?.[0];
+  const items = record(result.answer.body)?.items;
+  const store = Array.isArray(items) ? record(items[0]) : undefined;
   return store ? { id: store.id, name: store.name, slug: store.slug, role: store.role } : null;
 }
