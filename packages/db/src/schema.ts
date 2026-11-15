@@ -2116,6 +2116,75 @@ export const payments = mysqlTable(
   }),
 );
 
+/**
+ * A refund of an online payment, asked of Stripe (apps/web
+ * lib/reservations/stripe-refund.ts). Written before Stripe is called, in the
+ * transaction that checks what the payment can still give back; its id is the
+ * refund's idempotency key and travels in the refund's metadata. `requested` until
+ * Stripe's answer is known, whoever hears it first: the request, the outbox or the
+ * Connect webhook. Kept apart from `payments`, which holds money that moved: the
+ * refund row it leads to is `refund_payment_id`.
+ */
+export const paymentRefundOperations = mysqlTable(
+  "payment_refund_operations",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    // The payment it gives money back from, and where that payment was taken: the
+    // account and the charge its row names, never the store's account of today.
+    paymentId: varchar("payment_id", { length: 21 }).notNull(),
+    stripeAccountId: varchar("stripe_account_id", { length: 255 }).notNull(),
+    stripeChargeId: varchar("stripe_charge_id", { length: 255 }).notNull(),
+    // In the charge's own currency, minor units, upper case.
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull(),
+    // What the refund row will be: a deposit's money goes back as a deposit return.
+    refundType: mysqlEnum("refund_type", ["rental", "deposit_return"]).notNull(),
+    // Stripe's reason for the refund.
+    reason: mysqlEnum("reason", ["requested_by_customer", "duplicate", "fraudulent"]).notNull(),
+    notes: text("notes"),
+    status: mysqlEnum("status", ["requested", "succeeded", "failed"])
+      .default("requested")
+      .notNull(),
+    // Why it failed: Stripe's code, or Louez's when Stripe never made the refund.
+    failureCode: varchar("failure_code", { length: 64 }),
+    failureMessage: text("failure_message"),
+    // The refund Stripe made for it, and the `payments` row that records it.
+    stripeRefundId: varchar("stripe_refund_id", { length: 255 }),
+    refundPaymentId: varchar("refund_payment_id", { length: 21 }),
+    // The approval a person gave for it: one approval gives one refund at most.
+    approvalId: varchar("approval_id", { length: 21 }),
+    // Who asked: a user, or an API key or agent credential.
+    requestedByUserId: varchar("requested_by_user_id", { length: 21 }),
+    requestedByCredentialId: varchar("requested_by_credential_id", { length: 64 }),
+    // When the request was last sent to Stripe. Null while it never was.
+    providerRequestedAt: timestamp("provider_requested_at", { mode: "date" }),
+    // A sender is settling it with Stripe until then, on the database's clock, under
+    // the random token it wrote. Null when none is.
+    claimedUntil: timestamp("claimed_until", { mode: "date" }),
+    claimToken: varchar("claim_token", { length: 21 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // What a payment still has in flight.
+    paymentStatusIdx: index("payment_refund_operations_payment_status_idx").on(
+      table.paymentId,
+      table.status,
+    ),
+    // The scheduled pass: the operations still requested, oldest first.
+    statusCreatedIdx: index("payment_refund_operations_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    stripeRefundUnique: unique("payment_refund_operations_stripe_refund_unique").on(
+      table.stripeRefundId,
+    ),
+    approvalUnique: unique("payment_refund_operations_approval_unique").on(table.approvalId),
+  }),
+);
+
 // ============================================================================
 // Billing sync (M1). Louez's side of the contract with the private billing service
 // (louez-billing docs/api). Written only in cloud mode with BILLING_SERVICE_URL set.
