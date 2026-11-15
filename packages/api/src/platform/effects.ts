@@ -172,6 +172,45 @@ export interface ApiEffectPayloads {
     totalAmount: string;
     currency: string | null;
   };
+  /**
+   * The customer's e-mail that their reservation's dates changed, from the
+   * previous period to the dates the reservation has when it goes out. The
+   * store, the reservation and the customer's name are read then; the
+   * address is the one the write announced. A success adds the reservation's
+   * `note_updated` activity row, as the dashboard's send does.
+   */
+  "reservation.modifiedEmail": {
+    storeId: string;
+    reservationId: string;
+    /** The customer's address the write announced. */
+    to: string;
+    /** The dates before the change, ISO 8601: nothing else keeps them. */
+    previousPeriod: { startDate: string; endDate: string };
+    /** Who made the change, for the activity row; null for no person. */
+    userId: string | null;
+  };
+  /**
+   * The customer's e-mail of a reservation created as a quote, with a link
+   * that signs them in to it, minted when it goes out. Nothing is sent once
+   * the reservation is no longer a quote, or when the store turned the quote
+   * e-mail off.
+   */
+  "reservation.quoteEmail": { storeId: string; reservationId: string; to: string };
+  /**
+   * The customer's confirmation e-mail of a reservation the store created
+   * confirmed, with a link that signs them in to sign it, minted when it goes
+   * out. Nothing is sent once the reservation is no longer confirmed (or
+   * picked up, or returned), or when the store turned confirmations off.
+   */
+  "reservation.confirmationEmail": { storeId: string; reservationId: string; to: string };
+  /** The platform's notice of a new reservation, on one channel. */
+  "reservation.createdPlatformNotification": {
+    channel: "discord" | "fromhello";
+    storeId: string;
+    reservationId: string;
+    /** The total when it was created; a later edit does not change the notice. */
+    totalAmount: string;
+  };
   /** The product analytics event of a status change. */
   "reservation.statusAnalytics": Partial<AnalyticsEventIdentity> & {
     ownerUserId: string;
@@ -317,15 +356,22 @@ export interface EffectSendContext {
 }
 
 /**
+ * What a sender answers besides success: `skipped` when there is nothing to
+ * send (its channel turned off, no address, a limit reached); `abandoned`
+ * when the row can never be sent (its payload is not one the sender reads),
+ * so it is given up at once, kept with its payload, instead of retried.
+ */
+export type EffectSendOutcome = void | { skipped: string } | { abandoned: string };
+
+/**
  * The app's sender of each effect type. A sender throws when the effect
- * failed and may succeed later; it returns `{ skipped }` when there is
- * nothing to send (its channel turned off, no address, a limit reached).
+ * failed and may succeed later.
  */
 export type ApiEffectSenders = {
   [K in ApiEffectType]: (
     payload: ApiEffectPayloads[K],
     context: EffectSendContext,
-  ) => Promise<void | { skipped: string }>;
+  ) => Promise<EffectSendOutcome>;
 };
 
 /** How long a sender holds a row before another may take it over. */
@@ -603,6 +649,21 @@ async function recordSkipped(id: string, token: string, reason: string) {
     .where(fenced(id, token));
 }
 
+/** A row its sender cannot ever send: given up now, its payload kept for whoever looks. */
+async function recordAbandoned(id: string, token: string, reason: string) {
+  await db
+    .update(apiEffects)
+    .set({
+      status: "abandoned",
+      lockedUntil: null,
+      claimToken: null,
+      lastError: `Abandoned: ${reason}`.slice(0, 1000),
+      // The time it was abandoned, as claimEffect and recordFailure keep it.
+      nextAttemptAt: dbNowPlus(0),
+    })
+    .where(fenced(id, token));
+}
+
 /**
  * A sender that timed out: whether it sent is unknown. The row keeps its
  * lease, so neither it nor a later row of its key runs before the lease
@@ -727,11 +788,19 @@ export async function dispatchEffects(
       const send = senders[type] as (
         payload: unknown,
         context: EffectSendContext,
-      ) => Promise<void | { skipped: string }>;
+      ) => Promise<EffectSendOutcome>;
       const result = await Promise.race([send(claimed.payload, context), timeout]);
       if (result && "skipped" in result) {
         await recordSkipped(id, token, result.skipped);
         outcome.skipped += 1;
+      } else if (result && "abandoned" in result) {
+        // A row written wrong: no retry can send it, and whoever wrote it should know.
+        options.report?.(new Error(`Effect ${type} abandoned: ${result.abandoned}`), {
+          source: "effects",
+          effect: type,
+        });
+        await recordAbandoned(id, token, result.abandoned);
+        outcome.failed += 1;
       } else {
         await recordSent(id, token);
         outcome.sent += 1;
