@@ -23,7 +23,7 @@ import {
   INSURANCE_TAX_LINE_ID,
   type PricedCartLine,
   type ReservationTotals,
-} from "./price-cart";
+} from "@louez/api/services/price-cart";
 
 export interface StartCheckoutPaymentInput {
   store: {

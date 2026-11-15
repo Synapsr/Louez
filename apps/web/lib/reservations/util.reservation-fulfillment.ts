@@ -1,6 +1,6 @@
 import type { ReservationLocationSnapshot } from "@louez/types";
 
-import { formatLocationAddress } from "./format-location-address";
+import { formatLocationAddress } from "@louez/utils";
 
 /** The two moments a customer has to be somewhere: collecting, then giving back. */
 export type FulfillmentLeg = "pickup" | "dropoff";

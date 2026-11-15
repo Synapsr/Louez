@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { db, storeLocations } from '@louez/db';
 import type { ReservationLocationSnapshot } from '@louez/types';
 
-import { formatLocationAddress } from './format-location-address';
+import { formatLocationAddress } from '@louez/utils';
 
 interface StoreForLocationSnapshot {
   id: string;

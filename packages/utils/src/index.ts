@@ -78,3 +78,6 @@ export * from "./util.stripe-payment-amount";
 
 // Product photos: their versions (lineage) and the AI photo operations' rules
 export * from "./product-images";
+
+// A store location's address on one line, without repeating its postal code or city
+export { formatLocationAddress } from "./format-location-address";
