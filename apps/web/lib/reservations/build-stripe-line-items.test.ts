@@ -15,7 +15,7 @@ import {
   INSURANCE_TAX_LINE_ID,
   type PricedCartLine,
   type ReservationTotals,
-} from "./price-cart";
+} from "@louez/api/services/price-cart";
 
 // EUR: two decimals, like `toStripeCents(amount, "EUR")`.
 const toCents = (amount: number): number => Math.round(amount * 100);

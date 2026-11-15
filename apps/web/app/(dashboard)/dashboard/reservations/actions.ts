@@ -144,7 +144,7 @@ import {
   releaseDepositHold as releaseReferencedDepositHold,
 } from "@/lib/reservations/deposit-hold";
 import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
-import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
+import { resolveReservationLocationSnapshot } from "@louez/api/services/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import {
   getReservationRentalAmount,
@@ -153,7 +153,7 @@ import {
 import {
   compareReservationDemand,
   fingerprintReservationEdit,
-} from "@/lib/reservations/util.reservation-edit";
+} from "@louez/api/services/util.reservation-edit";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,

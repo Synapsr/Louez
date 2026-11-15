@@ -13,11 +13,11 @@ export function formatLocationAddress({
   city,
   postalCode,
 }: LocationAddressParts): string | null {
-  const base = address?.trim() || '';
+  const base = address?.trim() || "";
   const missingParts = [postalCode, city]
     .filter((part): part is string => Boolean(part))
     .filter((part) => !base.toLowerCase().includes(part.toLowerCase()));
-  const suffix = missingParts.join(' ');
+  const suffix = missingParts.join(" ");
 
-  return [base, suffix].filter(Boolean).join(', ') || null;
+  return [base, suffix].filter(Boolean).join(", ") || null;
 }

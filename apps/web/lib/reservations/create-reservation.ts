@@ -69,8 +69,8 @@ import {
   priceCart,
   type PricedCart,
   type ReservationTotals,
-} from "./price-cart";
-import { generateUniqueReservationNumber } from "./reservation-number";
+} from "@louez/api/services/price-cart";
+import { generateUniqueReservationNumber } from "@louez/api/services/reservation-number";
 import { failReservation, type ReservationFailure } from "@louez/api/services/reservation-failure";
 
 import type {

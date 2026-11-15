@@ -21,7 +21,11 @@ import {
   lockReservationProducts,
   reserveInventory,
 } from "@louez/api/services/reservation-inventory";
-import { computeReservationTotals, getReservationItemTaxFields, priceCart } from "./price-cart";
+import {
+  computeReservationTotals,
+  getReservationItemTaxFields,
+  priceCart,
+} from "@louez/api/services/price-cart";
 import {
   getExtensionAttempt,
   type ExtensionAttempt,

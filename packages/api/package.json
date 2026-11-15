@@ -31,14 +31,17 @@
     "./services/handoffs": "./src/services/handoffs.ts",
     "./services/inbox": "./src/services/inbox.ts",
     "./services/jobs": "./src/services/jobs.ts",
+    "./services/location-snapshots": "./src/services/location-snapshots.ts",
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
     "./services/paid-confirmation-deposit": "./src/services/paid-confirmation-deposit.ts",
     "./services/payment-records": "./src/services/payment-records.ts",
     "./services/payment-reservation-status": "./src/services/payment-reservation-status.ts",
+    "./services/price-cart": "./src/services/price-cart.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
     "./services/promo": "./src/services/promo.ts",
     "./services/reservation-failure": "./src/services/reservation-failure.ts",
     "./services/reservation-inventory": "./src/services/reservation-inventory.ts",
+    "./services/reservation-number": "./src/services/reservation-number.ts",
     "./services/reservation-status": "./src/services/reservation-status.ts",
     "./services/sales-analytics": "./src/services/sales-analytics.ts",
     "./services/sales-window": "./src/services/sales-window.ts",
@@ -48,7 +51,8 @@
     "./services/system-reservation-status": "./src/services/system-reservation-status.ts",
     "./services/unit-availability": "./src/services/unit-availability.ts",
     "./services/unit-conflicts": "./src/services/unit-conflicts.ts",
-    "./services/unit-mutations": "./src/services/unit-mutations.ts"
+    "./services/unit-mutations": "./src/services/unit-mutations.ts",
+    "./services/util.reservation-edit": "./src/services/util.reservation-edit.ts"
   },
   "scripts": {
     "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --test \"src/**/*.test.{ts,mjs}\""
