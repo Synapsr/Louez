@@ -21,10 +21,12 @@ import type { AIChatContext, createAITools } from "./tools";
 // What it can reach: no tool reaches a dashboard domain the assistant holds
 // no client of, and the payment-writing procedures within the domains it
 // holds are listed below, so a new one is a decision, not an accident.
-// What it does: every tool runs with each of its parameters filled and each
-// value of its choices, against an API that refuses each call and against one
-// that answers each call, so a tool goes on past its first call; the database
-// notes each table written, and none may be the payments table.
+// What it does: every tool runs with each of its parameters filled, and once
+// more per other value of each top-level choice and yes/no, against an API
+// that refuses each call and against one that answers each call, so a tool
+// goes on past its first call; the database notes each table written, and
+// none may be the payments table. A tool that writes behind a value read from
+// an answer needs its own case here, with that answer.
 
 closeNetworkForSuite();
 
