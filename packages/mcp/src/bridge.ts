@@ -5,7 +5,7 @@ import { apiError } from "@louez/api/platform/errors";
 import { platformErrors } from "@louez/api/platform/errors";
 import { mcpToolAnnotations } from "@louez/api/platform/meta";
 import { IDEMPOTENCY_HEADER, type OperationReceipt } from "@louez/api/platform/operations";
-import { STORE_HEADER } from "@louez/api/platform/procedures";
+import { callerRefusal, hasIdempotencyKey, STORE_HEADER } from "@louez/api/platform/procedures";
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
 import { call } from "@orpc/server";
 
@@ -81,6 +81,14 @@ function toolInputSchema(entry: ExposedProcedure, ctx: McpRequestContext): Tool[
   return { ...entry.inputJsonSchema, properties } as Tool["inputSchema"];
 }
 
+/**
+ * An `idempotencyKey` argument that gives no key: absent, or a blank string.
+ * Another type is malformed, not missing: the call refuses it as such.
+ */
+export function isMissingKey(value: unknown): boolean {
+  return value === undefined || (typeof value === "string" && !hasIdempotencyKey(value));
+}
+
 // Dates become ISO strings, bigints decimal strings: structured content is JSON.
 function jsonSafe(value: unknown): Record<string, unknown> {
   return JSON.parse(
@@ -97,7 +105,15 @@ async function callProcedure(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   // The store was read from `storeId` when the request came in.
-  const { idempotencyKey, confirmationToken, storeId: _store, ...input } = args;
+  const { idempotencyKey: sentKey, confirmationToken, storeId: _store, ...input } = args;
+  // A write that requires a key: a blank one is none, and a call without one
+  // is refused on its caller alone, before any answer about its store.
+  const missingKey = entry.meta.requiresIdempotencyKey && isMissingKey(sentKey);
+  const idempotencyKey = missingKey ? undefined : sentKey;
+  if (missingKey) {
+    const refusal = callerRefusal(entry.meta, ctx.actor, null);
+    if (refusal) return errorResult(entry.meta.mcp.name, refusal);
+  }
   const needsStore = !entry.meta.account;
   if (needsStore && ctx.storeError) return errorResult(entry.meta.mcp.name, ctx.storeError);
   if (needsStore && !ctx.storeChosen) {

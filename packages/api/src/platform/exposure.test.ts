@@ -245,6 +245,31 @@ describe("exposure registry", () => {
     assert.equal(exposure.createExposure({ a: write({}) } as never, ["a"]).procedures.length, 1);
   });
 
+  test("a write that requires an idempotency key is served only with the checks that enforce it", async () => {
+    const { z } = zod;
+    const { os } = await import("@orpc/server");
+    const meta = {
+      capability: "test.valid",
+      scope: { domain: "categories", level: "write" },
+      requiresIdempotencyKey: true,
+      mcp: { ...mcp("test_valid"), effect: "additive" },
+    } as const;
+    // Built without storeProcedure or accountProcedure: nothing would ask for the key.
+    const bare = os
+      .$meta<import("./meta").ApiMeta>({})
+      .meta(meta)
+      .input(z.object({ id: z.string() }))
+      .output(z.object({ id: z.string() }))
+      .handler(async ({ input }) => input);
+    rejects({ a: bare }, ["a"], /a: requires an idempotency key but is not built on/);
+    const onAccount = procedures.accountProcedure
+      .meta({ ...meta, account: true })
+      .input(z.object({ id: z.string() }))
+      .output(z.object({ id: z.string() }))
+      .handler(async ({ input }) => input);
+    assert.equal(exposure.createExposure({ a: onAccount } as never, ["a"]).procedures.length, 1);
+  });
+
   test("serves each procedure's output as JSON Schema, an object", () => {
     const router = testing.createFixtureRouter();
     const [list] = exposure.createExposure(router, ["fixture.notes.list"]).procedures;

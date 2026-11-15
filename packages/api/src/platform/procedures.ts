@@ -1,5 +1,5 @@
 import { db, stores } from "@louez/db";
-import { os } from "@orpc/server";
+import { os, type AnyProcedure } from "@orpc/server";
 import { eq } from "drizzle-orm";
 
 import type { BaseContext } from "../context";
@@ -66,6 +66,46 @@ export function missingTransport() {
   });
 }
 
+/**
+ * An idempotency key a write that requires one accepts: absent, empty and
+ * blank keys are missing (`meta.requiresIdempotencyKey`).
+ */
+export function hasIdempotencyKey(key: string | null | undefined): boolean {
+  return typeof key === "string" && key.trim() !== "";
+}
+
+/**
+ * What a call is refused on its caller alone, before the store or anything
+ * else is read, in this order: a procedure the client's directory forbids, a
+ * credential the procedure does not take, platform staff only, and a write
+ * that requires an idempotency key called by a key or a token without one.
+ * Null when the caller may go on. The MCP transport asks it before it
+ * resolves a request's store; every procedure asks it again.
+ */
+export function callerRefusal(meta: ApiMeta, actor: AccountActor, idempotencyKey: string | null) {
+  // A procedure the client's directory forbids is refused first, before any
+  // confirmation or idempotency key: a replay never reaches it either.
+  if (meta.capability && actor.credential.withheld?.capabilities.includes(meta.capability)) {
+    return platformErrors.capabilityWithheldFromClient(meta.capability);
+  }
+  if (meta.actors && !meta.actors.includes(actor.credential.kind)) {
+    return platformErrors.sessionOnly();
+  }
+  if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
+    return platformErrors.permissionDenied("platform_admin");
+  }
+  // A write a retry must not do twice wants a key from an agent, asked before
+  // the store, a confirmation or an operation record is read or written.
+  if (
+    meta.requiresIdempotencyKey &&
+    actor.credential.kind !== "session" &&
+    !hasIdempotencyKey(idempotencyKey)
+  ) {
+    return platformErrors.idempotencyKeyRequired(actor.transport);
+  }
+  return null;
+}
+
 /** Who calls, checked on every call: shared by the account and the store procedures. */
 const authenticated = base.use(async ({ context, next, procedure }) => {
   if (!context.transport) throw missingTransport();
@@ -78,27 +118,22 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
     context.errorScope.client = actor.credential.kind;
     if (actor.credential.directory) context.errorScope.directory = actor.credential.directory;
   }
-  // A procedure the client's directory forbids is refused first, before any
-  // confirmation or idempotency key: a replay never reaches it either.
-  if (meta.capability && actor.credential.withheld?.capabilities.includes(meta.capability)) {
-    throw platformErrors.capabilityWithheldFromClient(meta.capability);
-  }
-  if (meta.actors && !meta.actors.includes(actor.credential.kind))
-    throw platformErrors.sessionOnly();
-  if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
-    throw platformErrors.permissionDenied("platform_admin");
-  }
-  // A write a retry must not do twice wants a key from an agent, asked before
-  // the store, a confirmation or an operation record is read or written.
-  if (
-    meta.requiresIdempotencyKey &&
-    actor.credential.kind !== "session" &&
-    context.headers.get(IDEMPOTENCY_HEADER) === null
-  ) {
-    throw platformErrors.idempotencyKeyRequired(actor.transport);
-  }
+  const refusal = callerRefusal(meta, actor, context.headers.get(IDEMPOTENCY_HEADER));
+  if (refusal) throw refusal;
   return next({ context: { actor } });
 });
+/** The caller checks' middleware itself, as every procedure built on `authenticated` carries it. */
+const checkCaller = authenticated["~orpc"].middlewares.at(-1);
+
+/**
+ * Whether a procedure runs the caller checks of `accountProcedure` and
+ * `storeProcedure` (`callerRefusal`): built on one of them, it carries their
+ * middleware, told by identity. The exposure registry serves a write that
+ * requires an idempotency key only when it does.
+ */
+export function checksCaller(procedure: AnyProcedure): boolean {
+  return checkCaller !== undefined && procedure["~orpc"].middlewares.includes(checkCaller);
+}
 
 /**
  * A write's run through `runOperation`: recorded, and replayed for a repeated

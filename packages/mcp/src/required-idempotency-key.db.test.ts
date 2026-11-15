@@ -40,6 +40,10 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 
 const OWNER = "ik_owner_user_000001";
 const STORE = "ik_store_a_000000001";
+const OTHER_STORE = "ik_store_b_000000001";
+/** A store of another user: the owner has no access to it. */
+const STRANGER = "ik_stranger_user_0001";
+const STRANGER_STORE = "ik_store_x_000000001";
 const CLIENT = "https://claude.ik.test/oauth/client.json";
 
 type ToolResult = Awaited<ReturnType<Client["callTool"]>>;
@@ -63,9 +67,10 @@ describe(
     let handleMcpRequest: typeof import("./transports/http").handleMcpRequest;
 
     let runs = 0;
+    let apiAccess = true;
 
     const ports = {
-      planFeatures: async () => ({ apiAccess: true }),
+      planFeatures: async () => ({ apiAccess }),
       runReservationEffects: async () => {},
       insurance: { createContract: async () => null, cancelContract: async () => {} },
       newStores: createTestNewStores(),
@@ -193,13 +198,20 @@ describe(
 
       httpOptions = { ports, procedures: exposure.procedures };
 
-      await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@ik.test" });
-      await louezDb.db
-        .insert(louezDb.stores)
-        .values({ id: STORE, userId: OWNER, name: "Key store", slug: "ik-store-a" });
-      await louezDb.db
-        .insert(louezDb.storeMembers)
-        .values({ storeId: STORE, userId: OWNER, role: "owner" });
+      await louezDb.db.insert(louezDb.users).values([
+        { id: OWNER, email: "owner@ik.test" },
+        { id: STRANGER, email: "stranger@ik.test" },
+      ]);
+      await louezDb.db.insert(louezDb.stores).values([
+        { id: STORE, userId: OWNER, name: "Key store", slug: "ik-store-a" },
+        { id: OTHER_STORE, userId: OWNER, name: "Other store", slug: "ik-store-b" },
+        { id: STRANGER_STORE, userId: STRANGER, name: "Stranger store", slug: "ik-store-x" },
+      ]);
+      await louezDb.db.insert(louezDb.storeMembers).values([
+        { storeId: STORE, userId: OWNER, role: "owner" },
+        { storeId: OTHER_STORE, userId: OWNER, role: "owner" },
+        { storeId: STRANGER_STORE, userId: STRANGER, role: "owner" },
+      ]);
       await louezDb.db.insert(louezDb.oauthClients).values({
         clientId: CLIENT,
         name: "Claude",
@@ -232,12 +244,12 @@ describe(
       return `Bearer ${created.key}`;
     }
 
-    async function oauthToken() {
+    async function oauthToken(storeIds: string[] = [STORE]) {
       const { id: grantId } = await grants.saveGrant({
         userId: OWNER,
         clientId: CLIENT,
         terms: {
-          stores: { all: false, ids: [STORE] },
+          stores: { all: false, ids: storeIds },
           preset: "write",
           confirmSensitive: true,
           bundles: ["catalog"],
@@ -262,6 +274,46 @@ describe(
     }
     const mcpCall = (authorization: string, name: string, args: Record<string, unknown>) =>
       withClient(authorization, (client) => client.callTool({ name, arguments: args }));
+
+    /** A raw POST to /api/mcp, without the client's handshake: what a batch needs. */
+    const mcpPost = (headers: Record<string, string>, body: unknown) =>
+      handleMcpRequest(
+        new Request(RESOURCE, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            ...headers,
+          },
+          body: JSON.stringify(body),
+        }),
+        httpOptions,
+      );
+    const toolCall = (id: number, name: string, args: Record<string, unknown>) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: { name, arguments: args },
+    });
+    type Answer = {
+      id: number;
+      result?: { isError?: boolean; structuredContent?: { error?: { code?: string } } };
+    };
+    /** The JSON-RPC answers of a response, as JSON or as server-sent events, by id. */
+    async function answersOf(response: Response): Promise<Map<number, Answer>> {
+      assert.equal(response.status, 200, await response.clone().text());
+      const raw = await response.text();
+      const values = (response.headers.get("content-type") ?? "").includes("text/event-stream")
+        ? raw
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => JSON.parse(line.slice(5)) as Answer | Answer[])
+        : [JSON.parse(raw) as Answer | Answer[]];
+      return new Map(values.flat().map((answer) => [answer.id, answer]));
+    }
+    /** The code a tool call answered with; none when it ran. */
+    const codeOf = (answer: Answer | undefined) =>
+      answer?.result?.isError ? answer.result.structuredContent?.error?.code : undefined;
 
     const errorOf = (result: ToolResult) =>
       (result.structuredContent as { error?: { code?: string; details?: unknown } } | undefined)
@@ -417,6 +469,161 @@ describe(
       const { idempotencyKey: copyKey, ...copyOthers } = copyProperties as Record<string, object>;
       assert.deepEqual(addOthers, copyOthers);
       assert.deepEqual({ ...addKey, description: "" }, { ...copyKey, description: "" });
+    });
+
+    test("over MCP the key is asked before the store: none chosen, one out of reach, a plan without the API", async () => {
+      const before = { runs, records: (await records("fixture.notes.add")).length };
+      const keyless = toolCall(1, "fixture_notes_add", { title: "Tents" });
+
+      // A grant over two stores and no store named: STORE_REQUIRED came first.
+      const twoStores = await oauthToken([STORE, OTHER_STORE]);
+      const unnamed = await answersOf(await mcpPost({ authorization: twoStores }, keyless));
+      assert.equal(codeOf(unnamed.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+
+      // A store out of reach, named by the header (the request failed with
+      // 403) or by the argument (the call answered NO_STORE_ACCESS).
+      const key = await apiKey();
+      const byHeader = await mcpPost(
+        { authorization: key, "louez-store": STRANGER_STORE },
+        keyless,
+      );
+      assert.equal(codeOf((await answersOf(byHeader)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+      const byArgument = await mcpPost(
+        { authorization: key },
+        toolCall(1, "fixture_notes_add", { title: "Tents", storeId: STRANGER_STORE }),
+      );
+      assert.equal(codeOf((await answersOf(byArgument)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+
+      // A plan without API access (the request failed with 403).
+      apiAccess = false;
+      try {
+        const noPlan = await mcpPost({ authorization: key }, keyless);
+        assert.equal(codeOf((await answersOf(noPlan)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+        // REST resolves no store before the procedure: the key comes first there too.
+        const viaRest = await openApi(
+          "/fixture/notes/add",
+          { title: "Tents" },
+          {
+            authorization: key,
+            "louez-store": STRANGER_STORE,
+          },
+        );
+        assert.equal(
+          ((await viaRest.json()) as { data: { code: string } }).data.code,
+          "IDEMPOTENCY_KEY_REQUIRED",
+        );
+      } finally {
+        apiAccess = true;
+      }
+
+      // Unchanged for the unflagged write: the store answers.
+      const copy = await mcpPost(
+        { authorization: key },
+        toolCall(1, "fixture_notes_copy", { title: "Tents", storeId: STRANGER_STORE }),
+      );
+      assert.equal(codeOf((await answersOf(copy)).get(1)), "NO_STORE_ACCESS");
+      const copyByHeader = await mcpPost(
+        { authorization: key, "louez-store": STRANGER_STORE },
+        toolCall(1, "fixture_notes_copy", { title: "Tents" }),
+      );
+      assert.equal(copyByHeader.status, 403);
+
+      assert.equal(runs, before.runs, "nothing ran");
+      assert.equal((await records("fixture.notes.add")).length, before.records, "no operation row");
+    });
+
+    test("in a batch, a keyless call to a flagged tool is refused first; the other calls are as before", async () => {
+      const key = await apiKey();
+      const before = runs;
+
+      // A store out of reach, named by the calls: the keyless call is told
+      // about its key, the other about the store, as before.
+      const outOfReach = await answersOf(
+        await mcpPost({ authorization: key }, [
+          toolCall(1, "fixture_notes_add", { title: "Tents", storeId: STRANGER_STORE }),
+          toolCall(2, "fixture_notes_copy", { title: "Tents", storeId: STRANGER_STORE }),
+        ]),
+      );
+      assert.equal(codeOf(outOfReach.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+      assert.equal(codeOf(outOfReach.get(2)), "NO_STORE_ACCESS");
+
+      // No store chosen on a grant over two stores: the other call asks for one.
+      const twoStores = await oauthToken([STORE, OTHER_STORE]);
+      const unnamed = await answersOf(
+        await mcpPost({ authorization: twoStores }, [
+          toolCall(1, "fixture_notes_add", { title: "Tents" }),
+          toolCall(2, "fixture_notes_copy", { title: "Tents" }),
+        ]),
+      );
+      assert.equal(codeOf(unnamed.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+      assert.equal(codeOf(unnamed.get(2)), "STORE_REQUIRED");
+
+      // Its own store: the other call runs, the keyless one does not.
+      const ran = await answersOf(
+        await mcpPost({ authorization: key }, [
+          toolCall(1, "fixture_notes_add", { title: "Tents" }),
+          toolCall(2, "fixture_notes_copy", { title: "Tents" }),
+        ]),
+      );
+      assert.equal(codeOf(ran.get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+      assert.equal(ran.get(2)?.result?.isError, undefined);
+      assert.equal(runs, before + 1);
+    });
+
+    test("an empty or blank key is no key for a flagged write, on REST and MCP; unflagged writes keep their answers", async () => {
+      const authorization = await apiKey();
+      const before = runs;
+      for (const blank of ["", "   "]) {
+        const viaRest = await openApi(
+          "/fixture/notes/add",
+          { title: "Tents" },
+          { authorization, "idempotency-key": blank },
+        );
+        assert.equal(viaRest.status, 400, JSON.stringify(blank));
+        assert.equal(
+          ((await viaRest.json()) as { data: { code: string } }).data.code,
+          "IDEMPOTENCY_KEY_REQUIRED",
+        );
+        const viaMcp = await mcpCall(authorization, "fixture_notes_add", {
+          title: "Tents",
+          idempotencyKey: blank,
+        });
+        assert.equal(errorOf(viaMcp)?.code, "IDEMPOTENCY_KEY_REQUIRED", JSON.stringify(blank));
+        // Before the store, too.
+        const outOfReach = await mcpPost(
+          { authorization },
+          toolCall(1, "fixture_notes_add", {
+            title: "Tents",
+            idempotencyKey: blank,
+            storeId: STRANGER_STORE,
+          }),
+        );
+        assert.equal(codeOf((await answersOf(outOfReach)).get(1)), "IDEMPOTENCY_KEY_REQUIRED");
+      }
+      assert.equal(runs, before);
+
+      // Unflagged: an empty header is a key out of bounds, an empty argument malformed.
+      const restCopy = await openApi(
+        "/fixture/notes/copy",
+        { title: "Tents" },
+        { authorization, "idempotency-key": "" },
+      );
+      assert.equal(restCopy.status, 409);
+      assert.equal(
+        ((await restCopy.json()) as { data: { code: string } }).data.code,
+        "IDEMPOTENCY_KEY_REUSED",
+      );
+      const mcpCopy = await mcpCall(authorization, "fixture_notes_copy", {
+        title: "Tents",
+        idempotencyKey: "",
+      });
+      assert.equal(errorOf(mcpCopy)?.code, "INVALID_ARGUMENT");
+      // A malformed key on a flagged write is still malformed, not missing.
+      const numeric = await mcpCall(authorization, "fixture_notes_add", {
+        title: "Tents",
+        idempotencyKey: 42,
+      });
+      assert.equal(errorOf(numeric)?.code, "INVALID_ARGUMENT");
     });
 
     test("the OpenAPI document marks the header required on flagged operations only", async () => {

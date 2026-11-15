@@ -11,6 +11,7 @@ import {
 } from "./meta";
 import { referenceGroupOf } from "./openapi-tags";
 import type { ProcedureScope } from "./permissions";
+import { checksCaller } from "./procedures";
 
 /**
  * The procedures the OpenAPI and MCP transports serve, by router path. The RPC
@@ -270,6 +271,13 @@ function problemsOf(path: string, node: unknown): string[] {
     problems.push(`${path}: only a session may call it`);
   }
   if (meta.platformAdmin) problems.push(`${path}: reserved to platform staff`);
+  // The rule is enforced by the caller checks (`callerRefusal`): a procedure
+  // built without them would run without a key.
+  if (meta.requiresIdempotencyKey && !checksCaller(node)) {
+    problems.push(
+      `${path}: requires an idempotency key but is not built on accountProcedure or storeProcedure`,
+    );
+  }
   if (def.inputSchema) {
     const [, schema] = jsonSchemaConverter.convert(def.inputSchema, { strategy: "input" });
     if (schema.type !== "object") problems.push(`${path}: its input is not an object`);

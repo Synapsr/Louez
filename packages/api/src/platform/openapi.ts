@@ -327,6 +327,11 @@ export const COMMON_ERROR_CODES = [
     "PATH_PARAMETER_CONFLICT",
     "A field of the body, or of a GET's query string, has the name of a path parameter and another value (`details.parameter`).",
   ],
+  [
+    400,
+    "IDEMPOTENCY_KEY_REQUIRED",
+    "The write documents `Idempotency-Key` as required and the request sent none, or an empty one (`details.header`). Nothing was done: send it again with a new key.",
+  ],
   [401, "UNAUTHENTICATED", "No API key, or one that is invalid, expired or revoked."],
   [401, "CREDENTIAL_NOT_ACCEPTED", "The credential is not an API key."],
   [
@@ -463,7 +468,7 @@ Sending the same request again while its approval is open answers with that appr
 
 ## Idempotency and receipts
 
-Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. A write that documents it as required answers a request without it with 400 \`IDEMPOTENCY_KEY_REQUIRED\` and does nothing. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), a retry with the same key, from the same API key, for the same operation and input, answers by how the first call ended:
+Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. A write that documents it as required answers a request without it, or with an empty one, with 400 \`IDEMPOTENCY_KEY_REQUIRED\` and does nothing. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), a retry with the same key, from the same API key, for the same operation and input, answers by how the first call ended:
 
 - It succeeded: the retry returns its stored result without running it again, with \`Louez-Replayed: true\`.
 - Louez refused it before doing it, for instance \`CONFIRMATION_REQUIRED\`, \`APPROVAL_REQUIRED\`, \`PERMISSION_DENIED\` or \`RESERVATION_BUSY\`: the retry runs the write again. So one key serves a write's whole approval, from the first call to the one that carries it out.
@@ -576,7 +581,7 @@ const openApiDocumentOptions = {
         name: "Idempotency-Key",
         in: "header",
         required: true,
-        description: `Required: a retry of this write must never do it twice, so a request without the header answers 400 IDEMPOTENCY_KEY_REQUIRED and does nothing. While its record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months), a retry that succeeded with the same key, operation and input returns the stored result without running again; another input or operation fails with IDEMPOTENCY_KEY_REUSED.`,
+        description: `Required: a retry of this write must never do it twice, so a request without the header, or with an empty one, answers 400 IDEMPOTENCY_KEY_REQUIRED and does nothing. While its record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months), a retry that succeeded with the same key, operation and input returns the stored result without running again; another input or operation fails with IDEMPOTENCY_KEY_REUSED.`,
         schema: { type: "string", minLength: 1, maxLength: MAX_IDEMPOTENCY_KEY_LENGTH },
       },
       LouezConfirmation: {
