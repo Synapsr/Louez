@@ -1368,6 +1368,20 @@ const MESSAGE_LABELS: Record<string, string> = {
   customer_reservation_confirmed: "confirmation message",
 };
 
+/**
+ * Why a row was given up at once, by the code its reason starts with
+ * (platform/effects.ts `EffectSendOutcome`); a row given up after every try
+ * has none of these.
+ */
+const GIVEN_UP_AT_ONCE: Record<string, string> = {
+  recipient_changed: "the customer's address changed after it was written",
+  email_not_configured: "no e-mail service is set up",
+  invalid_payload: "it was written wrong",
+  row_mismatch: "it was written wrong",
+};
+const givenUpReason = (lastError: string | null) =>
+  /^Abandoned: ([a-z_]+)/.exec(lastError ?? "")?.[1] ?? null;
+
 /** A message to a customer, or a store notification, the outbox gave up on. */
 const unsentMessages: Source = async (window, shaper) => {
   const rows = await db
@@ -1375,6 +1389,7 @@ const unsentMessages: Source = async (window, shaper) => {
       effectId: apiEffects.id,
       type: apiEffects.type,
       payload: apiEffects.payload,
+      lastError: apiEffects.lastError,
       // An abandoned row's next attempt is the time it was abandoned (platform/effects.ts).
       occurredAt: apiEffects.nextAttemptAt,
       reservationId: reservations.id,
@@ -1421,15 +1436,17 @@ const unsentMessages: Source = async (window, shaper) => {
             companyName: row.companyName,
           })
         : null;
+    const reason = givenUpReason(row.lastError);
+    const why = reason ? GIVEN_UP_AT_ONCE[reason] : undefined;
     const what = toCustomer
       ? `The ${(notification && MESSAGE_LABELS[notification]) ?? "message"}${channel ? ` (${channel})` : ""} to the customer`
       : `The store notification${channel ? ` (${channel})` : ""}`;
     return candidate("message_not_sent", row.effectId, {
       severity: toCustomer ? "warning" : "info",
       occurredAt: row.occurredAt,
-      summary: `${what}${about ? ` of ${about.name}` : ""} never went out after every try${
-        toCustomer ? ": contact the customer yourself" : ""
-      }.`,
+      summary: `${what}${about ? ` of ${about.name}` : ""} ${
+        why ? `was not sent (${why})` : "never went out after every try"
+      }${toCustomer ? ": contact the customer yourself" : ""}.`,
       reservation: about?.reservation ?? null,
       details: {
         effectId: row.effectId,
@@ -1442,6 +1459,7 @@ const unsentMessages: Source = async (window, shaper) => {
             : null,
         reservationId: row.reservationId,
         reservationNumber: row.number,
+        reason: why ? reason : null,
       },
       tools: about ? RESERVATION_TOOLS : [],
       links: about?.links ?? storeLinks(shaper.reader.urls, shaper.reader.store),

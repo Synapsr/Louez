@@ -3163,6 +3163,7 @@ export async function updateReservation(
         startDate: reservation.startDate,
         endDate: reservation.endDate,
       },
+      period: { startDate: newStartDate, endDate: newEndDate },
     });
 
     if (emailResult.error) {
@@ -3928,6 +3929,8 @@ export async function sendReservationModificationEmail(
       startDate: Date;
       endDate: Date;
     };
+    /** The dates the change set; by default the reservation's now. */
+    period?: { startDate: Date; endDate: Date };
   },
 ) {
   // sendEmail degrades to a logged no-op without a transport; a manual send
@@ -3945,6 +3948,7 @@ export async function sendReservationModificationEmail(
     store,
     reservationId,
     previousPeriod: data?.previousPeriod,
+    period: data?.period,
     userId: await getActorUserId(),
   });
   if (sent.status === "not_found") {

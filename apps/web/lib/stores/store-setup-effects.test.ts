@@ -136,6 +136,7 @@ describe("store setup analytics senders", () => {
 
   const context: EffectSendContext = {
     effectId: "effect_test",
+    row: { storeId: "store", reservationId: null, customerId: null },
     signal: new AbortController().signal,
     throwIfAborted: () => {},
     assertClaim: async () => {

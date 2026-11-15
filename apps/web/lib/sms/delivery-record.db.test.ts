@@ -97,6 +97,7 @@ describe("SMS delivery records (database)", { skip: skipWithoutTestDatabase() },
 
   const context = {
     effectId: "effect_debit",
+    row: { storeId: STORE, reservationId: null, customerId: null },
     signal: new AbortController().signal,
     throwIfAborted: () => {},
     assertClaim: async () => {},

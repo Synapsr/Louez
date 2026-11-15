@@ -1748,41 +1748,77 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.doesNotMatch(redacted?.summary ?? "", /Ada/);
   });
 
-  test("a customer e-mail of a reservation write the outbox gave up on shows, named by its type", async () => {
+  test("a customer e-mail of a reservation write the outbox gave up on shows, named by its type, with why", async () => {
     const reservationId = await reservation("quote");
-    const given = (type: string) => ({
+    const given = (type: string, lastError: string, attempts: number) => ({
       id: nextId("ib_eff"),
       storeId: STORE,
       reservationId,
       customerId: CUSTOMER,
       type,
-      // Abandoned at once: a payload its sender could not read.
       payload: { storeId: STORE },
       status: "abandoned" as const,
-      attempts: 1,
+      attempts,
+      lastError,
       nextAttemptAt: ago(HOUR),
       createdAt: ago(3 * HOUR),
     });
     const rows = [
-      given("reservation.quoteEmail"),
-      given("reservation.confirmationEmail"),
-      given("reservation.modifiedEmail"),
+      given(
+        "reservation.quoteEmail",
+        "Abandoned: recipient_changed: the reservation's customer or their address is not the one announced",
+        1,
+      ),
+      given(
+        "reservation.confirmationEmail",
+        "Abandoned: email_not_configured: no e-mail service is set up",
+        1,
+      ),
+      given("reservation.modifiedEmail", "SMTP refused the message", 8),
     ];
     await louezDb.db.insert(louezDb.apiEffects).values(rows);
 
     const items = ofType((await list()).items, "message_not_sent");
     const byId = new Map(items.map((item) => [item.id, item]));
-    for (const [row, label, notification] of [
-      [rows[0], "quote", "customer_quote_sent"],
-      [rows[1], "confirmation message", "customer_reservation_confirmed"],
-      [rows[2], "modification message", "customer_reservation_modified"],
+    for (const [row, label, notification, why, reason] of [
+      [
+        rows[0],
+        "quote",
+        "customer_quote_sent",
+        "was not sent \\(the customer's address changed after it was written\\)",
+        "recipient_changed",
+      ],
+      [
+        rows[1],
+        "confirmation message",
+        "customer_reservation_confirmed",
+        "was not sent \\(no e-mail service is set up\\)",
+        "email_not_configured",
+      ],
+      [
+        rows[2],
+        "modification message",
+        "customer_reservation_modified",
+        "never went out after every try",
+        null,
+      ],
     ] as const) {
       const item = byId.get(`message_not_sent:${row?.id}`);
-      assert.match(item?.summary ?? "", new RegExp(`The ${label} \\(email\\) to the customer of`));
+      assert.match(
+        item?.summary ?? "",
+        new RegExp(
+          `^The ${label} \\(email\\) to the customer of .+ ${why}: contact the customer yourself\\.$`,
+        ),
+      );
       assert.equal(item?.severity, "warning");
       assert.deepEqual(
-        [item?.details.audience, item?.details.channel, item?.details.notification],
-        ["customer", "email", notification],
+        [
+          item?.details.audience,
+          item?.details.channel,
+          item?.details.notification,
+          item?.details.reason,
+        ],
+        ["customer", "email", notification, reason],
       );
     }
   });

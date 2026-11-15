@@ -21,13 +21,17 @@ import type { ReservationMessageEffectDeps } from "./reservation-message-effects
 // transport is a fake that notes what it takes and fails when told to; the
 // platform's channels are a fake too. No session is open, and none can be.
 //
-// - Each kind is delivered once.
-// - A failed send is retried, then delivered once; a quote's retry mints no
-//   second link.
-// - A run after a success the outbox did not record sends no second e-mail.
-//   The platform's channels (Discord, fromHello) take no key: a run after a
-//   lost outcome posts again there.
-// - A payload written wrong is given up at once, kept, never retried.
+// - Each kind is delivered once; a failed send is retried, then delivered
+//   once; a run after a success the outbox did not record sends no second
+//   e-mail and mints no second link. The platform's channels (Discord,
+//   fromHello) take no key: a run after a lost outcome posts again there.
+// - A row sends only about its own store, reservation and customer.
+// - A payload is one recipient, bounded ids, a plain amount, or it is given up.
+// - A modification e-mail states its own write: two changes sent late say
+//   each its own step, and nothing goes out once the booking is cancelled.
+// - An e-mail goes only to the address announced, while still the customer's.
+// - Undeliverable ends `abandoned` (the inbox shows it); no longer applicable
+//   ends `cancelled` (no one is alerted).
 
 /** The SMTP transport: what it took, and how many sends it fails next. */
 const transport = {
@@ -89,9 +93,22 @@ Reflect.get(
 const USER = "user_msg_outbox";
 const STORE = "store_msg_outbox_001";
 const CUSTOMER = "cus_msg_outbox_00001";
+const OTHER_CUSTOMER = "cus_msg_outbox_00003";
 const QUOTE = "res_msg_outbox_quote";
 const CONFIRMED = "res_msg_outbox_conf1";
 const TO = "ada@outbox.test";
+// Another store's booking, which a row of the first store must never send about.
+const OTHER_STORE = "store_msg_outbox_002";
+const OTHER_STORE_CUSTOMER = "cus_msg_outbox_00002";
+const OTHER_RESERVATION = "res_msg_outbox_other";
+
+/** Three periods of one booking: A, B (its dates when seeded), C. */
+const A = { startDate: "2030-06-01T12:00:00.000Z", endDate: "2030-06-03T12:00:00.000Z" };
+const B = { startDate: "2030-06-04T12:00:00.000Z", endDate: "2030-06-06T12:00:00.000Z" };
+const C = { startDate: "2030-06-10T12:00:00.000Z", endDate: "2030-06-12T12:00:00.000Z" };
+/** Whether an e-mail names this day of June 2030, as the store's English dates write it. */
+const names = (html: string | undefined, day: number) =>
+  new RegExp(`\\b${day} June 2030|June ${day}, 2030`).test(html ?? "");
 
 describe(
   "reservation messages through the outbox (database)",
@@ -127,32 +144,52 @@ describe(
       senders = createReservationMessageEffectSenders(deps) as ApiEffectSenders;
 
       await louezDb.db.insert(louezDb.users).values({ id: USER, email: "owner@outbox.test" });
-      await louezDb.db.insert(louezDb.stores).values({
-        id: STORE,
-        userId: USER,
-        name: "Kayaks",
-        slug: "msg-outbox",
-        settings: { country: "GB", currency: "GBP" } as never,
-      });
-      await louezDb.db.insert(louezDb.customers).values({
-        id: CUSTOMER,
-        storeId: STORE,
-        email: TO,
-        firstName: "Ada",
-        lastName: "Lovelace",
-      });
-      for (const [id, number, status] of [
-        [QUOTE, "2030-0001", "quote"],
-        [CONFIRMED, "2030-0002", "confirmed"],
+      await louezDb.db.insert(louezDb.stores).values([
+        {
+          id: STORE,
+          userId: USER,
+          name: "Kayaks",
+          slug: "msg-outbox",
+          settings: { country: "GB", currency: "GBP" } as never,
+        },
+        {
+          id: OTHER_STORE,
+          userId: USER,
+          name: "Canoes",
+          slug: "msg-outbox-other",
+          settings: { country: "GB", currency: "GBP" } as never,
+        },
+      ]);
+      await louezDb.db.insert(louezDb.customers).values([
+        { id: CUSTOMER, storeId: STORE, email: TO, firstName: "Ada", lastName: "Lovelace" },
+        {
+          id: OTHER_CUSTOMER,
+          storeId: STORE,
+          email: "grace@outbox.test",
+          firstName: "Grace",
+          lastName: "Hopper",
+        },
+        {
+          id: OTHER_STORE_CUSTOMER,
+          storeId: OTHER_STORE,
+          email: "bob@other.test",
+          firstName: "Bob",
+          lastName: "Other",
+        },
+      ]);
+      for (const [id, storeId, customerId, number, status] of [
+        [QUOTE, STORE, CUSTOMER, "2030-0001", "quote"],
+        [CONFIRMED, STORE, CUSTOMER, "2030-0002", "confirmed"],
+        [OTHER_RESERVATION, OTHER_STORE, OTHER_STORE_CUSTOMER, "2030-0900", "confirmed"],
       ] as const) {
         await louezDb.db.insert(louezDb.reservations).values({
           id,
-          storeId: STORE,
-          customerId: CUSTOMER,
+          storeId,
+          customerId,
           number,
           status,
-          startDate: new Date("2030-06-04T12:00:00Z"),
-          endDate: new Date("2030-06-06T12:00:00Z"),
+          startDate: new Date(B.startDate),
+          endDate: new Date(B.endDate),
           subtotalAmount: "20.00",
           depositAmount: "50.00",
           totalAmount: "70.00",
@@ -186,9 +223,18 @@ describe(
         .set({ customerNotificationSettings: null })
         .where(eq(louezDb.stores.id, STORE));
       await louezDb.db
-        .update(louezDb.reservations)
-        .set({ status: "quote" })
-        .where(eq(louezDb.reservations.id, QUOTE));
+        .update(louezDb.customers)
+        .set({ email: TO })
+        .where(eq(louezDb.customers.id, CUSTOMER));
+      for (const [id, status] of [
+        [QUOTE, "quote"],
+        [CONFIRMED, "confirmed"],
+      ] as const) {
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ status, startDate: new Date(B.startDate), endDate: new Date(B.endDate) })
+          .where(eq(louezDb.reservations.id, id));
+      }
       transport.configured = true;
       transport.failNext = 0;
       transport.sent.length = 0;
@@ -200,7 +246,8 @@ describe(
     const enqueue = (...effects: ApiEffect[]) =>
       louezDb.db.transaction((tx) => outbox.enqueueEffects(tx, STORE, effects));
 
-    const modified = (): ApiEffect => ({
+    /** The modification e-mail of a change from one period to another (A → B by default). */
+    const modified = (previousPeriod = A, period = B): ApiEffect => ({
       type: "reservation.modifiedEmail",
       orderingKey: `reservation:${CONFIRMED}:customer:email`,
       reservationId: CONFIRMED,
@@ -209,10 +256,8 @@ describe(
         storeId: STORE,
         reservationId: CONFIRMED,
         to: TO,
-        previousPeriod: {
-          startDate: "2030-06-01T12:00:00.000Z",
-          endDate: "2030-06-03T12:00:00.000Z",
-        },
+        previousPeriod,
+        period,
         userId: USER,
       },
     });
@@ -241,11 +286,26 @@ describe(
         totalAmount: "70.00",
       },
     });
+    const EMAILS = [
+      ["modification", modified],
+      ["quote", quote],
+      ["confirmation", confirmation],
+    ] as const;
+    /** The same row with some of its payload's fields replaced. */
+    const withPayload = (effect: ApiEffect, fields: Record<string, unknown>): ApiEffect =>
+      ({ ...effect, payload: { ...effect.payload, ...fields } }) as never;
 
     const row = async (id: string) => {
       const [effect] = await outbox.readEffects([id]);
       assert.ok(effect, `row ${id}`);
       return effect;
+    };
+    /** Dispatches one row, as the write's commit hands it over, and reads it back. */
+    const dispatchOne = async (effect: ApiEffect) => {
+      const [id] = await enqueue(effect);
+      assert.ok(id);
+      await outbox.dispatchEffects([id], senders);
+      return row(id);
     };
     /** The cron's next pass, with the failed row's retry due now. */
     const retryNow = async (id: string) => {
@@ -266,6 +326,8 @@ describe(
         .select({ id: louezDb.verificationCodes.id, token: louezDb.verificationCodes.token })
         .from(louezDb.verificationCodes)
         .where(eq(louezDb.verificationCodes.reservationId, reservationId));
+    const allTokens = () =>
+      louezDb.db.select({ id: louezDb.verificationCodes.id }).from(louezDb.verificationCodes);
     const activity = () =>
       louezDb.db
         .select({
@@ -276,27 +338,43 @@ describe(
         })
         .from(louezDb.reservationActivity)
         .where(eq(louezDb.reservationActivity.reservationId, CONFIRMED));
+    /** A row given up at once, kept, for its reason: nothing sent, nothing minted. */
+    const assertAbandoned = async (
+      effect: Awaited<ReturnType<typeof row>>,
+      code: string,
+      label: string,
+    ) => {
+      assert.equal(effect.status, "abandoned", label);
+      assert.equal(effect.attempts, 1, label);
+      assert.match(effect.lastError ?? "", new RegExp(`^Abandoned: ${code}:`), label);
+      assert.notDeepEqual(effect.payload, {}, label);
+      assert.equal(transport.sent.length, 0, label);
+      assert.equal(platform.length, 0, label);
+      assert.deepEqual(await allTokens(), [], label);
+    };
+    /** A row that no longer applies: cancelled with its reason, nothing sent. */
+    const assertNoLongerApplies = (
+      effect: Awaited<ReturnType<typeof row>>,
+      code: string,
+      label: string,
+    ) => {
+      assert.equal(effect.status, "cancelled", label);
+      assert.match(effect.lastError ?? "", new RegExp(`^Skipped: ${code}:`), label);
+      assert.equal(transport.sent.length, 0, label);
+    };
 
     describe("the modification e-mail", () => {
-      test("goes out once, with both periods, to the address the write announced, and adds its activity row", async () => {
-        const [id] = await enqueue(modified());
-        assert.ok(id);
-        assert.deepEqual(await outbox.dispatchEffects([id], senders), {
-          sent: 1,
-          failed: 0,
-          skipped: 0,
-        });
-        assert.equal((await row(id)).status, "sent");
+      test("goes out once, with both periods of its write, to the address announced, and adds its activity row", async () => {
+        const effect = await dispatchOne(modified());
+        assert.equal(effect.status, "sent");
         assert.equal(transport.sent.length, 1);
         const [email] = transport.sent;
         assert.equal(email?.to, TO);
         assert.match(email?.subject ?? "", /2030-0002/);
-        // The previous period, from the payload, and the new one, from the reservation.
-        assert.match(email?.html ?? "", /1 June 2030|June 1, 2030|01\/06\/2030/);
-        assert.match(email?.html ?? "", /4 June 2030|June 4, 2030|04\/06\/2030/);
+        assert.ok(names(email?.html, 1) && names(email?.html, 4));
         assert.deepEqual(await activity(), [
           {
-            id,
+            id: effect.id,
             userId: USER,
             activityType: "note_updated",
             metadata: {
@@ -308,28 +386,52 @@ describe(
         ]);
       });
 
-      test("a failed send is retried, then delivered once, with one activity row", async () => {
-        transport.failNext = 1;
+      test("two changes sent late say each its own step, in order", async () => {
+        const ids = await enqueue(modified(A, B), modified(B, C));
+        // The booking has its last dates when the rows go out.
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ startDate: new Date(C.startDate), endDate: new Date(C.endDate) })
+          .where(eq(louezDb.reservations.id, CONFIRMED));
+        await outbox.dispatchEffects(ids, senders);
+        assert.deepEqual(
+          transport.sent.map((email) => [1, 4, 10].filter((day) => names(email.html, day))),
+          [
+            [1, 4],
+            [4, 10],
+          ],
+        );
+      });
+
+      test("nothing goes out once the booking is cancelled", async () => {
         const [id] = await enqueue(modified());
         assert.ok(id);
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ status: "cancelled" })
+          .where(eq(louezDb.reservations.id, CONFIRMED));
         await outbox.dispatchEffects([id], senders);
-        const failed = await row(id);
+        assertNoLongerApplies(await row(id), "obsolete", "cancelled");
+        assert.deepEqual(await activity(), []);
+      });
+
+      test("a failed send is retried, then delivered once, with one activity row", async () => {
+        transport.failNext = 1;
+        const failed = await dispatchOne(modified());
         assert.equal(failed.status, "failed");
         assert.match(failed.lastError ?? "", /SMTP refused/);
         assert.equal(transport.sent.length, 0);
         // The dashboard records a failed send; the outbox only gives up in the inbox.
         assert.deepEqual(await activity(), []);
 
-        await retryNow(id);
-        assert.equal((await row(id)).status, "sent");
+        await retryNow(failed.id);
+        assert.equal((await row(failed.id)).status, "sent");
         assert.equal(transport.sent.length, 1);
         assert.equal((await activity()).length, 1);
       });
 
       test("a run after a success the outbox did not record sends nothing again", async () => {
-        const [id] = await enqueue(modified());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
+        const { id } = await dispatchOne(modified());
         await loseOutcome(id);
 
         await outbox.retryDueEffects(senders);
@@ -338,33 +440,25 @@ describe(
         assert.equal((await activity()).length, 1);
       });
 
-      test("without SMTP, nothing is sent and the row says why", async () => {
-        transport.configured = false;
-        const [id] = await enqueue(modified());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
-        const skipped = await row(id);
-        assert.equal(skipped.status, "cancelled");
-        assert.equal(skipped.lastError, "Skipped: email_not_configured");
-        assert.equal(transport.sent.length, 0);
-      });
-
       test("the dashboard's send, with no outbox row, records a failure on the timeline", async () => {
         const { sendReservationModificationEmailForStore } = await import("./modification-email");
         const store = await louezDb.db.query.stores.findFirst({
           where: eq(louezDb.stores.id, STORE),
         });
         assert.ok(store);
+        const dates = { startDate: new Date(B.startDate), endDate: new Date(B.endDate) };
         transport.failNext = 1;
         const failed = await sendReservationModificationEmailForStore({
           store,
           reservationId: CONFIRMED,
+          period: dates,
           userId: USER,
         });
         assert.equal(failed.status, "failed");
         const sent = await sendReservationModificationEmailForStore({
           store,
           reservationId: CONFIRMED,
+          period: dates,
           userId: USER,
         });
         assert.deepEqual(sent, { status: "sent", to: TO });
@@ -381,15 +475,13 @@ describe(
 
     describe("the quote e-mail", () => {
       test("goes out once, with a link that signs the customer in to the quote", async () => {
-        const [id] = await enqueue(quote());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
-        assert.equal((await row(id)).status, "sent");
+        const effect = await dispatchOne(quote());
+        assert.equal(effect.status, "sent");
         assert.equal(transport.sent.length, 1);
         const minted = await tokens(QUOTE);
         assert.deepEqual(
           minted.map((entry) => entry.id),
-          [id],
+          [effect.id],
         );
         assert.ok(transport.sent[0]?.html.includes(`/r/${QUOTE}?token=${minted[0]?.token}`));
         assert.match(transport.sent[0]?.html ?? "", /Sea kayak/);
@@ -397,24 +489,20 @@ describe(
 
       test("a failed send is retried with the same link, then delivered once", async () => {
         transport.failNext = 1;
-        const [id] = await enqueue(quote());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
-        assert.equal((await row(id)).status, "failed");
+        const failed = await dispatchOne(quote());
+        assert.equal(failed.status, "failed");
         const first = await tokens(QUOTE);
         assert.equal(first.length, 1);
 
-        await retryNow(id);
-        assert.equal((await row(id)).status, "sent");
+        await retryNow(failed.id);
+        assert.equal((await row(failed.id)).status, "sent");
         assert.equal(transport.sent.length, 1);
         assert.deepEqual(await tokens(QUOTE), first);
         assert.ok(transport.sent[0]?.html.includes(`token=${first[0]?.token}`));
       });
 
       test("a run after a success the outbox did not record sends nothing again", async () => {
-        const [id] = await enqueue(quote());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
+        const { id } = await dispatchOne(quote());
         await loseOutcome(id);
 
         await outbox.retryDueEffects(senders);
@@ -422,52 +510,17 @@ describe(
         assert.equal(transport.sent.length, 1);
         assert.equal((await tokens(QUOTE)).length, 1);
       });
-
-      test("nothing goes out once the store turned quote e-mails off, or the quote was answered", async () => {
-        await louezDb.db
-          .update(louezDb.stores)
-          .set({
-            customerNotificationSettings: {
-              customer_quote_sent: { enabled: false, email: true, sms: false },
-            } as never,
-          })
-          .where(eq(louezDb.stores.id, STORE));
-        const [off] = await enqueue(quote());
-        assert.ok(off);
-        await outbox.dispatchEffects([off], senders);
-        assert.equal(
-          (await row(off)).lastError,
-          "Skipped: the store turned off customer_quote_sent e-mails",
-        );
-
-        await louezDb.db
-          .update(louezDb.stores)
-          .set({ customerNotificationSettings: null })
-          .where(eq(louezDb.stores.id, STORE));
-        await louezDb.db
-          .update(louezDb.reservations)
-          .set({ status: "declined" })
-          .where(eq(louezDb.reservations.id, QUOTE));
-        const [answered] = await enqueue(quote());
-        assert.ok(answered);
-        await outbox.dispatchEffects([answered], senders);
-        assert.equal((await row(answered)).lastError, "Skipped: the reservation is declined now");
-        assert.equal(transport.sent.length, 0);
-        assert.equal((await tokens(QUOTE)).length, 0);
-      });
     });
 
     describe("the confirmation e-mail of a booking created confirmed", () => {
       test("goes out once, with a link that signs the customer in to sign", async () => {
-        const [id] = await enqueue(confirmation());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
-        assert.equal((await row(id)).status, "sent");
+        const effect = await dispatchOne(confirmation());
+        assert.equal(effect.status, "sent");
         assert.equal(transport.sent.length, 1);
         const minted = await tokens(CONFIRMED);
         assert.deepEqual(
           minted.map((entry) => entry.id),
-          [id],
+          [effect.id],
         );
         assert.ok(transport.sent[0]?.html.includes(`token=${minted[0]?.token}`));
         // In the reservation's currency.
@@ -476,21 +529,17 @@ describe(
 
       test("a failed send is retried, then delivered once", async () => {
         transport.failNext = 1;
-        const [id] = await enqueue(confirmation());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
-        assert.equal((await row(id)).status, "failed");
+        const failed = await dispatchOne(confirmation());
+        assert.equal(failed.status, "failed");
 
-        await retryNow(id);
-        assert.equal((await row(id)).status, "sent");
+        await retryNow(failed.id);
+        assert.equal((await row(failed.id)).status, "sent");
         assert.equal(transport.sent.length, 1);
         assert.equal((await tokens(CONFIRMED)).length, 1);
       });
 
       test("a run after a success the outbox did not record sends nothing again", async () => {
-        const [id] = await enqueue(confirmation());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
+        const { id } = await dispatchOne(confirmation());
         await loseOutcome(id);
 
         await outbox.retryDueEffects(senders);
@@ -501,10 +550,8 @@ describe(
 
     describe("the platform's notice of a new reservation", () => {
       test("goes out once, with the total of its creation", async () => {
-        const [id] = await enqueue(created());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
-        assert.equal((await row(id)).status, "sent");
+        const effect = await dispatchOne(created());
+        assert.equal(effect.status, "sent");
         assert.deepEqual(platform, [
           {
             channel: "discord",
@@ -521,42 +568,159 @@ describe(
 
       test("a failed post is retried, then delivered once", async () => {
         platformFailNext = 1;
-        const [id] = await enqueue(created());
-        assert.ok(id);
-        await outbox.dispatchEffects([id], senders);
-        assert.equal((await row(id)).status, "failed");
+        const failed = await dispatchOne(created());
+        assert.equal(failed.status, "failed");
         assert.equal(platform.length, 0);
 
-        await retryNow(id);
-        assert.equal((await row(id)).status, "sent");
+        await retryNow(failed.id);
+        assert.equal((await row(failed.id)).status, "sent");
         assert.equal(platform.length, 1);
       });
     });
 
-    test("a payload written wrong is given up at once, kept, and never retried", async () => {
-      const broken = (effect: ApiEffect): ApiEffect =>
-        ({ ...effect, payload: { ...effect.payload, reservationId: undefined } }) as never;
-      const ids = await enqueue(
-        broken(modified()),
-        broken(quote()),
-        broken(confirmation()),
-        broken(created()),
-      );
-      assert.deepEqual(await outbox.dispatchEffects(ids, senders), {
-        sent: 0,
-        failed: 4,
-        skipped: 0,
+    describe("a row sends only about its own store, reservation and customer", () => {
+      test("a row of one store naming another store's booking is given up, never sent", async () => {
+        const kinds = [...EMAILS, ["platform notice", created]] as const;
+        for (const [label, make] of kinds) {
+          const effect = await dispatchOne(
+            withPayload(make(), { storeId: OTHER_STORE, reservationId: OTHER_RESERVATION }),
+          );
+          await assertAbandoned(effect, "row_mismatch", label);
+        }
       });
-      const rows = await outbox.readEffects(ids);
-      for (const effect of rows) {
-        assert.equal(effect.status, "abandoned", effect.type);
-        assert.equal(effect.attempts, 1, effect.type);
-        assert.match(effect.lastError ?? "", /^Abandoned: not a reservation\./, effect.type);
-        assert.equal(effect.payload.storeId, STORE, effect.type);
-      }
-      assert.deepEqual(await outbox.retryDueEffects(senders), { sent: 0, failed: 0, skipped: 0 });
-      assert.equal(transport.sent.length, 0);
-      assert.equal(platform.length, 0);
+    });
+
+    describe("a payload holds one recipient and bounded fields", () => {
+      test("a list, a line break, an over-long id or an endless amount is given up", async () => {
+        const cases: Array<[string, ApiEffect]> = [
+          ["two recipients", withPayload(quote(), { to: `${TO}, grace@outbox.test` })],
+          [
+            "a header after a line break",
+            withPayload(confirmation(), { to: `${TO}\r\nBcc: x@y.test` }),
+          ],
+          ["a display name", withPayload(quote(), { to: `Ada <${TO}>` })],
+          ["an id past the id shape", withPayload(modified(), { userId: "u".repeat(22) })],
+          [
+            "a period that is no date",
+            withPayload(modified(), { period: { startDate: "soon", endDate: B.endDate } }),
+          ],
+          ["an amount of 400 digits", withPayload(created(), { totalAmount: "9".repeat(400) })],
+          ["a negative amount", withPayload(created(), { totalAmount: "-70.00" })],
+        ];
+        for (const [label, effect] of cases) {
+          await assertAbandoned(await dispatchOne(effect), "invalid_payload", label);
+        }
+      });
+    });
+
+    describe("an e-mail goes only to the address announced, while still the customer's", () => {
+      test("an address corrected after the write: nothing minted or sent", async () => {
+        for (const [label, make] of EMAILS) {
+          const [id] = await enqueue(make());
+          assert.ok(id);
+          await louezDb.db
+            .update(louezDb.customers)
+            .set({ email: "ada.new@outbox.test" })
+            .where(eq(louezDb.customers.id, CUSTOMER));
+          await outbox.dispatchEffects([id], senders);
+          await assertAbandoned(await row(id), "recipient_changed", label);
+          await louezDb.db
+            .update(louezDb.customers)
+            .set({ email: TO })
+            .where(eq(louezDb.customers.id, CUSTOMER));
+        }
+      });
+
+      test("the same address written otherwise still goes out", async () => {
+        await louezDb.db
+          .update(louezDb.customers)
+          .set({ email: "Ada@Outbox.test" })
+          .where(eq(louezDb.customers.id, CUSTOMER));
+        assert.equal((await dispatchOne(quote())).status, "sent");
+        assert.equal(transport.sent[0]?.to, TO);
+      });
+
+      test("a row announced for another customer: nothing minted or sent", async () => {
+        for (const [label, make] of EMAILS) {
+          await assertAbandoned(
+            await dispatchOne({ ...make(), customerId: OTHER_CUSTOMER }),
+            "recipient_changed",
+            label,
+          );
+        }
+      });
+    });
+
+    describe("each end lands in its class", () => {
+      test("no e-mail service: undeliverable, given up where the inbox shows it", async () => {
+        transport.configured = false;
+        for (const [label, make] of EMAILS) {
+          await assertAbandoned(await dispatchOne(make()), "email_not_configured", label);
+        }
+      });
+
+      test("a quote answered, or turned off by the store: no longer applies", async () => {
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ status: "declined" })
+          .where(eq(louezDb.reservations.id, QUOTE));
+        assertNoLongerApplies(await dispatchOne(quote()), "obsolete", "answered");
+
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ status: "quote" })
+          .where(eq(louezDb.reservations.id, QUOTE));
+        await louezDb.db
+          .update(louezDb.stores)
+          .set({
+            customerNotificationSettings: {
+              customer_quote_sent: { enabled: false, email: true, sms: false },
+            } as never,
+          })
+          .where(eq(louezDb.stores.id, STORE));
+        assertNoLongerApplies(await dispatchOne(quote()), "turned_off", "turned off");
+        assert.deepEqual(await allTokens(), []);
+      });
+
+      test("a confirmation of a booking cancelled since, or turned off: no longer applies", async () => {
+        await louezDb.db
+          .update(louezDb.stores)
+          .set({
+            customerNotificationSettings: {
+              customer_reservation_confirmed: { enabled: true, email: false, sms: false },
+            } as never,
+          })
+          .where(eq(louezDb.stores.id, STORE));
+        assertNoLongerApplies(await dispatchOne(confirmation()), "turned_off", "turned off");
+
+        await louezDb.db
+          .update(louezDb.stores)
+          .set({ customerNotificationSettings: null })
+          .where(eq(louezDb.stores.id, STORE));
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ status: "cancelled" })
+          .where(eq(louezDb.reservations.id, CONFIRMED));
+        assertNoLongerApplies(await dispatchOne(confirmation()), "obsolete", "cancelled");
+        assert.deepEqual(await allTokens(), []);
+      });
+
+      test("a payload written wrong is never retried", async () => {
+        const ids = await enqueue(
+          ...[modified(), quote(), confirmation(), created()].map((effect) =>
+            withPayload(effect, { reservationId: undefined }),
+          ),
+        );
+        assert.deepEqual(await outbox.dispatchEffects(ids, senders), {
+          sent: 0,
+          failed: 4,
+          skipped: 0,
+        });
+        for (const effect of await outbox.readEffects(ids)) {
+          await assertAbandoned(effect, "invalid_payload", effect.type);
+        }
+        assert.deepEqual(await outbox.retryDueEffects(senders), { sent: 0, failed: 0, skipped: 0 });
+      });
     });
   },
 );

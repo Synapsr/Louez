@@ -48,7 +48,8 @@ async function recordActivity(
 
 /**
  * The customer's e-mail that their reservation changed, from the previous
- * period to its dates now, and its activity row. Needs no session: the
+ * period to the new one, and its activity row. Each period is the one its
+ * write set: two changes sent late say each its own step. Needs no session: the
  * dashboard's send (reservations/actions.ts) passes its store, and the
  * outbox's (reservation-message-effects.ts) the store of its row.
  *
@@ -61,6 +62,7 @@ export async function sendReservationModificationEmailForStore({
   store,
   reservationId,
   previousPeriod,
+  period,
   userId,
   to,
   delivery,
@@ -68,6 +70,8 @@ export async function sendReservationModificationEmailForStore({
   store: ModificationEmailStore;
   reservationId: string;
   previousPeriod?: { startDate: Date; endDate: Date };
+  /** The dates the change set; by default the reservation's now. */
+  period?: { startDate: Date; endDate: Date };
   /** Who made the change, for the activity row. */
   userId: string | null;
   /** The address to send to; by default the customer's now. */
@@ -103,8 +107,8 @@ export async function sendReservationModificationEmailForStore({
       reservation: {
         id: reservation.id,
         number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
+        startDate: period?.startDate ?? reservation.startDate,
+        endDate: period?.endDate ?? reservation.endDate,
       },
       previousPeriod,
       reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`),
