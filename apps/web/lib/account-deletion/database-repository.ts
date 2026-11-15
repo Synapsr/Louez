@@ -893,6 +893,9 @@ const purgeOwnedData = async (
           .where(inArray(schema.payments.reservationId, reservationIds));
       }
       await transaction
+        .delete(schema.paymentRefundOperations)
+        .where(inArray(schema.paymentRefundOperations.storeId, storeIds));
+      await transaction
         .delete(schema.paymentRequests)
         .where(inArray(schema.paymentRequests.storeId, storeIds));
       await transaction

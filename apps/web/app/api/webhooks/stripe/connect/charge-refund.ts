@@ -4,23 +4,31 @@ import type Stripe from "stripe";
 import { db, reservationActivity } from "@louez/db";
 
 import { log } from "@/lib/evlog";
-import { ensureRefundPaymentRecord, tryGenerateCreditNoteForRefund } from "@/lib/invoicing/service";
 import { getReferralProgramConfig } from "@/lib/referral/defaults";
 import { clawbackReferrerRewardForQualifyingPayment } from "@/lib/referral/rewards";
+import {
+  type ProviderRefund,
+  REFUND_OPERATION_METADATA,
+  type StripeRefundObject,
+  providerRefundFromStripe,
+  refundMovedMoney,
+} from "@/lib/reservations/stripe-refund-stripe";
+import {
+  issueRefundCreditNotes,
+  recordChargeRefunds,
+  recordRefundFailure,
+} from "@/lib/reservations/stripe-refund-writes";
 import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
 
-import {
-  type ChargePayment,
-  findChargePayment,
-  isKnownPaymentIntent,
-  netRefundedChargePayment,
-} from "./charge-writes";
+import { findChargePayment, isKnownPaymentIntent } from "./charge-writes";
 import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from "./fee-reversal";
 
 // `charge.refunded` on a connected account (louez-billing design §5.6, docs/api
-// fees.md §9 and README Q7): the fee refund at source, the payment netted, and one
-// refund row per Stripe refund of the charge, whatever the payment's kind.
+// fees.md §9 and README Q7): the fee refund at source, then, through the one writer of
+// a charge's refunds (lib/reservations/stripe-refund-writes.ts), the payment netted,
+// one refund row per Stripe refund of the charge whatever the payment's kind, and the
+// refund operation each refund names settled.
 
 /**
  * The event's charge. A retry can deliver an event after a newer one, so the handler
@@ -41,7 +49,11 @@ export type RefundedChargeEvent = Pick<
   | "metadata"
 >;
 
-type StripeRefund = Pick<Stripe.Refund, "id" | "amount" | "created" | "status">;
+type StripeRefund = Pick<Stripe.Refund, "id" | "amount" | "created" | "status"> & {
+  /** Names the refund operation of Louez that asked for it, if one did. */
+  readonly metadata?: Stripe.Metadata | null;
+  readonly failure_reason?: string | null;
+};
 
 /** The Stripe calls of the handler. The webhook uses `stripeChargeRefund`; tests fake it. */
 export type ChargeRefundStripe = {
@@ -78,13 +90,16 @@ export const stripeChargeRefund: ChargeRefundStripe = {
 const stripeId = (value: string | { readonly id: string } | null): string | null =>
   typeof value === "string" ? value : (value?.id ?? null);
 
-/** Failed and canceled refunds moved no money. */
-const movedMoney = (refund: StripeRefund) =>
-  refund.status !== "failed" && refund.status !== "canceled";
-
-/** A deposit's money goes back as a deposit return; the rest as a rental refund. */
-const refundType = (payment: ChargePayment): "rental" | "deposit_return" =>
-  payment.type === "deposit" || payment.type === "deposit_capture" ? "deposit_return" : "rental";
+/** A refund the charge lists, in the charge's currency. */
+const listedRefund = (refund: StripeRefund, currency: string): ProviderRefund => ({
+  id: refund.id,
+  amount: refund.amount,
+  created: refund.created,
+  status: refund.status,
+  currency,
+  failureReason: refund.failure_reason ?? null,
+  operationId: refund.metadata?.[REFUND_OPERATION_METADATA] || null,
+});
 
 /** A charge of a Louez reservation has no payment yet: answer 500, Stripe retries. */
 export class PaymentNotFoundYetError extends Error {
@@ -154,35 +169,22 @@ export async function handleChargeRefunded(
   // 2025-03-31.basil a partial capture refunds nothing and `amount` stays the amount
   // authorized: the money is `amount_captured`.
   const currency = charge.currency.toUpperCase();
-  const refunds = (await port.listRefunds(charge.id, accountId)).filter(movedMoney);
+  const listed = (await port.listRefunds(charge.id, accountId)).map((refund) =>
+    listedRefund(refund, currency),
+  );
+  const refunds = listed.filter(refundMovedMoney);
   const refundedMinor = refunds.reduce((sum, refund) => sum + refund.amount, 0);
-  const netMinor = Math.max(0, charge.amount_captured - refundedMinor);
-  const fullyRefunded = netMinor === 0;
-  await netRefundedChargePayment({
+  const recorded = await recordChargeRefunds(db, {
     paymentId: payment.paymentId,
     reservationId: payment.reservationId,
     chargeId: charge.id,
     currency,
-    netMinor,
+    amountCapturedMinor: charge.amount_captured,
+    refunds: listed,
   });
-
-  for (const refund of refunds) {
-    const amount = fromStripeCents(refund.amount, currency);
-    const refundPaymentId = await ensureRefundPaymentRecord({
-      originalPaymentId: payment.paymentId,
-      stripeRefundId: refund.id,
-      amount,
-      grossMinor: refund.amount,
-      currency,
-      type: refundType(payment),
-      paidAt: new Date(refund.created * 1000),
-    });
-    await tryGenerateCreditNoteForRefund(
-      { originalPaymentId: payment.paymentId, refundPaymentId },
-      amount,
-      "stripe_charge_refunded_webhook",
-    );
-  }
+  await issueRefundCreditNotes(payment.paymentId, recorded.rows, "stripe_charge_refunded_webhook");
+  const netMinor = recorded.netMinor;
+  const fullyRefunded = netMinor === 0;
 
   // Referral Program: a fully refunded qualifying payment, or a partial refund that
   // drops the net online payment below the qualifying minimum, claws back the Referrer
@@ -224,4 +226,41 @@ export async function handleChargeRefunded(
     },
   });
   return { status: "recorded", paymentId: payment.paymentId, refundRows: refunds.length };
+}
+
+export type RefundUpdatedResult =
+  | { readonly status: "missing_account" | "moved_money" | "no_operation" }
+  | { readonly status: "operation_failed"; readonly operationId: string };
+
+/**
+ * Handles `refund.failed`, `refund.updated` and `charge.refund.updated`: a refund that
+ * failed or was canceled after Stripe made it closes the operation that asked for it
+ * as `failed`. A refund row already written for it stays as it was (reservation
+ * invariants, M8); the log says so. A refund that moves money is `charge.refunded`'s.
+ */
+export async function handleRefundUpdated(
+  refund: StripeRefundObject,
+  accountId: string | undefined,
+): Promise<RefundUpdatedResult> {
+  if (!accountId) {
+    log.error({
+      stripeWebhook: { event: "refund.updated", issue: "missing_account", refundId: refund.id },
+    });
+    return { status: "missing_account" };
+  }
+  const provider = providerRefundFromStripe(refund);
+  if (refundMovedMoney(provider)) return { status: "moved_money" };
+  const failed = await recordRefundFailure(db, { accountId, refund: provider });
+  if (!failed) return { status: "no_operation" };
+  if (failed.hadRefundRow) {
+    log.error({
+      stripeWebhook: {
+        event: "refund.updated",
+        issue: "recorded_refund_failed",
+        refundId: refund.id,
+        operationId: failed.operationId,
+      },
+    });
+  }
+  return { status: "operation_failed", operationId: failed.operationId };
 }

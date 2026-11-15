@@ -11,6 +11,7 @@ import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
 import { createDepositHoldEffectSenders } from "@/lib/reservations/deposit-hold-effects";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
+import { createStripeRefundEffectSenders } from "@/lib/reservations/stripe-refund";
 import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
 import { createStoreLaunchEffectSenders } from "@/lib/stores/store-launch-effects";
@@ -24,6 +25,7 @@ import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-ef
 export const apiEffectSenders: ApiEffectSenders = {
   ...createDepositHoldEffectSenders(),
   ...createReservationEffectSenders(),
+  ...createStripeRefundEffectSenders(),
   ...createSmsEffectSenders(),
   ...createStoreCreationEffectSenders(),
   ...createStoreLaunchEffectSenders(),

@@ -4,7 +4,6 @@ import {
   documents,
   invoicePayments,
   invoices,
-  markReservationIds,
   payments,
   reservations,
   storeIntegrations,
@@ -18,7 +17,7 @@ import { log } from "@/lib/evlog";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { InvoiceDocument } from "@/lib/pdf/invoice";
 import { generateContract } from "@/lib/pdf/generate";
-import { grossMinorOf, reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
@@ -388,82 +387,6 @@ export async function tryGenerateInvoiceForPayment(
 export interface RefundInvoiceContext {
   originalPaymentId: string;
   refundPaymentId: string;
-}
-
-export async function ensureRefundPaymentRecord(input: {
-  originalPaymentId: string;
-  stripeRefundId: string;
-  amount: string | number;
-  currency: string;
-  type: "rental" | "deposit_return";
-  paidAt: Date;
-  notes?: string | null;
-  /** Stripe's refund amount in minor units; derived from `amount` when absent. */
-  grossMinor?: number;
-}): Promise<string> {
-  return db.transaction(async (tx) => {
-    await tx
-      .select({ id: payments.id })
-      .from(payments)
-      .where(eq(payments.id, input.originalPaymentId))
-      .for("update");
-    const originalPayment = await tx.query.payments.findFirst({
-      where: eq(payments.id, input.originalPaymentId),
-      columns: { reservationId: true },
-    });
-    if (!originalPayment) throw new Error("Original refund payment not found");
-
-    const existingRefund = await tx.query.payments.findFirst({
-      where: and(
-        eq(payments.reservationId, originalPayment.reservationId),
-        eq(payments.stripeRefundId, input.stripeRefundId),
-      ),
-      columns: { id: true },
-    });
-    if (existingRefund) return existingRefund.id;
-
-    const refundPaymentId = nanoid();
-    const amount = Number(input.amount).toFixed(2);
-    await tx.insert(payments).values({
-      id: refundPaymentId,
-      reservationId: originalPayment.reservationId,
-      amount,
-      type: input.type,
-      method: "stripe",
-      status: "completed",
-      stripeRefundId: input.stripeRefundId,
-      // Lets the cash ledger add the refund back to the charge the webhook
-      // brought down to its net amount. Readers that subtract refunds must skip
-      // Stripe refund rows: that charge is already net.
-      refundOfPaymentId: input.originalPaymentId,
-      currency: input.currency,
-      // The billing service gets this refund folded onto the payment it refunds,
-      // never as a payment, so the row has no origin and no insurance share.
-      grossMinor: input.grossMinor ?? grossMinorOf(amount, input.currency),
-      insuranceShareMinor: 0,
-      notes: input.notes ?? null,
-      paidAt: input.paidAt,
-      createdAt: input.paidAt,
-      updatedAt: input.paidAt,
-    });
-    await markReservationIds(tx, [originalPayment.reservationId]);
-    return refundPaymentId;
-  });
-}
-
-export async function tryEnsureRefundPaymentRecord(
-  input: Parameters<typeof ensureRefundPaymentRecord>[0],
-  source: string,
-): Promise<string | null> {
-  try {
-    return await ensureRefundPaymentRecord(input);
-  } catch (error) {
-    log.error(
-      "invoicing",
-      `refund payment normalization failed (${source}): ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return null;
-  }
 }
 
 export async function generateCreditNoteForRefund(

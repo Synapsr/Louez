@@ -281,6 +281,17 @@ export interface ApiEffectPayloads {
     accountId: string;
     paymentIntentId: string;
   };
+  /**
+   * A refund of an online payment, asked of the payment provider (apps/web
+   * lib/reservations/stripe-refund.ts). Added in the write that records the
+   * operation (`payment_refund_operations`); the operation's row says what to send,
+   * so a run after a lost answer asks about the same refund. An operation already
+   * settled is skipped. It sends nothing to anyone.
+   */
+  "payment.refund": {
+    /** The operation's row (`payment_refund_operations.id`). */
+    operationId: string;
+  };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;
