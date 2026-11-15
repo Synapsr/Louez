@@ -6,7 +6,7 @@ The API is in beta, and so is this CLI: operations and their flags may still cha
 
 ## Install
 
-Node.js 20 or later. The package has no runtime dependency.
+Node.js 20.3 or later. The package has no runtime dependency.
 
 ```sh
 npm install --global louez
@@ -32,7 +32,7 @@ louez auth logout       # removes the saved key
 
 `louez auth login` also reads the key from standard input (`printenv MY_KEY | louez auth login`). It saves it in `config.json` under `$XDG_CONFIG_HOME/louez`, or `~/.config/louez` (on macOS too), or `%APPDATA%\louez` on Windows, with the base URL it checked the key against.
 
-The key is found in this order: `--api-key`, then `LOUEZ_API_KEY`, then the saved key. In CI or in an agent's environment, set `LOUEZ_API_KEY`. Avoid `--api-key`: other users can see it in the list of processes, and your shell keeps it in its history.
+The key is found in this order: `--api-key`, then `LOUEZ_API_KEY`, then the saved key. A source that is there must hold a key: `--api-key=` or an empty `LOUEZ_API_KEY` stops with exit 2 and sends nothing, and never falls back to the next source; so do an empty `--api-url=` and an empty `LOUEZ_API_URL`. A key has the shape Louez issues: `lz_`, 4 lowercase letters or digits, `_`, then 20 letters or digits. In CI or in an agent's environment, set `LOUEZ_API_KEY`. Avoid `--api-key`: other users can see it in the list of processes, and your shell keeps it in its history.
 
 The base URL defaults to `https://app.louez.io/api/v1`. For a self-hosted Louez, set `LOUEZ_API_URL` or pass `--api-url`; `louez auth login --api-url …` saves the key for that server.
 
@@ -121,7 +121,7 @@ Every write the API lets repeat is sent with an `Idempotency-Key`: yours with `-
 ## Security
 
 - The key is sent only to the base URL's origin, in the `Authorization` header, and never in a URL. The saved key goes only to the origin it was saved for (above).
-- Nothing the CLI writes shows a key: the key in use and every value given to `--api-key` are replaced by `[redacted]` wherever they appear, an error quoting the request included. `louez auth status` says where the key comes from, not what it is.
+- Nothing the CLI writes shows a key: the key in use, `LOUEZ_API_KEY` and every value given to `--api-key` (when it is a key, or starts like one) are replaced by `[redacted]` wherever they appear, an error quoting the request included: as is, percent-encoded (any of its characters), and in base64 or base64url (of the key, of `Bearer <key>`, and inside a longer base64 text). JSON is redacted value by value, so it stays valid. Ctrl-C during `--wait` also cancels a read in flight. `louez auth status` says where the key comes from, not what it is.
 - A request stays under the base URL's path: a path, or a path parameter, holding a `.` or `..` segment, a backslash, or an encoded slash or backslash (`%2e%2e`, `%2F`, `%5C`) is refused before anything is sent.
 - The CLI never follows a redirect, which would take the key to another server: a 3xx answer exits 1.
 - The base URL must be `https://`, except on `localhost`, `127.0.0.1`, `[::1]` or a `.localify` host; anything else needs `--insecure`.

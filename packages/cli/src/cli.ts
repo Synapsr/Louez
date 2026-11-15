@@ -29,6 +29,7 @@ import {
 import { number, record, text } from "./json.js";
 import { METHODS, isHttpMethod, type Manifest, type Operation } from "./manifest.js";
 import { manifest as generatedManifest } from "./manifest.generated.js";
+import { API_KEY_SHAPE, Redactor, isApiKey } from "./secrets.js";
 import { UsageError } from "./usage-error.js";
 
 export const EXIT = { ok: 0, api: 1, usage: 2, person: 3, network: 4 } as const;
@@ -75,13 +76,19 @@ export interface Io {
   manifest?: Manifest;
 }
 
+/** An output of the session: text, and JSON redacted by value. */
+interface SessionOutput extends Output {
+  /** Writes `value` as one JSON document, every string in it redacted first. */
+  writeJson(value: unknown): void;
+}
+
 /** The `Io` the commands use: its outputs never show a credential. */
-type Session = Io & {
-  /** Adds a credential to the ones every output hides. */
+type Session = Omit<Io, "stdout" | "stderr"> & {
+  stdout: SessionOutput;
+  stderr: SessionOutput;
+  /** Adds a credential to the ones every output hides (a value that is no key is ignored). */
   secret(value: string): void;
 };
-
-const REDACTED = "[redacted]";
 
 /** The values `--api-key` was given on the command line. */
 function apiKeyArguments(argv: readonly string[]): string[] {
@@ -89,36 +96,38 @@ function apiKeyArguments(argv: readonly string[]): string[] {
   argv.forEach((token, index) => {
     if (token.startsWith("--api-key=")) keys.push(token.slice("--api-key=".length));
     const next = argv[index + 1];
-    if (token === "--api-key" && next !== undefined && !next.startsWith("--")) keys.push(next);
+    if (token === "--api-key" && next !== undefined) keys.push(next);
   });
   return keys;
 }
 
 /**
- * Runs the command. Everything it writes, on stdout and stderr, goes through
- * one redaction: the API key in use and every value given to `--api-key`,
- * as they are and as JSON writes them, are replaced by "[redacted]",
- * wherever they appear (an argument echoed in an error, an answer quoting
- * the request).
+ * Runs the command. Everything it writes goes through one redaction
+ * (`Redactor`, secrets.ts) of the API key in use, of `LOUEZ_API_KEY` and of
+ * every value given to `--api-key`, when they are keys or start like one:
+ * JSON is redacted value by value before it is written, so it stays valid;
+ * other text, as text.
  */
 export async function main(io: Io): Promise<number> {
-  const secrets = new Set<string>();
-  const add = (value: string | undefined) => {
-    if (!value) return;
-    secrets.add(value);
-    secrets.add(JSON.stringify(value).slice(1, -1));
-  };
-  for (const key of apiKeyArguments(io.argv)) add(key);
-  add(io.env.LOUEZ_API_KEY);
-  const redact = (text: string) =>
-    [...secrets]
-      .sort((a, b) => b.length - a.length)
-      .reduce((out, secret) => out.split(secret).join(REDACTED), text);
-  const hide = (output: Output): Output => ({
-    write: (text: string) => output.write(redact(text)),
+  const redactor = new Redactor();
+  for (const key of apiKeyArguments(io.argv)) redactor.add(key);
+  redactor.add(io.env.LOUEZ_API_KEY);
+  const hide = (output: Output): SessionOutput => ({
+    write: (text: string) => output.write(redactor.text(text)),
+    writeJson: (value: unknown) => {
+      const redacted = redactor.value(value);
+      output.write(
+        `${output.isTTY ? JSON.stringify(redacted, null, 2) : JSON.stringify(redacted)}\n`,
+      );
+    },
     isTTY: output.isTTY,
   });
-  const session: Session = { ...io, stdout: hide(io.stdout), stderr: hide(io.stderr), secret: add };
+  const session: Session = {
+    ...io,
+    stdout: hide(io.stdout),
+    stderr: hide(io.stderr),
+    secret: (value) => redactor.add(value),
+  };
 
   try {
     return await run(session);
@@ -130,10 +139,6 @@ export async function main(io: Io): Promise<number> {
     session.stderr.write(`louez: ${error instanceof Error ? error.message : String(error)}\n`);
     return EXIT.api;
   }
-}
-
-function json(value: unknown, output: Output): string {
-  return `${output.isTTY ? JSON.stringify(value, null, 2) : JSON.stringify(value)}\n`;
 }
 
 async function run(io: Session): Promise<number> {
@@ -234,16 +239,76 @@ interface Target {
   timeoutMs: number;
 }
 
-/** An environment variable, unset when empty. */
-const envValue = (io: Session, name: string) => io.env[name] || undefined;
+/** The key a command runs with, and where it came from (never the key itself). */
+interface Credential {
+  apiKey: string;
+  keySource: string;
+  /** Given for this invocation (`--api-key`, `LOUEZ_API_KEY`, the key `auth login` checks): not the saved key. */
+  given: boolean;
+}
+
+function wellFormed(key: string, source: string): string {
+  if (!isApiKey(key)) {
+    throw new UsageError(
+      key === ""
+        ? `${source} is empty: give a Louez API key (${API_KEY_SHAPE}), or leave it out.`
+        : `${source} is not a Louez API key (${API_KEY_SHAPE}).`,
+    );
+  }
+  return key;
+}
+
+/**
+ * The one place the key is chosen, in this order: the key `auth login`
+ * checks; `--api-key` when present; `LOUEZ_API_KEY` when set; the saved key.
+ * A source that is present must hold a well-formed key: an empty or
+ * malformed one is a usage error, never a reason to read the next source.
+ */
+async function selectCredential(
+  io: Session,
+  values: FlagValues,
+  loginKey: string | undefined,
+): Promise<Credential & { saved?: { apiUrl?: string } }> {
+  if (loginKey !== undefined) {
+    return {
+      apiKey: wellFormed(loginKey, "The key given to login"),
+      keySource: "login",
+      given: true,
+    };
+  }
+  if (values.has("api-key")) {
+    return {
+      apiKey: wellFormed(stringFlag(values, "api-key") ?? "", "--api-key"),
+      keySource: "--api-key",
+      given: true,
+    };
+  }
+  const envKey = io.env.LOUEZ_API_KEY;
+  if (envKey !== undefined) {
+    return { apiKey: wellFormed(envKey, "LOUEZ_API_KEY"), keySource: "LOUEZ_API_KEY", given: true };
+  }
+  const { config: saved, warnings } = await readConfig(io.configDir);
+  for (const warning of warnings) io.stderr.write(`louez: ${warning}\n`);
+  if (saved.apiKey === undefined) {
+    throw new UsageError(
+      "No API key: set LOUEZ_API_KEY, pass --api-key, or run `louez auth login`.",
+    );
+  }
+  const file = configFile(io.configDir);
+  return {
+    apiKey: wellFormed(saved.apiKey, `The key saved in ${file}`),
+    keySource: file,
+    given: false,
+    saved,
+  };
+}
 
 /**
  * Where the call goes, and with which key.
  *
- * - A key given for this invocation (`--api-key`, `LOUEZ_API_KEY`, or the
- *   key `auth login` is checking) goes with the URL given for it
- *   (`--api-url`, `LOUEZ_API_URL`) or the default one: the caller paired
- *   them.
+ * - A key given for this invocation goes with the URL given for it
+ *   (`--api-url` when present, `LOUEZ_API_URL` when set; empty is refused)
+ *   or the default one: the caller paired them.
  * - The saved key goes only to the origin it was saved for: with no URL
  *   given, the saved URL; a URL given on another origin is refused, naming
  *   both, before anything is sent. A file saved without a URL was saved for
@@ -251,31 +316,22 @@ const envValue = (io: Session, name: string) => io.env[name] || undefined;
  */
 async function resolveTarget(io: Session, values: FlagValues, loginKey?: string): Promise<Target> {
   const insecure = lastValue(values, "insecure") === true;
-  const givenUrl = stringFlag(values, "api-url") ?? envValue(io, "LOUEZ_API_URL");
-  const flagKey = stringFlag(values, "api-key");
-  const envKey = envValue(io, "LOUEZ_API_KEY");
+  const givenUrl = values.has("api-url")
+    ? (stringFlag(values, "api-url") ?? "")
+    : io.env.LOUEZ_API_URL;
+  if (givenUrl === "") {
+    throw new UsageError(
+      `${values.has("api-url") ? "--api-url" : "LOUEZ_API_URL"} is empty: give the API's base URL, or leave it out.`,
+    );
+  }
+  const credential = await selectCredential(io, values, loginKey);
+  io.secret(credential.apiKey);
 
-  let apiKey: string;
-  let keySource: string;
   let base: URL;
-  if (loginKey ?? flagKey ?? envKey) {
-    [apiKey, keySource] = loginKey
-      ? [loginKey, "login"]
-      : flagKey
-        ? [flagKey, "--api-key"]
-        : [envKey ?? "", "LOUEZ_API_KEY"];
+  if (credential.given) {
     base = resolveBaseUrl(givenUrl ?? DEFAULT_API_URL, insecure);
   } else {
-    const { config: saved, warnings } = await readConfig(io.configDir);
-    for (const warning of warnings) io.stderr.write(`louez: ${warning}\n`);
-    if (!saved.apiKey) {
-      throw new UsageError(
-        "No API key: set LOUEZ_API_KEY, pass --api-key, or run `louez auth login`.",
-      );
-    }
-    apiKey = saved.apiKey;
-    keySource = configFile(io.configDir);
-    const savedBase = resolveBaseUrl(saved.apiUrl ?? DEFAULT_API_URL, true);
+    const savedBase = resolveBaseUrl(credential.saved?.apiUrl ?? DEFAULT_API_URL, true);
     base = resolveBaseUrl(givenUrl ?? savedBase.href, insecure);
     if (base.origin !== savedBase.origin) {
       throw new UsageError(
@@ -283,18 +339,17 @@ async function resolveTarget(io: Session, values: FlagValues, loginKey?: string)
       );
     }
   }
-  io.secret(apiKey);
-  if (!/^[\x21-\x7e]+$/.test(apiKey)) {
-    throw new UsageError(
-      `The API key from ${keySource} holds a space or a character a key never has.`,
-    );
-  }
   const timeout = stringFlag(values, "timeout");
   const seconds = timeout === undefined ? DEFAULT_TIMEOUT_SECONDS : Number(timeout);
   if (!Number.isFinite(seconds) || seconds <= 0) {
     throw new UsageError(`--timeout is a number of seconds, not "${timeout}".`);
   }
-  return { base, apiKey, keySource, timeoutMs: seconds * 1000 };
+  return {
+    base,
+    apiKey: credential.apiKey,
+    keySource: credential.keySource,
+    timeoutMs: seconds * 1000,
+  };
 }
 
 interface Call {
@@ -308,7 +363,13 @@ interface Call {
   confirmation?: string;
 }
 
-function perform(io: Session, target: Target, call: Call): Promise<SendResult> {
+/** Sends `call`; `cancel` (Ctrl-C while waiting) ends it as its timeout would. */
+function perform(
+  io: Session,
+  target: Target,
+  call: Call,
+  cancel?: AbortSignal,
+): Promise<SendResult> {
   const url = requestUrl(target.base, call.path, call.query);
   const headers = buildHeaders({
     apiKey: target.apiKey,
@@ -322,7 +383,9 @@ function perform(io: Session, target: Target, call: Call): Promise<SendResult> {
     url,
     headers,
     body: call.body,
-    signal: io.timeoutSignal(target.timeoutMs),
+    signal: cancel
+      ? AbortSignal.any([io.timeoutSignal(target.timeoutMs), cancel])
+      : io.timeoutSignal(target.timeoutMs),
   });
 }
 
@@ -345,7 +408,7 @@ interface ApiError {
   approval?: Approval;
 }
 
-function apiError(answer: Answer): ApiError {
+function errorOf(answer: Answer): ApiError {
   const error = record(answer.body);
   const data = record(error?.data);
   const details = record(data?.details);
@@ -389,7 +452,7 @@ async function callAndReport(
   let answer = result.answer;
   const rerun = await rerunHint(io.argv, stdinText?.());
 
-  const { code, approval } = apiError(answer);
+  const { code, approval } = errorOf(answer);
   if (
     lastValue(values, "wait") === true &&
     approval &&
@@ -484,11 +547,13 @@ async function waitForApproval(
         io.stderr.write("louez: the approval expired undecided. Nothing was done.\n");
         return EXIT.api;
       }
-      const read = await perform(io, target, {
-        method: "GET",
-        path: `/handoffs/${encodeURIComponent(approval.id)}`,
-        idempotent: false,
-      });
+      // Ctrl-C also ends a read in flight, not only a wait between reads.
+      const read = await perform(
+        io,
+        target,
+        { method: "GET", path: `/handoffs/${encodeURIComponent(approval.id)}`, idempotent: false },
+        interrupt.signal,
+      );
       if (interrupt.signal.aborted) return stopped();
       if (!read.ok) {
         io.stderr.write(
@@ -498,9 +563,9 @@ async function waitForApproval(
       }
       const { status, body } = read.answer;
       if (status < 200 || status >= 300) {
-        io.stderr.write(json(body ?? null, io.stderr));
+        io.stderr.writeJson(body ?? null);
         io.stderr.write(
-          `louez: could not read the approval (${status} ${apiError(read.answer).code ?? ""}).\n`,
+          `louez: could not read the approval (${status} ${errorOf(read.answer).code ?? ""}).\n`,
         );
         return EXIT.api;
       }
@@ -515,13 +580,13 @@ async function waitForApproval(
           io.stderr.write("louez: approved. Carrying it out.\n");
           return "approved";
         case "completed":
-          io.stderr.write(json(body, io.stderr));
+          io.stderr.writeJson(body);
           io.stderr.write(
             "louez: an earlier request already carried this approval out. Nothing was done again: read the record before acting.\n",
           );
           return EXIT.api;
         case "failed": {
-          io.stderr.write(json(body, io.stderr));
+          io.stderr.writeJson(body);
           const reason = text(record(handoff?.decision)?.reason);
           io.stderr.write(
             text(failure?.code) === "declined"
@@ -531,7 +596,7 @@ async function waitForApproval(
           return EXIT.api;
         }
         default:
-          io.stderr.write(json(body, io.stderr));
+          io.stderr.writeJson(body);
           io.stderr.write(
             `louez: the approval is ${handoffStatus ?? "unknown"}. Nothing was done.\n`,
           );
@@ -573,7 +638,7 @@ function networkFailure(
 function report(io: Session, answer: Answer, rerun: Rerun): number {
   const { status, headers, body } = answer;
   if (status >= 200 && status < 300) {
-    if (body !== undefined) io.stdout.write(json(body, io.stdout));
+    if (body !== undefined) io.stdout.writeJson(body);
     if (headers.get("Louez-Replayed") === "true") {
       io.stderr.write(
         "louez: replayed: the stored result of an earlier call with this idempotency key.\n",
@@ -588,8 +653,8 @@ function report(io: Session, answer: Answer, rerun: Rerun): number {
     return EXIT.api;
   }
 
-  io.stderr.write(json(body ?? null, io.stderr));
-  const error = apiError(answer);
+  io.stderr.writeJson(body ?? null);
+  const error = errorOf(answer);
   const { code, approval } = error;
   if (code === "APPROVAL_REQUIRED" && approval) {
     io.stderr.write(
@@ -690,14 +755,11 @@ checked against: it is sent to that URL's origin only. A key given with LOUEZ_AP
 
   switch (action) {
     case "login": {
-      let key = stringFlag(line.values, "api-key");
-      if (!key) {
-        key = (
-          io.stdinIsTTY ? await io.readSecret("Louez API key: ") : await io.readStdin()
-        ).trim();
-      }
+      // --api-key when present, even empty (then refused); else standard input or the prompt.
+      const key = line.values.has("api-key")
+        ? (stringFlag(line.values, "api-key") ?? "")
+        : (io.stdinIsTTY ? await io.readSecret("Louez API key: ") : await io.readStdin()).trim();
       io.secret(key);
-      if (!key.startsWith("lz_")) throw new UsageError("A Louez API key starts with lz_.");
       const target = await resolveTarget(io, line.values, key);
       const stores = await readStores(io, target);
       if (typeof stores === "number") {
@@ -707,21 +769,19 @@ checked against: it is sent to that URL's origin only. A key given with LOUEZ_AP
       // The key is saved with the URL it was checked against: it goes there only.
       const warnings = await writeConfig(io.configDir, { apiKey: key, apiUrl: target.base.href });
       for (const warning of warnings) io.stderr.write(`louez: ${warning}\n`);
-      io.stdout.write(json({ saved: file, apiUrl: target.base.href, store: stores }, io.stdout));
+      io.stdout.writeJson({ saved: file, apiUrl: target.base.href, store: stores });
       return EXIT.ok;
     }
     case "status": {
       const target = await resolveTarget(io, line.values);
       const store = await readStores(io, target);
       if (typeof store === "number") return store;
-      io.stdout.write(
-        json({ apiUrl: target.base.href, key: { source: target.keySource }, store }, io.stdout),
-      );
+      io.stdout.writeJson({ apiUrl: target.base.href, key: { source: target.keySource }, store });
       return EXIT.ok;
     }
     case "logout": {
       const removed = await removeConfig(io.configDir);
-      io.stdout.write(json({ removed, file }, io.stdout));
+      io.stdout.writeJson({ removed, file });
       if (io.env.LOUEZ_API_KEY)
         io.stderr.write("louez: LOUEZ_API_KEY is still set, and still used.\n");
       return EXIT.ok;

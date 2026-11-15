@@ -13,7 +13,8 @@
  *   file created exclusively (0600) in the same directory, synced, then
  *   renamed over it, so a reader sees the old file or the new one, never a
  *   half-written one, and the old file never holds the new key; a target
- *   that is a symbolic link or not a regular file is refused;
+ *   that is a symbolic link, not a regular file, or another user's is
+ *   refused;
  * - reading refuses a symbolic link and a file of another user, and tightens
  *   a file other users can read to 0600, with a warning to revoke the key.
  * On Windows, file modes are best-effort: the checks of ownership and modes
@@ -158,6 +159,9 @@ export async function writeConfig(
     );
   }
   if (existing && !existing.isFile()) throw new UsageError(`${file} is not a regular file.`);
+  if (existing && ownedByAnother(existing.uid)) {
+    throw new UsageError(`${file} belongs to another user: louez replaces only a file of yours.`);
+  }
 
   const temporary = join(dir, `.config.json.${process.pid}.${randomBytes(6).toString("hex")}.tmp`);
   try {

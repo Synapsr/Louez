@@ -67,7 +67,7 @@ export function sendJson(
 }
 
 /** An API error in the shape the API answers it. */
-export function apiError(
+export function apiErrorBody(
   status: number,
   code: string,
   message: string,
@@ -101,12 +101,15 @@ export interface TestIo extends Io {
   err(): string;
   /** Every wait the CLI asked for, in ms. */
   sleeps: number[];
+  /** Ctrl-C, now. */
+  interrupt(): void;
 }
 
 export async function testIo(
   argv: string[],
   options: {
-    env?: Record<string, string>;
+    /** `undefined` leaves a variable unset; an empty string sets it empty. */
+    env?: Record<string, string | undefined>;
     stdin?: string;
     files?: Record<string, string>;
     configDir?: string;
@@ -127,7 +130,9 @@ export async function testIo(
   const interrupt = new AbortController();
   return {
     argv,
-    env: options.env ?? {},
+    env: Object.fromEntries(
+      Object.entries(options.env ?? {}).filter(([, value]) => value !== undefined),
+    ),
     stdout: { write: (text: string) => (stdout += text), isTTY: options.tty ?? false },
     stderr: { write: (text: string) => (stderr += text), isTTY: false },
     stdinIsTTY: options.secret !== undefined,
@@ -159,5 +164,6 @@ export async function testIo(
     out: () => stdout,
     err: () => stderr,
     sleeps,
+    interrupt: () => interrupt.abort(),
   };
 }

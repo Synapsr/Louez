@@ -3,9 +3,9 @@ import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { after, afterEach, describe, test } from "node:test";
 
 import { APPROVAL_POLL_SECONDS, EXIT, main, rerunCommand } from "./cli.js";
-import { configFile } from "./config.js";
+import { configFile, writeConfig } from "./config.js";
 import {
-  apiError,
+  apiErrorBody,
   removeTempDirs,
   sendJson,
   startFakeApi,
@@ -16,7 +16,7 @@ import {
   type TestIo,
 } from "./testing/fake-api.js";
 
-const KEY = "lz_test_secret_key";
+const KEY = "lz_test_Secret0Key1Secret2Ke";
 
 let api: FakeApi | undefined;
 afterEach(async () => {
@@ -54,7 +54,7 @@ const payment = {
 };
 
 const approvalRequired = (url: string, pollAfterSeconds = 30, expiresAt = "2026-11-16T10:00:00Z") =>
-  apiError(
+  apiErrorBody(
     412,
     "APPROVAL_REQUIRED",
     "Recording this payment needs the approval of the key's owner.",
@@ -158,7 +158,7 @@ describe("a call", () => {
   });
 
   test("writes an API error's JSON and one line on stderr, nothing on stdout, and exits 1", async () => {
-    const error = apiError(404, "PAYMENT_NOT_FOUND", "No payment with this id.");
+    const error = apiErrorBody(404, "PAYMENT_NOT_FOUND", "No payment with this id.");
     await serve((_, response) => sendJson(response, 404, error));
     const run = await louez(["payments", "delete", "p1"]);
     assert.equal(run.code, EXIT.api);
@@ -174,7 +174,7 @@ describe("a call", () => {
       sendJson(
         response,
         409,
-        apiError(409, "OPERATION_IN_PROGRESS", "Still running.", undefined, true),
+        apiErrorBody(409, "OPERATION_IN_PROGRESS", "Still running.", undefined, true),
       ),
     );
     const run = await louez(RECORD);
@@ -245,7 +245,7 @@ describe("the saved key", () => {
     const configDir = await tempDir();
     const run = await louez(["auth", "login"], {
       configDir,
-      env: { LOUEZ_API_KEY: "", LOUEZ_API_URL: server.url },
+      env: { LOUEZ_API_KEY: undefined, LOUEZ_API_URL: server.url },
       stdin: KEY,
     });
     assert.equal(run.code, EXIT.ok);
@@ -258,8 +258,8 @@ describe("the saved key", () => {
     const other = await startFakeApi((_, response) => sendJson(response, 200, { items: [] }));
     try {
       for (const [argv, env] of [
-        [["stores", "list", "--api-url", other.url], { LOUEZ_API_KEY: "" }],
-        [["stores", "list"], { LOUEZ_API_KEY: "", LOUEZ_API_URL: other.url }],
+        [["stores", "list", "--api-url", other.url], { LOUEZ_API_KEY: undefined }],
+        [["stores", "list"], { LOUEZ_API_KEY: undefined, LOUEZ_API_URL: other.url }],
       ] as const) {
         const run = await louez([...argv], { configDir, env });
         assert.equal(run.code, EXIT.usage);
@@ -275,7 +275,7 @@ describe("the saved key", () => {
       // With no URL given, the saved key goes to the URL it was saved with.
       const call = await louez(["stores", "list"], {
         configDir,
-        env: { LOUEZ_API_KEY: "", LOUEZ_API_URL: "" },
+        env: { LOUEZ_API_KEY: undefined, LOUEZ_API_URL: undefined },
       });
       assert.equal(call.code, EXIT.ok);
       assert.equal(saved.received.length, 2);
@@ -291,16 +291,127 @@ describe("the saved key", () => {
     try {
       const run = await louez(["stores", "list"], {
         configDir,
-        env: { LOUEZ_API_KEY: "lz_other_server_key", LOUEZ_API_URL: other.url },
+        env: { LOUEZ_API_KEY: "lz_othr_OtherServerKey000000", LOUEZ_API_URL: other.url },
       });
       assert.equal(run.code, EXIT.ok);
       assert.deepEqual(
         other.received.map((request) => request.headers.authorization),
-        ["Bearer lz_other_server_key"],
+        ["Bearer lz_othr_OtherServerKey000000"],
       );
     } finally {
       await other.close();
     }
+  });
+});
+
+describe("choosing the key", () => {
+  const SAVED = "lz_save_SavedSavedSavedSaved";
+  const STAGING = "lz_stag_StagingStagingStagin";
+  const OTHER = "lz_othr_GivenGivenGivenGiven";
+
+  /** A config directory holding SAVED, for https://app.louez.test. */
+  async function savedDir(apiKey = SAVED): Promise<string> {
+    const configDir = await tempDir();
+    await writeConfig(configDir, { apiKey, apiUrl: "https://app.louez.test/api/v1" });
+    return configDir;
+  }
+
+  /** A fetch that records each request's key, answering 200. */
+  function recorder() {
+    const keys: string[] = [];
+    const fetch: typeof globalThis.fetch = async (_, init) => {
+      keys.push(new Headers(init?.headers).get("authorization") ?? "");
+      return Response.json({ items: [] });
+    };
+    return { keys, fetch };
+  }
+
+  test("an empty or malformed key or URL that is given stops the command: no fallback, nothing sent", async () => {
+    const configDir = await savedDir();
+    const cases: Array<[string[], Record<string, string | undefined>, RegExp]> = [
+      [
+        ["api", "POST", "/products", "--api-key="],
+        { LOUEZ_API_KEY: STAGING },
+        /--api-key is empty/,
+      ],
+      [
+        ["stores", "list", "--api-key", "1"],
+        { LOUEZ_API_KEY: STAGING },
+        /--api-key is not a Louez API key/,
+      ],
+      [["stores", "list", "--api-key", "lz_short"], {}, /--api-key is not a Louez API key/],
+      [["stores", "list"], { LOUEZ_API_KEY: "" }, /LOUEZ_API_KEY is empty/],
+      [["stores", "list"], { LOUEZ_API_KEY: "0" }, /LOUEZ_API_KEY is not a Louez API key/],
+      [
+        ["stores", "list"],
+        { LOUEZ_API_KEY: `${STAGING}x` },
+        /LOUEZ_API_KEY is not a Louez API key/,
+      ],
+      [["stores", "list", "--api-url="], { LOUEZ_API_KEY: undefined }, /--api-url is empty/],
+      [
+        ["stores", "list"],
+        { LOUEZ_API_KEY: undefined, LOUEZ_API_URL: "" },
+        /LOUEZ_API_URL is empty/,
+      ],
+      [["stores", "list", "--api-url="], { LOUEZ_API_KEY: STAGING }, /--api-url is empty/],
+    ];
+    for (const [argv, env, message] of cases) {
+      const { keys, fetch } = recorder();
+      const run = await louez(argv, { configDir, env, fetch });
+      assert.equal(run.code, EXIT.usage, `${argv.join(" ")} ${JSON.stringify(env)}`);
+      assert.match(run.err(), message);
+      assert.deepEqual(keys, [], `${argv.join(" ")}: nothing is sent`);
+    }
+
+    const malformedSaved = await savedDir("lz_x");
+    const { keys, fetch } = recorder();
+    const run = await louez(["stores", "list"], {
+      configDir: malformedSaved,
+      env: { LOUEZ_API_KEY: undefined },
+      fetch,
+    });
+    assert.equal(run.code, EXIT.usage);
+    assert.match(run.err(), /The key saved in .* is not a Louez API key/);
+    assert.deepEqual(keys, []);
+  });
+
+  test("login with an empty --api-key stops: it neither reads standard input nor saves", async () => {
+    const configDir = await tempDir();
+    const { keys, fetch } = recorder();
+    const run = await louez(["auth", "login", "--api-key="], { configDir, stdin: OTHER, fetch });
+    assert.equal(run.code, EXIT.usage);
+    assert.match(run.err(), /empty/);
+    assert.deepEqual(keys, []);
+    await assert.rejects(stat(configFile(configDir)));
+  });
+
+  test("takes --api-key, then LOUEZ_API_KEY, then the saved key", async () => {
+    const configDir = await savedDir();
+    const env = { LOUEZ_API_URL: "https://app.louez.test/api/v1" };
+    const sent = async (argv: string[], extra: Record<string, string | undefined>) => {
+      const { keys, fetch } = recorder();
+      assert.equal(
+        (await louez(argv, { configDir, env: { ...env, ...extra }, fetch })).code,
+        EXIT.ok,
+      );
+      return keys;
+    };
+    assert.deepEqual(
+      await sent(["stores", "list", "--api-key", OTHER], { LOUEZ_API_KEY: STAGING }),
+      [`Bearer ${OTHER}`],
+    );
+    assert.deepEqual(await sent(["stores", "list"], { LOUEZ_API_KEY: STAGING }), [
+      `Bearer ${STAGING}`,
+    ]);
+    assert.deepEqual(await sent(["stores", "list"], { LOUEZ_API_KEY: undefined }), [
+      `Bearer ${SAVED}`,
+    ]);
+  });
+
+  test("a value that is no key is never redacted: the version and the answers stay whole", async () => {
+    const version = await louez(["--version", "--api-key", "1"]);
+    assert.match(version.out(), /^louez \d+\.\d+\.\d+ \(API \d/);
+    assert.doesNotMatch(version.out(), /redacted/);
   });
 });
 
@@ -312,27 +423,33 @@ describe("credentials in what is written", () => {
       return Response.json({});
     };
     const run = await louez(
-      ["api", "POST", "/reservations", "--json", "--api-key", "lz_SECRET_1234"],
+      ["api", "POST", "/reservations", "--json", "--api-key", "lz_sec1_SecretSecretSecret12"],
       { fetch },
     );
     assert.equal(run.code, EXIT.usage);
     assert.match(run.err(), /--json needs a value/);
-    assert.doesNotMatch(run.err() + run.out(), /lz_SECRET_1234/);
+    assert.doesNotMatch(run.err() + run.out(), /lz_sec1_SecretSecretSecret12/);
     assert.equal(fetched, 0);
   });
 
   test("every key given or in use is replaced wherever it appears, an API's answer included", async () => {
-    const echoed = await louez(["stores", "list", "lz_SECRET_5678", "--api-key", "lz_SECRET_5678"]);
+    const echoed = await louez([
+      "stores",
+      "list",
+      "lz_sec2_SecretSecretSecret34",
+      "--api-key",
+      "lz_sec2_SecretSecretSecret34",
+    ]);
     assert.equal(echoed.code, EXIT.usage);
     assert.match(echoed.err(), /Unexpected argument "\[redacted\]"/);
-    assert.doesNotMatch(echoed.err(), /lz_SECRET_5678/);
+    assert.doesNotMatch(echoed.err(), /lz_sec2_SecretSecretSecret34/);
 
     // A server that quotes the request's credential back, in its message and as JSON.
     await serve((request, response) =>
       sendJson(
         response,
         401,
-        apiError(401, "UNAUTHENTICATED", `Not a key: ${request.headers.authorization}`, {
+        apiErrorBody(401, "UNAUTHENTICATED", `Not a key: ${request.headers.authorization}`, {
           sent: request.headers.authorization,
         }),
       ),
@@ -341,13 +458,96 @@ describe("credentials in what is written", () => {
     assert.equal(quoted.code, EXIT.api);
     assert.match(quoted.err(), /Not a key: Bearer \[redacted\]/);
     assert.match(quoted.err(), /"sent":"Bearer \[redacted\]"/);
-
-    // A key with a character JSON escapes is hidden in its JSON form too.
-    const escaped = await louez(["stores", "list"], { env: { LOUEZ_API_KEY: 'lz_quote"key' } });
-    assert.equal(escaped.code, EXIT.api);
-    assert.match(escaped.err(), /"sent":"Bearer \[redacted\]"/);
-    assert.doesNotMatch(escaped.err(), /lz_quote/);
   });
+});
+
+describe("encoded forms of the key", () => {
+  const encodeAll = (text: string) =>
+    [...text]
+      .map((char) => `%${char.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`)
+      .join("");
+  const base64 = (text: string) => Buffer.from(text).toString("base64");
+  const base64url = (text: string) => Buffer.from(text).toString("base64url");
+
+  test("are redacted wherever an answer holds them, and its JSON stays valid", async () => {
+    const forms = {
+      raw: KEY,
+      uriComponent: encodeURIComponent(KEY),
+      nonAlphanumeric: KEY.replace(
+        /[^A-Za-z0-9]/g,
+        (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+      ),
+      allEncoded: encodeAll(KEY),
+      allEncodedLowercase: encodeAll(KEY).toLowerCase(),
+      subset: [...KEY].map((char, i) => (i % 3 === 0 ? encodeAll(char) : char)).join(""),
+      base64: base64(KEY),
+      base64Unpadded: base64(KEY).replace(/=+$/, ""),
+      base64url: base64url(KEY),
+      bearerBase64: base64(`Bearer ${KEY}`),
+      bearerBase64Unpadded: base64(`Bearer ${KEY}`).replace(/=+$/, ""),
+      bearerBase64url: base64url(`Bearer ${KEY}`),
+      inside: base64(`user:${KEY}`),
+      insideAgain: base64url(`ab${KEY}cd`),
+    };
+    await serve((_, response) =>
+      sendJson(
+        response,
+        401,
+        apiErrorBody(401, "UNAUTHENTICATED", "Not a key.", { forms, [KEY]: 1, count: 1 }),
+      ),
+    );
+    const run = await louez(["stores", "list"]);
+    assert.equal(run.code, EXIT.api);
+    const [first = ""] = run.err().split("\n");
+    const echoed = JSON.parse(first) as { data: { details: { forms: Record<string, string> } } };
+    for (const [name, value] of Object.entries(echoed.data.details.forms)) {
+      assert.match(value, /\[redacted\]/, name);
+      assert.ok(!value.includes(forms[name as keyof typeof forms]), `${name} is gone`);
+    }
+    // A key as an object's key is redacted too; numbers are left whole.
+    assert.match(first, /"\[redacted\]":1,"count":1/);
+    for (const value of Object.values(forms)) assert.ok(!run.err().includes(value));
+  });
+});
+
+describe("Ctrl-C during a read in flight", () => {
+  test(
+    "cancels the read at once: exit 3, the approval stays open, nothing carried out",
+    { timeout: 10_000 },
+    async () => {
+      let posts = 0;
+      let readAborted = false;
+      const io = await testIo([...RECORD, "--wait"], {
+        env: { LOUEZ_API_KEY: KEY, LOUEZ_API_URL: "https://app.louez.test/api/v1" },
+        fetch: (input, init) => {
+          if (String(input).includes("/handoffs/")) {
+            // A read that never answers: Ctrl-C arrives while it waits.
+            io.interrupt();
+            return new Promise((_, reject) => {
+              const signal = init?.signal;
+              const abort = () => {
+                readAborted = true;
+                reject(signal?.reason);
+              };
+              if (signal?.aborted) abort();
+              signal?.addEventListener("abort", abort);
+            });
+          }
+          posts++;
+          return Promise.resolve(
+            Response.json(approvalRequired("https://app.louez.test/handoffs/apr_1"), {
+              status: 412,
+            }),
+          );
+        },
+      });
+      const code = await main(io);
+      assert.equal(code, EXIT.person);
+      assert.ok(readAborted, "the read in flight was aborted");
+      assert.match(io.err(), /stopped waiting\. Nothing was done, and the approval stays open/);
+      assert.equal(posts, 1);
+    },
+  );
 });
 
 describe("usage errors", () => {
@@ -357,12 +557,12 @@ describe("usage errors", () => {
       fetched++;
       return new Response("{}");
     };
-    const cases: Array<[string[], Record<string, string>, RegExp]> = [
+    const cases: Array<[string[], Record<string, string | undefined>, RegExp]> = [
       [["nowhere"], {}, /Unknown command "nowhere"/],
       [["reservations", "explode"], {}, /Unknown action "explode"/],
       [["reservations", "list", "--colour", "red"], {}, /Unknown flag --colour/],
       [["payments", "record"], {}, /Missing <reservationId>/],
-      [["stores", "list"], { LOUEZ_API_KEY: "" }, /No API key/],
+      [["stores", "list"], { LOUEZ_API_KEY: undefined }, /No API key/],
       [["stores", "list"], { LOUEZ_API_URL: "http://louez.example/api/v1" }, /not https/],
       [["api", "GET", "//evil.example/x"], {}, /single \//],
       [["api", "FETCH", "/x"], {}, /not one of/],
@@ -405,7 +605,7 @@ describe("a write a person must approve", () => {
         sendJson(response, 200, payment);
       else sendJson(response, 412, approvalRequired("https://app.louez.test/handoffs/apr_1"));
     });
-    const first = await louez([...RECORD, "--api-key", KEY], { env: { LOUEZ_API_KEY: "" } });
+    const first = await louez([...RECORD, "--api-key", KEY], { env: { LOUEZ_API_KEY: undefined } });
     assert.equal(first.code, EXIT.person);
     assert.equal(first.out(), "");
     assert.match(
@@ -431,7 +631,7 @@ describe("a write a person must approve", () => {
         sendJson(
           response,
           412,
-          apiError(
+          apiErrorBody(
             412,
             "APPROVAL_PENDING",
             "Not decided yet.",
@@ -449,7 +649,7 @@ describe("a write a person must approve", () => {
         sendJson(
           response,
           412,
-          apiError(412, "CONFIRMATION_REQUIRED", "Deleting this product hides it.", {
+          apiErrorBody(412, "CONFIRMATION_REQUIRED", "Deleting this product hides it.", {
             preview: { summary: "Delete Tent" },
             confirmationToken: "tok_43",
           }),
@@ -620,10 +820,10 @@ describe("auth", () => {
     const server = await serve((request, response) =>
       request.headers.authorization === `Bearer ${KEY}`
         ? sendJson(response, 200, stores)
-        : sendJson(response, 401, apiError(401, "UNAUTHENTICATED", "No valid API key.")),
+        : sendJson(response, 401, apiErrorBody(401, "UNAUTHENTICATED", "No valid API key.")),
     );
     const configDir = await tempDir();
-    const env = { LOUEZ_API_KEY: "" };
+    const env = { LOUEZ_API_KEY: undefined };
 
     const login = await louez(["auth", "login"], { configDir, env, stdin: `${KEY}\n` });
     assert.equal(login.code, EXIT.ok);
@@ -669,10 +869,13 @@ describe("auth", () => {
 
   test("login asks on a terminal, and saves nothing the API refuses", async () => {
     await serve((_, response) =>
-      sendJson(response, 401, apiError(401, "UNAUTHENTICATED", "No valid API key.")),
+      sendJson(response, 401, apiErrorBody(401, "UNAUTHENTICATED", "No valid API key.")),
     );
     const configDir = await tempDir();
-    const refused = await louez(["auth", "login"], { configDir, secret: "lz_revoked" });
+    const refused = await louez(["auth", "login"], {
+      configDir,
+      secret: "lz_revk_RevokedRevokedRevoke",
+    });
     assert.equal(refused.code, EXIT.api);
     assert.match(refused.err(), /the key was not saved/);
     await assert.rejects(stat(configFile(configDir)));
