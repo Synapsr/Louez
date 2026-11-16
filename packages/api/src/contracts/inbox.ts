@@ -29,7 +29,7 @@ export const INBOX_ITEM_TYPES = [
   "deposit_release_failed",
   /** A refund of an online payment Stripe has not confirmed a day after it was asked. */
   "refund_unconfirmed",
-  /** A recorded Stripe refund that failed afterwards: its credit note, or Louez's fee given back on it, to see to. */
+  /** A Stripe refund that failed: the customer was not refunded; a credit note issued for it is named. */
   "refund_undone",
   /** A refund's credit note the outbox gave up on: tried again once a day. */
   "credit_note_not_issued",
