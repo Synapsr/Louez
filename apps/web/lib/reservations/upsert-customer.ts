@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import type { Transaction } from "@louez/db";
 import { customers } from "@louez/db";
@@ -40,6 +40,43 @@ const CREATED_VIA_BY_SOURCE = {
  * checkout's products, then the customer), so the row it returns is one that
  * exists until the checkout commits.
  */
+/** How many times the e-mail is resolved again when its customer changed under the lock. */
+const CUSTOMER_LOCK_ATTEMPTS = 3;
+
+/**
+ * The store's customer with this e-mail, locked through its primary key, as
+ * every writer locks a customer (the deletion by id too): the id is found
+ * first with no lock, then the row is locked by id and checked again under
+ * the lock. A row gone, moved to another store or given another e-mail since
+ * the read resolves the e-mail again, up to `CUSTOMER_LOCK_ATTEMPTS` times;
+ * past that, "busy", and the checkout fails as for a customer it could not
+ * write. Null when the store has no customer with this e-mail.
+ */
+async function lockCustomerByEmail(
+  tx: Transaction,
+  storeId: string,
+  email: string,
+): Promise<UpsertedCustomer | null | "busy"> {
+  for (let attempt = 0; attempt < CUSTOMER_LOCK_ATTEMPTS; attempt += 1) {
+    const [candidate] = await tx
+      .select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.storeId, storeId), eq(customers.email, email)))
+      .limit(1);
+    if (!candidate) return null;
+    // Through the primary key, named: a lock order is the access path's.
+    await tx.execute(
+      sql`SELECT id FROM customers FORCE INDEX (PRIMARY) WHERE id = ${candidate.id} FOR UPDATE`,
+    );
+    const [locked] = await tx.select().from(customers).where(eq(customers.id, candidate.id));
+    // The column's collation compares e-mails without case, as the read did.
+    if (locked?.storeId === storeId && locked.email.toLowerCase() === email.toLowerCase()) {
+      return locked;
+    }
+  }
+  return "busy";
+}
+
 export const upsertCustomer = async ({
   tx,
   storeId,
@@ -61,12 +98,8 @@ export const upsertCustomer = async ({
   // never created for a customer who no longer exists. A customer's deletion
   // takes the store row then the customer: it waits for this lock, or this
   // read waits for it and finds no customer, who is then added again below.
-  const [existing] = await tx
-    .select()
-    .from(customers)
-    .where(and(eq(customers.storeId, storeId), eq(customers.email, customer.email)))
-    .limit(1)
-    .for("update");
+  const existing = await lockCustomerByEmail(tx, storeId, customer.email);
+  if (existing === "busy") return null;
 
   if (!existing) {
     const [inserted] = await tx

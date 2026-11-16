@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 
 import {
   createTestDatabase,
+  reservationChangeTestHooks,
   skipWithoutTestDatabase,
   waitForLockWaits,
   type TestDatabase,
@@ -105,6 +106,8 @@ describe(
     });
 
     beforeEach(async () => {
+      // The checkout's owner entry runs again on a lost deadlock: counted, to be none.
+      reservationChangeTestHooks().restarts = 0;
       customer = nextId("cus");
       email = `${customer}@lock.test`;
       await louezDb.db.insert(louezDb.customers).values({
@@ -178,6 +181,11 @@ describe(
       } finally {
         await holder.end();
       }
+      assert.equal(
+        reservationChangeTestHooks().restarts,
+        0,
+        "no deadlock: the checkout never ran again",
+      );
       const after = await bookings();
       assert.equal(after.length, before + 1);
       assert.ok(
@@ -210,10 +218,28 @@ describe(
         assert.ok(result.ok, JSON.stringify(result));
         assert.equal(result.customerId, customer);
         assert.deepEqual(await deletion, { error: "errors.customerHasReservations" });
+        assert.equal(
+          reservationChangeTestHooks().restarts,
+          0,
+          "no deadlock: the checkout never ran again",
+        );
       } finally {
         await holder.end();
       }
       assert.ok((await bookings()).every((row) => row.exists));
+    });
+
+    test("the deletion reaches its customer through the primary key", async () => {
+      const connection = await database.connect();
+      try {
+        const [plan] = await connection.query<import("mysql2/promise").RowDataPacket[]>(
+          "EXPLAIN SELECT id FROM customers WHERE id = ? AND store_id = ? FOR UPDATE",
+          [customer, STORE],
+        );
+        assert.equal(plan[0]?.key, "PRIMARY");
+      } finally {
+        await connection.end();
+      }
     });
   },
 );
