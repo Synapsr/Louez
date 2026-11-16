@@ -45,11 +45,6 @@ const STUBBED: Record<string, ReadonlySet<string>> = {
     "@/lib/discord/platform-notifications",
     "@/lib/pay-as-you-go",
   ]),
-  // The route's verdict on the event's account reads it on this client.
-  "/api/webhooks/stripe/connect/connected-account.ts": new Set([
-    "@/lib/stripe/client",
-    "@/lib/evlog",
-  ]),
   "/lib/reservations/complete-checkout-payment.ts": new Set([
     "@/lib/billing/reservation-effects",
     "@/lib/discord/platform-notifications",
@@ -83,8 +78,6 @@ Reflect.set(globalThis, "__louezCheckoutCompletedStubs", {
       // The signature is not checked: the body is the event.
       constructEvent: (body: string) => JSON.parse(body),
     },
-    // Every account of this suite is the platform's to read.
-    accounts: { retrieveCurrent: async () => ({}) },
     paymentIntents: {
       // The account it is read on, and the PaymentIntent of a paid card.
       retrieve: async (

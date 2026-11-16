@@ -6,19 +6,17 @@ import { db, payments, reservations, stores } from "@louez/db";
 
 import { type BillingAlerts, createBillingAlerts } from "@/lib/billing-sync/alerts";
 import { log } from "@/lib/evlog";
-import { stripe } from "@/lib/stripe/client";
 
-import { describeWebhookError } from "./webhook-error";
-
-// Whether Louez may act on a Connect event's account, decided before its
-// handler runs, from reads that change nothing. An account no store holds and
-// no payment recorded is not acted on. For an event whose handler reads the
-// account at Stripe, the account is read first (`GET /v1/account` on it):
-// when Stripe answers that the platform has no access to it, the event is not
-// acted on either, and the platform is alerted. Either way the route answers
-// 2xx and Stripe stops sending the event. Any other failure of those reads
-// throws, and the route answers 5xx. Once the handler runs, nothing here
-// catches its failures: an event a handler has started on is delivered again.
+// Whether Louez acts on a Connect event's account, decided from Louez's own
+// rows alone, before any handler: an account no store holds and no payment
+// recorded is not acted on, the route answers 2xx and Stripe is never asked.
+// Nothing Stripe answers about an account makes the route acknowledge an
+// event: once a handler runs, every failure answers 5xx, so Stripe sends the
+// event again for as long as it retries, and an account connected again
+// meanwhile resumes it. When the failure is Stripe saying the platform has no
+// access to a known account, the platform is alerted
+// (`alertIfAccountUnreachable`): Stripe retries such an event, then drops it,
+// and the alert is what tells the platform.
 
 /** The store a known account belongs to: the one holding it, else a recorded payment's. */
 export async function connectedAccountOwner(
@@ -42,74 +40,66 @@ export async function connectedAccountOwner(
 }
 
 /**
- * Whether Stripe says the platform has no access to the connected account
- * (not, or no longer, connected, or no such account): its code
- * `account_invalid`, the one answer no retry changes. Any other Stripe error is
- * not: a 403 without it is the platform's own key lacking a permission (a
- * restricted key), which a fix of the key settings passes, and a 401, a 429,
- * the network or Stripe's 5xx may pass by themselves.
+ * Whether Stripe said the platform has no access to the connected account (not,
+ * or no longer, connected, or no such account): its code `account_invalid`,
+ * on the error or on one it wraps (`cause`). A 403 without it is the
+ * platform's own key lacking a permission (a restricted key).
  */
-export function isAccountAccessRefused(error: unknown): error is Stripe.errors.StripeError {
-  return error instanceof Stripe.errors.StripeError && error.code === "account_invalid";
+export function isAccountAccessRefused(error: unknown): boolean {
+  for (let current = error, depth = 0; current && depth < 5; depth += 1) {
+    if (current instanceof Stripe.errors.StripeError && current.code === "account_invalid") {
+      return true;
+    }
+    current = current instanceof Error ? current.cause : undefined;
+  }
+  return false;
 }
 
 export type ConnectedAccountVerdict =
-  | { readonly act: true }
-  | { readonly act: false; readonly issue: "account_unknown" | "account_access_refused" };
-
-export interface ConnectedAccountDeps {
-  owner: (accountId: string) => Promise<{ readonly storeId: string } | null>;
-  /** Reads the account at Stripe, on the account, and changes nothing. */
-  probe: (accountId: string) => Promise<unknown>;
-  alerts: () => BillingAlerts;
-}
-
-const defaultDeps: ConnectedAccountDeps = {
-  owner: connectedAccountOwner,
-  probe: (accountId) => stripe.accounts.retrieveCurrent({}, { stripeAccount: accountId }),
-  alerts: () => createBillingAlerts({ schedule: after }),
-};
+  | { readonly act: true; readonly owner: { readonly storeId: string } | null }
+  | { readonly act: false };
 
 /**
- * Whether the route may run the event's handler. `readsAccount`: the handler
- * reads the account at Stripe, so Stripe's access to it is read first. An
+ * Whether the route runs the event's handler, from Louez's rows alone. An
  * event without an account goes to its handler, which says so itself.
  */
 export async function connectedAccountVerdict(
   event: { readonly type: string; readonly accountId: string | undefined },
-  readsAccount: boolean,
-  deps: ConnectedAccountDeps = defaultDeps,
+  owner: typeof connectedAccountOwner = connectedAccountOwner,
 ): Promise<ConnectedAccountVerdict> {
   const { type, accountId } = event;
-  if (!accountId) return { act: true };
-  const owner = await deps.owner(accountId);
-  if (!owner) {
+  if (!accountId) return { act: true, owner: null };
+  const known = await owner(accountId);
+  if (!known) {
     log.warn({ stripeWebhook: { event: type, issue: "account_unknown", accountId } });
-    return { act: false, issue: "account_unknown" };
+    return { act: false };
   }
-  if (!readsAccount) return { act: true };
+  return { act: true, owner: known };
+}
+
+/**
+ * After a handler failed, which the route answers 5xx: when Stripe said the
+ * platform has no access to the event's known account, the platform is
+ * alerted (an Evlog error each time, the admin Discord channel once an hour).
+ * Never throws: the answer stays 5xx.
+ */
+export async function alertIfAccountUnreachable(
+  event: {
+    readonly type: string;
+    readonly accountId: string | undefined;
+    readonly owner: { readonly storeId: string } | null;
+  },
+  error: unknown,
+  alerts: () => BillingAlerts = () => createBillingAlerts({ schedule: after }),
+): Promise<void> {
+  const { type, accountId, owner } = event;
+  if (!accountId || !owner || !isAccountAccessRefused(error)) return;
   try {
-    await deps.probe(accountId);
-  } catch (error) {
-    if (!isAccountAccessRefused(error)) throw error;
-    log.warn({
-      stripeWebhook: {
-        event: type,
-        issue: "account_access_refused",
-        accountId,
-        storeId: owner.storeId,
-        ...describeWebhookError(error),
-      },
-    });
-    // A store whose account the platform lost while Louez holds its payments:
-    // refunds and disputes there go unrecorded until someone reconnects it.
-    await deps
-      .alerts()
-      .alert(
-        "connected_account_unreachable",
-        `Stripe refuses the platform the connected account ${accountId} of store ${owner.storeId}: its ${type} event is acknowledged without being recorded.`,
-      );
-    return { act: false, issue: "account_access_refused" };
+    await alerts().alert(
+      "connected_account_unreachable",
+      `Stripe answers that the platform has no access to the connected account ${accountId} of store ${owner.storeId}: its ${type} event failed. Stripe sends it again while it retries, then drops it; connect the account again to have it recorded.`,
+    );
+  } catch {
+    // An alert that cannot be raised never changes the answer.
   }
-  return { act: true };
 }

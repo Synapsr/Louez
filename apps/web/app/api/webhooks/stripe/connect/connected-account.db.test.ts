@@ -11,15 +11,16 @@ import Stripe from "stripe";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-// The Connect webhook's POST, run whole, for an event Louez cannot act on: its
-// account is unknown to Louez, or Stripe refuses the platform that account (a
-// permission error, which no retry changes). The route answers 2xx, writes
-// nothing, and logs one line with the event's type and why, holding no key
-// material. A failure that may pass (a rate limit, the network, Stripe's 5xx,
-// the platform's own key refused, any other error) still answers 5xx, so
-// Stripe sends the event again. A known account Stripe answers goes on as
-// before. The signature check, the deployment's keys, the log, the senders and
-// Stripe are replaced; triggers record each write.
+// The Connect webhook's POST, run whole, for an event's account. One unknown to
+// Louez (no store holds it, no payment records it) is answered 2xx, nothing
+// written, Stripe never asked. Nothing Stripe answers makes the route
+// acknowledge an event: every failure of a handler answers 5xx, so Stripe
+// sends it again, and when Stripe says the platform has no access to a known
+// account, the platform is alerted too. Logs hold no key material. A known
+// account Stripe answers goes on as before, and an account connected again
+// resumes an event Stripe sends again. The signature check, the deployment's
+// keys, the log, the senders and Stripe are replaced; triggers record each
+// write.
 
 const directory = mkdtempSync(join(tmpdir(), "louez-connected-account-"));
 const stubsPath = join(directory, "stubs.cjs");
@@ -41,7 +42,6 @@ const STUBBED: Record<string, ReadonlySet<string>> = {
   "/api/webhooks/stripe/connect/connected-account.ts": new Set([
     "@/lib/evlog",
     "@/lib/billing-sync/alerts",
-    "@/lib/stripe/client",
   ]),
   "/api/webhooks/stripe/connect/deposit-events.ts": new Set(["@/lib/evlog"]),
   "/api/webhooks/stripe/connect/charge-refund.ts": new Set(["@/lib/evlog", "@/lib/stripe/client"]),
@@ -88,10 +88,6 @@ const stubs = {
     webhooks: {
       // The signature is not checked: the body is the event.
       constructEvent: (body: string) => JSON.parse(body),
-    },
-    accounts: {
-      // The verdict's read of the account, before any handler.
-      retrieveCurrent: stripeCall("accounts.retrieveCurrent", () => ({ id: ACCOUNT })),
     },
     paymentIntents: {
       retrieve: stripeCall("paymentIntents.retrieve", (id: string) => ({ id, metadata: {} })),
@@ -413,6 +409,31 @@ describe(
     };
 
     /** Every type read on the connected account that reads Stripe before it writes. */
+    /** A deposit hold the reservation records, and its PaymentIntent. */
+    const depositHold: Setup = async (reservationId) => {
+      const paymentIntentId = nextId("pi");
+      await louezDb.db.insert(louezDb.payments).values({
+        id: nextId("pay"),
+        reservationId,
+        amount: "50.00",
+        type: "deposit_hold",
+        method: "stripe",
+        status: "pending",
+        stripePaymentIntentId: paymentIntentId,
+        stripeAccountId: ACCOUNT,
+        currency: "EUR",
+        grossMinor: 5000,
+      });
+      return {
+        id: paymentIntentId,
+        object: "payment_intent",
+        amount: 5000,
+        currency: "eur",
+        capture_method: "manual",
+        metadata: { reservationId, type: "deposit_hold" },
+      };
+    };
+
     const EVENTS: ReadonlyArray<readonly [type: string, setup: Setup]> = [
       ["charge.refunded", refundedCharge],
       ["refund.failed", failedRefund],
@@ -432,32 +453,9 @@ describe(
           metadata: { reservationId },
         }),
       ],
-      [
-        "payment_intent.succeeded",
-        async (reservationId) => {
-          const paymentIntentId = nextId("pi");
-          await louezDb.db.insert(louezDb.payments).values({
-            id: nextId("pay"),
-            reservationId,
-            amount: "50.00",
-            type: "deposit_hold",
-            method: "stripe",
-            status: "pending",
-            stripePaymentIntentId: paymentIntentId,
-            stripeAccountId: ACCOUNT,
-            currency: "EUR",
-            grossMinor: 5000,
-          });
-          return {
-            id: paymentIntentId,
-            object: "payment_intent",
-            amount: 5000,
-            currency: "eur",
-            capture_method: "manual",
-            metadata: { reservationId, type: "deposit_hold" },
-          };
-        },
-      ],
+      ["payment_intent.succeeded", depositHold],
+      // A deposit hold's failed attempt: its branch reads the PaymentIntent on the account.
+      ["payment_intent.payment_failed", depositHold],
     ];
 
     async function send(type: string, object: Record<string, unknown>, account: string) {
@@ -486,40 +484,24 @@ describe(
     const stripeCalls = () => calls.filter(([name]) => name.startsWith("stripe."));
 
     for (const [type, setup] of EVENTS) {
-      test(`${type}: an account Stripe refuses the platform is acknowledged, nothing written, one line without the key`, async () => {
+      test(`${type}: a known account Stripe says the platform cannot reach answers 5xx, writes nothing, and alerts the platform`, async () => {
         const object = await setup(await booking());
         await raw.query("TRUNCATE TABLE test_writes");
         calls.length = 0;
-        // Refused on the verdict's read of the account, before any handler.
-        failures.set("accounts.retrieveCurrent", refused());
+        // Every read of the account answers that the platform has no access to it.
+        stripeFails = refused();
 
         const answer = await send(type, object, ACCOUNT);
 
-        assert.deepEqual(answer, { status: 200, body: { received: true } });
+        assert.equal(answer.status, 500, type);
         assert.deepEqual(await writes(), [], type);
-        assert.deepEqual(stripeCalls(), [["stripe.accounts.retrieveCurrent"]], "nothing sent");
-        assert.deepEqual(logs(), [
-          [
-            "log.warn",
-            {
-              stripeWebhook: {
-                event: type,
-                issue: "account_access_refused",
-                accountId: ACCOUNT,
-                storeId: STORE,
-                stripeError: {
-                  type: "StripePermissionError",
-                  code: "account_invalid",
-                  statusCode: 403,
-                  requestId: "req_refused",
-                },
-              },
-            },
-          ],
-        ]);
+        const failed = logs().filter(([, entry]) =>
+          JSON.stringify(entry).includes("handler_failed"),
+        );
+        assert.equal(failed.length, 1, "the handler's failure is logged once");
         // An account Louez holds payments of: the platform hears of it.
         const alerts = calls.filter(([name]) => name === "alerts.alert");
-        assert.equal(alerts.length, 1);
+        assert.equal(alerts.length, 1, type);
         assert.equal(alerts[0]?.[1], "connected_account_unreachable");
         assert.match(String(alerts[0]?.[2]), new RegExp(`${ACCOUNT} of store ${STORE}`));
         assert.doesNotMatch(JSON.stringify(calls), /sk_test_|abcd/);
@@ -560,41 +542,45 @@ describe(
         assert.equal(line?.[0], "log.error");
         assert.match(JSON.stringify(line), /"issue":"handler_failed"/);
         assert.doesNotMatch(JSON.stringify(calls), /sk_test_|abcd/);
+        assert.deepEqual(
+          calls.filter(([name]) => name === "alerts.alert"),
+          [],
+          "only an account the platform cannot reach is alerted",
+        );
       });
     }
 
-    test("charge.refunded: a refusal once the handler has sent something answers 5xx, so Stripe sends it again", async () => {
-      // The account reads, the fee given back at source goes, then the listing
-      // of the customer's refunds is refused.
+    test("charge.refunded: an account lost after the handler sent something is never acknowledged, and is recorded once connected again", async () => {
       const reservationId = await booking();
       const object = await refundedCharge(reservationId);
       feeOnCharge = String(object.application_fee);
+      const refundsWritten = async () =>
+        (await writes()).filter((entry) => entry.startsWith("payments + "));
+
+      // First delivery: the fee given back at source goes, then the listing of
+      // the customer's refunds is refused.
       failures.set("refunds.list", refused());
       await raw.query("TRUNCATE TABLE test_writes");
       calls.length = 0;
-
-      const answer = await send("charge.refunded", object, ACCOUNT);
-
-      assert.equal(answer.status, 500);
+      assert.equal((await send("charge.refunded", object, ACCOUNT)).status, 500);
       assert.ok(
         stripeCalls().some(([name]) => name === "stripe.applicationFees.createRefund"),
         "the fee refund went before the refusal",
       );
-      const written = await writes();
-      assert.equal(
-        written.some((entry) => entry.startsWith("payments + ")),
-        false,
-        written.join("\n"),
-      );
-      assert.deepEqual(
-        calls.filter(([name]) => name === "alerts.alert"),
-        [],
-        "a refusal after the verdict is not acknowledged",
-      );
+      assert.deepEqual(await refundsWritten(), []);
 
-      // Delivered again once Stripe answers: the fee refund is asked again under
-      // the same idempotency key, which Stripe runs once; the refund is recorded.
+      // The store's access is revoked, then Stripe delivers again: still 5xx,
+      // nothing false written, and the platform is alerted.
       failures.clear();
+      stripeFails = refused();
+      calls.length = 0;
+      assert.equal((await send("charge.refunded", object, ACCOUNT)).status, 500);
+      assert.deepEqual(await refundsWritten(), []);
+      assert.equal(calls.filter(([name]) => name === "alerts.alert").length, 1);
+
+      // Connected again, Stripe delivers once more: the fee refund is asked again
+      // under the same idempotency key, which Stripe runs once, and the refund is recorded.
+      stripeFails = null;
       refundsOf.set(String(object.id), [
         {
           id: nextId("re"),
@@ -609,7 +595,7 @@ describe(
       calls.length = 0;
       const again = await send("charge.refunded", object, ACCOUNT);
       assert.deepEqual(again, { status: 200, body: { received: true } });
-      assert.ok((await writes()).includes("payments + rental completed"));
+      assert.deepEqual(await refundsWritten(), ["payments + rental completed"]);
       assert.equal(feeRefundKeys.length, 2);
       assert.equal(feeRefundKeys[0], feeRefundKeys[1]);
     });
