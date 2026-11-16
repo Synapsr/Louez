@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { APPROVAL_POLL_SECONDS } from "@louez/api/platform/errors";
+import { handoffErrors } from "@louez/api/contracts/handoffs";
+import { APPROVAL_POLL_SECONDS, platformErrors } from "@louez/api/platform/errors";
 
 import {
   APPROVAL_CARD_POLL_MS,
@@ -10,6 +11,7 @@ import {
   approvalCardState,
   approvalReadFailure,
   approvalReadsOnFocus,
+  createFocusRead,
   approvalCardStatus,
   approvalCardWaits,
   approvalFollowUp,
@@ -146,7 +148,6 @@ describe("the follow-up turn", () => {
 });
 
 describe("the card's reads", () => {
-  const notFound = { data: { code: "HANDOFF_NOT_FOUND" } };
   const offline = new TypeError("Failed to fetch");
 
   test("the tab's return reads again only once the interval passed, on the clock given", () => {
@@ -157,11 +158,19 @@ describe("the card's reads", () => {
   });
 
   test("a read that failed for good stops the card, and says it", () => {
-    assert.equal(approvalReadFailure(notFound), "terminal");
-    assert.equal(approvalReadFailure({ data: { code: "PERMISSION_DENIED" } }), "terminal");
-    const status = approvalCardState({ data: { status: "pending" }, error: notFound });
-    assert.equal(status, "unavailable");
-    assert.equal(approvalCardWaits(status), false);
+    // The API's own answers, from their factories.
+    for (const error of [
+      handoffErrors.notFound("AbCdEfGhIjKlMnOpQrStU"),
+      platformErrors.permissionDenied("payments:read"),
+      platformErrors.noStore(),
+      platformErrors.unauthenticated(),
+    ]) {
+      const code = (error.data as { code: string }).code;
+      assert.equal(approvalReadFailure(error), "terminal", code);
+      const status = approvalCardState({ data: { status: "pending" }, error });
+      assert.equal(status, "unavailable", code);
+      assert.equal(approvalCardWaits(status), false, code);
+    }
   });
 
   test("a passing failure keeps what was last read, and the card reads again", () => {
@@ -171,5 +180,58 @@ describe("the card's reads", () => {
     const status = approvalCardState({ data: { status: "approved" }, error: offline });
     assert.equal(status, "approved");
     assert.equal(approvalCardWaits(status), true);
+  });
+
+  test("the tab's return starts one read at a time, and reuses the one in flight", async () => {
+    let clock = Date.UTC(2030, 5, 1, 9, 0, 0);
+    let lastReadAt = clock - APPROVAL_CARD_POLL_MS;
+    let started = 0;
+    let answer: () => void = () => {};
+    const focusRead = createFocusRead({
+      now: () => clock,
+      lastReadAt: () => lastReadAt,
+      read: () => {
+        started += 1;
+        return new Promise<void>((resolve) => {
+          answer = () => {
+            lastReadAt = clock;
+            resolve();
+          };
+        });
+      },
+    });
+
+    // Three events while the first read is still out: one request.
+    const first = focusRead();
+    assert.ok(first);
+    assert.equal(focusRead(), first);
+    assert.equal(focusRead(), first);
+    assert.equal(started, 1);
+
+    answer();
+    await first;
+    clock += 1_000;
+    assert.equal(focusRead(), null, "within the interval of the last read");
+    clock += APPROVAL_CARD_POLL_MS;
+    assert.ok(focusRead());
+    assert.equal(started, 2);
+  });
+
+  test("an attempt that failed before any answer still waits its interval", async () => {
+    let clock = Date.UTC(2030, 5, 1, 9, 0, 0);
+    let started = 0;
+    const focusRead = createFocusRead({
+      now: () => clock,
+      // The last read never advances: the attempt's own start is what counts.
+      lastReadAt: () => 0,
+      read: () => {
+        started += 1;
+        return Promise.reject(new Error("offline"));
+      },
+    });
+    await focusRead()?.catch(() => {});
+    clock += 1_000;
+    assert.equal(focusRead(), null);
+    assert.equal(started, 1);
   });
 });

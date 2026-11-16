@@ -1,11 +1,13 @@
 /**
  * The chat's side of a payment the in-app assistant prepared: the card drawn
  * from the tool's `approval_required` result, where the person's request
- * stands, and the turn the chat sends once they approved it. Pure and
- * without dependencies: the tools (lib/ai/payment-approval.ts) and the chat's
+ * stands, and the turn the chat sends once they approved it. Pure, and
+ * light enough for the browser: the tools (lib/ai/payment-approval.ts) and the chat's
  * components share it. The decision itself is the approval page's, recorded
  * by the server: nothing here decides, and the card only links to the page.
  */
+
+import { STEP_READ_REFUSALS } from "@louez/api/platform/read-refusals";
 
 /** The payment tools that need the person's approval, by the name the chat shows them under. */
 export const PAYMENT_APPROVAL_TOOLS = [
@@ -145,16 +147,13 @@ export function approvalCardStatus(
 }
 
 /**
- * The answers to the card's read that will not change by reading again: the
- * request is not found for this session, or the session may no longer read
- * it. Any other failure (the network, a server error) is passing.
+ * The answers to the card's read that will not change by reading again, as
+ * the API names them (`STEP_READ_REFUSALS`): the request is not found for
+ * this session, the session may no longer read it, is no longer a member of
+ * the store, or is signed out. Any other failure (the network, a server
+ * error) is passing.
  */
-const TERMINAL_READ_CODES: ReadonlySet<string> = new Set([
-  "HANDOFF_NOT_FOUND",
-  "PERMISSION_DENIED",
-  "NO_STORE",
-  "UNAUTHENTICATED",
-]);
+const TERMINAL_READ_CODES: ReadonlySet<string> = new Set(STEP_READ_REFUSALS);
 
 /** How a failed read of the request ends: for good, or for now. */
 export function approvalReadFailure(error: unknown): "terminal" | "transient" | null {
@@ -195,6 +194,33 @@ export const APPROVAL_CARD_POLL_MS = 30_000;
  */
 export const approvalReadsOnFocus = (lastReadAt: number, now: number) =>
   now - lastReadAt >= APPROVAL_CARD_POLL_MS;
+
+/**
+ * The read the tab's return starts: one at a time. An attempt is gated when
+ * it starts (its time is kept at once, so the next event finds it), at most
+ * once per interval since the last read or attempt, and a read in flight is
+ * handed back to every event that comes meanwhile, never started again.
+ * `read` must reuse a read in flight too (`cancelRefetch: false`).
+ */
+export function createFocusRead(options: {
+  now: () => number;
+  /** When the request was last read, a success or a failure, epoch milliseconds. */
+  lastReadAt: () => number;
+  read: () => Promise<unknown>;
+}): () => Promise<unknown> | null {
+  let attemptAt = Number.NEGATIVE_INFINITY;
+  let inFlight: Promise<unknown> | null = null;
+  return () => {
+    if (inFlight) return inFlight;
+    const now = options.now();
+    if (!approvalReadsOnFocus(Math.max(attemptAt, options.lastReadAt()), now)) return null;
+    attemptAt = now;
+    inFlight = options.read().finally(() => {
+      inFlight = null;
+    });
+    return inFlight;
+  };
+}
 
 /**
  * The turn the chat sends once the person approved: it lets the model call

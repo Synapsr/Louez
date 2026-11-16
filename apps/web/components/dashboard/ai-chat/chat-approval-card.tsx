@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
@@ -12,7 +12,7 @@ import {
   APPROVAL_CARD_POLL_MS,
   approvalCardState,
   approvalCardWaits,
-  approvalReadsOnFocus,
+  createFocusRead,
   approvalPagePath,
   type ApprovalCard,
 } from "@/lib/ai/approval-card";
@@ -51,13 +51,24 @@ export const ChatApprovalCard = ({ card, onContinue }: ChatApprovalCardProps) =>
   );
   const status = approvalCardState({ data, error });
   const waits = approvalCardWaits(status);
-  const lastReadAt = Math.max(dataUpdatedAt, errorUpdatedAt);
+  const lastReadAt = useRef(0);
+  lastReadAt.current = Math.max(dataUpdatedAt, errorUpdatedAt);
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+  // One read at a time on the tab's return, gated when it starts; a read in
+  // flight is reused, never cancelled and started again.
+  const [focusRead] = useState(() =>
+    createFocusRead({
+      now: Date.now,
+      lastReadAt: () => lastReadAt.current,
+      read: () => refetchRef.current({ cancelRefetch: false }),
+    }),
+  );
 
   useEffect(() => {
     if (!waits) return;
     const onReturn = () => {
-      if (document.visibilityState !== "visible") return;
-      if (approvalReadsOnFocus(lastReadAt, Date.now())) void refetch();
+      if (document.visibilityState === "visible") void focusRead();
     };
     window.addEventListener("focus", onReturn);
     document.addEventListener("visibilitychange", onReturn);
@@ -65,7 +76,7 @@ export const ChatApprovalCard = ({ card, onContinue }: ChatApprovalCardProps) =>
       window.removeEventListener("focus", onReturn);
       document.removeEventListener("visibilitychange", onReturn);
     };
-  }, [waits, lastReadAt, refetch]);
+  }, [waits, focusRead]);
 
   useEffect(() => {
     if (status === "approved") onContinue(card);
