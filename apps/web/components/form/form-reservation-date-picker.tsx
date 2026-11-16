@@ -47,7 +47,7 @@ import {
 import { useIsMobile } from "@louez/ui/hooks/use-mobile";
 import { cn } from "@louez/utils";
 
-import { buildStoreDate } from "@louez/utils";
+import { buildExistingStoreDate, buildStoreDate } from "@louez/utils";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { getFieldError, useFieldContext } from "@/hooks/form/form-context";
 
@@ -111,6 +111,24 @@ export type ReservationDatePickerControlProps = {
   referenceDate?: Date;
   /** When false, the control is date-only: no time UI, date-only formatting. */
   showTime?: boolean;
+  /**
+   * Refuses a local time the store's time zone skips (T5), before it becomes
+   * an instant: the value stays as it was and this is called. Without it, the
+   * time is moved forward as the clocks move it.
+   */
+  onNonexistentTime?: () => void;
+};
+
+/** A local day and time (`HH:mm`) in the store's time zone made an instant. */
+type StoreDateBuilder = (date: Date, time: string, timezone?: string) => Date;
+
+class NonexistentLocalTimeError extends Error {}
+
+/** `buildStoreDate` that throws on a local time the store's time zone skips. */
+const buildExistingStoreDateOrThrow: StoreDateBuilder = (date, time, timezone) => {
+  const built = buildExistingStoreDate(date, time, timezone);
+  if (!built) throw new NonexistentLocalTimeError();
+  return built;
 };
 
 function generateTimeOptions(step = 30, minTime = "00:00", maxTime = "23:59") {
@@ -175,10 +193,16 @@ function hasTimeIntent(value: string) {
   );
 }
 
-function applyFallbackTime(date: Date, input: string, fallbackTime: string, timezone?: string) {
+function applyFallbackTime(
+  date: Date,
+  input: string,
+  fallbackTime: string,
+  timezone?: string,
+  build: StoreDateBuilder = buildStoreDate,
+) {
   if (hasTimeIntent(input)) return date;
 
-  return buildStoreDate(date, fallbackTime, timezone);
+  return build(date, fallbackTime, timezone);
 }
 
 function applyParsedFallbackTime(
@@ -186,10 +210,24 @@ function applyParsedFallbackTime(
   input: string,
   fallbackTime: string,
   timezone?: string,
+  build?: StoreDateBuilder,
 ) {
-  if (result.start.isCertain("hour")) return result.date();
+  if (result.start.isCertain("hour")) {
+    if (!build) return result.date();
+    // The typed day and time, read in the store's time zone as every other
+    // path reads them, and checked before they become an instant.
+    const day = new Date(
+      result.start.get("year") ?? 0,
+      (result.start.get("month") ?? 1) - 1,
+      result.start.get("day") ?? 1,
+    );
+    const time = [result.start.get("hour") ?? 0, result.start.get("minute") ?? 0]
+      .map((part) => part.toString().padStart(2, "0"))
+      .join(":");
+    return build(day, time, timezone);
+  }
 
-  return applyFallbackTime(result.date(), input, fallbackTime, timezone);
+  return applyFallbackTime(result.date(), input, fallbackTime, timezone, build);
 }
 
 function formatSuggestionLabel(result: ParsedResult, locale: string) {
@@ -228,6 +266,7 @@ function parseReferenceDayDate(
   referenceDate: Date | undefined,
   fallbackTime: string,
   timezone?: string,
+  build: StoreDateBuilder = buildStoreDate,
 ) {
   if (!referenceDate) return undefined;
 
@@ -260,7 +299,7 @@ function parseReferenceDayDate(
       ? fallbackTime
       : `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
 
-  return buildStoreDate(dateInReferenceMonth, time, timezone);
+  return build(dateInReferenceMonth, time, timezone);
 }
 
 function parseNaturalDates(value: string, locale: string, referenceDate?: Date) {
@@ -297,12 +336,19 @@ function parseManualDate(
   locale: string,
   referenceDate?: Date,
   timezone?: string,
+  build?: StoreDateBuilder,
 ) {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   const normalized = normalizeNaturalDateInput(trimmed, locale);
 
-  const referenceDayDate = parseReferenceDayDate(normalized, referenceDate, fallbackTime, timezone);
+  const referenceDayDate = parseReferenceDayDate(
+    normalized,
+    referenceDate,
+    fallbackTime,
+    timezone,
+    build,
+  );
   if (referenceDayDate) return referenceDayDate;
 
   const explicitDate = parseExplicitDate(normalized, referenceDate ?? new Date());
@@ -310,13 +356,13 @@ function parseManualDate(
     const time = hasTimeIntent(normalized)
       ? formatStoreDate(explicitDate, timezone, "TIME_ONLY", locale)
       : fallbackTime;
-    return buildStoreDate(explicitDate, time, timezone);
+    return (build ?? buildStoreDate)(explicitDate, time, timezone);
   }
 
   const suggestion = parseNaturalDates(normalized, locale, referenceDate)[0];
   if (!suggestion) return undefined;
 
-  return applyParsedFallbackTime(suggestion, normalized, fallbackTime, timezone);
+  return applyParsedFallbackTime(suggestion, normalized, fallbackTime, timezone, build);
 }
 
 export function ReservationDatePickerControl({
@@ -344,6 +390,7 @@ export function ReservationDatePickerControl({
   id,
   referenceDate,
   showTime = true,
+  onNonexistentTime,
 }: ReservationDatePickerControlProps) {
   const t = useTranslations("common.dateTimePicker");
   const locale = useLocale();
@@ -444,6 +491,23 @@ export function ReservationDatePickerControl({
       .slice(0, 4);
   }, [fallbackTime, inputValue, locale, referenceDate, resolvedTimezone]);
 
+  // With `onNonexistentTime`, a local time the store's time zone skips is
+  // refused where it is composed, and nothing changes.
+  const build: StoreDateBuilder | undefined = onNonexistentTime
+    ? buildExistingStoreDateOrThrow
+    : undefined;
+  const buildPicked = build ?? buildStoreDate;
+  /** What `make` builds, or null when it met a local time the store's time zone skips. */
+  const unlessNonexistent = <T,>(make: () => T): { value: T } | null => {
+    try {
+      return { value: make() };
+    } catch (error) {
+      if (!(error instanceof NonexistentLocalTimeError)) throw error;
+      onNonexistentTime?.();
+      return null;
+    }
+  };
+
   const pickerDate = value ? getDateInPickerTimezone(value) : undefined;
   const pickerOtherDate = range?.otherValue ? getDateInPickerTimezone(range.otherValue) : undefined;
   const pickerFixedStart = fixedRangeStart ? getDateInPickerTimezone(fixedRangeStart) : undefined;
@@ -479,7 +543,9 @@ export function ReservationDatePickerControl({
       return;
     }
 
-    onChange(buildStoreDate(selectedDate, fallbackTime, resolvedTimezone));
+    const next = unlessNonexistent(() => buildPicked(selectedDate, fallbackTime, resolvedTimezone));
+    if (!next) return;
+    onChange(next.value);
 
     if (!showTime) {
       setIsOpen(false);
@@ -492,12 +558,16 @@ export function ReservationDatePickerControl({
 
     const startTime = range.role === "start" ? fallbackTime : otherFallbackTime;
     const endTime = range.role === "end" ? fallbackTime : otherFallbackTime;
-    const nextStart = selectedRange?.from
-      ? buildStoreDate(selectedRange.from, startTime, resolvedTimezone)
-      : undefined;
-    const nextEnd = selectedRange?.to
-      ? buildStoreDate(selectedRange.to, endTime, resolvedTimezone)
-      : undefined;
+    const built = unlessNonexistent(() => ({
+      nextStart: selectedRange?.from
+        ? buildPicked(selectedRange.from, startTime, resolvedTimezone)
+        : undefined,
+      nextEnd: selectedRange?.to
+        ? buildPicked(selectedRange.to, endTime, resolvedTimezone)
+        : undefined,
+    }));
+    if (!built) return;
+    const { nextStart, nextEnd } = built.value;
 
     if (range.role === "start") {
       onChange(nextStart);
@@ -528,18 +598,25 @@ export function ReservationDatePickerControl({
     const target = endpoint === "start" ? rangeStartDate : rangeEndDate;
     if (!target) return;
 
-    const next = buildStoreDate(getDateInPickerTimezone(target), time, resolvedTimezone);
+    const next = unlessNonexistent(() =>
+      buildPicked(getDateInPickerTimezone(target), time, resolvedTimezone),
+    );
+    if (!next) return;
     if (endpoint === range.role) {
-      onChange(next);
+      onChange(next.value);
     } else {
-      range.onOtherChange(next);
+      range.onOtherChange(next.value);
     }
   };
 
   const handleTimeChange = (time: string | null) => {
     if (!value || time === null) return;
 
-    onChange(buildStoreDate(getDateInPickerTimezone(value), time, resolvedTimezone));
+    const next = unlessNonexistent(() =>
+      buildPicked(getDateInPickerTimezone(value), time, resolvedTimezone),
+    );
+    if (!next) return;
+    onChange(next.value);
 
     if (autoCloseOnTimeSelect) {
       setIsOpen(false);
@@ -553,13 +630,9 @@ export function ReservationDatePickerControl({
       return;
     }
 
-    const parsed = parseManualDate(
-      inputValue,
-      fallbackTime,
-      locale,
-      referenceDate,
-      resolvedTimezone,
-    );
+    const parsed = unlessNonexistent(() =>
+      parseManualDate(inputValue, fallbackTime, locale, referenceDate, resolvedTimezone, build),
+    )?.value;
     if (!parsed) return;
 
     onChange(parsed);
@@ -567,14 +640,18 @@ export function ReservationDatePickerControl({
   };
 
   const applySuggestion = (suggestion: DateSuggestion) => {
-    const parsed = parseManualDate(
-      suggestion.label,
-      fallbackTime,
-      locale,
-      referenceDate,
-      resolvedTimezone,
+    const parsed = unlessNonexistent(() =>
+      parseManualDate(
+        suggestion.label,
+        fallbackTime,
+        locale,
+        referenceDate,
+        resolvedTimezone,
+        build,
+      ),
     );
-    const nextDate = parsed ?? suggestion.date;
+    if (!parsed) return;
+    const nextDate = parsed.value ?? suggestion.date;
     onChange(nextDate);
     setInputValue(formattedValue(nextDate));
     setIsFocused(false);

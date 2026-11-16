@@ -269,7 +269,6 @@ export function EditReservationForm({
   const tForm = useTranslations("dashboard.reservations.manualForm");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
-  const tValidation = useTranslations("validation");
   const posthog = usePostHog();
   const { intl: formatLocale } = useFormatLocale();
   const timezone = useStoreTimezone();
@@ -317,6 +316,10 @@ export function EditReservationForm({
     },
     [formatLocale, startDate, timezone],
   );
+  // A local time the store's time zone skips is refused where it is picked,
+  // before it becomes an instant (T5): the dates stay as they were.
+  const refuseNonexistentTime = () =>
+    toastManager.add({ title: tErrors("localTimeDoesNotExist"), type: "error" });
   const editableReservationItems = reservation.items.filter(
     (item) =>
       !isLegacyTulipInsuranceItem({
@@ -406,7 +409,7 @@ export function EditReservationForm({
       isTulipInsurancePastDateBlocked ||
       !startDate ||
       !endDate ||
-      endDate < startDate ||
+      endDate.getTime() <= startDate.getTime() ||
       tulipInsuranceQuoteItems.length === 0
     ) {
       return null;
@@ -984,8 +987,8 @@ export function EditReservationForm({
       return;
     }
 
-    if (endDate < startDate) {
-      toastManager.add({ title: tValidation("endDateBeforeStart"), type: "error" });
+    if (endDate.getTime() <= startDate.getTime()) {
+      toastManager.add({ title: tErrors("endDateBeforeStart"), type: "error" });
       return;
     }
 
@@ -1252,6 +1255,7 @@ export function EditReservationForm({
                         maxTime="23:59"
                         timeStep={30}
                         timezone={timezone}
+                        onNonexistentTime={refuseNonexistentTime}
                         range={{
                           role: "start",
                           otherValue: endDate,
@@ -1270,6 +1274,7 @@ export function EditReservationForm({
                         timeStep={30}
                         referenceDate={startDate}
                         timezone={timezone}
+                        onNonexistentTime={refuseNonexistentTime}
                         range={{
                           role: "end",
                           otherValue: startDate,

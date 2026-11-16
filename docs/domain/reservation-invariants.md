@@ -128,7 +128,7 @@ _Held_ for every edit, with one rule (`isReservationEditable`, `packages/api/src
 _Open._ The dashboard numbers with a count of the year's reservations plus one, read with no lock; the online store draws a number and checks it before the insert, a race its own comment admits (`packages/api/src/services/reservation-number.ts`). The table has no unique index on store and number.
 
 **T5. A reservation's window is a real interval of the store's time.** The end is after the start, and a local date and time the customer or the store typed is one that exists in the store's time zone.
-_Partial._ The extension checks the time zone round trip, nonexistent local times included. `updateReservation` refuses only an end before the start, so it accepts a window of no length.
+_Partial._ The extension and the dashboard's edit check the time zone round trip where the local time is typed (`zonedLocalTimeToInstant`, `packages/utils/src/business-hours.ts`), nonexistent local times included; `updateReservation` refuses an end that is not after the start (`update-reservation.db.test.ts`). The other forms built on the same date picker do not ask for the round trip yet, and move a time the clocks skip forward.
 _Held_ for the date change of the API and agents: it takes instants with their offset (no local time to round-trip), refuses an end that is not after the start, and an ongoing reservation's start that moves (`RESERVATION_WINDOW_INVALID`); `reservation-dates.db.test.ts` covers both.
 
 **T6. Pickup follows the contract's rules.** Validating the contract and signing it are two steps (`services/reservation-contract-validation.ts`); a store that requires a signature refuses a pickup without one (`services/reservation-status.ts`).

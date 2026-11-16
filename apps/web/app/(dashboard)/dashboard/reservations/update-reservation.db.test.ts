@@ -604,6 +604,30 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     });
   });
 
+  describe("a real window (T5)", () => {
+    test("a window of no length is refused, and nothing is written", async () => {
+      const bikes = await product("Bike", 5);
+      const booking = await reservation({ productId: bikes, quantity: 1 });
+      const before = await rowsOf(booking.id);
+
+      const result = await actions.updateReservation(booking.id, { endDate: START });
+
+      assert.deepEqual(result, { error: "errors.endDateBeforeStart" });
+      assert.deepEqual(await rowsOf(booking.id), before);
+    });
+
+    test("an ongoing reservation's start still moves here: the store corrects the pickup time", async () => {
+      const bikes = await product("Bike", 5);
+      const booking = await reservation({ productId: bikes, quantity: 1 }, { status: "ongoing" });
+      const earlier = new Date(START.getTime() - 2 * 3_600_000);
+
+      const result = await actions.updateReservation(booking.id, { startDate: earlier });
+
+      assert.equal(result.error, undefined);
+      assert.equal((await rowsOf(booking.id)).row?.startDate.getTime(), earlier.getTime());
+    });
+  });
+
   describe("a reservation changed between the read and the write", () => {
     /** Runs the edit while another transaction, not committed yet, holds the reservation. */
     async function editDuring(

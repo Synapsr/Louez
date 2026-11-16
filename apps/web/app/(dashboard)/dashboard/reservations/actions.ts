@@ -1871,7 +1871,10 @@ export async function updateReservation(
   // Determine new dates
   const newStartDate = data.startDate || reservation.startDate;
   const newEndDate = data.endDate || reservation.endDate;
-  if (newEndDate < newStartDate) {
+  // A real window (T5): the end after the start, so never of no length. The
+  // start of an ongoing reservation may still move here, unlike the API's
+  // date change: the store corrects the pickup time it recorded.
+  if (newEndDate.getTime() <= newStartDate.getTime()) {
     return { error: "errors.endDateBeforeStart" };
   }
 
