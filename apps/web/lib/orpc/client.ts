@@ -53,33 +53,42 @@ const getRpcUrl = (): string => {
   return new URL("/api/rpc", getPublicEnvSnapshot().NEXT_PUBLIC_APP_URL).toString();
 };
 
-const link = new RPCLink({
-  // The header `/api/rpc` requires of every call (./csrf.ts).
-  plugins: [rpcCsrfLinkPlugin()],
-  // Resolve lazily: PublicEnvProvider installs the validated runtime config
-  // before any child query can execute.
-  url: getRpcUrl,
-  headers: (_options, path) => {
-    const headers: Record<string, string> = {};
-    // Store header for storefront procedures: the provider's slug first, the
-    // host as a fallback for calls issued outside a StoreProvider.
-    const storeSlug = storefrontSlug ?? getStoreSlugFromHost();
-    if (storeSlug) headers["x-store-slug"] = storeSlug;
-    // The onboarding's store step: the Klibon affiliate who sent the visitor, if any.
-    if (typeof window !== "undefined" && isOnboardingStoreStep(path)) {
-      const affiliateReferral = readAffiliateReferral();
-      if (affiliateReferral) headers[AFFILIATE_REFERRAL_HEADER] = affiliateReferral;
-    }
-    return headers;
-  },
-  fetch: (input, init) => {
-    // Use native fetch with credentials for cookie-based auth
-    return globalThis.fetch(input, {
-      ...init,
-      credentials: "include",
-    });
-  },
-});
+/**
+ * The header by which a call names its store (`STORE_HEADER`,
+ * `@louez/api/platform/procedures`): the API checks the session is a member of
+ * it, and reads that store instead of the session's active one.
+ */
+const STORE_HEADER = "louez-store";
+
+const rpcLink = (storeId?: string) =>
+  new RPCLink({
+    // The header `/api/rpc` requires of every call (./csrf.ts).
+    plugins: [rpcCsrfLinkPlugin()],
+    // Resolve lazily: PublicEnvProvider installs the validated runtime config
+    // before any child query can execute.
+    url: getRpcUrl,
+    headers: (_options, path) => {
+      const headers: Record<string, string> = {};
+      if (storeId) headers[STORE_HEADER] = storeId;
+      // Store header for storefront procedures: the provider's slug first, the
+      // host as a fallback for calls issued outside a StoreProvider.
+      const storeSlug = storefrontSlug ?? getStoreSlugFromHost();
+      if (storeSlug) headers["x-store-slug"] = storeSlug;
+      // The onboarding's store step: the Klibon affiliate who sent the visitor, if any.
+      if (typeof window !== "undefined" && isOnboardingStoreStep(path)) {
+        const affiliateReferral = readAffiliateReferral();
+        if (affiliateReferral) headers[AFFILIATE_REFERRAL_HEADER] = affiliateReferral;
+      }
+      return headers;
+    },
+    fetch: (input, init) => {
+      // Use native fetch with credentials for cookie-based auth
+      return globalThis.fetch(input, {
+        ...init,
+        credentials: "include",
+      });
+    },
+  });
 
 /**
  * Type-safe oRPC client for making API calls
@@ -93,4 +102,22 @@ const link = new RPCLink({
  * const { data } = useQuery(orpc.dashboard.ping.queryOptions({ input: { message: 'hello' } }))
  * ```
  */
-export const orpcClient: RouterClient<AppRouter> = createORPCClient(link);
+export const orpcClient: RouterClient<AppRouter> = createORPCClient(rpcLink());
+
+const storeClients = new Map<string, RouterClient<AppRouter>>();
+
+/**
+ * The client whose calls name their store: for what a page keeps showing after
+ * the session's active store changed in another tab. Such a call answers for
+ * the store the page was rendered for, or is refused, never for another one.
+ * Only procedures that select their store through the API platform
+ * (`storeProcedure`) read the header.
+ */
+export const orpcClientForStore = (storeId: string): RouterClient<AppRouter> => {
+  let client = storeClients.get(storeId);
+  if (!client) {
+    client = createORPCClient(rpcLink(storeId));
+    storeClients.set(storeId, client);
+  }
+  return client;
+};

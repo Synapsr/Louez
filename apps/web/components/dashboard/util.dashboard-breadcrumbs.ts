@@ -31,6 +31,7 @@ const staticBreadcrumbRoutes = [
   },
   { href: "/dashboard/customers", translationKey: "customers" },
   { href: "/dashboard/customers/new", translationKey: "customersNew" },
+  { href: "/dashboard/inbox", translationKey: "needsALook" },
   {
     href: "/dashboard/purchase-invoices",
     translationKey: "purchaseInvoices",

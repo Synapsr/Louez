@@ -6958,7 +6958,8 @@
       "settingsTaxes": "Impostos",
       "productsEdit": "Editar",
       "reservationsEdit": "Editar",
-      "settingsCustomerFields": "Ficha de cliente"
+      "settingsCustomerFields": "Ficha de cliente",
+      "needsALook": "A verificar"
     },
     "notificationsCenter": {
       "title": "Notificações",
@@ -7188,6 +7189,109 @@
         "participantNamePlaceholder": "Nome",
         "saved": "Detalhes do aluguer guardados"
       }
+    },
+    "needsALook": {
+      "title": "A verificar",
+      "description": "O que a Louez não conseguiu resolver sozinha.",
+      "empty": {
+        "title": "Nada a verificar",
+        "description": "Reembolsos, cauções, notas de crédito ou mensagens que precisem de você aparecerão aqui."
+      },
+      "incomplete": "Alguns itens não puderam ser carregados. Recarregue a página em instantes.",
+      "urgent": "Urgente",
+      "details": "Detalhes",
+      "markHandled": "Marcar como tratado",
+      "confirm": {
+        "title": "Marcar como tratado?",
+        "description": "Ele ficará oculto para toda a sua equipe. Volta a aparecer se o problema se repetir.",
+        "heldBack": "O valor reembolsado continua retido até o Stripe responder.",
+        "cancel": "Cancelar",
+        "confirm": "Marcar como tratado"
+      },
+      "handled": "Marcado como tratado",
+      "changed": "Este item mudou entretanto: a lista está atualizada.",
+      "actions": {
+        "viewPayment": "Ver pagamento",
+        "viewBooking": "Ver reserva",
+        "viewProduct": "Ver produto",
+        "invoicingSettings": "Configurações de faturação",
+        "notificationSettings": "Configurações de notificações",
+        "openTeam": "Abrir equipe"
+      },
+      "facts": {
+        "stripeCharge": "Cobrança Stripe",
+        "stripeRefund": "Reembolso Stripe",
+        "stripePayment": "Pagamento Stripe",
+        "stripeDispute": "Disputa Stripe",
+        "creditNote": "Nota de crédito",
+        "invoice": "Fatura",
+        "channel": "Canal",
+        "reference": "Referência"
+      },
+      "refundUnconfirmed": {
+        "title": "Reembolso não confirmado",
+        "summary": "O Stripe não confirmou o reembolso de {amount} feito em {day} para a reserva #{number}. Verifique-o no Stripe antes de reembolsar novamente.",
+        "heldBack": "Até o Stripe responder, a Louez retém este valor do que o pagamento ainda pode reembolsar."
+      },
+      "refundUndone": {
+        "title": "Reembolso falhou",
+        "summary": "O reembolso de {amount} da reserva #{number} não foi concluído: o cliente não foi reembolsado. Verifique-o no Stripe e reembolse novamente se necessário.",
+        "summaryListed": "As informações do Stripe sobre o reembolso de {amount} da reserva #{number} contradizem-se. Verifique no Stripe se o cliente foi reembolsado e reembolse novamente se necessário.",
+        "creditNote": "A nota de crédito {creditNote} continua emitida: corrija-a na sua contabilidade."
+      },
+      "creditNoteNotIssued": {
+        "title": "Nota de crédito em falta",
+        "summary": "O reembolso de {amount} da reserva #{number} ainda não tem nota de crédito. Verifique as suas configurações de faturação.",
+        "reasons": {
+          "mismatch": "O reembolso registado não corresponde ao pedido, por isso a Louez não pode emiti-la sozinha: contacte o suporte Louez.",
+          "pending": "O reembolso ainda não estava concluído quando a Louez tentou; a Louez tenta de novo todos os dias.",
+          "unknown": "Não foi possível emiti-la; a Louez tenta de novo todos os dias."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Caução não confirmada",
+        "summary": "O Stripe não confirmou a pré-autorização de caução de {amount} pedida em {day} para a reserva #{number}. Verifique-a no Stripe; pedir de novo na Louez nunca cria uma segunda pré-autorização.",
+        "summaryUnmatched": "O Stripe detém uma caução para a reserva #{number} que não corresponde aos {amount} pedidos em {day}, por isso a Louez não a registou. Cancele-a no Stripe e depois feche o pedido na secção de caução da reserva."
+      },
+      "depositReleaseFailed": {
+        "title": "Caução talvez ainda bloqueada",
+        "summary": "O Stripe não confirmou a libertação de uma segunda pré-autorização de caução de {amount} na reserva #{number}: o cartão do cliente pode ainda tê-la. A Louez continua a pedir; se ainda estiver bloqueada no Stripe, cancele-a lá."
+      },
+      "disputeOpen": {
+        "title": "Pagamento contestado",
+        "summaryAnswer": "O cliente contestou um pagamento de {amount} da reserva #{number}. Responda à disputa no Stripe antes do prazo.",
+        "summaryReview": "Uma disputa de {amount} na reserva #{number} está aberta: o Stripe está a analisá-la."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "Fatura eletrónica rejeitada",
+        "titleNotSent": "Fatura eletrónica não enviada",
+        "summaryRejected": "A fatura {invoice} da reserva #{number} foi rejeitada pela rede de faturação eletrónica. Verifique-a na reserva.",
+        "summaryNotSent": "A fatura {invoice} da reserva #{number} não pôde ser enviada para a rede de faturação eletrónica. Verifique-a na reserva."
+      },
+      "messageNotSent": {
+        "title": "Mensagem não enviada",
+        "toCustomer": "O cliente não recebeu {message, select, customer_request_accepted {a mensagem de aceitação} customer_request_rejected {a mensagem de recusa} customer_reservation_cancelled {a mensagem de cancelamento} customer_reservation_modified {a mensagem de alteração} customer_quote_sent {o orçamento} customer_reservation_confirmed {a mensagem de confirmação} other {a mensagem}} da reserva #{number}. Contacte-o você mesmo.",
+        "toCustomerNoBooking": "Uma mensagem não chegou a um cliente. Contacte-o você mesmo.",
+        "toStore": "Uma notificação à sua equipe sobre a reserva #{number} não foi enviada.",
+        "toStoreNoBooking": "Uma notificação à sua equipe não foi enviada.",
+        "reasons": {
+          "recipientChanged": "O e-mail do cliente mudou depois de a mensagem ter sido escrita.",
+          "emailNotConfigured": "Nenhum serviço de envio de e-mail está configurado.",
+          "writtenWrong": "Estava mal redigida e não pôde ser enviada."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Convite não enviado",
+        "summary": "O e-mail de convite para {email} não foi enviado. Envie-o novamente, ou partilhe o link, na página da equipe."
+      },
+      "operationUnknown": {
+        "title": "Ação a verificar",
+        "summary": "Uma ação de {day} pode não ter sido guardada. Verifique o registo antes de a repetir.",
+        "summaryBy": "Uma ação de {client} em {day} pode não ter sido guardada. Verifique o registo antes de a repetir."
+      },
+      "unknownTitle": "Algo a verificar",
+      "neutral": "A Louez não conseguiu resolver isto sozinha. Abra para ver o que aconteceu.",
+      "viewAll": "Ver tudo"
     }
   },
   "storefront": {

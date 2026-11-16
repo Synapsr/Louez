@@ -23,6 +23,7 @@ const check = (
     databaseUrl,
     nodeEnv: options.nodeEnv ?? "development",
     flagged: options.flagged ?? true,
+    writes: "an API key and three approvals",
   });
 /** Why the guard refuses, or null when it lets the script write. */
 const refusal = (...args: Parameters<typeof check>) => {
@@ -96,7 +97,14 @@ describe("the sample approvals' guard", () => {
       const { host, port, user, password, database, socketPath } = config.connectionConfig;
       assert.deepEqual(
         { host, port, user, password, database, socketPath },
-        { host: "localhost", port: 6984, user: "sample@user", password: "p:ss", database: "louez_dev", socketPath: undefined },
+        {
+          host: "localhost",
+          port: 6984,
+          user: "sample@user",
+          password: "p:ss",
+          database: "louez_dev",
+          socketPath: undefined,
+        },
       );
     } finally {
       await pool.end();
@@ -125,11 +133,24 @@ describe("the sample approvals' guard", () => {
     assert.match(refusal(undefined) ?? "", /not set/);
   });
 
-  test("the script exits on a refusal before anything connects", () => {
-    for (const [url, flag, why] of [
-      ["mysql://louez:secret@db.louez.io:47213/louez", true, /not at this machine/],
-      ["mysql://u:p@localhost/db?host=db.louez.io", true, /query string or a fragment/],
-      [LOCAL, false, new RegExp(WRITE_SAMPLES_FLAG)],
+  test("each script exits on a refusal before anything connects", () => {
+    for (const [script, url, flag, why] of [
+      ["approvals", "mysql://louez:secret@db.louez.io:47213/louez", true, /not at this machine/],
+      [
+        "approvals",
+        "mysql://u:p@localhost/db?host=db.louez.io",
+        true,
+        /query string or a fragment/,
+      ],
+      ["approvals", LOCAL, false, new RegExp(WRITE_SAMPLES_FLAG)],
+      ["needs-a-look", "mysql://louez:secret@db.louez.io:47213/louez", true, /not at this machine/],
+      [
+        "needs-a-look",
+        "mysql://u:p@localhost/db?host=db.louez.io",
+        true,
+        /query string or a fragment/,
+      ],
+      ["needs-a-look", LOCAL, false, new RegExp(WRITE_SAMPLES_FLAG)],
     ] as const) {
       const started = Date.now();
       const result = spawnSync(
@@ -137,7 +158,7 @@ describe("the sample approvals' guard", () => {
         [
           "--import",
           "tsx",
-          "scripts/seed/approvals.ts",
+          `scripts/seed/${script}.ts`,
           "--email=owner@samples.test",
           "--store=sa-roscoff",
           ...(flag ? [WRITE_SAMPLES_FLAG] : []),
@@ -145,7 +166,12 @@ describe("the sample approvals' guard", () => {
         {
           cwd: APP_ROOT,
           encoding: "utf8",
-          env: { ...process.env, DATABASE_URL: url, NODE_ENV: "development", SKIP_ENV_VALIDATION: "true" },
+          env: {
+            ...process.env,
+            DATABASE_URL: url,
+            NODE_ENV: "development",
+            SKIP_ENV_VALIDATION: "true",
+          },
         },
       );
       assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);

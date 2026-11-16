@@ -6958,7 +6958,8 @@
       "settingsTaxes": "税金",
       "productsEdit": "編集",
       "reservationsEdit": "編集",
-      "settingsCustomerFields": "顧客情報"
+      "settingsCustomerFields": "顧客情報",
+      "needsALook": "要確認"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7188,6 +7189,109 @@
         "participantNamePlaceholder": "名",
         "saved": "レンタルの詳細を保存しました"
       }
+    },
+    "needsALook": {
+      "title": "要確認",
+      "description": "Louez が自動で解決できなかったもの。",
+      "empty": {
+        "title": "確認する項目はありません",
+        "description": "対応が必要な返金、デポジット、クレジットノート、メッセージがここに表示されます。"
+      },
+      "incomplete": "一部の項目を読み込めませんでした。しばらくしてからページを再読み込みしてください。",
+      "urgent": "緊急",
+      "details": "詳細",
+      "markHandled": "対応済みにする",
+      "confirm": {
+        "title": "対応済みにしますか？",
+        "description": "チーム全員に対して非表示になります。問題が再発すると再び表示されます。",
+        "heldBack": "Stripe から回答があるまで、返金額は保留されたままです。",
+        "cancel": "キャンセル",
+        "confirm": "対応済みにする"
+      },
+      "handled": "対応済みにしました",
+      "changed": "この項目はその間に変更されました。一覧は最新です。",
+      "actions": {
+        "viewPayment": "支払いを見る",
+        "viewBooking": "予約を見る",
+        "viewProduct": "商品を見る",
+        "invoicingSettings": "請求書の設定",
+        "notificationSettings": "通知の設定",
+        "openTeam": "チームを開く"
+      },
+      "facts": {
+        "stripeCharge": "Stripe の請求",
+        "stripeRefund": "Stripe の返金",
+        "stripePayment": "Stripe の支払い",
+        "stripeDispute": "Stripe の不審請求の申し立て",
+        "creditNote": "クレジットノート",
+        "invoice": "請求書",
+        "channel": "チャネル",
+        "reference": "参照番号"
+      },
+      "refundUnconfirmed": {
+        "title": "返金が未確認",
+        "summary": "{day} に予約 #{number} で行った {amount} の返金を Stripe がまだ確認していません。再度返金する前に Stripe で確認してください。",
+        "heldBack": "Stripe から回答があるまで、Louez はこの金額を支払いからまだ返金できる額から差し引いて保留します。"
+      },
+      "refundUndone": {
+        "title": "返金に失敗",
+        "summary": "予約 #{number} の {amount} の返金は完了しませんでした。お客様には返金されていません。Stripe で確認し、必要なら再度返金してください。",
+        "summaryListed": "予約 #{number} の {amount} の返金について、Stripe の報告が食い違っています。お客様に返金されたか Stripe で確認し、必要なら再度返金してください。",
+        "creditNote": "クレジットノート {creditNote} は発行されたままです。会計で修正してください。"
+      },
+      "creditNoteNotIssued": {
+        "title": "クレジットノート未発行",
+        "summary": "予約 #{number} の {amount} の返金にはまだクレジットノートがありません。請求書の設定を確認してください。",
+        "reasons": {
+          "mismatch": "記録された返金が依頼内容と一致しないため、Louez だけでは発行できません。Louez サポートにお問い合わせください。",
+          "pending": "Louez が試した時点で返金がまだ完了していませんでした。Louez は毎日再試行します。",
+          "unknown": "発行できませんでした。Louez は毎日再試行します。"
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "デポジット未確認",
+        "summary": "{day} に予約 #{number} で依頼した {amount} のデポジットの仮押さえを Stripe がまだ確認していません。Stripe で確認してください。Louez で再依頼しても二重の仮押さえにはなりません。",
+        "summaryUnmatched": "Stripe は予約 #{number} のデポジットを保持していますが、{day} に依頼した {amount} と一致しないため、Louez は記録しませんでした。Stripe で取り消してから、予約のデポジット欄で依頼を閉じてください。"
+      },
+      "depositReleaseFailed": {
+        "title": "デポジットがまだ押さえられている可能性",
+        "summary": "予約 #{number} の 2 件目の {amount} のデポジット仮押さえの解除を Stripe がまだ確認していません。お客様のカードにまだ残っている可能性があります。Louez は依頼を続けます。Stripe でまだ押さえられていれば、そこで取り消してください。"
+      },
+      "disputeOpen": {
+        "title": "支払いに異議",
+        "summaryAnswer": "お客様が予約 #{number} の {amount} の支払いに異議を申し立てました。期限までに Stripe で対応してください。",
+        "summaryReview": "予約 #{number} の {amount} の異議申し立てが進行中です。Stripe が審査しています。"
+      },
+      "einvoiceRejected": {
+        "titleRejected": "電子請求書が却下されました",
+        "titleNotSent": "電子請求書が送信されていません",
+        "summaryRejected": "予約 #{number} の請求書 {invoice} が電子請求書ネットワークに却下されました。予約で確認してください。",
+        "summaryNotSent": "予約 #{number} の請求書 {invoice} を電子請求書ネットワークに送信できませんでした。予約で確認してください。"
+      },
+      "messageNotSent": {
+        "title": "メッセージ未送信",
+        "toCustomer": "予約 #{number} の{message, select, customer_request_accepted {承認メッセージ} customer_request_rejected {お断りメッセージ} customer_reservation_cancelled {キャンセルメッセージ} customer_reservation_modified {変更メッセージ} customer_quote_sent {見積もり} customer_reservation_confirmed {確認メッセージ} other {メッセージ}}がお客様に届きませんでした。ご自身で連絡してください。",
+        "toCustomerNoBooking": "メッセージがお客様に届きませんでした。ご自身で連絡してください。",
+        "toStore": "予約 #{number} に関するチームへの通知が送信されませんでした。",
+        "toStoreNoBooking": "チームへの通知が送信されませんでした。",
+        "reasons": {
+          "recipientChanged": "作成後にお客様のメールアドレスが変更されました。",
+          "emailNotConfigured": "メール送信サービスが設定されていません。",
+          "writtenWrong": "内容に誤りがあり送信できませんでした。"
+        }
+      },
+      "invitationNotSent": {
+        "title": "招待未送信",
+        "summary": "{email} への招待メールが送信されませんでした。チームページから再送するか、リンクを共有してください。"
+      },
+      "operationUnknown": {
+        "title": "確認が必要な操作",
+        "summary": "{day} の操作が保存されていない可能性があります。やり直す前に記録を確認してください。",
+        "summaryBy": "{client} による {day} の操作が保存されていない可能性があります。やり直す前に記録を確認してください。"
+      },
+      "unknownTitle": "確認事項",
+      "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。",
+      "viewAll": "すべて見る"
     }
   },
   "storefront": {
