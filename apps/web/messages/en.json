@@ -3865,6 +3865,39 @@
             },
             "resources": {
               "help": "Google Calendar help"
+            },
+            "panel": {
+              "loading": "Loading connection...",
+              "connectTitle": "Connect Google Calendar",
+              "connectDescription": "Louez will create a dedicated calendar and sync your reservations to it.",
+              "oauthNotConfigured": "Google Calendar OAuth is not configured. Add GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET to apps/web/.env, then restart the development server.",
+              "connectAction": "Connect Google Calendar",
+              "connectionTitle": "Google Calendar connection",
+              "accountFallback": "Connected Google account",
+              "calendarLabel": "Calendar",
+              "calendarFallback": "Louez calendar",
+              "lastSyncLabel": "Last sync",
+              "neverSynced": "Not synced yet",
+              "resyncAction": "Resync",
+              "disconnectAction": "Disconnect",
+              "syncRulesTitle": "Sync rules",
+              "syncRulesDescription": "Synced events are private and don't block your Google availability.",
+              "syncPendingLabel": "Sync pending requests",
+              "syncPendingDescription": "Pending requests appear with a tentative status.",
+              "showCancelledLabel": "Show cancelled reservations in the calendar",
+              "showCancelledDescription": "Cancelled reservations stay visible with their cancellation status.",
+              "status": {
+                "disabled": "Disabled",
+                "active": "Active",
+                "needs_reconnect": "Reconnection required",
+                "error": "Error",
+                "syncing": "Syncing"
+              },
+              "toasts": {
+                "settingsSaved": "Settings saved",
+                "resyncStarted": "Resync started",
+                "disconnected": "Google Calendar disconnected"
+              }
             }
           },
           "icsCalendar": {
@@ -3877,6 +3910,17 @@
             },
             "resources": {
               "help": "iCalendar reference"
+            },
+            "panel": {
+              "description": "Works with Apple Calendar, Outlook and other subscription calendars.",
+              "urlLabel": "Calendar link",
+              "loading": "Loading...",
+              "copyAction": "Copy link",
+              "refreshNote": "Louez publishes changes immediately, but how often they show up depends on the subscribed calendar app.",
+              "regenerateAction": "Regenerate link",
+              "toasts": {
+                "regenerated": "ICS link regenerated"
+              }
             }
           },
           "superpdp": {

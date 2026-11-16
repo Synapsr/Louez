@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CalendarCheck, RefreshCw, Unplug } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 
 import {
   Alert,
@@ -24,7 +24,11 @@ import {
 import { orpc } from '@/lib/orpc/react';
 
 export const GoogleCalendarConfigurationPanel = () => {
-  const t = useTranslations();
+  const t = useTranslations(
+    'dashboard.settings.integrationsHub.providers.googleCalendar',
+  );
+  const tErrors = useTranslations('errors');
+  const format = useFormatter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const stateQuery = useQuery(
@@ -56,11 +60,14 @@ export const GoogleCalendarConfigurationPanel = () => {
   const updateSettingsMutation = useMutation(
     orpc.dashboard.integrations.updateGoogleCalendarSettings.mutationOptions({
       onSuccess: async () => {
-        toastManager.add({ type: 'success', title: 'Parametres enregistres' });
+        toastManager.add({
+          type: 'success',
+          title: t('panel.toasts.settingsSaved'),
+        });
         await invalidate();
       },
       onError: () => {
-        toastManager.add({ type: 'error', title: t('errors.generic') });
+        toastManager.add({ type: 'error', title: tErrors('generic') });
       },
     }),
   );
@@ -70,12 +77,12 @@ export const GoogleCalendarConfigurationPanel = () => {
       onSuccess: async () => {
         toastManager.add({
           type: 'success',
-          title: 'Resynchronisation lancee',
+          title: t('panel.toasts.resyncStarted'),
         });
         await invalidate();
       },
       onError: () => {
-        toastManager.add({ type: 'error', title: t('errors.generic') });
+        toastManager.add({ type: 'error', title: tErrors('generic') });
       },
     }),
   );
@@ -85,12 +92,12 @@ export const GoogleCalendarConfigurationPanel = () => {
       onSuccess: async () => {
         toastManager.add({
           type: 'success',
-          title: 'Google Calendar deconnecte',
+          title: t('panel.toasts.disconnected'),
         });
         await invalidate();
       },
       onError: () => {
-        toastManager.add({ type: 'error', title: t('errors.generic') });
+        toastManager.add({ type: 'error', title: tErrors('generic') });
       },
     }),
   );
@@ -99,8 +106,8 @@ export const GoogleCalendarConfigurationPanel = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Google Calendar</CardTitle>
-          <CardDescription>Chargement de la connexion...</CardDescription>
+          <CardTitle>{t('name')}</CardTitle>
+          <CardDescription>{t('panel.loading')}</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -110,20 +117,14 @@ export const GoogleCalendarConfigurationPanel = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Connecter Google Calendar</CardTitle>
-          <CardDescription>
-            Louez creera un agenda dedie et y synchronisera les reservations.
-          </CardDescription>
+          <CardTitle>{t('panel.connectTitle')}</CardTitle>
+          <CardDescription>{t('panel.connectDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {oauthError === 'googleCalendarNotConfigured' && (
             <Alert variant="error">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Google Calendar OAuth n'est pas configure. Ajoutez
-                GOOGLE_CALENDAR_CLIENT_ID et GOOGLE_CALENDAR_CLIENT_SECRET dans
-                apps/web/.env, puis redemarrez le serveur de dev.
-              </AlertDescription>
+              <AlertDescription>{t('panel.oauthNotConfigured')}</AlertDescription>
             </Alert>
           )}
           <Button
@@ -135,7 +136,7 @@ export const GoogleCalendarConfigurationPanel = () => {
             }}
           >
             <CalendarCheck className="mr-2 h-4 w-4" />
-            Connecter Google Calendar
+            {t('panel.connectAction')}
           </Button>
         </CardContent>
       </Card>
@@ -148,13 +149,17 @@ export const GoogleCalendarConfigurationPanel = () => {
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle>Connexion Google Calendar</CardTitle>
+              <CardTitle>{t('panel.connectionTitle')}</CardTitle>
               <CardDescription>
-                {calendarState.accountEmail || 'Compte Google connecte'}
+                {calendarState.accountEmail || t('panel.accountFallback')}
               </CardDescription>
             </div>
-            <Badge variant={calendarState.status === 'active' ? 'success' : 'expired'}>
-              {calendarState.status}
+            <Badge
+              variant={
+                calendarState.status === 'active' ? 'success' : 'expired'
+              }
+            >
+              {t(`panel.status.${calendarState.status}`)}
             </Badge>
           </div>
         </CardHeader>
@@ -162,20 +167,23 @@ export const GoogleCalendarConfigurationPanel = () => {
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                Agenda
+                {t('panel.calendarLabel')}
               </p>
               <p className="font-medium">
-                {calendarState.calendarName || 'Agenda Louez'}
+                {calendarState.calendarName || t('panel.calendarFallback')}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                Derniere synchronisation
+                {t('panel.lastSyncLabel')}
               </p>
               <p className="font-medium">
                 {calendarState.lastSyncAt
-                  ? new Date(calendarState.lastSyncAt).toLocaleString()
-                  : 'Pas encore synchronise'}
+                  ? format.dateTime(new Date(calendarState.lastSyncAt), {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })
+                  : t('panel.neverSynced')}
               </p>
             </div>
           </div>
@@ -194,7 +202,7 @@ export const GoogleCalendarConfigurationPanel = () => {
               onClick={() => resyncMutation.mutate({})}
             >
               <RefreshCw className="mr-2 h-4 w-4" />
-              Resynchroniser
+              {t('panel.resyncAction')}
             </Button>
             <Button
               type="button"
@@ -203,7 +211,7 @@ export const GoogleCalendarConfigurationPanel = () => {
               onClick={() => disconnectMutation.mutate({ deleteEvents: false })}
             >
               <Unplug className="mr-2 h-4 w-4" />
-              Deconnecter
+              {t('panel.disconnectAction')}
             </Button>
           </div>
         </CardContent>
@@ -211,20 +219,17 @@ export const GoogleCalendarConfigurationPanel = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Regles de synchronisation</CardTitle>
-          <CardDescription>
-            Les evenements synchronises sont prives et ne bloquent pas votre
-            disponibilite Google.
-          </CardDescription>
+          <CardTitle>{t('panel.syncRulesTitle')}</CardTitle>
+          <CardDescription>{t('panel.syncRulesDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <Label htmlFor="google-calendar-sync-pending">
-                Synchroniser les demandes en attente
+                {t('panel.syncPendingLabel')}
               </Label>
               <p className="text-muted-foreground text-sm">
-                Les demandes en attente apparaissent avec un statut provisoire.
+                {t('panel.syncPendingDescription')}
               </p>
             </div>
             <Switch
@@ -243,11 +248,10 @@ export const GoogleCalendarConfigurationPanel = () => {
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <Label htmlFor="google-calendar-show-cancelled">
-                Afficher les réservations annulées dans l'agenda
+                {t('panel.showCancelledLabel')}
               </Label>
               <p className="text-muted-foreground text-sm">
-                Les reservations annulees restent visibles avec leur statut
-                d'annulation.
+                {t('panel.showCancelledDescription')}
               </p>
             </div>
             <Switch

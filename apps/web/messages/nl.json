@@ -4605,6 +4605,39 @@
             },
             "resources": {
               "help": "Google Calendar hulp"
+            },
+            "panel": {
+              "loading": "Verbinding laden...",
+              "connectTitle": "Google Calendar verbinden",
+              "connectDescription": "Louez maakt een aparte agenda aan en synchroniseert uw reserveringen daarnaartoe.",
+              "oauthNotConfigured": "Google Calendar OAuth is niet geconfigureerd. Voeg GOOGLE_CALENDAR_CLIENT_ID en GOOGLE_CALENDAR_CLIENT_SECRET toe aan apps/web/.env en herstart daarna de ontwikkelserver.",
+              "connectAction": "Google Calendar verbinden",
+              "connectionTitle": "Verbinding met Google Calendar",
+              "accountFallback": "Verbonden Google-account",
+              "calendarLabel": "Agenda",
+              "calendarFallback": "Louez-agenda",
+              "lastSyncLabel": "Laatste synchronisatie",
+              "neverSynced": "Nog niet gesynchroniseerd",
+              "resyncAction": "Opnieuw synchroniseren",
+              "disconnectAction": "Verbinding verbreken",
+              "syncRulesTitle": "Synchronisatieregels",
+              "syncRulesDescription": "Gesynchroniseerde afspraken zijn privé en blokkeren uw beschikbaarheid in Google niet.",
+              "syncPendingLabel": "Openstaande aanvragen synchroniseren",
+              "syncPendingDescription": "Openstaande aanvragen verschijnen met een voorlopige status.",
+              "showCancelledLabel": "Geannuleerde reserveringen in de agenda tonen",
+              "showCancelledDescription": "Geannuleerde reserveringen blijven zichtbaar met hun annuleringsstatus.",
+              "status": {
+                "disabled": "Uitgeschakeld",
+                "active": "Actief",
+                "needs_reconnect": "Opnieuw verbinden vereist",
+                "error": "Fout",
+                "syncing": "Bezig met synchroniseren"
+              },
+              "toasts": {
+                "settingsSaved": "Instellingen opgeslagen",
+                "resyncStarted": "Opnieuw synchroniseren gestart",
+                "disconnected": "Verbinding met Google Calendar verbroken"
+              }
             }
           },
           "icsCalendar": {
@@ -4617,6 +4650,17 @@
             },
             "resources": {
               "help": "iCalendar-referentie"
+            },
+            "panel": {
+              "description": "Werkt met Apple Calendar, Outlook en andere agenda's met een abonnement.",
+              "urlLabel": "Agendalink",
+              "loading": "Laden...",
+              "copyAction": "Link kopiëren",
+              "refreshNote": "Louez publiceert wijzigingen direct, maar hoe vaak ze verschijnen hangt af van de geabonneerde agenda-app.",
+              "regenerateAction": "Link opnieuw genereren",
+              "toasts": {
+                "regenerated": "ICS-link opnieuw gegenereerd"
+              }
             }
           },
           "superpdp": {

@@ -1,7 +1,7 @@
 'use client'
 
 import { type FormEvent, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useFormatter, useTranslations } from 'next-intl'
 
 import {
   Badge,
@@ -34,6 +34,7 @@ export function TulipSetupSection({
   onConnect,
 }: TulipSetupSectionProps) {
   const t = useTranslations('dashboard.settings.integrationsPage.assurance.setup')
+  const format = useFormatter()
   const [inputRenterUid, setInputRenterUid] = useState('')
 
   const connectedDateLabel = useMemo(() => {
@@ -42,8 +43,8 @@ export function TulipSetupSection({
     const parsed = new Date(connectedAt)
     if (Number.isNaN(parsed.getTime())) return null
 
-    return parsed.toLocaleString()
-  }, [connectedAt])
+    return format.dateTime(parsed, { dateStyle: 'medium', timeStyle: 'short' })
+  }, [connectedAt, format])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
