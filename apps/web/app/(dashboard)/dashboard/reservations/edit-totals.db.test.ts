@@ -618,6 +618,23 @@ describe(
         ]);
       });
 
+      test("in yen, a total that is its parts rounded once warns when the tax is added", async () => {
+        await useStore({ currency: "JPY", tax: HT });
+        // ¥100.40 + ¥0.40 of delivery, stored as ¥101: the sum rounded once.
+        const { id, itemId, kayak } = await oldManualBooking({
+          currency: "JPY",
+          subtotalAmount: "100.40",
+          deliveryFee: "0.40",
+          totalAmount: "101.00",
+        });
+
+        const result = await actions.updateReservation(id, { items: twoKayaks(itemId, kayak) });
+
+        assert.equal(result.error, undefined);
+        assert.equal(result.warnings?.[0]?.key, "errors.editTaxAdded");
+        assert.equal(result.warnings?.[0]?.params?.previousTotal, "101");
+      });
+
       test("a row the engine totalled does not warn", async () => {
         await useStore({ tax: HT });
         const { id, itemId, kayak } = await oldManualBooking({ taxDisplayMode: "exclusive" });

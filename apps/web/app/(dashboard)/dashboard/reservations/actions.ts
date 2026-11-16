@@ -3087,12 +3087,16 @@ export async function updateReservation(
         // less the discount, to the minor unit); and the engine added tax on
         // top (its tax above zero in a store that prices before tax).
         const perUnit = minorUnitsPerUnit(reservationCurrency(reservation.currency, store.settings));
-        const minor = (value: string | null) => Math.round(Number(value ?? 0) * perUnit);
+        const amount = (value: string | null) => Number(value ?? 0);
+        // The sum rounded once, as a writer that stored it rounded it.
         const storedTotalCarriedNoTax =
-          minor(lockedReservation.totalAmount) ===
-          minor(lockedReservation.subtotalAmount) +
-            minor(lockedReservation.deliveryFee) -
-            minor(lockedReservation.discountAmount);
+          Math.round(amount(lockedReservation.totalAmount) * perUnit) ===
+          Math.round(
+            (amount(lockedReservation.subtotalAmount) +
+              amount(lockedReservation.deliveryFee) -
+              amount(lockedReservation.discountAmount)) *
+              perUnit,
+          );
         const taxAdded =
           priced.kind === "priced" &&
           recordedMode === NOT_RECORDED &&

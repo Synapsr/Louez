@@ -220,6 +220,27 @@ describe(
       assert.equal(Number(lines[0]?.count), 1);
       assert.equal((await totals()).retry, "100.00");
     });
+
+    test("only its own history line marks a row as done: another type with the same value does not", async () => {
+      await insertRow({
+        id: "other_marker",
+        subtotal: "100.00",
+        deposit: "30.00",
+        total: "130.00",
+      });
+      await connection.query(
+        `INSERT INTO reservation_activity (id, reservation_id, activity_type, metadata)
+         VALUES ('other_marker_note', 'other_marker', 'note_updated', JSON_OBJECT('migration', '0108'))`,
+      );
+
+      await runMigration();
+
+      const [lines] = await connection.query<RowDataPacket[]>(
+        "SELECT activity_type AS type FROM reservation_activity WHERE reservation_id = 'other_marker'",
+      );
+      assert.deepEqual(lines.map((line) => String(line.type)).sort(), ["modified", "note_updated"]);
+      assert.equal((await totals()).other_marker, "100.00");
+    });
   },
 );
 

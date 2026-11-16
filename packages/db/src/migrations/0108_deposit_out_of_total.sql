@@ -45,6 +45,7 @@ FROM `reservations`
 WHERE NOT EXISTS (
 		SELECT 1 FROM `reservation_activity`
 		WHERE `reservation_activity`.`reservation_id` = `reservations`.`id`
+			AND `reservation_activity`.`activity_type` = 'modified'
 			AND JSON_UNQUOTE(JSON_EXTRACT(`reservation_activity`.`metadata`, '$.migration')) = '0108'
 	)
 	AND `deposit_amount` > 0
