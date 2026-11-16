@@ -51,6 +51,7 @@ import {
 import { loadPricingCatalog, type PricingCatalog } from "./pricing-catalog";
 import { NOT_RECORDED, recordedPromotion } from "./pricing-facts";
 import { validateReservationContract } from "./reservation-contract-validation";
+import { isReservationEditable } from "./reservation-editable";
 import {
   ReservationCapacityShortfallError,
   ReservationInventoryError,
@@ -119,16 +120,6 @@ export interface DateChangeRequest {
   /** Pass the lines only the turnover buffer stops, on purpose, for this change only (S4, D5). */
   overrideTurnoverBuffer?: boolean;
 }
-
-/** The statuses whose dates may move (slice 8a): the others are what was rented, or refused. */
-export const DATE_EDITABLE_STATUSES: readonly ReservationStatus[] = [
-  "pending",
-  "quote",
-  "confirmed",
-  "ongoing",
-];
-
-const isEditable = (status: ReservationStatus) => DATE_EDITABLE_STATUSES.includes(status);
 
 /** The message the customer gets of a date change, when the caller asks for it. */
 export const DATE_CHANGE_MESSAGE = "reservation_modified";
@@ -545,7 +536,9 @@ export async function changeReservationDates(
     .from(reservations)
     .where(and(eq(reservations.id, id), eq(reservations.storeId, storeId)));
   if (!current) throw reservationErrors.notFound(id);
-  if (!isEditable(current.status)) throw reservationErrors.notEditable(id, current.status);
+  if (!isReservationEditable(current.status)) {
+    throw reservationErrors.notEditable(id, current.status);
+  }
   // A message promised that cannot go is refused before anything is asked.
   if (request.notifyCustomer && caller.ports.emailConfigured?.() === false) {
     throw reservationErrors.customerUnreachable(id, "email_not_configured");
@@ -556,7 +549,7 @@ export async function changeReservationDates(
     outcome = await runReservationChange({ reservationId: id, storeId }, async (tx, lock) => {
       const locked = await readLocked(tx, id, storeId);
       if (!locked) return { kind: "not_found" };
-      if (!isEditable(locked.status)) {
+      if (!isReservationEditable(locked.status)) {
         return { kind: "refused", error: reservationErrors.notEditable(id, locked.status) };
       }
       const previous = { start: locked.startDate, end: locked.endDate };

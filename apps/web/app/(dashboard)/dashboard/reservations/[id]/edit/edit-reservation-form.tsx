@@ -271,7 +271,6 @@ export function EditReservationForm({
   const tForm = useTranslations("dashboard.reservations.manualForm");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
-  const tValidation = useTranslations("validation");
   const posthog = usePostHog();
   const { intl: formatLocale } = useFormatLocale();
   const timezone = useStoreTimezone();
@@ -408,7 +407,7 @@ export function EditReservationForm({
       isTulipInsurancePastDateBlocked ||
       !startDate ||
       !endDate ||
-      endDate < startDate ||
+      endDate.getTime() <= startDate.getTime() ||
       tulipInsuranceQuoteItems.length === 0
     ) {
       return null;
@@ -869,11 +868,15 @@ export function EditReservationForm({
           return;
         }
 
-        if (result.error === "errors.reservationChangedMeanwhile") {
+        if (
+          result.error === "errors.reservationChangedMeanwhile" ||
+          result.error === "errors.reservationStatusChanged"
+        ) {
           // The form holds what was read before the other change: only a
-          // reload brings the reservation as it is now.
+          // reload brings the reservation as it is now (a reservation no
+          // longer editable then opens its own page).
           toastManager.add({
-            title: tErrors("reservationChangedMeanwhile"),
+            title: tErrors(getErrorTranslationKey(result.error)),
             type: "error",
             actionProps: {
               children: tCommon("refresh"),
@@ -982,8 +985,8 @@ export function EditReservationForm({
       return;
     }
 
-    if (endDate < startDate) {
-      toastManager.add({ title: tValidation("endDateBeforeStart"), type: "error" });
+    if (endDate.getTime() <= startDate.getTime()) {
+      toastManager.add({ title: tErrors("endDateBeforeStart"), type: "error" });
       return;
     }
 
