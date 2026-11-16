@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -132,13 +132,6 @@ export const REFUND_UNDONE_ACTIVITY = "refund_undone";
  * person to look at it in Stripe.
  */
 export const REFUND_FAILED_LISTED_ACTIVITY = "refund_failed_listed";
-
-/**
- * The activity line of the application fee Louez gave back on a refund that failed
- * afterwards (`metadata.kind`): Stripe cannot take an application fee refund back, so
- * it stays given back; the inbox's `refund_undone` names it.
- */
-export const REFUND_FEE_OVER_RETURNED_ACTIVITY = "refund_fee_over_returned";
 
 /** A deposit's money goes back as a deposit return; the rest as a rental refund. */
 export const refundTypeOf = (paymentType: string): "rental" | "deposit_return" =>
@@ -581,104 +574,5 @@ export async function recordChargeRefunds(
     await markReservationIds(tx, [input.reservationId]);
 
     return { rows, undone, netMinor, effectIds, settledOperationIds };
-  }, REFUND_TRANSACTION);
-}
-
-/**
- * Records the application fee Louez gave back on refunds that failed afterwards, once
- * per fee and amount: Stripe cannot take an application fee refund back, so what was
- * given back past the fee's share of what the store no longer keeps stays given back.
- * An activity line on the payment's latest undone refund row names it, and the inbox's
- * `refund_undone` shows it.
- */
-export async function recordFeeOverReturned(
-  database: Database,
-  input: {
-    readonly reservationId: string;
-    readonly paymentId: string;
-    readonly chargeId: string;
-    readonly fee: {
-      readonly feeId: string;
-      readonly targetMinor: number;
-      readonly feeRefundedMinor: number;
-    } | null;
-  },
-): Promise<boolean> {
-  const { fee } = input;
-  if (!fee || fee.feeRefundedMinor <= fee.targetMinor) return false;
-  const overReturnedMinor = fee.feeRefundedMinor - fee.targetMinor;
-  return database.transaction(async (tx) => {
-    if (!(await lockRefundReservation(tx, input.reservationId))) return false;
-    // The charge's payment rows of the reservation, as the writer reconciles them.
-    const siblings = await tx
-      .select({ id: payments.id })
-      .from(payments)
-      .where(
-        and(
-          eq(payments.reservationId, input.reservationId),
-          or(eq(payments.id, input.paymentId), eq(payments.stripeChargeId, input.chargeId)),
-          isPaymentReceiptSql(),
-        ),
-      );
-    // A failed refund row of the charge: linked to one of them, or, older, with no link
-    // and the charge's id.
-    const [undone] = await tx
-      .select({ id: payments.id })
-      .from(payments)
-      .where(
-        and(
-          eq(payments.reservationId, input.reservationId),
-          eq(payments.status, "failed"),
-          isStripeRefundPaymentSql(),
-          or(
-            inArray(
-              payments.refundOfPaymentId,
-              siblings.map((row) => row.id),
-            ),
-            and(
-              sql`${payments.refundOfPaymentId} IS NULL`,
-              eq(payments.stripeChargeId, input.chargeId),
-            ),
-          ),
-        ),
-      )
-      .orderBy(desc(payments.updatedAt), desc(payments.id))
-      .limit(1);
-    if (!undone) return false;
-    const [recorded] = await tx
-      .select({ id: reservationActivity.id })
-      .from(reservationActivity)
-      .where(
-        and(
-          eq(reservationActivity.reservationId, input.reservationId),
-          sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.kind')) = ${REFUND_FEE_OVER_RETURNED_ACTIVITY}`,
-          sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.feeId')) = ${fee.feeId}`,
-          sql`CAST(JSON_EXTRACT(${reservationActivity.metadata}, '$.overReturnedMinor') AS SIGNED) >= ${overReturnedMinor}`,
-        ),
-      )
-      .limit(1);
-    if (recorded) return false;
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId: input.reservationId,
-      activityType: "payment_updated",
-      metadata: {
-        kind: REFUND_FEE_OVER_RETURNED_ACTIVITY,
-        paymentId: undone.id,
-        refundOfPaymentId: input.paymentId,
-        feeId: fee.feeId,
-        overReturnedMinor,
-      },
-      createdAt: new Date(),
-    });
-    log.error({
-      stripeRefund: {
-        issue: "fee_over_returned",
-        feeId: fee.feeId,
-        refundPaymentId: undone.id,
-        overReturnedMinor,
-      },
-    });
-    return true;
   }, REFUND_TRANSACTION);
 }
