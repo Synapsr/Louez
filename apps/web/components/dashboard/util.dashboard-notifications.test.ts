@@ -5,9 +5,11 @@ import { QueryClient } from "@tanstack/react-query";
 
 import { reservationPollSchema } from "@louez/api/contracts/reservations";
 
+import { PublicEnvProvider } from "@/components/shared/public-env-provider";
 import type { NeedsALook, NeedsALookItem } from "@/lib/inbox/needs-a-look";
 import type { DisplayFormat } from "@/lib/inbox/needs-a-look-display";
 import { needsALookQueries } from "@/lib/queries/needs-a-look.queries";
+import type { PublicEnv } from "@/lib/validators/validator.public-env";
 
 import {
   NEEDS_A_LOOK_IN_BELL,
@@ -48,6 +50,9 @@ const refund = (index: number): NeedsALookItem =>
     tools: [],
     links: { dashboard: "" },
   }) as NeedsALookItem;
+
+/** Any instant but the epoch, so a rule that forgot the last answer's time shows. */
+const NOW = Date.UTC(2026, 10, 16, 9);
 
 const summary = (count: number): NeedsALook => ({
   items: Array.from({ length: count }, (_, index) => refund(index)),
@@ -141,6 +146,27 @@ describe("the bell's badge", () => {
 });
 
 describe("the read belongs to its store", () => {
+  test("the request names the store of its key, whatever the session's active store", async (t) => {
+    // The RPC link reads the app's address from the provider's configuration.
+    PublicEnvProvider({
+      children: null,
+      config: { NEXT_PUBLIC_APP_URL: "https://app.louez.test" } as PublicEnv,
+    });
+    const stores: Array<string | null> = [];
+    t.mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      stores.push(request.headers.get("louez-store"));
+      return new Response(JSON.stringify({ json: { items: [], hasMore: false } }), {
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const client = new QueryClient();
+    await client.fetchQuery(needsALookQueries.summary("store_a"));
+    await client.fetchQuery(needsALookQueries.summary("store_b"));
+    assert.deepEqual(stores, ["store_a", "store_b"]);
+    client.clear();
+  });
+
   test("another store's cached read never answers for this one", () => {
     const client = new QueryClient();
     client.setQueryData(needsALookQueries.summary("store_a").queryKey, summary(3));
@@ -154,7 +180,7 @@ describe("the read belongs to its store", () => {
 
 describe("the items are read again, as other screens settle them", () => {
   test("on a new page once the answer is a minute old, always when the bell opens, and for this store only", async (t) => {
-    t.mock.timers.enable({ apis: ["Date"] });
+    t.mock.timers.enable({ apis: ["Date"], now: NOW });
     const client = new QueryClient();
     let reads = 0;
     await client.fetchQuery({
@@ -172,32 +198,64 @@ describe("the items are read again, as other screens settle them", () => {
     await needsALookQueries.readAgain(client, "store_b", { always: true });
     assert.equal(reads, 2);
 
-    t.mock.timers.tick(60_000);
+    // The minute runs from the last answer, not from the first.
+    t.mock.timers.tick(59_999);
+    await needsALookQueries.readAgain(client, "store_a");
+    assert.equal(reads, 2);
+    t.mock.timers.tick(1);
     await needsALookQueries.readAgain(client, "store_a");
     assert.equal(reads, 3);
     client.clear();
   });
 
-  test("a failed read stands a minute too: a refusal is not asked again on every page", async (t) => {
-    t.mock.timers.enable({ apis: ["Date"] });
+  test("a read on its way is left to finish, not started again", async (t) => {
+    t.mock.timers.enable({ apis: ["Date"], now: NOW });
     const client = new QueryClient();
     let reads = 0;
-    await assert.rejects(
-      client.fetchQuery({
-        queryKey: needsALookQueries.summaryKey("store_a"),
-        queryFn: async () => {
-          reads += 1;
-          throw new Error("refused");
-        },
-        retry: false,
-      }),
-    );
+    let answer: (value: NeedsALook) => void = () => {};
+    const key = needsALookQueries.summaryKey("store_a");
+    const queryFn = () => {
+      reads += 1;
+      return reads === 1
+        ? Promise.resolve(summary(1))
+        : new Promise<NeedsALook>((r) => (answer = r));
+    };
+    await client.fetchQuery({ queryKey: key, queryFn });
 
-    await needsALookQueries.readAgain(client, "store_a");
-    assert.equal(reads, 1);
+    const first = needsALookQueries.readAgain(client, "store_a", { always: true });
+    const second = needsALookQueries.readAgain(client, "store_a", { always: true });
+    answer(summary(2));
+    await Promise.all([first, second]);
+    assert.equal(reads, 2);
+    assert.equal(client.getQueryData<NeedsALook>(key)?.items.length, 2);
+    client.clear();
+  });
+
+  test("a failed read stands a minute too: a refusal is not asked again on every page", async (t) => {
+    t.mock.timers.enable({ apis: ["Date"], now: NOW });
+    const client = new QueryClient();
+    let reads = 0;
+    const query = {
+      queryKey: needsALookQueries.summaryKey("store_a"),
+      queryFn: async () => {
+        reads += 1;
+        if (reads > 1) throw new Error("refused");
+        return summary(1);
+      },
+      retry: false,
+    };
+    await client.fetchQuery(query);
+
+    // An old answer, then a refusal: the minute runs from the refusal.
     t.mock.timers.tick(60_000);
     await needsALookQueries.readAgain(client, "store_a");
     assert.equal(reads, 2);
+    t.mock.timers.tick(59_999);
+    await needsALookQueries.readAgain(client, "store_a");
+    assert.equal(reads, 2);
+    t.mock.timers.tick(1);
+    await needsALookQueries.readAgain(client, "store_a");
+    assert.equal(reads, 3);
     client.clear();
   });
 });

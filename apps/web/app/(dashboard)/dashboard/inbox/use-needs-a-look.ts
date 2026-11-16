@@ -12,7 +12,7 @@ import { toastManager } from "@louez/ui";
 import { useStore } from "@/contexts/store-context";
 import { useNeedsALookFormat } from "@/hooks/use-needs-a-look-format";
 import { acknowledgeNeedsALook, type NeedsALookItem } from "@/lib/inbox/needs-a-look";
-import { orpcClient } from "@/lib/orpc";
+import { orpcClientForStore } from "@/lib/orpc/client";
 import { needsALookQueries } from "@/lib/queries/needs-a-look.queries";
 import { apiErrorKey } from "@/lib/orpc/errors";
 
@@ -36,7 +36,9 @@ export const useNeedsALook = (items: NeedsALookItem[]) => {
   const [handled, setHandled] = useState<ReadonlySet<string>>(new Set());
 
   const acknowledge = useMutation({
-    mutationFn: (item: NeedsALookItem) => acknowledgeNeedsALook(orpcClient.dashboard.inbox, item),
+    // The store the page shows, whatever the session's active store became since.
+    mutationFn: (item: NeedsALookItem) =>
+      acknowledgeNeedsALook(orpcClientForStore(storeId).dashboard.inbox, item),
     onSuccess: (outcome, item) => {
       if (outcome === "handled") {
         setHandled((current) => new Set(current).add(item.id));

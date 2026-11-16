@@ -1,12 +1,12 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 
 import { loadNeedsALookWithin } from "@/lib/inbox/needs-a-look";
-import { orpcClient } from "@/lib/orpc/client";
+import { orpcClientForStore } from "@/lib/orpc/client";
 
 /**
- * The store's own key: within a page's life, one store's cached read never
- * answers for another. The request itself follows the session's active store,
- * as every dashboard call does.
+ * The store's own key, for a request that names the same store
+ * (`orpcClientForStore`): one store's read never answers for another, even
+ * when the session's active store changed in another tab.
  */
 const summaryKey = (storeId: string) => ["dashboard", "needs-a-look", "summary", storeId] as const;
 
@@ -24,7 +24,8 @@ export const needsALookQueries = {
   summary: (storeId: string) =>
     queryOptions({
       queryKey: summaryKey(storeId),
-      queryFn: ({ signal }) => loadNeedsALookWithin(orpcClient.dashboard.inbox, { signal }),
+      queryFn: ({ signal }) =>
+        loadNeedsALookWithin(orpcClientForStore(storeId).dashboard.inbox, { signal }),
       staleTime: NEEDS_A_LOOK_FRESH_MS,
       retry: false,
     }),
@@ -36,10 +37,14 @@ export const needsALookQueries = {
    * failure is a minute old, and with `always` when the person opens it.
    */
   readAgain: (client: QueryClient, storeId: string, { always = false } = {}) =>
-    client.refetchQueries({
-      queryKey: summaryKey(storeId),
-      predicate: ({ state }) =>
-        always ||
-        Date.now() - Math.max(state.dataUpdatedAt, state.errorUpdatedAt) >= NEEDS_A_LOOK_FRESH_MS,
-    }),
+    client.refetchQueries(
+      {
+        queryKey: summaryKey(storeId),
+        predicate: ({ state }) =>
+          always ||
+          Date.now() - Math.max(state.dataUpdatedAt, state.errorUpdatedAt) >= NEEDS_A_LOOK_FRESH_MS,
+      },
+      // A read already on its way is left to finish: no restart on each page.
+      { cancelRefetch: false },
+    ),
 };
