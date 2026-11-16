@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { getReservationRentalAmount, paymentRequestTerms } from "./util.payment-request";
+import { paymentRequestTerms } from "./util.payment-request";
+import { getReservationRentalAmount } from "./util.rental-amount";
+
+/** Before the deposit was left out of every total, and never repriced since. */
+const LEGACY = { createdAt: new Date("2026-02-01T00:00:00Z"), taxDisplayMode: null };
 
 const reservation = (currency: string | null = "EUR") => ({
+  ...LEGACY,
   currency,
   subtotalAmount: "200.00",
   depositAmount: "300.00",
@@ -164,12 +169,46 @@ test("nothing to ask for is refused", () => {
   }
 });
 
-test("the rental amount leaves out a deposit the total includes", () => {
+test("the rental amount leaves out a deposit a legacy total includes", () => {
   const amounts = (subtotalAmount: string, depositAmount: string, totalAmount: string) =>
-    getReservationRentalAmount({ subtotalAmount, depositAmount, totalAmount });
+    getReservationRentalAmount({ ...LEGACY, subtotalAmount, depositAmount, totalAmount });
 
   assert.equal(amounts("200.00", "300.00", "200.00"), 200);
   assert.equal(amounts("200.00", "300.00", "500.00"), 200);
   assert.equal(amounts("200.00", "0.00", "230.00"), 230);
   assert.equal(amounts("200.00", "0.00", "0.00"), 200);
+});
+
+// 150.00 before tax at 20 %: a total of 180.00 tax included, a deposit of 30.00.
+const taxedOnTop = {
+  currency: "EUR",
+  subtotalAmount: "150.00",
+  depositAmount: "30.00",
+  totalAmount: "180.00",
+};
+
+test("a current row's rental is its total, tax included: the tax is not taken for the deposit", () => {
+  for (const written of [
+    // Recorded its display mode: written or repriced since migration 0107.
+    { createdAt: new Date("2026-02-01T00:00:00Z"), taxDisplayMode: "exclusive" },
+    // Written after every writer left the deposit out of the total.
+    { createdAt: new Date("2026-06-01T00:00:00Z"), taxDisplayMode: null },
+  ]) {
+    assert.equal(getReservationRentalAmount({ ...taxedOnTop, ...written }), 180);
+    const terms = paymentRequestTerms({
+      type: "rental",
+      reservation: {
+        ...taxedOnTop,
+        ...written,
+        payments: [{ type: "rental", status: "completed", amount: "150.00" }],
+      },
+      storeSettings: null,
+    });
+    assert.deepEqual(terms, { ok: true, amount: 30, description: "Rental", currency: "EUR" });
+  }
+});
+
+test("a legacy row whose total holds the deposit is still read without it", () => {
+  // 150.00 of rental and 30.00 of deposit, stored together as 180.00 before 2026-04-01.
+  assert.equal(getReservationRentalAmount({ ...taxedOnTop, ...LEGACY }), 150);
 });

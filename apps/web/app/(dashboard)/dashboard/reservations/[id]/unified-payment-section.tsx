@@ -26,6 +26,7 @@ import {
   Send,
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
+import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
 import { formatDistanceToNow } from "date-fns";
 
 import { Button } from "@louez/ui";
@@ -151,6 +152,9 @@ interface UnifiedPaymentSectionProps {
   subtotalAmount: string;
   depositAmount: string;
   totalAmount: string;
+  /** With the recorded display mode: whether the stored total may still include the deposit. */
+  reservationCreatedAt: Date | string;
+  taxDisplayMode: string | null;
   payments: Payment[];
   status: string;
   currency?: string;
@@ -191,26 +195,6 @@ const CARD_BRANDS: Record<string, string> = {
 
 const VISIBLE_HISTORY_COUNT = 3;
 
-function getRentalAmount({
-  subtotalAmount,
-  depositAmount,
-  totalAmount,
-}: {
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-}) {
-  const subtotal = parseFloat(subtotalAmount || "0");
-  const deposit = parseFloat(depositAmount || "0");
-  const total = parseFloat(totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
 
 export function UnifiedPaymentSection({
   reservationId,
@@ -218,6 +202,8 @@ export function UnifiedPaymentSection({
   subtotalAmount,
   depositAmount,
   totalAmount,
+  reservationCreatedAt,
+  taxDisplayMode,
   payments,
   status,
   currency = "EUR",
@@ -277,7 +263,13 @@ export function UnifiedPaymentSection({
   ];
 
   // totalAmount should exclude the deposit, but older rows may include it.
-  const rental = getRentalAmount({ subtotalAmount, depositAmount, totalAmount });
+  const rental = getReservationRentalAmount({
+    subtotalAmount,
+    depositAmount,
+    totalAmount,
+    createdAt: reservationCreatedAt,
+    taxDisplayMode,
+  });
   const deposit = parseFloat(depositAmount);
   const depositStatusVal = depositStatusProp || "none";
 

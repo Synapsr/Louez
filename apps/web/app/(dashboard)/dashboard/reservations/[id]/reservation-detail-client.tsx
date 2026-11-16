@@ -39,6 +39,7 @@ import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-s
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-store-legs-summary";
 import { storeLegLocationFromSnapshot } from "@/components/dashboard/util.reservation-store-legs";
+import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
 import { InvoiceDocumentsCard, type ReservationInvoiceDocument } from "./invoice-documents-card";
 import { getReservationDeliveryDisplayMode } from "./util.reservation-delivery-display";
 
@@ -107,22 +108,6 @@ function toDate(value: Date | string | null | undefined) {
   return value instanceof Date ? value : new Date(value);
 }
 
-function getRentalAmount(reservation: {
-  subtotalAmount?: string | null;
-  depositAmount?: string | null;
-  totalAmount?: string | null;
-}) {
-  const subtotal = parseFloat(reservation.subtotalAmount || "0");
-  const deposit = parseFloat(reservation.depositAmount || "0");
-  const total = parseFloat(reservation.totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
 
 export function ReservationDetailClient({
   reservationId,
@@ -196,7 +181,7 @@ export function ReservationDetailClient({
   const durationDays = Math.floor(totalHours / 24);
   const durationHours = totalHours % 24;
 
-  const rental = getRentalAmount(reservation);
+  const rental = getReservationRentalAmount(reservation);
   const deposit = parseFloat(reservation.depositAmount || "0");
   const deliveryDisplayMode = getReservationDeliveryDisplayMode({
     reservation,
@@ -658,6 +643,8 @@ export function ReservationDetailClient({
             subtotalAmount={reservation.subtotalAmount}
             depositAmount={reservation.depositAmount}
             totalAmount={reservation.totalAmount}
+            reservationCreatedAt={reservation.createdAt}
+            taxDisplayMode={reservation.taxDisplayMode ?? null}
             payments={reservation.payments}
             status={status}
             currency={currency}

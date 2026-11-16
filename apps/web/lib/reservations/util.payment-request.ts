@@ -2,27 +2,7 @@ import type { StoreSettings } from "@louez/types";
 
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { type PaymentLike, getRentalPaid } from "@/lib/reservations/util.payment-status";
-
-/**
- * What a reservation's rental costs, without its deposit: its total, less the
- * deposit when the total includes it.
- */
-export function getReservationRentalAmount(reservation: {
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-}) {
-  const subtotal = parseFloat(reservation.subtotalAmount || "0");
-  const deposit = parseFloat(reservation.depositAmount || "0");
-  const total = parseFloat(reservation.totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
+import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
 
 export type PaymentRequestTerms =
   | {
@@ -50,6 +30,8 @@ export function paymentRequestTerms(input: {
     readonly subtotalAmount: string;
     readonly depositAmount: string;
     readonly totalAmount: string;
+    readonly createdAt: Date;
+    readonly taxDisplayMode: string | null;
     readonly payments: readonly PaymentLike[];
   };
   readonly storeSettings: Pick<StoreSettings, "currency"> | null;

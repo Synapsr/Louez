@@ -537,10 +537,15 @@ export async function getUpcomingRevenue(
     .groupBy(payments.reservationId)
     .as("rental_paid");
 
-  // Match the reservation payment form's handling of older totals that include a deposit.
+  // The reservation payment form's rule (`getReservationRentalAmount`): only a
+  // total written before the deposit was left out of it (2026-04-01), and
+  // never repriced since (no recorded display mode), may include the deposit.
   const rentalAmount = sql`CASE
     WHEN ${reservations.totalAmount} <= 0 THEN ${reservations.subtotalAmount}
-    WHEN ${reservations.depositAmount} > 0 AND ${reservations.totalAmount} - ${reservations.subtotalAmount} >= ${reservations.depositAmount} - 0.01
+    WHEN ${reservations.depositAmount} > 0
+      AND ${reservations.taxDisplayMode} IS NULL
+      AND ${reservations.createdAt} < '2026-04-01 00:00:00'
+      AND ${reservations.totalAmount} - ${reservations.subtotalAmount} >= ${reservations.depositAmount} - 0.01
       THEN GREATEST(0, ${reservations.totalAmount} - ${reservations.depositAmount})
     ELSE ${reservations.totalAmount} END`;
   const remaining = sql`GREATEST(0, ${rentalAmount} - GREATEST(0, COALESCE(${paid.amount}, 0)))`;

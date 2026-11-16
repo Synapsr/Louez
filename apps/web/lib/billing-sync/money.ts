@@ -1,3 +1,4 @@
+import { totalMayIncludeDeposit } from "../reservations/util.rental-amount";
 import type { StoreSettings } from "@louez/types";
 import {
   beforeTaxRateBps,
@@ -101,17 +102,11 @@ export function insuranceShare(input: {
   return Number(share);
 }
 
-/**
- * Before this date some reservations stored a total that included the deposit.
- * Commit 954a509f (2026-03-19) made every writer exclude it; the margin covers the
- * deploy. Later rows never get the deposit taken out, because their total minus
- * subtotal can exceed the deposit for honest reasons (delivery, tax).
- */
-export const DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE = new Date("2026-04-01T00:00:00Z");
-
 export type ReservationTotalsInput = {
   readonly reservation: {
     readonly createdAt: Date;
+    /** Recorded since migration 0107: its total was written without the deposit. */
+    readonly taxDisplayMode?: string | null;
     readonly currency: string | null;
     /** `manual` when the dashboard created the row; the storefront checkout writes the others. */
     readonly source: string | null;
@@ -154,8 +149,8 @@ type ToMinor = (value: string | null) => number;
  *
  * The row does not record the display mode the dashboard priced under, so such a
  * total follows the store's tax settings as they are now, and a change of
- * `beforeTaxRateBps` moves it. Rows from before DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE whose
- * total includes the deposit are read the way `getReservationRentalAmount` reads them.
+ * `beforeTaxRateBps` moves it. Rows whose total may include the deposit
+ * (`totalMayIncludeDeposit`) are read the way `getReservationRentalAmount` reads them.
  */
 export function reservationTotalsMinor(input: ReservationTotalsInput): ReservationTotalsMinor {
   const { reservation } = input;
@@ -169,7 +164,7 @@ export function reservationTotalsMinor(input: ReservationTotalsInput): Reservati
   const subtotal = minor(reservation.subtotalAmount);
   const deposit = minor(reservation.depositAmount);
   let total = minor(reservation.totalAmount);
-  const mayIncludeDeposit = reservation.createdAt < DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE;
+  const mayIncludeDeposit = totalMayIncludeDeposit(reservation);
   if (mayIncludeDeposit && total > 0 && deposit > 0 && total - subtotal >= deposit - 1) {
     total = Math.max(0, total - deposit);
   }
