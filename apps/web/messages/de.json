@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "Reservierung #{number}",
       "amountDue": "Zu zahlender Betrag",
+      "requestKind": {
+        "rental": "Miete",
+        "custom": "Zahlung"
+      },
       "greeting": "Hallo {name}, {store} bittet um eine Zahlung.",
       "payButton": "{amount} bezahlen",
       "redirecting": "Weiterleitung zur Zahlung...",

@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "Reservation #{number}",
       "amountDue": "Amount due",
+      "requestKind": {
+        "rental": "Rental",
+        "custom": "Payment"
+      },
       "greeting": "Hi {name}, {store} is requesting a payment.",
       "payButton": "Pay {amount}",
       "redirecting": "Redirecting to payment...",

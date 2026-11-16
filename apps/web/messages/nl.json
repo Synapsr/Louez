@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "Reservering #{number}",
       "amountDue": "Te betalen bedrag",
+      "requestKind": {
+        "rental": "Huur",
+        "custom": "Betaling"
+      },
       "greeting": "Hallo {name}, {store} vraagt een betaling aan.",
       "payButton": "{amount} betalen",
       "redirecting": "Doorverwijzen naar betaling...",

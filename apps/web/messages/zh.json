@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "预订#{number}",
       "amountDue": "应付金额",
+      "requestKind": {
+        "rental": "租赁",
+        "custom": "付款"
+      },
       "greeting": "您好 {name}，{store} 正在请求付款。",
       "payButton": "支付{amount}",
       "redirecting": "正在重定向至付款...",

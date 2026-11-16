@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "Prenotazione #{number}",
       "amountDue": "Importo dovuto",
+      "requestKind": {
+        "rental": "Noleggio",
+        "custom": "Pagamento"
+      },
       "greeting": "Ciao {name}, {store} richiede un pagamento.",
       "payButton": "Paga {amount}",
       "redirecting": "Reindirizzamento al pagamento...",

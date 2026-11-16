@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "Reservasi #{number}",
       "amountDue": "Jumlah yang harus dibayar",
+      "requestKind": {
+        "rental": "Sewa",
+        "custom": "Pembayaran"
+      },
       "greeting": "Hai {name}, {store} meminta pembayaran.",
       "payButton": "Bayar {amount}",
       "redirecting": "Mengalihkan ke pembayaran...",

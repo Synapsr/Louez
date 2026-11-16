@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "예약 #{number}",
       "amountDue": "미결제 금액",
+      "requestKind": {
+        "rental": "대여",
+        "custom": "결제"
+      },
       "greeting": "안녕하세요, {name}님, {store}님이 결제를 요청하고 있습니다.",
       "payButton": "{amount} 지불",
       "redirecting": "결제로 리디렉션 중...",

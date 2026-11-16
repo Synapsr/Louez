@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "Бронирование №{number}",
       "amountDue": "Сумма к оплате",
+      "requestKind": {
+        "rental": "Аренда",
+        "custom": "Оплата"
+      },
       "greeting": "Привет, {name}, {store} запрашивает платеж.",
       "payButton": "Оплатить {amount}",
       "redirecting": "Перенаправление на оплату...",

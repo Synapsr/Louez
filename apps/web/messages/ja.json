@@ -8192,6 +8192,10 @@
     "pay": {
       "subtitle": "予約番号 #{number}",
       "amountDue": "未払い額",
+      "requestKind": {
+        "rental": "レンタル",
+        "custom": "お支払い"
+      },
       "greeting": "こんにちは、{name}。{store} が支払いを要求しています。",
       "payButton": "{amount}を支払う",
       "redirecting": "支払いにリダイレクトしています...",

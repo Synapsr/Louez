@@ -41,7 +41,8 @@ export type PaymentRequestData =
       ok: true;
       store: { name: string; slug: string };
       reservation: { id: string; number: string };
-      paymentRequest: { id: string; amount: number; currency: string; description: string };
+      /** What the store asks for: the rental still due, or an amount of its choice. */
+      paymentRequest: { id: string; amount: number; currency: string; type: "rental" | "custom" };
       customer: { firstName: string };
       /** The customer has not accepted the rental terms yet: they do it before paying. */
       requiresContractAcceptance: boolean;
@@ -235,7 +236,7 @@ export const getPaymentRequestData = async (
       id: paymentRequest.id,
       amount: Number.parseFloat(paymentRequest.amount),
       currency: paymentRequest.currency,
-      description: paymentRequest.description,
+      type: paymentRequest.type,
     },
     customer: { firstName: reservation.customer.firstName },
     requiresContractAcceptance: requiresContractAcceptance(reservation, paymentRequest),
