@@ -13,6 +13,8 @@ import type { StoreSettings } from "@louez/types";
 import { getCurrencySymbol } from "@louez/utils";
 
 import { log } from "@/lib/evlog";
+import { currencyMinorOf, recordedPaymentAmount } from "@louez/api/services/payment-amount";
+
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { fromStripeCents, toStripeCents } from "@/lib/stripe";
 
@@ -1198,6 +1200,8 @@ export type DepositSettlementError =
   | "errors.noStripeAccount"
   | "errors.stripe.noActiveAuthorization"
   | "errors.invalidAmount"
+  | "errors.amountTooPrecise"
+  | "errors.currencyNotSupportedForPayments"
   | "errors.reasonRequired"
   | "errors.stripe.captureFailed"
   | "errors.stripe.releaseFailed";
@@ -1251,7 +1255,8 @@ async function loadReferencedHold(database: Database, input: DepositSettlementIn
     ok: true as const,
     paymentIntentId,
     accountId,
-    depositAmount: Number.parseFloat(reservation.depositAmount),
+    /** As stored, `decimal(10,2)`: the ceiling is counted from this text, never a float. */
+    depositAmount: reservation.depositAmount,
     // The deposit the store sees, and any amount it types, are in the reservation's
     // currency, whatever the store's is now.
     currency: reservationCurrency(reservation.currency, input.storeSettings),
@@ -1276,14 +1281,36 @@ export type DepositCaptureResult =
  * another currency than the reservation's (authorized before the store changed its
  * own) cannot be read in it: nothing is captured or written, and the store captures it
  * from Stripe. What is recorded is what Stripe captured, in its currency.
+ *
+ * The amount is the text typed (normalised by the dashboard's action,
+ * `typedAmount`), judged as every payment the
+ * store records by hand (`recordedPaymentAmount`): above zero, with at most the
+ * decimals of the reservation's currency, in a currency the money layer
+ * carries. It is judged before Stripe is asked anything, and so is the
+ * ceiling, the deposit, in the currency's minor units. The minor units sent
+ * are derived from that text (`currencyMinorOf`), never from a rounded float:
+ * 19.999 euros is refused, not captured as 20.00.
  */
 export async function captureDepositHold(
-  input: DepositSettlementInput & { readonly amount: number; readonly reason: string },
+  input: DepositSettlementInput & { readonly amount: string; readonly reason: string },
   deps: DepositHoldDeps,
 ): Promise<DepositCaptureResult> {
   const hold = await loadReferencedHold(deps.database, input);
   if (!hold.ok) return hold;
-  if (input.amount <= 0 || input.amount > hold.depositAmount) {
+  const verdict = recordedPaymentAmount(input.amount, "damage", hold.currency);
+  if (!verdict.ok) {
+    return {
+      ok: false,
+      error:
+        verdict.refusal === "too_precise"
+          ? "errors.amountTooPrecise"
+          : verdict.refusal === "currency_unsupported"
+            ? "errors.currencyNotSupportedForPayments"
+            : "errors.invalidAmount",
+    };
+  }
+  const amountMinor = currencyMinorOf(verdict.amount, hold.currency);
+  if (amountMinor > currencyMinorOf(hold.depositAmount, hold.currency)) {
     return { ok: false, error: "errors.invalidAmount" };
   }
   if (!input.reason.trim()) return { ok: false, error: "errors.reasonRequired" };
@@ -1297,12 +1324,10 @@ export async function captureDepositHold(
       );
       return { ok: false, error: "errors.stripe.captureFailed" };
     }
+    // Never above what the hold authorized, in its minor units.
+    if (amountMinor > held.amountMinor) return { ok: false, error: "errors.invalidAmount" };
 
-    const intent = await deps.stripe.capture(
-      hold.accountId,
-      hold.paymentIntentId,
-      toStripeCents(input.amount, held.currency),
-    );
+    const intent = await deps.stripe.capture(hold.accountId, hold.paymentIntentId, amountMinor);
     const capturedAmount = fromStripeCents(intent.capturedMinor, intent.currency);
     const settled = await settleDepositIntent(deps.database, {
       reservationId: input.reservationId,
@@ -1364,7 +1389,7 @@ export async function releaseDepositHold(
       intent,
       actorUserId: input.actorUserId,
       descriptions: {
-        deposit_released: `Caution de ${hold.depositAmount.toFixed(2)}${getCurrencySymbol(hold.currency)} libérée`,
+        deposit_released: `Caution de ${Number.parseFloat(hold.depositAmount).toFixed(2)}${getCurrencySymbol(hold.currency)} libérée`,
       },
     });
     if (settled.status === "reservation_not_found") {
@@ -1374,7 +1399,7 @@ export async function releaseDepositHold(
     if (settled.status === "refused" || settled.outcome !== "released") {
       return { ok: false, error: "errors.stripe.releaseFailed" };
     }
-    return { ok: true, amount: hold.depositAmount };
+    return { ok: true, amount: Number.parseFloat(hold.depositAmount) };
   } catch (error) {
     log.error(
       "deposit-hold",

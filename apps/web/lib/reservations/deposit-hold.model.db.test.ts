@@ -440,7 +440,7 @@ describe("deposit hold, model (database)", { skip: skipWithoutTestDatabase() }, 
           const lost = random.chance(0.25);
           const capturedBefore = stripe.intents.filter((i) => i.status === "succeeded").length;
           const result = await hold.captureDepositHold(
-            { ...settlement(), amount: random.pick([10, 50]), reason: "damage" },
+            { ...settlement(), amount: random.pick(["10", "50"]), reason: "damage" },
             holdDeps(lost ? losingAnswers() : stripe.port),
           );
           const capturedNow = stripe.intents.filter((i) => i.status === "succeeded").length;

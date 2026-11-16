@@ -10,10 +10,13 @@ import { currencyMinorDigits } from "@louez/utils";
  * anyone, and the displays a person reads show the amount it returns.
  *
  * Returns the text the row will hold, every decimal written ("120" holds
- * "120.00", "007.5" holds "7.50"), or null for a text the writes refuse.
- * Pure, and light: the page's tests and the sample approvals use it too.
+ * "120.00", "007.5" holds "7.50"), or null for a text the writes refuse,
+ * and for anything that is not text: never a number or an array read as
+ * one (`7`, `[7]`). Pure, and light: the page's tests and the sample
+ * approvals use it too.
  */
-export function paymentAmount(raw: string): string | null {
+export function paymentAmount(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
   const match = /^(-?)(\d{1,8})(?:\.(\d{1,2}))?$/.exec(raw);
   if (!match) return null;
   const [, sign = "", whole = "", fraction = ""] = match;
@@ -23,6 +26,20 @@ export function paymentAmount(raw: string): string | null {
   const digits = String(cents).padStart(3, "0");
   return `${sign}${digits.slice(0, -2)}.${digits.slice(-2)}`;
 }
+
+/**
+ * A text `paymentAmount` refuses only for its decimals: a plain decimal, not
+ * zero, with more of them than any row holds ("19.999", "-0.004"). Such a
+ * text is refused as too precise for its currency, whose message names the
+ * decimals it allows, not as malformed: what is accepted stays the same.
+ */
+function pastTheRowsDecimals(raw: unknown): boolean {
+  return typeof raw === "string" && /^-?\d{1,8}\.\d{3,}$/.test(raw) && /[1-9]/.test(raw);
+}
+
+/** Why a text with too many decimals is refused in `currency`: its decimals, or the currency itself. */
+const precisionRefusal = (currency: string): Exclude<CurrencyFit, "fits"> =>
+  currencyMinorDigits(currency) === null ? "currency_unsupported" : "too_precise";
 
 /** Why a payment's amount is refused: its text, its sign for its type, or its currency. */
 export type RecordedAmountVerdict =
@@ -44,7 +61,13 @@ export function recordedPaymentAmount(
   currency: string,
 ): RecordedAmountVerdict {
   const amount = paymentAmount(raw);
-  if (!amount) return { ok: false, refusal: "amount_invalid" };
+  if (!amount) {
+    if (!pastTheRowsDecimals(raw)) return { ok: false, refusal: "amount_invalid" };
+    if (raw.startsWith("-") && type !== "adjustment") {
+      return { ok: false, refusal: "negative_outside_adjustment" };
+    }
+    return { ok: false, refusal: precisionRefusal(currency) };
+  }
   if (amount.startsWith("-") && type !== "adjustment") {
     return { ok: false, refusal: "negative_outside_adjustment" };
   }
@@ -58,23 +81,56 @@ export type DepositReturnVerdict =
   | { ok: false; refusal: "amount_invalid" | Exclude<CurrencyFit, "fits"> | "exceeds_balance" };
 
 /**
- * The amount of a deposit return (`dashboard.payments.recordDepositReturn`),
- * as the write judges it before it asks: `paymentAmount`, above zero; then,
- * in the reservation's `currency`, `currencyFit`; then within `returnable`,
- * the deposit collected and not yet returned as the write counts it under
- * the reservation's lock. Its display judges it the same way.
+ * The amount of a deposit return (`dashboard.payments.recordDepositReturn`,
+ * and the dashboard's own return), as the write judges it before it asks:
+ * `paymentAmount`, above zero; then, in the reservation's `currency`,
+ * `currencyFit`; then within `returnableHundredths`, the deposit collected
+ * and not yet returned (`depositBalance`) as the write counts it under the
+ * reservation's lock. Its display judges it the same way.
  */
 export function depositReturnAmount(
   raw: string,
   currency: string,
-  returnable: number,
+  returnableHundredths: number,
 ): DepositReturnVerdict {
   const amount = paymentAmount(raw);
+  if (!amount && pastTheRowsDecimals(raw) && !raw.startsWith("-")) {
+    return { ok: false, refusal: precisionRefusal(currency) };
+  }
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
   const fit = currencyFit(amount, currency);
   if (fit !== "fits") return { ok: false, refusal: fit };
-  if (parseFloat(amount) > returnable) return { ok: false, refusal: "exceeds_balance" };
+  if (hundredthsOf(amount) > returnableHundredths) {
+    return { ok: false, refusal: "exceeds_balance" };
+  }
   return { ok: true, amount };
+}
+
+/** A reservation's deposit, in hundredths: collected, returned, and still returnable. */
+export interface DepositBalanceHundredths {
+  collected: number;
+  returned: number;
+  returnable: number;
+}
+
+/**
+ * The deposit a reservation's payments hold, counted in hundredths, as exact
+ * integers (`hundredthsOf`): its completed `deposit` rows, its completed
+ * `deposit_return` rows, and the difference. Never in floating point, where
+ * €0.30 less €0.10 is 0.19999999999999998 and a return of €0.20 would not
+ * fit. Hundredths are the unit the rows hold (`decimal(10,2)`), whatever
+ * their currency, as for the refund's ceiling: a yen is a hundred of them.
+ */
+export function depositBalance(
+  rows: ReadonlyArray<{ type: string; status: string; amount: string }>,
+): DepositBalanceHundredths {
+  const completed = (type: string) =>
+    rows
+      .filter((row) => row.type === type && row.status === "completed")
+      .reduce((sum, row) => sum + hundredthsOf(row.amount), 0);
+  const collected = completed("deposit");
+  const returned = completed("deposit_return");
+  return { collected, returned, returnable: collected - returned };
 }
 
 /**
@@ -103,6 +159,19 @@ export function fromHundredths(hundredths: number): string {
 export function currencyMinorOf(amount: string, currency: string): number {
   const hundredths = hundredthsOf(amount);
   return currencyMinorDigits(currency) === 0 ? hundredths / 100 : hundredths;
+}
+
+/**
+ * Whether a write that does not know the currency yet refuses `raw` for its
+ * text: not a plain decimal `paymentAmount` takes, unless it is one only
+ * refused for its decimals (`pastTheRowsDecimals`), which waits for the
+ * currency so its refusal names them. `positive` refuses zero and below too.
+ */
+export function refusedWhateverTheCurrency(raw: string, positive: boolean): boolean {
+  const amount = paymentAmount(raw);
+  if (amount) return positive && amount.startsWith("-");
+  if (!pastTheRowsDecimals(raw)) return true;
+  return positive && raw.startsWith("-");
 }
 
 /** Why an amount does not fit its currency: digits past its minor unit, or a currency Louez does not count. */
@@ -142,6 +211,9 @@ export function refundAmount(
   refundableHundredths: number,
 ): RefundVerdict {
   const amount = paymentAmount(raw);
+  if (!amount && pastTheRowsDecimals(raw) && !raw.startsWith("-")) {
+    return { ok: false, refusal: precisionRefusal(currency) };
+  }
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
   const fit = currencyFit(amount, currency);
   if (fit !== "fits") return { ok: false, refusal: fit };
