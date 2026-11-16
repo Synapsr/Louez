@@ -20,6 +20,7 @@ import { ShieldSolidIcon } from "@louez/ui/icons";
 import type { BookingAttributeAxis } from "@louez/types";
 import { formatCurrency, formatNumber } from "@louez/utils";
 import { useFormatLocale } from "@/hooks/use-format-locale";
+import { subtotalInclTaxOf } from "@/lib/reservations/util.subtotal-incl-tax";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 export interface ReservationDisplayItem {
@@ -42,6 +43,8 @@ export interface ReservationItemsDisplay {
   taxAmount?: string | null;
   subtotalExclTax?: string | null;
   subtotalAmount: string;
+  /** How its prices were given (slice 9): its subtotal includes the tax only when "inclusive". */
+  taxDisplayMode: "inclusive" | "exclusive" | null;
   taxRate?: string | null;
   discountAmount?: string | null;
   promoCodeSnapshot?: { code: string } | null;
@@ -74,6 +77,7 @@ export const ReservationItemsCard = ({
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
   const { intl: formatLocale } = useFormatLocale();
+  const subtotalInclTax = subtotalInclTaxOf(reservation);
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -208,12 +212,14 @@ export const ReservationItemsCard = ({
                     {formatCurrency(parseFloat(reservation.taxAmount), currency, formatLocale)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>{t("subtotalInclTax")}</span>
-                  <span className="font-medium">
-                    {formatCurrency(parseFloat(reservation.subtotalAmount), currency, formatLocale)}
-                  </span>
-                </div>
+                {subtotalInclTax !== null && (
+                  <div className="flex justify-between">
+                    <span>{t("subtotalInclTax")}</span>
+                    <span className="font-medium">
+                      {formatCurrency(subtotalInclTax, currency, formatLocale)}
+                    </span>
+                  </div>
+                )}
               </>
             ) : (
               <div className="flex justify-between">

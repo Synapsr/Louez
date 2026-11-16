@@ -7,7 +7,8 @@ import type { EditableItem } from '../types'
 import {
   calculateEditableItemPrice,
   calculateUnitPriceFromTotal,
-  previewEditTotal,
+  editSummaryFigures,
+  previewEditTotals,
 } from './use-edit-reservation-pricing'
 
 const fixedProductItem: EditableItem = {
@@ -116,10 +117,10 @@ test('an ordinary rate is not reported as savings', () => {
 // (actions.db.test.ts, edit-totals.db.test.ts).
 const previewLine = { totalPrice: 150, effectiveUnitPrice: 75, product: null }
 const previewOf = (
-  storeTax: Parameters<typeof previewEditTotal>[0]['storeTax'],
+  storeTax: Parameters<typeof previewEditTotals>[0]['storeTax'],
   recorded: 'inclusive' | 'exclusive' | null = null,
 ) =>
-  previewEditTotal({
+  previewEditTotals({
     items: [previewLine],
     insuranceAmount: 0,
     discountAmount: 0,
@@ -127,7 +128,7 @@ const previewOf = (
     deposit: 0,
     storeTax,
     recordedTaxDisplayMode: recorded,
-  })
+  }).total
 
 test('the preview total: prices before tax, the tax on top', () => {
   assert.equal(previewOf({ enabled: true, defaultRate: 20, displayMode: 'exclusive' }), 180)
@@ -149,7 +150,7 @@ test('the preview total: the mode the reservation recorded, not the store\'s tod
 })
 
 test('the preview total: insurance outside the tax, the discount and the delivery in', () => {
-  const total = previewEditTotal({
+  const { total } = previewEditTotals({
     items: [previewLine],
     insuranceAmount: 12.5,
     discountAmount: 10,
@@ -228,7 +229,7 @@ test('the preview of a line whose product is gone: what it stored, or its stored
 
 test('the preview total: a line kept at its stored price keeps the rate it recorded', () => {
   // The store's rate is 10 % now; the kept line recorded 20 %.
-  const total = previewEditTotal({
+  const { total } = previewEditTotals({
     items: [
       { totalPrice: 20, effectiveUnitPrice: 10, product: dayItem.product, tax: { kind: 'recorded', rate: 20 } },
       { totalPrice: 40, effectiveUnitPrice: 10, product: dayItem.product, tax: { kind: 'today' } },
@@ -241,4 +242,75 @@ test('the preview total: a line kept at its stored price keeps the rate it recor
     recordedTaxDisplayMode: 'exclusive',
   })
   assert.equal(total, 68)
+})
+
+// The summary shows what is stored and what will be written, each a total tax
+// included; the subtotal and the tax as lines of their own when prices are
+// given before tax, as the creation form shows them.
+const summaryOf = (
+  storeTax: Parameters<typeof previewEditTotals>[0]['storeTax'],
+  storedTotal: number,
+  currency = 'EUR',
+  items = [previewLine],
+) =>
+  editSummaryFigures({
+    storedTotal,
+    preview: previewEditTotals({
+      items,
+      insuranceAmount: 0,
+      discountAmount: 0,
+      deliveryFee: 0,
+      deposit: 0,
+      storeTax,
+      recordedTaxDisplayMode: null,
+      currency,
+    }),
+    discountAmount: 0,
+    currency,
+  })
+
+test('the summary, prices before tax: after is the total tax included, with its subtotal and tax', () => {
+  // Stored at 120.00 for 100.00 before tax; the line now 150.00 before tax.
+  const figures = summaryOf({ enabled: true, defaultRate: 20, displayMode: 'exclusive' }, 120)
+  assert.equal(figures.before, 120)
+  assert.equal(figures.after, 180)
+  assert.equal(figures.difference, 60)
+  assert.deepEqual(figures.taxLines, { subtotal: 150, tax: 30 })
+})
+
+test('the summary, prices with tax: no tax line, the totals as written', () => {
+  const figures = summaryOf({ enabled: true, defaultRate: 20, displayMode: 'inclusive' }, 120)
+  assert.equal(figures.after, 150)
+  assert.equal(figures.difference, 30)
+  assert.equal(figures.taxLines, null)
+})
+
+test('the summary, taxes off: no tax line', () => {
+  const figures = summaryOf(undefined, 120)
+  assert.equal(figures.after, 150)
+  assert.equal(figures.taxLines, null)
+})
+
+test('the summary in yen: whole yen, the tax on top', () => {
+  // ¥315 before tax at 20 %: ¥63 of tax, ¥378; stored at ¥360.
+  const figures = summaryOf(
+    { enabled: true, defaultRate: 20, displayMode: 'exclusive' },
+    360,
+    'JPY',
+    [{ totalPrice: 315, effectiveUnitPrice: 315, product: null }],
+  )
+  assert.equal(figures.after, 378)
+  assert.equal(figures.difference, 18)
+  assert.deepEqual(figures.taxLines, { subtotal: 315, tax: 63 })
+})
+
+test('the summary keeps the stored discount as a line of its own', () => {
+  const figures = editSummaryFigures({
+    storedTotal: 100,
+    preview: { subtotal: 150, taxAmount: null, total: 140, taxOnTop: false },
+    discountAmount: 10,
+    currency: 'EUR',
+  })
+  assert.equal(figures.discount, 10)
+  assert.equal(figures.difference, 40)
 })

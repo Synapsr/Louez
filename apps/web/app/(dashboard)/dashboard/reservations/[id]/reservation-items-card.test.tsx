@@ -48,6 +48,7 @@ const reservation: ReservationItemsDisplay = {
     },
   ],
   subtotalAmount: "120",
+  taxDisplayMode: "inclusive",
   subtotalExclTax: "100",
   taxAmount: "20",
   taxRate: "20",
@@ -89,8 +90,28 @@ test("fixture rows remain unlinked and hide absent billing lines", () => {
       },
     ],
     subtotalAmount: "20",
+    taxDisplayMode: null,
     depositAmount: "0",
   });
   assert.doesNotMatch(html, /href=|VELO10|Caution totale|TVA/);
   assert.match(html, /Sous-total location/);
+});
+
+test("prices before tax: the stored subtotal is shown once, before tax, never as tax included", () => {
+  const html = render({
+    ...reservation,
+    // 140.00 before tax, 28.00 of tax: the subtotal stored is the one before tax.
+    subtotalAmount: "140",
+    subtotalExclTax: "140",
+    taxAmount: "28",
+    taxDisplayMode: "exclusive",
+  });
+  assert.match(html, /Sous-total HT/);
+  assert.match(html, /28,00/);
+  assert.doesNotMatch(html, /Sous-total TTC/);
+});
+
+test("prices with tax: the subtotal tax included has a line of its own", () => {
+  const html = render(reservation);
+  assert.match(html, /Sous-total TTC/);
 });

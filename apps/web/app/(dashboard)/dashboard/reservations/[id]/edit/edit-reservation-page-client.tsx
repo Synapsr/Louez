@@ -56,8 +56,10 @@ export const EditReservationPageClient = ({
   // state alive after the owner leaves the page. Remount on every server-side
   // change, so an item added last time never comes back with its temporary
   // "new-" id (saving it would replace the real item and drop its units).
+  // The token the form sends back is the one of the reservation it shows.
   const formKey = [
     new Date(reservation.updatedAt).getTime(),
+    reservation.editToken,
     ...reservation.items.map((item) => `${item.id}:${item.quantity}`),
   ].join("|");
 

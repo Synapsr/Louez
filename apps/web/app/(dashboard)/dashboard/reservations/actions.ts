@@ -183,6 +183,7 @@ import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 import {
   compareReservationDemand,
   fingerprintReservationEdit,
+  reservationEditToken,
 } from "@louez/api/services/util.reservation-edit";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
@@ -1612,6 +1613,14 @@ interface UpdateReservationData {
    * difference refuses the edit as changed meanwhile.
    */
   expectedTotal?: number;
+  /**
+   * The reservation as the form loaded it (`reservationEditToken`, from the
+   * edit context). Compared under the locks, before any write, with the
+   * reservation stored now: a difference refuses the edit as changed
+   * meanwhile, and nothing is written. A caller that sends none is not
+   * compared.
+   */
+  loadedEditToken?: string;
   delivery?: {
     outbound: UpdateDeliveryLeg;
     return: UpdateDeliveryLeg;
@@ -3045,6 +3054,23 @@ export async function updateReservation(
             discountAmount: reservations.discountAmount,
             tulipInsuranceOptIn: reservations.tulipInsuranceOptIn,
             tulipInsuranceAmount: reservations.tulipInsuranceAmount,
+            outboundMethod: reservations.outboundMethod,
+            pickupLocationId: reservations.pickupLocationId,
+            deliveryOption: reservations.deliveryOption,
+            deliveryAddress: reservations.deliveryAddress,
+            deliveryCity: reservations.deliveryCity,
+            deliveryPostalCode: reservations.deliveryPostalCode,
+            deliveryCountry: reservations.deliveryCountry,
+            deliveryLatitude: reservations.deliveryLatitude,
+            deliveryLongitude: reservations.deliveryLongitude,
+            returnMethod: reservations.returnMethod,
+            returnLocationId: reservations.returnLocationId,
+            returnAddress: reservations.returnAddress,
+            returnCity: reservations.returnCity,
+            returnPostalCode: reservations.returnPostalCode,
+            returnCountry: reservations.returnCountry,
+            returnLatitude: reservations.returnLatitude,
+            returnLongitude: reservations.returnLongitude,
             customerId: reservations.customerId,
             billingSnapshot: reservations.billingSnapshot,
             taxDisplayMode: reservations.taxDisplayMode,
@@ -3084,6 +3110,15 @@ export async function updateReservation(
         // A line added meanwhile is caught here too, before its product would
         // have to be locked after the reservation.
         if (fingerprintReservationEdit(lockedReservation, lockedItems) !== editBasis) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+        // The form edits the reservation it loaded, or nothing: another save
+        // since its read (another tab, the API, an extension) would be
+        // overwritten by the lines and the window it sends.
+        if (
+          data.loadedEditToken !== undefined &&
+          reservationEditToken(lockedReservation, lockedItems) !== data.loadedEditToken
+        ) {
           return { error: "errors.reservationChangedMeanwhile" };
         }
 
