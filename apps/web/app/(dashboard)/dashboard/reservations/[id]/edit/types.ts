@@ -5,6 +5,7 @@ import type {
   PricingBreakdown,
   PricingKind,
   PricingMode,
+  ProductTaxSettings,
   ReservationLocationSnapshot,
   ProductSnapshot,
   StoreSettings,
@@ -35,6 +36,7 @@ export interface Product {
   pricingMode: string | null;
   basePeriodMinutes?: number | null;
   enforceStrictTiers?: boolean;
+  taxSettings?: ProductTaxSettings | null;
   pricingTiers: PricingTier[];
   seasonalPricings?: SeasonalPricingConfig[];
 }
@@ -101,6 +103,7 @@ export interface Reservation {
   totalAmount: string;
   deliveryFee: string | null;
   discountAmount: string | null;
+  taxDisplayMode?: "inclusive" | "exclusive" | null;
   tulipInsuranceOptIn: boolean | null;
   tulipInsuranceAmount: string | null;
   delivery: ReservationDelivery;

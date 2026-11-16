@@ -14,10 +14,18 @@ import {
 
 import {
   isReservationEditable,
+  NOT_RECORDED,
   pricingBasisOf,
+  recordedTaxDisplayMode,
   taxDisplayModeOf,
   validateReservationContract,
 } from "@louez/api/services";
+import {
+  priceReservationEdit,
+  type EditedLine,
+  type EditPricingInput,
+} from "@louez/api/services/reservation-edit-pricing";
+import type { ReservationItemTaxFields } from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -1458,6 +1466,22 @@ type ReservationItemUpdateValues = Pick<
   | "pricingBreakdown"
 >;
 
+type ReservationItemTaxValues = Pick<
+  ReservationItemInsertValues,
+  "taxRate" | "taxAmount" | "priceExclTax" | "totalExclTax" | "taxExempt"
+>;
+
+/** A line's tax figures as its row stores them. */
+const reservationItemTaxValues = (
+  tax: ReservationItemTaxFields & { taxExempt: boolean },
+): ReservationItemTaxValues => ({
+  taxRate: tax.taxRate?.toFixed(2) ?? null,
+  taxAmount: tax.taxAmount?.toFixed(2) ?? null,
+  priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
+  totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+  taxExempt: tax.taxExempt,
+});
+
 type ReservationItemWrite =
   | { type: "insert"; values: ReservationItemInsertValues }
   | { type: "update"; id: string; values: ReservationItemUpdateValues };
@@ -1830,6 +1854,24 @@ export async function previewReservationTulipQuote(
   });
 }
 
+/** What the insurer is told of the renter: the reservation's billing identity and the customer's contact. */
+function insurerCustomerOf(
+  reservation: Parameters<typeof resolveReservationBilling>[0],
+  customer: typeof customers.$inferSelect,
+) {
+  return {
+    ...resolveReservationBilling(reservation, customer),
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    email: customer.email,
+    phone: customer.phone || "",
+    address: customer.address || "",
+    city: customer.city || "",
+    postalCode: customer.postalCode || "",
+    country: customer.country,
+  };
+}
+
 export async function updateReservation(
   reservationId: string,
   data: UpdateReservationData,
@@ -1911,8 +1953,9 @@ export async function updateReservation(
     storeSettings: store.settings,
   });
 
-  // Calculate new totals
-  let newSubtotalAmount = 0;
+  // Every line the edit leaves, but the insurance, as it prices it by today's
+  // rules; the tax engine totals them under the locks (slice 10).
+  const editedLines: Array<Omit<EditedLine, "taxExempt"> & { id: string }> = [];
   let newDepositAmount = 0;
   let nextTulipInsuranceAmount: number | null = null;
   const tulipWarnings: Array<{
@@ -1923,6 +1966,9 @@ export async function updateReservation(
     tulipWarnings.push({ key: "errors.tulipInsuranceDisabledPastDate" });
   }
   const insuranceQuoteItems: Array<{ productId: string; quantity: number }> = [];
+  // What the insurer was told of the renter, and where the routes start from.
+  let quotedCustomer: ReturnType<typeof insurerCustomerOf> | null = null;
+  let routedFromStore: { latitude: string | null; longitude: string | null } | null = null;
   const legacyInsuranceItemIds = reservation.items
     .filter((item) =>
       isLegacyTulipInsuranceItem({
@@ -1984,6 +2030,7 @@ export async function updateReservation(
       let duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
       let totalPrice = item.unitPrice * duration * item.quantity;
       let manualPricingKind: PricingKind = "duration";
+      let pricedFromProductId: string | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
@@ -2009,6 +2056,7 @@ export async function updateReservation(
         });
 
         if (product) {
+          pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           itemPricingMode = effectivePricingMode;
           duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
@@ -2092,7 +2140,6 @@ export async function updateReservation(
       }
 
       const itemDeposit = item.depositPerUnit * item.quantity;
-      newSubtotalAmount += totalPrice;
       newDepositAmount += itemDeposit;
       if (item.productId) {
         insuranceQuoteItems.push({
@@ -2115,6 +2162,16 @@ export async function updateReservation(
         images: item.productSnapshot.images || [],
       };
 
+      // A new line's id is drawn now: its tax figures are merged into its insert under the locks.
+      const lineId = item.id ?? nanoid();
+      editedLines.push({
+        id: lineId,
+        pricedFromProductId,
+        productId: item.productId || null,
+        quantity: item.quantity,
+        subtotal: Number(totalPrice.toFixed(2)),
+        unitPrice: Number(finalUnitPrice.toFixed(2)),
+      });
       if (item.id) {
         const existingItem = existingItemsById.get(item.id);
         if (!existingItem) {
@@ -2134,7 +2191,7 @@ export async function updateReservation(
         itemWrites.push({
           type: "insert",
           values: {
-            id: nanoid(),
+            id: lineId,
             reservationId,
             ...itemValues,
             productSnapshot,
@@ -2151,6 +2208,7 @@ export async function updateReservation(
 
       let totalPrice: number;
       let finalUnitPrice = parseFloat(item.unitPrice);
+      let pricedFromProductId: string | null = null;
 
       if (!isManualPrice && item.productId) {
         // Recalculate with tiers
@@ -2160,6 +2218,7 @@ export async function updateReservation(
         });
 
         if (product) {
+          pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           const itemDurationMinutes = calculateDurationMinutes(newStartDate, newEndDate);
           const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
@@ -2298,7 +2357,14 @@ export async function updateReservation(
         }
       }
 
-      newSubtotalAmount += totalPrice;
+      editedLines.push({
+        id: item.id,
+        pricedFromProductId,
+        productId: item.productId,
+        quantity: item.quantity,
+        subtotal: Number(totalPrice.toFixed(2)),
+        unitPrice: Number(finalUnitPrice.toFixed(2)),
+      });
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
       if (item.productId) {
         insuranceQuoteItems.push({
@@ -2317,19 +2383,10 @@ export async function updateReservation(
       }
     } else {
       try {
+        quotedCustomer = insurerCustomerOf(reservation, reservation.customer);
         const quote = await previewTulipQuoteForCheckout({
           storeId: store.id,
-          customer: {
-            ...resolveReservationBilling(reservation, reservation.customer),
-            firstName: reservation.customer.firstName,
-            lastName: reservation.customer.lastName,
-            email: reservation.customer.email,
-            phone: reservation.customer.phone || "",
-            address: reservation.customer.address || "",
-            city: reservation.customer.city || "",
-            postalCode: reservation.customer.postalCode || "",
-            country: reservation.customer.country,
-          },
+          customer: quotedCustomer,
           items: insuranceQuoteItems,
           startDate: newStartDate,
           endDate: newEndDate,
@@ -2366,10 +2423,6 @@ export async function updateReservation(
     (!nextTulipInsuranceAmount || nextTulipInsuranceAmount < previousTulipInsuranceAmount)
   ) {
     nextTulipInsuranceAmount = previousTulipInsuranceAmount;
-  }
-
-  if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
-    newSubtotalAmount += nextTulipInsuranceAmount;
   }
 
   if (data.items && data.items.length > 0) {
@@ -2440,8 +2493,12 @@ export async function updateReservation(
     extraInsuranceItemIdsToDelete = legacyInsuranceItemIds;
   }
 
-  // Process delivery changes
-  let deliveryFee = parseFloat(reservation.deliveryFee || "0");
+  // Process delivery changes. The fee is the stored one, or the new
+  // delivery's, computed under the locks from the routes measured here and
+  // the store's settings read there.
+  let deliveryFeeUnderLocks: EditPricingInput["deliveryFee"] = parseFloat(
+    reservation.deliveryFee || "0",
+  );
   const deliveryUpdateFields: ReservationDeliveryUpdateValues = {};
 
   if (data.delivery) {
@@ -2548,31 +2605,28 @@ export async function updateReservation(
       deliveryUpdateFields.returnDistanceKm = null;
     }
 
-    // Calculate delivery fee
-    if (deliverySettings?.enabled) {
-      const outDist = deliveryUpdateFields.deliveryDistanceKm
-        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
-        : null;
-      const retDist = deliveryUpdateFields.returnDistanceKm
-        ? parseFloat(deliveryUpdateFields.returnDistanceKm)
-        : null;
-
-      if (deliverySettings.mode === "included") {
-        deliveryFee = 0;
-      } else {
-        const feeResult = calculateTotalDeliveryFee(
-          outDist,
-          retDist,
-          deliverySettings as Parameters<typeof calculateTotalDeliveryFee>[2],
-          newSubtotalAmount,
-        );
-        deliveryFee = feeResult.totalFee;
-      }
-    } else {
-      deliveryFee = 0;
+    const outDist = deliveryUpdateFields.deliveryDistanceKm
+      ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
+      : null;
+    const retDist = deliveryUpdateFields.returnDistanceKm
+      ? parseFloat(deliveryUpdateFields.returnDistanceKm)
+      : null;
+    deliveryFeeUnderLocks = (subtotal, settings) => {
+      const lockedDelivery = (settings as Record<string, unknown> | null)?.delivery as
+        | DeliverySettings
+        | undefined;
+      if (!lockedDelivery?.enabled || lockedDelivery.mode === "included") return 0;
+      return calculateTotalDeliveryFee(
+        outDist,
+        retDist,
+        lockedDelivery as Parameters<typeof calculateTotalDeliveryFee>[2],
+        subtotal,
+      ).totalFee;
+    };
+    // The routes were measured from the store's position: it is read again under the locks.
+    if (data.delivery.outbound.method === "address" || data.delivery.return.method === "address") {
+      routedFromStore = { latitude: store.latitude ?? null, longitude: store.longitude ?? null };
     }
-
-    deliveryUpdateFields.deliveryFee = deliveryFee.toFixed(2);
 
     // Update legacy field for backward compatibility
     const hasAddressLeg =
@@ -2580,10 +2634,10 @@ export async function updateReservation(
     deliveryUpdateFields.deliveryOption = hasAddressLeg ? "delivery" : "pickup";
   }
 
-  // Calculate total: subtotal + delivery fee - discount
   const existingDiscount = parseFloat(reservation.discountAmount || "0");
-  const newTotalAmount = newSubtotalAmount + deliveryFee - existingDiscount;
-  const difference = newTotalAmount - previousState.totalAmount;
+  // What the insurer's quote and the routes were computed from, outside the
+  // transaction: compared again under the locks.
+  const outsideBasis = JSON.stringify({ quotedCustomer, routedFromStore });
   const dateChanged =
     newStartDate.getTime() !== reservation.startDate.getTime() ||
     newEndDate.getTime() !== reservation.endDate.getTime();
@@ -2625,6 +2679,9 @@ export async function updateReservation(
             discountAmount: reservations.discountAmount,
             tulipInsuranceOptIn: reservations.tulipInsuranceOptIn,
             tulipInsuranceAmount: reservations.tulipInsuranceAmount,
+            customerId: reservations.customerId,
+            billingSnapshot: reservations.billingSnapshot,
+            taxDisplayMode: reservations.taxDisplayMode,
           })
           .from(reservations)
           .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
@@ -2650,6 +2707,7 @@ export async function updateReservation(
             pricingBreakdown: reservationItems.pricingBreakdown,
             combinationKey: reservationItems.combinationKey,
             selectedAttributes: reservationItems.selectedAttributes,
+            taxExempt: reservationItems.taxExempt,
           })
           .from(reservationItems)
           .where(eq(reservationItems.reservationId, reservationId));
@@ -2670,6 +2728,77 @@ export async function updateReservation(
           ) {
             return { error: "errors.productNotFound" };
           }
+        }
+
+        // The insurer's quote and the routes were taken outside: what they were
+        // computed from must still hold (the renter, the store's position).
+        const [lockedStore] = await tx
+          .select({ latitude: stores.latitude, longitude: stores.longitude })
+          .from(stores)
+          .where(eq(stores.id, store.id));
+        const [lockedCustomer] =
+          quotedCustomer && lockedReservation.customerId
+            ? await tx
+                .select()
+                .from(customers)
+                .where(eq(customers.id, lockedReservation.customerId))
+            : [];
+        const insideBasis = JSON.stringify({
+          quotedCustomer:
+            quotedCustomer && lockedCustomer
+              ? insurerCustomerOf(lockedReservation, lockedCustomer)
+              : null,
+          routedFromStore: routedFromStore && {
+            latitude: lockedStore?.latitude ?? null,
+            longitude: lockedStore?.longitude ?? null,
+          },
+        });
+        if (insideBasis !== outsideBasis) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+
+        // The totals: the tax engine over the lines, under the locks (M1).
+        const taxExemptById = new Map(lockedItems.map((item) => [item.id, item.taxExempt]));
+        const recordedMode = recordedTaxDisplayMode(lockedReservation);
+        const pricing = await priceReservationEdit(tx, {
+          storeId: store.id,
+          window: { start: newStartDate, end: newEndDate },
+          lines: editedLines.map((line) => ({
+            ...line,
+            taxExempt: taxExemptById.get(line.id) ?? null,
+          })),
+          insuranceAmount: nextTulipInsuranceAmount ?? 0,
+          discountAmount: existingDiscount,
+          totalDeposit: newDepositAmount,
+          deliveryFee: deliveryFeeUnderLocks,
+          recordedTaxDisplayMode: recordedMode === NOT_RECORDED ? null : recordedMode,
+        });
+        // A product's prices changed while the store was editing.
+        if (!pricing.ok) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+        const { totals } = pricing;
+        const newTotalAmount = totals.total;
+        const difference = Math.round((newTotalAmount - previousState.totalAmount) * 100) / 100;
+        // Each line's tax figures go with its write, or alone when the line is not rewritten.
+        const writesById = new Map(
+          itemWrites.map((write) => [write.type === "insert" ? write.values.id : write.id, write]),
+        );
+        const taxOnlyWrites: Array<{ id: string; values: ReservationItemTaxValues }> = [];
+        for (const [index, line] of editedLines.entries()) {
+          const values = reservationItemTaxValues(pricing.lines[index]!);
+          const write = writesById.get(line.id);
+          if (write) Object.assign(write.values, values);
+          else taxOnlyWrites.push({ id: line.id, values });
+        }
+        for (const insuranceItemWrite of insuranceItemWrites) {
+          Object.assign(
+            insuranceItemWrite.values,
+            reservationItemTaxValues({ ...pricing.insurance, taxExempt: true }),
+          );
+        }
+        if (data.delivery) {
+          deliveryUpdateFields.deliveryFee = pricing.deliveryFee.toFixed(2);
         }
 
         await tx
@@ -3025,6 +3154,13 @@ export async function updateReservation(
           }
         }
 
+        for (const taxOnlyWrite of taxOnlyWrites) {
+          await tx
+            .update(reservationItems)
+            .set(taxOnlyWrite.values)
+            .where(eq(reservationItems.id, taxOnlyWrite.id));
+        }
+
         for (const insuranceItemWrite of insuranceItemWrites) {
           if (insuranceItemWrite.type === "insert") {
             await tx.insert(reservationItems).values(insuranceItemWrite.values);
@@ -3068,9 +3204,13 @@ export async function updateReservation(
           .set({
             startDate: newStartDate,
             endDate: newEndDate,
-            subtotalAmount: newSubtotalAmount.toFixed(2),
+            subtotalAmount: totals.subtotal.toFixed(2),
             depositAmount: newDepositAmount.toFixed(2),
             totalAmount: newTotalAmount.toFixed(2),
+            subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
+            taxAmount: totals.taxAmount?.toFixed(2) ?? null,
+            taxRate: totals.taxRate?.toFixed(2) ?? null,
+            taxDisplayMode: pricing.taxDisplayMode,
             tulipInsuranceOptIn: nextTulipInsuranceOptIn,
             tulipInsuranceAmount:
               nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
@@ -3110,7 +3250,7 @@ export async function updateReservation(
             updated: {
               startDate: newStartDate,
               endDate: newEndDate,
-              subtotalAmount: newSubtotalAmount,
+              subtotalAmount: totals.subtotal,
               depositAmount: newDepositAmount,
             },
             difference,
@@ -3122,7 +3262,12 @@ export async function updateReservation(
           },
           createdAt: capacityVerdict ? await nextCapacityVerdictDate(tx, reservationId) : undefined,
         });
-        return { success: true, reservationStatus: lockedReservation.status };
+        return {
+          success: true,
+          reservationStatus: lockedReservation.status,
+          difference,
+          newTotalAmount,
+        };
       },
       { isolationLevel: "read committed" },
     ),
@@ -3212,8 +3357,8 @@ export async function updateReservation(
 
   return {
     success: true,
-    difference,
-    newTotal: newTotalAmount,
+    difference: transactionResult.difference,
+    newTotal: transactionResult.newTotalAmount,
     previousTotal: previousState.totalAmount,
     ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
     ...(emailNotification && { emailNotification }),

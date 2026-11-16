@@ -25,6 +25,17 @@ export const taxDisplayModeOf = (settings: TaxSettings | undefined | null): TaxD
   settings?.enabled ? settings.displayMode : "inclusive";
 
 /**
+ * The tax settings a reservation is priced again with: whether taxes are on
+ * and the store's rate, as today; the display mode it recorded, when it did,
+ * so a price keeps the meaning it was entered with (slice 10).
+ */
+export const taxSettingsForRepricing = (
+  settings: TaxSettings | undefined | null,
+  recorded: TaxDisplayMode | null,
+): TaxSettings | undefined =>
+  settings?.enabled && recorded ? { ...settings, displayMode: recorded } : (settings ?? undefined);
+
+/**
  * The breakdown the dashboard's edit reads a line's pricing basis from (its
  * mode, its kind, a price typed by hand): none for a breakdown written only
  * to record facts, as a line had none before those were recorded. So

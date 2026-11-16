@@ -367,12 +367,19 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
         Reflect.set(globalThis, STORE_KEY, previousStore);
       }
 
-      // The edit reprices the item before tax and adds no tax to the total.
+      // The edit reprices the item before tax, and the tax engine adds its 20 % (slice 10).
       const [row] = await louezDb.db
-        .select({ totalAmount: louezDb.reservations.totalAmount })
+        .select({
+          totalAmount: louezDb.reservations.totalAmount,
+          subtotalExclTax: louezDb.reservations.subtotalExclTax,
+          taxAmount: louezDb.reservations.taxAmount,
+        })
         .from(louezDb.reservations)
         .where(eq(louezDb.reservations.id, reservationId));
-      assert.equal(row?.totalAmount, "150.00");
+      assert.deepEqual(
+        [row?.totalAmount, row?.subtotalExclTax, row?.taxAmount],
+        ["180.00", "150.00", "30.00"],
+      );
 
       const { buildSnapshot } = await import("@/lib/billing-sync/snapshots/build-snapshot");
       const built = await buildSnapshot(

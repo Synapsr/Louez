@@ -1,14 +1,21 @@
 import { useMemo } from "react";
 import { useStoreTimezone } from "@/contexts/store-context";
 
-import type { PricingKind, PricingMode } from "@louez/types";
+import { taxSettingsForRepricing, type TaxDisplayMode } from "@louez/api/services/pricing-facts";
+import { computeReservationTotals } from "@louez/api/services/reservation-totals";
+import type { PricingKind, PricingMode, TaxSettings } from "@louez/types";
 import { calculateDurationMinutes, isRateBasedProduct, minutesToPriceDuration } from "@louez/utils";
 
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { calculateDuration } from "@/lib/utils/duration";
 import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
 
-import type { CalculatedEditableItem, EditableItem, ReservationCalculations } from "../types";
+import type {
+  CalculatedEditableItem,
+  EditableItem,
+  Product,
+  ReservationCalculations,
+} from "../types";
 
 function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
@@ -204,6 +211,35 @@ export function calculateEditableItemPrice(
     duration,
     displayDuration,
   };
+}
+
+/**
+ * The total the edit will write (slice 10): the tax engine over the lines,
+ * the insurance (exempt), the delivery fee and the discount, in the mode the
+ * reservation recorded or else the store's, with the same function and the
+ * same inputs as the server (`priceReservationEdit`).
+ */
+export function previewEditTotal(params: {
+  items: ReadonlyArray<{ totalPrice: number; effectiveUnitPrice: number; product: Product | null }>;
+  insuranceAmount: number;
+  discountAmount: number;
+  deliveryFee: number;
+  deposit: number;
+  storeTax: TaxSettings | undefined;
+  recordedTaxDisplayMode: TaxDisplayMode | null;
+}): number {
+  return computeReservationTotals({
+    lines: params.items.map((item) => ({
+      subtotal: roundCurrency(item.totalPrice),
+      unitPrice: roundCurrency(item.effectiveUnitPrice),
+      taxSettings: item.product?.taxSettings ?? null,
+    })),
+    insuranceAmount: params.insuranceAmount,
+    discountAmount: params.discountAmount,
+    deliveryFee: params.deliveryFee,
+    totalDeposit: params.deposit,
+    taxSettings: taxSettingsForRepricing(params.storeTax, params.recordedTaxDisplayMode),
+  }).total;
 }
 
 interface UseEditReservationPricingParams {
