@@ -577,6 +577,7 @@
       "invitationCancelled": "Invito annullato",
       "invitationResent": "Invito reinviato",
       "invitationAlreadySent": "Un invito è già stato inviato a questa email",
+      "invitationEmailLimit": "Questo negozio ha richiesto {max} e-mail di invito nelle ultime 24 ore, che sia stato possibile inviarle o no: è il massimo. Riprova più tardi.",
       "resend": "Reinvia",
       "cancel": "Annulla",
       "invitedOn": "Invitato il {date}",

@@ -577,6 +577,7 @@
       "invitationCancelled": "Convite cancelado",
       "invitationResent": "Convite reenviado",
       "invitationAlreadySent": "Um convite já foi enviado para este email",
+      "invitationEmailLimit": "Esta loja pediu {max} e-mails de convite nas últimas 24 horas, quer tenham podido ser enviados ou não: é o máximo. Tente novamente mais tarde.",
       "resend": "Reenviar",
       "cancel": "Cancelar",
       "invitedOn": "Convidado em {date}",

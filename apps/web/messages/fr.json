@@ -577,6 +577,7 @@
       "invitationCancelled": "Invitation annulée",
       "invitationResent": "Invitation renvoyée",
       "invitationAlreadySent": "Une invitation a déjà été envoyée à cette adresse",
+      "invitationEmailLimit": "Cette boutique a demandé {max} e-mails d'invitation ces dernières 24 heures, qu'ils aient pu partir ou non : c'est le maximum. Réessayez plus tard.",
       "resend": "Renvoyer",
       "cancel": "Annuler",
       "invitedOn": "Invité le {date}",

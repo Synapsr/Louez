@@ -577,6 +577,7 @@
       "invitationCancelled": "Uitnodiging geannuleerd",
       "invitationResent": "Uitnodiging opnieuw verzonden",
       "invitationAlreadySent": "Er is al een uitnodiging naar dit e-mailadres verzonden",
+      "invitationEmailLimit": "Deze winkel heeft de afgelopen 24 uur {max} uitnodigingsmails aangevraagd, of ze nu verzonden konden worden of niet: meer kan niet. Probeer het later opnieuw.",
       "resend": "Opnieuw verzenden",
       "cancel": "Annuleren",
       "invitedOn": "Uitgenodigd op {date}",

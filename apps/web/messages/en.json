@@ -577,6 +577,7 @@
       "invitationCancelled": "Invitation cancelled",
       "invitationResent": "Invitation resent",
       "invitationAlreadySent": "An invitation has already been sent to this email",
+      "invitationEmailLimit": "This store has requested {max} invitation e-mails in the last 24 hours, whether or not they could be sent: the most it may. Try again later.",
       "resend": "Resend",
       "cancel": "Cancel",
       "invitedOn": "Invited on {date}",

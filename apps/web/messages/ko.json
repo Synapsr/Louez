@@ -575,6 +575,7 @@
       "invitationCancelled": "초대가 취소되었습니다.",
       "invitationResent": "초대를 다시 보냈습니다.",
       "invitationAlreadySent": "이 이메일로 초대장이 이미 전송되었습니다.",
+      "invitationEmailLimit": "이 스토어는 지난 24시간 동안 발송 여부와 관계없이 초대 이메일 {max}건을 요청했습니다. 이것이 최대치입니다. 나중에 다시 시도해 주세요.",
       "resend": "Resend",
       "cancel": "취소",
       "invitedOn": "{date}에 초대됨",

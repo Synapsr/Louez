@@ -575,6 +575,7 @@
       "invitationCancelled": "招待がキャンセルされました",
       "invitationResent": "招待状を再送信しました",
       "invitationAlreadySent": "招待状はすでにこのメールに送信されています",
+      "invitationEmailLimit": "このストアは過去24時間に{max}件の招待メールを依頼しました（送信できたかどうかにかかわらず）。これが上限です。しばらくしてからもう一度お試しください。",
       "resend": "Resend",
       "cancel": "キャンセル",
       "invitedOn": "{date} に招待されました",

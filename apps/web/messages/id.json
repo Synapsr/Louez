@@ -575,6 +575,7 @@
       "invitationCancelled": "Undangan dibatalkan",
       "invitationResent": "Undangan dikirim ulang",
       "invitationAlreadySent": "Undangan telah dikirim ke email ini",
+      "invitationEmailLimit": "Toko ini telah meminta {max} email undangan dalam 24 jam terakhir, terkirim atau tidak: itu batas maksimalnya. Coba lagi nanti.",
       "resend": "Resend",
       "cancel": "Batalkan",
       "invitedOn": "Diundang pada {date}",

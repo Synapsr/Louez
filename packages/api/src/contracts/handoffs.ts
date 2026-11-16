@@ -209,7 +209,8 @@ const FAILURE_MESSAGES: Record<string, string> = {
   request_changed:
     "The address got a Louez account, a membership or an invitation since the request: ask again for an up-to-date approval.",
   limit_reached: "The store's plan has no seat left for a member.",
-  email_limit: "The store sent too many invitation e-mails today. Try again tomorrow.",
+  email_limit:
+    "The store requested as many invitation e-mails as it may in 24 hours, whether or not they could be sent. Try again later.",
   store_email_required:
     "Stripe needs an email for the account: set the store's contact email (settings_update_store_info), then ask for a new link.",
 };

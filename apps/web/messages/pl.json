@@ -577,6 +577,7 @@
       "invitationCancelled": "Zaproszenie anulowane",
       "invitationResent": "Zaproszenie wysłane ponownie",
       "invitationAlreadySent": "Zaproszenie zostało już wysłane na ten email",
+      "invitationEmailLimit": "Ten sklep zlecił w ciągu ostatnich 24 godzin {max} e-maili z zaproszeniem, niezależnie od tego, czy udało się je wysłać: to maksimum. Spróbuj ponownie później.",
       "resend": "Wyślij ponownie",
       "cancel": "Anuluj",
       "invitedOn": "Zaproszono {date}",

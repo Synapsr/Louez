@@ -577,6 +577,7 @@
       "invitationCancelled": "Einladung storniert",
       "invitationResent": "Einladung erneut gesendet",
       "invitationAlreadySent": "Eine Einladung wurde bereits an diese E-Mail gesendet",
+      "invitationEmailLimit": "Dieser Shop hat in den letzten 24 Stunden {max} Einladungs-E-Mails angefordert, ob sie versendet werden konnten oder nicht: mehr sind nicht möglich. Versuchen Sie es später erneut.",
       "resend": "Erneut senden",
       "cancel": "Abbrechen",
       "invitedOn": "Eingeladen am {date}",

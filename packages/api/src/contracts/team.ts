@@ -84,7 +84,9 @@ const pageInput = (listTool: string) =>
       .string()
       .max(64)
       .optional()
-      .describe(`The nextCursor of the previous ${listTool} page. Leave it out for the first page.`),
+      .describe(
+        `The nextCursor of the previous ${listTool} page. Leave it out for the first page.`,
+      ),
     limit: z.coerce
       .number()
       .int()
@@ -116,16 +118,11 @@ export const listInvitationsOutput = z.object({
 });
 
 export const inviteMemberInput = z.object({
-  email: z
-    .email()
-    .max(255)
-    .describe("The e-mail address of the person to invite."),
+  email: z.email().max(255).describe("The e-mail address of the person to invite."),
   role: z
     .literal("member")
     .optional()
-    .describe(
-      'Always "member", the only role an invitation gives. Owners are never invited.',
-    ),
+    .describe('Always "member", the only role an invitation gives. Owners are never invited.'),
 });
 export const inviteMemberOutput = z.object({
   /**
@@ -241,8 +238,8 @@ export const teamErrors = {
     }),
   emailLimit: () =>
     apiError("TOO_MANY_REQUESTS", "TEAM_INVITATION_EMAIL_LIMIT", {
-      message: `This store sent ${INVITATION_EMAILS_PER_DAY} invitation e-mails in the last 24 hours, the most it may. Try again later.`,
-      i18nKey: "errors.tooManyRequests",
+      message: `This store requested ${INVITATION_EMAILS_PER_DAY} invitation e-mails in the last 24 hours, whether or not they could be sent, the most it may. Try again later.`,
+      i18nKey: "dashboard.team.invitationEmailLimit",
       retryable: true,
       details: { max: INVITATION_EMAILS_PER_DAY },
     }),

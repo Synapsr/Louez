@@ -575,6 +575,7 @@
       "invitationCancelled": "邀请已取消",
       "invitationResent": "邀请已重新发送",
       "invitationAlreadySent": "邀请已发送至此电子邮件地址",
+      "invitationEmailLimit": "此店铺在过去 24 小时内已请求发送 {max} 封邀请邮件（无论是否成功发出），已达上限。请稍后再试。",
       "resend": "Resend",
       "cancel": "取消",
       "invitedOn": "受邀于 {date}",
