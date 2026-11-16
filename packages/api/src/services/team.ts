@@ -11,7 +11,7 @@ import {
   type ApiHandoffPayload,
   type Transaction,
 } from "@louez/db";
-import { and, count, desc, eq, gt, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -279,6 +279,30 @@ async function queueInvitationEmail(
     },
   ]);
   return { invitationEmail: sends ? "queued" : "not_configured", effectIds };
+}
+
+/**
+ * The invitation's e-mails not yet delivered, made pointless by a resend:
+ * waiting, failed or given up, they are `cancelled` and lose their payload,
+ * so neither an old one goes out beside the new nor the inbox keeps showing
+ * one as not sent. A row being sent right now is left to finish.
+ */
+async function cancelUndeliveredInvitationEmails(
+  tx: Transaction,
+  storeId: string,
+  invitationId: string,
+) {
+  await tx
+    .update(apiEffects)
+    .set({ status: "cancelled", payload: {}, claimToken: null })
+    .where(
+      and(
+        eq(apiEffects.storeId, storeId),
+        eq(apiEffects.type, "team.invitationEmail"),
+        inArray(apiEffects.status, ["pending", "failed", "abandoned"]),
+        eq(sql`JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.invitationId'))`, invitationId),
+      ),
+    );
 }
 
 const invitationExpiry = (now: Date) => new Date(now.getTime() + INVITATION_VALIDITY_DAYS * DAY_MS);
@@ -714,6 +738,7 @@ export async function resendInvitation(caller: TeamCaller, id: string, now = new
       .update(storeInvitations)
       .set({ token: nanoid(32), expiresAt })
       .where(eq(storeInvitations.id, id));
+    await cancelUndeliveredInvitationEmails(tx, caller.storeId, id);
     const queued = await queueInvitationEmail(tx, caller, id);
     return {
       invitation: toInvitation(

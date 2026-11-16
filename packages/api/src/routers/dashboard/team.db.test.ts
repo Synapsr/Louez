@@ -1693,6 +1693,75 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
   // --- The inbox ----------------------------------------------------------------
 
+  test("sending an invitation again clears its earlier e-mails not delivered, and the inbox item with them", async () => {
+    await pendingInvitation("again@tm.test");
+    const [invitation] = await invitations();
+    assert.ok(invitation);
+    const earlier = (id: string, status: "abandoned" | "failed") => ({
+      id,
+      storeId: STORE,
+      type: "team.invitationEmail",
+      orderingKey: `invitation:${invitation.id}:email`,
+      payload: {
+        invitationId: invitation.id,
+        store: { name: "Brest Surf", logoUrl: null, country: null },
+        inviterName: "Olivia Owner",
+      },
+      status,
+      attempts: 1,
+      lastError: "Abandoned: email_not_configured: no e-mail service is set up",
+      nextAttemptAt: new Date(Date.now() - 3_600_000),
+      createdAt: new Date(Date.now() - 3_600_000),
+    });
+    await louezDb.db
+      .insert(louezDb.apiEffects)
+      .values([
+        earlier("tm_eff_rs_given_up", "abandoned"),
+        earlier("tm_eff_rs_failed_0", "failed"),
+      ]);
+    const unsent = async () =>
+      (
+        (await orpc.call(
+          inboxRouter.list,
+          {},
+          {
+            context: (await apiKey())(),
+            path: ["dashboard", "inbox", "list"],
+          },
+        )) as { items: Array<{ type: string; id: string }> }
+      ).items.filter((item) => item.type === "invitation_not_sent");
+    assert.deepEqual(
+      (await unsent()).map((item) => item.id),
+      ["invitation_not_sent:tm_eff_rs_given_up"],
+    );
+
+    await run("resendInvitation", { id: invitation.id }, session());
+
+    const rows = await louezDb.db
+      .select({
+        id: louezDb.apiEffects.id,
+        status: louezDb.apiEffects.status,
+        payload: louezDb.apiEffects.payload,
+      })
+      .from(louezDb.apiEffects)
+      .orderBy(louezDb.apiEffects.seq);
+    assert.deepEqual(
+      rows
+        .filter((row) => row.id.startsWith("tm_eff_rs_"))
+        .map((row) => [row.id, row.status, row.payload]),
+      [
+        ["tm_eff_rs_given_up", "cancelled", {}],
+        ["tm_eff_rs_failed_0", "cancelled", {}],
+      ],
+    );
+    assert.deepEqual(
+      rows.filter((row) => !row.id.startsWith("tm_eff_rs_")).map((row) => row.status),
+      ["pending"],
+      "the new e-mail is queued",
+    );
+    assert.deepEqual(await unsent(), [], "only the current e-mail counts");
+  });
+
   test("an invitation e-mail that never went out is an inbox item for who reads the team, without its link", async () => {
     const token = await pendingInvitation("lost@tm.test");
     const [invitation] = await invitations();
