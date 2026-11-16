@@ -167,6 +167,8 @@ async function recordWrite<T extends { output: unknown }>(input: {
   receipt: BaseContext["receipt"];
   rawInput: unknown;
   dispatchEffects?: (ids: readonly string[]) => void;
+  /** `meta.recoverUnknown`, bound to the call's context. */
+  recoverUnknown?: (targetId: string) => Promise<unknown>;
   run: () => T | PromiseLike<T>;
   replay: (output: unknown) => T | PromiseLike<T>;
 }): Promise<T> {
@@ -190,6 +192,7 @@ async function recordWrite<T extends { output: unknown }>(input: {
         input: input.rawInput,
       }),
       dispatchEffects: input.dispatchEffects,
+      recoverUnknown: input.recoverUnknown,
     },
     async () => {
       ran = await input.run();
@@ -323,6 +326,9 @@ export const storeProcedure = authenticated.use(
       receipt: context.receipt,
       rawInput: input,
       dispatchEffects: ports.dispatchEffects,
+      recoverUnknown: meta.recoverUnknown
+        ? (targetId) => meta.recoverUnknown!(targetId, nextContext)
+        : undefined,
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
       replay: async (result) => {

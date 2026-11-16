@@ -9944,6 +9944,14 @@
           "confirmBeyondStock": "Confirmar a reserva acima do seu stock?",
           "confirmBeyondStockAndBuffer": "Confirmar a reserva acima do seu stock e da sua margem entre alugueres?",
           "recordDeposit": "Registar uma caução recebida?",
+          "createQuote": "Criar o orçamento?",
+          "createQuotePastBuffer": "Criar o orçamento apesar da sua margem entre alugueres?",
+          "createQuoteBeyondStock": "Criar o orçamento acima do seu stock?",
+          "createQuoteBeyondStockAndBuffer": "Criar o orçamento acima do seu stock e da sua margem entre alugueres?",
+          "createBooking": "Criar a reserva?",
+          "createBookingPastBuffer": "Criar a reserva apesar da sua margem entre alugueres?",
+          "createBookingBeyondStock": "Criar a reserva acima do seu stock?",
+          "createBookingBeyondStockAndBuffer": "Criar a reserva acima do seu stock e da sua margem entre alugueres?",
           "moveDatesWithinRules": "Mudar as datas da reserva?",
           "moveDatesPastBuffer": "Mudar as datas da reserva apesar da sua margem entre alugueres?",
           "moveDatesBeyondStock": "Mudar as datas da reserva acima do seu stock?",
@@ -9984,6 +9992,10 @@
           "noMessage": "Nenhuma mensagem é enviada ao cliente.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> recebidos · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>",
+          "bookingFor": "Para <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Para <v>{customer}</v> · <v>{email}</v>, cliente novo",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> e {others, plural, one {mais # linha} other {mais # linhas}}",
           "datesMoved": "Datas: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "Novo total: <v>{total}</v> (diferença: <v>{difference}</v>). Nada é cobrado nem reembolsado."
         },
@@ -10009,6 +10021,8 @@
             "request_accepted": "pedido aceite",
             "request_rejected": "pedido recusado",
             "reservation_cancelled": "reserva cancelada",
+            "quote_sent": "orçamento",
+            "booking_confirmed": "reserva confirmada",
             "reservation_modified": "reserva alterada"
           }
         }

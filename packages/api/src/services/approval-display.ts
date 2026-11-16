@@ -31,6 +31,8 @@ export const CHOICES = {
     "request_accepted",
     "request_rejected",
     "reservation_cancelled",
+    "quote_sent",
+    "booking_confirmed",
     "reservation_modified",
   ],
   /** Which channels a message goes on: the sentence names them itself. */
@@ -113,6 +115,18 @@ export const HEADLINES = {
   confirmPastBuffer: CONFIRMS,
   confirmBeyondStock: CONFIRMS,
   confirmBeyondStockAndBuffer: CONFIRMS,
+  /**
+   * A creation (`reservations.create`): a quote or a confirmed booking, by
+   * what departs from the store's rules. The headline states the status.
+   */
+  createQuote: {},
+  createQuotePastBuffer: {},
+  createQuoteBeyondStock: {},
+  createQuoteBeyondStockAndBuffer: {},
+  createBooking: {},
+  createBookingPastBuffer: {},
+  createBookingBeyondStock: {},
+  createBookingBeyondStockAndBuffer: {},
   /** A booking's dates moved by an agent with an override, nothing short: the stock and the buffer cover it. */
   moveDatesWithinRules: {},
   moveDatesPastBuffer: {},
@@ -229,6 +243,14 @@ export const FACTS = {
     channels: choiceOf("messageChannels"),
   },
   noMessage: {},
+  /** "For Camille Simon · camille@example.com": the customer of a booking being created. */
+  bookingFor: { customer: TEXT, email: TEXT },
+  /** The same, for a customer the creation adds to the store. */
+  bookingForNewCustomer: { customer: TEXT, email: TEXT },
+  /** "2 × Kayak biplace": what a booking being created holds, on one line. */
+  bookingLine: { product: TEXT, quantity: COUNT },
+  /** "2 × Kayak biplace and 2 more lines" */
+  bookingLines: { product: TEXT, quantity: COUNT, others: COUNT },
 } as const satisfies Record<string, Record<string, ValueSpec>>;
 
 export type HeadlineKey = keyof typeof HEADLINES;

@@ -9944,6 +9944,14 @@
           "confirmBeyondStock": "Potwierdzić rezerwację ponad stan magazynu?",
           "confirmBeyondStockAndBuffer": "Potwierdzić rezerwację ponad stan magazynu i mimo przerwy między wynajmami?",
           "recordDeposit": "Zapisać pobraną kaucję?",
+          "createQuote": "Utworzyć ofertę?",
+          "createQuotePastBuffer": "Utworzyć ofertę mimo przerwy między wynajmami?",
+          "createQuoteBeyondStock": "Utworzyć ofertę ponad stan magazynu?",
+          "createQuoteBeyondStockAndBuffer": "Utworzyć ofertę ponad stan magazynu i mimo przerwy między wynajmami?",
+          "createBooking": "Utworzyć rezerwację?",
+          "createBookingPastBuffer": "Utworzyć rezerwację mimo przerwy między wynajmami?",
+          "createBookingBeyondStock": "Utworzyć rezerwację ponad stan magazynu?",
+          "createBookingBeyondStockAndBuffer": "Utworzyć rezerwację ponad stan magazynu i mimo przerwy między wynajmami?",
           "moveDatesWithinRules": "Przesunąć daty rezerwacji?",
           "moveDatesPastBuffer": "Przesunąć daty rezerwacji mimo przerwy między wynajmami?",
           "moveDatesBeyondStock": "Przesunąć daty rezerwacji ponad stan magazynu?",
@@ -9984,6 +9992,10 @@
           "noMessage": "Klient nie dostaje żadnej wiadomości.",
           "depositCollected": "<v>{type}</v>: pobrano <v>{amount}</v> · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>",
+          "bookingFor": "Dla <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Dla <v>{customer}</v> · <v>{email}</v>, nowy klient",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> i {others, plural, one {jeszcze # pozycja} few {jeszcze # pozycje} other {jeszcze # pozycji}}",
           "datesMoved": "Daty: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "Nowa suma: <v>{total}</v> (różnica: <v>{difference}</v>). Nic nie jest pobierane ani zwracane."
         },
@@ -10009,6 +10021,8 @@
             "request_accepted": "prośba przyjęta",
             "request_rejected": "prośba odrzucona",
             "reservation_cancelled": "rezerwacja anulowana",
+            "quote_sent": "oferta",
+            "booking_confirmed": "rezerwacja potwierdzona",
             "reservation_modified": "rezerwacja zmieniona"
           }
         }

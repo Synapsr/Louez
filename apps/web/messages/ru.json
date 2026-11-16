@@ -9944,6 +9944,14 @@
           "confirmBeyondStock": "Подтвердить бронирование сверх вашего запаса?",
           "confirmBeyondStockAndBuffer": "Подтвердить бронирование сверх вашего запаса и вашего перерыва между арендами?",
           "recordDeposit": "Записать полученный залог?",
+          "createQuote": "Создать предложение?",
+          "createQuotePastBuffer": "Создать предложение, несмотря на ваш перерыв между арендами?",
+          "createQuoteBeyondStock": "Создать предложение сверх вашего запаса?",
+          "createQuoteBeyondStockAndBuffer": "Создать предложение сверх вашего запаса и вашего перерыва между арендами?",
+          "createBooking": "Создать бронирование?",
+          "createBookingPastBuffer": "Создать бронирование, несмотря на ваш перерыв между арендами?",
+          "createBookingBeyondStock": "Создать бронирование сверх вашего запаса?",
+          "createBookingBeyondStockAndBuffer": "Создать бронирование сверх вашего запаса и вашего перерыва между арендами?",
           "moveDatesWithinRules": "Перенести даты бронирования?",
           "moveDatesPastBuffer": "Перенести даты бронирования, несмотря на ваш перерыв между арендами?",
           "moveDatesBeyondStock": "Перенести даты бронирования сверх вашего запаса?",
@@ -9984,6 +9992,10 @@
           "noMessage": "Клиенту ничего не отправляется.",
           "depositCollected": "<v>{type}</v>: получено <v>{amount}</v> · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>",
+          "bookingFor": "Для <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Для <v>{customer}</v> · <v>{email}</v>, новый клиент",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> и {others, plural, one {ещё # позиция} few {ещё # позиции} other {ещё # позиций}}",
           "datesMoved": "Даты: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "Новая сумма: <v>{total}</v> (разница: <v>{difference}</v>). Ничего не списывается и не возвращается."
         },
@@ -10009,6 +10021,8 @@
             "request_accepted": "запрос принят",
             "request_rejected": "запрос отклонён",
             "reservation_cancelled": "бронирование отменено",
+            "quote_sent": "предложение",
+            "booking_confirmed": "бронирование подтверждено",
             "reservation_modified": "бронирование изменено"
           }
         }

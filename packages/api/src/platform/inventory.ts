@@ -359,6 +359,15 @@ export const capabilities = [
 
   // --- Reservations: creation and changes (2b) ---------------------------
   {
+    // An agent's or a member's creation, priced as the checkout prices it.
+    id: "reservations.create",
+    sources: [procedure("reservations", "create")],
+    kind: "write",
+    sensitive: "send",
+    plan: { lot: "2b" },
+    migrated: true,
+  },
+  {
     id: "reservations.checkAvailability",
     sources: [
       action(SA.reservations, "getManualReservationAvailability"),

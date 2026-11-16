@@ -9944,6 +9944,14 @@
           "confirmBeyondStock": "De boeking bevestigen boven je voorraad?",
           "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?",
           "recordDeposit": "Een ontvangen borg registreren?",
+          "createQuote": "De offerte maken?",
+          "createQuotePastBuffer": "De offerte maken ondanks je tijd tussen twee verhuren?",
+          "createQuoteBeyondStock": "De offerte maken boven je voorraad?",
+          "createQuoteBeyondStockAndBuffer": "De offerte maken boven je voorraad en je tijd tussen twee verhuren?",
+          "createBooking": "De boeking maken?",
+          "createBookingPastBuffer": "De boeking maken ondanks je tijd tussen twee verhuren?",
+          "createBookingBeyondStock": "De boeking maken boven je voorraad?",
+          "createBookingBeyondStockAndBuffer": "De boeking maken boven je voorraad en je tijd tussen twee verhuren?",
           "moveDatesWithinRules": "De data van de boeking verplaatsen?",
           "moveDatesPastBuffer": "De data van de boeking verplaatsen ondanks je tijd tussen twee verhuren?",
           "moveDatesBeyondStock": "De data van de boeking verplaatsen boven je voorraad?",
@@ -9984,6 +9992,10 @@
           "noMessage": "De klant krijgt geen bericht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>",
+          "bookingFor": "Voor <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Voor <v>{customer}</v> · <v>{email}</v>, nieuwe klant",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> en {others, plural, one {nog # regel} other {nog # regels}}",
           "datesMoved": "Data: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "Nieuw totaal: <v>{total}</v> (verschil: <v>{difference}</v>). Er wordt niets afgeschreven of terugbetaald."
         },
@@ -10009,6 +10021,8 @@
             "request_accepted": "aanvraag geaccepteerd",
             "request_rejected": "aanvraag afgewezen",
             "reservation_cancelled": "boeking geannuleerd",
+            "quote_sent": "offerte",
+            "booking_confirmed": "boeking bevestigd",
             "reservation_modified": "boeking gewijzigd"
           }
         }

@@ -261,6 +261,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     );
     assert.deepEqual(tools.map((entry) => entry.meta.mcp.name).sort(), [
       "reservations_cancel",
+      "reservations_create",
       "reservations_get",
       "reservations_get_planning_timeline",
       "reservations_list",

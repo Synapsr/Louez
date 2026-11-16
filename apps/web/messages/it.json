@@ -9944,6 +9944,14 @@
           "confirmBeyondStock": "Confermare la prenotazione oltre la tua disponibilità?",
           "confirmBeyondStockAndBuffer": "Confermare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?",
           "recordDeposit": "Registrare un deposito incassato?",
+          "createQuote": "Creare il preventivo?",
+          "createQuotePastBuffer": "Creare il preventivo nonostante il tuo margine tra due noleggi?",
+          "createQuoteBeyondStock": "Creare il preventivo oltre la tua disponibilità?",
+          "createQuoteBeyondStockAndBuffer": "Creare il preventivo oltre la tua disponibilità e il tuo margine tra due noleggi?",
+          "createBooking": "Creare la prenotazione?",
+          "createBookingPastBuffer": "Creare la prenotazione nonostante il tuo margine tra due noleggi?",
+          "createBookingBeyondStock": "Creare la prenotazione oltre la tua disponibilità?",
+          "createBookingBeyondStockAndBuffer": "Creare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?",
           "moveDatesWithinRules": "Spostare le date della prenotazione?",
           "moveDatesPastBuffer": "Spostare le date della prenotazione nonostante il tuo margine tra due noleggi?",
           "moveDatesBeyondStock": "Spostare le date della prenotazione oltre la tua disponibilità?",
@@ -9984,6 +9992,10 @@
           "noMessage": "Al cliente non viene inviato alcun messaggio.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> incassati · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, restituiti al cliente · <v>{method}</v>",
+          "bookingFor": "Per <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Per <v>{customer}</v> · <v>{email}</v>, nuovo cliente",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> e {others, plural, one {# altra riga} other {altre # righe}}",
           "datesMoved": "Date: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "Nuovo totale: <v>{total}</v> (differenza: <v>{difference}</v>). Nulla viene addebitato o rimborsato."
         },
@@ -10009,6 +10021,8 @@
             "request_accepted": "richiesta accettata",
             "request_rejected": "richiesta rifiutata",
             "reservation_cancelled": "prenotazione annullata",
+            "quote_sent": "preventivo",
+            "booking_confirmed": "prenotazione confermata",
             "reservation_modified": "prenotazione modificata"
           }
         }

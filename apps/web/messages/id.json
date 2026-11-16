@@ -9944,6 +9944,14 @@
           "confirmBeyondStock": "Konfirmasi pemesanan melebihi stok Anda?",
           "confirmBeyondStockAndBuffer": "Konfirmasi pemesanan melebihi stok dan jeda antarsewa Anda?",
           "recordDeposit": "Catat uang jaminan yang diterima?",
+          "createQuote": "Buat penawaran?",
+          "createQuotePastBuffer": "Buat penawaran meski melanggar jeda antarsewa Anda?",
+          "createQuoteBeyondStock": "Buat penawaran melebihi stok Anda?",
+          "createQuoteBeyondStockAndBuffer": "Buat penawaran melebihi stok dan jeda antarsewa Anda?",
+          "createBooking": "Buat pemesanan?",
+          "createBookingPastBuffer": "Buat pemesanan meski melanggar jeda antarsewa Anda?",
+          "createBookingBeyondStock": "Buat pemesanan melebihi stok Anda?",
+          "createBookingBeyondStockAndBuffer": "Buat pemesanan melebihi stok dan jeda antarsewa Anda?",
           "moveDatesWithinRules": "Pindahkan tanggal pemesanan?",
           "moveDatesPastBuffer": "Pindahkan tanggal pemesanan meski melanggar jeda antarsewa Anda?",
           "moveDatesBeyondStock": "Pindahkan tanggal pemesanan melebihi stok Anda?",
@@ -9984,6 +9992,10 @@
           "noMessage": "Tidak ada pesan yang dikirim ke pelanggan.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> diterima · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>",
+          "bookingFor": "Untuk <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Untuk <v>{customer}</v> · <v>{email}</v>, pelanggan baru",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> dan {others, plural, other {# baris lagi}}",
           "datesMoved": "Tanggal: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "Total baru: <v>{total}</v> (selisih: <v>{difference}</v>). Tidak ada yang ditagih atau dikembalikan."
         },
@@ -10009,6 +10021,8 @@
             "request_accepted": "permintaan diterima",
             "request_rejected": "permintaan ditolak",
             "reservation_cancelled": "pemesanan dibatalkan",
+            "quote_sent": "penawaran",
+            "booking_confirmed": "pemesanan dikonfirmasi",
             "reservation_modified": "pemesanan diubah"
           }
         }

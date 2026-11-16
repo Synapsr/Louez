@@ -299,6 +299,7 @@ describe("MCP directory conformance", () => {
       reservations_poll: "read",
       reservations_update: "overwrite/customer",
       reservations_update_notes: "overwrite",
+      reservations_create: "additive/customer",
       reservations_update_status: "overwrite/customer",
       search_global: "read",
       // Statistics procedures, under the names they had as hand-written tools.
@@ -432,7 +433,7 @@ describe("MCP directory conformance", () => {
       "delete_payment",
       "team_remove_member",
       "team_cancel_invitation",
-      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status, reservations_update)",
+      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status, reservations_create, reservations_update)",
     ]) {
       assert.ok(instructions.includes(name), name);
     }
@@ -458,6 +459,7 @@ describe("MCP directory conformance", () => {
       "team_remove_member",
       "team_cancel_invitation",
       "reservations_update_status",
+      "reservations_create",
       "reservations_update",
     ];
     for (const tool of tools) {
