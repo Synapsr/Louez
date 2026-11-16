@@ -9,6 +9,7 @@ import { recordApplicationFeeRefund } from "@/lib/pay-as-you-go/metering";
 import { stripe } from "@/lib/stripe/client";
 
 import { mapDisputeStatus } from "./dispute-facts";
+import { describeWebhookError } from "./webhook-error";
 
 // The fee refund at source (louez-billing docs/api, fees.md §9): the application fee
 // follows the money the store keeps. On a refund or a dispute of a charge, Louez reads
@@ -281,7 +282,7 @@ async function alertFeeGivenBackInExcess(
   } catch (error) {
     alerts.log.error(
       "billing",
-      `the fee given back in excess on charge ${input.chargeId} could not be alerted: ${error instanceof Error ? error.message : String(error)}`,
+      `the fee given back in excess on charge ${input.chargeId} could not be alerted: ${JSON.stringify(describeWebhookError(error))}`,
     );
   }
 }

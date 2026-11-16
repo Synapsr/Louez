@@ -505,11 +505,17 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal((await effectRows()).length, 0, "no e-mail, as the dashboard always did");
   });
 
-  test("an instance without e-mail queues nothing and says so", async () => {
+  test("an instance without e-mail still queues the owed e-mail, and says it cannot go", async () => {
     emailConfigured = false;
     const result = await run("invite", { email: "new@tm.test" }, session());
     assert.equal(result.invitationEmail, "not_configured");
-    assert.equal((await effectRows()).length, 0);
+    // Queued all the same: its sender gives it up at once, and the inbox shows it.
+    const rows = await effectRows();
+    assert.deepEqual(
+      rows.map((row) => [row.type, row.payload.invitationId]),
+      [["team.invitationEmail", result.invitation?.id]],
+    );
+    assert.deepEqual(dispatched, [rows[0]?.id]);
   });
 
   // --- An agent's invitation: approved by an owner from a link ----------------
@@ -1057,6 +1063,37 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .set({ createdAt: new Date(Date.now() - 25 * 3_600_000) })
       .where(orm.eq(louezDb.apiEffects.type, "team.invitationEmail"));
     assert.equal((await run("invite", { email: "new@tm.test" }, session())).outcome, "invited");
+  });
+
+  test("without e-mail the daily cap holds as with it: every e-mail queued counts, and none is added past it", async () => {
+    emailConfigured = false;
+    try {
+      await run("invite", { email: "cap@tm.test" }, session());
+      const [invitation] = await invitations();
+      assert.ok(invitation);
+      for (let sent = 1; sent < INVITATION_EMAILS_PER_DAY; sent += 1) {
+        await run("resendInvitation", { id: invitation.id }, session());
+      }
+      const queued = async () =>
+        (await effectRows()).filter((row) => row.type === "team.invitationEmail").length;
+      assert.equal(await queued(), INVITATION_EMAILS_PER_DAY);
+
+      await rejects(
+        run("resendInvitation", { id: invitation.id }, session()),
+        "TEAM_INVITATION_EMAIL_LIMIT",
+      );
+      assert.equal(await queued(), INVITATION_EMAILS_PER_DAY, "no row is added past the cap");
+
+      // With e-mail, the same rows count the same: the cap is one rule.
+      emailConfigured = true;
+      await rejects(
+        run("invite", { email: "past-cap@tm.test" }, session()),
+        "TEAM_INVITATION_EMAIL_LIMIT",
+      );
+      assert.equal(await queued(), INVITATION_EMAILS_PER_DAY);
+    } finally {
+      emailConfigured = true;
+    }
   });
 
   test("Codex's scenario: an expired approval asked again counts toward the cap", async () => {
@@ -1687,6 +1724,75 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
   // --- The inbox ----------------------------------------------------------------
 
+  test("sending an invitation again clears its earlier e-mails not delivered, and the inbox item with them", async () => {
+    await pendingInvitation("again@tm.test");
+    const [invitation] = await invitations();
+    assert.ok(invitation);
+    const earlier = (id: string, status: "abandoned" | "failed") => ({
+      id,
+      storeId: STORE,
+      type: "team.invitationEmail",
+      orderingKey: `invitation:${invitation.id}:email`,
+      payload: {
+        invitationId: invitation.id,
+        store: { name: "Brest Surf", logoUrl: null, country: null },
+        inviterName: "Olivia Owner",
+      },
+      status,
+      attempts: 1,
+      lastError: "Abandoned: email_not_configured: no e-mail service is set up",
+      nextAttemptAt: new Date(Date.now() - 3_600_000),
+      createdAt: new Date(Date.now() - 3_600_000),
+    });
+    await louezDb.db
+      .insert(louezDb.apiEffects)
+      .values([
+        earlier("tm_eff_rs_given_up", "abandoned"),
+        earlier("tm_eff_rs_failed_0", "failed"),
+      ]);
+    const unsent = async () =>
+      (
+        (await orpc.call(
+          inboxRouter.list,
+          {},
+          {
+            context: (await apiKey())(),
+            path: ["dashboard", "inbox", "list"],
+          },
+        )) as { items: Array<{ type: string; id: string }> }
+      ).items.filter((item) => item.type === "invitation_not_sent");
+    assert.deepEqual(
+      (await unsent()).map((item) => item.id),
+      ["invitation_not_sent:tm_eff_rs_given_up"],
+    );
+
+    await run("resendInvitation", { id: invitation.id }, session());
+
+    const rows = await louezDb.db
+      .select({
+        id: louezDb.apiEffects.id,
+        status: louezDb.apiEffects.status,
+        payload: louezDb.apiEffects.payload,
+      })
+      .from(louezDb.apiEffects)
+      .orderBy(louezDb.apiEffects.seq);
+    assert.deepEqual(
+      rows
+        .filter((row) => row.id.startsWith("tm_eff_rs_"))
+        .map((row) => [row.id, row.status, row.payload]),
+      [
+        ["tm_eff_rs_given_up", "cancelled", {}],
+        ["tm_eff_rs_failed_0", "cancelled", {}],
+      ],
+    );
+    assert.deepEqual(
+      rows.filter((row) => !row.id.startsWith("tm_eff_rs_")).map((row) => row.status),
+      ["pending"],
+      "the new e-mail is queued",
+    );
+    assert.deepEqual(await unsent(), [], "only the current e-mail counts");
+  });
+
   test("an invitation e-mail that never went out is an inbox item for who reads the team, without its link", async () => {
     const token = await pendingInvitation("lost@tm.test");
     const [invitation] = await invitations();
@@ -1713,9 +1819,23 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     const [item] = await inbox((await apiKey())());
     assert.ok(item, "shown with team read");
-    assert.match(item.summary, /lost@tm\.test/);
+    assert.match(item.summary, /lost@tm\.test never went out after every try/);
     assert.equal(item.links.dashboard, `${TEST_APP_URL}/dashboard/team?store=${STORE}`);
     assert.doesNotMatch(JSON.stringify(item), new RegExp(token));
+
+    // Given up at once on an instance with no e-mail service: it says why.
+    await louezDb.db
+      .update(louezDb.apiEffects)
+      .set({
+        attempts: 1,
+        lastError: "Abandoned: email_not_configured: no e-mail service is set up",
+      })
+      .where(orm.eq(louezDb.apiEffects.id, "tm_eff_abandoned_001"));
+    const [atOnce] = await inbox((await apiKey())());
+    assert.match(
+      atOnce?.summary ?? "",
+      /lost@tm\.test was not sent \(no e-mail service is set up\): the user sends it again, or shares its link/,
+    );
 
     const noTeam = await apiKey({ permissions: { ...teamWrite, team: "none" } });
     assert.deepEqual(await inbox(noTeam()), [], "hidden without team read");

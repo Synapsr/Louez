@@ -11,7 +11,7 @@ import {
   type ApiHandoffPayload,
   type Transaction,
 } from "@louez/db";
-import { and, count, desc, eq, gt, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -231,8 +231,9 @@ const sendsEmail = (caller: Pick<TeamCaller, "ports">) =>
 
 /**
  * Refuses an invitation e-mail past the store's daily cap
- * (`INVITATION_EMAILS_PER_DAY`): the e-mails queued in the last 24 hours,
- * on the database's clock. Read under the store's lock, as every invitation
+ * (`INVITATION_EMAILS_PER_DAY`): every e-mail queued in the last 24 hours,
+ * whatever became of it, on the database's clock, whether this instance
+ * sends e-mail or not. Read under the store's lock, as every invitation
  * write of the store takes it.
  */
 async function assertEmailQuota(tx: Transaction, storeId: string) {
@@ -249,13 +250,18 @@ async function assertEmailQuota(tx: Transaction, storeId: string) {
   if ((row?.count ?? 0) >= INVITATION_EMAILS_PER_DAY) throw teamErrors.emailLimit();
 }
 
-/** The invitation e-mail, queued in the write's transaction when this instance sends e-mail. */
+/**
+ * The invitation e-mail, queued in the write's transaction. It is owed even
+ * when this instance sends no e-mail: its sender then gives it up at once and
+ * the inbox shows it (`invitation_not_sent`), and the answer says
+ * `not_configured`, for the user to share the link. The daily cap holds
+ * either way.
+ */
 async function queueInvitationEmail(
   tx: Transaction,
   caller: TeamCaller,
   invitationId: string,
 ): Promise<{ invitationEmail: "queued" | "not_configured"; effectIds: string[] }> {
-  if (!sendsEmail(caller)) return { invitationEmail: "not_configured", effectIds: [] };
   await assertEmailQuota(tx, caller.storeId);
   const effectIds = await enqueueEffects(tx, caller.storeId, [
     {
@@ -272,7 +278,31 @@ async function queueInvitationEmail(
       orderingKey: `invitation:${invitationId}:email`,
     },
   ]);
-  return { invitationEmail: "queued", effectIds };
+  return { invitationEmail: sendsEmail(caller) ? "queued" : "not_configured", effectIds };
+}
+
+/**
+ * The invitation's e-mails not yet delivered, made pointless by a resend:
+ * waiting, failed or given up, they are `cancelled` and lose their payload,
+ * so neither an old one goes out beside the new nor the inbox keeps showing
+ * one as not sent. A row being sent right now is left to finish.
+ */
+async function cancelUndeliveredInvitationEmails(
+  tx: Transaction,
+  storeId: string,
+  invitationId: string,
+) {
+  await tx
+    .update(apiEffects)
+    .set({ status: "cancelled", payload: {}, claimToken: null })
+    .where(
+      and(
+        eq(apiEffects.storeId, storeId),
+        eq(apiEffects.type, "team.invitationEmail"),
+        inArray(apiEffects.status, ["pending", "failed", "abandoned"]),
+        eq(sql`JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.invitationId'))`, invitationId),
+      ),
+    );
 }
 
 const invitationExpiry = (now: Date) => new Date(now.getTime() + INVITATION_VALIDITY_DAYS * DAY_MS);
@@ -531,7 +561,7 @@ export async function requestInvitationApproval(
     subject: sha256(email),
     prepare: async (tx, active) => {
       const { existingUserId } = await checkInvitable(tx, caller, email);
-      if (!existingUserId && sendsEmail(caller)) await assertEmailQuota(tx, caller.storeId);
+      if (!existingUserId) await assertEmailQuota(tx, caller.storeId);
       // A new approval, or an expired one coming back to life, opens one
       // more: the cap holds for both. Only one still open is asked again freely.
       if (!active || active.expiresAt.getTime() <= now.getTime()) {
@@ -708,6 +738,7 @@ export async function resendInvitation(caller: TeamCaller, id: string, now = new
       .update(storeInvitations)
       .set({ token: nanoid(32), expiresAt })
       .where(eq(storeInvitations.id, id));
+    await cancelUndeliveredInvitationEmails(tx, caller.storeId, id);
     const queued = await queueInvitationEmail(tx, caller, id);
     return {
       invitation: toInvitation(

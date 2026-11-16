@@ -8,6 +8,7 @@ import { recordChargeDispute } from "./charge-writes";
 import { type DisputeEventType, type DisputeInput, mapDisputeStatus } from "./dispute-facts";
 import { type DisputeNotificationInput, notifyPaymentDisputed } from "./dispute-notification";
 import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from "./fee-reversal";
+import { describeWebhookError } from "./webhook-error";
 
 // `charge.dispute.*` on a connected account (louez-billing docs/api, fees.md §9 and
 // README Q15): the fee refund at source, then the dispute's billing facts.
@@ -77,7 +78,7 @@ export async function handleChargeDispute(
           event: "reward_clawback_failed",
           trigger: "dispute",
           disputeId: dispute.id,
-          error: error instanceof Error ? error.message : String(error),
+          ...describeWebhookError(error),
         },
       });
     });

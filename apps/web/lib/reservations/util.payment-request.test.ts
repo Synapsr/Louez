@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { paymentRequestTerms } from "./util.payment-request";
+import { paymentRequestDelivery, paymentRequestTerms } from "./util.payment-request";
 import { getRentalRemaining, getReservationRentalAmount } from "./util.rental-amount";
 
 const reservation = (currency: string | null = "EUR") => ({
@@ -264,4 +264,55 @@ test("the rental still due is compared in hundredths: 0.57 less 0.07 paid is fif
   });
   assert.equal(terms.ok, true);
   assert.equal(terms.ok && terms.amount.toFixed(2), "0.50");
+});
+
+test("the success screen says, of each channel chosen, whether the server sent it", () => {
+  const email = { email: true, sms: false };
+  const both = { email: true, sms: true };
+  assert.deepEqual(paymentRequestDelivery(email, { email: true }), {
+    state: "sent",
+    sent: "email",
+  });
+  assert.deepEqual(paymentRequestDelivery({ email: false, sms: true }, { sms: true }), {
+    state: "sent",
+    sent: "sms",
+  });
+  assert.deepEqual(paymentRequestDelivery(both, { email: true, sms: true }), {
+    state: "sent",
+    sent: "both",
+  });
+  assert.deepEqual(paymentRequestDelivery(both, { email: false, sms: true }), {
+    state: "partly_sent",
+    sent: "sms",
+    failed: "email",
+  });
+  assert.deepEqual(paymentRequestDelivery(both, { email: true, sms: false }), {
+    state: "partly_sent",
+    sent: "email",
+    failed: "sms",
+  });
+});
+
+test("nothing sent says so: an e-mail the instance could not send, or a channel the server never tried", () => {
+  const email = { email: true, sms: false };
+  const both = { email: true, sms: true };
+  // No e-mail service: the server answers that the e-mail did not go.
+  assert.deepEqual(paymentRequestDelivery(email, { email: false }), {
+    state: "not_sent",
+    failed: "email",
+  });
+  assert.deepEqual(paymentRequestDelivery(both, { email: false, sms: false }), {
+    state: "not_sent",
+    failed: "both",
+  });
+  // An SMS chosen for a customer without a phone is never tried.
+  assert.deepEqual(paymentRequestDelivery({ email: false, sms: true }, {}), {
+    state: "not_sent",
+    failed: "sms",
+  });
+  // An answer that says nothing of the channels claims nothing.
+  assert.deepEqual(paymentRequestDelivery(email, undefined), {
+    state: "not_sent",
+    failed: "email",
+  });
 });

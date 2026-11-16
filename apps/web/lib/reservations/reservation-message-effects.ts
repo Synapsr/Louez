@@ -11,6 +11,7 @@ import { db, reservationItems, reservations } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import { withCustomerNotificationDefaults } from "@louez/types";
 
+import { NO_EMAIL } from "@/lib/api/effect-outcomes";
 import { withEffectSignal } from "@/lib/api/effect-signal";
 import { ensureReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { sendPlatformReservationCreated } from "@/lib/discord/platform-notifications";
@@ -241,9 +242,6 @@ async function sendCreationEmail(
     context.effectId,
   );
 }
-
-/** No e-mail service on this instance: the message is owed, and cannot go out. */
-const NO_EMAIL = { abandoned: "email_not_configured: no e-mail service is set up" } as const;
 
 const reservationContext = (reservation: LoadedReservation) => ({
   id: reservation.id,

@@ -43,10 +43,12 @@ import { dispatchApiEffects } from "@/lib/api/effects";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
+import { alertIfAccountUnreachable, connectedAccountVerdict } from "./connected-account";
 import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
 import { failedAttemptBinding, failedAttemptReservationId } from "./failed-attempt-binding";
 import { matchesDeploymentMode } from "./matches-deployment-mode";
 import { handlePaymentFailure } from "./payment-failure";
+import { describeWebhookError } from "./webhook-error";
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -96,9 +98,6 @@ type ReservationWithRelations = {
     totalPrice: string;
   }>;
 };
-
-const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 /** What the deposit events run on: the app's database, Stripe, outbox and invoicing. */
 const depositEventDeps: DepositEventDeps = {
@@ -189,7 +188,7 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(body, signature, env.STRIPE_CONNECT_WEBHOOK_SECRET);
   } catch (err) {
     log.error({
-      stripeWebhook: { issue: "signature_verification_failed", error: describeError(err) },
+      stripeWebhook: { issue: "signature_verification_failed", ...describeWebhookError(err) },
     });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
@@ -216,65 +215,85 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
+  // Whether Louez acts on the event's account, from its own rows alone, before
+  // the handler runs (`connectedAccountVerdict`). Nothing Stripe answers makes
+  // the route acknowledge an event: a handler's failure answers 5xx below.
+  let accountOwner: { readonly storeId: string } | null = null;
+  const mayAct = async () => {
+    const verdict = await connectedAccountVerdict({
+      id: event.id,
+      type: event.type,
+      accountId: connectedAccountId,
+    });
+    if (verdict.act) accountOwner = verdict.owner;
+    return verdict.act;
+  };
+
   try {
     switch (event.type) {
       // Checkout events
-      case "checkout.session.completed":
-        await handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session,
-          connectedAccountId,
-        );
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (await mayAct()) await handleCheckoutCompleted(session, connectedAccountId);
         break;
+      }
 
-      case "checkout.session.expired":
-        await handleCheckoutExpired(
-          event.data.object as Stripe.Checkout.Session,
-          connectedAccountId,
-        );
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (await mayAct()) await handleCheckoutExpired(session, connectedAccountId);
         break;
+      }
 
       // Deposit authorization hold events: `handleDepositEvent` ignores a
       // PaymentIntent that is not a deposit hold's.
       case "payment_intent.amount_capturable_updated":
       case "payment_intent.canceled":
-      case "payment_intent.succeeded":
-        await handleDepositEvent(
-          {
-            type: event.type,
-            stripeEventId: event.id,
-            accountId: connectedAccountId,
-            paymentIntent: event.data.object,
-          },
-          depositEventDeps,
-        );
+      case "payment_intent.succeeded": {
+        const deposit = {
+          type: event.type,
+          stripeEventId: event.id,
+          accountId: connectedAccountId,
+          paymentIntent: event.data.object,
+        };
+        if (await mayAct()) await handleDepositEvent(deposit, depositEventDeps);
         break;
+      }
 
-      case "payment_intent.payment_failed":
-        await handlePaymentFailed(event, event.data.object, connectedAccountId);
+      case "payment_intent.payment_failed": {
+        if (await mayAct()) {
+          await handlePaymentFailed(event, event.data.object, connectedAccountId);
+        }
         break;
+      }
 
       // Refund events
-      case "charge.refunded":
-        await handleChargeRefunded(
-          event.data.object,
-          connectedAccountId,
-          stripeChargeRefund,
-          dispatchApiEffects,
-        );
+      case "charge.refunded": {
+        if (await mayAct()) {
+          await handleChargeRefunded(
+            event.data.object,
+            connectedAccountId,
+            stripeChargeRefund,
+            dispatchApiEffects,
+          );
+        }
         break;
+      }
 
       // A refund that failed or was canceled after Stripe made it. Each is handled
       // only when enabled on the Connect webhook endpoint.
       case "refund.failed":
       case "refund.updated":
-      case "charge.refund.updated":
-        await handleRefundUpdated(
-          event.data.object,
-          connectedAccountId,
-          stripeChargeRefund,
-          dispatchApiEffects,
-        );
+      case "charge.refund.updated": {
+        if (await mayAct()) {
+          await handleRefundUpdated(
+            event.data.object,
+            connectedAccountId,
+            stripeChargeRefund,
+            dispatchApiEffects,
+          );
+        }
         break;
+      }
 
       // Dispute / chargeback. Stripe only sends the events enabled on the Connect
       // webhook endpoint: all five must be on for the billing facts.
@@ -282,14 +301,17 @@ export async function POST(request: Request) {
       case "charge.dispute.updated":
       case "charge.dispute.closed":
       case "charge.dispute.funds_withdrawn":
-      case "charge.dispute.funds_reinstated":
-        await handleChargeDispute({
-          eventType: event.type,
-          dispute: event.data.object,
-          eventCreatedAt: new Date(event.created * 1000),
-          connectedAccountId,
-        });
+      case "charge.dispute.funds_reinstated": {
+        if (await mayAct()) {
+          await handleChargeDispute({
+            eventType: event.type,
+            dispute: event.data.object,
+            eventCreatedAt: new Date(event.created * 1000),
+            connectedAccountId,
+          });
+        }
         break;
+      }
 
       // Account events
       case "account.updated":
@@ -307,9 +329,20 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
+    // Every failure, whatever Stripe answered: Stripe delivers the event again.
     log.error({
-      stripeWebhook: { event: event.type, issue: "handler_failed", error: describeError(error) },
+      stripeWebhook: {
+        event: event.type,
+        issue: "handler_failed",
+        stripeEventId: event.id,
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        ...describeWebhookError(error),
+      },
     });
+    await alertIfAccountUnreachable(
+      { id: event.id, type: event.type, accountId: connectedAccountId, owner: accountOwner },
+      error,
+    );
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 }
@@ -446,7 +479,8 @@ async function handleCheckoutCompleted(
     marketplaceFeeCents: 0,
     hasBreakdown: false,
   };
-  let paymentIntentRetrieveFailed = false;
+  // The read's failure, kept as the cause of the abort below.
+  let paymentIntentRetrieveFailed: unknown = null;
 
   if (session.payment_intent && connectedAccountId) {
     try {
@@ -476,10 +510,10 @@ async function handleCheckoutCompleted(
           event: "checkout.session.completed",
           issue: "payment_intent_retrieve_failed",
           reservationId,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
-      paymentIntentRetrieveFailed = true;
+      paymentIntentRetrieveFailed = error;
     }
   }
 
@@ -487,9 +521,10 @@ async function handleCheckoutCompleted(
   // otherwise platform fees would be dropped (or a PAYG rental misclassified as manual
   // and billed a second time at month-end). If the retrieve failed, abort so Stripe
   // retries the webhook (nothing has been committed yet — the payment is still pending).
-  if (session.payment_intent && paymentIntentRetrieveFailed) {
+  if (session.payment_intent && paymentIntentRetrieveFailed !== null) {
     throw new Error(
       `PaymentIntent retrieve failed for reservation ${reservationId}; aborting so Stripe retries`,
+      { cause: paymentIntentRetrieveFailed },
     );
   }
 
@@ -592,7 +627,7 @@ async function handleCheckoutCompleted(
         referral: {
           event: "referrer_reward_grant_failed",
           reservationId,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
     }

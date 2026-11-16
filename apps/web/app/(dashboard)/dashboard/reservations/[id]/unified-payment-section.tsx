@@ -96,6 +96,7 @@ import {
 import { DepositAttemptDialog } from "./deposit-attempt-dialog";
 import { ManualPaymentRefundDialog } from "./manual-payment-refund-dialog";
 import { RequestPaymentModal } from "./request-payment-modal";
+import { useReservationMoney } from "./use-reservation-money";
 import {
   getNetCompletedPaymentAmount,
   getRemainingRefundableAmount,
@@ -233,6 +234,8 @@ export function UnifiedPaymentSection({
   const tErrors = useTranslations("errors");
   const timezone = useStoreTimezone();
   const currencySymbol = getCurrencySymbol(currency);
+  // Every amount the section and its dialogs show, as the items card writes them.
+  const money = useReservationMoney(currency);
   // The amount inputs take the currency's decimals: whole units in yen.
   const amountStep = currencyMinorDigits(currency) === 0 ? "1" : "0.01";
   const amountPlaceholder = currencyMinorDigits(currency) === 0 ? "0" : "0.00";
@@ -832,8 +835,7 @@ export function UnifiedPaymentSection({
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                  {parseFloat(stripePendingPayment.amount).toFixed(2)}
-                  {currencySymbol}
+                  {money(stripePendingPayment.amount)}
                 </span>
               </div>
             </div>
@@ -862,8 +864,7 @@ export function UnifiedPaymentSection({
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                  +{parseFloat(stripeRentalPayment.amount).toFixed(2)}
-                  {currencySymbol}
+                  +{money(stripeRentalPayment.amount)}
                 </span>
               </div>
             </div>
@@ -874,9 +875,7 @@ export function UnifiedPaymentSection({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{t("payment.rental")}</span>
               <span className="text-sm text-muted-foreground">
-                {rentalPaid.toFixed(2)}
-                {currencySymbol} / {rental.toFixed(2)}
-                {currencySymbol}
+                {money(rentalPaid)} / {money(rental)}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -895,8 +894,7 @@ export function UnifiedPaymentSection({
               ) : (
                 <div className="flex items-center gap-1.5">
                   <Badge variant="failed" className="font-mono text-xs">
-                    -{rentalRemaining.toFixed(2)}
-                    {currencySymbol}
+                    -{money(rentalRemaining)}
                   </Badge>
                   <Tooltip>
                     <TooltipTrigger
@@ -906,6 +904,7 @@ export function UnifiedPaymentSection({
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("payment.recordRental")}
                           onClick={() => openPaymentModal("rental", rentalRemaining)}
                         />
                       }
@@ -927,10 +926,7 @@ export function UnifiedPaymentSection({
                   <Shield className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">{t("payment.deposit")}</span>
                 </div>
-                <span className="text-sm font-medium">
-                  {deposit.toFixed(2)}
-                  {currencySymbol}
-                </span>
+                <span className="text-sm font-medium">{money(deposit)}</span>
               </div>
 
               {/* Deposit Collection Status */}
@@ -944,8 +940,8 @@ export function UnifiedPaymentSection({
                   />
                   <span className="text-sm text-muted-foreground">
                     {isDepositFullyCollected
-                      ? `${t("payment.collected")}: ${depositCollected.toFixed(2)}${currencySymbol}`
-                      : `${t("payment.toCollect")}: ${depositRemaining.toFixed(2)}${currencySymbol}`}
+                      ? `${t("payment.collected")}: ${money(depositCollected)}`
+                      : `${t("payment.toCollect")}: ${money(depositRemaining)}`}
                   </span>
                 </div>
                 {!isDepositFullyCollected && (
@@ -957,6 +953,7 @@ export function UnifiedPaymentSection({
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("payment.recordDeposit")}
                           onClick={() => openPaymentModal("deposit", depositRemaining)}
                         />
                       }
@@ -981,7 +978,7 @@ export function UnifiedPaymentSection({
                     <span className="text-sm text-muted-foreground">
                       {isDepositFullyReturned
                         ? t("payment.fullyReturned")
-                        : `${t("payment.toReturn")}: ${depositToReturn.toFixed(2)}${currencySymbol}`}
+                        : `${t("payment.toReturn")}: ${money(depositToReturn)}`}
                     </span>
                   </div>
                   {depositToReturn > 0 && (
@@ -993,6 +990,7 @@ export function UnifiedPaymentSection({
                             size="icon"
                             variant="outline"
                             className="h-7 w-7"
+                            aria-label={t("payment.returnDeposit")}
                             onClick={openDepositReturnModal}
                           />
                         }
@@ -1165,8 +1163,7 @@ export function UnifiedPaymentSection({
                 </span>
               </div>
               <Badge variant="failed" className="font-mono">
-                +{damagesPaid.toFixed(2)}
-                {currencySymbol}
+                +{money(damagesPaid)}
               </Badge>
             </div>
           )}
@@ -1324,8 +1321,7 @@ export function UnifiedPaymentSection({
                                 ? ""
                                 : "+"
                               : "+"}
-                          {parseFloat(payment.amount).toFixed(2)}
-                          {currencySymbol}
+                          {money(payment.amount)}
                         </span>
                         {isManualPaymentRefundEligible(payment, payments) && (
                           <Button
@@ -1347,6 +1343,7 @@ export function UnifiedPaymentSection({
                                   size="icon"
                                   variant="ghost"
                                   className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  aria-label={tCommon("delete")}
                                   onClick={() => {
                                     setPaymentToDelete(payment);
                                     setDeleteDialogOpen(true);
@@ -1450,10 +1447,10 @@ export function UnifiedPaymentSection({
                   <p className="text-xs text-muted-foreground">
                     {paymentType === "rental"
                       ? t("payment.rentalRemaining", {
-                          formattedAmount: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
+                          formattedAmount: money(rentalRemaining),
                         })
                       : t("payment.depositRemaining", {
-                          formattedAmount: `${depositRemaining.toFixed(2)}${currencySymbol}`,
+                          formattedAmount: money(depositRemaining),
                         })}
                   </p>
                 )}
@@ -1528,34 +1525,24 @@ export function UnifiedPaymentSection({
               <div className="p-3 rounded-lg bg-muted space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>{t("payment.depositCollected")}</span>
-                  <span className="font-medium">
-                    {depositCollected.toFixed(2)}
-                    {currencySymbol}
-                  </span>
+                  <span className="font-medium">{money(depositCollected)}</span>
                 </div>
                 {depositReturned > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>{t("payment.alreadyReturned")}</span>
-                    <span>
-                      -{depositReturned.toFixed(2)}
-                      {currencySymbol}
-                    </span>
+                    <span>-{money(depositReturned)}</span>
                   </div>
                 )}
                 {damagesPaid > 0 && (
                   <div className="flex justify-between text-red-600 dark:text-red-400">
                     <span>{t("payment.damagesDeducted")}</span>
-                    <span>
-                      -{damagesPaid.toFixed(2)}
-                      {currencySymbol}
-                    </span>
+                    <span>-{money(damagesPaid)}</span>
                   </div>
                 )}
                 <div className="border-t pt-2 flex justify-between font-medium">
                   <span>{t("payment.suggestedReturn")}</span>
                   <span className="text-emerald-600 dark:text-emerald-400">
-                    {suggestedReturnAmount.toFixed(2)}
-                    {currencySymbol}
+                    {money(suggestedReturnAmount)}
                   </span>
                 </div>
               </div>
@@ -1724,7 +1711,6 @@ export function UnifiedPaymentSection({
           paymentId={paymentToRefund.id}
           remainingAmount={getRemainingRefundableAmount(paymentToRefund, payments)}
           currency={normalizeCurrency(paymentToRefund.currency, currency)}
-          currencySymbol={currencySymbol}
           defaultMethod={paymentToRefund.method}
           onClose={() => setPaymentToRefund(null)}
         />
@@ -1768,10 +1754,7 @@ export function UnifiedPaymentSection({
               <div className="p-3 rounded-lg bg-muted text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("deposit.maxCapturable")}</span>
-                  <span className="font-medium">
-                    {deposit.toFixed(2)}
-                    {currencySymbol}
-                  </span>
+                  <span className="font-medium">{money(deposit)}</span>
                 </div>
               </div>
 
@@ -1842,7 +1825,7 @@ export function UnifiedPaymentSection({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("deposit.releaseDescription", {
-                amount: `${deposit.toFixed(2)}${currencySymbol}`,
+                amount: money(deposit),
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>

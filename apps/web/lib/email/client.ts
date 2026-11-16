@@ -15,9 +15,8 @@ import { throwIfEffectAborted } from '@/lib/api/effect-signal';
  */
 export const sendEmail = async (options: SendEmailOptions) => {
   if (!isEmailConfigured()) {
-    console.log(
-      `[email] SMTP not configured — "${options.subject}" to ${options.to} not sent`,
-    );
+    // Neither the recipient nor the subject: both can name a customer.
+    console.log('[email] SMTP not configured: an e-mail was not sent');
     throw new Error('EMAIL_NOT_CONFIGURED');
   }
   // An outbox sender may have timed out while the email was prepared (logo,

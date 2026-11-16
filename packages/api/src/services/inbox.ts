@@ -1541,6 +1541,7 @@ const MESSAGE_LABELS: Record<string, string> = {
 const GIVEN_UP_AT_ONCE: Record<string, string> = {
   recipient_changed: "the customer's address changed after it was written",
   email_not_configured: "no e-mail service is set up",
+  sms_not_configured: "no SMS service is set up",
   invalid_payload: "it was written wrong",
   row_mismatch: "it was written wrong",
 };
@@ -2076,12 +2077,14 @@ const waitingApprovals: Source = async (window, shaper) => {
 
 /**
  * A team invitation's e-mail the outbox gave up on, for an invitation still
- * pending: the person never heard of it. Names the address, never the link.
+ * pending: the person never heard of it. Names the address, never the link,
+ * and why when it was given up at once (no e-mail service).
  */
 const unsentInvitations: Source = async (window, shaper) => {
   const rows = await db
     .select({
       effectId: apiEffects.id,
+      lastError: apiEffects.lastError,
       occurredAt: apiEffects.nextAttemptAt,
       invitationId: storeInvitations.id,
       email: storeInvitations.email,
@@ -2110,17 +2113,20 @@ const unsentInvitations: Source = async (window, shaper) => {
     .limit(window.take);
 
   const links = dashboardPageLinks(shaper.reader.urls, shaper.reader.store, "/dashboard/team");
-  return rows.map((row) =>
-    candidate("invitation_not_sent", row.effectId, {
+  return rows.map((row) => {
+    const why = GIVEN_UP_AT_ONCE[givenUpReason(row.lastError) ?? ""];
+    return candidate("invitation_not_sent", row.effectId, {
       severity: "warning",
       occurredAt: row.occurredAt,
-      summary: `The invitation e-mail to ${row.email} never went out after every try: the user sends it again, or shares its link, from the team page.`,
+      summary: `The invitation e-mail to ${row.email} ${
+        why ? `was not sent (${why})` : "never went out after every try"
+      }: the user sends it again, or shares its link, from the team page.`,
       reservation: null,
       details: { effectId: row.effectId, invitationId: row.invitationId, email: row.email },
       tools: ["team_list_invitations"],
       links,
-    }),
-  );
+    });
+  });
 };
 
 /** The tool that starts each kind of image job again, and its capability. */
