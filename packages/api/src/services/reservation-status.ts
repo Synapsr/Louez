@@ -100,7 +100,12 @@ export interface StatusChangeCaller {
   store: ApiEventStore;
   ports: Pick<
     ApiPorts,
-    "afterCommit" | "runReservationEffects" | "insurance" | "dispatchEffects" | "emailConfigured"
+    | "afterCommit"
+    | "runReservationEffects"
+    | "insurance"
+    | "dispatchEffects"
+    | "emailConfigured"
+    | "smsConfigured"
   >;
 }
 
@@ -126,7 +131,8 @@ export interface StatusChangePreview {
   messages: Array<{ message: CustomerStatusMessage; channel: "email" | "sms"; to?: string }>;
   /**
    * The messages owed to the customer that cannot go out, and why: an e-mail
-   * on an instance with no e-mail service (`email_not_configured`). Each is
+   * on an instance with no e-mail service (`email_not_configured`), an SMS on
+   * one with no SMS provider (`sms_not_configured`). Each is
    * still queued, given up at once by its sender, and listed in the store's
    * inbox (`message_not_sent`), so the store tells the customer itself.
    * Absent when every message goes, so the binding of such a preview is
@@ -372,6 +378,13 @@ const recipientsOf = (
 ): Array<{ channel: "email" | "sms"; to: string | undefined }> =>
   messages.map((entry) => ({ channel: entry.channel, to: addressOf(entry.channel, locked) }));
 
+/** Why a channel cannot go, and how the preview names it. */
+const NOT_CONFIGURED = {
+  email: "email_not_configured",
+  sms: "sms_not_configured",
+} as const satisfies Record<"email" | "sms", string>;
+const CHANNEL_NAMES = { email: "e-mail", sms: "SMS" } as const;
+
 /** Each message as the preview names it. */
 const MESSAGE_NAMES: Record<CustomerStatusMessage, string> = {
   request_accepted: "request accepted",
@@ -429,22 +442,31 @@ async function buildPreview(
     message && locked.customer
       ? customerMessages(store.customerNotificationSettings, message, locked.customer)
       : [];
-  // As the creation's preview says it: an e-mail this instance cannot send never goes.
-  const emailConfigured = caller.ports.emailConfigured?.() !== false;
-  const messages = owed.filter((entry) => emailConfigured || entry.channel !== "email");
+  // As the creation's preview says it: a message this instance cannot send never goes.
+  const configured = {
+    email: caller.ports.emailConfigured?.() !== false,
+    sms: caller.ports.smsConfigured?.() !== false,
+  };
+  const messages = owed.filter((entry) => configured[entry.channel]);
   const messagesNotSent = owed
-    .filter((entry) => !emailConfigured && entry.channel === "email")
+    .filter((entry) => !configured[entry.channel])
     .map((entry) => ({
       message: entry.message,
-      channel: "email" as const,
-      reason: "email_not_configured" as const,
+      channel: entry.channel,
+      reason: NOT_CONFIGURED[entry.channel],
     }));
   const sends = [
     message && messages.length > 0
       ? `${who} gets the "${MESSAGE_NAMES[message]}" message by ${messages.map((entry) => entry.channel).join(" and ")}.`
       : "No message goes to the customer.",
+    ...(message
+      ? messagesNotSent.map(
+          (entry) =>
+            `The "${MESSAGE_NAMES[message]}" ${CHANNEL_NAMES[entry.channel]} cannot go out: this instance has no ${CHANNEL_NAMES[entry.channel]} service (${entry.reason}).`,
+        )
+      : []),
     message && messagesNotSent.length > 0
-      ? `The "${MESSAGE_NAMES[message]}" e-mail cannot go out: this instance has no e-mail service (email_not_configured). The store's inbox lists it as not sent, for the store to tell the customer itself.`
+      ? "The store's inbox lists it as not sent, for the store to tell the customer itself."
       : null,
   ]
     .filter(Boolean)

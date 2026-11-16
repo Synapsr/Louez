@@ -36,6 +36,12 @@ mock.module("@louez/email", {
   },
 });
 
+/** Whether this instance has an SMS provider, as `@/lib/sms/client` reads it. */
+const smsProvider = { configured: false };
+mock.module("@/lib/sms/client", {
+  namedExports: { isSmsConfigured: () => smsProvider.configured },
+});
+
 // The providers the sender calls: only the customer's channel is expected,
 // and it notes what it was asked; the others would be a mistake here.
 const provider: Array<{ event: string; channel: string }> = [];
@@ -143,16 +149,17 @@ describe(
       await louezDb.db.delete(louezDb.apiEffects);
       provider.length = 0;
       transport.configured = false;
+      smsProvider.configured = false;
     });
 
-    /** The acceptance e-mail a confirmation queues, as `buildStatusChangeEffects` writes it. */
-    const accepted = (): ApiEffect => ({
+    /** The acceptance message a confirmation queues on a channel, as `buildStatusChangeEffects` writes it. */
+    const accepted = (channel: "email" | "sms"): ApiEffect => ({
       type: "reservation.customerMessage",
-      orderingKey: `reservation:${RESERVATION}:customer:email`,
+      orderingKey: `reservation:${RESERVATION}:customer:${channel}`,
       reservationId: RESERVATION,
       customerId: CUSTOMER,
       payload: {
-        channel: "email",
+        channel,
         notification: "customer_request_accepted",
         store: {
           id: STORE,
@@ -169,7 +176,13 @@ describe(
           customerNotificationSettings: null,
           hasTerms: false,
         },
-        customer: { id: CUSTOMER, firstName: "Ada", lastName: "Lovelace", email: TO, phone: null },
+        customer: {
+          id: CUSTOMER,
+          firstName: "Ada",
+          lastName: "Lovelace",
+          email: TO,
+          phone: "+447700900123",
+        },
         reservation: {
           id: RESERVATION,
           number: "2030-0002",
@@ -190,9 +203,9 @@ describe(
     });
 
     /** Adds the row in a transaction, as the status change does, and dispatches it once. */
-    const dispatchOne = async () => {
+    const dispatchOne = async (channel: "email" | "sms" = "email") => {
       const [id] = await louezDb.db.transaction((tx) =>
-        outbox.enqueueEffects(tx, STORE, [accepted()]),
+        outbox.enqueueEffects(tx, STORE, [accepted(channel)]),
       );
       assert.ok(id);
       await outbox.dispatchEffects([id], senders);
@@ -246,6 +259,30 @@ describe(
       assert.equal(row.attempts, 1);
       assert.deepEqual(provider, [{ event: "customer_request_accepted", channel: "email" }]);
       assert.deepEqual(await unsent(), []);
+    });
+
+    test("an SMS without an SMS provider: given up after one attempt, and the inbox says why", async () => {
+      transport.configured = true;
+      const row = await dispatchOne("sms");
+      assert.equal(row.status, "abandoned");
+      assert.equal(row.attempts, 1);
+      assert.match(row.lastError ?? "", /^Abandoned: sms_not_configured:/);
+      assert.deepEqual(provider, [], "no provider was called");
+
+      const [item] = (await unsent()).filter((entry) => entry.id === `message_not_sent:${row.id}`);
+      assert.ok(item, "the inbox lists it");
+      assert.equal(item.details.reason, "sms_not_configured");
+      assert.match(
+        item.summary,
+        /^The acceptance message \(sms\) to the customer of .+ was not sent \(no SMS service is set up\): contact the customer yourself\.$/,
+      );
+
+      // With a provider, the same row goes out.
+      smsProvider.configured = true;
+      provider.length = 0;
+      const sent = await dispatchOne("sms");
+      assert.equal(sent.status, "sent");
+      assert.deepEqual(provider, [{ event: "customer_request_accepted", channel: "sms" }]);
     });
   },
 );

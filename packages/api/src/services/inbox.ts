@@ -1541,6 +1541,7 @@ const MESSAGE_LABELS: Record<string, string> = {
 const GIVEN_UP_AT_ONCE: Record<string, string> = {
   recipient_changed: "the customer's address changed after it was written",
   email_not_configured: "no e-mail service is set up",
+  sms_not_configured: "no SMS service is set up",
   invalid_payload: "it was written wrong",
   row_mismatch: "it was written wrong",
 };

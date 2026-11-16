@@ -18,6 +18,7 @@ import { getHostedBy } from "@/lib/hosting";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
 import { apiStorage } from "@/lib/storage/api-storage";
+import { isSmsConfigured } from "@/lib/sms/client";
 import { getStripe, isConnectConfigured } from "@/lib/stripe/client";
 import { newStorePort } from "@/lib/stores/new-store-port";
 
@@ -51,6 +52,7 @@ export const apiPorts: ApiPorts = {
     emailConfigured: isEmailConfigured,
   },
   emailConfigured: isEmailConfigured,
+  smsConfigured: isSmsConfigured,
   reportError: reportServerError,
   // Through evlog, so its redaction and its drain apply too.
   log: { error: (event) => log.error(event) },
