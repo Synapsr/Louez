@@ -877,7 +877,7 @@
           "empty": "Indique um telefone acima para ativar este botão."
         },
         "hours": {
-          "description": "O horário de abertura define-se em Configurações e determina também a disponibilidade.",
+          "description": "O horário de abertura define-se em Definições e determina também a disponibilidade.",
           "link": "Editar o horário"
         },
         "missingPhone": "Sem um telefone indicado acima, a chamada e o SMS ficam ocultos.",
@@ -932,7 +932,7 @@
       "referrals": "Referências",
       "sms": "SMS",
       "subscription": "Assinatura",
-      "settings": "Configurações",
+      "settings": "Definições",
       "store": "Minha loja",
       "analytics": "Análises",
       "analyticsSales": "Vendas",
@@ -976,7 +976,7 @@
         "description": "Enquanto os pagamentos online não estiverem ativos, o reeent não publica sua loja. A oferta de lançamento (0 € de comissão reeent vitalícia) vale a partir da publicação, enquanto houver vagas.",
         "continueSetup": "Continuar a configuração do Stripe",
         "activate": "Ativar os pagamentos online",
-        "paymentSettings": "Configurações de pagamento"
+        "paymentSettings": "Definições de pagamento"
       },
       "setup": {
         "title": "Primeiros passos",
@@ -2950,7 +2950,7 @@
         "linkCopied": "Link copiado",
         "copyFailed": "Falha ao copiar",
         "stripeNotConfigured": "Stripe não configurado",
-        "stripeNotConfiguredDescription": "Configure o Stripe nas configurações para enviar pedidos de pagamento online."
+        "stripeNotConfiguredDescription": "Configure o Stripe nas definições para enviar pedidos de pagamento online."
       },
       "onlinePayment": {
         "title": "Pagamento Online",
@@ -3603,7 +3603,7 @@
     },
     "settings": {
       "readOnlyNotice": "Apenas leitura: só o proprietário e os administradores podem alterar as definições desta loja.",
-      "title": "Configurações",
+      "title": "Definições",
       "store": "Loja",
       "company": "Empresa",
       "companySettings": {
@@ -3799,7 +3799,7 @@
       },
       "team": "Equipe",
       "saveChanges": "Salvar alterações",
-      "settingsSaved": "Configurações salvas",
+      "settingsSaved": "Definições guardadas",
       "billingReturn": {
         "refreshed": "O faturamento está atualizado.",
         "pending": "As alterações de faturamento podem levar alguns minutos para aparecer aqui."
@@ -3941,8 +3941,8 @@
       },
       "hours": "Horário comercial",
       "storeSettings": {
-        "title": "Configurações da loja",
-        "description": "Configure as configurações da sua loja",
+        "title": "Definições da loja",
+        "description": "Configure as definições da sua loja",
         "generalInfo": "Informações gerais",
         "generalInfoDescription": "Informações básicas da sua loja",
         "name": "Nome da loja",
@@ -4070,7 +4070,7 @@
         }
       },
       "reservationSettings": {
-        "title": "Configurações de reserva",
+        "title": "Definições de reserva",
         "description": "Configure como as reservas funcionam",
         "mode": "Modo de reserva",
         "modeRequest": "Solicitação de reserva",
@@ -4114,9 +4114,9 @@
       "emailSettings": {
         "title": "Emails",
         "description": "Personalize os emails enviados aos seus clientes",
-        "saved": "Configurações de email salvas",
-        "saveError": "Erro ao salvar configurações",
-        "globalSettings": "Configurações gerais",
+        "saved": "Definições de email guardadas",
+        "saveError": "Erro ao guardar as definições",
+        "globalSettings": "Definições gerais",
         "globalSettingsDescription": "Configuração geral de email",
         "replyToEmail": "Endereço de resposta",
         "replyToEmailPlaceholder": "contato@sualoja.com",
@@ -4192,7 +4192,7 @@
         "afterReturn": "após a devolução",
         "hours": "horas",
         "smsLimitNote": "SMS estão sujeitos aos limites do seu plano",
-        "saved": "Configurações do impulsionador de avaliações salvas",
+        "saved": "Definições do impulsionador de avaliações guardadas",
         "error": "Erro ao salvar",
         "locked": {
           "title": "Desbloquear impulsionador de avaliações",
@@ -4226,7 +4226,7 @@
         "title": "Notificações",
         "description": "Configure como você recebe notificações de eventos da loja",
         "saveError": "Erro ao salvar",
-        "saved": "Configurações salvas",
+        "saved": "Definições guardadas",
         "phone": {
           "title": "Número de telefone",
           "description": "Para receber notificações por SMS",
@@ -4426,7 +4426,7 @@
         "createCode": "Criar código",
         "editCode": "Editar código",
         "createDescription": "Crie um código promocional para oferecer descontos",
-        "editDescription": "Edite as configurações do código promocional",
+        "editDescription": "Edite as definições do código promocional",
         "noPromoCodes": "Sem códigos promocionais",
         "noPromoCodesDescription": "Crie seu primeiro código promocional para oferecer descontos aos seus clientes",
         "count": "{count, plural, =0 {Sem códigos} =1 {1 código} other {# códigos}}",
@@ -4577,6 +4577,39 @@
             },
             "resources": {
               "help": "Ajuda do Google Calendar"
+            },
+            "panel": {
+              "loading": "A carregar a ligação...",
+              "connectTitle": "Ligar o Google Calendar",
+              "connectDescription": "A Louez vai criar um calendário dedicado e sincronizar nele as suas reservas.",
+              "oauthNotConfigured": "O OAuth do Google Calendar não está configurado. Adicione GOOGLE_CALENDAR_CLIENT_ID e GOOGLE_CALENDAR_CLIENT_SECRET em apps/web/.env e reinicie o servidor de desenvolvimento.",
+              "connectAction": "Ligar o Google Calendar",
+              "connectionTitle": "Ligação ao Google Calendar",
+              "accountFallback": "Conta Google ligada",
+              "calendarLabel": "Calendário",
+              "calendarFallback": "Calendário Louez",
+              "lastSyncLabel": "Última sincronização",
+              "neverSynced": "Ainda não sincronizado",
+              "resyncAction": "Sincronizar novamente",
+              "disconnectAction": "Desligar",
+              "syncRulesTitle": "Regras de sincronização",
+              "syncRulesDescription": "Os eventos sincronizados são privados e não bloqueiam a sua disponibilidade no Google.",
+              "syncPendingLabel": "Sincronizar os pedidos pendentes",
+              "syncPendingDescription": "Os pedidos pendentes aparecem com um estado provisório.",
+              "showCancelledLabel": "Mostrar as reservas canceladas no calendário",
+              "showCancelledDescription": "As reservas canceladas continuam visíveis com o respetivo estado de cancelamento.",
+              "status": {
+                "disabled": "Desativada",
+                "active": "Ativa",
+                "needs_reconnect": "Requer nova ligação",
+                "error": "Erro",
+                "syncing": "A sincronizar"
+              },
+              "toasts": {
+                "settingsSaved": "Definições guardadas",
+                "resyncStarted": "Nova sincronização iniciada",
+                "disconnected": "Google Calendar desligado"
+              }
             }
           },
           "icsCalendar": {
@@ -4589,6 +4622,17 @@
             },
             "resources": {
               "help": "Referência iCalendar"
+            },
+            "panel": {
+              "description": "Compatível com Apple Calendar, Outlook e calendários por subscrição.",
+              "urlLabel": "Link do calendário",
+              "loading": "A carregar...",
+              "copyAction": "Copiar link",
+              "refreshNote": "A Louez publica as alterações de imediato, mas a frequência de atualização depende da aplicação de calendário subscrita.",
+              "regenerateAction": "Gerar novo link",
+              "toasts": {
+                "regenerated": "Novo link ICS gerado"
+              }
             }
           },
           "superpdp": {
@@ -4755,7 +4799,7 @@
           "categories": "Categorias",
           "payments": "Pagamentos",
           "analytics": "Análises",
-          "settings": "Configurações"
+          "settings": "Definições"
         },
         "levels": {
           "none": "Sem acesso",
@@ -5011,7 +5055,7 @@
         "displayModeExclusiveDescription": "Os preços exibidos não incluem o imposto. Recomendado para clientes empresariais (B2B).",
         "exampleInclusive": "Produto a {price} € com IVA incl. com {rate}% IVA = {ht} € sem IVA + {tva} € IVA",
         "exampleExclusive": "Produto a {price} € sem IVA com {rate}% IVA = {price} € + {tva} € IVA = {ttc} € com IVA",
-        "optionalSection": "Configurações opcionais",
+        "optionalSection": "Definições opcionais",
         "optionalSectionDescription": "Personalize a exibição de impostos",
         "taxLabel": "Rótulo do imposto",
         "taxLabelPlaceholder": "IVA",
@@ -5020,7 +5064,7 @@
         "taxNumberPlaceholder": "PT123456789",
         "taxNumberDescription": "Seu número de contribuinte (exibido nos contratos)",
         "depositNoTaxInfo": "As cauções não estão sujeitas ao IVA pois são devolvidas ao cliente.",
-        "saved": "Configurações de impostos salvas"
+        "saved": "Definições de impostos guardadas"
       },
       "invoicing": {
         "title": "Faturação eletrónica",
@@ -5214,7 +5258,7 @@
         "exampleTitle": "Exemplo de cálculo",
         "example": "Entrega a {distance} km = {fee}",
         "roundTripNote": "{distance} km x 2 = {total} km cobrados",
-        "optionalSection": "Configurações opcionais",
+        "optionalSection": "Definições opcionais",
         "maximumDistance": "Distância máxima",
         "maximumDistanceDescription": "Deixe vazio para sem limite",
         "freeDeliveryThreshold": "Entrega grátis a partir de",
@@ -5238,10 +5282,10 @@
         "locationsAddress": "Endereço",
         "locationsSaved": "Local salvo",
         "locationsSaveError": "Não foi possível salvar o local",
-        "saved": "Configurações de entrega salvas",
+        "saved": "Definições de entrega guardadas",
         "simulator": {
           "title": "Simulador de preços",
-          "description": "Teste suas configurações para ver o custo de entrega",
+          "description": "Teste suas definições para ver o custo de entrega",
           "distance": "Distância do cliente",
           "orderTotal": "Valor do pedido",
           "result": "Taxa de entrega",
@@ -5286,7 +5330,7 @@
         "autoGeneratePdfDescription": "Um relatório PDF é criado após cada inspeção",
         "maxPhotosPerItem": "Fotos por equipamento",
         "maxPhotosPerItemDescription": "Número máximo de fotos por equipamento inspecionado",
-        "saved": "Configurações de inspeção salvas",
+        "saved": "Definições de inspeção guardadas",
         "types": {
           "departure": "Retirada",
           "return": "Devolução"
@@ -5559,12 +5603,12 @@
           "successDescription": "Sua conta Stripe está agora conectada. Você pode aceitar pagamentos online.",
           "incompleteTitle": "Configuração incompleta",
           "incompleteDescription": "Algumas informações estão faltando. Você pode concluir a configuração mais tarde.",
-          "backToSettings": "Voltar para configurações"
+          "backToSettings": "Voltar às definições"
         },
         "refresh": {
           "title": "Link expirado",
-          "description": "O link de configuração expirou. Por favor, tente novamente pelas configurações.",
-          "backToSettings": "Voltar para configurações"
+          "description": "O link de configuração expirou. Por favor, tente novamente pelas definições.",
+          "backToSettings": "Voltar às definições"
         },
         "flowExplanation": {
           "title": "Fluxo de reserva",
@@ -5593,8 +5637,8 @@
             },
             "instantPayment": {
               "title": "Mudar para pagamento imediato?",
-              "description": "Para automatizar completamente suas reservas, ative o modo de pagamento imediato nas configurações da loja.",
-              "action": "Abrir as configurações"
+              "description": "Para automatizar completamente suas reservas, ative o modo de pagamento imediato nas definições da loja.",
+              "action": "Abrir as definições"
             }
           },
           "warnings": {
@@ -5804,13 +5848,13 @@
       },
       "admin": {
         "title": "Admin plataforma",
-        "description": "Configurações da plataforma para esta loja. Visível apenas para administradores da plataforma.",
+        "description": "Definições da plataforma para esta loja. Visível apenas para administradores da plataforma.",
         "trialSection": "Período de teste",
         "trialSectionDescription": "Configure um período de teste gratuito para a assinatura desta loja.",
         "trialDays": "Dias de teste",
         "trialDaysDescription": "Número de dias de teste gratuitos quando esta loja assina um plano pago. Defina 0 para nenhum teste (pagamento imediato).",
         "days": "dias",
-        "saved": "Configurações admin salvas",
+        "saved": "Definições de administração guardadas",
         "discountSection": "Desconto de assinatura",
         "discountSectionDescription": "Configure um desconto na assinatura desta loja.",
         "discountPercent": "Percentual de desconto",
@@ -6049,7 +6093,7 @@
       "aiAdvisor": {
         "title": "Consultor IA",
         "description": "Deixe um assistente de IA receber os seus clientes na sua loja, responder às perguntas deles e guiá-los até o aluguel certo",
-        "saved": "Configurações do consultor IA salvas",
+        "saved": "Definições do consultor IA guardadas",
         "enabled": "Ativar o consultor IA",
         "enabledDescription": "Mostra o widget de chat na sua loja",
         "mode": "Modo no momento da reserva",
@@ -6072,7 +6116,7 @@
         "welcomeMessagePlaceholder": "Ex: Olá! Conte-me sobre o seu projeto e eu ajudo você a escolher o equipamento certo.",
         "notConfigured": {
           "title": "Provedor de IA não configurado",
-          "description": "O operador da plataforma precisa definir as variáveis de ambiente AI_PROVIDER e AI_API_KEY para que o consultor possa responder aos clientes. Mesmo assim, você pode preparar as suas configurações abaixo."
+          "description": "O operador da plataforma precisa definir as variáveis de ambiente AI_PROVIDER e AI_API_KEY para que o consultor possa responder aos clientes. Mesmo assim, você pode preparar as suas definições abaixo."
         },
         "locked": {
           "upgrade": "Atualizar para Pro",
@@ -6216,12 +6260,12 @@
         "voicePreviewUnavailable": "As prévias estarão disponíveis quando o serviço de voz estiver configurado."
       },
       "settingsNavigation": {
-        "label": "Navegação das configurações",
-        "mobileLabel": "Escolher uma página de configurações",
+        "label": "Navegação das definições",
+        "mobileLabel": "Escolher uma página de definições",
         "search": {
-          "label": "Pesquisar nas configurações",
-          "placeholder": "Pesquisar configurações…",
-          "noResults": "Nenhuma configuração corresponde à pesquisa."
+          "label": "Pesquisar nas definições",
+          "placeholder": "Pesquisar definições…",
+          "noResults": "Nenhuma definição corresponde à pesquisa."
         },
         "groups": {
           "store": "Loja",
@@ -9406,7 +9450,7 @@
     "profileFieldInvalid": "“{field}” não é válido.",
     "agentConnectionNotFound": "Este agente conectado não existe mais.",
     "oauthRequestInvalid": "Este pedido de conexão não é mais válido. Inicie-o novamente no seu agente.",
-    "stripeRequiredForPaymentMode": "O modo de pagamento online exige uma conta Stripe conectada. Conecte o Stripe em Configurações > Pagamentos.",
+    "stripeRequiredForPaymentMode": "O modo de pagamento online exige uma conta Stripe conectada. Conecte o Stripe em Definições > Pagamentos.",
     "locationLimitReached": "Uma loja pode ter no máximo 50 pontos de retirada. Desative um ou reutilize-o."
   },
   "welcome": {
@@ -9541,8 +9585,8 @@
         "description": "Produtos, categorias e estoque."
       },
       "settings": {
-        "label": "Configurações",
-        "description": "Configurações da loja e loja online."
+        "label": "Definições",
+        "description": "Definições da loja e loja online."
       },
       "integrations": {
         "label": "Integrações",
@@ -9572,7 +9616,7 @@
       "noStoreDescription": "{client} poderá criar a sua loja por você se lhe der os direitos «Leitura e edição». A loja fica offline até que você a lance. Este acesso também cobre as lojas que você criar depois.",
       "noStoreDescriptionNoCreate": "{client} não pode criar uma loja. Crie primeiro a sua loja no Louez; depois, {client} poderá fazer o resto com o acesso que você lhe dá aqui.",
       "redirectNotice": "Após a sua autorização, o acesso será enviado para {host}.",
-      "footer": "Você pode alterar ou remover este acesso a qualquer momento em Configurações, Integrações, MCP.",
+      "footer": "Você pode alterar ou remover este acesso a qualquer momento em Definições, Integrações, MCP.",
       "loopbackWarning": "O acesso será enviado para um endereço local deste computador: qualquer programa em execução nele pode se passar por este aplicativo. Só permita se você acabou de iniciar a conexão."
     },
     "list": {
@@ -9586,7 +9630,7 @@
       "noAction": "Nenhuma ação por enquanto",
       "edit": "Editar",
       "revoke": "Desconectar",
-      "saved": "Configurações salvas",
+      "saved": "Definições guardadas",
       "revoked": "Agente desconectado",
       "editTitle": "Acesso de {client}",
       "editDescription": "As alterações valem a partir da próxima ação dele.",
@@ -9598,7 +9642,7 @@
     },
     "guide": {
       "title": "Conecte seu assistente de IA",
-      "description": "Seu assistente poderá gerenciar sua loja: produtos, reservas, configurações. Você escolhe o que ele pode fazer.",
+      "description": "Seu assistente poderá gerenciar sua loja: produtos, reservas, definições. Você escolhe o que ele pode fazer.",
       "addTo": "Adicionar ao {name}",
       "chooseAssistant": "Qual assistente você usa?",
       "changeAssistant": "Escolher outro assistente",
