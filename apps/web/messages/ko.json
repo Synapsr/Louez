@@ -9943,6 +9943,14 @@
           "confirmBeyondStock": "재고를 넘겨 예약을 확정할까요?",
           "confirmBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 확정할까요?",
           "recordDeposit": "받은 보증금을 기록할까요?",
+          "createQuote": "견적을 만들까요?",
+          "createQuotePastBuffer": "대여 사이 간격을 지키지 않고 견적을 만들까요?",
+          "createQuoteBeyondStock": "재고를 넘겨 견적을 만들까요?",
+          "createQuoteBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 견적을 만들까요?",
+          "createBooking": "예약을 만들까요?",
+          "createBookingPastBuffer": "대여 사이 간격을 지키지 않고 예약을 만들까요?",
+          "createBookingBeyondStock": "재고를 넘겨 예약을 만들까요?",
+          "createBookingBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 만들까요?",
           "moveDatesWithinRules": "예약 날짜를 변경할까요?",
           "moveDatesPastBuffer": "대여 사이 간격을 지키지 않고 예약 날짜를 변경할까요?",
           "moveDatesBeyondStock": "재고를 넘겨 예약 날짜를 변경할까요?",
@@ -9980,6 +9988,10 @@
           "noMessage": "고객에게 메시지가 가지 않습니다.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> 받음 · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>",
+          "bookingFor": "<v>{customer}</v> 님 · <v>{email}</v>",
+          "bookingForNewCustomer": "<v>{customer}</v> 님 · <v>{email}</v>, 새 고객",
+          "bookingLine": "<v>{product}</v> × {quantity}",
+          "bookingLines": "<v>{product}</v> × {quantity} 외 {others, plural, other {#개 항목}}",
           "datesMoved": "날짜: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "새 합계: <v>{total}</v> (차액: <v>{difference}</v>). 청구도 환불도 하지 않습니다."
         },
@@ -10005,6 +10017,8 @@
             "request_accepted": "요청 수락",
             "request_rejected": "요청 거절",
             "reservation_cancelled": "예약 취소",
+            "quote_sent": "견적",
+            "booking_confirmed": "예약 확정",
             "reservation_modified": "예약 변경"
           }
         }

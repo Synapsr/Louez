@@ -1,17 +1,20 @@
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { db, reservations } from "@louez/db";
+import { db, reservations, type Transaction } from "@louez/db";
 
 /**
  * Storefront reservation number `R{yy}{mm}-NNNN`, checked against the store
  * before use with a nanoid fallback. Extracted unchanged from the checkout
  * action: the check-then-insert race is known and left for a later unique
- * index (see the redesign decisions).
+ * index (see the redesign decisions). `executor` is where the check reads:
+ * the database by default; a transaction for a writer that checks under
+ * its own lock (services/reservation-create.ts).
  */
 export async function generateUniqueReservationNumber(
   storeId: string,
   maxRetries = 5,
+  executor: Pick<typeof db, "query"> | Transaction = db,
 ): Promise<string> {
   const date = new Date();
   const year = date.getFullYear().toString().slice(-2);
@@ -26,7 +29,7 @@ export async function generateUniqueReservationNumber(
     const number = `${prefix}${random}`;
 
     // Check if this number already exists for this store
-    const existing = await db.query.reservations.findFirst({
+    const existing = await executor.query.reservations.findFirst({
       where: and(eq(reservations.storeId, storeId), eq(reservations.number, number)),
     });
 

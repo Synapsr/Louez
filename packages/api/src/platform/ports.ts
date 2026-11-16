@@ -570,6 +570,14 @@ export type ApiEvent =
   /** A reservation's status or notes changed: its pages are revalidated. Its messages go to the outbox. */
   | { type: "reservation.statusChanged"; store: ApiEventStore; reservationId: string }
   | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
+  /** A reservation the store created (`reservations.create`): its pages, and the analytics event. */
+  | {
+      type: "reservation.created";
+      store: ApiEventStore;
+      reservationId: string;
+      /** Facts about the new reservation, for analytics. */
+      facts: Record<string, string | number | boolean | null>;
+    }
   /** A reservation's dates moved through the API: its pages, and the edit's analytics event. */
   | {
       type: "reservation.datesChanged";

@@ -232,6 +232,9 @@ export const checkExtensionInventory = async (
               quantity: item.quantity,
               selectedAttributes: item.selectedAttributes ?? undefined,
               combinationKey: item.combinationKey,
+              // A line stored with no combination is served by any unit that
+              // matches what it chose, as every writer stored it.
+              pooled: item.combinationKey === null,
               assignedUnitIds: item.assignedUnits.flatMap((unit) =>
                 unit.productUnitId ? [unit.productUnitId] : [],
               ),

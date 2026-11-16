@@ -9943,6 +9943,14 @@
           "confirmBeyondStock": "Die Buchung über Ihren Bestand hinaus bestätigen?",
           "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?",
           "recordDeposit": "Eine erhaltene Kaution erfassen?",
+          "createQuote": "Das Angebot erstellen?",
+          "createQuotePastBuffer": "Das Angebot erstellen trotz Ihrer Pufferzeit zwischen zwei Vermietungen?",
+          "createQuoteBeyondStock": "Das Angebot erstellen über Ihren Bestand hinaus?",
+          "createQuoteBeyondStockAndBuffer": "Das Angebot erstellen über Ihren Bestand und Ihre Pufferzeit hinaus?",
+          "createBooking": "Die Buchung erstellen?",
+          "createBookingPastBuffer": "Die Buchung erstellen trotz Ihrer Pufferzeit zwischen zwei Vermietungen?",
+          "createBookingBeyondStock": "Die Buchung erstellen über Ihren Bestand hinaus?",
+          "createBookingBeyondStockAndBuffer": "Die Buchung erstellen über Ihren Bestand und Ihre Pufferzeit hinaus?",
           "moveDatesWithinRules": "Die Daten der Buchung verschieben?",
           "moveDatesPastBuffer": "Die Daten der Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen verschieben?",
           "moveDatesBeyondStock": "Die Daten der Buchung über Ihren Bestand hinaus verschieben?",
@@ -9980,6 +9988,10 @@
           "noMessage": "Der Kunde erhält keine Nachricht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
           "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "bookingFor": "Für <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Für <v>{customer}</v> · <v>{email}</v>, neuer Kunde",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> und {others, plural, one {# weitere Position} other {# weitere Positionen}}",
           "datesMoved": "Daten: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
           "newTotal": "Neuer Gesamtbetrag: <v>{total}</v> (Differenz: <v>{difference}</v>). Es wird nichts abgebucht oder erstattet."
         },
@@ -10005,6 +10017,8 @@
             "request_accepted": "Anfrage angenommen",
             "request_rejected": "Anfrage abgelehnt",
             "reservation_cancelled": "Buchung storniert",
+            "quote_sent": "Angebot",
+            "booking_confirmed": "Buchung bestätigt",
             "reservation_modified": "Buchung geändert"
           }
         }
