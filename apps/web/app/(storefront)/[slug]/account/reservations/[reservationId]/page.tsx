@@ -43,6 +43,7 @@ import { parseReservationOutcomeEvent } from "@/lib/customer-auth/util.account-r
 import { buildReviewUrl } from "@/lib/google-places";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import {
   canAuthorizeDepositOnline,
   getCustomerDepositView,
@@ -238,7 +239,10 @@ export default async function ReservationDetailPage({
 
   const status = toReservationStatus(reservation.status);
   const rentalPaid = isRentalPaid(reservation.payments);
-  const rentalPaidAmount = getRentalPaid(reservation.payments);
+  const rentalPaidAmount = getRentalPaid(
+    reservation.payments,
+    reservationCurrency(reservation.currency, store.settings),
+  );
   const damageFees = getDamageFees(reservation.payments);
   const paymentStatus = getReservationPaymentStatus(reservation.payments);
   const actions = getReservationActions({

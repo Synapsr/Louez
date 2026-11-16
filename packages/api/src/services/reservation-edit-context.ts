@@ -10,7 +10,7 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import type { LegMethod, PricingKind, StockKind } from "@louez/types";
+import type { LegMethod, PricingKind, ProductTaxSettings, StockKind } from "@louez/types";
 import type { SeasonalPricingConfig } from "@louez/utils";
 
 import { isReservationEditable } from "./reservation-editable";
@@ -47,6 +47,7 @@ interface RawProduct {
   pricingMode: string | null;
   basePeriodMinutes: number | null;
   enforceStrictTiers: boolean;
+  taxSettings: ProductTaxSettings | null;
   pricingTiers: RawTier[];
   seasonalPricings: RawSeasonalPricing[];
   tulipMapping?: { productId: string } | null;
@@ -113,6 +114,8 @@ function mapProduct(p: RawProduct) {
     pricingMode: p.pricingMode,
     basePeriodMinutes: p.basePeriodMinutes,
     enforceStrictTiers: p.enforceStrictTiers,
+    // The form's preview totals the lines with the tax engine, as the edit does.
+    taxSettings: p.taxSettings,
     tulipInsurable: Boolean(p.tulipMapping?.productId),
     pricingTiers: mapPricingTiers(p.pricingTiers),
     seasonalPricings: mapSeasonalPricings(p.seasonalPricings),
@@ -266,6 +269,7 @@ export async function getDashboardReservationEditContext(params: {
       totalAmount: reservation.totalAmount,
       deliveryFee: reservation.deliveryFee,
       discountAmount: reservation.discountAmount,
+      taxDisplayMode: reservation.taxDisplayMode,
       tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
       tulipInsuranceAmount: reservation.tulipInsuranceAmount,
       delivery: {

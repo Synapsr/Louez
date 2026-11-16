@@ -33,6 +33,21 @@ export async function invalidateVariantCatalog(queryClient: QueryClient) {
   ])
 }
 
+/**
+ * What a creation by hand is priced from outside the server: the insurer's
+ * quote and the routes its delivery fee is measured on. After a creation
+ * refused as changed meanwhile, both are read again, so the total the form
+ * shows is the one the next attempt is compared with.
+ */
+export async function invalidateManualCreationQuotes(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: orpc.dashboard.reservations.previewManualTulipQuote.key(),
+    }),
+    queryClient.invalidateQueries({ queryKey: orpc.public.address.distance.key() }),
+  ])
+}
+
 export async function invalidateReservationDetail(
   queryClient: QueryClient,
   reservationId: string,

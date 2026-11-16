@@ -523,6 +523,8 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     sendConfirmationEmail: z.boolean().optional(),
     sendAsQuote: z.boolean().optional(),
     allowOverbooking: z.boolean().optional(),
+    // The total the form showed, compared under the locks with what is written.
+    expectedTotal: z.number().min(0).optional(),
   }),
 });
 

@@ -2517,6 +2517,7 @@
         "subtotal": "Subtotale",
         "deposit": "Deposito",
         "total": "Totale",
+        "taxLine": "Imposta",
         "tulipInsurance": {
           "title": "Assicurazione Tulip",
           "appliesMappedProducts": "Si applica solo ai prodotti associati a Tulip.",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "Questo link di pagamento è scaduto. Contatta il negozio per richiederne uno nuovo.",
         "alreadyPaidTitle": "Già pagato",
         "alreadyPaidDescription": "Questo pagamento è già stato effettuato.",
+        "noLongerCurrentDescription": "Questa richiesta di pagamento non corrisponde più a quanto resta dovuto per la prenotazione. Contatta il negozio.",
         "cancelledTitle": "Pagamento annullato",
         "cancelledDescription": "Questa richiesta di pagamento è stata annullata dal negozio.",
         "unavailableTitle": "Pagamento non disponibile",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "Questa prenotazione non può essere annullata",
     "reservationStatusChanged": "Lo stato della prenotazione è cambiato durante la modifica. Ricarica la pagina e riprova.",
     "reservationChangedMeanwhile": "La prenotazione è stata modificata nel frattempo. Ricarica la pagina e riprova.",
+    "editTaxAdded": "Il totale ora include l'imposta: {previousTotal} prima, {newTotal} ora.",
     "endDateBeforeStart": "La data di fine deve essere successiva alla data di inizio",
     "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per gli aggiustamenti",
     "productRequired": "Prodotto richiesto",

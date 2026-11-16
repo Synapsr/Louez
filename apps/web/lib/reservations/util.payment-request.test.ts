@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { getReservationRentalAmount, paymentRequestTerms } from "./util.payment-request";
+import { paymentRequestTerms } from "./util.payment-request";
+import { getRentalRemaining, getReservationRentalAmount } from "./util.rental-amount";
 
 const reservation = (currency: string | null = "EUR") => ({
   currency,
@@ -164,14 +165,54 @@ test("nothing to ask for is refused", () => {
   }
 });
 
-test("the rental amount leaves out a deposit the total includes", () => {
-  const amounts = (subtotalAmount: string, depositAmount: string, totalAmount: string) =>
-    getReservationRentalAmount({ subtotalAmount, depositAmount, totalAmount });
+test("the rental costs its stored total, which never contains the deposit", () => {
+  const amount = (totalAmount: string) => getReservationRentalAmount({ totalAmount });
 
-  assert.equal(amounts("200.00", "300.00", "200.00"), 200);
-  assert.equal(amounts("200.00", "300.00", "500.00"), 200);
-  assert.equal(amounts("200.00", "0.00", "230.00"), 230);
-  assert.equal(amounts("200.00", "0.00", "0.00"), 200);
+  assert.equal(amount("200.00"), 200);
+  assert.equal(amount("230.00"), 230);
+  // A discount that covers the rental: zero is a valid total, never the subtotal.
+  assert.equal(amount("0.00"), 0);
+  // A negative or unreadable value owes nothing.
+  assert.equal(amount("-5.00"), 0);
+  assert.equal(amount("not a number"), 0);
+});
+
+// 100.00 before tax at 20 %: a total of 120.00 tax included, a deposit of 20.00,
+// on a row as old as the totals that once held their deposit.
+const taxedOnTop = {
+  currency: "EUR",
+  subtotalAmount: "100.00",
+  depositAmount: "20.00",
+  totalAmount: "120.00",
+  createdAt: new Date("2026-02-01T00:00:00Z"),
+  taxDisplayMode: null,
+};
+
+test("what is owed is the total less the rental paid: the tax is never taken for the deposit", () => {
+  assert.equal(getRentalRemaining(taxedOnTop, 100), 20);
+  const terms = paymentRequestTerms({
+    type: "rental",
+    reservation: {
+      ...taxedOnTop,
+      payments: [{ type: "rental", status: "completed", amount: "100.00" }],
+    },
+    storeSettings: null,
+  });
+  assert.deepEqual(terms, { ok: true, amount: 20, description: "Rental", currency: "EUR" });
+});
+
+test("a rental whose discount covers it asks nothing", () => {
+  // A rental of 20.00 with 20.00 off: a total of zero.
+  const covered = {
+    currency: "EUR",
+    subtotalAmount: "20.00",
+    discountAmount: "20.00",
+    depositAmount: "0.00",
+    totalAmount: "0.00",
+    payments: [],
+  };
+  const terms = paymentRequestTerms({ type: "rental", reservation: covered, storeSettings: null });
+  assert.deepEqual(terms, { ok: false, error: "errors.noAmountDue" });
 });
 
 test("a custom amount is judged as typed, in the reservation's currency", () => {
@@ -215,7 +256,6 @@ test("the rental still due is compared in hundredths: 0.57 less 0.07 paid is fif
     type: "rental",
     reservation: {
       ...reservation("EUR"),
-      subtotalAmount: "0.57",
       depositAmount: "0.00",
       totalAmount: "0.57",
       payments: [{ type: "rental", status: "completed", amount: "0.07", currency: "EUR" }],

@@ -20,6 +20,7 @@ import {
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { resolveDashboardCreationSource } from '@/lib/openreplay/events';
+import { reservationCurrency } from '@/lib/reservations/payment-billing-facts';
 import { getCurrentStore } from '@/lib/store-context';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
@@ -240,6 +241,8 @@ export default async function NewReservationPage({
         openReplaySource={openReplaySource}
         customers={customersList}
         products={productsList}
+        taxSettings={store.settings?.tax}
+        currency={reservationCurrency(null, store.settings)}
         tulipInsuranceMode={tulipInsuranceMode}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}

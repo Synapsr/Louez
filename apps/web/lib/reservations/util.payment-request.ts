@@ -4,27 +4,7 @@ import { recordedPaymentAmount } from "@louez/api/services/payment-amount";
 
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { type PaymentLike, getRentalPaid } from "@/lib/reservations/util.payment-status";
-
-/**
- * What a reservation's rental costs, without its deposit: its total, less the
- * deposit when the total includes it.
- */
-export function getReservationRentalAmount(reservation: {
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-}) {
-  const subtotal = parseFloat(reservation.subtotalAmount || "0");
-  const deposit = parseFloat(reservation.depositAmount || "0");
-  const total = parseFloat(reservation.totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
+import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 
 export type PaymentRequestTerms =
   | {
@@ -88,7 +68,6 @@ export function paymentRequestTerms(input: {
   readonly customAmount?: string;
   readonly reservation: {
     readonly currency: string | null;
-    readonly subtotalAmount: string;
     readonly depositAmount: string;
     readonly totalAmount: string;
     readonly payments: readonly PaymentLike[];
@@ -107,8 +86,7 @@ export function paymentRequestTerms(input: {
   if (input.type === "rental") {
     // What was received in the reservation's currency: a payment in another one does
     // not reduce what is owed (invariant M6).
-    const amount =
-      getReservationRentalAmount(reservation) - getRentalPaid(reservation.payments, currency);
+    const amount = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
     // In hundredths, exact: 0.57 less 0.07 leaves fifty cents due, not a float below.
     if (Math.round(amount * 100) < 50) return { ok: false, error: "errors.noAmountDue" };
     return { ok: true, amount, description: "Rental", currency };

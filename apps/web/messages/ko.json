@@ -2556,6 +2556,7 @@
         "subtotal": "소계",
         "deposit": "보증금",
         "total": "합계",
+        "taxLine": "세금",
         "tulipInsurance": {
           "title": "튤립 보험",
           "appliesMappedProducts": "튤립에 매핑된 상품에만 적용됩니다.",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "이 결제 링크는 만료되었습니다. 새 제품을 요청하려면 매장에 문의하세요.",
         "alreadyPaidTitle": "이미 지불함",
         "alreadyPaidDescription": "이 결제는 이미 완료되었습니다.",
+        "noLongerCurrentDescription": "이 결제 요청은 더 이상 예약의 남은 금액과 일치하지 않습니다. 매장에 문의하세요.",
         "cancelledTitle": "결제가 취소되었습니다.",
         "cancelledDescription": "해당 결제 요청은 매장에서 취소되었습니다.",
         "unavailableTitle": "결제 불가",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "이 예약은 취소할 수 없습니다",
     "reservationStatusChanged": "수정하는 동안 예약 상태가 변경되었습니다. 페이지를 새로고침하고 다시 시도하세요.",
     "reservationChangedMeanwhile": "수정하는 동안 예약이 변경되었습니다. 페이지를 새로고침하고 다시 시도하세요.",
+    "editTaxAdded": "이제 합계에 세금이 포함됩니다. 이전 {previousTotal}, 현재 {newTotal}.",
     "endDateBeforeStart": "종료 일시는 시작 일시보다 뒤여야 합니다.",
     "negativeAmountOnlyForAdjustment": "마이너스 금액은 조정에만 허용됩니다.",
     "productRequired": "필요한 제품",

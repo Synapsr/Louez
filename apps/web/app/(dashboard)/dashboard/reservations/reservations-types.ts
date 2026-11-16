@@ -49,6 +49,8 @@ export interface Reservation {
   } | null
   items: ReservationItem[]
   payments: Payment[]
+  /** What settles the rental, read by the server in the reservation's currency (`getRentalPaid`). */
+  rentalPaid: string
   signedAt?: Date | string | null
   signatureMethod?: ContractSignatureMethod | null
 }

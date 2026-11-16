@@ -26,7 +26,12 @@ import {
   withCustomerNotificationDefaults,
   type CustomerNotificationSettings,
 } from "@louez/types";
-import { evaluateReservationRules, getSettledPaymentAmount, normalizeCurrency } from "@louez/utils";
+import {
+  evaluateReservationRules,
+  getRentalPaid,
+  getSettledPaymentAmount,
+  normalizeCurrency,
+} from "@louez/utils";
 import { and, asc, eq } from "drizzle-orm";
 
 import {
@@ -425,6 +430,8 @@ async function buildPreview(
         type: payments.type,
         status: payments.status,
         amount: payments.amount,
+        method: payments.method,
+        currency: payments.currency,
         refundOfPaymentId: payments.refundOfPaymentId,
         stripeRefundId: payments.stripeRefundId,
         stripePaymentIntentId: payments.stripePaymentIntentId,
@@ -435,7 +442,7 @@ async function buildPreview(
     const deposit =
       getSettledPaymentAmount(rows, "deposit") - getSettledPaymentAmount(rows, "deposit_return");
     moneyFacts = {
-      rentalPaid: money(getSettledPaymentAmount(rows, "rental")),
+      rentalPaid: money(getRentalPaid(rows, currency)),
       depositCollected: money(Math.max(0, deposit)),
       depositStatus: locked.depositStatus,
       refundedAutomatically: false,

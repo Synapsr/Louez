@@ -26,6 +26,10 @@ import {
   Send,
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
+import {
+  getRentalRemaining,
+  getReservationRentalAmount,
+} from "@/lib/reservations/util.rental-amount";
 import { formatDistanceToNow } from "date-fns";
 
 import { Button } from "@louez/ui";
@@ -78,6 +82,8 @@ import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { paymentRefusalKey } from "@/lib/reservations/util.payment-refusal";
 import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
+  getDepositTotals,
+  getRentalPaid,
   isFailedRefundRow,
   isRefundRow,
   isStripeRefundRow,
@@ -160,7 +166,6 @@ interface UnifiedPaymentSectionProps {
   readOnly?: boolean;
   reservationId: string;
   reservationNumber: string;
-  subtotalAmount: string;
   depositAmount: string;
   totalAmount: string;
   payments: Payment[];
@@ -203,31 +208,10 @@ const CARD_BRANDS: Record<string, string> = {
 
 const VISIBLE_HISTORY_COUNT = 3;
 
-function getRentalAmount({
-  subtotalAmount,
-  depositAmount,
-  totalAmount,
-}: {
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-}) {
-  const subtotal = parseFloat(subtotalAmount || "0");
-  const deposit = parseFloat(depositAmount || "0");
-  const total = parseFloat(totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
 
 export function UnifiedPaymentSection({
   reservationId,
   reservationNumber,
-  subtotalAmount,
   depositAmount,
   totalAmount,
   payments,
@@ -320,26 +304,23 @@ export function UnifiedPaymentSection({
     { value: "other", label: t("payment.methods.other") },
   ];
 
-  // totalAmount should exclude the deposit, but older rows may include it.
-  const rental = getRentalAmount({ subtotalAmount, depositAmount, totalAmount });
+  const rental = getReservationRentalAmount({ totalAmount });
   const deposit = parseFloat(depositAmount);
   const depositStatusVal = depositStatusProp || "none";
 
-  const rentalPaid = getNetCompletedPaymentAmount(payments, "rental");
+  const rentalPaid = getRentalPaid(payments, currency);
 
-  const depositCollected = payments
-    .filter((p) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  const depositReturned = payments
-    .filter((p) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  // The deposit by the shared refund rule, as the cancellation preview reads it.
+  const {
+    collected: depositCollected,
+    returned: depositReturned,
+    held: depositToReturn,
+  } = getDepositTotals(payments);
 
   const damagesPaid = getNetCompletedPaymentAmount(payments, "damage");
 
-  const rentalRemaining = Math.max(0, rental - rentalPaid);
+  const rentalRemaining = getRentalRemaining({ totalAmount }, rentalPaid);
   const depositRemaining = Math.max(0, deposit - depositCollected);
-  const depositToReturn = depositCollected - depositReturned;
   const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100;
 
   const isRentalFullyPaid = rentalRemaining === 0;

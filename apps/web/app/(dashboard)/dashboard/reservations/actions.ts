@@ -14,10 +14,23 @@ import {
 
 import {
   isReservationEditable,
+  NOT_RECORDED,
   pricingBasisOf,
-  taxDisplayModeOf,
+  recordedTaxDisplayMode,
   validateReservationContract,
 } from "@louez/api/services";
+import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
+import {
+  priceReservationEdit,
+  type EditedLine,
+  type EditPricingInput,
+} from "@louez/api/services/reservation-edit-pricing";
+import {
+  computeReservationTotals,
+  getReservationItemTaxFields,
+  INSURANCE_TAX_LINE_ID,
+  type ReservationItemTaxFields,
+} from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -33,7 +46,9 @@ import {
   getEffectiveProductQuantities,
   insertReservation,
   isStoreNotAcceptingReservationsError,
+  lockCustomerRow,
   lockReservationInTransaction,
+  lockStoreRow,
   markReservation,
   reconcileReservationStock,
   reservationStatusConsumesStock,
@@ -155,10 +170,8 @@ import {
 import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 import { resolveReservationLocationSnapshot } from "@louez/api/services/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
-import {
-  getReservationRentalAmount,
-  paymentRequestTerms,
-} from "@/lib/reservations/util.payment-request";
+import { paymentRequestTerms } from "@/lib/reservations/util.payment-request";
+import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 import {
   compareReservationDemand,
   fingerprintReservationEdit,
@@ -182,7 +195,7 @@ import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delive
 
 import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
-import { evaluateReservationRules } from "@louez/utils";
+import { evaluateReservationRules, minorUnitsPerUnit, roundToMinorUnit } from "@louez/utils";
 import {
   paymentAmount,
   recordedPaymentAmount,
@@ -510,6 +523,11 @@ interface CreateReservationData {
   sendConfirmationEmail?: boolean;
   sendAsQuote?: boolean;
   allowOverbooking?: boolean;
+  /**
+   * The total the form showed. Compared under the locks with the total about
+   * to be written; a difference refuses the creation as changed meanwhile.
+   */
+  expectedTotal?: number;
 }
 
 /**
@@ -565,6 +583,9 @@ export async function createManualReservation(data: CreateReservationData) {
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  // Frozen at creation: the store can change its currency later (billing contract Q4).
+  // Every line's amount is rounded in its minor unit, as the form rounds it.
+  const currency = reservationCurrency(null, store.settings);
 
   // A booking created as confirmed asks the card gate (README §8.4) before it writes a
   // new customer or calls the routing API. insertReservation asks again under the
@@ -574,10 +595,13 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   let customerId = data.customerId;
+  // A new customer is written in the creation's transaction, after the
+  // product locks (store, products, customer, reservation rows): a refused
+  // creation leaves nothing behind. Until then it is the row it will be.
+  let pendingCustomer: typeof customers.$inferInsert | null = null;
+  let customer: CreationCustomer | undefined;
 
-  // Create new customer if needed
   if (!customerId && data.newCustomer) {
-    // Check if customer exists
     const existingCustomer = await db.query.customers.findFirst({
       where: and(eq(customers.storeId, store.id), eq(customers.email, data.newCustomer.email)),
     });
@@ -585,17 +609,33 @@ export async function createManualReservation(data: CreateReservationData) {
     if (existingCustomer) {
       customerId = existingCustomer.id;
     } else {
-      const newCustomerId = nanoid();
-      await db.insert(customers).values({
-        id: newCustomerId,
+      customerId = nanoid();
+      pendingCustomer = {
+        id: customerId,
         storeId: store.id,
         email: data.newCustomer.email,
         firstName: data.newCustomer.firstName,
         lastName: data.newCustomer.lastName,
         phone: data.newCustomer.phone || null,
         createdVia: "dashboard",
-      });
-      customerId = newCustomerId;
+      };
+      // The columns' own defaults, as the row will hold them.
+      customer = {
+        id: customerId,
+        email: pendingCustomer.email,
+        firstName: pendingCustomer.firstName,
+        lastName: pendingCustomer.lastName,
+        phone: pendingCustomer.phone ?? null,
+        customerType: "individual",
+        companyName: null,
+        companyNumber: null,
+        companyNumberScheme: null,
+        vatNumber: null,
+        address: null,
+        city: null,
+        postalCode: null,
+        country: "FR",
+      };
     }
   }
 
@@ -603,13 +643,15 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: "errors.customerRequired" };
   }
 
-  const customer = await db.query.customers.findFirst({
+  customer ??= await db.query.customers.findFirst({
     where: and(eq(customers.id, customerId), eq(customers.storeId, store.id)),
   });
 
   if (!customer) {
     return { error: "errors.customerNotFound" };
   }
+  // The customer booked: a new one's id, or the one with its email written meanwhile.
+  let bookedCustomerId: string = customerId;
 
   const tulipMode = await getDashboardTulipInsuranceMode(store.id);
   const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
@@ -725,9 +767,9 @@ export async function createManualReservation(data: CreateReservationData) {
       return {
         product,
         quantity: item.quantity,
-        unitPrice: effectiveUnitPrice.toFixed(2),
+        unitPrice: roundToMinorUnit(effectiveUnitPrice, currency).toFixed(2),
         depositPerUnit: product.deposit || "0",
-        totalPrice: effectiveSubtotal.toFixed(2),
+        totalPrice: roundToMinorUnit(effectiveSubtotal, currency).toFixed(2),
         pricingBreakdown,
         // What the line chose, as submitted: read against the product under its lock.
         requestedAttributes: item.selectedAttributes,
@@ -749,9 +791,9 @@ export async function createManualReservation(data: CreateReservationData) {
       name: item.name,
       description: item.description,
       quantity: item.quantity,
-      unitPrice: item.unitPrice.toFixed(2),
+      unitPrice: roundToMinorUnit(item.unitPrice, currency).toFixed(2),
       depositPerUnit: item.deposit.toFixed(2),
-      totalPrice: totalPrice.toFixed(2),
+      totalPrice: roundToMinorUnit(totalPrice, currency).toFixed(2),
       pricingBreakdown: {
         basePrice: item.unitPrice,
         effectivePrice: item.unitPrice,
@@ -806,7 +848,6 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   // Delivery validation and fee calculation
-  let deliveryFeeAmount = 0;
   let deliveryDistanceKm: number | null = null;
   let returnDistanceKm: number | null = null;
   const storeDeliverySettings = store.settings?.delivery;
@@ -890,26 +931,11 @@ export async function createManualReservation(data: CreateReservationData) {
         return { error: "errors.returnAddressTooFar" };
       }
     }
-
-    // Calculate delivery fee server-side
-    const isIncluded = storeDeliverySettings.mode === "included";
-    if (isIncluded) {
-      deliveryFeeAmount = 0;
-    } else {
-      const feeResult = calculateTotalDeliveryFee(
-        deliveryDistanceKm,
-        returnDistanceKm,
-        storeDeliverySettings,
-        subtotalAmount,
-      );
-      deliveryFeeAmount = feeResult.totalFee;
-    }
   }
 
   // Generate reservation number
   const reservationNumber = await generateReservationNumber(store.id);
 
-  const manualDiscountAmount = Math.min(Math.max(data.discountAmount ?? 0, 0), subtotalAmount);
   if (
     data.depositOverride != null &&
     Number.isFinite(data.depositOverride) &&
@@ -917,21 +943,38 @@ export async function createManualReservation(data: CreateReservationData) {
   ) {
     depositAmount = data.depositOverride;
   }
-  const totalAmount = subtotalAmount - manualDiscountAmount + deliveryFeeAmount;
 
   // Create reservation. Created as confirmed, insertReservation asks the card gate.
   const reservationId = nanoid();
   const reservationStatus = data.sendAsQuote ? "quote" : "confirmed";
   const actorUserId = await getActorUserId();
   const reservationWriteResult = await db.transaction(async (tx) => {
-    // The product locks first. Everything the stock decision reads comes
+    // The repository's lock order (DL-12), as the API's creation takes it:
+    // the store row first, so two creations of one store run one after the
+    // other; then the products by id; then the customer; then the
+    // reservation's rows. Everything the stock decision reads comes
     // after them: the products, the store's availability rules, the other
     // bookings, and which combination each line chose.
+    if (!(await lockStoreRow(tx, store.id))) {
+      return { ok: false as const, error: "errors.storeNotFound", shortfalls: [] };
+    }
     const lockedProductsById = await lockReservationProducts(
       tx,
       store.id,
       productDetails.map((detail) => detail.product.id),
     );
+    // A customer the store has is locked by its id, through the primary key
+    // (`lockCustomerRow`), and read again: one deleted meanwhile books nothing.
+    if (!pendingCustomer) {
+      await lockCustomerRow(tx, bookedCustomerId);
+      const [stillThere] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.id, bookedCustomerId), eq(customers.storeId, store.id)));
+      if (!stillThere) {
+        return { ok: false as const, error: "errors.customerNotFound", shortfalls: [] };
+      }
+    }
     const [availabilityRules] = await tx
       .select({ settings: stores.settings })
       .from(stores)
@@ -950,6 +993,91 @@ export async function createManualReservation(data: CreateReservationData) {
         detail,
         choice: resolveManualLineChoice(product, detail.requestedAttributes),
       });
+    }
+
+    // Priced under the locks (slice 10): a line priced from its product is
+    // priced from the catalogue the locks hold, and that is what is written.
+    // A price typed by hand stands as typed.
+    const lockedCatalog = await loadPricingCatalog(tx, {
+      storeId: store.id,
+      productIds: lines.map(({ detail }) => detail.product.id),
+      timezone: availabilityRules?.settings?.timezone,
+      includeInactive: true,
+    });
+    const lockedLines: Array<{ unitPrice: string; totalPrice: string }> = [];
+    for (const { detail } of lines) {
+      if (detail.pricingBreakdown.isManualOverride) {
+        lockedLines.push({ unitPrice: detail.unitPrice, totalPrice: detail.totalPrice });
+        continue;
+      }
+      const lockedProduct = lockedCatalog.get(detail.product.id);
+      if (!lockedProduct) {
+        return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
+      }
+      const priced = priceRegularCatalogLine(lockedProduct, {
+        productId: lockedProduct.id,
+        quantity: detail.quantity,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
+      });
+      lockedLines.push({
+        unitPrice: roundToMinorUnit(priced.unitPrice, currency).toFixed(2),
+        totalPrice: roundToMinorUnit(priced.subtotal, currency).toFixed(2),
+      });
+    }
+    const lockedSubtotal =
+      lockedLines.reduce((sum, line) => sum + Number(line.totalPrice), 0) +
+      customItemDetails.reduce((sum, customItem) => sum + Number(customItem.totalPrice), 0) +
+      tulipInsuranceAmount;
+    const discountUnderLocks = Math.min(Math.max(data.discountAmount ?? 0, 0), lockedSubtotal);
+    // The delivery fee, from the routes measured above and the delivery
+    // settings the store holds now.
+    const lockedDelivery = availabilityRules?.settings?.delivery;
+    const deliveryFeeUnderLocks = !hasAnyDelivery
+      ? 0
+      : !lockedDelivery?.enabled || lockedDelivery.mode === "included"
+        ? 0
+        : calculateTotalDeliveryFee(
+            deliveryDistanceKm,
+            returnDistanceKm,
+            lockedDelivery,
+            lockedSubtotal,
+          ).totalFee;
+
+    // The totals: the tax engine over the lines as priced here, the
+    // insurance (exempt), the delivery fee and the discount, as the checkout
+    // computes them, with the store's tax settings read here (slice 10, M1).
+    const taxSettings = availabilityRules?.settings?.tax;
+    const taxedLines = [
+      ...lines.map(({ detail }, index) => ({
+        subtotal: Number(lockedLines[index]!.totalPrice),
+        unitPrice: Number(lockedLines[index]!.unitPrice),
+        taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
+      })),
+      ...customItemDetails.map((customItem) => ({
+        subtotal: Number(customItem.totalPrice),
+        unitPrice: Number(customItem.unitPrice),
+        taxSettings: null,
+      })),
+    ];
+    const totals = computeReservationTotals({
+      lines: taxedLines,
+      insuranceAmount: tulipInsuranceAmount,
+      discountAmount: discountUnderLocks,
+      deliveryFee: deliveryFeeUnderLocks,
+      totalDeposit: depositAmount,
+      taxSettings,
+      currency,
+    });
+    // What the person confirmed is what is written: the total the form
+    // showed, compared to the minor unit with the total about to be
+    // inserted, its delivery fee and insurance included. A difference
+    // refuses the creation, and the form reads what it prices from again.
+    if (data.expectedTotal !== undefined) {
+      const perUnit = minorUnitsPerUnit(currency);
+      if (Math.round(totals.total * perUnit) !== Math.round(data.expectedTotal * perUnit)) {
+        return { ok: false as const, error: "errors.reservationChangedMeanwhile", shortfalls: [] };
+      }
     }
 
     // The stock rule every booking is checked against. Each shortfall is
@@ -1002,23 +1130,56 @@ export async function createManualReservation(data: CreateReservationData) {
       return { ok: false as const, error: split.error, shortfalls: [] };
     }
 
+    const lineTaxValues = (index: number) =>
+      reservationItemTaxValues({
+        ...getReservationItemTaxFields(totals, taxedLines[index]!, index),
+        taxExempt: false,
+      });
+    const insuranceTax = totals.taxEnabled
+      ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)
+      : undefined;
+
+    // The new customer, once nothing refuses the creation any more, after the
+    // products and before the reservation's rows: a refused creation writes
+    // nothing. It is added against the store's unique (store, e-mail), as the
+    // API's creation adds one: a customer with this e-mail added meanwhile
+    // makes the insert write nothing, and is the one booked, as it is. The
+    // checkout and the customer form add customers without the store's lock:
+    // the read back is a locking read, which sees a row committed after this
+    // transaction's first read.
+    if (pendingCustomer) {
+      await tx
+        .insert(customers)
+        .values(pendingCustomer)
+        .onDuplicateKeyUpdate({ set: { id: sql`id` } });
+      const [booked] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.storeId, store.id), eq(customers.email, pendingCustomer.email)))
+        .for("update");
+      if (!booked) throw new Error("The customer written in this transaction could not be read back.");
+      bookedCustomerId = booked.id;
+    }
+
     const { effects, lock } = await insertReservation(tx, {
       id: reservationId,
       storeId: store.id,
-      customerId,
+      customerId: bookedCustomerId,
       number: reservationNumber,
       status: reservationStatus,
       // Frozen at creation: the store can change its currency later (billing contract Q4).
-      currency: reservationCurrency(null, store.settings),
+      currency,
       startDate: data.startDate,
       endDate: data.endDate,
-      subtotalAmount: subtotalAmount.toFixed(2),
+      subtotalAmount: totals.subtotal.toFixed(2),
       depositAmount: depositAmount.toFixed(2),
-      totalAmount: totalAmount.toFixed(2),
-      discountAmount: manualDiscountAmount.toFixed(2),
-      // The store's tax display mode, recorded (slice 9). Its totals do not
-      // run the tax engine yet: they are what the store's prices add up to.
-      taxDisplayMode: taxDisplayModeOf(store.settings?.tax),
+      totalAmount: totals.total.toFixed(2),
+      subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
+      taxAmount: totals.taxAmount?.toFixed(2) ?? null,
+      taxRate: totals.taxRate?.toFixed(2) ?? null,
+      discountAmount: discountUnderLocks.toFixed(2),
+      // The mode its totals were computed in (slice 9).
+      taxDisplayMode: totals.displayMode,
       internalNotes: data.internalNotes || null,
       source: "manual",
       // Staff books on the customer's behalf: the profile's default identity
@@ -1039,7 +1200,7 @@ export async function createManualReservation(data: CreateReservationData) {
       deliveryLongitude:
         hasOutboundDelivery && outboundLeg.longitude ? outboundLeg.longitude.toString() : null,
       deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
-      deliveryFee: deliveryFeeAmount.toFixed(2),
+      deliveryFee: deliveryFeeUnderLocks.toFixed(2),
       returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
       returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
       returnPostalCode: hasReturnDelivery ? (returnLeg.postalCode ?? null) : null,
@@ -1057,17 +1218,17 @@ export async function createManualReservation(data: CreateReservationData) {
 
     // Create reservation items for catalog products. A line keeps the
     // combination it chose, also when it was booked over the stock.
-    for (const { detail, choice } of lines) {
+    for (const [lineIndex, { detail, choice }] of lines.entries()) {
       await tx.insert(reservationItems).values({
         reservationId,
         productId: detail.product.id,
         isCustomItem: false,
         quantity: detail.quantity,
-        unitPrice: detail.unitPrice,
+        unitPrice: lockedLines[lineIndex]!.unitPrice,
         depositPerUnit: detail.depositPerUnit,
-        totalPrice: detail.totalPrice,
+        totalPrice: lockedLines[lineIndex]!.totalPrice,
         pricingBreakdown: detail.pricingBreakdown,
-        taxExempt: false,
+        ...lineTaxValues(lineIndex),
         combinationKey: choice.combinationKey,
         selectedAttributes: choice.selectedAttributes,
         productSnapshot: {
@@ -1081,7 +1242,7 @@ export async function createManualReservation(data: CreateReservationData) {
     }
 
     // Create reservation items for custom items
-    for (const customItem of customItemDetails) {
+    for (const [customIndex, customItem] of customItemDetails.entries()) {
       await tx.insert(reservationItems).values({
         reservationId,
         productId: null,
@@ -1091,7 +1252,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: customItem.depositPerUnit,
         totalPrice: customItem.totalPrice,
         pricingBreakdown: customItem.pricingBreakdown,
-        taxExempt: false,
+        ...lineTaxValues(lines.length + customIndex),
         productSnapshot: {
           name: customItem.name,
           description: customItem.description,
@@ -1110,7 +1271,13 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: "0.00",
         totalPrice: tulipInsuranceAmount.toFixed(2),
         // Insurance carries no VAT, whatever the store's settings.
-        taxExempt: true,
+        ...reservationItemTaxValues({
+          taxRate: null,
+          taxAmount: insuranceTax?.taxAmount ?? null,
+          priceExclTax: insuranceTax?.amountExclTax ?? null,
+          totalExclTax: insuranceTax?.amountExclTax ?? null,
+          taxExempt: true,
+        }),
         productSnapshot: {
           name: "Garantie casse/vol",
           description: "Garantie casse/vol",
@@ -1146,7 +1313,14 @@ export async function createManualReservation(data: CreateReservationData) {
       await validateReservationContract(tx, reservationId, store.id, "confirmation");
     }
 
-    return { ok: true as const, effects };
+    return {
+      ok: true as const,
+      effects,
+      totalAmount: totals.total,
+      subtotalAmount: totals.subtotal,
+      discountAmount: discountUnderLocks,
+      deliveryFee: deliveryFeeUnderLocks,
+    };
   }).catch(refuseCreation);
 
   if (!reservationWriteResult.ok) {
@@ -1155,6 +1329,8 @@ export async function createManualReservation(data: CreateReservationData) {
       shortfalls: reservationWriteResult.shortfalls,
     };
   }
+  // The total the tax engine gave, as written.
+  const { totalAmount } = reservationWriteResult;
 
   // Right after commit: a reservation created as confirmed records its
   // pay-as-you-go fee. A quote records it when it is accepted.
@@ -1172,7 +1348,7 @@ export async function createManualReservation(data: CreateReservationData) {
       surface: "dashboard",
       store_id: store.id,
       reservation_id: reservationId,
-      customer_id: customerId,
+      customer_id: bookedCustomerId,
       source: "dashboard_manual",
       reservation_status: reservationStatus,
       catalog_line_count: productDetails.length,
@@ -1187,9 +1363,9 @@ export async function createManualReservation(data: CreateReservationData) {
       tulip_insurance_opt_in: appliedTulipInsuranceOptIn,
       sent_as_quote: Boolean(data.sendAsQuote),
       send_confirmation_email: shouldSendEmail,
-      subtotal_amount_cents: toAnalyticsAmountCents(subtotalAmount),
-      discount_amount_cents: toAnalyticsAmountCents(manualDiscountAmount),
-      delivery_fee_cents: toAnalyticsAmountCents(deliveryFeeAmount),
+      subtotal_amount_cents: toAnalyticsAmountCents(reservationWriteResult.subtotalAmount),
+      discount_amount_cents: toAnalyticsAmountCents(reservationWriteResult.discountAmount),
+      delivery_fee_cents: toAnalyticsAmountCents(reservationWriteResult.deliveryFee),
       deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
       total_amount_cents: toAnalyticsAmountCents(totalAmount),
       currency: store.settings?.currency ?? "EUR",
@@ -1285,7 +1461,7 @@ export async function createManualReservation(data: CreateReservationData) {
           startDate: data.startDate,
           endDate: data.endDate,
           totalAmount,
-          subtotalAmount,
+          subtotalAmount: reservationWriteResult.subtotalAmount,
           depositAmount,
         },
         items: emailItems,
@@ -1314,7 +1490,7 @@ export async function createManualReservation(data: CreateReservationData) {
               number: reservationNumber,
               startDate: data.startDate,
               endDate: data.endDate,
-              subtotalAmount,
+              subtotalAmount: reservationWriteResult.subtotalAmount,
               depositAmount,
               totalAmount,
             },
@@ -1465,6 +1641,22 @@ type ReservationItemUpdateValues = Pick<
   | "totalPrice"
   | "pricingBreakdown"
 >;
+
+type ReservationItemTaxValues = Pick<
+  ReservationItemInsertValues,
+  "taxRate" | "taxAmount" | "priceExclTax" | "totalExclTax" | "taxExempt"
+>;
+
+/** A line's tax figures as its row stores them. */
+const reservationItemTaxValues = (
+  tax: ReservationItemTaxFields & { taxExempt: boolean },
+): ReservationItemTaxValues => ({
+  taxRate: tax.taxRate?.toFixed(2) ?? null,
+  taxAmount: tax.taxAmount?.toFixed(2) ?? null,
+  priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
+  totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+  taxExempt: tax.taxExempt,
+});
 
 type ReservationItemWrite =
   | { type: "insert"; values: ReservationItemInsertValues }
@@ -1838,6 +2030,80 @@ export async function previewReservationTulipQuote(
   });
 }
 
+/** An amount written with its currency's precision: "150" for the yen, "150.00" for the euro. */
+const amountInCurrency = (amount: number, currency: string) =>
+  amount.toFixed(minorUnitsPerUnit(currency) === 1 ? 0 : 2);
+
+/** An amount in cents, to compare two amounts written differently ("20" and "20.00"). */
+const toCents = (value: string | number | null | undefined) =>
+  Math.round(Number(value ?? 0) * 100);
+
+/** The delivery legs as a reservation stores them: what an edit compares to know they changed. */
+const DELIVERY_LEG_FIELDS = [
+  "outboundMethod",
+  "returnMethod",
+  "pickupLocationId",
+  "returnLocationId",
+  "deliveryAddress",
+  "deliveryCity",
+  "deliveryPostalCode",
+  "deliveryCountry",
+  "deliveryLatitude",
+  "deliveryLongitude",
+  "returnAddress",
+  "returnCity",
+  "returnPostalCode",
+  "returnCountry",
+  "returnLatitude",
+  "returnLongitude",
+] as const satisfies ReadonlyArray<keyof ReservationDeliveryUpdateValues>;
+
+/** A leg's value, the same however it was written: a coordinate's trailing zeros, an empty text. */
+const normalizeLegValue = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const asNumber = typeof value === "string" ? Number(value) : value;
+  return typeof asNumber === "number" && Number.isFinite(asNumber)
+    ? String(asNumber)
+    : String(value);
+};
+
+/** The customer a creation books: the row, or the one it is about to write. */
+type CreationCustomer = Pick<
+  typeof customers.$inferSelect,
+  | "id"
+  | "email"
+  | "firstName"
+  | "lastName"
+  | "phone"
+  | "customerType"
+  | "companyName"
+  | "companyNumber"
+  | "companyNumberScheme"
+  | "vatNumber"
+  | "address"
+  | "city"
+  | "postalCode"
+  | "country"
+>;
+
+/** What the insurer is told of the renter: the reservation's billing identity and the customer's contact. */
+function insurerCustomerOf(
+  reservation: Parameters<typeof resolveReservationBilling>[0],
+  customer: typeof customers.$inferSelect,
+) {
+  return {
+    ...resolveReservationBilling(reservation, customer),
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    email: customer.email,
+    phone: customer.phone || "",
+    address: customer.address || "",
+    city: customer.city || "",
+    postalCode: customer.postalCode || "",
+    country: customer.country,
+  };
+}
+
 export async function updateReservation(
   reservationId: string,
   data: UpdateReservationData,
@@ -1919,8 +2185,10 @@ export async function updateReservation(
     storeSettings: store.settings,
   });
 
-  // Calculate new totals
-  let newSubtotalAmount = 0;
+  // Every line the edit leaves, but the insurance, as it prices it by today's
+  // rules; the tax engine totals them under the locks (slice 10).
+  const editedLines: Array<Omit<EditedLine, "taxExempt"> & { id: string }> = [];
+  let linesChanged = false;
   let newDepositAmount = 0;
   let nextTulipInsuranceAmount: number | null = null;
   const tulipWarnings: Array<{
@@ -1931,6 +2199,9 @@ export async function updateReservation(
     tulipWarnings.push({ key: "errors.tulipInsuranceDisabledPastDate" });
   }
   const insuranceQuoteItems: Array<{ productId: string; quantity: number }> = [];
+  // What the insurer was told of the renter, and where the routes start from.
+  let quotedCustomer: ReturnType<typeof insurerCustomerOf> | null = null;
+  let routedFromStore: { latitude: string | null; longitude: string | null } | null = null;
   const legacyInsuranceItemIds = reservation.items
     .filter((item) =>
       isLegacyTulipInsuranceItem({
@@ -1983,6 +2254,7 @@ export async function updateReservation(
     removedReservationItemIds = existingNonInsuranceItems
       .filter((item) => !submittedExistingItemIds.has(item.id))
       .map((item) => item.id);
+    if (removedReservationItemIds.length > 0) linesChanged = true;
 
     // Insert new items
     for (const item of reservationItemsWithoutLegacyInsurance) {
@@ -1992,6 +2264,7 @@ export async function updateReservation(
       let duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
       let totalPrice = item.unitPrice * duration * item.quantity;
       let manualPricingKind: PricingKind = "duration";
+      let pricedFromProductId: string | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
@@ -2017,6 +2290,7 @@ export async function updateReservation(
         });
 
         if (product) {
+          pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           itemPricingMode = effectivePricingMode;
           duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
@@ -2100,7 +2374,6 @@ export async function updateReservation(
       }
 
       const itemDeposit = item.depositPerUnit * item.quantity;
-      newSubtotalAmount += totalPrice;
       newDepositAmount += itemDeposit;
       if (item.productId) {
         insuranceQuoteItems.push({
@@ -2123,6 +2396,30 @@ export async function updateReservation(
         images: item.productSnapshot.images || [],
       };
 
+      // A line changes what prices the reservation when it is new, or its
+      // quantity, deposit or price typed by hand is not the one stored.
+      const storedLine = item.id ? existingItemsById.get(item.id) : undefined;
+      const typedPrice = Boolean(item.isManualPrice) || !item.productId;
+      if (
+        !storedLine ||
+        storedLine.quantity !== item.quantity ||
+        toCents(storedLine.depositPerUnit) !== toCents(item.depositPerUnit) ||
+        (pricingBasisOf(storedLine.pricingBreakdown)?.isManualOverride === true) !==
+          Boolean(item.isManualPrice) ||
+        (typedPrice && toCents(storedLine.totalPrice) !== toCents(totalPrice))
+      ) {
+        linesChanged = true;
+      }
+      // A new line's id is drawn now: its tax figures are merged into its insert under the locks.
+      const lineId = item.id ?? nanoid();
+      editedLines.push({
+        id: lineId,
+        pricedFromProductId,
+        productId: item.productId || null,
+        quantity: item.quantity,
+        subtotal: Number(totalPrice.toFixed(2)),
+        unitPrice: Number(finalUnitPrice.toFixed(2)),
+      });
       if (item.id) {
         const existingItem = existingItemsById.get(item.id);
         if (!existingItem) {
@@ -2142,7 +2439,7 @@ export async function updateReservation(
         itemWrites.push({
           type: "insert",
           values: {
-            id: nanoid(),
+            id: lineId,
             reservationId,
             ...itemValues,
             productSnapshot,
@@ -2159,6 +2456,7 @@ export async function updateReservation(
 
       let totalPrice: number;
       let finalUnitPrice = parseFloat(item.unitPrice);
+      let pricedFromProductId: string | null = null;
 
       if (!isManualPrice && item.productId) {
         // Recalculate with tiers
@@ -2168,6 +2466,7 @@ export async function updateReservation(
         });
 
         if (product) {
+          pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           const itemDurationMinutes = calculateDurationMinutes(newStartDate, newEndDate);
           const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
@@ -2306,7 +2605,14 @@ export async function updateReservation(
         }
       }
 
-      newSubtotalAmount += totalPrice;
+      editedLines.push({
+        id: item.id,
+        pricedFromProductId,
+        productId: item.productId,
+        quantity: item.quantity,
+        subtotal: Number(totalPrice.toFixed(2)),
+        unitPrice: Number(finalUnitPrice.toFixed(2)),
+      });
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
       if (item.productId) {
         insuranceQuoteItems.push({
@@ -2325,19 +2631,10 @@ export async function updateReservation(
       }
     } else {
       try {
+        quotedCustomer = insurerCustomerOf(reservation, reservation.customer);
         const quote = await previewTulipQuoteForCheckout({
           storeId: store.id,
-          customer: {
-            ...resolveReservationBilling(reservation, reservation.customer),
-            firstName: reservation.customer.firstName,
-            lastName: reservation.customer.lastName,
-            email: reservation.customer.email,
-            phone: reservation.customer.phone || "",
-            address: reservation.customer.address || "",
-            city: reservation.customer.city || "",
-            postalCode: reservation.customer.postalCode || "",
-            country: reservation.customer.country,
-          },
+          customer: quotedCustomer,
           items: insuranceQuoteItems,
           startDate: newStartDate,
           endDate: newEndDate,
@@ -2374,10 +2671,6 @@ export async function updateReservation(
     (!nextTulipInsuranceAmount || nextTulipInsuranceAmount < previousTulipInsuranceAmount)
   ) {
     nextTulipInsuranceAmount = previousTulipInsuranceAmount;
-  }
-
-  if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
-    newSubtotalAmount += nextTulipInsuranceAmount;
   }
 
   if (data.items && data.items.length > 0) {
@@ -2448,8 +2741,12 @@ export async function updateReservation(
     extraInsuranceItemIdsToDelete = legacyInsuranceItemIds;
   }
 
-  // Process delivery changes
-  let deliveryFee = parseFloat(reservation.deliveryFee || "0");
+  // Process delivery changes. The fee is the stored one, or the new
+  // delivery's, computed under the locks from the routes measured here and
+  // the store's settings read there.
+  let deliveryFeeUnderLocks: EditPricingInput["deliveryFee"] = parseFloat(
+    reservation.deliveryFee || "0",
+  );
   const deliveryUpdateFields: ReservationDeliveryUpdateValues = {};
 
   if (data.delivery) {
@@ -2556,31 +2853,28 @@ export async function updateReservation(
       deliveryUpdateFields.returnDistanceKm = null;
     }
 
-    // Calculate delivery fee
-    if (deliverySettings?.enabled) {
-      const outDist = deliveryUpdateFields.deliveryDistanceKm
-        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
-        : null;
-      const retDist = deliveryUpdateFields.returnDistanceKm
-        ? parseFloat(deliveryUpdateFields.returnDistanceKm)
-        : null;
-
-      if (deliverySettings.mode === "included") {
-        deliveryFee = 0;
-      } else {
-        const feeResult = calculateTotalDeliveryFee(
-          outDist,
-          retDist,
-          deliverySettings as Parameters<typeof calculateTotalDeliveryFee>[2],
-          newSubtotalAmount,
-        );
-        deliveryFee = feeResult.totalFee;
-      }
-    } else {
-      deliveryFee = 0;
+    const outDist = deliveryUpdateFields.deliveryDistanceKm
+      ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
+      : null;
+    const retDist = deliveryUpdateFields.returnDistanceKm
+      ? parseFloat(deliveryUpdateFields.returnDistanceKm)
+      : null;
+    deliveryFeeUnderLocks = (subtotal, settings) => {
+      const lockedDelivery = (settings as Record<string, unknown> | null)?.delivery as
+        | DeliverySettings
+        | undefined;
+      if (!lockedDelivery?.enabled || lockedDelivery.mode === "included") return 0;
+      return calculateTotalDeliveryFee(
+        outDist,
+        retDist,
+        lockedDelivery as Parameters<typeof calculateTotalDeliveryFee>[2],
+        subtotal,
+      ).totalFee;
+    };
+    // The routes were measured from the store's position: it is read again under the locks.
+    if (data.delivery.outbound.method === "address" || data.delivery.return.method === "address") {
+      routedFromStore = { latitude: store.latitude ?? null, longitude: store.longitude ?? null };
     }
-
-    deliveryUpdateFields.deliveryFee = deliveryFee.toFixed(2);
 
     // Update legacy field for backward compatibility
     const hasAddressLeg =
@@ -2588,13 +2882,38 @@ export async function updateReservation(
     deliveryUpdateFields.deliveryOption = hasAddressLeg ? "delivery" : "pickup";
   }
 
-  // Calculate total: subtotal + delivery fee - discount
   const existingDiscount = parseFloat(reservation.discountAmount || "0");
-  const newTotalAmount = newSubtotalAmount + deliveryFee - existingDiscount;
-  const difference = newTotalAmount - previousState.totalAmount;
   const dateChanged =
     newStartDate.getTime() !== reservation.startDate.getTime() ||
     newEndDate.getTime() !== reservation.endDate.getTime();
+  // What prices a reservation (slice 10): its window, its lines (a line added
+  // or removed, a quantity, a deposit, a price typed by hand), its delivery
+  // legs and the insurance the store asks for; its discount the edit does not
+  // change. An edit that changes none of it changes no amount: every monetary
+  // column stays as stored, and nothing is recorded again.
+  const deliveryChanged =
+    data.delivery !== undefined &&
+    DELIVERY_LEG_FIELDS.some(
+      (field) =>
+        normalizeLegValue(deliveryUpdateFields[field]) !== normalizeLegValue(reservation[field]),
+    );
+  const pricingChanged =
+    dateChanged ||
+    linesChanged ||
+    deliveryChanged ||
+    // An old row may hold no opt-in at all: none asked.
+    requestedTulipInsuranceOptIn !== Boolean(reservation.tulipInsuranceOptIn);
+  if (!pricingChanged) {
+    itemWrites.length = 0;
+    insuranceItemWrites.length = 0;
+    extraInsuranceItemIdsToDelete = [];
+    for (const field of Object.keys(deliveryUpdateFields)) {
+      delete deliveryUpdateFields[field as keyof ReservationDeliveryUpdateValues];
+    }
+  }
+  // What the insurer's quote and the routes were computed from, outside the
+  // transaction: compared again under the locks.
+  const outsideBasis = JSON.stringify({ quotedCustomer, routedFromStore });
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
   );
@@ -2633,6 +2952,10 @@ export async function updateReservation(
             discountAmount: reservations.discountAmount,
             tulipInsuranceOptIn: reservations.tulipInsuranceOptIn,
             tulipInsuranceAmount: reservations.tulipInsuranceAmount,
+            customerId: reservations.customerId,
+            billingSnapshot: reservations.billingSnapshot,
+            taxDisplayMode: reservations.taxDisplayMode,
+            taxAmount: reservations.taxAmount,
           })
           .from(reservations)
           .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
@@ -2658,6 +2981,7 @@ export async function updateReservation(
             pricingBreakdown: reservationItems.pricingBreakdown,
             combinationKey: reservationItems.combinationKey,
             selectedAttributes: reservationItems.selectedAttributes,
+            taxExempt: reservationItems.taxExempt,
           })
           .from(reservationItems)
           .where(eq(reservationItems.reservationId, reservationId));
@@ -2679,6 +3003,111 @@ export async function updateReservation(
             return { error: "errors.productNotFound" };
           }
         }
+
+        // The insurer's quote and the routes were taken outside: what they were
+        // computed from must still hold (the renter, the store's position).
+        const [lockedStore] = await tx
+          .select({ latitude: stores.latitude, longitude: stores.longitude })
+          .from(stores)
+          .where(eq(stores.id, store.id));
+        const [lockedCustomer] =
+          quotedCustomer && lockedReservation.customerId
+            ? await tx
+                .select()
+                .from(customers)
+                .where(eq(customers.id, lockedReservation.customerId))
+            : [];
+        const insideBasis = JSON.stringify({
+          quotedCustomer:
+            quotedCustomer && lockedCustomer
+              ? insurerCustomerOf(lockedReservation, lockedCustomer)
+              : null,
+          routedFromStore: routedFromStore && {
+            latitude: lockedStore?.latitude ?? null,
+            longitude: lockedStore?.longitude ?? null,
+          },
+        });
+        if (insideBasis !== outsideBasis) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+
+        // The totals: the tax engine over the lines, under the locks (M1),
+        // when the edit changes what prices the reservation.
+        const taxExemptById = new Map(lockedItems.map((item) => [item.id, item.taxExempt]));
+        const recordedMode = recordedTaxDisplayMode(lockedReservation);
+        const priceEditedReservation = async () => {
+          const pricing = await priceReservationEdit(tx, {
+            storeId: store.id,
+            window: { start: newStartDate, end: newEndDate },
+            lines: editedLines.map((line) => ({
+              ...line,
+              taxExempt: taxExemptById.get(line.id) ?? null,
+            })),
+            insuranceAmount: nextTulipInsuranceAmount ?? 0,
+            discountAmount: existingDiscount,
+            totalDeposit: newDepositAmount,
+            deliveryFee: deliveryFeeUnderLocks,
+            recordedTaxDisplayMode: recordedMode === NOT_RECORDED ? null : recordedMode,
+            currency: reservationCurrency(reservation.currency, store.settings),
+          });
+          // A product's prices changed while the store was editing.
+          if (!pricing.ok) return { kind: "changed_meanwhile" } as const;
+          // Each line's tax figures go with its write, or alone when the line is not rewritten.
+          const writesById = new Map(
+            itemWrites.map((write) => [write.type === "insert" ? write.values.id : write.id, write]),
+          );
+          const taxOnlyWrites: Array<{ id: string; values: ReservationItemTaxValues }> = [];
+          for (const [index, line] of editedLines.entries()) {
+            const values = reservationItemTaxValues(pricing.lines[index]!);
+            const write = writesById.get(line.id);
+            if (write) Object.assign(write.values, values);
+            else taxOnlyWrites.push({ id: line.id, values });
+          }
+          for (const insuranceItemWrite of insuranceItemWrites) {
+            Object.assign(
+              insuranceItemWrite.values,
+              reservationItemTaxValues({ ...pricing.insurance, taxExempt: true }),
+            );
+          }
+          if (data.delivery) {
+            deliveryUpdateFields.deliveryFee = pricing.deliveryFee.toFixed(2);
+          }
+          return { kind: "priced", ...pricing, taxOnlyWrites } as const;
+        };
+        const priced = pricingChanged
+          ? await priceEditedReservation()
+          : ({ kind: "unchanged" } as const);
+        if (priced.kind === "changed_meanwhile") {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+        const taxOnlyWrites = priced.kind === "priced" ? priced.taxOnlyWrites : [];
+        const newTotalAmount =
+          priced.kind === "priced" ? priced.totals.total : previousState.totalAmount;
+        const difference = Math.round((newTotalAmount - previousState.totalAmount) * 100) / 100;
+        // The tax now comes on top of a total that carried none, when three
+        // facts hold at once: the row recorded no display mode (the tax
+        // engine never totalled it, whatever its tax columns hold); its
+        // stored total carried no tax (it is its subtotal, plus delivery,
+        // less the discount, to the minor unit); and the engine added tax on
+        // top (its tax above zero in a store that prices before tax).
+        const perUnit = minorUnitsPerUnit(reservationCurrency(reservation.currency, store.settings));
+        const amount = (value: string | null) => Number(value ?? 0);
+        // The sum rounded once, as a writer that stored it rounded it.
+        const storedTotalCarriedNoTax =
+          Math.round(amount(lockedReservation.totalAmount) * perUnit) ===
+          Math.round(
+            (amount(lockedReservation.subtotalAmount) +
+              amount(lockedReservation.deliveryFee) -
+              amount(lockedReservation.discountAmount)) *
+              perUnit,
+          );
+        const taxAdded =
+          priced.kind === "priced" &&
+          recordedMode === NOT_RECORDED &&
+          storedTotalCarriedNoTax &&
+          priced.totals.taxEnabled &&
+          priced.totals.displayMode === "exclusive" &&
+          (priced.totals.taxAmount ?? 0) > 0;
 
         await tx
           .select({ id: productUnits.id })
@@ -3033,6 +3462,13 @@ export async function updateReservation(
           }
         }
 
+        for (const taxOnlyWrite of taxOnlyWrites) {
+          await tx
+            .update(reservationItems)
+            .set(taxOnlyWrite.values)
+            .where(eq(reservationItems.id, taxOnlyWrite.id));
+        }
+
         for (const insuranceItemWrite of insuranceItemWrites) {
           if (insuranceItemWrite.type === "insert") {
             await tx.insert(reservationItems).values(insuranceItemWrite.values);
@@ -3071,19 +3507,30 @@ export async function updateReservation(
             );
         }
 
+        const repriced = priced.kind === "priced" ? priced : null;
         await tx
           .update(reservations)
           .set({
             startDate: newStartDate,
             endDate: newEndDate,
-            subtotalAmount: newSubtotalAmount.toFixed(2),
-            depositAmount: newDepositAmount.toFixed(2),
-            totalAmount: newTotalAmount.toFixed(2),
-            tulipInsuranceOptIn: nextTulipInsuranceOptIn,
-            tulipInsuranceAmount:
-              nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
+            // An edit that does not reprice writes no monetary column: each key
+            // is undefined then, which Drizzle leaves out. A repriced edit
+            // writes null where the engine clears a column.
+            subtotalAmount: repriced ? repriced.totals.subtotal.toFixed(2) : undefined,
+            depositAmount: repriced ? newDepositAmount.toFixed(2) : undefined,
+            totalAmount: repriced ? newTotalAmount.toFixed(2) : undefined,
+            subtotalExclTax: repriced
+              ? (repriced.totals.subtotalExclTax?.toFixed(2) ?? null)
+              : undefined,
+            taxAmount: repriced ? (repriced.totals.taxAmount?.toFixed(2) ?? null) : undefined,
+            taxRate: repriced ? (repriced.totals.taxRate?.toFixed(2) ?? null) : undefined,
+            taxDisplayMode: repriced ? repriced.taxDisplayMode : undefined,
+            tulipInsuranceOptIn: repriced ? nextTulipInsuranceOptIn : undefined,
+            tulipInsuranceAmount: repriced
+              ? nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
                 ? nextTulipInsuranceAmount.toFixed(2)
-                : null,
+                : null
+              : undefined,
             ...deliveryUpdateFields,
             updatedAt: new Date(),
             // The inbox dates a late pickup or return from its last schedule change.
@@ -3118,8 +3565,9 @@ export async function updateReservation(
             updated: {
               startDate: newStartDate,
               endDate: newEndDate,
-              subtotalAmount: newSubtotalAmount,
-              depositAmount: newDepositAmount,
+              subtotalAmount:
+                priced.kind === "priced" ? priced.totals.subtotal : previousState.subtotalAmount,
+              depositAmount: priced.kind === "priced" ? newDepositAmount : previousState.depositAmount,
             },
             difference,
             ...capacityVerdict,
@@ -3130,7 +3578,13 @@ export async function updateReservation(
           },
           createdAt: capacityVerdict ? await nextCapacityVerdictDate(tx, reservationId) : undefined,
         });
-        return { success: true, reservationStatus: lockedReservation.status };
+        return {
+          success: true,
+          reservationStatus: lockedReservation.status,
+          difference,
+          newTotalAmount,
+          taxAdded,
+        };
       },
       { isolationLevel: "read committed" },
     ),
@@ -3167,6 +3621,7 @@ export async function updateReservation(
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
+  const reservationCurrencyCode = reservationCurrency(reservation.currency, store.settings);
   const responseWarnings = [
     ...validationWarnings.map((warning) => ({
       code: warning.code,
@@ -3174,6 +3629,19 @@ export async function updateReservation(
       params: warning.params,
     })),
     ...tulipWarnings,
+    // Repriced, a total stored without its tax now carries it: the store is told.
+    ...(transactionResult.taxAdded
+      ? [
+          {
+            key: "errors.editTaxAdded",
+            // In the reservation's currency, with its own precision (¥150, €150.00).
+            params: {
+              previousTotal: amountInCurrency(previousState.totalAmount, reservationCurrencyCode),
+              newTotal: amountInCurrency(transactionResult.newTotalAmount, reservationCurrencyCode),
+            },
+          },
+        ]
+      : []),
   ];
 
   let emailNotification:
@@ -3220,8 +3688,8 @@ export async function updateReservation(
 
   return {
     success: true,
-    difference,
-    newTotal: newTotalAmount,
+    difference: transactionResult.difference,
+    newTotal: transactionResult.newTotalAmount,
     previousTotal: previousState.totalAmount,
     ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
     ...(emailNotification && { emailNotification }),
@@ -3334,8 +3802,11 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   const amount = Number(verdict.amount);
 
   if (amount > 0 && data.type === "rental") {
-    const rentalPaid = getRentalPaid(reservation.payments);
-    const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
+    const rentalPaid = getRentalPaid(
+      reservation.payments,
+      reservationCurrency(reservation.currency, store.settings),
+    );
+    const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
 
     if (amount > rentalRemaining) {
       return { error: "errors.invalidAmount" };

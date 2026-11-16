@@ -2517,6 +2517,7 @@
         "subtotal": "Suma częściowa",
         "deposit": "Kaucja",
         "total": "Suma",
+        "taxLine": "Podatek",
         "tulipInsurance": {
           "title": "Ubezpieczenie Tulip",
           "appliesMappedProducts": "Dotyczy tylko produktów zmapowanych z Tulip.",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "Ten link do płatności wygasł. Skontaktuj się ze sklepem, aby uzyskać nowy.",
         "alreadyPaidTitle": "Już zapłacono",
         "alreadyPaidDescription": "Ta płatność została już zrealizowana.",
+        "noLongerCurrentDescription": "To żądanie płatności nie odpowiada już kwocie pozostałej do zapłaty za rezerwację. Skontaktuj się ze sklepem.",
         "cancelledTitle": "Płatność anulowana",
         "cancelledDescription": "To żądanie płatności zostało anulowane przez sklep.",
         "unavailableTitle": "Płatność niedostępna",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "Tej rezerwacji nie można anulować",
     "reservationStatusChanged": "Status rezerwacji zmienił się podczas edycji. Odśwież stronę i spróbuj ponownie.",
     "reservationChangedMeanwhile": "Rezerwacja została w międzyczasie zmieniona. Odśwież stronę i spróbuj ponownie.",
+    "editTaxAdded": "Suma zawiera teraz podatek: wcześniej {previousTotal}, teraz {newTotal}.",
     "endDateBeforeStart": "Data zakończenia musi być późniejsza niż data rozpoczęcia",
     "negativeAmountOnlyForAdjustment": "Ujemne kwoty są dozwolone tylko dla korekt",
     "productRequired": "Produkt wymagany",

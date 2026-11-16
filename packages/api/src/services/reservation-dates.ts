@@ -16,11 +16,7 @@ import {
   type Transaction,
 } from "@louez/db";
 import type { PricingBreakdown } from "@louez/types";
-import {
-  evaluateReservationRules,
-  getSettledPaymentAmount,
-  isPooledCombinationKey,
-} from "@louez/utils";
+import { evaluateReservationRules, getRentalPaid, isPooledCombinationKey } from "@louez/utils";
 import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -306,6 +302,8 @@ const totalsOf = (cart: PricedCart, locked: LockedReservation) =>
     deliveryFee: Number(locked.deliveryFee ?? 0),
     totalDeposit: Number(locked.depositAmount),
     taxSettings: locked.store.settings?.tax,
+    // A row older than its own currency is in the store's (M2).
+    currency: locked.currency ?? locked.store.settings?.currency ?? null,
   });
 
 /**
@@ -462,7 +460,7 @@ function warningsOf(
     });
   }
   // Only what was paid in the reservation's currency has paid it (M6).
-  const paid = cents(getSettledPaymentAmount(locked.payments, "rental", currency));
+  const paid = cents(getRentalPaid(locked.payments, currency));
   const total = cents(newTotal);
   if (paid > 0 && total > paid) {
     warnings.push({

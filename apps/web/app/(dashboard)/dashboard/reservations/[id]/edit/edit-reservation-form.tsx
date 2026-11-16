@@ -61,6 +61,7 @@ import { EditReservationDeliverySection } from "./components/edit-reservation-de
 import { useEditReservationAvailability } from "./hooks/use-edit-reservation-availability";
 import {
   calculateUnitPriceFromTotal,
+  previewEditTotal,
   useEditReservationPricing,
 } from "./hooks/use-edit-reservation-pricing";
 import { useEditReservationDelivery } from "./hooks/use-edit-reservation-delivery";
@@ -1427,6 +1428,17 @@ export function EditReservationForm({
                 originalSubtotal={originalSubtotal}
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}
+                originalTotal={parseFloat(reservation.totalAmount)}
+                newTotal={previewEditTotal({
+                  items: calculations.items,
+                  insuranceAmount: fixedTulipInsuranceAmount,
+                  discountAmount: parseFloat(reservation.discountAmount ?? "0"),
+                  deliveryFee: delivery.totalFee,
+                  deposit: calculations.deposit,
+                  storeTax: storeSettings?.tax,
+                  recordedTaxDisplayMode: reservation.taxDisplayMode ?? null,
+                  currency,
+                })}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}
                 currencySymbol={currencySymbol}

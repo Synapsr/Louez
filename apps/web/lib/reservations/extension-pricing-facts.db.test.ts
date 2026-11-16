@@ -195,10 +195,10 @@ describe("an extension's pricing facts (database)", { skip: skipWithoutTestDatab
     ]);
   });
 
-  test("the plan records the display mode its amounts were computed with", async () => {
-    // Booked at 120.00 a day before tax at a 0 % rate; since, the store shows
-    // prices with tax at 20 %. The booking's total is the same in both, so the
-    // extension's check reproduces it.
+  test("booked before tax at 0 %, the store now at 20 % with tax included: extended by hand", async () => {
+    // Booked at 120.00 a day before tax at a 0 % rate. Priced in that mode at
+    // today's 20 %, the booked day is 144.00, not 120.00: the extension cannot
+    // price the added days as the booked ones were, and leaves it to the store.
     const store = "store_extension_mode";
     await louezDb.db.insert(louezDb.stores).values({
       id: store,
@@ -272,16 +272,89 @@ describe("an extension's pricing facts (database)", { skip: skipWithoutTestDatab
       (tx, reservation) =>
         extension.quoteExtension(tx, reservation, new Date(end.getTime() + 86_400_000)),
     );
-    assert.ok(quoted.plan, JSON.stringify(quoted.preview));
-    const plan = types.extensionAttemptSchema.shape.plan.parse(quoted.plan);
+    assert.deepEqual(quoted, { preview: { mode: "manual", reason: "manualPrice" } });
+  });
 
-    // The amounts, as before: two days with tax at 20 %.
-    assert.deepEqual(
-      [plan.totalAmount, plan.subtotalExclTax, plan.taxAmount],
-      ["240.00", "200.00", "40.00"],
+  test("the added days are priced in the mode the reservation recorded", async () => {
+    // ¥1 a day, one day booked with tax included: ¥1. The store has since
+    // turned to prices before tax, at 20 %: the booked day still reprices to
+    // ¥1, so the check passes; the 100 days added are ¥100 in the recorded
+    // mode, ¥120 in the store's new one.
+    const store = "store_extension_yen";
+    await louezDb.db.insert(louezDb.stores).values({
+      id: store,
+      userId: "owner",
+      name: "Extension yen",
+      slug: "extension-yen",
+      stripeAccountId: "acct_extension_yen",
+      stripeChargesEnabled: true,
+      settings: {
+        reservationMode: "request",
+        currency: "JPY",
+        advanceNoticeMinutes: 0,
+        pendingBlocksAvailability: true,
+        tax: { enabled: true, defaultRate: 20, displayMode: "exclusive" },
+      },
+    });
+    await louezDb.db.insert(louezDb.products).values({
+      id: "ext_prd_yen",
+      storeId: store,
+      name: "Tent",
+      price: "1.00",
+      pricingMode: "day",
+      quantity: 5,
+    });
+    const end = new Date(START.getTime() + 86_400_000);
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: "ext_res_yen",
+      storeId: store,
+      customerId: "customer",
+      number: "ext_res_yen",
+      status: "confirmed",
+      startDate: START,
+      endDate: end,
+      subtotalAmount: "1.00",
+      depositAmount: "0.00",
+      totalAmount: "1.00",
+      subtotalExclTax: "1.00",
+      taxAmount: "0.00",
+      taxRate: "20.00",
+      currency: "JPY",
+      taxDisplayMode: "inclusive",
+      source: "online",
+    });
+    await louezDb.db.insert(louezDb.reservationItems).values({
+      id: "ext_itm_yen",
+      reservationId: "ext_res_yen",
+      productId: "ext_prd_yen",
+      quantity: 1,
+      unitPrice: "1.00",
+      depositPerUnit: "0.00",
+      totalPrice: "1.00",
+      taxExempt: false,
+      productSnapshot: { name: "Tent", description: null, images: [] },
+    });
+    await louezDb.db.insert(louezDb.payments).values({
+      id: "ext_pay_yen",
+      reservationId: "ext_res_yen",
+      amount: "1.00",
+      type: "rental",
+      method: "cash",
+      status: "completed",
+      currency: "JPY",
+    });
+
+    const quoted = await extension.runExtensionQuote(
+      { storeId: store, reservationId: "ext_res_yen" },
+      (tx, reservation) =>
+        extension.quoteExtension(tx, reservation, new Date(START.getTime() + 101 * 86_400_000)),
     );
-    // Written with them: the mode they were computed in, and each line's exemption.
-    assert.equal(plan.taxDisplayMode, "inclusive");
+    assert.ok(quoted.plan, JSON.stringify(quoted.preview));
+    assert.ok(quoted.preview.mode === "automatic");
+    assert.equal(quoted.preview.supplement, 100);
+    const plan = types.extensionAttemptSchema.shape.plan.parse(quoted.plan);
+    // Written with the amounts: the mode they were computed in, and each line's exemption.
+    assert.deepEqual([plan.totalAmount, plan.taxDisplayMode], ["101.00", "inclusive"]);
     assert.deepEqual(
       plan.items.map((item) => item.taxExempt),
       [false],

@@ -2556,6 +2556,7 @@
         "subtotal": "Zwischensumme",
         "deposit": "Kaution",
         "total": "Gesamt",
+        "taxLine": "Steuer",
         "tulipInsurance": {
           "title": "Tulip-Versicherung",
           "appliesMappedProducts": "Gilt nur für Produkte, die Tulip zugeordnet sind.",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "Dieser Zahlungslink ist abgelaufen. Bitte kontaktieren Sie den Vermieter für einen neuen Link.",
         "alreadyPaidTitle": "Bereits bezahlt",
         "alreadyPaidDescription": "Diese Zahlung wurde bereits abgeschlossen.",
+        "noLongerCurrentDescription": "Diese Zahlungsanforderung entspricht nicht mehr dem, was für die Reservierung noch offen ist. Bitte kontaktieren Sie den Shop.",
         "cancelledTitle": "Zahlung storniert",
         "cancelledDescription": "Diese Zahlungsanfrage wurde vom Vermieter storniert.",
         "unavailableTitle": "Zahlung nicht verfügbar",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "Diese Reservierung kann nicht storniert werden",
     "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "reservationChangedMeanwhile": "Die Reservierung wurde in der Zwischenzeit geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "editTaxAdded": "Der Gesamtbetrag enthält jetzt die Steuer: vorher {previousTotal}, jetzt {newTotal}.",
     "endDateBeforeStart": "Das Enddatum muss nach dem Startdatum liegen",
     "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",

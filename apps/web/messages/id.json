@@ -2556,6 +2556,7 @@
         "subtotal": "Subtotal",
         "deposit": "Uang jaminan",
         "total": "Jumlah",
+        "taxLine": "Pajak",
         "tulipInsurance": {
           "title": "asuransi bunga tulip",
           "appliesMappedProducts": "Hanya berlaku untuk produk yang dipetakan ke Tulip.",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "Tautan pembayaran ini telah kedaluwarsa. Silakan hubungi toko untuk meminta yang baru.",
         "alreadyPaidTitle": "Sudah dibayar",
         "alreadyPaidDescription": "Pembayaran ini telah selesai.",
+        "noLongerCurrentDescription": "Permintaan pembayaran ini tidak lagi sesuai dengan sisa tagihan reservasi. Silakan hubungi toko.",
         "cancelledTitle": "Pembayaran dibatalkan",
         "cancelledDescription": "Permintaan pembayaran ini telah dibatalkan oleh toko.",
         "unavailableTitle": "Pembayaran tidak tersedia",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "Reservasi ini tidak dapat dibatalkan",
     "reservationStatusChanged": "Status reservasi berubah saat Anda mengedit. Muat ulang halaman dan coba lagi.",
     "reservationChangedMeanwhile": "Reservasi diubah sementara Anda mengedit. Muat ulang halaman dan coba lagi.",
+    "editTaxAdded": "Total kini sudah termasuk pajak: sebelumnya {previousTotal}, sekarang {newTotal}.",
     "endDateBeforeStart": "Tanggal akhir harus setelah tanggal mulai",
     "negativeAmountOnlyForAdjustment": "Jumlah negatif hanya diperbolehkan untuk penyesuaian",
     "productRequired": "Produk diperlukan",

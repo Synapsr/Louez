@@ -2556,6 +2556,7 @@
         "subtotal": "Subtotal",
         "deposit": "Deposit",
         "total": "Total",
+        "taxLine": "Tax",
         "tulipInsurance": {
           "title": "Tulip insurance",
           "appliesMappedProducts": "Applies only to products mapped to Tulip.",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "This payment link has expired. Please contact the store to request a new one.",
         "alreadyPaidTitle": "Already paid",
         "alreadyPaidDescription": "This payment has already been completed.",
+        "noLongerCurrentDescription": "This payment request no longer matches what is owed on the reservation. Please contact the store.",
         "cancelledTitle": "Payment cancelled",
         "cancelledDescription": "This payment request has been cancelled by the store.",
         "unavailableTitle": "Payment unavailable",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "This reservation cannot be cancelled",
     "reservationStatusChanged": "The reservation status changed while you were editing. Reload the page and try again.",
     "reservationChangedMeanwhile": "The reservation was changed in the meantime. Reload the page and try again.",
+    "editTaxAdded": "The total now includes the tax: {previousTotal} before, {newTotal} now.",
     "endDateBeforeStart": "End date must be after the start date",
     "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
     "productRequired": "Product required",

@@ -2556,6 +2556,7 @@
         "subtotal": "小計",
         "deposit": "保証金",
         "total": "合計",
+        "taxLine": "税金",
         "tulipInsurance": {
           "title": "チューリップ保険",
           "appliesMappedProducts": "Tulip にマッピングされた製品にのみ適用されます。",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "この支払いリンクの有効期限が切れています。新規ご希望の場合は販売店までご連絡ください。",
         "alreadyPaidTitle": "すでに支払われています",
         "alreadyPaidDescription": "この支払いはすでに完了しています。",
+        "noLongerCurrentDescription": "この支払いリクエストは、予約の未払い額と一致しなくなりました。ストアにお問い合わせください。",
         "cancelledTitle": "支払いがキャンセルされました",
         "cancelledDescription": "この支払いリクエストはストアによってキャンセルされました。",
         "unavailableTitle": "支払いは利用できません",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "この予約はキャンセルできません",
     "reservationStatusChanged": "編集中に予約状況が変更されました。ページをリロードして、もう一度お試しください。",
     "reservationChangedMeanwhile": "編集中に予約が変更されました。ページをリロードして、もう一度お試しください。",
+    "editTaxAdded": "合計に税金が含まれるようになりました：変更前 {previousTotal}、現在 {newTotal}。",
     "endDateBeforeStart": "終了日時は開始日時より後である必要があります",
     "negativeAmountOnlyForAdjustment": "マイナスの金額は調整の場合にのみ許可されます",
     "productRequired": "必要な製品",

@@ -5,6 +5,7 @@
  */
 
 import {
+  getRentalPaid,
   getSettledPaymentAmount,
   isCustomerDepositHoldRow,
   isPaymentInCurrency,
@@ -69,12 +70,44 @@ export const getReservationPaymentStatus = (
   return "unpaid";
 };
 
+// What settles a rental, defined once beside the money it reads.
+export { getRentalPaid };
+
 /**
- * What the customer paid toward the rental itself: deposits never count. With
- * `currency`, the reservation's, neither does a payment in another currency.
+ * The deposit as the reservation's page reads it, by the shared refund rule
+ * (`getSettledPaymentAmount`), as the cancellation preview reads it: `held`
+ * is the completed deposits, less the completed returns linked to them and
+ * the returns made apart, never below zero. A return linked to a deposit that
+ * is not completed gives back nothing that was held. `collected` is the
+ * completed deposits received. `returned` is the completed returns themselves,
+ * not a difference: a Stripe refund has already brought its deposit down to
+ * its net amount, so it is in `returned` and no longer in `collected` or `held`.
  */
-export const getRentalPaid = (payments: readonly PaymentLike[], currency?: string): number =>
-  getSettledPaymentAmount(payments, "rental", currency);
+export const getDepositTotals = (
+  payments: readonly PaymentLike[],
+): { collected: number; returned: number; held: number } => {
+  const collected = payments
+    .filter(
+      (payment) =>
+        payment.type === "deposit" && payment.status === "completed" && !isRefundRow(payment),
+    )
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const held = Math.max(
+    0,
+    getSettledPaymentAmount(payments, "deposit") -
+      getSettledPaymentAmount(payments, "deposit_return"),
+  );
+  const byId = new Map(payments.flatMap((payment) => (payment.id ? [[payment.id, payment]] : [])));
+  const returned = payments
+    .filter((payment) => {
+      if (payment.type !== "deposit_return" || payment.status !== "completed") return false;
+      if (isStripeRefundRow(payment) || !payment.refundOfPaymentId) return true;
+      const original = byId.get(payment.refundOfPaymentId);
+      return original?.type === "deposit" && original.status === "completed";
+    })
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  return { collected, returned, held };
+};
 
 /** Damage fees charged on top of the rental, refunds subtracted. */
 export const getDamageFees = (payments: readonly PaymentLike[]): number =>

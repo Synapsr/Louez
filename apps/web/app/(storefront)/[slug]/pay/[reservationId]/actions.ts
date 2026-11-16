@@ -8,10 +8,13 @@ import { z } from "zod";
 
 import { acceptReservationContract } from "@louez/api/services";
 import { db, paymentRequests, reservations } from "@louez/db";
-import { validateStripePaymentAmount } from "@louez/utils";
+import { normalizeCurrency, validateStripePaymentAmount } from "@louez/utils";
 
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import { getRentalPaid } from "@/lib/reservations/util.payment-status";
+import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
@@ -24,6 +27,7 @@ export type PaymentRequestError =
   | "reservation_not_found"
   | "invalid_token"
   | "already_paid"
+  | "no_longer_current"
   | "cancelled"
   | "stripe_not_configured"
   | "session_creation_failed";
@@ -109,10 +113,34 @@ const loadPaymentRequestContext = async ({
       customer: true,
       // The insurance share of a rental payment reads the reservation's totals.
       items: { columns: { productId: true, taxRate: true, totalPrice: true } },
+      // What a rental request may still collect reads what was paid.
+      payments: true,
     },
   });
   if (!reservation) {
     return { ok: false as const, error: "reservation_not_found" as const };
+  }
+
+  // A rental request never collects more than the rental still owed, read
+  // when the page loads and again when the session is opened: a request
+  // written before the total went down, or before a payment was recorded,
+  // is no longer current and the store asks again. Nothing is charged and
+  // the request is left as it is. A request in another currency than the
+  // reservation's settles none of it, and is no longer current either. A
+  // custom request asks what the store chose.
+  if (paymentRequest.type === "rental") {
+    const currency = reservationCurrency(reservation.currency, store.settings);
+    if (normalizeCurrency(paymentRequest.currency, "") !== currency) {
+      return { ok: false as const, error: "no_longer_current" as const };
+    }
+    const owed = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
+    const owedHundredths = Math.round(owed * 100);
+    if (owedHundredths === 0) {
+      return { ok: false as const, error: "already_paid" as const };
+    }
+    if (Math.round(Number(paymentRequest.amount) * 100) > owedHundredths) {
+      return { ok: false as const, error: "no_longer_current" as const };
+    }
   }
 
   // Read once: a connected account that cannot charge yet is "not configured".

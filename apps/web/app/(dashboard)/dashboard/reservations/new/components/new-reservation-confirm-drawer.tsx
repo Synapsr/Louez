@@ -51,7 +51,10 @@ interface NewReservationConfirmDrawerProps {
   discountAmount: number;
   /** Deposit after any manual override, i.e. what will actually be held. */
   deposit: number;
+  /** The total the creation writes, tax included: the tax engine's. */
   total: number;
+  /** Taxes on: the mode the prices read in, and the tax added on top of prices given before tax. */
+  taxDisplay: { mode: "inclusive" | "exclusive"; taxOnTop: number } | null;
 
   /** Resolved server-side rule, not the raw toggle — a quote always mails. */
   willSendConfirmationEmail: boolean;
@@ -86,11 +89,13 @@ export function NewReservationConfirmDrawer({
   discountAmount,
   deposit,
   total,
+  taxDisplay,
   willSendConfirmationEmail,
   periodWarnings,
   availabilityWarnings,
 }: NewReservationConfirmDrawerProps) {
   const t = useTranslations("dashboard.reservations.manualForm");
+  const tCheckout = useTranslations("storefront.checkout");
   const tCommon = useTranslations("common");
   const { intl: formatLocale } = useFormatLocale();
 
@@ -270,12 +275,26 @@ export function NewReservationConfirmDrawer({
               </div>
             )}
 
+            {taxDisplay?.mode === "exclusive" && (
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-muted-foreground">{t("taxLine")}</span>
+                <span className="tabular-nums">{formatCurrency(taxDisplay.taxOnTop)}</span>
+              </div>
+            )}
+
             <Separator className="my-2" />
 
             <div className="flex items-baseline justify-between gap-3 text-lg font-semibold">
               <span>{t("total")}</span>
               <span className="tabular-nums">{formatCurrency(total)}</span>
             </div>
+            {taxDisplay && (
+              <p className="text-muted-foreground text-xs">
+                {tCheckout(
+                  taxDisplay.mode === "inclusive" ? "pricesIncludeTax" : "pricesExcludeTax",
+                )}
+              </p>
+            )}
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-muted-foreground">{t("deposit")}</span>
               <span className="tabular-nums">{formatCurrency(deposit)}</span>

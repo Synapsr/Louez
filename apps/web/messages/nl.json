@@ -2517,6 +2517,7 @@
         "subtotal": "Subtotaal",
         "deposit": "Borg",
         "total": "Totaal",
+        "taxLine": "Belasting",
         "tulipInsurance": {
           "title": "Tulip verzekering",
           "appliesMappedProducts": "Geldt alleen voor producten die aan Tulip zijn gekoppeld.",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "Deze betalingslink is verlopen. Neem contact op met de verhuurder voor een nieuwe link.",
         "alreadyPaidTitle": "Reeds betaald",
         "alreadyPaidDescription": "Deze betaling is al voltooid.",
+        "noLongerCurrentDescription": "Dit betalingsverzoek komt niet meer overeen met wat er voor de reservering nog verschuldigd is. Neem contact op met de winkel.",
         "cancelledTitle": "Betaling geannuleerd",
         "cancelledDescription": "Dit betalingsverzoek is geannuleerd door de verhuurder.",
         "unavailableTitle": "Betaling niet beschikbaar",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
     "reservationStatusChanged": "De reserveringsstatus is gewijzigd tijdens het bewerken. Laad de pagina opnieuw en probeer het nogmaals.",
     "reservationChangedMeanwhile": "De reservering is in de tussentijd gewijzigd. Laad de pagina opnieuw en probeer het nogmaals.",
+    "editTaxAdded": "Het totaal is nu inclusief belasting: eerst {previousTotal}, nu {newTotal}.",
     "endDateBeforeStart": "Einddatum moet na de startdatum liggen",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",

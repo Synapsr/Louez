@@ -13,6 +13,9 @@ interface EditReservationSummarySectionProps {
   originalSubtotal: number
   originalDeposit: number
   originalDeliveryFee: number
+  /** The total as stored, and as the edit will write it (the tax engine's). */
+  originalTotal: number
+  newTotal: number
   calculations: ReservationCalculations
   deliveryFee: number
   currencySymbol: string
@@ -30,6 +33,8 @@ export function EditReservationSummarySection({
   originalSubtotal,
   originalDeposit,
   originalDeliveryFee,
+  originalTotal,
+  newTotal,
   calculations,
   deliveryFee,
   currencySymbol,
@@ -43,9 +48,7 @@ export function EditReservationSummarySection({
 }: EditReservationSummarySectionProps) {
   const t = useTranslations('dashboard.reservations')
 
-  const newTotal = calculations.subtotal + deliveryFee
-  const originalTotal = originalSubtotal + originalDeliveryFee
-  const difference = newTotal - originalTotal
+  const difference = Math.round((newTotal - originalTotal) * 100) / 100
 
   const scrollToFirstConflict = () => {
     const target = document.getElementById(

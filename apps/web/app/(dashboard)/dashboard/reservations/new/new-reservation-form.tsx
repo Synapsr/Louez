@@ -43,7 +43,7 @@ import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-d
 import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { isInsufficientCapacityResult } from "@/lib/reservations/util.insufficient-capacity";
-import { invalidateReservationList } from "@/lib/orpc/invalidation";
+import { invalidateManualCreationQuotes, invalidateReservationList } from "@/lib/orpc/invalidation";
 import { trackOpenReplayEvent } from "@/lib/openreplay/client";
 import { openReplayEvents } from "@/lib/openreplay/events";
 import { orpc } from "@/lib/orpc/react";
@@ -85,6 +85,7 @@ import type {
   StepFieldName,
 } from "./types";
 import { buildRecapDeliveryLeg, buildRecapItemLines } from "./utils/recap-lines";
+import { creationTotals } from "./utils/creation-totals";
 import { buildProductCombinations, getLineQuantityConstraints } from "./utils/variant-lines";
 import { createManualReservationSchema } from "./validation";
 
@@ -120,6 +121,8 @@ export function NewReservationForm({
   storeLongitude,
   storeAddress,
   storeLocations,
+  taxSettings,
+  currency,
 }: NewReservationFormProps & { onReservationCreated: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -426,6 +429,8 @@ export function NewReservationForm({
           sendConfirmationEmail: sendAsQuoteRef.current ? true : sendConfirmationEmail,
           sendAsQuote: sendAsQuoteRef.current,
           allowOverbooking: options.allowOverbooking,
+          // What the person confirms: the server refuses a creation whose total differs.
+          expectedTotal: totals.total,
         },
       });
 
@@ -477,6 +482,14 @@ export function NewReservationForm({
       if (isReservationGateRefusal(error)) {
         setGateDialogOpen(true);
         return;
+      }
+      // A price, a rate, the display mode, the insurer's premium or a route
+      // changed while the form was open: what it prices from is read again,
+      // the page and the outside quotes alike, and it shows the total the
+      // next attempt is compared with.
+      if (error instanceof Error && error.message === "errors.reservationChangedMeanwhile") {
+        router.refresh();
+        void invalidateManualCreationQuotes(queryClient).then(delivery.remeasure);
       }
       toastManager.add({
         title: getActionErrorMessage(error),
@@ -1274,7 +1287,33 @@ export function NewReservationForm({
   );
 
   const effectiveDeposit = depositOverride ?? deposit;
-  const total = subtotal + tulipInsuranceAmount + delivery.totalFee - globalDiscountAmount;
+  // The total the creation writes: the tax engine, as the server computes it (slice 10).
+  const totals = creationTotals({
+    productLines: selectedProducts.flatMap((line) => {
+      const product = products.find((item) => item.id === line.productId);
+      return product
+        ? [
+            {
+              amount: getProductPricingDetails(product, line).lineSubtotal,
+              taxSettings: product.taxSettings ?? null,
+            },
+          ]
+        : [];
+    }),
+    customLines: customItems.map((item) => ({ amount: getCustomItemTotal(item) })),
+    insuranceAmount: tulipInsuranceAmount,
+    deliveryFee: delivery.totalFee,
+    // Rounded as it is sent.
+    discountAmount: Math.round(globalDiscountAmount * 100) / 100,
+    deposit: effectiveDeposit,
+    taxSettings,
+    currency,
+  });
+  const total = totals.total;
+  // How the prices read: with tax included, or before it, with the tax on top.
+  const taxDisplay = totals.taxEnabled
+    ? { mode: totals.displayMode, taxOnTop: totals.taxAmount ?? 0 }
+    : null;
   const durationLabel = useReservationDurationLabel(detailedDuration, duration);
 
   const recapItemLines = useMemo(
@@ -1619,6 +1658,8 @@ export function NewReservationForm({
                 tulipInsuranceAmount={tulipInsuranceAmount}
                 isTulipInsuranceQuoteLoading={isTulipInsuranceQuoteLoading}
                 deliveryFee={delivery.totalFee}
+                total={total}
+                taxDisplay={taxDisplay}
                 deposit={deposit}
                 discount={globalDiscount}
                 discountAmount={globalDiscountAmount}
@@ -1705,6 +1746,7 @@ export function NewReservationForm({
         discountAmount={globalDiscountAmount}
         deposit={effectiveDeposit}
         total={total}
+        taxDisplay={taxDisplay}
         willSendConfirmationEmail={confirmDrawer.asQuote || sendConfirmationEmail}
         periodWarnings={periodWarnings}
         availabilityWarnings={availabilityWarnings}

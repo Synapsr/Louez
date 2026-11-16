@@ -2556,6 +2556,7 @@
         "subtotal": "小计",
         "deposit": "押金",
         "total": "总计",
+        "taxLine": "税费",
         "tulipInsurance": {
           "title": "郁金香保险",
           "appliesMappedProducts": "仅适用于映射到 Tulip 的产品。",
@@ -8152,6 +8153,7 @@
         "expiredDescription": "该付款链接已过期。请联系商店索取新的。",
         "alreadyPaidTitle": "已付款",
         "alreadyPaidDescription": "这笔付款已经完成。",
+        "noLongerCurrentDescription": "此付款请求已与预订的待付金额不符。请联系店铺。",
         "cancelledTitle": "付款已取消",
         "cancelledDescription": "该付款请求已被商店取消。",
         "unavailableTitle": "无法付款",
@@ -9378,6 +9380,7 @@
     "cannotCancelReservation": "此预订无法取消",
     "reservationStatusChanged": "当您编辑时，预订状态发生了变化。重新加载页面并重试。",
     "reservationChangedMeanwhile": "当您编辑时，预订已被修改。重新加载页面并重试。",
+    "editTaxAdded": "总额现已包含税费：之前 {previousTotal}，现在 {newTotal}。",
     "endDateBeforeStart": "结束日期必须晚于开始日期",
     "negativeAmountOnlyForAdjustment": "负数仅允许用于调整",
     "productRequired": "所需产品",

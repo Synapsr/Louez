@@ -611,6 +611,7 @@ export async function createStoreReservation(
       });
       if (!priced.ok) return refuse(productErrors.notFound(priced.missingProductId));
       const cart: PricedCart = priced.cart;
+      const currency = normalizeCurrency(settings?.currency);
       const totals: ReservationTotals = computeReservationTotals({
         lines: cart.lines,
         insuranceAmount: 0,
@@ -618,8 +619,8 @@ export async function createStoreReservation(
         deliveryFee: 0,
         totalDeposit: cart.totalDeposit,
         taxSettings: settings?.tax,
+        currency,
       });
-      const currency = normalizeCurrency(settings?.currency);
 
       // The stock: a confirmation's check, without the buffer then with it.
       const choices = input.lines.map((line) =>

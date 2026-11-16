@@ -5,6 +5,7 @@ import type { EditableItem } from '../types'
 import {
   calculateEditableItemPrice,
   calculateUnitPriceFromTotal,
+  previewEditTotal,
 } from './use-edit-reservation-pricing'
 
 const fixedProductItem: EditableItem = {
@@ -105,4 +106,55 @@ test('an ordinary rate is not reported as savings', () => {
   )
 
   assert.equal(result.savings, 0)
+})
+
+// The preview shows the total the edit writes (slice 10): the same engine, the
+// same inputs. A line of 150.00 at 20 %, the server's numbers
+// (actions.db.test.ts, edit-totals.db.test.ts).
+const previewLine = { totalPrice: 150, effectiveUnitPrice: 75, product: null }
+const previewOf = (
+  storeTax: Parameters<typeof previewEditTotal>[0]['storeTax'],
+  recorded: 'inclusive' | 'exclusive' | null = null,
+) =>
+  previewEditTotal({
+    items: [previewLine],
+    insuranceAmount: 0,
+    discountAmount: 0,
+    deliveryFee: 0,
+    deposit: 0,
+    storeTax,
+    recordedTaxDisplayMode: recorded,
+  })
+
+test('the preview total: prices before tax, the tax on top', () => {
+  assert.equal(previewOf({ enabled: true, defaultRate: 20, displayMode: 'exclusive' }), 180)
+})
+
+test('the preview total: prices with tax, unchanged', () => {
+  assert.equal(previewOf({ enabled: true, defaultRate: 20, displayMode: 'inclusive' }), 150)
+})
+
+test('the preview total: taxes off, unchanged', () => {
+  assert.equal(previewOf(undefined), 150)
+})
+
+test('the preview total: the mode the reservation recorded, not the store\'s today', () => {
+  assert.equal(
+    previewOf({ enabled: true, defaultRate: 20, displayMode: 'exclusive' }, 'inclusive'),
+    150,
+  )
+})
+
+test('the preview total: insurance outside the tax, the discount and the delivery in', () => {
+  const total = previewEditTotal({
+    items: [previewLine],
+    insuranceAmount: 12.5,
+    discountAmount: 10,
+    deliveryFee: 20,
+    deposit: 0,
+    storeTax: { enabled: true, defaultRate: 20, displayMode: 'exclusive' },
+    recordedTaxDisplayMode: null,
+  })
+  // (150 - 10 + 20) before tax, 20 % on top, and 12.50 of insurance with none.
+  assert.equal(total, 204.5)
 })
