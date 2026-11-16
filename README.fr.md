@@ -240,6 +240,7 @@ Le déploiement docker-compose fourni configure toutes les variables requises po
 | `LOUEZ_MODE`                            |         | `standalone` (défaut) ou `platform` (routage multi-boutiques)                      |
 | `LOUEZ_BILLING`                         |         | `off` (défaut) : l'instance ne facture aucune boutique. `cloud` sert à Louez Cloud |
 | `LOUEZ_HOSTED_BY`                       |         | Vide (défaut) : vous hébergez l'instance. `lumycloud` sert à Louez Cloud           |
+| `LOUEZ_SEARCH_INDEXING`                 |         | `on` (défaut) : boutiques indexables. `off` cache une instance de préproduction    |
 | `SMTP_*`                                |         | Emails sortants — optionnel ; les fonctions email se désactivent proprement        |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` |         | Connexion Google — optionnel                                                       |
 | `STRIPE_*`                              |         | Paiements en ligne — optionnel ; la vitrine bascule en mode demande de réservation |
