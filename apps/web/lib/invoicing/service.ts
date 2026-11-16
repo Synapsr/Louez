@@ -9,7 +9,7 @@ import {
   storeIntegrations,
   storeLegalProfiles,
 } from "@louez/db";
-import { resolveReservationBilling } from "@louez/utils";
+import { isStripeRefundRow, resolveReservationBilling } from "@louez/utils";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -412,6 +412,8 @@ export async function generateCreditNoteForRefund(
         method: true,
         status: true,
         stripeRefundId: true,
+        stripePaymentIntentId: true,
+        stripeCheckoutSessionId: true,
         refundOfPaymentId: true,
         currency: true,
         paidAt: true,
@@ -477,20 +479,31 @@ export async function generateCreditNoteForRefund(
         id: true,
         type: true,
         stripeRefundId: true,
+        stripePaymentIntentId: true,
+        stripeCheckoutSessionId: true,
         refundOfPaymentId: true,
         reservationId: true,
       },
     });
 
     if (!refundPayment || !originalPayment) return skipped("payment_not_found");
+    // Told apart by the repo's rule (`isStripeRefundRow`): the original is money received,
+    // whatever refund id the oldest webhooks stamped on it; the row the note is for is a
+    // refund of it, a Stripe refund row (linked to it, or older with no link) or a refund
+    // given by hand linked to it, never an original payment.
+    const originalIsReceipt =
+      originalPayment.refundOfPaymentId === null && !isStripeRefundRow(originalPayment);
+    const refundGivesOriginalBack = isStripeRefundRow(refundPayment)
+      ? refundPayment.refundOfPaymentId === null ||
+        refundPayment.refundOfPaymentId === originalPayment.id
+      : !refundPayment.stripeRefundId && refundPayment.refundOfPaymentId === originalPayment.id;
     if (
       !REVENUE_PAYMENT_TYPES.has(originalPayment.type) ||
-      originalPayment.stripeRefundId !== null ||
-      originalPayment.refundOfPaymentId !== null ||
+      !originalIsReceipt ||
       originalPayment.reservationId !== refundPayment.reservationId ||
       !["rental", "deposit_return"].includes(refundPayment.type) ||
       refundPayment.status !== "completed" ||
-      (!refundPayment.stripeRefundId && refundPayment.refundOfPaymentId !== originalPayment.id) ||
+      !refundGivesOriginalBack ||
       Number(refundAmount) <= 0
     ) {
       return skipped("payment_not_eligible");

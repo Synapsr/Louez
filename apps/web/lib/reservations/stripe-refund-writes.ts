@@ -596,6 +596,7 @@ export async function recordFeeOverReturned(
   input: {
     readonly reservationId: string;
     readonly paymentId: string;
+    readonly chargeId: string;
     readonly fee: {
       readonly feeId: string;
       readonly targetMinor: number;
@@ -608,14 +609,37 @@ export async function recordFeeOverReturned(
   const overReturnedMinor = fee.feeRefundedMinor - fee.targetMinor;
   return database.transaction(async (tx) => {
     if (!(await lockRefundReservation(tx, input.reservationId))) return false;
+    // The charge's payment rows of the reservation, as the writer reconciles them.
+    const siblings = await tx
+      .select({ id: payments.id })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.reservationId, input.reservationId),
+          or(eq(payments.id, input.paymentId), eq(payments.stripeChargeId, input.chargeId)),
+          isPaymentReceiptSql(),
+        ),
+      );
+    // A failed refund row of the charge: linked to one of them, or, older, with no link
+    // and the charge's id.
     const [undone] = await tx
       .select({ id: payments.id })
       .from(payments)
       .where(
         and(
-          eq(payments.refundOfPaymentId, input.paymentId),
+          eq(payments.reservationId, input.reservationId),
           eq(payments.status, "failed"),
           isStripeRefundPaymentSql(),
+          or(
+            inArray(
+              payments.refundOfPaymentId,
+              siblings.map((row) => row.id),
+            ),
+            and(
+              sql`${payments.refundOfPaymentId} IS NULL`,
+              eq(payments.stripeChargeId, input.chargeId),
+            ),
+          ),
         ),
       )
       .orderBy(desc(payments.updatedAt), desc(payments.id))

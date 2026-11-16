@@ -1499,6 +1499,77 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     }
   }
 
+  for (const shape of ["linked", "unlinked", "stamped"] as const) {
+    test(`the fee given back on a refund recorded ${shape} that fails is recorded once`, async () => {
+      const stripe = fakeStripe();
+      const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+      const made = stripe.refundInDashboard(chargeId, 6_000);
+      if (shape === "stamped") {
+        await louezDb.db
+          .update(louezDb.payments)
+          .set({ stripeRefundId: made.id })
+          .where(eq(louezDb.payments.id, paymentId));
+      } else {
+        await louezDb.db.insert(louezDb.payments).values({
+          id: `pay_legacy_fee_${++counter}`,
+          reservationId,
+          amount: "60.00",
+          type: "rental",
+          method: "stripe",
+          status: "completed",
+          stripeRefundId: made.id,
+          refundOfPaymentId: shape === "linked" ? paymentId : null,
+          stripeChargeId: shape === "unlinked" ? chargeId : null,
+          currency: "EUR",
+          grossMinor: 6_000,
+        });
+      }
+      // 1.80 of the 3.00 fee given back for the 60.00, then the refund fails.
+      await webhook.handleChargeRefunded(
+        stripe.refundedEvent(chargeId),
+        ACCOUNT,
+        stripe.webhookPort,
+      );
+      made.status = "failed";
+      for (let delivery = 0; delivery < 2; delivery++) {
+        await webhook.handleRefundUpdated(
+          { ...made, currency: "eur", charge: chargeId },
+          ACCOUNT,
+          stripe.webhookPort,
+        );
+      }
+
+      const [failedRow] = await louezDb.db
+        .select({ id: louezDb.payments.id })
+        .from(louezDb.payments)
+        .where(
+          and(
+            eq(louezDb.payments.stripeRefundId, made.id),
+            eq(louezDb.payments.status, "failed"),
+            sql`${louezDb.payments.stripePaymentIntentId} IS NULL`,
+          ),
+        );
+      assert.ok(failedRow);
+      const lines = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(
+          and(
+            eq(louezDb.reservationActivity.reservationId, reservationId),
+            sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) = 'refund_fee_over_returned'`,
+          ),
+        );
+      assert.deepEqual(
+        lines.map((line) => {
+          const metadata = line.metadata as { paymentId: string; overReturnedMinor: number };
+          return [metadata.paymentId, metadata.overReturnedMinor];
+        }),
+        [[failedRow.id, 180]],
+      );
+      assert.equal((await readPayment(paymentId))?.amount, "100.00");
+    });
+  }
+
   test("a refund made through one row of a charge that fails is undone there, whichever row the event names", async () => {
     const stripe = fakeStripe();
     const { reservationId, paymentId: first, chargeId } = await createPayment(stripe);

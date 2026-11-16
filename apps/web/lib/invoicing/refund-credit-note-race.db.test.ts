@@ -174,5 +174,95 @@ describe(
         .where(eq(louezDb.documents.reservationId, reservationId));
       assert.equal(documents.length, 2);
     });
+
+    test("a refund of a payment that carries an old stamped refund gets its credit note; the stamped payment never does", async () => {
+      const reservationId = "res_credit_stamped";
+      await louezDb.db.insert(louezDb.reservations).values({
+        id: reservationId,
+        storeId: STORE,
+        customerId: "customer_credit_race",
+        number: "R-2",
+        status: "confirmed",
+        startDate: new Date("2026-10-01T09:00:00Z"),
+        endDate: new Date("2026-10-03T09:00:00Z"),
+        subtotalAmount: "100.00",
+        depositAmount: "0.00",
+        totalAmount: "100.00",
+        currency: "EUR",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: "item_credit_stamped",
+        reservationId,
+        quantity: 1,
+        unitPrice: "100.00",
+        depositPerUnit: "0.00",
+        totalPrice: "100.00",
+        productSnapshot: { name: "Bike", description: null, images: [] },
+      } as never);
+      await louezDb.db.insert(louezDb.payments).values({
+        id: "pay_credit_stamped",
+        reservationId,
+        amount: "100.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripePaymentIntentId: "pi_credit_stamped",
+        stripeChargeId: "ch_credit_stamped",
+        currency: "EUR",
+        paidAt: new Date("2026-10-01T09:30:00Z"),
+      });
+      assert.equal(
+        (await service.generateInvoiceForPayment("pay_credit_stamped")).status,
+        "generated",
+      );
+      // An old webhook stamped refund R1 (20.00) on the payment and netted it.
+      await louezDb.db
+        .update(louezDb.payments)
+        .set({ stripeRefundId: "re_credit_r1", amount: "80.00" })
+        .where(eq(louezDb.payments.id, "pay_credit_stamped"));
+      // R2 (30.00), recorded as refunds are now.
+      await louezDb.db.insert(louezDb.payments).values({
+        id: "ref_credit_r2",
+        reservationId,
+        amount: "30.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripeRefundId: "re_credit_r2",
+        refundOfPaymentId: "pay_credit_stamped",
+        currency: "EUR",
+        grossMinor: 3_000,
+        paidAt: new Date("2026-10-02T09:30:00Z"),
+      });
+
+      const issued = await service.generateCreditNoteForRefund(
+        { originalPaymentId: "pay_credit_stamped", refundPaymentId: "ref_credit_r2" },
+        "30.00",
+      );
+      assert.equal(issued.status, "generated", JSON.stringify(issued));
+      // The stamped payment is no refund: no note is ever issued for it.
+      const forOriginal = await service.generateCreditNoteForRefund(
+        { originalPaymentId: "pay_credit_stamped", refundPaymentId: "pay_credit_stamped" },
+        "20.00",
+      );
+      assert.deepEqual(forOriginal, { status: "skipped", reason: "payment_not_eligible" });
+
+      const notes = await louezDb.db
+        .select({ id: louezDb.invoices.id, total: louezDb.invoices.totalInclTax })
+        .from(louezDb.invoices)
+        .where(
+          and(
+            eq(louezDb.invoices.reservationId, reservationId),
+            eq(louezDb.invoices.type, "credit_note"),
+          ),
+        );
+      assert.equal(notes.length, 1);
+      assert.equal(Math.abs(Number(notes[0]?.total)), 30);
+      const links = await louezDb.db
+        .select({ paymentId: louezDb.invoicePayments.paymentId })
+        .from(louezDb.invoicePayments)
+        .where(eq(louezDb.invoicePayments.invoiceId, notes[0]?.id ?? ""));
+      assert.deepEqual(links, [{ paymentId: "ref_credit_r2" }]);
+    });
   },
 );

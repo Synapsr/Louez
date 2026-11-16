@@ -188,6 +188,7 @@ export async function handleChargeRefunded(
   await recordFeeOverReturned(db, {
     reservationId: payment.reservationId,
     paymentId: payment.paymentId,
+    chargeId: charge.id,
     fee: fee?.status === "no_fee" ? null : fee,
   });
   const netMinor = recorded.netMinor;
@@ -309,6 +310,7 @@ export async function handleRefundUpdated(
   await recordFeeOverReturned(db, {
     reservationId: payment.reservationId,
     paymentId: payment.paymentId,
+    chargeId,
     fee: fee?.status === "no_fee" ? null : fee,
   });
   return { status: "recorded", paymentId: payment.paymentId, undone: recorded.undone.length };

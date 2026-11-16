@@ -295,6 +295,46 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
     );
   });
 
+  test("an undone refund row with no link is shown for the fee given back on it alone", async () => {
+    const { reservationId, n } = await paid();
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `ref_fee_unlinked_${n}`,
+      reservationId,
+      amount: "60.00",
+      type: "rental",
+      method: "stripe",
+      status: "failed",
+      stripeRefundId: `re_fee_unlinked_${n}`,
+      stripeChargeId: `ch_inbox_${n}`,
+      currency: "EUR",
+      grossMinor: 6_000,
+      updatedAt: new Date(Date.now() - 60_000),
+    });
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: `act_fee_unlinked_${n}`,
+      reservationId,
+      activityType: "payment_updated",
+      metadata: {
+        kind: "refund_fee_over_returned",
+        paymentId: `ref_fee_unlinked_${n}`,
+        feeId: "fee_inbox_unlinked",
+        overReturnedMinor: 180,
+      },
+    });
+
+    const shown = (await items("refund_undone")).filter(
+      (item) => item.reservation?.id === reservationId,
+    );
+    assert.deepEqual(
+      shown.map((item) => [
+        item.details?.refundPaymentId,
+        item.details?.creditNoteNumber,
+        item.details?.feeOverReturned,
+      ]),
+      [[`ref_fee_unlinked_${n}`, null, "1.80"]],
+    );
+  });
+
   test("a credit note the outbox gave up on is shown, armed again a day later, once, and leaves once issued", async () => {
     const { reservationId, paymentId, n } = await paid();
     await louezDb.db.insert(louezDb.payments).values({
