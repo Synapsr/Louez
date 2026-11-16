@@ -85,10 +85,14 @@ export function minorUnitsPerUnit(currency?: string): number {
 }
 
 /**
- * An amount rounded to the currency's minor unit, half away from zero, on
- * the decimal value as written: 0.045 is 0.05 (where `toFixed(2)` reads the
- * binary 0.04499… and gives 0.04), ¥101.5 is ¥102. The one rounding of a
- * line's amount, for the dashboard's creation and its form.
+ * An amount rounded to the currency's minor unit: the number is scaled to
+ * minor units, cut to 15 significant digits (`toPrecision(15)`), then rounded
+ * half away from zero. It rounds a number, not the decimal as written: the
+ * cut absorbs the error of the multiplication for amounts of ordinary size
+ * (1.005 × 100 is 100.49999999999999, cut to 100.5, so 1.01), where
+ * `toFixed(2)` reads the binary value (1.005 gives 1.00, 13385.925 gives
+ * 13385.92; here 13385.93). ¥101.5 is ¥102. The one rounding of a line's
+ * amount, for the dashboard's creation and its form.
  */
 export function roundToMinorUnit(amount: number, currency?: string): number {
   const perUnit = minorUnitsPerUnit(currency)
