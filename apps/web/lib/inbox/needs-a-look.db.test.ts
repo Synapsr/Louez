@@ -207,7 +207,6 @@ describe("what needs a look (database)", { skip: skipWithoutTestDatabase() }, ()
     ]);
     assert.equal(loaded.more, false);
     assert.equal(loaded.incomplete, false);
-    assert.deepEqual(needsALook.needsALookCount(loaded), { count: 2, capped: false });
     const refund = loaded.items.find((item) => item.type === "refund_unconfirmed");
     assert.equal(refund?.details.amount, "30.00");
     assert.equal(refund?.details.currency, "EUR");
@@ -220,8 +219,6 @@ describe("what needs a look (database)", { skip: skipWithoutTestDatabase() }, ()
       loaded.items.map((item) => item.type),
       ["message_not_sent"],
     );
-    // The page's line counts what the caller may see.
-    assert.deepEqual(needsALook.needsALookCount(loaded), { count: 1, capped: false });
 
     const productsOnly = await apiKey({ products: "read" });
     assert.deepEqual((await needsALook.loadNeedsALook(inboxOf(productsOnly()))).items, []);

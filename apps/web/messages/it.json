@@ -526,8 +526,7 @@
       "reservationLimitReached": "Limite raggiunto",
       "help": "Aiuto",
       "feedback": "Aiuto e feedback",
-      "aiCreditsLow": "Saldo crediti basso",
-      "needsALookWaiting": "Ci sono elementi da verificare"
+      "aiCreditsLow": "Saldo crediti basso"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "analyticsSales": "Vendite",
       "analyticsTraffic": "Traffico",
       "multiStore": "Multi-negozio",
-      "aiCredits": "Crediti IA",
-      "needsALook": "Da verificare"
+      "aiCredits": "Crediti IA"
     },
     "home": {
       "viewAll": "Vedi tutto",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Segnato come gestito",
       "changed": "Questo elemento è cambiato nel frattempo: l'elenco è aggiornato.",
-      "alert": {
-        "title": "{count, plural, one {# cosa da verificare} other {# cose da verificare}}",
-        "titleCapped": "99+ cose da verificare",
-        "description": "Rimborsi, cauzioni o messaggi che Louez non è riuscito a risolvere da solo.",
-        "action": "Vedi"
-      },
       "actions": {
         "viewPayment": "Vedi il pagamento",
         "viewBooking": "Vedi la prenotazione",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Un'azione di {client} il {day} potrebbe non essere stata salvata. Verifica la scheda prima di ripeterla."
       },
       "unknownTitle": "Qualcosa da verificare",
-      "neutral": "Louez non è riuscito a risolverlo da solo. Aprilo per vedere cosa è successo."
+      "neutral": "Louez non è riuscito a risolverlo da solo. Aprilo per vedere cosa è successo.",
+      "viewAll": "Vedi tutto"
     }
   },
   "storefront": {

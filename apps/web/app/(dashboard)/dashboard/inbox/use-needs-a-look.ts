@@ -10,38 +10,29 @@ import { useTranslations } from "next-intl";
 import { toastManager } from "@louez/ui";
 
 import { useStore } from "@/contexts/store-context";
-import { useFormatLocale } from "@/hooks/use-format-locale";
+import { useNeedsALookFormat } from "@/hooks/use-needs-a-look-format";
 import { acknowledgeNeedsALook, type NeedsALookItem } from "@/lib/inbox/needs-a-look";
-import type { DisplayFormat } from "@/lib/inbox/needs-a-look-display";
 import { orpcClient } from "@/lib/orpc";
 import { needsALookQueries } from "@/lib/queries/needs-a-look.queries";
 import { apiErrorKey } from "@/lib/orpc/errors";
-import { formatCurrency } from "@/lib/utils";
-import { formatStoreDate } from "@/lib/utils/store-date";
 
 /**
  * The page's list and its "Mark as handled": an item marked leaves at once;
- * the page (`router.refresh`), the sidebar's dot and the home's line are read
- * again, and so is the list after a refusal or an item that changed in the
- * meantime. Money and days read as the dashboard writes
- * them, in the store's time zone.
+ * the page (`router.refresh`) and the notification bell are read again, and
+ * so is the list after a refusal or an item that changed in the meantime.
  */
 export const useNeedsALook = (items: NeedsALookItem[]) => {
   const t = useTranslations("dashboard.needsALook");
   const tErrors = useTranslations("errors");
   const router = useRouter();
   const queryClient = useQueryClient();
-  /** The page from the server, the sidebar's marker and the home's line from the API. */
+  const { storeId } = useStore();
+  /** The page from the server, the notification bell from the API. */
   const refresh = () => {
     router.refresh();
-    void queryClient.invalidateQueries({ queryKey: needsALookQueries.summaryKey() });
+    void queryClient.invalidateQueries({ queryKey: needsALookQueries.summaryKey(storeId) });
   };
-  const { timezone } = useStore();
-  const { intl } = useFormatLocale();
-  const format: DisplayFormat = {
-    money: (amount, currency) => formatCurrency(Number(amount), currency, intl),
-    day: (iso) => formatStoreDate(iso, timezone, "SHORTEST_DATE", intl),
-  };
+  const format = useNeedsALookFormat();
   const [handled, setHandled] = useState<ReadonlySet<string>>(new Set());
 
   const acknowledge = useMutation({

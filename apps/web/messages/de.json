@@ -526,8 +526,7 @@
       "reservationLimitReached": "Limit erreicht",
       "help": "Hilfe",
       "feedback": "Hilfe und Feedback",
-      "aiCreditsLow": "Guthaben wird knapp",
-      "needsALookWaiting": "Einträge müssen geprüft werden"
+      "aiCreditsLow": "Guthaben wird knapp"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "analyticsSales": "Verkäufe",
       "analyticsTraffic": "Traffic",
       "multiStore": "Multi-Shop",
-      "aiCredits": "KI-Guthaben",
-      "needsALook": "Zu prüfen"
+      "aiCredits": "KI-Guthaben"
     },
     "multiStore": {
       "title": "Multi-Shop",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Als erledigt markiert",
       "changed": "Dieser Eintrag hat sich inzwischen geändert: die Liste ist aktuell.",
-      "alert": {
-        "title": "{count, plural, one {# Sache zu prüfen} other {# Sachen zu prüfen}}",
-        "titleCapped": "99+ Sachen zu prüfen",
-        "description": "Erstattungen, Kautionen oder Nachrichten, die Louez nicht selbst klären konnte.",
-        "action": "Ansehen"
-      },
       "actions": {
         "viewPayment": "Zahlung ansehen",
         "viewBooking": "Buchung ansehen",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Eine Aktion von {client} am {day} wurde möglicherweise nicht gespeichert. Prüfe den Eintrag, bevor du sie wiederholst."
       },
       "unknownTitle": "Etwas zu prüfen",
-      "neutral": "Louez konnte das nicht selbst klären. Öffne es, um zu sehen, was passiert ist."
+      "neutral": "Louez konnte das nicht selbst klären. Öffne es, um zu sehen, was passiert ist.",
+      "viewAll": "Alle ansehen"
     }
   },
   "storefront": {

@@ -526,8 +526,7 @@
       "reservationLimitReached": "达到限制",
       "help": "帮助",
       "feedback": "帮助和反馈",
-      "aiCreditsLow": "信贷余额所剩无几",
-      "needsALookWaiting": "有需要检查的事项"
+      "aiCreditsLow": "信贷余额所剩无几"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "settings": "设置",
       "store": "我的商店",
       "multiStore": "多店",
-      "aiCredits": "AI 额度",
-      "needsALook": "待检查"
+      "aiCredits": "AI 额度"
     },
     "multiStore": {
       "title": "多店",
@@ -7211,12 +7209,6 @@
       },
       "handled": "已标记为已处理",
       "changed": "该事项已发生变化：列表已更新。",
-      "alert": {
-        "title": "{count, plural, other {# 项待检查}}",
-        "titleCapped": "99+ 项待检查",
-        "description": "Louez 无法自行处理的退款、押金或消息。",
-        "action": "查看"
-      },
       "actions": {
         "viewPayment": "查看付款",
         "viewBooking": "查看预订",
@@ -7297,7 +7289,8 @@
         "summaryBy": "{client} 在 {day} 的一项操作可能未保存。重做之前请先检查记录。"
       },
       "unknownTitle": "待检查事项",
-      "neutral": "Louez 无法自行处理此事项。打开查看发生了什么。"
+      "neutral": "Louez 无法自行处理此事项。打开查看发生了什么。",
+      "viewAll": "查看全部"
     }
   },
   "storefront": {

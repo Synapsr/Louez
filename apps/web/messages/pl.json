@@ -526,8 +526,7 @@
       "reservationLimitReached": "Limit osiągnięty",
       "help": "Pomoc",
       "feedback": "Pomoc i opinie",
-      "aiCreditsLow": "Niskie saldo kredytów",
-      "needsALookWaiting": "Są elementy do sprawdzenia"
+      "aiCreditsLow": "Niskie saldo kredytów"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "analyticsSales": "Sprzedaż",
       "analyticsTraffic": "Ruch",
       "multiStore": "Multi-sklep",
-      "aiCredits": "Kredyty AI",
-      "needsALook": "Do sprawdzenia"
+      "aiCredits": "Kredyty AI"
     },
     "home": {
       "viewAll": "Zobacz wszystko",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Oznaczono jako załatwione",
       "changed": "Ten element zmienił się w międzyczasie: lista jest aktualna.",
-      "alert": {
-        "title": "{count, plural, one {# rzecz do sprawdzenia} few {# rzeczy do sprawdzenia} many {# rzeczy do sprawdzenia} other {# rzeczy do sprawdzenia}}",
-        "titleCapped": "99+ rzeczy do sprawdzenia",
-        "description": "Zwroty, kaucje lub wiadomości, których Louez nie mógł załatwić sam.",
-        "action": "Zobacz"
-      },
       "actions": {
         "viewPayment": "Zobacz płatność",
         "viewBooking": "Zobacz rezerwację",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Działanie {client} z {day} mogło nie zostać zapisane. Sprawdź rekord, zanim je powtórzysz."
       },
       "unknownTitle": "Coś do sprawdzenia",
-      "neutral": "Louez nie mógł załatwić tego sam. Otwórz, aby zobaczyć, co się stało."
+      "neutral": "Louez nie mógł załatwić tego sam. Otwórz, aby zobaczyć, co się stało.",
+      "viewAll": "Zobacz wszystko"
     }
   },
   "storefront": {

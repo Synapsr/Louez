@@ -2,7 +2,6 @@ export { AdaptiveHeader } from "./adaptive-header";
 export { AdaptiveStats } from "./adaptive-stats";
 export { AgentAssistantNotice } from "./agent-assistant-notice";
 export { DashboardAlert } from "./dashboard-alert";
-export { NeedsALookAlert } from "./needs-a-look-alert";
 export { PendingRequests } from "./pending-requests";
 export { QuickActions } from "./quick-actions";
 export { ReeentStripeSetupCard } from "./reeent-stripe-setup-card";

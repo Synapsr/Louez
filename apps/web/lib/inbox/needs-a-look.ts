@@ -8,7 +8,7 @@ import { INBOX_PAGE_MAX } from "@louez/api/contracts/inbox";
  * its own place in the dashboard; so do the billing gate (its banner), unit
  * conflicts (the product and reservation pages) and failed photo jobs (only
  * an agent starts them, and follows them). Change this list to change the
- * page, the home's line and the sidebar's dot together.
+ * page and the notification bell's section together.
  */
 export const NEEDS_A_LOOK_TYPES = [
   "refund_unconfirmed",
@@ -74,13 +74,13 @@ export async function loadNeedsALook(
   };
 }
 
-/** How long the sidebar's marker and the home's line wait for the inbox before showing nothing. */
+/** How long the notification bell waits for the inbox before leaving it out. */
 export const NEEDS_A_LOOK_TIMEOUT_MS = 5_000;
 
 /**
  * `loadNeedsALook`, given up after `timeoutMs` (or when `signal` aborts): the
- * request is aborted and the call rejects, so a slow inbox shows no marker
- * rather than holding anything up.
+ * request is aborted and the call rejects, so a slow inbox is left out of the
+ * bell rather than holding anything up.
  */
 export async function loadNeedsALookWithin(
   inbox: InboxReader,
@@ -108,22 +108,6 @@ export async function loadNeedsALookWithin(
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
   }
-}
-
-/** Whether the sidebar's entry carries its marker: something read, and waiting. Nothing read yet, or a failed read: no marker. */
-export const needsALookWaiting = (summary: NeedsALook | undefined): boolean =>
-  (summary?.items.length ?? 0) > 0;
-
-/** Past this, the count reads "99+". */
-export const NEEDS_A_LOOK_COUNT_MAX = 99;
-
-/** The count as shown: the number, or "99+" past the page or past 99. */
-export function needsALookCount({ items, more }: Pick<NeedsALook, "items" | "more">): {
-  count: number;
-  capped: boolean;
-} {
-  const capped = more || items.length > NEEDS_A_LOOK_COUNT_MAX;
-  return { count: capped ? NEEDS_A_LOOK_COUNT_MAX : items.length, capped };
 }
 
 /**

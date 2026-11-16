@@ -8,35 +8,7 @@ import {
   acknowledgeNeedsALook,
   loadNeedsALook,
   loadNeedsALookWithin,
-  needsALookCount,
-  needsALookWaiting,
-  type NeedsALookItem,
 } from "./needs-a-look";
-
-const items = (count: number) =>
-  Array.from({ length: count }, (_, index) => ({ id: `refund_undone:${index}` }) as NeedsALookItem);
-
-describe("the count of what needs a look", () => {
-  test("the number up to 99, then 99+, and 99+ whenever more wait past the page", () => {
-    assert.deepEqual(needsALookCount({ items: items(0), more: false }), {
-      count: 0,
-      capped: false,
-    });
-    assert.deepEqual(needsALookCount({ items: items(3), more: false }), {
-      count: 3,
-      capped: false,
-    });
-    assert.deepEqual(needsALookCount({ items: items(99), more: false }), {
-      count: 99,
-      capped: false,
-    });
-    assert.deepEqual(needsALookCount({ items: items(100), more: false }), {
-      count: 99,
-      capped: true,
-    });
-    assert.deepEqual(needsALookCount({ items: items(3), more: true }), { count: 99, capped: true });
-  });
-});
 
 describe("the loader and the acknowledgement", () => {
   test("the loader asks for the page's kinds only, a page at a time, and keeps no other kind", async () => {
@@ -74,7 +46,7 @@ describe("the loader and the acknowledgement", () => {
   });
 });
 
-describe("the sidebar's marker and the home's line never wait on the inbox", () => {
+describe("the bell never waits on the inbox", () => {
   test("a read that never answers is given up after the timeout, its request aborted", async () => {
     let signal: AbortSignal | undefined;
     const started = Date.now();
@@ -105,11 +77,5 @@ describe("the sidebar's marker and the home's line never wait on the inbox", () 
       { timeoutMs: 1_000 },
     );
     assert.equal(loaded.items.length, 1);
-  });
-
-  test("the marker shows only for something read and waiting: not while loading, not after a failure", () => {
-    assert.equal(needsALookWaiting(undefined), false);
-    assert.equal(needsALookWaiting({ items: [], more: false, incomplete: false }), false);
-    assert.equal(needsALookWaiting({ items: items(1), more: false, incomplete: false }), true);
   });
 });

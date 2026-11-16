@@ -526,8 +526,7 @@
       "reservationLimitReached": "Limite atteinte",
       "help": "Aide",
       "feedback": "Aide et feedback",
-      "aiCreditsLow": "Solde de crédits bas",
-      "needsALookWaiting": "Des éléments sont à vérifier"
+      "aiCreditsLow": "Solde de crédits bas"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "settings": "Paramètres",
       "store": "Ma boutique",
       "multiStore": "Multi-boutiques",
-      "aiCredits": "Crédits IA",
-      "needsALook": "À vérifier"
+      "aiCredits": "Crédits IA"
     },
     "multiStore": {
       "title": "Multi-boutiques",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Marqué comme traité",
       "changed": "Cet élément a changé entre-temps : la liste est à jour.",
-      "alert": {
-        "title": "{count, plural, one {# chose à vérifier} other {# choses à vérifier}}",
-        "titleCapped": "99+ choses à vérifier",
-        "description": "Des remboursements, cautions ou messages que Louez n'a pas pu régler seul.",
-        "action": "Voir"
-      },
       "actions": {
         "viewPayment": "Voir le paiement",
         "viewBooking": "Voir la réservation",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Une action de {client} le {day} n'a peut-être pas été enregistrée. Vérifiez la fiche avant de la refaire."
       },
       "unknownTitle": "Un élément à vérifier",
-      "neutral": "Louez n'a pas pu régler cela seul. Ouvrez-le pour voir ce qui s'est passé."
+      "neutral": "Louez n'a pas pu régler cela seul. Ouvrez-le pour voir ce qui s'est passé.",
+      "viewAll": "Tout voir"
     }
   },
   "storefront": {

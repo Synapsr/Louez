@@ -526,8 +526,7 @@
       "reservationLimitReached": "Limit reached",
       "help": "Help",
       "feedback": "Help and feedback",
-      "aiCreditsLow": "Credit balance running low",
-      "needsALookWaiting": "Items need a look"
+      "aiCreditsLow": "Credit balance running low"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "settings": "Settings",
       "store": "My store",
       "multiStore": "Multi-store",
-      "aiCredits": "AI credits",
-      "needsALook": "To check"
+      "aiCredits": "AI credits"
     },
     "multiStore": {
       "title": "Multi-store",
@@ -6960,7 +6958,7 @@
       "productsEdit": "Edit",
       "reservationsEdit": "Edit",
       "settingsCustomerFields": "Customer record",
-      "needsALook": "Needs a look"
+      "needsALook": "To check"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7192,7 +7190,7 @@
       }
     },
     "needsALook": {
-      "title": "Needs a look",
+      "title": "To check",
       "description": "What Louez couldn't settle on its own.",
       "empty": {
         "title": "Nothing to check",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Marked as handled",
       "changed": "This item changed in the meantime: the list is up to date.",
-      "alert": {
-        "title": "{count, plural, one {# thing to check} other {# things to check}}",
-        "titleCapped": "99+ things to check",
-        "description": "Refunds, deposits or messages Louez couldn't settle on its own.",
-        "action": "See"
-      },
       "actions": {
         "viewPayment": "View payment",
         "viewBooking": "View booking",
@@ -7297,7 +7289,8 @@
         "summaryBy": "An action by {client} on {day} may not have been saved. Check the record before doing it again."
       },
       "unknownTitle": "Something to check",
-      "neutral": "Louez couldn't settle this on its own. Open it to see what happened."
+      "neutral": "Louez couldn't settle this on its own. Open it to see what happened.",
+      "viewAll": "See all"
     }
   },
   "storefront": {

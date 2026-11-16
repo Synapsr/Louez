@@ -526,8 +526,7 @@
       "reservationLimitReached": "Limite atingido",
       "help": "Ajuda",
       "feedback": "Ajuda e feedback",
-      "aiCreditsLow": "Saldo de créditos baixo",
-      "needsALookWaiting": "Há itens a verificar"
+      "aiCreditsLow": "Saldo de créditos baixo"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "analyticsSales": "Vendas",
       "analyticsTraffic": "Tráfego",
       "multiStore": "Multi-lojas",
-      "aiCredits": "Créditos IA",
-      "needsALook": "A verificar"
+      "aiCredits": "Créditos IA"
     },
     "home": {
       "viewAll": "Ver tudo",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Marcado como tratado",
       "changed": "Este item mudou entretanto: a lista está atualizada.",
-      "alert": {
-        "title": "{count, plural, one {# coisa a verificar} other {# coisas a verificar}}",
-        "titleCapped": "99+ coisas a verificar",
-        "description": "Reembolsos, cauções ou mensagens que a Louez não conseguiu resolver sozinha.",
-        "action": "Ver"
-      },
       "actions": {
         "viewPayment": "Ver pagamento",
         "viewBooking": "Ver reserva",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Uma ação de {client} em {day} pode não ter sido guardada. Verifique o registo antes de a repetir."
       },
       "unknownTitle": "Algo a verificar",
-      "neutral": "A Louez não conseguiu resolver isto sozinha. Abra para ver o que aconteceu."
+      "neutral": "A Louez não conseguiu resolver isto sozinha. Abra para ver o que aconteceu.",
+      "viewAll": "Ver tudo"
     }
   },
   "storefront": {

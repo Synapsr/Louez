@@ -526,8 +526,7 @@
       "reservationLimitReached": "Limiet bereikt",
       "help": "Hulp",
       "feedback": "Hulp en feedback",
-      "aiCreditsLow": "Tegoed raakt op",
-      "needsALookWaiting": "Er zijn items om te controleren"
+      "aiCreditsLow": "Tegoed raakt op"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "settings": "Instellingen",
       "store": "Mijn winkel",
       "multiStore": "Multi-winkel",
-      "aiCredits": "AI-tegoed",
-      "needsALook": "Te controleren"
+      "aiCredits": "AI-tegoed"
     },
     "home": {
       "viewAll": "Alles bekijken",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Gemarkeerd als afgehandeld",
       "changed": "Dit item is intussen gewijzigd: de lijst is bijgewerkt.",
-      "alert": {
-        "title": "{count, plural, one {# ding te controleren} other {# dingen te controleren}}",
-        "titleCapped": "99+ dingen te controleren",
-        "description": "Terugbetalingen, borgen of berichten die Louez niet zelf kon oplossen.",
-        "action": "Bekijken"
-      },
       "actions": {
         "viewPayment": "Betaling bekijken",
         "viewBooking": "Reservering bekijken",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Een actie van {client} op {day} is mogelijk niet opgeslagen. Controleer het record voordat je die herhaalt."
       },
       "unknownTitle": "Iets te controleren",
-      "neutral": "Louez kon dit niet zelf oplossen. Open het om te zien wat er is gebeurd."
+      "neutral": "Louez kon dit niet zelf oplossen. Open het om te zien wat er is gebeurd.",
+      "viewAll": "Alles bekijken"
     }
   },
   "storefront": {

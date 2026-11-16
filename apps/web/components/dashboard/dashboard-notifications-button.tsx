@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { useQuery } from "@tanstack/react-query";
 import { Bell, Clock, ExternalLink, FileText } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 
@@ -15,12 +16,26 @@ import {
 } from "@louez/ui";
 
 import { useReservationPolling } from "@/contexts/reservation-polling-context";
+import { useStore } from "@/contexts/store-context";
+import { useNeedsALookFormat } from "@/hooks/use-needs-a-look-format";
+import { needsALookQueries } from "@/lib/queries/needs-a-look.queries";
+
+import { DashboardNotificationsNeedsALook } from "./dashboard-notifications-needs-a-look";
+import { needsALookInBell, notificationsBadge } from "./util.dashboard-notifications";
 
 export const DashboardNotificationsButton = () => {
   const { pendingCount, pendingReservations, pendingSupplierInvoices } = useReservationPolling();
   const t = useTranslations("dashboard.notificationsCenter");
   const format = useFormatter();
-  const notificationCount = pendingCount + pendingSupplierInvoices;
+  // What needs a look: read after paint, outside the 30-second poll, for this store only.
+  const { storeId } = useStore();
+  const needsALookQuery = useQuery(needsALookQueries.summary(storeId));
+  const toCheck = needsALookInBell(needsALookQuery, useNeedsALookFormat());
+  const badge = notificationsBadge({
+    polled: pendingCount + pendingSupplierInvoices,
+    read: needsALookQuery.status,
+    toCheck: toCheck?.count ?? 0,
+  });
 
   return (
     <DropdownMenu>
@@ -30,9 +45,9 @@ export const DashboardNotificationsButton = () => {
         }
       >
         <Bell className="h-4 w-4" />
-        {notificationCount > 0 && (
+        {badge && (
           <span className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold">
-            {notificationCount > 9 ? "9+" : notificationCount}
+            {badge}
           </span>
         )}
       </DropdownMenuTrigger>
@@ -103,6 +118,7 @@ export const DashboardNotificationsButton = () => {
             </div>
           </>
         )}
+        {toCheck && <DashboardNotificationsNeedsALook rows={toCheck.rows} />}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={<Link href="/dashboard/reservations?status=pending" className="cursor-pointer" />}

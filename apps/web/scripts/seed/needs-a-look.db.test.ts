@@ -5,6 +5,8 @@ import { createRequire } from "node:module";
 import { after, before, describe, mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { eq } from "drizzle-orm";
+
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { WRITE_SAMPLES_FLAG } from "./approvals-guard";
@@ -28,7 +30,10 @@ for (const name of [
 
 // The refund module imports "server-only"; its credit-note issuer never runs here.
 type NextResolve = (specifier: string, context: object) => { url: string };
-Reflect.get(nodeModule, "registerHooks")({
+Reflect.get(
+  nodeModule,
+  "registerHooks",
+)({
   resolve(specifier: string, context: object, nextResolve: NextResolve) {
     if (specifier === "server-only") return { shortCircuit: true, url: "node:module" };
     return nextResolve(specifier, context);
@@ -157,7 +162,8 @@ describe("the needs-a-look sample script (database)", { skip: skipWithoutTestDat
       });
     const deps = {
       database: louezDb.db,
-      stripe: recorder<import("@/lib/reservations/stripe-refund-stripe").StripeRefundPort>("stripe"),
+      stripe:
+        recorder<import("@/lib/reservations/stripe-refund-stripe").StripeRefundPort>("stripe"),
       dispatchEffects: () => {},
     };
     const [operation] = await louezDb.db.select().from(louezDb.paymentRefundOperations);
@@ -165,6 +171,12 @@ describe("the needs-a-look sample script (database)", { skip: skipWithoutTestDat
 
     // The cron's pass: no new outbox row for the refund, no credit note armed again.
     assert.deepEqual(await refunds.requeueStaleRefundOperations(louezDb.db), []);
+    assert.deepEqual(await effects.rearmAbandonedEffects(), []);
+    // Two days on, past the day an abandoned debt waits: still never armed again.
+    await louezDb.db
+      .update(louezDb.apiEffects)
+      .set({ nextAttemptAt: new Date(Date.now() - 2 * 86_400_000) })
+      .where(eq(louezDb.apiEffects.type, "payment.refundCreditNote"));
     assert.deepEqual(await effects.rearmAbandonedEffects(), []);
     // The outbox's retry: none of the sample rows is due.
     await effects.retryDueEffects(recorder("sender"));

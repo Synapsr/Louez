@@ -22,7 +22,6 @@ import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import {
   AgentAssistantNotice,
   DashboardAlert,
-  NeedsALookAlert,
   ReeentStripeSetupCard,
   SetupChecklist,
   onlinePaymentsStepOf,
@@ -174,10 +173,6 @@ async function DashboardContent({
 
       {/* Priority Alert for pending requests */}
       <DashboardAlert pendingCount={metrics.pendingReservations} />
-
-      {/* What Louez could not settle on its own, under the bookings to answer:
-          read after paint, so the inbox never holds the home up. */}
-      <NeedsALookAlert />
 
       {/* The offer to let an AI assistant set up and run the store: first of
           the setup notices, under the alert that asks for an action. */}

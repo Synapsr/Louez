@@ -50,9 +50,7 @@ import { WhatsNewSidebarItem } from "@/components/dashboard/whats-new-sidebar-it
 import { LanguageMenuSub } from "@/components/ui/language-switcher";
 
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
-import { needsALookWaiting } from "@/lib/inbox/needs-a-look";
 import { aiCreditsQueries } from "@/lib/queries/ai-credits.queries";
-import { needsALookQueries } from "@/lib/queries/needs-a-look.queries";
 import { cn } from "@/lib/utils";
 import { DashboardNavigation } from "./dashboard-navigation";
 
@@ -303,8 +301,6 @@ export const DashboardSidebar = ({
         }
       : null
     : aiCredits;
-  // After paint, as the AI credits: a slow or failing inbox shows no marker.
-  const needsALookQuery = useQuery(needsALookQueries.summary());
 
   return (
     <TooltipProvider>
@@ -318,11 +314,7 @@ export const DashboardSidebar = ({
           isFromReeent={isFromReeent}
         />
 
-        <DashboardNavigation
-          pathname={pathname}
-          aiCredits={liveAiCredits}
-          needsALook={{ waiting: needsALookWaiting(needsALookQuery.data) }}
-        />
+        <DashboardNavigation pathname={pathname} aiCredits={liveAiCredits} />
         <SidebarFooter className="border-sidebar-border border-t">
           <SidebarMenu>
             {/* Nudges sit in the same menu as the utilities they resemble —

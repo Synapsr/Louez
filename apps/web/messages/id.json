@@ -526,8 +526,7 @@
       "reservationLimitReached": "Batas tercapai",
       "help": "Bantuan",
       "feedback": "Bantuan dan umpan balik",
-      "aiCreditsLow": "Saldo kredit hampir habis",
-      "needsALookWaiting": "Ada item yang perlu dicek"
+      "aiCreditsLow": "Saldo kredit hampir habis"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "settings": "Pengaturan",
       "store": "Toko saya",
       "multiStore": "Multi-toko",
-      "aiCredits": "Kredit AI",
-      "needsALook": "Perlu dicek"
+      "aiCredits": "Kredit AI"
     },
     "multiStore": {
       "title": "Multi-toko",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Ditandai sudah ditangani",
       "changed": "Item ini berubah sementara itu: daftar sudah diperbarui.",
-      "alert": {
-        "title": "{count, plural, other {# hal perlu dicek}}",
-        "titleCapped": "99+ hal perlu dicek",
-        "description": "Pengembalian dana, deposit, atau pesan yang tidak bisa diselesaikan Louez sendiri.",
-        "action": "Lihat"
-      },
       "actions": {
         "viewPayment": "Lihat pembayaran",
         "viewBooking": "Lihat pemesanan",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Tindakan oleh {client} pada {day} mungkin tidak tersimpan. Periksa catatannya sebelum mengulanginya."
       },
       "unknownTitle": "Sesuatu perlu dicek",
-      "neutral": "Louez tidak bisa menyelesaikan ini sendiri. Buka untuk melihat apa yang terjadi."
+      "neutral": "Louez tidak bisa menyelesaikan ini sendiri. Buka untuk melihat apa yang terjadi.",
+      "viewAll": "Lihat semua"
     }
   },
   "storefront": {

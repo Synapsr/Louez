@@ -526,8 +526,7 @@
       "reservationLimitReached": "Límite alcanzado",
       "help": "Ayuda",
       "feedback": "Ayuda y feedback",
-      "aiCreditsLow": "Saldo de créditos bajo",
-      "needsALookWaiting": "Hay elementos por revisar"
+      "aiCreditsLow": "Saldo de créditos bajo"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "analyticsSales": "Ventas",
       "analyticsTraffic": "Tráfico",
       "multiStore": "Multi-tienda",
-      "aiCredits": "Créditos IA",
-      "needsALook": "Por revisar"
+      "aiCredits": "Créditos IA"
     },
     "multiStore": {
       "title": "Multi-tienda",
@@ -7211,12 +7209,6 @@
       },
       "handled": "Marcado como resuelto",
       "changed": "Este elemento cambió mientras tanto: la lista está actualizada.",
-      "alert": {
-        "title": "{count, plural, one {# cosa por revisar} other {# cosas por revisar}}",
-        "titleCapped": "99+ cosas por revisar",
-        "description": "Reembolsos, fianzas o mensajes que Louez no pudo resolver por sí solo.",
-        "action": "Ver"
-      },
       "actions": {
         "viewPayment": "Ver el pago",
         "viewBooking": "Ver la reserva",
@@ -7297,7 +7289,8 @@
         "summaryBy": "Una acción de {client} el {day} quizá no se guardó. Revisa la ficha antes de repetirla."
       },
       "unknownTitle": "Algo por revisar",
-      "neutral": "Louez no pudo resolver esto por sí solo. Ábrelo para ver qué ha pasado."
+      "neutral": "Louez no pudo resolver esto por sí solo. Ábrelo para ver qué ha pasado.",
+      "viewAll": "Ver todo"
     }
   },
   "storefront": {

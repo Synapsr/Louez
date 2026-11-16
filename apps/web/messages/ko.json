@@ -526,8 +526,7 @@
       "reservationLimitReached": "한도 도달",
       "help": "도움말",
       "feedback": "도움말 및 피드백",
-      "aiCreditsLow": "크레딧 잔액이 부족함",
-      "needsALookWaiting": "확인할 항목이 있습니다"
+      "aiCreditsLow": "크레딧 잔액이 부족함"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "settings": "설정",
       "store": "내 가게",
       "multiStore": "다중 매장",
-      "aiCredits": "AI 크레딧",
-      "needsALook": "확인 필요"
+      "aiCredits": "AI 크레딧"
     },
     "multiStore": {
       "title": "다중 매장",
@@ -7211,12 +7209,6 @@
       },
       "handled": "처리됨으로 표시했습니다",
       "changed": "그 사이 이 항목이 변경되었습니다. 목록이 최신 상태입니다.",
-      "alert": {
-        "title": "{count, plural, other {확인할 항목 #개}}",
-        "titleCapped": "확인할 항목 99+개",
-        "description": "Louez가 스스로 해결하지 못한 환불, 보증금 또는 메시지입니다.",
-        "action": "보기"
-      },
       "actions": {
         "viewPayment": "결제 보기",
         "viewBooking": "예약 보기",
@@ -7297,7 +7289,8 @@
         "summaryBy": "{day}에 {client}의 작업이 저장되지 않았을 수 있습니다. 다시 하기 전에 기록을 확인하세요."
       },
       "unknownTitle": "확인할 항목",
-      "neutral": "Louez가 스스로 해결하지 못했습니다. 열어서 무슨 일이 있었는지 확인하세요."
+      "neutral": "Louez가 스스로 해결하지 못했습니다. 열어서 무슨 일이 있었는지 확인하세요.",
+      "viewAll": "모두 보기"
     }
   },
   "storefront": {

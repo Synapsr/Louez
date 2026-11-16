@@ -526,8 +526,7 @@
       "reservationLimitReached": "限界に達しました",
       "help": "ヘルプ",
       "feedback": "ヘルプとフィードバック",
-      "aiCreditsLow": "クレジット残高が少なくなっています",
-      "needsALookWaiting": "確認が必要な項目があります"
+      "aiCreditsLow": "クレジット残高が少なくなっています"
     },
     "shortcuts": {
       "actions": {
@@ -939,8 +938,7 @@
       "settings": "設定",
       "store": "私の店",
       "multiStore": "多店舗展開",
-      "aiCredits": "AIクレジット",
-      "needsALook": "要確認"
+      "aiCredits": "AIクレジット"
     },
     "multiStore": {
       "title": "多店舗展開",
@@ -7211,12 +7209,6 @@
       },
       "handled": "対応済みにしました",
       "changed": "この項目はその間に変更されました。一覧は最新です。",
-      "alert": {
-        "title": "{count, plural, other {確認事項 # 件}}",
-        "titleCapped": "確認事項 99+ 件",
-        "description": "Louez が自動で解決できなかった返金、デポジット、メッセージ。",
-        "action": "見る"
-      },
       "actions": {
         "viewPayment": "支払いを見る",
         "viewBooking": "予約を見る",
@@ -7297,7 +7289,8 @@
         "summaryBy": "{client} による {day} の操作が保存されていない可能性があります。やり直す前に記録を確認してください。"
       },
       "unknownTitle": "確認事項",
-      "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。"
+      "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。",
+      "viewAll": "すべて見る"
     }
   },
   "storefront": {

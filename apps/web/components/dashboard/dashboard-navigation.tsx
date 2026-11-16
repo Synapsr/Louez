@@ -24,7 +24,6 @@ import {
   AnalyticsGlassIcon,
   CustomersGlassIcon,
   HomeGlassIcon,
-  NotificationsGlassIcon,
   ProductGlassIcon,
   ReservationsGlassIcon,
   SettingsGlassIcon,
@@ -122,8 +121,6 @@ interface NavigationItem {
    * section, and the warning has to reach you either way.
    */
   alert?: boolean;
-  /** What the marker says to a screen reader, in `dashboard.sidebar`. */
-  alertLabelKey?: string;
 }
 
 interface NavigationSection {
@@ -149,7 +146,6 @@ const buildAiAssistantItem = (
     // the rail hides sub-entries, and the expanded tree only reveals them once
     // you are in the section, so the parent carries the marker.
     alert,
-    alertLabelKey: "aiCreditsLow",
     items: aiCredits
       ? [
           ...aiAssistantSubItems,
@@ -167,34 +163,10 @@ const buildAiAssistantItem = (
   };
 };
 
-/**
- * What needs a look (dashboard/inbox): the warning marker while anything
- * waits. Absent where the page cannot be reached (the landing demos).
- */
-const buildNeedsALookItems = (needsALook?: { waiting: boolean }): NavigationItem[] =>
-  needsALook
-    ? [
-        {
-          key: "needsALook",
-          href: "/dashboard/inbox",
-          icon: NotificationsGlassIcon,
-          alert: needsALook.waiting,
-          alertLabelKey: "needsALookWaiting",
-        },
-      ]
-    : [];
-
 const buildNavigationSections = (
   aiCredits: { low: boolean; credits: number | null; hasUsedCredits: boolean } | null,
-  needsALook?: { waiting: boolean },
 ): NavigationSection[] => [
-  {
-    items: [
-      ...mainNavigation,
-      ...buildNeedsALookItems(needsALook),
-      buildAiAssistantItem(aiCredits),
-    ],
-  },
+  { items: [...mainNavigation, buildAiAssistantItem(aiCredits)] },
   { labelKey: "catalog", items: catalogNavigation },
   // No label: the one row already names the section.
   // Purchase invoices (reception) are reachable from Settings → Facturation
@@ -320,7 +292,7 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
            more specific default wins and the dot rides high on these `h-10`
            buttons. */
         <SidebarMenuBadge className="bg-badge-warning-foreground peer-data-[size=default]/menu-button:top-4 size-2 min-w-0 rounded-full p-0">
-          {item.alertLabelKey && <span className="sr-only">{tSidebar(item.alertLabelKey)}</span>}
+          <span className="sr-only">{tSidebar("aiCreditsLow")}</span>
         </SidebarMenuBadge>
       )}
       {item.alert && (
@@ -418,19 +390,16 @@ const DashboardNavSection = ({
 export const DashboardNavigation = ({
   pathname,
   aiCredits = null,
-  needsALook,
   localNavigation,
 }: {
   pathname: string;
   aiCredits?: { low: boolean; credits: number | null; hasUsedCredits: boolean } | null;
-  /** The "needs a look" entry, with its marker while anything waits; absent: no entry. */
-  needsALook?: { waiting: boolean };
   localNavigation?: LocalNavigation;
 }) => {
   return (
     <NavigationContext value={localNavigation}>
       <SidebarContent className="max-md:px-2 ">
-        {buildNavigationSections(aiCredits, needsALook).map((section, index) => (
+        {buildNavigationSections(aiCredits).map((section, index) => (
           <div key={section.labelKey ?? `section-${index}`} className="w-full">
             {index > 0 && <SidebarSeparator />}
             <DashboardNavSection
