@@ -9270,7 +9270,6 @@
     "emailAlreadyExists": "Esiste già un cliente con questa email",
     "customerHasReservations": "Impossibile eliminare un cliente con prenotazioni",
     "cannotCancelReservation": "Questa prenotazione non può essere annullata",
-    "cannotEditCompletedReservation": "Le prenotazioni completate non possono essere modificate",
     "reservationStatusChanged": "Lo stato della prenotazione è cambiato durante la modifica. Ricarica la pagina e riprova.",
     "reservationChangedMeanwhile": "La prenotazione è stata modificata nel frattempo. Ricarica la pagina e riprova.",
     "endDateBeforeStart": "La data di fine deve essere uguale o successiva alla data di inizio",

@@ -9270,7 +9270,6 @@
     "emailAlreadyExists": "Pelanggan dengan email ini sudah ada",
     "customerHasReservations": "Tidak dapat menghapus pelanggan dengan reservasi",
     "cannotCancelReservation": "Reservasi ini tidak dapat dibatalkan",
-    "cannotEditCompletedReservation": "Reservasi yang sudah selesai tidak dapat diedit",
     "reservationStatusChanged": "Status reservasi berubah saat Anda mengedit. Muat ulang halaman dan coba lagi.",
     "reservationChangedMeanwhile": "Reservasi diubah sementara Anda mengedit. Muat ulang halaman dan coba lagi.",
     "endDateBeforeStart": "Tanggal akhir harus setelah atau sama dengan tanggal mulai",

@@ -12,7 +12,7 @@ import {
   splitShortfallsByTurnoverBuffer,
 } from "@louez/api/services/reservation-inventory";
 
-import { validateReservationContract } from "@louez/api/services";
+import { isReservationEditable, validateReservationContract } from "@louez/api/services";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -1843,9 +1843,12 @@ export async function updateReservation(
     return { error: "errors.reservationNotFound" };
   }
 
-  // Cannot edit completed reservations
-  if (reservation.status === "completed") {
-    return { error: "errors.cannotEditCompletedReservation" };
+  // Only a pending, quote, confirmed or ongoing reservation is edited (T3);
+  // read again under the lock. The page opens no other, so a refusal here
+  // means the status changed while the form was open: the API's
+  // RESERVATION_NOT_EDITABLE says the same.
+  if (!isReservationEditable(reservation.status)) {
+    return { error: "errors.reservationStatusChanged" };
   }
 
   // Store previous state for activity log
@@ -2613,6 +2616,11 @@ export async function updateReservation(
 
         if (!lockedReservation) {
           return { error: "errors.reservationNotFound" };
+        }
+        // A completion or a cancellation that landed since the read: refused
+        // as such, before the fingerprint would only say "changed".
+        if (!isReservationEditable(lockedReservation.status)) {
+          return { error: "errors.reservationStatusChanged" };
         }
 
         const lockedItems = await tx

@@ -11,6 +11,8 @@ import {
   type TestDatabase,
 } from "@louez/db/testing";
 
+import type { ReservationStatus } from "@louez/db";
+
 import * as badges from "./[id]/utils/capacity-verdict-badge";
 import { STORE_KEY } from "./actions-test-stubs";
 
@@ -36,6 +38,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
   let actions: typeof import("./actions");
   let inbox: typeof import("@louez/api/services/inbox");
   let statusChange: typeof import("@louez/api/services/reservation-status");
+  let editContext: typeof import("@louez/api/services");
   let counter = 0;
 
   const useStore = (settings: Settings = { currency: "eur" }) =>
@@ -60,6 +63,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     await import("@louez/mcp/testing/cjs-named-exports");
     inbox = await import("@louez/api/services/inbox");
     statusChange = await import("@louez/api/services/reservation-status");
+    editContext = await import("@louez/api/services");
 
     await louezDb.db
       .insert(louezDb.stores)
@@ -182,7 +186,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
   async function reservation(
     line: { productId: string; quantity: number },
     options: {
-      status?: "pending" | "quote" | "confirmed";
+      status?: ReservationStatus;
       start?: Date;
       end?: Date;
       deliveryFee?: string;
@@ -563,6 +567,43 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     });
   });
 
+  describe("a reservation that is not editable (T3)", () => {
+    for (const status of ["completed", "cancelled", "rejected", "declined"] as const) {
+      test(`${status}: the edit is refused and writes nothing, and its edit page does not open`, async () => {
+        const bikes = await product("Bike", 5);
+        const booking = await reservation({ productId: bikes, quantity: 1 }, { status });
+        const before = await rowsOf(booking.id);
+
+        const result = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2)],
+          endDate: new Date(END.getTime() + DAY),
+        });
+
+        assert.deepEqual(result, { error: "errors.reservationStatusChanged" });
+        assert.deepEqual(await rowsOf(booking.id), before);
+        assert.deepEqual(
+          await editContext.getDashboardReservationEditContext({
+            reservationId: booking.id,
+            storeId: STORE,
+          }),
+          { editable: false },
+        );
+      });
+    }
+
+    test("pending, quote, confirmed and ongoing open their edit page", async () => {
+      const bikes = await product("Bike", 5);
+      for (const status of ["pending", "quote", "confirmed", "ongoing"] as const) {
+        const booking = await reservation({ productId: bikes, quantity: 1 }, { status });
+        const context = await editContext.getDashboardReservationEditContext({
+          reservationId: booking.id,
+          storeId: STORE,
+        });
+        assert.equal(context.editable, true, status);
+      }
+    });
+  });
+
   describe("a reservation changed between the read and the write", () => {
     /** Runs the edit while another transaction, not committed yet, holds the reservation. */
     async function editDuring(
@@ -625,6 +666,29 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       assert.equal(after.items[0]?.quantity, 1);
       assert.deepEqual(after.activity, []);
     });
+
+    for (const status of ["completed", "cancelled"] as const) {
+      test(`${status} while the edit waits: refused as not editable, and nothing is written`, async () => {
+        const bikes = await product("Bike", 5);
+        const booking = await reservation({ productId: bikes, quantity: 1 }, { status: "ongoing" });
+
+        const result = await editDuring(
+          booking.id,
+          // A fixture's change, written raw: the action only has to see the status under its lock.
+          {
+            sql: "UPDATE reservations SET reservation_status = ? WHERE id = ?",
+            values: [status, booking.id],
+          },
+          () => actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
+        );
+
+        assert.deepEqual(result, { error: "errors.reservationStatusChanged" });
+        const after = await rowsOf(booking.id);
+        assert.equal(after.row?.status, status);
+        assert.equal(after.items[0]?.quantity, 1);
+        assert.deepEqual(after.activity, []);
+      });
+    }
 
     test("a line added meanwhile: the edit is refused", async () => {
       const bikes = await product("Bike", 5);

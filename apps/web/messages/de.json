@@ -9270,7 +9270,6 @@
     "emailAlreadyExists": "Ein Kunde mit dieser E-Mail existiert bereits",
     "customerHasReservations": "Kunde mit Reservierungen kann nicht gelöscht werden",
     "cannotCancelReservation": "Diese Reservierung kann nicht storniert werden",
-    "cannotEditCompletedReservation": "Abgeschlossene Reservierungen können nicht bearbeitet werden",
     "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "reservationChangedMeanwhile": "Die Reservierung wurde in der Zwischenzeit geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "endDateBeforeStart": "Enddatum muss nach oder gleich dem Startdatum sein",

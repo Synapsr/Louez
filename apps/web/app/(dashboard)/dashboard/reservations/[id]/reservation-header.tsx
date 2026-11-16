@@ -13,6 +13,7 @@ import {
   Pencil,
   Loader2,
 } from "lucide-react";
+import { isReservationEditable } from "@louez/api/services/reservation-editable";
 import { toastManager } from "@louez/ui";
 import { useRouter } from "next/navigation";
 
@@ -117,7 +118,7 @@ export function ReservationHeader({
 
   const isFullyPaid =
     rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount);
-  const canEdit = !["completed", "cancelled", "rejected", "declined"].includes(status);
+  const canEdit = isReservationEditable(status);
 
   const handleGenerateAccessUrl = async (
     action:

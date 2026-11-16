@@ -867,11 +867,15 @@ export function EditReservationForm({
           return;
         }
 
-        if (result.error === "errors.reservationChangedMeanwhile") {
+        if (
+          result.error === "errors.reservationChangedMeanwhile" ||
+          result.error === "errors.reservationStatusChanged"
+        ) {
           // The form holds what was read before the other change: only a
-          // reload brings the reservation as it is now.
+          // reload brings the reservation as it is now (a reservation no
+          // longer editable then opens its own page).
           toastManager.add({
-            title: tErrors("reservationChangedMeanwhile"),
+            title: tErrors(getErrorTranslationKey(result.error)),
             type: "error",
             actionProps: {
               children: tCommon("refresh"),

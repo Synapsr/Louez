@@ -9270,7 +9270,6 @@
     "emailAlreadyExists": "使用此电子邮件地址的客户已存在",
     "customerHasReservations": "无法删除已预订的客户",
     "cannotCancelReservation": "此预订无法取消",
-    "cannotEditCompletedReservation": "已完成的预订无法编辑",
     "reservationStatusChanged": "当您编辑时，预订状态发生了变化。重新加载页面并重试。",
     "reservationChangedMeanwhile": "当您编辑时，预订已被修改。重新加载页面并重试。",
     "endDateBeforeStart": "结束日期必须晚于或等于开始日期",

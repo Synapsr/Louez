@@ -9270,7 +9270,6 @@
     "emailAlreadyExists": "Já existe um cliente com este email",
     "customerHasReservations": "Não é possível excluir um cliente com reservas",
     "cannotCancelReservation": "Esta reserva não pode ser cancelada",
-    "cannotEditCompletedReservation": "Reservas concluídas não podem ser editadas",
     "reservationStatusChanged": "O estado da reserva mudou durante a edição. Recarregue a página e tente novamente.",
     "reservationChangedMeanwhile": "A reserva foi alterada entretanto. Recarregue a página e tente novamente.",
     "endDateBeforeStart": "A data de fim deve ser após ou igual à data de início",

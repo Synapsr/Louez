@@ -50,7 +50,8 @@ export default async function EditReservationPage({ params }: EditReservationPag
     storeId: store.id,
   });
 
-  // Cannot edit completed, cancelled or rejected reservations
+  // Only a pending, quote, confirmed or ongoing reservation is edited (T3):
+  // any other opens its own page.
   if (!initialContext.editable) {
     redirect(`/dashboard/reservations/${id}`);
   }
