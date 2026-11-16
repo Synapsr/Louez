@@ -2556,6 +2556,7 @@
         "subtotal": "小计",
         "deposit": "押金",
         "total": "总计",
+        "taxLine": "税费",
         "tulipInsurance": {
           "title": "郁金香保险",
           "appliesMappedProducts": "仅适用于映射到 Tulip 的产品。",

@@ -2556,6 +2556,7 @@
         "subtotal": "Итого",
         "deposit": "Залог",
         "total": "Итого",
+        "taxLine": "Налог",
         "tulipInsurance": {
           "title": "Страхование тюльпанов",
           "appliesMappedProducts": "Применяется только к продуктам, сопоставленным с Tulip.",

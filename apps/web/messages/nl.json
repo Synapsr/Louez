@@ -2517,6 +2517,7 @@
         "subtotal": "Subtotaal",
         "deposit": "Borg",
         "total": "Totaal",
+        "taxLine": "Belasting",
         "tulipInsurance": {
           "title": "Tulip verzekering",
           "appliesMappedProducts": "Geldt alleen voor producten die aan Tulip zijn gekoppeld.",

@@ -2556,6 +2556,7 @@
         "subtotal": "소계",
         "deposit": "보증금",
         "total": "합계",
+        "taxLine": "세금",
         "tulipInsurance": {
           "title": "튤립 보험",
           "appliesMappedProducts": "튤립에 매핑된 상품에만 적용됩니다.",

@@ -2517,6 +2517,7 @@
         "subtotal": "Suma częściowa",
         "deposit": "Kaucja",
         "total": "Suma",
+        "taxLine": "Podatek",
         "tulipInsurance": {
           "title": "Ubezpieczenie Tulip",
           "appliesMappedProducts": "Dotyczy tylko produktów zmapowanych z Tulip.",

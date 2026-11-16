@@ -6,8 +6,10 @@ import type {
   DeliverySettings,
   PricingKind,
   PricingMode,
+  ProductTaxSettings,
   Rate,
   StockKind,
+  TaxSettings,
   TulipPublicMode,
   UnitAttributes,
 } from "@louez/types";
@@ -50,6 +52,8 @@ export interface Product {
   }>;
   pricingTiers: ProductPricingTier[];
   seasonalPricings?: SeasonalPricingConfig[];
+  /** The product's own rate, or null for the store's: the summary totals with the tax engine. */
+  taxSettings?: ProductTaxSettings | null;
 }
 
 export interface SelectedProduct {
@@ -153,6 +157,9 @@ export interface NewReservationFormProps {
   storeLongitude?: number | null;
   storeAddress?: string | null;
   storeLocations: ReservationLocationOption[];
+  /** The store's tax settings and the currency the reservation is written in, as the server totals it. */
+  taxSettings?: TaxSettings;
+  currency?: string;
 }
 
 export type StepFieldName = "customerId" | "startDate" | "endDate";

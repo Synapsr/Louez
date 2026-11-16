@@ -2556,6 +2556,7 @@
         "subtotal": "小計",
         "deposit": "保証金",
         "total": "合計",
+        "taxLine": "税金",
         "tulipInsurance": {
           "title": "チューリップ保険",
           "appliesMappedProducts": "Tulip にマッピングされた製品にのみ適用されます。",

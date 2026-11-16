@@ -2517,6 +2517,7 @@
         "subtotal": "Subtotal",
         "deposit": "Caução",
         "total": "Total",
+        "taxLine": "Imposto",
         "tulipInsurance": {
           "title": "Seguro Tulip",
           "appliesMappedProducts": "Aplica-se apenas a produtos mapeados no Tulip.",

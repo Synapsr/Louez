@@ -2556,6 +2556,7 @@
         "subtotal": "Subtotal",
         "deposit": "Uang jaminan",
         "total": "Jumlah",
+        "taxLine": "Pajak",
         "tulipInsurance": {
           "title": "asuransi bunga tulip",
           "appliesMappedProducts": "Hanya berlaku untuk produk yang dipetakan ke Tulip.",

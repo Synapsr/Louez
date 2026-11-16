@@ -2556,6 +2556,7 @@
         "subtotal": "Zwischensumme",
         "deposit": "Kaution",
         "total": "Gesamt",
+        "taxLine": "Steuer",
         "tulipInsurance": {
           "title": "Tulip-Versicherung",
           "appliesMappedProducts": "Gilt nur für Produkte, die Tulip zugeordnet sind.",
