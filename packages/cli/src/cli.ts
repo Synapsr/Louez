@@ -572,18 +572,18 @@ function shellQuote(word: string): string {
 }
 
 /**
- * The same command line with `--confirmation <id>`: without `--wait`, without
- * `--api-key` and its value (the line under it names the key to use, never
- * its value), `--api-url` kept, and a body read from standard input written
- * inline, as the input is gone.
- */
-/**
  * What a printed command carries for a key given with `--api-key`: no key,
  * and a word the CLI refuses as one (exit 2, nothing sent), so the command
  * is not run as is with another key, such as the environment's.
  */
 export const KEY_PLACEHOLDER = "SAME_KEY_AS_THIS_COMMAND";
 
+/**
+ * The same command line with `--confirmation <id>`: without `--wait`, with
+ * the value of `--api-key` replaced by `KEY_PLACEHOLDER` (the line under it
+ * names the key to use, never its value), `--api-url` kept, and a body read
+ * from standard input written inline, as the input is gone.
+ */
 export function rerunCommand(
   argv: readonly string[],
   confirmation: string,
