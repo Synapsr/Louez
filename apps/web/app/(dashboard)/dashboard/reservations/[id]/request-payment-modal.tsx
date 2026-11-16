@@ -31,6 +31,7 @@ import { Textarea } from "@louez/ui";
 import { Input } from "@louez/ui";
 import { Checkbox } from "@louez/ui";
 import { cn, currencyMinorDigits, formatCurrency } from "@louez/utils";
+import { paymentAmount } from "@louez/api/services/payment-amount";
 
 import { orpc } from "@/lib/orpc/react";
 import { customRequestAmount } from "@/lib/reservations/util.payment-request";
@@ -82,6 +83,8 @@ export function RequestPaymentModal({
 
   const [selectedType, setSelectedType] = useState<PaymentType | null>(null);
   const [customAmount, setCustomAmount] = useState("");
+  // Whether the person changed the custom amount: its refusal shows from then on.
+  const [customTouched, setCustomTouched] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
   const [sendSms, setSendSms] = useState(false);
   const [customMessage, setCustomMessage] = useState("");
@@ -148,16 +151,22 @@ export function RequestPaymentModal({
   }, [selectedType, custom, remainingRental, depositAmount]);
 
   const isValidAmount = selectedType === "custom" ? custom.ok : selectedAmount >= 0.5;
+  // The field's own minimum: one whole unit in a currency without decimals, where
+  // 0.50 would make every whole amount a step mismatch; 0.50 otherwise.
+  const decimals = currencyMinorDigits(currency);
+  const fieldMinimum = decimals === 0 ? "1" : "0.50";
+  const typedCustom = typedAmount(customAmount) ?? "";
   const customRefusal = custom.ok
     ? null
     : custom.error === "errors.amountTooPrecise"
-      ? tReservations("payment.amountTooPrecise", {
-          currency,
-          decimals: currencyMinorDigits(currency) ?? 0,
-        })
+      ? tReservations("payment.amountTooPrecise", { currency, decimals: decimals ?? 0 })
       : custom.error === "errors.currencyNotSupportedForPayments"
         ? tReservations("payment.currencyNotSupported", { currency })
-        : t("minAmount", { amount: formatCurrency(0.5, currency) });
+        : // A plain amount above zero is below the minimum; anything else (empty, as a
+          // browser gives what it refused, or malformed) is no amount.
+          paymentAmount(typedCustom) !== null && !typedCustom.startsWith("-")
+          ? t("minAmount", { amount: formatCurrency(Number(fieldMinimum), currency) })
+          : tReservations("payment.invalidAmount");
   const hasChannel = sendEmail || sendSms;
   const canSubmit = selectedType && isValidAmount && hasChannel && stripeConfigured;
 
@@ -230,6 +239,7 @@ export function RequestPaymentModal({
   const resetForm = () => {
     setSelectedType(null);
     setCustomAmount("");
+    setCustomTouched(false);
     setSendEmail(true);
     setSendSms(false);
     setCustomMessage("");
@@ -374,9 +384,12 @@ export function RequestPaymentModal({
                       id="amount"
                       type="number"
                       step={currencyMinorDigits(currency) === 0 ? "1" : "0.01"}
-                      min="0.50"
+                      min={fieldMinimum}
                       value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setCustomTouched(true);
+                      }}
                       placeholder="0.00"
                       className="pr-12"
                     />
@@ -384,7 +397,7 @@ export function RequestPaymentModal({
                       {currency}
                     </span>
                   </div>
-                  {customAmount && customRefusal && (
+                  {customTouched && customRefusal && (
                     <p className="text-xs text-destructive">{customRefusal}</p>
                   )}
                 </div>

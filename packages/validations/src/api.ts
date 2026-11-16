@@ -314,7 +314,7 @@ export const dashboardReservationCreateDepositHoldInputSchema = z.object({
 export const dashboardReservationCaptureDepositHoldInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     reason: z.string().trim().min(1).max(10000),
   }),
 });

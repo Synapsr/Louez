@@ -109,7 +109,8 @@ export function paymentRequestTerms(input: {
     // not reduce what is owed (invariant M6).
     const amount =
       getReservationRentalAmount(reservation) - getRentalPaid(reservation.payments, currency);
-    if (amount < 0.5) return { ok: false, error: "errors.noAmountDue" };
+    // In hundredths, exact: 0.57 less 0.07 leaves fifty cents due, not a float below.
+    if (Math.round(amount * 100) < 50) return { ok: false, error: "errors.noAmountDue" };
     return { ok: true, amount, description: "Rental", currency };
   }
 

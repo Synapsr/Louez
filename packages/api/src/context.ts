@@ -402,7 +402,8 @@ export interface BaseContext {
     ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     captureDepositHold?: (
       reservationId: string,
-      data: { amount: number; reason: string },
+      /** `amount` as typed: the action judges this text. */
+      data: { amount: string; reason: string },
     ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     releaseDepositHold?: (
       reservationId: string,

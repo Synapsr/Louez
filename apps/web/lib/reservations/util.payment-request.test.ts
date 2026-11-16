@@ -209,3 +209,19 @@ test("a custom amount is judged as typed, in the reservation's currency", () => 
     currency: "JPY",
   });
 });
+
+test("the rental still due is compared in hundredths: 0.57 less 0.07 paid is fifty cents due", () => {
+  const terms = paymentRequestTerms({
+    type: "rental",
+    reservation: {
+      ...reservation("EUR"),
+      subtotalAmount: "0.57",
+      depositAmount: "0.00",
+      totalAmount: "0.57",
+      payments: [{ type: "rental", status: "completed", amount: "0.07", currency: "EUR" }],
+    },
+    storeSettings: { currency: "EUR" },
+  });
+  assert.equal(terms.ok, true);
+  assert.equal(terms.ok && terms.amount.toFixed(2), "0.50");
+});

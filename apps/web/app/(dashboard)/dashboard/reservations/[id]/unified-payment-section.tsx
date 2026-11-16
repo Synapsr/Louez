@@ -64,6 +64,7 @@ import {
   withLatestFailedHoldOnly,
 } from "@louez/utils";
 import {
+  currencyMinorOf,
   depositBalance,
   depositReturnAmount,
   recordedPaymentAmount,
@@ -693,13 +694,22 @@ export function UnifiedPaymentSection({
   };
 
   const handleCapture = async () => {
-    const captureAmountNum = parseFloat(captureAmount);
-    if (isNaN(captureAmountNum) || captureAmountNum <= 0) {
-      toastManager.add({ title: t("deposit.invalidCaptureAmount"), type: "error" });
+    // As typed, judged by the capture's own function: the currency's decimals,
+    // then the deposit, both in the currency's minor units, never a float.
+    const amount = typedAmount(captureAmount) ?? "";
+    const verdict = recordedPaymentAmount(amount, "damage", currency);
+    if (!verdict.ok) {
+      const title =
+        verdict.refusal === "too_precise" || verdict.refusal === "currency_unsupported"
+          ? amountRefusal(verdict.refusal)
+          : t("deposit.invalidCaptureAmount");
+      toastManager.add({ title, type: "error" });
       return;
     }
 
-    if (captureAmountNum > deposit) {
+    if (
+      currencyMinorOf(verdict.amount, currency) > currencyMinorOf(depositAmount || "0", currency)
+    ) {
       toastManager.add({ title: t("deposit.captureExceedsDeposit"), type: "error" });
       return;
     }
@@ -720,7 +730,7 @@ export function UnifiedPaymentSection({
       await captureHoldMutation.mutateAsync({
         reservationId,
         payload: {
-          amount: captureAmountNum,
+          amount,
           reason: captureReason,
         },
       });
@@ -728,14 +738,14 @@ export function UnifiedPaymentSection({
       setCaptureModalOpen(false);
       setCaptureAmount("");
       setCaptureReason("");
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.captureDepositHold,
         properties: { error_code: "capture_deposit_hold_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -1789,12 +1799,12 @@ export function UnifiedPaymentSection({
                   <Input
                     id="captureAmount"
                     type="number"
-                    step="0.01"
-                    min="0.01"
+                    step={amountStep}
+                    min={amountStep}
                     max={deposit}
                     value={captureAmount}
                     onChange={(e) => setCaptureAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={amountPlaceholder}
                     className="pr-12"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">

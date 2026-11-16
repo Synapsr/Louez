@@ -594,6 +594,103 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
     });
   });
 
+  describe("a record named by anything but a non-empty string", () => {
+    test("each payment action refuses it as not found, writes nothing and does not throw", async () => {
+      const store = Reflect.get(globalThis, STORE_KEY);
+      // Stripe configured, so the deposit and request actions reach their id check.
+      Reflect.set(globalThis, STORE_KEY, {
+        ...store,
+        stripeAccountId: "acct_actions",
+        stripeChargesEnabled: true,
+      });
+      const reservationId = await createReservation({ currency: "EUR" });
+      const paid = paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "30",
+          method: "cash",
+        }),
+      );
+      const before = await countPayments(reservationId);
+      const notFound = { error: "errors.reservationNotFound" };
+      const paymentNotFound = { error: "errors.paymentNotFound" };
+      try {
+        for (const crafted of [[], "", 7, null, undefined, { id: reservationId }]) {
+          const id = crafted as unknown as string;
+          const label = JSON.stringify(crafted) ?? "undefined";
+          const table: Array<[string, Promise<unknown>, unknown]> = [
+            [
+              "recordPayment",
+              actions.recordPayment(id, { type: "rental", amount: "10", method: "cash" }),
+              notFound,
+            ],
+            [
+              "recordDamage",
+              actions.recordDamage(id, { amount: "10", method: "cash", notes: "x" }),
+              notFound,
+            ],
+            [
+              "returnDeposit",
+              actions.returnDeposit(id, { amount: "10", method: "cash" }),
+              notFound,
+            ],
+            [
+              "refundManualPayment (reservation)",
+              actions.refundManualPayment(id, { paymentId: paid, amount: "10", method: "cash" }),
+              notFound,
+            ],
+            [
+              "refundManualPayment (payment)",
+              actions.refundManualPayment(reservationId, {
+                paymentId: id,
+                amount: "10",
+                method: "cash",
+              }),
+              paymentNotFound,
+            ],
+            ["deletePayment", actions.deletePayment(id), paymentNotFound],
+            [
+              "requestPayment",
+              actions.requestPayment(id, {
+                type: "custom",
+                amount: "10",
+                channels: { email: true, sms: false },
+              }),
+              notFound,
+            ],
+            ["createDepositHold", actions.createDepositHold(id), notFound],
+            [
+              "captureDepositHold",
+              actions.captureDepositHold(id, { amount: "10", reason: "x" }),
+              notFound,
+            ],
+            ["releaseDepositHold", actions.releaseDepositHold(id), notFound],
+          ];
+          for (const [name, call, expected] of table) {
+            assert.deepEqual(await call, expected, `${name} ${label}`);
+          }
+        }
+        assert.equal(await countPayments(reservationId), before, "nothing is written");
+      } finally {
+        Reflect.set(globalThis, STORE_KEY, store);
+      }
+    });
+
+    test("a capture amount that is not text is refused as invalid, without throwing", async () => {
+      const reservationId = await createReservation({ currency: "EUR" });
+      for (const crafted of [5, ["5"], null, undefined]) {
+        assert.deepEqual(
+          await actions.captureDepositHold(reservationId, {
+            amount: crafted as unknown as string,
+            reason: "x",
+          }),
+          { error: "errors.invalidAmount" },
+          JSON.stringify(crafted) ?? "undefined",
+        );
+      }
+    });
+  });
+
   describe("deletePayment", () => {
     test("deletes the payment and marks the reservation", async () => {
       const reservationId = await createReservation();
