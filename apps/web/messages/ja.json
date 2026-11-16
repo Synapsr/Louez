@@ -6887,6 +6887,27 @@
         "customers": "今月の新規顧客は何人ですか?",
         "overdue": "返却期限を過ぎたものはありますか?",
         "pending": "確認待ちの予約を表示"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "この支払いを記録しますか？",
+          "delete_payment": "この支払いを削除しますか？",
+          "return_deposit": "この保証金の返却を記録しますか？"
+        },
+        "amount": "金額",
+        "booking": "予約",
+        "open": "確認して判断する",
+        "expires": "{when} までに判断してください",
+        "status": {
+          "pending": "あなたの判断を待っています",
+          "approved": "承認済み。アシスタントが実行しています。",
+          "completed": "完了",
+          "declined": "拒否しました。何も行われていません。",
+          "expired": "期限切れです。何も行われていません。",
+          "ended": "実行されませんでした。何も行われていません。"
+        },
+        "continue": "続ける",
+        "followUp": "承認済み、続行します"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place>・「<who>{agent}</who>」からの依頼",
       "provenanceKey": "<place>{store}</place>・APIキーからの依頼",
       "provenanceAssistant": "<place>{store}</place>・AIアシスタントからの依頼",
+      "provenanceInApp": "<place>{store}</place>・Louez アシスタント経由の依頼",
       "trustShort": "有効なのはLouezの要約だけです。",
       "stake": {
         "access_removed": "ストアへのアクセス権を取り消します。",
@@ -9840,6 +9862,7 @@
       "apiKey": "APIキー「{name}」",
       "apiKeyUnnamed": "APIキー",
       "unnamedAgent": "AIアシスタント",
+      "inAppAssistant": "Louez アシスタント（ダッシュボードのチャットから）",
       "checked": "Louezが確認した内容",
       "messageDestinationOnFile": "メッセージは顧客の登録済みの連絡先に送られます。",
       "values": {

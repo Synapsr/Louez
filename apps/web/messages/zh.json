@@ -6887,6 +6887,27 @@
         "customers": "这个月有多少新客户？",
         "overdue": "是否有逾期退货？",
         "pending": "显示等待确认的预订"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "记录这笔付款？",
+          "delete_payment": "删除这笔付款？",
+          "return_deposit": "记录这笔押金退还？"
+        },
+        "amount": "金额",
+        "booking": "预订",
+        "open": "查看并决定",
+        "expires": "请在 {when} 前决定",
+        "status": {
+          "pending": "等待您的决定",
+          "approved": "已批准。助手正在执行。",
+          "completed": "已完成",
+          "declined": "已拒绝。未执行任何操作。",
+          "expired": "已过期。未执行任何操作。",
+          "ended": "未执行。未执行任何操作。"
+        },
+        "continue": "继续",
+        "followUp": "已批准，继续"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · 由“<who>{agent}</who>”请求",
       "provenanceKey": "<place>{store}</place> · 由 API 密钥请求",
       "provenanceAssistant": "<place>{store}</place> · 由 AI 助手请求",
+      "provenanceInApp": "<place>{store}</place> · 通过 Louez 助手请求",
       "trustShort": "只有 Louez 的摘要才算数。",
       "stake": {
         "access_removed": "撤销对你店铺的访问权限。",
@@ -9840,6 +9862,7 @@
       "apiKey": "API 密钥“{name}”",
       "apiKeyUnnamed": "一个 API 密钥",
       "unnamedAgent": "一个 AI 助手",
+      "inAppAssistant": "Louez 助手，来自您控制台中的聊天",
       "checked": "Louez 核对的内容",
       "messageDestinationOnFile": "消息发送到客户存档的联系方式。",
       "values": {

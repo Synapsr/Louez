@@ -64,12 +64,18 @@ interface OperationApprovalProps {
  * a note"), which are posted either way. The answer posts the revision and
  * the binding shown, so it decides what the person read.
  */
+/** Who asks, when the line names no agent: a key, a connected assistant, or Louez's own. */
+const PROVENANCE = {
+  api_key: "provenanceKey",
+  oauth: "provenanceAssistant",
+  assistant: "provenanceInApp",
+} as const satisfies Record<OperationApprovalProps["approval"]["agent"]["kind"], string>;
+
 export const OperationApproval = ({ action, approval, email, note }: OperationApprovalProps) => {
   const t = useTranslations("handoff.operation_approval");
   const format = useFormatter();
   const stakes = ORDER.filter((consequence) => approval.consequences.includes(consequence));
-  const headline =
-    stakes[0] ?? (approval.consequences.includes("change") ? "change" : "unknown");
+  const headline = stakes[0] ?? (approval.consequences.includes("change") ? "change" : "unknown");
   const lapsesSoon = approval.expiresAt.getTime() - approval.now.getTime() <= LAPSE_SOON_MS;
 
   return (
@@ -89,7 +95,7 @@ export const OperationApproval = ({ action, approval, email, note }: OperationAp
               place: (chunks) => <bdi>{chunks}</bdi>,
               who: (chunks) => <bdi>{chunks}</bdi>,
             })
-          : t.rich(approval.agent.kind === "api_key" ? "provenanceKey" : "provenanceAssistant", {
+          : t.rich(PROVENANCE[approval.agent.kind], {
               store: displayName(approval.store.name),
               place: (chunks) => <bdi>{chunks}</bdi>,
             })

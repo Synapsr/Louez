@@ -93,6 +93,10 @@ export function callerRefusal(meta: ApiMeta, actor: AccountActor, idempotencyKey
   if (meta.actors && !meta.actors.includes(actor.credential.kind)) {
     return platformErrors.sessionOnly();
   }
+  // What only a person does in the dashboard (deciding an approval, keys,
+  // the team, the account) is never the in-app assistant's, though it acts
+  // with the person's session.
+  if (meta.actors && actor.credential.assistant) return platformErrors.sessionOnly();
   if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
     return platformErrors.permissionDenied("platform_admin");
   }
@@ -115,6 +119,8 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
   const actor: AccountActor = await resolveAccountActor({
     transport: context.transport,
     headers: context.headers,
+    // The server's own mark, never the request's (`BaseContext.assistant`).
+    assistant: context.assistant === true,
   });
   if (context.errorScope) {
     context.errorScope.client = actor.credential.kind;

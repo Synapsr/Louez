@@ -11,18 +11,24 @@ import { cn } from "@louez/utils";
 
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { useStore } from "@/contexts/store-context";
+import { approvalCardOf, parseApprovalFollowUp, type ApprovalCard } from "@/lib/ai/approval-card";
 
+import { ChatApprovalCard } from "./chat-approval-card";
 import { resolveChatLink } from "./util.chat-link";
 
 const LINK_CLASS =
   "decoration-muted-foreground/40 hover:decoration-foreground font-medium underline underline-offset-2 transition-colors";
 
+type ApprovalContinue = (card: ApprovalCard, options?: { manual?: boolean }) => void;
+
 interface ChatMessagesProps {
   messages: UIMessage[];
   isLoading: boolean;
+  /** Goes on once the person approved a payment the assistant prepared (`continueApproval`). */
+  onApprovalContinue: ApprovalContinue;
 }
 
-export const ChatMessages = ({ messages, isLoading }: ChatMessagesProps) => (
+export const ChatMessages = ({ messages, isLoading, onApprovalContinue }: ChatMessagesProps) => (
   <div className="space-y-4 pb-2">
     {messages.map((message) => (
       <div
@@ -41,7 +47,7 @@ export const ChatMessages = ({ messages, isLoading }: ChatMessagesProps) => (
                 "text-foreground min-w-0 flex-1 pt-0.5",
           )}
         >
-          <MessageParts parts={message.parts} />
+          <MessageParts parts={message.parts} onApprovalContinue={onApprovalContinue} />
         </div>
       </div>
     ))}
@@ -58,16 +64,33 @@ export const ChatMessages = ({ messages, isLoading }: ChatMessagesProps) => (
   </div>
 );
 
-const MessageParts = ({ parts }: { parts: UIMessage["parts"] }) => (
+const MessageParts = ({
+  parts,
+  onApprovalContinue,
+}: {
+  parts: UIMessage["parts"];
+  onApprovalContinue: ApprovalContinue;
+}) => (
   <>
     {parts.map((part, i) => {
       if (part.type === "text") {
+        // The turn the chat sent once the person approved: one quiet line.
+        if (parseApprovalFollowUp(part.text)) return <ApprovalFollowUp key={i} />;
         return <TextContent key={i} text={part.text} />;
+      }
+      const card = approvalCardOf(part);
+      if (card) {
+        return <ChatApprovalCard key={i} card={card} onContinue={onApprovalContinue} />;
       }
       return null;
     })}
   </>
 );
+
+const ApprovalFollowUp = () => {
+  const t = useTranslations("dashboard.aiChat.approval");
+  return <p className="text-muted-foreground text-xs">{t("followUp")}</p>;
+};
 
 /**
  * Render inline formatting: [link](url), **bold**, `code`, *italic*. A link

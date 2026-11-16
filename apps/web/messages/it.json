@@ -6887,6 +6887,27 @@
         "customers": "Quanti nuovi clienti questo mese?",
         "overdue": "Ci sono restituzioni in ritardo?",
         "pending": "Mostrami le prenotazioni in attesa di conferma"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Registrare questo pagamento?",
+          "delete_payment": "Eliminare questo pagamento?",
+          "return_deposit": "Registrare questa restituzione della cauzione?"
+        },
+        "amount": "Importo",
+        "booking": "Prenotazione",
+        "open": "Verifica e decidi",
+        "expires": "Decidi entro {when}",
+        "status": {
+          "pending": "In attesa della tua decisione",
+          "approved": "Approvato. L’assistente lo sta eseguendo.",
+          "completed": "Fatto",
+          "declined": "Rifiutato. Non è stato fatto nulla.",
+          "expired": "Scaduto. Non è stato fatto nulla.",
+          "ended": "Non eseguito. Non è stato fatto nulla."
+        },
+        "continue": "Continua",
+        "followUp": "Approvato, si continua"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · richiesto da «<who>{agent}</who>»",
       "provenanceKey": "<place>{store}</place> · richiesto da una chiave API",
       "provenanceAssistant": "<place>{store}</place> · richiesto da un assistente IA",
+      "provenanceInApp": "<place>{store}</place> · richiesto tramite l’assistente Louez",
       "trustShort": "Conta solo il riepilogo di Louez.",
       "stake": {
         "access_removed": "Revoca un accesso al tuo negozio.",
@@ -9840,6 +9862,7 @@
       "apiKey": "Chiave API «{name}»",
       "apiKeyUnnamed": "Una chiave API",
       "unnamedAgent": "Un assistente IA",
+      "inAppAssistant": "L’assistente Louez, dalla chat della tua dashboard",
       "checked": "Cosa ha verificato Louez",
       "messageDestinationOnFile": "I messaggi vanno ai recapiti del cliente registrati.",
       "values": {

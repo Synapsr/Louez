@@ -17,6 +17,7 @@ import {
   CONSEQUENCES,
   confirmationStep,
   isConsequence,
+  requesterOf,
   type Consequences,
 } from "./approval-rule";
 import { apiError, platformErrors, type ApiErrorData } from "./errors";
@@ -42,8 +43,9 @@ export interface ConfirmationPreview {
  * (`approvalLevel`, platform/approval-rule.ts). Call it in the handler, after
  * the checks and before the first write.
  *
- * - Nobody to ask (a dashboard session; a connection set to run directly,
- *   for what it may run directly): returns at once.
+ * - Nobody to ask (a dashboard session, and the in-app assistant for what
+ *   is not live; a connection set to run directly, for what it may run
+ *   directly): returns at once.
  * - No token, or a token that does not match: throws CONFIRMATION_REQUIRED
  *   with the preview and a new token.
  * - A matching token: consumes it (once) and returns.
@@ -232,10 +234,13 @@ export async function checkConfirmation<Check extends ConfirmationCheck>(
   const step = confirmationStep(input.consequences, input.actor.credential);
   if (step === "none") return null;
 
+  // Who asks, as an approval records it: a key or a token by its kind and
+  // id, the in-app assistant by its own kind (`requesterOf`).
+  const requester = requesterOf(input.actor.credential);
   const bindingHash = sha256(
     stableStringify({
       userId: input.actor.credential.userId,
-      credential: [input.actor.credential.kind, input.actor.credential.id],
+      credential: [requester.kind, requester.id],
       storeId: input.actor.storeId,
       procedure: input.procedure,
       input: input.input,
