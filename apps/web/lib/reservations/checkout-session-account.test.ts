@@ -10,10 +10,11 @@ test("the payment row Louez wrote when it created the session, and the rows it w
   const cases: ReadonlyArray<readonly [origin: string | null, creation: boolean]> = [
     ["checkout", true],
     ["customer_session", true],
+    // Written when its session is created, through the rental's gate.
+    ["payment_request", true],
     // Written before the column existed.
     [null, true],
-    // Sessions that have no payment row until they are paid.
-    ["payment_request", false],
+    // A session that has no payment row until it is paid.
     ["extension", false],
   ];
   for (const [origin, creation] of cases) {

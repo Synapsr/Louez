@@ -666,9 +666,9 @@ async function handleCheckoutExpired(
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
   // The event must say which account sent it: the account its payment row
-  // records, or, for a session with no payment row (a payment request's records
-  // none until it is paid), the account of the store whose reservation its
-  // metadata names.
+  // records, or, for a session with no payment row (a payment request's session
+  // created before the rental's gate wrote one), the account of the store whose
+  // reservation its metadata names.
   if (!connectedAccountId) {
     log.error({
       stripeWebhook: {
@@ -727,8 +727,10 @@ async function handleCheckoutExpired(
     existingPayment !== undefined &&
     (recordedNow || (await hasExpiredLine(db, reservationId, session.id)));
 
-  // A payment request's session has no payment row until it is paid: its line,
-  // which tells the store why no money came, is written once per session. Under
+  // A payment request's session that no payment row names (one created before the
+  // rental's gate wrote its pending row, `rental-session-gate.ts`, or one the gate
+  // created and expired without handing it out): its line, which tells the store
+  // why no money came, is written once per session. Under
   // the reservation's lock, a second delivery of the event, even a concurrent
   // one, finds the line its session id names and writes nothing.
   if (!existingPayment && session.metadata?.paymentRequestId) {
