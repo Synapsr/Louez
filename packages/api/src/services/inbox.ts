@@ -1006,7 +1006,9 @@ const undoneRefunds: Source = async (window, shaper) => {
         row.creditNoteNumber
           ? `The credit note ${row.creditNoteNumber} issued for it stands: correct it by hand in your accounting.`
           : null,
-        feeAmount ? `Louez's fee given back on it (${money(feeAmount, currency) ?? feeAmount}) stays given back.` : null,
+        feeAmount
+          ? `Louez's fee given back on it (${money(feeAmount, currency) ?? feeAmount}) stays given back.`
+          : null,
       ]
         .filter(Boolean)
         .join(" "),
@@ -1645,7 +1647,9 @@ const unissuedCreditNotes: Source = async (window, shaper) => {
       occurredAt: apiEffects.nextAttemptAt,
       ...reservationColumns,
       // The refund row's own currency: a refund is in its payment's.
-      currency: sql<string | null>`(SELECT ${payments.currency} FROM ${payments} WHERE ${payments.id} = JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.refundId')))`,
+      currency: sql<
+        string | null
+      >`(SELECT ${payments.currency} FROM ${payments} WHERE ${payments.id} = JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.refundId')))`,
     })
     .from(apiEffects)
     .innerJoin(

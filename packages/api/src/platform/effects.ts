@@ -914,7 +914,9 @@ export async function retryDueEffects(
  * The effects that are a debt, not a message: one the outbox gave up on stays owed,
  * is kept past the retention, and is armed again by the cron.
  */
-export const OWED_EFFECT_TYPES = ["payment.refundCreditNote"] as const satisfies readonly ApiEffectType[];
+export const OWED_EFFECT_TYPES = [
+  "payment.refundCreditNote",
+] as const satisfies readonly ApiEffectType[];
 
 /** How long an abandoned debt waits before the cron arms it again. */
 export const OWED_EFFECT_REARM_MS = 86_400_000;

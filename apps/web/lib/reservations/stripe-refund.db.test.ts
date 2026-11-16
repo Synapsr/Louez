@@ -993,6 +993,7 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
       currency: "EUR",
       amountCapturedMinor: 10_000,
       refunds: stale,
+      source: "test",
     });
 
     assert.deepEqual(await readPayment(paymentId), {
@@ -1054,7 +1055,12 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     });
     await louezDb.db
       .insert(louezDb.invoicePayments)
-      .values({ id: `ip_${counter}`, invoiceId, paymentId: refundPaymentId, amount: "-60.00" } as never);
+      .values({
+        id: `ip_${counter}`,
+        invoiceId,
+        paymentId: refundPaymentId,
+        amount: "-60.00",
+      } as never);
   }
 
   test("a refund that fails after it was recorded is undone in the books, once, whatever arrives after", async () => {
@@ -1104,10 +1110,10 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
           sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) IN ('refund_undone', 'refund_fee_over_returned')`,
         ),
       );
-    assert.deepEqual(
-      undoneLines.map((line) => (line.metadata as { kind: string }).kind).sort(),
-      ["refund_fee_over_returned", "refund_undone"],
-    );
+    assert.deepEqual(undoneLines.map((line) => (line.metadata as { kind: string }).kind).sort(), [
+      "refund_fee_over_returned",
+      "refund_undone",
+    ]);
     assert.equal(
       undoneLines.find(
         (line) => (line.metadata as { kind: string }).kind === "refund_fee_over_returned",
@@ -1117,12 +1123,14 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
 
     // The whole payment can be refunded again.
     const over = await refund(stripe, request(paymentId, 10_001));
-    assert.equal(!over.ok && over.code === "REFUND_EXCEEDS_REFUNDABLE" && over.refundableMinor, 10_000);
+    assert.equal(
+      !over.ok && over.code === "REFUND_EXCEEDS_REFUNDABLE" && over.refundableMinor,
+      10_000,
+    );
 
     // The billing snapshot exports no refund for it.
-    const { buildReservationSnapshot } = await import(
-      "@/lib/billing-sync/snapshots/reservation-snapshot"
-    );
+    const { buildReservationSnapshot } =
+      await import("@/lib/billing-sync/snapshots/reservation-snapshot");
     const snapshot = await buildReservationSnapshot(louezDb.db, {
       aggregateType: "reservation",
       aggregateId: reservationId,
@@ -1263,9 +1271,8 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
 
     const issued: string[] = [];
     let failures = 1;
-    const { createRefundCreditNoteEffectSenders } = await import(
-      "@/lib/invoicing/refund-credit-note-effects"
-    );
+    const { createRefundCreditNoteEffectSenders } =
+      await import("@/lib/invoicing/refund-credit-note-effects");
     const senders = createRefundCreditNoteEffectSenders({
       issue: async (request) => {
         if (failures-- > 0) return { status: "failed", reason: "pdf_failed" } as never;

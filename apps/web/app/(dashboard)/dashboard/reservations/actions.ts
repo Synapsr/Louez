@@ -166,10 +166,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { sendReservationModificationEmailForStore } from "@/lib/reservations/modification-email";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import {
-  tryGenerateCreditNoteForRefund,
-  tryGenerateInvoiceForPayment,
-} from "@/lib/invoicing/service";
+import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
