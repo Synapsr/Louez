@@ -60,7 +60,12 @@ export function createStripeRefundsPort(
     get: async ({ storeId, paymentId, operationId, reconcile }) => {
       const first = await getRefundOperation(deps.database, { storeId, operationId });
       if (!first || (paymentId !== null && first.paymentId !== paymentId)) return null;
-      if (reconcile && (first.status === "requested" || first.status === "unresolved")) {
+      if (
+        reconcile &&
+        (first.status === "requested" ||
+          first.status === "unresolved" ||
+          first.status === "pending")
+      ) {
         await reconcileRefundOperation(deps, operationId);
       }
       const operation =

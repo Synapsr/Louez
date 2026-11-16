@@ -378,19 +378,56 @@ describe("every other kind, every clause", () => {
     );
     assert.equal(storeLoose.sentences[0], "A notification to your team was not sent.");
 
-    const reasons: Record<string, string> = {
-      recipient_changed: "The customer's e-mail address changed after it was written.",
-      email_not_configured: "No e-mail service is set up for sending.",
-      invalid_payload: "It was written incorrectly and could not be sent.",
-      row_mismatch: "It was written incorrectly and could not be sent.",
+    // The reason, in words: a short phrase in the title (the bell's row and the
+    // inbox's), the sentence in the disclosure.
+    const reasons: Record<string, [title: string, sentence: string]> = {
+      recipient_changed: [
+        "Message not sent: address changed",
+        "The customer's e-mail address changed after it was written.",
+      ],
+      email_not_configured: [
+        "Message not sent: no e-mail service",
+        "No e-mail service is set up for sending.",
+      ],
+      sms_not_configured: [
+        "Message not sent: no SMS service",
+        "No SMS service is set up for sending.",
+      ],
+      invalid_payload: [
+        "Message not sent: written incorrectly",
+        "It was written incorrectly and could not be sent.",
+      ],
+      row_mismatch: [
+        "Message not sent: written incorrectly",
+        "It was written incorrectly and could not be sent.",
+      ],
     };
-    for (const [reason, sentence] of Object.entries(reasons)) {
+    for (const [reason, [title, sentence]] of Object.entries(reasons)) {
       const read_ = read(
         item("message_not_sent", { ...base, audience: "customer", notification: null, reason }),
         "en",
       );
+      assert.equal(read_.title, title, reason);
       assert.equal(read_.sentences[1], sentence, reason);
     }
+    const sms = read(
+      item("message_not_sent", {
+        ...base,
+        channel: "sms",
+        audience: "customer",
+        notification: null,
+        reason: "sms_not_configured",
+      }),
+      "fr",
+    );
+    assert.equal(sms.title, "Message non envoyé : aucun service SMS");
+    assert.equal(sms.sentences[1], "Aucun service d'envoi de SMS n'est configuré.");
+    // Given up after every try: no reason to name.
+    assert.equal(
+      read(item("message_not_sent", { ...base, audience: "customer", notification: null }), "en")
+        .title,
+      "Message not sent",
+    );
   });
 
   test("an invitation not sent", () => {

@@ -577,6 +577,7 @@
       "invitationCancelled": "Convite cancelado",
       "invitationResent": "Convite reenviado",
       "invitationAlreadySent": "Um convite já foi enviado para este email",
+      "invitationEmailLimit": "Esta loja pediu {max} e-mails de convite nas últimas 24 horas, quer tenham podido ser enviados ou não: é o máximo. Tente novamente mais tarde.",
       "resend": "Reenviar",
       "cancel": "Cancelar",
       "invitedOn": "Convidado em {date}",
@@ -7320,6 +7321,7 @@
       },
       "messageNotSent": {
         "title": "Mensagem não enviada",
+        "titleWhy": "Mensagem não enviada: {why, select, email {sem serviço de e-mail} sms {sem serviço de SMS} recipient {endereço alterado} other {mal redigida}}",
         "toCustomer": "O cliente não recebeu {message, select, customer_request_accepted {a mensagem de aceitação} customer_request_rejected {a mensagem de recusa} customer_reservation_cancelled {a mensagem de cancelamento} customer_reservation_modified {a mensagem de alteração} customer_quote_sent {o orçamento} customer_reservation_confirmed {a mensagem de confirmação} other {a mensagem}} da reserva #{number}. Contacte-o você mesmo.",
         "toCustomerNoBooking": "Uma mensagem não chegou a um cliente. Contacte-o você mesmo.",
         "toStore": "Uma notificação à sua equipe sobre a reserva #{number} não foi enviada.",
@@ -7327,7 +7329,8 @@
         "reasons": {
           "recipientChanged": "O e-mail do cliente mudou depois de a mensagem ter sido escrita.",
           "emailNotConfigured": "Nenhum serviço de envio de e-mail está configurado.",
-          "writtenWrong": "Estava mal redigida e não pôde ser enviada."
+          "writtenWrong": "Estava mal redigida e não pôde ser enviada.",
+          "smsNotConfigured": "Nenhum serviço de envio de SMS está configurado."
         }
       },
       "invitationNotSent": {
@@ -8189,6 +8192,10 @@
     "pay": {
       "subtitle": "Reserva #{number}",
       "amountDue": "Valor a pagar",
+      "requestKind": {
+        "rental": "Aluguel",
+        "custom": "Pagamento"
+      },
       "greeting": "Olá {name}, {store} solicita um pagamento.",
       "payButton": "Pagar {amount}",
       "redirecting": "Redirecionando para o pagamento...",

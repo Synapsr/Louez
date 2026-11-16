@@ -45,6 +45,7 @@ const RELEASE = [
   "0106_payment_refund_operations",
   "0107_reservation_pricing_facts",
   "0108_deposit_out_of_total",
+  "0109_refund_operation_pending",
 ];
 
 interface Journal {

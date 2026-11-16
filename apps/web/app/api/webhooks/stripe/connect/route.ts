@@ -279,8 +279,10 @@ export async function POST(request: Request) {
         break;
       }
 
-      // A refund that failed or was canceled after Stripe made it. Each is handled
-      // only when enabled on the Connect webhook endpoint.
+      // A refund whose status changed after Stripe made it: pending to succeeded,
+      // failed or canceled, or succeeded then failed. Each is handled only when enabled
+      // on the Connect webhook endpoint; without them, the cron's lookup settles a
+      // pending refund's operation.
       case "refund.failed":
       case "refund.updated":
       case "charge.refund.updated": {

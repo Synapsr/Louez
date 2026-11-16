@@ -575,6 +575,7 @@
       "invitationCancelled": "Приглашение отменено",
       "invitationResent": "Приглашение отклонено",
       "invitationAlreadySent": "Приглашение уже отправлено на этот адрес электронной почты",
+      "invitationEmailLimit": "Этот магазин запросил {max} писем-приглашений за последние 24 часа, независимо от того, удалось ли их отправить: это максимум. Повторите попытку позже.",
       "resend": "Resend",
       "cancel": "Отмена",
       "invitedOn": "Приглашен на {date}",
@@ -7320,6 +7321,7 @@
       },
       "messageNotSent": {
         "title": "Сообщение не отправлено",
+        "titleWhy": "Сообщение не отправлено: {why, select, email {нет почтового сервиса} sms {нет SMS-сервиса} recipient {адрес изменён} other {составлено с ошибкой}}",
         "toCustomer": "Клиент не получил {message, select, customer_request_accepted {сообщение о принятии} customer_request_rejected {сообщение об отказе} customer_reservation_cancelled {сообщение об отмене} customer_reservation_modified {сообщение об изменении} customer_quote_sent {смету} customer_reservation_confirmed {сообщение с подтверждением} other {сообщение}} по бронированию #{number}. Свяжитесь с ним сами.",
         "toCustomerNoBooking": "Сообщение не дошло до клиента. Свяжитесь с ним сами.",
         "toStore": "Уведомление вашей команде о бронировании #{number} не отправлено.",
@@ -7327,7 +7329,8 @@
         "reasons": {
           "recipientChanged": "Адрес электронной почты клиента изменился после написания сообщения.",
           "emailNotConfigured": "Сервис отправки писем не настроен.",
-          "writtenWrong": "Оно было составлено с ошибкой и не могло быть отправлено."
+          "writtenWrong": "Оно было составлено с ошибкой и не могло быть отправлено.",
+          "smsNotConfigured": "Сервис отправки SMS не настроен."
         }
       },
       "invitationNotSent": {
@@ -8189,6 +8192,10 @@
     "pay": {
       "subtitle": "Бронирование №{number}",
       "amountDue": "Сумма к оплате",
+      "requestKind": {
+        "rental": "Аренда",
+        "custom": "Оплата"
+      },
       "greeting": "Привет, {name}, {store} запрашивает платеж.",
       "payButton": "Оплатить {amount}",
       "redirecting": "Перенаправление на оплату...",

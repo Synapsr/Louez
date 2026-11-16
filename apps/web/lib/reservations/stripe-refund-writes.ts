@@ -19,14 +19,15 @@ import { log } from "@/lib/evlog";
 import { grossMinorOf } from "@/lib/reservations/payment-billing-facts";
 import { fromStripeCents } from "@/lib/stripe";
 
-import { type ProviderRefund, refundMovedMoney } from "./stripe-refund-stripe";
+import { type ProviderRefund, refundCountedByStripe, refundStateOf } from "./stripe-refund-stripe";
 
 // The one writer of what Stripe says of a charge's refunds, whoever hears it: the
 // sender of a refund operation (stripe-refund.ts) or the Connect webhook's
-// `charge.refunded` (app/api/webhooks/stripe/connect/charge-refund.ts). In one
-// transaction, under the reservation's row lock, then the operations' rows, then the
-// payment's: the payment netted, one refund row per refund that moved money, and the
-// operation each refund answers settled. The same refunds heard twice, or by both, in
+// `charge.refunded` and refund events (app/api/webhooks/stripe/connect/charge-refund.ts).
+// In one transaction, under the reservation's row lock, then the operations' rows, then
+// the payment's: the payment netted, one refund row per refund Stripe made (pending or
+// succeeded, as Stripe counts it; `failed` when it failed), and the operation each refund
+// answers stated as Stripe states its refund. The same refunds heard twice, or by both, in
 // either order, write the same rows once.
 
 /** Every transaction of a refund writer: no snapshot older than its locks. */
@@ -145,7 +146,7 @@ export type RecordedRefundRow = {
 };
 
 export type RecordedChargeRefunds = {
-  /** The refund row of each refund that moved money, written now or before. */
+  /** The refund row of each refund Stripe counts (pending or succeeded), written now or before. */
   readonly rows: readonly RecordedRefundRow[];
   /**
    * The refund rows this write undid: recorded `completed`, for a refund Stripe now
@@ -172,7 +173,12 @@ export type RecordedChargeRefunds = {
  *
  * A refund whose metadata names an operation, or the refund an operation already
  * names, settles that operation in the same transaction: `succeeded` with its refund
- * and its row when it moved money, `failed` with Stripe's reason otherwise. An
+ * and its row when Stripe states it succeeded, `failed` with Stripe's reason when
+ * Stripe reports it failed or canceled. While Stripe states it pending (or awaiting an
+ * action), the money follows Stripe's own count: its row is written, the payment netted
+ * and its credit note owed, as for a refund that succeeded; only the operation's stated
+ * status waits, `pending` with its refund and its row, until Stripe says it succeeded
+ * (or failed, which the failure path undoes). An
  * operation of another payment or charge is left alone (its id was put on a refund by
  * hand); a refund that names none is recorded as every refund made in Stripe's
  * dashboard always was.
@@ -182,8 +188,9 @@ export type RecordedChargeRefunds = {
  * it made `failed` (an activity line names it) or, when none was written yet, a row
  * written `failed` that counts for nothing and owes no credit note; its operation is
  * `failed`. A failed refund is final at Stripe and in Louez: a `failed` row is never made
- * `completed` again, and a listing that shows it moving money changes nothing but an
- * activity line, once, for a person to look at.
+ * `completed` again, and a listing that shows it succeeded changes nothing but an
+ * activity line, once, for a person to look at. A listing that shows it pending is
+ * older than its failure, and changes nothing.
  */
 export async function recordChargeRefunds(
   database: Database,
@@ -340,11 +347,15 @@ export async function recordChargeRefunds(
       const operation = operationOf(refund);
       const existing = rowOf(refund);
       const original = originalOf(refund, operation, existing);
-      // A failed refund is final in Louez: a listing that shows it moving money, older
-      // or not, changes nothing, and is named once for a person to look at.
-      if (refundMovedMoney(refund) && existing?.status === "failed") {
+      const state = refundStateOf(refund);
+      // A report of it pending after its row was made `failed` is older than that row:
+      // Stripe moves a refund from pending to failed, never back.
+      if (state === "pending" && existing?.status === "failed") continue;
+      // A failed refund is final in Louez: a listing that shows it succeeded, older or
+      // not, changes nothing, and is named once for a person to look at.
+      if (state === "succeeded" && existing?.status === "failed") {
         log.error({
-          stripeRefund: { issue: "failed_refund_listed_as_moving_money", refundId: refund.id },
+          stripeRefund: { issue: "failed_refund_listed_as_succeeded", refundId: refund.id },
         });
         const [named] = await tx
           .select({ id: reservationActivity.id })
@@ -374,7 +385,7 @@ export async function recordChargeRefunds(
         }
         continue;
       }
-      if (!refundMovedMoney(refund)) {
+      if (state === "failed") {
         if (existing?.status === "completed") {
           await tx
             .update(payments)
@@ -468,9 +479,14 @@ export async function recordChargeRefunds(
         );
       }
 
+      // Stripe made it and counts it: the row, the netting and the credit note follow
+      // it at once, pending or not. Only the operation's stated status waits for Stripe
+      // to say it succeeded, and never goes back from `succeeded`.
+      const stated =
+        state === "succeeded" || operation?.status === "succeeded" ? "succeeded" : "pending";
       if (
         operation &&
-        (operation.status !== "succeeded" || operation.refundPaymentId !== refundPaymentId)
+        (operation.status !== stated || operation.refundPaymentId !== refundPaymentId)
       ) {
         if (refund.amount !== operation.amountMinor) {
           log.error({
@@ -486,30 +502,32 @@ export async function recordChargeRefunds(
         await tx
           .update(paymentRefundOperations)
           .set({
-            status: "succeeded",
+            status: stated,
             stripeRefundId: refund.id,
             refundPaymentId,
             failureCode: null,
             failureMessage: null,
-            claimToken: null,
-            claimedUntil: null,
+            // A pending one keeps its claim: its sender sets when it is looked up again.
+            ...(stated === "succeeded" ? { claimToken: null, claimedUntil: null } : {}),
             updatedAt: sql`NOW()`,
           })
           .where(eq(paymentRefundOperations.id, operation.id));
-        await tx.insert(reservationActivity).values({
-          id: nanoid(),
-          reservationId: input.reservationId,
-          activityType: "payment_updated",
-          metadata: {
-            refundOperationId: operation.id,
-            paymentId: refundPaymentId,
-            refundId: refund.id,
-            amount,
-            currency,
-          },
-          createdAt: new Date(),
-        });
-        settledOperationIds.push(operation.id);
+        if (operation.refundPaymentId !== refundPaymentId) {
+          await tx.insert(reservationActivity).values({
+            id: nanoid(),
+            reservationId: input.reservationId,
+            activityType: "payment_updated",
+            metadata: {
+              refundOperationId: operation.id,
+              paymentId: refundPaymentId,
+              refundId: refund.id,
+              amount,
+              currency,
+            },
+            createdAt: new Date(),
+          });
+        }
+        if (stated === "succeeded") settledOperationIds.push(operation.id);
       }
     }
 
@@ -554,7 +572,7 @@ export async function recordChargeRefunds(
       if (minor !== null) add(of, minor);
     }
     for (const refund of input.refunds) {
-      if (recordedIds.has(refund.id) || !refundMovedMoney(refund)) continue;
+      if (recordedIds.has(refund.id) || !refundCountedByStripe(refund)) continue;
       add(originalOf(refund, operationOf(refund), null), refund.amount);
     }
     let netMinor = 0;

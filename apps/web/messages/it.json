@@ -577,6 +577,7 @@
       "invitationCancelled": "Invito annullato",
       "invitationResent": "Invito reinviato",
       "invitationAlreadySent": "Un invito è già stato inviato a questa email",
+      "invitationEmailLimit": "Questo negozio ha richiesto {max} e-mail di invito nelle ultime 24 ore, che sia stato possibile inviarle o no: è il massimo. Riprova più tardi.",
       "resend": "Reinvia",
       "cancel": "Annulla",
       "invitedOn": "Invitato il {date}",
@@ -7320,6 +7321,7 @@
       },
       "messageNotSent": {
         "title": "Messaggio non inviato",
+        "titleWhy": "Messaggio non inviato: {why, select, email {nessun servizio e-mail} sms {nessun servizio SMS} recipient {indirizzo cambiato} other {scritto in modo errato}}",
         "toCustomer": "Il {message, select, customer_request_accepted {messaggio di accettazione} customer_request_rejected {messaggio di rifiuto} customer_reservation_cancelled {messaggio di annullamento} customer_reservation_modified {messaggio di modifica} customer_quote_sent {preventivo} customer_reservation_confirmed {messaggio di conferma} other {messaggio}} della prenotazione #{number} non ha raggiunto il cliente. Contattalo tu.",
         "toCustomerNoBooking": "Un messaggio non ha raggiunto un cliente. Contattalo tu.",
         "toStore": "Una notifica al tuo team sulla prenotazione #{number} non è stata inviata.",
@@ -7327,7 +7329,8 @@
         "reasons": {
           "recipientChanged": "L'indirizzo e-mail del cliente è cambiato dopo la scrittura.",
           "emailNotConfigured": "Nessun servizio di invio e-mail è configurato.",
-          "writtenWrong": "Era scritto in modo errato e non è stato possibile inviarlo."
+          "writtenWrong": "Era scritto in modo errato e non è stato possibile inviarlo.",
+          "smsNotConfigured": "Nessun servizio di invio SMS è configurato."
         }
       },
       "invitationNotSent": {
@@ -8189,6 +8192,10 @@
     "pay": {
       "subtitle": "Prenotazione #{number}",
       "amountDue": "Importo dovuto",
+      "requestKind": {
+        "rental": "Noleggio",
+        "custom": "Pagamento"
+      },
       "greeting": "Ciao {name}, {store} richiede un pagamento.",
       "payButton": "Paga {amount}",
       "redirecting": "Reindirizzamento al pagamento...",

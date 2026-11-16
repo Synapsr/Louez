@@ -36,8 +36,8 @@ export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInvit
 
   /** The team page's own keys first, then the shared error keys. */
   const resolveErrorMessage = (error: unknown) => {
-    const { scope, key } = teamErrorKey(error);
-    if (scope === "team" && t.has(key)) return t(key);
+    const { scope, key, values } = teamErrorKey(error);
+    if (scope === "team" && t.has(key)) return t(key, values);
     if (scope === "errors" && tErrors.has(key)) return tErrors(key);
     return tErrors("generic");
   };
@@ -139,14 +139,16 @@ export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInvit
           <form.Form
             className="space-y-3"
             formName="team-invite"
-            {...(readOnly ? {
-              // Local demos must also bypass the form wrapper's remote validation logging.
-              onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
-                event.preventDefault();
-                event.stopPropagation();
-                void form.handleSubmit();
-              },
-            } : {})}
+            {...(readOnly
+              ? {
+                  // Local demos must also bypass the form wrapper's remote validation logging.
+                  onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void form.handleSubmit();
+                  },
+                }
+              : {})}
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
               <div className="min-w-0 flex-1">

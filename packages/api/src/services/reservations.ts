@@ -564,6 +564,7 @@ export async function getReservation(
           stripeRefundId: true,
           stripePaymentIntentId: true,
           stripeCheckoutSessionId: true,
+          sessionSettledAt: true,
         },
       },
       documents: {

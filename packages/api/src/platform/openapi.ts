@@ -31,6 +31,7 @@ import {
 } from "./approval-help";
 import { CONFIRMATION_TTL_MS } from "./confirmation";
 import { reportUnexpectedErrors } from "./error-reporting";
+import { type RequestLogSink, logRefusals, logRequestError } from "./refusal-log";
 import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
 import { APPROVAL_POLL_SECONDS, apiError, type ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
@@ -733,12 +734,19 @@ export class OpenApiTransportHandler extends FetchHandler<BaseContext> {
  */
 export function createOpenApiHandler(
   router: AnyRouter,
-  options: { onError?: (error: unknown) => void } = {},
+  /**
+   * Where the request log goes: a refusal by its facts, a fault as it is
+   * (platform/refusal-log.ts). Absent: nothing is logged.
+   */
+  options: { log?: RequestLogSink } = {},
 ): OpenApiTransportHandler {
+  const { log } = options;
   return new OpenApiTransportHandler(router, {
-    interceptors: options.onError ? [onError(options.onError)] : [],
+    interceptors: log ? [onError(logRequestError(log))] : [],
     // An unexpected error reaches error tracking through `ports.reportError`.
-    clientInterceptors: [reportUnexpectedErrors],
+    clientInterceptors: log
+      ? [reportUnexpectedErrors, logRefusals(log.refusal)]
+      : [reportUnexpectedErrors],
   });
 }
 

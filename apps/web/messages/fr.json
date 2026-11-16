@@ -577,6 +577,7 @@
       "invitationCancelled": "Invitation annulée",
       "invitationResent": "Invitation renvoyée",
       "invitationAlreadySent": "Une invitation a déjà été envoyée à cette adresse",
+      "invitationEmailLimit": "Cette boutique a demandé {max} e-mails d'invitation ces dernières 24 heures, qu'ils aient pu partir ou non : c'est le maximum. Réessayez plus tard.",
       "resend": "Renvoyer",
       "cancel": "Annuler",
       "invitedOn": "Invité le {date}",
@@ -7320,6 +7321,7 @@
       },
       "messageNotSent": {
         "title": "Message non envoyé",
+        "titleWhy": "Message non envoyé : {why, select, email {aucun service d'e-mail} sms {aucun service SMS} recipient {adresse modifiée} other {mal rédigé}}",
         "toCustomer": "Le {message, select, customer_request_accepted {message d'acceptation} customer_request_rejected {message de refus} customer_reservation_cancelled {message d'annulation} customer_reservation_modified {message de modification} customer_quote_sent {devis} customer_reservation_confirmed {message de confirmation} other {message}} de la réservation #{number} n'est pas parvenu au client. Contactez-le vous-même.",
         "toCustomerNoBooking": "Un message n'est pas parvenu à un client. Contactez-le vous-même.",
         "toStore": "Une notification à votre équipe sur la réservation #{number} n'a pas été envoyée.",
@@ -7327,7 +7329,8 @@
         "reasons": {
           "recipientChanged": "L'adresse e-mail du client a changé après sa rédaction.",
           "emailNotConfigured": "Aucun service d'envoi d'e-mails n'est configuré.",
-          "writtenWrong": "Il était mal rédigé et n'a pas pu être envoyé."
+          "writtenWrong": "Il était mal rédigé et n'a pas pu être envoyé.",
+          "smsNotConfigured": "Aucun service d'envoi de SMS n'est configuré."
         }
       },
       "invitationNotSent": {
@@ -8189,6 +8192,10 @@
     "pay": {
       "subtitle": "Réservation #{number}",
       "amountDue": "Montant à régler",
+      "requestKind": {
+        "rental": "Location",
+        "custom": "Paiement"
+      },
       "greeting": "Bonjour {name}, {store} vous demande un paiement.",
       "payButton": "Payer {amount}",
       "redirecting": "Redirection vers le paiement...",

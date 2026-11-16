@@ -44,13 +44,13 @@ export const refundPaymentOutput = z.object({
     status: z
       .enum(STRIPE_REFUND_STATUSES)
       .describe(
-        "`pending`: Stripe has not given the outcome yet. `succeeded`: Stripe made the refund. `failed`: Stripe made none (see `failure`).",
+        "`pending`: Stripe has not given the final outcome; the customer has not received the money yet (see `detail`). `succeeded`: Stripe states the refund succeeded. `failed`: Stripe made none, or its refund failed (see `failure`).",
       ),
     detail: z
-      .enum(["sending", "awaiting_provider"])
+      .enum(["sending", "awaiting_provider", "processing"])
       .nullable()
       .describe(
-        "While pending: `sending` while Louez may still send it to Stripe, `awaiting_provider` once only Stripe's own account of the charge settles it. Null otherwise.",
+        "While pending: `sending` while Louez may still send it to Stripe, `awaiting_provider` once only Stripe's own account of the charge settles it, `processing` once Stripe has issued the refund and the bank is processing it: it is recorded among the reservation's payments and comes off what the payment can give back, the customer has not received it yet, and it may still fail. Null otherwise.",
       ),
     amount: z.string().describe("The amount given back, in the payment's currency."),
     currency: z.string(),
@@ -61,7 +61,7 @@ export const refundPaymentOutput = z.object({
       .string()
       .nullable()
       .describe(
-        "The refund's own payment row, once Stripe made it; kept when the refund failed afterwards (the row is then failed).",
+        "The refund's own payment row, once Stripe made the refund, processing or not. Kept when the refund failed afterwards (the row is then failed).",
       ),
     failure: z
       .object({ code: z.string(), message: z.string().nullable() })

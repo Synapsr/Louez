@@ -106,12 +106,19 @@ export function refundAnswer(
   view: StripeRefundView,
   reservation: { number: string },
 ): Omit<RefundPaymentOutput, "links"> {
-  const open = view.status === "requested" || view.status === "unresolved";
   return {
     refund: {
       id: view.id,
-      status: open ? "pending" : view.status === "succeeded" ? "succeeded" : "failed",
-      detail: open ? (view.status === "requested" ? "sending" : "awaiting_provider") : null,
+      status:
+        view.status === "succeeded" ? "succeeded" : view.status === "failed" ? "failed" : "pending",
+      detail:
+        view.status === "requested"
+          ? "sending"
+          : view.status === "unresolved"
+            ? "awaiting_provider"
+            : view.status === "pending"
+              ? "processing"
+              : null,
       amount: decimalOf(view.amountMinor, view.currency),
       currency: view.currency,
       reason: view.reason,

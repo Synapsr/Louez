@@ -45,7 +45,7 @@ export type ProviderRefund = {
   readonly amount: number;
   /** Seconds since the epoch. */
   readonly created: number;
-  /** `pending`, `requires_action` and `succeeded` move money; `failed` and `canceled` not. */
+  /** Stripe's own word: read it through `refundStateOf`. */
   readonly status: string | null;
   /** Upper case. */
   readonly currency: string;
@@ -112,9 +112,37 @@ export const providerRefundFromStripe = (refund: StripeRefundObject): ProviderRe
   operationId: refund.metadata?.[REFUND_OPERATION_METADATA] || null,
 });
 
-/** Failed and canceled refunds moved no money. */
-export const refundMovedMoney = (refund: Pick<ProviderRefund, "status">): boolean =>
-  refund.status !== "failed" && refund.status !== "canceled";
+/**
+ * A refund as Louez states it, from Stripe's own status. `succeeded`: the money went
+ * back. `failed`: Stripe reports it failed or canceled, and it moved nothing. `pending`:
+ * anything else (`pending`, `requires_action`, a status Louez does not know): Stripe
+ * holds it, the customer has not been refunded yet, and it may still fail.
+ */
+export type RefundState = "pending" | "succeeded" | "failed";
+
+export const refundStateOf = (refund: Pick<ProviderRefund, "status">): RefundState =>
+  refund.status === "succeeded"
+    ? "succeeded"
+    : refund.status === "failed" || refund.status === "canceled"
+      ? "failed"
+      : "pending";
+
+/**
+ * Whether Stripe counts the refund in the charge's `amount_refunded`: from its creation,
+ * pending or not, until it fails or is canceled.
+ */
+export const refundCountedByStripe = (refund: Pick<ProviderRefund, "status">): boolean =>
+  refundStateOf(refund) !== "failed";
+
+/**
+ * The later of two reports of one refund. Stripe moves a refund from pending to
+ * succeeded, failed or canceled, and one that succeeded may fail afterwards, never the
+ * other way: whichever arrives last, the report further along wins.
+ */
+export const laterRefundReport = (a: ProviderRefund, b: ProviderRefund): ProviderRefund => {
+  const rank = { pending: 0, succeeded: 1, failed: 2 } as const;
+  return rank[refundStateOf(b)] > rank[refundStateOf(a)] ? b : a;
+};
 
 export const stripeRefunds: StripeRefundPort = {
   async readCharge(accountId, chargeId) {
@@ -192,20 +220,30 @@ export type RefundLookup =
   /**
    * Stripe's own account of the charge holds no refund of the operation: its listing
    * was read to its end, none names the operation, and the refunds it lists that
-   * moved money add up to what the charge says was refunded, so no refund exists
+   * Stripe counts (pending or succeeded) add up to what the charge says was refunded, so no refund exists
    * that the listing does not show.
    */
   | { readonly kind: "absent" }
   /** The listing is incomplete, or does not add up to the charge: it says nothing. */
   | { readonly kind: "unknown" };
 
-/** What a snapshot of the charge says of the operation's refund, by its id in the refund's metadata. */
-export function lookUpOperationRefund(snapshot: ChargeSnapshot, operationId: string): RefundLookup {
+/**
+ * What a snapshot of the charge says of the operation's refund: the refund whose id
+ * the operation recorded, when it recorded one, else the one whose metadata names the
+ * operation. Metadata can be edited at Stripe; a refund's id cannot.
+ */
+export function lookUpOperationRefund(
+  snapshot: ChargeSnapshot,
+  operation: { readonly id: string; readonly stripeRefundId: string | null },
+): RefundLookup {
   if (!snapshot.refunds) return { kind: "unknown" };
-  const refund = snapshot.refunds.find((candidate) => candidate.operationId === operationId);
+  const refund =
+    snapshot.refunds.find(
+      (candidate) => operation.stripeRefundId !== null && candidate.id === operation.stripeRefundId,
+    ) ?? snapshot.refunds.find((candidate) => candidate.operationId === operation.id);
   if (refund) return { kind: "found", refund };
   const listedMinor = snapshot.refunds
-    .filter(refundMovedMoney)
+    .filter(refundCountedByStripe)
     .reduce((sum, candidate) => sum + candidate.amount, 0);
   return listedMinor === snapshot.charge.amountRefundedMinor
     ? { kind: "absent" }

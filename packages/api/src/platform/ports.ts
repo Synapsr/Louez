@@ -5,6 +5,7 @@ import type { StripeConnectClient } from "../adapters/stripe-connect";
 import type { BillingStatus } from "../contracts/billing";
 import type { Transport } from "./actor";
 import type { ReportServerError } from "./error-reporting";
+import type { RefusalLogEvent } from "./refusal-log";
 
 /**
  * What the agent-ready API takes from the app that serves it: only what is
@@ -176,6 +177,11 @@ export interface DepositHoldsPort {
 /** A structured log event: a name, then fields that hold no personal data. */
 export interface LogPort {
   error: (event: { event: string } & Record<string, unknown>) => void;
+  /**
+   * A call refused on purpose, by its facts only (platform/refusal-log.ts): the MCP
+   * bridge's, which has no request log of its own. Absent: not logged.
+   */
+  refusal?: (event: RefusalLogEvent) => void;
 }
 
 /** What the billing facts of a payment the store records by hand are computed from. */
@@ -340,7 +346,7 @@ export interface StripeRefundChecked {
 /** A refund operation as its caller reads it. */
 export interface StripeRefundView {
   id: string;
-  status: "requested" | "unresolved" | "succeeded" | "failed";
+  status: "requested" | "unresolved" | "pending" | "succeeded" | "failed";
   paymentId: string;
   reservationId: string;
   amountMinor: number;

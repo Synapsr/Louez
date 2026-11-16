@@ -10,8 +10,9 @@ import {
   type ProviderRefund,
   REFUND_OPERATION_METADATA,
   type StripeRefundObject,
+  laterRefundReport,
   providerRefundFromStripe,
-  refundMovedMoney,
+  refundCountedByStripe,
 } from "@/lib/reservations/stripe-refund-stripe";
 import { recordChargeRefunds } from "@/lib/reservations/stripe-refund-writes";
 import { fromStripeCents } from "@/lib/stripe";
@@ -25,7 +26,14 @@ import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from ".
 // fees.md §9 and README Q7): the fee refund at source, then, through the one writer of
 // a charge's refunds (lib/reservations/stripe-refund-writes.ts), the payment netted,
 // one refund row per Stripe refund of the charge whatever the payment's kind, and the
-// refund operation each refund names settled.
+// refund operation each refund names stated as Stripe states its refund (`pending` while
+// Stripe holds it, `succeeded` once it says so).
+//
+// Stripe counts a refund in the charge's `amount_refunded` from its creation, pending
+// or not, and sends `charge.refunded` then: the fee's share of it is given back at
+// once. When that refund later fails, Stripe does not take the fee refund back; the
+// refund event's own pass through the fee refund raises the billing alert
+// `fee_over_returned` (fee-reversal.ts).
 
 /**
  * The event's charge. A retry can deliver an event after a newer one, so the handler
@@ -171,7 +179,8 @@ export async function handleChargeRefunded(
   const listed = (await port.listRefunds(charge.id, accountId)).map((refund) =>
     listedRefund(refund, currency),
   );
-  const refunds = listed.filter(refundMovedMoney);
+  // What came off the charge, as Stripe counts it: pending refunds included.
+  const refunds = listed.filter(refundCountedByStripe);
   const refundedMinor = refunds.reduce((sum, refund) => sum + refund.amount, 0);
   const recorded = await recordChargeRefunds(db, {
     paymentId: payment.paymentId,
@@ -229,7 +238,7 @@ export async function handleChargeRefunded(
 }
 
 export type RefundUpdatedResult =
-  | { readonly status: "missing_account" | "moved_money" | "payment_not_found" }
+  | { readonly status: "missing_account" | "payment_not_found" }
   | {
       readonly status: "recorded";
       readonly paymentId: string;
@@ -238,13 +247,15 @@ export type RefundUpdatedResult =
     };
 
 /**
- * Handles `refund.failed`, `refund.updated` and `charge.refund.updated`: a refund that
- * failed or was canceled after Stripe made it. Its share of the application fee is
- * reckoned first, as for `charge.refunded`; then the one writer of the charge's refunds
- * runs on the charge's refunds as Stripe lists them now, the event's final status
- * standing for its own refund: the refund row is made `failed`, the payment netted
- * again, the operation that asked for it `failed`. A refund that moves money is
- * `charge.refunded`'s.
+ * Handles `refund.failed`, `refund.updated` and `charge.refund.updated`: a refund whose
+ * status changed after Stripe made it. Its share of the application fee is reckoned
+ * first, as for `charge.refunded`; then the one writer of the charge's refunds runs on
+ * the charge's refunds as Stripe lists them now, the later of the event's report and
+ * the listing's standing for its own refund (`laterRefundReport`). A refund that
+ * succeeded makes its operation `succeeded` (its row was written when Stripe made it);
+ * one that failed or was canceled makes its row `failed`, the payment netted again, the
+ * operation that asked for it `failed`; one still pending stays as recorded. Each
+ * delivered again writes nothing more.
  */
 export async function handleRefundUpdated(
   refund: StripeRefundObject & {
@@ -261,8 +272,7 @@ export async function handleRefundUpdated(
     });
     return { status: "missing_account" };
   }
-  const failed = providerRefundFromStripe(refund);
-  if (refundMovedMoney(failed)) return { status: "moved_money" };
+  const reported = providerRefundFromStripe(refund);
   const chargeId = stripeId(refund.charge ?? null);
   const payment = chargeId
     ? await findChargePayment({
@@ -282,13 +292,15 @@ export async function handleRefundUpdated(
   if (charge.application_fee) {
     await reverseFeeAtSource({ chargeId, accountId, stripe: port.feeReversal });
   }
-  const currency = failed.currency;
+  const currency = reported.currency;
   const listed = (await port.listRefunds(chargeId, accountId)).map((candidate) =>
-    candidate.id === failed.id ? failed : listedRefund(candidate, currency),
+    candidate.id === reported.id
+      ? laterRefundReport(listedRefund(candidate, currency), reported)
+      : listedRefund(candidate, currency),
   );
-  const refunds = listed.some((candidate) => candidate.id === failed.id)
+  const refunds = listed.some((candidate) => candidate.id === reported.id)
     ? listed
-    : [failed, ...listed];
+    : [reported, ...listed];
   const recorded = await recordChargeRefunds(db, {
     paymentId: payment.paymentId,
     reservationId: payment.reservationId,

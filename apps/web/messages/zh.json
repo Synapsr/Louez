@@ -575,6 +575,7 @@
       "invitationCancelled": "邀请已取消",
       "invitationResent": "邀请已重新发送",
       "invitationAlreadySent": "邀请已发送至此电子邮件地址",
+      "invitationEmailLimit": "此店铺在过去 24 小时内已请求发送 {max} 封邀请邮件（无论是否成功发出），已达上限。请稍后再试。",
       "resend": "Resend",
       "cancel": "取消",
       "invitedOn": "受邀于 {date}",
@@ -7320,6 +7321,7 @@
       },
       "messageNotSent": {
         "title": "消息未发送",
+        "titleWhy": "消息未发送：{why, select, email {未设置邮件服务} sms {未设置短信服务} recipient {地址已变更} other {内容有误}}",
         "toCustomer": "预订 #{number} 的{message, select, customer_request_accepted {接受通知} customer_request_rejected {拒绝通知} customer_reservation_cancelled {取消通知} customer_reservation_modified {变更通知} customer_quote_sent {报价} customer_reservation_confirmed {确认通知} other {消息}}未送达客户。请您亲自联系客户。",
         "toCustomerNoBooking": "有一条消息未送达客户。请您亲自联系客户。",
         "toStore": "关于预订 #{number} 发给您团队的通知未发送。",
@@ -7327,7 +7329,8 @@
         "reasons": {
           "recipientChanged": "客户的邮箱地址在消息写好后发生了变化。",
           "emailNotConfigured": "未设置邮件发送服务。",
-          "writtenWrong": "消息内容有误，无法发送。"
+          "writtenWrong": "消息内容有误，无法发送。",
+          "smsNotConfigured": "未设置短信发送服务。"
         }
       },
       "invitationNotSent": {
@@ -8189,6 +8192,10 @@
     "pay": {
       "subtitle": "预订#{number}",
       "amountDue": "应付金额",
+      "requestKind": {
+        "rental": "租赁",
+        "custom": "付款"
+      },
       "greeting": "您好 {name}，{store} 正在请求付款。",
       "payButton": "支付{amount}",
       "redirecting": "正在重定向至付款...",

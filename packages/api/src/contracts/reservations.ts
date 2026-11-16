@@ -452,6 +452,12 @@ export const reservationSchema = z.object({
       stripeRefundId: z.string().nullable(),
       stripePaymentIntentId: z.string().nullable(),
       stripeCheckoutSessionId: z.string().nullable(),
+      sessionSettledAt: z
+        .date()
+        .nullable()
+        .describe(
+          "On a rental payment's Checkout Session: when Louez learnt from Stripe that it can no longer be paid. Null while that is not known, and on every other row.",
+        ),
     }),
   ),
   documents: z.array(
