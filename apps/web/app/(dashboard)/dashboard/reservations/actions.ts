@@ -1967,6 +1967,10 @@ export async function previewReservationTulipQuote(
   });
 }
 
+/** An amount written with its currency's precision: "150" for the yen, "150.00" for the euro. */
+const amountInCurrency = (amount: number, currency: string) =>
+  amount.toFixed(minorUnitsPerUnit(currency) === 1 ? 0 : 2);
+
 /** An amount in cents, to compare two amounts written differently ("20" and "20.00"). */
 const toCents = (value: string | number | null | undefined) =>
   Math.round(Number(value ?? 0) * 100);
@@ -3518,6 +3522,7 @@ export async function updateReservation(
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
+  const reservationCurrencyCode = reservationCurrency(reservation.currency, store.settings);
   const responseWarnings = [
     ...validationWarnings.map((warning) => ({
       code: warning.code,
@@ -3530,9 +3535,10 @@ export async function updateReservation(
       ? [
           {
             key: "errors.editTaxAdded",
+            // In the reservation's currency, with its own precision (¥150, €150.00).
             params: {
-              previousTotal: previousState.totalAmount.toFixed(2),
-              newTotal: transactionResult.newTotalAmount.toFixed(2),
+              previousTotal: amountInCurrency(previousState.totalAmount, reservationCurrencyCode),
+              newTotal: amountInCurrency(transactionResult.newTotalAmount, reservationCurrencyCode),
             },
           },
         ]

@@ -607,6 +607,17 @@ describe(
         ]);
       });
 
+      test("in yen, the warning's figures are whole yen", async () => {
+        await useStore({ currency: "JPY", tax: HT });
+        const { id, itemId, kayak } = await oldManualBooking({ currency: "JPY" });
+
+        const result = await actions.updateReservation(id, { items: twoKayaks(itemId, kayak) });
+
+        assert.deepEqual(result.warnings, [
+          { key: "errors.editTaxAdded", params: { previousTotal: "150", newTotal: "360" } },
+        ]);
+      });
+
       test("a row the engine totalled does not warn", async () => {
         await useStore({ tax: HT });
         const { id, itemId, kayak } = await oldManualBooking({ taxDisplayMode: "exclusive" });
