@@ -477,7 +477,7 @@ export async function createStoreReservation(
   const { storeId } = caller;
   const allowOverbooking = input.allowOverbooking === true;
   const overrideTurnoverBuffer = input.overrideTurnoverBuffer === true;
-  const emailConfigured = caller.ports.emailConfigured?.() === true;
+  const emailConfigured = caller.ports.emailConfigured?.() !== false;
 
   let outcome: Outcome;
   try {

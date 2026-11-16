@@ -42,12 +42,6 @@ export interface ApiPorts {
    */
   dispatchEffects: (ids: readonly string[]) => void;
   /**
-   * Whether this instance sends e-mail at all (its SMTP settings), as the
-   * outbox's e-mail senders read it: a write that announces an e-mail says
-   * none goes when it does not. Absent: none goes.
-   */
-  emailConfigured?: () => boolean;
-  /**
    * Runs background jobs (`platform/jobs.ts`) a write queued, once its
    * transaction has committed. The app runs them after the answer, a few at
    * a time per process; its cron takes the ones left. Never throws. Absent

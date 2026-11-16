@@ -35,7 +35,6 @@ export const apiPorts: ApiPorts = {
   runReservationEffects,
   insurance: tulipInsurancePort,
   dispatchEffects: dispatchApiEffects,
-  emailConfigured: isEmailConfigured,
   dispatchJobs: dispatchApiJobs,
   productImages: productImagesPort,
   newStores: newStorePort,

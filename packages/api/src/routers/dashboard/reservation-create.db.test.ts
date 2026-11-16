@@ -1129,7 +1129,60 @@ describe(
       );
     });
 
-    // --- The message -------------------------------------------------------------------
+    test("a reservation it created moves with reservations.update: the date change's pricing guard finds its prices", async () => {
+    // Units by size: one line with no combination, one with its own.
+    const kayak = nextId("rc_prd");
+    await louezDb.db.insert(louezDb.products).values({
+      id: kayak,
+      storeId: STORE,
+      name: `Kayak ${kayak}`,
+      price: "10.00",
+      deposit: "50.00",
+      pricingMode: "day",
+      trackUnits: true,
+      bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+      quantity: 3,
+    });
+    for (const size of ["M", "M", "L"]) {
+      await louezDb.db.insert(louezDb.productUnits).values({
+        id: nextId("rc_unt"),
+        productId: kayak,
+        identifier: `Kayak ${size} ${counter}`,
+        attributes: { size },
+        combinationKey: `size:${size}`,
+      });
+    }
+    const answer = await create(
+      base(kayak, {
+        status: "confirmed",
+        lines: [
+          { productId: kayak, quantity: 1 },
+          { productId: kayak, quantity: 1, selectedAttributes: { size: "M" } },
+        ],
+      }),
+      session(),
+    );
+    const stored = await louezDb.db
+      .select({ combinationKey: louezDb.reservationItems.combinationKey })
+      .from(louezDb.reservationItems)
+      .where(orm.eq(louezDb.reservationItems.reservationId, answer.id));
+    assert.deepEqual(stored.map((item) => item.combinationKey).sort(), [null, "size:M"].sort());
+
+    const client = orpc.createRouterClient(router, {
+      context: session(),
+      path: ["dashboard", "reservations"],
+    }) as Client;
+    const moved = await client.update({
+      id: answer.id,
+      endDate: "2030-06-04T09:00:00+00:00",
+      notifyCustomer: false,
+    });
+    assert.equal(new Date(moved.endDate).toISOString(), "2030-06-04T09:00:00.000Z");
+    // Three days at 10.00 a line now.
+    assert.equal(moved.totalAmount, "60.00");
+  });
+
+  // --- The message -------------------------------------------------------------------
 
     test("notifyCustomer queues the e-mail the status calls for, to the address the preview showed, in the transaction", async () => {
       const kayak = await product({ quantity: 5 });
