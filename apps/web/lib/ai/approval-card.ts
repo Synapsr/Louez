@@ -154,10 +154,6 @@ export const approvalCardWaits = (status: ApprovalCardStatus) =>
  */
 export const APPROVAL_CARD_POLL_MS = 30_000;
 
-const FOLLOW_UP = new RegExp(
-  `^Approved in Louez \\(request (${APPROVAL_ID_PATTERN.source.slice(1, -1)})\\)\\. Call (${PAYMENT_APPROVAL_TOOLS.join("|")}) once `,
-);
-
 /**
  * The turn the chat sends once the person approved: it lets the model call
  * the tool once more with the very arguments it prepared, and the approval's
@@ -169,12 +165,13 @@ export function approvalFollowUp(card: ApprovalCard): string {
   return `Approved in Louez (request ${card.approvalId}). Call ${card.tool} once with exactly these arguments to carry it out, then tell me the result: ${JSON.stringify(call)}`;
 }
 
-/** A follow-up turn the chat sent (`approvalFollowUp`), recognised to show it as one quiet line. */
-export function parseApprovalFollowUp(
-  text: string,
-): { approvalId: string; tool: PaymentApprovalTool } | null {
-  const match = FOLLOW_UP.exec(text);
-  if (!match) return null;
-  const [, approvalId, tool] = match;
-  return approvalId && tool && isPaymentApprovalTool(tool) ? { approvalId, tool } : null;
-}
+/**
+ * Whether a message is a follow-up turn this chat sent (`approvalFollowUp`),
+ * shown as one quiet line: a user turn whose id the chat generated and kept
+ * when it sent it (`sent`), never a message recognised by its text, and
+ * never the assistant's.
+ */
+export const isChatFollowUp = (
+  message: { id: string; role: string },
+  sent: ReadonlySet<string>,
+): boolean => message.role === "user" && sent.has(message.id);

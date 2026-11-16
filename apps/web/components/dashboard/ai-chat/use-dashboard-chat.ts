@@ -117,6 +117,9 @@ export const useDashboardChat = () => {
 
   // The approvals whose follow-up this chat sent: once each, on its own.
   const continuedRef = useRef(new Set<string>());
+  // The follow-up turns this chat sent, by the id it gave them: only these
+  // read as "Approved, continuing", whatever any other message says.
+  const [followUpIds, setFollowUpIds] = useState<ReadonlySet<string>>(() => new Set());
 
   /**
    * Once the person approved a payment the assistant prepared (on its page,
@@ -131,7 +134,9 @@ export const useDashboardChat = () => {
       if (!options.manual && continuedRef.current.has(card.approvalId)) return;
       continuedRef.current.add(card.approvalId);
       clearError();
-      sendMessage({ text: approvalFollowUp(card) });
+      const id = crypto.randomUUID();
+      setFollowUpIds((sent) => new Set(sent).add(id));
+      sendMessage({ id, role: "user", parts: [{ type: "text", text: approvalFollowUp(card) }] });
     },
     [isLoading, clearError, sendMessage],
   );
@@ -149,5 +154,6 @@ export const useDashboardChat = () => {
     selectChat,
     send,
     continueApproval,
+    followUpIds,
   };
 };

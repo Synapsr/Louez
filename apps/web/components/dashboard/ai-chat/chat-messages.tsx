@@ -11,7 +11,7 @@ import { cn } from "@louez/utils";
 
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { useStore } from "@/contexts/store-context";
-import { approvalCardOf, parseApprovalFollowUp, type ApprovalCard } from "@/lib/ai/approval-card";
+import { approvalCardOf, isChatFollowUp, type ApprovalCard } from "@/lib/ai/approval-card";
 
 import { ChatApprovalCard } from "./chat-approval-card";
 import { resolveChatLink } from "./util.chat-link";
@@ -26,9 +26,16 @@ interface ChatMessagesProps {
   isLoading: boolean;
   /** Goes on once the person approved a payment the assistant prepared (`continueApproval`). */
   onApprovalContinue: ApprovalContinue;
+  /** The follow-up turns this chat sent, by message id (`followUpIds`). */
+  followUpIds: ReadonlySet<string>;
 }
 
-export const ChatMessages = ({ messages, isLoading, onApprovalContinue }: ChatMessagesProps) => (
+export const ChatMessages = ({
+  messages,
+  isLoading,
+  onApprovalContinue,
+  followUpIds,
+}: ChatMessagesProps) => (
   <div className="space-y-4 pb-2">
     {messages.map((message) => (
       <div
@@ -47,7 +54,12 @@ export const ChatMessages = ({ messages, isLoading, onApprovalContinue }: ChatMe
                 "text-foreground min-w-0 flex-1 pt-0.5",
           )}
         >
-          <MessageParts parts={message.parts} onApprovalContinue={onApprovalContinue} />
+          {isChatFollowUp(message, followUpIds) ? (
+            // The turn the chat sent once the person approved: one quiet line.
+            <ApprovalFollowUp />
+          ) : (
+            <MessageParts parts={message.parts} onApprovalContinue={onApprovalContinue} />
+          )}
         </div>
       </div>
     ))}
@@ -74,8 +86,6 @@ const MessageParts = ({
   <>
     {parts.map((part, i) => {
       if (part.type === "text") {
-        // The turn the chat sent once the person approved: one quiet line.
-        if (parseApprovalFollowUp(part.text)) return <ApprovalFollowUp key={i} />;
         return <TextContent key={i} text={part.text} />;
       }
       const card = approvalCardOf(part);
