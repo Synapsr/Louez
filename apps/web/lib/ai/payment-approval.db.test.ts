@@ -106,6 +106,7 @@ describe(
       louezDb = await import("@louez/db");
       aiTools = await import("./tools");
       const { paymentRecordsPort } = await import("@/lib/api/payment-records-port");
+      const { paymentRefundsPort } = await import("@/lib/api/payment-refunds-port");
       // packages/api is ES modules: its router needs the CommonJS packages'
       // names by hand. Loaded last, as the mocks change how later modules load.
       await import("@louez/mcp/testing/cjs-named-exports");
@@ -122,6 +123,7 @@ describe(
         urls: createTestUrls(),
         afterCommit: () => {},
         paymentRecords: paymentRecordsPort,
+        paymentRefunds: paymentRefundsPort,
       } as typeof ports;
 
       await louezDb.db.insert(louezDb.users).values([
@@ -479,6 +481,55 @@ describe(
         (await paymentsOf(reservationId)).map((row) => row.type),
         ["deposit"],
       );
+    });
+
+    test("a refund recorded by hand asks the person too, though no tool calls it", async () => {
+      const reservationId = await reservation();
+
+      const [payment] = await louezDb.db
+
+        .insert(louezDb.payments)
+
+        .values({
+          reservationId,
+          type: "rental",
+          amount: "30.00",
+          method: "cash",
+          status: "completed",
+        })
+
+        .$returningId();
+
+      // The procedure, called directly through the assistant's own client.
+
+      const api = assistantApi.createAssistantApi({
+        headers: new Headers({ [SESSION_HEADER]: OWNER }),
+
+        storeId: STORE,
+
+        ports,
+      });
+
+      const refused = await api.payments
+
+        .recordRefund({ paymentId: payment.id, amount: "10.00", method: "cash" })
+
+        .then(
+          () => null,
+
+          (error: { data?: { code?: string; details?: { approval?: { id?: string } } } }) =>
+            error.data,
+        );
+
+      assert.equal(refused?.code, "APPROVAL_REQUIRED");
+
+      const row = await rowOf(String(refused?.details?.approval?.id));
+
+      assert.equal(row.credentialKind, "assistant");
+
+      assert.deepEqual((row.payload as { consequences?: unknown }).consequences, ["money"]);
+
+      assert.equal((await paymentsOf(reservationId)).length, 1, "no refund written");
     });
 
     test("a person's own session is never asked, whatever its request says", async () => {

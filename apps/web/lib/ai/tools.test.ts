@@ -175,6 +175,10 @@ const HELD_PAYMENT_WRITES: Record<string, string> = {
   "dashboard.payments.delete": "asks the person",
   // Session-only (`actors`), so refused to the assistant's session; no tool calls it.
   "dashboard.reservations.resolveDepositAttempt": "not called",
+  // A refund given by hand: it declares `money`, so it asks the person's
+  // approval of the assistant's session too (lib/ai/payment-approval.db.test.ts);
+  // no tool calls it.
+  "dashboard.payments.recordRefund": "not called",
 };
 
 /** The ones a tool may call: they ask the person (`personApproval`). */
