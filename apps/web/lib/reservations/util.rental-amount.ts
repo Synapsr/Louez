@@ -41,11 +41,7 @@ export function getReservationRentalAmount(reservation: {
   const total = parseFloat(reservation.totalAmount || "0");
 
   if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (
-    deposit > 0 &&
-    totalMayIncludeDeposit(reservation) &&
-    total - subtotal >= deposit - 0.01
-  ) {
+  if (deposit > 0 && totalMayIncludeDeposit(reservation) && total - subtotal >= deposit - 0.01) {
     return Math.max(0, total - deposit);
   }
 

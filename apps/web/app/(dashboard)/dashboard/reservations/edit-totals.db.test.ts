@@ -115,14 +115,12 @@ describe(
       actions = await import("./actions");
       await import("@louez/mcp/testing/cjs-named-exports");
       totalsEngine = await import("@louez/api/services/reservation-totals");
-      await louezDb.db
-        .insert(louezDb.stores)
-        .values({
-          id: STORE,
-          userId: "owner_edit_totals",
-          name: "Edit totals",
-          slug: "edit-totals",
-        });
+      await louezDb.db.insert(louezDb.stores).values({
+        id: STORE,
+        userId: "owner_edit_totals",
+        name: "Edit totals",
+        slug: "edit-totals",
+      });
       await louezDb.db.insert(louezDb.customers).values({
         id: CUSTOMER,
         storeId: STORE,

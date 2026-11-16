@@ -134,7 +134,6 @@ export function NewReservationSummaryPanel({
 
   const durationLabel = useReservationDurationLabel(detailedDuration, duration);
 
-
   return (
     <Card>
       {/* Below `lg` this card sheds its recap half — the confirmation sheet

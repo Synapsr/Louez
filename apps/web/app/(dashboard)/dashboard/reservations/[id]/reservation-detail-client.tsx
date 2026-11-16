@@ -108,7 +108,6 @@ function toDate(value: Date | string | null | undefined) {
   return value instanceof Date ? value : new Date(value);
 }
 
-
 export function ReservationDetailClient({
   reservationId,
   initialReservation,
