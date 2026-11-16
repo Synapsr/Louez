@@ -370,6 +370,8 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
     allowOverbooking: z.boolean().optional(),
     // The total the form showed, compared under the locks with what is written.
     expectedTotal: z.number().min(0).optional(),
+    // The reservation as the form loaded it, compared under the locks with the one stored.
+    loadedEditToken: z.string().max(128).optional(),
     delivery: z
       .object({
         outbound: z.object({

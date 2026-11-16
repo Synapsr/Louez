@@ -277,13 +277,26 @@ export function calculateEditableItemPrice(
   };
 }
 
+/** What the edit form's summary shows of the totals the edit will write. */
+export interface EditPreviewTotals {
+  /** The lines plus the insurance, as the reservation stores its subtotal. */
+  subtotal: number;
+  /** The tax, or null with taxes off. */
+  taxAmount: number | null;
+  /** The total tax included: what the edit writes, and the form sends. */
+  total: number;
+  /** Prices given before tax: the subtotal and the tax are shown as lines of their own. */
+  taxOnTop: boolean;
+}
+
 /**
- * The total the edit will write (slice 10): the tax engine over the lines,
+ * The totals the edit will write (slice 10): the tax engine over the lines,
  * the insurance (exempt), the delivery fee and the discount, in the mode the
  * reservation recorded or else the store's, with the same function and the
- * same inputs as the server (`priceReservationEdit`).
+ * same inputs as the server (`priceReservationEdit`). One call gives the
+ * total and the figures the summary shows beside it.
  */
-export function previewEditTotal(params: {
+export function previewEditTotals(params: {
   items: ReadonlyArray<{
     totalPrice: number;
     effectiveUnitPrice: number;
@@ -299,8 +312,8 @@ export function previewEditTotal(params: {
   recordedTaxDisplayMode: TaxDisplayMode | null;
   /** The reservation's currency, as the server totals it. */
   currency?: string;
-}): number {
-  return computeReservationTotals({
+}): EditPreviewTotals {
+  const totals = computeReservationTotals({
     lines: params.items.map((item) => ({
       subtotal: roundCurrency(item.totalPrice),
       unitPrice: roundCurrency(item.effectiveUnitPrice),
@@ -312,14 +325,48 @@ export function previewEditTotal(params: {
     totalDeposit: params.deposit,
     taxSettings: taxSettingsForRepricing(params.storeTax, params.recordedTaxDisplayMode),
     currency: params.currency,
-  }).total;
+  });
+  return {
+    subtotal: totals.subtotal,
+    taxAmount: totals.taxAmount,
+    total: totals.total,
+    taxOnTop: totals.taxEnabled && totals.displayMode === "exclusive",
+  };
 }
+
+/** The edit summary's figures, each one stored now or about to be written. */
+export interface EditSummaryFigures {
+  /** The total as stored, tax included. */
+  before: number;
+  /** The total the edit writes, tax included. */
+  after: number;
+  /** `after` less `before`, in the currency's minor unit. */
+  difference: number;
+  /** The discount stored, which `after` takes off; zero for none. */
+  discount: number;
+  /** With prices before tax: the subtotal and the tax of `after`; else null. */
+  taxLines: { subtotal: number; tax: number } | null;
+}
+
+export const editSummaryFigures = (input: {
+  storedTotal: number;
+  preview: EditPreviewTotals;
+  discountAmount: number;
+  currency: string;
+}): EditSummaryFigures => ({
+  before: input.storedTotal,
+  after: input.preview.total,
+  difference: roundToMinorUnit(input.preview.total - input.storedTotal, input.currency),
+  discount: input.discountAmount > 0 ? input.discountAmount : 0,
+  taxLines: input.preview.taxOnTop
+    ? { subtotal: input.preview.subtotal, tax: input.preview.taxAmount ?? 0 }
+    : null,
+});
 
 interface UseEditReservationPricingParams {
   startDate: Date | undefined;
   endDate: Date | undefined;
   items: EditableItem[];
-  originalSubtotal: number;
   fixedChargesTotal?: number;
   /** The window as stored: a line is priced again when the window is not this one. */
   storedWindow?: { start: Date; end: Date };
@@ -331,7 +378,6 @@ export function useEditReservationPricing({
   startDate,
   endDate,
   items,
-  originalSubtotal,
   fixedChargesTotal = 0,
   storedWindow,
   currency,
@@ -368,7 +414,6 @@ export function useEditReservationPricing({
         })),
         subtotal: 0,
         deposit: 0,
-        difference: -originalSubtotal,
         totalSavings: 0,
       };
     }
@@ -419,20 +464,9 @@ export function useEditReservationPricing({
       items: calculatedItems,
       subtotal: subtotalWithFixedCharges,
       deposit,
-      difference: roundCurrency(subtotalWithFixedCharges - originalSubtotal),
       totalSavings,
     };
-  }, [
-    items,
-    startDate,
-    endDate,
-    originalSubtotal,
-    fixedChargesTotal,
-    timezone,
-    storedStart,
-    storedEnd,
-    currency,
-  ]);
+  }, [items, startDate, endDate, fixedChargesTotal, timezone, storedStart, storedEnd, currency]);
 
   return {
     getDurationForMode,

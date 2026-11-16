@@ -106,6 +106,8 @@ export interface Reservation {
   deliveryFee: string | null;
   discountAmount: string | null;
   taxDisplayMode?: "inclusive" | "exclusive" | null;
+  /** The reservation as the form loaded it: sent back, the edit applies to it or is refused. */
+  editToken: string;
   tulipInsuranceOptIn: boolean | null;
   tulipInsuranceAmount: string | null;
   delivery: ReservationDelivery;
@@ -193,6 +195,5 @@ export interface ReservationCalculations {
   items: CalculatedEditableItem[];
   subtotal: number;
   deposit: number;
-  difference: number;
   totalSavings: number;
 }
