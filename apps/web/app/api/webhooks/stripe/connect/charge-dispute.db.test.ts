@@ -50,7 +50,7 @@ function fakeStripe() {
       };
     },
     async retrieveApplicationFee(feeId) {
-      return { id: feeId, amount: 250, amount_refunded: feeRefunded };
+      return { id: feeId, amount: 250, amount_refunded: feeRefunded, currency: "eur" };
     },
     async listDisputes() {
       return [{ id: "dp_disputed", amount: 10_000, status: "needs_response" }];

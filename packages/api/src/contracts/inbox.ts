@@ -29,7 +29,7 @@ export const INBOX_ITEM_TYPES = [
   "deposit_release_failed",
   /** A refund of an online payment Stripe has not confirmed a day after it was asked. */
   "refund_unconfirmed",
-  /** A recorded Stripe refund that failed afterwards: its credit note, or Louez's fee given back on it, to see to. */
+  /** A Stripe refund that failed: the customer was not refunded; a credit note issued for it is named. */
   "refund_undone",
   /** A refund's credit note the outbox gave up on: tried again once a day. */
   "credit_note_not_issued",
@@ -88,6 +88,16 @@ export const listInboxInput = z.object({
     .max(INBOX_PAGE_MAX)
     .optional()
     .describe(`Items per call (default ${INBOX_PAGE_DEFAULT}, at most ${INBOX_PAGE_MAX}).`),
+  types: z
+    // A query string with one value gives a string, with several an array.
+    .preprocess(
+      (value) => (typeof value === "string" ? [value] : value),
+      z.array(z.enum(INBOX_ITEM_TYPES)).min(1).max(INBOX_ITEM_TYPES.length),
+    )
+    .optional()
+    .describe(
+      "Only items of these types, among those the caller may read: a type it may not read stays out. Leave it out for every type. A cursor follows the types of the call that returned it: pass the same types with it.",
+    ),
 });
 export type ListInboxInput = z.infer<typeof listInboxInput>;
 

@@ -13,10 +13,7 @@ import {
   providerRefundFromStripe,
   refundMovedMoney,
 } from "@/lib/reservations/stripe-refund-stripe";
-import {
-  recordChargeRefunds,
-  recordFeeOverReturned,
-} from "@/lib/reservations/stripe-refund-writes";
+import { recordChargeRefunds } from "@/lib/reservations/stripe-refund-writes";
 import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
 
@@ -142,9 +139,9 @@ export async function handleChargeRefunded(
 
   // The fee follows the money, whether or not Louez holds the payment. A charge
   // without an application fee never gets one, so it needs no Stripe call.
-  const fee = charge.application_fee
-    ? await reverseFeeAtSource({ chargeId: charge.id, accountId, stripe: port.feeReversal })
-    : null;
+  if (charge.application_fee) {
+    await reverseFeeAtSource({ chargeId: charge.id, accountId, stripe: port.feeReversal });
+  }
 
   const paymentIntentId = stripeId(charge.payment_intent);
   const payment = await findChargePayment({ chargeId: charge.id, paymentIntentId, accountId });
@@ -185,12 +182,6 @@ export async function handleChargeRefunded(
     source: "stripe_charge_refunded_webhook",
   });
   dispatchEffects(recorded.effectIds);
-  await recordFeeOverReturned(db, {
-    reservationId: payment.reservationId,
-    paymentId: payment.paymentId,
-    chargeId: charge.id,
-    fee: fee?.status === "no_fee" ? null : fee,
-  });
   const netMinor = recorded.netMinor;
   const fullyRefunded = netMinor === 0;
 
@@ -287,9 +278,9 @@ export async function handleRefundUpdated(
   }
 
   const charge = await port.feeReversal.retrieveCharge(chargeId, accountId);
-  const fee = charge.application_fee
-    ? await reverseFeeAtSource({ chargeId, accountId, stripe: port.feeReversal })
-    : null;
+  if (charge.application_fee) {
+    await reverseFeeAtSource({ chargeId, accountId, stripe: port.feeReversal });
+  }
   const currency = failed.currency;
   const listed = (await port.listRefunds(chargeId, accountId)).map((candidate) =>
     candidate.id === failed.id ? failed : listedRefund(candidate, currency),
@@ -307,11 +298,5 @@ export async function handleRefundUpdated(
     source: "stripe_refund_updated_webhook",
   });
   dispatchEffects(recorded.effectIds);
-  await recordFeeOverReturned(db, {
-    reservationId: payment.reservationId,
-    paymentId: payment.paymentId,
-    chargeId,
-    fee: fee?.status === "no_fee" ? null : fee,
-  });
   return { status: "recorded", paymentId: payment.paymentId, undone: recorded.undone.length };
 }
