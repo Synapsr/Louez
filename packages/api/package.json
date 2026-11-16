@@ -39,6 +39,7 @@
     "./services/payment-reservation-status": "./src/services/payment-reservation-status.ts",
     "./services/price-cart": "./src/services/price-cart.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
+    "./services/pricing-facts": "./src/services/pricing-facts.ts",
     "./services/promo": "./src/services/promo.ts",
     "./services/reservation-create": "./src/services/reservation-create.ts",
     "./services/reservation-failure": "./src/services/reservation-failure.ts",

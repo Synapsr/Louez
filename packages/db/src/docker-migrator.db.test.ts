@@ -43,6 +43,7 @@ const RELEASE = [
   "0104_api_approval_consumption",
   "0105_payment_session_settled",
   "0106_payment_refund_operations",
+  "0107_reservation_pricing_facts",
 ];
 
 interface Journal {

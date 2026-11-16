@@ -12,7 +12,12 @@ import {
   splitShortfallsByTurnoverBuffer,
 } from "@louez/api/services/reservation-inventory";
 
-import { isReservationEditable, validateReservationContract } from "@louez/api/services";
+import {
+  isReservationEditable,
+  pricingBasisOf,
+  taxDisplayModeOf,
+  validateReservationContract,
+} from "@louez/api/services";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -1011,6 +1016,9 @@ export async function createManualReservation(data: CreateReservationData) {
       depositAmount: depositAmount.toFixed(2),
       totalAmount: totalAmount.toFixed(2),
       discountAmount: manualDiscountAmount.toFixed(2),
+      // The store's tax display mode, recorded (slice 9). Its totals do not
+      // run the tax engine yet: they are what the store's prices add up to.
+      taxDisplayMode: taxDisplayModeOf(store.settings?.tax),
       internalNotes: data.internalNotes || null,
       source: "manual",
       // Staff books on the customer's behalf: the profile's default identity
@@ -1059,6 +1067,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: detail.depositPerUnit,
         totalPrice: detail.totalPrice,
         pricingBreakdown: detail.pricingBreakdown,
+        taxExempt: false,
         combinationKey: choice.combinationKey,
         selectedAttributes: choice.selectedAttributes,
         productSnapshot: {
@@ -1082,6 +1091,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: customItem.depositPerUnit,
         totalPrice: customItem.totalPrice,
         pricingBreakdown: customItem.pricingBreakdown,
+        taxExempt: false,
         productSnapshot: {
           name: customItem.name,
           description: customItem.description,
@@ -1099,6 +1109,8 @@ export async function createManualReservation(data: CreateReservationData) {
         unitPrice: tulipInsuranceAmount.toFixed(2),
         depositPerUnit: "0.00",
         totalPrice: tulipInsuranceAmount.toFixed(2),
+        // Insurance carries no VAT, whatever the store's settings.
+        taxExempt: true,
         productSnapshot: {
           name: "Garantie casse/vol",
           description: "Garantie casse/vol",
@@ -1989,7 +2001,7 @@ export async function updateReservation(
         // The product may have been deleted since the reservation was created;
         // the stored breakdown keeps the kind so the manual price stays editable.
         const existingBreakdown = item.id
-          ? existingItemsById.get(item.id)?.pricingBreakdown
+          ? pricingBasisOf(existingItemsById.get(item.id)?.pricingBreakdown)
           : undefined;
         manualPricingKind =
           manualPriceProduct?.pricingKind ?? toPricingKind(existingBreakdown?.pricingKind);
@@ -2141,7 +2153,8 @@ export async function updateReservation(
   } else {
     // Just recalculate existing items with new duration
     for (const item of existingNonInsuranceItems) {
-      const pricingBreakdown = item.pricingBreakdown as Record<string, unknown> | null;
+      // A breakdown written only to record facts is read as none, as before (slice 9).
+      const pricingBreakdown = pricingBasisOf(item.pricingBreakdown);
       const isManualPrice = pricingBreakdown?.isManualOverride === true;
 
       let totalPrice: number;
@@ -2267,9 +2280,9 @@ export async function updateReservation(
             ? 1
             : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
         totalPrice = finalUnitPrice * itemDuration * item.quantity;
-        const nextPricingBreakdown = item.pricingBreakdown
+        const nextPricingBreakdown = pricingBreakdown
           ? {
-              ...item.pricingBreakdown,
+              ...pricingBreakdown,
               duration: itemDuration,
               pricingMode: fallbackPricingMode,
               pricingKind: manualPricingKind,

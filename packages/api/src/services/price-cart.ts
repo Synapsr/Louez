@@ -3,8 +3,9 @@ import {
   type PricedCatalogLine,
   type PricingCatalog,
   type PricingCatalogLineInput,
+  type PricingCatalogProduct,
 } from "./pricing-catalog";
-import type { ProductTaxSettings, TaxSettings } from "@louez/types";
+import type { PricingBreakdown, ProductTaxSettings, TaxSettings } from "@louez/types";
 import {
   calculateTaxBreakdown,
   extractExclusiveFromInclusive,
@@ -177,3 +178,33 @@ export const getReservationItemTaxFields = (
     totalExclTax: itemTax.amountExclTax,
   };
 };
+
+/**
+ * The checkout's pricing breakdown of a line, written on every line it
+ * prices (slice 9): the promotion its price applied, `null` when none did,
+ * and the tax figures. The checkout and the API's creation write the same.
+ */
+export const checkoutLineBreakdown = (
+  product: Pick<PricingCatalogProduct, "price" | "pricingMode"> | undefined,
+  line: PricedCartLine,
+  tax: ReservationItemTaxFields,
+): PricingBreakdown => ({
+  basePrice: product?.price ?? line.unitPrice,
+  effectivePrice: line.unitPrice,
+  duration: line.duration,
+  pricingMode: product?.pricingMode ?? "day",
+  pricingKind: line.pricingKind,
+  discountPercent: line.promotion?.percentage ?? null,
+  discountAmount: line.promotion?.discountAmount ?? 0,
+  tierApplied: null,
+  promotion: line.promotion ?? null,
+  taxRate: tax.taxRate,
+  taxAmount: tax.taxAmount,
+  subtotalExclTax: tax.totalExclTax,
+  subtotalInclTax:
+    tax.totalExclTax !== null && tax.taxAmount !== null
+      ? tax.totalExclTax + tax.taxAmount
+      : line.subtotal,
+  // An unpromoted line kept no breakdown before: this one records its facts only.
+  ...(line.promotion ? {} : { factsOnly: true as const }),
+});
