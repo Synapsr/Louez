@@ -3,6 +3,11 @@ import { eq } from "drizzle-orm";
 import { stores, type Transaction } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 
+import {
+  applyRecordedPromotion,
+  editedLineTaxSettings,
+  type EditedLineTax,
+} from "./edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "./pricing-catalog";
 import { taxDisplayModeOf, taxSettingsForRepricing, type TaxDisplayMode } from "./pricing-facts";
 import {
@@ -21,11 +26,12 @@ import {
  * delivery fee and its discount, exactly as the checkout computes them, in
  * the display mode the reservation recorded.
  *
- * A line's amount is the one the edit computed for it before its locks, by
- * today's rules (slice 11 changes which lines are repriced and how). A line
- * priced from its product is priced again here, from the catalogue read under
- * the locks: when that no longer gives the same amount to the cent, the
- * product changed while the store was editing, and the edit is refused.
+ * A line's amount is the one the edit computed for it before its locks
+ * (`priceEditedProductLine`, slice 11): a line the edit does not change keeps
+ * its stored price and its recorded rate. A line priced from its product is
+ * priced again here, from the catalogue read under the locks: when that no
+ * longer gives the same amount to the cent, the product changed while the
+ * store was editing, and the edit is refused.
  */
 
 const cents = (value: number) => Math.round(value * 100);
@@ -41,6 +47,10 @@ export interface EditedLine {
   unitPrice: number;
   /** The exemption it recorded; null when it recorded none. */
   taxExempt: boolean | null;
+  /** The tax it is priced with (slice 11): a rate it keeps, or today's settings. */
+  tax: EditedLineTax;
+  /** The percentage of the promotion it recorded, applied again to its new price (slice 11). */
+  promotionPercentage: number | null;
 }
 
 export interface EditPricingInput {
@@ -105,13 +115,21 @@ export async function priceReservationEdit(
       startDate: input.window.start.toISOString(),
       endDate: input.window.end.toISOString(),
     });
-    if (cents(priced.subtotal) !== cents(line.subtotal)) return { ok: false };
+    const subtotal =
+      line.promotionPercentage === null
+        ? priced.subtotal
+        : applyRecordedPromotion(priced.subtotal, { percentage: line.promotionPercentage })
+            .subtotal;
+    if (cents(subtotal) !== cents(line.subtotal)) return { ok: false };
   }
 
   const taxed: TaxedLine[] = input.lines.map((line) => ({
     subtotal: line.subtotal,
     unitPrice: line.unitPrice,
-    taxSettings: (line.productId ? catalog.get(line.productId)?.taxSettings : null) ?? null,
+    taxSettings: editedLineTaxSettings(
+      line.tax,
+      line.productId ? catalog.get(line.productId)?.taxSettings : null,
+    ),
     // A line not outside the tax by rule: a product or a custom line.
     taxExempt: line.taxExempt ?? false,
   }));
