@@ -1190,11 +1190,8 @@ describe("a payment recorded through the generic write says what the writer reco
 
   test("the amount shown is the amount the row holds, every digit of it and no other", () => {
     const cases: Array<[string, string, string]> = [
-      // Yen has no minor unit, the row keeps two decimals: 1.49 stays 1.49.
-      ["1.49", "JPY", "Rental: ¥1.49 received · Cash"],
       ["1500", "JPY", "Rental: ¥1,500 received · Cash"],
-      // Dinars have three, the row two: an amount of two decimals is shown with two.
-      ["1.23", "KWD", "Rental: KWD 1.23 received · Cash"],
+      ["1500.00", "JPY", "Rental: ¥1,500 received · Cash"],
       ["120", "EUR", "Rental: €120.00 received · Cash"],
       ["120.5", "EUR", "Rental: €120.50 received · Cash"],
     ];
@@ -1206,14 +1203,14 @@ describe("a payment recorded through the generic write says what the writer reco
       "Adjustment: -€20.50, paid back to the customer · Card",
     );
     // The identity holds the same amount as the row.
-    assert.equal(recorded("rental", "1.2", "cash", "KWD")?.facts.amount, "1.20");
+    assert.equal(recorded("rental", "1.2")?.facts.amount, "1.20");
     // A deposit's balance, a deleted payment's amount and a booking's total are read from their rows: shown as held.
     const held = recordDepositReturnPresentation(
-      { reservationId: RESERVATION, number: "R-00094", amount: "1.49", method: "cash", returnable: "3.50" },
+      { reservationId: RESERVATION, number: "R-00094", amount: "1", method: "cash", returnable: "3.50" },
       "JPY",
       3.5,
     );
-    assert.deepEqual(screenOf(held).slice(2, 4), ["Deposit given back: ¥1.49 · Cash", "Deposit still held before this: ¥3.50"]);
+    assert.deepEqual(screenOf(held).slice(2, 4), ["Deposit given back: ¥1 · Cash", "Deposit still held before this: ¥3.50"]);
     const deleted = deletePaymentPresentation(
       { paymentId: "pay_1", number: "R-00094", type: "rental", amount: "0.75", method: "cash" },
       { reservationId: RESERVATION, currency: "JPY", recordedAt: new Date("2026-11-12T15:30:00.000Z") },
@@ -1223,6 +1220,21 @@ describe("a payment recorded through the generic write says what the writer reco
       statusPreview({ reservation: { ...statusPreview().reservation, totalAmount: "9800.50", currency: "JPY" } }),
     );
     assert.match(screenOf(booking.presentation)[2] ?? "", /· ¥9,800\.50$/);
+  });
+
+  test("an amount past its currency's decimals, or in a three-decimal currency, shows no display: the write refuses it", () => {
+    assert.equal(recorded("rental", "1.49", "cash", "JPY"), null);
+    assert.equal(recorded("rental", "0.5", "cash", "JPY"), null);
+    assert.equal(recorded("rental", "1.23", "cash", "KWD"), null);
+    const returned = (amount: string, currency: string) =>
+      recordDepositReturnPresentation(
+        { reservationId: RESERVATION, number: "R-00094", amount, method: "cash", returnable: "300.00" },
+        currency,
+        300,
+      );
+    assert.equal(returned("0.5", "JPY"), null);
+    assert.equal(returned("1", "KWD"), null);
+    assert.ok(returned("1", "JPY"));
   });
 
   test("a text the column would not hold as written shows no display", () => {

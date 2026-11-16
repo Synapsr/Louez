@@ -316,6 +316,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
   async function reservation(
     status: "pending" | "confirmed" | "cancelled" | "rejected" = "confirmed",
     storeId = STORE,
+    currency: string | null = null,
   ) {
     counter += 1;
     const id = `pw_res_${String(counter).padStart(14, "0")}`;
@@ -331,6 +332,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       subtotalAmount: "80.00",
       depositAmount: "50.00",
       totalAmount: "80.00",
+      currency,
     });
     return { id, number: `2030-${String(counter).padStart(4, "0")}` };
   }
@@ -609,8 +611,8 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
 
     const first = approval(await mcpCall(authorization, "record_payment", args));
     assert.deepEqual(first.preview, {
-      // The amount is written in euros whatever the store's currency, as today.
-      summary: `Record a rental payment of €80.00 (transfer) on reservation #${number}.`,
+      // In the reservation's currency: here the store's, francs.
+      summary: `Record a rental payment of CHF\u00a080.00 (transfer) on reservation #${number}.`,
       details: {
         sensitive: "money",
         reservationId: id,
@@ -794,7 +796,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
 
     const first = approval(await mcpCall(authorization, "record_deposit_return", args));
     assert.deepEqual(first.preview, {
-      summary: `Record a deposit return of €30.00 (cash) on reservation #${number}.`,
+      summary: `Record a deposit return of CHF\u00a030.00 (cash) on reservation #${number}.`,
       details: {
         sensitive: "money",
         reservationId: id,
@@ -1036,7 +1038,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       refusal(await giveBack("30.01")),
       refused(
         "DEPOSIT_RETURN_EXCEEDS_BALANCE",
-        "Amount exceeds returnable deposit. Collected: €50.00, already returned: €20.00, max returnable: €30.00.",
+        "Amount exceeds returnable deposit. Collected: CHF\u00a050.00, already returned: CHF\u00a020.00, max returnable: CHF\u00a030.00.",
       ),
     );
 
@@ -1053,6 +1055,142 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(await paymentsOf(open.id), before);
     assert.deepEqual(await paymentsOf(cancelled.id), []);
     assert.deepEqual(await marks(), []);
+  });
+
+  test("an amount has at most the decimals of the reservation's currency, and a three-decimal currency is refused, on MCP and REST, before anything is asked", async () => {
+    const authorization = await key();
+    const yen = await reservation("confirmed", STORE, "JPY");
+    await payment(yen.id, { type: "deposit", amount: "5.00" });
+    const dinars = await reservation("confirmed", STORE, "KWD");
+    await payment(dinars.id, { type: "deposit", amount: "5.00" });
+    const asked = await approvalCount();
+    const record = (reservationId: string, amount: string) =>
+      mcpCall(authorization, "record_payment", {
+        reservationId,
+        type: "rental",
+        amount,
+        method: "cash",
+      });
+    const giveBack = (reservationId: string, amount: string) =>
+      mcpCall(authorization, "record_deposit_return", { reservationId, amount, method: "cash" });
+    const rest = async (path: string, body: object) => {
+      const response = await openApi("POST", path, body, { authorization });
+      const data = ((await response.json()) as { data?: Json }).data ?? {};
+      return { status: response.status, code: data.code, details: data.details };
+    };
+    const noDecimals = 'A JPY amount has no decimals: send whole units (such as "30").';
+
+    // Half a yen: refused with the currency and its decimals, nothing asked.
+    for (const [result, code] of [
+      [await record(yen.id, "0.5"), "PAYMENT_AMOUNT_INVALID"],
+      [await giveBack(yen.id, "0.5"), "DEPOSIT_RETURN_AMOUNT_INVALID"],
+    ] as const) {
+      assert.equal(result.isError, true, textOf(result));
+      const error = errorOf(result);
+      assert.deepEqual(
+        { code: error?.code, message: error?.message, details: error?.details },
+        { code, message: noDecimals, details: { currency: "JPY", decimals: 0 } },
+      );
+    }
+    assert.deepEqual(
+      await rest(`/reservations/${yen.id}/payments`, {
+        type: "rental",
+        amount: "0.50",
+        method: "cash",
+      }),
+      { status: 400, code: "PAYMENT_AMOUNT_INVALID", details: { currency: "JPY", decimals: 0 } },
+    );
+    assert.deepEqual(
+      await rest(`/reservations/${yen.id}/deposit-returns`, { amount: "0.5", method: "cash" }),
+      {
+        status: 400,
+        code: "DEPOSIT_RETURN_AMOUNT_INVALID",
+        details: { currency: "JPY", decimals: 0 },
+      },
+    );
+
+    // A three-decimal currency: refused whatever the amount, nothing asked.
+    for (const result of [await record(dinars.id, "1"), await giveBack(dinars.id, "1")]) {
+      assert.equal(result.isError, true, textOf(result));
+      const error = errorOf(result);
+      assert.deepEqual(
+        { code: error?.code, details: error?.details },
+        { code: "PAYMENT_CURRENCY_NOT_SUPPORTED", details: { currency: "KWD" } },
+      );
+    }
+    for (const [path, body] of [
+      [`/reservations/${dinars.id}/payments`, { type: "rental", amount: "1", method: "cash" }],
+      [`/reservations/${dinars.id}/deposit-returns`, { amount: "1", method: "cash" }],
+    ] as const) {
+      assert.deepEqual(await rest(path, body), {
+        status: 409,
+        code: "PAYMENT_CURRENCY_NOT_SUPPORTED",
+        details: { currency: "KWD" },
+      });
+    }
+    assert.equal(await approvalCount(), asked, "nothing is asked for a refused amount");
+    assert.equal(recorded.length, 0, "nothing is written");
+
+    // A deposit return above the balance says it in yen.
+    const above = refusal(await giveBack(yen.id, "6"));
+    assert.equal(above.code, "DEPOSIT_RETURN_EXCEEDS_BALANCE");
+    assert.equal(
+      above.message,
+      "Amount exceeds returnable deposit. Collected: ¥5, already returned: ¥0, max returnable: ¥5.",
+    );
+
+    // One yen: asked, previewed in yen as the page shows it, then written.
+    const one = approval(await record(yen.id, "1"));
+    assert.equal(
+      (one.preview as { summary: string }).summary,
+      `Record a rental payment of ¥1 (cash) on reservation #${yen.number}.`,
+    );
+    await approve(one.id);
+    answer(
+      await mcpCall(authorization, "record_payment", {
+        reservationId: yen.id,
+        type: "rental",
+        amount: "1",
+        method: "cash",
+        confirmationToken: one.id,
+      }),
+    );
+    const back = approval(await giveBack(yen.id, "1"));
+    assert.equal(
+      (back.preview as { summary: string }).summary,
+      `Record a deposit return of ¥1 (cash) on reservation #${yen.number}.`,
+    );
+    await approve(back.id);
+    answer(
+      await mcpCall(authorization, "record_deposit_return", {
+        reservationId: yen.id,
+        amount: "1",
+        method: "cash",
+        confirmationToken: back.id,
+      }),
+    );
+    // On REST, one yen is asked too.
+    assert.equal(
+      (
+        await rest(`/reservations/${yen.id}/payments`, {
+          type: "rental",
+          amount: "1",
+          method: "cash",
+        })
+      ).code,
+      "APPROVAL_REQUIRED",
+    );
+    assert.equal(
+      (await rest(`/reservations/${yen.id}/deposit-returns`, { amount: "1", method: "cash" })).code,
+      "APPROVAL_REQUIRED",
+    );
+    assert.deepEqual(
+      recorded.map((row) => [row.type, row.amount, row.facts.currency]),
+      [
+        ["rental", "1", "JPY"],
+        ["deposit_return", "1", "JPY"],
+      ],
+    );
   });
 
   test("a member may record and delete; a connection that reads payments may do neither", async () => {
@@ -1180,7 +1318,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     const other = returns[0]?.amount === "30.00" ? forty : thirty;
     const refused = await mcpCall(authorization, "record_deposit_return", other);
     assert.equal(refusal(refused).code, "DEPOSIT_RETURN_EXCEEDS_BALANCE");
-    assert.match(refusal(refused).message ?? "", new RegExp(`max returnable: €${left}\\.`));
+    assert.match(refusal(refused).message ?? "", new RegExp(`max returnable: CHF\u00a0${left}\\.`));
     assert.equal((await paymentsOf(id)).filter((row) => row.type === "deposit_return").length, 1);
   });
 
