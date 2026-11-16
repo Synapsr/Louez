@@ -8,6 +8,7 @@ import { DefaultChatTransport } from "ai";
 import { useTranslations } from "next-intl";
 
 import { loadChatMessages } from "@/app/(dashboard)/dashboard/ai-chat-actions";
+import { approvalFollowUp, type ApprovalCard } from "@/lib/ai/approval-card";
 
 import type { ChatHistoryHandle } from "./chat-history";
 
@@ -114,6 +115,27 @@ export const useDashboardChat = () => {
     [isLoading, clearError, sendMessage],
   );
 
+  // The approvals whose follow-up this chat sent: once each, on its own.
+  const continuedRef = useRef(new Set<string>());
+
+  /**
+   * Once the person approved a payment the assistant prepared (on its page,
+   * read by the card), the turn that lets the model carry it out: sent once
+   * per approval, and never while an answer streams (the card asks again
+   * when it ends). The person's own click (`manual`) sends it again: the
+   * procedure carries an approval out once, and answers `used` after.
+   */
+  const continueApproval = useCallback(
+    (card: ApprovalCard, options: { manual?: boolean } = {}) => {
+      if (isLoading) return;
+      if (!options.manual && continuedRef.current.has(card.approvalId)) return;
+      continuedRef.current.add(card.approvalId);
+      clearError();
+      sendMessage({ text: approvalFollowUp(card) });
+    },
+    [isLoading, clearError, sendMessage],
+  );
+
   return {
     messages,
     isLoading,
@@ -126,5 +148,6 @@ export const useDashboardChat = () => {
     startNewChat,
     selectChat,
     send,
+    continueApproval,
   };
 };

@@ -33,6 +33,7 @@ export const ChatPage = ({ advisorDiscovery, voiceDiscovery }: ChatPageProps) =>
   const {
     messages,
     isLoading,
+    continueApproval,
     chatId,
     historyRef,
     errorMessage,
@@ -138,7 +139,11 @@ export const ChatPage = ({ advisorDiscovery, voiceDiscovery }: ChatPageProps) =>
         >
           <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-6 sm:px-6">
             {hasConversation ? (
-              <ChatMessages messages={messages} isLoading={isLoading} />
+              <ChatMessages
+                messages={messages}
+                isLoading={isLoading}
+                onApprovalContinue={continueApproval}
+              />
             ) : (
               <ChatEmptyState
                 onPrompt={send}

@@ -6887,6 +6887,27 @@
         "customers": "Hoeveel nieuwe klanten deze maand?",
         "overdue": "Zijn er retouren te laat?",
         "pending": "Toon me de reserveringen die wachten op bevestiging"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Deze betaling registreren?",
+          "delete_payment": "Deze betaling verwijderen?",
+          "return_deposit": "Deze terugbetaling van de borg registreren?"
+        },
+        "amount": "Bedrag",
+        "booking": "Boeking",
+        "open": "Bekijken en beslissen",
+        "expires": "Beslis vóór {when}",
+        "status": {
+          "pending": "Wacht op je beslissing",
+          "approved": "Goedgekeurd. De assistent voert het uit.",
+          "completed": "Klaar",
+          "declined": "Geweigerd. Er is niets gedaan.",
+          "expired": "Verlopen. Er is niets gedaan.",
+          "ended": "Niet uitgevoerd. Er is niets gedaan."
+        },
+        "continue": "Doorgaan",
+        "followUp": "Goedgekeurd, we gaan verder"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · gevraagd door ‘<who>{agent}</who>’",
       "provenanceKey": "<place>{store}</place> · gevraagd door een API-sleutel",
       "provenanceAssistant": "<place>{store}</place> · gevraagd door een AI-assistent",
+      "provenanceInApp": "<place>{store}</place> · gevraagd via de Louez-assistent",
       "trustShort": "Alleen de samenvatting van Louez telt.",
       "stake": {
         "access_removed": "Trekt een toegang tot je winkel in.",
@@ -9840,6 +9862,7 @@
       "apiKey": "API-sleutel ‘{name}’",
       "apiKeyUnnamed": "Een API-sleutel",
       "unnamedAgent": "Een AI-assistent",
+      "inAppAssistant": "De Louez-assistent, vanuit de chat in je dashboard",
       "checked": "Wat Louez heeft gecontroleerd",
       "messageDestinationOnFile": "Berichten gaan naar de opgeslagen contactgegevens van de klant.",
       "values": {

@@ -6887,6 +6887,27 @@
         "customers": "How many new customers this month?",
         "overdue": "Are any returns overdue?",
         "pending": "Show me reservations awaiting confirmation"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Record this payment?",
+          "delete_payment": "Delete this payment?",
+          "return_deposit": "Record this deposit return?"
+        },
+        "amount": "Amount",
+        "booking": "Booking",
+        "open": "Review and decide",
+        "expires": "Decide by {when}",
+        "status": {
+          "pending": "Waiting for your decision",
+          "approved": "Approved. The assistant is carrying it out.",
+          "completed": "Done",
+          "declined": "Refused. Nothing was done.",
+          "expired": "Lapsed. Nothing was done.",
+          "ended": "Not carried out. Nothing was done."
+        },
+        "continue": "Continue",
+        "followUp": "Approved, continuing"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · asked by “<who>{agent}</who>”",
       "provenanceKey": "<place>{store}</place> · asked by an API key",
       "provenanceAssistant": "<place>{store}</place> · asked by an AI assistant",
+      "provenanceInApp": "<place>{store}</place> · asked through the Louez assistant",
       "trustShort": "Only Louez’s summary counts.",
       "stake": {
         "access_removed": "Revokes access to your store.",
@@ -9840,6 +9862,7 @@
       "apiKey": "API key “{name}”",
       "apiKeyUnnamed": "An API key",
       "unnamedAgent": "An AI assistant",
+      "inAppAssistant": "The Louez assistant, from your dashboard chat",
       "checked": "What Louez checked",
       "messageDestinationOnFile": "Messages go to the customer’s contact details on file.",
       "values": {

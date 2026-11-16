@@ -6887,6 +6887,27 @@
         "customers": "Wie viele neue Kunden diesen Monat?",
         "overdue": "Gibt es überfällige Rückgaben?",
         "pending": "Zeig mir Reservierungen, die auf Bestätigung warten"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Diese Zahlung erfassen?",
+          "delete_payment": "Diese Zahlung löschen?",
+          "return_deposit": "Diese Kautionsrückgabe erfassen?"
+        },
+        "amount": "Betrag",
+        "booking": "Buchung",
+        "open": "Prüfen und entscheiden",
+        "expires": "Entscheiden bis {when}",
+        "status": {
+          "pending": "Wartet auf Ihre Entscheidung",
+          "approved": "Genehmigt. Der Assistent führt es aus.",
+          "completed": "Erledigt",
+          "declined": "Abgelehnt. Es wurde nichts getan.",
+          "expired": "Abgelaufen. Es wurde nichts getan.",
+          "ended": "Nicht ausgeführt. Es wurde nichts getan."
+        },
+        "continue": "Weiter",
+        "followUp": "Genehmigt, es geht weiter"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · angefragt von „<who>{agent}</who>“",
       "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
       "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
+      "provenanceInApp": "<place>{store}</place> · angefragt über den Louez-Assistenten",
       "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
       "stake": {
         "access_removed": "Entzieht einen Zugang zu Ihrem Shop.",
@@ -9840,6 +9862,7 @@
       "apiKey": "API-Schlüssel „{name}“",
       "apiKeyUnnamed": "Ein API-Schlüssel",
       "unnamedAgent": "Ein KI-Assistent",
+      "inAppAssistant": "Der Louez-Assistent, aus dem Chat in Ihrem Dashboard",
       "checked": "Was Louez geprüft hat",
       "messageDestinationOnFile": "Nachrichten gehen an die hinterlegten Kontaktdaten des Kunden.",
       "values": {

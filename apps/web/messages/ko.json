@@ -6887,6 +6887,27 @@
         "customers": "이번 달 신규 고객은 몇 명인가요?",
         "overdue": "반품 기한이 지난 것이 있나요?",
         "pending": "확인 대기 중인 예약 표시"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "이 결제를 기록할까요?",
+          "delete_payment": "이 결제를 삭제할까요?",
+          "return_deposit": "이 보증금 반환을 기록할까요?"
+        },
+        "amount": "금액",
+        "booking": "예약",
+        "open": "확인하고 결정하기",
+        "expires": "{when}까지 결정하세요",
+        "status": {
+          "pending": "결정을 기다리는 중",
+          "approved": "승인됨. 어시스턴트가 실행하고 있습니다.",
+          "completed": "완료",
+          "declined": "거절됨. 아무것도 실행되지 않았습니다.",
+          "expired": "만료됨. 아무것도 실행되지 않았습니다.",
+          "ended": "실행되지 않음. 아무것도 실행되지 않았습니다."
+        },
+        "continue": "계속",
+        "followUp": "승인됨, 계속 진행"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · “<who>{agent}</who>”의 요청",
       "provenanceKey": "<place>{store}</place> · API 키의 요청",
       "provenanceAssistant": "<place>{store}</place> · AI 어시스턴트의 요청",
+      "provenanceInApp": "<place>{store}</place> · Louez 어시스턴트를 통한 요청",
       "trustShort": "유효한 것은 Louez의 요약뿐입니다.",
       "stake": {
         "access_removed": "스토어 접근 권한을 회수합니다.",
@@ -9840,6 +9862,7 @@
       "apiKey": "API 키 “{name}”",
       "apiKeyUnnamed": "API 키",
       "unnamedAgent": "AI 어시스턴트",
+      "inAppAssistant": "Louez 어시스턴트, 대시보드 채팅에서",
       "checked": "Louez가 확인한 내용",
       "messageDestinationOnFile": "메시지는 고객의 등록된 연락처로 발송됩니다.",
       "values": {
