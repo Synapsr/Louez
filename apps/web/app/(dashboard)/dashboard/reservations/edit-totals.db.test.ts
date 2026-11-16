@@ -707,6 +707,41 @@ describe(
         });
       }
 
+      test("a product's price changed while the creation waited on its lock: refused, nothing written", async () => {
+        await useStore({ tax: HT });
+        const kayak = await product();
+        const reservationsBefore = await louezDb.db
+          .select({ id: louezDb.reservations.id })
+          .from(louezDb.reservations);
+
+        const [result] = await raceOnOpenTransaction(
+          database,
+          async (holder) => {
+            await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [kayak]);
+            await holder.query("UPDATE products SET price = '20.00' WHERE id = ?", [kayak]);
+          },
+          [
+            () =>
+              actions.createManualReservation({
+                customerId: CUSTOMER,
+                startDate: START,
+                endDate: END,
+                items: [{ productId: kayak, quantity: 1 }],
+                sendConfirmationEmail: false,
+              }),
+          ],
+        );
+
+        assert.deepEqual(result, {
+          error: "errors.reservationChangedMeanwhile",
+          shortfalls: [],
+        });
+        const reservationsAfter = await louezDb.db
+          .select({ id: louezDb.reservations.id })
+          .from(louezDb.reservations);
+        assert.equal(reservationsAfter.length, reservationsBefore.length);
+      });
+
       test("created, then edited with nothing changed: the same totals to the cent", async () => {
         await useStore({ tax: HT });
         const id = await created();

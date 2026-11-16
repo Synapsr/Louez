@@ -19,6 +19,7 @@ import {
   recordedTaxDisplayMode,
   validateReservationContract,
 } from "@louez/api/services";
+import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
 import {
   priceReservationEdit,
   type EditedLine,
@@ -808,7 +809,6 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   // Delivery validation and fee calculation
-  let deliveryFeeAmount = 0;
   let deliveryDistanceKm: number | null = null;
   let returnDistanceKm: number | null = null;
   const storeDeliverySettings = store.settings?.delivery;
@@ -892,20 +892,6 @@ export async function createManualReservation(data: CreateReservationData) {
         return { error: "errors.returnAddressTooFar" };
       }
     }
-
-    // Calculate delivery fee server-side
-    const isIncluded = storeDeliverySettings.mode === "included";
-    if (isIncluded) {
-      deliveryFeeAmount = 0;
-    } else {
-      const feeResult = calculateTotalDeliveryFee(
-        deliveryDistanceKm,
-        returnDistanceKm,
-        storeDeliverySettings,
-        subtotalAmount,
-      );
-      deliveryFeeAmount = feeResult.totalFee;
-    }
   }
 
   // Generate reservation number
@@ -952,6 +938,45 @@ export async function createManualReservation(data: CreateReservationData) {
         choice: resolveManualLineChoice(product, detail.requestedAttributes),
       });
     }
+
+    // Priced under the locks (slice 10): a line priced from its product is
+    // priced again from the catalogue the locks hold, and a price that moved
+    // since the form was read refuses the creation. A price typed by hand
+    // stands as typed.
+    const catalogLines = lines.filter(({ detail }) => !detail.pricingBreakdown.isManualOverride);
+    const lockedCatalog = await loadPricingCatalog(tx, {
+      storeId: store.id,
+      productIds: catalogLines.map(({ detail }) => detail.product.id),
+      timezone: availabilityRules?.settings?.timezone,
+      includeInactive: true,
+    });
+    for (const { detail } of catalogLines) {
+      const lockedProduct = lockedCatalog.get(detail.product.id);
+      const priced =
+        lockedProduct &&
+        priceRegularCatalogLine(lockedProduct, {
+          productId: lockedProduct.id,
+          quantity: detail.quantity,
+          startDate: data.startDate.toISOString(),
+          endDate: data.endDate.toISOString(),
+        });
+      if (!priced || toCents(priced.subtotal) !== toCents(detail.totalPrice)) {
+        return { ok: false as const, error: "errors.reservationChangedMeanwhile", shortfalls: [] };
+      }
+    }
+    // The delivery fee, from the routes measured above and the delivery
+    // settings the store holds now.
+    const lockedDelivery = availabilityRules?.settings?.delivery;
+    const deliveryFeeUnderLocks = !hasAnyDelivery
+      ? 0
+      : !lockedDelivery?.enabled || lockedDelivery.mode === "included"
+        ? 0
+        : calculateTotalDeliveryFee(
+            deliveryDistanceKm,
+            returnDistanceKm,
+            lockedDelivery,
+            subtotalAmount,
+          ).totalFee;
 
     // The stock rule every booking is checked against. Each shortfall is
     // listed, for the store to book over on purpose. Consumables are checked
@@ -1023,7 +1048,7 @@ export async function createManualReservation(data: CreateReservationData) {
       lines: taxedLines,
       insuranceAmount: tulipInsuranceAmount,
       discountAmount: manualDiscountAmount,
-      deliveryFee: deliveryFeeAmount,
+      deliveryFee: deliveryFeeUnderLocks,
       totalDeposit: depositAmount,
       taxSettings,
       currency: reservationCurrency(null, store.settings),
@@ -1076,7 +1101,7 @@ export async function createManualReservation(data: CreateReservationData) {
       deliveryLongitude:
         hasOutboundDelivery && outboundLeg.longitude ? outboundLeg.longitude.toString() : null,
       deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
-      deliveryFee: deliveryFeeAmount.toFixed(2),
+      deliveryFee: deliveryFeeUnderLocks.toFixed(2),
       returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
       returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
       returnPostalCode: hasReturnDelivery ? (returnLeg.postalCode ?? null) : null,
@@ -1189,7 +1214,12 @@ export async function createManualReservation(data: CreateReservationData) {
       await validateReservationContract(tx, reservationId, store.id, "confirmation");
     }
 
-    return { ok: true as const, effects, totalAmount: totals.total };
+    return {
+      ok: true as const,
+      effects,
+      totalAmount: totals.total,
+      deliveryFee: deliveryFeeUnderLocks,
+    };
   }).catch(refuseCreation);
 
   if (!reservationWriteResult.ok) {
@@ -1234,7 +1264,7 @@ export async function createManualReservation(data: CreateReservationData) {
       send_confirmation_email: shouldSendEmail,
       subtotal_amount_cents: toAnalyticsAmountCents(subtotalAmount),
       discount_amount_cents: toAnalyticsAmountCents(manualDiscountAmount),
-      delivery_fee_cents: toAnalyticsAmountCents(deliveryFeeAmount),
+      delivery_fee_cents: toAnalyticsAmountCents(reservationWriteResult.deliveryFee),
       deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
       total_amount_cents: toAnalyticsAmountCents(totalAmount),
       currency: store.settings?.currency ?? "EUR",
