@@ -790,7 +790,9 @@ const instantWithOffset = z
   .datetime({ offset: true })
   .refine((value) => Number.isFinite(Date.parse(value)), "Not a real instant.")
   .refine(
-    (value) => Date.parse(value) % 1000 === 0,
+    // Read on the text, before parsing: `Date.parse` drops digits past the
+    // millisecond, so ".0001" would pass as a whole second. ".000" is one.
+    (value) => /^0*$/.test(/T\d{2}:\d{2}(?::\d{2})?(?:\.(\d+))?/.exec(value)?.[1] ?? ""),
     "Give the instant in whole seconds: a reservation's dates hold no fraction of a second.",
   );
 

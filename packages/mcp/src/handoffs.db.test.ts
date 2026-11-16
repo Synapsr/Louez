@@ -186,6 +186,7 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
       ["payments_sync_stripe_status", "settings"],
       ["record_deposit_return", "daily"],
       ["record_payment", "daily"],
+      ["record_refund", "daily"],
     ]);
     assert.deepEqual(names("dashboard.billing."), [
       ["billing_get_status", "billing"],

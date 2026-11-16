@@ -871,6 +871,22 @@ describe(
         }
       });
 
+      test("a fraction finer than a millisecond is refused; a zero fraction is a whole second", async () => {
+        const kayak = await product({ quantity: 9 });
+        const { id } = await book([{ productId: kayak }], { end: day(START, 1) });
+        await refusedSubSecond(id, {
+          id,
+          endDate: "2030-06-02T11:00:00.0001+02:00",
+          notifyCustomer: false,
+        });
+        const answer = await update(
+          { id, endDate: "2030-06-03T11:00:00.000+02:00", notifyCustomer: false },
+          session(),
+        );
+        assert.equal(answer.changed, true);
+        assert.equal(answer.endDate.toISOString(), "2030-06-03T09:00:00.000Z");
+      });
+
       test("an ongoing reservation's start cannot pass as unmoved by a fraction of a second", async () => {
         const kayak = await product({ quantity: 9 });
         const { id } = await book([{ productId: kayak }], { status: "ongoing" });

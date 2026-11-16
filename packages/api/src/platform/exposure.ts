@@ -115,6 +115,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.inbox.acknowledge",
   "dashboard.payments.record",
   "dashboard.payments.recordDepositReturn",
+  "dashboard.payments.recordRefund",
   "dashboard.payments.delete",
   "dashboard.payments.startStripeOnboarding",
   "dashboard.payments.openStripeDashboard",

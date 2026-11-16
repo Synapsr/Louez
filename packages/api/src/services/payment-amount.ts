@@ -1,6 +1,8 @@
+import { currencyMinorDigits } from "@louez/utils";
+
 /**
  * The amount a payment written by hand takes (`dashboard.payments.record`,
- * `recordDepositReturn`): a plain decimal, an optional minus sign, one to
+ * `recordDepositReturn`, `recordRefund`): a plain decimal, an optional minus sign, one to
  * eight integer digits, at most two decimals, and not zero. That is exactly
  * what its row, `payments.amount` (`decimal(10,2)`), holds as sent: no
  * rounding, no text MySQL would read otherwise ("1e2", " 5", "+5", "5.",
@@ -57,5 +59,79 @@ export function depositReturnAmount(raw: string, returnable: number): DepositRet
   const amount = paymentAmount(raw);
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
   if (parseFloat(amount) > returnable) return { ok: false, refusal: "exceeds_balance" };
+  return { ok: true, amount };
+}
+
+/**
+ * A stored or accepted amount (`decimal(10,2)`, "80.00", "-20.00") in
+ * hundredths, as an exact integer, whatever its currency: what the
+ * refund's ceiling is counted in.
+ */
+export function hundredthsOf(amount: string): number {
+  const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(amount.trim());
+  if (!match) return Number.NaN;
+  const [, sign = "", whole = "", fraction = ""] = match;
+  const hundredths = Number(whole + fraction.padEnd(2, "0"));
+  return sign ? -hundredths : hundredths;
+}
+
+/** Hundredths written back as a plain decimal with two places ("-2000" is "-20.00"). */
+export function fromHundredths(hundredths: number): string {
+  const digits = String(Math.abs(hundredths)).padStart(3, "0");
+  return `${hundredths < 0 ? "-" : ""}${digits.slice(0, -2)}.${digits.slice(-2)}`;
+}
+
+/**
+ * An amount that fits its currency (`currencyFit`) in that currency's minor
+ * units: yen for yen, cents for euros. What an approval binds.
+ */
+export function currencyMinorOf(amount: string, currency: string): number {
+  const hundredths = hundredthsOf(amount);
+  return currencyMinorDigits(currency) === 0 ? hundredths / 100 : hundredths;
+}
+
+/** Why an amount does not fit its currency: digits past its minor unit, or a currency Louez does not count. */
+export type CurrencyFit = "fits" | "too_precise" | "currency_unsupported";
+
+/**
+ * Whether an amount `paymentAmount` accepted fits `currency`: no non-zero
+ * digit past the currency's minor unit (`currencyMinorDigits`: none in yen,
+ * two in euros), in a currency Louez's billing counts (not a three-decimal
+ * one). "1.00" fits yen, "0.50" does not.
+ */
+export function currencyFit(amount: string, currency: string): CurrencyFit {
+  const digits = currencyMinorDigits(currency);
+  if (digits === null) return "currency_unsupported";
+  const fraction = amount.split(".")[1] ?? "";
+  return /^0*$/.test(fraction.slice(digits)) ? "fits" : "too_precise";
+}
+
+export type RefundVerdict =
+  | { ok: true; amount: string }
+  | {
+      ok: false;
+      refusal: "amount_invalid" | "too_precise" | "currency_unsupported" | "exceeds_refundable";
+    };
+
+/**
+ * The amount of a refund given by hand (`dashboard.payments.recordRefund`),
+ * as the write judges it before it asks: `paymentAmount`, above zero; then,
+ * in the payment's `currency`, `currencyFit`; then at most
+ * `refundableHundredths`, the payment's amount less the completed refunds
+ * linked to it, as the write counts it under the reservation's lock.
+ * Its display judges it the same way.
+ */
+export function refundAmount(
+  raw: string,
+  currency: string,
+  refundableHundredths: number,
+): RefundVerdict {
+  const amount = paymentAmount(raw);
+  if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
+  const fit = currencyFit(amount, currency);
+  if (fit !== "fits") return { ok: false, refusal: fit };
+  if (hundredthsOf(amount) > refundableHundredths) {
+    return { ok: false, refusal: "exceeds_refundable" };
+  }
   return { ok: true, amount };
 }

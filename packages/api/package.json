@@ -34,6 +34,7 @@
     "./services/location-snapshots": "./src/services/location-snapshots.ts",
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
     "./services/paid-confirmation-deposit": "./src/services/paid-confirmation-deposit.ts",
+    "./services/payment-records": "./src/services/payment-records.ts",
     "./services/payment-reservation-status": "./src/services/payment-reservation-status.ts",
     "./services/price-cart": "./src/services/price-cart.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",

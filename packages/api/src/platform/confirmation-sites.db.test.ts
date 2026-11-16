@@ -97,14 +97,24 @@ const STAND_INS: Record<string, string[]> = {
   "../services/team": ["cancelInvitation", "removeMember"],
   "../services/reservation-status": ["changeStoreReservationStatus"],
   "../services/reservation-dates": ["changeReservationDates"],
-  "../services/payment-records": ["recordPayment", "recordDepositReturn", "deletePayment"],
+  "../services/payment-records": [
+    "recordPayment",
+    "recordDepositReturn",
+    "recordPaymentRefund",
+    "deletePayment",
+  ],
 };
 
 /**
  * The payment writes' step takes the transaction first, then the preview with
  * the state it binds; the branches below hand it that pair.
  */
-const TRANSACTION_FIRST = new Set(["recordPayment", "recordDepositReturn", "deletePayment"]);
+const TRANSACTION_FIRST = new Set([
+  "recordPayment",
+  "recordDepositReturn",
+  "recordPaymentRefund",
+  "deletePayment",
+]);
 
 let captured: Confirm | null = null;
 
@@ -743,6 +753,38 @@ const SITES: Site[] = [
     ],
   },
   {
+    path: ["dashboard", "payments", "recordRefund"],
+    input: { paymentId: "cs_payment_000000001", amount: "30.00", method: "cash" },
+    branches: [
+      {
+        name: "records a refund",
+        preview: {
+          preview: {
+            summary:
+              "Record a refund of €30.00 (cash) of the rental payment of €80.00 on reservation #R-1.",
+            details: {
+              paymentId: "cs_payment_000000001",
+              reservationId: "cs_reservation_00001",
+              number: "R-1",
+              amount: "30.00",
+              method: "cash",
+              currency: "EUR",
+            },
+          },
+          state: {
+            refund: { amountMinor: 3000, currency: "EUR", method: "cash" },
+            payment: { status: "completed", amountMinor: 8000 },
+            refunds: [],
+          },
+        },
+        asksWithOptionOff: true,
+        presentation: {
+          facts: { payment: "cs_payment_000000001", amount: "30.00", currency: "EUR" },
+        },
+      },
+    ],
+  },
+  {
     path: ["dashboard", "payments", "delete"],
     input: { paymentId: "cs_payment_000000001" },
     branches: [
@@ -881,6 +923,8 @@ const FINGERPRINTS: Record<string, string> = {
     "5dc4e9b7580e0f12b141acf99724ef683068990a543b6cbb5ce3cd9dfa7431f0",
   "dashboard.payments.recordDepositReturn, records a return":
     "83c6191808fff5376d85199787c8949c427393f9f2e68b45c0a682aa440304da",
+  "dashboard.payments.recordRefund, records a refund":
+    "85bc0c8ee2e05311f207f575ab9b8b1b632e42cae9b3c53c34c8c2d7cc877b0e",
   "dashboard.payments.delete, deletes":
     "b9d4c93529b32260d7e4cae338d168da7ab86e9448f83051aa1fe2aa84bf46d4",
   "dashboard.stores.create, creates":
@@ -948,6 +992,7 @@ const CONSEQUENCES: Record<string, readonly Consequence[] | null> = {
   ],
   "dashboard.payments.record, records a payment": ["money"],
   "dashboard.payments.recordDepositReturn, records a return": ["money"],
+  "dashboard.payments.recordRefund, records a refund": ["money"],
   "dashboard.payments.delete, deletes": ["money"],
   "dashboard.stores.create, creates": ["change"],
   "dashboard.products.enhanceImage, priced": ["credits"],
@@ -1246,6 +1291,12 @@ describe(
         insert: async () => {
           throw new Error("the payment writer is not reached");
         },
+      },
+      paymentRefunds: {
+        insert: async () => {
+          throw new Error("the refund writer is not reached");
+        },
+        creditNote: async () => ({ status: "not_applicable" as const, reason: "invoicing_disabled" }),
       },
     };
 

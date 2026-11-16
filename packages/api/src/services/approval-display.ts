@@ -101,6 +101,8 @@ export const HEADLINES = {
   /** A deposit the store collected, recorded through the generic write. */
   recordDeposit: {},
   returnDeposit: {},
+  /** A refund the store gave by hand, against one payment. */
+  recordRefund: {},
   deletePayment: {},
   removeMember: {},
   cancelInvitation: {},
@@ -142,6 +144,17 @@ export const FACTS = {
   returned: { amount: MONEY, method: choiceOf("paymentMethod") },
   /** "Deposit still held before this: €300.00" */
   depositHeld: { held: MONEY },
+  /** "Refund: £30.00, given back to the customer · Cash" */
+  refundGiven: { amount: MONEY, method: choiceOf("paymentMethod") },
+  /** "Payment refunded: Rental, £80.00 on Nov 12, 2026 · Card" */
+  refundOf: {
+    type: choiceOf("paymentType"),
+    amount: MONEY,
+    at: DATE_TIME,
+    method: choiceOf("paymentMethod"),
+  },
+  /** "Already refunded: £20.00 · Still refundable after this: £30.00" */
+  refundBalance: { refunded: MONEY, left: MONEY },
   /** Louez only records it: no money moves. */
   recordOnly: {},
   /** "Rental: €80.00 · Cash" */

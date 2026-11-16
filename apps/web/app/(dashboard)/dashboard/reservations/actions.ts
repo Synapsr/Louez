@@ -28,7 +28,6 @@ import {
   getEffectiveProductQuantities,
   insertReservation,
   isStoreNotAcceptingReservationsError,
-  isStripeRefundPaymentSql,
   lockReservationInTransaction,
   markReservation,
   reconcileReservationStock,
@@ -133,9 +132,11 @@ import {
   productAnalyticsEvents,
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
+import { dispatchApiEffects } from "@/lib/api/effects";
+import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
+import { refundErrorKey } from "@/lib/reservations/util.refund-error-key";
 import {
   deleteRecordedPayment,
-  insertManualRefund,
   insertRecordedPayment,
 } from "@/lib/reservations/dashboard-payment-writes";
 import {
@@ -184,6 +185,7 @@ import {
 } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
 import { evaluateReservationRules } from "@louez/utils";
+import { recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,
@@ -3353,98 +3355,34 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
     return { error: "errors.invalidAmount" };
   }
 
-  let refundPaymentId: string;
+  // The one writer of a refund given by hand, the agents' too: the person
+  // clicked, so nothing is asked.
+  let refund: Awaited<ReturnType<typeof recordPaymentRefund>>;
   try {
-    refundPaymentId = await db.transaction(async (tx) => {
-      const [originalPayment] = await tx
-        .select({
-          id: payments.id,
-          amount: payments.amount,
-          type: payments.type,
-          method: payments.method,
-          status: payments.status,
-          currency: payments.currency,
-          refundOfPaymentId: payments.refundOfPaymentId,
-          reservationCurrency: reservations.currency,
-        })
-        .from(payments)
-        .innerJoin(reservations, eq(reservations.id, payments.reservationId))
-        .where(
-          and(
-            eq(payments.id, data.paymentId),
-            eq(payments.reservationId, reservationId),
-            eq(reservations.storeId, store.id),
-          ),
-        )
-        .for("update");
-
-      if (!originalPayment) {
-        throw new Error("errors.paymentNotFound");
-      }
-
-      if (
-        originalPayment.status !== "completed" ||
-        !["rental", "damage", "adjustment", "deposit_capture"].includes(originalPayment.type) ||
-        originalPayment.refundOfPaymentId !== null ||
-        Number(originalPayment.amount) <= 0
-      ) {
-        throw new Error("errors.invalidAmount");
-      }
-
-      const [refundTotal] = await tx
-        .select({
-          amount: sql<string>`coalesce(sum(${payments.amount}), 0)`,
-        })
-        .from(payments)
-        .where(
-          and(
-            eq(payments.refundOfPaymentId, originalPayment.id),
-            eq(payments.status, "completed"),
-            // A Stripe refund linked to its charge already came off that
-            // charge's amount: counting it here would subtract it twice.
-            not(isStripeRefundPaymentSql()),
-          ),
-        );
-
-      const remainingAmount = roundMoney(
-        Number(originalPayment.amount) - Number(refundTotal?.amount ?? 0),
-      );
-      if (data.amount > remainingAmount) {
-        throw new Error("errors.invalidAmount");
-      }
-
-      const paymentId = nanoid();
-      await insertManualRefund(tx, {
-        id: paymentId,
-        reservationId,
+    refund = await recordPaymentRefund(
+      {
         storeId: store.id,
-        storeSettings: store.settings,
-        reservationCurrency: originalPayment.reservationCurrency,
-        original: originalPayment,
+        storeSettings: store.settings ?? null,
+        port: paymentRefundsPort,
+        confirm: async () => null,
+        dispatchEffects: dispatchApiEffects,
+      },
+      {
+        reservationId,
+        paymentId: data.paymentId,
         amount: data.amount.toFixed(2),
-        type: originalPayment.type === "deposit_capture" ? "deposit_return" : "rental",
         method: data.method,
-        notes: data.notes?.trim() || null,
-        paidAt: new Date(),
-      });
-
-      return paymentId;
-    });
+        notes: data.notes,
+      },
+      { source: "dashboard_refund_manual_payment" },
+    );
   } catch (error) {
-    return { error: getActionErrorKey(error, "errors.invalidAmount") };
+    return { error: refundErrorKey(error) };
   }
-
-  const creditNoteGeneration = await tryGenerateCreditNoteForRefund(
-    { originalPaymentId: data.paymentId, refundPaymentId },
-    data.amount,
-    "dashboard_refund_manual_payment",
-  );
-  const creditNoteNumber =
-    creditNoteGeneration.status === "generated" ? creditNoteGeneration.number : undefined;
 
   await logReservationActivity(reservationId, "payment_updated", {
     paymentId: data.paymentId,
-    refundPaymentId,
+    refundPaymentId: refund.refundId,
     amount: data.amount,
     method: data.method,
     action: "refunded",
@@ -3453,7 +3391,11 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
-  return { success: true, refundPaymentId, creditNoteNumber };
+  return {
+    success: true,
+    refundPaymentId: refund.refundId,
+    creditNoteNumber: refund.creditNote.number ?? undefined,
+  };
 }
 
 export async function deletePayment(paymentId: string) {
