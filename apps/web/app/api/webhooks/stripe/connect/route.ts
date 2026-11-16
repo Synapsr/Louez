@@ -750,8 +750,20 @@ async function handleCheckoutExpired(
   // attempt replaced (its row cancelled before its expiry), a session no row
   // names and a payment request's session fail nothing: the booking's checkout
   // may still be paid, or another attempt opened since.
+  // The service itself leaves a booking for which money may be, or has been,
+  // taken (`payment_in_progress`): its own completion or later expiry settles it.
   if (abandoned && existingPayment?.origin !== "payment_request") {
-    await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
+    const failure = await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
+    if (failure === "payment_in_progress") {
+      log.info({
+        stripeWebhook: {
+          event: "checkout.session.expired",
+          issue: "marketplace_attempt_payment_in_progress",
+          reservationId,
+          sessionId: session.id,
+        },
+      });
+    }
   }
 
   // The flow is a hint of the metadata, not an identifier: it only chooses

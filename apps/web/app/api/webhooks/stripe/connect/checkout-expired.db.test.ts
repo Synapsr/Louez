@@ -670,7 +670,7 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
   async function originPayment(
     reservationId: string,
     origin: "customer_session" | "payment_request",
-    status: "pending" | "cancelled",
+    status: "pending" | "cancelled" | "completed",
   ) {
     const sessionId = nextId("cs");
     await louezDb.db.insert(louezDb.payments).values({
@@ -768,6 +768,65 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
 
     assert.equal(await attemptStatus(stopped), "expired");
     assert.equal(await readStatus(stopped), "cancelled");
+  });
+
+  /** A booking whose checkout session's expiry an earlier delivery recorded, its line written. */
+  async function bookingWithRecordedExpiry() {
+    const id = await marketplaceBooking();
+    const expired = await originPayment(id, "customer_session", "cancelled");
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ sessionSettledAt: new Date() })
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, expired));
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("act"),
+      reservationId: id,
+      activityType: "payment_expired",
+      metadata: paymentExpired(expired).metadata,
+    });
+    return { id, expired };
+  }
+
+  test("a marketplace booking paid through another session is not failed by its first session's expiry delivered again, once or twice", async () => {
+    const { id, expired } = await bookingWithRecordedExpiry();
+    // A session opened since, and paid.
+    const paid = await originPayment(id, "customer_session", "completed");
+
+    for (const delivery of [1, 2]) {
+      assert.deepEqual(
+        await expire(id, expired, null),
+        { status: 200, body: { received: true } },
+        `delivery ${delivery}`,
+      );
+      assert.equal(await attemptStatus(id), "checkout_pending", `delivery ${delivery}`);
+      assert.equal(await readStatus(id), "pending", `delivery ${delivery}`);
+    }
+    const [row] = await louezDb.db
+      .select({ status: louezDb.payments.status })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.stripeCheckoutSessionId, paid));
+    assert.equal(row?.status, "completed");
+  });
+
+  test("a marketplace booking with another session still open, or one Stripe has not said is over, is not failed", async () => {
+    for (const status of ["pending", "cancelled"] as const) {
+      const { id, expired } = await bookingWithRecordedExpiry();
+      await originPayment(id, "customer_session", status);
+
+      await expire(id, expired, null);
+
+      assert.equal(await attemptStatus(id), "checkout_pending", status);
+      assert.equal(await readStatus(id), "pending", status);
+    }
+  });
+
+  test("a marketplace booking with no other session is failed by its checkout's recorded expiry delivered again", async () => {
+    const { id, expired } = await bookingWithRecordedExpiry();
+
+    await expire(id, expired, null);
+
+    assert.equal(await attemptStatus(id), "expired");
+    assert.equal(await readStatus(id), "cancelled");
   });
 
   test("a cancellation still busy after three runs answers 500 and logs it; its payment stays cancelled, and the event again cancels the checkout", async () => {

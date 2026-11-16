@@ -8,6 +8,7 @@ import {
   changeReservationStatus,
   customers,
   db,
+  isUnsettledCheckoutSession,
   marketplaceBookingAttempts,
   payments,
   reservationItems,
@@ -27,6 +28,7 @@ import type {
 import type { Rate, StoreSettings } from "@louez/types";
 import {
   calculateSeasonalAwarePrice,
+  isStripeRefundRow,
   normalizeCurrency,
   toAbsoluteUrl,
   type PricingMode,
@@ -1271,26 +1273,78 @@ export async function confirmMarketplaceBookingAttempt(reservationId: string): P
     .where(eq(marketplaceBookingAttempts.reservationId, reservationId));
 }
 
+/**
+ * What the failure of a booking's checkout did: the attempt failed and the
+ * booking cancelled; nothing, because money may be, or has been, taken for it;
+ * or nothing to fail (no attempt `checkout_pending`, or no pending booking).
+ */
+export type MarketplaceAttemptFailure = "failed" | "payment_in_progress" | "not_failable";
+
+/**
+ * Whether money may be, or has been, taken for the booking: a rental payment
+ * completed (a refund row excepted) or still pending, or a rental session Stripe
+ * has not said is over (`isUnsettledCheckoutSession`).
+ */
+async function hasRentalMoneyInFlight(tx: Transaction, reservationId: string): Promise<boolean> {
+  const rows = await tx
+    .select({
+      type: payments.type,
+      status: payments.status,
+      refundOfPaymentId: payments.refundOfPaymentId,
+      stripeRefundId: payments.stripeRefundId,
+      stripePaymentIntentId: payments.stripePaymentIntentId,
+      stripeCheckoutSessionId: payments.stripeCheckoutSessionId,
+      sessionSettledAt: payments.sessionSettledAt,
+    })
+    .from(payments)
+    .where(and(eq(payments.reservationId, reservationId), eq(payments.type, "rental")));
+  return rows.some(
+    (row) =>
+      row.status === "pending" ||
+      isUnsettledCheckoutSession(row) ||
+      (row.status === "completed" && !row.refundOfPaymentId && !isStripeRefundRow(row)),
+  );
+}
+
+/**
+ * Fails the booking's attempt and cancels the booking, once its checkout's
+ * session is over. Under the reservation's lock, then the attempt's, it reads the
+ * booking's rental payments: while one is completed or open, or a session of the
+ * rental may still be paid (another door's, or a delivery of an earlier expiry
+ * arriving after a new session opened), it writes nothing and answers
+ * `payment_in_progress`; the booking's own completion or its later expiry
+ * settles it.
+ */
 export async function failMarketplaceBookingAttempt(
   reservationId: string,
   runReservationEffects: ReservationEffectRunner,
-): Promise<void> {
+): Promise<MarketplaceAttemptFailure> {
   // The store scopes the lock; the attempt and the booking are read again under it.
   const scope = await db.query.marketplaceBookingAttempts.findFirst({
     where: eq(marketplaceBookingAttempts.reservationId, reservationId),
     columns: { storeId: true },
   });
-  if (!scope) return;
+  if (!scope) return "not_failable";
   // Still busy after every run: it throws, the webhook answers non-2xx, and
   // Stripe sends the event again, whose delivery runs this again: the attempt
   // is still `checkout_pending`.
-  const effects = await runReservationOnlyChange(
+  const outcome = await runReservationOnlyChange(
     { reservationId, storeId: scope.storeId },
-    async (tx, lock) => {
-      const attempt = await tx.query.marketplaceBookingAttempts.findFirst({
-        where: eq(marketplaceBookingAttempts.reservationId, reservationId),
-        columns: { reservationId: true, status: true },
-      });
+    async (
+      tx,
+      lock,
+    ): Promise<{ result: MarketplaceAttemptFailure; effects: ReservationBillingEffect[] }> => {
+      // The attempt's row locked after the reservation's, as the expiry takes
+      // them: a checkout that holds it may be installing a new session, which the
+      // payments read below then sees.
+      const [attempt] = await tx
+        .select({
+          reservationId: marketplaceBookingAttempts.reservationId,
+          status: marketplaceBookingAttempts.status,
+        })
+        .from(marketplaceBookingAttempts)
+        .where(eq(marketplaceBookingAttempts.reservationId, reservationId))
+        .for("update");
       const reservation = await tx.query.reservations.findFirst({
         where: and(
           eq(reservations.id, reservationId),
@@ -1299,13 +1353,17 @@ export async function failMarketplaceBookingAttempt(
         ),
         columns: { id: true },
       });
-      if (attempt?.reservationId && attempt.status === "checkout_pending" && reservation) {
-        return expireAttempt(tx, lock);
+      if (!attempt?.reservationId || attempt.status !== "checkout_pending" || !reservation) {
+        return { result: "not_failable", effects: [] };
       }
-      return [];
+      if (await hasRentalMoneyInFlight(tx, reservationId)) {
+        return { result: "payment_in_progress", effects: [] };
+      }
+      return { result: "failed", effects: await expireAttempt(tx, lock) };
     },
   );
-  await runReservationEffects(effects);
+  await runReservationEffects(outcome.effects);
+  return outcome.result;
 }
 
 /**
