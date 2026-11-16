@@ -38,7 +38,10 @@ const STUBBED: Record<string, ReadonlySet<string>> = {
     "@/lib/discord/platform-notifications",
     "@/lib/reservations/deposit-hold-live",
   ]),
-  "/api/webhooks/stripe/connect/connected-account.ts": new Set(["@/lib/evlog"]),
+  "/api/webhooks/stripe/connect/connected-account.ts": new Set([
+    "@/lib/evlog",
+    "@/lib/billing-sync/alerts",
+  ]),
   "/api/webhooks/stripe/connect/deposit-events.ts": new Set(["@/lib/evlog"]),
   "/api/webhooks/stripe/connect/charge-refund.ts": new Set(["@/lib/evlog", "@/lib/stripe/client"]),
   "/api/webhooks/stripe/connect/charge-dispute.ts": new Set(["@/lib/evlog"]),
@@ -126,6 +129,8 @@ const stubs = {
   dispatchApiEffects: record("dispatchApiEffects"),
   runReservationEffects: record("runReservationEffects"),
   notifyStripeConnected: record("notifyStripeConnected"),
+  // The platform's alerts, as `connected-account.ts` raises them.
+  createBillingAlerts: () => ({ alert: record("alerts.alert") }),
   // Set once the test database exists, before the route is imported.
   depositHoldDeps: null as unknown,
 };
@@ -191,6 +196,16 @@ const refused = () =>
 
 /** Failures that may pass, each with the answer Stripe gives it. */
 const TRANSIENT: ReadonlyArray<readonly [label: string, error: () => Error]> = [
+  [
+    "the platform's restricted key lacking a permission (a 403 that names no account)",
+    () =>
+      new Stripe.errors.StripePermissionError({
+        type: "invalid_request_error",
+        statusCode: 403,
+        requestId: "req_restricted",
+        message: `The provided key '${MASKED_KEY}' does not have the required permissions for this endpoint on account '${ACCOUNT}'.`,
+      }),
+  ],
   [
     "a rate limit",
     () =>
@@ -467,6 +482,7 @@ describe(
                 event: type,
                 issue: "account_access_refused",
                 accountId: ACCOUNT,
+                storeId: STORE,
                 stripeError: {
                   type: "StripePermissionError",
                   code: "account_invalid",
@@ -477,6 +493,11 @@ describe(
             },
           ],
         ]);
+        // An account Louez holds payments of: the platform hears of it.
+        const alerts = calls.filter(([name]) => name === "alerts.alert");
+        assert.equal(alerts.length, 1);
+        assert.equal(alerts[0]?.[1], "connected_account_unreachable");
+        assert.match(String(alerts[0]?.[2]), new RegExp(`${ACCOUNT} of store ${STORE}`));
         assert.doesNotMatch(JSON.stringify(calls), /sk_test_|abcd/);
       });
 

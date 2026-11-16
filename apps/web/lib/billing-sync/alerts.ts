@@ -32,7 +32,9 @@ export type BillingAlertKind =
   | "manifest_rejected"
   | "final_snapshot_skipped"
   | "final_snapshot_large"
-  | "platform_customer_mismatch";
+  | "platform_customer_mismatch"
+  /** Stripe refuses the platform a connected account Louez holds payments of. */
+  | "connected_account_unreachable";
 
 export type BillingLog = {
   error(tag: string, message: string): void;
