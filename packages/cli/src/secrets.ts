@@ -6,6 +6,16 @@
  * packages/api/src/services/api-keys.ts). The REST API takes API keys only:
  * it refuses OAuth access tokens (`CREDENTIAL_NOT_ACCEPTED`), so the CLI
  * takes no other credential.
+ *
+ * Redaction is a second line of defence, against a server or a library that
+ * echoes the key back; the first is that the CLI itself never writes a key.
+ * It replaces the complete key in exactly these forms: as is; with one level
+ * of percent-encoding; inside a base64 or base64url run, of at most
+ * `MAX_DECODED_TOKEN` characters, whose decoded bytes hold it; and in JSON,
+ * after parsing, so JSON escapes are decoded first. Any other transformation
+ * of the key (base64 split by whitespace or longer than the cap, double
+ * percent-encoding, a key cut in parts…) is not redacted. Do not rely on
+ * redaction: revoke a key a server echoed back.
  */
 
 export const API_KEY_FORMAT = /^lz_[a-z0-9]{4}_[A-Za-z0-9]{20}$/;

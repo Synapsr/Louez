@@ -96,9 +96,44 @@ function apiKeyArguments(argv: readonly string[]): string[] {
   argv.forEach((token, index) => {
     if (token.startsWith("--api-key=")) keys.push(token.slice("--api-key=".length));
     const next = argv[index + 1];
-    if (token === "--api-key" && next !== undefined) keys.push(next);
+    // A global option there is a value left out: the parser says so.
+    const option =
+      next?.startsWith("--") && globalLookup(next.slice(2).split("=")[0] ?? "") !== undefined;
+    if (token === "--api-key" && next !== undefined && !option) keys.push(next);
   });
   return keys;
+}
+
+/**
+ * What a usage error says, once the credential sources are checked: a
+ * malformed one is reported first, and an argument equal to any credential
+ * value (well-formed or not, the flag's or the environment's) is named by
+ * its position, never quoted.
+ */
+function usageMessage(io: Io, error: UsageError): string {
+  const values = [...apiKeyArguments(io.argv), io.env.LOUEZ_API_KEY ?? ""].filter((v) => v !== "");
+  if (apiKeyArguments(io.argv).length === 0 && io.env.LOUEZ_API_KEY !== undefined) {
+    try {
+      wellFormed(io.env.LOUEZ_API_KEY, "LOUEZ_API_KEY");
+    } catch (refusal) {
+      if (refusal instanceof UsageError) return refusal.message;
+      throw refusal;
+    }
+  }
+  let message = error.message;
+  for (const value of values) {
+    if (!message.includes(value)) continue;
+    const index = io.argv.findIndex((token) => token === value || token.endsWith(`=${value}`));
+    const where = index === -1 ? "an argument" : `the argument at position ${index + 1}`;
+    message = message
+      .split(`Unexpected argument "${value}"`)
+      .join(`Unexpected argument at position ${index + 1}`)
+      .split(`"${value}"`)
+      .join(where)
+      .split(value)
+      .join(where);
+  }
+  return message;
 }
 
 /**
@@ -132,12 +167,11 @@ export async function main(io: Io): Promise<number> {
 
   try {
     // A malformed --api-key stops the command before anything could echo it.
-    for (const key of apiKeyArguments(io.argv))
-      if (!key.startsWith("--")) wellFormed(key, "--api-key");
+    for (const key of apiKeyArguments(io.argv)) wellFormed(key, "--api-key");
     return await run(session);
   } catch (error) {
     if (error instanceof UsageError) {
-      session.stderr.write(`louez: ${error.message}\nRun \`louez --help\` for usage.\n`);
+      session.stderr.write(`louez: ${usageMessage(io, error)}\nRun \`louez --help\` for usage.\n`);
       return EXIT.usage;
     }
     session.stderr.write(`louez: ${error instanceof Error ? error.message : String(error)}\n`);
@@ -450,6 +484,11 @@ async function callAndReport(
   stdinText?: () => Promise<string> | undefined,
 ): Promise<number> {
   const givenKey = stringFlag(values, "idempotency-key");
+  if (values.has("idempotency-key") && (givenKey ?? "").trim() === "") {
+    throw new UsageError(
+      "--idempotency-key is empty: give a key, or leave the option out and louez generates one.",
+    );
+  }
   const full: Call = {
     ...call,
     idempotencyKey: givenKey ?? (call.idempotent ? io.newIdempotencyKey() : undefined),
@@ -458,7 +497,7 @@ async function callAndReport(
   const result = await perform(io, target, full);
   if (!result.ok) return networkFailure(io, target, result.error, full, givenKey === undefined);
   let answer = result.answer;
-  const rerun = await rerunHint(io.argv, stdinText?.());
+  const rerun = await rerunHint(io.argv, stdinText?.(), target.keySource);
 
   const { code, approval } = errorOf(answer);
   if (
@@ -513,13 +552,25 @@ async function carryOut(io: Session, target: Target, call: Call): Promise<SendRe
 /** Builds the command to run again, with `--confirmation <id>` (and the idempotency key when given). */
 type Rerun = (confirmation: string, idempotencyKey?: string) => string;
 
+/** The line under a printed command: run it with this command's key, named by where it came from. */
+function sameCredential(keySource: string): string {
+  const where =
+    keySource === "--api-key"
+      ? "the key you gave with --api-key (give it again, the same way)"
+      : keySource === "LOUEZ_API_KEY"
+        ? "the key in the environment variable LOUEZ_API_KEY"
+        : `the key saved by \`louez auth login\` (${keySource})`;
+  return `Run it with the same key as this command: ${where}.`;
+}
+
 async function rerunHint(
   argv: readonly string[],
   stdin: Promise<string> | undefined,
+  keySource: string,
 ): Promise<Rerun> {
   const stdinText = stdin ? await stdin : undefined;
   return (confirmation, idempotencyKey) =>
-    rerunCommand(argv, confirmation, stdinText, idempotencyKey);
+    `${rerunCommand(argv, confirmation, stdinText, idempotencyKey)}\n${sameCredential(keySource)}`;
 }
 
 function shellQuote(word: string): string {
@@ -527,9 +578,10 @@ function shellQuote(word: string): string {
 }
 
 /**
- * The same command line with `--confirmation <id>`: without `--wait`, the key
- * replaced by `"$LOUEZ_API_KEY"` (never printed), and a body read from
- * standard input written inline, as the input is gone.
+ * The same command line with `--confirmation <id>`: without `--wait`, without
+ * `--api-key` and its value (the line under it names the key to use, never
+ * its value), `--api-url` kept, and a body read from standard input written
+ * inline, as the input is gone.
  */
 export function rerunCommand(
   argv: readonly string[],
@@ -549,8 +601,8 @@ export function rerunCommand(
     } else if (flag === "--wait") {
       // dropped
     } else if (flag === "--api-key") {
+      // Never a key, nor a variable that holds one: see `sameCredential`.
       if (inline === undefined) i++;
-      words.push('--api-key "$LOUEZ_API_KEY"');
     } else if (flag === "--json" && (inline ?? argv[i + 1]) === "-" && stdinText !== undefined) {
       if (inline === undefined) i++;
       words.push("--json", shellQuote(JSON.stringify(JSON.parse(stdinText))));

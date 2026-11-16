@@ -471,7 +471,7 @@ describe("credentials in what is written", () => {
       "lz_sec2_SecretSecretSecret34",
     ]);
     assert.equal(echoed.code, EXIT.usage);
-    assert.match(echoed.err(), /Unexpected argument "\[redacted\]"/);
+    assert.match(echoed.err(), /Unexpected argument at position 3\./);
     assert.doesNotMatch(echoed.err(), /lz_sec2_SecretSecretSecret34/);
 
     // A server that quotes the request's credential back, in its message and as JSON.
@@ -701,6 +701,122 @@ describe("a write that requires an idempotency key", () => {
   });
 });
 
+describe("a command printed to run again", () => {
+  const OTHER = "lz_othr_GivenGivenGivenGiven";
+
+  /** The command printed after "run:", and the line under it. */
+  function printed(err: string): { command: string; note: string } {
+    const match = /run:\n {2}(.+)\n(.+)\n/.exec(err);
+    assert.ok(match, err);
+    return { command: match[1] ?? "", note: match[2] ?? "" };
+  }
+
+  test("never names a key nor a variable that holds one, keeps --api-url, and says which key to use", async () => {
+    const server = await serve((_, response) =>
+      sendJson(response, 412, approvalRequired("https://app.louez.test/handoffs/apr_1")),
+    );
+    const configDir = await tempDir();
+    await writeConfig(configDir, { apiKey: KEY, apiUrl: server.url });
+    const sources: Array<[string[], Record<string, string | undefined>, RegExp]> = [
+      [
+        ["--api-key", OTHER, "--api-url", server.url],
+        { LOUEZ_API_KEY: KEY, LOUEZ_API_URL: undefined },
+        /the key you gave with --api-key/,
+      ],
+      [
+        ["--api-url", server.url],
+        { LOUEZ_API_KEY: KEY, LOUEZ_API_URL: undefined },
+        /the key in the environment variable LOUEZ_API_KEY/,
+      ],
+      [
+        [],
+        { LOUEZ_API_KEY: undefined, LOUEZ_API_URL: undefined },
+        /the key saved by `louez auth login`/,
+      ],
+    ];
+    for (const [extra, env, source] of sources) {
+      const run = await louez([...RECORD, ...extra], { configDir, env });
+      assert.equal(run.code, EXIT.person, run.err());
+      const { command, note } = printed(run.err());
+      assert.doesNotMatch(command, /lz_|LOUEZ_API_KEY|--api-key|\$/, command);
+      if (extra.includes("--api-url")) assert.match(command, new RegExp(`--api-url ${server.url}`));
+      assert.match(note, /^Run it with the same key as this command: /);
+      assert.match(note, source);
+      assert.doesNotMatch(note, /lz_/);
+    }
+  });
+});
+
+describe("a usage error never quotes a credential", () => {
+  test("a malformed LOUEZ_API_KEY is reported before any other diagnostic", async () => {
+    const run = await louez(["stores", "list", "lz_hello"], { env: { LOUEZ_API_KEY: "lz_hello" } });
+    assert.equal(run.code, EXIT.usage);
+    assert.match(run.err(), /LOUEZ_API_KEY is not a Louez API key/);
+    assert.doesNotMatch(run.err(), /hello/);
+  });
+
+  test("an inline --api-key value is checked, even one that looks like an option", async () => {
+    const run = await louez(["stores", "list", "--api-key=--malformed", "--malformed"]);
+    assert.equal(run.code, EXIT.usage);
+    assert.match(run.err(), /--api-key is not a Louez API key/);
+    assert.doesNotMatch(run.err(), /malformed/);
+  });
+
+  test("an argument equal to a credential value is named by its position", async () => {
+    // LOUEZ_API_KEY is malformed but unused: --api-key comes first.
+    const run = await louez(["stores", "list", "lz_hello", "--api-key", KEY], {
+      env: { LOUEZ_API_KEY: "lz_hello" },
+    });
+    assert.equal(run.code, EXIT.usage);
+    assert.match(run.err(), /Unexpected argument at position 3\./);
+    assert.doesNotMatch(run.err(), /hello/);
+  });
+});
+
+describe("an empty idempotency key", () => {
+  test("stops the command and sends nothing, where a key is optional or required", async () => {
+    let sent = 0;
+    const fetch: typeof globalThis.fetch = async () => {
+      sent++;
+      return Response.json({});
+    };
+    const create = {
+      ...(await import("./manifest.generated.js")).manifest.operations.find(
+        (o) => o.id === "record_payment",
+      )!,
+      idempotencyRequired: true as const,
+    };
+    const manifest: Manifest = {
+      apiVersion: "test",
+      groups: [{ name: "payments", title: "Payments", description: "" }],
+      operations: [create],
+    };
+    for (const key of ["", "   "]) {
+      for (const options of [{}, { manifest }]) {
+        const run = await louez([...RECORD, "--idempotency-key", key], { ...options, fetch });
+        assert.equal(run.code, EXIT.usage);
+        assert.match(run.err(), /--idempotency-key is empty/);
+      }
+    }
+    assert.equal(sent, 0);
+  });
+});
+
+describe("JSON unicode escapes in an answer", () => {
+  test("are decoded with the JSON before redaction: the key spelt with \\u escapes is redacted", async () => {
+    const escaped = [...KEY]
+      .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
+      .join("");
+    await serve((_, response) => {
+      response.writeHead(401, { "Content-Type": "application/json" });
+      response.end(`{"code":"UNAUTHORIZED","message":"echo ${escaped}"}`);
+    });
+    const run = await louez(["stores", "list"]);
+    assert.equal(run.code, EXIT.api);
+    assert.match(run.err(), /"message":"echo \[redacted\]"/);
+  });
+});
+
 describe("usage errors", () => {
   test("exit 2 without sending anything", async () => {
     let fetched = 0;
@@ -766,7 +882,7 @@ describe("a write a person must approve", () => {
     const command = /Once it is approved, run:\n {2}(.+)\n/.exec(first.err())?.[1];
     assert.equal(
       command,
-      `louez payments record r1 --type rental --amount 10.00 --method cash --api-key "$LOUEZ_API_KEY" --confirmation apr_1`,
+      `louez payments record r1 --type rental --amount 10.00 --method cash --confirmation apr_1`,
     );
 
     approved = true;
