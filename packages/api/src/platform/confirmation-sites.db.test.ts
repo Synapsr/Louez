@@ -96,6 +96,7 @@ const STAND_INS: Record<string, string[]> = {
   "../services/launch": ["goLive"],
   "../services/team": ["cancelInvitation", "removeMember"],
   "../services/reservation-status": ["changeStoreReservationStatus"],
+  "../services/reservation-dates": ["changeReservationDates"],
   "../services/reservation-create": ["createStoreReservation"],
   "../services/payment-records": [
     "recordPayment",
@@ -255,6 +256,39 @@ const statusPreview = (overrides: Record<string, unknown>) => ({
   money: null,
   insuranceContract: null,
   recipientsHash: "recipients",
+  ...overrides,
+});
+/** A date change's preview, as `changeReservationDates` hands it to its confirm step. */
+const datesPreview = (overrides: Record<string, unknown>) => ({
+  summary: "Move reservation R-1.",
+  reservation: {
+    id: "cs_reservation_00001",
+    number: "R-1",
+    status: "confirmed",
+    currency: "EUR",
+    previousStartDate: AT.toISOString(),
+    previousEndDate: UNTIL.toISOString(),
+    startDate: AT.toISOString(),
+    endDate: new Date(UNTIL.getTime() + 86_400_000).toISOString(),
+    previousTotal: "80.00",
+    total: "100.00",
+    previousTaxAmount: null,
+    taxAmount: null,
+    subtotalExclTax: null,
+    deposit: "0.00",
+    difference: "20.00",
+  },
+  customer: { name: "Ann Lee", email: "ann@cs.test" },
+  lines: [{ id: "cs_item_000000000001", product: "City bike", quantity: 1, previousTotal: "80.00", total: "100.00" }],
+  capacity: { overbooked: false, shortfalls: [] },
+  overbooking: null,
+  turnoverBuffer: null,
+  units: [],
+  messages: [],
+  warnings: [],
+  recipientsHash: "recipients",
+  demand: [],
+  fingerprint: "fingerprint",
   ...overrides,
 });
 /** A creation's preview, as the service hands it (services/reservation-create.ts). */
@@ -664,6 +698,42 @@ const SITES: Site[] = [
       ].slice(0, name === "cancel" ? 2 : undefined),
     }),
   ),
+  // A date change: a change always; a message, and an override, when they apply.
+  {
+    path: ["dashboard", "reservations", "update"],
+    input: {
+      id: "cs_reservation_00001",
+      endDate: new Date(UNTIL.getTime() + 86_400_000).toISOString(),
+      notifyCustomer: false,
+    },
+    branches: [
+      { name: "moves the dates", preview: datesPreview({}), asksWithOptionOff: false },
+      {
+        name: "moves the dates, a message goes",
+        preview: datesPreview({
+          messages: [{ message: "reservation_modified", channel: "email", to: "ann@cs.test" }],
+        }),
+        asksWithOptionOff: false,
+      },
+      {
+        name: "booked over the stock, nothing short",
+        preview: datesPreview({ overbooking: { shortfalls: [] } }),
+        asksWithOptionOff: true,
+        presentation: { facts: { reservation: "cs_reservation_00001", overrides: [] } },
+      },
+      {
+        name: "past the turnover buffer, a message goes",
+        preview: datesPreview({
+          turnoverBuffer: { shortfalls: [shortfall], turnoverBufferMinutes: 60 },
+          messages: [{ message: "reservation_modified", channel: "email", to: "ann@cs.test" }],
+        }),
+        asksWithOptionOff: true,
+        presentation: {
+          facts: { reservation: "cs_reservation_00001", overrides: ["turnover_buffer"] },
+        },
+      },
+    ],
+  },
   // A creation asks under its locks: a change always, a message when one
   // goes, a stock override when a flag is sent.
   {
@@ -919,6 +989,14 @@ const FINGERPRINTS: Record<string, string> = {
     "bfd6897c223270bdc61a2fd3082c8bb97da3eb369ae94cf6c738a84af9f22e5f",
   "dashboard.reservations.cancel, no message":
     "0c4213cf9f48761267bb8fa2d0862ae1db4ce4c6e00a2c082b9feea305db2417",
+  "dashboard.reservations.update, moves the dates":
+    "aa7de6993de1f8642ac3855713b432a10fec1618547f5d6c65799566ade5f897",
+  "dashboard.reservations.update, moves the dates, a message goes":
+    "825e07e26abcecaf4965e8ae63185bbe2b984d9db9e4336664400dda333f8b3a",
+  "dashboard.reservations.update, booked over the stock, nothing short":
+    "ca5f17ece34e73a1c9cbf7b4c2ebeb31a3a3b6e615f7b02374aae09fafb29d87",
+  "dashboard.reservations.update, past the turnover buffer, a message goes":
+    "41973bb1995339cfa50d7c8f7398bdc0397b3160542502b69717a29e487b33e2",
   "dashboard.reservations.create, nothing sent":
     "7a20ec00c80753fb6a8518b6f803d3451f4edf160351b6963f1049beb874c8cc",
   "dashboard.reservations.create, a message goes":
@@ -987,6 +1065,17 @@ const CONSEQUENCES: Record<string, readonly Consequence[] | null> = {
   "dashboard.reservations.updateStatus, past the turnover buffer": ["stock_override"],
   "dashboard.reservations.cancel, a message goes": ["customer_message"],
   "dashboard.reservations.cancel, no message": ["change"],
+  "dashboard.reservations.update, moves the dates": ["change"],
+  "dashboard.reservations.update, moves the dates, a message goes": ["change", "customer_message"],
+  "dashboard.reservations.update, booked over the stock, nothing short": [
+    "change",
+    "stock_override",
+  ],
+  "dashboard.reservations.update, past the turnover buffer, a message goes": [
+    "change",
+    "customer_message",
+    "stock_override",
+  ],
   "dashboard.reservations.create, nothing sent": ["change"],
   "dashboard.reservations.create, a message goes": ["change", "customer_message"],
   "dashboard.reservations.create, booked over the stock": ["change", "stock_override"],

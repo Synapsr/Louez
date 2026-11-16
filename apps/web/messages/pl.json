@@ -9953,7 +9953,11 @@
           "createBooking": "Utworzyć rezerwację?",
           "createBookingPastBuffer": "Utworzyć rezerwację mimo przerwy między wynajmami?",
           "createBookingBeyondStock": "Utworzyć rezerwację ponad stan magazynu?",
-          "createBookingBeyondStockAndBuffer": "Utworzyć rezerwację ponad stan magazynu i mimo przerwy między wynajmami?"
+          "createBookingBeyondStockAndBuffer": "Utworzyć rezerwację ponad stan magazynu i mimo przerwy między wynajmami?",
+          "moveDatesWithinRules": "Przesunąć daty rezerwacji?",
+          "moveDatesPastBuffer": "Przesunąć daty rezerwacji mimo przerwy między wynajmami?",
+          "moveDatesBeyondStock": "Przesunąć daty rezerwacji ponad stan magazynu?",
+          "moveDatesBeyondStockAndBuffer": "Przesunąć daty rezerwacji ponad stan magazynu i mimo przerwy między wynajmami?"
         },
         "facts": {
           "booking": "Rezerwacja #<v>{number}</v> · <v>{customer}</v>",
@@ -9990,7 +9994,9 @@
           "bookingFor": "Dla <v>{customer}</v> · <v>{email}</v>",
           "bookingForNewCustomer": "Dla <v>{customer}</v> · <v>{email}</v>, nowy klient",
           "bookingLine": "{quantity} × <v>{product}</v>",
-          "bookingLines": "{quantity} × <v>{product}</v> i {others, plural, one {jeszcze # pozycja} few {jeszcze # pozycje} other {jeszcze # pozycji}}"
+          "bookingLines": "{quantity} × <v>{product}</v> i {others, plural, one {jeszcze # pozycja} few {jeszcze # pozycje} other {jeszcze # pozycji}}",
+          "datesMoved": "Daty: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nowa suma: <v>{total}</v> (różnica: <v>{difference}</v>). Nic nie jest pobierane ani zwracane."
         },
         "choices": {
           "paymentType": {
@@ -10015,7 +10021,8 @@
             "request_rejected": "prośba odrzucona",
             "reservation_cancelled": "rezerwacja anulowana",
             "quote_sent": "oferta",
-            "booking_confirmed": "rezerwacja potwierdzona"
+            "booking_confirmed": "rezerwacja potwierdzona",
+            "reservation_modified": "rezerwacja zmieniona"
           }
         }
       }

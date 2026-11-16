@@ -9953,7 +9953,11 @@
           "createBooking": "Criar a reserva?",
           "createBookingPastBuffer": "Criar a reserva apesar da sua margem entre alugueres?",
           "createBookingBeyondStock": "Criar a reserva acima do seu stock?",
-          "createBookingBeyondStockAndBuffer": "Criar a reserva acima do seu stock e da sua margem entre alugueres?"
+          "createBookingBeyondStockAndBuffer": "Criar a reserva acima do seu stock e da sua margem entre alugueres?",
+          "moveDatesWithinRules": "Mudar as datas da reserva?",
+          "moveDatesPastBuffer": "Mudar as datas da reserva apesar da sua margem entre alugueres?",
+          "moveDatesBeyondStock": "Mudar as datas da reserva acima do seu stock?",
+          "moveDatesBeyondStockAndBuffer": "Mudar as datas da reserva acima do seu stock e da sua margem entre alugueres?"
         },
         "facts": {
           "booking": "Reserva #<v>{number}</v> · <v>{customer}</v>",
@@ -9990,7 +9994,9 @@
           "bookingFor": "Para <v>{customer}</v> · <v>{email}</v>",
           "bookingForNewCustomer": "Para <v>{customer}</v> · <v>{email}</v>, cliente novo",
           "bookingLine": "{quantity} × <v>{product}</v>",
-          "bookingLines": "{quantity} × <v>{product}</v> e {others, plural, one {mais # linha} other {mais # linhas}}"
+          "bookingLines": "{quantity} × <v>{product}</v> e {others, plural, one {mais # linha} other {mais # linhas}}",
+          "datesMoved": "Datas: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Novo total: <v>{total}</v> (diferença: <v>{difference}</v>). Nada é cobrado nem reembolsado."
         },
         "choices": {
           "paymentType": {
@@ -10015,7 +10021,8 @@
             "request_rejected": "pedido recusado",
             "reservation_cancelled": "reserva cancelada",
             "quote_sent": "orçamento",
-            "booking_confirmed": "reserva confirmada"
+            "booking_confirmed": "reserva confirmada",
+            "reservation_modified": "reserva alterada"
           }
         }
       }

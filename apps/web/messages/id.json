@@ -9953,7 +9953,11 @@
           "createBooking": "Buat pemesanan?",
           "createBookingPastBuffer": "Buat pemesanan meski melanggar jeda antarsewa Anda?",
           "createBookingBeyondStock": "Buat pemesanan melebihi stok Anda?",
-          "createBookingBeyondStockAndBuffer": "Buat pemesanan melebihi stok dan jeda antarsewa Anda?"
+          "createBookingBeyondStockAndBuffer": "Buat pemesanan melebihi stok dan jeda antarsewa Anda?",
+          "moveDatesWithinRules": "Pindahkan tanggal pemesanan?",
+          "moveDatesPastBuffer": "Pindahkan tanggal pemesanan meski melanggar jeda antarsewa Anda?",
+          "moveDatesBeyondStock": "Pindahkan tanggal pemesanan melebihi stok Anda?",
+          "moveDatesBeyondStockAndBuffer": "Pindahkan tanggal pemesanan melebihi stok dan jeda antarsewa Anda?"
         },
         "facts": {
           "booking": "Pemesanan #<v>{number}</v> · <v>{customer}</v>",
@@ -9990,7 +9994,9 @@
           "bookingFor": "Untuk <v>{customer}</v> · <v>{email}</v>",
           "bookingForNewCustomer": "Untuk <v>{customer}</v> · <v>{email}</v>, pelanggan baru",
           "bookingLine": "{quantity} × <v>{product}</v>",
-          "bookingLines": "{quantity} × <v>{product}</v> dan {others, plural, other {# baris lagi}}"
+          "bookingLines": "{quantity} × <v>{product}</v> dan {others, plural, other {# baris lagi}}",
+          "datesMoved": "Tanggal: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Total baru: <v>{total}</v> (selisih: <v>{difference}</v>). Tidak ada yang ditagih atau dikembalikan."
         },
         "choices": {
           "paymentType": {
@@ -10015,7 +10021,8 @@
             "request_rejected": "permintaan ditolak",
             "reservation_cancelled": "pemesanan dibatalkan",
             "quote_sent": "penawaran",
-            "booking_confirmed": "pemesanan dikonfirmasi"
+            "booking_confirmed": "pemesanan dikonfirmasi",
+            "reservation_modified": "pemesanan diubah"
           }
         }
       }

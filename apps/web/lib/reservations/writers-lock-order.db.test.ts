@@ -19,7 +19,9 @@ import {
 
 // The writers of a reservation that are not status changes, each racing the
 // store's status change of the same reservation: the unit assignment, the move
-// to another unit, and the automatic extension. Each takes the reservation's
+// to another unit, the automatic extension, and the date change of the API
+// and agents (`changeReservationDates`, which takes the products' locks only
+// through the owner entry and `lockReservationProducts`). Each takes the reservation's
 // products by id, then the reservation, then its rows, as the status change
 // does (`lockReservationInTransaction`, rule C1 of
 // docs/domain/reservation-changes.md). Before, each locked the reservation
@@ -98,6 +100,7 @@ describe(
     let move: typeof import("@/app/(dashboard)/dashboard/products/[id]/actions");
     let extension: typeof import("@/lib/reservations/extension-service");
     let statusChange: typeof import("@louez/api/services/reservation-status");
+    let dateChange: typeof import("@louez/api/services/reservation-dates");
     let counter = 0;
 
     before(async () => {
@@ -110,6 +113,7 @@ describe(
       // names by hand. Loaded last, as the mocks change how later modules load.
       await import("@louez/mcp/testing/cjs-named-exports");
       statusChange = await import("@louez/api/services/reservation-status");
+      dateChange = await import("@louez/api/services/reservation-dates");
 
       await louezDb.db.insert(louezDb.stores).values({
         id: STORE,
@@ -216,6 +220,7 @@ describe(
         depositAmount: "0.00",
         totalAmount: "0.00",
         source: "online",
+        currency: "EUR",
       });
       const itemId = await line(id, product.id, product.units[0]);
       return { id, itemId, product };
@@ -227,6 +232,7 @@ describe(
       credential: { kind: "session" as const, id: null },
       transport: "rpc" as const,
       customers: true,
+      reader: { storeId: STORE, currency: "EUR", customers: true, payments: true },
       store: {
         id: STORE,
         name: "Lock order",
@@ -384,14 +390,31 @@ describe(
         // An extension is quoted for a confirmed or ongoing reservation only.
         refusedAfterCancellation: /invalidStatus/,
       },
+      {
+        writer: "the date change of the API and agents",
+        run: ({ id }) =>
+          dateChange.changeReservationDates(caller(), {
+            id,
+            endDate: new Date(`${EXTENDED_END}:00.000Z`),
+            notifyCustomer: false,
+          }),
+        wrote: async ({ id }) =>
+          (await reservationRow(id)).endDate.toISOString() === `${EXTENDED_END}:00.000Z`,
+        // Checked again under the lock: a cancelled reservation is not edited.
+        refusedAfterCancellation: /cancelled reservation cannot be changed/,
+      },
     ];
 
-    /** The answer of a writer that went through: the actions answer success, the extension its status. */
+    /**
+     * The answer of a writer that went through: the actions answer success,
+     * the extension its status, the date change that it changed the dates.
+     */
     const succeeded = (answer: unknown) =>
       typeof answer === "object" &&
       answer !== null &&
       (("success" in answer && answer.success === true) ||
-        ("status" in answer && answer.status === "confirmed"));
+        ("status" in answer && answer.status === "confirmed") ||
+        ("changed" in answer && answer.changed === true));
 
     for (const { writer, run, wrote, refusedAfterCancellation } of writers) {
       describe(writer, () => {

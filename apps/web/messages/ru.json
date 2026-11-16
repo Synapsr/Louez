@@ -9953,7 +9953,11 @@
           "createBooking": "Создать бронирование?",
           "createBookingPastBuffer": "Создать бронирование, несмотря на ваш перерыв между арендами?",
           "createBookingBeyondStock": "Создать бронирование сверх вашего запаса?",
-          "createBookingBeyondStockAndBuffer": "Создать бронирование сверх вашего запаса и вашего перерыва между арендами?"
+          "createBookingBeyondStockAndBuffer": "Создать бронирование сверх вашего запаса и вашего перерыва между арендами?",
+          "moveDatesWithinRules": "Перенести даты бронирования?",
+          "moveDatesPastBuffer": "Перенести даты бронирования, несмотря на ваш перерыв между арендами?",
+          "moveDatesBeyondStock": "Перенести даты бронирования сверх вашего запаса?",
+          "moveDatesBeyondStockAndBuffer": "Перенести даты бронирования сверх вашего запаса и вашего перерыва между арендами?"
         },
         "facts": {
           "booking": "Бронирование №<v>{number}</v> · <v>{customer}</v>",
@@ -9990,7 +9994,9 @@
           "bookingFor": "Для <v>{customer}</v> · <v>{email}</v>",
           "bookingForNewCustomer": "Для <v>{customer}</v> · <v>{email}</v>, новый клиент",
           "bookingLine": "{quantity} × <v>{product}</v>",
-          "bookingLines": "{quantity} × <v>{product}</v> и {others, plural, one {ещё # позиция} few {ещё # позиции} other {ещё # позиций}}"
+          "bookingLines": "{quantity} × <v>{product}</v> и {others, plural, one {ещё # позиция} few {ещё # позиции} other {ещё # позиций}}",
+          "datesMoved": "Даты: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Новая сумма: <v>{total}</v> (разница: <v>{difference}</v>). Ничего не списывается и не возвращается."
         },
         "choices": {
           "paymentType": {
@@ -10015,7 +10021,8 @@
             "request_rejected": "запрос отклонён",
             "reservation_cancelled": "бронирование отменено",
             "quote_sent": "предложение",
-            "booking_confirmed": "бронирование подтверждено"
+            "booking_confirmed": "бронирование подтверждено",
+            "reservation_modified": "бронирование изменено"
           }
         }
       }

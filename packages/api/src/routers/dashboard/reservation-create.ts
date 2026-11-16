@@ -3,11 +3,8 @@ import {
   createReservationOutput,
 } from "../../contracts/reservation-create";
 import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
-import {
-  confirmationStep,
-  type Consequence,
-  type Consequences,
-} from "../../platform/approval-rule";
+import type { Consequence, Consequences } from "../../platform/approval-rule";
+import { CONFIRMATION_HEADER } from "../../platform/confirmation";
 import { platformErrors } from "../../platform/errors";
 import { customerLinks, reservationLinks } from "../../platform/links";
 import { allows, type ProcedureScope } from "../../platform/permissions";
@@ -192,8 +189,15 @@ const create = storeProcedure
     requireCustomerRights(context, "email" in input.customer);
     const created = await createStoreReservation(caller(context), input, {
       confirm: createConfirmation(context, path, input),
-      // How this caller was asked for the branch the preview shows.
-      asked: (preview) => confirmationStep(createConsequences(preview), context.actor.credential),
+      // A call that went on with a token or an approval id was bound to its
+      // preview: an approval when a flag was sent (a person always approves
+      // an override), else a token. Without one, nobody was asked.
+      asked: (preview) =>
+        !context.headers.get(CONFIRMATION_HEADER)
+          ? "none"
+          : preview.overbooking !== null || preview.turnoverBuffer !== null
+            ? "approval"
+            : "token",
     });
     return answerOf(context, created);
   });

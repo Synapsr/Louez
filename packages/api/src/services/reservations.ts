@@ -468,8 +468,17 @@ export async function listReservations(reader: ReservationReader, input: ListRes
 // --- Detail ------------------------------------------------------------------
 
 /** One reservation with everything its dashboard page shows. */
-export async function getReservation(reader: ReservationReader, id: string): Promise<Reservation> {
-  const row = await db.query.reservations.findFirst({
+/**
+ * `executor`: the transaction a write reads its own answer in, after its
+ * write and before its commit, so the answer is the write's and no later
+ * one's (`changeReservationDates`). Absent: the database, for a read.
+ */
+export async function getReservation(
+  reader: ReservationReader,
+  id: string,
+  executor: Pick<typeof db, "query" | "select" | "selectDistinct"> = db,
+): Promise<Reservation> {
+  const row = await executor.query.reservations.findFirst({
     where: and(eq(reservations.id, id), eq(reservations.storeId, reader.storeId)),
     columns: {
       storeId: false,
@@ -573,7 +582,7 @@ export async function getReservation(reader: ReservationReader, id: string): Pro
   );
   const insured =
     hasReservationInsuranceCoverage(row) && productIds.length > 0
-      ? await db
+      ? await executor
           .selectDistinct({ productId: productsTulip.productId })
           .from(productsTulip)
           .innerJoin(products, eq(productsTulip.productId, products.id))

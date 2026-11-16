@@ -9953,7 +9953,11 @@
           "createBooking": "予約を作成しますか？",
           "createBookingPastBuffer": "レンタル間の間隔を守らずに予約を作成しますか？",
           "createBookingBeyondStock": "在庫を超えて予約を作成しますか？",
-          "createBookingBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約を作成しますか？"
+          "createBookingBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約を作成しますか？",
+          "moveDatesWithinRules": "予約の日程を変更しますか？",
+          "moveDatesPastBuffer": "レンタル間の間隔を守らずに予約の日程を変更しますか？",
+          "moveDatesBeyondStock": "在庫を超えて予約の日程を変更しますか？",
+          "moveDatesBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約の日程を変更しますか？"
         },
         "facts": {
           "booking": "予約 #<v>{number}</v> · <v>{customer}</v>",
@@ -9990,7 +9994,9 @@
           "bookingFor": "<v>{customer}</v> 様 · <v>{email}</v>",
           "bookingForNewCustomer": "<v>{customer}</v> 様 · <v>{email}</v>（新規のお客様）",
           "bookingLine": "<v>{product}</v> × {quantity}",
-          "bookingLines": "<v>{product}</v> × {quantity} ほか {others, plural, other {# 件の明細}}"
+          "bookingLines": "<v>{product}</v> × {quantity} ほか {others, plural, other {# 件の明細}}",
+          "datesMoved": "日程: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "新しい合計: <v>{total}</v>（差額: <v>{difference}</v>）。請求も返金も行いません。"
         },
         "choices": {
           "paymentType": {
@@ -10015,7 +10021,8 @@
             "request_rejected": "リクエスト不承認",
             "reservation_cancelled": "予約キャンセル",
             "quote_sent": "見積もり",
-            "booking_confirmed": "予約確定"
+            "booking_confirmed": "予約確定",
+            "reservation_modified": "予約変更"
           }
         }
       }

@@ -269,6 +269,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       "reservations_list_overdue",
       "reservations_list_upcoming",
       "reservations_poll",
+      "reservations_update",
       "reservations_update_notes",
       "reservations_update_status",
       "search_global",
@@ -680,5 +681,109 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     const redacted = JSON.stringify(output(await mcpCall(blind, "reservations_get", { id })));
     assert.ok(!redacted.includes(CUSTOMER), redacted.slice(0, 300));
     assert.ok(redacted.includes(dashboard));
+  });
+  test("reservations_update and POST /reservations/{id}: one input, one answer, the same codes", async () => {
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Dates agent",
+      permissions: { ...readOnly, reservations: "write" },
+    });
+    // Its confirmations off: each call runs at once.
+    await louezDb.db
+      .update(louezDb.apiKeys)
+      .set({ confirmSensitive: false })
+      .where(orm.eq(louezDb.apiKeys.id, created.id));
+    const authorization = `Bearer ${created.key}`;
+    const productId = "rt_dates_product_001";
+    await louezDb.db.insert(louezDb.products).values({
+      id: productId,
+      storeId: STORE,
+      name: "Dates kayak",
+      price: "10.00",
+      pricingMode: "day",
+      quantity: 5,
+    });
+    const start = new Date("2031-06-01T09:00:00.000Z");
+    const booked = async (id: string) => {
+      // Priced as the checkout prices it: two days at 10.00, no tax.
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId: CUSTOMER,
+        number: id,
+        status: "confirmed",
+        startDate: start,
+        endDate: new Date("2031-06-03T09:00:00.000Z"),
+        subtotalAmount: "20.00",
+        depositAmount: "0.00",
+        totalAmount: "20.00",
+        currency: "EUR",
+        source: "online",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: id.replace("res", "itm"),
+        reservationId: id,
+        productId,
+        quantity: 1,
+        unitPrice: "20.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        productSnapshot: { name: "Dates kayak", description: null, images: [] },
+      });
+    };
+    const viaMcp = "rt_dates_res_mcp_01";
+    const viaRest = "rt_dates_res_rst_01";
+    await booked(viaMcp);
+    await booked(viaRest);
+    const arguments_ = { endDate: "2031-06-04T11:00:00+02:00", notifyCustomer: false };
+
+    const byTool = output(
+      await mcpCall(authorization, "reservations_update", { id: viaMcp, ...arguments_ }),
+    );
+    const response = await openApi("POST", `/reservations/${viaRest}`, arguments_, {
+      authorization,
+    });
+    assert.equal(response.status, 200, await response.clone().text());
+    const byRest = (await response.json()) as Json;
+    for (const answer of [byTool, byRest]) {
+      assert.equal(answer.changed, true);
+      assert.equal(answer.previousTotal, "20.00");
+      assert.equal(answer.totalAmount, "30.00");
+      assert.equal(answer.difference, "10.00");
+      assert.equal(new Date(String(answer.endDate)).toISOString(), "2031-06-04T09:00:00.000Z");
+    }
+
+    // A refusal answers the same code on both.
+    const inverted = { endDate: "2031-05-30T09:00:00Z", notifyCustomer: false };
+    const toolRefusal = await mcpCall(authorization, "reservations_update", {
+      id: viaMcp,
+      ...inverted,
+    });
+    assert.equal(toolError(toolRefusal)?.code, "RESERVATION_WINDOW_INVALID");
+    const restRefusal = await openApi("POST", `/reservations/${viaRest}`, inverted, {
+      authorization,
+    });
+    assert.equal(restRefusal.status, 400);
+    const restError = (await restRefusal.json()) as { data?: { code?: string } };
+    assert.equal(restError.data?.code, "RESERVATION_WINDOW_INVALID");
+    // An unknown field is refused, never ignored.
+    const extra = await openApi(
+      "POST",
+      `/reservations/${viaRest}`,
+      { ...arguments_, lines: [] },
+      { authorization },
+    );
+    assert.equal(extra.status, 400);
+
+    // A read-only key: refused on both.
+    const reader = await key(readOnly);
+    const readerTool = await mcpCall(reader, "reservations_update", { id: viaMcp, ...arguments_ });
+    assert.equal(toolError(readerTool)?.code, "PERMISSION_DENIED");
+    const readerRest = await openApi("POST", `/reservations/${viaRest}`, arguments_, {
+      authorization: reader,
+    });
+    assert.equal(readerRest.status, 403);
   });
 });

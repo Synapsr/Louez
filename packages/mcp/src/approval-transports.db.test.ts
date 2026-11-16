@@ -506,6 +506,7 @@ describe(
         "DELETE /team/members/{id}",
         "POST /payments/{paymentId}/refund-records",
         "POST /reservations",
+        "POST /reservations/{id}",
         "POST /reservations/{id}/status",
         "POST /reservations/{reservationId}/deposit-returns",
         "POST /reservations/{reservationId}/payments",

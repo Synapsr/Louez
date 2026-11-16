@@ -9953,7 +9953,11 @@
           "createBooking": "De boeking maken?",
           "createBookingPastBuffer": "De boeking maken ondanks je tijd tussen twee verhuren?",
           "createBookingBeyondStock": "De boeking maken boven je voorraad?",
-          "createBookingBeyondStockAndBuffer": "De boeking maken boven je voorraad en je tijd tussen twee verhuren?"
+          "createBookingBeyondStockAndBuffer": "De boeking maken boven je voorraad en je tijd tussen twee verhuren?",
+          "moveDatesWithinRules": "De data van de boeking verplaatsen?",
+          "moveDatesPastBuffer": "De data van de boeking verplaatsen ondanks je tijd tussen twee verhuren?",
+          "moveDatesBeyondStock": "De data van de boeking verplaatsen boven je voorraad?",
+          "moveDatesBeyondStockAndBuffer": "De data van de boeking verplaatsen boven je voorraad en je tijd tussen twee verhuren?"
         },
         "facts": {
           "booking": "Boeking #<v>{number}</v> · <v>{customer}</v>",
@@ -9990,7 +9994,9 @@
           "bookingFor": "Voor <v>{customer}</v> · <v>{email}</v>",
           "bookingForNewCustomer": "Voor <v>{customer}</v> · <v>{email}</v>, nieuwe klant",
           "bookingLine": "{quantity} × <v>{product}</v>",
-          "bookingLines": "{quantity} × <v>{product}</v> en {others, plural, one {nog # regel} other {nog # regels}}"
+          "bookingLines": "{quantity} × <v>{product}</v> en {others, plural, one {nog # regel} other {nog # regels}}",
+          "datesMoved": "Data: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nieuw totaal: <v>{total}</v> (verschil: <v>{difference}</v>). Er wordt niets afgeschreven of terugbetaald."
         },
         "choices": {
           "paymentType": {
@@ -10015,7 +10021,8 @@
             "request_rejected": "aanvraag afgewezen",
             "reservation_cancelled": "boeking geannuleerd",
             "quote_sent": "offerte",
-            "booking_confirmed": "boeking bevestigd"
+            "booking_confirmed": "boeking bevestigd",
+            "reservation_modified": "boeking gewijzigd"
           }
         }
       }

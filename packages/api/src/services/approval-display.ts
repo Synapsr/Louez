@@ -33,6 +33,7 @@ export const CHOICES = {
     "reservation_cancelled",
     "quote_sent",
     "booking_confirmed",
+    "reservation_modified",
   ],
   /** Which channels a message goes on: the sentence names them itself. */
   messageChannels: ["email", "sms", "email_and_sms"],
@@ -124,6 +125,11 @@ export const HEADLINES = {
   createBookingPastBuffer: {},
   createBookingBeyondStock: {},
   createBookingBeyondStockAndBuffer: {},
+  /** A booking's dates moved by an agent with an override, nothing short: the stock and the buffer cover it. */
+  moveDatesWithinRules: {},
+  moveDatesPastBuffer: {},
+  moveDatesBeyondStock: {},
+  moveDatesBeyondStockAndBuffer: {},
 } as const satisfies Record<string, Record<string, ValueSpec>>;
 
 /** The facts, and the values each one takes, all of them. */
@@ -187,6 +193,13 @@ export const FACTS = {
   linkStops: {},
   /** "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00" */
   period: { period: DATE_RANGE, total: MONEY },
+  /**
+   * "From Dec 13, 2026 at 2:00 PM – Dec 17, 2026 at 2:00 PM to Dec 13, 2026
+   * at 2:00 PM – Dec 19, 2026 at 2:00 PM": a booking's dates, before and after.
+   */
+  datesMoved: { before: DATE_RANGE, after: DATE_RANGE },
+  /** "New total: €118.00 (+€20.00)": a booking's total after its dates moved, and what it adds. */
+  newTotal: { total: MONEY, difference: MONEY },
   /** "Kayak biplace: 2 requested, only 1 free with your 2 hr turnover buffer" */
   pastBuffer: { product: TEXT, requested: COUNT, available: COUNT, buffer: DURATION },
   /** "Paddle: 2 requested, only 1 in stock: 1 missing" */

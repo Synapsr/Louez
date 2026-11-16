@@ -49,6 +49,7 @@ export const apiPorts: ApiPorts = {
     collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
     emailConfigured: isEmailConfigured,
   },
+  emailConfigured: isEmailConfigured,
   reportError: reportServerError,
   // Through evlog, so its redaction and its drain apply too.
   log: { error: (event) => log.error(event) },

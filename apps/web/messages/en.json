@@ -9953,7 +9953,11 @@
           "createBooking": "Create the booking?",
           "createBookingPastBuffer": "Create the booking despite your turnover buffer?",
           "createBookingBeyondStock": "Create the booking beyond your stock?",
-          "createBookingBeyondStockAndBuffer": "Create the booking beyond your stock and your turnover buffer?"
+          "createBookingBeyondStockAndBuffer": "Create the booking beyond your stock and your turnover buffer?",
+          "moveDatesWithinRules": "Move the booking’s dates?",
+          "moveDatesPastBuffer": "Move the booking’s dates despite your turnover buffer?",
+          "moveDatesBeyondStock": "Move the booking’s dates beyond your stock?",
+          "moveDatesBeyondStockAndBuffer": "Move the booking’s dates beyond your stock and your turnover buffer?"
         },
         "facts": {
           "booking": "Booking #<v>{number}</v> · <v>{customer}</v>",
@@ -9990,7 +9994,9 @@
           "bookingFor": "For <v>{customer}</v> · <v>{email}</v>",
           "bookingForNewCustomer": "For <v>{customer}</v> · <v>{email}</v>, a new customer",
           "bookingLine": "{quantity} × <v>{product}</v>",
-          "bookingLines": "{quantity} × <v>{product}</v> and {others, plural, one {# more line} other {# more lines}}"
+          "bookingLines": "{quantity} × <v>{product}</v> and {others, plural, one {# more line} other {# more lines}}",
+          "datesMoved": "Dates: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "New total: <v>{total}</v> (difference: <v>{difference}</v>). Nothing is charged or refunded."
         },
         "choices": {
           "paymentType": {
@@ -10015,7 +10021,8 @@
             "request_rejected": "request declined",
             "reservation_cancelled": "booking cancelled",
             "quote_sent": "quote",
-            "booking_confirmed": "booking confirmed"
+            "booking_confirmed": "booking confirmed",
+            "reservation_modified": "booking modified"
           }
         }
       }

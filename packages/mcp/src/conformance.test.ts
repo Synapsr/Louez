@@ -297,6 +297,7 @@ describe("MCP directory conformance", () => {
       reservations_list_overdue: "read",
       reservations_list_upcoming: "read",
       reservations_poll: "read",
+      reservations_update: "overwrite/customer",
       reservations_update_notes: "overwrite",
       reservations_create: "additive/customer",
       reservations_update_status: "overwrite/customer",
@@ -428,7 +429,7 @@ describe("MCP directory conformance", () => {
       "delete_payment",
       "team_remove_member",
       "team_cancel_invitation",
-      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status, reservations_create)",
+      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status, reservations_create, reservations_update)",
     ]) {
       assert.ok(instructions.includes(name), name);
     }
@@ -454,6 +455,7 @@ describe("MCP directory conformance", () => {
       "team_cancel_invitation",
       "reservations_update_status",
       "reservations_create",
+      "reservations_update",
     ];
     for (const tool of tools) {
       const argument = (tool.inputSchema.properties as Record<string, unknown> | undefined)
