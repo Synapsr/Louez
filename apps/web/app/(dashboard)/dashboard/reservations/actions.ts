@@ -19,6 +19,10 @@ import {
   recordedTaxDisplayMode,
   validateReservationContract,
 } from "@louez/api/services";
+import {
+  priceEditedProductLine,
+  type StoredProductLine,
+} from "@louez/api/services/edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
 import {
   priceReservationEdit,
@@ -1697,6 +1701,27 @@ function normalizeMoney(value: string | number) {
   return Number.isFinite(parsed) ? parsed.toFixed(2) : "0.00";
 }
 
+/**
+ * A stored line priced from its product, as `priceEditedProductLine` reads
+ * it; null for one whose price was typed by hand.
+ */
+function storedProductLineOf(item: {
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
+  taxRate: string | null;
+  pricingBreakdown: PricingBreakdown | null;
+}): StoredProductLine | null {
+  if (pricingBasisOf(item.pricingBreakdown)?.isManualOverride === true) return null;
+  return {
+    quantity: item.quantity,
+    unitPrice: Number(item.unitPrice),
+    totalPrice: Number(item.totalPrice),
+    taxRate: item.taxRate === null ? null : Number(item.taxRate),
+    pricingBreakdown: item.pricingBreakdown,
+  };
+}
+
 function hasReservationItemChanges(
   current: {
     productId: string | null;
@@ -2185,8 +2210,12 @@ export async function updateReservation(
     storeSettings: store.settings,
   });
 
-  // Every line the edit leaves, but the insurance, as it prices it by today's
-  // rules; the tax engine totals them under the locks (slice 10).
+  const dateChanged =
+    newStartDate.getTime() !== reservation.startDate.getTime() ||
+    newEndDate.getTime() !== reservation.endDate.getTime();
+  // Every line the edit leaves, but the insurance, as it prices it: a line it
+  // does not change at its stored price, the others by the edit's rules
+  // (slice 11); the tax engine totals them under the locks (slice 10).
   const editedLines: Array<Omit<EditedLine, "taxExempt"> & { id: string }> = [];
   let linesChanged = false;
   let newDepositAmount = 0;
@@ -2265,6 +2294,20 @@ export async function updateReservation(
       let totalPrice = item.unitPrice * duration * item.quantity;
       let manualPricingKind: PricingKind = "duration";
       let pricedFromProductId: string | null = null;
+      // A line priced from its product that the edit does not change keeps its price (slice 11).
+      const existingProductLine =
+        item.id && item.productId && !item.isManualPrice
+          ? existingItemsById.get(item.id)
+          : undefined;
+      const productLinePrice = priceEditedProductLine({
+        stored:
+          existingProductLine && existingProductLine.productId === item.productId
+            ? storedProductLineOf(existingProductLine)
+            : null,
+        quantity: item.quantity,
+        windowChanged: dateChanged,
+      });
+      let keptTaxRate: number | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
@@ -2282,8 +2325,13 @@ export async function updateReservation(
         totalPrice = item.unitPrice * duration * item.quantity;
       }
 
-      // If not manual price and has a productId, calculate with tiers
-      if (!item.isManualPrice && item.productId) {
+      if (productLinePrice.kind === "kept" && existingProductLine) {
+        finalUnitPrice = productLinePrice.unitPrice;
+        totalPrice = productLinePrice.subtotal;
+        pricingBreakdown = existingProductLine.pricingBreakdown;
+        keptTaxRate = productLinePrice.taxRate;
+      } else if (!item.isManualPrice && item.productId) {
+        // Priced again, with tiers.
         const product = await db.query.products.findFirst({
           where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
           with: { pricingTiers: true },
@@ -2419,6 +2467,7 @@ export async function updateReservation(
         quantity: item.quantity,
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
+        keptTaxRate,
       });
       if (item.id) {
         const existingItem = existingItemsById.get(item.id);
@@ -2457,8 +2506,19 @@ export async function updateReservation(
       let totalPrice: number;
       let finalUnitPrice = parseFloat(item.unitPrice);
       let pricedFromProductId: string | null = null;
+      // A line priced from its product keeps its price when the window did not move (slice 11).
+      const productLinePrice = priceEditedProductLine({
+        stored: !isManualPrice && item.productId ? storedProductLineOf(item) : null,
+        quantity: item.quantity,
+        windowChanged: dateChanged,
+      });
+      let keptTaxRate: number | null = null;
 
-      if (!isManualPrice && item.productId) {
+      if (productLinePrice.kind === "kept") {
+        totalPrice = productLinePrice.subtotal;
+        finalUnitPrice = productLinePrice.unitPrice;
+        keptTaxRate = productLinePrice.taxRate;
+      } else if (!isManualPrice && item.productId) {
         // Recalculate with tiers
         const product = await db.query.products.findFirst({
           where: eq(products.id, item.productId),
@@ -2612,6 +2672,7 @@ export async function updateReservation(
         quantity: item.quantity,
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
+        keptTaxRate,
       });
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
       if (item.productId) {
@@ -2883,9 +2944,6 @@ export async function updateReservation(
   }
 
   const existingDiscount = parseFloat(reservation.discountAmount || "0");
-  const dateChanged =
-    newStartDate.getTime() !== reservation.startDate.getTime() ||
-    newEndDate.getTime() !== reservation.endDate.getTime();
   // What prices a reservation (slice 10): its window, its lines (a line added
   // or removed, a quantity, a deposit, a price typed by hand), its delivery
   // legs and the insurance the store asks for; its discount the edit does not

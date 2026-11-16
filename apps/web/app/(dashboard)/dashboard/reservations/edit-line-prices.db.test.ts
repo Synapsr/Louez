@@ -259,8 +259,9 @@ describe(
 
         assert.equal(result.error, undefined);
         const [kayakLine, canoeLine] = await items(id);
-        // Today: priced again from the catalogue, 2 × 15.00.
-        assert.equal(kayakLine?.totalPrice, "30.00");
+        // As booked, 2 × 10.00; the line changed is priced at today's 10.00 a day.
+        assert.equal(kayakLine?.totalPrice, "20.00");
+        assert.equal(kayakLine?.unitPrice, "20.00");
         assert.equal(canoeLine?.totalPrice, "40.00");
       });
 
@@ -282,9 +283,12 @@ describe(
 
         assert.equal(result.error, undefined);
         const [kayakLine, canoeLine] = await items(id);
-        // Today: the store's rate of now on every line.
-        assert.equal(kayakLine?.taxRate, "10.00");
+        // The line kept keeps its rate and its tax; the line changed gets today's.
+        assert.equal(kayakLine?.taxRate, "20.00");
+        assert.equal(kayakLine?.taxAmount, "4.00");
         assert.equal(canoeLine?.taxRate, "10.00");
+        // 20.00 + 4.00 of tax, and 40.00 + 4.00.
+        assert.equal((await reservationRow(id)).totalAmount, "68.00");
       });
     });
 
@@ -366,8 +370,8 @@ describe(
 
         assert.equal(result.error, undefined);
         const [gone] = await items(id);
-        // Today: its whole-period price taken for a daily one, 90.00 × 3.
-        assert.equal(gone?.totalPrice, "270.00");
+        // Untouched, it keeps its stored price (the rule of a line the edit does not change).
+        assert.equal(gone?.totalPrice, "90.00");
       });
 
       test("its quantity changed", async () => {

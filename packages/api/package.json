@@ -28,6 +28,7 @@
     "./services/customer-reservation-status": "./src/services/customer-reservation-status.ts",
     "./services/customer-tools": "./src/services/customer-tools.ts",
     "./services/date-change-requests": "./src/services/date-change-requests.ts",
+    "./services/edit-line-pricing": "./src/services/edit-line-pricing.ts",
     "./services/handoffs": "./src/services/handoffs.ts",
     "./services/inbox": "./src/services/inbox.ts",
     "./services/jobs": "./src/services/jobs.ts",
