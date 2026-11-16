@@ -1606,6 +1606,12 @@ interface UpdateReservationData {
   overrideTurnoverBuffer?: boolean;
   /** Write the edit although it asks more stock than is free; the history keeps the shortfalls. */
   allowOverbooking?: boolean;
+  /**
+   * The total the form showed. When the edit prices the reservation, it is
+   * compared under the locks with the total about to be written; a
+   * difference refuses the edit as changed meanwhile.
+   */
+  expectedTotal?: number;
   delivery?: {
     outbound: UpdateDeliveryLeg;
     return: UpdateDeliveryLeg;
@@ -3197,6 +3203,19 @@ export async function updateReservation(
             (line, index) =>
               line.tax.kind === "not_recorded" && (priced.lines[index]?.taxAmount ?? 0) > 0,
           );
+        // What the person confirmed is what is written (slice 11): a line the
+        // edit keeps enters at the price read under the locks, which another
+        // edit may have changed since the form read it. The total the form
+        // showed is compared to the minor unit with the total about to be
+        // written; a difference refuses the edit, and the form reads the
+        // reservation again.
+        if (
+          priced.kind === "priced" &&
+          data.expectedTotal !== undefined &&
+          Math.round(newTotalAmount * perUnit) !== Math.round(data.expectedTotal * perUnit)
+        ) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
         const taxAdded =
           priced.kind === "priced" &&
           priced.totals.taxEnabled &&

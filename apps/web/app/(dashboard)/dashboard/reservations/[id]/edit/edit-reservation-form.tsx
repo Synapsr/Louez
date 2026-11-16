@@ -842,6 +842,7 @@ export function EditReservationForm({
           allowOverbooking,
           delivery: deliveryPayload,
           items: items.map(toReservationItemPayload),
+          expectedTotal: shownTotal,
         },
       });
 
@@ -1095,6 +1096,19 @@ export function EditReservationForm({
   );
   const currentItemsSignature = useMemo(() => buildItemsChangeSignature(items), [items]);
   const hasItemChanges = currentItemsSignature !== originalItemsSignature;
+
+  // The total the form shows, which the edit sends: the server refuses to
+  // write another one (slice 11).
+  const shownTotal = previewEditTotal({
+    items: calculations.items,
+    insuranceAmount: fixedTulipInsuranceAmount,
+    discountAmount: parseFloat(reservation.discountAmount ?? "0"),
+    deliveryFee: delivery.totalFee,
+    deposit: calculations.deposit,
+    storeTax: storeSettings?.tax,
+    recordedTaxDisplayMode: reservation.taxDisplayMode ?? null,
+    currency,
+  });
 
   const hasChanges =
     (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
@@ -1437,16 +1451,7 @@ export function EditReservationForm({
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}
                 originalTotal={parseFloat(reservation.totalAmount)}
-                newTotal={previewEditTotal({
-                  items: calculations.items,
-                  insuranceAmount: fixedTulipInsuranceAmount,
-                  discountAmount: parseFloat(reservation.discountAmount ?? "0"),
-                  deliveryFee: delivery.totalFee,
-                  deposit: calculations.deposit,
-                  storeTax: storeSettings?.tax,
-                  recordedTaxDisplayMode: reservation.taxDisplayMode ?? null,
-                  currency,
-                })}
+                newTotal={shownTotal}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}
                 currencySymbol={currencySymbol}

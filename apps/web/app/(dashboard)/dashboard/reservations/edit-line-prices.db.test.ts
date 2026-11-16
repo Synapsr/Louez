@@ -111,6 +111,7 @@ describe(
     let louezDb: typeof import("@louez/db");
     let actions: typeof import("./actions");
     let priceCart: typeof import("@louez/api/services/price-cart");
+    let reservationDates: typeof import("@louez/api/services/reservation-dates");
     let counter = 0;
     const nextId = (prefix: string) => `${prefix}_${String(++counter).padStart(6, "0")}`;
 
@@ -145,6 +146,7 @@ describe(
       actions = await import("./actions");
       await import("@louez/mcp/testing/cjs-named-exports");
       priceCart = await import("@louez/api/services/price-cart");
+      reservationDates = await import("@louez/api/services/reservation-dates");
       await louezDb.db.insert(louezDb.stores).values({
         id: STORE,
         userId: "owner_line_prices",
@@ -793,6 +795,106 @@ describe(
           assert.equal((await lineOf(id, gone)).totalPrice, "90.00");
           assert.equal((await reservationRow(id)).endDate.getTime(), THREE_DAYS.getTime());
         }
+      });
+    });
+
+    describe("the total the form shows is the total written, or the edit is refused", () => {
+      /** Two lines of two days at 10.00 a day: the form reads them, then shows B's quantity at two. */
+      async function formShowingB() {
+        await useStore({});
+        const [a, b] = [await product(), await product()];
+        const { id } = await booking([
+          { productId: a, quantity: 1, totalPrice: "20.00" },
+          { productId: b, quantity: 1, totalPrice: "20.00" },
+        ]);
+        const lineB = (await items(id)).find((item) => item.productId === b);
+        assert.ok(lineB);
+        const quantities = { [lineB.id]: 2 };
+        // What the form shows and what it sends, read now.
+        const shown = await previewOf(id, { quantities });
+        const sent = await formLines(id, quantities);
+        return { id, a, shown, sent };
+      }
+
+      test("unchanged meanwhile: the total shown is written", async () => {
+        const { id, shown, sent } = await formShowingB();
+        assert.equal(shown, "60.00");
+
+        const result = await actions.updateReservation(id, {
+          items: sent,
+          expectedTotal: Number(shown),
+        });
+
+        assert.equal(result.error, undefined);
+        assert.equal((await reservationRow(id)).totalAmount, "60.00");
+      });
+
+      test("another edit priced a line again meanwhile: refused, nothing written", async () => {
+        const { id, a, shown, sent } = await formShowingB();
+        // Meanwhile, the product of A costs 15.00, and another editor changes A's
+        // quantity to two and back: A is priced again, at 30.00.
+        await louezDb.db
+          .update(louezDb.products)
+          .set({ price: "15.00" })
+          .where(eq(louezDb.products.id, a));
+        const lineA = (await items(id)).find((item) => item.productId === a);
+        assert.ok(lineA);
+        for (const quantity of [2, 1]) {
+          const other = await actions.updateReservation(id, {
+            items: await formLines(id, { [lineA.id]: quantity }),
+          });
+          assert.equal(other.error, undefined);
+        }
+        assert.equal((await reservationRow(id)).totalAmount, "50.00");
+
+        const result = await actions.updateReservation(id, {
+          items: sent,
+          expectedTotal: Number(shown),
+        });
+
+        // It would write 70.00 where the form showed 60.00.
+        assert.equal(result.error, "errors.reservationChangedMeanwhile");
+        assert.equal((await reservationRow(id)).totalAmount, "50.00");
+      });
+
+      test("the API's date change moved the window meanwhile: priced at the form's window, the total shown", async () => {
+        const { id, shown, sent } = await formShowingB();
+        // An agent moves the reservation to three days: every line priced again.
+        await reservationDates.changeReservationDates(
+          {
+            storeId: STORE,
+            userId: null,
+            credential: { kind: "session", id: null },
+            transport: "rpc",
+            customers: true,
+            reader: { storeId: STORE, currency: "EUR", customers: true, payments: true },
+            store: {
+              id: STORE,
+              name: "Edit line prices",
+              slug: "edit-line-prices",
+              ownerUserId: "owner_line_prices",
+            },
+            ports: {
+              afterCommit: () => {},
+              dispatchEffects: () => {},
+              emailConfigured: () => false,
+            },
+          },
+          { id, endDate: THREE_DAYS, notifyCustomer: false },
+        );
+        assert.equal((await reservationRow(id)).totalAmount, "60.00");
+
+        // The form still holds the two days it read: each line is priced again
+        // for them, which gives the total it showed.
+        const result = await actions.updateReservation(id, {
+          startDate: START,
+          endDate: TWO_DAYS,
+          items: sent,
+          expectedTotal: Number(shown),
+        });
+
+        assert.equal(result.error, undefined);
+        assert.equal((await reservationRow(id)).totalAmount, "60.00");
       });
     });
   },
