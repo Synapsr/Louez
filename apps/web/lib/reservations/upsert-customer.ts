@@ -1,7 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { Transaction } from "@louez/db";
-import { customers } from "@louez/db";
+import { customers, lockCustomerRow } from "@louez/db";
 import type { CustomerCreatedVia } from "@louez/types";
 import {
   isValidCompanyNumber,
@@ -64,10 +64,7 @@ async function lockCustomerByEmail(
       .where(and(eq(customers.storeId, storeId), eq(customers.email, email)))
       .limit(1);
     if (!candidate) return null;
-    // Through the primary key, named: a lock order is the access path's.
-    await tx.execute(
-      sql`SELECT id FROM customers FORCE INDEX (PRIMARY) WHERE id = ${candidate.id} FOR UPDATE`,
-    );
+    await lockCustomerRow(tx, candidate.id);
     const [locked] = await tx.select().from(customers).where(eq(customers.id, candidate.id));
     // The column's collation compares e-mails without case, as the read did.
     if (locked?.storeId === storeId && locked.email.toLowerCase() === email.toLowerCase()) {
