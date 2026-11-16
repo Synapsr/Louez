@@ -35,6 +35,7 @@ import {
   type RefundAnswer,
   type RefundCharge,
   type StripeRefundPort,
+  laterRefundReport,
   lookUpOperationRefund,
   readChargeSnapshot,
   refundIdempotencyKey,
@@ -1001,9 +1002,13 @@ async function recordFound(
   if (!snapshot.refunds) {
     throw new Error(`the refunds of ${operation.chargeId} could not all be read`);
   }
+  // The request's answer and the listing are two reports of one refund: the one further
+  // along stands (`laterRefundReport`), whichever was read last.
   const { refund } = verdict;
   const refunds = snapshot.refunds.some((candidate) => candidate.id === refund.id)
-    ? snapshot.refunds
+    ? snapshot.refunds.map((candidate) =>
+        candidate.id === refund.id ? laterRefundReport(candidate, refund) : candidate,
+      )
     : [refund, ...snapshot.refunds];
   const recorded = await recordChargeRefunds(deps.database, {
     paymentId: operation.paymentId,

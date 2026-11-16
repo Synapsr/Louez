@@ -1678,6 +1678,21 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     assert.equal(await rentalPaidOf(reservationId), 75);
   });
 
+  test("the answer of the request and the listing disagree: the report further along stands, either way", async () => {
+    for (const [answered, listed] of [
+      ["succeeded", "pending"],
+      ["pending", "succeeded"],
+    ] as const) {
+      const fake = fakeStripe();
+      fake.makes.status = listed;
+      fake.makes.answered = answered;
+      const { paymentId } = await createPayment(fake);
+      const operation = await expectOk(await refund(fake, request(paymentId, 3_000)));
+      assert.equal(operation.status, "succeeded", `${answered} answered, ${listed} listed`);
+      assert.equal((await readPayment(paymentId))?.amount, "70.00");
+    }
+  });
+
   test("an operation an earlier version left pending without its row gets its row from the next report", async () => {
     const fake = fakeStripe();
     fake.makes.status = "pending";
