@@ -11,6 +11,7 @@ import {
 } from "./meta";
 import { referenceGroupOf } from "./openapi-tags";
 import type { ProcedureScope } from "./permissions";
+import { checksCaller } from "./procedures";
 
 /**
  * The procedures the OpenAPI and MCP transports serve, by router path. The RPC
@@ -242,6 +243,9 @@ function toolProblems(path: string, meta: ApiMeta, mcp: McpExposure): string[] {
   if (meta.personApproval && !meta.sensitive) {
     problems.push(`${path}: a procedure a person approves is sensitive`);
   }
+  if (meta.requiresIdempotencyKey && (!writes || meta.secretOutput)) {
+    problems.push(`${path}: only a write that replays requires an idempotency key`);
+  }
   return problems;
 }
 
@@ -267,6 +271,13 @@ function problemsOf(path: string, node: unknown): string[] {
     problems.push(`${path}: only a session may call it`);
   }
   if (meta.platformAdmin) problems.push(`${path}: reserved to platform staff`);
+  // The rule is enforced by the caller checks (`callerRefusal`): a procedure
+  // built without them would run without a key.
+  if (meta.requiresIdempotencyKey && !checksCaller(node)) {
+    problems.push(
+      `${path}: requires an idempotency key but is not built on accountProcedure or storeProcedure`,
+    );
+  }
   if (def.inputSchema) {
     const [, schema] = jsonSchemaConverter.convert(def.inputSchema, { strategy: "input" });
     if (schema.type !== "object") problems.push(`${path}: its input is not an object`);
@@ -309,7 +320,13 @@ function documented(
   const parameters = [...(operation.parameters ?? [])];
   const isWrite = meta.scope?.level === "write";
   const replays = isWrite && !meta.secretOutput;
-  if (replays) parameters.push({ $ref: "#/components/parameters/IdempotencyKey" });
+  if (replays) {
+    parameters.push({
+      $ref: meta.requiresIdempotencyKey
+        ? "#/components/parameters/IdempotencyKeyRequired"
+        : "#/components/parameters/IdempotencyKey",
+    });
+  }
   if (meta.sensitive) parameters.push({ $ref: "#/components/parameters/LouezConfirmation" });
 
   const responses: OpenAPI.ResponsesObject = { ...operation.responses };

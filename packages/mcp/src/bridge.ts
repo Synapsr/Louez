@@ -5,7 +5,7 @@ import { apiError } from "@louez/api/platform/errors";
 import { platformErrors } from "@louez/api/platform/errors";
 import { mcpToolAnnotations } from "@louez/api/platform/meta";
 import { IDEMPOTENCY_HEADER, type OperationReceipt } from "@louez/api/platform/operations";
-import { STORE_HEADER } from "@louez/api/platform/procedures";
+import { hasIdempotencyKey, STORE_HEADER } from "@louez/api/platform/procedures";
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
 import { call } from "@orpc/server";
 
@@ -60,14 +60,23 @@ function toolInputSchema(entry: ExposedProcedure, ctx: McpRequestContext): Tool[
       type: "string",
       minLength: 1,
       maxLength: 100,
-      description:
-        "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
+      description: entry.meta.requiresIdempotencyKey
+        ? "Required, so that a retry never does this action twice: a new unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice."
+        : "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
     };
   }
   if (entry.meta.sensitive) {
     properties.confirmationToken = entry.meta.personApproval
       ? APPROVAL_ARGUMENT
       : CONFIRMATION_ARGUMENT;
+  }
+  if (entry.meta.requiresIdempotencyKey) {
+    const required = (entry.inputJsonSchema.required as string[] | undefined) ?? [];
+    return {
+      ...entry.inputJsonSchema,
+      properties,
+      required: [...required, "idempotencyKey"],
+    } as Tool["inputSchema"];
   }
   return { ...entry.inputJsonSchema, properties } as Tool["inputSchema"];
 }
@@ -88,7 +97,13 @@ async function callProcedure(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   // The store was read from `storeId` when the request came in.
-  const { idempotencyKey, confirmationToken, storeId: _store, ...input } = args;
+  const { idempotencyKey: sentKey, confirmationToken, storeId: _store, ...input } = args;
+  // On a write that requires a key, a blank one is none: it is sent as
+  // absent, and the procedure refuses the call (IDEMPOTENCY_KEY_REQUIRED).
+  const idempotencyKey =
+    entry.meta.requiresIdempotencyKey && typeof sentKey === "string" && !hasIdempotencyKey(sentKey)
+      ? undefined
+      : sentKey;
   const needsStore = !entry.meta.account;
   if (needsStore && ctx.storeError) return errorResult(entry.meta.mcp.name, ctx.storeError);
   if (needsStore && !ctx.storeChosen) {
