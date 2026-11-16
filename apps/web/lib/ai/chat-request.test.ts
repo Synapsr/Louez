@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
+  REFUSAL_LOG_BUDGET,
   REFUSAL_LOG_INTERVAL_MS,
   chatRequestRefusal,
   refusalLogLine,
@@ -127,9 +128,37 @@ describe("chatRequestRefusal behind a proxy", () => {
     const now = Date.UTC(2030, 5, 1);
     const line = refusalLogLine(refusal, now);
     assert.ok(line);
-    assert.match(line, /refused for its origin: Origin https:\/\/unlisted\.example\.org is not among the configured origins/);
+    assert.match(
+      line,
+      /refused for its origin: Origin https:\/\/unlisted\.example\.org is not among the configured origins/,
+    );
     assert.doesNotMatch(line, /secret-cookie|secret-body|127\.0\.0\.1/);
     assert.equal(refusalLogLine(refusal, now + 1_000), null, "the same origin, soon after");
     assert.ok(refusalLogLine(refusal, now + REFUSAL_LOG_INTERVAL_MS));
+  });
+
+  test("refusals from many origins write a bounded number of lines per interval", async () => {
+    const refusalOf = async (index: number) => {
+      const refusal = await chatRequestRefusal(
+        chat({ origin: `https://unlisted-${index}.example.org` }),
+        PRODUCTION,
+      );
+      assert.ok(refusal);
+      return refusal;
+    };
+    const now = Date.UTC(2031, 5, 1);
+    let written = 0;
+    // More origins than the memory of logged origins holds, twice over: none
+    // is written again by being forgotten.
+    for (let round = 0; round < 2; round++) {
+      for (let index = 0; index < 101; index++) {
+        if (refusalLogLine(await refusalOf(index), now) !== null) written += 1;
+      }
+    }
+    assert.equal(written, REFUSAL_LOG_BUDGET);
+    assert.ok(
+      refusalLogLine(await refusalOf(500), now + REFUSAL_LOG_INTERVAL_MS),
+      "the next interval writes again",
+    );
   });
 });

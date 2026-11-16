@@ -49,21 +49,30 @@ export async function chatRequestRefusal(
 export const REFUSAL_LOG_INTERVAL_MS = 10 * 60_000;
 const REFUSAL_LOG_KEYS_MAX = 100;
 const lastLogged = new Map<string, number>();
+/** How many refusal lines are written per interval, whatever their origins. */
+export const REFUSAL_LOG_BUDGET = 20;
+let budgetSince = 0;
+let budgetSpent = 0;
 
 /**
  * The server's line for a refusal, or null while the same origin was logged
- * less than `REFUSAL_LOG_INTERVAL_MS` ago: the request's origin and why, and
- * nothing else of it (no cookie, no other header, no body). The origin is
- * cut to one short line.
+ * less than `REFUSAL_LOG_INTERVAL_MS` ago, or while `REFUSAL_LOG_BUDGET`
+ * lines were already written in that interval for any origin: the request's
+ * origin and why, and nothing else of it (no cookie, no other header, no
+ * body). The origin is cut to one short line.
  */
 export function refusalLogLine(refusal: ChatRefusal, now = Date.now()): string | null {
   const origin =
-    refusal.origin === null
-      ? "none"
-      : refusal.origin.replace(/[^\x20-\x7e]/g, "?").slice(0, 200);
+    refusal.origin === null ? "none" : refusal.origin.replace(/[^\x20-\x7e]/g, "?").slice(0, 200);
   const key = `${refusal.reason}:${origin}`;
   const last = lastLogged.get(key);
   if (last !== undefined && now - last < REFUSAL_LOG_INTERVAL_MS) return null;
+  if (now - budgetSince >= REFUSAL_LOG_INTERVAL_MS) {
+    budgetSince = now;
+    budgetSpent = 0;
+  }
+  if (budgetSpent >= REFUSAL_LOG_BUDGET) return null;
+  budgetSpent += 1;
   if (!lastLogged.has(key) && lastLogged.size >= REFUSAL_LOG_KEYS_MAX) {
     const oldest = lastLogged.keys().next().value;
     if (oldest !== undefined) lastLogged.delete(oldest);
