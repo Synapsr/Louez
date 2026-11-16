@@ -43,6 +43,11 @@ import { dispatchApiEffects } from "@/lib/api/effects";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
+import {
+  describeWebhookError,
+  isAccountAccessRefused,
+  onConnectedAccount,
+} from "./connected-account";
 import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
 import { failedAttemptBinding, failedAttemptReservationId } from "./failed-attempt-binding";
 import { matchesDeploymentMode } from "./matches-deployment-mode";
@@ -216,65 +221,67 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
+  // The events read on the connected account: Louez acts on them only for an
+  // account it knows and Stripe lets it read (`onConnectedAccount`).
+  const onAccount = (handle: () => Promise<unknown>) =>
+    onConnectedAccount({ type: event.type, accountId: connectedAccountId }, handle);
+
   try {
     switch (event.type) {
       // Checkout events
-      case "checkout.session.completed":
-        await handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session,
-          connectedAccountId,
-        );
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await onAccount(() => handleCheckoutCompleted(session, connectedAccountId));
         break;
+      }
 
-      case "checkout.session.expired":
-        await handleCheckoutExpired(
-          event.data.object as Stripe.Checkout.Session,
-          connectedAccountId,
-        );
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await onAccount(() => handleCheckoutExpired(session, connectedAccountId));
         break;
+      }
 
       // Deposit authorization hold events: `handleDepositEvent` ignores a
       // PaymentIntent that is not a deposit hold's.
       case "payment_intent.amount_capturable_updated":
       case "payment_intent.canceled":
-      case "payment_intent.succeeded":
-        await handleDepositEvent(
-          {
-            type: event.type,
-            stripeEventId: event.id,
-            accountId: connectedAccountId,
-            paymentIntent: event.data.object,
-          },
-          depositEventDeps,
-        );
+      case "payment_intent.succeeded": {
+        const deposit = {
+          type: event.type,
+          stripeEventId: event.id,
+          accountId: connectedAccountId,
+          paymentIntent: event.data.object,
+        };
+        await onAccount(() => handleDepositEvent(deposit, depositEventDeps));
         break;
+      }
 
-      case "payment_intent.payment_failed":
-        await handlePaymentFailed(event, event.data.object, connectedAccountId);
+      case "payment_intent.payment_failed": {
+        const failed = event;
+        await onAccount(() => handlePaymentFailed(failed, failed.data.object, connectedAccountId));
         break;
+      }
 
       // Refund events
-      case "charge.refunded":
-        await handleChargeRefunded(
-          event.data.object,
-          connectedAccountId,
-          stripeChargeRefund,
-          dispatchApiEffects,
+      case "charge.refunded": {
+        const charge = event.data.object;
+        await onAccount(() =>
+          handleChargeRefunded(charge, connectedAccountId, stripeChargeRefund, dispatchApiEffects),
         );
         break;
+      }
 
       // A refund that failed or was canceled after Stripe made it. Each is handled
       // only when enabled on the Connect webhook endpoint.
       case "refund.failed":
       case "refund.updated":
-      case "charge.refund.updated":
-        await handleRefundUpdated(
-          event.data.object,
-          connectedAccountId,
-          stripeChargeRefund,
-          dispatchApiEffects,
+      case "charge.refund.updated": {
+        const refund = event.data.object;
+        await onAccount(() =>
+          handleRefundUpdated(refund, connectedAccountId, stripeChargeRefund, dispatchApiEffects),
         );
         break;
+      }
 
       // Dispute / chargeback. Stripe only sends the events enabled on the Connect
       // webhook endpoint: all five must be on for the billing facts.
@@ -282,14 +289,16 @@ export async function POST(request: Request) {
       case "charge.dispute.updated":
       case "charge.dispute.closed":
       case "charge.dispute.funds_withdrawn":
-      case "charge.dispute.funds_reinstated":
-        await handleChargeDispute({
+      case "charge.dispute.funds_reinstated": {
+        const dispute = {
           eventType: event.type,
           dispute: event.data.object,
           eventCreatedAt: new Date(event.created * 1000),
           connectedAccountId,
-        });
+        };
+        await onAccount(() => handleChargeDispute(dispute));
         break;
+      }
 
       // Account events
       case "account.updated":
@@ -307,8 +316,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
+    // A failure that may pass: Stripe delivers the event again.
     log.error({
-      stripeWebhook: { event: event.type, issue: "handler_failed", error: describeError(error) },
+      stripeWebhook: { event: event.type, issue: "handler_failed", ...describeWebhookError(error) },
     });
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
@@ -471,12 +481,14 @@ async function handleCheckoutCompleted(
         chargeId = (latestCharge as string | null) ?? null;
       }
     } catch (error) {
+      // Refused the account for good: given up by the route, nothing written.
+      if (isAccountAccessRefused(error)) throw error;
       log.error({
         stripeWebhook: {
           event: "checkout.session.completed",
           issue: "payment_intent_retrieve_failed",
           reservationId,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
       paymentIntentRetrieveFailed = true;
