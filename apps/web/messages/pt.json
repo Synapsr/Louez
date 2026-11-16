@@ -6887,6 +6887,28 @@
         "customers": "Quantos novos clientes este mês?",
         "overdue": "Há devoluções em atraso?",
         "pending": "Mostra-me as reservas à espera de confirmação"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Registrar este pagamento?",
+          "delete_payment": "Excluir este pagamento?",
+          "return_deposit": "Registrar esta devolução de caução?"
+        },
+        "amount": "Valor",
+        "booking": "Reserva",
+        "open": "Revisar e decidir",
+        "expires": "Decida até {when}",
+        "status": {
+          "pending": "Aguardando sua decisão",
+          "approved": "Aprovado. O assistente está executando.",
+          "completed": "Concluído",
+          "declined": "Recusado. Nada foi feito.",
+          "expired": "Expirado. Nada foi feito.",
+          "ended": "Não executado. Nada foi feito.",
+          "unavailable": "Esta solicitação não pode mais ser lida aqui."
+        },
+        "continue": "Continuar",
+        "followUp": "Aprovado, continuando"
       }
     },
     "breadcrumbs": {
@@ -9310,10 +9332,6 @@
       "syncFailed": "Erro na sincronização",
       "dashboardLinkFailed": "Erro ao abrir o painel do Stripe",
       "alreadyConnected": "Conta Stripe já conectada",
-      "noChargeToRefund": "Nenhum pagamento Stripe para reembolsar",
-      "alreadyRefunded": "Este pagamento já foi reembolsado",
-      "refundExceedsCharge": "O valor do reembolso excede o valor do pagamento",
-      "refundFailed": "Erro no reembolso",
       "noSavedCard": "Nenhum cartão guardado para este cliente",
       "invalidDepositStatus": "O estado do depósito não permite esta operação",
       "noDepositRequired": "Nenhum depósito necessário para esta reserva",
@@ -9821,6 +9839,7 @@
       "provenance": "<place>{store}</place> · pedido por «<who>{agent}</who>»",
       "provenanceKey": "<place>{store}</place> · pedido por uma chave de API",
       "provenanceAssistant": "<place>{store}</place> · pedido por um assistente de IA",
+      "provenanceInApp": "<place>{store}</place> · pedido pelo assistente Louez",
       "trustShort": "Só conta o resumo do Louez.",
       "stake": {
         "access_removed": "Remove um acesso à sua loja.",
@@ -9840,6 +9859,7 @@
       "apiKey": "Chave de API «{name}»",
       "apiKeyUnnamed": "Uma chave de API",
       "unnamedAgent": "Um assistente de IA",
+      "inAppAssistant": "O assistente Louez, a partir do chat do seu painel",
       "checked": "O que o Louez verificou",
       "messageDestinationOnFile": "As mensagens vão para os contactos registados do cliente.",
       "values": {
@@ -9914,6 +9934,7 @@
           "recordPayment": "Registar um pagamento recebido?",
           "paidBack": "Registar um reembolso ao cliente?",
           "returnDeposit": "Registar uma caução devolvida?",
+          "recordRefund": "Registar um reembolso feito à mão?",
           "deletePayment": "Eliminar um pagamento registado?",
           "removeMember": "Retirar alguém da sua equipa?",
           "cancelInvitation": "Cancelar um convite para a sua equipa?",
@@ -9921,7 +9942,19 @@
           "confirmPastBuffer": "Confirmar a reserva apesar da sua margem entre alugueres?",
           "confirmBeyondStock": "Confirmar a reserva acima do seu stock?",
           "confirmBeyondStockAndBuffer": "Confirmar a reserva acima do seu stock e da sua margem entre alugueres?",
-          "recordDeposit": "Registar uma caução recebida?"
+          "recordDeposit": "Registar uma caução recebida?",
+          "createQuote": "Criar o orçamento?",
+          "createQuotePastBuffer": "Criar o orçamento apesar da sua margem entre alugueres?",
+          "createQuoteBeyondStock": "Criar o orçamento acima do seu stock?",
+          "createQuoteBeyondStockAndBuffer": "Criar o orçamento acima do seu stock e da sua margem entre alugueres?",
+          "createBooking": "Criar a reserva?",
+          "createBookingPastBuffer": "Criar a reserva apesar da sua margem entre alugueres?",
+          "createBookingBeyondStock": "Criar a reserva acima do seu stock?",
+          "createBookingBeyondStockAndBuffer": "Criar a reserva acima do seu stock e da sua margem entre alugueres?",
+          "moveDatesWithinRules": "Mudar as datas da reserva?",
+          "moveDatesPastBuffer": "Mudar as datas da reserva apesar da sua margem entre alugueres?",
+          "moveDatesBeyondStock": "Mudar as datas da reserva acima do seu stock?",
+          "moveDatesBeyondStockAndBuffer": "Mudar as datas da reserva acima do seu stock e da sua margem entre alugueres?"
         },
         "facts": {
           "booking": "Reserva #<v>{number}</v> · <v>{customer}</v>",
@@ -9931,6 +9964,9 @@
           "returned": "Caução devolvida: <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "Caução ainda retida antes disto: <v>{held}</v>",
           "recordOnly": "O Louez apenas o regista: nenhum dinheiro é cobrado nem reembolsado.",
+          "refundGiven": "Reembolso: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>",
+          "refundOf": "Pagamento reembolsado: <v>{type}</v>, <v>{amount}</v> a <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Já reembolsado: <v>{refunded}</v> · Ainda reembolsável depois disto: <v>{left}</v>",
           "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "Registado a <v>{atDate}</v> às <v>{atTime}</v>",
           "leavesBalance": "Sai do saldo da reserva e dos seus números.",
@@ -9951,7 +9987,13 @@
           "messageToCustomer": "O cliente vai receber {channels, select, email {o email} sms {o SMS} other {o email e o SMS}} «<v>{message}</v>»",
           "noMessage": "Nenhuma mensagem é enviada ao cliente.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> recebidos · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>",
+          "bookingFor": "Para <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Para <v>{customer}</v> · <v>{email}</v>, cliente novo",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> e {others, plural, one {mais # linha} other {mais # linhas}}",
+          "datesMoved": "Datas: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Novo total: <v>{total}</v> (diferença: <v>{difference}</v>). Nada é cobrado nem reembolsado."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10016,10 @@
           "customerMessage": {
             "request_accepted": "pedido aceite",
             "request_rejected": "pedido recusado",
-            "reservation_cancelled": "reserva cancelada"
+            "reservation_cancelled": "reserva cancelada",
+            "quote_sent": "orçamento",
+            "booking_confirmed": "reserva confirmada",
+            "reservation_modified": "reserva alterada"
           }
         }
       }

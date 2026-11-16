@@ -6887,6 +6887,28 @@
         "customers": "Wie viele neue Kunden diesen Monat?",
         "overdue": "Gibt es überfällige Rückgaben?",
         "pending": "Zeig mir Reservierungen, die auf Bestätigung warten"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Diese Zahlung erfassen?",
+          "delete_payment": "Diese Zahlung löschen?",
+          "return_deposit": "Diese Kautionsrückgabe erfassen?"
+        },
+        "amount": "Betrag",
+        "booking": "Buchung",
+        "open": "Prüfen und entscheiden",
+        "expires": "Entscheiden bis {when}",
+        "status": {
+          "pending": "Wartet auf Ihre Entscheidung",
+          "approved": "Genehmigt. Der Assistent führt es aus.",
+          "completed": "Erledigt",
+          "declined": "Abgelehnt. Es wurde nichts getan.",
+          "expired": "Abgelaufen. Es wurde nichts getan.",
+          "ended": "Nicht ausgeführt. Es wurde nichts getan.",
+          "unavailable": "Diese Anfrage kann hier nicht mehr gelesen werden."
+        },
+        "continue": "Weiter",
+        "followUp": "Genehmigt, es geht weiter"
       }
     },
     "breadcrumbs": {
@@ -9310,10 +9332,6 @@
       "syncFailed": "Fehler bei der Synchronisierung",
       "dashboardLinkFailed": "Fehler beim Öffnen des Stripe-Dashboards",
       "alreadyConnected": "Stripe-Konto bereits verbunden",
-      "noChargeToRefund": "Keine Stripe-Zahlung zum Erstatten",
-      "alreadyRefunded": "Diese Zahlung wurde bereits erstattet",
-      "refundExceedsCharge": "Der Erstattungsbetrag übersteigt den Zahlungsbetrag",
-      "refundFailed": "Fehler bei der Erstattung",
       "noSavedCard": "Keine Karte für diesen Kunden gespeichert",
       "invalidDepositStatus": "Der Kautionsstatus erlaubt diesen Vorgang nicht",
       "noDepositRequired": "Für diese Reservierung ist keine Kaution erforderlich",
@@ -9821,6 +9839,7 @@
       "provenance": "<place>{store}</place> · angefragt von „<who>{agent}</who>“",
       "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
       "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
+      "provenanceInApp": "<place>{store}</place> · angefragt über den Louez-Assistenten",
       "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
       "stake": {
         "access_removed": "Entzieht einen Zugang zu Ihrem Shop.",
@@ -9840,6 +9859,7 @@
       "apiKey": "API-Schlüssel „{name}“",
       "apiKeyUnnamed": "Ein API-Schlüssel",
       "unnamedAgent": "Ein KI-Assistent",
+      "inAppAssistant": "Der Louez-Assistent, aus dem Chat in Ihrem Dashboard",
       "checked": "Was Louez geprüft hat",
       "messageDestinationOnFile": "Nachrichten gehen an die hinterlegten Kontaktdaten des Kunden.",
       "values": {
@@ -9914,6 +9934,7 @@
           "recordPayment": "Eine erhaltene Zahlung erfassen?",
           "paidBack": "Eine Rückzahlung an den Kunden erfassen?",
           "returnDeposit": "Eine zurückgegebene Kaution erfassen?",
+          "recordRefund": "Eine von Hand geleistete Erstattung erfassen?",
           "deletePayment": "Eine erfasste Zahlung löschen?",
           "removeMember": "Jemanden aus Ihrem Team entfernen?",
           "cancelInvitation": "Eine Einladung in Ihr Team zurückziehen?",
@@ -9921,7 +9942,19 @@
           "confirmPastBuffer": "Die Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen bestätigen?",
           "confirmBeyondStock": "Die Buchung über Ihren Bestand hinaus bestätigen?",
           "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?",
-          "recordDeposit": "Eine erhaltene Kaution erfassen?"
+          "recordDeposit": "Eine erhaltene Kaution erfassen?",
+          "createQuote": "Das Angebot erstellen?",
+          "createQuotePastBuffer": "Das Angebot erstellen trotz Ihrer Pufferzeit zwischen zwei Vermietungen?",
+          "createQuoteBeyondStock": "Das Angebot erstellen über Ihren Bestand hinaus?",
+          "createQuoteBeyondStockAndBuffer": "Das Angebot erstellen über Ihren Bestand und Ihre Pufferzeit hinaus?",
+          "createBooking": "Die Buchung erstellen?",
+          "createBookingPastBuffer": "Die Buchung erstellen trotz Ihrer Pufferzeit zwischen zwei Vermietungen?",
+          "createBookingBeyondStock": "Die Buchung erstellen über Ihren Bestand hinaus?",
+          "createBookingBeyondStockAndBuffer": "Die Buchung erstellen über Ihren Bestand und Ihre Pufferzeit hinaus?",
+          "moveDatesWithinRules": "Die Daten der Buchung verschieben?",
+          "moveDatesPastBuffer": "Die Daten der Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen verschieben?",
+          "moveDatesBeyondStock": "Die Daten der Buchung über Ihren Bestand hinaus verschieben?",
+          "moveDatesBeyondStockAndBuffer": "Die Daten der Buchung über Ihren Bestand und Ihre Pufferzeit hinaus verschieben?"
         },
         "facts": {
           "booking": "Buchung #<v>{number}</v> · <v>{customer}</v>",
@@ -9931,6 +9964,9 @@
           "returned": "Kaution zurückgegeben: <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "Bisher noch gehaltene Kaution: <v>{held}</v>",
           "recordOnly": "Louez erfasst es nur: Es wird kein Geld abgebucht oder erstattet.",
+          "refundGiven": "Erstattung: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "refundOf": "Erstattete Zahlung: <v>{type}</v>, <v>{amount}</v> am <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Bereits erstattet: <v>{refunded}</v> · Danach noch erstattbar: <v>{left}</v>",
           "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "Erfasst am <v>{atDate}</v> um <v>{atTime}</v>",
           "leavesBalance": "Sie verschwindet aus dem Saldo der Buchung und aus Ihren Zahlen.",
@@ -9951,7 +9987,13 @@
           "messageToCustomer": "Der Kunde erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
           "noMessage": "Der Kunde erhält keine Nachricht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "bookingFor": "Für <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Für <v>{customer}</v> · <v>{email}</v>, neuer Kunde",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> und {others, plural, one {# weitere Position} other {# weitere Positionen}}",
+          "datesMoved": "Daten: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Neuer Gesamtbetrag: <v>{total}</v> (Differenz: <v>{difference}</v>). Es wird nichts abgebucht oder erstattet."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10016,10 @@
           "customerMessage": {
             "request_accepted": "Anfrage angenommen",
             "request_rejected": "Anfrage abgelehnt",
-            "reservation_cancelled": "Buchung storniert"
+            "reservation_cancelled": "Buchung storniert",
+            "quote_sent": "Angebot",
+            "booking_confirmed": "Buchung bestätigt",
+            "reservation_modified": "Buchung geändert"
           }
         }
       }

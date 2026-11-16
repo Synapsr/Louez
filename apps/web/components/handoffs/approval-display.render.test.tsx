@@ -18,14 +18,21 @@ import type { ApprovalPage, ShownPreview } from "@louez/api/services/approval-pa
 import {
   cancelInvitationPresentation,
   confirmOverridePresentation,
+  createReservationPresentation,
+  moveDatesPresentation,
   deletePaymentPresentation,
   recordDepositReturnPresentation,
   recordPaymentPresentation,
+  recordRefundPresentation,
   removeMemberPresentation,
   CHANNELS_SAID,
+  CREATION_OVERRIDES_SAID,
+  CREATION_STATUS_SAID,
   OVERRIDES_SAID,
 } from "@louez/api/services/approval-presentations";
 import { shownDisplay, shownPreview } from "@louez/api/services/approval-preview";
+import type { ReservationCreatePreview } from "@louez/api/services/reservation-create";
+import type { DateChangePreview } from "@louez/api/services/reservation-dates";
 import type { StatusChangePreview } from "@louez/api/services/reservation-status";
 
 import { sampleApprovals } from "../../scripts/seed/approvals-samples";
@@ -92,6 +99,84 @@ const short = (productName: string, requested: number, available: number) => ({
   available,
 });
 
+const CUSTOMER_ID = "cus_Cs4kR9xQ2mN7vB1cD3eF";
+
+/** A creation by an agent, as its preview holds it (services/reservation-create.ts). */
+const createPreview = (overrides: Partial<ReservationCreatePreview> = {}): ReservationCreatePreview => ({
+  summary:
+    "Create a quote for Camille Simon (camille.simon@example.com), from 2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z: 2 × Kayak biplace at 98.00 EUR.",
+  status: "quote",
+  customer: { id: CUSTOMER_ID, created: false, name: "Camille Simon", email: "camille.simon@example.com" },
+  window: { startDate: "2026-12-13T13:00:00.000Z", endDate: "2026-12-17T13:00:00.000Z" },
+  currency: "EUR",
+  lines: [
+    {
+      line: 0,
+      productId: "prd_kayak",
+      productName: "Kayak biplace",
+      quantity: 2,
+      selectedAttributes: null,
+      unitPrice: "49.00",
+      totalPrice: "98.00",
+      promotion: false,
+    },
+  ],
+  totals: { subtotal: "98.00", taxAmount: "16.33", taxIncluded: true, total: "98.00", deposit: "300.00" },
+  overbooking: null,
+  turnoverBuffer: null,
+  message: { sends: false, kind: null, channel: null, to: null, reason: "not_asked" },
+  warnings: [],
+  recipientsHash: "0".repeat(64),
+  demand: [],
+  ...overrides,
+});
+
+const createLine = (productName: string, requested: number, available: number, line = 0) => ({
+  ...short(productName, requested, available),
+  line,
+});
+
+/** A creation's presentation, as the service builds it: from its preview. */
+const creating = (preview: ReservationCreatePreview) => ({
+  creation: preview,
+  presentation: createReservationPresentation(preview),
+});
+
+/** A booking's dates moved with an override, as the date change's preview holds it. */
+const datesPreview = (overrides: Partial<DateChangePreview> = {}): DateChangePreview => ({
+  summary:
+    "Move reservation #R-00094 for Camille Simon from 2026-12-13T13:00:00.000Z – 2026-12-17T13:00:00.000Z to 2026-12-13T13:00:00.000Z – 2026-12-19T13:00:00.000Z. Its total goes from 98.00 to 128.00 EUR (difference 30.00 EUR) …",
+  reservation: {
+    id: RESERVATION,
+    number: "R-00094",
+    status: "confirmed",
+    currency: "EUR",
+    previousStartDate: "2026-12-13T13:00:00.000Z",
+    previousEndDate: "2026-12-17T13:00:00.000Z",
+    startDate: "2026-12-13T13:00:00.000Z",
+    endDate: "2026-12-19T13:00:00.000Z",
+    previousTotal: "98.00",
+    total: "128.00",
+    previousTaxAmount: null,
+    taxAmount: null,
+    subtotalExclTax: null,
+    deposit: "50.00",
+    difference: "30.00",
+  },
+  customer: { name: "Camille Simon", email: "camille.simon@example.com" },
+  lines: [{ id: "itm_1", product: "Kayak biplace", quantity: 2, previousTotal: "98.00", total: "128.00" }],
+  capacity: { overbooked: true, shortfalls: [short("Paddle", 2, 1)] },
+  overbooking: { shortfalls: [short("Paddle", 2, 1)] },
+  turnoverBuffer: null,
+  units: [],
+  messages: [],
+  warnings: [],
+  recipientsHash: "0".repeat(64),
+  demand: [],
+  fingerprint: "[]",
+  ...overrides,
+});
+
 /** A status change's presentation, as the service builds it: from its preview. */
 const confirmed = (preview: StatusChangePreview) => ({
   preview,
@@ -112,7 +197,25 @@ const BRANCHES: Array<{
   presentation: ApprovalPresentation | null;
   /** For a status change: the preview it was built from, which says who the customer is to the caller. */
   preview?: StatusChangePreview;
+  /** For a creation: the preview it was built from. */
+  creation?: ReservationCreatePreview;
 }> = [
+  {
+    name: "a booking's dates moved beyond the stock, no message",
+    summary: datesPreview().summary,
+    presentation: moveDatesPresentation(datesPreview()),
+  },
+  {
+    name: "a booking's dates moved past the buffer, a message goes",
+    summary: "Move reservation #R-00094 …",
+    presentation: moveDatesPresentation(
+      datesPreview({
+        overbooking: null,
+        turnoverBuffer: { shortfalls: [short("Kayak", 1, 0)], turnoverBufferMinutes: 120 },
+        messages: [{ message: "reservation_modified", channel: "email", to: "camille.simon@example.com" }],
+      }),
+    ),
+  },
   {
     name: "a payment recorded",
     summary: "Record a rental payment of €120.00 (cash) on reservation #R-00094.",
@@ -158,6 +261,22 @@ const BRANCHES: Array<{
     presentation: deletePaymentPresentation(
       { paymentId: "pay_Qm3nB8vX2kL9pR4tY6wZ", number: "R-00094", type: "rental", amount: "80.00", method: "cash" },
       { reservationId: RESERVATION, currency: "EUR", recordedAt: new Date("2026-11-12T15:30:00.000Z") },
+    ),
+  },
+  {
+    name: "a refund given by hand, in the payment's own currency",
+    summary: "Record a refund of £30.00 (cash) of the rental payment of £80.00 on reservation #R-00094.",
+    presentation: recordRefundPresentation(
+      { paymentId: "pay_Rf7kN2vX9mL4pQ1tY3wZ", reservationId: RESERVATION, number: "R-00094", amount: "30.00", method: "cash" },
+      {
+        type: "rental",
+        amount: "80.00",
+        method: "card",
+        currency: "GBP",
+        paidAt: new Date("2026-11-12T15:30:00.000Z"),
+        paidHundredths: 8000,
+        refundedHundredths: 2000,
+      },
     ),
   },
   {
@@ -224,6 +343,69 @@ const BRANCHES: Array<{
     summary: "Change reservation #R-00094 …",
     ...confirmed(
       statusPreview({ customer: null, messages: [{ message: "request_accepted", channel: "email" }] }),
+    ),
+  },
+  {
+    name: "a quote created beyond the stock, the quote e-mail goes",
+    summary: "Create a quote for Camille Simon … The stock cannot cover it…",
+    ...creating(
+      createPreview({
+        overbooking: { shortfalls: [createLine("Kayak biplace", 2, 1)] },
+        message: { sends: true, kind: "quote", channel: "email", to: "camille.simon@example.com", reason: null },
+      }),
+    ),
+  },
+  {
+    name: "a booking created past the turnover buffer for a new customer, two lines, no message",
+    summary: "Create a confirmed booking for Bo Ray (bo.ray@example.com, a new customer) …",
+    ...creating(
+      createPreview({
+        status: "confirmed",
+        customer: { id: null, created: true, name: "Bo Ray", email: "bo.ray@example.com" },
+        lines: [
+          ...createPreview().lines,
+          {
+            line: 1,
+            productId: "prd_paddle",
+            productName: "Paddle",
+            quantity: 2,
+            selectedAttributes: null,
+            unitPrice: "5.00",
+            totalPrice: "10.00",
+            promotion: false,
+          },
+        ],
+        totals: { subtotal: "108.00", taxAmount: "18.00", taxIncluded: true, total: "108.00", deposit: "300.00" },
+        turnoverBuffer: { shortfalls: [createLine("Kayak biplace", 2, 1)], turnoverBufferMinutes: 120 },
+      }),
+    ),
+  },
+  {
+    name: "a quote created with both flags, nothing short",
+    summary: "Create a quote for Camille Simon …",
+    ...creating(
+      createPreview({
+        overbooking: { shortfalls: [] },
+        turnoverBuffer: { shortfalls: [], turnoverBufferMinutes: 120 },
+      }),
+    ),
+  },
+  {
+    name: "a booking created short both ways, the confirmation e-mail goes",
+    summary: "Create a confirmed booking for Camille Simon …",
+    ...creating(
+      createPreview({
+        status: "confirmed",
+        overbooking: { shortfalls: [createLine("Paddle", 3, 0, 1)] },
+        turnoverBuffer: { shortfalls: [createLine("Kayak biplace", 2, 1)], turnoverBufferMinutes: 120 },
+        message: {
+          sends: true,
+          kind: "confirmation",
+          channel: "email",
+          to: "camille.simon@example.com",
+          reason: null,
+        },
+      }),
     ),
   },
 ];
@@ -321,6 +503,42 @@ const screenLines = (html: string) => {
 
 /** What the six branches' screens read, in English and in French: the headline, then each fact. */
 const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
+  "a booking's dates moved beyond the stock, no message": {
+    en: [
+      "Move the booking’s dates beyond your stock?",
+      "Booking #R-00094 · Camille Simon",
+      "Dates: Dec 13, 2026 – Dec 17, 2026 → Dec 13, 2026 2:00 PM – Dec 19, 2026 2:00 PM",
+      "New total: €128.00 (difference: €30.00). Nothing is charged or refunded.",
+      "Paddle: 2 requested, only 1 in stock: 1 missing",
+      "No message goes to the customer.",
+    ],
+    fr: [
+      "Déplacer les dates de la réservation au-delà de votre stock ?",
+      "Réservation #R-00094 · Camille Simon",
+      "Dates déplacées : 13 déc. 2026 – 17 déc. 2026 → 13 déc. 2026 14:00 – 19 déc. 2026 14:00",
+      "Nouveau total : 128,00 € (écart : 30,00 €). Rien n’est débité ni remboursé.",
+      "Paddle : 2 demandés, 1 seul en stock : 1 manquant",
+      "Aucun message n’est envoyé au client.",
+    ],
+  },
+  "a booking's dates moved past the buffer, a message goes": {
+    en: [
+      "Move the booking’s dates despite your turnover buffer?",
+      "Booking #R-00094 · Camille Simon",
+      "Dates: Dec 13, 2026 – Dec 17, 2026 → Dec 13, 2026 2:00 PM – Dec 19, 2026 2:00 PM",
+      "New total: €128.00 (difference: €30.00). Nothing is charged or refunded.",
+      "Kayak: 1 requested, none free with your 2 hr turnover buffer",
+      "Camille Simon will receive the “booking modified” email at camille.simon@example.com",
+    ],
+    fr: [
+      "Déplacer les dates de la réservation malgré votre délai entre deux locations ?",
+      "Réservation #R-00094 · Camille Simon",
+      "Dates déplacées : 13 déc. 2026 – 17 déc. 2026 → 13 déc. 2026 14:00 – 19 déc. 2026 14:00",
+      "Nouveau total : 128,00 € (écart : 30,00 €). Rien n’est débité ni remboursé.",
+      "Kayak : 1 demandé, aucun libre en respectant votre délai de 2 h",
+      "Camille Simon recevra l’e-mail « réservation modifiée » à camille.simon@example.com",
+    ],
+  },
   "a payment recorded": {
     en: [
       "Record a payment received?",
@@ -437,6 +655,24 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Il sort du solde de la réservation et de vos chiffres.",
     ],
   },
+  "a refund given by hand, in the payment's own currency": {
+    en: [
+      "Record a refund given by hand?",
+      "Booking #R-00094",
+      "Refund: £30.00, given back to the customer · Cash",
+      "Payment refunded: Rental, £80.00 on Nov 12, 2026 · Card",
+      "Already refunded: £20.00 · Still refundable after this: £30.00",
+      "Louez only records it: no money is charged or refunded.",
+    ],
+    fr: [
+      "Enregistrer un remboursement fait à la main ?",
+      "Réservation #R-00094",
+      "Remboursement : 30,00 £GB, rendus au client · Espèces",
+      "Paiement remboursé : Location, 80,00 £GB le 12 nov. 2026 · Carte",
+      "Déjà remboursé : 20,00 £GB · Encore remboursable après cela : 30,00 £GB",
+      "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
+    ],
+  },
   "a member removed": {
     en: [
       "Remove someone from your team?",
@@ -546,6 +782,78 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
       "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
       "Le client recevra l’e-mail « demande acceptée »",
+    ],
+  },
+  "a quote created beyond the stock, the quote e-mail goes": {
+    en: [
+      "Create the quote beyond your stock?",
+      "For Camille Simon · camille.simon@example.com",
+      "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00",
+      "2 × Kayak biplace",
+      "Kayak biplace: 2 requested, only 1 in stock: 1 missing",
+      "Camille Simon will receive the “quote” email at camille.simon@example.com",
+    ],
+    fr: [
+      "Créer le devis au-delà de votre stock ?",
+      "Pour Camille Simon · camille.simon@example.com",
+      "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
+      "2 × Kayak biplace",
+      "Kayak biplace : 2 demandés, 1 seul en stock : 1 manquant",
+      "Camille Simon recevra l’e-mail « devis » à camille.simon@example.com",
+    ],
+  },
+  "a booking created past the turnover buffer for a new customer, two lines, no message": {
+    en: [
+      "Create the booking despite your turnover buffer?",
+      "For Bo Ray · bo.ray@example.com, a new customer",
+      "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €108.00",
+      "2 × Kayak biplace and 1 more line",
+      "Kayak biplace: 2 requested, only 1 free with your 2 hr turnover buffer",
+      "No message goes to the customer.",
+    ],
+    fr: [
+      "Créer la réservation malgré votre délai entre deux locations ?",
+      "Pour Bo Ray · bo.ray@example.com, nouveau client",
+      "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 108,00 €",
+      "2 × Kayak biplace et 1 autre ligne",
+      "Kayak biplace : 2 demandés, 1 seul libre en respectant votre délai de 2 h",
+      "Aucun message n’est envoyé au client.",
+    ],
+  },
+  "a quote created with both flags, nothing short": {
+    en: [
+      "Create the quote?",
+      "For Camille Simon · camille.simon@example.com",
+      "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00",
+      "2 × Kayak biplace",
+      "Your stock and your turnover buffer cover it: nothing goes past them.",
+      "No message goes to the customer.",
+    ],
+    fr: [
+      "Créer le devis ?",
+      "Pour Camille Simon · camille.simon@example.com",
+      "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
+      "2 × Kayak biplace",
+      "Votre stock et votre délai entre deux locations la couvrent : rien ne les dépasse.",
+      "Aucun message n’est envoyé au client.",
+    ],
+  },
+  "a booking created short both ways, the confirmation e-mail goes": {
+    en: [
+      "Create the booking beyond your stock and your turnover buffer?",
+      "For Camille Simon · camille.simon@example.com",
+      "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00",
+      "Paddle: 3 requested, none in stock: 3 missing",
+      "And 1 more line past your rules: see Details",
+      "Camille Simon will receive the “booking confirmed” email at camille.simon@example.com",
+    ],
+    fr: [
+      "Créer la réservation au-delà de votre stock et de votre délai entre deux locations ?",
+      "Pour Camille Simon · camille.simon@example.com",
+      "Du 13 déc. 2026 à 14:00 au 17 déc. 2026 à 14:00 · 98,00 €",
+      "Paddle : 3 demandés, aucun en stock : 3 manquants",
+      "Et 1 autre ligne hors de vos règles : voir les détails",
+      "Camille Simon recevra l’e-mail « réservation confirmée » à camille.simon@example.com",
     ],
   },
 };
@@ -662,7 +970,12 @@ describe("the guarantee: each fact of a request's identity is among what the pag
       const said = (key: string): readonly string[] =>
         Object.hasOwn(OVERRIDES_SAID, key)
           ? OVERRIDES_SAID[key as keyof typeof OVERRIDES_SAID]
-          : Object.hasOwn(CHANNELS_SAID, key)
+          : Object.hasOwn(CREATION_OVERRIDES_SAID, key)
+            ? [
+                ...CREATION_OVERRIDES_SAID[key as keyof typeof CREATION_OVERRIDES_SAID],
+                ...CREATION_STATUS_SAID[key as keyof typeof CREATION_STATUS_SAID],
+              ]
+            : Object.hasOwn(CHANNELS_SAID, key)
             ? CHANNELS_SAID[key as keyof typeof CHANNELS_SAID]
             : [];
       const lines = [display.headline, ...display.facts].map((line) => ({
@@ -739,6 +1052,26 @@ describe("the guarantee: each fact of a request's identity is among what the pag
         ...((preview.turnoverBuffer?.shortfalls.length ?? 0) > 0 ? ["turnover_buffer"] : []),
       ];
       assert.deepEqual(presentation.facts.overrides, passing);
+    });
+  }
+
+  // A creation's overrides and its message, as for a confirmation.
+  for (const branch of BRANCHES.filter((candidate) => candidate.creation)) {
+    test(`${branch.name}: the identity names each override that passes something, and where the message goes stays out of it`, () => {
+      const { creation, presentation } = branch;
+      assert.ok(creation && presentation);
+      const passing = [
+        ...((creation.overbooking?.shortfalls.length ?? 0) > 0 ? ["stock"] : []),
+        ...((creation.turnoverBuffer?.shortfalls.length ?? 0) > 0 ? ["turnover_buffer"] : []),
+      ];
+      assert.deepEqual(presentation.facts.overrides, passing);
+      assert.doesNotMatch(JSON.stringify(presentation.facts.message), /@/);
+      const told = screenLines(pageOf(branch)).at(-1) ?? "";
+      if (creation.message.sends) {
+        assert.ok(told.includes(`will receive`) && told.includes(String(creation.message.to)), told);
+      } else {
+        assert.equal(told, "No message goes to the customer.");
+      }
     });
   }
 
@@ -1206,7 +1539,8 @@ describe("the display's texts", () => {
           assert.ok(line.length > 0, `${locale}, ${branch.name}`);
           assert.doesNotMatch(line, /[{}]|<\/?v>|display\.|operation_approval/, `${locale}, ${branch.name}: ${line}`);
         }
-        assert.ok(lines.some((line) => line.includes("R-00094") || line.includes("Lucas Bernard") || line.includes("nina.roux")), `${locale}, ${branch.name}: the record`);
+        // The record: a booking's number, a member or an invitation, or the customer a booking is created for.
+        assert.ok(lines.some((line) => line.includes("R-00094") || line.includes("Lucas Bernard") || line.includes("nina.roux") || line.includes("camille.simon@") || line.includes("bo.ray@")), `${locale}, ${branch.name}: the record`);
       }
     }
   });

@@ -67,7 +67,11 @@ import { useStoreTimezone } from "@/contexts/store-context";
 import { ReferralNudge } from "@/components/dashboard/referral-nudge";
 import { orpc } from "@/lib/orpc/react";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
-import { isRefundRow, isStripeRefundRow } from "@/lib/reservations/util.payment-status";
+import {
+  isFailedRefundRow,
+  isRefundRow,
+  isStripeRefundRow,
+} from "@/lib/reservations/util.payment-status";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
@@ -1217,7 +1221,8 @@ export function UnifiedPaymentSection({
                                 {t("payment.statusReleasePending")}
                               </Badge>
                             )}
-                            {depositHoldRowKind(payment) === "failed" && (
+                            {(depositHoldRowKind(payment) === "failed" ||
+                              isFailedRefundRow(payment)) && (
                               <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
                                 {t("payment.statusFailed")}
                               </Badge>
@@ -1254,7 +1259,9 @@ export function UnifiedPaymentSection({
                         <span
                           className={cn(
                             "font-mono font-medium",
-                            isRefundRow(payment) && "text-emerald-600 dark:text-emerald-400",
+                            isRefundRow(payment) &&
+                              !isFailedRefundRow(payment) &&
+                              "text-emerald-600 dark:text-emerald-400",
                             payment.type === "damage" && "text-red-600 dark:text-red-400",
                             payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
                             payment.type === "adjustment" &&
@@ -1264,7 +1271,8 @@ export function UnifiedPaymentSection({
                               parseFloat(payment.amount) > 0 &&
                               "text-emerald-600 dark:text-emerald-400",
                             (payment.status === "cancelled" ||
-                              depositHoldRowKind(payment) === "failed") &&
+                              depositHoldRowKind(payment) === "failed" ||
+                              isFailedRefundRow(payment)) &&
                               "text-muted-foreground line-through",
                             depositHoldRowKind(payment) === "release_pending" &&
                               "text-muted-foreground",

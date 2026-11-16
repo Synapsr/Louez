@@ -6887,6 +6887,28 @@
         "customers": "这个月有多少新客户？",
         "overdue": "是否有逾期退货？",
         "pending": "显示等待确认的预订"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "记录这笔付款？",
+          "delete_payment": "删除这笔付款？",
+          "return_deposit": "记录这笔押金退还？"
+        },
+        "amount": "金额",
+        "booking": "预订",
+        "open": "查看并决定",
+        "expires": "请在 {when} 前决定",
+        "status": {
+          "pending": "等待您的决定",
+          "approved": "已批准。助手正在执行。",
+          "completed": "已完成",
+          "declined": "已拒绝。未执行任何操作。",
+          "expired": "已过期。未执行任何操作。",
+          "ended": "未执行。未执行任何操作。",
+          "unavailable": "此处已无法读取该请求。"
+        },
+        "continue": "继续",
+        "followUp": "已批准，继续"
       }
     },
     "breadcrumbs": {
@@ -9310,10 +9332,6 @@
       "syncFailed": "同步状态时出错",
       "dashboardLinkFailed": "打开 Stripe 仪表板时出错",
       "alreadyConnected": "Stripe 账户已连接",
-      "noChargeToRefund": "Stripe 未付款可退款",
-      "alreadyRefunded": "该笔款项已被退回",
-      "refundExceedsCharge": "退款金额超过付款金额",
-      "refundFailed": "处理退款时出错",
       "noSavedCard": "没有为该客户保存卡",
       "invalidDepositStatus": "充值状态不允许此操作",
       "noDepositRequired": "此预订无需支付押金",
@@ -9821,6 +9839,7 @@
       "provenance": "<place>{store}</place> · 由“<who>{agent}</who>”请求",
       "provenanceKey": "<place>{store}</place> · 由 API 密钥请求",
       "provenanceAssistant": "<place>{store}</place> · 由 AI 助手请求",
+      "provenanceInApp": "<place>{store}</place> · 通过 Louez 助手请求",
       "trustShort": "只有 Louez 的摘要才算数。",
       "stake": {
         "access_removed": "撤销对你店铺的访问权限。",
@@ -9840,6 +9859,7 @@
       "apiKey": "API 密钥“{name}”",
       "apiKeyUnnamed": "一个 API 密钥",
       "unnamedAgent": "一个 AI 助手",
+      "inAppAssistant": "Louez 助手，来自您控制台中的聊天",
       "checked": "Louez 核对的内容",
       "messageDestinationOnFile": "消息发送到客户存档的联系方式。",
       "values": {
@@ -9914,6 +9934,7 @@
           "recordPayment": "记录一笔已收款项？",
           "paidBack": "记录退还给客户的款项？",
           "returnDeposit": "记录已退还的押金？",
+          "recordRefund": "记录一笔手动完成的退款？",
           "deletePayment": "删除一笔已记录的款项？",
           "removeMember": "将某人移出你的团队？",
           "cancelInvitation": "取消一份团队邀请？",
@@ -9921,7 +9942,19 @@
           "confirmPastBuffer": "不顾两次租赁之间的间隔，确认这笔预订？",
           "confirmBeyondStock": "超出库存确认这笔预订？",
           "confirmBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，确认这笔预订？",
-          "recordDeposit": "记录一笔已收押金？"
+          "recordDeposit": "记录一笔已收押金？",
+          "createQuote": "创建这份报价？",
+          "createQuotePastBuffer": "不顾两次租赁之间的间隔，创建这份报价？",
+          "createQuoteBeyondStock": "超出库存，创建这份报价？",
+          "createQuoteBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，创建这份报价？",
+          "createBooking": "创建这笔预订？",
+          "createBookingPastBuffer": "不顾两次租赁之间的间隔，创建这笔预订？",
+          "createBookingBeyondStock": "超出库存，创建这笔预订？",
+          "createBookingBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，创建这笔预订？",
+          "moveDatesWithinRules": "更改这笔预订的日期？",
+          "moveDatesPastBuffer": "不顾两次租赁之间的间隔，更改这笔预订的日期？",
+          "moveDatesBeyondStock": "超出库存更改这笔预订的日期？",
+          "moveDatesBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，更改这笔预订的日期？"
         },
         "facts": {
           "booking": "预订 #<v>{number}</v> · <v>{customer}</v>",
@@ -9931,6 +9964,9 @@
           "returned": "已退押金：<v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "此前仍持有的押金：<v>{held}</v>",
           "recordOnly": "Louez 只做记录：不会扣款，也不会退款。",
+          "refundGiven": "退款：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "refundOf": "被退款的付款：<v>{type}</v>，<v>{amount}</v>（<v>{atDate}</v>） · <v>{method}</v>",
+          "refundBalance": "已退款：<v>{refunded}</v> · 此后仍可退款：<v>{left}</v>",
           "deleted": "<v>{type}</v>：<v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "记录于 <v>{atDate}</v> <v>{atTime}</v>",
           "leavesBalance": "它将从预订余额和你的数据中移除。",
@@ -9951,7 +9987,13 @@
           "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
           "noMessage": "不会向客户发送任何消息。",
           "depositCollected": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "bookingFor": "<v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "<v>{customer}</v> · <v>{email}</v>（新客户）",
+          "bookingLine": "<v>{product}</v> × {quantity}",
+          "bookingLines": "<v>{product}</v> × {quantity}，另有 {others, plural, other {# 行}}",
+          "datesMoved": "日期：<v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "新总额：<v>{total}</v>（差额：<v>{difference}</v>）。不会扣款，也不会退款。"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10016,10 @@
           "customerMessage": {
             "request_accepted": "请求已接受",
             "request_rejected": "请求已拒绝",
-            "reservation_cancelled": "预订已取消"
+            "reservation_cancelled": "预订已取消",
+            "quote_sent": "报价",
+            "booking_confirmed": "预订已确认",
+            "reservation_modified": "预订已修改"
           }
         }
       }

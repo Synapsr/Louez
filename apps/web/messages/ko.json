@@ -6887,6 +6887,28 @@
         "customers": "이번 달 신규 고객은 몇 명인가요?",
         "overdue": "반품 기한이 지난 것이 있나요?",
         "pending": "확인 대기 중인 예약 표시"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "이 결제를 기록할까요?",
+          "delete_payment": "이 결제를 삭제할까요?",
+          "return_deposit": "이 보증금 반환을 기록할까요?"
+        },
+        "amount": "금액",
+        "booking": "예약",
+        "open": "확인하고 결정하기",
+        "expires": "{when}까지 결정하세요",
+        "status": {
+          "pending": "결정을 기다리는 중",
+          "approved": "승인됨. 어시스턴트가 실행하고 있습니다.",
+          "completed": "완료",
+          "declined": "거절됨. 아무것도 실행되지 않았습니다.",
+          "expired": "만료됨. 아무것도 실행되지 않았습니다.",
+          "ended": "실행되지 않음. 아무것도 실행되지 않았습니다.",
+          "unavailable": "이 요청은 여기에서 더 이상 읽을 수 없습니다."
+        },
+        "continue": "계속",
+        "followUp": "승인됨, 계속 진행"
       }
     },
     "breadcrumbs": {
@@ -9310,10 +9332,6 @@
       "syncFailed": "상태 동기화 오류",
       "dashboardLinkFailed": "Stripe 대시보드를 여는 중 오류가 발생했습니다.",
       "alreadyConnected": "Stripe 계정이 이미 연결되어 있습니다",
-      "noChargeToRefund": "환불할 Stripe 결제가 없습니다.",
-      "alreadyRefunded": "이 결제 금액은 이미 환불되었습니다.",
-      "refundExceedsCharge": "환불 금액이 결제 금액을 초과합니다.",
-      "refundFailed": "환불 처리 중 오류가 발생했습니다.",
       "noSavedCard": "이 고객에 대해 저장된 카드가 없습니다.",
       "invalidDepositStatus": "입금 상태가 해당 작업을 허용하지 않습니다.",
       "noDepositRequired": "이 예약에는 보증금이 필요하지 않습니다.",
@@ -9821,6 +9839,7 @@
       "provenance": "<place>{store}</place> · “<who>{agent}</who>”의 요청",
       "provenanceKey": "<place>{store}</place> · API 키의 요청",
       "provenanceAssistant": "<place>{store}</place> · AI 어시스턴트의 요청",
+      "provenanceInApp": "<place>{store}</place> · Louez 어시스턴트를 통한 요청",
       "trustShort": "유효한 것은 Louez의 요약뿐입니다.",
       "stake": {
         "access_removed": "스토어 접근 권한을 회수합니다.",
@@ -9840,6 +9859,7 @@
       "apiKey": "API 키 “{name}”",
       "apiKeyUnnamed": "API 키",
       "unnamedAgent": "AI 어시스턴트",
+      "inAppAssistant": "Louez 어시스턴트, 대시보드 채팅에서",
       "checked": "Louez가 확인한 내용",
       "messageDestinationOnFile": "메시지는 고객의 등록된 연락처로 발송됩니다.",
       "values": {
@@ -9914,6 +9934,7 @@
           "recordPayment": "받은 결제를 기록할까요?",
           "paidBack": "고객에게 돌려준 금액을 기록할까요?",
           "returnDeposit": "돌려준 보증금을 기록할까요?",
+          "recordRefund": "직접 처리한 환불을 기록할까요?",
           "deletePayment": "기록된 결제를 삭제할까요?",
           "removeMember": "팀에서 멤버를 내보낼까요?",
           "cancelInvitation": "팀 초대를 취소할까요?",
@@ -9921,7 +9942,19 @@
           "confirmPastBuffer": "대여 사이 간격을 지키지 않고 예약을 확정할까요?",
           "confirmBeyondStock": "재고를 넘겨 예약을 확정할까요?",
           "confirmBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 확정할까요?",
-          "recordDeposit": "받은 보증금을 기록할까요?"
+          "recordDeposit": "받은 보증금을 기록할까요?",
+          "createQuote": "견적을 만들까요?",
+          "createQuotePastBuffer": "대여 사이 간격을 지키지 않고 견적을 만들까요?",
+          "createQuoteBeyondStock": "재고를 넘겨 견적을 만들까요?",
+          "createQuoteBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 견적을 만들까요?",
+          "createBooking": "예약을 만들까요?",
+          "createBookingPastBuffer": "대여 사이 간격을 지키지 않고 예약을 만들까요?",
+          "createBookingBeyondStock": "재고를 넘겨 예약을 만들까요?",
+          "createBookingBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 만들까요?",
+          "moveDatesWithinRules": "예약 날짜를 변경할까요?",
+          "moveDatesPastBuffer": "대여 사이 간격을 지키지 않고 예약 날짜를 변경할까요?",
+          "moveDatesBeyondStock": "재고를 넘겨 예약 날짜를 변경할까요?",
+          "moveDatesBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약 날짜를 변경할까요?"
         },
         "facts": {
           "booking": "예약 #<v>{number}</v> · <v>{customer}</v>",
@@ -9931,6 +9964,9 @@
           "returned": "보증금 반환: <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "이전까지 보관 중인 보증금: <v>{held}</v>",
           "recordOnly": "Louez는 기록만 합니다. 청구도 환불도 하지 않습니다.",
+          "refundGiven": "환불: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>",
+          "refundOf": "환불 대상 결제: <v>{type}</v>, <v>{amount}</v> (<v>{atDate}</v>) · <v>{method}</v>",
+          "refundBalance": "이미 환불됨: <v>{refunded}</v> · 이후에도 환불 가능: <v>{left}</v>",
           "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v> 결제",
           "recordedOn": "<v>{atDate}</v> <v>{atTime}</v>에 기록됨",
           "leavesBalance": "예약 잔액과 매장 수치에서 빠집니다.",
@@ -9951,7 +9987,13 @@
           "messageToCustomer": "고객에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
           "noMessage": "고객에게 메시지가 가지 않습니다.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> 받음 · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>",
+          "bookingFor": "<v>{customer}</v> 님 · <v>{email}</v>",
+          "bookingForNewCustomer": "<v>{customer}</v> 님 · <v>{email}</v>, 새 고객",
+          "bookingLine": "<v>{product}</v> × {quantity}",
+          "bookingLines": "<v>{product}</v> × {quantity} 외 {others, plural, other {#개 항목}}",
+          "datesMoved": "날짜: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "새 합계: <v>{total}</v> (차액: <v>{difference}</v>). 청구도 환불도 하지 않습니다."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10016,10 @@
           "customerMessage": {
             "request_accepted": "요청 수락",
             "request_rejected": "요청 거절",
-            "reservation_cancelled": "예약 취소"
+            "reservation_cancelled": "예약 취소",
+            "quote_sent": "견적",
+            "booking_confirmed": "예약 확정",
+            "reservation_modified": "예약 변경"
           }
         }
       }

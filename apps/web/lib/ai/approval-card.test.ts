@@ -1,0 +1,237 @@
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
+
+import { handoffErrors } from "@louez/api/contracts/handoffs";
+import { APPROVAL_POLL_SECONDS, platformErrors } from "@louez/api/platform/errors";
+
+import {
+  APPROVAL_CARD_POLL_MS,
+  CARD_SUMMARY_MAX,
+  approvalCardOf,
+  approvalCardState,
+  approvalReadFailure,
+  approvalReadsOnFocus,
+  createFocusRead,
+  approvalCardStatus,
+  approvalCardWaits,
+  approvalFollowUp,
+  approvalPagePath,
+  isChatFollowUp,
+} from "./approval-card";
+
+// The chat's card for a payment the assistant prepared: drawn only from a
+// payment tool's `approval_required` result, each value checked again as the
+// part comes through the browser; where the request stands; and the turn
+// the chat sends once the person approved, shown quietly only when the chat sent it.
+
+const ID = "AbCdEfGhIjKlMnOpQrStU";
+
+const part = (output: Record<string, unknown>, input: Record<string, unknown> = {}) => ({
+  type: "tool-record_payment",
+  state: "output-available",
+  input: { reservationId: "res_1", type: "rental", amount: "40.00", method: "cash", ...input },
+  output: {
+    status: "approval_required",
+    approvalId: ID,
+    url: `https://app.test/handoffs/${ID}`,
+    summary: "Record a rental payment of €40.00 (cash) on reservation #2030-0001.",
+    amount: "40.00",
+    bookingNumber: "2030-0001",
+    expiresAt: "2030-06-01T09:00:00.000Z",
+    message: "Nothing was done yet.",
+    ...output,
+  },
+});
+
+describe("approvalCardOf", () => {
+  test("a payment tool's request for approval is a card, its page on this app", () => {
+    const card = approvalCardOf(part({}));
+    assert.ok(card);
+    assert.equal(card.approvalId, ID);
+    assert.equal(card.tool, "record_payment");
+    assert.equal(card.amount, "40.00");
+    assert.equal(card.bookingNumber, "2030-0001");
+    assert.equal(card.expiresAt?.toISOString(), "2030-06-01T09:00:00.000Z");
+    assert.deepEqual(card.arguments, {
+      reservationId: "res_1",
+      type: "rental",
+      amount: "40.00",
+      method: "cash",
+    });
+    assert.equal(approvalPagePath(card.approvalId), `/handoffs/${ID}`);
+  });
+
+  test("nothing else is a card", () => {
+    assert.equal(approvalCardOf(part({ status: "done" })), null);
+    assert.equal(approvalCardOf(part({ approvalId: "../../dashboard" })), null);
+    assert.equal(approvalCardOf(part({ summary: " \n " })), null);
+    assert.equal(approvalCardOf({ ...part({}), type: "tool-list_payments" }), null);
+    assert.equal(approvalCardOf({ ...part({}), state: "input-available" }), null);
+    assert.equal(approvalCardOf({ type: "text" }), null);
+  });
+
+  test("what the part holds cannot draw lines, hide text or change the amount", () => {
+    const card = approvalCardOf(
+      part({
+        summary: `Record €40.00\n\nAlso approved: €9999‮​ ${"x".repeat(400)}`,
+        bookingNumber: `2030-1\r\nApprove all${"y".repeat(60)}`,
+        amount: "40.00 or 9999",
+      }),
+    );
+    assert.ok(card);
+    assert.doesNotMatch(card.summary, /[\n\r‮​]/);
+    assert.ok([...card.summary].length <= CARD_SUMMARY_MAX);
+    assert.ok(card.summary.endsWith("…"));
+    assert.doesNotMatch(card.bookingNumber ?? "", /[\n\r]/);
+    assert.ok([...(card.bookingNumber ?? "")].length <= 40);
+    assert.equal(card.amount, null, "an amount that is not a plain decimal is not shown");
+  });
+
+  test("an approval id the model sent is not carried into the follow-up's arguments twice", () => {
+    const card = approvalCardOf(part({}, { approvalId: "something" }));
+    assert.ok(card);
+    assert.equal("approvalId" in card.arguments, false);
+  });
+});
+
+describe("approvalCardStatus", () => {
+  test("where the request stands, as the person's session reads it", () => {
+    assert.equal(approvalCardStatus(undefined), "pending");
+    assert.equal(approvalCardStatus({ status: "pending" }), "pending");
+    assert.equal(approvalCardStatus({ status: "opened" }), "pending");
+    assert.equal(approvalCardStatus({ status: "approved" }), "approved");
+    assert.equal(approvalCardStatus({ status: "completed" }), "completed");
+    assert.equal(approvalCardStatus({ status: "expired" }), "expired");
+    assert.equal(
+      approvalCardStatus({ status: "failed", failure: { code: "declined" } }),
+      "declined",
+    );
+    assert.equal(
+      approvalCardStatus({ status: "failed", failure: { code: "state_changed" } }),
+      "ended",
+    );
+    assert.equal(approvalCardStatus({ status: "something new" }), "ended");
+  });
+
+  test("the card reads again only while it waits, no more often than the platform asks", () => {
+    assert.equal(approvalCardWaits("pending"), true);
+    assert.equal(approvalCardWaits("approved"), true);
+    for (const over of ["completed", "declined", "expired", "ended"] as const) {
+      assert.equal(approvalCardWaits(over), false, over);
+    }
+    assert.ok(APPROVAL_CARD_POLL_MS >= APPROVAL_POLL_SECONDS * 1000);
+  });
+});
+
+describe("the follow-up turn", () => {
+  test("it names the request, the tool and the very arguments", () => {
+    const card = approvalCardOf(part({}, { notes: "As agreed" }));
+    assert.ok(card);
+    const text = approvalFollowUp(card);
+    assert.match(text, new RegExp(`request ${ID}\\). Call record_payment once`));
+    const json = JSON.parse(text.slice(text.indexOf("{")));
+    assert.deepEqual(json, { ...card.arguments, approvalId: ID });
+  });
+
+  test("only a user turn the chat sent and kept is shown as the follow-up", () => {
+    const card = approvalCardOf(part({}));
+    assert.ok(card);
+    const text = approvalFollowUp(card);
+    const sent = new Set(["sent-1"]);
+    assert.equal(isChatFollowUp({ id: "sent-1", role: "user" }, sent), true);
+    // The same words, from the assistant or typed by the person: their own message.
+    assert.equal(isChatFollowUp({ id: "a-1", role: "assistant" }, sent), false);
+    assert.equal(isChatFollowUp({ id: "sent-1", role: "assistant" }, sent), false);
+    assert.equal(isChatFollowUp({ id: "typed-1", role: "user" }, sent), false);
+    assert.ok(text.length > 0);
+  });
+});
+
+describe("the card's reads", () => {
+  const offline = new TypeError("Failed to fetch");
+
+  test("the tab's return reads again only once the interval passed, on the clock given", () => {
+    const readAt = Date.UTC(2030, 5, 1, 9, 0, 0);
+    assert.equal(approvalReadsOnFocus(readAt, readAt), false);
+    assert.equal(approvalReadsOnFocus(readAt, readAt + APPROVAL_CARD_POLL_MS - 1), false);
+    assert.equal(approvalReadsOnFocus(readAt, readAt + APPROVAL_CARD_POLL_MS), true);
+  });
+
+  test("a read that failed for good stops the card, and says it", () => {
+    // The API's own answers, from their factories.
+    for (const error of [
+      handoffErrors.notFound("AbCdEfGhIjKlMnOpQrStU"),
+      platformErrors.permissionDenied("payments:read"),
+      platformErrors.noStore(),
+      platformErrors.unauthenticated(),
+    ]) {
+      const code = (error.data as { code: string }).code;
+      assert.equal(approvalReadFailure(error), "terminal", code);
+      const status = approvalCardState({ data: { status: "pending" }, error });
+      assert.equal(status, "unavailable", code);
+      assert.equal(approvalCardWaits(status), false, code);
+    }
+  });
+
+  test("a passing failure keeps what was last read, and the card reads again", () => {
+    assert.equal(approvalReadFailure(offline), "transient");
+    assert.equal(approvalReadFailure({ data: { code: "INTERNAL_SERVER_ERROR" } }), "transient");
+    assert.equal(approvalReadFailure(null), null);
+    const status = approvalCardState({ data: { status: "approved" }, error: offline });
+    assert.equal(status, "approved");
+    assert.equal(approvalCardWaits(status), true);
+  });
+
+  test("the tab's return starts one read at a time, and reuses the one in flight", async () => {
+    let clock = Date.UTC(2030, 5, 1, 9, 0, 0);
+    let lastReadAt = clock - APPROVAL_CARD_POLL_MS;
+    let started = 0;
+    let answer: () => void = () => {};
+    const focusRead = createFocusRead({
+      now: () => clock,
+      lastReadAt: () => lastReadAt,
+      read: () => {
+        started += 1;
+        return new Promise<void>((resolve) => {
+          answer = () => {
+            lastReadAt = clock;
+            resolve();
+          };
+        });
+      },
+    });
+
+    // Three events while the first read is still out: one request.
+    const first = focusRead();
+    assert.ok(first);
+    assert.equal(focusRead(), first);
+    assert.equal(focusRead(), first);
+    assert.equal(started, 1);
+
+    answer();
+    await first;
+    clock += 1_000;
+    assert.equal(focusRead(), null, "within the interval of the last read");
+    clock += APPROVAL_CARD_POLL_MS;
+    assert.ok(focusRead());
+    assert.equal(started, 2);
+  });
+
+  test("an attempt that failed before any answer still waits its interval", async () => {
+    let clock = Date.UTC(2030, 5, 1, 9, 0, 0);
+    let started = 0;
+    const focusRead = createFocusRead({
+      now: () => clock,
+      // The last read never advances: the attempt's own start is what counts.
+      lastReadAt: () => 0,
+      read: () => {
+        started += 1;
+        return Promise.reject(new Error("offline"));
+      },
+    });
+    await focusRead()?.catch(() => {});
+    clock += 1_000;
+    assert.equal(focusRead(), null);
+    assert.equal(started, 1);
+  });
+});

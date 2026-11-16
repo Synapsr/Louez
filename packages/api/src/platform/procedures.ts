@@ -93,6 +93,10 @@ export function callerRefusal(meta: ApiMeta, actor: AccountActor, idempotencyKey
   if (meta.actors && !meta.actors.includes(actor.credential.kind)) {
     return platformErrors.sessionOnly();
   }
+  // What only a person does in the dashboard (deciding an approval, keys,
+  // the team, the account) is never the in-app assistant's, though it acts
+  // with the person's session.
+  if (meta.actors && actor.credential.assistant) return platformErrors.sessionOnly();
   if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
     return platformErrors.permissionDenied("platform_admin");
   }
@@ -115,6 +119,8 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
   const actor: AccountActor = await resolveAccountActor({
     transport: context.transport,
     headers: context.headers,
+    // The server's own mark, never the request's (`BaseContext.assistant`).
+    assistant: context.assistant === true,
   });
   if (context.errorScope) {
     context.errorScope.client = actor.credential.kind;
@@ -161,6 +167,8 @@ async function recordWrite<T extends { output: unknown }>(input: {
   receipt: BaseContext["receipt"];
   rawInput: unknown;
   dispatchEffects?: (ids: readonly string[]) => void;
+  /** `meta.recoverUnknown`, bound to the call's context. */
+  recoverUnknown?: (targetId: string) => Promise<unknown>;
   run: () => T | PromiseLike<T>;
   replay: (output: unknown) => T | PromiseLike<T>;
 }): Promise<T> {
@@ -184,6 +192,7 @@ async function recordWrite<T extends { output: unknown }>(input: {
         input: input.rawInput,
       }),
       dispatchEffects: input.dispatchEffects,
+      recoverUnknown: input.recoverUnknown,
     },
     async () => {
       ran = await input.run();
@@ -317,6 +326,9 @@ export const storeProcedure = authenticated.use(
       receipt: context.receipt,
       rawInput: input,
       dispatchEffects: ports.dispatchEffects,
+      recoverUnknown: meta.recoverUnknown
+        ? (targetId) => meta.recoverUnknown!(targetId, nextContext)
+        : undefined,
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
       replay: async (result) => {

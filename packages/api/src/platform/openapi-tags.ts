@@ -23,7 +23,7 @@ export const REFERENCE_GROUPS: readonly ReferenceGroup[] = [
   {
     name: "Payments",
     description:
-      "The payments and deposit returns recorded on a reservation: record one, or delete one recorded by mistake.",
+      "The payments, deposit returns and refunds given by hand recorded on a reservation: record one, or delete one recorded by mistake.",
     prefixes: ["/reservations/{}/payments", "/reservations/{}/deposit-returns", "/payments"],
   },
   {

@@ -82,10 +82,22 @@ export interface ApiPorts {
    */
   paymentRecords?: PaymentRecordsPort;
   /**
+   * The app's writer of a refund the store gave by hand, and of its credit
+   * note (services/payment-records.ts, `recordPaymentRefund`): the row's
+   * billing facts and the invoicing are the app's. Absent where no procedure
+   * needs it.
+   */
+  paymentRefunds?: PaymentRefundsPort;
+  /**
    * What the team procedures read from the app (services/team.ts). Absent
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
   team?: TeamPort;
+  /**
+   * Whether this instance can send e-mail (SMTP configured): a write that
+   * promises the customer an e-mail refuses it without. Absent: it can.
+   */
+  emailConfigured?: () => boolean;
   /**
    * Sends an unexpected server error to the app's error tracking
    * (platform/error-reporting.ts). Never throws, never waits. Absent: nothing
@@ -207,6 +219,60 @@ export interface PaymentRecordsPort {
    * service.
    */
   insert: (tx: Transaction, payment: RecordedPayment) => Promise<void>;
+}
+
+/**
+ * A refund the store gave by hand, as the app's writer takes it: one positive
+ * row pointing at the payment it gives back, in that payment's currency,
+ * which the approval showed. The payment it refunds keeps its amount.
+ */
+export interface RecordedRefund {
+  reservationId: string;
+  storeId: string;
+  /** The payment it gives back: the row's `refundOfPaymentId`. */
+  paymentId: string;
+  /** `deposit_return` for a kept deposit given back, `rental` otherwise. */
+  type: "rental" | "deposit_return";
+  method: RecordedPayment["method"];
+  /** As stored, `decimal(10,2)`, above zero. */
+  amount: string;
+  /** The refunded payment's currency, as the approval showed it. */
+  currency: string;
+  paidAt: Date;
+  notes: string | null;
+}
+
+/**
+ * What issuing a refund's credit note came to: issued (now, or by an
+ * earlier run: one credit note per refund), nothing to issue (the store
+ * issues no invoices, or the payment refunded has none), or a failure that
+ * may pass.
+ */
+export type RefundCreditNoteOutcome =
+  | { status: "issued"; number: string }
+  | { status: "not_applicable"; reason: string }
+  | { status: "failed"; reason: string };
+
+/** The app's writer of the refunds a store gives by hand (`ApiPorts.paymentRefunds`). */
+export interface PaymentRefundsPort {
+  /**
+   * In the caller's transaction, under the reservation's lock: the refund's
+   * row, under a new id, and the reservation's mark for the billing service.
+   * Returns the row's id.
+   */
+  insert: (tx: Transaction, refund: RecordedRefund) => Promise<{ id: string }>;
+  /**
+   * The refund's credit note, issued once per refund whoever asks and
+   * however often: the writer's one attempt once the refund committed, and
+   * the outbox row it owes it by (`payment.refundCreditNote`). Never throws.
+   */
+  creditNote: (refund: {
+    paymentId: string;
+    refundId: string;
+    amount: string;
+    /** Who asked, for the invoicing log. */
+    source: string;
+  }) => Promise<RefundCreditNoteOutcome>;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */
@@ -504,6 +570,25 @@ export type ApiEvent =
   /** A reservation's status or notes changed: its pages are revalidated. Its messages go to the outbox. */
   | { type: "reservation.statusChanged"; store: ApiEventStore; reservationId: string }
   | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
+  /** A reservation the store created (`reservations.create`): its pages, and the analytics event. */
+  | {
+      type: "reservation.created";
+      store: ApiEventStore;
+      reservationId: string;
+      /** Facts about the new reservation, for analytics. */
+      facts: Record<string, string | number | boolean | null>;
+    }
+  /** A reservation's dates moved through the API: its pages, and the edit's analytics event. */
+  | {
+      type: "reservation.datesChanged";
+      store: ApiEventStore;
+      reservationId: string;
+      transport: Transport;
+      status: string;
+      itemCount: number;
+      warningCount: number;
+      notifyCustomer: boolean;
+    }
   /** A section of the store settings changed: its pages are revalidated. */
   | { type: "store.settingsUpdated"; store: ApiEventStore; section: SettingsSection }
   /** The online store's sections or look changed; `themeChanged`: its cached theme colour is stale. */

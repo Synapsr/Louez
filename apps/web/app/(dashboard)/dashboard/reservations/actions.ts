@@ -28,7 +28,6 @@ import {
   getEffectiveProductQuantities,
   insertReservation,
   isStoreNotAcceptingReservationsError,
-  isStripeRefundPaymentSql,
   lockReservationInTransaction,
   markReservation,
   reconcileReservationStock,
@@ -133,9 +132,11 @@ import {
   productAnalyticsEvents,
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
+import { dispatchApiEffects } from "@/lib/api/effects";
+import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
+import { refundErrorKey } from "@/lib/reservations/util.refund-error-key";
 import {
   deleteRecordedPayment,
-  insertManualRefund,
   insertRecordedPayment,
 } from "@/lib/reservations/dashboard-payment-writes";
 import {
@@ -165,25 +166,16 @@ import { getCurrentStore } from "@/lib/store-context";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { sendReservationModificationEmailForStore } from "@/lib/reservations/modification-email";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import {
-  tryEnsureRefundPaymentRecord,
-  tryGenerateCreditNoteForRefund,
-  tryGenerateInvoiceForPayment,
-} from "@/lib/invoicing/service";
+import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
 
-import {
-  createRefund,
-  fromStripeCents,
-  getChargeRefundableAmount,
-  getPaymentMethodDetails,
-  toStripeCents,
-} from "@/lib/stripe";
+import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
 import { evaluateReservationRules } from "@louez/utils";
+import { recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,
@@ -3353,98 +3345,34 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
     return { error: "errors.invalidAmount" };
   }
 
-  let refundPaymentId: string;
+  // The one writer of a refund given by hand, the agents' too: the person
+  // clicked, so nothing is asked.
+  let refund: Awaited<ReturnType<typeof recordPaymentRefund>>;
   try {
-    refundPaymentId = await db.transaction(async (tx) => {
-      const [originalPayment] = await tx
-        .select({
-          id: payments.id,
-          amount: payments.amount,
-          type: payments.type,
-          method: payments.method,
-          status: payments.status,
-          currency: payments.currency,
-          refundOfPaymentId: payments.refundOfPaymentId,
-          reservationCurrency: reservations.currency,
-        })
-        .from(payments)
-        .innerJoin(reservations, eq(reservations.id, payments.reservationId))
-        .where(
-          and(
-            eq(payments.id, data.paymentId),
-            eq(payments.reservationId, reservationId),
-            eq(reservations.storeId, store.id),
-          ),
-        )
-        .for("update");
-
-      if (!originalPayment) {
-        throw new Error("errors.paymentNotFound");
-      }
-
-      if (
-        originalPayment.status !== "completed" ||
-        !["rental", "damage", "adjustment", "deposit_capture"].includes(originalPayment.type) ||
-        originalPayment.refundOfPaymentId !== null ||
-        Number(originalPayment.amount) <= 0
-      ) {
-        throw new Error("errors.invalidAmount");
-      }
-
-      const [refundTotal] = await tx
-        .select({
-          amount: sql<string>`coalesce(sum(${payments.amount}), 0)`,
-        })
-        .from(payments)
-        .where(
-          and(
-            eq(payments.refundOfPaymentId, originalPayment.id),
-            eq(payments.status, "completed"),
-            // A Stripe refund linked to its charge already came off that
-            // charge's amount: counting it here would subtract it twice.
-            not(isStripeRefundPaymentSql()),
-          ),
-        );
-
-      const remainingAmount = roundMoney(
-        Number(originalPayment.amount) - Number(refundTotal?.amount ?? 0),
-      );
-      if (data.amount > remainingAmount) {
-        throw new Error("errors.invalidAmount");
-      }
-
-      const paymentId = nanoid();
-      await insertManualRefund(tx, {
-        id: paymentId,
-        reservationId,
+    refund = await recordPaymentRefund(
+      {
         storeId: store.id,
-        storeSettings: store.settings,
-        reservationCurrency: originalPayment.reservationCurrency,
-        original: originalPayment,
+        storeSettings: store.settings ?? null,
+        port: paymentRefundsPort,
+        confirm: async () => null,
+        dispatchEffects: dispatchApiEffects,
+      },
+      {
+        reservationId,
+        paymentId: data.paymentId,
         amount: data.amount.toFixed(2),
-        type: originalPayment.type === "deposit_capture" ? "deposit_return" : "rental",
         method: data.method,
-        notes: data.notes?.trim() || null,
-        paidAt: new Date(),
-      });
-
-      return paymentId;
-    });
+        notes: data.notes,
+      },
+      { source: "dashboard_refund_manual_payment" },
+    );
   } catch (error) {
-    return { error: getActionErrorKey(error, "errors.invalidAmount") };
+    return { error: refundErrorKey(error) };
   }
-
-  const creditNoteGeneration = await tryGenerateCreditNoteForRefund(
-    { originalPaymentId: data.paymentId, refundPaymentId },
-    data.amount,
-    "dashboard_refund_manual_payment",
-  );
-  const creditNoteNumber =
-    creditNoteGeneration.status === "generated" ? creditNoteGeneration.number : undefined;
 
   await logReservationActivity(reservationId, "payment_updated", {
     paymentId: data.paymentId,
-    refundPaymentId,
+    refundPaymentId: refund.refundId,
     amount: data.amount,
     method: data.method,
     action: "refunded",
@@ -3453,7 +3381,11 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
-  return { success: true, refundPaymentId, creditNoteNumber };
+  return {
+    success: true,
+    refundPaymentId: refund.refundId,
+    creditNoteNumber: refund.creditNote.number ?? undefined,
+  };
 }
 
 export async function deletePayment(paymentId: string) {
@@ -3804,111 +3736,6 @@ export async function getReservationPaymentMethod(reservationId: string) {
   } catch (error) {
     console.error("Failed to get payment method details:", error);
     return null;
-  }
-}
-
-// ============================================================================
-// Stripe Refunds
-// ============================================================================
-
-interface ProcessStripeRefundData {
-  type: "deposit_return" | "rental_refund";
-  amount: number;
-  notes?: string;
-}
-
-export async function processStripeRefund(reservationId: string, data: ProcessStripeRefundData) {
-  const store = await getStoreForUser();
-  if (!store || !store.stripeAccountId) {
-    return { error: "errors.noStripeAccount" };
-  }
-
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      payments: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  // Find the original Stripe payment with a charge
-  const stripePayment = reservation.payments.find(
-    (p) => p.method === "stripe" && p.status === "completed" && p.stripeChargeId,
-  );
-
-  if (!stripePayment || !stripePayment.stripeChargeId) {
-    return { error: "errors.stripe.noChargeToRefund" };
-  }
-
-  try {
-    // Check refundable amount. A refund is counted in its charge's own currency:
-    // the payment row may hold the column's default, never the store's of today.
-    const {
-      refundable,
-      amount: maxRefundable,
-      currency,
-    } = await getChargeRefundableAmount(store.stripeAccountId, stripePayment.stripeChargeId);
-
-    if (!refundable) {
-      return { error: "errors.stripe.alreadyRefunded" };
-    }
-
-    const refundAmountCents = toStripeCents(data.amount, currency);
-
-    if (refundAmountCents > maxRefundable) {
-      return { error: "errors.stripe.refundExceedsCharge" };
-    }
-
-    // Process refund
-    const refund = await createRefund({
-      stripeAccountId: store.stripeAccountId,
-      chargeId: stripePayment.stripeChargeId,
-      amount: refundAmountCents,
-    });
-
-    // What is recorded, credited and logged is what Stripe refunded: an amount
-    // typed with more decimals than the currency has was rounded on its way.
-    const refundedAmount = fromStripeCents(refund.amount, refund.currency);
-    const refundPaidAt = new Date();
-    const paymentId = await tryEnsureRefundPaymentRecord(
-      {
-        originalPaymentId: stripePayment.id,
-        stripeRefundId: refund.refundId,
-        amount: refundedAmount,
-        grossMinor: refund.amount,
-        type: data.type === "deposit_return" ? "deposit_return" : "rental",
-        currency: refund.currency,
-        notes: data.notes,
-        paidAt: refundPaidAt,
-      },
-      "dashboard_process_stripe_refund",
-    );
-
-    if (data.type === "rental_refund" && paymentId) {
-      await tryGenerateCreditNoteForRefund(
-        { originalPaymentId: stripePayment.id, refundPaymentId: paymentId },
-        refundedAmount,
-        "dashboard_process_stripe_refund",
-      );
-    }
-
-    // Log activity
-    await logReservationActivity(reservationId, "payment_updated", {
-      paymentId,
-      refundId: refund.refundId,
-      amount: refundedAmount,
-      type: data.type,
-    });
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    return { success: true, refundId: refund.refundId };
-  } catch (error) {
-    console.error("Stripe refund error:", error);
-    return { error: "errors.stripe.refundFailed" };
   }
 }
 

@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 
 import type { AgentClient } from "../contracts/agent-connections";
 import type { HandoffDecision } from "../contracts/handoffs";
-import type { Consequence } from "../platform/approval-rule";
+import { ASSISTANT_REQUESTER, type Consequence } from "../platform/approval-rule";
 import { databaseNow } from "../platform/database-clock";
 import { grantClient } from "./agent-grants";
 import {
@@ -74,14 +74,16 @@ export type ApprovalPageState =
 
 /**
  * Who asks: an assistant connected over OAuth, or an API key, by the name it
- * had when it asked. `shownName` is the name the page's always-visible line
+ * had when it asked, or Louez's in-app assistant. `shownName` is the name the page's always-visible line
  * gives it, on one line: a connected assistant's as the consent page names
  * it (its vendor's when its codes reach one vendor alone, else the name it
  * declared), an API key's own; null when it has none.
  */
 export type ApprovalAgent =
   | { kind: "oauth"; name: string | null; client: AgentClient | null; shownName: string | null }
-  | { kind: "api_key"; name: string | null; shownName: string | null };
+  | { kind: "api_key"; name: string | null; shownName: string | null }
+  /** Louez's own in-app assistant, asked by the person in the dashboard's chat: named by Louez, never by a stored name. */
+  | { kind: "assistant"; name: null; shownName: null };
 
 export interface ApprovalPage {
   id: string;
@@ -250,6 +252,8 @@ function pageState(
 }
 
 async function agentOf(row: HandoffRow): Promise<ApprovalAgent> {
+  if (row.credentialKind === ASSISTANT_REQUESTER)
+    return { kind: "assistant", name: null, shownName: null };
   const name = row.clientName ? oneLine(row.clientName) || null : null;
   if (row.credentialKind === "oauth" && row.credentialId) {
     const client = await grantClient(row.userId, row.credentialId);

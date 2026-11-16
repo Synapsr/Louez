@@ -359,6 +359,15 @@ export const capabilities = [
 
   // --- Reservations: creation and changes (2b) ---------------------------
   {
+    // An agent's or a member's creation, priced as the checkout prices it.
+    id: "reservations.create",
+    sources: [procedure("reservations", "create")],
+    kind: "write",
+    sensitive: "send",
+    plan: { lot: "2b" },
+    migrated: true,
+  },
+  {
     id: "reservations.checkAvailability",
     sources: [
       action(SA.reservations, "getManualReservationAvailability"),
@@ -417,8 +426,11 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "updateReservation"),
       procedure("reservations", "updateReservation"),
+      // The dates alone, for every transport (docs/domain/reservation-changes.md, slice 12a).
+      procedure("reservations", "update"),
     ],
     kind: "write",
+    sensitive: "send",
     plan: { lot: "2b" },
   },
   {
@@ -494,14 +506,18 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "refundManualPayment"),
       procedure("reservations", "refundManualPayment"),
+      procedure("payments", "recordRefund"),
     ],
     kind: "write",
     sensitive: "money",
     plan: { lot: "2c" },
   },
   {
+    // Not exposed yet: the refund operation and its service exist (apps/web
+    // lib/reservations/stripe-refund.ts), with no caller; a procedure with a person's
+    // approval comes next.
     id: "reservations.refundStripePayment",
-    sources: [action(SA.reservations, "processStripeRefund")],
+    sources: [],
     kind: "write",
     sensitive: "money",
     plan: { lot: "2c" },

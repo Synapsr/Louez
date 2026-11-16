@@ -31,10 +31,13 @@ export type {
   InsurancePort,
   LogPort,
   PaymentRecordsPort,
+  PaymentRefundsPort,
   ProductImagesPort,
   RecordedPayment,
   RecordedPaymentDraft,
   RecordedPaymentFacts,
+  RecordedRefund,
+  RefundCreditNoteOutcome,
   StoragePort,
   UrlsPort,
 } from "./platform/ports";

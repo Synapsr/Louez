@@ -27,7 +27,14 @@ export const CHOICES = {
     "adjustment",
   ],
   paymentMethod: ["stripe", "cash", "card", "transfer", "check", "other"],
-  customerMessage: ["request_accepted", "request_rejected", "reservation_cancelled"],
+  customerMessage: [
+    "request_accepted",
+    "request_rejected",
+    "reservation_cancelled",
+    "quote_sent",
+    "booking_confirmed",
+    "reservation_modified",
+  ],
   /** Which channels a message goes on: the sentence names them itself. */
   messageChannels: ["email", "sms", "email_and_sms"],
   /** A target status, stated by the headline itself. */
@@ -96,6 +103,8 @@ export const HEADLINES = {
   /** A deposit the store collected, recorded through the generic write. */
   recordDeposit: {},
   returnDeposit: {},
+  /** A refund the store gave by hand, against one payment. */
+  recordRefund: {},
   deletePayment: {},
   removeMember: {},
   cancelInvitation: {},
@@ -104,6 +113,23 @@ export const HEADLINES = {
   confirmPastBuffer: CONFIRMS,
   confirmBeyondStock: CONFIRMS,
   confirmBeyondStockAndBuffer: CONFIRMS,
+  /**
+   * A creation (`reservations.create`): a quote or a confirmed booking, by
+   * what departs from the store's rules. The headline states the status.
+   */
+  createQuote: {},
+  createQuotePastBuffer: {},
+  createQuoteBeyondStock: {},
+  createQuoteBeyondStockAndBuffer: {},
+  createBooking: {},
+  createBookingPastBuffer: {},
+  createBookingBeyondStock: {},
+  createBookingBeyondStockAndBuffer: {},
+  /** A booking's dates moved by an agent with an override, nothing short: the stock and the buffer cover it. */
+  moveDatesWithinRules: {},
+  moveDatesPastBuffer: {},
+  moveDatesBeyondStock: {},
+  moveDatesBeyondStockAndBuffer: {},
 } as const satisfies Record<string, Record<string, ValueSpec>>;
 
 /** The facts, and the values each one takes, all of them. */
@@ -132,6 +158,17 @@ export const FACTS = {
   returned: { amount: MONEY, method: choiceOf("paymentMethod") },
   /** "Deposit still held before this: €300.00" */
   depositHeld: { held: MONEY },
+  /** "Refund: £30.00, given back to the customer · Cash" */
+  refundGiven: { amount: MONEY, method: choiceOf("paymentMethod") },
+  /** "Payment refunded: Rental, £80.00 on Nov 12, 2026 · Card" */
+  refundOf: {
+    type: choiceOf("paymentType"),
+    amount: MONEY,
+    at: DATE_TIME,
+    method: choiceOf("paymentMethod"),
+  },
+  /** "Already refunded: £20.00 · Still refundable after this: £30.00" */
+  refundBalance: { refunded: MONEY, left: MONEY },
   /** Louez only records it: no money moves. */
   recordOnly: {},
   /** "Rental: €80.00 · Cash" */
@@ -156,6 +193,13 @@ export const FACTS = {
   linkStops: {},
   /** "From Dec 13, 2026 at 2:00 PM to Dec 17, 2026 at 2:00 PM · €98.00" */
   period: { period: DATE_RANGE, total: MONEY },
+  /**
+   * "From Dec 13, 2026 at 2:00 PM – Dec 17, 2026 at 2:00 PM to Dec 13, 2026
+   * at 2:00 PM – Dec 19, 2026 at 2:00 PM": a booking's dates, before and after.
+   */
+  datesMoved: { before: DATE_RANGE, after: DATE_RANGE },
+  /** "New total: €118.00 (+€20.00)": a booking's total after its dates moved, and what it adds. */
+  newTotal: { total: MONEY, difference: MONEY },
   /** "Kayak biplace: 2 requested, only 1 free with your 2 hr turnover buffer" */
   pastBuffer: { product: TEXT, requested: COUNT, available: COUNT, buffer: DURATION },
   /** "Paddle: 2 requested, only 1 in stock: 1 missing" */
@@ -191,6 +235,14 @@ export const FACTS = {
     channels: choiceOf("messageChannels"),
   },
   noMessage: {},
+  /** "For Camille Simon · camille@example.com": the customer of a booking being created. */
+  bookingFor: { customer: TEXT, email: TEXT },
+  /** The same, for a customer the creation adds to the store. */
+  bookingForNewCustomer: { customer: TEXT, email: TEXT },
+  /** "2 × Kayak biplace": what a booking being created holds, on one line. */
+  bookingLine: { product: TEXT, quantity: COUNT },
+  /** "2 × Kayak biplace and 2 more lines" */
+  bookingLines: { product: TEXT, quantity: COUNT, others: COUNT },
 } as const satisfies Record<string, Record<string, ValueSpec>>;
 
 export type HeadlineKey = keyof typeof HEADLINES;

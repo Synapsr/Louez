@@ -778,6 +778,162 @@ export const updateReservationNotesOutput = z.object({
   ...linksShape,
 });
 
+// --- Dates -------------------------------------------------------------------
+
+/**
+ * An instant written with its offset ("2030-06-01T09:00:00+02:00", or "…Z"),
+ * in whole seconds: a reservation's dates are stored to the second, so a
+ * fraction would be priced as one window and stored as another.
+ */
+const instantWithOffset = z
+  .string()
+  .datetime({ offset: true })
+  .refine((value) => Number.isFinite(Date.parse(value)), "Not a real instant.")
+  .refine(
+    // Read on the text, before parsing: `Date.parse` drops digits past the
+    // millisecond, so ".0001" would pass as a whole second. ".000" is one.
+    (value) => /^0*$/.test(/T\d{2}:\d{2}(?::\d{2})?(?:\.(\d+))?/.exec(value)?.[1] ?? ""),
+    "Give the instant in whole seconds: a reservation's dates hold no fraction of a second.",
+  );
+
+/**
+ * A date change of a reservation (`reservations.update`). The input is a strict
+ * object: an unknown field is refused, never ignored, so a caller that sends
+ * what a later version of this contract adds (its lines, its delivery) is
+ * told now that this version does not take it.
+ */
+export const updateReservationInput = z
+  .strictObject({
+    id: idSchema,
+    startDate: instantWithOffset
+      .optional()
+      .describe(
+        "The new start, ISO 8601 with its offset (2030-06-01T09:00:00+02:00, or Z). Absent: the start stays as it is. The start of an ongoing reservation cannot move: its goods are out.",
+      ),
+    endDate: instantWithOffset
+      .optional()
+      .describe(
+        "The new end, ISO 8601 with its offset. Absent: the end stays as it is. It must come after the start.",
+      ),
+    notifyCustomer: z
+      .boolean()
+      .describe(
+        "true: the customer gets the “booking modified” e-mail, with the previous and the new dates, at the address the preview names. Refused with RESERVATION_CUSTOMER_UNREACHABLE when the customer has no e-mail address or this instance sends no e-mail. false: no message. Required: always say which.",
+      ),
+    allowOverbooking: z
+      .boolean()
+      .optional()
+      .describe(
+        "For new dates the stock cannot cover (RESERVATION_INSUFFICIENT_CAPACITY): true moves them all the same, booking over the stock, and the reservation's history records the shortfalls. Send it only when the user chose to. It never passes a shortfall that comes from the turnover buffer alone (that is overrideTurnoverBuffer), a unit the reservation holds that another booking holds or needs (RESERVATION_UNITS_UNAVAILABLE), or a consumable out of stock.",
+      ),
+    overrideTurnoverBuffer: z
+      .boolean()
+      .optional()
+      .describe(
+        "For new dates refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock, not the turnover buffer the store keeps between rentals): true moves them all the same, for this change only. Send it only when the user chose to. It never passes a line the stock itself cannot cover (that is allowOverbooking).",
+      ),
+  })
+  .refine((input) => input.startDate !== undefined || input.endDate !== undefined, {
+    message: "Give startDate, endDate or both.",
+    path: ["startDate"],
+  });
+
+/** A line short in a stock check, as an answer states it (`CapacityShortfall`). */
+const capacityShortfallSchema = z.object({
+  productId: z.string(),
+  productName: z.string(),
+  combinationKey: z.string().nullable(),
+  requested: z.number().int(),
+  available: z.number().int(),
+  reservationItemId: z.string().optional(),
+  selectedAttributes: z.record(z.string(), z.string()).nullable().optional(),
+});
+
+/** A date change's own facts, next to the reservation as `reservations.get` returns it. */
+export const dateChangeSchema = z.object({
+  /** False when the dates sent are the ones stored: nothing was written, nothing sent. */
+  changed: z.boolean(),
+  previousStartDate: z.date(),
+  previousEndDate: z.date(),
+  /** The total before the change, in the reservation's currency (`currency`). */
+  previousTotal: moneySchema,
+  /** New total less the previous one, in the reservation's currency: owed when positive. */
+  difference: moneySchema,
+  /**
+   * What the dashboard would show next to the change: booking rules the new
+   * dates break (`key` and `params`, the dashboard's translation key), an open
+   * payment session, a deposit hold that lapses before the new end, a balance
+   * now owed or over-paid. None of them refuses the change.
+   */
+  warnings: z.array(
+    z.object({
+      key: z.string(),
+      params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+    }),
+  ),
+  /**
+   * The stock verdict of the new dates, counted without the turnover buffer:
+   * `overbooked` with the lines booked over the stock, or none.
+   */
+  capacity: z.object({
+    overbooked: z.boolean(),
+    shortfalls: z.array(capacityShortfallSchema),
+  }),
+  /**
+   * The customer's “booking modified” e-mail, queued with the change and sent
+   * once it committed; `to` is null for a caller who may not read customers.
+   * Null when none was asked for, or nothing changed.
+   */
+  customerMessage: z.object({ channel: z.literal("email"), to: z.string().nullable() }).nullable(),
+});
+export type DateChange = z.infer<typeof dateChangeSchema>;
+
+export const updateReservationOutput = reservationOutput.extend(dateChangeSchema.shape);
+
+/**
+ * Why a date change must be made in the dashboard: a stored fact this
+ * change cannot derive again, so it refuses rather than guess a price.
+ */
+export const DATE_CHANGE_DASHBOARD_REASONS = [
+  /** Insurance: its premium depends on the window and is quoted by the insurer. */
+  "insured",
+  /** A line typed by hand, a custom line, or a price set by hand. */
+  "custom_or_manual_lines",
+  /** A promo code or a discount: its amount is not derived from the dates. */
+  "discount_or_promo_code",
+  /** A marketplace booking: its price is the marketplace's. */
+  "marketplace",
+  /** The customer's extension checkout is open: it holds its own plan. */
+  "extension_checkout_open",
+  /** Today's catalogue and tax settings do not give the stored prices back to the cent. */
+  "prices_not_reproducible",
+  /** A line's product was deleted or is no longer active. */
+  "product_unavailable",
+  /** A line chose a combination of its product that no unit carries any more. */
+  "variant_unavailable",
+  /** A delivery to or from an address: its fee depends on the distance and on the subtotal. */
+  "delivery",
+  /** Taxes are on and a line holds no tax figures of its own, or the reservation no currency. */
+  "booking_facts_missing",
+] as const;
+export type DateChangeDashboardReason = (typeof DATE_CHANGE_DASHBOARD_REASONS)[number];
+
+const DASHBOARD_REASON_SAID: Record<DateChangeDashboardReason, string> = {
+  insured: "it is insured, and the insurer quotes the premium for its dates",
+  custom_or_manual_lines: "it holds a custom line or a price set by hand",
+  discount_or_promo_code: "it holds a promo code or a discount",
+  marketplace: "it was booked through the marketplace, which set its price",
+  extension_checkout_open: "the customer has an extension checkout open on it",
+  prices_not_reproducible:
+    "its stored prices are not what today's catalogue and tax settings give for its dates (a promotion ended, a price or a tax setting changed since)",
+  product_unavailable: "one of its lines is for a product that was deleted or is no longer active",
+  variant_unavailable:
+    "one of its lines chose a variant of its product that no unit carries any more",
+  delivery: "it is delivered to or collected from an address, and the delivery fee depends on it",
+  booking_facts_missing:
+    "it was booked before Louez recorded every price fact this change needs (its currency, or a line's tax figures)",
+};
+
 // --- Global search -----------------------------------------------------------
 
 /** Most rows the global search returns per kind. */
@@ -1029,5 +1185,87 @@ export const reservationErrors = {
       message: `The window must end after it starts, and span at most ${RESERVATION_WINDOW_MAX_DAYS} days.`,
       i18nKey: "errors.invalidData",
       details: { maxDays: RESERVATION_WINDOW_MAX_DAYS },
+    }),
+
+  // --- Date changes (`reservations.update`) ---------------------------------
+
+  /** A pending, quote, confirmed or ongoing reservation is edited; any other is what was rented or refused. */
+  notEditable: (id: string, status: ReservationStatus) =>
+    apiError("CONFLICT", "RESERVATION_NOT_EDITABLE", {
+      message: `A ${status} reservation cannot be changed: only a pending, quote, confirmed or ongoing one can.`,
+      i18nKey: "errors.reservationStatusChanged",
+      details: { id, status, editable: ["pending", "quote", "confirmed", "ongoing"] },
+    }),
+  /**
+   * The new dates are no real rental window: the end is not after the start
+   * (`end_not_after_start`), or the start of an ongoing reservation moved
+   * (`ongoing_start_moved`: its goods are out, only its end may move).
+   */
+  datesInvalid: (reason: "end_not_after_start" | "ongoing_start_moved", start: Date, end: Date) =>
+    apiError("BAD_REQUEST", "RESERVATION_WINDOW_INVALID", {
+      message:
+        reason === "end_not_after_start"
+          ? `Not changed: the end (${end.toISOString()}) must come after the start (${start.toISOString()}).`
+          : "Not changed: this reservation is ongoing, its goods are out, so its start cannot move. Only its end can.",
+      i18nKey:
+        reason === "end_not_after_start" ? "errors.endDateBeforeStart" : "errors.invalidData",
+      details: { reason, startDate: start.toISOString(), endDate: end.toISOString() },
+    }),
+  /**
+   * An instant with a fraction of a second: a reservation's dates are stored
+   * to the second. The contract refuses it first; this is the service's own
+   * check, for a caller that skips the contract.
+   */
+  dateNotWholeSeconds: (field: "startDate" | "endDate", at: Date) =>
+    apiError("BAD_REQUEST", "RESERVATION_WINDOW_INVALID", {
+      message: `Not changed: ${field} (${at.toISOString()}) must be a whole second: a reservation's dates hold no fraction of a second.`,
+      i18nKey: "errors.invalidData",
+      details: { reason: "not_whole_seconds", field, at: at.toISOString() },
+    }),
+  /**
+   * The change needs a fact it cannot derive again, so it is not made here:
+   * the store makes it from the reservation's page in the dashboard.
+   */
+  editInDashboard: (id: string, reason: DateChangeDashboardReason) =>
+    apiError("CONFLICT", "RESERVATION_EDIT_IN_DASHBOARD", {
+      message: `Not changed: this reservation's dates can only be changed from its page in the dashboard, because ${DASHBOARD_REASON_SAID[reason]}. Nothing was written. The reservation's links.dashboard is that page.`,
+      i18nKey: "errors.invalidData",
+      details: { id, reason },
+    }),
+  /**
+   * The caller asked to tell the customer, and no message can reach them:
+   * the customer has no e-mail address (`no_email`), or this instance sends
+   * no e-mail (`email_not_configured`). Nothing was asked or written: the
+   * same call with `notifyCustomer: false` makes the change without a message.
+   */
+  customerUnreachable: (id: string, reason: "no_email" | "email_not_configured") =>
+    apiError("CONFLICT", "RESERVATION_CUSTOMER_UNREACHABLE", {
+      message:
+        reason === "no_email"
+          ? "Not changed: the customer has no e-mail address, so the “booking modified” message cannot reach them. Call again with notifyCustomer: false to change the dates without a message."
+          : "Not changed: this Louez instance sends no e-mail, so the “booking modified” message cannot go out. Call again with notifyCustomer: false to change the dates without a message.",
+      i18nKey: "errors.invalidData",
+      details: { id, reason },
+    }),
+  /** As `unitsUnavailable`, said of new dates. */
+  datesUnitsUnavailable: (conflicts: ReservationUnitConflict[]) =>
+    apiError("CONFLICT", "RESERVATION_UNITS_UNAVAILABLE", {
+      message: `Not changed: units assigned to this reservation cannot serve it over the new dates (${conflicts.map((conflict) => conflict.identifier).join(", ")}). ${unitConflictCauses(conflicts)} No flag passes it: choose other dates, or have the store assign other units.`,
+      i18nKey: "errors.assignedUnitsConflict",
+      details: { conflicts },
+    }),
+  /** As `insufficientCapacity`, said of new dates. */
+  datesInsufficientCapacity: (shortfalls: CapacityShortfall[]) =>
+    apiError("CONFLICT", "RESERVATION_INSUFFICIENT_CAPACITY", {
+      message: `Not changed: the stock cannot cover this reservation over the new dates (${describeShortfalls(shortfalls)}). Other bookings hold the rest. To move it all the same, booking over the stock, call again with allowOverbooking: true; the reservation's history records it.`,
+      i18nKey: "errors.insufficientCapacity",
+      details: { shortfalls },
+    }),
+  /** As `turnoverBufferShortfall`, said of new dates. */
+  datesTurnoverBufferShortfall: (shortfalls: CapacityShortfall[]) =>
+    apiError("CONFLICT", "RESERVATION_TURNOVER_BUFFER_CONFLICT", {
+      message: `Not changed: lines of this reservation fit the stock over the new dates, but not the turnover buffer the store keeps between rentals (${describeShortfalls(shortfalls)}). To move them all the same, with less time between rentals, call again with overrideTurnoverBuffer: true; the reservation's history records it. allowOverbooking does not pass it.`,
+      i18nKey: "errors.turnoverBufferShortfall",
+      details: { shortfalls },
     }),
 } as const;

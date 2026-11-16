@@ -297,7 +297,9 @@ describe("MCP directory conformance", () => {
       reservations_list_overdue: "read",
       reservations_list_upcoming: "read",
       reservations_poll: "read",
+      reservations_update: "overwrite/customer",
       reservations_update_notes: "overwrite",
+      reservations_create: "additive/customer",
       reservations_update_status: "overwrite/customer",
       search_global: "read",
       // Statistics procedures, under the names they had as hand-written tools.
@@ -309,6 +311,8 @@ describe("MCP directory conformance", () => {
       delete_payment: "delete",
       record_deposit_return: "additive",
       record_payment: "additive",
+      // A refund given by hand: its own row; the payment it refunds is left as it was.
+      record_refund: "additive",
       settings_create_location: "additive/public",
       settings_get: "read",
       settings_get_legal_profile: "read",
@@ -421,10 +425,11 @@ describe("MCP directory conformance", () => {
     for (const name of [
       "record_payment",
       "record_deposit_return",
+      "record_refund",
       "delete_payment",
       "team_remove_member",
       "team_cancel_invitation",
-      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status)",
+      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status, reservations_create, reservations_update)",
     ]) {
       assert.ok(instructions.includes(name), name);
     }
@@ -444,10 +449,13 @@ describe("MCP directory conformance", () => {
     const APPROVING = [
       "record_payment",
       "record_deposit_return",
+      "record_refund",
       "delete_payment",
       "team_remove_member",
       "team_cancel_invitation",
       "reservations_update_status",
+      "reservations_create",
+      "reservations_update",
     ];
     for (const tool of tools) {
       const argument = (tool.inputSchema.properties as Record<string, unknown> | undefined)

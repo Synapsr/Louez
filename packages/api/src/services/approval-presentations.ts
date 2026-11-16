@@ -13,12 +13,21 @@ import {
   money,
   text,
   type ApprovalPresentation,
+  type ChoiceValue,
   type DisplayFact,
   type FactKey,
   type HeadlineKey,
 } from "./approval-display";
 import { oneLine } from "./approval-preview";
-import { depositReturnAmount, recordedPaymentAmount } from "./payment-amount";
+import {
+  depositReturnAmount,
+  fromHundredths,
+  hundredthsOf,
+  recordedPaymentAmount,
+  refundAmount,
+} from "./payment-amount";
+import type { ReservationCreatePreview } from "./reservation-create";
+import type { DateChangePreview } from "./reservation-dates";
 import type { StatusChangePreview } from "./reservation-status";
 
 /**
@@ -61,7 +70,8 @@ const RECORDED: Record<
   rental: (negative) => (negative ? null : { headline: "recordPayment", fact: "received" }),
   damage: (negative) => (negative ? null : { headline: "recordPayment", fact: "received" }),
   // A deposit collected, a deposit given back.
-  deposit: (negative) => (negative ? null : { headline: "recordDeposit", fact: "depositCollected" }),
+  deposit: (negative) =>
+    negative ? null : { headline: "recordDeposit", fact: "depositCollected" },
   deposit_return: (negative) =>
     negative ? null : { headline: "returnDeposit", fact: "depositGivenBack" },
   // An adjustment, in either direction.
@@ -164,6 +174,78 @@ export function recordDepositReturnPresentation(
   };
 }
 
+/**
+ * A refund the store gave by hand, recorded against one payment
+ * (`dashboard.payments.recordRefund`). Every amount is in the payment's own
+ * currency, which the refund's row takes. `refundedHundredths` is what the
+ * completed refunds linked to it already gave back, in hundredths, as the
+ * writer counts it under the reservation's lock.
+ */
+export function recordRefundPresentation(
+  details: {
+    paymentId: string;
+    reservationId: string;
+    number: string;
+    amount: string;
+    method: string;
+  },
+  payment: {
+    type: string;
+    amount: string;
+    method: string;
+    currency: string;
+    paidAt: Date;
+    refundedHundredths: number;
+    paidHundredths: number;
+  },
+): ApprovalPresentation | null {
+  const refundable = payment.paidHundredths - payment.refundedHundredths;
+  // Judged as the write judges it: a refund it refuses gets no display.
+  const verdict = refundAmount(details.amount, payment.currency, refundable);
+  const paid = plainDecimal(payment.amount);
+  const { currency, type } = payment;
+  const { method } = details;
+  if (!verdict.ok || !paid || !CURRENCY.test(currency)) return null;
+  if (!isChoice("paymentType", type) || !isChoice("paymentMethod", payment.method)) return null;
+  if (!isChoice("paymentMethod", method)) return null;
+  const { amount } = verdict;
+  const left = refundable - hundredthsOf(amount);
+  return {
+    display: {
+      headline: headline("recordRefund", {}),
+      facts: [
+        bookingNumber(details.reservationId, details.number),
+        fact("refundGiven", {
+          amount: money(amount, currency),
+          method: choice("paymentMethod", method),
+        }),
+        fact(
+          "refundOf",
+          {
+            type: choice("paymentType", type),
+            amount: money(paid, currency),
+            at: dateTime(payment.paidAt),
+            method: choice("paymentMethod", payment.method),
+          },
+          details.paymentId,
+        ),
+        fact("refundBalance", {
+          refunded: money(fromHundredths(payment.refundedHundredths), currency),
+          left: money(fromHundredths(left), currency),
+        }),
+        fact("recordOnly", {}),
+      ],
+    },
+    facts: {
+      payment: details.paymentId,
+      reservation: details.reservationId,
+      amount,
+      currency: currency.toUpperCase(),
+      method,
+    },
+  };
+}
+
 /** A recorded payment deleted (`dashboard.payments.delete`). */
 export function deletePaymentPresentation(
   details: { paymentId: string; number: string; type: string; amount: string; method: string },
@@ -239,8 +321,8 @@ export function cancelInvitationPresentation(invitation: {
   };
 }
 
-/** Which channels a status change's messages go on, as one value. */
-const channelsOf = (messages: StatusChangePreview["messages"]) => {
+/** Which channels a change's messages go on, as one value. */
+const channelsOf = (messages: ReadonlyArray<{ channel: "email" | "sms" }>) => {
   const email = messages.some((entry) => entry.channel === "email");
   const sms = messages.some((entry) => entry.channel === "sms");
   return email && sms ? "email_and_sms" : email ? "email" : "sms";
@@ -268,62 +350,14 @@ export function confirmOverridePresentation(
 
   const beyondStock = overbooking?.shortfalls ?? [];
   const pastBuffer = turnoverBuffer?.shortfalls ?? [];
-  const lines: DisplayFact[] = [
-    ...beyondStock.map((shortfall) =>
-      fact("beyondStock", {
-        ...lineValues(shortfall),
-        missing: count(Math.max(0, shortfall.requested - shortfall.available)),
-      }),
-    ),
-    ...pastBuffer.map((shortfall) =>
-      fact("pastBuffer", {
-        ...lineValues(shortfall),
-        buffer: duration(turnoverBuffer?.turnoverBufferMinutes ?? 0),
-      }),
-    ),
-  ];
+  const lines = departureFacts(beyondStock, pastBuffer, turnoverBuffer?.turnoverBufferMinutes ?? 0);
   const customer = preview.customer && oneLine(preview.customer.name) ? preview.customer : null;
   const message = messages[0]?.message ?? null;
   const channels = channelsOf(messages);
-  // A change sends one message, on one channel or on both: one fact. To a
-  // person who may read customers it says where each goes, as the preview
-  // holds it, the one snapshot the binding and the outbox read.
-  const email = messages.find((entry) => entry.channel === "email")?.to;
-  const phone = messages.find((entry) => entry.channel === "sms")?.to;
-  // Whoever the preview names, even by a name that shows nothing: the
-  // destination is then on the display, and the name's own fact makes the
-  // request unreadable, so it cannot be approved without it.
-  const addressed =
-    preview.customer && messages.every((entry) => entry.to) ? preview.customer : null;
-  const told = !message
-    ? fact("noMessage", {})
-    : !addressed
-      ? fact("messageToCustomer", {
-          message: choice("customerMessage", message),
-          channels: choice("messageChannels", channels),
-        })
-      : email && phone
-        ? fact("messageEmailAndText", {
-            customer: text(addressed.name),
-            message: choice("customerMessage", message),
-            email: text(email),
-            phone: text(phone),
-          })
-        : fact("message", {
-            customer: text(addressed.name),
-            message: choice("customerMessage", message),
-            channels: choice("messageChannels", channels),
-            to: text(email ?? phone ?? ""),
-          });
+  const told = messageFact(preview.customer, messages);
 
   // The record, the dates and the message hold three places; the lines share the rest.
-  const room = FACTS_MAX - 3;
-  const departures =
-    lines.length === 0
-      ? [fact("withinRules", {})]
-      : lines.length <= room
-        ? lines
-        : [...lines.slice(0, room - 1), fact("moreLines", { count: count(lines.length - room + 1) })];
+  const departures = fitLines(lines, FACTS_MAX - 3);
 
   const key: keyof typeof OVERRIDES_SAID =
     beyondStock.length > 0 && pastBuffer.length > 0
@@ -370,6 +404,141 @@ export function confirmOverridePresentation(
 }
 
 /**
+ * The one fact of the message a change sends the customer, on one channel or
+ * on both, or that none goes. To a person who may read customers it says
+ * where each goes, as the preview holds it, the one snapshot the binding and
+ * the outbox read.
+ */
+function messageFact(
+  previewCustomer: { name: string } | null,
+  messages: ReadonlyArray<{
+    message: ChoiceValue<"customerMessage">["value"];
+    channel: "email" | "sms";
+    to?: string;
+  }>,
+): DisplayFact {
+  const message = messages[0]?.message ?? null;
+  const channels = channelsOf(messages);
+  const email = messages.find((entry) => entry.channel === "email")?.to;
+  const phone = messages.find((entry) => entry.channel === "sms")?.to;
+  // Whoever the preview names, even by a name that shows nothing: the
+  // destination is then on the display, and the name's own fact makes the
+  // request unreadable, so it cannot be approved without it.
+  const addressed = previewCustomer && messages.every((entry) => entry.to) ? previewCustomer : null;
+  return !message
+    ? fact("noMessage", {})
+    : !addressed
+      ? fact("messageToCustomer", {
+          message: choice("customerMessage", message),
+          channels: choice("messageChannels", channels),
+        })
+      : email && phone
+        ? fact("messageEmailAndText", {
+            customer: text(addressed.name),
+            message: choice("customerMessage", message),
+            email: text(email),
+            phone: text(phone),
+          })
+        : fact("message", {
+            customer: text(addressed.name),
+            message: choice("customerMessage", message),
+            channels: choice("messageChannels", channels),
+            to: text(email ?? phone ?? ""),
+          });
+}
+
+/** The lines a change passes past the store's rules, each as one fact. */
+const departureFacts = (
+  beyondStock: readonly CapacityShortfall[],
+  pastBuffer: readonly CapacityShortfall[],
+  turnoverBufferMinutes: number,
+): DisplayFact[] => [
+  ...beyondStock.map((shortfall) =>
+    fact("beyondStock", {
+      ...lineValues(shortfall),
+      missing: count(Math.max(0, shortfall.requested - shortfall.available)),
+    }),
+  ),
+  ...pastBuffer.map((shortfall) =>
+    fact("pastBuffer", { ...lineValues(shortfall), buffer: duration(turnoverBufferMinutes) }),
+  ),
+];
+
+/** The lines in the room left, the rest counted in one fact; none: within the rules. */
+const fitLines = (lines: DisplayFact[], room: number): DisplayFact[] =>
+  lines.length === 0
+    ? [fact("withinRules", {})]
+    : lines.length <= room
+      ? lines
+      : [...lines.slice(0, room - 1), fact("moreLines", { count: count(lines.length - room + 1) })];
+
+/**
+ * A booking's dates moved with `allowOverbooking` or `overrideTurnoverBuffer`
+ * (`dashboard.reservations.update`), from its preview: the booking, its dates
+ * before and after, its new total and the difference, what goes past the
+ * store's rules, and the message. Every line, each line's price, the tax and
+ * the warnings stay in the details, where the preview lists them all. Null
+ * when the values cannot be shown as typed facts.
+ */
+export function moveDatesPresentation(preview: DateChangePreview): ApprovalPresentation | null {
+  const { reservation, overbooking, turnoverBuffer, messages } = preview;
+  if (!overbooking && !turnoverBuffer) return null;
+  const total = plainDecimal(reservation.total);
+  const difference = plainDecimal(reservation.difference);
+  if (!total || !difference || !CURRENCY.test(reservation.currency)) return null;
+
+  const beyondStock = overbooking?.shortfalls ?? [];
+  const pastBuffer = turnoverBuffer?.shortfalls ?? [];
+  const lines = departureFacts(beyondStock, pastBuffer, turnoverBuffer?.turnoverBufferMinutes ?? 0);
+  const customer = preview.customer && oneLine(preview.customer.name) ? preview.customer : null;
+  const message = messages[0]?.message ?? null;
+
+  // The record, the dates, the total and the message hold four places; the lines share the rest.
+  const key: keyof typeof OVERRIDES_SAID =
+    beyondStock.length > 0 && pastBuffer.length > 0
+      ? "moveDatesBeyondStockAndBuffer"
+      : beyondStock.length > 0
+        ? "moveDatesBeyondStock"
+        : pastBuffer.length > 0
+          ? "moveDatesPastBuffer"
+          : "moveDatesWithinRules";
+
+  return {
+    display: {
+      headline: headline(key, {}),
+      facts: [
+        customer
+          ? fact(
+              "booking",
+              { number: text(reservation.number), customer: text(customer.name) },
+              reservation.id,
+            )
+          : fact("bookingNumber", { number: text(reservation.number) }, reservation.id),
+        fact("datesMoved", {
+          before: dateRange(reservation.previousStartDate, reservation.previousEndDate),
+          after: dateRange(reservation.startDate, reservation.endDate),
+        }),
+        fact("newTotal", {
+          total: money(total, reservation.currency),
+          difference: money(difference, reservation.currency),
+        }),
+        ...fitLines(lines, FACTS_MAX - 4),
+        messageFact(preview.customer, messages),
+      ],
+    },
+    facts: {
+      reservation: reservation.id,
+      // The new dates and the new total, as the screen shows them.
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      total,
+      overrides: [...OVERRIDES_SAID[key]],
+      message: message ? { message, channels: channelsOf(messages) } : null,
+    },
+  };
+}
+
+/**
  * The overrides each headline of a confirmation says it passes: `stock`, a
  * booking beyond the stock; `turnover_buffer`, one past the buffer. The
  * request's identity holds the headline's, so each override in it is on the
@@ -380,6 +549,10 @@ export const OVERRIDES_SAID = {
   confirmBeyondStock: ["stock"],
   confirmPastBuffer: ["turnover_buffer"],
   confirmBeyondStockAndBuffer: ["stock", "turnover_buffer"],
+  moveDatesWithinRules: [],
+  moveDatesBeyondStock: ["stock"],
+  moveDatesPastBuffer: ["turnover_buffer"],
+  moveDatesBeyondStockAndBuffer: ["stock", "turnover_buffer"],
 } as const satisfies Partial<Record<HeadlineKey, readonly string[]>>;
 
 /**
@@ -396,3 +569,127 @@ const lineValues = (shortfall: CapacityShortfall) => ({
   requested: count(shortfall.requested),
   available: count(shortfall.available),
 });
+
+/**
+ * A reservation created by an agent (`dashboard.reservations.create`), from
+ * its preview: who, when and for how much, what it holds, what departs from
+ * the store's rules, and the e-mail the customer gets. At most `FACTS_MAX`
+ * facts: with more than one line past the rules, what it holds gives way to
+ * them, the first shown and the others counted, and the details list them
+ * all. Null where a value cannot be shown as a typed fact.
+ */
+export function createReservationPresentation(
+  preview: ReservationCreatePreview,
+): ApprovalPresentation | null {
+  const { customer, window, totals, currency, overbooking, turnoverBuffer, message } = preview;
+  const total = plainDecimal(totals.total);
+  const first = preview.lines[0];
+  if (!total || !CURRENCY.test(currency) || !first) return null;
+
+  const beyondStock = overbooking?.shortfalls ?? [];
+  const pastBuffer = turnoverBuffer?.shortfalls ?? [];
+  const departures: DisplayFact[] = [
+    ...beyondStock.map((shortfall) =>
+      fact("beyondStock", {
+        ...lineValues(shortfall),
+        missing: count(Math.max(0, shortfall.requested - shortfall.available)),
+      }),
+    ),
+    ...pastBuffer.map((shortfall) =>
+      fact("pastBuffer", {
+        ...lineValues(shortfall),
+        buffer: duration(turnoverBuffer?.turnoverBufferMinutes ?? 0),
+      }),
+    ),
+  ];
+  const flagged = overbooking !== null || turnoverBuffer !== null;
+  const what =
+    preview.lines.length === 1
+      ? fact("bookingLine", { product: text(first.productName), quantity: count(first.quantity) })
+      : fact("bookingLines", {
+          product: text(first.productName),
+          quantity: count(first.quantity),
+          others: count(preview.lines.length - 1),
+        });
+  // Who, when and the total, and the message, hold three places; what it holds the fourth.
+  const shown: DisplayFact[] =
+    departures.length > 1
+      ? [departures[0]!, fact("moreLines", { count: count(departures.length - 1) })]
+      : [what, ...(departures.length === 1 ? departures : flagged ? [fact("withinRules", {})] : [])];
+
+  const said = message.kind === "quote" ? "quote_sent" : "booking_confirmed";
+  const told =
+    message.sends && message.to
+      ? fact("message", {
+          customer: text(customer.name),
+          message: choice("customerMessage", said),
+          channels: choice("messageChannels", "email"),
+          to: text(message.to),
+        })
+      : fact("noMessage", {});
+
+  const departs =
+    beyondStock.length > 0 && pastBuffer.length > 0
+      ? "BeyondStockAndBuffer"
+      : beyondStock.length > 0
+        ? "BeyondStock"
+        : pastBuffer.length > 0
+          ? "PastBuffer"
+          : "";
+  const key = `${preview.status === "quote" ? "createQuote" : "createBooking"}${departs}` as
+    keyof typeof CREATION_OVERRIDES_SAID;
+
+  return {
+    display: {
+      headline: headline(key, {}),
+      facts: [
+        fact(
+          customer.created ? "bookingForNewCustomer" : "bookingFor",
+          { customer: text(customer.name), email: text(customer.email) },
+          customer.id ?? undefined,
+        ),
+        fact("period", {
+          period: dateRange(window.startDate, window.endDate),
+          total: money(total, currency),
+        }),
+        ...shown,
+        told,
+      ],
+    },
+    facts: {
+      // What it makes, as the headline says it (`CREATION_STATUS_SAID`).
+      status: preview.status,
+      // A customer of the store by its id, which the fact names; a new one by the e-mail shown.
+      customer: customer.id ?? customer.email,
+      total,
+      currency: currency.toUpperCase(),
+      // The overrides that pass something, as the headline says them.
+      overrides: [...CREATION_OVERRIDES_SAID[key]],
+      message: message.sends ? { message: said, channels: "email" } : null,
+    },
+  };
+}
+
+/** The overrides each headline of a creation says it passes, as `OVERRIDES_SAID` for a confirmation. */
+export const CREATION_OVERRIDES_SAID = {
+  createQuote: [],
+  createQuoteBeyondStock: ["stock"],
+  createQuotePastBuffer: ["turnover_buffer"],
+  createQuoteBeyondStockAndBuffer: ["stock", "turnover_buffer"],
+  createBooking: [],
+  createBookingBeyondStock: ["stock"],
+  createBookingPastBuffer: ["turnover_buffer"],
+  createBookingBeyondStockAndBuffer: ["stock", "turnover_buffer"],
+} as const satisfies Partial<Record<HeadlineKey, readonly string[]>>;
+
+/** What each headline of a creation says it makes: the identity's `status`. */
+export const CREATION_STATUS_SAID = {
+  createQuote: ["quote"],
+  createQuoteBeyondStock: ["quote"],
+  createQuotePastBuffer: ["quote"],
+  createQuoteBeyondStockAndBuffer: ["quote"],
+  createBooking: ["confirmed"],
+  createBookingBeyondStock: ["confirmed"],
+  createBookingPastBuffer: ["confirmed"],
+  createBookingBeyondStockAndBuffer: ["confirmed"],
+} as const satisfies Partial<Record<HeadlineKey, readonly string[]>>;

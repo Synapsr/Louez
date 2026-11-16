@@ -15,7 +15,7 @@ import type { ORPCError } from "@orpc/server";
 
 import { handoffErrors } from "../contracts/handoffs";
 import type { ScopedActor } from "../platform/actor";
-import { mayApprove } from "../platform/approval-rule";
+import { mayApprove, requesterOf } from "../platform/approval-rule";
 import type { ApprovalToRequest } from "../platform/confirmation";
 import { databaseNow } from "../platform/database-clock";
 import {
@@ -96,6 +96,12 @@ export const APPROVAL_COOL_DOWN_MS = HOUR_MS;
  */
 export function approvalIdentity(request: {
   credential: { kind: string; id: string | null };
+  /**
+   * The user, for a requester without an id (the in-app assistant): two
+   * members asking the same through it are two requests. A key's or a
+   * token's id is its user's already, and its identity leaves it out.
+   */
+  userId?: string;
   storeId: string;
   procedure: string;
   facts: Record<string, unknown>;
@@ -103,6 +109,7 @@ export function approvalIdentity(request: {
   return sha256(
     stableStringify({
       credential: [request.credential.kind, request.credential.id],
+      ...(request.userId === undefined ? {} : { userId: request.userId }),
       storeId: request.storeId,
       procedure: request.procedure,
       facts: request.facts,
@@ -261,16 +268,22 @@ async function lockApproval(tx: Transaction, id: string): Promise<HandoffRow | u
   return row;
 }
 
-/** An approval of this request: its credential, its store, its procedure and its identity. */
+/**
+ * An approval of this request: who asked (`requesterOf`: the in-app
+ * assistant for its session's user), its store, its procedure and its
+ * identity.
+ */
 function ofRequest(request: ApprovalToRequest) {
   const { actor } = request;
+  const requester = requesterOf(actor.credential);
   return and(
     eq(apiHandoffs.storeId, actor.storeId),
     eq(apiHandoffs.kind, KIND),
-    eq(apiHandoffs.credentialKind, actor.credential.kind),
-    actor.credential.id === null
+    eq(apiHandoffs.userId, actor.credential.userId),
+    eq(apiHandoffs.credentialKind, requester.kind),
+    requester.id === null
       ? isNull(apiHandoffs.credentialId)
-      : eq(apiHandoffs.credentialId, actor.credential.id),
+      : eq(apiHandoffs.credentialId, requester.id),
     eq(apiHandoffs.procedure, request.procedure),
     eq(apiHandoffs.subject, subjectOf(request)),
   );
@@ -279,11 +292,12 @@ function ofRequest(request: ApprovalToRequest) {
 /** `ofRequest`, on a row already read. */
 function isRequestOf(row: HandoffRow, request: ApprovalToRequest): boolean {
   const { actor } = request;
+  const requester = requesterOf(actor.credential);
   return (
     row.storeId === actor.storeId &&
     row.kind === KIND &&
-    row.credentialKind === actor.credential.kind &&
-    row.credentialId === actor.credential.id &&
+    row.credentialKind === requester.kind &&
+    row.credentialId === requester.id &&
     row.userId === actor.credential.userId &&
     row.procedure === request.procedure &&
     row.subject === subjectOf(request)
@@ -452,7 +466,8 @@ export async function requestApproval(
     // (`failCredentialHandoffs`): a connection revoked since the call was
     // authenticated opens nothing, and one revoked after this read has what
     // it opens here ended by that cleanup.
-    const { kind: credentialKind, id: credentialId } = actor.credential;
+    const asker = requesterOf(actor.credential);
+    const { kind: credentialKind, id: credentialId } = asker;
     if (!(await connectionAlive({ credentialKind, credentialId }, tx))) {
       return platformErrors.unauthenticated();
     }
@@ -501,9 +516,9 @@ export async function requestApproval(
         status: "pending",
         activeSlot: 1,
         userId: actor.credential.userId,
-        credentialKind: actor.credential.kind,
-        credentialId: actor.credential.id,
-        clientName: actor.credential.clientName,
+        credentialKind,
+        credentialId,
+        clientName: asker.clientName,
         // Its link is its id: no secret was ever given for it.
         tokenHash: null,
         linkIssuedAt: now,
@@ -543,13 +558,16 @@ async function requesterStanding(
 }
 
 /** The request's identity (`approvalIdentity`). */
-const subjectOf = (request: ApprovalToRequest) =>
-  approvalIdentity({
-    credential: request.actor.credential,
+const subjectOf = (request: ApprovalToRequest) => {
+  const requester = requesterOf(request.actor.credential);
+  return approvalIdentity({
+    credential: requester,
+    ...(requester.id === null ? { userId: request.actor.credential.userId } : {}),
     storeId: request.actor.storeId,
     procedure: request.procedure,
     facts: request.facts,
   });
+};
 
 /**
  * The open approval of an identity found, under the store's lock: answered
@@ -583,7 +601,7 @@ async function answerOpen(
         payload: payloadOf(request),
         bindingHash: request.bindingHash,
         revision: open.revision + 1,
-        clientName: actor.credential.clientName,
+        clientName: requesterOf(actor.credential).clientName,
         linkIssuedAt: now,
         expiresAt: linkExpiry(KIND, now),
         updatedAt: now,
@@ -669,17 +687,21 @@ async function countApprovals(
   now: Date,
 ): Promise<ApprovalCounts> {
   const ofStore = and(eq(apiHandoffs.storeId, actor.storeId), eq(apiHandoffs.kind, KIND));
+  // A key's or a token's, by its id; the in-app assistant's, by its user
+  // (`requesterOf`): its caps are its user's in the store.
+  const requester = requesterOf(actor.credential);
   const ofConnection = and(
     ofStore,
-    eq(apiHandoffs.credentialKind, actor.credential.kind),
-    actor.credential.id === null
-      ? isNull(apiHandoffs.credentialId)
-      : eq(apiHandoffs.credentialId, actor.credential.id),
+    eq(apiHandoffs.credentialKind, requester.kind),
+    requester.id === null
+      ? and(isNull(apiHandoffs.credentialId), eq(apiHandoffs.userId, actor.credential.userId))
+      : eq(apiHandoffs.credentialId, requester.id),
   );
   // Open, for a connection that still exists: a revoked connection's rows
   // count for nothing, whether its cleanup has ended them yet or not.
   const openRows = await tx
     .select({
+      userId: apiHandoffs.userId,
       credentialKind: apiHandoffs.credentialKind,
       credentialId: apiHandoffs.credentialId,
       expiresAt: apiHandoffs.expiresAt,
@@ -705,7 +727,9 @@ async function countApprovals(
   const connectionOpen = counted(
     openRows.filter(
       (row) =>
-        row.credentialKind === actor.credential.kind && row.credentialId === actor.credential.id,
+        row.credentialKind === requester.kind &&
+        row.credentialId === requester.id &&
+        (requester.id !== null || row.userId === actor.credential.userId),
     ),
   );
   const [lastHour] = await tx
@@ -776,7 +800,10 @@ export async function answerApproval(
         .select({ name: stores.name })
         .from(stores)
         .where(eq(stores.id, current.storeId));
-      if (!approvalIsReadable(approvalPayloadOf(current)) || !isReadableText(store?.name ?? "", 1)) {
+      if (
+        !approvalIsReadable(approvalPayloadOf(current)) ||
+        !isReadableText(store?.name ?? "", 1)
+      ) {
         throw handoffErrors.decisionInvalid("unreadable");
       }
     }

@@ -881,7 +881,13 @@ export interface ConfirmationStockVerdict {
  * line does not hold yet. A unit only the turnover buffer around another
  * booking reaches does not refuse: it is named for the activity row.
  */
-async function checkConfirmationStock(tx: Transaction, reservationId: string, storeId: string) {
+async function checkConfirmationStock(
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+  /** The window to check, when it is not the stored one: new dates (`checkDateChangeInventory`). */
+  newWindow?: { start: Date; end: Date },
+) {
   const reservation = await tx.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
     with: {
@@ -919,7 +925,7 @@ async function checkConfirmationStock(tx: Transaction, reservationId: string, st
     storeId,
     lines.map((line) => line.productId),
   );
-  const window = { start: reservation.startDate, end: reservation.endDate };
+  const window = newWindow ?? { start: reservation.startDate, end: reservation.endDate };
   const turnoverBufferMinutes = reservation.store.settings?.turnoverBufferMinutes ?? 0;
   const blockingStatuses = getBlockingReservationStatuses(
     reservation.store.settings?.pendingBlocksAvailability ?? true,
@@ -1095,6 +1101,73 @@ export const checkStoreConfirmationInventory = async (
     )),
     bookedOver: stock.capacityShortfalls,
     pastBuffer: options.overrideTurnoverBuffer ? stock.bufferOnlyShortfalls : [],
+    turnoverBufferMinutes: stock.turnoverBufferMinutes,
+  };
+};
+
+/**
+ * The stock check of a reservation's new dates (`reservations.update`,
+ * services/reservation-dates.ts), with the confirmation's meaning (S3, S4):
+ * the same check (`checkConfirmationStock`) over the new window, the units
+ * the reservation holds checked by id, the shortfalls told apart by the
+ * turnover buffer, and the same order of refusals. And with the edit's demand
+ * rule: only a window that reaches outside the stored one asks more of the
+ * stock (`compareReservationDemand`), so a window inside it never refuses for
+ * the stock (`refuses: false`) and records what it found.
+ *
+ * When it refuses: a unit's hard conflict, then a held unit owed to the other
+ * bookings (`ReservationUnitConflictError`), whatever the flags; then a
+ * buffer-only shortfall unless `overrideTurnoverBuffer`
+ * (`ReservationTurnoverBufferShortfallError`); then a capacity shortfall
+ * unless `allowOverbooking` (`ReservationCapacityShortfallError`). The
+ * verdict counts `overbooked` without the buffer (slice 5b), and records the
+ * buffer-only lines only when the flag let them through.
+ */
+export const checkDateChangeInventory = async (
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+  window: { start: Date; end: Date },
+  options: { refuses: boolean; allowOverbooking: boolean; overrideTurnoverBuffer: boolean },
+): Promise<{
+  /** Null when a window that refuses nothing found a unit it cannot judge: no verdict is written. */
+  verdict: ConfirmationStockVerdict | null;
+  bookedOver: CapacityShortfall[];
+  pastBuffer: CapacityShortfall[];
+  turnoverBufferMinutes: number;
+}> => {
+  let stock: Awaited<ReturnType<typeof checkConfirmationStock>>;
+  try {
+    stock = await checkConfirmationStock(tx, reservationId, storeId, window);
+  } catch (error) {
+    // A window inside the stored one asks nothing more of a unit than
+    // before: a conflict it finds was there already. It refuses nothing,
+    // and claims no verdict it did not reach.
+    if (!options.refuses && error instanceof ReservationInventoryError) {
+      return { verdict: null, bookedOver: [], pastBuffer: [], turnoverBufferMinutes: 0 };
+    }
+    throw error;
+  }
+  if (options.refuses) {
+    if (stock.bufferOnlyShortfalls.length > 0 && !options.overrideTurnoverBuffer) {
+      throw new ReservationTurnoverBufferShortfallError(stock.bufferOnlyShortfalls);
+    }
+    if (stock.capacityShortfalls.length > 0 && !options.allowOverbooking) {
+      throw new ReservationCapacityShortfallError(stock.capacityShortfalls);
+    }
+  }
+  const passesBuffer = options.refuses && options.overrideTurnoverBuffer;
+  const pastBuffer = passesBuffer ? stock.bufferOnlyShortfalls : [];
+  return {
+    verdict: await confirmationVerdict(
+      tx,
+      reservationId,
+      stock.capacityShortfalls,
+      stock.bufferOnlyUnitIds,
+      passesBuffer ? { shortfalls: pastBuffer, minutes: stock.turnoverBufferMinutes } : null,
+    ),
+    bookedOver: stock.capacityShortfalls,
+    pastBuffer,
     turnoverBufferMinutes: stock.turnoverBufferMinutes,
   };
 };

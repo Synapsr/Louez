@@ -17,7 +17,8 @@
     "./platform-admin": "./src/platform-admin.ts",
     "./password": "./src/password.ts",
     "./password-policy": "./src/password-policy.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./trusted-origins": "./src/trusted-origins.ts"
   },
   "scripts": {
     "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
