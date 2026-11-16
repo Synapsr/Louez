@@ -79,7 +79,9 @@ export { getRentalPaid };
  * is the completed deposits, less the completed returns linked to them and
  * the returns made apart, never below zero. A return linked to a deposit that
  * is not completed gives back nothing that was held. `collected` is the
- * completed deposits received; `returned` what of them went back.
+ * completed deposits received. `returned` is the completed returns themselves,
+ * not a difference: a Stripe refund has already brought its deposit down to
+ * its net amount, so it is in `returned` and no longer in `collected` or `held`.
  */
 export const getDepositTotals = (
   payments: readonly PaymentLike[],
@@ -95,7 +97,16 @@ export const getDepositTotals = (
     getSettledPaymentAmount(payments, "deposit") -
       getSettledPaymentAmount(payments, "deposit_return"),
   );
-  return { collected, returned: Math.max(0, collected - held), held };
+  const byId = new Map(payments.flatMap((payment) => (payment.id ? [[payment.id, payment]] : [])));
+  const returned = payments
+    .filter((payment) => {
+      if (payment.type !== "deposit_return" || payment.status !== "completed") return false;
+      if (isStripeRefundRow(payment) || !payment.refundOfPaymentId) return true;
+      const original = byId.get(payment.refundOfPaymentId);
+      return original?.type === "deposit" && original.status === "completed";
+    })
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  return { collected, returned, held };
 };
 
 /** Damage fees charged on top of the rental, refunds subtracted. */

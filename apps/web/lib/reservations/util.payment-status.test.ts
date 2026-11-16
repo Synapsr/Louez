@@ -204,6 +204,41 @@ describe("getDepositTotals", () => {
     );
   });
 
+  test("a Stripe refund of a deposit is returned money, and its deposit already reads net", () => {
+    const refund = (amount: string) => ({
+      ...stripeRefund(amount, "deposit_return"),
+      refundOfPaymentId: "card",
+    });
+    // 100 taken by card, 30 refunded: the webhook brought the deposit down to 70.
+    assert.deepEqual(
+      getDepositTotals([
+        {
+          id: "card",
+          type: "deposit",
+          status: "completed",
+          amount: "70.00",
+          stripePaymentIntentId: "pi_1",
+        },
+        refund("30.00"),
+      ]),
+      { collected: 70, returned: 30, held: 70 },
+    );
+    // Refunded in full: nothing is held any more, and the 100 went back.
+    assert.deepEqual(
+      getDepositTotals([
+        {
+          id: "card",
+          type: "deposit",
+          status: "refunded",
+          amount: "0.00",
+          stripePaymentIntentId: "pi_1",
+        },
+        refund("100.00"),
+      ]),
+      { collected: 0, returned: 100, held: 0 },
+    );
+  });
+
   test("returns linked to a deposit and returns made apart both go back", () => {
     assert.deepEqual(
       getDepositTotals([

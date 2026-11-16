@@ -1143,7 +1143,10 @@ export async function createManualReservation(data: CreateReservationData) {
     // products and before the reservation's rows: a refused creation writes
     // nothing. It is added against the store's unique (store, e-mail), as the
     // API's creation adds one: a customer with this e-mail added meanwhile
-    // makes the insert write nothing, and is the one booked, as it is.
+    // makes the insert write nothing, and is the one booked, as it is. The
+    // checkout and the customer form add customers without the store's lock:
+    // the read back is a locking read, which sees a row committed after this
+    // transaction's first read.
     if (pendingCustomer) {
       await tx
         .insert(customers)
@@ -1152,7 +1155,8 @@ export async function createManualReservation(data: CreateReservationData) {
       const [booked] = await tx
         .select({ id: customers.id })
         .from(customers)
-        .where(and(eq(customers.storeId, store.id), eq(customers.email, pendingCustomer.email)));
+        .where(and(eq(customers.storeId, store.id), eq(customers.email, pendingCustomer.email)))
+        .for("update");
       if (!booked) throw new Error("The customer written in this transaction could not be read back.");
       bookedCustomerId = booked.id;
     }

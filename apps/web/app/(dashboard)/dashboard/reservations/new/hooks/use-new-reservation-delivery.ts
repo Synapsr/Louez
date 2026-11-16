@@ -149,12 +149,14 @@ export function useNewReservationDelivery({
         )
       }
 
-      setDistance(distance)
-      setIsCalculating(false)
-
+      // An answer for an address the person has since replaced changes nothing:
+      // the fee follows the distance, and the newer request ends the wait.
       if (requestId !== requestIdRef.current) {
         return
       }
+
+      setDistance(distance)
+      setIsCalculating(false)
 
       const validation = validateDelivery(distance, deliverySettings)
       if (!validation.valid) {

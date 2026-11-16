@@ -908,6 +908,39 @@ describe(
         );
       });
 
+      test("a customer of the same e-mail added by another screen meanwhile is the one booked", async () => {
+        await useStore({ tax: HT });
+        const kayak = await product();
+        const email = "added-meanwhile@example.test";
+
+        // Another transaction adds the customer without the store's lock, as
+        // the checkout does, and commits once the creation waits on its row:
+        // the creation has read before the row existed.
+        const [result] = await raceOnOpenTransaction(
+          database,
+          async (holder) => {
+            await holder.query(
+              "INSERT INTO customers (id, store_id, email, first_name, last_name) VALUES (?, ?, ?, ?, ?)",
+              ["cust_added_meanwhile", STORE, email, "Added", "Meanwhile"],
+            );
+          },
+          [
+            () =>
+              createKayak(kayak, shown(HT), {
+                customerId: undefined,
+                newCustomer: { email, firstName: "Added", lastName: "Meanwhile" },
+              }),
+          ],
+        );
+
+        assert.ok(result?.reservationId, JSON.stringify(result));
+        const [booked] = await louezDb.db
+          .select({ customerId: louezDb.reservations.customerId })
+          .from(louezDb.reservations)
+          .where(eq(louezDb.reservations.id, result.reservationId));
+        assert.equal(booked?.customerId, "cust_added_meanwhile");
+      });
+
       test("two creations at once for one new customer: two reservations, one customer, no error", async () => {
         await useStore({ tax: HT });
         const [kayak, canoe] = [await product(), await product()];
