@@ -127,7 +127,9 @@ export async function priceReservationEdit(
     totalDeposit: input.totalDeposit,
     taxSettings: taxSettingsForRepricing(settings?.tax, input.recordedTaxDisplayMode),
   });
-  const insuranceTax = totals.taxEnabled ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID) : undefined;
+  const insuranceTax = totals.taxEnabled
+    ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)
+    : undefined;
 
   return {
     ok: true,
