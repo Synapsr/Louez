@@ -11,6 +11,7 @@ import { type Locale, defaultLocale, locales } from "@/i18n/config";
 import { isStandaloneMode } from "@/lib/deployment";
 import { env } from "@/env";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
+import { getStorePageRobots } from "@/lib/seo.robots";
 import { truncateText } from "@/lib/util.seo-text";
 import { buildStorefrontUrl } from "@/lib/util.storefront-url";
 import { resolveStoreSocialLinks } from "@/lib/utils/util.store-social-links";
@@ -172,15 +173,6 @@ function getPriceReferenceQuantity(
   return unitCode ? { value: 1, unitCode } : null;
 }
 
-// Rich thumbnails in search results — without this Google caps previews for
-// pages it has no explicit signal for.
-const STORE_PAGE_ROBOTS: NonNullable<Metadata["robots"]> = {
-  index: true,
-  follow: true,
-  "max-image-preview": "large",
-  "max-snippet": -1,
-};
-
 // ============================================================================
 // Metadata Generators
 // ============================================================================
@@ -232,11 +224,7 @@ export function generateStoreMetadata(
     alternates: {
       canonical: canonicalUrl,
     },
-    robots: noIndex
-      ? // Result pages and funnels stay out of the index, but their links to
-        // products and to the catalog still count.
-        { index: false, follow: true }
-      : STORE_PAGE_ROBOTS,
+    robots: getStorePageRobots(noIndex),
     // The store's favicon, or its logo when it has none
     ...(iconUrl && {
       icons: {
@@ -307,7 +295,7 @@ export function generateProductMetadata(
     alternates: {
       canonical: canonicalUrl,
     },
-    robots: STORE_PAGE_ROBOTS,
+    robots: getStorePageRobots(false),
     openGraph: {
       type: "website",
       locale: toOpenGraphLocale(locale),
