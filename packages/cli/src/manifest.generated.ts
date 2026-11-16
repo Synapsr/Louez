@@ -4290,7 +4290,7 @@ export const manifest: Manifest = {
       "method": "GET",
       "path": "/inbox",
       "summary": "List Inbox",
-      "description": "Lists what needs the store's attention now: booking requests to answer, return-date requests, late pickups and returns, deposit holds about to expire, failed payments, open disputes, bookings on a retired or out-of-service unit, overbookings, supplier invoices and rejected e-invoices, Louez billing stopping new bookings, a store not online yet, messages and invitation e-mails that never went out, the key's own writes whose outcome is unknown, and steps taken in a browser (such as Stripe's onboarding) still waiting an hour after their link went out, expired or failed. Each item has an `id`, a `type`, a `severity` (`critical`, `warning` or `info`), `occurredAt`, a one-sentence `summary`, the `reservation` it is about, the facts behind it in `details`, the operations that act on it by `operationId` (none when only a person can, in the Louez dashboard) and `links.dashboard`.\n\nEach call returns one page. Without `cursor`, it is the oldest page of the inbox as it is now; follow `nextCursor` while `hasMore` is true. With the `nextCursor` of an earlier answer as `cursor`, it returns the items that entered the inbox after that point, in the order they did. A cursor is a position in a live feed, not a snapshot: calling again with the same one can return more items, as new ones arrive, and fewer, as items are handled. It only reads. An item shows 30 seconds after it happens, and leaves the inbox once what it is about is handled (the request answered, the reservation returned); the same `id` with a later `occurredAt` means it came back. `POST /inbox/acknowledge` hides an item for the whole store. When Louez cannot read some item types, the others still come and `unavailable` names the missing ones; their items come with a later call at `nextCursor`, late but not lost, while the other types are not given again. Up to `limit` items a call (50 by default, 100 at most). A cursor this operation did not return answers `INVALID_CURSOR`. Each type of item shows only to a key that can read what it shows: payments for payment items, customers for the customer's name.",
+      "description": "Lists what needs the store's attention now: booking requests to answer, return-date requests, late pickups and returns, deposit holds about to expire, failed payments, open disputes, bookings on a retired or out-of-service unit, overbookings, supplier invoices and rejected e-invoices, Louez billing stopping new bookings, a store not online yet, messages and invitation e-mails that never went out, the key's own writes whose outcome is unknown, and steps taken in a browser (such as Stripe's onboarding) still waiting an hour after their link went out, expired or failed. Each item has an `id`, a `type`, a `severity` (`critical`, `warning` or `info`), `occurredAt`, a one-sentence `summary`, the `reservation` it is about, the facts behind it in `details`, the operations that act on it by `operationId` (none when only a person can, in the Louez dashboard) and `links.dashboard`.\n\nEach call returns one page. Without `cursor`, it is the oldest page of the inbox as it is now; follow `nextCursor` while `hasMore` is true. With the `nextCursor` of an earlier answer as `cursor`, it returns the items that entered the inbox after that point, in the order they did. A cursor is a position in a live feed, not a snapshot: calling again with the same one can return more items, as new ones arrive, and fewer, as items are handled. It only reads. An item shows 30 seconds after it happens, and leaves the inbox once what it is about is handled (the request answered, the reservation returned); the same `id` with a later `occurredAt` means it came back. `POST /inbox/acknowledge` hides an item for the whole store. When Louez cannot read some item types, the others still come and `unavailable` names the missing ones; their items come with a later call at `nextCursor`, late but not lost, while the other types are not given again. Up to `limit` items a call (50 by default, 100 at most). `types` narrows it to some types of item, among those the key may read; a value that is not a type answers `BAD_REQUEST`. A cursor follows the types of the call that returned it: pass the same `types` with it. A cursor this operation did not return answers `INVALID_CURSOR`. Each type of item shows only to a key that can read what it shows: payments for payment items, customers for the customer's name.",
       "pathParams": [],
       "query": [
         {
@@ -4304,6 +4304,39 @@ export const manifest: Manifest = {
           "flag": "limit",
           "kind": "integer",
           "description": "Items per call (default 50, at most 100)."
+        },
+        {
+          "name": "types",
+          "flag": "types",
+          "kind": "string",
+          "enum": [
+            "booking_request",
+            "date_change_request",
+            "pickup_overdue",
+            "return_overdue",
+            "deposit_expiring",
+            "payment_failed",
+            "deposit_unconfirmed",
+            "deposit_release_failed",
+            "refund_unconfirmed",
+            "refund_undone",
+            "credit_note_not_issued",
+            "dispute_open",
+            "unit_conflict",
+            "overbooking",
+            "supplier_invoice",
+            "einvoice_rejected",
+            "billing_gate_closed",
+            "store_not_live",
+            "message_not_sent",
+            "operation_unknown",
+            "handoff_waiting",
+            "approval_waiting",
+            "invitation_not_sent",
+            "image_job_failed"
+          ],
+          "list": true,
+          "description": "Only items of these types, among those the caller may read: a type it may not read stays out. Leave it out for every type. A cursor follows the types of the call that returned it: pass the same types with it."
         }
       ],
       "body": null,

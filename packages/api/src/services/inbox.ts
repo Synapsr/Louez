@@ -1702,6 +1702,7 @@ const unissuedCreditNotes: Source = async (window, shaper) => {
         paymentId: typeof payload.paymentId === "string" ? payload.paymentId : null,
         refundId: typeof payload.refundId === "string" ? payload.refundId : null,
         amount,
+        currency: row.currency ?? shaper.currency,
         lastError: row.lastError,
       },
       tools: RESERVATION_TOOLS,
