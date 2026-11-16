@@ -732,6 +732,8 @@ export async function changeReservationDates(
             priceExclTax: nullableMoney(tax.priceExclTax),
             totalExclTax: nullableMoney(tax.totalExclTax),
             pricingBreakdown: breakdownOf(catalog, cart, totals, index, window, item),
+            // A product line: the engine applied its rate.
+            taxExempt: false,
           })
           .where(and(eq(reservationItems.id, item.id), eq(reservationItems.reservationId, id)));
       }
@@ -746,6 +748,8 @@ export async function changeReservationDates(
           subtotalExclTax: nullableMoney(totals.subtotalExclTax),
           taxAmount: nullableMoney(totals.taxAmount),
           taxRate: nullableMoney(totals.taxRate),
+          // A recorded fact is the one these amounts were computed with (slice 9).
+          taxDisplayMode: totals.displayMode,
           updatedAt: changedAt,
           // The inbox dates a late pickup or return from its last schedule change.
           scheduleChangedAt: changedAt,

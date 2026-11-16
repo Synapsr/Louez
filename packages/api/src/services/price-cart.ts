@@ -205,4 +205,6 @@ export const checkoutLineBreakdown = (
     tax.totalExclTax !== null && tax.taxAmount !== null
       ? tax.totalExclTax + tax.taxAmount
       : line.subtotal,
+  // An unpromoted line kept no breakdown before: this one records its facts only.
+  ...(line.promotion ? {} : { factsOnly: true as const }),
 });

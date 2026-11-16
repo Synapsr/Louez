@@ -36,6 +36,9 @@ export const extensionAttemptSchema = z.object({
     subtotalExclTax: nullableMoney,
     taxAmount: nullableMoney,
     taxRate: nullableMoney,
+    // The mode the plan's amounts were computed with, written with them; absent
+    // from a plan made before it was recorded (slice 9).
+    taxDisplayMode: z.enum(["inclusive", "exclusive"]).optional(),
     items: z.array(
       z.object({
         id: z.string(),
@@ -72,6 +75,7 @@ export const extensionAttemptSchema = z.object({
         taxAmount: nullableMoney,
         priceExclTax: nullableMoney,
         totalExclTax: nullableMoney,
+        taxExempt: z.boolean().optional(),
       }),
     ),
   }),

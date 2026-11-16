@@ -24,6 +24,16 @@ export type TaxDisplayMode = "inclusive" | "exclusive";
 export const taxDisplayModeOf = (settings: TaxSettings | undefined | null): TaxDisplayMode =>
   settings?.enabled ? settings.displayMode : "inclusive";
 
+/**
+ * The breakdown the dashboard's edit reads a line's pricing basis from (its
+ * mode, its kind, a price typed by hand): none for a breakdown written only
+ * to record facts, as a line had none before those were recorded. So
+ * recording a fact never changes what a later edit computes.
+ */
+export const pricingBasisOf = (
+  breakdown: PricingBreakdown | null | undefined,
+): PricingBreakdown | null => (breakdown && !breakdown.factsOnly ? breakdown : null);
+
 /** How the reservation's prices were entered, tax included or not. */
 export const recordedTaxDisplayMode = (reservation: {
   taxDisplayMode: TaxDisplayMode | null;

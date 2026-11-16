@@ -406,6 +406,8 @@ export const quoteExtension = async (
     subtotalExclTax: money(next.subtotalExclTax),
     taxAmount: money(next.taxAmount),
     taxRate: money(next.taxRate),
+    // A recorded fact is the one these amounts were computed with (slice 9).
+    taxDisplayMode: next.displayMode,
     items: extended.cart.lines.map((line, index) => {
       const tax = getReservationItemTaxFields(next, line, index);
       const product = catalog.get(line.productId);
@@ -444,6 +446,8 @@ export const quoteExtension = async (
         taxAmount: money(tax.taxAmount),
         priceExclTax: money(tax.priceExclTax),
         totalExclTax: money(tax.totalExclTax),
+        // A product line: the engine applied its rate.
+        taxExempt: false,
       };
     }),
   };

@@ -770,6 +770,27 @@ describe(
         assert.equal(none, null, "a line that recorded no promotion still records none");
       });
 
+      test("the mode it records is the one its amounts were computed with", async () => {
+        // Booked before tax; the store now shows prices with tax. A line at 0 %
+        // costs the same in both modes, so the guard reproduces it.
+        await setSettings({ tax: TTC });
+        const zeroRated = await product({
+          quantity: 3,
+          taxSettings: { inheritFromStore: false, customRate: 0 },
+        });
+        const lines = [{ productId: zeroRated }];
+        const { id } = await book(lines, {
+          edit: { taxDisplayMode: "exclusive" },
+          lineEdit: { taxExempt: false },
+        });
+
+        await update(move(id, day(END, 1)), session());
+
+        await assertPricedByEngine(id, lines, { start: START, end: day(END, 1) });
+        assert.equal(recordedTaxDisplayMode(await reservationRow(id)), "inclusive");
+        assert.deepEqual((await itemRows(id)).map(recordedTaxExempt), [false]);
+      });
+
       test("a promotion that ended since the booking is refused, nothing written", async () => {
         const promoted = await product({
           quantity: 3,

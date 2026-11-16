@@ -12,7 +12,11 @@ import {
   splitShortfallsByTurnoverBuffer,
 } from "@louez/api/services/reservation-inventory";
 
-import { taxDisplayModeOf, validateReservationContract } from "@louez/api/services";
+import {
+  pricingBasisOf,
+  taxDisplayModeOf,
+  validateReservationContract,
+} from "@louez/api/services";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -1982,7 +1986,7 @@ export async function updateReservation(
         // The product may have been deleted since the reservation was created;
         // the stored breakdown keeps the kind so the manual price stays editable.
         const existingBreakdown = item.id
-          ? existingItemsById.get(item.id)?.pricingBreakdown
+          ? pricingBasisOf(existingItemsById.get(item.id)?.pricingBreakdown)
           : undefined;
         manualPricingKind =
           manualPriceProduct?.pricingKind ?? toPricingKind(existingBreakdown?.pricingKind);
@@ -2134,7 +2138,8 @@ export async function updateReservation(
   } else {
     // Just recalculate existing items with new duration
     for (const item of existingNonInsuranceItems) {
-      const pricingBreakdown = item.pricingBreakdown as Record<string, unknown> | null;
+      // A breakdown written only to record facts is read as none, as before (slice 9).
+      const pricingBreakdown = pricingBasisOf(item.pricingBreakdown);
       const isManualPrice = pricingBreakdown?.isManualOverride === true;
 
       let totalPrice: number;
@@ -2260,9 +2265,9 @@ export async function updateReservation(
             ? 1
             : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
         totalPrice = finalUnitPrice * itemDuration * item.quantity;
-        const nextPricingBreakdown = item.pricingBreakdown
+        const nextPricingBreakdown = pricingBreakdown
           ? {
-              ...item.pricingBreakdown,
+              ...pricingBreakdown,
               duration: itemDuration,
               pricingMode: fallbackPricingMode,
               pricingKind: manualPricingKind,
