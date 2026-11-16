@@ -35,6 +35,8 @@ export type RefundCharge = {
   readonly amountRefundedMinor: number;
   /** Upper case. */
   readonly currency: string;
+  /** The card that paid, when Stripe states it: what a person approving the refund is shown. */
+  readonly card?: { readonly brand: string; readonly last4: string } | null;
 };
 
 /** A refund as Stripe has it. */
@@ -121,11 +123,13 @@ export const stripeRefunds: StripeRefundPort = {
       {},
       { stripeAccount: accountId, ...REQUEST_OPTIONS },
     );
+    const card = charge.payment_method_details?.card;
     return {
       chargeId: charge.id,
       amountCapturedMinor: charge.amount_captured,
       amountRefundedMinor: charge.amount_refunded,
       currency: charge.currency.toUpperCase(),
+      card: card?.brand && card.last4 ? { brand: card.brand, last4: card.last4 } : null,
     };
   },
 

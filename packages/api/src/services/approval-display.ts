@@ -103,6 +103,8 @@ export const HEADLINES = {
   returnDeposit: {},
   /** A refund the store gave by hand, against one payment. */
   recordRefund: {},
+  /** A payment taken online refunded through Stripe. */
+  refundOnline: {},
   deletePayment: {},
   removeMember: {},
   cancelInvitation: {},
@@ -157,6 +159,12 @@ export const FACTS = {
   refundBalance: { refunded: MONEY, left: MONEY },
   /** Louez only records it: no money moves. */
   recordOnly: {},
+  /** "Refund: £45.00, back to the Visa card ending 4242" */
+  refundToCard: { amount: MONEY, brand: TEXT, last4: TEXT },
+  /** "Refund: £45.00, back to the means that paid", when Stripe names no card. */
+  refundToPayer: { amount: MONEY },
+  /** Money leaves the store's Stripe balance; the platform fee on that part is returned. */
+  leavesStripeBalance: {},
   /** "Rental: €80.00 · Cash" */
   deleted: { type: choiceOf("paymentType"), amount: MONEY, method: choiceOf("paymentMethod") },
   /** "Recorded on Nov 12, 2026 at 4:30 PM" */

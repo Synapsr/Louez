@@ -245,6 +245,78 @@ export function recordRefundPresentation(
   };
 }
 
+/**
+ * A payment taken online refunded through Stripe (`dashboard.payments.refund`), every
+ * amount in the payment's own currency, as minor units turned into decimals by the
+ * caller. `card` is what Stripe states of the card that paid; without it the page says
+ * the means that paid.
+ */
+export function refundOnlinePresentation(
+  details: {
+    paymentId: string;
+    reservationId: string;
+    number: string;
+    amount: string;
+    reason: string;
+  },
+  payment: {
+    type: string;
+    amount: string;
+    method: string;
+    currency: string;
+    paidAt: Date;
+    refunded: string;
+    refundableAfter: string;
+    card: { brand: string; last4: string } | null;
+  },
+): ApprovalPresentation | null {
+  const amount = plainDecimal(details.amount);
+  const paid = plainDecimal(payment.amount);
+  const refunded = plainDecimal(payment.refunded);
+  const left = plainDecimal(payment.refundableAfter);
+  const { currency, type, card } = payment;
+  if (!amount || !paid || !refunded || !left || !CURRENCY.test(currency)) return null;
+  if (!isChoice("paymentType", type) || !isChoice("paymentMethod", payment.method)) return null;
+  return {
+    display: {
+      headline: headline("refundOnline", {}),
+      facts: [
+        bookingNumber(details.reservationId, details.number),
+        card
+          ? fact("refundToCard", {
+              amount: money(amount, currency),
+              brand: text(card.brand),
+              last4: text(card.last4),
+            })
+          : fact("refundToPayer", { amount: money(amount, currency) }),
+        fact(
+          "refundOf",
+          {
+            type: choice("paymentType", type),
+            amount: money(paid, currency),
+            at: dateTime(payment.paidAt),
+            method: choice("paymentMethod", payment.method),
+          },
+          details.paymentId,
+        ),
+        fact("refundBalance", {
+          refunded: money(refunded, currency),
+          left: money(left, currency),
+        }),
+        fact("leavesStripeBalance", {}),
+      ],
+    },
+    facts: {
+      payment: details.paymentId,
+      reservation: details.reservationId,
+      amount,
+      currency: currency.toUpperCase(),
+      method: "stripe",
+      reason: details.reason,
+    },
+  };
+}
+
 /** A recorded payment deleted (`dashboard.payments.delete`). */
 export function deletePaymentPresentation(
   details: { paymentId: string; number: string; type: string; amount: string; method: string },

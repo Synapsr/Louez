@@ -111,7 +111,7 @@ export function money(amount: string | number): string {
   return new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" }).format(value);
 }
 
-type Outcome<T> =
+export type Outcome<T> =
   | { ok: true; value: T }
   | { ok: false; error: Error }
   | { ok: false; confirmation: ConfirmationRefusal };
@@ -121,7 +121,7 @@ type Outcome<T> =
  * throws, so its transaction commits what the confirmation recorded (a new
  * preview, a token spent); it is thrown once the transaction is over.
  */
-async function underReservationLock<T>(
+export async function underReservationLock<T>(
   storeId: string,
   reservationId: string,
   work: (tx: Transaction) => Promise<Outcome<T>>,
@@ -138,8 +138,11 @@ async function underReservationLock<T>(
   throw outcome.error;
 }
 
-const refused = (error: Error) => ({ ok: false as const, error });
-const unconfirmed = (confirmation: ConfirmationRefusal) => ({ ok: false as const, confirmation });
+export const refused = (error: Error) => ({ ok: false as const, error });
+export const unconfirmed = (confirmation: ConfirmationRefusal) => ({
+  ok: false as const,
+  confirmation,
+});
 
 async function lockedReservation(tx: Transaction, storeId: string, id: string) {
   const [row] = await tx
@@ -382,7 +385,7 @@ function selectStorePayment(executor: Database | Transaction, storeId: string, i
 }
 
 /** A payment of the store with its reservation, read under that reservation's lock or before it. */
-async function storePayment(executor: Database | Transaction, storeId: string, id: string) {
+export async function storePayment(executor: Database | Transaction, storeId: string, id: string) {
   const [row] = await selectStorePayment(executor, storeId, id);
   return row ?? null;
 }

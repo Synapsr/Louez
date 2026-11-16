@@ -89,6 +89,12 @@ export interface ApiPorts {
    */
   paymentRefunds?: PaymentRefundsPort;
   /**
+   * The refund of a payment taken online, through Stripe: one durable operation per
+   * refund (apps/web lib/reservations/stripe-refund.ts). Absent where no procedure
+   * refunds online.
+   */
+  stripeRefunds?: StripeRefundsPort;
+  /**
    * What the team procedures read from the app (services/team.ts). Absent
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
@@ -273,6 +279,114 @@ export interface PaymentRefundsPort {
     /** Who asked, for the invoicing log. */
     source: string;
   }) => Promise<RefundCreditNoteOutcome>;
+}
+
+/** A refusal of the refund of an online payment, by its stable code, with its facts. */
+export interface StripeRefundRefusal {
+  code: string;
+  [fact: string]: unknown;
+}
+
+/** The charge a refund comes off, as Stripe states it, read before any lock. */
+export interface StripeRefundCharge {
+  paymentId: string;
+  reservationId: string;
+  accountId: string;
+  chargeId: string;
+  amountCapturedMinor: number;
+  amountRefundedMinor: number;
+  /** Upper case. */
+  currency: string;
+  /** The card that paid, when Stripe states it. */
+  card?: { brand: string; last4: string } | null;
+}
+
+/** A refund asked of the app's service: the payment, its amount in the charge's minor units. */
+export interface StripeRefundRequest {
+  storeId: string;
+  paymentId: string;
+  amountMinor: number;
+  currency: string;
+  reason: "requested_by_customer" | "duplicate";
+  notes: string | null;
+  charge: StripeRefundCharge;
+}
+
+/** What a refund is checked against under the caller's locks, writing nothing. */
+export interface StripeRefundChecked {
+  reservationId: string;
+  accountId: string;
+  chargeId: string;
+  currency: string;
+  paymentStatus: string;
+  grossMinor: number | null;
+  refunds: readonly { id: string; amountMinor: number }[];
+  openOperations: readonly { id: string; amountMinor: number }[];
+  ceiling: {
+    paidMinor: number;
+    refundedMinor: number;
+    inFlightMinor: number;
+    refundableMinor: number;
+  };
+}
+
+/** A refund operation as its caller reads it. */
+export interface StripeRefundView {
+  id: string;
+  status: "requested" | "unresolved" | "succeeded" | "failed";
+  paymentId: string;
+  reservationId: string;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  createdAt: Date;
+  stripeRefundId: string | null;
+  refundPaymentId: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  /** The refund row's credit note: issued, still owed, or none to issue. */
+  creditNote: { status: "issued" | "pending" | "not_applicable"; number: string | null };
+}
+
+/** The app's service of the refund of an online payment (`ApiPorts.stripeRefunds`). */
+export interface StripeRefundsPort {
+  /** The payment's charge at Stripe, before any lock. Throws when Stripe cannot be read. */
+  readCharge: (input: {
+    storeId: string;
+    paymentId: string;
+  }) => Promise<
+    { ok: false; refusal: StripeRefundRefusal } | { ok: true; charge: StripeRefundCharge }
+  >;
+  /** In the caller's transaction, under the reservation's lock: every check, nothing written. */
+  check: (
+    tx: Transaction,
+    request: StripeRefundRequest,
+  ) => Promise<
+    { ok: false; refusal: StripeRefundRefusal } | { ok: true; checked: StripeRefundChecked }
+  >;
+  /** In the same transaction: the operation recorded, with the approval it carries out. */
+  request: (
+    tx: Transaction,
+    request: StripeRefundRequest & {
+      approvalId: string | null;
+      requestedBy: { userId: string | null; credentialId: string | null };
+    },
+  ) => Promise<
+    | { ok: false; refusal: StripeRefundRefusal }
+    | { ok: true; operationId: string; effectIds: readonly string[] }
+  >;
+  /** After the commit: one attempt through the outbox's sender, with a short timeout. Never throws. */
+  attempt: (effectIds: readonly string[]) => Promise<void>;
+  /**
+   * The store's operation of that id on that payment; null when it has none. With
+   * `reconcile`, an open one is first given one bounded attempt to settle.
+   */
+  get: (input: {
+    storeId: string;
+    paymentId: string;
+    operationId: string;
+    reconcile: boolean;
+  }) => Promise<StripeRefundView | null>;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */

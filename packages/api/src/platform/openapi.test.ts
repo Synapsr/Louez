@@ -191,6 +191,8 @@ describe("OpenAPI document", () => {
         "POST /reservations/{reservationId}/payments": "record_payment",
         "POST /reservations/{reservationId}/deposit-returns": "record_deposit_return",
         "POST /payments/{paymentId}/refund-records": "record_refund",
+        "POST /payments/{paymentId}/refunds": "refund_payment",
+        "GET /payments/{paymentId}/refunds/{refundId}": "get_refund",
         "DELETE /payments/{paymentId}": "delete_payment",
         "PATCH /online-store": "online_store_update",
         "GET /online-store/slug-availability": "online_store_check_slug_availability",
