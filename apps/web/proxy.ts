@@ -7,6 +7,7 @@ import type { NextRequest } from "next/server";
 import { LOUEZ_TERMS_PATH, isBillingOnlyPath } from "@/lib/billing/billing-routes";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
+import { NO_INDEX_DIRECTIVE, isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import {
@@ -391,7 +392,14 @@ function isAbsentLouezTerms(pathname: string): boolean {
   return pathname === LOUEZ_TERMS_PATH && !isBillingEnabled();
 }
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
+  const response = await routeRequest(request);
+  // A staging instance (LOUEZ_SEARCH_INDEXING=off): every answer stays out of search.
+  if (!isSearchIndexingEnabled()) response.headers.set("X-Robots-Tag", NO_INDEX_DIRECTIVE);
+  return response;
+}
+
+async function routeRequest(request: NextRequest): Promise<NextResponse> {
   const host = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
   // These internal markers only come from this proxy, never from a visitor.
