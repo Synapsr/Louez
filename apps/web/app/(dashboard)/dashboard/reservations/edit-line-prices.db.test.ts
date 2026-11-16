@@ -315,9 +315,60 @@ describe(
 
         assert.equal(result.error, undefined);
         const [line] = await items(id);
-        // Today: three days at 10.00, the promotion dropped.
-        assert.equal(line?.totalPrice, "30.00");
-        assert.equal(line?.pricingBreakdown?.promotion, undefined);
+        // Three days at 10.00, the promotion of 20 % taken off as recorded, though
+        // the product holds no promotion any more.
+        assert.equal(line?.totalPrice, "24.00");
+        assert.deepEqual(line?.pricingBreakdown?.promotion, {
+          percentage: 20,
+          originalSubtotal: 30,
+          discountAmount: 6,
+        });
+        assert.equal((await reservationRow(id)).totalAmount, "24.00");
+      });
+
+      test("its quantity changed: the promotion recorded is applied to the new price", async () => {
+        await useStore({});
+        const kayak = await product();
+        const { id, itemIds } = await booking([
+          {
+            productId: kayak,
+            quantity: 1,
+            totalPrice: "16.00",
+            breakdown: breakdownOf(2, 10, {
+              promotion: { percentage: 20, originalSubtotal: 20, discountAmount: 4 },
+            }),
+          },
+        ]);
+
+        const result = await actions.updateReservation(id, {
+          items: await formLines(id, { [itemIds[0]!]: 2 }),
+        });
+
+        assert.equal(result.error, undefined);
+        const [line] = await items(id);
+        // Two for two days at 10.00, 40.00, less 20 %.
+        assert.equal(line?.totalPrice, "32.00");
+      });
+
+      test("its window moved through a date change alone: the promotion recorded is applied", async () => {
+        await useStore({});
+        const kayak = await product();
+        const { id } = await booking([
+          {
+            productId: kayak,
+            quantity: 1,
+            totalPrice: "16.00",
+            breakdown: breakdownOf(2, 10, {
+              promotion: { percentage: 20, originalSubtotal: 20, discountAmount: 4 },
+            }),
+          },
+        ]);
+
+        const result = await actions.updateReservation(id, { endDate: THREE_DAYS });
+
+        assert.equal(result.error, undefined);
+        const [line] = await items(id);
+        assert.equal(line?.totalPrice, "24.00");
       });
 
       test("a recorded 'none' stays recorded", async () => {
@@ -340,8 +391,7 @@ describe(
         assert.equal(result.error, undefined);
         const [line] = await items(id);
         assert.equal(line?.totalPrice, "30.00");
-        // Today: the breakdown written again without the fact.
-        assert.equal(line?.pricingBreakdown && "promotion" in line.pricingBreakdown, false);
+        assert.equal(line?.pricingBreakdown?.promotion, null);
       });
     });
 

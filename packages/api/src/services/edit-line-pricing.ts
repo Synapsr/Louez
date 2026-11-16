@@ -1,4 +1,6 @@
-import type { PricingBreakdown, ProductTaxSettings } from "@louez/types";
+import type { AppliedProductPromotion, PricingBreakdown, ProductTaxSettings } from "@louez/types";
+
+import { NOT_RECORDED, recordedPromotion } from "./pricing-facts";
 
 /**
  * The line prices of a reservation the store edits from the dashboard
@@ -51,6 +53,62 @@ export function priceEditedProductLine(input: {
     };
   }
   return { kind: "repriced" };
+}
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+/**
+ * A promotion applied as recorded on the line: its percentage taken off the
+ * line's new price, as the checkout takes a promotion off
+ * (`applyProductPromotion`), whether the promotion is still in force or not.
+ */
+export function applyRecordedPromotion(
+  subtotal: number,
+  promotion: Pick<AppliedProductPromotion, "percentage">,
+): { subtotal: number; promotion: AppliedProductPromotion } {
+  const originalSubtotal = round2(subtotal);
+  const discountAmount = Math.round(originalSubtotal * promotion.percentage) / 100;
+  return {
+    subtotal: round2(originalSubtotal - discountAmount),
+    promotion: { percentage: promotion.percentage, originalSubtotal, discountAmount },
+  };
+}
+
+/**
+ * The price of a line priced again from today's catalogue (`regular`, its
+ * price and breakdown before any promotion), with what the line recorded at
+ * booking (slice 9's facts): its promotion is applied as recorded, never
+ * looked up again in today's catalogue and never dropped, so a booking made
+ * during a promotion keeps it when its window or quantity changes, after the
+ * promotion ended too. A recorded "none" stays recorded. A line that recorded
+ * nothing (a new line, an older row) is priced without one, as before.
+ */
+export function cataloguePriceWithRecordedPromotion(
+  regular: { subtotal: number; breakdown: PricingBreakdown },
+  stored: StoredProductLine | null,
+): {
+  subtotal: number;
+  breakdown: PricingBreakdown;
+  /** The promotion applied, to apply again under the locks; null for none. */
+  promotion: AppliedProductPromotion | null;
+} {
+  const recorded = stored ? recordedPromotion(stored) : NOT_RECORDED;
+  if (recorded === NOT_RECORDED) {
+    return { subtotal: regular.subtotal, breakdown: regular.breakdown, promotion: null };
+  }
+  if (recorded === null) {
+    return {
+      subtotal: regular.subtotal,
+      breakdown: { ...regular.breakdown, promotion: null },
+      promotion: null,
+    };
+  }
+  const applied = applyRecordedPromotion(regular.subtotal, recorded);
+  return {
+    subtotal: applied.subtotal,
+    breakdown: { ...regular.breakdown, promotion: applied.promotion },
+    promotion: applied.promotion,
+  };
 }
 
 /**

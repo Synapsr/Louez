@@ -20,6 +20,7 @@ import {
   validateReservationContract,
 } from "@louez/api/services";
 import {
+  cataloguePriceWithRecordedPromotion,
   priceEditedProductLine,
   type StoredProductLine,
 } from "@louez/api/services/edit-line-pricing";
@@ -2299,15 +2300,17 @@ export async function updateReservation(
         item.id && item.productId && !item.isManualPrice
           ? existingItemsById.get(item.id)
           : undefined;
+      const storedProductLine =
+        existingProductLine && existingProductLine.productId === item.productId
+          ? storedProductLineOf(existingProductLine)
+          : null;
       const productLinePrice = priceEditedProductLine({
-        stored:
-          existingProductLine && existingProductLine.productId === item.productId
-            ? storedProductLineOf(existingProductLine)
-            : null,
+        stored: storedProductLine,
         quantity: item.quantity,
         windowChanged: dateChanged,
       });
       let keptTaxRate: number | null = null;
+      let promotionPercentage: number | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
@@ -2391,17 +2394,26 @@ export async function updateReservation(
             deposit: seasonalResultForItem.deposit,
           };
 
-          pricingBreakdown = buildReservationPricingBreakdown({
-            pricingKind: product.pricingKind,
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || "0"),
-            pricingMode: itemPricingMode,
-            quantity: item.quantity,
-            durationMinutes,
-            result: seasonalResultForItem,
-          });
-          finalUnitPrice = priceResult.subtotal / Math.max(1, item.quantity);
-          totalPrice = priceResult.subtotal;
+          // The promotion the line recorded, applied as recorded (slice 11).
+          const priced = cataloguePriceWithRecordedPromotion(
+            {
+              subtotal: priceResult.subtotal,
+              breakdown: buildReservationPricingBreakdown({
+                pricingKind: product.pricingKind,
+                basePrice: parseFloat(product.price),
+                deposit: parseFloat(product.deposit || "0"),
+                pricingMode: itemPricingMode,
+                quantity: item.quantity,
+                durationMinutes,
+                result: seasonalResultForItem,
+              }),
+            },
+            storedProductLine,
+          );
+          pricingBreakdown = priced.breakdown;
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
+          totalPrice = priced.subtotal;
         }
       } else if (item.isManualPrice) {
         pricingBreakdown = {
@@ -2468,6 +2480,7 @@ export async function updateReservation(
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
         keptTaxRate,
+        promotionPercentage,
       });
       if (item.id) {
         const existingItem = existingItemsById.get(item.id);
@@ -2507,12 +2520,15 @@ export async function updateReservation(
       let finalUnitPrice = parseFloat(item.unitPrice);
       let pricedFromProductId: string | null = null;
       // A line priced from its product keeps its price when the window did not move (slice 11).
+      const storedProductLine =
+        !isManualPrice && item.productId ? storedProductLineOf(item) : null;
       const productLinePrice = priceEditedProductLine({
-        stored: !isManualPrice && item.productId ? storedProductLineOf(item) : null,
+        stored: storedProductLine,
         quantity: item.quantity,
         windowChanged: dateChanged,
       });
       let keptTaxRate: number | null = null;
+      let promotionPercentage: number | null = null;
 
       if (productLinePrice.kind === "kept") {
         totalPrice = productLinePrice.subtotal;
@@ -2570,17 +2586,26 @@ export async function updateReservation(
             item.quantity,
           );
 
-          const newBreakdown = buildReservationPricingBreakdown({
-            pricingKind: product.pricingKind,
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || "0"),
-            pricingMode: effectivePricingMode,
-            quantity: item.quantity,
-            durationMinutes: itemDurationMinutes,
-            result: seasonalResultForDate,
-          });
-          finalUnitPrice = seasonalResultForDate.subtotal / Math.max(1, item.quantity);
-          totalPrice = seasonalResultForDate.subtotal;
+          // The promotion the line recorded, applied as recorded (slice 11).
+          const priced = cataloguePriceWithRecordedPromotion(
+            {
+              subtotal: seasonalResultForDate.subtotal,
+              breakdown: buildReservationPricingBreakdown({
+                pricingKind: product.pricingKind,
+                basePrice: parseFloat(product.price),
+                deposit: parseFloat(product.deposit || "0"),
+                pricingMode: effectivePricingMode,
+                quantity: item.quantity,
+                durationMinutes: itemDurationMinutes,
+                result: seasonalResultForDate,
+              }),
+            },
+            storedProductLine,
+          );
+          const newBreakdown = priced.breakdown;
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
+          totalPrice = priced.subtotal;
 
           const itemValues = {
             productId: item.productId,
@@ -2673,6 +2698,7 @@ export async function updateReservation(
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
         keptTaxRate,
+        promotionPercentage,
       });
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
       if (item.productId) {

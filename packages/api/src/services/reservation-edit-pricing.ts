@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { stores, type Transaction } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 
-import { editedLineTaxSettings } from "./edit-line-pricing";
+import { applyRecordedPromotion, editedLineTaxSettings } from "./edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "./pricing-catalog";
 import { taxDisplayModeOf, taxSettingsForRepricing, type TaxDisplayMode } from "./pricing-facts";
 import {
@@ -45,6 +45,8 @@ export interface EditedLine {
   taxExempt: boolean | null;
   /** The rate it recorded, when it keeps its stored price (slice 11); null otherwise. */
   keptTaxRate: number | null;
+  /** The percentage of the promotion it recorded, applied again to its new price (slice 11). */
+  promotionPercentage: number | null;
 }
 
 export interface EditPricingInput {
@@ -109,7 +111,12 @@ export async function priceReservationEdit(
       startDate: input.window.start.toISOString(),
       endDate: input.window.end.toISOString(),
     });
-    if (cents(priced.subtotal) !== cents(line.subtotal)) return { ok: false };
+    const subtotal =
+      line.promotionPercentage === null
+        ? priced.subtotal
+        : applyRecordedPromotion(priced.subtotal, { percentage: line.promotionPercentage })
+            .subtotal;
+    if (cents(subtotal) !== cents(line.subtotal)) return { ok: false };
   }
 
   const taxed: TaxedLine[] = input.lines.map((line) => ({
