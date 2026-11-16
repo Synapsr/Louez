@@ -193,8 +193,14 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
    */
   function fakeAlerts() {
     const sent: Array<{ chargeId: string; excessMinor: number; lockFree: boolean }> = [];
+    const errors: string[] = [];
     const alerts: BillingAlerts = {
-      log: { error() {}, info() {} },
+      log: {
+        error(_tag, message) {
+          errors.push(message);
+        },
+        info() {},
+      },
       async alert(kind, message) {
         assert.equal(kind, "fee_over_returned");
         const [, chargeId, excess] =
@@ -208,7 +214,23 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       },
     };
     const excesses = () => sent.map((alert) => alert.excessMinor);
-    return { alerts, sent, excesses };
+    return { alerts, sent, errors, excesses };
+  }
+
+  /**
+   * A reversal, then the work it left for once the webhook answered, run right after
+   * it as `after` would.
+   */
+  async function reverseThenAfter(input: Parameters<typeof reversal.reverseFeeAtSource>[0]) {
+    const tasks: Array<() => Promise<void>> = [];
+    const result = await reversal.reverseFeeAtSource({
+      ...input,
+      schedule: (task) => {
+        tasks.push(task);
+      },
+    });
+    for (const task of tasks) await task();
+    return result;
   }
 
   test("partial refunds give back a cumulative share of the fee, recorded on the row", async () => {
@@ -556,7 +578,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       assert.ok(state);
       const alerted = fakeAlerts();
       const reverse = () =>
-        reversal.reverseFeeAtSource({
+        reverseThenAfter({
           chargeId,
           accountId: ACCOUNT,
           stripe: stripe.port,
@@ -664,7 +686,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       const before = await activity();
       for (const refunded of [3_000, 8_000]) {
         state.amountRefunded = refunded;
-        await reversal.reverseFeeAtSource({
+        await reverseThenAfter({
           chargeId,
           accountId: ACCOUNT,
           stripe: counted,
@@ -688,7 +710,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         },
       };
       const reverse = () =>
-        reversal.reverseFeeAtSource({
+        reverseThenAfter({
           chargeId,
           accountId: ACCOUNT,
           stripe: stripe.port,
@@ -717,7 +739,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
           return stripe.port.retrieveApplicationFee(feeId);
         },
       };
-      const result = await reversal.reverseFeeAtSource({
+      const result = await reverseThenAfter({
         chargeId,
         accountId: ACCOUNT,
         stripe: racing,
@@ -757,7 +779,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         },
       };
       const reverse = () =>
-        reversal.reverseFeeAtSource({ chargeId, accountId: ACCOUNT, stripe: counted, alerts });
+        reverseThenAfter({ chargeId, accountId: ACCOUNT, stripe: counted, alerts });
 
       state.amountRefunded = 6_000;
       await reverse();
@@ -765,8 +787,8 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       state.amountRefunded = 0;
       calls.length = 0;
       await reverse();
-      assert.deepEqual(calls, ["charge", "fee", "disputes", "fee", "charge"]);
-      assert.deepEqual(atAlert, [5]);
+      assert.deepEqual(calls, ["charge", "fee", "disputes", "fee", "disputes", "charge"]);
+      assert.deepEqual(atAlert, [6]);
       assert.deepEqual(alerted.excesses(), [180]);
 
       // The same, with a refund of 30.00 landing before the second read of the charge.
@@ -775,6 +797,123 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       refundBeforeSecondRead = true;
       await reverse();
       assert.deepEqual(alerted.excesses(), [180, 90]);
+    });
+
+    /** A charge whose refund of 60.00 failed after its share, 1.80, was given back. */
+    async function failedRefundCase() {
+      const found = await excessCase();
+      found.state.amountRefunded = 6_000;
+      await found.reverse();
+      found.state.amountRefunded = 0;
+      return found;
+    }
+
+    test("the webhook's answer never waits for the confirmation: one task after it, with short reads", async () => {
+      const { stripe, chargeId, alerted } = await failedRefundCase();
+      const reads: Array<{ read: string; options: unknown }> = [];
+      const recorded: FeeReversalStripe = {
+        ...stripe.port,
+        retrieveCharge: (id, account, options) => (
+          reads.push({ read: "charge", options }),
+          stripe.port.retrieveCharge(id, account)
+        ),
+        retrieveApplicationFee: (feeId, options) => (
+          reads.push({ read: "fee", options }),
+          stripe.port.retrieveApplicationFee(feeId)
+        ),
+        listDisputes: (id, account, options) => (
+          reads.push({ read: "disputes", options }),
+          stripe.port.listDisputes(id, account)
+        ),
+      };
+      const deferred: Array<() => Promise<void>> = [];
+      const result = await reversal.reverseFeeAtSource({
+        chargeId,
+        accountId: ACCOUNT,
+        stripe: recorded,
+        alerts: alerted.alerts,
+        schedule: (task) => {
+          deferred.push(task);
+        },
+      });
+      // Answered: the confirmation and the alert wait in one task.
+      assert.equal(result.status, "unchanged");
+      assert.equal(deferred.length, 1);
+      assert.deepEqual(
+        reads.map((read) => read.read),
+        ["charge", "fee", "disputes"],
+      );
+      assert.deepEqual(alerted.excesses(), []);
+      await deferred[0]?.();
+      assert.deepEqual(alerted.excesses(), [180]);
+      const short = { timeout: 5_000, maxNetworkRetries: 0 };
+      assert.deepEqual(reads, [
+        { read: "charge", options: undefined },
+        { read: "fee", options: undefined },
+        { read: "disputes", options: undefined },
+        { read: "fee", options: short },
+        { read: "disputes", options: short },
+        { read: "charge", options: short },
+      ]);
+    });
+
+    test("a confirmation read that fails or times out raises no alert, logs the charge and throws nothing", async () => {
+      const { stripe, chargeId, alerted } = await failedRefundCase();
+      const timingOut: FeeReversalStripe = {
+        ...stripe.port,
+        retrieveApplicationFee: async (feeId, options) => {
+          if (options) throw new Error("Request timed out");
+          return stripe.port.retrieveApplicationFee(feeId);
+        },
+      };
+      const result = await reverseThenAfter({
+        chargeId,
+        accountId: ACCOUNT,
+        stripe: timingOut,
+        alerts: alerted.alerts,
+      });
+      assert.equal(result.status, "unchanged");
+      assert.deepEqual(alerted.excesses(), []);
+      assert.equal(alerted.errors.length, 1);
+      assert.ok(alerted.errors[0]?.includes(chargeId), alerted.errors[0]);
+      assert.ok(alerted.errors[0]?.includes("Request timed out"), alerted.errors[0]);
+    });
+
+    test("a dispute opened after the reversal and before its confirmation is counted: no excess", async () => {
+      const { stripe, chargeId, state, alerted } = await failedRefundCase();
+      const deferred: Array<() => Promise<void>> = [];
+      await reversal.reverseFeeAtSource({
+        chargeId,
+        accountId: ACCOUNT,
+        stripe: stripe.port,
+        alerts: alerted.alerts,
+        schedule: (task) => {
+          deferred.push(task);
+        },
+      });
+      // A dispute of 60.00: its share, 1.80, is what was given back.
+      state.disputes = [{ id: "dp_between", amount: 6_000, status: "needs_response" }];
+      for (const task of deferred) await task();
+      assert.deepEqual(alerted.excesses(), []);
+    });
+
+    test("a dispute opened while the confirmation reads the fee is counted: the disputes are read after the fee", async () => {
+      const { stripe, chargeId, state, alerted } = await failedRefundCase();
+      const opening: FeeReversalStripe = {
+        ...stripe.port,
+        retrieveApplicationFee: async (feeId, options) => {
+          if (options)
+            state.disputes = [{ id: "dp_during", amount: 6_000, status: "needs_response" }];
+          return stripe.port.retrieveApplicationFee(feeId);
+        },
+      };
+      await reverseThenAfter({
+        chargeId,
+        accountId: ACCOUNT,
+        stripe: opening,
+        alerts: alerted.alerts,
+      });
+      assert.deepEqual(alerted.excesses(), []);
     });
 
     test("ten won disputes at once leave the pool its connections: each alert waits for its lock's release", async () => {
@@ -788,7 +927,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
           fee: 300,
           disputes: [{ id: `dp_${RUN}_${index}`, amount: 10_000, status: "needs_response" }],
         });
-        await reversal.reverseFeeAtSource({
+        await reverseThenAfter({
           chargeId,
           accountId: ACCOUNT,
           stripe: stripe.port,
@@ -817,7 +956,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         const result = await Promise.race([
           Promise.all(
             chargeIds.map((chargeId) =>
-              reversal.reverseFeeAtSource({
+              reverseThenAfter({
                 chargeId,
                 accountId: ACCOUNT,
                 stripe: stripe.port,

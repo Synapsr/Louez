@@ -16,12 +16,28 @@ import { mapDisputeStatus } from "./dispute-facts";
 // refunds the part of the fee the store no longer keeps. Every charge with an
 // application fee goes through here, legacy stores included.
 
+/** A read's own timeout and retries, for a read that must not hold its caller long. */
+export type FeeReversalReadOptions = {
+  readonly timeout: number;
+  readonly maxNetworkRetries: number;
+};
+
+/**
+ * The confirmation's reads of a fee given back in excess: a short timeout and no retry
+ * of the SDK's own, as the scheduled pass over abandoned checkouts reads.
+ */
+export const FEE_EXCESS_CONFIRMATION_READ: FeeReversalReadOptions = {
+  timeout: 5_000,
+  maxNetworkRetries: 0,
+};
+
 /** The Stripe calls of the reversal. The webhook uses `stripeFeeReversal`; tests fake it. */
 export type FeeReversalStripe = {
   /** The charge on the connected account. */
   retrieveCharge(
     chargeId: string,
     accountId: string,
+    options?: FeeReversalReadOptions,
   ): Promise<
     Pick<
       Stripe.Charge,
@@ -31,11 +47,13 @@ export type FeeReversalStripe = {
   /** The fee, on the platform account. */
   retrieveApplicationFee(
     feeId: string,
+    options?: FeeReversalReadOptions,
   ): Promise<Pick<Stripe.ApplicationFee, "id" | "amount" | "amount_refunded" | "currency">>;
   /** Every dispute of the charge, on the connected account. */
   listDisputes(
     chargeId: string,
     accountId: string,
+    options?: FeeReversalReadOptions,
   ): Promise<
     ReadonlyArray<{ readonly id: string; readonly amount: number; readonly status: string }>
   >;
@@ -46,14 +64,14 @@ const stripeId = (value: string | { readonly id: string } | null): string | null
   typeof value === "string" ? value : (value?.id ?? null);
 
 export const stripeFeeReversal: FeeReversalStripe = {
-  retrieveCharge: (chargeId, accountId) =>
-    stripe.charges.retrieve(chargeId, {}, { stripeAccount: accountId }),
-  retrieveApplicationFee: (feeId) => stripe.applicationFees.retrieve(feeId),
-  async listDisputes(chargeId, accountId) {
+  retrieveCharge: (chargeId, accountId, options) =>
+    stripe.charges.retrieve(chargeId, {}, { ...options, stripeAccount: accountId }),
+  retrieveApplicationFee: (feeId, options) => stripe.applicationFees.retrieve(feeId, {}, options),
+  async listDisputes(chargeId, accountId, options) {
     const disputes: Stripe.Dispute[] = [];
     for await (const dispute of stripe.disputes.list(
       { charge: chargeId, limit: 100 },
-      { stripeAccount: accountId },
+      { ...options, stripeAccount: accountId },
     ))
       disputes.push(dispute);
     return disputes;
@@ -145,33 +163,46 @@ type FeeGivenBackInExcess = {
   readonly feeMinor: number;
   readonly targetMinor: number;
   readonly feeRefundedMinor: number;
-  /** What the charge's disputes withdrew, as the reversal read them. */
-  readonly disputedMinor: number;
 };
 
 /**
  * The excess read under the lock is a candidate: the lock keeps other reversals out,
  * not changes at Stripe. A refund made outside Louez that gives back its fee share
- * between the reversal's read of the charge and its read of the fee makes the fee
- * look given back past its share. So the fee, then the charge, are read again, in
- * that order: a refund landing between those two reads can only lower the excess,
- * never make one up. The disputes are the reversal's own read: a dispute's change
- * runs its own reversal. Only a charge with a candidate pays these two reads.
- * Returns the excess on the fresh figures, or null when they do not confirm it.
+ * between the reversal's read of the charge and its read of the fee, or a dispute
+ * opened since its read of the disputes, makes the fee look given back past its share.
+ * So the fee is read again first, then the disputes, then the charge. The fee given
+ * back only grows (Stripe cannot take a fee refund back), and only what raises the
+ * share, a refund or a dispute, can land after the fee's read: read last, it raises
+ * the share and lowers the excess. What lowers the share, a refund that failed or a
+ * dispute won, leaves a real excess. So a change landing between these reads can
+ * only lower the excess, never make one up. Read before the fee, the disputes would
+ * miss one opened while the fee is read, and give the excess from before it.
+ * Only a charge with a candidate pays these three reads, each with a short timeout
+ * and no retry. Returns the excess on the fresh figures, or null when they do not
+ * confirm it.
  */
 async function confirmExcess(
   port: FeeReversalStripe,
   input: { readonly chargeId: string; readonly accountId: string },
   candidate: FeeGivenBackInExcess,
 ): Promise<FeeGivenBackInExcess | null> {
-  const fee = await port.retrieveApplicationFee(candidate.feeId);
-  const charge = await port.retrieveCharge(input.chargeId, input.accountId);
+  const fee = await port.retrieveApplicationFee(candidate.feeId, FEE_EXCESS_CONFIRMATION_READ);
+  const disputes = await port.listDisputes(
+    input.chargeId,
+    input.accountId,
+    FEE_EXCESS_CONFIRMATION_READ,
+  );
+  const charge = await port.retrieveCharge(
+    input.chargeId,
+    input.accountId,
+    FEE_EXCESS_CONFIRMATION_READ,
+  );
   const { targetMinor } = reversalAtSource({
     feeMinor: fee.amount,
     feeRefundedMinor: fee.amount_refunded,
     chargeMinor: charge.amount_captured,
     refundedMinor: charge.amount_refunded,
-    disputedMinor: candidate.disputedMinor,
+    disputedMinor: disputedMinor(input.chargeId, disputes),
   });
   if (fee.amount_refunded > targetMinor) {
     return {
@@ -180,7 +211,6 @@ async function confirmExcess(
       feeMinor: fee.amount,
       targetMinor,
       feeRefundedMinor: fee.amount_refunded,
-      disputedMinor: candidate.disputedMinor,
     };
   }
   log.debug(
@@ -190,30 +220,40 @@ async function confirmExcess(
   return null;
 }
 
+/** `after`, or right away without waiting when there is no request scope. */
+const scheduleAfterResponse = (task: () => Promise<void>): void => {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+};
+
 /**
  * Tells the platform of a fee given back past its share: after a refund failed or a
  * dispute was won, Stripe cannot take it back. The figure is Stripe's and the billing
- * service's, which bills it again for a store it bills; Louez stores none. Runs once
- * the charge's lock and the run's turn are released: the candidate's two reads hold
- * no connection, and the alert may take a pooled one. Never throws: the webhook still
- * answers.
+ * service's, which bills it again for a store it bills; Louez stores none. Runs as one
+ * task after the webhook answered, once the charge's lock and the run's turn are
+ * released: the confirmation's reads hold no connection, and the alert may take a
+ * pooled one. Never throws: a read that fails or times out raises no alert and logs an
+ * error naming the charge.
  */
 async function alertFeeGivenBackInExcess(
   port: FeeReversalStripe,
   input: { readonly chargeId: string; readonly accountId: string },
   candidate: FeeGivenBackInExcess,
-  alerts: BillingAlerts | undefined,
+  alerts: BillingAlerts,
 ): Promise<void> {
   try {
     const excess = await confirmExcess(port, input, candidate);
     if (!excess) return;
-    await (alerts ?? createBillingAlerts({ schedule: after })).alert(
+    await alerts.alert(
       "fee_over_returned",
       `charge ${input.chargeId} on account ${input.accountId}: application fee ${excess.feeId} of ${excess.feeMinor} ${excess.currency} has ${excess.feeRefundedMinor} given back, above its share of ${excess.targetMinor} by ${excess.feeRefundedMinor - excess.targetMinor} (minor units). Stripe cannot take a fee refund back: the billing service bills it again for a store it bills; for a store Louez's legacy billing bills, check it in Stripe.`,
       "This is the first fee_over_returned alert this hour: the error log holds every occurrence, each with its charge.",
     );
   } catch (error) {
-    log.error(
+    alerts.log.error(
       "billing",
       `the fee given back in excess on charge ${input.chargeId} could not be alerted: ${error instanceof Error ? error.message : String(error)}`,
     );
@@ -223,8 +263,8 @@ async function alertFeeGivenBackInExcess(
 /**
  * Refunds the part of the charge's application fee the store no longer keeps, then
  * records Stripe's refunded amount on the legacy fee rows, on the lock's connection.
- * When the fee given back is above its share, and two fresh reads once the lock is
- * released still say so, alerts the platform (`fee_over_returned`). Throws on a Stripe or database error, and
+ * When the fee given back is above its share, and fresh reads after the webhook
+ * answered still say so, alerts the platform (`fee_over_returned`). Throws on a Stripe or database error, and
  * `FeeReversalBusyError` when the lock or a turn stays taken, so the webhook answers
  * 500 and Stripe retries: the next delivery reads Stripe again.
  */
@@ -235,6 +275,8 @@ export async function reverseFeeAtSource(input: {
   readonly stripe?: FeeReversalStripe;
   /** The platform's alerts; tests fake them. */
   readonly alerts?: BillingAlerts;
+  /** Runs the confirmation and the alert once the webhook answered: `after`; tests collect it. */
+  readonly schedule?: (task: () => Promise<void>) => void;
 }): Promise<FeeReversalResult> {
   const port = input.stripe ?? stripeFeeReversal;
   const turn = await reversalLimit(TURN_WAIT_MS, () =>
@@ -255,7 +297,6 @@ export async function reverseFeeAtSource(input: {
           port.listDisputes(charge.id, input.accountId),
         ]);
 
-        const disputed = disputedMinor(charge.id, disputes);
         const { targetMinor, incrementMinor } = reversalAtSource({
           feeMinor: fee.amount,
           feeRefundedMinor: fee.amount_refunded,
@@ -263,7 +304,7 @@ export async function reverseFeeAtSource(input: {
           // authorization, more than the money the fee was taken on.
           chargeMinor: charge.amount_captured,
           refundedMinor: charge.amount_refunded,
-          disputedMinor: disputed,
+          disputedMinor: disputedMinor(charge.id, disputes),
         });
         if (incrementMinor > 0) {
           // The fee refunded before this call is in the key: a refund made elsewhere in
@@ -300,7 +341,6 @@ export async function reverseFeeAtSource(input: {
                   feeMinor: fee.amount,
                   targetMinor,
                   feeRefundedMinor,
-                  disputedMinor: disputed,
                 }
               : null,
         };
@@ -311,6 +351,12 @@ export async function reverseFeeAtSource(input: {
   if (!turn.value.ran) throw new FeeReversalBusyError(input.chargeId, "lock");
   // The lock's connection is back in the pool and the turn is free.
   const { result, excess } = turn.value.value;
-  if (excess) await alertFeeGivenBackInExcess(port, input, excess, input.alerts);
+  if (excess) {
+    // Already in a deferred task: its alert waits for its own Discord part.
+    const alerts = input.alerts ?? createBillingAlerts();
+    (input.schedule ?? scheduleAfterResponse)(() =>
+      alertFeeGivenBackInExcess(port, input, excess, alerts),
+    );
+  }
   return result;
 }
