@@ -9,8 +9,8 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 
 // What a refund still owes, as the store's inbox shows it, on a migrated database: a
 // refund of an online payment Stripe has not confirmed a day after it was asked
-// (`refund_unconfirmed`), a recorded refund Stripe then reported failed whose credit
-// note or fee Louez cannot undo by itself (`refund_undone`), and a refund's credit
+// (`refund_unconfirmed`), every refund Stripe reported failed, with the credit note
+// issued for it, which Louez cannot undo by itself (`refund_undone`), and a refund's credit
 // note the outbox gave up on (`credit_note_not_issued`), which the cron arms again
 // once a day until it is issued.
 
@@ -149,7 +149,7 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
     assert.deepEqual(await items("refund_unconfirmed"), []);
   });
 
-  test("an undone refund is shown with the credit note to correct and the fee given back on it", async () => {
+  test("every failed refund is shown, with the credit note to correct and what Stripe listed after", async () => {
     const { reservationId, paymentId, n } = await paid();
     const refundRow = (id: string, status: "failed" | "completed") =>
       louezDb.db.insert(louezDb.payments).values({
@@ -167,7 +167,7 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
         updatedAt: new Date(Date.now() - 60_000),
       });
     await refundRow(`ref_noted_${n}`, "failed");
-    await refundRow(`ref_fee_${n}`, "failed");
+    await refundRow(`ref_listed_${n}`, "failed");
     await refundRow(`ref_plain_${n}`, "failed");
     await refundRow(`ref_live_${n}`, "completed");
     // A credit note issued for the first, as invoicing links one.
@@ -199,17 +199,21 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
         paymentId: refundId,
       });
     }
-    await louezDb.db.insert(louezDb.reservationActivity).values({
-      id: `act_fee_${n}`,
-      reservationId,
-      activityType: "payment_updated",
-      metadata: {
-        kind: "refund_fee_over_returned",
-        paymentId: `ref_fee_${n}`,
-        feeId: "fee_inbox",
-        overReturnedMinor: 180,
+    await louezDb.db.insert(louezDb.reservationActivity).values([
+      {
+        id: `act_listed_${n}`,
+        reservationId,
+        activityType: "payment_updated",
+        metadata: { kind: "refund_failed_listed", paymentId: `ref_listed_${n}` },
       },
-    });
+      // A line of a kind no reader knows, as an older version wrote, changes nothing.
+      {
+        id: `act_old_${n}`,
+        reservationId,
+        activityType: "payment_updated",
+        metadata: { kind: "retired_kind", paymentId: `ref_plain_${n}`, amountMinor: 180 },
+      },
+    ]);
 
     const shown = await items("refund_undone");
     assert.deepEqual(
@@ -217,13 +221,44 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
         .map((item) => [
           item.details?.refundPaymentId,
           item.details?.creditNoteNumber,
-          item.details?.feeOverReturned,
+          item.details?.listedAfterFailure,
+          Object.keys(item.details ?? {}).sort(),
         ])
         .sort(),
-      [
-        [`ref_fee_${n}`, null, "1.80"],
-        [`ref_noted_${n}`, `AV-${n}`, null],
-      ],
+      [`ref_listed_${n}`, `ref_noted_${n}`, `ref_plain_${n}`]
+        .map((id) => [
+          id,
+          id === `ref_noted_${n}` ? `AV-${n}` : null,
+          id === `ref_listed_${n}`,
+          [
+            "amount",
+            "creditNoteNumber",
+            "currency",
+            "listedAfterFailure",
+            "refundId",
+            "refundPaymentId",
+            "reservationId",
+            "reservationNumber",
+          ],
+        ])
+        .sort(),
+    );
+    const summaryOf = (id: string) => {
+      const summary = shown.find((item) => item.details?.refundPaymentId === id)?.summary;
+      assert.ok(summary);
+      // The reservation's dates are the shaper's.
+      return summary.replace(/ on reservation (R-\d+) \([^)]*\)/, " on reservation $1");
+    };
+    const failed = (id: string) =>
+      `Stripe reported the refund re_${id} of 60.00 EUR on reservation R-${n} failed: the customer was not refunded, and Louez counts the refund for nothing. Check it in Stripe and refund again if needed.`;
+    assert.equal(summaryOf(`ref_plain_${n}`), failed(`ref_plain_${n}`));
+    assert.equal(
+      summaryOf(`ref_noted_${n}`),
+      `${failed(`ref_noted_${n}`)} The credit note AV-${n} issued for it stands: correct it by hand in your accounting.`,
+    );
+    assert.equal(
+      summaryOf(`ref_listed_${n}`),
+      `Stripe reported the refund re_ref_listed_${n} of 60.00 EUR on reservation R-${n} failed, then listed it as moving money: Louez keeps it failed. Check in Stripe whether the customer was refunded, and refund again if needed.`,
     );
   });
 
@@ -295,43 +330,28 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
     );
   });
 
-  test("an undone refund row with no link is shown for the fee given back on it alone", async () => {
+  test("a failed refund row with no link and no credit note is shown", async () => {
     const { reservationId, n } = await paid();
     await louezDb.db.insert(louezDb.payments).values({
-      id: `ref_fee_unlinked_${n}`,
+      id: `ref_bare_unlinked_${n}`,
       reservationId,
       amount: "60.00",
       type: "rental",
       method: "stripe",
       status: "failed",
-      stripeRefundId: `re_fee_unlinked_${n}`,
+      stripeRefundId: `re_bare_unlinked_${n}`,
       stripeChargeId: `ch_inbox_${n}`,
       currency: "EUR",
       grossMinor: 6_000,
       updatedAt: new Date(Date.now() - 60_000),
-    });
-    await louezDb.db.insert(louezDb.reservationActivity).values({
-      id: `act_fee_unlinked_${n}`,
-      reservationId,
-      activityType: "payment_updated",
-      metadata: {
-        kind: "refund_fee_over_returned",
-        paymentId: `ref_fee_unlinked_${n}`,
-        feeId: "fee_inbox_unlinked",
-        overReturnedMinor: 180,
-      },
     });
 
     const shown = (await items("refund_undone")).filter(
       (item) => item.reservation?.id === reservationId,
     );
     assert.deepEqual(
-      shown.map((item) => [
-        item.details?.refundPaymentId,
-        item.details?.creditNoteNumber,
-        item.details?.feeOverReturned,
-      ]),
-      [[`ref_fee_unlinked_${n}`, null, "1.80"]],
+      shown.map((item) => [item.details?.refundPaymentId, item.details?.creditNoteNumber]),
+      [[`ref_bare_unlinked_${n}`, null]],
     );
   });
 
@@ -376,8 +396,12 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
     await giveUp(1);
     const shown = await items("credit_note_not_issued");
     assert.deepEqual(
-      shown.map((item) => [item.details?.reservationNumber, item.details?.amount]),
-      [[`R-${n}`, "25.00"]],
+      shown.map((item) => [
+        item.details?.reservationNumber,
+        item.details?.amount,
+        item.details?.currency,
+      ]),
+      [[`R-${n}`, "25.00", "EUR"]],
     );
     assert.deepEqual(await outbox.rearmAbandonedEffects(), []);
 

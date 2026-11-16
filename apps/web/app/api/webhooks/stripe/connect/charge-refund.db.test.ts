@@ -72,7 +72,7 @@ function fakeStripe() {
         const refunded = feeRefunds
           .filter((refund) => refund.feeId === feeId)
           .reduce((sum, refund) => sum + refund.amount, 0);
-        return { id: feeId, amount: 300, amount_refunded: refunded };
+        return { id: feeId, amount: 300, amount_refunded: refunded, currency: "eur" };
       },
       async listDisputes() {
         return [];

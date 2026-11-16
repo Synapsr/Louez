@@ -28,6 +28,7 @@ export type BillingAlertKind =
   | "policies_stale"
   | "policies_cutoff_mismatch"
   | "fee_fail_closed"
+  | "fee_over_returned"
   | "manifest_rejected"
   | "final_snapshot_skipped"
   | "final_snapshot_large"
@@ -41,10 +42,11 @@ export type BillingLog = {
 export type BillingAlerts = {
   readonly log: BillingLog;
   /**
-   * Logs the alert and, at most once an hour per kind, posts it to Discord. Never
-   * throws. With `schedule`, it returns once the alert is logged.
+   * Logs the alert and, at most once an hour per kind, posts it to Discord, followed
+   * by `channelNote` when given. Never throws. With `schedule`, it returns once the
+   * alert is logged.
    */
-  alert(kind: BillingAlertKind, message: string): Promise<void>;
+  alert(kind: BillingAlertKind, message: string, channelNote?: string): Promise<void>;
 };
 
 const DISCORD_INTERVAL_MS = 60 * 60 * 1000;
@@ -102,9 +104,9 @@ export function createBillingAlerts(
   };
   return {
     log,
-    async alert(kind, message) {
+    async alert(kind, message, channelNote) {
       log.error("billing", `billing sync alert ${kind}: ${message}`);
-      const task = () => postToDiscord(kind, message);
+      const task = () => postToDiscord(kind, channelNote ? `${message} ${channelNote}` : message);
       if (!schedule) return task();
       try {
         schedule(task);
