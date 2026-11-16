@@ -429,12 +429,8 @@ export function NewReservationForm({
           sendConfirmationEmail: sendAsQuoteRef.current ? true : sendConfirmationEmail,
           sendAsQuote: sendAsQuoteRef.current,
           allowOverbooking: options.allowOverbooking,
-          // What the person sees: the server refuses a creation whose total differs.
-          expectedTotals: {
-            total: totals.total,
-            deliveryFee: delivery.totalFee,
-            insuranceAmount: tulipInsuranceAmount,
-          },
+          // What the person confirms: the server refuses a creation whose total differs.
+          expectedTotal: totals.total,
         },
       });
 

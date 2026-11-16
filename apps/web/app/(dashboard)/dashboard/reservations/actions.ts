@@ -522,11 +522,10 @@ interface CreateReservationData {
   sendAsQuote?: boolean;
   allowOverbooking?: boolean;
   /**
-   * What the form showed: the total, with the delivery fee and the insurance
-   * it was computed with. Compared under the locks with the total about to be
-   * written; a difference refuses the creation as changed meanwhile.
+   * The total the form showed. Compared under the locks with the total about
+   * to be written; a difference refuses the creation as changed meanwhile.
    */
-  expectedTotals?: { total: number; deliveryFee: number; insuranceAmount: number };
+  expectedTotal?: number;
 }
 
 /**
@@ -594,10 +593,13 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   let customerId = data.customerId;
+  // A new customer is written in the creation's transaction, after the
+  // product locks (store, products, customer, reservation rows): a refused
+  // creation leaves nothing behind. Until then it is the row it will be.
+  let pendingCustomer: typeof customers.$inferInsert | null = null;
+  let customer: CreationCustomer | undefined;
 
-  // Create new customer if needed
   if (!customerId && data.newCustomer) {
-    // Check if customer exists
     const existingCustomer = await db.query.customers.findFirst({
       where: and(eq(customers.storeId, store.id), eq(customers.email, data.newCustomer.email)),
     });
@@ -605,17 +607,33 @@ export async function createManualReservation(data: CreateReservationData) {
     if (existingCustomer) {
       customerId = existingCustomer.id;
     } else {
-      const newCustomerId = nanoid();
-      await db.insert(customers).values({
-        id: newCustomerId,
+      customerId = nanoid();
+      pendingCustomer = {
+        id: customerId,
         storeId: store.id,
         email: data.newCustomer.email,
         firstName: data.newCustomer.firstName,
         lastName: data.newCustomer.lastName,
         phone: data.newCustomer.phone || null,
         createdVia: "dashboard",
-      });
-      customerId = newCustomerId;
+      };
+      // The columns' own defaults, as the row will hold them.
+      customer = {
+        id: customerId,
+        email: pendingCustomer.email,
+        firstName: pendingCustomer.firstName,
+        lastName: pendingCustomer.lastName,
+        phone: pendingCustomer.phone ?? null,
+        customerType: "individual",
+        companyName: null,
+        companyNumber: null,
+        companyNumberScheme: null,
+        vatNumber: null,
+        address: null,
+        city: null,
+        postalCode: null,
+        country: "FR",
+      };
     }
   }
 
@@ -623,13 +641,15 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: "errors.customerRequired" };
   }
 
-  const customer = await db.query.customers.findFirst({
+  customer ??= await db.query.customers.findFirst({
     where: and(eq(customers.id, customerId), eq(customers.storeId, store.id)),
   });
 
   if (!customer) {
     return { error: "errors.customerNotFound" };
   }
+  // The customer booked: a new one's id, or the one with its email written meanwhile.
+  let bookedCustomerId: string = customerId;
 
   const tulipMode = await getDashboardTulipInsuranceMode(store.id);
   const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
@@ -1020,28 +1040,22 @@ export async function createManualReservation(data: CreateReservationData) {
         taxSettings: null,
       })),
     ];
-    const totalsWith = (insuranceAmount: number, deliveryFee: number) =>
-      computeReservationTotals({
-        lines: taxedLines,
-        insuranceAmount,
-        discountAmount: discountUnderLocks,
-        deliveryFee,
-        totalDeposit: depositAmount,
-        taxSettings,
-        currency,
-      });
-    // What the person saw: the total the form showed, compared to the minor
-    // unit with the total of what is about to be written. The delivery fee
-    // and the insurance come from the routing service and the insurer, asked
-    // again at submission: the form's own enter this comparison, so it
-    // weighs the store's prices, rates and display mode, and the discount.
-    if (data.expectedTotals) {
+    const totals = computeReservationTotals({
+      lines: taxedLines,
+      insuranceAmount: tulipInsuranceAmount,
+      discountAmount: discountUnderLocks,
+      deliveryFee: deliveryFeeUnderLocks,
+      totalDeposit: depositAmount,
+      taxSettings,
+      currency,
+    });
+    // What the person confirmed is what is written: the total the form
+    // showed, compared to the minor unit with the total about to be
+    // inserted, its delivery fee and insurance included. A difference
+    // refuses the creation, and the form reads what it prices from again.
+    if (data.expectedTotal !== undefined) {
       const perUnit = minorUnitsPerUnit(currency);
-      const seen = totalsWith(
-        data.expectedTotals.insuranceAmount,
-        data.expectedTotals.deliveryFee,
-      ).total;
-      if (Math.round(seen * perUnit) !== Math.round(data.expectedTotals.total * perUnit)) {
+      if (Math.round(totals.total * perUnit) !== Math.round(data.expectedTotal * perUnit)) {
         return { ok: false as const, error: "errors.reservationChangedMeanwhile", shortfalls: [] };
       }
     }
@@ -1096,7 +1110,6 @@ export async function createManualReservation(data: CreateReservationData) {
       return { ok: false as const, error: split.error, shortfalls: [] };
     }
 
-    const totals = totalsWith(tulipInsuranceAmount, deliveryFeeUnderLocks);
     const lineTaxValues = (index: number) =>
       reservationItemTaxValues({
         ...getReservationItemTaxFields(totals, taxedLines[index]!, index),
@@ -1106,10 +1119,23 @@ export async function createManualReservation(data: CreateReservationData) {
       ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)
       : undefined;
 
+    // The new customer, once nothing refuses the creation any more, after the
+    // products and before the reservation's rows: a refused creation writes
+    // nothing. One with this email created meanwhile is the one booked.
+    if (pendingCustomer) {
+      const [sameEmail] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.storeId, store.id), eq(customers.email, pendingCustomer.email)))
+        .for("update");
+      if (sameEmail) bookedCustomerId = sameEmail.id;
+      else await tx.insert(customers).values(pendingCustomer);
+    }
+
     const { effects, lock } = await insertReservation(tx, {
       id: reservationId,
       storeId: store.id,
-      customerId,
+      customerId: bookedCustomerId,
       number: reservationNumber,
       status: reservationStatus,
       // Frozen at creation: the store can change its currency later (billing contract Q4).
@@ -1293,7 +1319,7 @@ export async function createManualReservation(data: CreateReservationData) {
       surface: "dashboard",
       store_id: store.id,
       reservation_id: reservationId,
-      customer_id: customerId,
+      customer_id: bookedCustomerId,
       source: "dashboard_manual",
       reservation_status: reservationStatus,
       catalog_line_count: productDetails.length,
@@ -2011,6 +2037,25 @@ const normalizeLegValue = (value: unknown): string | null => {
     ? String(asNumber)
     : String(value);
 };
+
+/** The customer a creation books: the row, or the one it is about to write. */
+type CreationCustomer = Pick<
+  typeof customers.$inferSelect,
+  | "id"
+  | "email"
+  | "firstName"
+  | "lastName"
+  | "phone"
+  | "customerType"
+  | "companyName"
+  | "companyNumber"
+  | "companyNumberScheme"
+  | "vatNumber"
+  | "address"
+  | "city"
+  | "postalCode"
+  | "country"
+>;
 
 /** What the insurer is told of the renter: the reservation's billing identity and the customer's contact. */
 function insurerCustomerOf(

@@ -763,20 +763,17 @@ describe(
       }
 
       /** What the form shows for one kayak over START–END at 10.00 a day, in `tax`. */
-      const shown = (tax: TaxSettings | undefined) => ({
-        total: creationTotals({
+      const shown = (tax: TaxSettings | undefined, insuranceAmount = 0) =>
+        creationTotals({
           productLines: [{ amount: 20, taxSettings: null }],
           customLines: [],
-          insuranceAmount: 0,
+          insuranceAmount,
           deliveryFee: 0,
           discountAmount: 0,
           deposit: 0,
           taxSettings: tax,
           currency: "USD",
-        }).total,
-        deliveryFee: 0,
-        insuranceAmount: 0,
-      });
+        }).total;
 
       async function reservationCount() {
         return (await louezDb.db.select({ id: louezDb.reservations.id }).from(louezDb.reservations))
@@ -785,7 +782,8 @@ describe(
 
       const createKayak = (
         kayak: string,
-        expectedTotals: { total: number; deliveryFee: number; insuranceAmount: number },
+        expectedTotal: number,
+        options: Partial<Parameters<typeof actions.createManualReservation>[0]> = {},
       ) =>
         actions.createManualReservation({
           customerId: CUSTOMER,
@@ -793,8 +791,62 @@ describe(
           endDate: END,
           items: [{ productId: kayak, quantity: 1 }],
           sendConfirmationEmail: false,
-          expectedTotals,
+          expectedTotal,
+          ...options,
         });
+
+      async function customerCount() {
+        return (await louezDb.db.select({ id: louezDb.customers.id }).from(louezDb.customers))
+          .length;
+      }
+
+      test("the insurer answers another premium than the form showed: refused, nothing written", async () => {
+        await useStore({});
+        const kayak = await product();
+        // The form showed 20.00 of rental and 5.00 of insurance: 25.00.
+        const confirmed = shown(undefined, 5);
+        const before = await reservationCount();
+        Reflect.set(globalThis, INSURANCE_QUOTE_KEY, 12.5);
+        try {
+          const result = await createKayak(kayak, confirmed, { tulipInsuranceOptIn: true });
+          assert.deepEqual(result, {
+            error: "errors.reservationChangedMeanwhile",
+            shortfalls: [],
+          });
+        } finally {
+          Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
+        }
+        assert.equal(await reservationCount(), before);
+      });
+
+      test("a total the form did not show: refused, nothing written", async () => {
+        await useStore({});
+        const kayak = await product();
+        const before = await reservationCount();
+
+        // As if the form had shown 500.00 of insurance: 520.00.
+        const result = await createKayak(kayak, 520);
+
+        assert.deepEqual(result, { error: "errors.reservationChangedMeanwhile", shortfalls: [] });
+        assert.equal(await reservationCount(), before);
+      });
+
+      test("a new customer and a stale total: no reservation, no customer", async () => {
+        await useStore({ tax: HT });
+        const kayak = await product();
+        const before = { reservations: await reservationCount(), customers: await customerCount() };
+
+        const result = await createKayak(kayak, shown(TTC), {
+          customerId: undefined,
+          newCustomer: { email: "new-renter@example.test", firstName: "New", lastName: "Renter" },
+        });
+
+        assert.deepEqual(result, { error: "errors.reservationChangedMeanwhile", shortfalls: [] });
+        assert.deepEqual(
+          { reservations: await reservationCount(), customers: await customerCount() },
+          before,
+        );
+      });
 
       test("the total the form showed is the one written: accepted", async () => {
         await useStore({ tax: HT });
@@ -889,7 +941,7 @@ describe(
           endDate: END,
           items: [{ productId: id, quantity: 3, priceOverride: { unitPrice: 0.015 } }],
           sendConfirmationEmail: false,
-          expectedTotals: { total: shownTotal, deliveryFee: 0, insuranceAmount: 0 },
+          expectedTotal: shownTotal,
         });
 
         assert.ok(result.reservationId, JSON.stringify(result));
