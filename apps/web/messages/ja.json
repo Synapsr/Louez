@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "理由を教えてください",
     "invalidAmount": "無効な金額です",
+    "amountExceedsDeposit": "徴収されたデポジットを超える金額",
+    "paymentNotFound": "この支払いはもう存在しません。ページを再読み込みしてください。",
     "amountTooPrecise": "この金額は通貨で許可される小数桁数を超えています。",
     "currencyNotSupportedForPayments": "この通貨の支払いは記録できません。Louez は小数点以下 3 桁の通貨に対応していません。",
     "invalidOrExpiredToken": "このリンクは無効であるか、有効期限が切れています。新しいアクセス リンクをリクエストしてください。",

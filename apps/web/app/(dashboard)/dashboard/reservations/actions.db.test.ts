@@ -492,6 +492,108 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
     });
   });
 
+  describe("an amount as a number input sends it, and nothing but text", () => {
+    test("the notations a number input yields for a plain decimal are recorded as that decimal; an exponent is not", async () => {
+      const reservationId = await createReservation({ currency: "EUR" });
+      const ids = [
+        paymentIdOf(
+          await actions.recordPayment(reservationId, {
+            type: "rental",
+            amount: ".5",
+            method: "cash",
+          }),
+        ),
+        paymentIdOf(
+          await actions.recordPayment(reservationId, {
+            type: "deposit",
+            amount: "12.",
+            method: "cash",
+          }),
+        ),
+        paymentIdOf(
+          await actions.recordDamage(reservationId, {
+            amount: " +2.5 ",
+            method: "card",
+            notes: "x",
+          }),
+        ),
+        paymentIdOf(await actions.returnDeposit(reservationId, { amount: ".25", method: "cash" })),
+      ];
+      assert.deepEqual(await Promise.all(ids.map(async (id) => (await readPayment(id))?.amount)), [
+        "0.50",
+        "12.00",
+        "2.50",
+        "0.25",
+      ]);
+      assert.deepEqual(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "5e2",
+          method: "cash",
+        }),
+        { error: "errors.invalidAmount" },
+      );
+      // No rounding on the way: 19.999 is still too precise.
+      assert.deepEqual(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "19.999",
+          method: "cash",
+        }),
+        { error: "errors.amountTooPrecise" },
+      );
+    });
+
+    test("an action called directly with anything but text refuses it as an invalid amount, writes nothing and does not throw", async () => {
+      const reservationId = await createReservation({ currency: "EUR" });
+      const paid = paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "30",
+          method: "cash",
+        }),
+      );
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "30",
+          method: "cash",
+        }),
+      );
+      const before = await countPayments(reservationId);
+      const invalid = { error: "errors.invalidAmount" };
+      for (const crafted of [7, [7], { amount: "7" }, null, undefined]) {
+        const amount = crafted as unknown as string;
+        const label = JSON.stringify(crafted) ?? "undefined";
+        assert.deepEqual(
+          await actions.recordPayment(reservationId, { type: "rental", amount, method: "cash" }),
+          invalid,
+          label,
+        );
+        assert.deepEqual(
+          await actions.recordDamage(reservationId, { amount, method: "card", notes: "x" }),
+          invalid,
+          label,
+        );
+        assert.deepEqual(
+          await actions.returnDeposit(reservationId, { amount, method: "cash" }),
+          invalid,
+          label,
+        );
+        assert.deepEqual(
+          await actions.refundManualPayment(reservationId, {
+            paymentId: paid,
+            amount,
+            method: "cash",
+          }),
+          invalid,
+          label,
+        );
+      }
+      assert.equal(await countPayments(reservationId), before, "nothing is written");
+    });
+  });
+
   describe("deletePayment", () => {
     test("deletes the payment and marks the reservation", async () => {
       const reservationId = await createReservation();
@@ -849,6 +951,52 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
           .update(louezDb.customers)
           .set({ phone: null })
           .where(eq(louezDb.customers.id, "customer_actions"));
+      }
+    });
+
+    test("a custom amount is judged as typed in the reservation's currency: nothing is created or sent on a refusal", async () => {
+      const store = Reflect.get(globalThis, STORE_KEY);
+      Reflect.set(globalThis, STORE_KEY, {
+        ...store,
+        settings: { currency: "eur", country: "FR" },
+        stripeAccountId: "acct_actions",
+        stripeChargesEnabled: true,
+      });
+      Reflect.set(globalThis, SENT_KEY, []);
+      const ask = (reservationId: string, amount: unknown) =>
+        actions.requestPayment(reservationId, {
+          type: "custom",
+          amount: amount as string,
+          channels: { email: true, sms: false },
+        });
+      const requestsOf = (reservationId: string) =>
+        louezDb.db
+          .select({
+            amount: louezDb.paymentRequests.amount,
+            currency: louezDb.paymentRequests.currency,
+          })
+          .from(louezDb.paymentRequests)
+          .where(eq(louezDb.paymentRequests.reservationId, reservationId));
+      try {
+        const euros = await createReservation({ currency: "EUR" });
+        const yen = await createReservation({ currency: "JPY" });
+
+        assert.deepEqual(await ask(euros, "19.999"), { error: "errors.amountTooPrecise" });
+        assert.deepEqual(await ask(yen, "0.5"), { error: "errors.amountTooPrecise" });
+        for (const crafted of [20, [20], null]) {
+          assert.deepEqual(await ask(euros, crafted), { error: "errors.invalidAmount" });
+        }
+        assert.deepEqual(await requestsOf(euros), [], "nothing is created");
+        assert.deepEqual(await requestsOf(yen), []);
+        assert.deepEqual(Reflect.get(globalThis, SENT_KEY), [], "nothing is sent");
+
+        const done = await ask(euros, "20.00");
+        assert.equal(done.error, undefined);
+        assert.deepEqual(await requestsOf(euros), [{ amount: "20.00", currency: "EUR" }]);
+        assert.equal((Reflect.get(globalThis, SENT_KEY) as unknown[]).length, 1);
+      } finally {
+        Reflect.set(globalThis, STORE_KEY, store);
+        Reflect.deleteProperty(globalThis, SENT_KEY);
       }
     });
   });

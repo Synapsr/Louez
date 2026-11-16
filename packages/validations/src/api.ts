@@ -240,11 +240,18 @@ export const dashboardReservationAssignUnitsInputSchema = z.object({
   overrideTurnoverBuffer: z.boolean().optional(),
 });
 
+/**
+ * An amount a dashboard payment form sends: the text the person typed, which
+ * the write judges as it is (no number in between to round it). The write
+ * refuses any text that is not a plain decimal its currency holds.
+ */
+const typedAmountSchema = z.string().max(32);
+
 export const dashboardReservationRequestPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
     type: z.enum(["rental", "deposit", "custom"]),
-    amount: z.number().min(0.5).optional(),
+    amount: typedAmountSchema.optional(),
     channels: z.object({
       email: z.boolean(),
       sms: z.boolean(),
@@ -256,13 +263,6 @@ export const dashboardReservationRequestPaymentInputSchema = z.object({
 export const dashboardReservationGetPaymentMethodInputSchema = z.object({
   reservationId: z.string().length(21),
 });
-
-/**
- * An amount a dashboard payment form sends: the text the person typed, which
- * the write judges as it is (no number in between to round it). The write
- * refuses any text that is not a plain decimal its currency holds.
- */
-const typedAmountSchema = z.string().max(32);
 
 export const dashboardReservationRecordPaymentInputSchema = z.object({
   reservationId: z.string().length(21),

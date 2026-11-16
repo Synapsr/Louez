@@ -341,7 +341,8 @@ export interface BaseContext {
       reservationId: string,
       data: {
         type: "rental" | "deposit" | "custom";
-        amount?: number;
+        /** A custom request's amount, as typed: the action judges this text. */
+        amount?: string;
         channels: { email: boolean; sms: boolean };
         customMessage?: string;
       },

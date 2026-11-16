@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Please provide a reason",
     "invalidAmount": "Invalid amount",
+    "amountExceedsDeposit": "Amount exceeds collected deposit",
+    "paymentNotFound": "This payment no longer exists. Reload the page.",
     "amountTooPrecise": "This amount has more decimals than its currency allows.",
     "currencyNotSupportedForPayments": "Payments in this currency cannot be recorded: Louez does not count three-decimal currencies.",
     "invalidOrExpiredToken": "This link is invalid or has expired. Please request a new access link.",

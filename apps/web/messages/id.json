@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Harap berikan alasannya",
     "invalidAmount": "Jumlah tidak valid",
+    "amountExceedsDeposit": "Jumlah melebihi deposit yang dikumpulkan",
+    "paymentNotFound": "Pembayaran ini sudah tidak ada. Muat ulang halaman.",
     "amountTooPrecise": "Jumlah ini memiliki lebih banyak desimal daripada yang diizinkan mata uangnya.",
     "currencyNotSupportedForPayments": "Pembayaran dalam mata uang ini tidak dapat dicatat: Louez tidak mendukung mata uang dengan tiga desimal.",
     "invalidOrExpiredToken": "Tautan ini tidak valid atau telah kedaluwarsa. Silakan minta tautan akses baru.",

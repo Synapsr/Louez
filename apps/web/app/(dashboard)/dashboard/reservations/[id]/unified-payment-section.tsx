@@ -74,6 +74,8 @@ import { useStoreTimezone } from "@/contexts/store-context";
 import { ReferralNudge } from "@/components/dashboard/referral-nudge";
 import { orpc } from "@/lib/orpc/react";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
+import { paymentRefusalKey } from "@/lib/reservations/util.payment-refusal";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
   isFailedRefundRow,
   isRefundRow,
@@ -473,8 +475,8 @@ export function UnifiedPaymentSection({
 
   // Payment handlers
   const handleRecordPayment = async () => {
-    // As typed: the write judges this very text.
-    const amount = paymentAmount.trim();
+    // As typed, normalised as the action does it: the write judges this text.
+    const amount = typedAmount(paymentAmount) ?? "";
     const verdict = recordedPaymentAmount(amount, paymentType, currency);
     if (!verdict.ok) {
       toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
@@ -511,21 +513,23 @@ export function UnifiedPaymentSection({
       router.refresh();
       setPaymentModalOpen(false);
       resetForm();
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.recordPayment,
         properties: { error_code: "record_payment_failed", payment_type: paymentType },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The action's own refusal, translated: "exceeds the deposit" for the
+      // second of two returns sent together, never a generic failure.
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleReturnDeposit = async () => {
-    const amount = paymentAmount.trim();
+    const amount = typedAmount(paymentAmount) ?? "";
     const verdict = depositReturnAmount(amount, currency, depositBalance(payments).returnable);
     if (!verdict.ok) {
       toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
@@ -553,21 +557,23 @@ export function UnifiedPaymentSection({
       toastManager.add({ title: t("payment.depositReturned"), type: "success" });
       setDepositReturnModalOpen(false);
       resetForm();
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.returnDeposit,
         properties: { error_code: "return_deposit_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The action's own refusal, translated: "exceeds the deposit" for the
+      // second of two returns sent together, never a generic failure.
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRecordDamage = async () => {
-    const amount = paymentAmount.trim();
+    const amount = typedAmount(paymentAmount) ?? "";
     const verdict = recordedPaymentAmount(amount, "damage", currency);
     if (!verdict.ok) {
       // A damage charge is never negative: the amount is simply not valid.
@@ -603,14 +609,16 @@ export function UnifiedPaymentSection({
       toastManager.add({ title: t("payment.damageRecorded"), type: "success" });
       setDamageModalOpen(false);
       resetForm();
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.recordDamage,
         properties: { error_code: "record_damage_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The action's own refusal, translated: "exceeds the deposit" for the
+      // second of two returns sent together, never a generic failure.
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }

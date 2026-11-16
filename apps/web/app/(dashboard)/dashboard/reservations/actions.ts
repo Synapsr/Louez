@@ -136,6 +136,7 @@ import { dispatchApiEffects } from "@/lib/api/effects";
 import { paymentRecordsPort } from "@/lib/api/payment-records-port";
 import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
 import { paymentErrorKey } from "@/lib/reservations/util.payment-error-key";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
   deleteRecordedPayment,
   insertRecordedPayment,
@@ -3284,6 +3285,10 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
@@ -3297,7 +3302,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   }
 
   // Only an adjustment can be negative; the decimals are the currency's.
-  const verdict = formAmount(data.amount, data.type, reservation, store.settings);
+  const verdict = formAmount(typed, data.type, reservation, store.settings);
   if (!verdict.ok) return { error: formAmountErrorKey(verdict.refusal) };
   // The amount the row holds, as a number for the checks and the logs below.
   const amount = Number(verdict.amount);
@@ -3394,6 +3399,10 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   // The one writer of a refund given by hand, the agents' too: the person
   // clicked, so nothing is asked.
@@ -3412,7 +3421,7 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
         paymentId: data.paymentId,
         // As typed: 19.999 is judged as 19.999, never rounded to 20.00
         // before the writer sees it.
-        amount: data.amount,
+        amount: typed,
         method: data.method,
         notes: data.notes,
       },
@@ -3512,6 +3521,10 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   // The one writer of a deposit return, the agents' too: under the
   // reservation's lock, the balance counted there in hundredths. The person
@@ -3532,7 +3545,7 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
       },
       {
         reservationId,
-        amount: data.amount,
+        amount: typed,
         method: data.method,
         notes: data.notes || undefined,
       },
@@ -3574,6 +3587,10 @@ export async function recordDamage(
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
@@ -3583,7 +3600,7 @@ export async function recordDamage(
     return { error: "errors.reservationNotFound" };
   }
 
-  const verdict = formAmount(data.amount, "damage", reservation, store.settings);
+  const verdict = formAmount(typed, "damage", reservation, store.settings);
   if (!verdict.ok) {
     // A damage charge is never negative: its amount is simply not valid.
     return {
@@ -4230,7 +4247,8 @@ export async function sendAccessLinkBySms(reservationId: string) {
 
 export interface RequestPaymentInput {
   type: "rental" | "deposit" | "custom";
-  amount?: number; // Required for custom type
+  /** A custom request's amount, as typed: required for the `custom` type. */
+  amount?: TypedAmount;
   channels: { email: boolean; sms: boolean };
   customMessage?: string;
 }
@@ -4248,6 +4266,12 @@ export async function requestPayment(
     if (!store) {
       return { error: "errors.unauthorized" };
     }
+
+    // A custom amount is text, normalised as the form does it (`typedAmount`),
+    // and judged as typed with the reservation's currency below: anything
+    // else is no amount, and nothing is created or sent.
+    const typedCustom = data.type === "custom" ? typedAmount(data.amount) : undefined;
+    if (typedCustom === null) return { error: "errors.invalidAmount" };
 
     // Check Stripe is configured and able to take payments
     if (!store.stripeAccountId || !store.stripeChargesEnabled) {
@@ -4283,7 +4307,7 @@ export async function requestPayment(
     // The amount, in the reservation's currency, whatever the store's is now.
     const terms = paymentRequestTerms({
       type: data.type,
-      customAmount: data.amount,
+      customAmount: typedCustom,
       reservation,
       storeSettings: store.settings,
     });

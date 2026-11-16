@@ -22,7 +22,7 @@ test("a payment request is in the reservation's currency, not the store's of tod
   for (const type of ["rental", "deposit", "custom"] as const) {
     const terms = paymentRequestTerms({
       type,
-      customAmount: 20,
+      customAmount: "20",
       reservation: reservation("EUR"),
       storeSettings,
     });
@@ -48,7 +48,7 @@ test("a reservation older than its own currency is requested in the store's", ()
 
 test("the amount is the rental still due, the deposit, or the store's own", () => {
   const storeSettings = { currency: "EUR" };
-  const of = (type: "rental" | "deposit" | "custom", customAmount?: number) =>
+  const of = (type: "rental" | "deposit" | "custom", customAmount?: string) =>
     paymentRequestTerms({ type, customAmount, reservation: reservation(), storeSettings });
 
   assert.deepEqual(of("rental"), {
@@ -63,7 +63,7 @@ test("the amount is the rental still due, the deposit, or the store's own", () =
     description: "Deposit",
     currency: "EUR",
   });
-  assert.deepEqual(of("custom", 12.5), {
+  assert.deepEqual(of("custom", "12.5"), {
     ok: true,
     amount: 12.5,
     description: "Payment",
@@ -156,7 +156,7 @@ test("nothing to ask for is refused", () => {
     ok: false,
     error: "errors.noDepositRequired",
   });
-  for (const customAmount of [undefined, 0, 0.49]) {
+  for (const customAmount of [undefined, "0", "0.49"]) {
     assert.deepEqual(
       paymentRequestTerms({ type: "custom", customAmount, reservation: paid, storeSettings }),
       { ok: false, error: "errors.invalidAmount" },
@@ -172,4 +172,40 @@ test("the rental amount leaves out a deposit the total includes", () => {
   assert.equal(amounts("200.00", "300.00", "500.00"), 200);
   assert.equal(amounts("200.00", "0.00", "230.00"), 230);
   assert.equal(amounts("200.00", "0.00", "0.00"), 200);
+});
+
+test("a custom amount is judged as typed, in the reservation's currency", () => {
+  const terms = (customAmount: string, currency: string) =>
+    paymentRequestTerms({
+      type: "custom",
+      customAmount,
+      reservation: reservation(currency),
+      storeSettings: { currency: "EUR" },
+    });
+  // 19.999 is never asked as 20.00; half a yen is no request.
+  assert.deepEqual(terms("19.999", "EUR"), { ok: false, error: "errors.amountTooPrecise" });
+  assert.deepEqual(terms("0.5", "JPY"), { ok: false, error: "errors.amountTooPrecise" });
+  assert.deepEqual(terms("10", "KWD"), {
+    ok: false,
+    error: "errors.currencyNotSupportedForPayments",
+  });
+  for (const malformed of ["5e2", "abc", "-20"]) {
+    assert.deepEqual(
+      terms(malformed, "EUR"),
+      { ok: false, error: "errors.invalidAmount" },
+      malformed,
+    );
+  }
+  assert.deepEqual(terms("20.00", "EUR"), {
+    ok: true,
+    amount: 20,
+    description: "Payment",
+    currency: "EUR",
+  });
+  assert.deepEqual(terms("1500", "JPY"), {
+    ok: true,
+    amount: 1500,
+    description: "Payment",
+    currency: "JPY",
+  });
 });

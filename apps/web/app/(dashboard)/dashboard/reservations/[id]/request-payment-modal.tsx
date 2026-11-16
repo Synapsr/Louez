@@ -30,9 +30,11 @@ import { Label } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Input } from "@louez/ui";
 import { Checkbox } from "@louez/ui";
-import { cn, formatCurrency } from "@louez/utils";
+import { cn, currencyMinorDigits, formatCurrency } from "@louez/utils";
 
 import { orpc } from "@/lib/orpc/react";
+import { customRequestAmount } from "@/lib/reservations/util.payment-request";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
@@ -74,6 +76,7 @@ export function RequestPaymentModal({
   stripeConfigured,
 }: RequestPaymentModalProps) {
   const t = useTranslations("dashboard.reservations.requestPaymentModal");
+  const tReservations = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
 
@@ -131,17 +134,30 @@ export function RequestPaymentModal({
     return types;
   }, [canRequestRental, canRequestDeposit, remainingRental, depositAmount]);
 
+  // A custom amount as typed, judged by the action's own function: the
+  // reservation's currency and its decimals, never a number rounded first.
+  const custom = useMemo(
+    () => customRequestAmount(typedAmount(customAmount) ?? "", currency),
+    [customAmount, currency],
+  );
   const selectedAmount = useMemo(() => {
     if (selectedType === "rental") return remainingRental;
     if (selectedType === "deposit") return depositAmount;
-    if (selectedType === "custom") {
-      const parsed = parseFloat(customAmount);
-      return isNaN(parsed) ? 0 : parsed;
-    }
+    if (selectedType === "custom") return custom.ok ? custom.amount : 0;
     return 0;
-  }, [selectedType, customAmount, remainingRental, depositAmount]);
+  }, [selectedType, custom, remainingRental, depositAmount]);
 
-  const isValidAmount = selectedAmount >= 0.5;
+  const isValidAmount = selectedType === "custom" ? custom.ok : selectedAmount >= 0.5;
+  const customRefusal = custom.ok
+    ? null
+    : custom.error === "errors.amountTooPrecise"
+      ? tReservations("payment.amountTooPrecise", {
+          currency,
+          decimals: currencyMinorDigits(currency) ?? 0,
+        })
+      : custom.error === "errors.currencyNotSupportedForPayments"
+        ? tReservations("payment.currencyNotSupported", { currency })
+        : t("minAmount", { amount: formatCurrency(0.5, currency) });
   const hasChannel = sendEmail || sendSms;
   const canSubmit = selectedType && isValidAmount && hasChannel && stripeConfigured;
 
@@ -172,7 +188,7 @@ export function RequestPaymentModal({
         reservationId,
         payload: {
           type: selectedType,
-          amount: selectedType === "custom" ? selectedAmount : undefined,
+          amount: selectedType === "custom" ? (typedAmount(customAmount) ?? "") : undefined,
           channels: { email: sendEmail, sms: sendSms },
           customMessage: customMessage || undefined,
         },
@@ -357,7 +373,7 @@ export function RequestPaymentModal({
                     <Input
                       id="amount"
                       type="number"
-                      step="0.01"
+                      step={currencyMinorDigits(currency) === 0 ? "1" : "0.01"}
                       min="0.50"
                       value={customAmount}
                       onChange={(e) => setCustomAmount(e.target.value)}
@@ -368,10 +384,8 @@ export function RequestPaymentModal({
                       {currency}
                     </span>
                   </div>
-                  {customAmount && !isValidAmount && (
-                    <p className="text-xs text-destructive">
-                      {t("minAmount", { amount: formatCurrency(0.5, currency) })}
-                    </p>
+                  {customAmount && customRefusal && (
+                    <p className="text-xs text-destructive">{customRefusal}</p>
                   )}
                 </div>
               )}

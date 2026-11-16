@@ -29,6 +29,7 @@ import { refundAmount } from "@louez/api/services/payment-amount";
 import { currencyMinorDigits } from "@louez/utils";
 
 import { orpc } from "@/lib/orpc/react";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 
 import {
@@ -78,7 +79,7 @@ export const ManualPaymentRefundDialog = ({
   const handleRefund = async () => {
     // As typed, judged by the writer's own function before anything is sent:
     // 19.999 is too precise in euros, never 20.00.
-    const typed = amount.trim();
+    const typed = typedAmount(amount) ?? "";
     const verdict = refundAmount(typed, currency, Math.round(remainingAmount * 100));
     if (!verdict.ok) {
       const title =

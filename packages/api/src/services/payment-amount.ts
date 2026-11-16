@@ -10,10 +10,13 @@ import { currencyMinorDigits } from "@louez/utils";
  * anyone, and the displays a person reads show the amount it returns.
  *
  * Returns the text the row will hold, every decimal written ("120" holds
- * "120.00", "007.5" holds "7.50"), or null for a text the writes refuse.
- * Pure, and light: the page's tests and the sample approvals use it too.
+ * "120.00", "007.5" holds "7.50"), or null for a text the writes refuse,
+ * and for anything that is not text: never a number or an array read as
+ * one (`7`, `[7]`). Pure, and light: the page's tests and the sample
+ * approvals use it too.
  */
-export function paymentAmount(raw: string): string | null {
+export function paymentAmount(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
   const match = /^(-?)(\d{1,8})(?:\.(\d{1,2}))?$/.exec(raw);
   if (!match) return null;
   const [, sign = "", whole = "", fraction = ""] = match;
@@ -30,8 +33,8 @@ export function paymentAmount(raw: string): string | null {
  * text is refused as too precise for its currency, whose message names the
  * decimals it allows, not as malformed: what is accepted stays the same.
  */
-function pastTheRowsDecimals(raw: string): boolean {
-  return /^-?\d{1,8}\.\d{3,}$/.test(raw) && /[1-9]/.test(raw);
+function pastTheRowsDecimals(raw: unknown): boolean {
+  return typeof raw === "string" && /^-?\d{1,8}\.\d{3,}$/.test(raw) && /[1-9]/.test(raw);
 }
 
 /** Why a text with too many decimals is refused in `currency`: its decimals, or the currency itself. */
