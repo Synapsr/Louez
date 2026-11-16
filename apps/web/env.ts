@@ -9,6 +9,7 @@ import { env as validationsEnv } from "@louez/validations/env";
 
 import { louezBillingSchema } from "@/lib/billing/mode";
 import { louezHostedBySchema } from "@/lib/hosting";
+import { louezSearchIndexingSchema } from "@/lib/search-indexing";
 import {
   publicEnvSchema,
   readPublicEnvRuntimeValues,
@@ -387,6 +388,10 @@ export const env = createEnv({
     // (lib/billing/startup-check.ts). Consumed through lib/hosting.ts at call time, like
     // LOUEZ_MODE.
     LOUEZ_HOSTED_BY: louezHostedBySchema,
+    // Search indexing: on (default) or off, for a staging instance that must stay out of
+    // search results. Consumed through lib/search-indexing.ts at call time, like
+    // LOUEZ_MODE.
+    LOUEZ_SEARCH_INDEXING: louezSearchIndexingSchema,
     // The private billing service (louez-billing docs/api, README §4.3 and §12). Ignored
     // unless LOUEZ_BILLING=cloud and BILLING_SERVICE_URL are both set; then
     // lib/billing-sync/config.ts checks them and the server refuses to start when one is
@@ -517,6 +522,7 @@ export const env = createEnv({
     LOUEZ_MODE: process.env.LOUEZ_MODE,
     LOUEZ_BILLING: process.env.LOUEZ_BILLING,
     LOUEZ_HOSTED_BY: process.env.LOUEZ_HOSTED_BY,
+    LOUEZ_SEARCH_INDEXING: process.env.LOUEZ_SEARCH_INDEXING,
     BILLING_SERVICE_URL: process.env.BILLING_SERVICE_URL,
     BILLING_OUTBOUND_KEYS: process.env.BILLING_OUTBOUND_KEYS,
     BILLING_OUTBOUND_ACTIVE_KID: process.env.BILLING_OUTBOUND_ACTIVE_KID,

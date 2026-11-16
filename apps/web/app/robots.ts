@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { connection } from "next/server";
 
+import { isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { isLoopbackHost } from "@/lib/util.host";
 import { getRequestHost, isStorefrontHost } from "@/lib/util.storefront-host";
 
@@ -32,6 +34,15 @@ const PRIVATE_PATHS = [
 ];
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
+  // Read at request time, so the prebuilt image honors LOUEZ_SEARCH_INDEXING.
+  await connection();
+  // A staging instance: nothing to crawl, and no sitemap to point at.
+  if (!isSearchIndexingEnabled()) {
+    return {
+      rules: { userAgent: "*", disallow: "/" },
+    };
+  }
+
   // Dashboard, www and apex hosts: private application surface, and on a
   // platform deployment the dashboard also mirrors every storefront under
   // /{slug}. Keep the whole host out of the index.
