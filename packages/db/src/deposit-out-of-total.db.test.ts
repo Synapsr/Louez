@@ -81,115 +81,119 @@ const ROWS: Row[] = [
   { id: "current", subtotal: "100.00", deposit: "30.00", total: "100.00" },
 ];
 
-describe("migration 0108: the deposit out of the total (database)", {
-  skip: skipWithoutTestDatabase(),
-}, () => {
-  let database: TestDatabase;
-  let connection: Connection;
+describe(
+  "migration 0108: the deposit out of the total (database)",
+  {
+    skip: skipWithoutTestDatabase(),
+  },
+  () => {
+    let database: TestDatabase;
+    let connection: Connection;
 
-  before(async () => {
-    database = await createTestDatabase("deposit_out_of_total");
-    connection = await database.connect();
-    // The test database is migrated already: the rows are written after 0108
-    // ran on an empty table, as the rows of an instance were written before.
-    await connection.query("SET time_zone = '+00:00'");
-    for (const row of ROWS) {
-      await connection.query(
-        `INSERT INTO reservations
+    before(async () => {
+      database = await createTestDatabase("deposit_out_of_total");
+      connection = await database.connect();
+      // The test database is migrated already: the rows are written after 0108
+      // ran on an empty table, as the rows of an instance were written before.
+      await connection.query("SET time_zone = '+00:00'");
+      for (const row of ROWS) {
+        await connection.query(
+          `INSERT INTO reservations
           (id, store_id, customer_id, number, reservation_status, start_date, end_date, subtotal_amount,
            discount_amount, delivery_fee, tax_amount, tulip_insurance_amount,
            deposit_amount, total_amount, source, tax_display_mode, created_at, updated_at)
          VALUES (?, ?, 'customer', ?, 'completed', '2026-02-10 09:00:00', '2026-02-12 09:00:00',
            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '2026-03-01 08:00:00')`,
-        [
-          row.id,
-          STORE,
-          row.id,
-          row.subtotal,
-          row.discount ?? "0.00",
-          row.deliveryFee ?? "0.00",
-          row.tax ?? null,
-          row.insurance ?? null,
-          row.deposit,
-          row.total,
-          row.source ?? "online",
-          row.taxDisplayMode ?? null,
-          row.createdAt ?? "2026-02-01 08:00:00",
-        ],
-      );
-    }
-  });
-
-  after(async () => {
-    await connection?.end();
-    await database?.drop();
-  });
-
-  /** The migration's statements, as the migrator splits them. */
-  async function runMigration() {
-    const sql = await readFile(MIGRATION, "utf8");
-    for (const statement of sql.split("--> statement-breakpoint")) {
-      await connection.query(statement);
-    }
-  }
-
-  async function totals() {
-    const [rows] = await connection.query<RowDataPacket[]>(
-      "SELECT id, total_amount AS total, updated_at AS updatedAt FROM reservations ORDER BY id",
-    );
-    return Object.fromEntries(rows.map((row) => [row.id, String(row.total)]));
-  }
-
-  async function history() {
-    const [rows] = await connection.query<RowDataPacket[]>(
-      "SELECT reservation_id AS id, activity_type AS type, metadata FROM reservation_activity ORDER BY reservation_id",
-    );
-    return rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
-    }));
-  }
-
-  test("only the totals that hold the deposit lose it, once, each with its history line", async () => {
-    const before = await totals();
-
-    await runMigration();
-    await runMigration();
-
-    const after = await totals();
-    assert.deepEqual(after, {
-      ...before,
-      legacy: "100.00",
-      legacy_disc_delivery: "105.00",
+          [
+            row.id,
+            STORE,
+            row.id,
+            row.subtotal,
+            row.discount ?? "0.00",
+            row.deliveryFee ?? "0.00",
+            row.tax ?? null,
+            row.insurance ?? null,
+            row.deposit,
+            row.total,
+            row.source ?? "online",
+            row.taxDisplayMode ?? null,
+            row.createdAt ?? "2026-02-01 08:00:00",
+          ],
+        );
+      }
     });
-    assert.deepEqual(await history(), [
-      {
-        id: "legacy",
-        type: "modified",
-        metadata: {
-          kind: "deposit_removed_from_total",
-          migration: "0108",
-          previousTotal: "130.00",
-          depositRemoved: "30.00",
-          total: "100.00",
+
+    after(async () => {
+      await connection?.end();
+      await database?.drop();
+    });
+
+    /** The migration's statements, as the migrator splits them. */
+    async function runMigration() {
+      const sql = await readFile(MIGRATION, "utf8");
+      for (const statement of sql.split("--> statement-breakpoint")) {
+        await connection.query(statement);
+      }
+    }
+
+    async function totals() {
+      const [rows] = await connection.query<RowDataPacket[]>(
+        "SELECT id, total_amount AS total, updated_at AS updatedAt FROM reservations ORDER BY id",
+      );
+      return Object.fromEntries(rows.map((row) => [row.id, String(row.total)]));
+    }
+
+    async function history() {
+      const [rows] = await connection.query<RowDataPacket[]>(
+        "SELECT reservation_id AS id, activity_type AS type, metadata FROM reservation_activity ORDER BY reservation_id",
+      );
+      return rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
+      }));
+    }
+
+    test("only the totals that hold the deposit lose it, once, each with its history line", async () => {
+      const before = await totals();
+
+      await runMigration();
+      await runMigration();
+
+      const after = await totals();
+      assert.deepEqual(after, {
+        ...before,
+        legacy: "100.00",
+        legacy_disc_delivery: "105.00",
+      });
+      assert.deepEqual(await history(), [
+        {
+          id: "legacy",
+          type: "modified",
+          metadata: {
+            kind: "deposit_removed_from_total",
+            migration: "0108",
+            previousTotal: "130.00",
+            depositRemoved: "30.00",
+            total: "100.00",
+          },
         },
-      },
-      {
-        id: "legacy_disc_delivery",
-        type: "modified",
-        metadata: {
-          kind: "deposit_removed_from_total",
-          migration: "0108",
-          previousTotal: "135.00",
-          depositRemoved: "30.00",
-          total: "105.00",
+        {
+          id: "legacy_disc_delivery",
+          type: "modified",
+          metadata: {
+            kind: "deposit_removed_from_total",
+            migration: "0108",
+            previousTotal: "135.00",
+            depositRemoved: "30.00",
+            total: "105.00",
+          },
         },
-      },
-    ]);
-    const [stamps] = await connection.query<RowDataPacket[]>(
-      "SELECT DISTINCT updated_at AS updatedAt FROM reservations",
-    );
-    assert.equal(stamps.length, 1, "updated_at is left as it was");
-  });
-});
+      ]);
+      const [stamps] = await connection.query<RowDataPacket[]>(
+        "SELECT DISTINCT updated_at AS updatedAt FROM reservations",
+      );
+      assert.equal(stamps.length, 1, "updated_at is left as it was");
+    });
+  },
+);

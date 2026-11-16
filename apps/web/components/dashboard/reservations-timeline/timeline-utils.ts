@@ -49,7 +49,9 @@ export interface TimelineReservation {
 }
 
 /** The rental's price: its stored total, which never contains the deposit. */
-export function getTimelineRentalAmount(reservation: Pick<TimelineReservation, "totalAmount">): number {
+export function getTimelineRentalAmount(
+  reservation: Pick<TimelineReservation, "totalAmount">,
+): number {
   return getReservationRentalAmount(reservation);
 }
 

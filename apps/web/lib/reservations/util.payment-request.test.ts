@@ -203,16 +203,14 @@ test("what is owed is the total less the rental paid: the tax is never taken for
 
 test("a rental whose discount covers it asks nothing", () => {
   // A rental of 20.00 with 20.00 off: a total of zero.
-  const terms = paymentRequestTerms({
-    type: "rental",
-    reservation: {
-      ...{ subtotalAmount: "20.00", discountAmount: "20.00" },
-      currency: "EUR",
-      depositAmount: "0.00",
-      totalAmount: "0.00",
-      payments: [],
-    },
-    storeSettings: null,
-  });
+  const covered = {
+    currency: "EUR",
+    subtotalAmount: "20.00",
+    discountAmount: "20.00",
+    depositAmount: "0.00",
+    totalAmount: "0.00",
+    payments: [],
+  };
+  const terms = paymentRequestTerms({ type: "rental", reservation: covered, storeSettings: null });
   assert.deepEqual(terms, { ok: false, error: "errors.noAmountDue" });
 });
