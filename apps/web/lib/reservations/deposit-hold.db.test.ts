@@ -1187,7 +1187,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       assert.equal((await request(released, stripe)).ok, true);
       const authorized = [await readMark(captured), await readMark(released)];
       await hold.captureDepositHold(
-        { ...settlement(captured), amount: 10, reason: "scratch" },
+        { ...settlement(captured), amount: "10", reason: "scratch" },
         depsOf(stripe),
       );
       await hold.releaseDepositHold(settlement(released), depsOf(stripe));
@@ -1238,7 +1238,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
 
       // The store is on another account now, or on none.
       const capture = await hold.captureDepositHold(
-        { ...settlement(captured, NEXT_ACCOUNT), amount: 20, reason: "broken wheel" },
+        { ...settlement(captured, NEXT_ACCOUNT), amount: "20", reason: "broken wheel" },
         depsOf(stripe),
       );
       const release = await hold.releaseDepositHold(settlement(released, null), depsOf(stripe));
@@ -1699,7 +1699,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
 
       // Part of it is captured: Stripe and Louez agree on what was taken.
       const capture = await hold.captureDepositHold(
-        { ...settlement(captured), amount: 20, reason: "Scratched frame" },
+        { ...settlement(captured), amount: "20", reason: "Scratched frame" },
         depsOf(stripe),
       );
       assert.equal(capture.ok, true);
@@ -2751,7 +2751,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       const [intent] = stripe.held();
 
       const result = await hold.captureDepositHold(
-        { ...settlement(reservationId), amount: 30, reason: "broken wheel" },
+        { ...settlement(reservationId), amount: "30", reason: "broken wheel" },
         depsOf(stripe),
       );
       // Stripe tells the Connect webhook of the same capture, three times: no second
@@ -2816,7 +2816,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       };
 
       const result = await hold.captureDepositHold(
-        { ...settlement(reservationId), amount: 30, reason: "broken wheel" },
+        { ...settlement(reservationId), amount: "30", reason: "broken wheel" },
         first,
       );
 
@@ -2836,10 +2836,10 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       const unheld = await createReservation();
       const held = await createReservation();
       assert.equal((await request(held, stripe)).ok, true);
-      const capture = (reservationId: string, amount: number, reason: string) =>
+      const capture = (reservationId: string, amount: string, reason: string) =>
         hold.captureDepositHold({ ...settlement(reservationId), amount, reason }, depsOf(stripe));
 
-      assert.deepEqual(await capture(unheld, 10, "scratch"), {
+      assert.deepEqual(await capture(unheld, "10", "scratch"), {
         ok: false,
         error: "errors.stripe.noActiveAuthorization",
       });
@@ -2847,16 +2847,86 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
         ok: false,
         error: "errors.stripe.noActiveAuthorization",
       });
-      assert.deepEqual(await capture(held, 60, "scratch"), {
+      assert.deepEqual(await capture(held, "60", "scratch"), {
         ok: false,
         error: "errors.invalidAmount",
       });
-      assert.deepEqual(await capture(held, 10, " "), {
+      assert.deepEqual(await capture(held, "10", " "), {
         ok: false,
         error: "errors.reasonRequired",
       });
       assert.equal(stripe.held().length, 1);
       assert.equal((await readDeposit(held))?.status, "authorized");
+    });
+
+    test("a capture amount is the text typed, judged before Stripe is asked anything; its minor units come from that text", async () => {
+      /** The fake, with every call to Stripe that a capture makes counted. */
+      const counted = (stripe: FakeDepositStripe) => {
+        const asked: string[] = [];
+        const deps: DepositHoldDeps = {
+          ...depsOf(stripe),
+          stripe: {
+            ...stripe.port,
+            readIntent: (accountId, paymentIntentId) => {
+              asked.push("readIntent");
+              return stripe.port.readIntent(accountId, paymentIntentId);
+            },
+            capture: (accountId, paymentIntentId, amountMinor) => {
+              asked.push(`capture ${amountMinor}`);
+              return stripe.port.capture(accountId, paymentIntentId, amountMinor);
+            },
+          },
+        };
+        return { asked, deps };
+      };
+
+      // Euros: too many decimals, an exponent, anything but text are refused, and
+      // Stripe is never asked.
+      const euros = await createReservation();
+      const eurStripe = stripeWithCard();
+      assert.equal((await request(euros, eurStripe)).ok, true);
+      const eur = counted(eurStripe);
+      const capture = (reservationId: string, amount: unknown, deps: DepositHoldDeps) =>
+        hold.captureDepositHold(
+          { ...settlement(reservationId), amount: amount as string, reason: "scratch" },
+          deps,
+        );
+      for (const [amount, error] of [
+        ["19.999", "errors.amountTooPrecise"],
+        ["1.005", "errors.amountTooPrecise"],
+        ["5e2", "errors.invalidAmount"],
+        [5, "errors.invalidAmount"],
+        [["5"], "errors.invalidAmount"],
+        [null, "errors.invalidAmount"],
+        ["50.01", "errors.invalidAmount"],
+      ] as const) {
+        assert.deepEqual(
+          await capture(euros, amount, eur.deps),
+          { ok: false, error },
+          JSON.stringify(amount),
+        );
+      }
+      assert.deepEqual(eur.asked, [], "Stripe is never asked");
+      assert.equal((await readDeposit(euros))?.status, "authorized");
+
+      // Half a euro, as a number input may give it: exactly 50 cents.
+      const half = await capture(euros, "0.5", eur.deps);
+      assert.equal(half.ok && half.amountCapturedMinor, 50);
+      assert.deepEqual(eur.asked, ["readIntent", "capture 50"]);
+
+      // Yen: half a yen is refused before Stripe; 1500 yen captures 1500 units.
+      const yen = await createReservation({ currency: "JPY", depositAmount: "5000.00" });
+      const jpyStripe = stripeWithCard();
+      assert.equal((await request(yen, jpyStripe)).ok, true);
+      const jpy = counted(jpyStripe);
+      assert.deepEqual(await capture(yen, "0.5", jpy.deps), {
+        ok: false,
+        error: "errors.amountTooPrecise",
+      });
+      assert.deepEqual(jpy.asked, []);
+      const whole = await capture(yen, "1500", jpy.deps);
+      assert.equal(whole.ok && whole.amountCapturedMinor, 1500);
+      assert.deepEqual(jpy.asked, ["readIntent", "capture 1500"]);
     });
 
     test("a release answered late leaves the hold the reservation took meanwhile, and its capture", async () => {
@@ -2877,7 +2947,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
             assert.equal(await settle(reservationId, stripe, first), "released");
             second = (await customerAuthorizes(reservationId, stripe)).intent.id;
             const capture = await hold.captureDepositHold(
-              { ...settlement(reservationId), amount: 50, reason: "lost" },
+              { ...settlement(reservationId), amount: "50", reason: "lost" },
               depsOf(stripe),
             );
             assert.equal(capture.ok, true);
@@ -2916,7 +2986,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
           ...stripe.port,
           release: async (accountId, paymentIntentId) => {
             const capture = await hold.captureDepositHold(
-              { ...settlement(reservationId), amount: 50, reason: "lost" },
+              { ...settlement(reservationId), amount: "50", reason: "lost" },
               depsOf(stripe),
             );
             assert.equal(capture.ok, true);
@@ -2955,7 +3025,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
         },
       };
       const captured = await hold.captureDepositHold(
-        { ...settlement(reservationId), amount: 50, reason: "lost" },
+        { ...settlement(reservationId), amount: "50", reason: "lost" },
         racing,
       );
 
@@ -2975,7 +3045,7 @@ describe("deposit hold (database)", { skip: skipWithoutTestDatabase() }, () => {
       assert.equal(
         (
           await hold.captureDepositHold(
-            { ...settlement(reservationId), amount: 50, reason: "lost" },
+            { ...settlement(reservationId), amount: "50", reason: "lost" },
             depsOf(stripe),
           )
         ).ok,

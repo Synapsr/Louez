@@ -52,6 +52,7 @@ import { Textarea } from '@louez/ui'
 import { Progress } from '@louez/ui'
 import { cn, getCurrencySymbol } from '@louez/utils'
 
+import { typedAmount } from '@/lib/reservations/util.typed-amount'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import { useFormatLocale } from '@/hooks/use-format-locale'
@@ -204,7 +205,8 @@ export function DepositSection({
     try {
       await captureHoldMutation.mutateAsync({
         reservationId,
-        payload: { amount: captureAmountNum, reason: captureReason },
+        // As typed: the action judges this text.
+        payload: { amount: typedAmount(captureAmount) ?? '', reason: captureReason },
       })
       toastManager.add({ title: t('captured'), type: 'success' })
       setCaptureModalOpen(false)

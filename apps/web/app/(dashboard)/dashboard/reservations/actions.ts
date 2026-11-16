@@ -138,11 +138,14 @@ import {
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
 import { dispatchApiEffects } from "@/lib/api/effects";
+import { paymentRecordsPort } from "@/lib/api/payment-records-port";
 import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
-import { refundErrorKey } from "@/lib/reservations/util.refund-error-key";
+import { paymentErrorKey } from "@/lib/reservations/util.payment-error-key";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
   deleteRecordedPayment,
   insertRecordedPayment,
+  insertRecordedPaymentWithFacts,
 } from "@/lib/reservations/dashboard-payment-writes";
 import {
   authorizeDepositHold,
@@ -180,7 +183,12 @@ import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delive
 import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
 import { evaluateReservationRules } from "@louez/utils";
-import { recordPaymentRefund } from "@louez/api/services/payment-records";
+import {
+  paymentAmount,
+  recordedPaymentAmount,
+  type RecordedAmountVerdict,
+} from "@louez/api/services/payment-amount";
+import { recordDepositReturn, recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,
@@ -3227,9 +3235,12 @@ export async function updateReservation(
 export type PaymentType = "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
 export type PaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
 
+/** An amount as the form sent it: the text typed, which the writes judge as it is. */
+type TypedAmount = string;
+
 interface RecordPaymentData {
   type: PaymentType;
-  amount: number;
+  amount: TypedAmount;
   method: PaymentMethod;
   paidAt?: Date;
   notes?: string;
@@ -3237,7 +3248,7 @@ interface RecordPaymentData {
 
 interface RefundManualPaymentData {
   paymentId: string;
-  amount: number;
+  amount: TypedAmount;
   method: PaymentMethod;
   notes?: string;
 }
@@ -3246,11 +3257,64 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * An amount a payment form sent, as typed, judged as the agents' writes judge it
+ * (`recordedPaymentAmount`, packages/api services/payment-amount.ts): its
+ * text, its sign for its type, and at most the decimals of the reservation's
+ * currency, in a currency the money layer carries. Accepted, it is the text
+ * the row holds, as `toFixed(2)` wrote it ("1500.00" in yen, "7.50" in euros).
+ */
+function formAmount(
+  amount: TypedAmount,
+  type: PaymentType,
+  reservation: { currency: string | null },
+  storeSettings: Parameters<typeof reservationCurrency>[1],
+): RecordedAmountVerdict {
+  return recordedPaymentAmount(
+    amount,
+    type,
+    reservationCurrency(reservation.currency, storeSettings),
+  );
+}
+
+/** The length of a record id's column (`id()`, `@louez/db` schema): none is longer. */
+const RECORD_ID_MAX_LENGTH = 21;
+
+/**
+ * Whether a call names a record by a string an id can be. An action called
+ * directly with anything else (an array, a number, megabytes of text) is
+ * refused as a record not found, before any read: never a database error.
+ */
+function isRecordId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= RECORD_ID_MAX_LENGTH;
+}
+
+/** The dashboard's text for an amount `formAmount` refused. */
+function formAmountErrorKey(
+  refusal: Exclude<RecordedAmountVerdict, { ok: true }>["refusal"],
+): string {
+  switch (refusal) {
+    case "negative_outside_adjustment":
+      return "errors.negativeAmountOnlyForAdjustment";
+    case "too_precise":
+      return "errors.amountTooPrecise";
+    case "currency_unsupported":
+      return "errors.currencyNotSupportedForPayments";
+    case "amount_invalid":
+      return "errors.invalidAmount";
+  }
+}
+
 export async function recordPayment(reservationId: string, data: RecordPaymentData) {
   const store = await getStoreForUser();
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
@@ -3263,25 +3327,22 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     return { error: "errors.reservationNotFound" };
   }
 
-  if (data.amount === 0) {
-    return { error: "errors.invalidAmount" };
-  }
+  // Only an adjustment can be negative; the decimals are the currency's.
+  const verdict = formAmount(typed, data.type, reservation, store.settings);
+  if (!verdict.ok) return { error: formAmountErrorKey(verdict.refusal) };
+  // The amount the row holds, as a number for the checks and the logs below.
+  const amount = Number(verdict.amount);
 
-  // Only adjustment type can have negative amounts
-  if (data.amount < 0 && data.type !== "adjustment") {
-    return { error: "errors.negativeAmountOnlyForAdjustment" };
-  }
-
-  if (data.amount > 0 && data.type === "rental") {
+  if (amount > 0 && data.type === "rental") {
     const rentalPaid = getRentalPaid(reservation.payments);
     const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
 
-    if (data.amount > rentalRemaining) {
+    if (amount > rentalRemaining) {
       return { error: "errors.invalidAmount" };
     }
   }
 
-  if (data.amount > 0 && data.type === "deposit") {
+  if (amount > 0 && data.type === "deposit") {
     const depositCollected = reservation.payments
       .filter((p) => p.type === "deposit" && p.status === "completed")
       .reduce((sum, p) => sum + parseFloat(p.amount), 0);
@@ -3289,7 +3350,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
       parseFloat(reservation.depositAmount || "0") - depositCollected,
     );
 
-    if (data.amount > depositRemaining) {
+    if (amount > depositRemaining) {
       return { error: "errors.invalidAmount" };
     }
   }
@@ -3301,20 +3362,20 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
       reservationId,
       storeId: store.id,
       storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
+      amount: verdict.amount,
       type: data.type,
       method: data.method,
       origin: "manual",
       paidAt: data.paidAt || new Date(),
       notes: data.notes || null,
     });
-    if (data.type === "rental" && data.amount > 0) {
+    if (data.type === "rental" && amount > 0) {
       await validateReservationContract(tx, reservationId, store.id, "payment");
     }
   });
 
   let invoiceNumber: string | undefined;
-  if (["rental", "damage", "adjustment"].includes(data.type) && data.amount > 0) {
+  if (["rental", "damage", "adjustment"].includes(data.type) && amount > 0) {
     const invoiceGeneration = await tryGenerateInvoiceForPayment(
       paymentId,
       "dashboard_record_payment",
@@ -3331,7 +3392,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
     type: data.type,
-    amount: data.amount,
+    amount,
     method: data.method,
   });
 
@@ -3339,7 +3400,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   notifyPaymentReceived(
     { id: store.id, name: store.name, slug: store.slug },
     reservation.number,
-    data.amount,
+    amount,
     reservationCurrency(reservation.currency, store.settings),
   ).catch(() => {});
 
@@ -3353,7 +3414,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     properties: {
       payment_type: data.type,
       payment_method: data.method,
-      amount_cents: toAnalyticsAmountCents(data.amount),
+      amount_cents: toAnalyticsAmountCents(amount),
     },
   });
   return { success: true, paymentId, invoiceNumber };
@@ -3364,10 +3425,12 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
   if (!store) {
     return { error: "errors.unauthorized" };
   }
-
-  if (!Number.isFinite(data.amount) || data.amount <= 0) {
-    return { error: "errors.invalidAmount" };
-  }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  if (!isRecordId(data.paymentId)) return { error: "errors.paymentNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   // The one writer of a refund given by hand, the agents' too: the person
   // clicked, so nothing is asked.
@@ -3384,20 +3447,22 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
       {
         reservationId,
         paymentId: data.paymentId,
-        amount: data.amount.toFixed(2),
+        // As typed: 19.999 is judged as 19.999, never rounded to 20.00
+        // before the writer sees it.
+        amount: typed,
         method: data.method,
         notes: data.notes,
       },
       { source: "dashboard_refund_manual_payment" },
     );
   } catch (error) {
-    return { error: refundErrorKey(error) };
+    return { error: paymentErrorKey(error) };
   }
 
   await logReservationActivity(reservationId, "payment_updated", {
     paymentId: data.paymentId,
     refundPaymentId: refund.refundId,
-    amount: data.amount,
+    amount: Number(refund.amount),
     method: data.method,
     action: "refunded",
   });
@@ -3417,6 +3482,7 @@ export async function deletePayment(paymentId: string) {
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(paymentId)) return { error: "errors.paymentNotFound" };
 
   // Get payment with reservation to verify ownership
   const payment = await db.query.payments.findFirst({
@@ -3474,7 +3540,7 @@ export async function deletePayment(paymentId: string) {
 }
 
 interface ReturnDepositData {
-  amount: number;
+  amount: TypedAmount;
   method: PaymentMethod;
   notes?: string;
 }
@@ -3484,59 +3550,47 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      payments: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  if (data.amount <= 0) {
-    return { error: "errors.invalidAmount" };
-  }
-
-  // Calculate how much deposit was collected
-  const depositCollected = reservation.payments
-    .filter((p) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  // Calculate how much was already returned
-  const depositReturned = reservation.payments
-    .filter((p) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  const maxReturnable = depositCollected - depositReturned;
-
-  if (data.amount > maxReturnable) {
-    return { error: "errors.amountExceedsDeposit" };
-  }
-
+  // The one writer of a deposit return, the agents' too: under the
+  // reservation's lock, the balance counted there in hundredths. The person
+  // clicked, so nothing is asked.
   const paymentId = nanoid();
-  await db.transaction((tx) =>
-    insertRecordedPayment(tx, {
-      id: paymentId,
-      reservationId,
-      storeId: store.id,
-      storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
-      type: "deposit_return",
-      method: data.method,
-      origin: "deposit",
-      paidAt: new Date(),
-      notes: data.notes || null,
-    }),
-  );
+  let recorded: Awaited<ReturnType<typeof recordDepositReturn>>;
+  try {
+    recorded = await recordDepositReturn(
+      {
+        storeId: store.id,
+        storeSettings: store.settings ?? null,
+        port: {
+          ...paymentRecordsPort,
+          insert: (tx, payment) =>
+            insertRecordedPaymentWithFacts(tx, { ...payment, id: paymentId }),
+        },
+        confirm: async () => null,
+      },
+      {
+        reservationId,
+        amount: typed,
+        method: data.method,
+        notes: data.notes || undefined,
+      },
+    );
+  } catch (error) {
+    return { error: paymentErrorKey(error) };
+  }
+  // The amount the row holds, as a number for the log and the analytics.
+  const amount = Number(paymentAmount(recorded.amount));
 
   // Log activity
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
     type: "deposit_return",
-    amount: data.amount,
+    amount,
     method: data.method,
   });
 
@@ -3549,7 +3603,7 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
     action: reservationAnalyticsActions.returnDeposit,
     properties: {
       payment_method: data.method,
-      amount_cents: toAnalyticsAmountCents(data.amount),
+      amount_cents: toAnalyticsAmountCents(amount),
     },
   });
   return { success: true, paymentId };
@@ -3557,12 +3611,17 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
 
 export async function recordDamage(
   reservationId: string,
-  data: { amount: number; method: PaymentMethod; notes: string },
+  data: { amount: TypedAmount; method: PaymentMethod; notes: string },
 ) {
   const store = await getStoreForUser();
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
@@ -3572,9 +3631,18 @@ export async function recordDamage(
     return { error: "errors.reservationNotFound" };
   }
 
-  if (data.amount <= 0) {
-    return { error: "errors.invalidAmount" };
+  const verdict = formAmount(typed, "damage", reservation, store.settings);
+  if (!verdict.ok) {
+    // A damage charge is never negative: its amount is simply not valid.
+    return {
+      error:
+        verdict.refusal === "negative_outside_adjustment"
+          ? "errors.invalidAmount"
+          : formAmountErrorKey(verdict.refusal),
+    };
   }
+  // The amount the row holds, as a number for the log and the analytics.
+  const amount = Number(verdict.amount);
 
   const paymentId = nanoid();
   await db.transaction((tx) =>
@@ -3583,7 +3651,7 @@ export async function recordDamage(
       reservationId,
       storeId: store.id,
       storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
+      amount: verdict.amount,
       type: "damage",
       method: data.method,
       origin: "manual",
@@ -3598,7 +3666,7 @@ export async function recordDamage(
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
     type: "damage",
-    amount: data.amount,
+    amount,
     method: data.method,
     notes: data.notes,
   });
@@ -3612,7 +3680,7 @@ export async function recordDamage(
     action: reservationAnalyticsActions.recordDamage,
     properties: {
       payment_method: data.method,
-      amount_cents: toAnalyticsAmountCents(data.amount),
+      amount_cents: toAnalyticsAmountCents(amount),
     },
   });
   return { success: true, paymentId };
@@ -3628,6 +3696,7 @@ export async function createDepositHold(reservationId: string) {
   if (!store || !store.stripeAccountId) {
     return { error: "errors.noStripeAccount" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
 
   const result = await authorizeDepositHold(
     {
@@ -3663,12 +3732,17 @@ export async function createDepositHold(reservationId: string) {
  */
 export async function captureDepositHold(
   reservationId: string,
-  data: { amount: number; reason: string },
+  data: { amount: TypedAmount; reason: string },
 ) {
   const store = await getStoreForUser();
   if (!store) {
     return { error: "errors.noStripeAccount" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`); judged with the
+  // hold's currency before Stripe is asked anything.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   const result = await captureReferencedDepositHold(
     {
@@ -3677,7 +3751,7 @@ export async function captureDepositHold(
       fallbackAccountId: store.stripeAccountId,
       storeSettings: store.settings,
       actorUserId: await getActorUserId(),
-      amount: data.amount,
+      amount: typed,
       reason: data.reason,
     },
     depositHoldDeps,
@@ -3697,7 +3771,7 @@ export async function captureDepositHold(
     storeId: store.id,
     reservationId,
     action: reservationAnalyticsActions.captureDepositHold,
-    properties: { amount_cents: toAnalyticsAmountCents(data.amount) },
+    properties: { amount_cents: toAnalyticsAmountCents(Number(typed)) },
   });
   return { success: true, amountCaptured: result.amountCapturedMinor };
 }
@@ -3711,6 +3785,7 @@ export async function releaseDepositHold(reservationId: string) {
   if (!store) {
     return { error: "errors.noStripeAccount" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
 
   const result = await releaseReferencedDepositHold(
     {
@@ -4210,7 +4285,8 @@ export async function sendAccessLinkBySms(reservationId: string) {
 
 export interface RequestPaymentInput {
   type: "rental" | "deposit" | "custom";
-  amount?: number; // Required for custom type
+  /** A custom request's amount, as typed: required for the `custom` type. */
+  amount?: TypedAmount;
   channels: { email: boolean; sms: boolean };
   customMessage?: string;
 }
@@ -4228,6 +4304,13 @@ export async function requestPayment(
     if (!store) {
       return { error: "errors.unauthorized" };
     }
+    if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+
+    // A custom amount is text, normalised as the form does it (`typedAmount`),
+    // and judged as typed with the reservation's currency below: anything
+    // else is no amount, and nothing is created or sent.
+    const typedCustom = data.type === "custom" ? typedAmount(data.amount) : undefined;
+    if (typedCustom === null) return { error: "errors.invalidAmount" };
 
     // Check Stripe is configured and able to take payments
     if (!store.stripeAccountId || !store.stripeChargesEnabled) {
@@ -4263,7 +4346,7 @@ export async function requestPayment(
     // The amount, in the reservation's currency, whatever the store's is now.
     const terms = paymentRequestTerms({
       type: data.type,
-      customAmount: data.amount,
+      customAmount: typedCustom,
       reservation,
       storeSettings: store.settings,
     });

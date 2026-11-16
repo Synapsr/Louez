@@ -235,7 +235,7 @@ export function PaymentSummary({
         reservationId,
         payload: {
           type: paymentType,
-          amount,
+          amount: paymentAmount.trim(),
           method: paymentMethod,
           notes: paymentNotes || undefined,
         },
@@ -276,7 +276,7 @@ export function PaymentSummary({
       await returnDepositMutation.mutateAsync({
         reservationId,
         payload: {
-          amount,
+          amount: paymentAmount.trim(),
           method: paymentMethod,
           notes: paymentNotes || undefined,
         },
@@ -309,7 +309,7 @@ export function PaymentSummary({
       await recordDamageMutation.mutateAsync({
         reservationId,
         payload: {
-          amount,
+          amount: paymentAmount.trim(),
           method: paymentMethod,
           notes: paymentNotes,
         },
@@ -1080,6 +1080,7 @@ export function PaymentSummary({
           reservationId={reservationId}
           paymentId={paymentToRefund.id}
           remainingAmount={getRemainingRefundableAmount(paymentToRefund, payments)}
+          currency={currency}
           currencySymbol={currencySymbol}
           defaultMethod={paymentToRefund.method}
           onClose={() => setPaymentToRefund(null)}

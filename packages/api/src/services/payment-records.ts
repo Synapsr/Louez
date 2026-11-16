@@ -47,13 +47,14 @@ import {
 } from "./approval-presentations";
 import {
   currencyMinorOf,
+  depositBalance,
   depositReturnAmount,
   fromHundredths,
   hundredthsOf,
-  paymentAmount,
   recordedPaymentAmount,
   type RecordedAmountVerdict,
   refundAmount,
+  refusedWhateverTheCurrency,
   type RefundVerdict,
 } from "./payment-amount";
 
@@ -195,12 +196,12 @@ const notesOf = (notes: string | undefined) => (notes ? { notes } : {});
 
 /**
  * What an amount is refused for whatever the reservation's currency: its
- * text (`paymentAmount`), then a negative amount outside an adjustment.
+ * text (`refusedWhateverTheCurrency`), then a negative amount outside an
+ * adjustment. Too many decimals wait for the currency, which names them.
  */
 function recordTextRefusal(input: RecordPaymentInput): Error | null {
-  const amount = paymentAmount(input.amount);
-  if (!amount) return paymentRecordErrors.amountInvalid();
-  if (amount.startsWith("-") && input.type !== "adjustment") {
+  if (refusedWhateverTheCurrency(input.amount, false)) return paymentRecordErrors.amountInvalid();
+  if (input.amount.startsWith("-") && input.type !== "adjustment") {
     return paymentRecordErrors.negativeOutsideAdjustment();
   }
   return null;
@@ -292,12 +293,11 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
   });
 }
 
-/** What a return is refused for whatever the reservation's currency: its text (`paymentAmount`), or zero and below. */
+/** What a return is refused for whatever the reservation's currency: its text (`refusedWhateverTheCurrency`), or zero and below. */
 function returnTextRefusal(input: RecordDepositReturnInput): Error | null {
-  const amount = paymentAmount(input.amount);
-  return amount && !amount.startsWith("-")
-    ? null
-    : paymentRecordErrors.depositReturnAmountInvalid();
+  return refusedWhateverTheCurrency(input.amount, true)
+    ? paymentRecordErrors.depositReturnAmountInvalid()
+    : null;
 }
 
 /**
@@ -326,20 +326,16 @@ export async function recordDepositReturn(
       .select({ type: payments.type, status: payments.status, amount: payments.amount })
       .from(payments)
       .where(eq(payments.reservationId, reservation.id));
-    const completed = (type: string) =>
-      rows
-        .filter((row) => row.type === type && row.status === "completed")
-        .reduce((sum, row) => sum + parseFloat(row.amount), 0);
-    const collected = completed("deposit");
-    const returned = completed("deposit_return");
-    const returnable = collected - returned;
+    // In hundredths, exact: never a float that leaves €0.20 above €0.30 less €0.10.
+    const balance = depositBalance(rows);
+    const returnable = fromHundredths(balance.returnable);
 
     const facts = await factsOf(tx, caller, reservation.id, {
       type: "deposit_return",
       amount: input.amount,
     });
     const { currency } = facts;
-    const verdict = depositReturnAmount(input.amount, currency, returnable);
+    const verdict = depositReturnAmount(input.amount, currency, balance.returnable);
     if (!verdict.ok) {
       switch (verdict.refusal) {
         case "amount_invalid":
@@ -357,9 +353,9 @@ export async function recordDepositReturn(
           return refused(
             paymentRecordErrors.depositReturnExceedsBalance(
               {
-                collected: collected.toFixed(2),
-                returned: returned.toFixed(2),
-                returnable: returnable.toFixed(2),
+                collected: fromHundredths(balance.collected),
+                returned: fromHundredths(balance.returned),
+                returnable,
               },
               (amount) => moneyIn(amount, currency),
             ),
@@ -373,15 +369,15 @@ export async function recordDepositReturn(
       number: reservation.number,
       amount: input.amount,
       method: input.method,
-      returnable: returnable.toFixed(2),
+      returnable,
     };
     const refusal = await caller.confirm(tx, {
       preview: {
         summary: `Record a deposit return of ${moneyIn(verdict.amount, currency)} (${input.method}) on reservation #${reservation.number}.`,
         details: { ...details, ...notesOf(input.notes) },
       },
-      state: { returnable: returnable.toFixed(2), facts },
-      presentation: recordDepositReturnPresentation(details, currency, returnable),
+      state: { returnable, facts },
+      presentation: recordDepositReturnPresentation(details, currency, balance.returnable),
     });
     if (refusal) return unconfirmed(refusal);
 
@@ -653,9 +649,11 @@ export async function recordPaymentRefund(
 ): Promise<RecordedPaymentRefund> {
   const { storeId } = caller;
   // Refused whatever anyone answers, before anything is read: the text, and
-  // zero and below. The currency is the payment's, read under the lock.
-  const text = paymentAmount(input.amount);
-  if (!text || text.startsWith("-")) throw paymentRecordErrors.refundAmountInvalid();
+  // zero and below. The currency is the payment's, read under the lock: too
+  // many decimals are judged there, with the decimals it allows.
+  if (refusedWhateverTheCurrency(input.amount, true)) {
+    throw paymentRecordErrors.refundAmountInvalid();
+  }
   const ofThisCall = (payment: StorePayment | null) =>
     payment && (!input.reservationId || payment.reservationId === input.reservationId)
       ? payment

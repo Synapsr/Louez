@@ -280,7 +280,7 @@ describe(
     }
 
     const capture = (reservationId: string) =>
-      actions.captureDepositHold(reservationId, { amount: 12_000, reason: "Broken wheel" });
+      actions.captureDepositHold(reservationId, { amount: "12000", reason: "Broken wheel" });
 
     test("a hold in another currency than the reservation's is not captured", async () => {
       // Booked in yen; the store moved to euros and an older release held 30 000 euros.

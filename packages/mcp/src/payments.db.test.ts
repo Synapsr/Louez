@@ -981,7 +981,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       ),
     );
     // An amount is a plain decimal of at most two decimals, as its row holds it.
-    for (const amount of ["1e2", "+5", " 5", "5.", ".5", "12abc", "0.004", "1.234", "100000000"]) {
+    for (const amount of ["1e2", "+5", " 5", "5.", ".5", "12abc", "0.000", "100000000"]) {
       assert.deepEqual(
         refusal(await record(open.id, "adjustment", amount)),
         refused(
@@ -989,6 +989,19 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
           'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50").',
         ),
         JSON.stringify(amount),
+      );
+    }
+    // A plain decimal with too many decimals is refused for them: its
+    // message and details name the currency's.
+    for (const amount of ["0.004", "1.234", "-19.999"]) {
+      const result = await record(open.id, "adjustment", amount);
+      assert.deepEqual(
+        { ...refusal(result), details: errorOf(result)?.details },
+        {
+          ...refused("PAYMENT_AMOUNT_INVALID", "A CHF amount has at most 2 decimals."),
+          details: { currency: "CHF", decimals: 2 },
+        },
+        amount,
       );
     }
     assert.deepEqual(
@@ -1029,10 +1042,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     );
     assert.deepEqual(
       refusal(await giveBack("10.005")),
-      refused(
-        "DEPOSIT_RETURN_AMOUNT_INVALID",
-        'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00").',
-      ),
+      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "A CHF amount has at most 2 decimals."),
     );
     assert.deepEqual(
       refusal(await giveBack("30.01")),
@@ -1191,6 +1201,41 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
         ["deposit_return", "1", "JPY"],
       ],
     );
+  });
+
+  test("the deposit still returnable is counted in the rows' hundredths: 0.30 less 0.10 leaves 0.20, and in yen whole yen", async () => {
+    const authorization = await key();
+    const giveBack = (reservationId: string, amount: string) =>
+      mcpCall(authorization, "record_deposit_return", { reservationId, amount, method: "cash" });
+    const exceeded = (result: ToolResult) => {
+      const error = errorOf(result);
+      assert.equal(error?.code, "DEPOSIT_RETURN_EXCEEDS_BALANCE", textOf(result));
+      return { message: error?.message, details: error?.details };
+    };
+
+    const cents = await reservation();
+    await payment(cents.id, { type: "deposit", amount: "0.30" });
+    await payment(cents.id, { type: "deposit_return", amount: "0.10" });
+    assert.deepEqual(exceeded(await giveBack(cents.id, "0.21")), {
+      message:
+        "Amount exceeds returnable deposit. Collected: CHF\u00a00.30, already returned: CHF\u00a00.10, max returnable: CHF\u00a00.20.",
+      details: { collected: "0.30", returned: "0.10", returnable: "0.20" },
+    });
+    const twenty = approval(await giveBack(cents.id, "0.20"));
+    assert.deepEqual(
+      (twenty.preview as { details: { returnable: string } }).details.returnable,
+      "0.20",
+    );
+
+    const yen = await reservation("confirmed", STORE, "JPY");
+    await payment(yen.id, { type: "deposit", amount: "3.00" });
+    await payment(yen.id, { type: "deposit_return", amount: "1.00" });
+    assert.deepEqual(exceeded(await giveBack(yen.id, "3")), {
+      message:
+        "Amount exceeds returnable deposit. Collected: ¥3, already returned: ¥1, max returnable: ¥2.",
+      details: { collected: "3.00", returned: "1.00", returnable: "2.00" },
+    });
+    approval(await giveBack(yen.id, "2"));
   });
 
   test("a member may record and delete; a connection that reads payments may do neither", async () => {
