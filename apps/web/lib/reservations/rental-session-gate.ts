@@ -41,7 +41,7 @@ import { getStripe } from "@/lib/stripe/client";
  * 2. Each such session expired at Stripe, or read when it no longer expires: one
  *    over is marked settled; one paid is recorded and nothing is opened; one whose
  *    state is unknown opens nothing, and the next call asks again.
- * 3. The door's session created, with an idempotency key of the attempt.
+ * 3. The door's session created, with an idempotency key fresh for this call.
  * 4. Under the reservation's lock again, the door's check, then the attempt
  *    installed as the pending row, only when no other rental payment is open and
  *    no session may still be paid; otherwise the session just created is expired.
@@ -214,7 +214,9 @@ export async function openRentalCheckoutSession<
   }
   if (states.some(({ state }) => state === "unknown")) return { ok: false, refusal: "busy" };
 
-  // 3. The attempt's key: a retry of this create finds the same session.
+  // 3. A fresh key for this call: the client's own retries of this one create find
+  // the same session; it never ties two calls together, which the lock and the
+  // install keep apart.
   const paymentId = nanoid();
   const session = await create({ idempotencyKey: `checkout-session:${paymentId}` });
 

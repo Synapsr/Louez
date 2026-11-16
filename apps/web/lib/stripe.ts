@@ -43,8 +43,8 @@ interface CreateCheckoutSessionParams {
    */
   checkoutFlow?: CheckoutSessionFlow;
   /**
-   * The key of the attempt this session is for: Stripe answers a create sent
-   * again with it, by the client's own retry, with the same session.
+   * The key of this one create: Stripe answers the client's own retry of it with
+   * the same session. A fresh key for each call ties no two calls together.
    */
   idempotencyKey?: string;
 }
@@ -221,8 +221,8 @@ interface CreatePaymentRequestSessionParams {
   feeMetadata?: Record<string, string>;
   locale?: string;
   /**
-   * The key of the attempt this session is for: Stripe answers a create sent
-   * again with it, by the client's own retry, with the same session.
+   * The key of this one create: Stripe answers the client's own retry of it with
+   * the same session. A fresh key for each call ties no two calls together.
    */
   idempotencyKey?: string;
 }

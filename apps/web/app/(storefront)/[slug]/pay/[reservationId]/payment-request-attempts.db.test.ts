@@ -389,7 +389,8 @@ describe(
           },
         ],
       );
-      // Each create is sent with a key of its own attempt: a retry of it finds the same session.
+      // Each create is sent with a key of its own, fresh for the call: the client's retry of
+      // that one create finds the same session.
       assert.deepEqual(
         created.map(({ options }) => options?.idempotencyKey),
         rows.map(({ id }) => `checkout-session:${id}`),
