@@ -76,6 +76,10 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
   const feeEffects: unknown[][] = [];
   const contracts: string[] = [];
   const dispatched: string[] = [];
+  /** Whether this instance sends e-mail (SMTP configured). */
+  let emailConfigured = true;
+  /** Whether this instance sends SMS (a provider configured). */
+  let smsConfigured = true;
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
     storage: createMemoryStorage(),
@@ -99,6 +103,8 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     dispatchEffects: (ids: readonly string[]) => {
       dispatched.push(...ids);
     },
+    emailConfigured: () => emailConfigured,
+    smsConfigured: () => smsConfigured,
   };
 
   const settings = {
@@ -257,6 +263,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     details: {
       customer: { name: string; email: string } | null;
       messages: Array<{ message: string; channel: string }>;
+      messagesNotSent?: Array<{ message: string; channel: string; reason: string }>;
       reducesAvailability: boolean;
       money: {
         rentalPaid: string;
@@ -958,6 +965,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.deepEqual(preview.details.messages, [
       { message: "request_accepted", channel: "email", to: "ada@rs.test" },
     ]);
+    assert.equal("messagesNotSent" in preview.details, false, "every message goes");
     assert.equal(preview.details.reducesAvailability, true);
     assert.equal(await statusOf(id), "pending", "nothing was done");
     assert.equal((await outbox()).length, 0, "no message is queued before the confirmation");
@@ -985,6 +993,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       key({ "louez-confirmation": fresh }),
     );
     assert.equal(change.to, "confirmed");
+    assert.deepEqual(change.messagesNotSent, []);
     assert.deepEqual(
       (await analyticsOf()).map((payload) => payload.transport),
       ["openapi"],
@@ -1009,6 +1018,41 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       run("updateStatus", { id, status: "confirmed" }, key({ "louez-confirmation": fresh })),
       "CONFIRMATION_INVALID",
     );
+  });
+
+  test("without an e-mail service, the preview and the answer say the e-mail cannot go, and it is queued for the inbox", async () => {
+    emailConfigured = false;
+    try {
+      const id = await reservation("pending", { productId: await product() });
+      const key = await apiKey();
+      const refusal = await rejects(
+        run("updateStatus", { id, status: "confirmed" }, key()),
+        "CONFIRMATION_REQUIRED",
+      );
+      const preview = previewOf(refusal);
+      const notSent = [
+        { message: "request_accepted", channel: "email", reason: "email_not_configured" },
+      ];
+      assert.deepEqual(preview.details.messages, []);
+      assert.deepEqual(preview.details.messagesNotSent, notSent);
+      assert.match(preview.summary, /No message goes to the customer\./);
+      assert.match(
+        preview.summary,
+        /The "request accepted" e-mail cannot go out: this instance has no e-mail service \(email_not_configured\)\./,
+      );
+      assert.doesNotMatch(preview.summary, /by email/);
+
+      const change = await run(
+        "updateStatus",
+        { id, status: "confirmed" },
+        key({ "louez-confirmation": tokenOf(refusal) }),
+      );
+      assert.deepEqual(change.messagesNotSent, notSent);
+      // Queued all the same: its sender gives it up at once, and the inbox lists it.
+      assert.deepEqual(await customerMessagesOf(id), [["customer_request_accepted", "email"]]);
+    } finally {
+      emailConfigured = true;
+    }
   });
 
   test("a token stops working when what the preview showed changes", async () => {
@@ -1544,6 +1588,56 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       );
       assert.equal(storeRows.length, 3, "the store's own notifications still go out");
     } finally {
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: null })
+        .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    }
+  });
+
+  test("without an SMS provider, the preview and the answer say the SMS cannot go, and it is queued for the inbox", async () => {
+    const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({
+        customerNotificationSettings: {
+          ...DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
+          customer_reservation_cancelled: { enabled: true, email: true, sms: true },
+        },
+      })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    await louezDb.db
+      .update(louezDb.customers)
+      .set({ phone: "+33600000004" })
+      .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    smsConfigured = false;
+    try {
+      const id = await reservation("confirmed");
+      const key = await apiKey();
+      const refusal = await rejects(run("cancel", { id }, key()), "CONFIRMATION_REQUIRED");
+      const preview = previewOf(refusal);
+      const notSent = [
+        { message: "reservation_cancelled", channel: "sms", reason: "sms_not_configured" },
+      ];
+      assert.deepEqual(
+        preview.details.messages.map((entry) => entry.channel),
+        ["email"],
+      );
+      assert.deepEqual(preview.details.messagesNotSent, notSent);
+      assert.match(preview.summary, /gets the "reservation cancelled" message by email\./);
+      assert.match(
+        preview.summary,
+        /The "reservation cancelled" SMS cannot go out: this instance has no SMS service \(sms_not_configured\)\./,
+      );
+
+      const change = await run("cancel", { id }, key({ "louez-confirmation": tokenOf(refusal) }));
+      assert.deepEqual(change.messagesNotSent, notSent);
+      assert.deepEqual(await customerMessagesOf(id), [
+        ["customer_reservation_cancelled", "email"],
+        ["customer_reservation_cancelled", "sms"],
+      ]);
+    } finally {
+      smsConfigured = true;
       await louezDb.db
         .update(louezDb.customers)
         .set({ phone: null })

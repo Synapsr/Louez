@@ -10,7 +10,7 @@ import {
   type TestDatabase,
 } from "@louez/db/testing";
 
-import { SENT_KEY, STORE_KEY } from "./actions-test-stubs";
+import { OUTCOME_KEY, SENT_KEY, STORE_KEY } from "./actions-test-stubs";
 
 // The dashboard's reservation actions on a migrated database: the payment rows
 // they write, with their billing facts, and the reservation's mark for the billing
@@ -219,6 +219,51 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       );
       assert.equal(await countPayments(reservationId), 0);
       assert.equal(await readMarkVersion(reservationId), null);
+    });
+
+    test("more than is still due is refused, saying so, and writes nothing", async () => {
+      const reservationId = await createReservation();
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "100",
+          method: "cash",
+        }),
+      );
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "30",
+          method: "cash",
+        }),
+      );
+
+      // 110.00 of rental with 100.00 paid, 50.00 of deposit with 30.00 collected.
+      assert.deepEqual(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "10.01",
+          method: "cash",
+        }),
+        { error: "errors.amountExceedsDue" },
+      );
+      assert.deepEqual(
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "20.01",
+          method: "cash",
+        }),
+        { error: "errors.amountExceedsDue" },
+      );
+      assert.equal(await countPayments(reservationId), 2);
+      // Exactly what is due still goes.
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "10",
+          method: "cash",
+        }),
+      );
     });
 
     test("without the billing service, the payment is recorded and nothing is marked", async () => {
@@ -1052,6 +1097,69 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       } finally {
         Reflect.set(globalThis, STORE_KEY, store);
         Reflect.deleteProperty(globalThis, SENT_KEY);
+        await louezDb.db
+          .update(louezDb.customers)
+          .set({ phone: null })
+          .where(eq(louezDb.customers.id, "customer_actions"));
+      }
+    });
+
+    test("the answer says, by channel, what really went out; the request and its link stay", async () => {
+      const store = Reflect.get(globalThis, STORE_KEY);
+      Reflect.set(globalThis, STORE_KEY, {
+        ...store,
+        settings: { currency: "eur", country: "FR" },
+        stripeAccountId: "acct_actions",
+        stripeChargesEnabled: true,
+      });
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: "+33612345678" })
+        .where(eq(louezDb.customers.id, "customer_actions"));
+      const ask = (reservationId: string, channels: { email: boolean; sms: boolean }) =>
+        actions.requestPayment(reservationId, { type: "rental", channels });
+      const smsRefused = { success: false, error: "SMS not configured" };
+      try {
+        const reservationId = await createReservation({ withItems: true });
+
+        // No e-mail service on this instance: the e-mail did not go, nothing was handed to it.
+        Reflect.set(globalThis, OUTCOME_KEY, { emailConfigured: false });
+        Reflect.set(globalThis, SENT_KEY, []);
+        const noEmail = await ask(reservationId, { email: true, sms: false });
+        assert.equal(noEmail.error, undefined);
+        assert.ok(noEmail.paymentUrl, "the request and its link stay");
+        assert.deepEqual(noEmail.notificationResults, { email: false });
+        assert.deepEqual(Reflect.get(globalThis, SENT_KEY), []);
+
+        // The SMS sender answers that nothing went out, without throwing.
+        Reflect.set(globalThis, OUTCOME_KEY, { sendPaymentRequestSms: smsRefused });
+        const noSms = await ask(reservationId, { email: false, sms: true });
+        assert.deepEqual(noSms.notificationResults, { sms: false });
+
+        // Both chosen, one fails: each says its own.
+        const oneOfTwo = await ask(reservationId, { email: true, sms: true });
+        assert.deepEqual(oneOfTwo.notificationResults, { email: true, sms: false });
+
+        // None chosen, which the schema allows: refused before anything is
+        // created, so the answer says nothing went out.
+        Reflect.deleteProperty(globalThis, OUTCOME_KEY);
+        Reflect.set(globalThis, SENT_KEY, []);
+        const requests = async () =>
+          (
+            await louezDb.db
+              .select({ id: louezDb.paymentRequests.id })
+              .from(louezDb.paymentRequests)
+              .where(eq(louezDb.paymentRequests.reservationId, reservationId))
+          ).length;
+        const before = await requests();
+        const none = await ask(reservationId, { email: false, sms: false });
+        assert.deepEqual(none, { error: "errors.noChannelSelected" });
+        assert.equal(await requests(), before, "no request is created");
+        assert.deepEqual(Reflect.get(globalThis, SENT_KEY), [], "nothing is sent");
+      } finally {
+        Reflect.set(globalThis, STORE_KEY, store);
+        Reflect.deleteProperty(globalThis, SENT_KEY);
+        Reflect.deleteProperty(globalThis, OUTCOME_KEY);
         await louezDb.db
           .update(louezDb.customers)
           .set({ phone: null })

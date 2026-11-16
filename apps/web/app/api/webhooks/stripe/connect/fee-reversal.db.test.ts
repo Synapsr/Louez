@@ -901,7 +901,9 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       assert.deepEqual(alerted.excesses(), []);
       assert.equal(alerted.errors.length, 1);
       assert.ok(alerted.errors[0]?.includes(chargeId), alerted.errors[0]);
-      assert.ok(alerted.errors[0]?.includes("Request timed out"), alerted.errors[0]);
+      // The error's class and code, never its message.
+      assert.ok(alerted.errors[0]?.includes('"name":"Error"'), alerted.errors[0]);
+      assert.ok(!alerted.errors[0]?.includes("Request timed out"), alerted.errors[0]);
     });
 
     test("a dispute opened after the reversal and before its confirmation is counted: no excess", async () => {

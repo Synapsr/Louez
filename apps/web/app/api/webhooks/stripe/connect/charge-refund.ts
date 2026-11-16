@@ -18,6 +18,7 @@ import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
 
 import { findChargePayment, isKnownPaymentIntent } from "./charge-writes";
+import { describeWebhookError } from "./webhook-error";
 import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from "./fee-reversal";
 
 // `charge.refunded` on a connected account (louez-billing design §5.6, docs/api
@@ -199,7 +200,7 @@ export async function handleChargeRefunded(
           event: "reward_clawback_failed",
           trigger: "refund",
           chargeId: charge.id,
-          error: error instanceof Error ? error.message : String(error),
+          ...describeWebhookError(error),
         },
       });
     });

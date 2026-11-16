@@ -5,6 +5,7 @@
  */
 export const PAYMENT_REFUSAL_KEYS: ReadonlySet<string> = new Set([
   "errors.amountExceedsDeposit",
+  "errors.amountExceedsDue",
   "errors.amountTooPrecise",
   "errors.currencyNotSupportedForPayments",
   "errors.invalidAmount",
