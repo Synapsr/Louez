@@ -335,8 +335,9 @@ export interface ApiEffectPayloads {
     operationId: string;
   };
   /**
-   * The credit note a refund the store gave by hand is owed
-   * (services/payment-records.ts, `recordPaymentRefund`). Added in the
+   * The credit note a refund is owed: one the store gave by hand
+   * (services/payment-records.ts, `recordPaymentRefund`), or a Stripe refund
+   * (apps/web lib/reservations/stripe-refund-writes.ts). Added in the
    * refund's own transaction, so it is owed as soon as the refund exists;
    * the invoicing issues one credit note per refund, so a run after one that
    * issued it changes nothing. It sends nothing.

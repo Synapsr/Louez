@@ -7,7 +7,7 @@ import { db, payments, reservations } from "@louez/db";
 
 import { issueRefundCreditNote, type RefundCreditNoteRequest } from "./refund-credit-note";
 
-/** The payload as `recordPaymentRefund` writes it; anything else is refused. */
+/** The payload as its writers write it; anything else is refused. */
 const payloadSchema = z.object({
   storeId: z.string().min(1),
   reservationId: z.string().min(1),
@@ -45,8 +45,9 @@ async function readRefund(refundId: string): Promise<RefundRow | null> {
 }
 
 /**
- * The sender of `payment.refundCreditNote` (packages/api services/payment-records.ts,
- * `recordPaymentRefund`): issues the credit note a refund given by hand is owed.
+ * The sender of `payment.refundCreditNote`: issues the credit note a refund is owed, one
+ * given by hand (packages/api services/payment-records.ts, `recordPaymentRefund`) or a
+ * Stripe refund (lib/reservations/stripe-refund-writes.ts, `recordChargeRefunds`).
  *
  * Before anything, it checks that the payload is the one the writer writes, that it
  * names the row's own store and reservation, and that its refund is a completed row of
