@@ -13,6 +13,10 @@ import { pathToFileURL } from "node:url";
 
 const APP = "https://app.louez.test";
 process.env.NEXT_PUBLIC_APP_URL = APP;
+process.env.AUTH_URL = APP;
+Reflect.set(process.env, "NODE_ENV", "production");
+// Behind the reverse proxy, the URL the route is handed is the upstream one.
+const UPSTREAM = "https://127.0.0.1:60441";
 
 const directory = mkdtempSync(join(tmpdir(), "louez-chat-route-"));
 const stub = (name: string, source: string) => {
@@ -82,7 +86,7 @@ describe("the chat endpoint", () => {
 
   const post = (headers: Record<string, string>, body = '{"messages":[]}') =>
     POST(
-      new Request(`${APP}/api/chat`, {
+      new Request(`${UPSTREAM}/api/chat`, {
         method: "POST",
         headers: { "content-type": "application/json", ...headers },
         body,

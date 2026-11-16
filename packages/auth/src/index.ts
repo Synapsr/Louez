@@ -11,6 +11,8 @@ import { and, eq, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { render } from "@react-email/render";
 
+import { DEV_AUTH_HOSTS } from "./trusted-origins";
+
 import { db } from "@louez/db";
 import * as schema from "@louez/db";
 import { env as dbEnv } from "@louez/db/env";
@@ -145,25 +147,13 @@ const AUTH_COOKIE_PREFIX = dbEnv.DATABASE_URL.endsWith(PROD_DATABASE_SUFFIX)
     : "better-auth";
 
 /**
- * In development the app answers on every Localify host of the project: the
- * namespace, each worktree and storefront under it, and its Localify Cloud
- * public URLs. Better Auth then takes its base URL, and the origin it trusts,
- * from the host a request came in on, read from X-Forwarded-Host, among these
- * hosts only; any other host falls back to AUTH_URL. So a new worktree or a
- * public URL works without editing AUTH_URL. Production keeps the fixed
- * AUTH_URL.
+ * In development the app answers on every Localify host of the project
+ * (`DEV_AUTH_HOSTS`, ./trusted-origins.ts). Better Auth then takes its base
+ * URL, and the origin it trusts, from the host a request came in on, read
+ * from X-Forwarded-Host, among these hosts only; any other host falls back
+ * to AUTH_URL. So a new worktree or a public URL works without editing
+ * AUTH_URL. Production keeps the fixed AUTH_URL.
  */
-const DEV_AUTH_HOSTS = [
-  "louez.localify",
-  "*.louez.localify",
-  "louez.localify.fyi",
-  "louez--*.localify.fyi",
-  // The public URL of the project served from another machine, which Localify
-  // names louez-<login> because "louez" is taken (e.g. a preview run on a
-  // build machine of the tailnet).
-  "louez-*.localify.fyi",
-];
-
 const isDevelopment = env.NODE_ENV === "development";
 
 const authBaseURL = isDevelopment

@@ -1,4 +1,5 @@
 import { stepCountIs, streamText } from "ai";
+import { env as authEnv } from "@louez/auth/env";
 import { db, aiChats, aiChatMessages } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -61,7 +62,11 @@ function roleToPermissions(role: string): ApiKeyPermissions {
 
 export async function POST(req: Request) {
   // Only this app's own pages, with the chat's JSON: first, before the session.
-  const refusal = chatRequestRefusal(req, env.NEXT_PUBLIC_APP_URL);
+  const refusal = chatRequestRefusal(req, {
+    appUrl: env.NEXT_PUBLIC_APP_URL,
+    authUrl: authEnv.AUTH_URL,
+    development: authEnv.NODE_ENV === "development",
+  });
   if (refusal) return refusal;
 
   // Auth check
