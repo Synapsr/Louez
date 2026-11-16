@@ -5,9 +5,6 @@ import type { ApiEffectSenders } from "@louez/api/platform/effects";
 import type { RefundCreditNoteOutcome } from "@louez/api";
 import { db, payments, reservations } from "@louez/db";
 
-import { reportServerError } from "@/lib/error-tracking";
-import { log } from "@/lib/evlog";
-
 import { issueRefundCreditNote, type RefundCreditNoteRequest } from "./refund-credit-note";
 
 /** The payload as `recordPaymentRefund` writes it; anything else is refused. */
@@ -31,8 +28,6 @@ export interface RefundRow {
 export interface RefundCreditNoteEffectDeps {
   readRefund: (refundId: string) => Promise<RefundRow | null>;
   issue: (request: RefundCreditNoteRequest) => Promise<RefundCreditNoteOutcome>;
-  /** Where a refused row is told: the logs and error tracking. */
-  refuse: (event: { effectId: string; reason: string }) => void;
 }
 
 async function readRefund(refundId: string): Promise<RefundRow | null> {
@@ -49,14 +44,6 @@ async function readRefund(refundId: string): Promise<RefundRow | null> {
   return row ?? null;
 }
 
-const refuse: RefundCreditNoteEffectDeps["refuse"] = (event) => {
-  log.error({ invoicing: { event: "refund_credit_note_refused", ...event } });
-  reportServerError(new Error(`A refund's credit note row was refused: ${event.reason}`), {
-    source: "effects",
-    effect: "payment.refundCreditNote",
-  });
-};
-
 /**
  * The sender of `payment.refundCreditNote` (packages/api services/payment-records.ts,
  * `recordPaymentRefund`): issues the credit note a refund given by hand is owed.
@@ -64,7 +51,7 @@ const refuse: RefundCreditNoteEffectDeps["refuse"] = (event) => {
  * Before anything, it checks that the payload is the one the writer writes, that it
  * names the row's own store and reservation, and that its refund is a completed row of
  * that reservation refunding its payment, for its amount: a row that fails is given up
- * at once (cancelled, logged and reported), never retried. Then the credit note: issued
+ * at once (`abandoned`, kept with its payload and reported), never retried. Then the credit note: issued
  * (now or before) is done; nothing to issue (the store issues no invoices, or the
  * payment has none) is done with nothing sent; a failure throws, so the outbox tries
  * again and gives up after its attempts.
@@ -75,21 +62,18 @@ export function createRefundCreditNoteEffectSenders(
   const deps: RefundCreditNoteEffectDeps = {
     readRefund,
     issue: issueRefundCreditNote,
-    refuse,
     ...overrides,
   };
   return {
     "payment.refundCreditNote": async (payload, context) => {
-      const giveUp = (reason: string) => {
-        deps.refuse({ effectId: context.effectId, reason });
-        return { skipped: `refused: ${reason}` };
-      };
+      // A row written wrong: given up now, kept, and reported.
+      const giveUp = (reason: string) => ({ abandoned: reason, report: true });
       const parsed = payloadSchema.safeParse(payload);
-      if (!parsed.success) return giveUp("the payload is not a refund's credit note");
+      if (!parsed.success) return giveUp("payload_invalid: not a refund's credit note");
       const request = parsed.data;
-      const { envelope } = context;
-      if (request.storeId !== envelope.storeId || request.reservationId !== envelope.reservationId) {
-        return giveUp("the payload names another store or reservation than its row");
+      const { row } = context;
+      if (request.storeId !== row.storeId || request.reservationId !== row.reservationId) {
+        return giveUp("row_mismatch: the payload names another store or reservation");
       }
       const refund = await deps.readRefund(request.refundId);
       if (
@@ -99,14 +83,14 @@ export function createRefundCreditNoteEffectSenders(
         refund.storeId !== request.storeId ||
         refund.amount !== request.amount
       ) {
-        return giveUp("the refund is not this row's");
+        return giveUp("refund_mismatch: the refund is not this payment's, for this amount");
       }
 
       await context.assertClaim();
       const outcome = await deps.issue(request);
       if (outcome.status === "issued") return;
       if (outcome.status === "not_applicable") {
-        return { skipped: `no credit note to issue: ${outcome.reason}` };
+        return { skipped: `not_applicable: ${outcome.reason}` };
       }
       throw new Error(`The refund's credit note was not issued: ${outcome.reason}`);
     },

@@ -1009,19 +1009,27 @@ describe(
 
       // A failure is owed, never reported as done; nothing to issue is said so.
       creditNoteOutcome = "failed";
-      const failed = answer(await approved(authorization, { paymentId: paid, amount: "20.00", method: "cash" }));
+      const failed = answer(
+        await approved(authorization, { paymentId: paid, amount: "20.00", method: "cash" }),
+      );
       assert.deepEqual(failed.creditNote, { status: "pending", number: null });
       creditNoteOutcome = "throws";
-      const threw = answer(await approved(authorization, { paymentId: paid, amount: "5.00", method: "cash" }));
+      const threw = answer(
+        await approved(authorization, { paymentId: paid, amount: "5.00", method: "cash" }),
+      );
       assert.deepEqual(threw.creditNote, { status: "pending", number: null });
       creditNoteOutcome = "not_applicable";
-      const none = answer(await approved(authorization, { paymentId: paid, amount: "1.00", method: "cash" }));
+      const none = answer(
+        await approved(authorization, { paymentId: paid, amount: "1.00", method: "cash" }),
+      );
       assert.deepEqual(none.creditNote, { status: "not_applicable", number: null });
       assert.equal((await rowsOf()).length, 4, "one row per refund, whatever the attempt came to");
-      assert.deepEqual(
-        (await refundsOf(paid)).map((refund) => refund.amount).sort(),
-        ["1.00", "10.00", "20.00", "5.00"],
-      );
+      assert.deepEqual((await refundsOf(paid)).map((refund) => refund.amount).sort(), [
+        "1.00",
+        "10.00",
+        "20.00",
+        "5.00",
+      ]);
     });
 
     test("an amount has the precision of the payment's currency: no decimals in yen, and none at all in a three-decimal currency", async () => {
@@ -1031,7 +1039,11 @@ describe(
       const asked = await approvalCount();
 
       const half = refusal(
-        await mcpCall(authorization, "record_refund", { paymentId: yen, amount: "0.5", method: "cash" }),
+        await mcpCall(authorization, "record_refund", {
+          paymentId: yen,
+          amount: "0.5",
+          method: "cash",
+        }),
       );
       assert.equal(half.code, "REFUND_AMOUNT_INVALID");
       assert.equal(half.message, 'A JPY amount has no decimals: send whole units (such as "30").');
@@ -1040,7 +1052,11 @@ describe(
 
       // One yen, previewed as the page shows it: ¥1, never ¥0.50 or ¥1.00.
       const one = approval(
-        await mcpCall(authorization, "record_refund", { paymentId: yen, amount: "1", method: "cash" }),
+        await mcpCall(authorization, "record_refund", {
+          paymentId: yen,
+          amount: "1",
+          method: "cash",
+        }),
       );
       assert.equal(
         (one.preview as { summary: string }).summary,
@@ -1059,7 +1075,11 @@ describe(
       assert.equal(done.currency, "JPY");
       // The second yen is not there.
       const again = refusal(
-        await mcpCall(authorization, "record_refund", { paymentId: yen, amount: "1", method: "cash" }),
+        await mcpCall(authorization, "record_refund", {
+          paymentId: yen,
+          amount: "1",
+          method: "cash",
+        }),
       );
       assert.equal(again.code, "REFUND_EXCEEDS_REFUNDABLE");
       assert.equal(
@@ -1069,7 +1089,11 @@ describe(
 
       const dinars = await payment(id, { amount: "10.00", currency: "KWD" });
       const kwd = refusal(
-        await mcpCall(authorization, "record_refund", { paymentId: dinars, amount: "1", method: "cash" }),
+        await mcpCall(authorization, "record_refund", {
+          paymentId: dinars,
+          amount: "1",
+          method: "cash",
+        }),
       );
       assert.equal(kwd.code, "REFUND_CURRENCY_NOT_SUPPORTED");
       assert.deepEqual(kwd.details, { currency: "KWD" });
@@ -1088,14 +1112,22 @@ describe(
         ["delete_payment", { paymentId: removable }],
       ] as const) {
         const asked = approval(await mcpCall(authorization, name, args));
-        assert.equal((asked.preview as { details: { number?: string } }).details.number, number, name);
+        assert.equal(
+          (asked.preview as { details: { number?: string } }).details.number,
+          number,
+          name,
+        );
         await approve(asked.id);
         const done = answer(
           await mcpCall(authorization, name, { ...args, confirmationToken: asked.id }),
         );
         assert.equal(done.number, number, name);
         assert.equal(done.reservationId, id, name);
-        assert.equal("links" in done, false, `${name}: no dashboard link without reservations read`);
+        assert.equal(
+          "links" in done,
+          false,
+          `${name}: no dashboard link without reservations read`,
+        );
       }
     });
 

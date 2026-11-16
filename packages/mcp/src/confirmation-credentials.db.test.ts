@@ -167,7 +167,10 @@ describe(
             .$returningId();
           return { id: String(row?.id) };
         },
-        creditNote: async () => ({ status: "not_applicable" as const, reason: "invoicing_disabled" }),
+        creditNote: async () => ({
+          status: "not_applicable" as const,
+          reason: "invoicing_disabled",
+        }),
       },
     };
 

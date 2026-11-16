@@ -531,11 +531,16 @@ function refundAmountRefusal(
     case "amount_invalid":
       return paymentRecordErrors.refundAmountInvalid();
     case "too_precise":
-      return paymentRecordErrors.refundAmountTooPrecise(currency, currencyMinorDigits(currency) ?? 0);
+      return paymentRecordErrors.refundAmountTooPrecise(
+        currency,
+        currencyMinorDigits(currency) ?? 0,
+      );
     case "currency_unsupported":
       return paymentRecordErrors.refundCurrencyNotSupported(currency);
     case "exceeds_refundable":
-      return paymentRecordErrors.refundExceedsRefundable(balance, (amount) => moneyIn(amount, currency));
+      return paymentRecordErrors.refundExceedsRefundable(balance, (amount) =>
+        moneyIn(amount, currency),
+      );
   }
 }
 

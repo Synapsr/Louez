@@ -95,7 +95,10 @@ export const recordRefundOutput = z.object({
         .describe(
           "`issued`: the credit note exists. `pending`: it is owed and not issued yet; Louez issues it, retrying on its own. `not_applicable`: the store issues no invoices, or the payment refunded has none, so there is nothing to issue.",
         ),
-      number: z.string().nullable().describe("The credit note's number once issued; null otherwise."),
+      number: z
+        .string()
+        .nullable()
+        .describe("The credit note's number once issued; null otherwise."),
     })
     .describe("The refund's credit note. The refund stands whatever its status."),
   links: reservationLinksField,

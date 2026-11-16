@@ -138,7 +138,7 @@ An effect that must not be lost (a customer's email, a store notification, an an
 
 Where the store's own notifications go (the owner's phone, the webhook, the members' devices) and whether the store still wants each channel are read when they go out, not frozen: a webhook or a phone changed since is the one that counts, and the table holds no copy of them.
 
-An effect type is a type and its payload in `ApiEffectPayloads`, and a sender in the app. A sender gets the row's own store and reservation (`EffectSendContext.envelope`) and checks that its payload names the same before it acts. Reservation status changes, a refund's credit note ([A refund given by hand](#a-refund-given-by-hand)), an agent's notes change, an SMS's prepaid credit ([The outbox](#the-outbox)), a store's creation, its launch, an agent's setup actions ([Setup analytics](#setup-analytics)), a team invitation's e-mail ([The team](#the-team)) and the release of a deposit authorization use it; the products' notifications and analytics still go through `afterCommit` (lot 9 moves them).
+An effect type is a type and its payload in `ApiEffectPayloads`, and a sender in the app. Reservation status changes, a refund's credit note ([A refund given by hand](#a-refund-given-by-hand)), an agent's notes change, an SMS's prepaid credit ([The outbox](#the-outbox)), a store's creation, its launch, an agent's setup actions ([Setup analytics](#setup-analytics)), a team invitation's e-mail ([The team](#the-team)) and the release of a deposit authorization use it; the products' notifications and analytics still go through `afterCommit` (lot 9 moves them).
 
 ## Background jobs
 
