@@ -59,6 +59,7 @@ const verdict = checkSampleDatabase({
   databaseUrl: process.env.DATABASE_URL,
   nodeEnv: process.env.NODE_ENV,
   flagged: values["write-sample-data"] === true,
+  writes: "an API key and three approvals",
 });
 if (!verdict.ok) fail(verdict.reason);
 const { connection } = verdict;

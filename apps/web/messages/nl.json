@@ -6959,7 +6959,8 @@
       "settingsTaxes": "Belastingen",
       "productsEdit": "Bewerken",
       "reservationsEdit": "Bewerken",
-      "settingsCustomerFields": "Klantgegevens"
+      "settingsCustomerFields": "Klantgegevens",
+      "needsALook": "Te controleren"
     },
     "notificationsCenter": {
       "title": "Meldingen",
@@ -7189,6 +7190,109 @@
         "participantNamePlaceholder": "Voornaam",
         "saved": "Huurgegevens opgeslagen"
       }
+    },
+    "needsALook": {
+      "title": "Te controleren",
+      "description": "Wat Louez niet zelf kon oplossen.",
+      "empty": {
+        "title": "Niets te controleren",
+        "description": "Terugbetalingen, borgen, creditnota's of berichten die jou nodig hebben verschijnen hier."
+      },
+      "incomplete": "Sommige items konden niet worden geladen. Herlaad de pagina zo meteen.",
+      "urgent": "Dringend",
+      "details": "Details",
+      "markHandled": "Markeren als afgehandeld",
+      "confirm": {
+        "title": "Markeren als afgehandeld?",
+        "description": "Het wordt verborgen voor je hele team. Het komt terug als het probleem opnieuw optreedt.",
+        "heldBack": "Het terugbetaalde bedrag blijft ingehouden tot Stripe antwoordt.",
+        "cancel": "Annuleren",
+        "confirm": "Markeren als afgehandeld"
+      },
+      "handled": "Gemarkeerd als afgehandeld",
+      "changed": "Dit item is intussen gewijzigd: de lijst is bijgewerkt.",
+      "actions": {
+        "viewPayment": "Betaling bekijken",
+        "viewBooking": "Reservering bekijken",
+        "viewProduct": "Product bekijken",
+        "invoicingSettings": "Factuurinstellingen",
+        "notificationSettings": "Meldingsinstellingen",
+        "openTeam": "Team openen"
+      },
+      "facts": {
+        "stripeCharge": "Stripe-betaling",
+        "stripeRefund": "Stripe-terugbetaling",
+        "stripePayment": "Stripe-betaling",
+        "stripeDispute": "Stripe-geschil",
+        "creditNote": "Creditnota",
+        "invoice": "Factuur",
+        "channel": "Kanaal",
+        "reference": "Referentie"
+      },
+      "refundUnconfirmed": {
+        "title": "Terugbetaling niet bevestigd",
+        "summary": "Stripe heeft de terugbetaling van {amount} van {day} voor reservering #{number} niet bevestigd. Controleer die in Stripe voordat je opnieuw terugbetaalt.",
+        "heldBack": "Tot Stripe antwoordt, houdt Louez dit bedrag in op wat de betaling nog kan terugbetalen."
+      },
+      "refundUndone": {
+        "title": "Terugbetaling mislukt",
+        "summary": "De terugbetaling van {amount} voor reservering #{number} is niet gelukt: de klant is niet terugbetaald. Controleer die in Stripe en betaal zo nodig opnieuw terug.",
+        "summaryListed": "De meldingen van Stripe over de terugbetaling van {amount} voor reservering #{number} spreken elkaar tegen. Controleer in Stripe of de klant is terugbetaald en betaal zo nodig opnieuw terug.",
+        "creditNote": "Creditnota {creditNote} blijft staan: corrigeer die in je boekhouding."
+      },
+      "creditNoteNotIssued": {
+        "title": "Creditnota ontbreekt",
+        "summary": "De terugbetaling van {amount} voor reservering #{number} heeft nog geen creditnota. Controleer je factuurinstellingen.",
+        "reasons": {
+          "mismatch": "De geregistreerde terugbetaling komt niet overeen met het verzoek, dus Louez kan die niet zelf uitgeven: neem contact op met Louez-support.",
+          "pending": "De terugbetaling was nog niet afgerond toen Louez het probeerde; Louez probeert het elke dag opnieuw.",
+          "unknown": "Die kon niet worden uitgegeven; Louez probeert het elke dag opnieuw."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Borg niet bevestigd",
+        "summary": "Stripe heeft de borgreservering van {amount} aangevraagd op {day} voor reservering #{number} niet bevestigd. Controleer die in Stripe; opnieuw aanvragen in Louez maakt nooit een tweede reservering.",
+        "summaryUnmatched": "Stripe houdt voor reservering #{number} een borg vast die niet overeenkomt met de {amount} aangevraagd op {day}, dus Louez heeft die niet geregistreerd. Annuleer die in Stripe en sluit daarna het verzoek in het borggedeelte van de reservering."
+      },
+      "depositReleaseFailed": {
+        "title": "Borg mogelijk nog geblokkeerd",
+        "summary": "Stripe heeft de vrijgave van een tweede borgreservering van {amount} voor reservering #{number} niet bevestigd: de kaart van de klant kan die nog dragen. Louez blijft het vragen; staat die in Stripe nog vast, annuleer die daar."
+      },
+      "disputeOpen": {
+        "title": "Betaling betwist",
+        "summaryAnswer": "De klant heeft een betaling van {amount} voor reservering #{number} betwist. Beantwoord het geschil in Stripe vóór de deadline.",
+        "summaryReview": "Een geschil van {amount} voor reservering #{number} is open: Stripe beoordeelt het."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "E-factuur geweigerd",
+        "titleNotSent": "E-factuur niet verzonden",
+        "summaryRejected": "Factuur {invoice} voor reservering #{number} is geweigerd door het e-factuurnetwerk. Controleer die bij de reservering.",
+        "summaryNotSent": "Factuur {invoice} voor reservering #{number} kon niet naar het e-factuurnetwerk worden verzonden. Controleer die bij de reservering."
+      },
+      "messageNotSent": {
+        "title": "Bericht niet verzonden",
+        "toCustomer": "De klant heeft {message, select, customer_request_accepted {het acceptatiebericht} customer_request_rejected {het weigeringsbericht} customer_reservation_cancelled {het annuleringsbericht} customer_reservation_modified {het wijzigingsbericht} customer_quote_sent {de offerte} customer_reservation_confirmed {het bevestigingsbericht} other {het bericht}} voor reservering #{number} niet ontvangen. Neem zelf contact op.",
+        "toCustomerNoBooking": "Een bericht heeft een klant niet bereikt. Neem zelf contact op.",
+        "toStore": "Een melding aan je team over reservering #{number} is niet verzonden.",
+        "toStoreNoBooking": "Een melding aan je team is niet verzonden.",
+        "reasons": {
+          "recipientChanged": "Het e-mailadres van de klant is gewijzigd nadat het bericht was geschreven.",
+          "emailNotConfigured": "Er is geen e-maildienst ingesteld voor verzending.",
+          "writtenWrong": "Het was verkeerd opgesteld en kon niet worden verzonden."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Uitnodiging niet verzonden",
+        "summary": "De uitnodigingsmail aan {email} is niet verzonden. Stuur die opnieuw, of deel de link, vanaf de teampagina."
+      },
+      "operationUnknown": {
+        "title": "Actie te controleren",
+        "summary": "Een actie van {day} is mogelijk niet opgeslagen. Controleer het record voordat je die herhaalt.",
+        "summaryBy": "Een actie van {client} op {day} is mogelijk niet opgeslagen. Controleer het record voordat je die herhaalt."
+      },
+      "unknownTitle": "Iets te controleren",
+      "neutral": "Louez kon dit niet zelf oplossen. Open het om te zien wat er is gebeurd.",
+      "viewAll": "Alles bekijken"
     }
   },
   "storefront": {
