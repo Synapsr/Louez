@@ -1,4 +1,4 @@
-import { type SQL, and, asc, eq, or, sql } from "drizzle-orm";
+import { type SQL, and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -25,13 +25,14 @@ import { toStripeCents } from "@/lib/stripe";
 
 import {
   type ProviderRefund,
+  type ChargeSnapshot,
   REFUND_LOOKUP_MAX_PAGES,
   REFUND_REQUEST_TIMEOUT_MS,
   type RefundAnswer,
   type RefundCharge,
   type StripeRefundPort,
-  findOperationRefund,
-  listAllChargeRefunds,
+  lookUpOperationRefund,
+  readChargeSnapshot,
   refundIdempotencyKey,
   stripeRefunds,
 } from "./stripe-refund-stripe";
@@ -44,30 +45,41 @@ import {
 } from "./stripe-refund-writes";
 
 // A refund of an online payment is one durable operation (docs/domain
-// reservation-invariants.md, M8). It is recorded before Stripe is called, reaches
+// reservation-invariants.md, M9). It is recorded before Stripe is called, reaches
 // Stripe at most once whatever fails or is retried, and is recorded once whichever of
 // its sender and the Connect webhook hears of it first.
 //
 // - Asked (`requestStripeRefund`): in the caller's transaction, under the reservation's
 //   row lock, the payment is checked, what it can still give back is counted, and the
 //   operation is written `requested` with its outbox row (`payment.refund`). Two
-//   requests share one limit: an operation still open takes its amount out of it.
+//   requests share one limit: an open operation (`requested` or `unresolved`) takes
+//   its amount out of it.
 // - Sent (`sendRefundOperation`, the outbox's sender, run once inline after the commit,
 //   then by the outbox): it claims the operation under a token of its own and sends
 //   `refunds.create` with the key `refund:<operation id>` and the id in the refund's
 //   metadata, on the account and charge the payment names. While the operation's first
 //   request is under 23 hours old it may send again: Stripe answers for the first
-//   request. Older, it never sends again and looks the refund up among the charge's
-//   refunds, by the metadata. The identity of a retry is the operation, never its
+//   request. Older, it never sends again: it is `unresolved`, and only Stripe's account
+//   of the charge settles it. The identity of a retry is the operation, never its
 //   amount: two refunds of one amount are two operations.
 // - Settled: `succeeded` by the one writer of a charge's refunds (stripe-refund-writes.ts),
-//   which the webhook's `charge.refunded` also runs; `failed` when Stripe refused the
-//   request, when Stripe reports the refund failed or canceled, or when a complete
-//   listing of the charge's refunds, read more than 24 hours after the last request,
-//   holds none for it. A timeout, a 500, a rate limit, a 500 replayed for the key: the
+//   which the webhook's `charge.refunded` also runs. `failed` when Stripe refused its
+//   first request, when Stripe reports its refund failed or canceled, or on Stripe's
+//   own account of the charge: a fresh read of the charge and all its refunds that
+//   names none of the operation and adds up to what the charge says was refunded,
+//   after a request sent again was refused, or more than 24 hours after the last
+//   request. Absence alone (a listing incomplete, unreadable, or that does not add up)
+//   closes nothing. A timeout, a 500, a rate limit, a 500 replayed for the key: the
 //   outcome is unknown, the sender throws, and the outbox asks again later.
-// - Abandoned: an operation still `requested` whose outbox row was abandoned or pruned
-//   gets a new one from the cron (`requeueStaleRefundOperations`).
+// - Abandoned: an open operation whose outbox row was abandoned or pruned gets a new
+//   one from the cron (`requeueStaleRefundOperations`). One still open a day after it
+//   was asked is shown in the store's inbox (`refund_unconfirmed`); no age closes it.
+
+/** The states of an operation that still hold back what its payment can give back. */
+export const OPEN_REFUND_STATUSES = ["requested", "unresolved"] as const;
+
+const isOpenRefundStatus = (status: string): boolean =>
+  (OPEN_REFUND_STATUSES as readonly string[]).includes(status);
 
 /**
  * How long a sender holds an operation: every Stripe call one run makes at its longest
@@ -90,7 +102,7 @@ const KEY_SENDABLE_HOURS = 23;
  */
 const KEY_WINDOW_HOURS = 24;
 
-/** An operation still requested gets a new outbox row this long after its last one. */
+/** An open operation gets a new outbox row this long after its last one. */
 const REFUND_REQUEUE_HOURS = 1;
 
 /** The inline attempt after the commit: short, the outbox has the rest. */
@@ -357,7 +369,7 @@ export async function requestStripeRefund(
     grossMinor: payment.grossMinor,
     charge,
     openMinor: operations
-      .filter((operation) => operation.status === "requested")
+      .filter((operation) => isOpenRefundStatus(operation.status))
       .reduce((sum, operation) => sum + operation.amountMinor, 0),
   });
   if (input.amountMinor > ceiling.refundableMinor) {
@@ -477,7 +489,7 @@ export type RefundOperation = {
   readonly storeId: string;
   readonly reservationId: string;
   readonly paymentId: string;
-  readonly status: "requested" | "succeeded" | "failed";
+  readonly status: "requested" | "unresolved" | "succeeded" | "failed";
   readonly amountMinor: number;
   readonly currency: string;
   readonly reason: RefundReason;
@@ -616,7 +628,7 @@ async function claimOperation(database: Database, operationId: string): Promise<
       .where(eq(o.id, operationId))
       .for("update");
     if (!operation) return { kind: "gone" as const };
-    if (operation.status !== "requested") return { kind: "settled" as const };
+    if (!isOpenRefundStatus(operation.status)) return { kind: "settled" as const };
     if (Number(operation.claimed) === 1) return { kind: "busy" as const };
 
     const token = nanoid();
@@ -627,6 +639,8 @@ async function claimOperation(database: Database, operationId: string): Promise<
         claimToken: token,
         claimedUntil: sql`NOW() + INTERVAL ${sql.raw(String(REFUND_CLAIM_SECONDS))} SECOND`,
         providerRequestedAt: send ? sql`NOW()` : undefined,
+        // Its key can no longer be sent: only Stripe's account of the charge settles it.
+        status: send ? undefined : "unresolved",
         updatedAt: sql`NOW()`,
       })
       .where(eq(o.id, operationId));
@@ -666,8 +680,8 @@ async function releaseClaim(database: Database, operation: ClaimedOperation): Pr
 }
 
 /**
- * Closes the operation as `failed`, while it is still requested under this sender's
- * claim: one another sender took over, or that the webhook settled, is theirs.
+ * Closes the operation as `failed`, while it is still open under this sender's claim:
+ * one another sender took over, or that the webhook settled, is theirs.
  */
 async function failOperation(
   database: Database,
@@ -689,7 +703,7 @@ async function failOperation(
       .where(
         and(
           eq(paymentRefundOperations.id, operation.id),
-          eq(paymentRefundOperations.status, "requested"),
+          inArray(paymentRefundOperations.status, [...OPEN_REFUND_STATUSES]),
           eq(paymentRefundOperations.claimToken, operation.token),
         ),
       );
@@ -698,7 +712,12 @@ async function failOperation(
 
 /** What Stripe has for the operation. */
 type RefundVerdict =
-  | { readonly kind: "found"; readonly refund: ProviderRefund }
+  | {
+      readonly kind: "found";
+      readonly refund: ProviderRefund;
+      /** The charge as it was read to find it, when it was. */
+      readonly snapshot: ChargeSnapshot | null;
+    }
   /** Stripe made no refund of it, and never will. */
   | { readonly kind: "absent"; readonly code: string; readonly message: string | null }
   /** Stripe may have made it, or may yet: nobody can tell now. */
@@ -706,10 +725,13 @@ type RefundVerdict =
 
 /**
  * Asks Stripe about the operation. Sent when its key may be: the answer of a request
- * sent again is the one of its first request. Whenever that answer tells nothing, the
- * refund is looked up at once among the charge's refunds. Finding none proves its
- * absence only when nothing can still make it: Stripe refused the request, or the
- * key's life is over since the last request; and only after a complete listing.
+ * sent again is the one of its first request. A first request Stripe refuses made
+ * nothing. Whenever an answer tells less than that, the charge is read again with all
+ * its refunds. Absence is proven only by Stripe's own account of the charge
+ * (`lookUpOperationRefund`): a complete listing that names no refund of the operation
+ * and adds up to what the charge says was refunded; and only once nothing can still
+ * make the refund: a request sent again was refused, or the key's life is over since
+ * the last request.
  */
 async function askStripe(
   port: StripeRefundPort,
@@ -732,7 +754,9 @@ async function askStripe(
       },
       refundIdempotencyKey(operation.id),
     );
-    if (answer.kind === "created") return { kind: "found", refund: answer.refund };
+    if (answer.kind === "created") {
+      return { kind: "found", refund: answer.refund, snapshot: null };
+    }
     if (answer.kind === "refused") {
       const code = answer.code ?? "stripe_refused";
       // Stripe refused this very request, the first: it made nothing.
@@ -750,48 +774,55 @@ async function askStripe(
   }
 
   context.throwIfAborted();
-  const found = await findOperationRefund(port, operation);
-  if (found.kind === "found") return { kind: "found", refund: found.refund };
+  const snapshot = await readChargeSnapshot(port, operation);
+  const found = lookUpOperationRefund(snapshot, operation.id);
+  if (found.kind === "found") return { kind: "found", refund: found.refund, snapshot };
   if (found.kind === "absent") {
     if (refusal) return { kind: "absent", ...refusal };
     if (!operation.send && operation.windowOver) {
       return {
         kind: "absent",
         code: "not_found_at_stripe",
-        message: `no refund of the charge names the operation, ${KEY_WINDOW_HOURS} hours after its last request`,
+        message: `Stripe's account of the charge holds no refund of the operation, ${KEY_WINDOW_HOURS} hours after its last request`,
       };
     }
   }
-  return { kind: "unknown", message };
+  return {
+    kind: "unknown",
+    message:
+      found.kind === "unknown"
+        ? `${message}; the charge's refunds are incomplete or do not add up to what it says was refunded`
+        : message,
+  };
 }
 
 /**
  * Records the refund Stripe made for the operation, with every refund of its charge,
- * through the one writer the webhook also runs; then its credit note.
+ * through the one writer the webhook also runs.
  */
 async function recordFound(
   deps: StripeRefundDeps,
   operation: ClaimedOperation,
-  refund: ProviderRefund,
+  verdict: Extract<RefundVerdict, { kind: "found" }>,
   context: Pick<EffectSendContext, "throwIfAborted">,
 ): Promise<void> {
   context.throwIfAborted();
-  const charge = await deps.stripe.readCharge(operation.accountId, operation.chargeId);
-  context.throwIfAborted();
-  const listed = await listAllChargeRefunds(deps.stripe, operation);
-  if (!listed) throw new Error(`the refunds of ${operation.chargeId} could not all be read`);
-  const refunds = listed.some((candidate) => candidate.id === refund.id)
-    ? listed
-    : [refund, ...listed];
-  const recorded = await recordChargeRefunds(deps.database, {
+  const snapshot = verdict.snapshot ?? (await readChargeSnapshot(deps.stripe, operation));
+  if (!snapshot.refunds) {
+    throw new Error(`the refunds of ${operation.chargeId} could not all be read`);
+  }
+  const { refund } = verdict;
+  const refunds = snapshot.refunds.some((candidate) => candidate.id === refund.id)
+    ? snapshot.refunds
+    : [refund, ...snapshot.refunds];
+  await recordChargeRefunds(deps.database, {
     paymentId: operation.paymentId,
     reservationId: operation.reservationId,
     chargeId: operation.chargeId,
-    currency: charge.currency,
-    amountCapturedMinor: charge.amountCapturedMinor,
+    currency: snapshot.charge.currency,
+    amountCapturedMinor: snapshot.charge.amountCapturedMinor,
     refunds,
   });
-  await issueRefundCreditNotes(operation.paymentId, recorded.rows, "stripe_refund_operation");
 }
 
 /**
@@ -814,7 +845,7 @@ export async function sendRefundOperation(
   try {
     const verdict = await askStripe(deps.stripe, operation, context);
     if (verdict.kind === "found") {
-      await recordFound(deps, operation, verdict.refund, context);
+      await recordFound(deps, operation, verdict, context);
       return undefined;
     }
     if (verdict.kind === "absent") {
@@ -842,7 +873,7 @@ export function createStripeRefundEffectSenders(
 
 /**
  * An outbox row still to run for the operation, or one added less than an hour ago,
- * whatever became of it: an operation still requested that has neither gets a new one.
+ * whatever became of it: an operation still open that has neither gets a new one.
  */
 const refundInFlight = (operationId: SQL | string) =>
   sql`EXISTS (
@@ -860,7 +891,7 @@ export const STALE_REFUNDS_PER_RUN = 20;
 export const STALE_REFUNDS_RUN_BUDGET_MS = 10_000;
 
 /**
- * The cron's pass over the operations still requested whose outbox row was abandoned
+ * The cron's pass over the operations still open whose outbox row was abandoned
  * or pruned: each gets a new one, the oldest first, bounded per run and in time. Under
  * the reservation's lock the operation is read again: one settled meanwhile, or given
  * a row by another run, adds nothing. Makes no Stripe call: the senders do, each with
@@ -881,7 +912,9 @@ export async function requeueStaleRefundOperations(
   const stale = await database
     .select({ id: o.id, reservationId: o.reservationId, storeId: o.storeId })
     .from(o)
-    .where(and(eq(o.status, "requested"), sql`NOT ${refundInFlight(sql`${o.id}`)}`))
+    .where(
+      and(inArray(o.status, [...OPEN_REFUND_STATUSES]), sql`NOT ${refundInFlight(sql`${o.id}`)}`),
+    )
     .orderBy(asc(o.createdAt), asc(o.id))
     .limit(options.limit ?? STALE_REFUNDS_PER_RUN);
 
@@ -895,7 +928,7 @@ export async function requeueStaleRefundOperations(
         .from(o)
         .where(eq(o.id, operation.id))
         .for("update");
-      if (row?.status !== "requested" || Number(row.inFlight) === 1) return [];
+      if (!row || !isOpenRefundStatus(row.status) || Number(row.inFlight) === 1) return [];
       return enqueueEffects(tx, operation.storeId, [
         { type: "payment.refund", payload: { operationId: operation.id } },
       ]);

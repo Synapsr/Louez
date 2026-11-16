@@ -167,38 +167,45 @@ export const stripeRefunds: StripeRefundPort = {
   },
 };
 
+/** The charge as Stripe states it now, with every refund it lists; null when not all could be read. */
+export type ChargeSnapshot = {
+  readonly charge: RefundCharge;
+  readonly refunds: readonly ProviderRefund[] | null;
+};
+
+/** Reads the charge, then all its refunds, on the account the operation was sent to. Throws when a read fails. */
+export async function readChargeSnapshot(
+  port: Pick<StripeRefundPort, "readCharge" | "listChargeRefunds">,
+  input: { readonly accountId: string; readonly chargeId: string },
+): Promise<ChargeSnapshot> {
+  const charge = await port.readCharge(input.accountId, input.chargeId);
+  const refunds = await listAllChargeRefunds(port, input);
+  return { charge, refunds };
+}
+
 export type RefundLookup =
   | { readonly kind: "found"; readonly refund: ProviderRefund }
-  /** Every refund of the charge was read: none answers the operation. */
+  /**
+   * Stripe's own account of the charge holds no refund of the operation: its listing
+   * was read to its end, none names the operation, and the refunds it lists that
+   * moved money add up to what the charge says was refunded, so no refund exists
+   * that the listing does not show.
+   */
   | { readonly kind: "absent" }
-  /** The listing could not be finished: it says nothing. */
+  /** The listing is incomplete, or does not add up to the charge: it says nothing. */
   | { readonly kind: "unknown" };
 
-/**
- * The operation's refund, among the charge's refunds on the account it was sent to,
- * by the operation's id in its metadata. `absent` only when the listing was read to its
- * end: one stopped at its page bound, or a page that comes back empty while Stripe says
- * more follow, is `unknown`. A read that fails throws.
- */
-export async function findOperationRefund(
-  port: Pick<StripeRefundPort, "listChargeRefunds">,
-  operation: { readonly id: string; readonly accountId: string; readonly chargeId: string },
-): Promise<RefundLookup> {
-  let startingAfter: string | null = null;
-  for (let page = 0; page < REFUND_LOOKUP_MAX_PAGES; page++) {
-    const { refunds, hasMore } = await port.listChargeRefunds({
-      accountId: operation.accountId,
-      chargeId: operation.chargeId,
-      startingAfter,
-    });
-    const refund = refunds.find((candidate) => candidate.operationId === operation.id);
-    if (refund) return { kind: "found", refund };
-    if (!hasMore) return { kind: "absent" };
-    const last = refunds.at(-1);
-    if (!last) return { kind: "unknown" };
-    startingAfter = last.id;
-  }
-  return { kind: "unknown" };
+/** What a snapshot of the charge says of the operation's refund, by its id in the refund's metadata. */
+export function lookUpOperationRefund(snapshot: ChargeSnapshot, operationId: string): RefundLookup {
+  if (!snapshot.refunds) return { kind: "unknown" };
+  const refund = snapshot.refunds.find((candidate) => candidate.operationId === operationId);
+  if (refund) return { kind: "found", refund };
+  const listedMinor = snapshot.refunds
+    .filter(refundMovedMoney)
+    .reduce((sum, candidate) => sum + candidate.amount, 0);
+  return listedMinor === snapshot.charge.amountRefundedMinor
+    ? { kind: "absent" }
+    : { kind: "unknown" };
 }
 
 /**

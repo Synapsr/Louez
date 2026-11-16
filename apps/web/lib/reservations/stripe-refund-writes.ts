@@ -109,6 +109,20 @@ export async function ensureRefundPaymentRecord(
   return refundPaymentId;
 }
 
+/**
+ * The activity line of a refund row undone because Stripe reports its refund failed
+ * or canceled (`metadata.kind`); the inbox's `refund_undone` reads it (packages/api
+ * services/inbox.ts).
+ */
+export const REFUND_UNDONE_ACTIVITY = "refund_undone";
+
+/**
+ * The activity line of the application fee Louez gave back on a refund that failed
+ * afterwards (`metadata.kind`): Stripe cannot take an application fee refund back, so
+ * it stays given back; the inbox's `refund_undone` names it.
+ */
+export const REFUND_FEE_OVER_RETURNED_ACTIVITY = "refund_fee_over_returned";
+
 /** A deposit's money goes back as a deposit return; the rest as a rental refund. */
 export const refundTypeOf = (paymentType: string): "rental" | "deposit_return" =>
   paymentType === "deposit" || paymentType === "deposit_capture" ? "deposit_return" : "rental";
@@ -123,6 +137,11 @@ export type RecordedRefundRow = {
 export type RecordedChargeRefunds = {
   /** The refund row of each refund that moved money, written now or before. */
   readonly rows: readonly RecordedRefundRow[];
+  /**
+   * The refund rows this write undid: recorded `completed`, for a refund Stripe now
+   * reports failed or canceled. Each is `failed` now.
+   */
+  readonly undone: readonly RecordedRefundRow[];
   /** What the store keeps of the charge. */
   readonly netMinor: number;
   /** The operations this write settled, `succeeded` or `failed`. */
@@ -145,6 +164,12 @@ export type RecordedChargeRefunds = {
  * operation of another payment or charge is left alone (its id was put on a refund by
  * hand); a refund that names none is recorded as every refund made in Stripe's
  * dashboard always was.
+ *
+ * What Louez records follows Stripe's final word: a refund Stripe reports failed or
+ * canceled after its row was written has that row made `failed`, which counts for
+ * nothing, and an activity line names it; the payment is netted again without it. A
+ * refund failed or canceled is final at Stripe, so a row made `failed` is never made
+ * `completed` again, whatever an older answer says.
  */
 export async function recordChargeRefunds(
   database: Database,
@@ -202,6 +227,29 @@ export async function recordChargeRefunds(
     if (!payment || payment.reservationId !== input.reservationId) {
       throw new Error(`payment ${paymentId} not found on reservation ${input.reservationId}`);
     }
+    // The rows already written for these refunds, after the payment's.
+    const existingRows =
+      refundIds.length > 0
+        ? await tx
+            .select({
+              id: payments.id,
+              refundId: payments.stripeRefundId,
+              status: payments.status,
+              amount: payments.amount,
+            })
+            .from(payments)
+            .where(
+              and(
+                eq(payments.reservationId, input.reservationId),
+                inArray(payments.stripeRefundId, refundIds),
+                isStripeRefundPaymentSql(),
+              ),
+            )
+            .orderBy(asc(payments.id))
+            .for("update")
+        : [];
+    const rowOf = (refund: ProviderRefund) =>
+      existingRows.find((row) => row.refundId === refund.id) ?? null;
 
     // An operation of another payment or charge is never settled from this charge:
     // its id was put on a refund by hand.
@@ -232,10 +280,41 @@ export async function recordChargeRefunds(
     };
 
     const rows: RecordedRefundRow[] = [];
+    const undone: RecordedRefundRow[] = [];
     const settledOperationIds: string[] = [];
     for (const refund of input.refunds) {
       const operation = operationOf(refund);
+      const existing = rowOf(refund);
+      if (refundMovedMoney(refund) && existing?.status === "failed") {
+        log.error({
+          stripeRefund: { issue: "failed_refund_listed_as_moving_money", refundId: refund.id },
+        });
+        continue;
+      }
       if (!refundMovedMoney(refund)) {
+        if (existing?.status === "completed") {
+          await tx
+            .update(payments)
+            .set({ status: "failed", updatedAt: new Date() })
+            .where(eq(payments.id, existing.id));
+          const amount = Number(existing.amount);
+          undone.push({ refundId: refund.id, refundPaymentId: existing.id, amount });
+          await tx.insert(reservationActivity).values({
+            id: nanoid(),
+            reservationId: input.reservationId,
+            activityType: "payment_updated",
+            metadata: {
+              kind: REFUND_UNDONE_ACTIVITY,
+              paymentId: existing.id,
+              refundOfPaymentId: paymentId,
+              refundId: refund.id,
+              refundStatus: refund.status,
+              amount,
+              currency,
+            },
+            createdAt: new Date(),
+          });
+        }
         if (operation && operation.status !== "failed") {
           await tx
             .update(paymentRefundOperations)
@@ -343,7 +422,7 @@ export async function recordChargeRefunds(
       .where(eq(payments.id, paymentId));
     await markReservationIds(tx, [input.reservationId]);
 
-    return { rows, netMinor, settledOperationIds };
+    return { rows, undone, netMinor, settledOperationIds };
   }, REFUND_TRANSACTION);
 }
 

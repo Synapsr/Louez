@@ -172,7 +172,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(first, { status: "refunded", feeId, targetMinor: 83, incrementMinor: 83 });
+    assert.deepEqual(first, {
+      status: "refunded",
+      feeId,
+      targetMinor: 83,
+      incrementMinor: 83,
+      feeRefundedMinor: 83,
+    });
     charge.amountRefunded = 6_666;
     await reversal.reverseFeeAtSource({ chargeId, accountId: ACCOUNT, stripe: stripe.port });
     assert.deepEqual(stripe.refunds, [
@@ -187,7 +193,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(again, { status: "unchanged", feeId, targetMinor: 167, incrementMinor: 0 });
+    assert.deepEqual(again, {
+      status: "unchanged",
+      feeId,
+      targetMinor: 167,
+      incrementMinor: 0,
+      feeRefundedMinor: 167,
+    });
     assert.equal(stripe.refunds.length, 2);
   });
 
@@ -241,6 +253,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       feeId,
       targetMinor: 125,
       incrementMinor: 0,
+      feeRefundedMinor: 250,
     });
     // A later refund of the whole charge brings the target to the whole fee.
     charge.amountRefunded = 25_000;
@@ -265,7 +278,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         accountId: ACCOUNT,
         stripe: stripe.port,
       }),
-      { status: "refunded", feeId: full.feeId, targetMinor: 300, incrementMinor: 300 },
+      {
+        status: "refunded",
+        feeId: full.feeId,
+        targetMinor: 300,
+        incrementMinor: 300,
+        feeRefundedMinor: 300,
+      },
     );
 
     // 15.00 of the 60.00 refunded: a quarter of the fee.
@@ -279,7 +298,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         accountId: ACCOUNT,
         stripe: stripe.port,
       }),
-      { status: "refunded", feeId: partial.feeId, targetMinor: 75, incrementMinor: 75 },
+      {
+        status: "refunded",
+        feeId: partial.feeId,
+        targetMinor: 75,
+        incrementMinor: 75,
+        feeRefundedMinor: 75,
+      },
     );
 
     // A chargeback on 30.00 of the rest counts on the same base: 15.00 + 30.00 of 60.00.
@@ -290,7 +315,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         accountId: ACCOUNT,
         stripe: stripe.port,
       }),
-      { status: "refunded", feeId: partial.feeId, targetMinor: 225, incrementMinor: 150 },
+      {
+        status: "refunded",
+        feeId: partial.feeId,
+        targetMinor: 225,
+        incrementMinor: 150,
+        feeRefundedMinor: 225,
+      },
     );
   });
 
@@ -306,7 +337,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(result, { status: "refunded", feeId, targetMinor: 625, incrementMinor: 625 });
+    assert.deepEqual(result, {
+      status: "refunded",
+      feeId,
+      targetMinor: 625,
+      incrementMinor: 625,
+      feeRefundedMinor: 625,
+    });
   });
 
   test("a fee already given back by Stripe (refund_application_fee) needs nothing more", async () => {
@@ -323,7 +360,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(result, { status: "unchanged", feeId, targetMinor: 150, incrementMinor: 0 });
+    assert.deepEqual(result, {
+      status: "unchanged",
+      feeId,
+      targetMinor: 150,
+      incrementMinor: 0,
+      feeRefundedMinor: 300,
+    });
     assert.deepEqual(stripe.refunds, []);
     // The ledger records what Stripe refunded, not the target.
     assert.deepEqual(await readRow(rowId), { status: "reversed", reversed: 300 });

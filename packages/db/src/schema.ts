@@ -2120,10 +2120,11 @@ export const payments = mysqlTable(
  * A refund of an online payment, asked of Stripe (apps/web
  * lib/reservations/stripe-refund.ts). Written before Stripe is called, in the
  * transaction that checks what the payment can still give back; its id is the
- * refund's idempotency key and travels in the refund's metadata. `requested` until
- * Stripe's answer is known, whoever hears it first: the request, the outbox or the
- * Connect webhook. Kept apart from `payments`, which holds money that moved: the
- * refund row it leads to is `refund_payment_id`.
+ * refund's idempotency key and travels in the refund's metadata. `requested` while it
+ * may be sent, `unresolved` once its key can no longer be, until Stripe's account of
+ * the charge settles it, whoever hears it first: the request, the outbox or the
+ * Connect webhook. Both hold back its amount. Kept apart from `payments`, which holds
+ * money that moved: the refund row it leads to is `refund_payment_id`.
  */
 export const paymentRefundOperations = mysqlTable(
   "payment_refund_operations",
@@ -2144,7 +2145,7 @@ export const paymentRefundOperations = mysqlTable(
     // Stripe's reason for the refund.
     reason: mysqlEnum("reason", ["requested_by_customer", "duplicate", "fraudulent"]).notNull(),
     notes: text("notes"),
-    status: mysqlEnum("status", ["requested", "succeeded", "failed"])
+    status: mysqlEnum("status", ["requested", "unresolved", "succeeded", "failed"])
       .default("requested")
       .notNull(),
     // Why it failed: Stripe's code, or Louez's when Stripe never made the refund.
@@ -2173,7 +2174,7 @@ export const paymentRefundOperations = mysqlTable(
       table.paymentId,
       table.status,
     ),
-    // The scheduled pass: the operations still requested, oldest first.
+    // The scheduled pass and the inbox: the operations still open, oldest first.
     statusCreatedIdx: index("payment_refund_operations_status_created_idx").on(
       table.status,
       table.createdAt,

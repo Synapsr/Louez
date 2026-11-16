@@ -10,7 +10,7 @@ CREATE TABLE `payment_refund_operations` (
 	`refund_type` enum('rental','deposit_return') NOT NULL,
 	`reason` enum('requested_by_customer','duplicate','fraudulent') NOT NULL,
 	`notes` text,
-	`status` enum('requested','succeeded','failed') NOT NULL DEFAULT 'requested',
+	`status` enum('requested','unresolved','succeeded','failed') NOT NULL DEFAULT 'requested',
 	`failure_code` varchar(64),
 	`failure_message` text,
 	`stripe_refund_id` varchar(255),

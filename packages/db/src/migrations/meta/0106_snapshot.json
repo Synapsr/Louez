@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "5298e7f3-d12a-4c27-b979-d1a58b168575",
+  "id": "941896c1-5253-46ac-b302-c3b6047acac2",
   "prevId": "f7c4a702-5dda-40a4-a7cb-69258703d65d",
   "tables": {
     "account_departure_reason_counters": {
@@ -7808,7 +7808,7 @@
         },
         "status": {
           "name": "status",
-          "type": "enum('requested','succeeded','failed')",
+          "type": "enum('requested','unresolved','succeeded','failed')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
