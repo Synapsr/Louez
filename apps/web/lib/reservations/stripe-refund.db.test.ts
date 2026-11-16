@@ -1053,14 +1053,12 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
       documentId: `doc_${counter}`,
       processingRule: "b2c",
     });
-    await louezDb.db
-      .insert(louezDb.invoicePayments)
-      .values({
-        id: `ip_${counter}`,
-        invoiceId,
-        paymentId: refundPaymentId,
-        amount: "-60.00",
-      } as never);
+    await louezDb.db.insert(louezDb.invoicePayments).values({
+      id: `ip_${counter}`,
+      invoiceId,
+      paymentId: refundPaymentId,
+      amount: "-60.00",
+    } as never);
   }
 
   test("a refund that fails after it was recorded is undone in the books, once, whatever arrives after", async () => {
@@ -1289,6 +1287,183 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
 
     assert.deepEqual(issued, [row.id]);
     assert.equal((await creditNoteRowsOf(row.id))[0]?.status, "sent");
+  });
+
+  // ---------------------------------------------------------------------------
+  // What is recorded never goes backwards
+  // ---------------------------------------------------------------------------
+
+  const statusOfRow = async (refundId: string) => {
+    const rows = await louezDb.db
+      .select({ status: louezDb.payments.status })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.stripeRefundId, refundId));
+    return rows.map((row) => row.status);
+  };
+
+  const failedListedLines = (reservationId: string) =>
+    louezDb.db
+      .select({ id: louezDb.reservationActivity.id })
+      .from(louezDb.reservationActivity)
+      .where(
+        and(
+          eq(louezDb.reservationActivity.reservationId, reservationId),
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) = 'refund_failed_listed'`,
+        ),
+      );
+
+  test("a listing read before a refund failed, applied after its failure, changes nothing", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+    const operation = await expectOk(await refund(stripe, request(paymentId, 6_000)));
+    const made = stripe.charges.get(chargeId)?.refunds[0];
+    assert.ok(made);
+    // The listing as it was while the refund moved money.
+    const stale = stripe.charges
+      .get(chargeId)
+      ?.refunds.map((refund) => providerRefundFromStripe({ ...refund, currency: "eur" }));
+    assert.ok(stale);
+    made.status = "failed";
+    await webhook.handleRefundUpdated(
+      { ...made, currency: "eur", charge: chargeId },
+      ACCOUNT,
+      stripe.webhookPort,
+    );
+    assert.equal((await readPayment(paymentId))?.amount, "100.00");
+
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await writes.recordChargeRefunds(louezDb.db, {
+        paymentId,
+        reservationId,
+        chargeId,
+        currency: "EUR",
+        amountCapturedMinor: 10_000,
+        refunds: stale,
+        source: "test",
+      });
+    }
+
+    assert.deepEqual(await readPayment(paymentId), {
+      amount: "100.00",
+      status: "completed",
+      grossMinor: 10_000,
+    });
+    assert.deepEqual(await statusOfRow(made.id), ["failed"]);
+    assert.equal((await readOperation(operation.id))?.status, "failed");
+    // Named once for a person: Stripe listed as moving money a refund Louez holds failed.
+    assert.equal((await failedListedLines(reservationId)).length, 1);
+  });
+
+  test("a refund that fails before Louez wrote its row is kept failed, and a stale listing never records it", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+    // Stripe made the refund; nobody recorded it.
+    stripe.behaviours.push("lost_after");
+    stripe.failures.list = 1;
+    const operation = await expectOk(await refund(stripe, request(paymentId, 6_000)));
+    assert.equal(operation.status, "requested");
+    const made = stripe.charges.get(chargeId)?.refunds[0];
+    assert.ok(made);
+    const stale = [providerRefundFromStripe({ ...made, currency: "eur" })];
+    made.status = "failed";
+
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await webhook.handleRefundUpdated(
+        { ...made, currency: "eur", charge: chargeId },
+        ACCOUNT,
+        stripe.webhookPort,
+      );
+    }
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await writes.recordChargeRefunds(louezDb.db, {
+        paymentId,
+        reservationId,
+        chargeId,
+        currency: "EUR",
+        amountCapturedMinor: 10_000,
+        refunds: stale,
+        source: "test",
+      });
+    }
+    await send(stripe, operation.id);
+
+    assert.deepEqual(await statusOfRow(made.id), ["failed"]);
+    const [row] = await refundRowsOf(paymentId);
+    assert.ok(row);
+    assert.deepEqual(await creditNoteRowsOf(row.id), []);
+    assert.equal((await readOperation(operation.id))?.status, "failed");
+    assert.deepEqual(await readPayment(paymentId), {
+      amount: "100.00",
+      status: "completed",
+      grossMinor: 10_000,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // The charge's ceiling, whichever of its rows is asked
+  // ---------------------------------------------------------------------------
+
+  /** A second payment row of the same reservation, on the same charge. */
+  async function secondRowOf(reservationId: string, chargeId: string) {
+    const id = `pay_second_${++counter}`;
+    await louezDb.db.insert(louezDb.payments).values({
+      id,
+      reservationId,
+      amount: "100.00",
+      type: "rental",
+      method: "stripe",
+      status: "completed",
+      stripePaymentIntentId: `pi_second_${counter}`,
+      stripeChargeId: chargeId,
+      stripeAccountId: ACCOUNT,
+      currency: "EUR",
+      grossMinor: 10_000,
+    });
+    return id;
+  }
+
+  test("a refund through one row of a charge counts what was given back against another", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+    const second = await secondRowOf(reservationId, chargeId);
+    await recordManualRefund(reservationId, paymentId, "30.00");
+
+    const over = await refund(stripe, request(second, 7_001));
+    assert.equal(
+      !over.ok && over.code === "REFUND_EXCEEDS_REFUNDABLE" && over.refundableMinor,
+      7_000,
+    );
+    await expectOk(await refund(stripe, request(second, 7_000)));
+    assert.equal(stripe.movedMinor(stripe.charges.get(chargeId)!), 7_000);
+  });
+
+  test("two requests at once through two rows of one charge: the second is refused by the first's", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+    const second = await secondRowOf(reservationId, chargeId);
+    await recordManualRefund(reservationId, paymentId, "30.00");
+
+    const results = await raceOnLockedRow(database, { table: "reservations", id: reservationId }, [
+      () => requestOnly(stripe, request(paymentId, 7_000)),
+      () => requestOnly(stripe, request(second, 7_000)),
+    ]);
+
+    assert.deepEqual(results.map((result) => (result.ok ? "ok" : result.code)).sort(), [
+      "REFUND_EXCEEDS_REFUNDABLE",
+      "ok",
+    ]);
+  });
+
+  test("a charge recorded on payment rows of two reservations is refused", async () => {
+    const stripe = fakeStripe();
+    const { paymentId, chargeId } = await createPayment(stripe);
+    const other = await createPayment(stripe);
+    await secondRowOf(other.reservationId, chargeId);
+
+    assert.deepEqual(await refund(stripe, request(paymentId, 1_000)), {
+      ok: false,
+      code: "PAYMENT_CHARGE_SHARED",
+    });
   });
 
   // ---------------------------------------------------------------------------

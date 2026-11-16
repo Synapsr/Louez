@@ -56,6 +56,7 @@ import {
 } from "../contracts/inbox";
 import type { ResourceLinks } from "../contracts/links";
 import { databaseNow } from "../platform/database-clock";
+import { creditNoteStillOwedSql } from "../platform/effects";
 import { platformErrors } from "../platform/errors";
 import { sanitizeError } from "../platform/sanitize-error";
 import { OPERATION_LEASE_SECONDS } from "../platform/operations";
@@ -954,7 +955,9 @@ const creditNote = alias(invoices, CREDIT_NOTE);
  * back to what the store keeps, but what Louez cannot undo by itself is named here.
  * The credit note issued for it stands (invoicing has no document that cancels one):
  * the store corrects it by hand. The application fee given back on it stays given back
- * (Stripe cannot take an application fee refund back). Shown while either is so.
+ * (Stripe cannot take an application fee refund back). A refund Stripe listed as moving
+ * money after reporting it failed stays failed in Louez, for a person to check. Shown
+ * while any of these is so.
  */
 const undoneRefunds: Source = async (window, shaper) => {
   const creditNoteNumber = sql<
@@ -963,10 +966,12 @@ const undoneRefunds: Source = async (window, shaper) => {
   const feeOverReturnedMinor = sql<
     string | null
   >`(SELECT MAX(CAST(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.overReturnedMinor') AS SIGNED)) FROM ${reservationActivity} AS ${sql.identifier(UNDONE_FEE_ACTIVITY)} WHERE ${undoneFeeActivity.reservationId} = ${payments.reservationId} AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.kind')) = 'refund_fee_over_returned' AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.paymentId')) = ${payments.id})`;
+  const listedAfterFailure = sql<number>`EXISTS (SELECT 1 FROM ${reservationActivity} AS ${sql.identifier(UNDONE_FEE_ACTIVITY)} WHERE ${undoneFeeActivity.reservationId} = ${payments.reservationId} AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.kind')) = 'refund_failed_listed' AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.paymentId')) = ${payments.id})`;
   const occurred = sql<Date>`${payments.updatedAt}`.mapWith(payments.updatedAt);
   const rows = await db
     .select({
       ...reservationColumns,
+      listedAfterFailure,
       refundPaymentId: payments.id,
       occurredAt: occurred,
       refundId: payments.stripeRefundId,
@@ -984,7 +989,7 @@ const undoneRefunds: Source = async (window, shaper) => {
         eq(payments.status, "failed"),
         isNotNull(payments.refundOfPaymentId),
         isStripeRefundPaymentSql(),
-        sql`(${creditNoteNumber} IS NOT NULL OR ${feeOverReturnedMinor} IS NOT NULL)`,
+        sql`(${creditNoteNumber} IS NOT NULL OR ${feeOverReturnedMinor} IS NOT NULL OR ${listedAfterFailure})`,
         inWindow(window, "refund_undone", occurred, payments.id),
       ),
     )
@@ -1006,6 +1011,9 @@ const undoneRefunds: Source = async (window, shaper) => {
         row.creditNoteNumber
           ? `The credit note ${row.creditNoteNumber} issued for it stands: correct it by hand in your accounting.`
           : null,
+        Number(row.listedAfterFailure) === 1
+          ? "Stripe has since listed it as moving money: Louez keeps it failed; check it in Stripe."
+          : null,
         feeAmount
           ? `Louez's fee given back on it (${money(feeAmount, currency) ?? feeAmount}) stays given back.`
           : null,
@@ -1022,6 +1030,7 @@ const undoneRefunds: Source = async (window, shaper) => {
         currency,
         creditNoteNumber: row.creditNoteNumber,
         feeOverReturned: feeAmount,
+        listedAfterFailure: Number(row.listedAfterFailure) === 1,
       },
       tools: RESERVATION_TOOLS,
       links: about.links,
@@ -1662,6 +1671,9 @@ const unissuedCreditNotes: Source = async (window, shaper) => {
         eq(apiEffects.storeId, window.storeId),
         eq(apiEffects.status, "abandoned"),
         eq(apiEffects.type, "payment.refundCreditNote"),
+        // Its refund row is completed and still has no note: one whose refund failed
+        // owes none, and one that names no refund row was never owed.
+        creditNoteStillOwedSql(),
         inWindow(window, "credit_note_not_issued", apiEffects.nextAttemptAt, apiEffects.id),
       ),
     )

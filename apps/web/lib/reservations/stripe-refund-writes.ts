@@ -54,6 +54,11 @@ export type RefundPaymentRecordInput = {
   notes?: string | null;
   /** Stripe's refund amount in minor units; derived from `amount` when absent. */
   grossMinor?: number;
+  /**
+   * `failed` for a refund Stripe reports failed or canceled before Louez wrote its row:
+   * the row keeps that fact under the refund's id, and counts for nothing.
+   */
+  status?: "completed" | "failed";
 };
 
 /**
@@ -90,7 +95,7 @@ export async function ensureRefundPaymentRecord(
     amount,
     type: input.type,
     method: "stripe",
-    status: "completed",
+    status: input.status ?? "completed",
     stripeRefundId: input.stripeRefundId,
     // Lets the cash ledger add the refund back to the charge the webhook
     // brought down to its net amount. Readers that subtract refunds must skip
@@ -116,6 +121,13 @@ export async function ensureRefundPaymentRecord(
  * services/inbox.ts).
  */
 export const REFUND_UNDONE_ACTIVITY = "refund_undone";
+
+/**
+ * The activity line of a refund Louez holds as failed that Stripe then listed as moving
+ * money (`metadata.kind`): Louez keeps it failed, and the inbox's `refund_undone` asks a
+ * person to look at it in Stripe.
+ */
+export const REFUND_FAILED_LISTED_ACTIVITY = "refund_failed_listed";
 
 /**
  * The activity line of the application fee Louez gave back on a refund that failed
@@ -155,11 +167,11 @@ export type RecordedChargeRefunds = {
  * Writes what Stripe lists of a charge's refunds on the payment that holds its money.
  *
  * The payment is brought down to what the store keeps: the charge's captured amount
- * less every refund that moved money, those Stripe lists and those already recorded
- * for this payment that the listing does not show failed. So a listing read before
- * another refund and written after it never raises the payment again. Only `amount`
- * is netted: `gross_minor` keeps the charge amount (billing README Q7). A payment
- * found through its PaymentIntent gets the charge id it lacked (Q36).
+ * less every refund whose row is `completed` once this listing is merged in, each
+ * counted once by its refund id. The figure comes from the rows, never from the listing
+ * alone, so a listing older than what was recorded never moves the payment. Only
+ * `amount` is netted: `gross_minor` keeps the charge amount (billing README Q7). A
+ * payment found through its PaymentIntent gets the charge id it lacked (Q36).
  *
  * A refund whose metadata names an operation, or the refund an operation already
  * names, settles that operation in the same transaction: `succeeded` with its refund
@@ -168,11 +180,13 @@ export type RecordedChargeRefunds = {
  * hand); a refund that names none is recorded as every refund made in Stripe's
  * dashboard always was.
  *
- * What Louez records follows Stripe's final word: a refund Stripe reports failed or
- * canceled after its row was written has that row made `failed`, which counts for
- * nothing, and an activity line names it; the payment is netted again without it. A
- * refund failed or canceled is final at Stripe, so a row made `failed` is never made
- * `completed` again, whatever an older answer says.
+ * What Louez records follows Stripe's final word, and never goes backwards: a refund
+ * Stripe reports failed or canceled has a `failed` row under its id, the row written for
+ * it made `failed` (an activity line names it) or, when none was written yet, a row
+ * written `failed` that counts for nothing and owes no credit note; its operation is
+ * `failed`. A failed refund is final at Stripe and in Louez: a `failed` row is never made
+ * `completed` again, and a listing that shows it moving money changes nothing but an
+ * activity line, once, for a person to look at.
  */
 export async function recordChargeRefunds(
   database: Database,
@@ -291,10 +305,38 @@ export async function recordChargeRefunds(
     for (const refund of input.refunds) {
       const operation = operationOf(refund);
       const existing = rowOf(refund);
+      // A failed refund is final in Louez: a listing that shows it moving money, older
+      // or not, changes nothing, and is named once for a person to look at.
       if (refundMovedMoney(refund) && existing?.status === "failed") {
         log.error({
           stripeRefund: { issue: "failed_refund_listed_as_moving_money", refundId: refund.id },
         });
+        const [named] = await tx
+          .select({ id: reservationActivity.id })
+          .from(reservationActivity)
+          .where(
+            and(
+              eq(reservationActivity.reservationId, input.reservationId),
+              sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.kind')) = ${REFUND_FAILED_LISTED_ACTIVITY}`,
+              sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.refundId')) = ${refund.id}`,
+            ),
+          )
+          .limit(1);
+        if (!named) {
+          await tx.insert(reservationActivity).values({
+            id: nanoid(),
+            reservationId: input.reservationId,
+            activityType: "payment_updated",
+            metadata: {
+              kind: REFUND_FAILED_LISTED_ACTIVITY,
+              paymentId: existing.id,
+              refundOfPaymentId: paymentId,
+              refundId: refund.id,
+              refundStatus: refund.status,
+            },
+            createdAt: new Date(),
+          });
+        }
         continue;
       }
       if (!refundMovedMoney(refund)) {
@@ -319,6 +361,21 @@ export async function recordChargeRefunds(
               currency,
             },
             createdAt: new Date(),
+          });
+        }
+        if (!existing) {
+          // Failed before Louez wrote its row: the fact is kept under its id, so an older
+          // listing that still shows it moving money never records it.
+          await ensureRefundPaymentRecord(tx, {
+            originalPaymentId: paymentId,
+            stripeRefundId: refund.id,
+            amount: fromStripeCents(refund.amount, currency),
+            grossMinor: refund.amount,
+            currency,
+            type: operation?.refundType ?? refundTypeOf(payment.type),
+            notes: operation?.notes ?? null,
+            paidAt: new Date(refund.created * 1000),
+            status: "failed",
           });
         }
         if (operation && operation.status !== "failed") {
@@ -416,25 +473,46 @@ export async function recordChargeRefunds(
       }
     }
 
-    // What came off the charge: every refund that moved money, listed or recorded.
+    // What came off the charge, from the rows after this merge: each refund once, by its
+    // id, counted while its row is `completed`. A refund with no row of its own (one
+    // whose id the oldest webhooks stamped on the payment itself) counts as Stripe
+    // lists it. So a listing applied after a newer one changes nothing.
     const listed = new Map(input.refunds.map((refund) => [refund.id, refund]));
     const recorded = await tx
-      .select({ refundId: payments.stripeRefundId, grossMinor: payments.grossMinor })
+      .select({
+        refundId: payments.stripeRefundId,
+        status: payments.status,
+        grossMinor: payments.grossMinor,
+        amount: payments.amount,
+      })
       .from(payments)
       .where(
         and(
-          eq(payments.refundOfPaymentId, paymentId),
-          eq(payments.status, "completed"),
+          eq(payments.reservationId, input.reservationId),
           isStripeRefundPaymentSql(),
+          or(
+            eq(payments.refundOfPaymentId, paymentId),
+            ...(refundIds.length > 0 ? [inArray(payments.stripeRefundId, refundIds)] : []),
+          ),
         ),
       );
-    let refundedMinor = 0;
-    for (const refund of input.refunds)
-      if (refundMovedMoney(refund)) refundedMinor += refund.amount;
+    const counted = new Map<string, number>();
+    const recordedIds = new Set<string>();
     for (const row of recorded) {
-      if (!row.refundId || listed.has(row.refundId) || row.grossMinor === null) continue;
-      refundedMinor += row.grossMinor;
+      if (!row.refundId) continue;
+      recordedIds.add(row.refundId);
+      if (row.status !== "completed") continue;
+      const minor =
+        row.grossMinor ?? listed.get(row.refundId)?.amount ?? grossMinorOf(row.amount, currency);
+      if (minor !== null) counted.set(row.refundId, minor);
     }
+    for (const refund of input.refunds) {
+      if (!recordedIds.has(refund.id) && refundMovedMoney(refund)) {
+        counted.set(refund.id, refund.amount);
+      }
+    }
+    let refundedMinor = 0;
+    for (const minor of counted.values()) refundedMinor += minor;
     const netMinor = Math.max(0, input.amountCapturedMinor - refundedMinor);
     await tx
       .update(payments)

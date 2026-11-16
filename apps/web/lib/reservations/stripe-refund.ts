@@ -12,6 +12,7 @@ import {
   apiEffects,
   db,
   isDuplicateKeyError,
+  isPaymentReceiptSql,
   isStripeRefundPaymentSql,
   paymentDisputes,
   paymentRefundOperations,
@@ -159,6 +160,8 @@ export type RefundRefusalReason =
   /** A three-decimal currency, which Louez's billing does not count. */
   | { readonly code: "REFUND_CURRENCY_NOT_SUPPORTED"; readonly currency: string }
   | { readonly code: "PAYMENT_DISPUTED" }
+  /** The charge is recorded on payment rows of several reservations: refused, never guessed. */
+  | { readonly code: "PAYMENT_CHARGE_SHARED" }
   | { readonly code: "NO_STRIPE_ACCOUNT" }
   | { readonly code: "REFUND_APPROVAL_USED" };
 
@@ -287,20 +290,23 @@ export type RequestedRefund = {
 /**
  * Step two: records the refund as an operation, in the caller's transaction. The
  * transaction is READ COMMITTED, as every writer of a refund's is (`REFUND_TRANSACTION`),
- * so what is read after a lock is what is committed. Locks, in order, before any
- * read: the reservation's row named by `charge` (the caller may hold it already), the
- * payment's open operations, the payment's row. Then:
+ * so what is read after a lock is what is committed. Locks, in order: the
+ * reservation's row named by `charge` (the caller may hold it already), the open
+ * operations of every payment row of the charge, those payment rows by id. A charge
+ * recorded on rows of several reservations is refused (`PAYMENT_CHARGE_SHARED`).
+ * Then:
  *
  * - the payment is refundable: this store's, a Stripe payment with a charge, settled,
  *   not a refund row, not a hold (its capture is), not disputed, on an account;
  * - the amount is whole minor units, more than zero, in the charge's currency;
- * - it fits under the ceiling: the smaller of what Stripe says the charge still holds
- *   (`charge`, read before the lock) and what Louez counts (the payment's gross, or the
- *   charge's captured amount for a row without one, less the Stripe refunds recorded
- *   for it), less the refunds given by hand against the payment and the operations
- *   still open on it. Stripe knows neither of those two; an open operation Stripe has
- *   already made comes off twice until it is recorded, which can refuse, never refund
- *   too much.
+ * - it fits under the charge's ceiling, whichever of its payment rows is asked: the
+ *   smaller of what Stripe says the charge still holds (`charge`, read before the lock)
+ *   and what Louez counts (the payment's gross, or the charge's captured amount for a
+ *   row without one or a charge on several rows, less the Stripe refunds recorded for
+ *   any of its rows, once per refund), less the refunds given by hand against any of
+ *   its rows and the operations still open on any of them. Stripe knows neither of
+ *   those two; an open operation Stripe has already made comes off twice until it is
+ *   recorded, which can refuse, never refund too much.
  *
  * Writes the operation `requested` and its outbox row. Sends nothing.
  */
@@ -321,18 +327,42 @@ export async function requestStripeRefund(
     return refused({ code: "PAYMENT_NOT_FOUND" });
   }
 
+  // Every payment row of the charge shares one ceiling: the money is the charge's.
+  const siblings = await tx
+    .select({ id: payments.id, reservationId: payments.reservationId })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .innerJoin(stores, eq(stores.id, reservations.storeId))
+    .where(
+      and(
+        eq(payments.stripeChargeId, charge.chargeId),
+        eq(payments.method, "stripe"),
+        sql`${payments.type} <> 'deposit_hold'`,
+        isPaymentReceiptSql(),
+        sql`COALESCE(${payments.stripeAccountId}, ${stores.stripeAccountId}) = ${charge.accountId}`,
+      ),
+    )
+    .orderBy(asc(payments.id));
+  // A charge whose rows span reservations is refused: their locks would be taken across
+  // reservations, in no order every other writer follows.
+  if (siblings.some((row) => row.reservationId !== charge.reservationId)) {
+    return refused({ code: "PAYMENT_CHARGE_SHARED" });
+  }
+  const chargePaymentIds = [...new Set([input.paymentId, ...siblings.map((row) => row.id)])].sort();
   const operations = await tx
     .select({
       amountMinor: paymentRefundOperations.amountMinor,
       status: paymentRefundOperations.status,
     })
     .from(paymentRefundOperations)
-    .where(eq(paymentRefundOperations.paymentId, input.paymentId))
+    .where(inArray(paymentRefundOperations.paymentId, chargePaymentIds))
+    .orderBy(asc(paymentRefundOperations.id))
     .for("update");
   await tx
     .select({ id: payments.id })
     .from(payments)
-    .where(eq(payments.id, input.paymentId))
+    .where(inArray(payments.id, chargePaymentIds))
+    .orderBy(asc(payments.id))
     .for("update");
   const [payment] = await paymentFacts(tx, input.paymentId);
   const checked = checkPayment(payment, input.storeId);
@@ -370,10 +400,11 @@ export async function requestStripeRefund(
   }
 
   const ceiling = await refundCeiling(tx, {
-    paymentId: input.paymentId,
+    paymentIds: chargePaymentIds,
     reservationId: payment.reservationId,
     chargeId: checked.chargeId,
-    grossMinor: payment.grossMinor,
+    // Several rows of one charge: the charge's own capture is what was paid.
+    grossMinor: chargePaymentIds.length > 1 ? null : payment.grossMinor,
     charge,
     openMinor: operations
       .filter((operation) => isOpenRefundStatus(operation.status))
@@ -421,7 +452,8 @@ export async function requestStripeRefund(
 async function refundCeiling(
   tx: Transaction,
   input: {
-    readonly paymentId: string;
+    /** Every payment row of the charge. */
+    readonly paymentIds: readonly string[];
     readonly reservationId: string;
     readonly chargeId: string;
     readonly grossMinor: number | null;
@@ -438,8 +470,9 @@ async function refundCeiling(
   const minorOf = (row: { readonly grossMinor: number | null; readonly amount: string }) =>
     row.grossMinor ?? toStripeCents(Number(row.amount), charge.currency);
 
-  // The rows that give this payment's money back. A Stripe refund row points at the
-  // payment it refunds; one written before that column carries the charge instead.
+  // The rows that give the charge's money back, whichever of its payment rows they
+  // point at. A Stripe refund row points at the payment it refunds; one written before
+  // that column carries the charge instead.
   // A refund id stamped on the payment itself (the oldest webhooks) is not counted
   // here: Stripe's figure holds it.
   const rows = await tx
@@ -456,7 +489,7 @@ async function refundCeiling(
         eq(payments.reservationId, input.reservationId),
         eq(payments.status, "completed"),
         or(
-          eq(payments.refundOfPaymentId, input.paymentId),
+          inArray(payments.refundOfPaymentId, [...input.paymentIds]),
           and(
             sql`${payments.refundOfPaymentId} IS NULL`,
             isStripeRefundPaymentSql(),
@@ -470,7 +503,7 @@ async function refundCeiling(
   for (const row of rows) {
     if (Number(row.isStripeRefund) === 1 && row.refundId) {
       stripeRefunds.set(row.refundId, minorOf(row));
-    } else if (row.refundOf === input.paymentId) {
+    } else if (row.refundOf && input.paymentIds.includes(row.refundOf)) {
       manualMinor += toStripeCents(Number(row.amount), charge.currency);
     }
   }

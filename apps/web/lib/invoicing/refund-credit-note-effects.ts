@@ -17,12 +17,13 @@ const payloadSchema = z.object({
   source: z.string().min(1),
 });
 
-/** A refund row as the sender checks it: what it refunds, and whose it is. */
+/** A refund row as the sender checks it: what it refunds, whose it is, and its state. */
 export interface RefundRow {
   refundOfPaymentId: string | null;
   reservationId: string;
   storeId: string;
   amount: string;
+  status: (typeof payments.$inferSelect)["status"];
 }
 
 export interface RefundCreditNoteEffectDeps {
@@ -37,10 +38,11 @@ async function readRefund(refundId: string): Promise<RefundRow | null> {
       reservationId: payments.reservationId,
       storeId: reservations.storeId,
       amount: payments.amount,
+      status: payments.status,
     })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
-    .where(and(eq(payments.id, refundId), eq(payments.status, "completed")));
+    .where(eq(payments.id, refundId));
   return row ?? null;
 }
 
@@ -52,7 +54,9 @@ async function readRefund(refundId: string): Promise<RefundRow | null> {
  * Before anything, it checks that the payload is the one the writer writes, that it
  * names the row's own store and reservation, and that its refund is a completed row of
  * that reservation refunding its payment, for its amount: a row that fails is given up
- * at once (`abandoned`, kept with its payload and reported), never retried. Then the credit note: issued
+ * at once (`abandoned`, kept with its payload and reported), never retried. A refund
+ * that failed or was cancelled owes no credit note: the row ends with nothing to issue.
+ * One still pending is asked again later. Then the credit note: issued
  * (now or before) is done; nothing to issue (the store issues no invoices, or the
  * payment has none) is done with nothing sent; a failure throws, so the outbox tries
  * again and gives up after its attempts.
@@ -85,6 +89,17 @@ export function createRefundCreditNoteEffectSenders(
         refund.amount !== request.amount
       ) {
         return giveUp("refund_mismatch: the refund is not this payment's, for this amount");
+      }
+      // A refund that failed owes no credit note.
+      if (refund.status === "failed" || refund.status === "cancelled") {
+        return { skipped: `not_applicable: the refund ${refund.status}` };
+      }
+      // Not settled yet in Louez's terms: asked again later.
+      if (refund.status === "pending") {
+        throw new Error("The refund is still pending: its credit note waits for it.");
+      }
+      if (refund.status !== "completed") {
+        return giveUp(`refund_state: a refund row ${refund.status} owes no credit note`);
       }
 
       await context.assertClaim();

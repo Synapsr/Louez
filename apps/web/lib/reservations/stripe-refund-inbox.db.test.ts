@@ -24,6 +24,15 @@ for (const name of [
   mock.module(name, { namedExports: createRequire(import.meta.url)(name) });
 }
 
+// The credit note's document is not drawn here: the sender is given its issuer.
+mock.module("@/lib/invoicing/refund-credit-note", {
+  namedExports: {
+    issueRefundCreditNote: async () => {
+      throw new Error("no credit note is issued in this suite");
+    },
+  },
+});
+
 const STORE = "store_refund_inbox";
 
 describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -297,5 +306,140 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
     assert.deepEqual(issued, [`ref_note_${n}`]);
     assert.equal((await rowOf())?.status, "sent");
     assert.deepEqual(await items("credit_note_not_issued"), []);
+  });
+
+  /** A refund row of the payment, in a state, and its credit-note row as the writers enqueue it. */
+  async function owedNote(
+    status: "completed" | "failed" | "pending" | null,
+    options: { createdDaysAgo?: number } = {},
+  ) {
+    const { reservationId, paymentId, n } = await paid();
+    const refundId = `ref_class_${n}`;
+    if (status) {
+      await louezDb.db.insert(louezDb.payments).values({
+        id: refundId,
+        reservationId,
+        amount: "60.00",
+        type: "rental",
+        method: "stripe",
+        status,
+        stripeRefundId: `re_class_${n}`,
+        refundOfPaymentId: paymentId,
+        currency: "EUR",
+        grossMinor: 6_000,
+      });
+    }
+    const [effectId] = await louezDb.db.transaction((tx) =>
+      outbox.enqueueEffects(tx, STORE, [
+        {
+          type: "payment.refundCreditNote",
+          reservationId,
+          payload: {
+            storeId: STORE,
+            reservationId,
+            paymentId,
+            refundId,
+            amount: "60.00",
+            source: "test",
+          },
+        },
+      ]),
+    );
+    assert.ok(effectId);
+    if (options.createdDaysAgo) {
+      await louezDb.db.execute(
+        sql`UPDATE api_effects SET created_at = NOW() - INTERVAL ${options.createdDaysAgo} DAY WHERE id = ${effectId}`,
+      );
+    }
+    return { effectId, refundId };
+  }
+
+  test("the credit-note sender tells a failed refund, a pending one and a payload of no refund apart", async () => {
+    const { createRefundCreditNoteEffectSenders } =
+      await import("@/lib/invoicing/refund-credit-note-effects");
+    const issued: string[] = [];
+    const senders = createRefundCreditNoteEffectSenders({
+      issue: async (request) => {
+        issued.push(request.refundId);
+        return { status: "issued" } as never;
+      },
+    }) as unknown as ApiEffectSenders;
+    const run = async (effectId: string) => {
+      await outbox.dispatchEffects([effectId], senders);
+      return (await outbox.readEffects([effectId]))[0];
+    };
+
+    // (i) Its refund failed: nothing applies, the row ends, nothing shows.
+    const failed = await owedNote("failed");
+    assert.deepEqual(
+      (({ status, lastError }) => ({ status, lastError }))((await run(failed.effectId))!),
+      { status: "cancelled", lastError: "Skipped: not_applicable: the refund failed" },
+    );
+    // (ii) Its refund is still pending: asked again later.
+    const pending = await owedNote("pending");
+    assert.equal((await run(pending.effectId))?.status, "failed");
+    // (iii) Its payload names no refund row: given up, reported.
+    const none = await owedNote(null);
+    assert.equal((await run(none.effectId))?.status, "abandoned");
+    // A completed refund is issued.
+    const completed = await owedNote("completed");
+    assert.equal((await run(completed.effectId))?.status, "sent");
+    assert.deepEqual(issued, [completed.refundId]);
+  });
+
+  test("the cron arms again only a credit note still owed, and none owed more than 90 days ago", async () => {
+    const abandonDayOld = (effectId: string) =>
+      louezDb.db.execute(sql`
+        UPDATE api_effects SET status = 'abandoned', attempts = 8,
+          next_attempt_at = NOW() - INTERVAL 25 HOUR
+        WHERE id = ${effectId}`);
+    const failed = await owedNote("failed");
+    const none = await owedNote(null);
+    const issuedAlready = await owedNote("completed");
+    await louezDb.db.insert(louezDb.invoices).values({
+      id: `inv_issued_${counter}`,
+      storeId: STORE,
+      reservationId: `res_inbox_${counter}`,
+      customerId: "customer",
+      type: "credit_note",
+      kind: "credit_note",
+      number: `AV-issued-${counter}`,
+      issueDate: "2026-10-02",
+      currency: "EUR",
+      sellerSnapshot: {} as never,
+      buyerSnapshot: {} as never,
+      lines: [],
+      vatBreakdown: [],
+      totalExclTax: "-50.00",
+      totalTax: "-10.00",
+      totalInclTax: "-60.00",
+      en16931Snapshot: {} as never,
+      documentId: `doc_issued_${counter}`,
+      processingRule: "b2c",
+    });
+    await louezDb.db.insert(louezDb.invoicePayments).values({
+      id: `ip_issued_${counter}`,
+      invoiceId: `inv_issued_${counter}`,
+      paymentId: issuedAlready.refundId,
+    });
+    const tooOld = await owedNote("completed", { createdDaysAgo: 100 });
+    const owed = await owedNote("completed");
+    for (const row of [failed, none, issuedAlready, tooOld, owed])
+      await abandonDayOld(row.effectId);
+
+    // Other tests' rows are in the same outbox: only these are looked at.
+    const armed = new Set(await outbox.rearmAbandonedEffects(100));
+    assert.deepEqual(
+      [failed, none, issuedAlready, tooOld, owed].map((row) => armed.has(row.effectId)),
+      [false, false, false, false, true],
+    );
+    // Shown while owed only: the one past 90 days stays visible for a person.
+    const shown = new Set(
+      (await items("credit_note_not_issued")).map((item) => item.details?.effectId),
+    );
+    assert.deepEqual(
+      [failed, none, issuedAlready, tooOld].map((row) => shown.has(row.effectId)),
+      [false, false, false, true],
+    );
   });
 });
