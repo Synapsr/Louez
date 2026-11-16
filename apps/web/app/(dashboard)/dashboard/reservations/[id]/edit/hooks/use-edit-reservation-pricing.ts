@@ -12,7 +12,12 @@ import {
 import { taxSettingsForRepricing, type TaxDisplayMode } from "@louez/api/services/pricing-facts";
 import { computeReservationTotals } from "@louez/api/services/reservation-totals";
 import type { PricingKind, PricingMode, TaxSettings } from "@louez/types";
-import { calculateDurationMinutes, isRateBasedProduct, minutesToPriceDuration } from "@louez/utils";
+import {
+  calculateDurationMinutes,
+  isRateBasedProduct,
+  minutesToPriceDuration,
+  roundToMinorUnit,
+} from "@louez/utils";
 
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { calculateDuration } from "@/lib/utils/duration";
@@ -93,6 +98,8 @@ export function calculateEditableItemPrice(
   endDate: Date,
   timezone?: string,
   windowChanged = false,
+  /** The reservation's currency: a typed price's total rounded once in its minor unit, as the server rounds it. */
+  currency?: string,
 ): {
   totalPrice: number;
   effectiveUnitPrice: number;
@@ -187,7 +194,7 @@ export function calculateEditableItemPrice(
 
   // Manual price or custom item (no product): simple multiplication
   if (item.isManualPrice || !item.product) {
-    const totalPrice = roundCurrency(item.unitPrice * duration * item.quantity);
+    const totalPrice = roundToMinorUnit(item.unitPrice * duration * item.quantity, currency);
     return {
       totalPrice,
       effectiveUnitPrice: item.unitPrice,
@@ -316,6 +323,8 @@ interface UseEditReservationPricingParams {
   fixedChargesTotal?: number;
   /** The window as stored: a line is priced again when the window is not this one. */
   storedWindow?: { start: Date; end: Date };
+  /** The reservation's currency, in whose minor unit a typed price's total is rounded. */
+  currency?: string;
 }
 
 export function useEditReservationPricing({
@@ -325,6 +334,7 @@ export function useEditReservationPricing({
   originalSubtotal,
   fixedChargesTotal = 0,
   storedWindow,
+  currency,
 }: UseEditReservationPricingParams) {
   const timezone = useStoreTimezone();
   const getDurationForMode = (mode: PricingMode) => {
@@ -379,6 +389,7 @@ export function useEditReservationPricing({
         endDate,
         timezone,
         windowChanged,
+        currency,
       );
 
       calculatedItems.push({
@@ -420,6 +431,7 @@ export function useEditReservationPricing({
     timezone,
     storedStart,
     storedEnd,
+    currency,
   ]);
 
   return {

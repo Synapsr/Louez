@@ -2202,6 +2202,9 @@ export async function updateReservation(
   const dateChanged =
     newStartDate.getTime() !== reservation.startDate.getTime() ||
     newEndDate.getTime() !== reservation.endDate.getTime();
+  // A line's amounts are rounded once, by `roundToMinorUnit`, as the creation
+  // and the edit form round them (slice 10): the form previews what is written.
+  const lineCurrency = reservationCurrency(reservation.currency, store.settings);
   // Every line the edit leaves, but the insurance, as it prices it: a line it
   // does not change at its stored price, the others by the edit's rules
   // (slice 11); the tax engine totals them under the locks (slice 10).
@@ -2432,6 +2435,8 @@ export async function updateReservation(
         };
       }
 
+      totalPrice = roundToMinorUnit(totalPrice, lineCurrency);
+      finalUnitPrice = roundToMinorUnit(finalUnitPrice, lineCurrency);
       const itemDeposit = item.depositPerUnit * item.quantity;
       newDepositAmount += itemDeposit;
       if (item.productId) {
@@ -2603,8 +2608,11 @@ export async function updateReservation(
           );
           const newBreakdown = priced.breakdown;
           promotionPercentage = priced.promotion?.percentage ?? null;
-          finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
-          totalPrice = priced.subtotal;
+          finalUnitPrice = roundToMinorUnit(
+            priced.subtotal / Math.max(1, item.quantity),
+            lineCurrency,
+          );
+          totalPrice = roundToMinorUnit(priced.subtotal, lineCurrency);
 
           const itemValues = {
             productId: item.productId,
@@ -2664,7 +2672,7 @@ export async function updateReservation(
           manualPricingKind === "fixed"
             ? 1
             : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
-        totalPrice = finalUnitPrice * itemDuration * item.quantity;
+        totalPrice = roundToMinorUnit(finalUnitPrice * itemDuration * item.quantity, lineCurrency);
         const nextPricingBreakdown = pricingBreakdown
           ? {
               ...pricingBreakdown,

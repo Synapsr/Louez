@@ -516,6 +516,7 @@ export function EditReservationForm({
         start: new Date(reservation.startDate),
         end: new Date(reservation.endDate),
       },
+      currency,
     });
   const { availabilityWarnings, availableQuantityByProduct } = useEditReservationAvailability({
     startDate,

@@ -225,6 +225,17 @@ describe(
     }
 
     /** The lines as the form sends them: every line, the given quantities. */
+    /** The periods of a mode in the stored window: any started period in full, as the form counts it. */
+    const periodsOf = (row: { startDate: Date; endDate: Date }, mode: "hour" | "day" | "week") =>
+      Math.max(
+        1,
+        Math.ceil(
+          (row.endDate.getTime() - row.startDate.getTime()) /
+            60_000 /
+            { hour: 60, day: 1440, week: 10_080 }[mode],
+        ),
+      );
+
     /**
      * The lines as the form sends them: every line, the given quantities; a
      * price typed by hand as its price per period over the stored window.
@@ -235,12 +246,7 @@ describe(
         const basis = pricingBasisOf(item.pricingBreakdown);
         const typed = basis?.isManualOverride === true;
         const pricingMode = typed ? basis.pricingMode : ("day" as const);
-        // Any started period in full, as the form counts it.
-        const minutes = { hour: 60, day: 1440, week: 10_080 }[pricingMode];
-        const periods = Math.max(
-          1,
-          Math.ceil((row.endDate.getTime() - row.startDate.getTime()) / 60_000 / minutes),
-        );
+        const periods = periodsOf(row, pricingMode);
         return {
           id: item.id,
           productId: item.productId,
@@ -298,12 +304,16 @@ describe(
               .where(eq(louezDb.products.id, item.productId))
           : [];
         const basis = pricingBasisOf(item.pricingBreakdown);
+        const typed = basis?.isManualOverride === true;
         editable.push({
           id: item.id,
           productId: item.productId,
           quantity: edit.quantities?.[item.id] ?? item.quantity,
           consumedQuantity: 0,
-          unitPrice: Number(item.unitPrice),
+          // A typed price read from its total over the stored window, as the form reads it.
+          unitPrice: typed
+            ? Number(item.totalPrice) / (periodsOf(row, basis.pricingMode) * item.quantity)
+            : Number(item.unitPrice),
           depositPerUnit: 0,
           isManualPrice: basis?.isManualOverride === true,
           pricingMode: product?.pricingMode ?? basis?.pricingMode ?? "day",
@@ -331,7 +341,7 @@ describe(
       const windowChanged = end.getTime() !== row.endDate.getTime();
       const calculated = editable.map((item) => ({
         ...item,
-        ...calculateEditableItemPrice(item, row.startDate, end, undefined, windowChanged),
+        ...calculateEditableItemPrice(item, row.startDate, end, undefined, windowChanged, "EUR"),
       }));
       return previewEditTotal({
         items: calculated,
@@ -790,6 +800,38 @@ describe(
         const line = await lineOf(id, gone);
         assert.equal(line.totalPrice, "120.00");
         assert.equal(line.pricingBreakdown?.isManualOverride, true);
+      });
+    });
+
+    describe("a price typed by hand", () => {
+      test("its total rounded once, as the form rounds it: the edit is written as previewed", async () => {
+        await useStore({});
+        const kayak = await product();
+        // A typed price for one day, two units, 0.03 in all: the form reads 0.015 each.
+        const { id, itemIds } = await booking(
+          [
+            {
+              productId: kayak,
+              quantity: 2,
+              totalPrice: "0.03",
+              breakdown: breakdownOf(1, 0.015, { isManualOverride: true }),
+            },
+          ],
+          { end: new Date(START.getTime() + DAY) },
+        );
+        const quantities = { [itemIds[0]!]: 3 };
+        const shown = await previewOf(id, { quantities });
+
+        const result = await actions.updateReservation(id, {
+          items: await formLines(id, quantities),
+          expectedTotal: Number(shown),
+        });
+
+        // 0.015 × 3 = 0.045, rounded half away from zero on both sides.
+        assert.equal(shown, "0.05");
+        assert.equal(result.error, undefined);
+        assert.equal((await items(id))[0]?.totalPrice, "0.05");
+        assert.equal((await reservationRow(id)).totalAmount, "0.05");
       });
     });
 
