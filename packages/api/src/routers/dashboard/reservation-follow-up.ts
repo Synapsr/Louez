@@ -29,7 +29,6 @@ import {
 } from "../../contracts/reservations";
 import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { customerLinks, productLinks, reservationLinks } from "../../platform/links";
-import { readAfterCommit } from "../../platform/errors";
 import { storeProcedure } from "../../platform/procedures";
 import { changeReservationDates, type DateChangePreview } from "../../services/reservation-dates";
 import {
@@ -525,6 +524,7 @@ const update = storeProcedure
         credential: { kind: context.actor.credential.kind, id: context.actor.credential.id },
         transport: context.actor.transport,
         customers: mayRead(context, "customers"),
+        reader: reader(context),
         store: statusCaller(context).store,
         ports: context.ports,
       },
@@ -538,8 +538,8 @@ const update = storeProcedure
       },
       { confirm: dateChangeConfirmation(context, path, input) },
     );
-    const { id: _id, ...facts } = change;
-    const reservation = await readAfterCommit(() => getReservation(reader(context), input.id));
+    // The reservation as the change's own transaction read it after its write.
+    const { reservation, ...facts } = change;
     return { ...withLinks(linker(context), reservation), ...facts };
   });
 

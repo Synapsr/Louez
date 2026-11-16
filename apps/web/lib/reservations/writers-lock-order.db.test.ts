@@ -232,6 +232,7 @@ describe(
       credential: { kind: "session" as const, id: null },
       transport: "rpc" as const,
       customers: true,
+      reader: { storeId: STORE, currency: "EUR", customers: true, payments: true },
       store: {
         id: STORE,
         name: "Lock order",

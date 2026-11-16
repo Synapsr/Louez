@@ -780,11 +780,19 @@ export const updateReservationNotesOutput = z.object({
 
 // --- Dates -------------------------------------------------------------------
 
-/** An instant written with its offset ("2030-06-01T09:00:00+02:00", or "…Z"). */
+/**
+ * An instant written with its offset ("2030-06-01T09:00:00+02:00", or "…Z"),
+ * in whole seconds: a reservation's dates are stored to the second, so a
+ * fraction would be priced as one window and stored as another.
+ */
 const instantWithOffset = z
   .string()
   .datetime({ offset: true })
-  .refine((value) => Number.isFinite(Date.parse(value)), "Not a real instant.");
+  .refine((value) => Number.isFinite(Date.parse(value)), "Not a real instant.")
+  .refine(
+    (value) => Date.parse(value) % 1000 === 0,
+    "Give the instant in whole seconds: a reservation's dates hold no fraction of a second.",
+  );
 
 /**
  * A date change of a reservation (`reservations.update`). The input is a strict
@@ -1202,12 +1210,23 @@ export const reservationErrors = {
       details: { reason, startDate: start.toISOString(), endDate: end.toISOString() },
     }),
   /**
+   * An instant with a fraction of a second: a reservation's dates are stored
+   * to the second. The contract refuses it first; this is the service's own
+   * check, for a caller that skips the contract.
+   */
+  dateNotWholeSeconds: (field: "startDate" | "endDate", at: Date) =>
+    apiError("BAD_REQUEST", "RESERVATION_WINDOW_INVALID", {
+      message: `Not changed: ${field} (${at.toISOString()}) must be a whole second: a reservation's dates hold no fraction of a second.`,
+      i18nKey: "errors.invalidData",
+      details: { reason: "not_whole_seconds", field, at: at.toISOString() },
+    }),
+  /**
    * The change needs a fact it cannot derive again, so it is not made here:
    * the store makes it from the reservation's page in the dashboard.
    */
   editInDashboard: (id: string, reason: DateChangeDashboardReason) =>
     apiError("CONFLICT", "RESERVATION_EDIT_IN_DASHBOARD", {
-      message: `Not changed: this reservation's dates can only be changed from its page in the dashboard, because ${DASHBOARD_REASON_SAID[reason]}. Nothing was written. Give the user the reservation's dashboard link (reservations_get).`,
+      message: `Not changed: this reservation's dates can only be changed from its page in the dashboard, because ${DASHBOARD_REASON_SAID[reason]}. Nothing was written. The reservation's links.dashboard is that page.`,
       i18nKey: "errors.invalidData",
       details: { id, reason },
     }),

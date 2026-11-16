@@ -82,6 +82,13 @@ describe(
     let catalogs: typeof import("../../services/pricing-catalog");
     let pricing: typeof import("../../services/price-cart");
     let router: typeof import("./reservations").dashboardReservationsRouter;
+    let dates: typeof import("../../services/reservation-dates");
+    /**
+     * Runs once, right before a reservation is read outside any transaction
+     * (a read after a commit): the place where another write could land
+     * between a change's commit and its answer.
+     */
+    let beforeReadAfterCommit: (() => Promise<unknown>) | null = null;
     let handoffsRouter: typeof import("./handoffs").dashboardHandoffsRouter;
 
     const events: ApiEvent[] = [];
@@ -129,7 +136,25 @@ describe(
       apiKeys = await import("../../services/api-keys");
       catalogs = await import("../../services/pricing-catalog");
       pricing = await import("../../services/price-cart");
+      // `getReservation`, watched: a read with no transaction runs the hook first.
+      const reservationsService: Record<string, unknown> =
+        await import("../../services/reservations");
+      const read = reservationsService.getReservation as (...args: unknown[]) => Promise<unknown>;
+      mock.module(import.meta.resolve("../../services/reservations"), {
+        namedExports: {
+          ...reservationsService,
+          getReservation: async (...args: unknown[]) => {
+            if (args[2] === undefined && beforeReadAfterCommit) {
+              const hook = beforeReadAfterCommit;
+              beforeReadAfterCommit = null;
+              await hook();
+            }
+            return read(...args);
+          },
+        },
+      });
       ({ dashboardReservationsRouter: router } = await import("./reservations"));
+      dates = await import("../../services/reservation-dates");
       ({ dashboardHandoffsRouter: handoffsRouter } = await import("./handoffs"));
 
       await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@rd.test" });
@@ -822,6 +847,97 @@ describe(
 
     // --- Status and window --------------------------------------------------------
 
+    describe("the instants", () => {
+      /** A refusal by the contract or the service: nothing written either way. */
+      async function refusedSubSecond(id: string, input: UpdateInput) {
+        const before = await snapshot(id);
+        let caught: unknown;
+        try {
+          await update(input, session());
+        } catch (error) {
+          caught = error;
+        }
+        assert.ok(caught, `${JSON.stringify(input)} was accepted`);
+        await unchanged(id, before);
+      }
+
+      test("an end a millisecond, or 999, past a whole second is refused before anything is priced", async () => {
+        const kayak = await product({ quantity: 9 });
+        // One day at 10.00: a millisecond more is no second day.
+        const { id } = await book([{ productId: kayak }], { end: day(START, 1) });
+        for (const extra of [1, 999]) {
+          const end = new Date(day(START, 1).getTime() + extra);
+          await refusedSubSecond(id, move(id, end));
+        }
+      });
+
+      test("an ongoing reservation's start cannot pass as unmoved by a fraction of a second", async () => {
+        const kayak = await product({ quantity: 9 });
+        const { id } = await book([{ productId: kayak }], { status: "ongoing" });
+        await refusedSubSecond(id, {
+          id,
+          startDate: iso(new Date(START.getTime() + 1)),
+          endDate: iso(day(END, 1)),
+          notifyCustomer: false,
+        });
+      });
+
+      test("the service refuses a fraction of a second itself, for a caller that skips the contract", async () => {
+        const kayak = await product({ quantity: 9 });
+        const { id } = await book([{ productId: kayak }]);
+        const before = await snapshot(id);
+        await assert.rejects(
+          dates.changeReservationDates(
+            {
+              storeId: STORE,
+              userId: OWNER,
+              credential: { kind: "session", id: null },
+              transport: "rpc",
+              customers: true,
+              reader: { storeId: STORE, currency: "EUR", customers: true, payments: true },
+              store: { id: STORE, name: "A store", slug: "rd-store-a", ownerUserId: OWNER },
+              ports,
+            },
+            { id, endDate: new Date(day(END, 1).getTime() + 1), notifyCustomer: false },
+          ),
+          (error: { data?: { code?: string; details?: { reason?: string } } }) =>
+            error.data?.code === "RESERVATION_WINDOW_INVALID" &&
+            error.data.details?.reason === "not_whole_seconds",
+        );
+        await unchanged(id, before);
+      });
+
+      test("the stored instant written in another offset is the same dates: changed false", async () => {
+        const kayak = await product({ quantity: 9 });
+        const { id } = await book([{ productId: kayak }]);
+        const before = await snapshot(id);
+        // 09:00Z is 11:00 at +02:00.
+        const answer = await update(
+          { id, endDate: "2030-06-03T11:00:00+02:00", notifyCustomer: false },
+          session(),
+        );
+        assert.equal(answer.changed, false);
+        await unchanged(id, before);
+      });
+
+      test("the dates stored are the dates priced and answered", async () => {
+        const kayak = await product({ quantity: 9 });
+        const lines = [{ productId: kayak }];
+        const { id } = await book(lines);
+        const answer = await update(
+          { id, endDate: "2030-06-04T11:30:00+02:00", notifyCustomer: false },
+          session(),
+        );
+        const row = await reservationRow(id);
+        assert.equal(row.endDate.getTime(), answer.endDate.getTime());
+        assert.equal(row.endDate.toISOString(), "2030-06-04T09:30:00.000Z");
+        // Priced on what is stored: the engine over the stored window gives the stored totals.
+        await assertPricedByEngine(id, lines, { start: row.startDate, end: row.endDate });
+        const updated = (await changeMetadata(id))?.updated as { endDate?: string } | undefined;
+        assert.equal(updated?.endDate, row.endDate.toISOString());
+      });
+    });
+
     describe("the status and the window", () => {
       test("a completed, cancelled, rejected or declined reservation is not edited", async () => {
         const kayak = await product({ quantity: 9 });
@@ -1225,6 +1341,47 @@ describe(
     // --- Races ----------------------------------------------------------------------------
 
     describe("races", () => {
+      test("the answer is this change's, though another commits before it is read; its key replays it", async () => {
+        const kayak = await product({ quantity: 9 });
+        const lines = [{ productId: kayak }];
+        const { id } = await book(lines, { end: day(START, 1) });
+        const booked = await reservationRow(id);
+        const agent = await agentKey({ confirmSensitive: false });
+        const input = move(id, day(START, 2));
+        // B moves the dates again, right after A's commit, before any read after it.
+        const b = () => update(move(id, day(START, 3)), session());
+        beforeReadAfterCommit = b;
+
+        const first = await update(input, agent.call({ "idempotency-key": "dates-race-1" }));
+        if (beforeReadAfterCommit) {
+          beforeReadAfterCommit = null;
+          await b();
+        }
+
+        const priced = await engine([{ productId: kayak, quantity: 1 }], {
+          start: START,
+          end: day(START, 2),
+        });
+        assert.equal(first.endDate.toISOString(), iso(day(START, 2)), "A's dates");
+        assert.equal(first.totalAmount, priced.totalAmount, "A's total");
+        assert.equal(first.previousTotal, booked.totalAmount);
+        assert.equal(
+          first.difference,
+          (
+            (Math.round(Number(priced.totalAmount) * 100) -
+              Math.round(Number(booked.totalAmount) * 100)) /
+            100
+          ).toFixed(2),
+        );
+        assert.equal(
+          (await reservationRow(id)).endDate.toISOString(),
+          iso(day(START, 3)),
+          "B's write stands",
+        );
+        const replay = await update(input, agent.call({ "idempotency-key": "dates-race-1" }));
+        assert.deepEqual(replay, first);
+      });
+
       test("two date changes at once: each runs on what the other committed", async () => {
         const kayak = await product({ quantity: 9 });
         const lines = [{ productId: kayak }];

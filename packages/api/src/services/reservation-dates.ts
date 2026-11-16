@@ -30,6 +30,7 @@ import {
   type CapacityShortfall,
   type DateChange,
   type DateChangeDashboardReason,
+  type Reservation,
 } from "../contracts/reservations";
 import type { Credential, Transport } from "../platform/actor";
 import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
@@ -39,6 +40,7 @@ import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import type { ApprovalPresentation } from "./approval-display";
 import { moveDatesPresentation } from "./approval-presentations";
 import { resolveDateChangeRequests } from "./date-change-requests";
+import { getReservation, type ReservationReader } from "./reservations";
 import {
   computeReservationTotals,
   getReservationItemTaxFields,
@@ -98,6 +100,8 @@ export interface DateChangeCaller {
   transport: Transport;
   /** May read customers: the preview then names the customer and where the message goes. */
   customers: boolean;
+  /** How the answer's reservation is read for this caller (its customer and payments shown or not). */
+  reader: ReservationReader;
   store: ApiEventStore;
   ports: Pick<ApiPorts, "afterCommit" | "dispatchEffects" | "emailConfigured">;
 }
@@ -194,6 +198,9 @@ export type DateChangeConfirmStep = (
 /** The activity's actor, as the reservation's history shows it. */
 const activityActor = (transport: Transport) =>
   transport === "rpc" ? "store_user" : transport === "mcp" ? "mcp" : "api";
+
+/** An instant the whole-second columns hold as it is. */
+const isWholeSecond = (at: Date) => Number.isFinite(at.getTime()) && at.getTime() % 1000 === 0;
 
 const cents = (value: number | string) => Math.round(Number(value) * 100);
 const decimal = (minor: number) => (minor / 100).toFixed(2);
@@ -483,10 +490,11 @@ type Outcome =
   | { kind: "not_found" }
   | { kind: "refused"; error: Error }
   | { kind: "confirm"; refusal: ConfirmationRefusal }
-  | { kind: "unchanged"; result: DateChange }
+  | { kind: "unchanged"; result: DateChange; reservation: Reservation }
   | {
       kind: "changed";
       result: DateChange;
+      reservation: Reservation;
       effectIds: string[];
       status: ReservationStatus;
       lines: number;
@@ -508,9 +516,18 @@ export async function changeReservationDates(
   caller: DateChangeCaller,
   request: DateChangeRequest,
   options: { confirm?: DateChangeConfirmStep } = {},
-): Promise<{ id: string } & DateChange> {
+): Promise<{ reservation: Reservation } & DateChange> {
   const { storeId } = caller;
   const { id } = request;
+  // The instants are priced, checked, bound and stored as they are: the
+  // columns hold whole seconds, so a fraction would price one window and
+  // store another. The contract refuses one; so does any other caller.
+  for (const [field, at] of [
+    ["startDate", request.startDate],
+    ["endDate", request.endDate],
+  ] as const) {
+    if (at && !isWholeSecond(at)) throw reservationErrors.dateNotWholeSeconds(field, at);
+  }
 
   // A plain read first: a reservation that cannot change is refused before
   // any lock; the same rule is checked again under the lock.
@@ -600,6 +617,8 @@ export async function changeReservationDates(
       ) {
         return {
           kind: "unchanged",
+          // The answer is this transaction's read, never one made after it.
+          reservation: await getReservation(caller.reader, id, tx),
           result: {
             changed: false,
             ...previousResult,
@@ -770,6 +789,9 @@ export async function changeReservationDates(
       const effectIds = await enqueueDateChangeMessages(tx, caller, locked, preview);
       return {
         kind: "changed",
+        // Read after the write, before the commit: this change's own result,
+        // whatever commits after it.
+        reservation: await getReservation(caller.reader, id, tx),
         status: locked.status,
         lines: locked.items.length,
         effectIds,
@@ -808,7 +830,9 @@ export async function changeReservationDates(
   if (outcome.kind === "not_found") throw reservationErrors.notFound(id);
   if (outcome.kind === "confirm") return raiseConfirmation(outcome.refusal);
   if (outcome.kind === "refused") throw outcome.error;
-  if (outcome.kind === "unchanged") return { id, ...outcome.result };
+  if (outcome.kind === "unchanged") {
+    return { reservation: outcome.reservation, ...outcome.result };
+  }
 
   if (outcome.effectIds.length > 0) {
     try {
@@ -828,7 +852,7 @@ export async function changeReservationDates(
     warningCount: outcome.result.warnings.length,
     notifyCustomer: request.notifyCustomer,
   });
-  return { id, ...outcome.result };
+  return { reservation: outcome.reservation, ...outcome.result };
 }
 
 function buildPreview(facts: {
