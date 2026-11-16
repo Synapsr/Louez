@@ -114,6 +114,7 @@ export {
   reservationStatusStockAction,
   toWholeSeconds,
 } from "./reservation-status";
+export { lockCustomerRow } from "./customer-lock";
 export { lockProductRows, lockStoreProductRows } from "./product-lock";
 export {
   isUnsettledCheckoutSession,
