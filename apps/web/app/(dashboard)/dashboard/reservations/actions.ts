@@ -3055,16 +3055,26 @@ export async function updateReservation(
         const newTotalAmount =
           priced.kind === "priced" ? priced.totals.total : previousState.totalAmount;
         const difference = Math.round((newTotalAmount - previousState.totalAmount) * 100) / 100;
-        // A row the tax engine never totalled (it recorded no display mode,
-        // whatever its tax columns hold: the old dashboard rewrote totals
-        // without the split) whose engine total is not what the old
-        // arithmetic gives for the same lines (subtotal, plus delivery, less
-        // the discount): the tax now comes on top of it.
+        // The tax now comes on top of a total that carried none, when three
+        // facts hold at once: the row recorded no display mode (the tax
+        // engine never totalled it, whatever its tax columns hold); its
+        // stored total carried no tax (it is its subtotal, plus delivery,
+        // less the discount, to the minor unit); and the engine added tax on
+        // top (its tax above zero in a store that prices before tax).
+        const perUnit = minorUnitsPerUnit(reservationCurrency(reservation.currency, store.settings));
+        const minor = (value: string | null) => Math.round(Number(value ?? 0) * perUnit);
+        const storedTotalCarriedNoTax =
+          minor(lockedReservation.totalAmount) ===
+          minor(lockedReservation.subtotalAmount) +
+            minor(lockedReservation.deliveryFee) -
+            minor(lockedReservation.discountAmount);
         const taxAdded =
           priced.kind === "priced" &&
           recordedMode === NOT_RECORDED &&
-          toCents(priced.totals.total) !==
-            toCents(priced.totals.subtotal + priced.deliveryFee - existingDiscount);
+          storedTotalCarriedNoTax &&
+          priced.totals.taxEnabled &&
+          priced.totals.displayMode === "exclusive" &&
+          (priced.totals.taxAmount ?? 0) > 0;
 
         await tx
           .select({ id: productUnits.id })

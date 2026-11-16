@@ -628,6 +628,49 @@ describe(
         assert.equal(result.warnings, undefined);
       });
 
+      test("taxes off: a line lowered under the discount does not warn", async () => {
+        await useStore({ tax: { enabled: false, defaultRate: 20, displayMode: "exclusive" } });
+        // 150 of rental, 100 of discount, 50 to pay; the line comes down to 40.
+        const { id, itemId, kayak } = await oldManualBooking({
+          discountAmount: "100.00",
+          totalAmount: "50.00",
+        });
+
+        const result = await actions.updateReservation(id, {
+          items: [
+            {
+              id: itemId,
+              productId: kayak,
+              quantity: 1,
+              unitPrice: 20,
+              depositPerUnit: 0,
+              isManualPrice: true,
+              pricingMode: "day",
+              productSnapshot: { name: "Kayak" },
+            },
+          ],
+        });
+
+        assert.equal(result.error, undefined);
+        assert.equal((await stored(id)).row.totalAmount, "0.00");
+        assert.equal(result.warnings, undefined);
+      });
+
+      test("an older row whose total already carried its tax does not warn", async () => {
+        await useStore({ tax: HT });
+        // 150 before tax and 30 of tax, stored as a total of 180, no mode recorded.
+        const { id, itemId, kayak } = await oldManualBooking({
+          taxAmount: "30.00",
+          totalAmount: "180.00",
+        });
+
+        const result = await actions.updateReservation(id, { items: twoKayaks(itemId, kayak) });
+
+        assert.equal(result.error, undefined);
+        assert.equal((await stored(id)).row.totalAmount, "360.00");
+        assert.equal(result.warnings, undefined);
+      });
+
       test("a line changed: the totals are the engine's, and the answer says the tax was added", async () => {
         await useStore({ tax: HT });
         const { id, itemId, kayak } = await oldManualBooking();
