@@ -18,7 +18,7 @@ import { pricingBasisOf } from "@louez/api/services/pricing-facts";
 import type { EditableItem } from "./[id]/edit/types";
 import {
   calculateEditableItemPrice,
-  previewEditTotal,
+  previewEditTotals,
 } from "./[id]/edit/hooks/use-edit-reservation-pricing";
 import { STORE_KEY } from "./actions-test-stubs";
 
@@ -354,7 +354,7 @@ describe(
           row.currency ?? "EUR",
         ),
       }));
-      return previewEditTotal({
+      return previewEditTotals({
         items: calculated,
         insuranceAmount: 0,
         discountAmount: 0,
@@ -363,7 +363,7 @@ describe(
         storeTax: store?.settings?.tax,
         recordedTaxDisplayMode: row.taxDisplayMode,
         currency: row.currency ?? "EUR",
-      }).toFixed(2);
+      }).total.toFixed(2);
     }
 
     describe("a line the edit does not change", () => {

@@ -16,7 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui'
-import { cn } from '@louez/utils'
+import { cn, formatCurrency } from '@louez/utils'
+
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 import { ReservationStoreLegsSummary } from '@/components/dashboard/reservation-store-legs-summary'
 import { resolveStoreLegLocation } from '@/components/dashboard/util.reservation-store-legs'
@@ -31,7 +33,8 @@ interface DeliveryLegCardProps {
   leg: DeliveryLegState
   storeAddress: string | null
   locations: ReservationLocationOption[]
-  currencySymbol: string
+  /** The reservation's currency, every fee shown in it. */
+  currency: string
   isIncluded: boolean
   onMethodChange: (method: LegMethod) => void
   onLocationChange: (locationId: string | null) => void
@@ -44,13 +47,14 @@ function DeliveryLegCard({
   leg,
   storeAddress,
   locations,
-  currencySymbol,
+  currency,
   isIncluded,
   onMethodChange,
   onLocationChange,
   onAddressChange,
 }: DeliveryLegCardProps) {
   const t = useTranslations('dashboard.reservations.edit.delivery')
+  const { intl: formatLocale } = useFormatLocale()
   const isOutbound = variant === 'outbound'
   const title = isOutbound ? t('outboundTitle') : t('returnTitle')
   const selectedLocation =
@@ -114,7 +118,7 @@ function DeliveryLegCard({
               <p className="text-xs text-emerald-600">{t('included')}</p>
             ) : leg.fee > 0 ? (
               <p className="text-xs text-muted-foreground">
-                {leg.fee.toFixed(2)}{currencySymbol}
+                {formatCurrency(leg.fee, currency, formatLocale)}
               </p>
             ) : null}
           </div>
@@ -199,7 +203,7 @@ function DeliveryLegCard({
                 </Badge>
               ) : leg.fee > 0 ? (
                 <span>
-                  {t('fee')}: {leg.fee.toFixed(2)}{currencySymbol}
+                  {t('fee')}: {formatCurrency(leg.fee, currency, formatLocale)}
                 </span>
               ) : (
                 <Badge variant="success" className="text-[10px]">
@@ -228,7 +232,8 @@ interface EditReservationDeliverySectionProps {
   deliveryMinimumWarning: string | null
   storeAddress: string | null
   locations: ReservationLocationOption[]
-  currencySymbol: string
+  /** The reservation's currency, every fee shown in it. */
+  currency: string
   onOutboundMethodChange: (method: LegMethod) => void
   onInboundMethodChange: (method: LegMethod) => void
   onOutboundLocationChange: (locationId: string | null) => void
@@ -245,7 +250,7 @@ export function EditReservationDeliverySection({
   deliveryMinimumWarning,
   storeAddress,
   locations,
-  currencySymbol,
+  currency,
   onOutboundMethodChange,
   onInboundMethodChange,
   onOutboundLocationChange,
@@ -254,6 +259,7 @@ export function EditReservationDeliverySection({
   onInboundAddressChange,
 }: EditReservationDeliverySectionProps) {
   const t = useTranslations('dashboard.reservations.edit.delivery')
+  const { intl: formatLocale } = useFormatLocale()
   const [isExpanded, setIsExpanded] = useState(false)
 
   const hasDeliveryLegs =
@@ -307,7 +313,7 @@ export function EditReservationDeliverySection({
             leg={outbound}
             storeAddress={storeAddress}
             locations={locations}
-            currencySymbol={currencySymbol}
+            currency={currency}
             isIncluded={isDeliveryIncluded}
             onMethodChange={onOutboundMethodChange}
             onLocationChange={onOutboundLocationChange}
@@ -320,7 +326,7 @@ export function EditReservationDeliverySection({
             leg={inbound}
             storeAddress={storeAddress}
             locations={locations}
-            currencySymbol={currencySymbol}
+            currency={currency}
             isIncluded={isDeliveryIncluded}
             onMethodChange={onInboundMethodChange}
             onLocationChange={onInboundLocationChange}
@@ -331,7 +337,7 @@ export function EditReservationDeliverySection({
             <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
               <span className="text-sm font-medium">{t('totalFee')}</span>
               <span className="text-sm font-semibold">
-                {totalFee.toFixed(2)}{currencySymbol}
+                {formatCurrency(totalFee, currency, formatLocale)}
               </span>
             </div>
           )}

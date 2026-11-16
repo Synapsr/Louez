@@ -18,9 +18,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@louez/ui";
-import { cn } from "@louez/utils";
+import { cn, formatCurrency } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import type { AvailabilityWarning, CalculatedEditableItem } from "../types";
 
@@ -31,6 +32,8 @@ interface EditReservationItemCardProps {
   warning: AvailabilityWarning | undefined;
   itemsCount: number;
   currencySymbol: string;
+  /** The reservation's currency, the amounts shown in it. */
+  currency: string;
   getDurationUnit: (mode: PricingMode) => string;
   onQuantityChange: (itemId: string, quantity: number) => void;
   /** A price the field committed, with the one it showed: an unchanged one types nothing. */
@@ -60,6 +63,7 @@ export function EditReservationItemCard({
   warning,
   itemsCount,
   currencySymbol,
+  currency,
   getDurationUnit,
   onQuantityChange,
   onPriceChange,
@@ -72,6 +76,7 @@ export function EditReservationItemCard({
   const tForm = useTranslations("dashboard.reservations.manualForm");
   const tCommon = useTranslations("common");
   const tProductForm = useTranslations("dashboard.products.form");
+  const { intl: formatLocale } = useFormatLocale();
 
   // Conflicted items start expanded so their controls are immediately at hand
   const [open, setOpen] = useState(() => Boolean(warning));
@@ -198,21 +203,19 @@ export function EditReservationItemCard({
             <span>
               {isFixedPrice ? (
                 <>
-                  {item.quantity} × {displayedUnitPrice.toFixed(2)}
-                  {currencySymbol} · {tProductForm("fixedPriceLabel")}
+                  {item.quantity} × {formatCurrency(displayedUnitPrice, currency, formatLocale)} ·{" "}
+                  {tProductForm("fixedPriceLabel")}
                 </>
               ) : (
                 <>
                   {item.quantity} × {item.displayDuration} {unitLabel} ·{" "}
-                  {displayedUnitPrice.toFixed(2)}
-                  {currencySymbol}/{unitLabel}
+                  {formatCurrency(displayedUnitPrice, currency, formatLocale)}/{unitLabel}
                 </>
               )}
             </span>
           </span>
           <span className="font-semibold tabular-nums">
-            {item.totalPrice.toFixed(2)}
-            {currencySymbol}
+            {formatCurrency(item.totalPrice, currency, formatLocale)}
           </span>
         </div>
       )}
@@ -310,6 +313,7 @@ export function EditReservationItemCard({
                 savings={item.savings}
                 isManual={item.isManualPrice}
                 currencySymbol={currencySymbol}
+                currency={currency}
                 onChange={(totalPrice) =>
                   onTotalPriceChange(item.id, totalPrice, item.totalPrice, item.displayPricingMode)
                 }

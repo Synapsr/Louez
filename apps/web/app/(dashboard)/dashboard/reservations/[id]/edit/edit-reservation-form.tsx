@@ -58,7 +58,11 @@ import { EditReservationItemsSection } from "./components/edit-reservation-items
 import { EditReservationSummarySection } from "./components/edit-reservation-summary-section";
 import { EditReservationDeliverySection } from "./components/edit-reservation-delivery-section";
 import { useEditReservationAvailability } from "./hooks/use-edit-reservation-availability";
-import { previewEditTotal, useEditReservationPricing } from "./hooks/use-edit-reservation-pricing";
+import {
+  editSummaryFigures,
+  previewEditTotals,
+  useEditReservationPricing,
+} from "./hooks/use-edit-reservation-pricing";
 import { useEditReservationDelivery } from "./hooks/use-edit-reservation-delivery";
 import type { EditReservationFormProps, EditableItem } from "./types";
 import {
@@ -415,7 +419,6 @@ export function EditReservationForm({
       startDate,
       endDate,
       items,
-      originalSubtotal,
       fixedChargesTotal: fixedTulipInsuranceAmount,
       storedWindow: {
         start: new Date(reservation.startDate),
@@ -995,9 +998,9 @@ export function EditReservationForm({
   const currentItemsSignature = useMemo(() => buildItemsChangeSignature(items), [items]);
   const hasItemChanges = currentItemsSignature !== originalItemsSignature;
 
-  // The total the form shows, which the edit sends: the server refuses to
-  // write another one (slice 11).
-  const shownTotal = previewEditTotal({
+  // The totals the form shows, whose total the edit sends: the server refuses
+  // to write another one (slice 11).
+  const shownTotals = previewEditTotals({
     items: calculations.items,
     insuranceAmount: fixedTulipInsuranceAmount,
     discountAmount: parseFloat(reservation.discountAmount ?? "0"),
@@ -1005,6 +1008,13 @@ export function EditReservationForm({
     deposit: calculations.deposit,
     storeTax: storeSettings?.tax,
     recordedTaxDisplayMode: reservation.taxDisplayMode ?? null,
+    currency,
+  });
+  const shownTotal = shownTotals.total;
+  const summaryFigures = editSummaryFigures({
+    storedTotal: parseFloat(reservation.totalAmount),
+    preview: shownTotals,
+    discountAmount: parseFloat(reservation.discountAmount ?? "0"),
     currency,
   });
 
@@ -1223,6 +1233,7 @@ export function EditReservationForm({
                 availableQuantityByProduct={availableQuantityByProduct}
                 itemsCount={items.length}
                 currencySymbol={currencySymbol}
+                currency={currency}
                 getDurationUnit={getDurationUnit}
                 onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
                 onAddProduct={handleAddProduct}
@@ -1244,7 +1255,7 @@ export function EditReservationForm({
                   deliveryMinimumWarning={deliveryMinimumWarning}
                   storeAddress={storeDelivery.address}
                   locations={storeDelivery.locations}
-                  currencySymbol={currencySymbol}
+                  currency={currency}
                   onOutboundMethodChange={delivery.setOutboundMethod}
                   onInboundMethodChange={delivery.setInboundMethod}
                   onOutboundLocationChange={delivery.setOutboundLocationId}
@@ -1345,14 +1356,12 @@ export function EditReservationForm({
               {/* Summary Card */}
               <EditReservationSummarySection
                 availabilityWarnings={availabilityWarnings}
-                originalSubtotal={originalSubtotal}
+                figures={summaryFigures}
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}
-                originalTotal={parseFloat(reservation.totalAmount)}
-                newTotal={shownTotal}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}
-                currencySymbol={currencySymbol}
+                currency={currency}
                 isLoading={isLoading}
                 isDeliveryCalculating={delivery.isCalculating}
                 hasChanges={hasChanges}

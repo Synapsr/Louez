@@ -22,6 +22,8 @@ interface EditReservationItemsSectionProps {
   availableQuantityByProduct: Map<string, StockQuantityLimit>;
   itemsCount: number;
   currencySymbol: string;
+  /** The reservation's currency, the amounts shown in it. */
+  currency: string;
   getDurationUnit: (mode: PricingMode) => string;
   onOpenCustomItemDialog: () => void;
   onAddProduct: (productId: string) => void;
@@ -55,6 +57,7 @@ export function EditReservationItemsSection({
   availableQuantityByProduct,
   itemsCount,
   currencySymbol,
+  currency,
   getDurationUnit,
   onOpenCustomItemDialog,
   onAddProduct,
@@ -129,6 +132,7 @@ export function EditReservationItemsSection({
               )}
               itemsCount={itemsCount}
               currencySymbol={currencySymbol}
+              currency={currency}
               getDurationUnit={getDurationUnit}
               onQuantityChange={onQuantityChange}
               onPriceChange={onPriceChange}

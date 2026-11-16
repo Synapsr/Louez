@@ -315,6 +315,12 @@ export const reservationSchema = z.object({
   subtotalExclTax: moneySchema.nullable(),
   taxAmount: moneySchema.nullable(),
   taxRate: moneySchema.nullable(),
+  /**
+   * How its prices were given: with tax ("inclusive", the subtotal includes
+   * it) or before tax ("exclusive", the tax comes on top); null when the
+   * reservation did not record it.
+   */
+  taxDisplayMode: z.enum(["inclusive", "exclusive"]).nullable(),
   discountAmount: moneySchema.nullable(),
   deliveryFee: moneySchema.nullable(),
   promoCodeSnapshot: z

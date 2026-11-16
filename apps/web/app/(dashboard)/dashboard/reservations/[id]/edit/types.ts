@@ -193,6 +193,5 @@ export interface ReservationCalculations {
   items: CalculatedEditableItem[];
   subtotal: number;
   deposit: number;
-  difference: number;
   totalSavings: number;
 }
