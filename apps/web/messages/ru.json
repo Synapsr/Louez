@@ -6887,6 +6887,27 @@
         "customers": "Сколько новых клиентов в этом месяце?",
         "overdue": "Есть ли просроченные возвраты?",
         "pending": "Покажите мне бронирования, ожидающие подтверждения"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Записать этот платёж?",
+          "delete_payment": "Удалить этот платёж?",
+          "return_deposit": "Записать возврат залога?"
+        },
+        "amount": "Сумма",
+        "booking": "Бронирование",
+        "open": "Проверить и решить",
+        "expires": "Решите до {when}",
+        "status": {
+          "pending": "Ожидает вашего решения",
+          "approved": "Одобрено. Ассистент выполняет.",
+          "completed": "Готово",
+          "declined": "Отклонено. Ничего не сделано.",
+          "expired": "Истекло. Ничего не сделано.",
+          "ended": "Не выполнено. Ничего не сделано."
+        },
+        "continue": "Продолжить",
+        "followUp": "Одобрено, продолжаем"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · запрос от «<who>{agent}</who>»",
       "provenanceKey": "<place>{store}</place> · запрос от API-ключа",
       "provenanceAssistant": "<place>{store}</place> · запрос от ИИ-ассистента",
+      "provenanceInApp": "<place>{store}</place> · запрос через ассистента Louez",
       "trustShort": "Значение имеет только описание от Louez.",
       "stake": {
         "access_removed": "Отзывает доступ к вашему магазину.",
@@ -9840,6 +9862,7 @@
       "apiKey": "API-ключ «{name}»",
       "apiKeyUnnamed": "API-ключ",
       "unnamedAgent": "ИИ-ассистент",
+      "inAppAssistant": "Ассистент Louez, из чата в вашей панели",
       "checked": "Что проверил Louez",
       "messageDestinationOnFile": "Сообщения уходят на сохранённые контакты клиента.",
       "values": {
@@ -9914,6 +9937,7 @@
           "recordPayment": "Записать полученный платёж?",
           "paidBack": "Записать возврат денег клиенту?",
           "returnDeposit": "Записать возвращённый залог?",
+          "recordRefund": "Записать возврат, сделанный вручную?",
           "deletePayment": "Удалить записанный платёж?",
           "removeMember": "Удалить человека из вашей команды?",
           "cancelInvitation": "Отменить приглашение в вашу команду?",
@@ -9939,6 +9963,9 @@
           "returned": "Залог возвращён: <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "Залог, удерживаемый до этого: <v>{held}</v>",
           "recordOnly": "Louez только записывает это: деньги не списываются и не возвращаются.",
+          "refundGiven": "Возврат: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>",
+          "refundOf": "Возвращаемый платёж: <v>{type}</v>, <v>{amount}</v> от <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Уже возвращено: <v>{refunded}</v> · После этого ещё можно вернуть: <v>{left}</v>",
           "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "Записано <v>{atDate}</v> в <v>{atTime}</v>",
           "leavesBalance": "Он исчезнет из баланса бронирования и из ваших показателей.",

@@ -6887,6 +6887,27 @@
         "customers": "¿Cuántos clientes nuevos este mes?",
         "overdue": "¿Hay devoluciones atrasadas?",
         "pending": "Muéstrame las reservas pendientes de confirmación"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "¿Registrar este pago?",
+          "delete_payment": "¿Eliminar este pago?",
+          "return_deposit": "¿Registrar esta devolución de fianza?"
+        },
+        "amount": "Importe",
+        "booking": "Reserva",
+        "open": "Revisar y decidir",
+        "expires": "Decide antes de {when}",
+        "status": {
+          "pending": "Esperando tu decisión",
+          "approved": "Aprobado. El asistente lo está realizando.",
+          "completed": "Hecho",
+          "declined": "Rechazado. No se hizo nada.",
+          "expired": "Caducado. No se hizo nada.",
+          "ended": "No realizado. No se hizo nada."
+        },
+        "continue": "Continuar",
+        "followUp": "Aprobado, seguimos"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · lo pide «<who>{agent}</who>»",
       "provenanceKey": "<place>{store}</place> · lo pide una clave de API",
       "provenanceAssistant": "<place>{store}</place> · lo pide un asistente de IA",
+      "provenanceInApp": "<place>{store}</place> · lo pide el asistente de Louez",
       "trustShort": "Solo cuenta el resumen de Louez.",
       "stake": {
         "access_removed": "Retira un acceso a tu tienda.",
@@ -9840,6 +9862,7 @@
       "apiKey": "Clave de API «{name}»",
       "apiKeyUnnamed": "Una clave de API",
       "unnamedAgent": "Un asistente de IA",
+      "inAppAssistant": "El asistente de Louez, desde el chat de tu panel",
       "checked": "Lo que Louez ha comprobado",
       "messageDestinationOnFile": "Los mensajes van a los datos de contacto registrados del cliente.",
       "values": {
@@ -9914,6 +9937,7 @@
           "recordPayment": "¿Registrar un pago recibido?",
           "paidBack": "¿Registrar un reembolso al cliente?",
           "returnDeposit": "¿Registrar un depósito devuelto?",
+          "recordRefund": "¿Registrar un reembolso hecho a mano?",
           "deletePayment": "¿Eliminar un pago registrado?",
           "removeMember": "¿Quitar a alguien de tu equipo?",
           "cancelInvitation": "¿Cancelar una invitación a tu equipo?",
@@ -9939,6 +9963,9 @@
           "returned": "Depósito devuelto: <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "Depósito aún retenido antes de esto: <v>{held}</v>",
           "recordOnly": "Louez solo lo registra: no se cobra ni se reembolsa dinero.",
+          "refundGiven": "Reembolso: <v>{amount}</v>, devueltos al cliente · <v>{method}</v>",
+          "refundOf": "Pago reembolsado: <v>{type}</v>, <v>{amount}</v> el <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Ya reembolsado: <v>{refunded}</v> · Aún reembolsable después de esto: <v>{left}</v>",
           "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "Registrado el <v>{atDate}</v> a las <v>{atTime}</v>",
           "leavesBalance": "Sale del saldo de la reserva y de tus cifras.",

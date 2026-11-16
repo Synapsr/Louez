@@ -6887,6 +6887,27 @@
         "customers": "今月の新規顧客は何人ですか?",
         "overdue": "返却期限を過ぎたものはありますか?",
         "pending": "確認待ちの予約を表示"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "この支払いを記録しますか？",
+          "delete_payment": "この支払いを削除しますか？",
+          "return_deposit": "この保証金の返却を記録しますか？"
+        },
+        "amount": "金額",
+        "booking": "予約",
+        "open": "確認して判断する",
+        "expires": "{when} までに判断してください",
+        "status": {
+          "pending": "あなたの判断を待っています",
+          "approved": "承認済み。アシスタントが実行しています。",
+          "completed": "完了",
+          "declined": "拒否しました。何も行われていません。",
+          "expired": "期限切れです。何も行われていません。",
+          "ended": "実行されませんでした。何も行われていません。"
+        },
+        "continue": "続ける",
+        "followUp": "承認済み、続行します"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place>・「<who>{agent}</who>」からの依頼",
       "provenanceKey": "<place>{store}</place>・APIキーからの依頼",
       "provenanceAssistant": "<place>{store}</place>・AIアシスタントからの依頼",
+      "provenanceInApp": "<place>{store}</place>・Louez アシスタント経由の依頼",
       "trustShort": "有効なのはLouezの要約だけです。",
       "stake": {
         "access_removed": "ストアへのアクセス権を取り消します。",
@@ -9840,6 +9862,7 @@
       "apiKey": "APIキー「{name}」",
       "apiKeyUnnamed": "APIキー",
       "unnamedAgent": "AIアシスタント",
+      "inAppAssistant": "Louez アシスタント（ダッシュボードのチャットから）",
       "checked": "Louezが確認した内容",
       "messageDestinationOnFile": "メッセージは顧客の登録済みの連絡先に送られます。",
       "values": {
@@ -9914,6 +9937,7 @@
           "recordPayment": "受け取った支払いを記録しますか？",
           "paidBack": "お客様への返金を記録しますか？",
           "returnDeposit": "返却した保証金を記録しますか？",
+          "recordRefund": "手作業で行った返金を記録しますか？",
           "deletePayment": "記録済みの支払いを削除しますか？",
           "removeMember": "チームからメンバーを外しますか？",
           "cancelInvitation": "チームへの招待を取り消しますか？",
@@ -9939,6 +9963,9 @@
           "returned": "保証金の返却：<v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "これまで預かっていた保証金：<v>{held}</v>",
           "recordOnly": "Louez は記録するだけで、請求も返金も行いません。",
+          "refundGiven": "返金：<v>{amount}</v>、お客様に返却 · <v>{method}</v>",
+          "refundOf": "返金対象の支払い：<v>{type}</v>、<v>{amount}</v>（<v>{atDate}</v>） · <v>{method}</v>",
+          "refundBalance": "返金済み：<v>{refunded}</v> · この後も返金可能：<v>{left}</v>",
           "deleted": "<v>{type}</v>：<v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "<v>{atDate}</v> <v>{atTime}</v> に記録",
           "leavesBalance": "予約の残高と集計から外れます。",

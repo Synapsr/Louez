@@ -6887,6 +6887,27 @@
         "customers": "Berapa banyak pelanggan baru bulan ini?",
         "overdue": "Apakah ada pengembalian yang terlambat?",
         "pending": "Tunjukkan pada saya reservasi yang menunggu konfirmasi"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Catat pembayaran ini?",
+          "delete_payment": "Hapus pembayaran ini?",
+          "return_deposit": "Catat pengembalian deposit ini?"
+        },
+        "amount": "Jumlah",
+        "booking": "Pemesanan",
+        "open": "Tinjau dan putuskan",
+        "expires": "Putuskan sebelum {when}",
+        "status": {
+          "pending": "Menunggu keputusan Anda",
+          "approved": "Disetujui. Asisten sedang menjalankannya.",
+          "completed": "Selesai",
+          "declined": "Ditolak. Tidak ada yang dilakukan.",
+          "expired": "Kedaluwarsa. Tidak ada yang dilakukan.",
+          "ended": "Tidak dijalankan. Tidak ada yang dilakukan."
+        },
+        "continue": "Lanjutkan",
+        "followUp": "Disetujui, melanjutkan"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · diminta oleh “<who>{agent}</who>”",
       "provenanceKey": "<place>{store}</place> · diminta oleh kunci API",
       "provenanceAssistant": "<place>{store}</place> · diminta oleh asisten AI",
+      "provenanceInApp": "<place>{store}</place> · diminta melalui asisten Louez",
       "trustShort": "Hanya ringkasan Louez yang berlaku.",
       "stake": {
         "access_removed": "Mencabut sebuah akses ke toko Anda.",
@@ -9840,6 +9862,7 @@
       "apiKey": "Kunci API “{name}”",
       "apiKeyUnnamed": "Sebuah kunci API",
       "unnamedAgent": "Sebuah asisten AI",
+      "inAppAssistant": "Asisten Louez, dari chat di dasbor Anda",
       "checked": "Yang diperiksa Louez",
       "messageDestinationOnFile": "Pesan dikirim ke kontak pelanggan yang tersimpan.",
       "values": {
@@ -9914,6 +9937,7 @@
           "recordPayment": "Catat pembayaran yang diterima?",
           "paidBack": "Catat uang yang dikembalikan ke pelanggan?",
           "returnDeposit": "Catat uang jaminan yang dikembalikan?",
+          "recordRefund": "Catat pengembalian dana yang dilakukan secara manual?",
           "deletePayment": "Hapus pembayaran yang tercatat?",
           "removeMember": "Keluarkan seseorang dari tim Anda?",
           "cancelInvitation": "Batalkan undangan ke tim Anda?",
@@ -9939,6 +9963,9 @@
           "returned": "Uang jaminan dikembalikan: <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "Uang jaminan yang masih dipegang sebelum ini: <v>{held}</v>",
           "recordOnly": "Louez hanya mencatatnya: tidak ada uang yang ditagih atau dikembalikan.",
+          "refundGiven": "Pengembalian dana: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>",
+          "refundOf": "Pembayaran yang dikembalikan: <v>{type}</v>, <v>{amount}</v> pada <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Sudah dikembalikan: <v>{refunded}</v> · Masih bisa dikembalikan setelah ini: <v>{left}</v>",
           "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "Dicatat pada <v>{atDate}</v> pukul <v>{atTime}</v>",
           "leavesBalance": "Pembayaran ini keluar dari saldo pemesanan dan angka toko Anda.",

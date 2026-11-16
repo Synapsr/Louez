@@ -1,6 +1,7 @@
 import type { DateTimeFormatOptions, NumberFormatOptions } from "next-intl";
 
 import { LABELLED_CHOICES, type DisplayValue } from "@louez/api/services/approval-display";
+import { exactMoneyDecimals } from "@louez/utils";
 
 /** What the page formats a display's values with: the page's locale, its formatter, the store's time zone. */
 export interface DisplayFormat {
@@ -34,19 +35,9 @@ function writeDuration(minutes: number, format: DisplayFormat): string {
     .join(" ");
 }
 
-/**
- * An amount with exactly the digits its row holds: as many decimals as the
- * stored value has (`"1.49"` in yen is ¥1.49, never ¥1), and no decimal it
- * does not (`"1.23"` in dinars is KWD 1.23, never 1.230). Only decimals
- * that are all zeros past the currency's own are left off (`"1500.00"` in
- * yen is ¥1,500, `"3.50"` ¥3.50), as they change nothing the row holds.
- */
+/** An amount with exactly the digits its row holds (`exactMoneyDecimals`, @louez/utils). */
 function writeMoney(amount: string, currency: string, format: DisplayFormat): string {
-  const fraction = amount.split(".")[1] ?? "";
-  const customary =
-    new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
-      .maximumFractionDigits ?? fraction.length;
-  const decimals = /^0*$/.test(fraction) ? Math.min(customary, fraction.length) : fraction.length;
+  const decimals = exactMoneyDecimals(amount, currency);
   return format.number(Number(amount), {
     style: "currency",
     currency,

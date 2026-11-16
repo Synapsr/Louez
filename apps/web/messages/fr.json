@@ -6887,6 +6887,27 @@
         "customers": "Combien de nouveaux clients ce mois-ci ?",
         "overdue": "Y a-t-il des retours en retard ?",
         "pending": "Montre-moi les réservations en attente de confirmation"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Enregistrer ce paiement ?",
+          "delete_payment": "Supprimer ce paiement ?",
+          "return_deposit": "Enregistrer ce retour de caution ?"
+        },
+        "amount": "Montant",
+        "booking": "Réservation",
+        "open": "Vérifier et décider",
+        "expires": "À décider avant {when}",
+        "status": {
+          "pending": "En attente de votre décision",
+          "approved": "Approuvé. L’assistant s’en occupe.",
+          "completed": "Fait",
+          "declined": "Refusé. Rien n’a été fait.",
+          "expired": "Expiré. Rien n’a été fait.",
+          "ended": "Non effectué. Rien n’a été fait."
+        },
+        "continue": "Continuer",
+        "followUp": "Approuvé, on continue"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · demandé par « <who>{agent}</who> »",
       "provenanceKey": "<place>{store}</place> · demandé par une clé d’API",
       "provenanceAssistant": "<place>{store}</place> · demandé par un assistant IA",
+      "provenanceInApp": "<place>{store}</place> · demandé via l’assistant Louez",
       "trustShort": "Seul le résumé de Louez fait foi.",
       "stake": {
         "access_removed": "Retire un accès à votre boutique.",
@@ -9840,6 +9862,7 @@
       "apiKey": "Clé d’API « {name} »",
       "apiKeyUnnamed": "Une clé d’API",
       "unnamedAgent": "Un assistant IA",
+      "inAppAssistant": "L’assistant Louez, depuis le chat de votre tableau de bord",
       "checked": "Ce que Louez a vérifié",
       "messageDestinationOnFile": "Les messages partent vers les coordonnées enregistrées du client.",
       "values": {
@@ -9914,6 +9937,7 @@
           "recordPayment": "Enregistrer un paiement reçu ?",
           "paidBack": "Enregistrer un remboursement au client ?",
           "returnDeposit": "Enregistrer une caution rendue ?",
+          "recordRefund": "Enregistrer un remboursement fait à la main ?",
           "deletePayment": "Supprimer un paiement enregistré ?",
           "removeMember": "Retirer quelqu’un de votre équipe ?",
           "cancelInvitation": "Annuler une invitation à votre équipe ?",
@@ -9939,6 +9963,9 @@
           "returned": "Caution rendue : <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "Caution encore détenue avant cela : <v>{held}</v>",
           "recordOnly": "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
+          "refundGiven": "Remboursement : <v>{amount}</v>, rendus au client · <v>{method}</v>",
+          "refundOf": "Paiement remboursé : <v>{type}</v>, <v>{amount}</v> le <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Déjà remboursé : <v>{refunded}</v> · Encore remboursable après cela : <v>{left}</v>",
           "deleted": "<v>{type}</v> : <v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "Enregistré le <v>{atDate}</v> à <v>{atTime}</v>",
           "leavesBalance": "Il sort du solde de la réservation et de vos chiffres.",

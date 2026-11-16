@@ -503,6 +503,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "refundManualPayment"),
       procedure("reservations", "refundManualPayment"),
+      procedure("payments", "recordRefund"),
     ],
     kind: "write",
     sensitive: "money",

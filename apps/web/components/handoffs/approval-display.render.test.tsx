@@ -22,6 +22,7 @@ import {
   deletePaymentPresentation,
   recordDepositReturnPresentation,
   recordPaymentPresentation,
+  recordRefundPresentation,
   removeMemberPresentation,
   CHANNELS_SAID,
   CREATION_OVERRIDES_SAID,
@@ -207,6 +208,22 @@ const BRANCHES: Array<{
     presentation: deletePaymentPresentation(
       { paymentId: "pay_Qm3nB8vX2kL9pR4tY6wZ", number: "R-00094", type: "rental", amount: "80.00", method: "cash" },
       { reservationId: RESERVATION, currency: "EUR", recordedAt: new Date("2026-11-12T15:30:00.000Z") },
+    ),
+  },
+  {
+    name: "a refund given by hand, in the payment's own currency",
+    summary: "Record a refund of £30.00 (cash) of the rental payment of £80.00 on reservation #R-00094.",
+    presentation: recordRefundPresentation(
+      { paymentId: "pay_Rf7kN2vX9mL4pQ1tY3wZ", reservationId: RESERVATION, number: "R-00094", amount: "30.00", method: "cash" },
+      {
+        type: "rental",
+        amount: "80.00",
+        method: "card",
+        currency: "GBP",
+        paidAt: new Date("2026-11-12T15:30:00.000Z"),
+        paidHundredths: 8000,
+        refundedHundredths: 2000,
+      },
     ),
   },
   {
@@ -547,6 +564,24 @@ const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
       "Location : 80,00 € · Espèces",
       "Enregistré le 12 nov. 2026 à 16:30",
       "Il sort du solde de la réservation et de vos chiffres.",
+    ],
+  },
+  "a refund given by hand, in the payment's own currency": {
+    en: [
+      "Record a refund given by hand?",
+      "Booking #R-00094",
+      "Refund: £30.00, given back to the customer · Cash",
+      "Payment refunded: Rental, £80.00 on Nov 12, 2026 · Card",
+      "Already refunded: £20.00 · Still refundable after this: £30.00",
+      "Louez only records it: no money is charged or refunded.",
+    ],
+    fr: [
+      "Enregistrer un remboursement fait à la main ?",
+      "Réservation #R-00094",
+      "Remboursement : 30,00 £GB, rendus au client · Espèces",
+      "Paiement remboursé : Location, 80,00 £GB le 12 nov. 2026 · Carte",
+      "Déjà remboursé : 20,00 £GB · Encore remboursable après cela : 30,00 £GB",
+      "Louez l’enregistre seulement : aucun argent n’est prélevé ni remboursé.",
     ],
   },
   "a member removed": {

@@ -504,6 +504,7 @@ describe(
       assert.deepEqual(approving.sort(), [
         "DELETE /payments/{paymentId}",
         "DELETE /team/members/{id}",
+        "POST /payments/{paymentId}/refund-records",
         "POST /reservations",
         "POST /reservations/{id}/status",
         "POST /reservations/{reservationId}/deposit-returns",

@@ -6887,6 +6887,27 @@
         "customers": "Wie viele neue Kunden diesen Monat?",
         "overdue": "Gibt es überfällige Rückgaben?",
         "pending": "Zeig mir Reservierungen, die auf Bestätigung warten"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Diese Zahlung erfassen?",
+          "delete_payment": "Diese Zahlung löschen?",
+          "return_deposit": "Diese Kautionsrückgabe erfassen?"
+        },
+        "amount": "Betrag",
+        "booking": "Buchung",
+        "open": "Prüfen und entscheiden",
+        "expires": "Entscheiden bis {when}",
+        "status": {
+          "pending": "Wartet auf Ihre Entscheidung",
+          "approved": "Genehmigt. Der Assistent führt es aus.",
+          "completed": "Erledigt",
+          "declined": "Abgelehnt. Es wurde nichts getan.",
+          "expired": "Abgelaufen. Es wurde nichts getan.",
+          "ended": "Nicht ausgeführt. Es wurde nichts getan."
+        },
+        "continue": "Weiter",
+        "followUp": "Genehmigt, es geht weiter"
       }
     },
     "breadcrumbs": {
@@ -9821,6 +9842,7 @@
       "provenance": "<place>{store}</place> · angefragt von „<who>{agent}</who>“",
       "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
       "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
+      "provenanceInApp": "<place>{store}</place> · angefragt über den Louez-Assistenten",
       "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
       "stake": {
         "access_removed": "Entzieht einen Zugang zu Ihrem Shop.",
@@ -9840,6 +9862,7 @@
       "apiKey": "API-Schlüssel „{name}“",
       "apiKeyUnnamed": "Ein API-Schlüssel",
       "unnamedAgent": "Ein KI-Assistent",
+      "inAppAssistant": "Der Louez-Assistent, aus dem Chat in Ihrem Dashboard",
       "checked": "Was Louez geprüft hat",
       "messageDestinationOnFile": "Nachrichten gehen an die hinterlegten Kontaktdaten des Kunden.",
       "values": {
@@ -9914,6 +9937,7 @@
           "recordPayment": "Eine erhaltene Zahlung erfassen?",
           "paidBack": "Eine Rückzahlung an den Kunden erfassen?",
           "returnDeposit": "Eine zurückgegebene Kaution erfassen?",
+          "recordRefund": "Eine von Hand geleistete Erstattung erfassen?",
           "deletePayment": "Eine erfasste Zahlung löschen?",
           "removeMember": "Jemanden aus Ihrem Team entfernen?",
           "cancelInvitation": "Eine Einladung in Ihr Team zurückziehen?",
@@ -9939,6 +9963,9 @@
           "returned": "Kaution zurückgegeben: <v>{amount}</v> · <v>{method}</v>",
           "depositHeld": "Bisher noch gehaltene Kaution: <v>{held}</v>",
           "recordOnly": "Louez erfasst es nur: Es wird kein Geld abgebucht oder erstattet.",
+          "refundGiven": "Erstattung: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "refundOf": "Erstattete Zahlung: <v>{type}</v>, <v>{amount}</v> am <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Bereits erstattet: <v>{refunded}</v> · Danach noch erstattbar: <v>{left}</v>",
           "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
           "recordedOn": "Erfasst am <v>{atDate}</v> um <v>{atTime}</v>",
           "leavesBalance": "Sie verschwindet aus dem Saldo der Buchung und aus Ihren Zahlen.",
