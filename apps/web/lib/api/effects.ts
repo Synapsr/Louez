@@ -10,6 +10,7 @@ import {
 import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
 import { createDepositHoldEffectSenders } from "@/lib/reservations/deposit-hold-effects";
+import { createReservationMessageEffectSenders } from "@/lib/reservations/reservation-message-effects";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
 import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
@@ -24,6 +25,7 @@ import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-ef
 export const apiEffectSenders: ApiEffectSenders = {
   ...createDepositHoldEffectSenders(),
   ...createReservationEffectSenders(),
+  ...createReservationMessageEffectSenders(),
   ...createSmsEffectSenders(),
   ...createStoreCreationEffectSenders(),
   ...createStoreLaunchEffectSenders(),
