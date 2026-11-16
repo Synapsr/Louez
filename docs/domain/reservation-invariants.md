@@ -121,15 +121,14 @@ _Held_ for application code.
 **T2. The transitions are a fixed graph.** `pending` goes to `confirmed`, `rejected` or `cancelled`; `quote` to `confirmed`, `declined` or `cancelled`; `confirmed` to `ongoing` or `cancelled`; `ongoing` to `completed` or `cancelled`. Nothing leaves `completed`, `cancelled`, `rejected` or `declined`, and nothing enters `pending` or `quote` (`packages/db/src/consumable-stock.ts`).
 _Held._
 
-**T3. A completed reservation is not edited.** Its lines, dates and totals are what was rented.
-_Partial._ `updateReservation` refuses it, before and under its lock. No test covers it, nor a completion that lands during an edit.
-_Held_ for the date change of the API and agents (`changeReservationDates`): only `pending`, `quote`, `confirmed` and `ongoing` are changed, read before the lock and again under it (`RESERVATION_NOT_EDITABLE`); `reservation-dates.db.test.ts` covers each other status and a completion or a cancellation that lands while the change waits.
+**T3. A completed reservation is not edited.** Its lines, dates and totals are what was rented. Neither is a cancelled, rejected or declined one.
+_Held_ for every edit, with one rule (`isReservationEditable`, `packages/api/src/services/reservation-editable.ts`): only `pending`, `quote`, `confirmed` and `ongoing` are changed, read before the lock and again under it. The dashboard's edit (`updateReservation`) answers `errors.reservationStatusChanged` and its edit page does not open another status; the date change of the API and agents (`changeReservationDates`) answers `RESERVATION_NOT_EDITABLE`. `update-reservation.db.test.ts` and `reservation-dates.db.test.ts` cover each other status and a completion or a cancellation that lands while the change waits.
 
 **T4. A reservation's number is unique in its store.**
 _Open._ The dashboard numbers with a count of the year's reservations plus one, read with no lock; the online store draws a number and checks it before the insert, a race its own comment admits (`packages/api/src/services/reservation-number.ts`). The table has no unique index on store and number.
 
 **T5. A reservation's window is a real interval of the store's time.** The end is after the start, and a local date and time the customer or the store typed is one that exists in the store's time zone.
-_Partial._ The extension checks the time zone round trip, nonexistent local times included. `updateReservation` refuses only an end before the start, so it accepts a window of no length.
+_Partial._ The extension checks the time zone round trip, nonexistent local times included. `updateReservation` refuses an end that is not after the start (`update-reservation.db.test.ts`). The forms built on the date picker, the dashboard's edit included, do not check the round trip yet, and move a time the clocks skip forward.
 _Held_ for the date change of the API and agents: it takes instants with their offset (no local time to round-trip), refuses an end that is not after the start, and an ongoing reservation's start that moves (`RESERVATION_WINDOW_INVALID`); `reservation-dates.db.test.ts` covers both.
 
 **T6. Pickup follows the contract's rules.** Validating the contract and signing it are two steps (`services/reservation-contract-validation.ts`); a store that requires a signature refuses a pickup without one (`services/reservation-status.ts`).

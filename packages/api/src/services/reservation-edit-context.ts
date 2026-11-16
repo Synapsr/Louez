@@ -13,7 +13,8 @@ import {
 import type { LegMethod, PricingKind, StockKind } from "@louez/types";
 import type { SeasonalPricingConfig } from "@louez/utils";
 
-const NON_EDITABLE_STATUSES = new Set(["completed", "cancelled", "rejected"]);
+import { isReservationEditable } from "./reservation-editable";
+
 const AVAILABILITY_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface RawTier {
@@ -206,7 +207,8 @@ export async function getDashboardReservationEditContext(params: {
     throw new ORPCError("NOT_FOUND", { message: "errors.reservationNotFound" });
   }
 
-  if (NON_EDITABLE_STATUSES.has(reservation.status)) {
+  // The edit page opens only what the edit itself accepts (slice 8a).
+  if (!isReservationEditable(reservation.status)) {
     return { editable: false as const };
   }
 
