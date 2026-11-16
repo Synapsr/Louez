@@ -258,7 +258,8 @@ export function EditReservationItemCard({
                     item.isManualPrice && "border-amber-300 bg-amber-50 dark:bg-amber-950/20",
                   )}
                 />
-                {item.product && (
+                {/* A line whose product was deleted can be locked at its price, never unlocked. */}
+                {(item.product || (item.productId && !item.isManualPrice)) && (
                   <Tooltip>
                     <TooltipTrigger
                       render={

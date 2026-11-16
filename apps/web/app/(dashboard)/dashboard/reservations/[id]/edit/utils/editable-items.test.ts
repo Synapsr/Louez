@@ -27,6 +27,27 @@ test("a unit price committed as the field showed it types nothing", () => {
   );
 });
 
+test("a price the field shows rounded down, committed as shown, types nothing", () => {
+  // 10.70 over four days is 2.675 a day, which the field writes "2.67".
+  assert.equal(
+    withUnitPriceCommitted(fromProduct, {
+      price: 2.67,
+      shownUnitPrice: 10.7 / 4,
+      pricingMode: "day",
+    }),
+    fromProduct,
+  );
+  assert.equal(
+    withTotalPriceCommitted(fromProduct, {
+      totalPrice: 0.61,
+      shownTotalPrice: 0.615,
+      pricingMode: "day",
+      duration: 2,
+    }),
+    fromProduct,
+  );
+});
+
 test("another unit price is typed, per period", () => {
   const typed = withUnitPriceCommitted(fromProduct, {
     price: 7.5,

@@ -119,8 +119,12 @@ export const toReservationItemPayload = (item: EditableItem) => ({
   },
 });
 
-/** Two prices the price field shows alike: it shows and commits cents. */
-const sameShownPrice = (a: number, b: number) => Math.round(a * 100) === Math.round(b * 100);
+/**
+ * Two prices the price field shows alike. The field writes a price with
+ * `toFixed(2)` and commits what it wrote, so the comparison is made on that
+ * same text: 2.675 is shown, and committed, as 2.67.
+ */
+const sameShownPrice = (a: number, b: number) => a.toFixed(2) === b.toFixed(2);
 
 /**
  * A unit price committed by the line's price field. The field commits on
