@@ -194,7 +194,7 @@ export async function createReservationPaymentSessionForCustomer(
         return { ...session, feePlan };
       },
       attempt: {
-        amount: chargeAmount.toFixed(2),
+        chargeMinor: chargeCents,
         currency,
         origin: "customer_session",
         activity: { source },

@@ -26,6 +26,7 @@ import {
   recordPaidCheckoutSession,
 } from "@/lib/reservations/checkout-session-settlement";
 import { hasRentalPaymentInProgress } from "@/lib/reservations/util.payment-status";
+import { fromStripeCents } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
 
 /**
@@ -81,9 +82,10 @@ interface OpenRentalSessionInput<Refusal extends string, Session extends { sessi
   check: (tx: Transaction, locked: LockedReservation | null) => Promise<Refusal | null>;
   /** Creates the session at Stripe, sent with `idempotencyKey`. */
   create: (attempt: { idempotencyKey: string }) => Promise<Session>;
-  /** The attempt's pending row: what it asks, and where it comes from. */
+  /** The attempt's pending row: what its session charges, and where it comes from. */
   attempt: {
-    amount: string;
+    /** The session's charge, in the currency's minor units: the row states it in its precision. */
+    chargeMinor: number;
     currency: string;
     origin: "customer_session" | "payment_request";
     paymentRequestId?: string;
@@ -234,7 +236,8 @@ export async function openRentalCheckoutSession<
       await tx.insert(payments).values({
         id: paymentId,
         reservationId,
-        amount: attempt.amount,
+        // What the session charges, not what was asked: yen have no decimals.
+        amount: fromStripeCents(attempt.chargeMinor, attempt.currency).toFixed(2),
         type: "rental",
         method: "stripe",
         status: "pending",

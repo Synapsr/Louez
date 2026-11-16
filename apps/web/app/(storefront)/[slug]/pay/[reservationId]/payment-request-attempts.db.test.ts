@@ -166,7 +166,7 @@ describe(
     type Status = (typeof louezDb.reservations.$inferInsert)["status"];
 
     /** A signed reservation of 100.00 EUR. */
-    async function reservation(status: Status = "confirmed", total = "100.00") {
+    async function reservation(status: Status = "confirmed", total = "100.00", currency = "EUR") {
       const id = nextId("res_attempt");
       await louezDb.db.insert(louezDb.reservations).values({
         id,
@@ -179,7 +179,7 @@ describe(
         subtotalAmount: total,
         depositAmount: "0.00",
         totalAmount: total,
-        currency: "EUR",
+        currency,
         signedAt: new Date("2031-06-01T09:00:00Z"),
       });
       return id;
@@ -188,7 +188,7 @@ describe(
     /** A payment request of the reservation. */
     async function request(
       reservationId: string,
-      { amount = "100.00", type = "rental" as "rental" | "custom" } = {},
+      { amount = "100.00", type = "rental" as "rental" | "custom", currency = "EUR" } = {},
     ) {
       const token = nextId("token");
       const requestId = nextId("req");
@@ -198,7 +198,7 @@ describe(
         reservationId,
         token,
         amount,
-        currency: "EUR",
+        currency,
         description: type === "rental" ? "Rental" : "Damage",
         type,
         expiresAt: new Date(Date.now() + 86_400_000),
@@ -285,11 +285,17 @@ describe(
     }
 
     /** The completion writer, as the webhook calls it for a paid session of the request. */
-    const paid = (reservationId: string, sessionId: string, paymentRequestId: string) =>
+    const paid = (
+      reservationId: string,
+      sessionId: string,
+      paymentRequestId: string | null,
+      // What Stripe took: its amount, currency and minor units.
+      { amount = 100, currency = "EUR", grossMinor = 10_000 } = {},
+    ) =>
       completion.claimCompletedCheckoutPayment({
         reservationId,
-        amount: 100,
-        currency: "EUR",
+        amount,
+        currency,
         stripeCheckoutSessionId: sessionId,
         stripePaymentIntentId: `pi_${sessionId}`,
         stripeChargeId: `ch_${sessionId}`,
@@ -297,9 +303,9 @@ describe(
         stripeAccountId: ACCOUNT,
         claimedAt: new Date("2031-06-02T10:00:00Z"),
         paidAt: new Date("2031-06-02T09:59:58Z"),
-        grossMinor: 10_000,
+        grossMinor,
         insuranceShareMinor: 0,
-        origin: "payment_request",
+        origin: paymentRequestId ? "payment_request" : "customer_session",
         paymentRequestId,
         feeFacts: null,
       });
@@ -582,6 +588,101 @@ describe(
         "paid above the rental's 100: the store refunds one",
       );
       assert.equal(await requestStatus(link.requestId), "completed");
+    });
+
+    /** The reservation's Stripe payments: what each states, by session. */
+    async function statedAmounts(reservationId: string) {
+      const rows = await louezDb.db
+        .select({
+          session: louezDb.payments.stripeCheckoutSessionId,
+          amount: louezDb.payments.amount,
+          status: louezDb.payments.status,
+        })
+        .from(louezDb.payments)
+        .where(eq(louezDb.payments.reservationId, reservationId));
+      return rows.map(({ session, amount, status }) => [session, amount, status]);
+    }
+
+    test("a request's session and its payment state what the session charges: a yen request of 100.60 charges and records 101", async () => {
+      const link = await request(await reservation("confirmed", "101.00", "JPY"), {
+        amount: "100.60",
+        currency: "JPY",
+      });
+
+      assert.ok((await open(link)).ok);
+
+      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 101);
+      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.currency, "jpy");
+      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "101.00", "pending"]]);
+
+      await paid(link.id, "cs_attempt_1", link.requestId, {
+        amount: 101,
+        currency: "JPY",
+        grossMinor: 101,
+      });
+
+      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "101.00", "completed"]]);
+      assert.equal(await requestStatus(link.requestId), "completed");
+    });
+
+    test("a rental request that its currency's precision takes above what is owed is no longer current", async () => {
+      // 100.50 owed in yen, a currency without decimals: the session would charge 101.
+      const link = await request(await reservation("confirmed", "100.50", "JPY"), {
+        amount: "100.50",
+        currency: "JPY",
+      });
+
+      assert.deepEqual(await load(link), { ok: false, error: "no_longer_current" });
+      assert.deepEqual(await open(link), { ok: false, error: "no_longer_current" });
+      assert.deepEqual(created, []);
+    });
+
+    test("a two-decimal currency is charged and recorded to the cent", async () => {
+      const link = await request(await reservation("confirmed", "80.25"), { amount: "80.25" });
+
+      assert.ok((await open(link)).ok);
+      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 8025);
+      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "80.25", "pending"]]);
+
+      await paid(link.id, "cs_attempt_1", link.requestId, { amount: 80.25, grossMinor: 8025 });
+
+      assert.deepEqual(await statedAmounts(link.id), [["cs_attempt_1", "80.25", "completed"]]);
+    });
+
+    test("the customer's own session states what it charges too", async () => {
+      const reservationId = await reservation("confirmed", "100.60", "JPY");
+
+      const account = await fromAccount(reservationId);
+
+      assert.ok("sessionId" in account, JSON.stringify(account));
+      assert.equal(created[0]?.params.line_items?.[0]?.price_data?.unit_amount, 101);
+      assert.deepEqual(await statedAmounts(reservationId), [["cs_attempt_1", "101.00", "pending"]]);
+    });
+
+    test("the completion writes on the row it claims the amount Stripe took", async () => {
+      // A pending row that states another precision than its session charged.
+      const reservationId = await reservation("confirmed", "101.00", "JPY");
+      await louezDb.db.insert(louezDb.payments).values({
+        id: nextId("pay"),
+        reservationId,
+        amount: "100.60",
+        type: "rental",
+        method: "stripe",
+        status: "pending",
+        stripeCheckoutSessionId: "cs_stated",
+        stripeAccountId: ACCOUNT,
+        origin: "customer_session",
+        currency: "JPY",
+      });
+
+      const claim = await paid(reservationId, "cs_stated", null, {
+        amount: 101,
+        currency: "JPY",
+        grossMinor: 101,
+      });
+
+      assert.equal(claim.claimed, true);
+      assert.deepEqual(await statedAmounts(reservationId), [["cs_stated", "101.00", "completed"]]);
     });
   },
 );

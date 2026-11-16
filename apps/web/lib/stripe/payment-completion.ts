@@ -146,6 +146,9 @@ export async function claimCompletedCheckoutPayment(
         .update(payments)
         .set({
           ...facts,
+          // What Stripe took: the row created with the session may state another
+          // precision than the session charged (yen have no decimals).
+          amount: params.amount.toFixed(2),
           status: "completed",
           origin: existingPayment.origin ?? params.origin,
           paymentRequestId: existingPayment.paymentRequestId ?? params.paymentRequestId,

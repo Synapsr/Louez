@@ -23,7 +23,7 @@ import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { createPaymentRequestSession, toStripeCents } from "@/lib/stripe";
+import { createPaymentRequestSession, fromStripeCents, toStripeCents } from "@/lib/stripe";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export type PaymentRequestError =
@@ -100,7 +100,8 @@ type PaymentRequestRow = typeof paymentRequests.$inferSelect;
  * A rental request never collects more than the rental still owed: a request
  * written before the total went down, or before a payment was recorded, is no
  * longer current and the store asks again. Nothing is charged and the request is
- * left as it is. A request in another currency than the reservation's settles
+ * left as it is. What it would charge is compared, in the currency's precision
+ * (a yen request of 100.60 charges 101). A request in another currency than the reservation's settles
  * none of it, and is no longer current either. A custom request asks what the
  * store chose.
  */
@@ -119,9 +120,10 @@ const requestRefusal = (
   const owed = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
   const owedHundredths = Math.round(owed * 100);
   if (owedHundredths === 0) return "already_paid";
-  if (Math.round(Number(paymentRequest.amount) * 100) > owedHundredths) {
-    return "no_longer_current";
-  }
+  // What the session would charge, in the currency's precision: a request the
+  // rounding takes above what is owed is no longer current either.
+  const charged = fromStripeCents(toStripeCents(Number(paymentRequest.amount), currency), currency);
+  if (Math.round(charged * 100) > owedHundredths) return "no_longer_current";
   return null;
 };
 
@@ -357,7 +359,7 @@ export const initiatePayment = async (
         });
       },
       attempt: {
-        amount: paymentRequest.amount,
+        chargeMinor: chargeCents,
         currency: normalizeCurrency(paymentRequest.currency),
         origin: "payment_request",
         paymentRequestId: paymentRequest.id,
