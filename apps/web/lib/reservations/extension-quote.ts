@@ -15,7 +15,12 @@ import {
   type Transaction,
 } from "@louez/db";
 import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
-import { NOT_RECORDED, recordedPromotion } from "@louez/api/services/pricing-facts";
+import {
+  NOT_RECORDED,
+  recordedPromotion,
+  recordedTaxDisplayMode,
+  taxSettingsForRepricing,
+} from "@louez/api/services/pricing-facts";
 import { isWithinBusinessHours } from "@louez/utils";
 import { validateRentalDuration } from "./validate-rental-window";
 import {
@@ -373,6 +378,18 @@ export const quoteExtension = async (
   const original = price(reservation.endDate);
   const extended = price(end);
   if (!original.ok || !extended.ok) return { preview: { mode: "manual", reason: "manualPrice" } };
+  // Priced in the mode the reservation was priced in, when it recorded one
+  // (slice 10): the added days mean what the booked ones meant. Recorded
+  // before tax while the store has turned taxes off, it cannot be: the
+  // store extends it by hand.
+  const recordedMode = recordedTaxDisplayMode(reservation);
+  if (recordedMode === "exclusive" && !settings?.tax?.enabled) {
+    return { preview: { mode: "manual", reason: "manualPrice" } };
+  }
+  const taxSettings = taxSettingsForRepricing(
+    settings?.tax,
+    recordedMode === NOT_RECORDED ? null : recordedMode,
+  );
   const totals = (cart: typeof original.cart) =>
     computeReservationTotals({
       lines: cart.lines,
@@ -380,7 +397,7 @@ export const quoteExtension = async (
       discountAmount: 0,
       deliveryFee: Number(reservation.deliveryFee ?? 0),
       totalDeposit: Number(reservation.depositAmount),
-      taxSettings: settings?.tax,
+      taxSettings,
       currency: reservationCurrency(reservation.currency, settings ?? null),
     });
   const originalTotals = totals(original.cart);
