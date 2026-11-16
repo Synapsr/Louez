@@ -1713,9 +1713,23 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
 
     const [item] = await inbox((await apiKey())());
     assert.ok(item, "shown with team read");
-    assert.match(item.summary, /lost@tm\.test/);
+    assert.match(item.summary, /lost@tm\.test never went out after every try/);
     assert.equal(item.links.dashboard, `${TEST_APP_URL}/dashboard/team?store=${STORE}`);
     assert.doesNotMatch(JSON.stringify(item), new RegExp(token));
+
+    // Given up at once on an instance with no e-mail service: it says why.
+    await louezDb.db
+      .update(louezDb.apiEffects)
+      .set({
+        attempts: 1,
+        lastError: "Abandoned: email_not_configured: no e-mail service is set up",
+      })
+      .where(orm.eq(louezDb.apiEffects.id, "tm_eff_abandoned_001"));
+    const [atOnce] = await inbox((await apiKey())());
+    assert.match(
+      atOnce?.summary ?? "",
+      /lost@tm\.test was not sent \(no e-mail service is set up\): the user sends it again, or shares its link/,
+    );
 
     const noTeam = await apiKey({ permissions: { ...teamWrite, team: "none" } });
     assert.deepEqual(await inbox(noTeam()), [], "hidden without team read");

@@ -760,6 +760,18 @@ export const statusChangeSchema = z.object({
       params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
     }),
   ),
+  /**
+   * The messages owed to the customer that could not go out, and why: an
+   * e-mail on an instance with no e-mail service (`email_not_configured`).
+   * The store's inbox lists each as not sent; the store tells the customer.
+   */
+  messagesNotSent: z.array(
+    z.object({
+      message: z.enum(["request_accepted", "request_rejected", "reservation_cancelled"]),
+      channel: z.literal("email"),
+      reason: z.literal("email_not_configured"),
+    }),
+  ),
 });
 export type StatusChangeOutput = z.infer<typeof statusChangeSchema>;
 

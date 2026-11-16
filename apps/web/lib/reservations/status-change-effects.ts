@@ -4,8 +4,10 @@ import type {
   ApiEffectPayloads,
   ApiEffectSenders,
   EffectSendContext,
+  EffectSendOutcome,
 } from "@louez/api/platform/effects";
 import { db, stores } from "@louez/db";
+import { isEmailConfigured } from "@louez/email";
 
 import { sendPlatformReservationStatus } from "@/lib/discord/platform-notifications";
 import { sendCustomerNotificationChannel } from "@/lib/notifications/customer-dispatcher";
@@ -15,6 +17,7 @@ import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-e
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import { NO_EMAIL } from "@/lib/api/effect-outcomes";
 import { withEffectSignal } from "@/lib/api/effect-signal";
 
 // The senders of a reservation's outbox rows (packages/api platform/effects.ts):
@@ -22,10 +25,12 @@ import { withEffectSignal } from "@/lib/api/effect-signal";
 // the platform's, or an analytics event. Each sends the payload frozen in the
 // write's transaction, checks its claim right before each provider call,
 // passes its abort signal down to them, throws when nothing went out (the row
-// is retried) and answers `skipped` when there is nothing to send.
+// is retried), answers `skipped` when there is nothing to send, and
+// `abandoned` when a customer's e-mail is owed and this instance has no
+// e-mail service (the inbox shows it at once).
 
 type Payload<K extends keyof ApiEffectPayloads> = ApiEffectPayloads[K];
-type Outcome = Promise<void | { skipped: string }>;
+type Outcome = Promise<EffectSendOutcome>;
 
 type ReservationEffectType =
   | "reservation.customerMessage"
@@ -36,6 +41,7 @@ type ReservationEffectType =
 
 /** What the senders call. A test replaces them, so nothing leaves the machine. */
 export interface ReservationEffectDeps {
+  isEmailConfigured: typeof isEmailConfigured;
   loadStoreRouting: typeof loadStoreRouting;
   createReservationInstantAccessUrl: typeof createReservationInstantAccessUrl;
   sendCustomerNotificationChannel: typeof sendCustomerNotificationChannel;
@@ -65,6 +71,7 @@ async function loadStoreRouting(storeId: string) {
 }
 
 const defaultDeps: ReservationEffectDeps = {
+  isEmailConfigured,
   loadStoreRouting,
   createReservationInstantAccessUrl,
   sendCustomerNotificationChannel,
@@ -97,6 +104,8 @@ export function createReservationEffectSenders(
         payload: Payload<"reservation.customerMessage">,
         context: EffectSendContext,
       ): Outcome => {
+        // Owed, and it can never go out: given up now, nothing minted.
+        if (payload.channel === "email" && !deps.isEmailConfigured()) return NO_EMAIL;
         const { store, customer, reservation } = payload;
         const ctx = {
           store: {

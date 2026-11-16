@@ -78,6 +78,7 @@ describe("reservation effect senders", () => {
   let calls: Array<[string, unknown[]]> = [];
   let claimChecks = 0;
   let failWith: Error | null = null;
+  let emailConfigured = true;
 
   const context: EffectSendContext = {
     effectId: "effect_test",
@@ -90,6 +91,7 @@ describe("reservation effect senders", () => {
   };
 
   const deps: Partial<ReservationEffectDeps> = {
+    isEmailConfigured: () => emailConfigured,
     loadStoreRouting: async (storeId: string) => {
       calls.push(["loadStoreRouting", [storeId]]);
       return {
@@ -138,6 +140,7 @@ describe("reservation effect senders", () => {
     calls = [];
     claimChecks = 0;
     failWith = null;
+    emailConfigured = true;
   });
 
   const argsOf = (name: string) => calls.find(([called]) => called === name)?.[1] ?? [];
@@ -182,6 +185,25 @@ describe("reservation effect senders", () => {
     // message goes out and states the store's.
     assert.equal(await currencySent({ ...reservation, currency: null }), null);
     assert.equal(await currencySent(reservation), undefined);
+  });
+
+  test("without an e-mail service, an e-mail is given up at once and nothing is minted; an SMS still goes", async () => {
+    emailConfigured = false;
+    for (const notification of [
+      "customer_request_accepted",
+      "customer_request_rejected",
+      "customer_reservation_cancelled",
+    ] as const) {
+      assert.deepEqual(
+        await senders["reservation.customerMessage"](message({ notification }), context),
+        { abandoned: "email_not_configured: no e-mail service is set up" },
+      );
+    }
+    assert.deepEqual(calls, [], "no link minted, no provider called");
+    assert.equal(claimChecks, 0);
+
+    await senders["reservation.customerMessage"](message({ channel: "sms" }), context);
+    assert.equal(argsOf("sendCustomerNotificationChannel")[2], "sms");
   });
 
   test("an SMS sends its own channel, without a contract link", async () => {
