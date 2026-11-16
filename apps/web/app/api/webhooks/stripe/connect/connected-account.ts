@@ -8,6 +8,8 @@ import { type BillingAlerts, createBillingAlerts } from "@/lib/billing-sync/aler
 import { log } from "@/lib/evlog";
 import { stripe } from "@/lib/stripe/client";
 
+import { describeWebhookError } from "./webhook-error";
+
 // Whether Louez may act on a Connect event's account, decided before its
 // handler runs, from reads that change nothing. An account no store holds and
 // no payment recorded is not acted on. For an event whose handler reads the
@@ -49,25 +51,6 @@ export async function connectedAccountOwner(
  */
 export function isAccountAccessRefused(error: unknown): error is Stripe.errors.StripeError {
   return error instanceof Stripe.errors.StripeError && error.code === "account_invalid";
-}
-
-/**
- * What a log may say of an error. Of a Stripe error, its class, code, status
- * and request id, never its message: Stripe writes the platform key's masked
- * tail into some of them. Of any other, its message.
- */
-export function describeWebhookError(error: unknown): Record<string, unknown> {
-  if (error instanceof Stripe.errors.StripeError) {
-    return {
-      stripeError: {
-        type: error.type,
-        code: error.code ?? null,
-        statusCode: error.statusCode ?? null,
-        requestId: error.requestId ?? null,
-      },
-    };
-  }
-  return { error: error instanceof Error ? error.message : String(error) };
 }
 
 export type ConnectedAccountVerdict =

@@ -9,6 +9,8 @@ import {
   dispatchNotification,
 } from "@/lib/notifications/dispatcher";
 
+import { describeWebhookError } from "./webhook-error";
+
 /**
  * Waits before the second and third attempts. The dispute row is the only trace
  * of the dispute and has no column to remember the alert by, so a redelivered
@@ -136,7 +138,7 @@ export async function notifyPaymentDisputed(
       }
       lastErrors = errors;
     } catch (error) {
-      lastErrors = { dispatch: error instanceof Error ? error.message : String(error) };
+      lastErrors = { dispatch: JSON.stringify(describeWebhookError(error)) };
     }
     const delay = deps.retryDelaysMs[attempt - 1];
     if (delay === undefined || deps.now() - startedAt + delay > deps.budgetMs) break;

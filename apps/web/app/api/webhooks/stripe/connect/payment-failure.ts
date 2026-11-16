@@ -11,6 +11,8 @@ import { log } from "@/lib/evlog";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import { fromStripeCents } from "@/lib/stripe";
 
+import { describeWebhookError } from "./webhook-error";
+
 /** The fields of a failed PaymentIntent the webhook reads. */
 export type FailedPaymentIntent = Pick<
   Stripe.PaymentIntent,
@@ -195,9 +197,6 @@ export interface PaymentFailureDeps {
 
 const defaultDeps: PaymentFailureDeps = { dispatchNotification, notifyPaymentFailed };
 
-const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
 /**
  * A failed payment of a reservation the event was bound to: records its line and
  * tells the owner and the platform, once per Stripe event. A marketplace booking
@@ -285,7 +284,7 @@ export async function handlePaymentFailure(
           event: "payment_failed",
           issue: "notification_dispatch_failed",
           reservationId: reservation.id,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
     });

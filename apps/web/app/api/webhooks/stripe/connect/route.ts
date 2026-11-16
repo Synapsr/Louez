@@ -43,11 +43,12 @@ import { dispatchApiEffects } from "@/lib/api/effects";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
-import { connectedAccountVerdict, describeWebhookError } from "./connected-account";
+import { connectedAccountVerdict } from "./connected-account";
 import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
 import { failedAttemptBinding, failedAttemptReservationId } from "./failed-attempt-binding";
 import { matchesDeploymentMode } from "./matches-deployment-mode";
 import { handlePaymentFailure } from "./payment-failure";
+import { describeWebhookError } from "./webhook-error";
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -97,9 +98,6 @@ type ReservationWithRelations = {
     totalPrice: string;
   }>;
 };
-
-const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 /** What the deposit events run on: the app's database, Stripe, outbox and invoicing. */
 const depositEventDeps: DepositEventDeps = {
@@ -190,7 +188,7 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(body, signature, env.STRIPE_CONNECT_WEBHOOK_SECRET);
   } catch (err) {
     log.error({
-      stripeWebhook: { issue: "signature_verification_failed", error: describeError(err) },
+      stripeWebhook: { issue: "signature_verification_failed", ...describeWebhookError(err) },
     });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
@@ -616,7 +614,7 @@ async function handleCheckoutCompleted(
         referral: {
           event: "referrer_reward_grant_failed",
           reservationId,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
     }
