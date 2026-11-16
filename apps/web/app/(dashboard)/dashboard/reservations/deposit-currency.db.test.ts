@@ -11,7 +11,8 @@ import { STORE_KEY } from "./actions-test-stubs";
 // The money the dashboard moves on an existing reservation is in the reservation's
 // currency, frozen when it was made, whatever the store's is now (invariant M2):
 // the deposit hold. An amount sent against an existing Stripe object, a capture of
-// a hold or a refund of a charge, is counted in that object's own currency. Stripe
+// a hold, is counted in that object's own currency (the refund of a charge is in
+// lib/reservations/stripe-refund.db.test.ts). Stripe
 // is a fake that notes what it is asked: no network. The database is real.
 
 // The Stripe client is built from this key the first time it is used, then its
@@ -26,8 +27,7 @@ const END = new Date("2031-04-12T09:00:00.000Z");
 type StripeCall =
   | { method: "paymentIntents.create"; amount: number; currency: string; account?: string }
   | { method: "paymentIntents.retrieve"; intent: string; account?: string }
-  | { method: "paymentIntents.capture"; intent: string; amount?: number; account?: string }
-  | { method: "refunds.create"; charge?: string; amount?: number; account?: string };
+  | { method: "paymentIntents.capture"; intent: string; amount?: number; account?: string };
 
 describe(
   "the currency of a reservation's Stripe money (database)",
@@ -40,8 +40,6 @@ describe(
     let actions: typeof import("./actions");
     let counter = 0;
     const calls: StripeCall[] = [];
-    /** What the fake charge of a refund still holds, and in which currency. */
-    let charge = { amount: 0, currency: "eur" };
     /**
      * Each PaymentIntent the fake Stripe holds: its amount, and its currency as Stripe
      * writes it.
@@ -141,31 +139,6 @@ describe(
           return stripeIntent(intent, "succeeded", params.amount_to_capture);
         },
       );
-      Reflect.set(stripe.charges, "retrieve", async () => ({
-        refunded: false,
-        amount: charge.amount,
-        amount_refunded: 0,
-        currency: charge.currency,
-      }));
-      Reflect.set(
-        stripe.refunds,
-        "create",
-        async (params: Stripe.RefundCreateParams, options?: Stripe.RequestOptions) => {
-          calls.push({
-            method: "refunds.create",
-            charge: params.charge,
-            amount: params.amount,
-            account: options?.stripeAccount,
-          });
-          return {
-            id: `re_${calls.length}`,
-            amount: params.amount,
-            status: "succeeded",
-            currency: charge.currency,
-          };
-        },
-      );
-
       // The connected account a hold with no row of its own is written from.
       await louezDb.db.insert(louezDb.stores).values({
         id: STORE,
@@ -460,74 +433,6 @@ describe(
         },
       ]);
       assert.deepEqual(await readPayments(euros.reservationId), []);
-    });
-
-    test("a card payment is refunded in its charge's currency", async () => {
-      useStore("EUR");
-      const refund = async (paymentCurrency: string | null, reservationCurrency: string | null) => {
-        const reservationId = await createReservation({
-          currency: reservationCurrency,
-          depositAmount: "0.00",
-        });
-        const paymentId = `pay_${reservationId}`;
-        await louezDb.db.insert(louezDb.payments).values({
-          id: paymentId,
-          reservationId,
-          amount: "30000.00",
-          type: "rental",
-          method: "stripe",
-          status: "completed",
-          stripeChargeId: `ch_${reservationId}`,
-          stripePaymentIntentId: `pi_charge_${reservationId}`,
-          currency: paymentCurrency,
-        });
-        charge = { amount: 30_000, currency: "jpy" };
-        calls.length = 0;
-        const result = await actions.processStripeRefund(reservationId, {
-          type: "rental_refund",
-          amount: 12_000,
-        });
-        assert.equal(result.error, undefined, `${paymentCurrency} / ${reservationCurrency}`);
-        const [call] = calls;
-        return call?.method === "refunds.create" ? call.amount : null;
-      };
-
-      // The charge is in yen: 12 000 yen, where euros would have sent 1 200 000.
-      assert.equal(await refund("JPY", "EUR"), 12_000);
-      // A payment row that kept the column's EUR default: the charge says yen.
-      assert.equal(await refund("EUR", "JPY"), 12_000);
-      // A payment with no currency stored, on a reservation in euros: still the charge's.
-      assert.equal(await refund(null, "EUR"), 12_000);
-    });
-
-    test("a refund is recorded as Stripe refunded it", async () => {
-      useStore("JPY");
-      const reservationId = await createReservation({ currency: "JPY", depositAmount: "0.00" });
-      await louezDb.db.insert(louezDb.payments).values({
-        id: `pay_${reservationId}`,
-        reservationId,
-        amount: "30000.00",
-        type: "rental",
-        method: "stripe",
-        status: "completed",
-        stripeChargeId: `ch_${reservationId}`,
-        stripePaymentIntentId: `pi_charge_${reservationId}`,
-        currency: "JPY",
-      });
-      charge = { amount: 30_000, currency: "jpy" };
-
-      // Yen have no decimals: 100.5 goes out as 101.
-      const result = await actions.processStripeRefund(reservationId, {
-        type: "rental_refund",
-        amount: 100.5,
-      });
-
-      assert.equal(result.error, undefined);
-      const [call] = calls;
-      assert.equal(call?.method === "refunds.create" ? call.amount : null, 101);
-      const refundRow = (await readPayments(reservationId)).find((row) => row.grossMinor === 101);
-      assert.equal(refundRow?.amount, "101.00");
-      assert.equal(refundRow?.currency, "JPY");
     });
   },
 );

@@ -7,6 +7,7 @@ import {
   getRentalPaid,
   getReservationPaymentStatus,
   hasRentalPaymentInProgress,
+  isFailedRefundRow,
   isRefundRow,
   isRentalPaid,
   isStripeRefundRow,
@@ -230,5 +231,34 @@ describe("getCustomerPaymentRows", () => {
     assert.equal(isRefundRow({ type: "deposit_return", status: "completed", amount: 1 }), true);
     assert.equal(isRefundRow({ type: "rental", status: "completed", amount: 1 }), false);
     assert.equal(isRefundRow(stripeRefund("30")), true);
+  });
+});
+
+describe("a refund that failed", () => {
+  const failed = { ...stripeRefund("60.00"), status: "failed" };
+  const charge = {
+    id: "pay_charge",
+    type: "rental",
+    status: "completed",
+    amount: "100.00",
+    stripePaymentIntentId: "pi_1",
+    stripeCheckoutSessionId: null,
+    stripeRefundId: null,
+  };
+
+  test("is told apart from one that gave money back, and from a payment that failed", () => {
+    assert.equal(isFailedRefundRow(failed), true);
+    assert.equal(isFailedRefundRow({ ...failed, refundOfPaymentId: "pay_charge" }), true);
+    assert.equal(isFailedRefundRow(stripeRefund("60.00")), false);
+    assert.equal(isFailedRefundRow({ ...charge, status: "failed" }), false);
+  });
+
+  test("is not shown to the customer as money given back", () => {
+    assert.deepEqual(
+      getCustomerPaymentRows([charge, failed, stripeRefund("10.00")], null).map(
+        (row) => row.status,
+      ),
+      ["completed", "completed"],
+    );
   });
 });

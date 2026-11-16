@@ -636,6 +636,11 @@ export function PaymentSummary({
                               {t("payment.statusCancelled")}
                             </Badge>
                           )}
+                          {payment.status === "failed" && (
+                            <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                              {t("payment.statusFailed")}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-[10px] text-muted-foreground">
                           {payment.paidAt
@@ -654,6 +659,7 @@ export function PaymentSummary({
                         className={cn(
                           "font-mono font-medium",
                           (payment.type === "deposit_return" || payment.refundOfPaymentId) &&
+                            payment.status !== "failed" &&
                             "text-emerald-600 dark:text-emerald-400",
                           payment.type === "damage" && "text-red-600 dark:text-red-400",
                           payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
@@ -663,7 +669,8 @@ export function PaymentSummary({
                           payment.type === "adjustment" &&
                             parseFloat(payment.amount) > 0 &&
                             "text-emerald-600 dark:text-emerald-400",
-                          payment.status === "cancelled" && "text-muted-foreground line-through",
+                          (payment.status === "cancelled" || payment.status === "failed") &&
+                            "text-muted-foreground line-through",
                         )}
                       >
                         {payment.type === "deposit_return" || payment.refundOfPaymentId

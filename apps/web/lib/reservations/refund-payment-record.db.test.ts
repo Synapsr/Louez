@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-// ensureRefundPaymentRecord (service.ts) on a migrated database: the Stripe refund
+// ensureRefundPaymentRecord (stripe-refund-writes.ts) on a migrated database: the Stripe refund
 // row gets its gross amount and marks the reservation in its transaction
 // (louez-billing docs/api, README §5.2, Q7).
 
@@ -33,7 +33,7 @@ const PAID_AT = new Date("2026-05-02T08:00:00.000Z");
 describe("Stripe refund rows (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
-  let service: typeof import("./service");
+  let writes: typeof import("./stripe-refund-writes");
   let counter = 0;
   const env = { billing: process.env.LOUEZ_BILLING, url: process.env.BILLING_SERVICE_URL };
 
@@ -41,7 +41,7 @@ describe("Stripe refund rows (database)", { skip: skipWithoutTestDatabase() }, (
     database = await createTestDatabase("refund_payment_record");
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
-    service = await import("./service");
+    writes = await import("./stripe-refund-writes");
   });
 
   after(async () => {
@@ -65,6 +65,10 @@ describe("Stripe refund rows (database)", { skip: skipWithoutTestDatabase() }, (
   });
 
   const nextId = (prefix: string) => `${prefix}_${++counter}`;
+
+  /** The writer, in a transaction of its own as its callers give it one. */
+  const ensureRefund = (input: import("./stripe-refund-writes").RefundPaymentRecordInput) =>
+    louezDb.db.transaction((tx) => writes.ensureRefundPaymentRecord(tx, input));
 
   /** A reservation with a completed Stripe rental payment; returns the payment id. */
   async function createStripePayment(currency: string) {
@@ -122,7 +126,7 @@ describe("Stripe refund rows (database)", { skip: skipWithoutTestDatabase() }, (
 
   test("a refund row takes Stripe's amount as its gross and marks the reservation once", async () => {
     const { reservationId, paymentId } = await createStripePayment("EUR");
-    const input: Parameters<typeof service.ensureRefundPaymentRecord>[0] = {
+    const input: import("./stripe-refund-writes").RefundPaymentRecordInput = {
       originalPaymentId: paymentId,
       stripeRefundId: nextId("re"),
       amount: 12.5,
@@ -132,9 +136,9 @@ describe("Stripe refund rows (database)", { skip: skipWithoutTestDatabase() }, (
       paidAt: PAID_AT,
     };
 
-    const refundId = await service.ensureRefundPaymentRecord(input);
+    const refundId = await ensureRefund(input);
     // Stripe redelivers the event: the row exists, nothing changes.
-    assert.equal(await service.ensureRefundPaymentRecord(input), refundId);
+    assert.equal(await ensureRefund(input), refundId);
 
     assert.deepEqual(await readRefund(refundId), {
       amount: "12.50",
@@ -149,7 +153,7 @@ describe("Stripe refund rows (database)", { skip: skipWithoutTestDatabase() }, (
   test("without Stripe's amount, the gross comes from the amount in the charge's currency", async () => {
     const { paymentId } = await createStripePayment("JPY");
 
-    const refundId = await service.ensureRefundPaymentRecord({
+    const refundId = await ensureRefund({
       originalPaymentId: paymentId,
       stripeRefundId: nextId("re"),
       amount: 1500,

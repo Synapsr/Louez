@@ -2,6 +2,7 @@ import Stripe from "stripe";
 
 import { buildReservationPaymentReference } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
+import { type StripeRequestFailure, classifyStripeFailure } from "@/lib/stripe/request-failure";
 
 import type { DepositIntent } from "./util.deposit-hold-transition";
 
@@ -44,23 +45,6 @@ export type DepositAuthorizationRequest = {
   readonly customerName: string | null;
 };
 
-/**
- * What a failed Stripe request tells about the object it asked for.
- *
- * `refused`: Stripe took the request and created or changed nothing that holds or moves
- * money: a declined card, a card that needs the customer, an invalid request.
- * `key_reused`: the idempotency key was first sent with other parameters.
- * `indeterminate`: nobody can tell from this answer: a timeout, a network error, a
- * Stripe server error, a request with the same key still running, a rate limit, or an
- * account Louez cannot reach. `replayed` when Stripe says the answer is the one it
- * stored for an earlier request with the same key. A stored server error proves
- * nothing either: Stripe may still make the object of a request it answered 500 to.
- */
-export type StripeRequestFailure =
-  | { readonly kind: "refused"; readonly paymentIntentId: string | null; readonly message: string }
-  | { readonly kind: "key_reused" }
-  | { readonly kind: "indeterminate"; readonly replayed: boolean; readonly message: string };
-
 /** What Stripe answered an authorization: the PaymentIntent it made, or why none came back. */
 export type DepositAuthorizationAnswer =
   | { readonly kind: "created"; readonly intent: DepositIntent }
@@ -88,30 +72,6 @@ export type DepositHoldStripe = {
   /** Cancels an authorization; one already cancelled is released. Throws otherwise. */
   release(accountId: string, paymentIntentId: string): Promise<DepositIntent>;
 };
-
-/** The header Stripe sets on an answer it replays for an idempotency key. */
-const REPLAYED_HEADER = "idempotent-replayed";
-
-const isReplayed = (error: Stripe.errors.StripeError): boolean =>
-  Object.entries(error.headers ?? {}).some(
-    ([name, value]) => name.toLowerCase() === REPLAYED_HEADER && value === "true",
-  );
-
-export function classifyStripeFailure(error: unknown): StripeRequestFailure {
-  const message = error instanceof Error ? error.message : String(error);
-  if (!(error instanceof Stripe.errors.StripeError)) {
-    return { kind: "indeterminate", replayed: false, message };
-  }
-  if (error instanceof Stripe.errors.StripeIdempotencyError) return { kind: "key_reused" };
-  // A 409 is a request with the same key still running: its outcome is unknown.
-  if (
-    error instanceof Stripe.errors.StripeCardError ||
-    (error instanceof Stripe.errors.StripeInvalidRequestError && error.statusCode !== 409)
-  ) {
-    return { kind: "refused", paymentIntentId: error.payment_intent?.id ?? null, message };
-  }
-  return { kind: "indeterminate", replayed: isReplayed(error), message };
-}
 
 /** A Stripe reference, expanded or not. */
 type StripeRef = string | { readonly id: string } | null;

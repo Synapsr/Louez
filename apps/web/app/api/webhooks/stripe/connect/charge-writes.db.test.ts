@@ -303,68 +303,11 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
     ]);
   });
 
-  test("a refunded charge nets its payment, keeps the gross and marks the reservation", async () => {
-    const { reservationId, paymentId } = await createPaidReservation({
-      chargeId: "ch_refund",
-      paymentIntentId: "pi_refund",
-    });
-    const readPayment = async () => {
-      const [row] = await louezDb.db
-        .select({
-          amount: louezDb.payments.amount,
-          status: louezDb.payments.status,
-          grossMinor: louezDb.payments.grossMinor,
-        })
-        .from(louezDb.payments)
-        .where(eq(louezDb.payments.id, paymentId));
-      return row;
-    };
-
-    await writes.netRefundedChargePayment({
-      paymentId,
-      reservationId,
-      chargeId: "ch_refund",
-      currency: "EUR",
-      netMinor: 10_000,
-    });
-    assert.deepEqual(await readPayment(), {
-      amount: "100.00",
-      status: "completed",
-      grossMinor: 12_345,
-    });
-    assert.deepEqual(await queue(), [
-      { type: "reservation", id: reservationId, storeId: STORE, version: 1 },
-    ]);
-
-    await writes.netRefundedChargePayment({
-      paymentId,
-      reservationId,
-      chargeId: "ch_refund",
-      currency: "EUR",
-      netMinor: 0,
-    });
-    assert.deepEqual(await readPayment(), {
-      amount: "0.00",
-      status: "refunded",
-      grossMinor: 12_345,
-    });
-    assert.deepEqual(await queue(), [
-      { type: "reservation", id: reservationId, storeId: STORE, version: 2 },
-    ]);
-  });
-
   test("without the billing service, the writes happen and nothing is queued", async () => {
     delete process.env.BILLING_SERVICE_URL;
-    const { reservationId, paymentId } = await createPaidReservation({
+    await createPaidReservation({
       chargeId: "ch_self_host",
       paymentIntentId: "pi_self_host",
-    });
-    await writes.netRefundedChargePayment({
-      paymentId,
-      reservationId,
-      chargeId: "ch_self_host",
-      currency: "EUR",
-      netMinor: 0,
     });
     await writes.recordChargeDispute({
       dispute: dispute({ id: "dp_self_host", charge: "ch_self_host" }),

@@ -166,23 +166,13 @@ import { getCurrentStore } from "@/lib/store-context";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { sendReservationModificationEmailForStore } from "@/lib/reservations/modification-email";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import {
-  tryEnsureRefundPaymentRecord,
-  tryGenerateCreditNoteForRefund,
-  tryGenerateInvoiceForPayment,
-} from "@/lib/invoicing/service";
+import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
 
-import {
-  createRefund,
-  fromStripeCents,
-  getChargeRefundableAmount,
-  getPaymentMethodDetails,
-  toStripeCents,
-} from "@/lib/stripe";
+import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
 import { evaluateReservationRules } from "@louez/utils";
 import { recordPaymentRefund } from "@louez/api/services/payment-records";
@@ -3746,111 +3736,6 @@ export async function getReservationPaymentMethod(reservationId: string) {
   } catch (error) {
     console.error("Failed to get payment method details:", error);
     return null;
-  }
-}
-
-// ============================================================================
-// Stripe Refunds
-// ============================================================================
-
-interface ProcessStripeRefundData {
-  type: "deposit_return" | "rental_refund";
-  amount: number;
-  notes?: string;
-}
-
-export async function processStripeRefund(reservationId: string, data: ProcessStripeRefundData) {
-  const store = await getStoreForUser();
-  if (!store || !store.stripeAccountId) {
-    return { error: "errors.noStripeAccount" };
-  }
-
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      payments: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  // Find the original Stripe payment with a charge
-  const stripePayment = reservation.payments.find(
-    (p) => p.method === "stripe" && p.status === "completed" && p.stripeChargeId,
-  );
-
-  if (!stripePayment || !stripePayment.stripeChargeId) {
-    return { error: "errors.stripe.noChargeToRefund" };
-  }
-
-  try {
-    // Check refundable amount. A refund is counted in its charge's own currency:
-    // the payment row may hold the column's default, never the store's of today.
-    const {
-      refundable,
-      amount: maxRefundable,
-      currency,
-    } = await getChargeRefundableAmount(store.stripeAccountId, stripePayment.stripeChargeId);
-
-    if (!refundable) {
-      return { error: "errors.stripe.alreadyRefunded" };
-    }
-
-    const refundAmountCents = toStripeCents(data.amount, currency);
-
-    if (refundAmountCents > maxRefundable) {
-      return { error: "errors.stripe.refundExceedsCharge" };
-    }
-
-    // Process refund
-    const refund = await createRefund({
-      stripeAccountId: store.stripeAccountId,
-      chargeId: stripePayment.stripeChargeId,
-      amount: refundAmountCents,
-    });
-
-    // What is recorded, credited and logged is what Stripe refunded: an amount
-    // typed with more decimals than the currency has was rounded on its way.
-    const refundedAmount = fromStripeCents(refund.amount, refund.currency);
-    const refundPaidAt = new Date();
-    const paymentId = await tryEnsureRefundPaymentRecord(
-      {
-        originalPaymentId: stripePayment.id,
-        stripeRefundId: refund.refundId,
-        amount: refundedAmount,
-        grossMinor: refund.amount,
-        type: data.type === "deposit_return" ? "deposit_return" : "rental",
-        currency: refund.currency,
-        notes: data.notes,
-        paidAt: refundPaidAt,
-      },
-      "dashboard_process_stripe_refund",
-    );
-
-    if (data.type === "rental_refund" && paymentId) {
-      await tryGenerateCreditNoteForRefund(
-        { originalPaymentId: stripePayment.id, refundPaymentId: paymentId },
-        refundedAmount,
-        "dashboard_process_stripe_refund",
-      );
-    }
-
-    // Log activity
-    await logReservationActivity(reservationId, "payment_updated", {
-      paymentId,
-      refundId: refund.refundId,
-      amount: refundedAmount,
-      type: data.type,
-    });
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    return { success: true, refundId: refund.refundId };
-  } catch (error) {
-    console.error("Stripe refund error:", error);
-    return { error: "errors.stripe.refundFailed" };
   }
 }
 
