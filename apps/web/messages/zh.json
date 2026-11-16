@@ -9457,6 +9457,7 @@
     "reasonRequired": "请给出理由",
     "invalidAmount": "金额无效",
     "amountExceedsDeposit": "金额超过收取押金",
+    "amountExceedsDue": "金额超过剩余应付金额",
     "paymentNotFound": "该付款已不存在。请刷新页面。",
     "amountTooPrecise": "该金额的小数位数超过了其货币允许的位数。",
     "currencyNotSupportedForPayments": "无法记录此货币的付款：Louez 不支持三位小数的货币。",

@@ -221,6 +221,51 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       assert.equal(await readMarkVersion(reservationId), null);
     });
 
+    test("more than is still due is refused, saying so, and writes nothing", async () => {
+      const reservationId = await createReservation();
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "100",
+          method: "cash",
+        }),
+      );
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "30",
+          method: "cash",
+        }),
+      );
+
+      // 110.00 of rental with 100.00 paid, 50.00 of deposit with 30.00 collected.
+      assert.deepEqual(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "10.01",
+          method: "cash",
+        }),
+        { error: "errors.amountExceedsDue" },
+      );
+      assert.deepEqual(
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "20.01",
+          method: "cash",
+        }),
+        { error: "errors.amountExceedsDue" },
+      );
+      assert.equal(await countPayments(reservationId), 2);
+      // Exactly what is due still goes.
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "10",
+          method: "cash",
+        }),
+      );
+    });
+
     test("without the billing service, the payment is recorded and nothing is marked", async () => {
       delete process.env.BILLING_SERVICE_URL;
       const reservationId = await createReservation();

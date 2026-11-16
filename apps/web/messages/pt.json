@@ -9457,6 +9457,7 @@
     "reasonRequired": "Por favor indique um motivo",
     "invalidAmount": "Valor inválido",
     "amountExceedsDeposit": "O valor excede a caução coletada",
+    "amountExceedsDue": "O valor é superior ao que ainda está em dívida",
     "paymentNotFound": "Este pagamento já não existe. Recarregue a página.",
     "amountTooPrecise": "Este valor tem mais casas decimais do que a sua moeda permite.",
     "currencyNotSupportedForPayments": "Não é possível registar pagamentos nesta moeda: o Louez não suporta moedas com três casas decimais.",

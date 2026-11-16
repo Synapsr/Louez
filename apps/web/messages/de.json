@@ -9457,6 +9457,7 @@
     "reasonRequired": "Bitte geben Sie einen Grund an",
     "invalidAmount": "Ungültiger Betrag",
     "amountExceedsDeposit": "Betrag übersteigt eingezogene Kaution",
+    "amountExceedsDue": "Der Betrag übersteigt den noch offenen Betrag",
     "paymentNotFound": "Diese Zahlung existiert nicht mehr. Laden Sie die Seite neu.",
     "amountTooPrecise": "Dieser Betrag hat mehr Nachkommastellen, als seine Währung zulässt.",
     "currencyNotSupportedForPayments": "Zahlungen in dieser Währung können nicht erfasst werden: Louez unterstützt keine Währungen mit drei Nachkommastellen.",

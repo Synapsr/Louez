@@ -9457,6 +9457,7 @@
     "reasonRequired": "Please provide a reason",
     "invalidAmount": "Invalid amount",
     "amountExceedsDeposit": "Amount exceeds collected deposit",
+    "amountExceedsDue": "The amount is more than what is still due",
     "paymentNotFound": "This payment no longer exists. Reload the page.",
     "amountTooPrecise": "This amount has more decimals than its currency allows.",
     "currencyNotSupportedForPayments": "Payments in this currency cannot be recorded: Louez does not count three-decimal currencies.",

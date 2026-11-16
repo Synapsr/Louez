@@ -3809,7 +3809,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
 
     if (amount > rentalRemaining) {
-      return { error: "errors.invalidAmount" };
+      return { error: "errors.amountExceedsDue" };
     }
   }
 
@@ -3822,7 +3822,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     );
 
     if (amount > depositRemaining) {
-      return { error: "errors.invalidAmount" };
+      return { error: "errors.amountExceedsDue" };
     }
   }
 

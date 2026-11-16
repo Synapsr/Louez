@@ -9457,6 +9457,7 @@
     "reasonRequired": "Harap berikan alasannya",
     "invalidAmount": "Jumlah tidak valid",
     "amountExceedsDeposit": "Jumlah melebihi deposit yang dikumpulkan",
+    "amountExceedsDue": "Jumlah melebihi sisa yang harus dibayar",
     "paymentNotFound": "Pembayaran ini sudah tidak ada. Muat ulang halaman.",
     "amountTooPrecise": "Jumlah ini memiliki lebih banyak desimal daripada yang diizinkan mata uangnya.",
     "currencyNotSupportedForPayments": "Pembayaran dalam mata uang ini tidak dapat dicatat: Louez tidak mendukung mata uang dengan tiga desimal.",

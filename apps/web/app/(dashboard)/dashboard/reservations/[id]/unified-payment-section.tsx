@@ -904,6 +904,7 @@ export function UnifiedPaymentSection({
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("payment.recordRental")}
                           onClick={() => openPaymentModal("rental", rentalRemaining)}
                         />
                       }
@@ -952,6 +953,7 @@ export function UnifiedPaymentSection({
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("payment.recordDeposit")}
                           onClick={() => openPaymentModal("deposit", depositRemaining)}
                         />
                       }
@@ -988,6 +990,7 @@ export function UnifiedPaymentSection({
                             size="icon"
                             variant="outline"
                             className="h-7 w-7"
+                            aria-label={t("payment.returnDeposit")}
                             onClick={openDepositReturnModal}
                           />
                         }
@@ -1340,6 +1343,7 @@ export function UnifiedPaymentSection({
                                   size="icon"
                                   variant="ghost"
                                   className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  aria-label={tCommon("delete")}
                                   onClick={() => {
                                     setPaymentToDelete(payment);
                                     setDeleteDialogOpen(true);

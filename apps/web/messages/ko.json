@@ -9457,6 +9457,7 @@
     "reasonRequired": "이유를 입력하세요.",
     "invalidAmount": "잘못된 금액",
     "amountExceedsDeposit": "금액이 징수된 입금액을 초과했습니다.",
+    "amountExceedsDue": "금액이 남은 미지급액을 초과합니다",
     "paymentNotFound": "이 결제는 더 이상 존재하지 않습니다. 페이지를 새로고침하세요.",
     "amountTooPrecise": "이 금액은 통화에서 허용하는 소수 자릿수를 초과합니다.",
     "currencyNotSupportedForPayments": "이 통화의 결제는 기록할 수 없습니다. Louez는 소수점 세 자리 통화를 지원하지 않습니다.",

@@ -9457,6 +9457,7 @@
     "reasonRequired": "Veuillez indiquer un motif",
     "invalidAmount": "Montant invalide",
     "amountExceedsDeposit": "Le montant dépasse la caution encaissée",
+    "amountExceedsDue": "Le montant dépasse ce qui reste dû",
     "paymentNotFound": "Ce paiement n’existe plus. Rechargez la page.",
     "amountTooPrecise": "Ce montant a plus de décimales que sa devise n’en permet.",
     "currencyNotSupportedForPayments": "Les paiements dans cette devise ne peuvent pas être enregistrés : Louez ne gère pas les devises à trois décimales.",

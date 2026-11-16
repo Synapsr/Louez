@@ -9457,6 +9457,7 @@
     "reasonRequired": "Indicare un motivo",
     "invalidAmount": "Importo non valido",
     "amountExceedsDeposit": "L'importo supera il deposito riscosso",
+    "amountExceedsDue": "L'importo supera quanto resta da pagare",
     "paymentNotFound": "Questo pagamento non esiste più. Ricarica la pagina.",
     "amountTooPrecise": "Questo importo ha più decimali di quanti ne consenta la sua valuta.",
     "currencyNotSupportedForPayments": "Non è possibile registrare pagamenti in questa valuta: Louez non gestisce valute con tre decimali.",

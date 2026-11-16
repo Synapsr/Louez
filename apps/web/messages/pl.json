@@ -9457,6 +9457,7 @@
     "reasonRequired": "Proszę podać powód",
     "invalidAmount": "Nieprawidłowa kwota",
     "amountExceedsDeposit": "Kwota przekracza pobraną kaucję",
+    "amountExceedsDue": "Kwota przekracza pozostałą należność",
     "paymentNotFound": "Ta płatność już nie istnieje. Odśwież stronę.",
     "amountTooPrecise": "Ta kwota ma więcej miejsc po przecinku, niż pozwala jej waluta.",
     "currencyNotSupportedForPayments": "Nie można rejestrować płatności w tej walucie: Louez nie obsługuje walut z trzema miejscami po przecinku.",
