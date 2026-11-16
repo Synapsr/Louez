@@ -249,14 +249,20 @@ async function assertEmailQuota(tx: Transaction, storeId: string) {
   if ((row?.count ?? 0) >= INVITATION_EMAILS_PER_DAY) throw teamErrors.emailLimit();
 }
 
-/** The invitation e-mail, queued in the write's transaction when this instance sends e-mail. */
+/**
+ * The invitation e-mail, queued in the write's transaction. It is owed even
+ * when this instance sends no e-mail: its sender then gives it up at once and
+ * the inbox shows it (`invitation_not_sent`), and the answer says
+ * `not_configured`, for the user to share the link. The daily cap counts only
+ * e-mails that can go.
+ */
 async function queueInvitationEmail(
   tx: Transaction,
   caller: TeamCaller,
   invitationId: string,
 ): Promise<{ invitationEmail: "queued" | "not_configured"; effectIds: string[] }> {
-  if (!sendsEmail(caller)) return { invitationEmail: "not_configured", effectIds: [] };
-  await assertEmailQuota(tx, caller.storeId);
+  const sends = sendsEmail(caller);
+  if (sends) await assertEmailQuota(tx, caller.storeId);
   const effectIds = await enqueueEffects(tx, caller.storeId, [
     {
       type: "team.invitationEmail",
@@ -272,7 +278,7 @@ async function queueInvitationEmail(
       orderingKey: `invitation:${invitationId}:email`,
     },
   ]);
-  return { invitationEmail: "queued", effectIds };
+  return { invitationEmail: sends ? "queued" : "not_configured", effectIds };
 }
 
 const invitationExpiry = (now: Date) => new Date(now.getTime() + INVITATION_VALIDITY_DAYS * DAY_MS);

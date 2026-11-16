@@ -505,11 +505,17 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal((await effectRows()).length, 0, "no e-mail, as the dashboard always did");
   });
 
-  test("an instance without e-mail queues nothing and says so", async () => {
+  test("an instance without e-mail still queues the owed e-mail, and says it cannot go", async () => {
     emailConfigured = false;
     const result = await run("invite", { email: "new@tm.test" }, session());
     assert.equal(result.invitationEmail, "not_configured");
-    assert.equal((await effectRows()).length, 0);
+    // Queued all the same: its sender gives it up at once, and the inbox shows it.
+    const rows = await effectRows();
+    assert.deepEqual(
+      rows.map((row) => [row.type, row.payload.invitationId]),
+      [["team.invitationEmail", result.invitation?.id]],
+    );
+    assert.deepEqual(dispatched, [rows[0]?.id]);
   });
 
   // --- An agent's invitation: approved by an owner from a link ----------------
