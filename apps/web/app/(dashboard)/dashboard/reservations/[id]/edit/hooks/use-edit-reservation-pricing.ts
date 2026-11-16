@@ -6,6 +6,8 @@ import {
   priceEditedProductLine,
   priceProductGoneLine,
   subtotalWithRecordedPromotion,
+  TAX_OF_TODAY,
+  type EditedLineTax,
 } from "@louez/api/services/edit-line-pricing";
 import { taxSettingsForRepricing, type TaxDisplayMode } from "@louez/api/services/pricing-facts";
 import { computeReservationTotals } from "@louez/api/services/reservation-totals";
@@ -102,7 +104,7 @@ export function calculateEditableItemPrice(
   discountPercent: number | null;
   duration: number;
   displayDuration: number;
-  keptTaxRate: number | null;
+  tax: EditedLineTax;
 } {
   const resolvePricingModeFromMinutes = (
     periodMinutes: number | null | undefined,
@@ -179,7 +181,7 @@ export function calculateEditableItemPrice(
         discountPercent: null,
         duration,
         displayDuration: duration,
-        keptTaxRate: kept.kind === "kept" ? kept.taxRate : null,
+        tax: kept.kind === "kept" ? kept.tax : TAX_OF_TODAY,
       };
     }
   }
@@ -198,7 +200,7 @@ export function calculateEditableItemPrice(
       discountPercent: null,
       duration,
       displayDuration: duration,
-      keptTaxRate: null,
+      tax: TAX_OF_TODAY,
     };
   }
 
@@ -265,7 +267,7 @@ export function calculateEditableItemPrice(
     discountPercent: result.discountPercent,
     duration,
     displayDuration,
-    keptTaxRate: null,
+    tax: TAX_OF_TODAY,
   };
 }
 
@@ -280,8 +282,8 @@ export function previewEditTotal(params: {
     totalPrice: number;
     effectiveUnitPrice: number;
     product: Product | null;
-    /** The rate a line kept at its stored price recorded (slice 11). */
-    keptTaxRate?: number | null;
+    /** The tax it is priced with (slice 11): a rate it keeps, or today's settings. */
+    tax?: EditedLineTax;
   }>;
   insuranceAmount: number;
   discountAmount: number;
@@ -296,7 +298,7 @@ export function previewEditTotal(params: {
     lines: params.items.map((item) => ({
       subtotal: roundCurrency(item.totalPrice),
       unitPrice: roundCurrency(item.effectiveUnitPrice),
-      taxSettings: editedLineTaxSettings(item.keptTaxRate ?? null, item.product?.taxSettings),
+      taxSettings: editedLineTaxSettings(item.tax ?? TAX_OF_TODAY, item.product?.taxSettings),
     })),
     insuranceAmount: params.insuranceAmount,
     discountAmount: params.discountAmount,
@@ -353,7 +355,7 @@ export function useEditReservationPricing({
           originalSubtotal: 0,
           savings: 0,
           discountPercent: null,
-          keptTaxRate: null,
+          tax: TAX_OF_TODAY,
         })),
         subtotal: 0,
         deposit: 0,
@@ -392,7 +394,7 @@ export function useEditReservationPricing({
         originalSubtotal: priceResult.originalSubtotal,
         savings: priceResult.savings,
         discountPercent: priceResult.discountPercent,
-        keptTaxRate: priceResult.keptTaxRate,
+        tax: priceResult.tax,
       });
 
       subtotal = roundCurrency(subtotal + priceResult.totalPrice);

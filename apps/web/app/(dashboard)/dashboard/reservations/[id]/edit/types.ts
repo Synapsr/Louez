@@ -1,4 +1,4 @@
-import type { StoredProductLine } from "@louez/api/services/edit-line-pricing";
+import type { EditedLineTax, StoredProductLine } from "@louez/api/services/edit-line-pricing";
 import type { DateChangeRequest } from "@louez/validations";
 import type {
   DeliverySettings,
@@ -185,8 +185,8 @@ export interface CalculatedEditableItem extends EditableItem {
   originalSubtotal: number;
   savings: number;
   discountPercent: number | null;
-  /** The rate it recorded, when it keeps its stored price; null otherwise. */
-  keptTaxRate: number | null;
+  /** The tax it is priced with (slice 11): a rate it keeps, or today's settings. */
+  tax: EditedLineTax;
 }
 
 export interface ReservationCalculations {

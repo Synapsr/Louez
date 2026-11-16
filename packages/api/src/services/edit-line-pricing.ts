@@ -50,9 +50,27 @@ export function storedProductLineOf(item: {
   };
 }
 
+/**
+ * The tax a line of an edit is priced with:
+ *
+ * - `recorded`: it keeps its stored price and recorded a rate: that rate,
+ *   whatever the store's rates did since;
+ * - `not_recorded`: it keeps its stored price and recorded no rate: it has no
+ *   tax fact to keep, and is taxed by today's settings, as slice 10 prices a
+ *   reservation without tax facts (the store is warned when that adds tax to
+ *   it, `errors.editTaxAdded`);
+ * - `today`: it is priced again (or new): today's settings, as any line.
+ */
+export type EditedLineTax =
+  | { kind: "recorded"; rate: number }
+  | { kind: "not_recorded" }
+  | { kind: "today" };
+
+export const TAX_OF_TODAY: EditedLineTax = { kind: "today" };
+
 export type EditedProductLinePrice =
-  /** Its stored price stands: unit price, total, breakdown and tax rate as they were. */
-  | { kind: "kept"; subtotal: number; unitPrice: number; taxRate: number | null }
+  /** Its stored price stands: unit price, total and breakdown as they were; its tax as `tax` says. */
+  | { kind: "kept"; subtotal: number; unitPrice: number; tax: EditedLineTax }
   /** Priced again, by the rules the edit prices a line with. */
   | { kind: "repriced" };
 
@@ -77,7 +95,10 @@ export function priceEditedProductLine(input: {
       kind: "kept",
       subtotal: stored.totalPrice,
       unitPrice: stored.unitPrice,
-      taxRate: stored.taxRate,
+      tax:
+        stored.taxRate === null
+          ? { kind: "not_recorded" }
+          : { kind: "recorded", rate: stored.taxRate },
     };
   }
   return { kind: "repriced" };
@@ -256,14 +277,14 @@ export function recordedPeriods(breakdown: PricingBreakdown): number | null {
 }
 
 /**
- * The tax settings the engine prices a line with: the rate the line recorded
- * when it keeps its stored price, so its tax figures stay as they were
- * whatever the store's rates did since; else its product's, as for any line.
+ * The tax settings the engine prices a line with (`EditedLineTax`): the rate
+ * it recorded when it keeps its stored price and recorded one; else its
+ * product's, as for any line.
  */
 export const editedLineTaxSettings = (
-  keptTaxRate: number | null,
+  tax: EditedLineTax,
   productTaxSettings: ProductTaxSettings | null | undefined,
 ): ProductTaxSettings | null =>
-  keptTaxRate !== null
-    ? { inheritFromStore: false, customRate: keptTaxRate }
+  tax.kind === "recorded"
+    ? { inheritFromStore: false, customRate: tax.rate }
     : (productTaxSettings ?? null);

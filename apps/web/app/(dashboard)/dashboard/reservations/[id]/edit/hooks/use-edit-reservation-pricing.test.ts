@@ -201,7 +201,7 @@ test('the preview of a line the edit leaves as it was: its stored price and rate
   // Booked at 10.00 a day, 20.00; the product costs 15.00 now.
   const result = calculateEditableItemPrice({ ...dayItem, stored: stored(20) }, ...TWO_DAYS)
   assert.equal(result.totalPrice, 20)
-  assert.equal(result.keptTaxRate, 20)
+  assert.deepEqual(result.tax, { kind: 'recorded', rate: 20 })
   // The same line once the window moved: priced again from the catalogue.
   assert.equal(calculateEditableItemPrice({ ...dayItem, stored: stored(20) }, ...THREE_DAYS, undefined, true).totalPrice, 45)
 })
@@ -243,8 +243,8 @@ test('the preview total: a line kept at its stored price keeps the rate it recor
   // The store's rate is 10 % now; the kept line recorded 20 %.
   const total = previewEditTotal({
     items: [
-      { totalPrice: 20, effectiveUnitPrice: 10, product: dayItem.product, keptTaxRate: 20 },
-      { totalPrice: 40, effectiveUnitPrice: 10, product: dayItem.product, keptTaxRate: null },
+      { totalPrice: 20, effectiveUnitPrice: 10, product: dayItem.product, tax: { kind: 'recorded', rate: 20 } },
+      { totalPrice: 40, effectiveUnitPrice: 10, product: dayItem.product, tax: { kind: 'today' } },
     ],
     insuranceAmount: 0,
     discountAmount: 0,

@@ -24,6 +24,8 @@ import {
   priceEditedProductLine,
   priceProductGoneLine,
   storedProductLineOf,
+  TAX_OF_TODAY,
+  type EditedLineTax,
 } from "@louez/api/services/edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
 import {
@@ -2291,7 +2293,7 @@ export async function updateReservation(
         quantity: item.quantity,
         windowChanged: dateChanged,
       });
-      let keptTaxRate: number | null = null;
+      let lineTax: EditedLineTax = TAX_OF_TODAY;
       let promotionPercentage: number | null = null;
 
       if (item.isManualPrice && item.productId) {
@@ -2314,7 +2316,7 @@ export async function updateReservation(
         finalUnitPrice = productLinePrice.unitPrice;
         totalPrice = productLinePrice.subtotal;
         pricingBreakdown = existingProductLine.pricingBreakdown;
-        keptTaxRate = productLinePrice.taxRate;
+        lineTax = productLinePrice.tax;
       } else if (!item.isManualPrice && item.productId) {
         // Priced again, with tiers.
         const product = await db.query.products.findFirst({
@@ -2474,7 +2476,7 @@ export async function updateReservation(
         quantity: item.quantity,
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
-        keptTaxRate,
+        tax: lineTax,
         promotionPercentage,
       });
       if (item.id) {
@@ -2522,13 +2524,13 @@ export async function updateReservation(
         quantity: item.quantity,
         windowChanged: dateChanged,
       });
-      let keptTaxRate: number | null = null;
+      let lineTax: EditedLineTax = TAX_OF_TODAY;
       let promotionPercentage: number | null = null;
 
       if (productLinePrice.kind === "kept") {
         totalPrice = productLinePrice.subtotal;
         finalUnitPrice = productLinePrice.unitPrice;
-        keptTaxRate = productLinePrice.taxRate;
+        lineTax = productLinePrice.tax;
       } else if (!isManualPrice && item.productId) {
         // Recalculate with tiers
         const product = await db.query.products.findFirst({
@@ -2696,7 +2698,7 @@ export async function updateReservation(
         quantity: item.quantity,
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
-        keptTaxRate,
+        tax: lineTax,
         promotionPercentage,
       });
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
@@ -3184,13 +3186,23 @@ export async function updateReservation(
               amount(lockedReservation.discountAmount)) *
               perUnit,
           );
+        // On a row that recorded its mode, a line kept at its stored price
+        // that recorded no rate (taxes were off when it was priced) has no
+        // tax fact to keep: it is taxed by today's settings (slice 11), and
+        // when that puts tax on top of it the store is told the same way.
+        const keptLineTaxed =
+          priced.kind === "priced" &&
+          recordedMode !== NOT_RECORDED &&
+          editedLines.some(
+            (line, index) =>
+              line.tax.kind === "not_recorded" && (priced.lines[index]?.taxAmount ?? 0) > 0,
+          );
         const taxAdded =
           priced.kind === "priced" &&
-          recordedMode === NOT_RECORDED &&
-          storedTotalCarriedNoTax &&
           priced.totals.taxEnabled &&
           priced.totals.displayMode === "exclusive" &&
-          (priced.totals.taxAmount ?? 0) > 0;
+          (priced.totals.taxAmount ?? 0) > 0 &&
+          ((recordedMode === NOT_RECORDED && storedTotalCarriedNoTax) || keptLineTaxed);
 
         await tx
           .select({ id: productUnits.id })

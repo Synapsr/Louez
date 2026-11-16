@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import { stores, type Transaction } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 
-import { applyRecordedPromotion, editedLineTaxSettings } from "./edit-line-pricing";
+import {
+  applyRecordedPromotion,
+  editedLineTaxSettings,
+  type EditedLineTax,
+} from "./edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "./pricing-catalog";
 import { taxDisplayModeOf, taxSettingsForRepricing, type TaxDisplayMode } from "./pricing-facts";
 import {
@@ -43,8 +47,8 @@ export interface EditedLine {
   unitPrice: number;
   /** The exemption it recorded; null when it recorded none. */
   taxExempt: boolean | null;
-  /** The rate it recorded, when it keeps its stored price (slice 11); null otherwise. */
-  keptTaxRate: number | null;
+  /** The tax it is priced with (slice 11): a rate it keeps, or today's settings. */
+  tax: EditedLineTax;
   /** The percentage of the promotion it recorded, applied again to its new price (slice 11). */
   promotionPercentage: number | null;
 }
@@ -123,7 +127,7 @@ export async function priceReservationEdit(
     subtotal: line.subtotal,
     unitPrice: line.unitPrice,
     taxSettings: editedLineTaxSettings(
-      line.keptTaxRate,
+      line.tax,
       line.productId ? catalog.get(line.productId)?.taxSettings : null,
     ),
     // A line not outside the tax by rule: a product or a custom line.

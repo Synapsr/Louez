@@ -400,6 +400,59 @@ describe(
         // 20.00 + 4.00 of tax, and 40.00 + 4.00.
         assert.equal((await reservationRow(id)).totalAmount, "68.00");
       });
+
+      test("that recorded no rate is taxed by today's settings, and the store is told", async () => {
+        await useStore({ tax: HT });
+        const [kayak, canoe] = [await product(), await product()];
+        // Recorded before tax; the kayak line priced while taxes were off, no rate.
+        const { id, itemIds } = await booking(
+          [
+            { productId: kayak, quantity: 1, totalPrice: "20.00", taxRate: null },
+            { productId: canoe, quantity: 1, totalPrice: "20.00", taxRate: "20.00" },
+          ],
+          { taxDisplayMode: "exclusive" },
+        );
+        const shown = await previewOf(id, { quantities: { [itemIds[1]!]: 2 } });
+
+        const result = await actions.updateReservation(id, {
+          items: await formLines(id, { [itemIds[1]!]: 2 }),
+        });
+
+        assert.equal(result.error, undefined);
+        const [kayakLine] = await items(id);
+        // 20.00 + 4.00 of tax for the line kept, 40.00 + 8.00 for the other.
+        assert.equal(kayakLine?.taxRate, "20.00");
+        assert.equal(kayakLine?.taxAmount, "4.00");
+        assert.equal((await reservationRow(id)).totalAmount, "72.00");
+        assert.equal(shown, "72.00");
+        assert.deepEqual(
+          result.warnings?.filter((warning) => warning.key === "errors.editTaxAdded"),
+          [{ key: "errors.editTaxAdded", params: { previousTotal: "40.00", newTotal: "72.00" } }],
+        );
+      });
+
+      test("that recorded no rate, prices with tax: the tax is inside, no warning", async () => {
+        await useStore({ tax: { ...HT, displayMode: "inclusive" } });
+        const [kayak, canoe] = [await product(), await product()];
+        const { id, itemIds } = await booking(
+          [
+            { productId: kayak, quantity: 1, totalPrice: "20.00", taxRate: null },
+            { productId: canoe, quantity: 1, totalPrice: "20.00", taxRate: "20.00" },
+          ],
+          { taxDisplayMode: "inclusive" },
+        );
+
+        const result = await actions.updateReservation(id, {
+          items: await formLines(id, { [itemIds[1]!]: 2 }),
+        });
+
+        assert.equal(result.error, undefined);
+        assert.equal((await reservationRow(id)).totalAmount, "60.00");
+        assert.equal(
+          (result.warnings ?? []).some((warning) => warning.key === "errors.editTaxAdded"),
+          false,
+        );
+      });
     });
 
     describe("a line priced again that recorded its promotion", () => {
