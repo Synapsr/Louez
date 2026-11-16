@@ -29,7 +29,9 @@ export interface NeedsALookBellRow {
 /**
  * What the bell shows of what needs a look: only what a successful read gave.
  * A read still loading, or in error (refused, timed out), shows nothing, even
- * when it still holds an earlier answer; so does an empty one.
+ * when it still holds an earlier answer; so does an empty one. The rows are
+ * the most recent of what the read holds: one page of the inbox, its oldest
+ * items first.
  */
 export function needsALookInBell(
   read: NeedsALookRead,
@@ -54,21 +56,18 @@ export function needsALookInBell(
 
 /**
  * The bell's badge: the polled counts (pending requests, supplier invoices)
- * plus the items to check. None while the read of the items is still loading
- * (at most NEEDS_A_LOOK_TIMEOUT_MS), so it never shows a total about to change;
- * a failed read adds nothing.
+ * as soon as the poll gives them, plus the items to check once read
+ * (`needsALookInBell`'s count: none while loading, paused or failed). The
+ * inbox never holds the badge back.
  */
 export function notificationsBadge({
   polled,
-  read,
   toCheck,
 }: {
   polled: number;
-  read: NeedsALookRead["status"];
   toCheck: number;
 }): string | null {
-  if (read === "pending") return null;
-  const total = polled + (read === "success" ? toCheck : 0);
+  const total = polled + toCheck;
   if (total <= 0) return null;
   return total > 9 ? "9+" : String(total);
 }

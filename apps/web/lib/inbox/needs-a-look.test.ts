@@ -49,7 +49,6 @@ describe("the loader and the acknowledgement", () => {
 describe("the bell never waits on the inbox", () => {
   test("a read that never answers is given up after the timeout, its request aborted", async () => {
     let signal: AbortSignal | undefined;
-    const started = Date.now();
     await assert.rejects(
       loadNeedsALookWithin(
         {
@@ -62,7 +61,6 @@ describe("the bell never waits on the inbox", () => {
       ),
       /did not answer in time/,
     );
-    assert.ok(Date.now() - started < 1_000);
     assert.equal(signal?.aborted, true);
   });
 

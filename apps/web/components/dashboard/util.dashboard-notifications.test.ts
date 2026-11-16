@@ -106,20 +106,25 @@ describe("the bell's section of what needs a look", () => {
 });
 
 describe("the bell's badge", () => {
-  test("the polled counts plus the items to check, once read", () => {
-    assert.equal(notificationsBadge({ polled: 2, read: "success", toCheck: 3 }), "5");
-    assert.equal(notificationsBadge({ polled: 0, read: "success", toCheck: 3 }), "3");
-    assert.equal(notificationsBadge({ polled: 8, read: "success", toCheck: 3 }), "9+");
+  test("the polled counts plus the items to check, capped at 9+", () => {
+    assert.equal(notificationsBadge({ polled: 2, toCheck: 3 }), "5");
+    assert.equal(notificationsBadge({ polled: 0, toCheck: 3 }), "3");
+    assert.equal(notificationsBadge({ polled: 6, toCheck: 3 }), "9");
+    assert.equal(notificationsBadge({ polled: 7, toCheck: 3 }), "9+");
+    assert.equal(notificationsBadge({ polled: 0, toCheck: 0 }), null);
   });
 
-  test("no badge while the items are read, so no total that is about to change", () => {
-    assert.equal(notificationsBadge({ polled: 2, read: "pending", toCheck: 0 }), null);
-  });
-
-  test("a failed or refused read adds nothing, whatever it held before", () => {
-    assert.equal(notificationsBadge({ polled: 2, read: "error", toCheck: 3 }), "2");
-    assert.equal(notificationsBadge({ polled: 0, read: "error", toCheck: 3 }), null);
-    assert.equal(notificationsBadge({ polled: 0, read: "success", toCheck: 0 }), null);
+  test("the inbox never holds the badge back: loading, paused, failed or refused, the polled counts show", () => {
+    for (const read of [
+      { status: "pending" },
+      { status: "error" },
+      // A refetch refused (rights removed meanwhile) keeps the earlier answer in `data`.
+      { status: "error", data: summary(3) },
+    ] as const) {
+      const toCheck = needsALookInBell(read, format)?.count ?? 0;
+      assert.equal(notificationsBadge({ polled: 2, toCheck }), "2");
+      assert.equal(notificationsBadge({ polled: 0, toCheck }), null);
+    }
   });
 
   test("the polled payload carries no item to check: the inbox stays out of the 30-second poll", () => {
@@ -144,5 +149,55 @@ describe("the read belongs to its store", () => {
       needsALookQueries.summaryKey("store_a"),
       needsALookQueries.summaryKey("store_b"),
     );
+  });
+});
+
+describe("the items are read again, as other screens settle them", () => {
+  test("on a new page once the answer is a minute old, always when the bell opens, and for this store only", async (t) => {
+    t.mock.timers.enable({ apis: ["Date"] });
+    const client = new QueryClient();
+    let reads = 0;
+    await client.fetchQuery({
+      queryKey: needsALookQueries.summaryKey("store_a"),
+      queryFn: async () => {
+        reads += 1;
+        return summary(1);
+      },
+    });
+
+    await needsALookQueries.readAgain(client, "store_a");
+    assert.equal(reads, 1);
+    await needsALookQueries.readAgain(client, "store_a", { always: true });
+    assert.equal(reads, 2);
+    await needsALookQueries.readAgain(client, "store_b", { always: true });
+    assert.equal(reads, 2);
+
+    t.mock.timers.tick(60_000);
+    await needsALookQueries.readAgain(client, "store_a");
+    assert.equal(reads, 3);
+    client.clear();
+  });
+
+  test("a failed read stands a minute too: a refusal is not asked again on every page", async (t) => {
+    t.mock.timers.enable({ apis: ["Date"] });
+    const client = new QueryClient();
+    let reads = 0;
+    await assert.rejects(
+      client.fetchQuery({
+        queryKey: needsALookQueries.summaryKey("store_a"),
+        queryFn: async () => {
+          reads += 1;
+          throw new Error("refused");
+        },
+        retry: false,
+      }),
+    );
+
+    await needsALookQueries.readAgain(client, "store_a");
+    assert.equal(reads, 1);
+    t.mock.timers.tick(60_000);
+    await needsALookQueries.readAgain(client, "store_a");
+    assert.equal(reads, 2);
+    client.clear();
   });
 });

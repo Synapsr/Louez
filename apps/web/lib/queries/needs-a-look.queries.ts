@@ -1,10 +1,17 @@
-import { queryOptions } from "@tanstack/react-query";
+import { type QueryClient, queryOptions } from "@tanstack/react-query";
 
 import { loadNeedsALookWithin } from "@/lib/inbox/needs-a-look";
 import { orpcClient } from "@/lib/orpc/client";
 
-/** The store's own key: a read of one store never answers for another. */
+/**
+ * The store's own key: within a page's life, one store's cached read never
+ * answers for another. The request itself follows the session's active store,
+ * as every dashboard call does.
+ */
 const summaryKey = (storeId: string) => ["dashboard", "needs-a-look", "summary", storeId] as const;
+
+/** How long an answer, or a failure, stands before a new page reads again. */
+const NEEDS_A_LOOK_FRESH_MS = 60_000;
 
 export const needsALookQueries = {
   /**
@@ -18,8 +25,21 @@ export const needsALookQueries = {
     queryOptions({
       queryKey: summaryKey(storeId),
       queryFn: ({ signal }) => loadNeedsALookWithin(orpcClient.dashboard.inbox, { signal }),
-      staleTime: 60_000,
+      staleTime: NEEDS_A_LOOK_FRESH_MS,
       retry: false,
     }),
   summaryKey,
+  /**
+   * Reads the store's items again. They change through other screens (a refund
+   * sent again, an invitation cancelled), which do not know this query: the
+   * bell calls this on each page, where it reads only once the last answer or
+   * failure is a minute old, and with `always` when the person opens it.
+   */
+  readAgain: (client: QueryClient, storeId: string, { always = false } = {}) =>
+    client.refetchQueries({
+      queryKey: summaryKey(storeId),
+      predicate: ({ state }) =>
+        always ||
+        Date.now() - Math.max(state.dataUpdatedAt, state.errorUpdatedAt) >= NEEDS_A_LOOK_FRESH_MS,
+    }),
 };

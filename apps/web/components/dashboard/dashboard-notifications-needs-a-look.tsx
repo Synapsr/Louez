@@ -39,7 +39,7 @@ export const DashboardNotificationsNeedsALook = ({
                 {t(row.title.key, row.title.values)}
               </span>
               {row.line.length > 0 && (
-                <span className="text-muted-foreground block truncate text-xs">
+                <span className="text-muted-foreground line-clamp-2 block text-xs break-words">
                   {row.line.join(" · ")}
                 </span>
               )}
