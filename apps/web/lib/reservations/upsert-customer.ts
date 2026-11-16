@@ -35,6 +35,10 @@ const CREATED_VIA_BY_SOURCE = {
  *
  * `createdVia` records where the customer first came from: it is written with
  * the new record and never revisited by a later checkout.
+ *
+ * The existing customer is read under its row's lock (lock order: the
+ * checkout's products, then the customer), so the row it returns is one that
+ * exists until the checkout commits.
  */
 export const upsertCustomer = async ({
   tx,
@@ -53,9 +57,16 @@ export const upsertCustomer = async ({
   phone: string | null;
   companyIdentity: CustomerCompanyIdentity;
 }): Promise<UpsertedCustomer | null> => {
-  const existing = await tx.query.customers.findFirst({
-    where: and(eq(customers.storeId, storeId), eq(customers.email, customer.email)),
-  });
+  // Locked, in the checkout's transaction, after its products: a reservation is
+  // never created for a customer who no longer exists. A customer's deletion
+  // takes the store row then the customer: it waits for this lock, or this
+  // read waits for it and finds no customer, who is then added again below.
+  const [existing] = await tx
+    .select()
+    .from(customers)
+    .where(and(eq(customers.storeId, storeId), eq(customers.email, customer.email)))
+    .limit(1)
+    .for("update");
 
   if (!existing) {
     const [inserted] = await tx
