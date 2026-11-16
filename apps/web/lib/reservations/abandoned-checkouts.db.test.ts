@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
 import { after, afterEach, before, describe, mock, test } from "node:test";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import {
   createTestDatabase,
@@ -207,6 +207,9 @@ describe(
         age: number;
         /** Marked settled, that long ago (the row's age when `true`). */
         settled?: boolean | number;
+        /** The checkout's own row by default; a payment request's asks its own amount. */
+        origin?: "checkout" | "payment_request";
+        amount?: string;
       }>,
       { source = "online" }: { source?: string } = {},
     ) {
@@ -226,19 +229,23 @@ describe(
         source,
       });
       const ids: string[] = [];
-      for (const [index, { status, age, settled }] of sessions.entries()) {
+      for (const [
+        index,
+        { status, age, settled, origin = "checkout", amount },
+      ] of sessions.entries()) {
         const sessionId = `cs_${id}_${index}`;
         ids.push(sessionId);
         await louezDb.db.insert(louezDb.payments).values({
           id: `pay_${id}_${index}`,
           reservationId: id,
-          amount: "10.00",
+          amount: amount ?? "10.00",
           type: "rental",
           method: "stripe",
           status,
           stripeCheckoutSessionId: sessionId,
           stripeAccountId: ACCOUNT,
-          origin: "checkout",
+          origin,
+          paymentRequestId: origin === "payment_request" ? `prq_${id}_${index}` : null,
           currency: "EUR",
           sessionSettledAt:
             settled === undefined || settled === false
@@ -409,6 +416,187 @@ describe(
       for (const { id } of [young, old, paid, marketplace, manual]) {
         assert.ok(!found.some((checkout) => checkout.id === id), id);
       }
+    });
+
+    test("a payment request opened and never paid on a reservation that never had a checkout: never drawn, and left when its cancellation is asked", async () => {
+      // The store accepted the request before any payment, then sent a payment request.
+      const open = await checkout([
+        { status: "pending", age: 40 * MINUTE, origin: "payment_request" },
+      ]);
+      const over = await checkout([
+        { status: "cancelled", age: 40 * MINUTE, settled: true, origin: "payment_request" },
+      ]);
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+
+      for (const { id } of [open, over]) {
+        assert.ok(!found.some((checkout) => checkout.id === id), id);
+      }
+      // Asked anyway, by the pass's settle step or by a session's expiry.
+      assert.equal(await pass.settleAbandonedCheckout({ id: open.id, storeId: STORE }), "left");
+      assert.equal(
+        await pass.settleAbandonedCheckout({ id: over.id, storeId: STORE, branch: "settled" }),
+        "left",
+      );
+      // The cancellation's own read under the lock, asked directly.
+      const { changeSystemReservationStatus } =
+        await import("@louez/api/services/system-reservation-status");
+      assert.equal(
+        await changeSystemReservationStatus(
+          {
+            reason: "checkout_abandoned",
+            reservationId: over.id,
+            checkoutSessionId: String(over.sessions[0]),
+          },
+          async () => {},
+        ),
+        false,
+      );
+      for (const { id } of [open, over]) {
+        assert.equal((await stateOf(id)).status, "pending", id);
+      }
+    });
+
+    test("a checkout whose payment request's session is still unsettled: drawn for it, that session read and marked, then the checkout cancelled", async () => {
+      // The checkout's session is settled; the request's, given since, never heard of.
+      const { id, sessions } = await checkout([
+        { status: "cancelled", age: 60 * MINUTE, settled: true },
+        { status: "pending", age: 40 * MINUTE, origin: "payment_request" },
+      ]);
+      const [own, request] = sessions.map(String);
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+      assert.deepEqual(
+        found.map((checkout) => [checkout.id, checkout.branch]),
+        [[id, "unsettled"]],
+      );
+
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ cancelled: 1 }));
+
+      assert.deepEqual(stripeCalls, [`retrieve ${request}`]);
+      assert.deepEqual(await settledOf(id), [own, request].sort());
+      assert.equal((await stateOf(id)).status, "cancelled");
+    });
+
+    test("a checkout dated by its newest mark, a payment request's included: its own settled two days ago, the request's since, drawn and cancelled", async () => {
+      const { id } = await checkout([
+        { status: "cancelled", age: 49 * HOUR, settled: true },
+        { status: "cancelled", age: 41 * MINUTE, settled: 40 * MINUTE, origin: "payment_request" },
+      ]);
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+      assert.deepEqual(
+        found.map((checkout) => [checkout.id, checkout.branch]),
+        [[id, "settled"]],
+      );
+
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ cancelled: 1 }));
+      assert.equal((await stateOf(id)).status, "cancelled");
+    });
+
+    test("a checkout whose payment request's session may still be paid is not cancelled", async () => {
+      // Given a moment ago: under the delay, not drawn, and left when its cancellation is asked.
+      const young = await checkout([
+        { status: "cancelled", age: 60 * MINUTE, settled: true },
+        { status: "pending", age: 10 * MINUTE, origin: "payment_request" },
+      ]);
+      // Old enough to be read, and still open at Stripe.
+      const open = await checkout([
+        { status: "cancelled", age: 60 * MINUTE, settled: true },
+        { status: "pending", age: 40 * MINUTE, origin: "payment_request" },
+      ]);
+      atStripe.set(String(open.sessions[1]), "open");
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+      assert.ok(!found.some((checkout) => checkout.id === young.id));
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ unreadable: 1 }));
+
+      const { changeSystemReservationStatus } =
+        await import("@louez/api/services/system-reservation-status");
+      for (const { id, sessions } of [young, open]) {
+        assert.equal(
+          await changeSystemReservationStatus(
+            {
+              reason: "checkout_abandoned",
+              reservationId: id,
+              checkoutSessionId: String(sessions[0]),
+            },
+            async () => {},
+          ),
+          false,
+          id,
+        );
+        assert.equal((await stateOf(id)).status, "pending", id);
+      }
+    });
+
+    test("a storefront checkout whose store also sent a payment request, both settled together: drawn and cancelled", async () => {
+      const { id } = await checkout([
+        { status: "cancelled", age: 50 * MINUTE, settled: true },
+        { status: "cancelled", age: 40 * MINUTE, settled: true, origin: "payment_request" },
+      ]);
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+      assert.deepEqual(
+        found.map((checkout) => [checkout.id, checkout.branch]),
+        [[id, "settled"]],
+      );
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ cancelled: 1 }));
+
+      assert.equal((await stateOf(id)).status, "cancelled");
+    });
+
+    test("the account page opens no session on a pending reservation", async () => {
+      const { id } = await checkout([]);
+
+      assert.deepEqual(
+        await paymentSession.createReservationPaymentSessionForCustomer(
+          SLUG,
+          id,
+          CUSTOMER,
+          "account_page",
+        ),
+        { error: "errors.invalidStatus" },
+      );
+      assert.deepEqual(stripeCalls, []);
+    });
+
+    test("the checkout's resume reads the checkout's own row, never a payment request's", async () => {
+      const { resumeCheckoutPayment } = await import("./resume-checkout-payment");
+      const store = { id: STORE, slug: SLUG, stripeAccountId: ACCOUNT, stripeChargesEnabled: true };
+      // A request-flow reservation: its only session is the store's request.
+      const requestOnly = await checkout([
+        { status: "pending", age: 5 * MINUTE, origin: "payment_request", amount: "4.00" },
+      ]);
+
+      assert.deepEqual(await resumeCheckoutPayment({ store, reservationId: requestOnly.id }), {
+        ok: false,
+        error: "invalid_status",
+      });
+      assert.deepEqual(stripeCalls, []);
+
+      // A checkout of 10.00 whose store sent a request of 4.00 since.
+      const both = await checkout([
+        { status: "cancelled", age: 50 * MINUTE, settled: true },
+        {
+          status: "cancelled",
+          age: 5 * MINUTE,
+          settled: true,
+          origin: "payment_request",
+          amount: "4.00",
+        },
+      ]);
+
+      const resumed = await resumeCheckoutPayment({ store, reservationId: both.id });
+
+      assert.ok(resumed.ok, JSON.stringify(resumed));
+      const [installed] = await louezDb.db
+        .select({ amount: louezDb.payments.amount, origin: louezDb.payments.origin })
+        .from(louezDb.payments)
+        .where(
+          and(eq(louezDb.payments.reservationId, both.id), eq(louezDb.payments.status, "pending")),
+        );
+      assert.deepEqual(installed, { amount: "10.00", origin: "customer_session" });
     });
 
     test("a checkout with a session past the window and a younger one: only the older is read and marked, and the checkout is left", async () => {

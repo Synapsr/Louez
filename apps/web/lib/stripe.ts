@@ -42,6 +42,11 @@ interface CreateCheckoutSessionParams {
    * payment link of the same reservation.
    */
   checkoutFlow?: CheckoutSessionFlow;
+  /**
+   * The key of this one create: Stripe answers the client's own retry of it with
+   * the same session. A fresh key for each call ties no two calls together.
+   */
+  idempotencyKey?: string;
 }
 
 export type CheckoutSessionFlow = "storefront_checkout";
@@ -96,6 +101,7 @@ export async function createCheckoutSession({
   feeMetadata,
   locale,
   checkoutFlow,
+  idempotencyKey,
 }: CreateCheckoutSessionParams) {
   const paymentAmount = validateStripePaymentAmount(
     fromStripeCents(
@@ -162,6 +168,7 @@ export async function createCheckoutSession({
 
   const session = await stripe.checkout.sessions.create(sessionParams, {
     stripeAccount: stripeAccountId,
+    ...(idempotencyKey ? { idempotencyKey } : {}),
   });
 
   return {
@@ -213,6 +220,11 @@ interface CreatePaymentRequestSessionParams {
   /** Fee metadata v4, on the session and on its PaymentIntent (billing fees.md §8). */
   feeMetadata?: Record<string, string>;
   locale?: string;
+  /**
+   * The key of this one create: Stripe answers the client's own retry of it with
+   * the same session. A fresh key for each call ties no two calls together.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -235,6 +247,7 @@ export async function createPaymentRequestSession({
   applicationFeeAmount,
   feeMetadata,
   locale,
+  idempotencyKey,
 }: CreatePaymentRequestSessionParams) {
   const paymentAmount = validateStripePaymentAmount(fromStripeCents(amount, currency), currency);
   if (!paymentAmount.ok) throw new Error(paymentAmount.error);
@@ -292,6 +305,7 @@ export async function createPaymentRequestSession({
 
   const session = await stripe.checkout.sessions.create(sessionParams, {
     stripeAccount: stripeAccountId,
+    ...(idempotencyKey ? { idempotencyKey } : {}),
   });
 
   return {

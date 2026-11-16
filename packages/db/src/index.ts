@@ -117,6 +117,8 @@ export {
 export { lockCustomerRow } from "./customer-lock";
 export { lockProductRows, lockStoreProductRows } from "./product-lock";
 export {
+  checkoutSessionRowIn,
+  isCheckoutSessionRow,
   isUnsettledCheckoutSession,
   markCheckoutSessionSettled,
   unsettledCheckoutSession,

@@ -1,9 +1,12 @@
 /**
  * The origins of the payment rows Louez writes when a session is paid, not when
- * it creates it: a payment request's session and an extension's have no payment
- * row before. These origins use the store's current connected account.
+ * it creates it: an extension's session has no payment row before. These origins
+ * use the store's current connected account. A payment request's session has its
+ * pending row since it goes through the rental's gate (`rental-session-gate.ts`),
+ * and an older one, written when it was paid, records the account Stripe answered
+ * from: the session's own either way.
  */
-const PAID_SESSION_ORIGINS: ReadonlySet<string> = new Set(["payment_request", "extension"]);
+const PAID_SESSION_ORIGINS: ReadonlySet<string> = new Set(["extension"]);
 
 /**
  * Whether a payment row found by a checkout session's id is the one Louez

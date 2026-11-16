@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, or, type SQL } from "drizzle-orm";
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 import type { Transaction } from "./index";
@@ -21,6 +21,37 @@ type PaymentSessionColumns = Record<
   "type" | "stripeCheckoutSessionId" | "status" | "sessionSettledAt",
   AnyMySqlColumn
 >;
+
+/**
+ * The rental rows of a reservation's own checkout sessions: every rental row
+ * with a session but a payment request's (`origin: "payment_request"`), which is
+ * the store's request and never makes a reservation a checkout to abandon. The
+ * storefront checkout's first row (`checkout`), its resumes (`customer_session`,
+ * which the account page writes only on a reservation no longer pending) and the
+ * rows written before the column (`null`) are.
+ */
+export function checkoutSessionRowIn(
+  table: Record<"type" | "stripeCheckoutSessionId" | "origin", AnyMySqlColumn>,
+): SQL {
+  return and(
+    eq(table.type, "rental"),
+    isNotNull(table.stripeCheckoutSessionId),
+    or(isNull(table.origin), ne(table.origin, "payment_request")),
+  ) as SQL;
+}
+
+/** The same question asked of a row already read. */
+export function isCheckoutSessionRow(row: {
+  readonly type: string;
+  readonly stripeCheckoutSessionId: string | null;
+  readonly origin: string | null;
+}): boolean {
+  return (
+    row.type === "rental" &&
+    row.stripeCheckoutSessionId !== null &&
+    row.origin !== "payment_request"
+  );
+}
 
 /** The unsettled sessions among the rows of `table` (`payments` or an alias of it). */
 export function unsettledCheckoutSessionIn(table: PaymentSessionColumns): SQL {

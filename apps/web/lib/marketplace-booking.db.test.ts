@@ -248,6 +248,18 @@ describe(
           { status: "pending", session: "cs_mkt_new" },
         ],
       );
+      // The failure read the payments once it held the attempt: the new session may
+      // still be paid, so the booking and its attempt are kept.
+      const [booking] = await louezDb.db
+        .select({ status: louezDb.reservations.status })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, id));
+      assert.equal(booking?.status, "pending");
+      const [attempt] = await louezDb.db
+        .select({ status: louezDb.marketplaceBookingAttempts.status })
+        .from(louezDb.marketplaceBookingAttempts)
+        .where(eq(louezDb.marketplaceBookingAttempts.reservationId, id));
+      assert.equal(attempt?.status, "checkout_pending");
     });
   },
 );
