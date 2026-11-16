@@ -41,6 +41,7 @@ const STUBBED: Record<string, ReadonlySet<string>> = {
   "/api/webhooks/stripe/connect/connected-account.ts": new Set([
     "@/lib/evlog",
     "@/lib/billing-sync/alerts",
+    "@/lib/stripe/client",
   ]),
   "/api/webhooks/stripe/connect/deposit-events.ts": new Set(["@/lib/evlog"]),
   "/api/webhooks/stripe/connect/charge-refund.ts": new Set(["@/lib/evlog", "@/lib/stripe/client"]),
@@ -61,6 +62,12 @@ const MASKED_KEY = "sk_test_********************abcd";
 
 /** What every Stripe call answers in a case: null, Stripe answers; else this error. */
 let stripeFails: Error | null = null;
+/** What one Stripe call answers in a case, by its name, before `stripeFails`. */
+const failures = new Map<string, Error>();
+/** The application fee the charge carries in a case, and what Stripe holds of it. */
+let feeOnCharge: string | null = null;
+/** The idempotency key of each fee refund asked of Stripe. */
+const feeRefundKeys: string[] = [];
 /** The refunds Stripe lists for a charge, by its id. */
 const refundsOf = new Map<string, ReadonlyArray<Record<string, unknown>>>();
 
@@ -69,7 +76,8 @@ const stripeCall =
   <Args extends unknown[], Result>(name: string, answer: (...args: Args) => Result) =>
   async (...args: Args) => {
     calls.push([`stripe.${name}`]);
-    if (stripeFails) throw stripeFails;
+    const failure = failures.get(name) ?? stripeFails;
+    if (failure) throw failure;
     return answer(...args);
   };
 
@@ -81,6 +89,10 @@ const stubs = {
       // The signature is not checked: the body is the event.
       constructEvent: (body: string) => JSON.parse(body),
     },
+    accounts: {
+      // The verdict's read of the account, before any handler.
+      retrieveCurrent: stripeCall("accounts.retrieveCurrent", () => ({ id: ACCOUNT })),
+    },
     paymentIntents: {
       retrieve: stripeCall("paymentIntents.retrieve", (id: string) => ({ id, metadata: {} })),
     },
@@ -88,25 +100,33 @@ const stubs = {
       list: (params: { charge: string }) => {
         calls.push(["stripe.refunds.list"]);
         return (async function* () {
-          if (stripeFails) throw stripeFails;
+          const failure = failures.get("refunds.list") ?? stripeFails;
+          if (failure) throw failure;
           yield* refundsOf.get(params.charge) ?? [];
         })();
       },
     },
     applicationFees: {
-      retrieve: stripeCall("applicationFees.retrieve", () => {
-        throw new Error("no application fee in this suite");
-      }),
-      createRefund: stripeCall("applicationFees.createRefund", () => {
-        throw new Error("no application fee in this suite");
-      }),
+      retrieve: stripeCall("applicationFees.retrieve", (id: string) => ({
+        id,
+        amount: 400,
+        amount_refunded: 0,
+        currency: "eur",
+      })),
+      createRefund: stripeCall(
+        "applicationFees.createRefund",
+        (id: string, _params: unknown, options: { idempotencyKey?: string }) => {
+          feeRefundKeys.push(options.idempotencyKey ?? "");
+          return { id: `fr_${id}` };
+        },
+      ),
     },
     charges: {
       retrieve: stripeCall("charges.retrieve", (id: string) => ({
         id,
-        application_fee: null,
+        application_fee: feeOnCharge,
         amount_captured: 8000,
-        amount_refunded: 0,
+        amount_refunded: feeOnCharge ? 8000 : 0,
         payment_intent: null,
       })),
     },
@@ -290,6 +310,9 @@ describe(
     beforeEach(async () => {
       calls.length = 0;
       stripeFails = null;
+      failures.clear();
+      feeOnCharge = null;
+      feeRefundKeys.length = 0;
       refundsOf.clear();
       await raw.query("TRUNCATE TABLE test_writes");
     });
@@ -467,13 +490,14 @@ describe(
         const object = await setup(await booking());
         await raw.query("TRUNCATE TABLE test_writes");
         calls.length = 0;
-        stripeFails = refused();
+        // Refused on the verdict's read of the account, before any handler.
+        failures.set("accounts.retrieveCurrent", refused());
 
         const answer = await send(type, object, ACCOUNT);
 
         assert.deepEqual(answer, { status: 200, body: { received: true } });
         assert.deepEqual(await writes(), [], type);
-        assert.ok(stripeCalls().length > 0, "Stripe was asked, and refused");
+        assert.deepEqual(stripeCalls(), [["stripe.accounts.retrieveCurrent"]], "nothing sent");
         assert.deepEqual(logs(), [
           [
             "log.warn",
@@ -538,6 +562,57 @@ describe(
         assert.doesNotMatch(JSON.stringify(calls), /sk_test_|abcd/);
       });
     }
+
+    test("charge.refunded: a refusal once the handler has sent something answers 5xx, so Stripe sends it again", async () => {
+      // The account reads, the fee given back at source goes, then the listing
+      // of the customer's refunds is refused.
+      const reservationId = await booking();
+      const object = await refundedCharge(reservationId);
+      feeOnCharge = String(object.application_fee);
+      failures.set("refunds.list", refused());
+      await raw.query("TRUNCATE TABLE test_writes");
+      calls.length = 0;
+
+      const answer = await send("charge.refunded", object, ACCOUNT);
+
+      assert.equal(answer.status, 500);
+      assert.ok(
+        stripeCalls().some(([name]) => name === "stripe.applicationFees.createRefund"),
+        "the fee refund went before the refusal",
+      );
+      const written = await writes();
+      assert.equal(
+        written.some((entry) => entry.startsWith("payments + ")),
+        false,
+        written.join("\n"),
+      );
+      assert.deepEqual(
+        calls.filter(([name]) => name === "alerts.alert"),
+        [],
+        "a refusal after the verdict is not acknowledged",
+      );
+
+      // Delivered again once Stripe answers: the fee refund is asked again under
+      // the same idempotency key, which Stripe runs once; the refund is recorded.
+      failures.clear();
+      refundsOf.set(String(object.id), [
+        {
+          id: nextId("re"),
+          object: "refund",
+          amount: 8000,
+          created: 1_800_000_000,
+          currency: "eur",
+          status: "succeeded",
+          metadata: {},
+        },
+      ]);
+      calls.length = 0;
+      const again = await send("charge.refunded", object, ACCOUNT);
+      assert.deepEqual(again, { status: 200, body: { received: true } });
+      assert.ok((await writes()).includes("payments + rental completed"));
+      assert.equal(feeRefundKeys.length, 2);
+      assert.equal(feeRefundKeys[0], feeRefundKeys[1]);
+    });
 
     test("charge.refunded: a known account Stripe answers is recorded as before", async () => {
       const reservationId = await booking();

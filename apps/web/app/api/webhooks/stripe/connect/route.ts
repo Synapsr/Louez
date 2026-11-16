@@ -43,11 +43,7 @@ import { dispatchApiEffects } from "@/lib/api/effects";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
-import {
-  describeWebhookError,
-  isAccountAccessRefused,
-  onConnectedAccount,
-} from "./connected-account";
+import { connectedAccountVerdict, describeWebhookError } from "./connected-account";
 import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
 import { failedAttemptBinding, failedAttemptReservationId } from "./failed-attempt-binding";
 import { matchesDeploymentMode } from "./matches-deployment-mode";
@@ -221,23 +217,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
-  // The events read on the connected account: Louez acts on them only for an
-  // account it knows and Stripe lets it read (`onConnectedAccount`).
-  const onAccount = (handle: () => Promise<unknown>) =>
-    onConnectedAccount({ type: event.type, accountId: connectedAccountId }, handle);
+  // Whether Louez may act on the event's account, decided by reads that change
+  // nothing, before its handler runs (`connectedAccountVerdict`); `readsAccount`:
+  // the handler reads that account at Stripe. The handler runs outside it, so a
+  // failure once it has started answers 5xx and Stripe delivers the event again.
+  const mayAct = async (readsAccount: boolean) =>
+    (
+      await connectedAccountVerdict(
+        { type: event.type, accountId: connectedAccountId },
+        readsAccount,
+      )
+    ).act;
 
   try {
     switch (event.type) {
       // Checkout events
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        await onAccount(() => handleCheckoutCompleted(session, connectedAccountId));
+        if (await mayAct(true)) await handleCheckoutCompleted(session, connectedAccountId);
         break;
       }
 
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
-        await onAccount(() => handleCheckoutExpired(session, connectedAccountId));
+        if (await mayAct(false)) await handleCheckoutExpired(session, connectedAccountId);
         break;
       }
 
@@ -252,22 +255,27 @@ export async function POST(request: Request) {
           accountId: connectedAccountId,
           paymentIntent: event.data.object,
         };
-        await onAccount(() => handleDepositEvent(deposit, depositEventDeps));
+        if (await mayAct(true)) await handleDepositEvent(deposit, depositEventDeps);
         break;
       }
 
       case "payment_intent.payment_failed": {
-        const failed = event;
-        await onAccount(() => handlePaymentFailed(failed, failed.data.object, connectedAccountId));
+        if (await mayAct(false)) {
+          await handlePaymentFailed(event, event.data.object, connectedAccountId);
+        }
         break;
       }
 
       // Refund events
       case "charge.refunded": {
-        const charge = event.data.object;
-        await onAccount(() =>
-          handleChargeRefunded(charge, connectedAccountId, stripeChargeRefund, dispatchApiEffects),
-        );
+        if (await mayAct(true)) {
+          await handleChargeRefunded(
+            event.data.object,
+            connectedAccountId,
+            stripeChargeRefund,
+            dispatchApiEffects,
+          );
+        }
         break;
       }
 
@@ -276,10 +284,14 @@ export async function POST(request: Request) {
       case "refund.failed":
       case "refund.updated":
       case "charge.refund.updated": {
-        const refund = event.data.object;
-        await onAccount(() =>
-          handleRefundUpdated(refund, connectedAccountId, stripeChargeRefund, dispatchApiEffects),
-        );
+        if (await mayAct(true)) {
+          await handleRefundUpdated(
+            event.data.object,
+            connectedAccountId,
+            stripeChargeRefund,
+            dispatchApiEffects,
+          );
+        }
         break;
       }
 
@@ -290,13 +302,15 @@ export async function POST(request: Request) {
       case "charge.dispute.closed":
       case "charge.dispute.funds_withdrawn":
       case "charge.dispute.funds_reinstated": {
-        const dispute = {
-          eventType: event.type,
-          dispute: event.data.object,
-          eventCreatedAt: new Date(event.created * 1000),
-          connectedAccountId,
-        };
-        await onAccount(() => handleChargeDispute(dispute));
+        // Funds reinstated reverses no fee: it reads nothing at Stripe.
+        if (await mayAct(event.type !== "charge.dispute.funds_reinstated")) {
+          await handleChargeDispute({
+            eventType: event.type,
+            dispute: event.data.object,
+            eventCreatedAt: new Date(event.created * 1000),
+            connectedAccountId,
+          });
+        }
         break;
       }
 
@@ -481,8 +495,6 @@ async function handleCheckoutCompleted(
         chargeId = (latestCharge as string | null) ?? null;
       }
     } catch (error) {
-      // Refused the account for good: given up by the route, nothing written.
-      if (isAccountAccessRefused(error)) throw error;
       log.error({
         stripeWebhook: {
           event: "checkout.session.completed",
