@@ -1766,6 +1766,10 @@ export const reservations = mysqlTable(
     subtotalExclTax: decimal("subtotal_excl_tax", { precision: 10, scale: 2 }),
     taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
     taxRate: decimal("tax_rate", { precision: 5, scale: 2 }),
+    // How the reservation's prices were entered: tax included (`inclusive`) or
+    // added on top (`exclusive`); with taxes off, `inclusive` (the engine's
+    // own default). Null: not recorded (a reservation created before 0107).
+    taxDisplayMode: mysqlEnum("tax_display_mode", ["inclusive", "exclusive"]),
 
     // The customer's acceptance of the contract: at checkout, on the payment page, from
     // their account, or in store on the renter's device. Never set by a status change.
@@ -1955,6 +1959,9 @@ export const reservationItems = mysqlTable(
     taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
     priceExclTax: decimal("price_excl_tax", { precision: 10, scale: 2 }),
     totalExclTax: decimal("total_excl_tax", { precision: 10, scale: 2 }),
+    // Outside the tax by rule (insurance), whatever the store's settings; a
+    // product line is not. Null: not recorded (a line written before 0107).
+    taxExempt: boolean("tax_exempt"),
 
     // Pricing breakdown for audit trail (tiered pricing details)
     pricingBreakdown: json("pricing_breakdown").$type<PricingBreakdown>(),

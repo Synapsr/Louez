@@ -15,6 +15,7 @@ import {
   type Transaction,
 } from "@louez/db";
 import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
+import { NOT_RECORDED, recordedPromotion } from "@louez/api/services/pricing-facts";
 import { isWithinBusinessHours } from "@louez/utils";
 import { validateRentalDuration } from "./validate-rental-window";
 import {
@@ -405,10 +406,13 @@ export const quoteExtension = async (
     subtotalExclTax: money(next.subtotalExclTax),
     taxAmount: money(next.taxAmount),
     taxRate: money(next.taxRate),
+    // A recorded fact is the one these amounts were computed with (slice 9).
+    taxDisplayMode: next.displayMode,
     items: extended.cart.lines.map((line, index) => {
       const tax = getReservationItemTaxFields(next, line, index);
       const product = catalog.get(line.productId);
       if (!product) throw new ExtensionError("unavailable");
+      const recordsPromotion = recordedPromotion(reservation.items[index]) !== NOT_RECORDED;
       return {
         id: reservation.items[index].id,
         pricingBreakdown: {
@@ -424,6 +428,10 @@ export const quoteExtension = async (
               : null,
           discountAmount: line.savings,
           tierApplied: null,
+          // A line that recorded its promotion keeps it recorded (slice 9): the
+          // one its extended price applied, which the check above has shown is
+          // the stored one still in force, or null for none.
+          ...(recordsPromotion ? { promotion: line.promotion ?? null } : {}),
           taxRate: tax.taxRate,
           taxAmount: tax.taxAmount,
           subtotalExclTax: tax.totalExclTax,
@@ -438,6 +446,8 @@ export const quoteExtension = async (
         taxAmount: money(tax.taxAmount),
         priceExclTax: money(tax.priceExclTax),
         totalExclTax: money(tax.totalExclTax),
+        // A product line: the engine applied its rate.
+        taxExempt: false,
       };
     }),
   };
