@@ -115,7 +115,9 @@ export type ApprovalCardStatus =
   | "completed"
   | "declined"
   | "expired"
-  | "ended";
+  | "ended"
+  /** The person's session cannot read it (gone, or no longer theirs to read): the card stops. */
+  | "unavailable";
 
 /**
  * The card's status from the request as the person's own session reads it
@@ -142,6 +144,38 @@ export function approvalCardStatus(
   }
 }
 
+/**
+ * The answers to the card's read that will not change by reading again: the
+ * request is not found for this session, or the session may no longer read
+ * it. Any other failure (the network, a server error) is passing.
+ */
+const TERMINAL_READ_CODES: ReadonlySet<string> = new Set([
+  "HANDOFF_NOT_FOUND",
+  "PERMISSION_DENIED",
+  "NO_STORE",
+  "UNAUTHENTICATED",
+]);
+
+/** How a failed read of the request ends: for good, or for now. */
+export function approvalReadFailure(error: unknown): "terminal" | "transient" | null {
+  if (!error) return null;
+  const code = (error as { data?: { code?: unknown } }).data?.code;
+  return typeof code === "string" && TERMINAL_READ_CODES.has(code) ? "terminal" : "transient";
+}
+
+/**
+ * The card's status from its last read: where the request stood the last
+ * time it was read, kept through a passing failure, and `unavailable` once
+ * a read failed for good.
+ */
+export function approvalCardState(read: {
+  data: Parameters<typeof approvalCardStatus>[0];
+  error: unknown;
+}): ApprovalCardStatus {
+  if (approvalReadFailure(read.error) === "terminal") return "unavailable";
+  return approvalCardStatus(read.data);
+}
+
 /** Whether the card reads its request again: until it is over. */
 export const approvalCardWaits = (status: ApprovalCardStatus) =>
   status === "pending" || status === "approved";
@@ -149,10 +183,18 @@ export const approvalCardWaits = (status: ApprovalCardStatus) =>
 /**
  * How often the card reads a request while it waits, at most: the interval
  * the platform asks of a caller that waits for an approval
- * (`APPROVAL_POLL_SECONDS`, platform/errors.ts). The card also reads it
- * when the chat's tab comes back to the front.
+ * (`APPROVAL_POLL_SECONDS`, platform/errors.ts), after a success or a
+ * passing failure alike.
  */
 export const APPROVAL_CARD_POLL_MS = 30_000;
+
+/**
+ * Whether the chat's tab coming back to the front reads the request now:
+ * only once the interval has passed since the last read (`lastReadAt`,
+ * epoch milliseconds, a success or a failure), on the clock given.
+ */
+export const approvalReadsOnFocus = (lastReadAt: number, now: number) =>
+  now - lastReadAt >= APPROVAL_CARD_POLL_MS;
 
 /**
  * The turn the chat sends once the person approved: it lets the model call

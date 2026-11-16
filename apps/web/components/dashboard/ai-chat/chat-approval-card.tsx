@@ -10,8 +10,9 @@ import { CheckIcon, ClockIcon, ExternalLinkIcon } from "@louez/ui/icons";
 
 import {
   APPROVAL_CARD_POLL_MS,
-  approvalCardStatus,
+  approvalCardState,
   approvalCardWaits,
+  approvalReadsOnFocus,
   approvalPagePath,
   type ApprovalCard,
 } from "@/lib/ai/approval-card";
@@ -28,24 +29,43 @@ interface ChatApprovalCardProps {
  * a glance (the summary Louez stored, the amount, the booking), and one
  * button to the approval's page, in a new tab, where they decide with
  * everything Louez checked. The card decides nothing. It reads where the
- * request stands with the person's own session (`handoffs.get`) when the
- * chat's tab comes back to the front, and at most every
- * `APPROVAL_CARD_POLL_MS` while it waits; once approved, the chat goes on by
- * itself (`onContinue`), and "Continue" sends that turn again.
+ * request stands with the person's own session (`handoffs.get`) at most
+ * every `APPROVAL_CARD_POLL_MS` while it waits, the tab coming back to the
+ * front included; a passing failure keeps what it last read and reads again
+ * at that interval, and one for good stops it (`unavailable`). Once
+ * approved, the chat goes on by itself (`onContinue`), and "Continue" sends
+ * that turn again.
  */
 export const ChatApprovalCard = ({ card, onContinue }: ChatApprovalCardProps) => {
   const t = useTranslations("dashboard.aiChat.approval");
   const format = useFormatter();
-  const { data } = useQuery(
+  const { data, error, dataUpdatedAt, errorUpdatedAt, refetch } = useQuery(
     orpc.dashboard.handoffs.get.queryOptions({
       input: { id: card.approvalId },
-      refetchOnWindowFocus: "always",
+      // The tab's return is read below, no more often than the interval.
+      refetchOnWindowFocus: false,
       refetchInterval: (query) =>
-        approvalCardWaits(approvalCardStatus(query.state.data)) ? APPROVAL_CARD_POLL_MS : false,
+        approvalCardWaits(approvalCardState(query.state)) ? APPROVAL_CARD_POLL_MS : false,
       retry: false,
     }),
   );
-  const status = approvalCardStatus(data);
+  const status = approvalCardState({ data, error });
+  const waits = approvalCardWaits(status);
+  const lastReadAt = Math.max(dataUpdatedAt, errorUpdatedAt);
+
+  useEffect(() => {
+    if (!waits) return;
+    const onReturn = () => {
+      if (document.visibilityState !== "visible") return;
+      if (approvalReadsOnFocus(lastReadAt, Date.now())) void refetch();
+    };
+    window.addEventListener("focus", onReturn);
+    document.addEventListener("visibilitychange", onReturn);
+    return () => {
+      window.removeEventListener("focus", onReturn);
+      document.removeEventListener("visibilitychange", onReturn);
+    };
+  }, [waits, lastReadAt, refetch]);
 
   useEffect(() => {
     if (status === "approved") onContinue(card);

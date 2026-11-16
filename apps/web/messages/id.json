@@ -6904,7 +6904,8 @@
           "completed": "Selesai",
           "declined": "Ditolak. Tidak ada yang dilakukan.",
           "expired": "Kedaluwarsa. Tidak ada yang dilakukan.",
-          "ended": "Tidak dijalankan. Tidak ada yang dilakukan."
+          "ended": "Tidak dijalankan. Tidak ada yang dilakukan.",
+          "unavailable": "Permintaan ini tidak dapat dibaca lagi di sini."
         },
         "continue": "Lanjutkan",
         "followUp": "Disetujui, melanjutkan"

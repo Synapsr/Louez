@@ -6904,7 +6904,8 @@
           "completed": "Fatto",
           "declined": "Rifiutato. Non è stato fatto nulla.",
           "expired": "Scaduto. Non è stato fatto nulla.",
-          "ended": "Non eseguito. Non è stato fatto nulla."
+          "ended": "Non eseguito. Non è stato fatto nulla.",
+          "unavailable": "Questa richiesta non può più essere letta qui."
         },
         "continue": "Continua",
         "followUp": "Approvato, si continua"

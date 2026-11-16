@@ -6904,7 +6904,8 @@
           "completed": "Gotowe",
           "declined": "Odrzucono. Nic nie zostało zrobione.",
           "expired": "Wygasło. Nic nie zostało zrobione.",
-          "ended": "Nie wykonano. Nic nie zostało zrobione."
+          "ended": "Nie wykonano. Nic nie zostało zrobione.",
+          "unavailable": "Tej prośby nie można już tutaj odczytać."
         },
         "continue": "Dalej",
         "followUp": "Zatwierdzono, kontynuujemy"

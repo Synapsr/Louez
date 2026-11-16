@@ -7,6 +7,9 @@ import {
   APPROVAL_CARD_POLL_MS,
   CARD_SUMMARY_MAX,
   approvalCardOf,
+  approvalCardState,
+  approvalReadFailure,
+  approvalReadsOnFocus,
   approvalCardStatus,
   approvalCardWaits,
   approvalFollowUp,
@@ -139,5 +142,34 @@ describe("the follow-up turn", () => {
     assert.equal(isChatFollowUp({ id: "sent-1", role: "assistant" }, sent), false);
     assert.equal(isChatFollowUp({ id: "typed-1", role: "user" }, sent), false);
     assert.ok(text.length > 0);
+  });
+});
+
+describe("the card's reads", () => {
+  const notFound = { data: { code: "HANDOFF_NOT_FOUND" } };
+  const offline = new TypeError("Failed to fetch");
+
+  test("the tab's return reads again only once the interval passed, on the clock given", () => {
+    const readAt = Date.UTC(2030, 5, 1, 9, 0, 0);
+    assert.equal(approvalReadsOnFocus(readAt, readAt), false);
+    assert.equal(approvalReadsOnFocus(readAt, readAt + APPROVAL_CARD_POLL_MS - 1), false);
+    assert.equal(approvalReadsOnFocus(readAt, readAt + APPROVAL_CARD_POLL_MS), true);
+  });
+
+  test("a read that failed for good stops the card, and says it", () => {
+    assert.equal(approvalReadFailure(notFound), "terminal");
+    assert.equal(approvalReadFailure({ data: { code: "PERMISSION_DENIED" } }), "terminal");
+    const status = approvalCardState({ data: { status: "pending" }, error: notFound });
+    assert.equal(status, "unavailable");
+    assert.equal(approvalCardWaits(status), false);
+  });
+
+  test("a passing failure keeps what was last read, and the card reads again", () => {
+    assert.equal(approvalReadFailure(offline), "transient");
+    assert.equal(approvalReadFailure({ data: { code: "INTERNAL_SERVER_ERROR" } }), "transient");
+    assert.equal(approvalReadFailure(null), null);
+    const status = approvalCardState({ data: { status: "approved" }, error: offline });
+    assert.equal(status, "approved");
+    assert.equal(approvalCardWaits(status), true);
   });
 });

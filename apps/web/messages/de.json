@@ -6904,7 +6904,8 @@
           "completed": "Erledigt",
           "declined": "Abgelehnt. Es wurde nichts getan.",
           "expired": "Abgelaufen. Es wurde nichts getan.",
-          "ended": "Nicht ausgeführt. Es wurde nichts getan."
+          "ended": "Nicht ausgeführt. Es wurde nichts getan.",
+          "unavailable": "Diese Anfrage kann hier nicht mehr gelesen werden."
         },
         "continue": "Weiter",
         "followUp": "Genehmigt, es geht weiter"
