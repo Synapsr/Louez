@@ -788,6 +788,27 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(captured.errors.length, 3, "every alert is logged");
   });
 
+  test("an alert that cannot reach Discord logs the error's class and code, never its text", async () => {
+    const alertsModule = await import("./alerts");
+    const captured = captureAlerts();
+    const alerts = alertsModule.createBillingAlerts({
+      log: captured.log,
+      notify: async () => {
+        throw Object.assign(
+          new Error("Webhook refused for Ada Lovelace <ada.lovelace@example.test>"),
+          { code: "ECONNRESET" },
+        );
+      },
+    });
+    await alerts.alert("connected_account_unreachable", "account acct_x of store s_x");
+    const failure = captured.errors.find((line) => line.includes("could not reach Discord"));
+    assert.equal(
+      failure,
+      "billing sync alert connected_account_unreachable could not reach Discord: Error (ECONNRESET)",
+    );
+    assert.doesNotMatch(captured.errors.join("\n"), /Ada|example\.test/);
+  });
+
   test("a task runs under its MySQL lock and is skipped while another run holds it", async () => {
     const holder = await database.connect();
     try {

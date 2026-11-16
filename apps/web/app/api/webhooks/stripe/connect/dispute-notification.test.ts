@@ -172,6 +172,65 @@ describe("dispute alert retries", () => {
     assert.equal(dispatches(), 0);
   });
 
+  test("a provider's error text never reaches the log, returned or thrown: only the channels and the error's class", async () => {
+    const PERSONAL = /Ada|ada\.lovelace|example\.test/;
+    const logged: unknown[] = [];
+    const log = {
+      warn: (entry: unknown) => void logged.push(["warn", entry]),
+      error: (entry: unknown) => void logged.push(["error", entry]),
+    };
+    const refusal = "Mailbox of Ada Lovelace <ada.lovelace@example.test> refused";
+
+    // Returned by a channel, with another channel that went: a partial failure.
+    const partial = deps([result({ email: { sent: false, error: refusal }, sms: { sent: true } })]);
+    await notification.notifyPaymentDisputed(INPUT, { ...partial.fake, log });
+    // Returned on every attempt: not delivered.
+    const returned = deps([result({ email: { sent: false, error: refusal } })]);
+    await notification.notifyPaymentDisputed(INPUT, { ...returned.fake, log });
+    // Thrown by the dispatch on every attempt.
+    const thrown = deps([new Error(`SMTP 550: ${refusal}`)]);
+    await notification.notifyPaymentDisputed(INPUT, { ...thrown.fake, log });
+
+    assert.deepEqual(logged, [
+      [
+        "warn",
+        {
+          ownerNotification: {
+            event: "payment_disputed",
+            reservationId: INPUT.reservationId,
+            issue: "some_channels_failed",
+            failedChannels: ["email"],
+          },
+        },
+      ],
+      [
+        "error",
+        {
+          ownerNotification: {
+            event: "payment_disputed",
+            reservationId: INPUT.reservationId,
+            issue: "not_delivered",
+            attempts: 3,
+            failedChannels: ["email"],
+          },
+        },
+      ],
+      [
+        "error",
+        {
+          ownerNotification: {
+            event: "payment_disputed",
+            reservationId: INPUT.reservationId,
+            issue: "not_delivered",
+            attempts: 3,
+            error: { name: "Error", code: null },
+          },
+        },
+      ],
+    ]);
+    assert.doesNotMatch(JSON.stringify(logged), PERSONAL);
+  });
+
   test("the dispatcher keeps each channel's outcome when another throws", async () => {
     const outcome = await dispatcher.dispatchNotification(
       "payment_disputed",

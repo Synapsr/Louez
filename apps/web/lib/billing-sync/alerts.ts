@@ -98,9 +98,12 @@ export function createBillingAlerts(
     try {
       if (await claimDiscordSlot(kind, new Date())) await notify(kind, message);
     } catch (error) {
+      // The error's class and code only: its message can hold a provider's text.
+      const name = error instanceof Error ? error.name : typeof error;
+      const code = error instanceof Error ? Reflect.get(error, "code") : undefined;
       log.error(
         "billing",
-        `billing sync alert ${kind} could not reach Discord: ${error instanceof Error ? error.message : String(error)}`,
+        `billing sync alert ${kind} could not reach Discord: ${name}${typeof code === "string" || typeof code === "number" ? ` (${code})` : ""}`,
       );
     }
   };

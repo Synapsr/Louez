@@ -41,6 +41,8 @@ export interface DisputeNotificationDeps {
   now: () => number;
   retryDelaysMs: readonly number[];
   budgetMs: number;
+  /** Where the failures are logged: Evlog; a test reads it. */
+  log?: Pick<typeof log, "warn" | "error">;
 }
 
 const loadContext = async (input: DisputeNotificationInput) => {
@@ -98,12 +100,12 @@ const defaultDeps: DisputeNotificationDeps = {
   budgetMs: BUDGET_MS,
 };
 
-const channelErrors = (result: NotificationResult): Record<string, string> =>
-  Object.fromEntries(
-    Object.entries(result).flatMap(([channel, outcome]) =>
-      outcome.error ? [[channel, outcome.error]] : [],
-    ),
-  );
+/**
+ * The channels that answered an error, by name only: a provider's error text
+ * can hold a name or an address, so it never reaches a log.
+ */
+const failedChannels = (result: NotificationResult): string[] =>
+  Object.entries(result).flatMap(([channel, outcome]) => (outcome.error ? [channel] : []));
 
 /**
  * Tells the store owner a customer disputed a payment, on the channels the store
@@ -118,7 +120,10 @@ export async function notifyPaymentDisputed(
   deps: DisputeNotificationDeps = defaultDeps,
 ): Promise<{ notified: boolean; attempts: number }> {
   const event = { event: "payment_disputed", reservationId: input.reservationId };
-  let lastErrors: Record<string, string> = {};
+  const logger = deps.log ?? log;
+  // What the last attempt's failure was: the channels that failed, or the
+  // dispatch's thrown error by its class and code.
+  let lastFailure: Record<string, unknown> = {};
   const startedAt = deps.now();
   let attempts = 0;
 
@@ -128,25 +133,27 @@ export async function notifyPaymentDisputed(
       const ctx = await deps.loadContext(input);
       if (!ctx) return { notified: false, attempts: attempt };
       const result = await deps.dispatch(ctx);
-      const errors = channelErrors(result);
+      const failed = failedChannels(result);
       const sent = Object.values(result).some((outcome) => outcome.sent);
-      if (sent || Object.keys(errors).length === 0) {
-        if (sent && Object.keys(errors).length > 0) {
-          log.warn({ ownerNotification: { ...event, issue: "some_channels_failed", errors } });
+      if (sent || failed.length === 0) {
+        if (sent && failed.length > 0) {
+          logger.warn({
+            ownerNotification: { ...event, issue: "some_channels_failed", failedChannels: failed },
+          });
         }
         return { notified: sent, attempts: attempt };
       }
-      lastErrors = errors;
+      lastFailure = { failedChannels: failed };
     } catch (error) {
-      lastErrors = { dispatch: JSON.stringify(describeWebhookError(error)) };
+      lastFailure = describeWebhookError(error);
     }
     const delay = deps.retryDelaysMs[attempt - 1];
     if (delay === undefined || deps.now() - startedAt + delay > deps.budgetMs) break;
     await deps.sleep(delay);
   }
 
-  log.error({
-    ownerNotification: { ...event, issue: "not_delivered", attempts, errors: lastErrors },
+  logger.error({
+    ownerNotification: { ...event, issue: "not_delivered", attempts, ...lastFailure },
   });
   return { notified: false, attempts };
 }
