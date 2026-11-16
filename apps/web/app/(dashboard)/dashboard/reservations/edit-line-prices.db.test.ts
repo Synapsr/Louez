@@ -341,7 +341,14 @@ describe(
       const windowChanged = end.getTime() !== row.endDate.getTime();
       const calculated = editable.map((item) => ({
         ...item,
-        ...calculateEditableItemPrice(item, row.startDate, end, undefined, windowChanged, "EUR"),
+        ...calculateEditableItemPrice(
+          item,
+          row.startDate,
+          end,
+          undefined,
+          windowChanged,
+          row.currency ?? "EUR",
+        ),
       }));
       return previewEditTotal({
         items: calculated,
@@ -351,7 +358,7 @@ describe(
         deposit: 0,
         storeTax: store?.settings?.tax,
         recordedTaxDisplayMode: row.taxDisplayMode,
-        currency: "EUR",
+        currency: row.currency ?? "EUR",
       }).toFixed(2);
     }
 
@@ -832,6 +839,57 @@ describe(
         assert.equal(result.error, undefined);
         assert.equal((await items(id))[0]?.totalPrice, "0.05");
         assert.equal((await reservationRow(id)).totalAmount, "0.05");
+      });
+    });
+
+    describe("a reservation in a currency without decimals", () => {
+      const inYen = (reservationId: string) =>
+        louezDb.db
+          .update(louezDb.reservations)
+          .set({ currency: "JPY" })
+          .where(eq(louezDb.reservations.id, reservationId));
+
+      test("a line the edit does not change keeps its amounts to the last digit stored", async () => {
+        await useStore({ currency: "JPY" });
+        const [kept, other] = [await product("100.50"), await product("100.00")];
+        const { id, itemIds } = await booking([
+          { productId: kept, quantity: 1, totalPrice: "100.50" },
+          { productId: other, quantity: 1, totalPrice: "200.00" },
+        ]);
+        await inYen(id);
+
+        const result = await actions.updateReservation(id, {
+          items: await formLines(id, { [itemIds[1]!]: 2 }),
+        });
+
+        assert.equal(result.error, undefined);
+        const line = (await items(id)).find((item) => item.id === itemIds[0]);
+        assert.deepEqual([line?.unitPrice, line?.totalPrice], ["100.50", "100.50"]);
+      });
+
+      test("a line priced again from a catalogue price with decimals is accepted, at the catalogue's amount", async () => {
+        await useStore({ currency: "JPY" });
+        const kayak = await product("100.25");
+        const { id, itemIds } = await booking([
+          { productId: kayak, quantity: 1, totalPrice: "200.50" },
+        ]);
+        await inYen(id);
+        const quantities = { [itemIds[0]!]: 3 };
+        const shown = await previewOf(id, { quantities });
+
+        const result = await actions.updateReservation(id, {
+          items: await formLines(id, quantities),
+          expectedTotal: Number(shown),
+        });
+
+        // 100.25 a day, two days, three units: 601.50, as the catalogue prices it under the locks.
+        assert.equal(result.error, undefined);
+        assert.equal((await items(id))[0]?.totalPrice, "601.50");
+        assert.equal(
+          shown,
+          (await reservationRow(id)).totalAmount,
+          "the form showed what is written",
+        );
       });
     });
 

@@ -168,7 +168,7 @@ export function calculateEditableItemPrice(
             windowChanged,
           });
     if (kept.kind === "kept" || gone) {
-      // A line the server refuses (its product gone, no duration recorded) is written nothing.
+      // A line the server refuses (its product gone, priced by its duration, its window moved) is written nothing.
       const totalPrice =
         kept.kind === "kept"
           ? kept.subtotal
