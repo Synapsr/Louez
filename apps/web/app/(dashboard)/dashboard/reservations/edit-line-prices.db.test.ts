@@ -774,7 +774,7 @@ describe(
         assert.equal(line.pricingBreakdown?.isManualOverride, true);
       });
 
-      test("its price per period rounded to the cent, as a typed price: later edits leave it as written", async () => {
+      test("its window moved: the total rounded once, and later edits leave it as written", async () => {
         await useStore({});
         // 100.00 for three days, as the checkout recorded it, beside another line.
         const gone = await product();
@@ -808,8 +808,8 @@ describe(
 
         assert.equal((await actions.updateReservation(id, { endDate: FOUR_DAYS })).error, undefined);
         const scaled = await lineOf(id, gone);
-        // 33.33 a day, four days: 133.32.
-        assert.deepEqual([scaled.unitPrice, scaled.totalPrice], ["33.33", "133.32"]);
+        // 100.00 for three days, four days: 133.33, rounded once, at 33.33 a day.
+        assert.deepEqual([scaled.unitPrice, scaled.totalPrice], ["33.33", "133.33"]);
 
         // An edit of another line, then an edit of nothing.
         const otherId = (await lineOf(id, other)).id;

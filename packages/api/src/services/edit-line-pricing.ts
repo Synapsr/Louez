@@ -191,11 +191,12 @@ export type ProductGoneLinePrice =
  * - its window moved: its price per period, its stored total divided by the
  *   periods it recorded (`recordedPeriods`) and its quantity, over the new
  *   window's periods of the same mode; the line then holds a price typed by
- *   hand, and the store is told (`scaled`). The price per period is rounded
- *   to the cent first, as a typed price is stored, and the total is that
- *   price times the periods and the quantity: 100.00 for three days gives
- *   33.33 a day, 133.32 for four, the unit price and total a later edit
- *   leaves as written. A fixed-price line keeps its price per unit;
+ *   hand, and the store is told (`scaled`). The total is rounded once, from
+ *   the stored total and the two durations, and the price per period shown
+ *   beside it is that ratio to the cent: 100.00 for three days gives 133.33
+ *   for four, at 33.33 a day. The edit form reads a typed price from its
+ *   total, so later edits leave both as written. A fixed-price line keeps
+ *   its price per unit;
  * - its window moved and its recorded periods cannot be told (no duration, or
  *   one whose unit no writer's mark tells): refused, never another price.
  */
@@ -227,7 +228,10 @@ export function priceProductGoneLine(input: {
   const duration = calculateDuration(input.window.start, input.window.end, recorded.pricingMode);
   return {
     kind: "priced",
-    subtotal: round2(perPeriod * duration * input.quantity),
+    // Rounded once: the stored total over the two durations and quantities.
+    subtotal: round2(
+      (stored.totalPrice * duration * input.quantity) / (periods * stored.quantity),
+    ),
     unitPrice: perPeriod,
     // A price typed by hand from now on, as the edit writes one, read as one by later edits.
     breakdown: {
