@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import type { Connection, RowDataPacket } from "mysql2/promise";
 
+import { runMigrations } from "./migration-runner.mjs";
 import {
   createTestDatabase,
   skipWithoutTestDatabase,
@@ -215,6 +219,98 @@ describe(
       );
       assert.equal(Number(lines[0]?.count), 1);
       assert.equal((await totals()).retry, "100.00");
+    });
+  },
+);
+
+const MIGRATIONS = fileURLToPath(new URL("./migrations", import.meta.url));
+
+/** The repo's migrations, its journal cut after `lastTag`. */
+async function migrationsUpTo(lastTag: string): Promise<string> {
+  const folder = await mkdtemp(path.join(tmpdir(), "louez-migrations-"));
+  await cp(MIGRATIONS, folder, { recursive: true });
+  const journalPath = path.join(folder, "meta", "_journal.json");
+  const journal: { entries: Array<{ tag: string }> } = JSON.parse(
+    await readFile(journalPath, "utf8"),
+  );
+  const last = journal.entries.findIndex((entry) => entry.tag === lastTag);
+  assert.ok(last >= 0, `${lastTag} is in the journal`);
+  await writeFile(
+    journalPath,
+    JSON.stringify({ ...journal, entries: journal.entries.slice(0, last + 1) }),
+  );
+  return folder;
+}
+
+describe(
+  "migration 0108 through the shared runner: all or nothing (database)",
+  {
+    skip: skipWithoutTestDatabase(),
+  },
+  () => {
+    let database: TestDatabase;
+    let connection: Connection;
+    let before0108: string;
+
+    before(async () => {
+      before0108 = await migrationsUpTo("0107_reservation_pricing_facts");
+      database = await createTestDatabase("deposit_out_of_total_atomic", {
+        migrationsFolder: before0108,
+      });
+      connection = await database.connect();
+      await connection.query(
+        `INSERT INTO reservations
+        (id, store_id, customer_id, number, reservation_status, start_date, end_date,
+         subtotal_amount, discount_amount, delivery_fee, deposit_amount, total_amount, source,
+         created_at, updated_at)
+       VALUES ('legacy', ?, 'customer', 'legacy', 'completed', '2026-02-10 09:00:00',
+         '2026-02-12 09:00:00', '100.00', '0.00', '0.00', '30.00', '130.00', 'online',
+         '2026-02-01 08:00:00', '2026-03-01 08:00:00')`,
+        [STORE],
+      );
+    });
+
+    after(async () => {
+      await connection?.end();
+      await database?.drop();
+      if (before0108) await rm(before0108, { recursive: true, force: true });
+    });
+
+    const state = async () => {
+      const [[row]] = await connection.query<RowDataPacket[]>(
+        "SELECT total_amount AS total FROM reservations WHERE id = 'legacy'",
+      );
+      const [[lines]] = await connection.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS count FROM reservation_activity WHERE reservation_id = 'legacy'",
+      );
+      const hash = createHash("sha256")
+        .update(await readFile(MIGRATION))
+        .digest("hex");
+      const [recorded] = await connection.query<RowDataPacket[]>(
+        "SELECT 1 FROM __drizzle_migrations WHERE hash = ?",
+        [hash],
+      );
+      return {
+        total: String(row?.total),
+        historyLines: Number(lines?.count),
+        recorded: recorded.length === 1,
+      };
+    };
+
+    test("its update refused: no total changed, no history line, not recorded; run again, applied once", async () => {
+      // The update made to fail, as an interruption between the two statements would.
+      await connection.query(
+        `CREATE TRIGGER refuse_0108 BEFORE UPDATE ON reservations FOR EACH ROW
+         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'update refused'`,
+      );
+      await assert.rejects(
+        runMigrations({ databaseUrl: database.url, migrationsFolder: MIGRATIONS }),
+      );
+      assert.deepEqual(await state(), { total: "130.00", historyLines: 0, recorded: false });
+
+      await connection.query("DROP TRIGGER refuse_0108");
+      await runMigrations({ databaseUrl: database.url, migrationsFolder: MIGRATIONS });
+      assert.deepEqual(await state(), { total: "100.00", historyLines: 1, recorded: true });
     });
   },
 );
