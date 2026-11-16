@@ -186,6 +186,8 @@ export interface BaseContext {
         allowOverbooking?: boolean;
         /** The total the form showed: the edit refuses to write another one. */
         expectedTotal?: number;
+        /** The reservation the form loaded: the edit refuses to apply to another one. */
+        loadedEditToken?: string;
         delivery?: {
           outbound: {
             method: "store" | "address";

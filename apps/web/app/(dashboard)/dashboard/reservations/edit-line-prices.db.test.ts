@@ -982,6 +982,162 @@ describe(
       });
     });
 
+    describe("the form edits the reservation it loaded, or nothing", () => {
+      /** Two lines, A at 10.00 and B at 8.00 a day, for two days, made from the dashboard. */
+      async function dashboardTwoLines() {
+        await useStore({});
+        const [a, b] = [await product("10.00"), await product("8.00")];
+        const created = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: TWO_DAYS,
+          items: [
+            { productId: a, quantity: 1 },
+            { productId: b, quantity: 1 },
+          ],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(created.reservationId, JSON.stringify(created));
+        const id = created.reservationId;
+        const lines = await items(id);
+        const lineA = lines.find((item) => item.productId === a);
+        const lineB = lines.find((item) => item.productId === b);
+        assert.ok(lineA && lineB);
+        return { id, lineA, lineB };
+      }
+
+      /**
+       * An edit form opened now, as the page opens it: the reservation's
+       * token from the edit context, and its lines as the form sends them
+       * once `quantities` are changed.
+       */
+      async function openForm(reservationId: string) {
+        const context = await editContext.getDashboardReservationEditContext({
+          reservationId,
+          storeId: STORE,
+        });
+        assert.ok(context.editable);
+        const { reservation } = context;
+        const loaded = reservation.items.map((item) =>
+          editableItems.toEditableItem(item, reservation.startDate, reservation.endDate),
+        );
+        return {
+          save: (quantities: Record<string, number>) =>
+            actions.updateReservation(reservationId, {
+              startDate: reservation.startDate,
+              endDate: reservation.endDate,
+              items: loaded
+                .map((item) => ({ ...item, quantity: quantities[item.id] ?? item.quantity }))
+                .map(editableItems.toReservationItemPayload),
+              loadedEditToken: reservation.editToken,
+            }),
+        };
+      }
+
+      /** What an edit can overwrite, to compare before and after a refusal. */
+      const stateOf = async (reservationId: string) => {
+        const row = await reservationRow(reservationId);
+        return {
+          window: [row.startDate.getTime(), row.endDate.getTime()],
+          totals: [row.subtotalAmount, row.totalAmount, row.depositAmount],
+          lines: (await items(reservationId)).map((item) => [
+            item.id,
+            item.quantity,
+            item.unitPrice,
+            item.totalPrice,
+            item.pricingBreakdown,
+          ]),
+        };
+      };
+
+      test("two tabs: the second saves the lines it loaded over the first's save: refused, nothing written", async () => {
+        const { id, lineA, lineB } = await dashboardTwoLines();
+        const tab1 = await openForm(id);
+        const tab2 = await openForm(id);
+
+        assert.equal((await tab1.save({ [lineB.id]: 2 })).error, undefined);
+        const afterTab1 = await stateOf(id);
+        // Tab 2 still holds B at one: saving A at two would put B back to one.
+        const result = await tab2.save({ [lineA.id]: 2 });
+
+        assert.equal(result.error, "errors.reservationChangedMeanwhile");
+        assert.deepEqual(await stateOf(id), afterTab1);
+        const quantities = (await items(id)).map((item) => [item.id, item.quantity]);
+        assert.deepEqual(
+          quantities,
+          [
+            [lineA.id, 1],
+            [lineB.id, 2],
+          ].sort(([x], [y]) => String(x).localeCompare(String(y))),
+        );
+      });
+
+      test("nothing changed since the form loaded: accepted", async () => {
+        const { id, lineA } = await dashboardTwoLines();
+        const form = await openForm(id);
+
+        assert.equal((await form.save({ [lineA.id]: 2 })).error, undefined);
+        assert.equal((await lineOf(id, lineA.id)).quantity, 2);
+      });
+
+      test("only a payment recorded since the form loaded: accepted", async () => {
+        const { id, lineA } = await dashboardTwoLines();
+        const form = await openForm(id);
+        const paid = await actions.recordPayment(id, {
+          type: "rental",
+          amount: "10.00",
+          method: "cash",
+        });
+        assert.equal(paid.error, undefined, JSON.stringify(paid));
+
+        assert.equal((await form.save({ [lineA.id]: 2 })).error, undefined);
+        assert.equal((await lineOf(id, lineA.id)).quantity, 2);
+      });
+
+      test("the API's date change moved the window since the form loaded: refused, nothing written", async () => {
+        const { id, lineA } = await dashboardTwoLines();
+        const form = await openForm(id);
+        // An agent moves the reservation to three days.
+        await reservationDates.changeReservationDates(
+          {
+            storeId: STORE,
+            userId: null,
+            credential: { kind: "session", id: null },
+            transport: "rpc",
+            customers: true,
+            reader: { storeId: STORE, currency: "EUR", customers: true, payments: true },
+            store: {
+              id: STORE,
+              name: "Edit line prices",
+              slug: "edit-line-prices",
+              ownerUserId: "owner_line_prices",
+            },
+            ports: {
+              afterCommit: () => {},
+              dispatchEffects: () => {},
+              emailConfigured: () => false,
+            },
+          },
+          { id, endDate: THREE_DAYS, notifyCustomer: false },
+        );
+        const moved = await stateOf(id);
+        assert.equal(moved.window[1], THREE_DAYS.getTime());
+
+        // The form still holds the two days it read, and would put them back.
+        const result = await form.save({ [lineA.id]: 2 });
+
+        assert.equal(result.error, "errors.reservationChangedMeanwhile");
+        assert.deepEqual(await stateOf(id), moved);
+      });
+
+      /** A line of the reservation, by its id. */
+      async function lineOf(reservationId: string, itemId: string) {
+        const line = (await items(reservationId)).find((item) => item.id === itemId);
+        assert.ok(line);
+        return line;
+      }
+    });
+
     describe("the total the form shows is the total written, or the edit is refused", () => {
       /** Two lines of two days at 10.00 a day: the form reads them, then shows B's quantity at two. */
       async function formShowingB() {
@@ -1039,46 +1195,6 @@ describe(
         // It would write 70.00 where the form showed 60.00.
         assert.equal(result.error, "errors.reservationChangedMeanwhile");
         assert.equal((await reservationRow(id)).totalAmount, "50.00");
-      });
-
-      test("the API's date change moved the window meanwhile: priced at the form's window, the total shown", async () => {
-        const { id, shown, sent } = await formShowingB();
-        // An agent moves the reservation to three days: every line priced again.
-        await reservationDates.changeReservationDates(
-          {
-            storeId: STORE,
-            userId: null,
-            credential: { kind: "session", id: null },
-            transport: "rpc",
-            customers: true,
-            reader: { storeId: STORE, currency: "EUR", customers: true, payments: true },
-            store: {
-              id: STORE,
-              name: "Edit line prices",
-              slug: "edit-line-prices",
-              ownerUserId: "owner_line_prices",
-            },
-            ports: {
-              afterCommit: () => {},
-              dispatchEffects: () => {},
-              emailConfigured: () => false,
-            },
-          },
-          { id, endDate: THREE_DAYS, notifyCustomer: false },
-        );
-        assert.equal((await reservationRow(id)).totalAmount, "60.00");
-
-        // The form still holds the two days it read: each line is priced again
-        // for them, which gives the total it showed.
-        const result = await actions.updateReservation(id, {
-          startDate: START,
-          endDate: TWO_DAYS,
-          items: sent,
-          expectedTotal: Number(shown),
-        });
-
-        assert.equal(result.error, undefined);
-        assert.equal((await reservationRow(id)).totalAmount, "60.00");
       });
     });
   },

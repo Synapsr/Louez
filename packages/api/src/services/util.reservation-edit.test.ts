@@ -29,6 +29,23 @@ const reservation = {
   discountAmount: "5.00",
   tulipInsuranceOptIn: null,
   tulipInsuranceAmount: null,
+  outboundMethod: "address",
+  pickupLocationId: null,
+  deliveryOption: "delivery",
+  deliveryAddress: "1 rue du Port",
+  deliveryCity: "Brest",
+  deliveryPostalCode: "29200",
+  deliveryCountry: "FR",
+  deliveryLatitude: "48.3900000",
+  deliveryLongitude: "-4.4860000",
+  returnMethod: "store",
+  returnLocationId: "loc_a",
+  returnAddress: null,
+  returnCity: null,
+  returnPostalCode: null,
+  returnCountry: null,
+  returnLatitude: null,
+  returnLongitude: null,
 };
 const manualPrice: PricingBreakdown = {
   basePrice: 10,
@@ -69,7 +86,7 @@ describe("fingerprintReservationEdit", () => {
   test("two reads of the same reservation agree, whatever the money's digits or the lines' order", () => {
     const other = { ...item, id: "itm_b", productId: "helmet" };
     assert.equal(
-      fingerprintReservationEdit({ ...reservation, totalAmount: "30" }, [
+      fingerprintReservationEdit({ ...reservation, totalAmount: "30", deliveryLatitude: "48.39" }, [
         { ...item, unitPrice: "10", totalPrice: "20", depositPerUnit: "0" },
       ]),
       basis,
@@ -92,6 +109,23 @@ describe("fingerprintReservationEdit", () => {
       { discountAmount: "0.00" },
       { tulipInsuranceOptIn: true },
       { tulipInsuranceAmount: "4.00" },
+      { outboundMethod: "store" },
+      { pickupLocationId: "loc_b" },
+      { deliveryOption: "pickup" },
+      { deliveryAddress: "2 rue du Port" },
+      { deliveryCity: "Quimper" },
+      { deliveryPostalCode: "29000" },
+      { deliveryCountry: "BE" },
+      { deliveryLatitude: "48.4" },
+      { deliveryLongitude: "-4.5" },
+      { returnMethod: "address" },
+      { returnLocationId: "loc_b" },
+      { returnAddress: "1 rue du Port" },
+      { returnCity: "Brest" },
+      { returnPostalCode: "29200" },
+      { returnCountry: "FR" },
+      { returnLatitude: "48.39" },
+      { returnLongitude: "-4.486" },
     ];
     for (const change of changes) {
       assert.notEqual(

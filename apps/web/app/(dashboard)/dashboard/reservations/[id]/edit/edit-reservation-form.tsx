@@ -744,6 +744,7 @@ export function EditReservationForm({
           delivery: deliveryPayload,
           items: items.map(toReservationItemPayload),
           expectedTotal: shownTotal,
+          loadedEditToken: reservation.editToken,
         },
       });
 

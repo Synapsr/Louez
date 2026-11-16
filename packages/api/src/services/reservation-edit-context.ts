@@ -14,6 +14,7 @@ import type { LegMethod, PricingKind, ProductTaxSettings, StockKind } from "@lou
 import type { SeasonalPricingConfig } from "@louez/utils";
 
 import { isReservationEditable } from "./reservation-editable";
+import { reservationEditToken } from "./util.reservation-edit";
 
 const AVAILABILITY_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -270,6 +271,8 @@ export async function getDashboardReservationEditContext(params: {
       deliveryFee: reservation.deliveryFee,
       discountAmount: reservation.discountAmount,
       taxDisplayMode: reservation.taxDisplayMode,
+      // The reservation as the form loads it: the edit applies to it or is refused.
+      editToken: reservationEditToken(reservation, reservation.items),
       tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
       tulipInsuranceAmount: reservation.tulipInsuranceAmount,
       delivery: {

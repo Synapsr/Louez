@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { BookingAttributeAxis, PricingBreakdown, UnitAttributes } from "@louez/types";
 import { canonicalizeAttributes, isPooledCombinationKey } from "@louez/utils";
 
@@ -18,6 +20,24 @@ interface EditedReservation {
   discountAmount: string | null;
   tulipInsuranceOptIn: boolean | null;
   tulipInsuranceAmount: string | null;
+  // The delivery legs, which an edit writes as its form sends them.
+  outboundMethod: string;
+  pickupLocationId: string | null;
+  deliveryOption: string | null;
+  deliveryAddress: string | null;
+  deliveryCity: string | null;
+  deliveryPostalCode: string | null;
+  deliveryCountry: string | null;
+  deliveryLatitude: string | null;
+  deliveryLongitude: string | null;
+  returnMethod: string;
+  returnLocationId: string | null;
+  returnAddress: string | null;
+  returnCity: string | null;
+  returnPostalCode: string | null;
+  returnCountry: string | null;
+  returnLatitude: string | null;
+  returnLongitude: string | null;
 }
 
 interface EditedReservationItem {
@@ -36,9 +56,18 @@ interface EditedReservationItem {
 const money = (value: string | null): string | null =>
   value === null ? null : Number.parseFloat(value).toFixed(2);
 
+/** A coordinate, whatever digits the read gives it. */
+const coordinate = (value: string | null): string | null =>
+  value === null ? null : String(Number.parseFloat(value));
+
 /**
- * Everything an edit's totals and item writes are computed from, as one
- * string: two reads that give the same string give the same edit.
+ * Everything an edit's totals and item writes are computed from, and
+ * everything it overwrites, as one string: two reads that give the same
+ * string give the same edit. The window, the status, the stored amounts, the
+ * insurance choice, the delivery legs (method, location, address) and each
+ * line (id, product, quantity, unit price, total, deposit and breakdown, which
+ * holds a typed price's mark). Not what an edit leaves alone: payments,
+ * notes, the history, the customer, the assigned units.
  */
 export const fingerprintReservationEdit = (
   reservation: EditedReservation,
@@ -55,6 +84,27 @@ export const fingerprintReservationEdit = (
     money(reservation.discountAmount),
     reservation.tulipInsuranceOptIn,
     money(reservation.tulipInsuranceAmount),
+    [
+      reservation.outboundMethod,
+      reservation.pickupLocationId,
+      reservation.deliveryOption,
+      reservation.deliveryAddress,
+      reservation.deliveryCity,
+      reservation.deliveryPostalCode,
+      reservation.deliveryCountry,
+      coordinate(reservation.deliveryLatitude),
+      coordinate(reservation.deliveryLongitude),
+    ],
+    [
+      reservation.returnMethod,
+      reservation.returnLocationId,
+      reservation.returnAddress,
+      reservation.returnCity,
+      reservation.returnPostalCode,
+      reservation.returnCountry,
+      coordinate(reservation.returnLatitude),
+      coordinate(reservation.returnLongitude),
+    ],
     [...items]
       .sort((a, b) => a.id.localeCompare(b.id, "en"))
       .map((item) => [
@@ -67,6 +117,18 @@ export const fingerprintReservationEdit = (
         item.pricingBreakdown,
       ]),
   ]);
+
+/**
+ * The reservation an edit form loaded, as a short token of its fingerprint
+ * (`fingerprintReservationEdit`): the edit context gives it, the form sends
+ * it back, and the edit compares it under the locks with the reservation
+ * stored then.
+ */
+export const reservationEditToken = (
+  reservation: EditedReservation,
+  items: readonly EditedReservationItem[],
+): string =>
+  createHash("sha256").update(fingerprintReservationEdit(reservation, items)).digest("base64url");
 
 interface ReservationDemand {
   start: Date;
