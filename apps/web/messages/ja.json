@@ -9385,6 +9385,7 @@
     "reservationStatusChanged": "編集中に予約状況が変更されました。ページをリロードして、もう一度お試しください。",
     "reservationChangedMeanwhile": "編集中に予約が変更されました。ページをリロードして、もう一度お試しください。",
     "editTaxAdded": "合計に税金が含まれるようになりました：変更前 {previousTotal}、現在 {newTotal}。",
+    "editProductGonePriceUnknown": "明細の商品が削除されているため、別の日程の価格を計算できません。価格を手入力してから日程を変更してください。",
     "endDateBeforeStart": "終了日時は開始日時より後である必要があります",
     "negativeAmountOnlyForAdjustment": "マイナスの金額は調整の場合にのみ許可されます",
     "productRequired": "必要な製品",

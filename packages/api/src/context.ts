@@ -184,6 +184,8 @@ export interface BaseContext {
         tulipInsuranceOptIn?: boolean;
         overrideTurnoverBuffer?: boolean;
         allowOverbooking?: boolean;
+        /** The total the form showed: the edit refuses to write another one. */
+        expectedTotal?: number;
         delivery?: {
           outbound: {
             method: "store" | "address";

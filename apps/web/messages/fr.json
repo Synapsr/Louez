@@ -9385,6 +9385,7 @@
     "reservationStatusChanged": "Le statut de la réservation a changé pendant la modification. Rechargez la page avant de réessayer.",
     "reservationChangedMeanwhile": "La réservation a été modifiée entre-temps. Rechargez la page avant de réessayer.",
     "editTaxAdded": "Le total inclut désormais la taxe : {previousTotal} avant, {newTotal} maintenant.",
+    "editProductGonePriceUnknown": "Le produit d'une ligne a été supprimé : son prix ne peut pas être calculé pour d'autres dates. Saisissez son prix à la main, puis changez les dates.",
     "endDateBeforeStart": "La date de fin doit être après la date de début",
     "negativeAmountOnlyForAdjustment": "Les montants négatifs sont réservés aux ajustements",
     "productRequired": "Produit requis",

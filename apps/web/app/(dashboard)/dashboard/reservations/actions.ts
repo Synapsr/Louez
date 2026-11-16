@@ -19,6 +19,14 @@ import {
   recordedTaxDisplayMode,
   validateReservationContract,
 } from "@louez/api/services";
+import {
+  cataloguePriceWithRecordedPromotion,
+  priceEditedProductLine,
+  priceProductGoneLine,
+  storedProductLineOf,
+  TAX_OF_TODAY,
+  type EditedLineTax,
+} from "@louez/api/services/edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
 import {
   priceReservationEdit,
@@ -1598,6 +1606,12 @@ interface UpdateReservationData {
   overrideTurnoverBuffer?: boolean;
   /** Write the edit although it asks more stock than is free; the history keeps the shortfalls. */
   allowOverbooking?: boolean;
+  /**
+   * The total the form showed. When the edit prices the reservation, it is
+   * compared under the locks with the total about to be written; a
+   * difference refuses the edit as changed meanwhile.
+   */
+  expectedTotal?: number;
   delivery?: {
     outbound: UpdateDeliveryLeg;
     return: UpdateDeliveryLeg;
@@ -2185,8 +2199,17 @@ export async function updateReservation(
     storeSettings: store.settings,
   });
 
-  // Every line the edit leaves, but the insurance, as it prices it by today's
-  // rules; the tax engine totals them under the locks (slice 10).
+  const dateChanged =
+    newStartDate.getTime() !== reservation.startDate.getTime() ||
+    newEndDate.getTime() !== reservation.endDate.getTime();
+  // A typed price's total is rounded once, by `roundToMinorUnit`, as the edit
+  // form rounds it: the form previews what is written. A line kept, priced
+  // from the catalogue or following a deleted product keeps the amount it is
+  // given, to the last digit stored.
+  const lineCurrency = reservationCurrency(reservation.currency, store.settings);
+  // Every line the edit leaves, but the insurance, as it prices it: a line it
+  // does not change at its stored price, the others by the edit's rules
+  // (slice 11); the tax engine totals them under the locks (slice 10).
   const editedLines: Array<Omit<EditedLine, "taxExempt"> & { id: string }> = [];
   let linesChanged = false;
   let newDepositAmount = 0;
@@ -2265,6 +2288,22 @@ export async function updateReservation(
       let totalPrice = item.unitPrice * duration * item.quantity;
       let manualPricingKind: PricingKind = "duration";
       let pricedFromProductId: string | null = null;
+      // A line priced from its product that the edit does not change keeps its price (slice 11).
+      const existingProductLine =
+        item.id && item.productId && !item.isManualPrice
+          ? existingItemsById.get(item.id)
+          : undefined;
+      const storedProductLine =
+        existingProductLine && existingProductLine.productId === item.productId
+          ? storedProductLineOf(existingProductLine)
+          : null;
+      const productLinePrice = priceEditedProductLine({
+        stored: storedProductLine,
+        quantity: item.quantity,
+        windowChanged: dateChanged,
+      });
+      let lineTax: EditedLineTax = TAX_OF_TODAY;
+      let promotionPercentage: number | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
@@ -2282,8 +2321,13 @@ export async function updateReservation(
         totalPrice = item.unitPrice * duration * item.quantity;
       }
 
-      // If not manual price and has a productId, calculate with tiers
-      if (!item.isManualPrice && item.productId) {
+      if (productLinePrice.kind === "kept" && existingProductLine) {
+        finalUnitPrice = productLinePrice.unitPrice;
+        totalPrice = productLinePrice.subtotal;
+        pricingBreakdown = existingProductLine.pricingBreakdown;
+        lineTax = productLinePrice.tax;
+      } else if (!item.isManualPrice && item.productId) {
+        // Priced again, with tiers.
         const product = await db.query.products.findFirst({
           where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
           with: { pricingTiers: true },
@@ -2343,17 +2387,37 @@ export async function updateReservation(
             deposit: seasonalResultForItem.deposit,
           };
 
-          pricingBreakdown = buildReservationPricingBreakdown({
-            pricingKind: product.pricingKind,
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || "0"),
-            pricingMode: itemPricingMode,
+          // The promotion the line recorded, applied as recorded (slice 11).
+          const priced = cataloguePriceWithRecordedPromotion(
+            {
+              subtotal: priceResult.subtotal,
+              breakdown: buildReservationPricingBreakdown({
+                pricingKind: product.pricingKind,
+                basePrice: parseFloat(product.price),
+                deposit: parseFloat(product.deposit || "0"),
+                pricingMode: itemPricingMode,
+                quantity: item.quantity,
+                durationMinutes,
+                result: seasonalResultForItem,
+              }),
+            },
+            storedProductLine,
+          );
+          pricingBreakdown = priced.breakdown;
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
+          totalPrice = priced.subtotal;
+        } else {
+          // Its product deleted since: only what it stored prices it, or the edit is refused (slice 11).
+          const gone = priceProductGoneLine({
+            stored: storedProductLine,
             quantity: item.quantity,
-            durationMinutes,
-            result: seasonalResultForItem,
+            windowChanged: dateChanged,
           });
-          finalUnitPrice = priceResult.subtotal / Math.max(1, item.quantity);
-          totalPrice = priceResult.subtotal;
+          if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
+          finalUnitPrice = gone.unitPrice;
+          totalPrice = gone.subtotal;
+          pricingBreakdown = gone.breakdown;
         }
       } else if (item.isManualPrice) {
         pricingBreakdown = {
@@ -2373,6 +2437,9 @@ export async function updateReservation(
         };
       }
 
+      if (item.isManualPrice || !item.productId) {
+        totalPrice = roundToMinorUnit(totalPrice, lineCurrency);
+      }
       const itemDeposit = item.depositPerUnit * item.quantity;
       newDepositAmount += itemDeposit;
       if (item.productId) {
@@ -2419,6 +2486,8 @@ export async function updateReservation(
         quantity: item.quantity,
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
+        tax: lineTax,
+        promotionPercentage,
       });
       if (item.id) {
         const existingItem = existingItemsById.get(item.id);
@@ -2457,8 +2526,22 @@ export async function updateReservation(
       let totalPrice: number;
       let finalUnitPrice = parseFloat(item.unitPrice);
       let pricedFromProductId: string | null = null;
+      // A line priced from its product keeps its price when the window did not move (slice 11).
+      const storedProductLine =
+        !isManualPrice && item.productId ? storedProductLineOf(item) : null;
+      const productLinePrice = priceEditedProductLine({
+        stored: storedProductLine,
+        quantity: item.quantity,
+        windowChanged: dateChanged,
+      });
+      let lineTax: EditedLineTax = TAX_OF_TODAY;
+      let promotionPercentage: number | null = null;
 
-      if (!isManualPrice && item.productId) {
+      if (productLinePrice.kind === "kept") {
+        totalPrice = productLinePrice.subtotal;
+        finalUnitPrice = productLinePrice.unitPrice;
+        lineTax = productLinePrice.tax;
+      } else if (!isManualPrice && item.productId) {
         // Recalculate with tiers
         const product = await db.query.products.findFirst({
           where: eq(products.id, item.productId),
@@ -2510,17 +2593,26 @@ export async function updateReservation(
             item.quantity,
           );
 
-          const newBreakdown = buildReservationPricingBreakdown({
-            pricingKind: product.pricingKind,
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || "0"),
-            pricingMode: effectivePricingMode,
-            quantity: item.quantity,
-            durationMinutes: itemDurationMinutes,
-            result: seasonalResultForDate,
-          });
-          finalUnitPrice = seasonalResultForDate.subtotal / Math.max(1, item.quantity);
-          totalPrice = seasonalResultForDate.subtotal;
+          // The promotion the line recorded, applied as recorded (slice 11).
+          const priced = cataloguePriceWithRecordedPromotion(
+            {
+              subtotal: seasonalResultForDate.subtotal,
+              breakdown: buildReservationPricingBreakdown({
+                pricingKind: product.pricingKind,
+                basePrice: parseFloat(product.price),
+                deposit: parseFloat(product.deposit || "0"),
+                pricingMode: effectivePricingMode,
+                quantity: item.quantity,
+                durationMinutes: itemDurationMinutes,
+                result: seasonalResultForDate,
+              }),
+            },
+            storedProductLine,
+          );
+          const newBreakdown = priced.breakdown;
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
+          totalPrice = priced.subtotal;
 
           const itemValues = {
             productId: item.productId,
@@ -2539,21 +2631,23 @@ export async function updateReservation(
             });
           }
         } else {
-          const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode);
-          const fallbackPricingKind = toPricingKind(pricingBreakdown?.pricingKind);
-          const itemDuration =
-            fallbackPricingKind === "fixed"
-              ? 1
-              : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
-          totalPrice = finalUnitPrice * itemDuration * item.quantity;
+          // Its product deleted since: only what it stored prices it, or the edit is refused (slice 11).
+          const gone = priceProductGoneLine({
+            stored: storedProductLine,
+            quantity: item.quantity,
+            windowChanged: dateChanged,
+          });
+          if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
+          finalUnitPrice = gone.unitPrice;
+          totalPrice = gone.subtotal;
           const itemValues = {
             productId: item.productId,
             isCustomItem: item.isCustomItem,
             quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            unitPrice: gone.unitPrice.toFixed(2),
             depositPerUnit: item.depositPerUnit,
             totalPrice: totalPrice.toFixed(2),
-            pricingBreakdown: item.pricingBreakdown,
+            pricingBreakdown: gone.breakdown,
           } satisfies ReservationItemUpdateValues;
           if (hasReservationItemChanges(item, itemValues)) {
             itemWrites.push({
@@ -2578,7 +2672,7 @@ export async function updateReservation(
           manualPricingKind === "fixed"
             ? 1
             : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
-        totalPrice = finalUnitPrice * itemDuration * item.quantity;
+        totalPrice = roundToMinorUnit(finalUnitPrice * itemDuration * item.quantity, lineCurrency);
         const nextPricingBreakdown = pricingBreakdown
           ? {
               ...pricingBreakdown,
@@ -2612,6 +2706,8 @@ export async function updateReservation(
         quantity: item.quantity,
         subtotal: Number(totalPrice.toFixed(2)),
         unitPrice: Number(finalUnitPrice.toFixed(2)),
+        tax: lineTax,
+        promotionPercentage,
       });
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
       if (item.productId) {
@@ -2883,9 +2979,6 @@ export async function updateReservation(
   }
 
   const existingDiscount = parseFloat(reservation.discountAmount || "0");
-  const dateChanged =
-    newStartDate.getTime() !== reservation.startDate.getTime() ||
-    newEndDate.getTime() !== reservation.endDate.getTime();
   // What prices a reservation (slice 10): its window, its lines (a line added
   // or removed, a quantity, a deposit, a price typed by hand), its delivery
   // legs and the insurance the store asks for; its discount the edit does not
@@ -3101,13 +3194,36 @@ export async function updateReservation(
               amount(lockedReservation.discountAmount)) *
               perUnit,
           );
+        // On a row that recorded its mode, a line kept at its stored price
+        // that recorded no rate (taxes were off when it was priced) has no
+        // tax fact to keep: it is taxed by today's settings (slice 11), and
+        // when that puts tax on top of it the store is told the same way.
+        const keptLineTaxed =
+          priced.kind === "priced" &&
+          recordedMode !== NOT_RECORDED &&
+          editedLines.some(
+            (line, index) =>
+              line.tax.kind === "not_recorded" && (priced.lines[index]?.taxAmount ?? 0) > 0,
+          );
+        // What the person confirmed is what is written (slice 11): a line the
+        // edit keeps enters at the price read under the locks, which another
+        // edit may have changed since the form read it. The total the form
+        // showed is compared to the minor unit with the total about to be
+        // written; a difference refuses the edit, and the form reads the
+        // reservation again.
+        if (
+          priced.kind === "priced" &&
+          data.expectedTotal !== undefined &&
+          Math.round(newTotalAmount * perUnit) !== Math.round(data.expectedTotal * perUnit)
+        ) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
         const taxAdded =
           priced.kind === "priced" &&
-          recordedMode === NOT_RECORDED &&
-          storedTotalCarriedNoTax &&
           priced.totals.taxEnabled &&
           priced.totals.displayMode === "exclusive" &&
-          (priced.totals.taxAmount ?? 0) > 0;
+          (priced.totals.taxAmount ?? 0) > 0 &&
+          ((recordedMode === NOT_RECORDED && storedTotalCarriedNoTax) || keptLineTaxed);
 
         await tx
           .select({ id: productUnits.id })

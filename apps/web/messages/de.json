@@ -9385,6 +9385,7 @@
     "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "reservationChangedMeanwhile": "Die Reservierung wurde in der Zwischenzeit geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "editTaxAdded": "Der Gesamtbetrag enthält jetzt die Steuer: vorher {previousTotal}, jetzt {newTotal}.",
+    "editProductGonePriceUnknown": "Das Produkt einer Position wurde gelöscht, daher kann ihr Preis für andere Daten nicht berechnet werden. Geben Sie ihren Preis manuell ein und ändern Sie dann die Daten.",
     "endDateBeforeStart": "Das Enddatum muss nach dem Startdatum liegen",
     "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",

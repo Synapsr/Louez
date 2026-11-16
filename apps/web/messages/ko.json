@@ -9385,6 +9385,7 @@
     "reservationStatusChanged": "수정하는 동안 예약 상태가 변경되었습니다. 페이지를 새로고침하고 다시 시도하세요.",
     "reservationChangedMeanwhile": "수정하는 동안 예약이 변경되었습니다. 페이지를 새로고침하고 다시 시도하세요.",
     "editTaxAdded": "이제 합계에 세금이 포함됩니다. 이전 {previousTotal}, 현재 {newTotal}.",
+    "editProductGonePriceUnknown": "항목의 상품이 삭제되어 다른 날짜의 가격을 계산할 수 없습니다. 가격을 직접 입력한 뒤 날짜를 변경하세요.",
     "endDateBeforeStart": "종료 일시는 시작 일시보다 뒤여야 합니다.",
     "negativeAmountOnlyForAdjustment": "마이너스 금액은 조정에만 허용됩니다.",
     "productRequired": "필요한 제품",

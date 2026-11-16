@@ -9385,6 +9385,7 @@
     "reservationStatusChanged": "Status reservasi berubah saat Anda mengedit. Muat ulang halaman dan coba lagi.",
     "reservationChangedMeanwhile": "Reservasi diubah sementara Anda mengedit. Muat ulang halaman dan coba lagi.",
     "editTaxAdded": "Total kini sudah termasuk pajak: sebelumnya {previousTotal}, sekarang {newTotal}.",
+    "editProductGonePriceUnknown": "Produk sebuah baris telah dihapus, sehingga harganya tidak dapat dihitung untuk tanggal lain. Ketik harganya secara manual, lalu ubah tanggalnya.",
     "endDateBeforeStart": "Tanggal akhir harus setelah tanggal mulai",
     "negativeAmountOnlyForAdjustment": "Jumlah negatif hanya diperbolehkan untuk penyesuaian",
     "productRequired": "Produk diperlukan",
