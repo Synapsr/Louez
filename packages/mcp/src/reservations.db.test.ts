@@ -298,9 +298,25 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     const listed = output(await mcpCall(authorization, "reservations_list", { limit: 10 }));
     assert.ok((listed.items as Json[]).some((item) => item.id === pending));
 
+    // A checkout the customer left: its row says when Stripe said its session was over.
+    const settledAt = new Date("2030-05-20T10:00:00Z");
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `rt_pay_${pending.slice(-14)}`,
+      reservationId: pending,
+      amount: "20.00",
+      type: "rental",
+      method: "stripe",
+      status: "cancelled",
+      stripeCheckoutSessionId: `cs_rt_${pending.slice(-14)}`,
+      sessionSettledAt: settledAt,
+    });
     const got = output(await mcpCall(authorization, "reservations_get", { id: pending }));
     assert.equal(got.id, pending);
     assert.equal((got.customer as Json).firstName, "Ada");
+    assert.deepEqual(
+      (got.payments as Json[]).map((payment) => [payment.status, payment.sessionSettledAt]),
+      [["cancelled", settledAt.toISOString()]],
+    );
 
     const poll = output(await mcpCall(authorization, "reservations_poll", {}));
     assert.equal(poll.pendingCount, 1);

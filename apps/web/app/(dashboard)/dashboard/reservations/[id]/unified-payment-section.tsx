@@ -65,7 +65,6 @@ import {
   depositHoldRowKind,
   getCurrencySymbol,
   normalizeCurrency,
-  withLatestFailedHoldOnly,
 } from "@louez/utils";
 import {
   currencyMinorOf,
@@ -103,6 +102,7 @@ import {
   isManualPaymentMethod,
   isManualPaymentRefundEligible,
 } from "./util.payment-refunds";
+import { paymentHistoryRows } from "./util.payment-history";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface Payment {
@@ -130,6 +130,8 @@ interface Payment {
   refundOfPaymentId: string | null;
   /** On a deposit hold the reservation does not keep, until Stripe released it. */
   releaseOwedAt?: Date | string | null;
+  /** On a rental row's Checkout Session: when Stripe said it can no longer be paid. */
+  sessionSettledAt?: Date | string | null;
 }
 
 /** The errors of a deposit hold request that tell the store what to do next. */
@@ -208,7 +210,6 @@ const CARD_BRANDS: Record<string, string> = {
 };
 
 const VISIBLE_HISTORY_COUNT = 3;
-
 
 export function UnifiedPaymentSection({
   reservationId,
@@ -347,9 +348,7 @@ export function UnifiedPaymentSection({
 
   // An authorization the store asked for, which Stripe has not confirmed: asking again
   // asks about that one, never for a second.
-  const holdUnconfirmed = payments.some(
-    (payment) => depositHoldRowKind(payment) === "unconfirmed",
-  );
+  const holdUnconfirmed = payments.some((payment) => depositHoldRowKind(payment) === "unconfirmed");
 
   // Authorization expiration
   const authorizationExpired = depositAuthorizationExpiresAt
@@ -442,11 +441,8 @@ export function UnifiedPaymentSection({
     }),
   );
 
-  // Filter history payments (exclude pending Stripe, and all but the latest refused or
-  // closed deposit hold: every new try leaves one, and none holds money)
-  const historyPayments = withLatestFailedHoldOnly(payments).filter(
-    (p) => !(p.method === "stripe" && p.status === "pending"),
-  );
+  // Money that moved and the attempts that matter (util.payment-history.ts).
+  const historyPayments = paymentHistoryRows(payments);
   const visiblePayments = historyExpanded
     ? historyPayments
     : historyPayments.slice(0, VISIBLE_HISTORY_COUNT);
