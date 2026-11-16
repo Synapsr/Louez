@@ -816,10 +816,11 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     );
 
     const results = await raceOnLockedRow(database, { table: "reservations", id: booking.id }, [
-      // One raises the quantity and keeps the delivery fee it read…
+      // One raises the quantity over the dates it read…
       () => actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
-      // …the other moves both legs to the store, which drops the fee.
-      () => actions.updateReservation(booking.id, { delivery: storeDelivery }),
+      // …the other moves the end a day, for the quantity it read. (Both legs
+      // sent again as stored would change nothing that prices it, slice 10.)
+      () => actions.updateReservation(booking.id, { endDate: new Date(END.getTime() + DAY) }),
     ]);
 
     assert.deepEqual(results.map((result) => result.error ?? "written").sort(), [
@@ -835,10 +836,10 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       lines + Number(row.deliveryFee) - Number(row.discountAmount),
     );
     assert.equal(activity.length, 1);
-    // Whichever won, it is one edit as a whole: 2 bikes with the fee, or 1 without.
+    // Whichever won, it is one edit as a whole: 2 bikes for two days, or 1 for three.
     assert.ok(
       (items[0]?.quantity === 2 && row.totalAmount === "50.00") ||
-        (items[0]?.quantity === 1 && row.totalAmount === "15.00"),
+        (items[0]?.quantity === 1 && row.totalAmount === "40.00"),
       `quantity ${items[0]?.quantity}, total ${row.totalAmount}`,
     );
   });
