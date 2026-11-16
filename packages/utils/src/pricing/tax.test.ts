@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { calculateTaxBreakdown } from "./tax";
+import { calculateTaxBreakdown, roundToMinorUnit } from "./tax";
 
 test("inclusive tax calculation preserves the customer-facing total", () => {
   const calculation = calculateTaxBreakdown({
@@ -192,4 +192,13 @@ test("euro carts are computed exactly as without a currency, which is how they w
       `cart ${cart}`,
     );
   }
+});
+
+test("an amount is rounded in its currency's minor unit, on the decimal value as written", () => {
+  assert.equal(roundToMinorUnit(0.015 * 3, "EUR"), 0.05);
+  assert.equal(roundToMinorUnit(0.015, "EUR"), 0.02);
+  assert.equal(roundToMinorUnit(1.005, "EUR"), 1.01);
+  assert.equal(roundToMinorUnit(-0.045, "EUR"), -0.05);
+  assert.equal(roundToMinorUnit(101.5, "JPY"), 102);
+  assert.equal(roundToMinorUnit(12.34, "EUR"), 12.34);
 });

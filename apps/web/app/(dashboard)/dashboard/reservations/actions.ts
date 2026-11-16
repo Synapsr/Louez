@@ -190,7 +190,7 @@ import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delive
 
 import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
-import { evaluateReservationRules, minorUnitsPerUnit } from "@louez/utils";
+import { evaluateReservationRules, minorUnitsPerUnit, roundToMinorUnit } from "@louez/utils";
 import { recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
@@ -574,6 +574,9 @@ export async function createManualReservation(data: CreateReservationData) {
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  // Frozen at creation: the store can change its currency later (billing contract Q4).
+  // Every line's amount is rounded in its minor unit, as the form rounds it.
+  const currency = reservationCurrency(null, store.settings);
 
   // A booking created as confirmed asks the card gate (README §8.4) before it writes a
   // new customer or calls the routing API. insertReservation asks again under the
@@ -734,9 +737,9 @@ export async function createManualReservation(data: CreateReservationData) {
       return {
         product,
         quantity: item.quantity,
-        unitPrice: effectiveUnitPrice.toFixed(2),
+        unitPrice: roundToMinorUnit(effectiveUnitPrice, currency).toFixed(2),
         depositPerUnit: product.deposit || "0",
-        totalPrice: effectiveSubtotal.toFixed(2),
+        totalPrice: roundToMinorUnit(effectiveSubtotal, currency).toFixed(2),
         pricingBreakdown,
         // What the line chose, as submitted: read against the product under its lock.
         requestedAttributes: item.selectedAttributes,
@@ -758,9 +761,9 @@ export async function createManualReservation(data: CreateReservationData) {
       name: item.name,
       description: item.description,
       quantity: item.quantity,
-      unitPrice: item.unitPrice.toFixed(2),
+      unitPrice: roundToMinorUnit(item.unitPrice, currency).toFixed(2),
       depositPerUnit: item.deposit.toFixed(2),
-      totalPrice: totalPrice.toFixed(2),
+      totalPrice: roundToMinorUnit(totalPrice, currency).toFixed(2),
       pricingBreakdown: {
         basePrice: item.unitPrice,
         effectivePrice: item.unitPrice,
@@ -970,8 +973,8 @@ export async function createManualReservation(data: CreateReservationData) {
         endDate: data.endDate.toISOString(),
       });
       lockedLines.push({
-        unitPrice: priced.unitPrice.toFixed(2),
-        totalPrice: priced.subtotal.toFixed(2),
+        unitPrice: roundToMinorUnit(priced.unitPrice, currency).toFixed(2),
+        totalPrice: roundToMinorUnit(priced.subtotal, currency).toFixed(2),
       });
     }
     const lockedSubtotal =
@@ -997,7 +1000,6 @@ export async function createManualReservation(data: CreateReservationData) {
     // insurance (exempt), the delivery fee and the discount, as the checkout
     // computes them, with the store's tax settings read here (slice 10, M1).
     const taxSettings = availabilityRules?.settings?.tax;
-    const currency = reservationCurrency(null, store.settings);
     const taxedLines = [
       ...lines.map(({ detail }, index) => ({
         subtotal: Number(lockedLines[index]!.totalPrice),

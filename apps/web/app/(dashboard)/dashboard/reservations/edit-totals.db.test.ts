@@ -803,6 +803,45 @@ describe(
         assert.equal(await reservationCount(), before);
       });
 
+      test("a line is rounded as the form rounds it: 3 at 0.015 is 0.05 on both sides", async () => {
+        await useStore({});
+        // A fixed price of 0.03, typed down by half to 0.015, three of them.
+        const id = nextId("prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id,
+          storeId: STORE,
+          name: "Peg",
+          price: "0.03",
+          pricingKind: "fixed",
+          pricingMode: "day",
+          quantity: 20,
+        });
+        const shownTotal = creationTotals({
+          productLines: [{ amount: 0.015 * 3, taxSettings: null }],
+          customLines: [],
+          insuranceAmount: 0,
+          deliveryFee: 0,
+          discountAmount: 0,
+          deposit: 0,
+          taxSettings: undefined,
+          currency: "USD",
+        }).total;
+
+        const result = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: END,
+          items: [{ productId: id, quantity: 3, priceOverride: { unitPrice: 0.015 } }],
+          sendConfirmationEmail: false,
+          expectedTotals: { total: shownTotal, deliveryFee: 0, insuranceAmount: 0 },
+        });
+
+        assert.ok(result.reservationId, JSON.stringify(result));
+        const { row, items } = await stored(result.reservationId);
+        assert.equal(shownTotal, 0.05);
+        assert.deepEqual([items[0]?.totalPrice, row.totalAmount], ["0.05", "0.05"]);
+      });
+
       test("created, then edited with nothing changed: the same totals to the cent", async () => {
         await useStore({ tax: HT });
         const id = await created();

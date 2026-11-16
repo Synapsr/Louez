@@ -84,6 +84,18 @@ export function minorUnitsPerUnit(currency?: string): number {
   return digits === 0 ? 1 : 100
 }
 
+/**
+ * An amount rounded to the currency's minor unit, half away from zero, on
+ * the decimal value as written: 0.045 is 0.05 (where `toFixed(2)` reads the
+ * binary 0.04499… and gives 0.04), ¥101.5 is ¥102. The one rounding of a
+ * line's amount, for the dashboard's creation and its form.
+ */
+export function roundToMinorUnit(amount: number, currency?: string): number {
+  const perUnit = minorUnitsPerUnit(currency)
+  const scaled = Number((Math.abs(amount) * perUnit).toPrecision(15))
+  return (Math.sign(amount) * Math.round(scaled)) / perUnit
+}
+
 function roundMoney(amount: number, perUnit = 100): number {
   return Math.round(amount * perUnit) / perUnit
 }
