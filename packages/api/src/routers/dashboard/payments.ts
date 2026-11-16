@@ -10,6 +10,8 @@ import {
   recordDepositReturnOutput,
   recordPaymentInput,
   recordPaymentOutput,
+  recordRefundInput,
+  recordRefundOutput,
 } from "../../contracts/payment-records";
 import {
   openStripeDashboardInput,
@@ -32,7 +34,8 @@ import {
   deletePayment,
   recordDepositReturn,
   recordPayment,
-  type PaymentRecordsCaller,
+  recordPaymentRefund,
+  type PaymentWriteCaller,
 } from "../../services/payment-records";
 import {
   requireConnectClient,
@@ -219,22 +222,22 @@ const syncStripeStatus = storeProcedure
 const PAYMENTS_WRITE: ProcedureScope = { domain: "payments", level: "write" };
 
 /**
- * What the payment writes take from their context: the app's writer, and
- * the confirmation asked in the write's transaction. All three record, give
- * back or erase money, the deletion included: they declare `money`, so every
- * key and token needs a person's approval whatever its setting, and a
- * session is never asked. The
- * preview's details open with its kind, as the hand-written tools showed them.
- * The presentation's identity facts, with `PAYMENTS_WRITE`, are what a
- * person's approval is about.
+ * What the payment writes take from their context: the app's writer they
+ * use (`paymentRecords`, or `paymentRefunds` for a refund), and the
+ * confirmation asked in the write's transaction. All four record, give back
+ * or erase money, the deletion included: they declare `money`, so every key
+ * and token needs a person's approval whatever its setting, and a session is
+ * never asked. The preview's details open with its kind, as the hand-written
+ * tools showed them. The presentation's identity facts, with
+ * `PAYMENTS_WRITE`, are what a person's approval is about.
  */
-function paymentRecordsCaller(
+function paymentRecordsCaller<Port>(
   context: ProductContext,
   path: readonly string[],
   input: unknown,
   sensitive: "money" | "destructive",
-): PaymentRecordsCaller {
-  const port = context.ports.paymentRecords;
+  port: Port | undefined,
+): PaymentWriteCaller<Port> {
   if (!port) {
     throw apiError("INTERNAL_SERVER_ERROR", "NOT_AVAILABLE_TO_THIS_AGENT", {
       message: "This Louez cannot record payments.",
@@ -299,7 +302,7 @@ const record = storeProcedure
   .output(recordPaymentOutput)
   .handler(async ({ context, input, path }) => {
     const recorded = await recordPayment(
-      paymentRecordsCaller(context, path, input, "money"),
+      paymentRecordsCaller(context, path, input, "money", context.ports.paymentRecords),
       input,
     );
     return { ...recorded, ...reservationLinksFor(context, recorded.reservationId) };
@@ -328,10 +331,51 @@ const recordDepositReturnProcedure = storeProcedure
   .output(recordDepositReturnOutput)
   .handler(async ({ context, input, path }) => {
     const recorded = await recordDepositReturn(
-      paymentRecordsCaller(context, path, input, "money"),
+      paymentRecordsCaller(context, path, input, "money", context.ports.paymentRecords),
       input,
     );
     return { ...recorded, ...reservationLinksFor(context, recorded.reservationId) };
+  });
+
+/**
+ * The refusals a refund answers before anything is asked, each with its
+ * code: as it is in the tool's text, in backticks in the reference's.
+ */
+const inBackticks = (name: string) => "`" + name + "`";
+const refundRefusals = (code: (name: string) => string) =>
+  `a payment the store does not have (${code("PAYMENT_NOT_FOUND")}); an amount that is zero, negative, not a plain decimal with at most 8 digits before the point and 2 after, or with a digit past the minor unit of the payment's currency, such as decimals in yen (${code("REFUND_AMOUNT_INVALID")}); a payment in a three-decimal currency, which Louez's billing does not count (${code("REFUND_CURRENCY_NOT_SUPPORTED")}); a payment that is itself a refund (${code("REFUND_OF_REFUND")}); a deposit, a deposit return or a deposit hold (${code("REFUND_PAYMENT_TYPE_NOT_REFUNDABLE")}); a payment not completed (${code("REFUND_PAYMENT_NOT_COMPLETED")}); a payment taken online through Stripe, whose refunds are not available through this action yet (${code("REFUND_STRIPE_PAYMENT")}); a payment of zero or below (${code("REFUND_PAYMENT_NOT_RECEIVED")}); and an amount above the payment's amount less every completed refund already recorded against it (${code("REFUND_EXCEEDS_REFUNDABLE")}, whose details give the amounts paid, already refunded and refundable, and the currency)`;
+
+const recordRefund = storeProcedure
+  .meta({
+    capability: "reservations.refundManualPayment",
+    scope: PAYMENTS_WRITE,
+    sensitive: "money",
+    personApproval: true,
+    mcp: {
+      name: "record_refund",
+      title: "Record Refund",
+      description: `Record a refund the store already gave by hand (cash, card terminal, transfer, check or other) against one payment of a reservation, taken by hand: a rental, damage, adjustment or kept deposit (deposit_capture) payment, by its id among the payments reservations_get returns. It moves no money: Louez only records it, the payment keeps its amount, and the refund, in the payment's own currency, comes off what the reservation received. Partial refunds may follow one another up to the payment's amount. Refused, before anything is asked, for ${refundRefusals(String)}. ${approvalAsked("a preview of the refund, the payment and what is left to refund")} Returns the refund's id, its currency and its creditNote: issued with its number, pending (owed: Louez issues it, retrying on its own), or not_applicable (the store issues no invoices, or the payment has none). The refund stands whatever its creditNote says. ${LINKS_NOTE}`,
+      bundle: "daily",
+      effect: "additive",
+    },
+  })
+  .route({
+    method: "POST",
+    path: "/payments/{paymentId}/refund-records",
+    description: `Records a refund the store already gave by hand (cash, card terminal, bank transfer, check or other) against one payment it took by hand: a \`rental\`, \`damage\`, \`adjustment\` or \`deposit_capture\` payment. It moves no money. The refund is its own positive \`completed\` row pointing at the payment, in the payment's own currency; the payment keeps its amount. Partial refunds may follow one another, up to the payment's amount less every completed refund already recorded against it, counted under the reservation's lock. Refused, before anything is asked, for ${refundRefusals(inBackticks)}. ${restApprovalAsked("a preview of the refund, the payment and what is left to refund")} Returns the refund's id (\`refundId\`), its \`currency\` and \`creditNote\`: \`status\` \`issued\` with its \`number\`, \`pending\` (owed: Louez issues it, retrying on its own), or \`not_applicable\` (the store issues no invoices, or the payment refunded has none). The refund stands whatever \`creditNote\` says. ${REST_LINKS_NOTE}`,
+  })
+  .input(recordRefundInput)
+  .output(recordRefundOutput)
+  .handler(async ({ context, input, path }) => {
+    const refund = await recordPaymentRefund(
+      {
+        ...paymentRecordsCaller(context, path, input, "money", context.ports.paymentRefunds),
+        dispatchEffects: context.ports.dispatchEffects,
+      },
+      input,
+      { source: "api_record_refund" },
+    );
+    return { ...refund, ...reservationLinksFor(context, refund.reservationId) };
   });
 
 const deletePaymentProcedure = storeProcedure
@@ -357,7 +401,7 @@ const deletePaymentProcedure = storeProcedure
   .output(deletePaymentOutput)
   .handler(async ({ context, input, path }) => {
     const deleted = await deletePayment(
-      paymentRecordsCaller(context, path, input, "destructive"),
+      paymentRecordsCaller(context, path, input, "destructive", context.ports.paymentRecords),
       input,
     );
     return { ...deleted, ...reservationLinksFor(context, deleted.reservationId) };
@@ -367,6 +411,7 @@ export const dashboardPaymentsRouter = {
   payouts,
   record,
   recordDepositReturn: recordDepositReturnProcedure,
+  recordRefund,
   delete: deletePaymentProcedure,
   startStripeOnboarding,
   openStripeDashboard,
