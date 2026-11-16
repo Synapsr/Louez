@@ -1,4 +1,5 @@
 import type { AppliedProductPromotion, PricingBreakdown, ProductTaxSettings } from "@louez/types";
+import { calculateDuration } from "@louez/utils";
 
 import { NOT_RECORDED, recordedPromotion } from "./pricing-facts";
 
@@ -9,7 +10,7 @@ import { NOT_RECORDED, recordedPromotion } from "./pricing-facts";
  * (`updateReservation`) and the edit form's preview, so the form shows what
  * the server writes.
  *
- * Pure, with no runtime import.
+ * Pure: it reads no store and no catalogue.
  */
 
 /** A line priced from its product (no price typed by hand), as it is stored before the edit. */
@@ -108,6 +109,72 @@ export function cataloguePriceWithRecordedPromotion(
     subtotal: applied.subtotal,
     breakdown: { ...regular.breakdown, promotion: applied.promotion },
     promotion: applied.promotion,
+  };
+}
+
+export type ProductGoneLinePrice =
+  | {
+      kind: "priced";
+      subtotal: number;
+      unitPrice: number;
+      breakdown: PricingBreakdown | null;
+      /** Its window moved: priced from its booked price per period, now a price typed by hand. */
+      scaled: boolean;
+    }
+  /** Its window moved and its booked duration was not recorded: no price follows from what it recorded. */
+  | { kind: "refused" };
+
+/**
+ * A line whose product was deleted since, which the edit changes (an
+ * untouched one keeps its price, `priceEditedProductLine`). Its stored unit
+ * price is the whole period's price per unit, so it is never multiplied by
+ * the duration again. It follows what it recorded:
+ *
+ * - its quantity changed, the window as it was: the same price per unit;
+ * - its window moved: its price per period, its stored total divided by the
+ *   duration and quantity it recorded, over the new duration; the line then
+ *   holds a price typed by hand, and the store is told (`scaled`). A
+ *   fixed-price line keeps its price per unit;
+ * - its window moved and no duration recorded: refused, never another price.
+ */
+export function priceProductGoneLine(input: {
+  stored: StoredProductLine | null;
+  quantity: number;
+  windowChanged: boolean;
+  window: { start: Date; end: Date };
+}): ProductGoneLinePrice {
+  const { stored } = input;
+  if (!stored || stored.quantity <= 0) return { kind: "refused" };
+  // What the line recorded of its pricing: a breakdown written only to record
+  // facts (slice 9) records its duration and mode too.
+  const recorded = stored.pricingBreakdown;
+  if (!input.windowChanged || recorded?.pricingKind === "fixed") {
+    const perUnit = round2(stored.totalPrice / stored.quantity);
+    return {
+      kind: "priced",
+      subtotal: round2(perUnit * input.quantity),
+      unitPrice: perUnit,
+      breakdown: stored.pricingBreakdown,
+      scaled: false,
+    };
+  }
+  if (!recorded || !(recorded.duration > 0) || !recorded.pricingMode) return { kind: "refused" };
+  const perPeriod = round2(stored.totalPrice / (recorded.duration * stored.quantity));
+  const duration = calculateDuration(input.window.start, input.window.end, recorded.pricingMode);
+  // A price typed by hand from now on, read as one by later edits.
+  const { factsOnly: _factsOnly, ...basis } = recorded;
+  return {
+    kind: "priced",
+    subtotal: round2(perPeriod * duration * input.quantity),
+    unitPrice: perPeriod,
+    breakdown: {
+      ...basis,
+      basePrice: perPeriod,
+      effectivePrice: perPeriod,
+      duration,
+      isManualOverride: true,
+    },
+    scaled: true,
   };
 }
 

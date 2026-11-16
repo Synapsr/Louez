@@ -631,7 +631,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
   });
 
   describe("a line whose breakdown only records its facts (slice 9)", () => {
-    test("its product deleted, its dates moved: priced as a line with no breakdown, as before", async () => {
+    test("its product deleted, its dates moved: priced from the duration its facts recorded", async () => {
       // 10.00 an hour, booked for two hours by the checkout: 20.00.
       const hourly = nextId("prd");
       await louezDb.db.insert(louezDb.products).values({
@@ -696,9 +696,9 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       });
 
       assert.equal(result.error, undefined);
-      // The fallback for a product gone reads no breakdown: the day it defaults to, once.
+      // Its facts recorded two hours for 20.00: 10.00 an hour, three hours (slice 11).
       const { row, items } = await rowsOf(id);
-      assert.deepEqual([items[0]?.totalPrice, row?.totalAmount], ["20.00", "20.00"]);
+      assert.deepEqual([items[0]?.totalPrice, row?.totalAmount], ["30.00", "30.00"]);
     });
   });
 

@@ -22,6 +22,7 @@ import {
 import {
   cataloguePriceWithRecordedPromotion,
   priceEditedProductLine,
+  priceProductGoneLine,
   type StoredProductLine,
 } from "@louez/api/services/edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
@@ -2218,6 +2219,8 @@ export async function updateReservation(
   // does not change at its stored price, the others by the edit's rules
   // (slice 11); the tax engine totals them under the locks (slice 10).
   const editedLines: Array<Omit<EditedLine, "taxExempt"> & { id: string }> = [];
+  // The lines whose product was deleted, priced again for a moved window from their price per period.
+  const productGoneRepricedNames: string[] = [];
   let linesChanged = false;
   let newDepositAmount = 0;
   let nextTulipInsuranceAmount: number | null = null;
@@ -2414,6 +2417,19 @@ export async function updateReservation(
           promotionPercentage = priced.promotion?.percentage ?? null;
           finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
           totalPrice = priced.subtotal;
+        } else {
+          // Its product deleted since: priced from what the line recorded (slice 11).
+          const gone = priceProductGoneLine({
+            stored: storedProductLine,
+            quantity: item.quantity,
+            windowChanged: dateChanged,
+            window: { start: newStartDate, end: newEndDate },
+          });
+          if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
+          finalUnitPrice = gone.unitPrice;
+          totalPrice = gone.subtotal;
+          pricingBreakdown = gone.breakdown;
+          if (gone.scaled) productGoneRepricedNames.push(item.productSnapshot.name);
         }
       } else if (item.isManualPrice) {
         pricingBreakdown = {
@@ -2624,21 +2640,25 @@ export async function updateReservation(
             });
           }
         } else {
-          const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode);
-          const fallbackPricingKind = toPricingKind(pricingBreakdown?.pricingKind);
-          const itemDuration =
-            fallbackPricingKind === "fixed"
-              ? 1
-              : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
-          totalPrice = finalUnitPrice * itemDuration * item.quantity;
+          // Its product deleted since: priced from what the line recorded (slice 11).
+          const gone = priceProductGoneLine({
+            stored: storedProductLine,
+            quantity: item.quantity,
+            windowChanged: dateChanged,
+            window: { start: newStartDate, end: newEndDate },
+          });
+          if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
+          finalUnitPrice = gone.unitPrice;
+          totalPrice = gone.subtotal;
+          if (gone.scaled) productGoneRepricedNames.push(item.productSnapshot.name);
           const itemValues = {
             productId: item.productId,
             isCustomItem: item.isCustomItem,
             quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            unitPrice: gone.unitPrice.toFixed(2),
             depositPerUnit: item.depositPerUnit,
             totalPrice: totalPrice.toFixed(2),
-            pricingBreakdown: item.pricingBreakdown,
+            pricingBreakdown: gone.breakdown,
           } satisfies ReservationItemUpdateValues;
           if (hasReservationItemChanges(item, itemValues)) {
             itemWrites.push({
@@ -3713,6 +3733,10 @@ export async function updateReservation(
       params: warning.params,
     })),
     ...tulipWarnings,
+    ...productGoneRepricedNames.map((name) => ({
+      key: "errors.editProductGoneRepriced",
+      params: { name },
+    })),
     // Repriced, a total stored without its tax now carries it: the store is told.
     ...(transactionResult.taxAdded
       ? [

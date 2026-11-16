@@ -434,8 +434,9 @@ describe(
 
         assert.equal(result.error, undefined);
         const [gone] = await items(id);
-        // Today: 90.00 × 3 days × 2.
-        assert.equal(gone?.totalPrice, "540.00");
+        // Its price per unit for the whole window, 90.00, twice.
+        assert.equal(gone?.totalPrice, "180.00");
+        assert.equal(gone?.unitPrice, "90.00");
       });
 
       test("its window moved, its booked duration recorded", async () => {
@@ -449,8 +450,40 @@ describe(
 
         assert.equal(result.error, undefined);
         const [gone] = await items(id);
-        // Today: 90.00 × 4 days.
-        assert.equal(gone?.totalPrice, "360.00");
+        // 90.00 for three days is 30.00 a day: four days, 120.00, now a price typed by hand.
+        assert.equal(gone?.totalPrice, "120.00");
+        assert.equal(gone?.unitPrice, "30.00");
+        assert.equal(gone?.pricingBreakdown?.isManualOverride, true);
+        assert.equal(gone?.pricingBreakdown?.duration, 4);
+        assert.deepEqual(
+          result.warnings?.filter((warning) => warning.key === "errors.editProductGoneRepriced"),
+          [{ key: "errors.editProductGoneRepriced", params: { name: gone?.productSnapshot.name } }],
+        );
+      });
+
+      test("its window moved, its duration recorded by a breakdown of facts only: priced by hand from then on", async () => {
+        await useStore({});
+        const { id } = await goneLine(breakdownOf(3, 30, { promotion: null, factsOnly: true }));
+
+        const result = await actions.updateReservation(id, { endDate: FOUR_DAYS });
+
+        assert.equal(result.error, undefined);
+        const [gone] = await items(id);
+        assert.equal(gone?.totalPrice, "120.00");
+        // A full breakdown now: a later edit reads its price typed by hand.
+        assert.equal(gone?.pricingBreakdown?.factsOnly, undefined);
+        assert.equal(gone?.pricingBreakdown?.isManualOverride, true);
+      });
+
+      test("its window moved through a date change alone, its booked duration recorded", async () => {
+        await useStore({});
+        const { id } = await goneLine();
+
+        const result = await actions.updateReservation(id, { endDate: FOUR_DAYS });
+
+        assert.equal(result.error, undefined);
+        const [gone] = await items(id);
+        assert.equal(gone?.totalPrice, "120.00");
       });
 
       test("its window moved, its booked duration not recorded", async () => {
@@ -462,10 +495,11 @@ describe(
           items: await formLines(id),
         });
 
-        assert.equal(result.error, undefined);
+        // No price follows from what it recorded: refused, nothing written.
+        assert.equal(result.error, "errors.editProductGonePriceUnknown");
         const [gone] = await items(id);
-        assert.equal(gone?.totalPrice, "360.00");
-        assert.equal((await reservationRow(id)).endDate.getTime(), FOUR_DAYS.getTime());
+        assert.equal(gone?.totalPrice, "90.00");
+        assert.equal((await reservationRow(id)).endDate.getTime(), THREE_DAYS.getTime());
       });
     });
   },
