@@ -322,6 +322,8 @@ export interface StripeRefundChecked {
   grossMinor: number | null;
   refunds: readonly { id: string; amountMinor: number }[];
   openOperations: readonly { id: string; amountMinor: number }[];
+  /** Every dispute ever opened on the payment, by id: one opening since ends an approval. */
+  disputes: readonly string[];
   ceiling: {
     paidMinor: number;
     refundedMinor: number;
@@ -344,8 +346,15 @@ export interface StripeRefundView {
   refundPaymentId: string | null;
   failureCode: string | null;
   failureMessage: string | null;
-  /** The refund row's credit note: issued, still owed, or none to issue. */
-  creditNote: { status: "issued" | "pending" | "not_applicable"; number: string | null };
+  /**
+   * The refund row's credit note: issued, still owed, or none to issue. `needsCorrection`
+   * when the refund failed after its note was issued: the note stands, the store corrects it.
+   */
+  creditNote: {
+    status: "issued" | "pending" | "not_applicable";
+    number: string | null;
+    needsCorrection: boolean;
+  };
 }
 
 /** The app's service of the refund of an online payment (`ApiPorts.stripeRefunds`). */
@@ -378,12 +387,13 @@ export interface StripeRefundsPort {
   /** After the commit: one attempt through the outbox's sender, with a short timeout. Never throws. */
   attempt: (effectIds: readonly string[]) => Promise<void>;
   /**
-   * The store's operation of that id on that payment; null when it has none. With
-   * `reconcile`, an open one is first given one bounded attempt to settle.
+   * The store's operation of that id on that payment (on any of its payments with
+   * `paymentId` null); null when it has none. With `reconcile`, an open one is first
+   * given one bounded attempt to settle, unless an attempt was made too recently.
    */
   get: (input: {
     storeId: string;
-    paymentId: string;
+    paymentId: string | null;
     operationId: string;
     reconcile: boolean;
   }) => Promise<StripeRefundView | null>;

@@ -13,6 +13,7 @@ import type {
   StripeRefundView,
   StripeRefundsPort,
 } from "../platform/ports";
+import { recordOperationTarget } from "../platform/operations";
 import { refundOnlinePresentation } from "./approval-presentations";
 import { currencyFit, currencyMinorOf, paymentAmount } from "./payment-amount";
 import {
@@ -36,9 +37,14 @@ import {
  * disputed, a refund row or a hold, a charge on several reservations, and an amount past
  * what the charge can still give back. The approval binds the payment, the amount, the
  * charge and the account, and the charge's state (the payment's status and gross, the
- * refunds that stand on it, the open operations): a refund landing in between ends it.
- * Once the operation is recorded the answer is always the operation's state: `pending`
- * when Stripe has not given the outcome, never an error.
+ * refunds that stand on it, the open operations, the disputes ever opened on it): a
+ * refund or a dispute landing in between ends it (`state_changed`). The approval is
+ * spent only with the operation it gives: a refusal after it was consumed is thrown in
+ * the transaction, which rolls the consumption back. The operation is the call's target
+ * (`recordOperationTarget`): a key whose answer was lost after the commit is answered
+ * with the refund as it is now (`recoverOnlineRefund`). Once the operation is recorded
+ * the answer is always the operation's state: `pending` when Stripe has not given the
+ * outcome, never an error.
  */
 
 /** Who refunds: the store, the app's service, the confirmation, and who asks. */
@@ -166,6 +172,8 @@ export async function refundOnlinePayment(
     if (!checking.ok) return refused(refusalError(checking.refusal, input.paymentId));
     const { checked } = checking;
     const left = checked.ceiling.refundableMinor - amountMinor;
+    // What the payment took, before any refund: its row's amount is what it keeps now.
+    const paid = decimalOf(checked.ceiling.paidMinor, currency);
     const details = {
       paymentId: found.id,
       reservationId: found.reservationId,
@@ -174,12 +182,12 @@ export async function refundOnlinePayment(
     };
     const refusal = await caller.confirm(tx, {
       preview: {
-        summary: `Refund ${moneyIn(amount, currency)} of the online ${found.type} payment of ${moneyIn(found.amount, currency)} on reservation #${found.number} to ${charge.card ? `the ${charge.card.brand} card ending ${charge.card.last4}` : "the means that paid"}.`,
+        summary: `Refund ${moneyIn(amount, currency)} of the online ${found.type} payment of ${moneyIn(paid, currency)} on reservation #${found.number} to ${charge.card ? `the ${charge.card.brand} card ending ${charge.card.last4}` : "the means that paid"}.`,
         details: {
           ...details,
           currency,
           reason: request.reason,
-          payment: { type: found.type, amount: found.amount, method: found.method },
+          payment: { type: found.type, amount: paid, method: found.method },
           alreadyRefunded: decimalOf(checked.ceiling.refundedMinor, currency),
           refundableAfter: decimalOf(left, currency),
           ...(request.notes ? { notes: request.notes } : {}),
@@ -202,12 +210,13 @@ export async function refundOnlinePayment(
         },
         refunds: checked.refunds,
         openOperations: checked.openOperations,
+        disputes: checked.disputes,
       },
       presentation: refundOnlinePresentation(
         { ...details, reason: request.reason },
         {
           type: found.type,
-          amount: found.amount,
+          amount: paid,
           method: found.method,
           currency,
           paidAt: found.paidAt ?? found.createdAt,
@@ -224,7 +233,14 @@ export async function refundOnlinePayment(
       approvalId: caller.approvalId,
       requestedBy: caller.requestedBy,
     });
-    if (!requested.ok) return refused(refusalError(requested.refusal, input.paymentId));
+    // The approval was consumed above: a refusal now is thrown, so the transaction rolls
+    // the consumption back with it and the approval stays approved. Only what is read
+    // unlocked can refuse here (a dispute the webhook committed since the check); the
+    // approval binds it, so a later call ends the approval `state_changed` once it is
+    // no longer refused for it.
+    if (!requested.ok) throw refusalError(requested.refusal, input.paymentId);
+    // A key whose answer is lost after the commit is answered with this refund.
+    await recordOperationTarget(tx, requested.operationId);
     return {
       ok: true,
       value: { operationId: requested.operationId, effectIds: requested.effectIds },
@@ -258,10 +274,30 @@ export async function refundOnlinePayment(
       refundPaymentId: null,
       failureCode: null,
       failureMessage: null,
-      creditNote: { status: "pending", number: null },
+      creditNote: { status: "pending", number: null, needsCorrection: false },
     },
     found,
   );
+}
+
+/**
+ * The refund a call recorded, as it is now, for its key whose answer was lost after the
+ * commit (`meta.recoverUnknown`): read, never settled, never sent again.
+ */
+export async function recoverOnlineRefund(
+  caller: { storeId: string; port: StripeRefundsPort },
+  operationId: string,
+): Promise<Omit<RefundPaymentOutput, "links">> {
+  const view = await caller.port.get({
+    storeId: caller.storeId,
+    paymentId: null,
+    operationId,
+    reconcile: false,
+  });
+  if (!view) throw new Error("The refund an operation recorded is gone.");
+  const found = await storePayment(db, caller.storeId, view.paymentId);
+  if (!found) throw new Error("The payment an operation refunded is gone.");
+  return refundAnswer(view, found);
 }
 
 /**

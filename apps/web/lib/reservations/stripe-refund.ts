@@ -104,6 +104,17 @@ const KEY_SENDABLE_HOURS = 23;
  */
 const KEY_WINDOW_HOURS = 24;
 
+/**
+ * After an attempt that did not settle the operation, no other attempt (the outbox's,
+ * the scheduled pass's, a read's) reaches Stripe for this long: a quarter of the
+ * operation's age, at least 30 seconds (the rhythm the reference gives callers that
+ * poll) and at most an hour. Repeated answers that tell nothing space out as the
+ * operation ages; a caller reading it meanwhile gets its state as stored.
+ */
+export const REFUND_RETRY_MIN_SECONDS = 30;
+export const REFUND_RETRY_MAX_SECONDS = 3_600;
+const retryNotBefore = sql`NOW() + INTERVAL GREATEST(${REFUND_RETRY_MIN_SECONDS}, LEAST(${REFUND_RETRY_MAX_SECONDS}, TIMESTAMPDIFF(SECOND, ${paymentRefundOperations.createdAt}, NOW()) DIV 4)) SECOND`;
+
 /** An open operation gets a new outbox row this long after its last one. */
 const REFUND_REQUEUE_HOURS = 1;
 
@@ -368,6 +379,8 @@ export type CheckedStripeRefund = {
   readonly refunds: readonly { readonly id: string; readonly amountMinor: number }[];
   /** The open operations on the charge's rows. */
   readonly openOperations: readonly { readonly id: string; readonly amountMinor: number }[];
+  /** Every dispute ever opened on the payment, by id. */
+  readonly disputes: readonly string[];
   readonly ceiling: {
     readonly paidMinor: number;
     readonly refundedMinor: number;
@@ -458,12 +471,16 @@ export async function checkStripeRefund(
     return refused({ code: "REFUND_CURRENCY_NOT_SUPPORTED", currency });
   }
 
-  const [dispute] = await tx
-    .select({ id: paymentDisputes.id })
+  // Read committed, unlocked: the dispute webhook takes no lock of the reservation's, so
+  // one may land between two reads of one transaction (an approval binds their ids).
+  const disputes = await tx
+    .select({ id: paymentDisputes.id, status: paymentDisputes.status })
     .from(paymentDisputes)
-    .where(and(eq(paymentDisputes.paymentId, input.paymentId), eq(paymentDisputes.status, "open")))
-    .limit(1);
-  if (dispute) return refused({ code: "PAYMENT_DISPUTED" });
+    .where(eq(paymentDisputes.paymentId, input.paymentId))
+    .orderBy(asc(paymentDisputes.id));
+  if (disputes.some((dispute) => dispute.status === "open")) {
+    return refused({ code: "PAYMENT_DISPUTED" });
+  }
 
   if (input.approvalId) {
     const [used] = await tx
@@ -502,6 +519,7 @@ export async function checkStripeRefund(
     openOperations: operations
       .filter((operation) => isOpenRefundStatus(operation.status))
       .map(({ id, amountMinor }) => ({ id, amountMinor })),
+    disputes: disputes.map((dispute) => dispute.id),
     ceiling: figures,
   };
 }
@@ -714,7 +732,8 @@ type Claim =
 
 /**
  * Claims the operation for one sender, under the reservation's row lock then the
- * operation's, on the database's clock. An operation another sender holds is `busy`.
+ * operation's, on the database's clock. An operation another sender holds, or one whose
+ * last attempt set a time before which none is made (`claimed_until`), is `busy`.
  * The time of the request is written before it leaves: a process that dies leaves it.
  */
 async function claimOperation(database: Database, operationId: string): Promise<Claim> {
@@ -781,13 +800,20 @@ async function claimOperation(database: Database, operationId: string): Promise<
   }, REFUND_TRANSACTION);
 }
 
-/** Gives the operation back, only under the claim this sender holds. */
+/**
+ * Gives the operation back, only under the claim this sender holds. One still open
+ * waits before the next attempt (`retryNotBefore`), whoever makes it.
+ */
 async function releaseClaim(database: Database, operation: ClaimedOperation): Promise<void> {
   await database.transaction(async (tx) => {
     await lockRefundReservation(tx, operation.reservationId);
+    const o = paymentRefundOperations;
     await tx
-      .update(paymentRefundOperations)
-      .set({ claimToken: null, claimedUntil: null })
+      .update(o)
+      .set({
+        claimToken: null,
+        claimedUntil: sql`CASE WHEN ${o.status} IN ('requested', 'unresolved') THEN ${retryNotBefore} ELSE NULL END`,
+      })
       .where(
         and(
           eq(paymentRefundOperations.id, operation.id),
@@ -959,7 +985,9 @@ export async function sendRefundOperation(
   if (claim.kind === "gone") return { skipped: "The refund operation is gone." };
   if (claim.kind === "settled") return { skipped: "The refund operation is settled." };
   if (claim.kind === "busy") {
-    throw new Error(`refund operation ${operationId} is being sent by another sender`);
+    throw new Error(
+      `refund operation ${operationId} is being sent by another sender, or waits before its next attempt`,
+    );
   }
   const { operation } = claim;
   try {
@@ -988,9 +1016,11 @@ export const RECONCILE_ON_READ_MS = 10_000;
 /**
  * One attempt to settle an open operation for a caller that reads it: the outbox's own
  * sender, under the operation's own rules (its key while it may be sent, the lookup
- * after), never a second request beyond them. Waits at most `timeoutMs`; what is left
- * goes on, under the sender's claim. Never throws: an outcome not known yet is the
- * operation's state, as read after.
+ * after), never a second request beyond them. None while another attempt holds it or
+ * before the time the last one set (`REFUND_RETRY_MIN_SECONDS`): the read answers the
+ * state as stored, so reading often never calls Stripe more often. Waits at most
+ * `timeoutMs`; what is left goes on, under the sender's claim. Never throws: an outcome
+ * not known yet is the operation's state, as read after.
  */
 export async function reconcileRefundOperation(
   deps: StripeRefundDeps,

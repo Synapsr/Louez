@@ -16,6 +16,13 @@ const ACCOUNT = "acct_fee_reversal";
 // Named locks are server-wide: other suites on the same MySQL must not share them.
 const RUN = randomBytes(4).toString("hex");
 
+/** A reversal's figures, without the time they were read (it differs every run). */
+const figures = (result: object): object => {
+  const { readAt, ...rest } = result as { readAt?: unknown };
+  if ("status" in rest && rest.status !== "no_fee") assert.equal(typeof readAt, "string");
+  return rest;
+};
+
 type FakeCharge = {
   /** What was authorized. */
   amount: number;
@@ -172,7 +179,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(first, {
+    assert.deepEqual(figures(first), {
       status: "refunded",
       feeId,
       targetMinor: 83,
@@ -193,7 +200,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(again, {
+    assert.deepEqual(figures(again), {
       status: "unchanged",
       feeId,
       targetMinor: 167,
@@ -248,7 +255,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
     // The won dispute counts for nothing: a refund of 5,000 aims at 125, below the 250
     // refunded. Counted, it would aim at 375 and refund 125 Stripe never takes back.
     charge.amountRefunded = 5_000;
-    assert.deepEqual(await reverse(), {
+    assert.deepEqual(figures(await reverse()), {
       status: "unchanged",
       feeId,
       targetMinor: 125,
@@ -273,11 +280,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
     // All of the 60.00 refunded: the store keeps nothing, the whole fee goes back.
     fullCharge.amountRefunded = 6_000;
     assert.deepEqual(
-      await reversal.reverseFeeAtSource({
-        chargeId: full.chargeId,
-        accountId: ACCOUNT,
-        stripe: stripe.port,
-      }),
+      figures(
+        await reversal.reverseFeeAtSource({
+          chargeId: full.chargeId,
+          accountId: ACCOUNT,
+          stripe: stripe.port,
+        }),
+      ),
       {
         status: "refunded",
         feeId: full.feeId,
@@ -293,11 +302,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
     assert.ok(partialCharge);
     partialCharge.amountRefunded = 1_500;
     assert.deepEqual(
-      await reversal.reverseFeeAtSource({
-        chargeId: partial.chargeId,
-        accountId: ACCOUNT,
-        stripe: stripe.port,
-      }),
+      figures(
+        await reversal.reverseFeeAtSource({
+          chargeId: partial.chargeId,
+          accountId: ACCOUNT,
+          stripe: stripe.port,
+        }),
+      ),
       {
         status: "refunded",
         feeId: partial.feeId,
@@ -310,11 +321,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
     // A chargeback on 30.00 of the rest counts on the same base: 15.00 + 30.00 of 60.00.
     partialCharge.disputes = [{ id: "dp_partial", amount: 3_000, status: "needs_response" }];
     assert.deepEqual(
-      await reversal.reverseFeeAtSource({
-        chargeId: partial.chargeId,
-        accountId: ACCOUNT,
-        stripe: stripe.port,
-      }),
+      figures(
+        await reversal.reverseFeeAtSource({
+          chargeId: partial.chargeId,
+          accountId: ACCOUNT,
+          stripe: stripe.port,
+        }),
+      ),
       {
         status: "refunded",
         feeId: partial.feeId,
@@ -337,7 +350,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(result, {
+    assert.deepEqual(figures(result), {
       status: "refunded",
       feeId,
       targetMinor: 625,
@@ -360,7 +373,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       accountId: ACCOUNT,
       stripe: stripe.port,
     });
-    assert.deepEqual(result, {
+    assert.deepEqual(figures(result), {
       status: "unchanged",
       feeId,
       targetMinor: 150,

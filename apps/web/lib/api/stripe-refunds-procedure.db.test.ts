@@ -127,11 +127,14 @@ function fakeStripe() {
   const creates: string[] = [];
   const behaviours: Behaviour[] = [];
   const failures = { list: 0 };
+  /** Every call that reads Stripe, besides `creates`. */
+  const reads = { charge: 0, list: 0 };
   let sequence = 0;
   const moved = (refunds: ProviderRefund[]) =>
     refunds.filter((r) => r.status !== "failed").reduce((sum, r) => sum + r.amount, 0);
   const port: StripeRefundPort = {
     async readCharge(_accountId, chargeId) {
+      reads.charge++;
       const charge = charges.get(chargeId);
       if (!charge) throw new Error(`No such charge: ${chargeId}`);
       return {
@@ -175,6 +178,7 @@ function fakeStripe() {
       return { kind: "created", refund };
     },
     async listChargeRefunds({ chargeId }) {
+      reads.list++;
       if (failures.list > 0) {
         failures.list--;
         throw new Error("Stripe could not be listed");
@@ -182,7 +186,9 @@ function fakeStripe() {
       return { refunds: charges.get(chargeId)?.refunds ?? [], hasMore: false };
     },
   };
-  return { port, charges, creates, behaviours, failures };
+  /** Every call this Stripe was made, so far. */
+  const calls = () => creates.length + reads.charge + reads.list;
+  return { port, charges, creates, behaviours, failures, calls };
 }
 
 describe(
@@ -207,6 +213,8 @@ describe(
       headers?: Record<string, string>,
     ) => Promise<unknown>;
     const stripe = fakeStripe();
+    /** Runs between the checks a person approved and the operation's record. */
+    const hooks: { beforeRequest?: () => Promise<void> } = {};
     let counter = 0;
 
     before(async () => {
@@ -229,13 +237,21 @@ describe(
         storage: createMemoryStorage(),
         urls: createTestUrls(),
         afterCommit: () => {},
-        stripeRefunds: createStripeRefundsPort({
-          ...deps,
-          senders: async () =>
-            createStripeRefundEffectSenders(
-              deps,
-            ) as unknown as import("@louez/api/platform/effects").ApiEffectSenders,
-        }),
+        stripeRefunds: ((port) => ({
+          ...port,
+          request: async (...args: Parameters<typeof port.request>) => {
+            await hooks.beforeRequest?.();
+            return port.request(...args);
+          },
+        }))(
+          createStripeRefundsPort({
+            ...deps,
+            senders: async () =>
+              createStripeRefundEffectSenders(
+                deps,
+              ) as unknown as import("@louez/api/platform/effects").ApiEffectSenders,
+          }),
+        ),
       };
       const { appRouter } = await import("@louez/api/router");
       const { createExposure } = await import("@louez/api/platform/exposure");
@@ -340,6 +356,7 @@ describe(
     beforeEach(() => {
       stripe.creates.length = 0;
       stripe.behaviours.length = 0;
+      hooks.beforeRequest = undefined;
     });
 
     type Permissions = Parameters<typeof apiKeys.createApiKey>[0]["permissions"];
@@ -467,6 +484,13 @@ describe(
         .from(louezDb.paymentRefundOperations)
         .where(orm.eq(louezDb.paymentRefundOperations.paymentId, paymentId));
 
+    /** The wait the refund's last attempt set is over, as it is 30 seconds later. */
+    const waitPassed = (operationId: string) =>
+      louezDb.db
+        .update(louezDb.paymentRefundOperations)
+        .set({ claimedUntil: null })
+        .where(orm.eq(louezDb.paymentRefundOperations.id, operationId));
+
     /** Asks, approves and carries the refund out; answers the carried-out call. */
     async function refunded(authorization: string, args: Json) {
       const id = approvalOf(await mcpCall(authorization, "refund_payment", args));
@@ -557,10 +581,16 @@ describe(
       assert.equal((errorOf(again)?.details as { reason?: string })?.reason, "used");
       assert.equal(stripe.creates.length, 1);
 
-      // A second partial refund, then the rest is refused past what is left.
-      const second = answer(
-        (await refunded(authorization, { paymentId: paid.paymentId, amount: "75.00" })).result,
-      );
+      // A second partial refund, then the rest is refused past what is left. Its approval
+      // names the payment as it was taken, 120.00, not the 75.00 it keeps now.
+      const secondAsk = await refunded(authorization, {
+        paymentId: paid.paymentId,
+        amount: "75.00",
+      });
+      const preview = JSON.stringify(await approvalRow(secondAsk.id));
+      assert.match(preview, /payment of \D*120\.00/);
+      assert.doesNotMatch(preview, /payment of \D*75\.00/);
+      const second = answer(secondAsk.result);
       assert.equal(second.refund.status, "succeeded");
       const over = await mcpCall(authorization, "refund_payment", {
         paymentId: paid.paymentId,
@@ -604,6 +634,7 @@ describe(
       assert.equal(pending.refund.status, "pending");
       assert.equal(pending.refund.detail, "sending");
 
+      await waitPassed(pending.refund.id);
       const read = answer(
         await mcpCall(authorization, "get_refund", {
           paymentId: paid.paymentId,
@@ -672,6 +703,186 @@ describe(
       );
       assert.deepEqual([jpy.refund.amount, jpy.refund.currency], ["1500", "JPY"]);
       assert.equal(stripe.charges.get(yen.chargeId)?.refunds[0]?.amount, 1_500);
+    });
+
+    test("a dispute landing between the checks and the record refuses the call and leaves the approval approved; it then ends state_changed", async () => {
+      const authorization = await key();
+      const paid = await onlinePayment();
+      const args = { paymentId: paid.paymentId, amount: "45.00" };
+      const id = approvalOf(await mcpCall(authorization, "refund_payment", args));
+      await approve(id);
+      // The dispute webhook commits, taking no lock of the reservation's, once the call
+      // checked the payment and consumed the approval.
+      const disputeId = `dp_srf_${++counter}`;
+      hooks.beforeRequest = async () => {
+        hooks.beforeRequest = undefined;
+        await louezDb.db.insert(louezDb.paymentDisputes).values({
+          id: disputeId,
+          paymentId: paid.paymentId,
+          reservationId: paid.reservationId,
+          amountMinor: 12_000,
+          currency: "EUR",
+          status: "open",
+          stripeStatus: "needs_response",
+        } as never);
+      };
+      const refused = await mcpCall(authorization, "refund_payment", {
+        ...args,
+        confirmationToken: id,
+      });
+      assert.equal(errorOf(refused)?.code, "PAYMENT_DISPUTED", textOf(refused));
+      assert.equal((await approvalRow(id)).status, "approved", "the approval is not spent");
+      assert.deepEqual(await operationsOf(paid.paymentId), []);
+      assert.deepEqual(stripe.creates, []);
+
+      // While it is open, refused before the approval is looked at.
+      const still = await mcpCall(authorization, "refund_payment", {
+        ...args,
+        confirmationToken: id,
+      });
+      assert.equal(errorOf(still)?.code, "PAYMENT_DISPUTED");
+      // Won since: the payment is not as the person saw it.
+      await louezDb.db
+        .update(louezDb.paymentDisputes)
+        .set({ status: "won" })
+        .where(orm.eq(louezDb.paymentDisputes.id, disputeId));
+      const late = await mcpCall(authorization, "refund_payment", {
+        ...args,
+        confirmationToken: id,
+      });
+      assert.equal(errorOf(late)?.code, "APPROVAL_INVALID");
+      assert.equal((errorOf(late)?.details as { reason?: string })?.reason, "state_changed");
+      assert.deepEqual(stripe.creates, []);
+    });
+
+    test("a refund whose answer was not recorded after its commit is answered, then answered from its key as it is now", async () => {
+      const authorization = await key();
+      const paid = await onlinePayment();
+      const path = `/payments/${paid.paymentId}/refunds`;
+      const body = { amount: "45.00" };
+      const asked = await openApi("POST", path, body, { authorization });
+      const id = ((await asked.json()) as { data?: { details?: { approval?: { id: string } } } })
+        .data?.details?.approval?.id;
+      assert.ok(id);
+      await approve(id);
+      const headers = { authorization, "louez-confirmation": id, "idempotency-key": "lost-1" };
+      // The record of the answer fails, after the refund committed.
+      const connection = await database.connect();
+      await connection.query(`CREATE TRIGGER srf_lose_answer BEFORE UPDATE ON api_operations FOR EACH ROW
+      BEGIN
+        IF NEW.status = 'succeeded' AND NEW.procedure = 'dashboard.payments.refund' THEN
+          SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the answer is lost';
+        END IF;
+      END`);
+      let first: Response;
+      try {
+        first = await openApi("POST", path, body, headers);
+      } finally {
+        await connection.query("DROP TRIGGER srf_lose_answer");
+        await connection.end();
+      }
+      assert.equal(first.status, 200, await first.clone().text());
+      const refund = ((await first.json()) as { refund: { id: string } }).refund;
+
+      const again = await openApi("POST", path, body, headers);
+      assert.equal(again.status, 200, await again.clone().text());
+      assert.equal(again.headers.get("louez-replayed"), "true");
+      const replayed = (await again.json()) as { refund: { id: string; status: string } };
+      assert.equal(replayed.refund.id, refund.id);
+      assert.equal(replayed.refund.status, "succeeded");
+      assert.equal(stripe.creates.length, 1, "nothing sent again");
+      assert.equal((await operationsOf(paid.paymentId)).length, 1);
+    });
+
+    test("reading a pending refund often calls Stripe once per wait; two reads at once, once", async () => {
+      const authorization = await key();
+      const paid = await onlinePayment();
+      stripe.behaviours.push("timeout_before");
+      const pending = answer(
+        (await refunded(authorization, { paymentId: paid.paymentId, amount: "30.00" })).result,
+      );
+      assert.equal(pending.refund.status, "pending");
+      const read = () =>
+        mcpCall(authorization, "get_refund", {
+          paymentId: paid.paymentId,
+          refundId: pending.refund.id,
+        });
+      const before = stripe.calls();
+      for (let time = 0; time < 5; time++) {
+        assert.equal(answer(await read()).refund.status, "pending");
+      }
+      assert.equal(stripe.calls(), before, "no read reaches Stripe within the wait");
+
+      await waitPassed(pending.refund.id);
+      stripe.behaviours.push("timeout_before", "timeout_before");
+      const creates = stripe.creates.length;
+      await Promise.all([read(), read()]);
+      assert.equal(stripe.creates.length, creates + 1, "one attempt for two reads at once");
+      for (let time = 0; time < 3; time++) await read();
+      assert.equal(stripe.creates.length, creates + 1, "and none after it within the wait");
+    });
+
+    test("a refund that failed after its credit note was issued reads failed, with its row and the note to correct", async () => {
+      const authorization = await key();
+      const paid = await onlinePayment();
+      const done = answer(
+        (await refunded(authorization, { paymentId: paid.paymentId, amount: "45.00" })).result,
+      );
+      const [operation] = await louezDb.db
+        .select({ refundPaymentId: louezDb.paymentRefundOperations.refundPaymentId })
+        .from(louezDb.paymentRefundOperations)
+        .where(orm.eq(louezDb.paymentRefundOperations.id, done.refund.id));
+      const refundPaymentId = operation?.refundPaymentId;
+      assert.ok(refundPaymentId);
+      // Its credit note issued, then Stripe reports the refund failed.
+      const noteId = `srf_inv_${String(++counter).padStart(13, "0")}`;
+      await louezDb.db.insert(louezDb.invoices).values({
+        id: noteId,
+        storeId: STORE,
+        reservationId: paid.reservationId,
+        customerId: CUSTOMER,
+        type: "credit_note",
+        kind: "credit_note",
+        number: `AV-SRF-${counter}`,
+        issueDate: "2031-06-04",
+        currency: "EUR",
+        sellerSnapshot: {},
+        buyerSnapshot: {},
+        lines: [],
+        vatBreakdown: [],
+        totalExclTax: "-45.00",
+        totalTax: "0.00",
+        totalInclTax: "-45.00",
+        en16931Snapshot: {},
+        documentId: noteId,
+        processingRule: "b2c",
+      } as never);
+      await louezDb.db
+        .insert(louezDb.invoicePayments)
+        .values({ id: noteId, invoiceId: noteId, paymentId: refundPaymentId } as never);
+      await louezDb.db
+        .update(louezDb.payments)
+        .set({ status: "failed" })
+        .where(orm.eq(louezDb.payments.id, refundPaymentId));
+      await louezDb.db
+        .update(louezDb.paymentRefundOperations)
+        .set({ status: "failed", failureCode: "expired_or_canceled_card" })
+        .where(orm.eq(louezDb.paymentRefundOperations.id, done.refund.id));
+
+      const read = (await mcpCall(authorization, "get_refund", {
+        paymentId: paid.paymentId,
+        refundId: done.refund.id,
+      })) as ToolResult;
+      const failed = answer(read) as unknown as {
+        refund: { status: string; refundPaymentId: string | null; creditNote: Json };
+      };
+      assert.equal(failed.refund.status, "failed");
+      assert.equal(failed.refund.refundPaymentId, refundPaymentId);
+      assert.deepEqual(failed.refund.creditNote, {
+        status: "issued",
+        number: `AV-SRF-${counter}`,
+        needsCorrection: true,
+      });
     });
 
     test("REST answers as MCP does; a read-only key reads a refund and cannot refund", async () => {

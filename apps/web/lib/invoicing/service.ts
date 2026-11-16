@@ -11,7 +11,7 @@ import {
   storeLegalProfiles,
 } from "@louez/db";
 import { isStripeRefundRow, resolveReservationBilling } from "@louez/utils";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { log } from "@/lib/evlog";
@@ -417,6 +417,7 @@ export async function generateCreditNoteForRefund(
         stripePaymentIntentId: true,
         stripeCheckoutSessionId: true,
         stripeChargeId: true,
+        stripeAccountId: true,
         refundOfPaymentId: true,
         currency: true,
         paidAt: true,
@@ -485,6 +486,7 @@ export async function generateCreditNoteForRefund(
         stripePaymentIntentId: true,
         stripeCheckoutSessionId: true,
         stripeChargeId: true,
+        stripeAccountId: true,
         refundOfPaymentId: true,
         reservationId: true,
       },
@@ -498,22 +500,37 @@ export async function generateCreditNoteForRefund(
     const originalIsReceipt =
       originalPayment.refundOfPaymentId === null && !isStripeRefundRow(originalPayment);
     // An older Stripe refund row with no link gives back the one payment of its
-    // reservation that holds its charge: none, or several, and no note is issued.
+    // reservation that holds its charge, on the same Stripe account: none, or several,
+    // and no note is issued. A row with no account (written before rows carried one)
+    // is taken to be on the account of the reservation's other rows of that charge,
+    // when none of them names another: two accounts named, and no note is issued.
     let unlinkedOriginalIsTheCharge = false;
     if (isStripeRefundRow(refundPayment) && refundPayment.refundOfPaymentId === null) {
-      const holders = refundPayment.stripeChargeId
+      const chargeRows = refundPayment.stripeChargeId
         ? await tx
-            .select({ id: payments.id })
+            .select({
+              id: payments.id,
+              accountId: payments.stripeAccountId,
+              isReceipt: sql<number>`${isPaymentReceiptSql()}`,
+            })
             .from(payments)
             .where(
               and(
                 eq(payments.reservationId, refundPayment.reservationId),
                 eq(payments.stripeChargeId, refundPayment.stripeChargeId),
-                isPaymentReceiptSql(),
               ),
             )
         : [];
-      unlinkedOriginalIsTheCharge = holders.length === 1 && holders[0]?.id === originalPayment.id;
+      const holders = chargeRows.filter((row) => Number(row.isReceipt) === 1);
+      const accounts = new Set(
+        [
+          ...chargeRows.map((row) => row.accountId),
+          refundPayment.stripeAccountId,
+          originalPayment.stripeAccountId,
+        ].filter((account): account is string => Boolean(account)),
+      );
+      unlinkedOriginalIsTheCharge =
+        holders.length === 1 && holders[0]?.id === originalPayment.id && accounts.size <= 1;
     }
     const refundGivesOriginalBack = isStripeRefundRow(refundPayment)
       ? refundPayment.refundOfPaymentId === originalPayment.id || unlinkedOriginalIsTheCharge

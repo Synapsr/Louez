@@ -59,7 +59,7 @@ export function createStripeRefundsPort(
     },
     get: async ({ storeId, paymentId, operationId, reconcile }) => {
       const first = await getRefundOperation(deps.database, { storeId, operationId });
-      if (!first || first.paymentId !== paymentId) return null;
+      if (!first || (paymentId !== null && first.paymentId !== paymentId)) return null;
       if (reconcile && (first.status === "requested" || first.status === "unresolved")) {
         await reconcileRefundOperation(deps, operationId);
       }
@@ -75,15 +75,11 @@ export function createStripeRefundsPort(
         reason: operation.reason,
         createdAt: operation.createdAt,
         stripeRefundId: operation.stripeRefundId,
-        refundPaymentId: operation.status === "succeeded" ? operation.refundPaymentId : null,
+        // Kept when the refund failed after Stripe made it: its row is then `failed`.
+        refundPaymentId: operation.refundPaymentId,
         failureCode: operation.failureCode,
         failureMessage: operation.failureMessage,
-        creditNote:
-          operation.status === "succeeded" && operation.refundPaymentId
-            ? await creditNoteOf(deps, operation.refundPaymentId)
-            : operation.status === "failed"
-              ? { status: "not_applicable", number: null }
-              : { status: "pending", number: null },
+        creditNote: await creditNoteOf(deps, operation),
       };
     },
   };
@@ -91,18 +87,33 @@ export function createStripeRefundsPort(
 
 const noRequester = { userId: null, credentialId: null };
 
-/** A refund row's credit note: issued with its number, still owed by its outbox row, or none. */
+/**
+ * The credit note of the operation's refund row, as it exists: issued with its number
+ * whatever became of the refund since (one that failed after leaves it standing, to
+ * correct), still owed by its outbox row, or none. A refund that failed with no note
+ * issued has none to issue.
+ */
 async function creditNoteOf(
   deps: Pick<StripeRefundDeps, "database">,
-  refundPaymentId: string,
-): Promise<{ status: "issued" | "pending" | "not_applicable"; number: string | null }> {
+  operation: { status: string; refundPaymentId: string | null },
+): Promise<{
+  status: "issued" | "pending" | "not_applicable";
+  number: string | null;
+  needsCorrection: boolean;
+}> {
+  const failed = operation.status === "failed";
+  const refundPaymentId = operation.refundPaymentId;
+  if (!refundPaymentId) {
+    return { status: failed ? "not_applicable" : "pending", number: null, needsCorrection: false };
+  }
   const [note] = await deps.database
     .select({ number: invoices.number })
     .from(invoicePayments)
     .innerJoin(invoices, eq(invoices.id, invoicePayments.invoiceId))
     .where(and(eq(invoicePayments.paymentId, refundPaymentId), eq(invoices.type, "credit_note")))
     .limit(1);
-  if (note) return { status: "issued", number: note.number };
+  if (note) return { status: "issued", number: note.number, needsCorrection: failed };
+  if (failed) return { status: "not_applicable", number: null, needsCorrection: false };
   const [owed] = await deps.database
     .select({ status: apiEffects.status })
     .from(apiEffects)
@@ -115,8 +126,10 @@ async function creditNoteOf(
     .orderBy(desc(apiEffects.seq))
     .limit(1);
   // A row that ended with nothing to issue: the store issues no invoices, or the payment has none.
-  if (owed?.status === "cancelled") return { status: "not_applicable", number: null };
-  return { status: "pending", number: null };
+  if (owed?.status === "cancelled") {
+    return { status: "not_applicable", number: null, needsCorrection: false };
+  }
+  return { status: "pending", number: null, needsCorrection: false };
 }
 
 export const stripeRefundsPort = createStripeRefundsPort();

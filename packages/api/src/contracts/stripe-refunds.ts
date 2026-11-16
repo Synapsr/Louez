@@ -31,7 +31,7 @@ export type RefundPaymentInput = z.infer<typeof refundPaymentInput>;
 export const getRefundInput = z
   .object({
     paymentId: z.string().describe("The ID of the payment refunded"),
-    refundId: z.string().describe("The refund's ID, as refund_payment returned it"),
+    refundId: z.string().describe("The refund's ID (`refund.id`), as the refund's answer gave it"),
   })
   .strict();
 export type GetRefundInput = z.infer<typeof getRefundInput>;
@@ -40,7 +40,7 @@ export const STRIPE_REFUND_STATUSES = ["pending", "succeeded", "failed"] as cons
 
 export const refundPaymentOutput = z.object({
   refund: z.object({
-    id: z.string().describe("The refund's ID: read it with get_refund."),
+    id: z.string().describe("The refund's ID, to read the refund again by."),
     status: z
       .enum(STRIPE_REFUND_STATUSES)
       .describe(
@@ -60,7 +60,9 @@ export const refundPaymentOutput = z.object({
     refundPaymentId: z
       .string()
       .nullable()
-      .describe("The refund's own payment row, once Stripe made it."),
+      .describe(
+        "The refund's own payment row, once Stripe made it; kept when the refund failed afterwards (the row is then failed).",
+      ),
     failure: z
       .object({ code: z.string(), message: z.string().nullable() })
       .nullable()
@@ -72,6 +74,11 @@ export const refundPaymentOutput = z.object({
           "`issued` with its number; `pending` while owed (Louez issues it, retrying on its own); `not_applicable` when there is none to issue.",
         ),
       number: z.string().nullable(),
+      needsCorrection: z
+        .boolean()
+        .describe(
+          "True when the refund failed after its credit note was issued: the note stands (Louez issues no document that cancels one) and the store corrects it in its accounting; its inbox shows it.",
+        ),
     }),
   }),
   paymentId: z.string(),

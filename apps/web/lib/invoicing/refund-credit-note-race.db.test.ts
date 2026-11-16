@@ -335,6 +335,33 @@ describe(
       assert.deepEqual(await credit("pay_unlinked_other", "25.00"), notEligible);
       // Not its amount.
       assert.deepEqual(await credit("pay_unlinked_a", "99.00"), notEligible);
+
+      // The same charge id on another Stripe account is another charge.
+      const account = (id: string, stripeAccountId: string | null) =>
+        louezDb.db
+          .update(louezDb.payments)
+          .set({ stripeAccountId })
+          .where(eq(louezDb.payments.id, id));
+      await account("pay_unlinked_a", "acct_unlinked_a");
+      await account("ref_unlinked", "acct_unlinked_b");
+      assert.deepEqual(await credit("pay_unlinked_a", "25.00"), notEligible);
+      // A refund row with no account, older: the account of the charge's other rows,
+      // unless one of them names another.
+      await account("ref_unlinked", null);
+      await louezDb.db.insert(louezDb.payments).values({
+        id: "ref_unlinked_acct",
+        reservationId,
+        amount: "10.00",
+        type: "rental",
+        method: "stripe",
+        status: "failed",
+        stripeRefundId: "re_unlinked_elsewhere",
+        stripeChargeId: "ch_unlinked",
+        stripeAccountId: "acct_unlinked_b",
+        currency: "EUR",
+      });
+      assert.deepEqual(await credit("pay_unlinked_a", "25.00"), notEligible);
+      await louezDb.db.delete(louezDb.payments).where(eq(louezDb.payments.id, "ref_unlinked_acct"));
       assert.equal((await credit("pay_unlinked_a", "25.00")).status, "generated");
     });
   },
