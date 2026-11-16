@@ -363,4 +363,83 @@ describe("refused calls in the request log (database)", { skip: skipWithoutTestD
     assert.equal(log.refusals.length, 2, log.printed());
     assert.ok(!log.printed().includes(FIRST_NAME), log.printed());
   });
+
+  // What a caller writes into its own request: a record's key, an id field holding a
+  // word, a string shaped as a token. None of it is Louez's to log.
+  const RECORD_KEY = "Alice Martin +33612345678";
+  const WORD_ID = "Alice_Martin";
+  const TOKEN_SHAPED = "aB3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dF3hJ5kL7nP9";
+  const creation = (productId: string) => ({
+    customer: { email: "alice@rl.test", firstName: "Alice", lastName: "Martin" },
+    startDate: "2032-07-01T09:00:00+02:00",
+    endDate: "2032-07-03T09:00:00+02:00",
+    lines: [{ productId, quantity: 1, selectedAttributes: { [RECORD_KEY]: 42 } }],
+    notifyCustomer: false,
+  });
+  const assertNothingOfTheCaller = (log: ReturnType<typeof capture>) => {
+    const printed = log.printed();
+    for (const words of ["Alice", "+33612345678", WORD_ID, TOKEN_SHAPED]) {
+      assert.ok(!printed.includes(words), `${words} in ${printed}`);
+    }
+  };
+
+  test("REST: a record's key, an echoed id and a token-shaped string never reach the log", async () => {
+    const agent = await key();
+    const log = capture();
+    const invalid = await openApi(log.sink, "/reservations", creation("rl_product_0000000001"), {
+      authorization: agent.authorization,
+      "idempotency-key": "rl-key-1",
+    });
+    assert.equal(invalid.status, 400);
+    for (const id of [WORD_ID, TOKEN_SHAPED]) {
+      const missing = await openApi(
+        log.sink,
+        `/reservations/${id}/cancel`,
+        {},
+        {
+          authorization: agent.authorization,
+        },
+      );
+      assert.ok(missing.status >= 400 && missing.status < 500, String(missing.status));
+    }
+    assert.equal(log.refusals.length, 3, log.printed());
+    // The field of the procedure's own schema is kept; nothing under it.
+    assert.ok(log.refusals[0]?.issues?.includes("invalid_type at lines"), log.printed());
+    assertNothingOfTheCaller(log);
+  });
+
+  test("RPC: a record's key, an echoed id and a token-shaped string never reach the log", async () => {
+    const log = capture();
+    const invalid = await rpc(
+      log.sink,
+      "dashboard.reservations.create",
+      creation("rl_product_0000000001"),
+    );
+    assert.equal(invalid.status, 400);
+    for (const id of [WORD_ID, TOKEN_SHAPED]) {
+      const missing = await rpc(log.sink, "dashboard.reservations.cancel", { id });
+      assert.ok(missing.status >= 400 && missing.status < 500, String(missing.status));
+    }
+    assert.equal(log.refusals.length, 3, log.printed());
+    assert.ok(log.refusals[0]?.issues?.includes("invalid_type at lines"), log.printed());
+    assertNothingOfTheCaller(log);
+  });
+
+  test("MCP: a record's key, an echoed id and a token-shaped string never reach the log", async () => {
+    const agent = await key();
+    const log = capture();
+    const invalid = await mcpCall(log.sink.refusal, agent.authorization, "reservations_create", {
+      ...creation("rl_product_0000000001"),
+      idempotencyKey: "rl-key-2",
+    });
+    assert.equal(invalid.isError, true);
+    for (const id of [WORD_ID, TOKEN_SHAPED]) {
+      const missing = await mcpCall(log.sink.refusal, agent.authorization, "reservations_cancel", {
+        id,
+      });
+      assert.equal(missing.isError, true);
+    }
+    assert.ok(log.refusals.length >= 2, log.printed());
+    assertNothingOfTheCaller(log);
+  });
 });
