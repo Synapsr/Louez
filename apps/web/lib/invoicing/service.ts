@@ -4,13 +4,14 @@ import {
   documents,
   invoicePayments,
   invoices,
+  isPaymentReceiptSql,
   payments,
   reservations,
   storeIntegrations,
   storeLegalProfiles,
 } from "@louez/db";
 import { isStripeRefundRow, resolveReservationBilling } from "@louez/utils";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { log } from "@/lib/evlog";
@@ -391,7 +392,8 @@ export interface RefundInvoiceContext {
 
 export async function generateCreditNoteForRefund(
   context: RefundInvoiceContext,
-  refundAmount: string | number,
+  /** What the caller expects the refund to be; the note's amount is the refund row's own. */
+  expectedAmount: string | number,
 ): Promise<InvoiceGenerationResult> {
   return db.transaction(async (tx) => {
     const lockedPaymentIds = [context.originalPaymentId, context.refundPaymentId].sort();
@@ -414,6 +416,8 @@ export async function generateCreditNoteForRefund(
         stripeRefundId: true,
         stripePaymentIntentId: true,
         stripeCheckoutSessionId: true,
+        stripeChargeId: true,
+        stripeAccountId: true,
         refundOfPaymentId: true,
         currency: true,
         paidAt: true,
@@ -481,6 +485,8 @@ export async function generateCreditNoteForRefund(
         stripeRefundId: true,
         stripePaymentIntentId: true,
         stripeCheckoutSessionId: true,
+        stripeChargeId: true,
+        stripeAccountId: true,
         refundOfPaymentId: true,
         reservationId: true,
       },
@@ -493,10 +499,44 @@ export async function generateCreditNoteForRefund(
     // given by hand linked to it, never an original payment.
     const originalIsReceipt =
       originalPayment.refundOfPaymentId === null && !isStripeRefundRow(originalPayment);
+    // An older Stripe refund row with no link gives back the one payment of its
+    // reservation that holds its charge, on the same Stripe account: none, or several,
+    // and no note is issued. A row with no account (written before rows carried one)
+    // is taken to be on the account of the reservation's other rows of that charge,
+    // when none of them names another: two accounts named, and no note is issued.
+    let unlinkedOriginalIsTheCharge = false;
+    if (isStripeRefundRow(refundPayment) && refundPayment.refundOfPaymentId === null) {
+      const chargeRows = refundPayment.stripeChargeId
+        ? await tx
+            .select({
+              id: payments.id,
+              accountId: payments.stripeAccountId,
+              isReceipt: sql<number>`${isPaymentReceiptSql()}`,
+            })
+            .from(payments)
+            .where(
+              and(
+                eq(payments.reservationId, refundPayment.reservationId),
+                eq(payments.stripeChargeId, refundPayment.stripeChargeId),
+              ),
+            )
+        : [];
+      const holders = chargeRows.filter((row) => Number(row.isReceipt) === 1);
+      const accounts = new Set(
+        [
+          ...chargeRows.map((row) => row.accountId),
+          refundPayment.stripeAccountId,
+          originalPayment.stripeAccountId,
+        ].filter((account): account is string => Boolean(account)),
+      );
+      unlinkedOriginalIsTheCharge =
+        holders.length === 1 && holders[0]?.id === originalPayment.id && accounts.size <= 1;
+    }
     const refundGivesOriginalBack = isStripeRefundRow(refundPayment)
-      ? refundPayment.refundOfPaymentId === null ||
-        refundPayment.refundOfPaymentId === originalPayment.id
+      ? refundPayment.refundOfPaymentId === originalPayment.id || unlinkedOriginalIsTheCharge
       : !refundPayment.stripeRefundId && refundPayment.refundOfPaymentId === originalPayment.id;
+    // The note's amount is the refund row's own; a caller expecting another refunds nothing.
+    const refundAmount = refundPayment.amount;
     if (
       !REVENUE_PAYMENT_TYPES.has(originalPayment.type) ||
       !originalIsReceipt ||
@@ -504,7 +544,8 @@ export async function generateCreditNoteForRefund(
       !["rental", "deposit_return"].includes(refundPayment.type) ||
       refundPayment.status !== "completed" ||
       !refundGivesOriginalBack ||
-      Number(refundAmount) <= 0
+      Number(refundAmount) <= 0 ||
+      Number(expectedAmount).toFixed(2) !== Number(refundAmount).toFixed(2)
     ) {
       return skipped("payment_not_eligible");
     }

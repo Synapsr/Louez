@@ -481,9 +481,31 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
         ),
       );
 
-  /** The outbox's own sender, for this fake Stripe. */
-  const senders = (stripe: FakeStripe) =>
-    service.createStripeRefundEffectSenders(deps(stripe)) as unknown as ApiEffectSenders;
+  /**
+   * The wait the operation's last attempt set is over, as it is by the time the outbox
+   * runs its row again (`effectRetryDelayMs` outlasts it). A sender's live claim stays.
+   */
+  const waitPassed = (operationId: string) =>
+    louezDb.db
+      .update(louezDb.paymentRefundOperations)
+      .set({ claimedUntil: null })
+      .where(
+        and(
+          eq(louezDb.paymentRefundOperations.id, operationId),
+          sql`${louezDb.paymentRefundOperations.claimToken} IS NULL`,
+        ),
+      );
+
+  /** The outbox's own sender, for this fake Stripe, run once the wait is over. */
+  const senders = (stripe: FakeStripe) => {
+    const sender = service.createStripeRefundEffectSenders(deps(stripe))["payment.refund"];
+    return {
+      "payment.refund": async (payload, context) => {
+        await waitPassed(payload.operationId);
+        return sender(payload, context);
+      },
+    } as Pick<ApiEffectSenders, "payment.refund"> as unknown as ApiEffectSenders;
+  };
 
   /** The request in one call, its inline attempt run through the outbox. */
   const refund = (stripe: FakeStripe, input: RefundRequestInput) =>
@@ -503,8 +525,10 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   const requestOnly = (stripe: FakeStripe, input: RefundRequestInput) =>
     service.refundStripePayment({ ...deps(stripe), attemptNow: async () => {} }, input);
 
-  const send = (stripe: FakeStripe, operationId: string) =>
-    service.sendRefundOperation(deps(stripe), operationId, noClaim);
+  const send = async (stripe: FakeStripe, operationId: string) => {
+    await waitPassed(operationId);
+    return service.sendRefundOperation(deps(stripe), operationId, noClaim);
+  };
 
   async function readOperation(operationId: string) {
     const o = louezDb.paymentRefundOperations;
@@ -753,6 +777,97 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     assert.equal(stripe.charges.get(chargeId)?.refunds.length, 1);
     assert.equal((await readOperation(operation.operation.id))?.status, "succeeded");
     assert.equal((await refundRowsOf(paymentId)).length, 1);
+  });
+
+  /** The sender as the outbox runs it, the wait the last attempt set left as it is. */
+  const sendAsIs = (stripe: FakeStripe, operationId: string) =>
+    service.sendRefundOperation(deps(stripe), operationId, noClaim);
+
+  /** Seconds left before the next attempt may reach Stripe, on the database's clock. */
+  async function waitLeft(operationId: string) {
+    const [row] = await louezDb.db
+      .select({
+        seconds: sql<number>`TIMESTAMPDIFF(SECOND, NOW(), ${louezDb.paymentRefundOperations.claimedUntil})`,
+      })
+      .from(louezDb.paymentRefundOperations)
+      .where(eq(louezDb.paymentRefundOperations.id, operationId));
+    return Number(row?.seconds);
+  }
+
+  /** `seconds` go by for the operation: every date it holds moves back that much. */
+  const passTime = (operationId: string, seconds: number) =>
+    louezDb.db.execute(sql`
+      UPDATE payment_refund_operations
+      SET created_at = created_at - INTERVAL ${seconds} SECOND,
+          provider_requested_at = provider_requested_at - INTERVAL ${seconds} SECOND,
+          claimed_until = claimed_until - INTERVAL ${seconds} SECOND
+      WHERE id = ${operationId}`);
+
+  test("a first request delayed to 22 h 30 that is lost is sent again with its key before 23 hours", async () => {
+    const stripe = fakeStripe();
+    const { paymentId, chargeId } = await createPayment(stripe);
+    const operation = await expectOk(await requestOnly(stripe, request(paymentId, 5_000)));
+    // Its first dispatch waited 22 h 30, then timed out before Stripe got it.
+    await age(operation.id, { created: 22.5, sent: null });
+    stripe.behaviours.push("timeout_before");
+    await assert.rejects(sendAsIs(stripe, operation.id));
+    assert.equal(stripe.creates.length, 1);
+
+    // Time goes by until the wait allows the next attempt, and no further.
+    const left = await waitLeft(operation.id);
+    assert.ok(left > 0, "the next attempt waits");
+    await passTime(operation.id, left);
+    await sendAsIs(stripe, operation.id);
+    assert.deepEqual(
+      stripe.creates.map((create) => create.key),
+      [keyOf(operation.id), keyOf(operation.id)],
+    );
+    assert.equal(stripe.charges.get(chargeId)?.refunds.length, 1);
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+  });
+
+  test("an operation an hour old that failed once is attempted again after its wait, not before", async () => {
+    const stripe = fakeStripe();
+    const { paymentId } = await createPayment(stripe);
+    const operation = await expectOk(await requestOnly(stripe, request(paymentId, 5_000)));
+    await age(operation.id, { created: 1, sent: null });
+    stripe.behaviours.push("timeout_before");
+    await assert.rejects(sendAsIs(stripe, operation.id));
+
+    // A quarter of its age: 15 minutes.
+    const left = await waitLeft(operation.id);
+    assert.ok(left > 890 && left <= 900, `waits ${left} seconds`);
+    await passTime(operation.id, left - 5);
+    await assert.rejects(sendAsIs(stripe, operation.id), /waits before its next attempt/);
+    assert.equal(stripe.creates.length, 1, "nothing reaches Stripe within the wait");
+    await passTime(operation.id, 5);
+    await sendAsIs(stripe, operation.id);
+    assert.equal(stripe.creates.length, 2);
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+  });
+
+  test("just past 23 hours the key is not sent again: lookups only, on the wait's schedule, until the 24 hours close it", async () => {
+    const stripe = fakeStripe();
+    const { paymentId } = await createPayment(stripe);
+    stripe.behaviours.push("timeout_before");
+    const operation = await expectOk(await refund(stripe, request(paymentId, 5_000)));
+    assert.equal(stripe.creates.length, 1);
+    // 23 hours and a minute go by.
+    await passTime(operation.id, 23 * 3_600 + 60);
+
+    // A lookup, which finds nothing yet within the key's life: the operation stays open.
+    await assert.rejects(sendAsIs(stripe, operation.id), /too old to send again/);
+    // An hour: a quarter of its age past the cap, the margin no longer applies.
+    const left = await waitLeft(operation.id);
+    assert.ok(left > 3_590 && left <= 3_600, `waits ${left} seconds`);
+    await passTime(operation.id, left - 5);
+    await assert.rejects(sendAsIs(stripe, operation.id), /waits before its next attempt/);
+    // 24 hours and a minute after its only request: the next lookup, a complete listing
+    // that names none, closes it.
+    await passTime(operation.id, 5);
+    await sendAsIs(stripe, operation.id);
+    assert.equal(stripe.creates.length, 1, "never sent again");
+    assert.equal((await readOperation(operation.id))?.status, "failed");
   });
 
   test("past 23 hours the key is never sent again: the refund is looked up by its metadata", async () => {

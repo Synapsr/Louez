@@ -179,6 +179,10 @@ const HELD_PAYMENT_WRITES: Record<string, string> = {
   // approval of the assistant's session too (lib/ai/payment-approval.db.test.ts);
   // no tool calls it.
   "dashboard.payments.recordRefund": "not called",
+  // A refund of an online payment through Stripe: it declares `money`, so the
+  // assistant's session is asked the person's approval
+  // (lib/api/stripe-refunds-procedure.db.test.ts); no tool calls it.
+  "dashboard.payments.refund": "not called",
 };
 
 /** The ones a tool may call: they ask the person (`personApproval`). */

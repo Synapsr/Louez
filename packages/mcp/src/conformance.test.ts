@@ -313,6 +313,9 @@ describe("MCP directory conformance", () => {
       record_payment: "additive",
       // A refund given by hand: its own row; the payment it refunds is left as it was.
       record_refund: "additive",
+      // A refund through Stripe: its own operation and row; the payment is netted by it.
+      refund_payment: "additive",
+      get_refund: "read",
       settings_create_location: "additive/public",
       settings_get: "read",
       settings_get_legal_profile: "read",
@@ -426,6 +429,7 @@ describe("MCP directory conformance", () => {
       "record_payment",
       "record_deposit_return",
       "record_refund",
+      "refund_payment",
       "delete_payment",
       "team_remove_member",
       "team_cancel_invitation",
@@ -450,6 +454,7 @@ describe("MCP directory conformance", () => {
       "record_payment",
       "record_deposit_return",
       "record_refund",
+      "refund_payment",
       "delete_payment",
       "team_remove_member",
       "team_cancel_invitation",

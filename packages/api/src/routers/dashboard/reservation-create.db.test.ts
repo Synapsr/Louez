@@ -1084,7 +1084,7 @@ describe(
       );
     });
 
-    test("a creation whose answer was lost after its commit is answered from its key, nothing created again", async () => {
+    test("a creation whose answer was not recorded after its commit is answered, then answered from its key, nothing created again", async () => {
       const kayak = await product({ quantity: 5 });
       const agent = await agentKey({ confirmSensitive: false });
       const input = base(kayak, {
@@ -1099,17 +1099,17 @@ describe(
           SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the answer is lost';
         END IF;
       END`);
+      let answered: Awaited<ReturnType<typeof create>>;
       try {
-        await rejects(
-          create(input, agent.call({ "idempotency-key": "lost-1" })),
-          "OPERATION_OUTCOME_UNKNOWN",
-        );
+        // It went through: its own call answers it, never an error.
+        answered = await create(input, agent.call({ "idempotency-key": "lost-1" }));
       } finally {
         await connection.query("DROP TRIGGER rc_lose_answer");
         await connection.end();
       }
       const [first] = await created();
       assert.ok(first, "the creation committed");
+      assert.equal(answered.id, first.id);
 
       const context = agent.call({ "idempotency-key": "lost-1" });
       const answer = await create(input, context);

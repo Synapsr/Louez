@@ -489,7 +489,7 @@ describe(
         "paymentId",
       ]);
       assert.match(tool.description ?? "", /REFUND_STRIPE_PAYMENT/);
-      assert.match(tool.description ?? "", /not available through this action yet/);
+      assert.match(tool.description ?? "", /refunded by refunding the payment instead/);
       // A connection that only reads payments does not see it.
       const reading = await mcpTools(await key({ ...WRITE, payments: "read" }));
       assert.equal(
@@ -787,7 +787,7 @@ describe(
       const stripe = refusal(await call(fixtures.stripe));
       assert.equal(
         stripe.message,
-        "This payment was taken online through Stripe. Refunds of online payments are not available through this action yet: it records only refunds of payments the store took by hand.",
+        "This payment was taken online through Stripe: refund the payment, which gives the money back through Stripe, rather than recording a refund. This action records only refunds of payments the store took by hand.",
       );
       for (const amount of ["0", "0.00", "-5.00", "1e2", "12.345", " 5", "123456789.00", "abc"]) {
         assert.equal(refusal(await call(rental, amount)).code, "REFUND_AMOUNT_INVALID", amount);

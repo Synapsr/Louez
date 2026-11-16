@@ -178,15 +178,17 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
         .filter((entry) => entry.path.startsWith(prefix))
         .map((entry) => [entry.meta.mcp.name, entry.meta.mcp.bundle])
         .sort();
-    // The payments recorded by hand are a day's work.
+    // The payments recorded by hand, and the refund of one taken online, are a day's work.
     assert.deepEqual(names("dashboard.payments."), [
       ["delete_payment", "daily"],
+      ["get_refund", "daily"],
       ["payments_open_stripe_dashboard", "settings"],
       ["payments_start_stripe_onboarding", "settings"],
       ["payments_sync_stripe_status", "settings"],
       ["record_deposit_return", "daily"],
       ["record_payment", "daily"],
       ["record_refund", "daily"],
+      ["refund_payment", "daily"],
     ]);
     assert.deepEqual(names("dashboard.billing."), [
       ["billing_get_status", "billing"],

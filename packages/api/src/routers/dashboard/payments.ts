@@ -22,8 +22,23 @@ import {
   syncStripeStatusOutput,
   type StripeStatus,
 } from "../../contracts/stripe-connect";
-import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
-import { checkConfirmation } from "../../platform/confirmation";
+import {
+  STRIPE_MAY_STILL_REFUSE,
+  approvalAsked,
+  restApprovalAsked,
+} from "../../platform/approval-help";
+import { CONFIRMATION_HEADER, checkConfirmation } from "../../platform/confirmation";
+import {
+  getRefundInput,
+  refundPaymentInput,
+  refundPaymentOutput,
+  stripeRefundErrors,
+} from "../../contracts/stripe-refunds";
+import {
+  getOnlineRefund,
+  recoverOnlineRefund,
+  refundOnlinePayment,
+} from "../../services/stripe-refunds";
 import { apiError } from "../../platform/errors";
 import { dashboardPageLinks, reservationLinks } from "../../platform/links";
 import type { ProcedureScope } from "../../platform/permissions";
@@ -266,7 +281,10 @@ function paymentRecordsCaller<Port>(
 }
 
 /** The reservation's dashboard page, for a caller who may read reservations. */
-function reservationLinksFor(context: ProductContext, reservationId: string) {
+function reservationLinksFor(
+  context: Pick<ProductContext, "actor" | "store" | "ports">,
+  reservationId: string,
+) {
   return mayRead(context, "reservations")
     ? { links: reservationLinks(context.ports.urls, context.store, { id: reservationId }) }
     : {};
@@ -343,7 +361,7 @@ const recordDepositReturnProcedure = storeProcedure
  */
 const inBackticks = (name: string) => "`" + name + "`";
 const refundRefusals = (code: (name: string) => string) =>
-  `a payment the store does not have (${code("PAYMENT_NOT_FOUND")}); an amount that is zero, negative, not a plain decimal with at most 8 digits before the point and 2 after, or with a digit past the minor unit of the payment's currency, such as decimals in yen (${code("REFUND_AMOUNT_INVALID")}); a payment in a three-decimal currency, which Louez's billing does not count (${code("REFUND_CURRENCY_NOT_SUPPORTED")}); a payment that is itself a refund (${code("REFUND_OF_REFUND")}); a deposit, a deposit return or a deposit hold (${code("REFUND_PAYMENT_TYPE_NOT_REFUNDABLE")}); a payment not completed (${code("REFUND_PAYMENT_NOT_COMPLETED")}); a payment taken online through Stripe, whose refunds are not available through this action yet (${code("REFUND_STRIPE_PAYMENT")}); a payment of zero or below (${code("REFUND_PAYMENT_NOT_RECEIVED")}); and an amount above the payment's amount less every completed refund already recorded against it (${code("REFUND_EXCEEDS_REFUNDABLE")}, whose details give the amounts paid, already refunded and refundable, and the currency)`;
+  `a payment the store does not have (${code("PAYMENT_NOT_FOUND")}); an amount that is zero, negative, not a plain decimal with at most 8 digits before the point and 2 after, or with a digit past the minor unit of the payment's currency, such as decimals in yen (${code("REFUND_AMOUNT_INVALID")}); a payment in a three-decimal currency, which Louez's billing does not count (${code("REFUND_CURRENCY_NOT_SUPPORTED")}); a payment that is itself a refund (${code("REFUND_OF_REFUND")}); a deposit, a deposit return or a deposit hold (${code("REFUND_PAYMENT_TYPE_NOT_REFUNDABLE")}); a payment not completed (${code("REFUND_PAYMENT_NOT_COMPLETED")}); a payment taken online through Stripe, which is refunded by refunding the payment instead (${code("REFUND_STRIPE_PAYMENT")}); a payment of zero or below (${code("REFUND_PAYMENT_NOT_RECEIVED")}); and an amount above the payment's amount less every completed refund already recorded against it (${code("REFUND_EXCEEDS_REFUNDABLE")}, whose details give the amounts paid, already refunded and refundable, and the currency)`;
 
 const recordRefund = storeProcedure
   .meta({
@@ -407,11 +425,104 @@ const deletePaymentProcedure = storeProcedure
     return { ...deleted, ...reservationLinksFor(context, deleted.reservationId) };
   });
 
+// --- Refunds of payments taken online ----------------------------------------------
+
+const PAYMENTS_READ: ProcedureScope = { domain: "payments", level: "read" };
+
+/** An approval's id as presented: 21 characters of the alphabet ids use. */
+const PRESENTED_APPROVAL = /^[A-Za-z0-9_-]{21}$/;
+
+/** The refusals the refund of an online payment answers before anything is asked. */
+const onlineRefundRefusals = (code: (name: string) => string) =>
+  `a payment the store does not have (${code("PAYMENT_NOT_FOUND")}); one taken by hand, whose refund is recorded instead (${code("REFUND_PAYMENT_TAKEN_BY_HAND")}); an amount that is zero, negative, or has more decimals than the payment's currency (${code("REFUND_AMOUNT_INVALID")}); a three-decimal currency (${code("REFUND_CURRENCY_NOT_SUPPORTED")}); a deposit hold, a refund row or a failed payment (${code("PAYMENT_NOT_REFUNDABLE")}); a payment not settled at Stripe (${code("PAYMENT_NOT_SETTLED")}); an open dispute (${code("PAYMENT_DISPUTED")}); a charge recorded on several reservations (${code("PAYMENT_CHARGE_SHARED")}); no Stripe account (${code("NO_STRIPE_ACCOUNT")}); and an amount above what the charge can still give back, refunds given by hand and refunds in progress counted (${code("REFUND_EXCEEDS_REFUNDABLE")}, whose details give the amounts paid, refunded, being refunded and refundable, and the currency). Stripe not answering the first read refuses with ${code("STRIPE_UNAVAILABLE")}, nothing asked`;
+
+const REFUND_STATES =
+  "The answer is the refund's state: `pending` while Stripe has not given the outcome (`detail` `sending` while Louez may still send it, `awaiting_provider` once only Stripe's own account of the charge settles it), `succeeded`, or `failed` with `failure`. It never answers an error once the refund is recorded.";
+
+const refund = storeProcedure
+  .meta({
+    capability: "reservations.refundStripePayment",
+    scope: PAYMENTS_WRITE,
+    sensitive: "money",
+    personApproval: true,
+    // Its answer lost after the commit: the refund it recorded, as it is now.
+    recoverUnknown: async (targetId, context) => {
+      const port = context.ports.stripeRefunds;
+      if (!port) throw stripeRefundErrors.unavailable();
+      const recovered = await recoverOnlineRefund(
+        { storeId: context.actor.storeId, port },
+        targetId,
+      );
+      return { ...recovered, ...reservationLinksFor(context, recovered.reservationId) };
+    },
+    mcp: {
+      name: "refund_payment",
+      title: "Refund Payment",
+      description: `Refund all or part of a payment taken online, back to the card or means that paid it, through Stripe: a rental, damage, adjustment or kept deposit (deposit_capture) payment, by its id among the payments reservations_get returns. The amount is in the payment's own currency. Partial refunds may follow one another up to what the payment can still give back. No message is sent to the customer. Refused, before anything is asked, for ${onlineRefundRefusals(String)}. ${approvalAsked("a preview of the refund, the payment and what stays refundable")} ${STRIPE_MAY_STILL_REFUSE} ${REFUND_STATES} A repeat with the same idempotency key answers the same refund, as first answered or, if that answer was lost, as it is now; it may be pending: get_refund reads the refund's outcome, and repeating the refund is not needed for it. ${LINKS_NOTE}`,
+      bundle: "daily",
+      effect: "additive",
+    },
+  })
+  .route({
+    method: "POST",
+    path: "/payments/{paymentId}/refunds",
+    description: `Refunds all or part of a payment the store took online, back to the means that paid it, through Stripe: a \`rental\`, \`damage\`, \`adjustment\` or \`deposit_capture\` payment. The amount is in the payment's own currency, with at most its decimals. Partial refunds may follow one another. One refund is one durable operation: it reaches Stripe at most once, and its outcome can always be read with \`GET /payments/{paymentId}/refunds/{refundId}\`. No message is sent to the customer. Refused, before anything is asked, for ${onlineRefundRefusals(inBackticks)}. A dashboard session is refused with \`REFUND_NOT_FROM_DASHBOARD\`. ${restApprovalAsked("a preview of the refund, the payment and what stays refundable")} ${STRIPE_MAY_STILL_REFUSE} ${REFUND_STATES} The platform's \`Idempotency-Key\` answers the same refund, as first answered or, if that answer was lost, as it is now (\`Louez-Replayed\`); it may be \`pending\`: read the refund for its outcome rather than repeating the request. ${REST_LINKS_NOTE}`,
+  })
+  .input(refundPaymentInput)
+  .output(refundPaymentOutput)
+  .handler(async ({ context, input, path }) => {
+    const { credential } = context.actor;
+    // A plain dashboard session has no screen in front of this yet.
+    if (credential.kind === "session" && credential.assistant !== true) {
+      throw stripeRefundErrors.notFromDashboard();
+    }
+    const port = context.ports.stripeRefunds;
+    if (!port) throw stripeRefundErrors.unavailable();
+    const presented = context.headers.get(CONFIRMATION_HEADER);
+    const refunded = await refundOnlinePayment(
+      {
+        ...paymentRecordsCaller(context, path, input, "money", port),
+        requestedBy: { userId: credential.userId, credentialId: credential.id },
+        approvalId: presented && PRESENTED_APPROVAL.test(presented) ? presented : null,
+      },
+      input,
+    );
+    return { ...refunded, ...reservationLinksFor(context, refunded.reservationId) };
+  });
+
+const getRefund = storeProcedure
+  .meta({
+    capability: "reservations.refundStripePayment",
+    scope: PAYMENTS_READ,
+    mcp: {
+      name: "get_refund",
+      title: "Get Refund",
+      description: `Read a refund made with refund_payment, by the payment's id and the refund's id: ${REFUND_STATES} While it is pending, reading it may settle it with Stripe once, under the refund's own rules, at most every 30 seconds (more often, it answers the state as it stands); read it again later rather than refunding again. A refund made in Stripe's own dashboard has no refund here (REFUND_NOT_FOUND): it shows among the reservation's payments. ${LINKS_NOTE}`,
+      bundle: "daily",
+      annotations: { idempotentHint: true },
+    },
+  })
+  .route({
+    method: "GET",
+    path: "/payments/{paymentId}/refunds/{refundId}",
+    description: `Reads a refund made with \`POST /payments/{paymentId}/refunds\`. ${REFUND_STATES} While it is pending, a read may settle it with Stripe once, under the refund's own rules (never a second request to Stripe beyond them), at most every 30 seconds and less often as the refund ages: a read in between answers the state as it stands. A refund made in Stripe's own dashboard has no refund here: 404 \`REFUND_NOT_FOUND\`, by design; it shows among the reservation's payments. ${REST_LINKS_NOTE}`,
+  })
+  .input(getRefundInput)
+  .output(refundPaymentOutput)
+  .handler(async ({ context, input }) => {
+    const port = context.ports.stripeRefunds;
+    if (!port) throw stripeRefundErrors.unavailable();
+    const read = await getOnlineRefund({ storeId: context.actor.storeId, port }, input);
+    return { ...read, ...reservationLinksFor(context, read.reservationId) };
+  });
+
 export const dashboardPaymentsRouter = {
   payouts,
   record,
   recordDepositReturn: recordDepositReturnProcedure,
   recordRefund,
+  refund,
+  getRefund,
   delete: deletePaymentProcedure,
   startStripeOnboarding,
   openStripeDashboard,

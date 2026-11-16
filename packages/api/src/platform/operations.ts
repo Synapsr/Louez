@@ -115,7 +115,8 @@ export async function runOperation<T>(
      * unknown but whose record names that target, which then committed with
      * the write. It reads the target as it is now, and is answered as a
      * replay. Without it, or without a target, the key answers
-     * `OPERATION_OUTCOME_UNKNOWN`.
+     * `OPERATION_OUTCOME_UNKNOWN`. With it, a call whose record fails after
+     * its handler went through answers its result, never that error.
      */
     recoverUnknown?: (targetId: string) => Promise<T>;
   },
@@ -217,7 +218,8 @@ export async function runOperation<T>(
               status: "succeeded",
               // Results are kept only to replay them; without a key nothing will.
               result: idempotencyKey === null ? null : encodeResult(stored),
-              targetId: targetIdOf(stored),
+              // A target the write recorded itself (`recordOperationTarget`) stays.
+              targetId: targetIdOf(stored) ?? undefined,
             })
             .where(eq(apiOperations.id, operationId));
           return enqueueRecordedEffects(tx, params.recordedEffects, stored, scope);
@@ -227,12 +229,15 @@ export async function runOperation<T>(
   } catch {
     // The handler went through, but the record did not. Marking it failed
     // would let a retry run it a second time: mark it unknown instead, which
-    // refuses retries, and say so.
+    // refuses retries. A write that answers such a key from the target it
+    // recorded with its commit (`recoverUnknown`) answers this call too:
+    // it went through. Any other says so.
     await db
       .update(apiOperations)
       .set({ status: "unknown" })
       .where(eq(apiOperations.id, operationId))
       .catch(() => undefined);
+    if (params.recoverUnknown) return result;
     throw platformErrors.operationOutcomeUnknown(operationId);
   }
   if (effectIds.length > 0) {

@@ -2161,8 +2161,10 @@ export const paymentRefundOperations = mysqlTable(
     requestedByCredentialId: varchar("requested_by_credential_id", { length: 64 }),
     // When the request was last sent to Stripe. Null while it never was.
     providerRequestedAt: timestamp("provider_requested_at", { mode: "date" }),
-    // A sender is settling it with Stripe until then, on the database's clock, under
-    // the random token it wrote. Null when none is.
+    // No attempt reaches Stripe for it before then, on the database's clock: a sender
+    // holds it under the random token it wrote, or, with no token, the last attempt left
+    // it open and the next waits (apps/web lib/reservations/stripe-refund.ts). Null when
+    // an attempt may be made now.
     claimedUntil: timestamp("claimed_until", { mode: "date" }),
     claimToken: varchar("claim_token", { length: 21 }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

@@ -264,5 +264,105 @@ describe(
         .where(eq(louezDb.invoicePayments.invoiceId, notes[0]?.id ?? ""));
       assert.deepEqual(links, [{ paymentId: "ref_credit_r2" }]);
     });
+
+    test("an older refund row with no link is credited only against the one payment holding its charge, for its own amount", async () => {
+      const reservationId = "res_credit_unlinked";
+      await louezDb.db.insert(louezDb.reservations).values({
+        id: reservationId,
+        storeId: STORE,
+        customerId: "customer_credit_race",
+        number: "R-3",
+        status: "confirmed",
+        startDate: new Date("2026-10-01T09:00:00Z"),
+        endDate: new Date("2026-10-03T09:00:00Z"),
+        subtotalAmount: "100.00",
+        depositAmount: "0.00",
+        totalAmount: "100.00",
+        currency: "EUR",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: "item_credit_unlinked",
+        reservationId,
+        quantity: 1,
+        unitPrice: "100.00",
+        depositPerUnit: "0.00",
+        totalPrice: "100.00",
+        productSnapshot: { name: "Bike", description: null, images: [] },
+      } as never);
+      const payment = (id: string, chargeId: string) =>
+        louezDb.db.insert(louezDb.payments).values({
+          id,
+          reservationId,
+          amount: "100.00",
+          type: "rental",
+          method: "stripe",
+          status: "completed",
+          stripePaymentIntentId: `pi_${id}`,
+          stripeChargeId: chargeId,
+          currency: "EUR",
+          paidAt: new Date("2026-10-01T09:30:00Z"),
+        });
+      await payment("pay_unlinked_a", "ch_unlinked");
+      await payment("pay_unlinked_b", "ch_unlinked");
+      await payment("pay_unlinked_other", "ch_unlinked_other");
+      for (const id of ["pay_unlinked_a", "pay_unlinked_other"]) {
+        assert.equal((await service.generateInvoiceForPayment(id)).status, "generated");
+      }
+      await louezDb.db.insert(louezDb.payments).values({
+        id: "ref_unlinked",
+        reservationId,
+        amount: "25.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripeRefundId: "re_unlinked",
+        stripeChargeId: "ch_unlinked",
+        currency: "EUR",
+        grossMinor: 2_500,
+        paidAt: new Date("2026-10-02T09:30:00Z"),
+      });
+      const credit = (originalPaymentId: string, amount: string) =>
+        service.generateCreditNoteForRefund(
+          { originalPaymentId, refundPaymentId: "ref_unlinked" },
+          amount,
+        );
+      const notEligible = { status: "skipped", reason: "payment_not_eligible" };
+
+      // Two payments hold its charge: which one it gives back is not known.
+      assert.deepEqual(await credit("pay_unlinked_a", "25.00"), notEligible);
+      await louezDb.db.delete(louezDb.payments).where(eq(louezDb.payments.id, "pay_unlinked_b"));
+      // Not the payment holding its charge.
+      assert.deepEqual(await credit("pay_unlinked_other", "25.00"), notEligible);
+      // Not its amount.
+      assert.deepEqual(await credit("pay_unlinked_a", "99.00"), notEligible);
+
+      // The same charge id on another Stripe account is another charge.
+      const account = (id: string, stripeAccountId: string | null) =>
+        louezDb.db
+          .update(louezDb.payments)
+          .set({ stripeAccountId })
+          .where(eq(louezDb.payments.id, id));
+      await account("pay_unlinked_a", "acct_unlinked_a");
+      await account("ref_unlinked", "acct_unlinked_b");
+      assert.deepEqual(await credit("pay_unlinked_a", "25.00"), notEligible);
+      // A refund row with no account, older: the account of the charge's other rows,
+      // unless one of them names another.
+      await account("ref_unlinked", null);
+      await louezDb.db.insert(louezDb.payments).values({
+        id: "ref_unlinked_acct",
+        reservationId,
+        amount: "10.00",
+        type: "rental",
+        method: "stripe",
+        status: "failed",
+        stripeRefundId: "re_unlinked_elsewhere",
+        stripeChargeId: "ch_unlinked",
+        stripeAccountId: "acct_unlinked_b",
+        currency: "EUR",
+      });
+      assert.deepEqual(await credit("pay_unlinked_a", "25.00"), notEligible);
+      await louezDb.db.delete(louezDb.payments).where(eq(louezDb.payments.id, "ref_unlinked_acct"));
+      assert.equal((await credit("pay_unlinked_a", "25.00")).status, "generated");
+    });
   },
 );

@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import {
   type ApiEffectSenders,
   type EffectSendContext,
+  effectRetryDelayMs,
   enqueueEffects,
 } from "@louez/api/platform/effects";
 import {
@@ -104,13 +105,47 @@ const KEY_SENDABLE_HOURS = 23;
  */
 const KEY_WINDOW_HOURS = 24;
 
+const hours = (count: number) => sql.raw(String(count));
+
+/**
+ * After an attempt that did not settle the operation, no other attempt (the outbox's,
+ * the scheduled pass's, a read's) reaches Stripe for this long: a quarter of the
+ * operation's age, at least 30 seconds (the rhythm the reference gives callers that
+ * poll) and at most an hour. Repeated answers that tell nothing space out as the
+ * operation ages; a caller reading it meanwhile gets its state as stored.
+ */
+export const REFUND_RETRY_MIN_SECONDS = 30;
+export const REFUND_RETRY_MAX_SECONDS = 3_600;
+
+/**
+ * Room for one full attempt before the key may no longer be sent: the sender's claim
+ * (every call of one run at its longest, `REFUND_CLAIM_SECONDS`) and the outbox's
+ * shortest retry delay. The wait never ends inside it while the key may be sent.
+ */
+export const REFUND_RESEND_MARGIN_SECONDS = REFUND_CLAIM_SECONDS + effectRetryDelayMs(1) / 1000;
+
+const retryWaitSeconds = sql`GREATEST(${REFUND_RETRY_MIN_SECONDS}, LEAST(${REFUND_RETRY_MAX_SECONDS}, TIMESTAMPDIFF(SECOND, ${paymentRefundOperations.createdAt}, NOW()) DIV 4))`;
+
+/**
+ * When the next attempt may reach Stripe. While the key may still be sent (under
+ * `KEY_SENDABLE_HOURS` old), never later than the last moment that leaves one full
+ * attempt (`REFUND_RESEND_MARGIN_SECONDS`) before that ends: at once when that moment
+ * has passed. A lookup after it waits the whole wait.
+ */
+const retryNotBefore = sql`CASE
+  WHEN ${paymentRefundOperations.createdAt} > NOW() - INTERVAL ${hours(KEY_SENDABLE_HOURS)} HOUR
+  THEN LEAST(
+    NOW() + INTERVAL ${retryWaitSeconds} SECOND,
+    GREATEST(NOW(), ${paymentRefundOperations.createdAt} + INTERVAL ${hours(KEY_SENDABLE_HOURS)} HOUR - INTERVAL ${REFUND_RESEND_MARGIN_SECONDS} SECOND)
+  )
+  ELSE NOW() + INTERVAL ${retryWaitSeconds} SECOND
+END`;
+
 /** An open operation gets a new outbox row this long after its last one. */
 const REFUND_REQUEUE_HOURS = 1;
 
 /** The inline attempt after the commit: short, the outbox has the rest. */
 export const INLINE_REFUND_SEND_TIMEOUT_MS = 15_000;
-
-const hours = (count: number) => sql.raw(String(count));
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -314,6 +349,78 @@ export async function requestStripeRefund(
   tx: Transaction,
   input: RefundRequestInput & { readonly charge: RefundableCharge },
 ): Promise<RefundRefusal | RequestedRefund> {
+  const checked = await checkStripeRefund(tx, input);
+  if (!checked.ok) return checked;
+  const operationId = nanoid();
+  try {
+    await tx.insert(paymentRefundOperations).values({
+      id: operationId,
+      storeId: input.storeId,
+      reservationId: checked.reservationId,
+      paymentId: input.paymentId,
+      stripeAccountId: checked.accountId,
+      stripeChargeId: checked.chargeId,
+      amountMinor: input.amountMinor,
+      currency: checked.currency,
+      refundType: checked.refundType,
+      reason: input.reason ?? "requested_by_customer",
+      notes: input.notes?.trim() || null,
+      approvalId: input.approvalId ?? null,
+      requestedByUserId: input.requestedBy.userId,
+      requestedByCredentialId: input.requestedBy.credentialId,
+      status: "requested",
+      createdAt: sql`NOW()`,
+      updatedAt: sql`NOW()`,
+    });
+  } catch (error) {
+    // The approval was used by a request that committed since the read above.
+    if (input.approvalId && isDuplicateKeyError(error)) {
+      return refused({ code: "REFUND_APPROVAL_USED" });
+    }
+    throw error;
+  }
+  const effectIds = await enqueueEffects(tx, input.storeId, [
+    { type: "payment.refund", payload: { operationId } },
+  ]);
+  return { ok: true, operationId, effectIds };
+}
+
+/**
+ * What a request is checked against, as read under its locks: the facts an approval of
+ * it binds (the payment's status and gross, the charge's refunds that stand, the open
+ * operations on it) and the ceiling.
+ */
+export type CheckedStripeRefund = {
+  readonly ok: true;
+  readonly reservationId: string;
+  readonly accountId: string;
+  readonly chargeId: string;
+  readonly currency: string;
+  readonly refundType: "rental" | "deposit_return";
+  readonly paymentStatus: string;
+  readonly grossMinor: number | null;
+  /** The completed refunds of the charge's rows, by row id: Stripe's and those given by hand. */
+  readonly refunds: readonly { readonly id: string; readonly amountMinor: number }[];
+  /** The open operations on the charge's rows. */
+  readonly openOperations: readonly { readonly id: string; readonly amountMinor: number }[];
+  /** Every dispute ever opened on the payment, by id. */
+  readonly disputes: readonly string[];
+  readonly ceiling: {
+    readonly paidMinor: number;
+    readonly refundedMinor: number;
+    readonly inFlightMinor: number;
+    readonly refundableMinor: number;
+  };
+};
+
+/**
+ * Every check of `requestStripeRefund`, under the same locks, writing nothing: what a
+ * caller that asks a person first shows and binds, before it records the operation.
+ */
+export async function checkStripeRefund(
+  tx: Transaction,
+  input: RefundRequestInput & { readonly charge: RefundableCharge },
+): Promise<RefundRefusal | CheckedStripeRefund> {
   const { charge } = input;
   if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) {
     return refused({ code: "REFUND_AMOUNT_INVALID" });
@@ -355,6 +462,7 @@ export async function requestStripeRefund(
   const chargePaymentIds = [...new Set([input.paymentId, ...siblings.map((row) => row.id)])].sort();
   const operations = await tx
     .select({
+      id: paymentRefundOperations.id,
       amountMinor: paymentRefundOperations.amountMinor,
       status: paymentRefundOperations.status,
     })
@@ -387,12 +495,16 @@ export async function requestStripeRefund(
     return refused({ code: "REFUND_CURRENCY_NOT_SUPPORTED", currency });
   }
 
-  const [dispute] = await tx
-    .select({ id: paymentDisputes.id })
+  // Read committed, unlocked: the dispute webhook takes no lock of the reservation's, so
+  // one may land between two reads of one transaction (an approval binds their ids).
+  const disputes = await tx
+    .select({ id: paymentDisputes.id, status: paymentDisputes.status })
     .from(paymentDisputes)
-    .where(and(eq(paymentDisputes.paymentId, input.paymentId), eq(paymentDisputes.status, "open")))
-    .limit(1);
-  if (dispute) return refused({ code: "PAYMENT_DISPUTED" });
+    .where(eq(paymentDisputes.paymentId, input.paymentId))
+    .orderBy(asc(paymentDisputes.id));
+  if (disputes.some((dispute) => dispute.status === "open")) {
+    return refused({ code: "PAYMENT_DISPUTED" });
+  }
 
   if (input.approvalId) {
     const [used] = await tx
@@ -414,42 +526,26 @@ export async function requestStripeRefund(
       .filter((operation) => isOpenRefundStatus(operation.status))
       .reduce((sum, operation) => sum + operation.amountMinor, 0),
   });
-  if (input.amountMinor > ceiling.refundableMinor) {
-    return refused({ code: "REFUND_EXCEEDS_REFUNDABLE", ...ceiling, currency });
+  const { rows: refunds, ...figures } = ceiling;
+  if (input.amountMinor > figures.refundableMinor) {
+    return refused({ code: "REFUND_EXCEEDS_REFUNDABLE", ...figures, currency });
   }
-
-  const operationId = nanoid();
-  try {
-    await tx.insert(paymentRefundOperations).values({
-      id: operationId,
-      storeId: input.storeId,
-      reservationId: payment.reservationId,
-      paymentId: input.paymentId,
-      stripeAccountId: checked.accountId,
-      stripeChargeId: checked.chargeId,
-      amountMinor: input.amountMinor,
-      currency,
-      refundType: refundTypeOf(payment.type),
-      reason: input.reason ?? "requested_by_customer",
-      notes: input.notes?.trim() || null,
-      approvalId: input.approvalId ?? null,
-      requestedByUserId: input.requestedBy.userId,
-      requestedByCredentialId: input.requestedBy.credentialId,
-      status: "requested",
-      createdAt: sql`NOW()`,
-      updatedAt: sql`NOW()`,
-    });
-  } catch (error) {
-    // The approval was used by a request that committed since the read above.
-    if (input.approvalId && isDuplicateKeyError(error)) {
-      return refused({ code: "REFUND_APPROVAL_USED" });
-    }
-    throw error;
-  }
-  const effectIds = await enqueueEffects(tx, input.storeId, [
-    { type: "payment.refund", payload: { operationId } },
-  ]);
-  return { ok: true, operationId, effectIds };
+  return {
+    ok: true,
+    reservationId: payment.reservationId,
+    accountId: checked.accountId,
+    chargeId: checked.chargeId,
+    currency,
+    refundType: refundTypeOf(payment.type),
+    paymentStatus: payment.status,
+    grossMinor: payment.grossMinor,
+    refunds,
+    openOperations: operations
+      .filter((operation) => isOpenRefundStatus(operation.status))
+      .map(({ id, amountMinor }) => ({ id, amountMinor })),
+    disputes: disputes.map((dispute) => dispute.id),
+    ceiling: figures,
+  };
 }
 
 /** What a payment can still give back, and the figures it comes from (minor units). */
@@ -469,6 +565,8 @@ async function refundCeiling(
   readonly refundedMinor: number;
   readonly inFlightMinor: number;
   readonly refundableMinor: number;
+  /** Each completed refund counted, by its row's id. */
+  readonly rows: readonly { readonly id: string; readonly amountMinor: number }[];
 }> {
   const { charge } = input;
   const minorOf = (row: { readonly grossMinor: number | null; readonly amount: string }) =>
@@ -481,6 +579,7 @@ async function refundCeiling(
   // here: Stripe's figure holds it.
   const rows = await tx
     .select({
+      id: payments.id,
       amount: payments.amount,
       grossMinor: payments.grossMinor,
       refundId: payments.stripeRefundId,
@@ -501,7 +600,8 @@ async function refundCeiling(
           ),
         ),
       ),
-    );
+    )
+    .orderBy(asc(payments.id));
   const stripeRefunds = new Map<string, number>();
   let manualMinor = 0;
   for (const row of rows) {
@@ -525,6 +625,13 @@ async function refundCeiling(
     refundedMinor: Math.max(charge.amountRefundedMinor, recordedStripeMinor) + manualMinor,
     inFlightMinor: input.openMinor,
     refundableMinor,
+    rows: rows.map((row) => ({
+      id: row.id,
+      amountMinor:
+        Number(row.isStripeRefund) === 1
+          ? minorOf(row)
+          : toStripeCents(Number(row.amount), charge.currency),
+    })),
   };
 }
 
@@ -649,7 +756,8 @@ type Claim =
 
 /**
  * Claims the operation for one sender, under the reservation's row lock then the
- * operation's, on the database's clock. An operation another sender holds is `busy`.
+ * operation's, on the database's clock. An operation another sender holds, or one whose
+ * last attempt set a time before which none is made (`claimed_until`), is `busy`.
  * The time of the request is written before it leaves: a process that dies leaves it.
  */
 async function claimOperation(database: Database, operationId: string): Promise<Claim> {
@@ -716,13 +824,20 @@ async function claimOperation(database: Database, operationId: string): Promise<
   }, REFUND_TRANSACTION);
 }
 
-/** Gives the operation back, only under the claim this sender holds. */
+/**
+ * Gives the operation back, only under the claim this sender holds. One still open
+ * waits before the next attempt (`retryNotBefore`), whoever makes it.
+ */
 async function releaseClaim(database: Database, operation: ClaimedOperation): Promise<void> {
   await database.transaction(async (tx) => {
     await lockRefundReservation(tx, operation.reservationId);
+    const o = paymentRefundOperations;
     await tx
-      .update(paymentRefundOperations)
-      .set({ claimToken: null, claimedUntil: null })
+      .update(o)
+      .set({
+        claimToken: null,
+        claimedUntil: sql`CASE WHEN ${o.status} IN ('requested', 'unresolved') THEN ${retryNotBefore} ELSE NULL END`,
+      })
       .where(
         and(
           eq(paymentRefundOperations.id, operation.id),
@@ -894,7 +1009,9 @@ export async function sendRefundOperation(
   if (claim.kind === "gone") return { skipped: "The refund operation is gone." };
   if (claim.kind === "settled") return { skipped: "The refund operation is settled." };
   if (claim.kind === "busy") {
-    throw new Error(`refund operation ${operationId} is being sent by another sender`);
+    throw new Error(
+      `refund operation ${operationId} is being sent by another sender, or waits before its next attempt`,
+    );
   }
   const { operation } = claim;
   try {
@@ -915,6 +1032,41 @@ export async function sendRefundOperation(
       });
     });
   }
+}
+
+/** How long a read waits on the one reconciliation it may trigger. */
+export const RECONCILE_ON_READ_MS = 10_000;
+
+/**
+ * One attempt to settle an open operation for a caller that reads it: the outbox's own
+ * sender, under the operation's own rules (its key while it may be sent, the lookup
+ * after), never a second request beyond them. None while another attempt holds it or
+ * before the time the last one set (`REFUND_RETRY_MIN_SECONDS`): the read answers the
+ * state as stored, so reading often never calls Stripe more often. Waits at most
+ * `timeoutMs`; what is left goes on, under the sender's claim. Never throws: an outcome
+ * not known yet is the operation's state, as read after.
+ */
+export async function reconcileRefundOperation(
+  deps: StripeRefundDeps,
+  operationId: string,
+  timeoutMs: number = RECONCILE_ON_READ_MS,
+): Promise<void> {
+  const attempt = sendRefundOperation(deps, operationId, {
+    assertClaim: async () => {},
+    throwIfAborted: () => {},
+  }).catch((error: unknown) => {
+    log.info({
+      stripeRefund: { operationId, issue: "reconcile_on_read", error: describeError(error) },
+    });
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    attempt,
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, timeoutMs);
+    }),
+  ]);
+  clearTimeout(timer);
 }
 
 /** The sender of `payment.refund`. */

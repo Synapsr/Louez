@@ -7,6 +7,7 @@ import { dispatchApiEffects } from "@/lib/api/effects";
 import { dispatchApiJobs } from "@/lib/api/jobs";
 import { paymentRecordsPort } from "@/lib/api/payment-records-port";
 import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
+import { stripeRefundsPort } from "@/lib/api/stripe-refunds-port";
 import { log } from "@/lib/evlog";
 import { productImagesPort } from "@/lib/api/product-images";
 import { apiUrls } from "@/lib/api/urls";
@@ -44,6 +45,7 @@ export const apiPorts: ApiPorts = {
   depositHolds: depositHoldsPort,
   paymentRecords: paymentRecordsPort,
   paymentRefunds: paymentRefundsPort,
+  stripeRefunds: stripeRefundsPort,
   team: {
     collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
     emailConfigured: isEmailConfigured,

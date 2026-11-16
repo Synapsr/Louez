@@ -513,11 +513,9 @@ export const capabilities = [
     plan: { lot: "2c" },
   },
   {
-    // Not exposed yet: the refund operation and its service exist (apps/web
-    // lib/reservations/stripe-refund.ts), with no caller; a procedure with a person's
-    // approval comes next.
+    // An agent, with a person's approval; no dashboard screen yet (a session is refused).
     id: "reservations.refundStripePayment",
-    sources: [],
+    sources: [procedure("payments", "refund"), procedure("payments", "getRefund")],
     kind: "write",
     sensitive: "money",
     plan: { lot: "2c" },
