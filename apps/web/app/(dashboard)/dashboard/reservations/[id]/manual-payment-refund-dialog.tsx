@@ -32,6 +32,7 @@ import { orpc } from "@/lib/orpc/react";
 import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 
+import { useReservationMoney } from "./use-reservation-money";
 import {
   isManualPaymentMethod,
   type ManualPaymentMethod,
@@ -43,7 +44,6 @@ interface ManualPaymentRefundDialogProps {
   remainingAmount: number;
   /** The payment's own currency, else its reservation's: the refund's. */
   currency: string;
-  currencySymbol: string;
   defaultMethod: ManualPaymentMethod;
   onClose: () => void;
 }
@@ -53,13 +53,13 @@ export const ManualPaymentRefundDialog = ({
   paymentId,
   remainingAmount,
   currency,
-  currencySymbol,
   defaultMethod,
   onClose,
 }: ManualPaymentRefundDialogProps) => {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
+  const money = useReservationMoney(currency);
   const queryClient = useQueryClient();
   const router = useRouter();
   const [amount, setAmount] = useState(remainingAmount.toFixed(2));
@@ -135,7 +135,7 @@ export const ManualPaymentRefundDialog = ({
           <DialogTitle>{t("payment.refundTitle")}</DialogTitle>
           <DialogDescription>
             {t("payment.refundDescription", {
-              amount: `${remainingAmount.toFixed(2)}${currencySymbol}`,
+              amount: money(remainingAmount),
             })}
           </DialogDescription>
         </DialogHeader>

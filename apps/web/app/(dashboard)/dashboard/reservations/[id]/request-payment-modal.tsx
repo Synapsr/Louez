@@ -30,7 +30,7 @@ import { Label } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Input } from "@louez/ui";
 import { Checkbox } from "@louez/ui";
-import { cn, currencyMinorDigits, formatCurrency } from "@louez/utils";
+import { cn, currencyMinorDigits } from "@louez/utils";
 import { paymentAmount } from "@louez/api/services/payment-amount";
 
 import { orpc } from "@/lib/orpc/react";
@@ -42,6 +42,8 @@ import {
   captureReservationActionFailed,
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
+
+import { useReservationMoney } from "./use-reservation-money";
 
 interface RequestPaymentModalProps {
   open: boolean;
@@ -79,6 +81,7 @@ export function RequestPaymentModal({
   const t = useTranslations("dashboard.reservations.requestPaymentModal");
   const tReservations = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
+  const money = useReservationMoney(currency);
   const queryClient = useQueryClient();
 
   const [selectedType, setSelectedType] = useState<PaymentType | null>(null);
@@ -166,7 +169,7 @@ export function RequestPaymentModal({
         : // A plain amount above zero is below the minimum; anything else (empty, as a
           // browser gives what it refused, or malformed) is no amount.
           paymentAmount(typedCustom) !== null && !typedCustom.startsWith("-")
-          ? t("minAmount", { amount: formatCurrency(Number(fieldMinimum), currency) })
+          ? t("minAmount", { amount: money(fieldMinimum) })
           : tReservations("payment.invalidAmount");
   const hasChannel = sendEmail || sendSms;
   const canSubmit = selectedType && isValidAmount && hasChannel && stripeConfigured;
@@ -351,9 +354,7 @@ export function RequestPaymentModal({
                               {t(`types.${type.id}.name`)}
                             </span>
                             {type.amount && (
-                              <span className="text-sm font-semibold">
-                                {formatCurrency(type.amount, currency)}
-                              </span>
+                              <span className="text-sm font-semibold">{money(type.amount)}</span>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -477,9 +478,7 @@ export function RequestPaymentModal({
                 <div className="p-3 rounded-lg bg-muted/50 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">{t("amountToRequest")}</span>
-                    <span className="font-semibold text-lg">
-                      {formatCurrency(selectedAmount, currency)}
-                    </span>
+                    <span className="font-semibold text-lg">{money(selectedAmount)}</span>
                   </div>
                 </div>
               )}
