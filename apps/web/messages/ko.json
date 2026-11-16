@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "메시지 미전송",
+        "titleWhy": "메시지 미전송: {why, select, email {이메일 서비스 없음} sms {SMS 서비스 없음} recipient {주소 변경됨} other {잘못 작성됨}}",
         "toCustomer": "예약 #{number}의 {message, select, customer_request_accepted {수락 메시지} customer_request_rejected {거절 메시지} customer_reservation_cancelled {취소 메시지} customer_reservation_modified {변경 메시지} customer_quote_sent {견적} customer_reservation_confirmed {확인 메시지} other {메시지}}가 고객에게 전달되지 않았습니다. 직접 연락하세요.",
         "toCustomerNoBooking": "메시지가 고객에게 전달되지 않았습니다. 직접 연락하세요.",
         "toStore": "예약 #{number}에 대한 팀 알림이 전송되지 않았습니다.",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "메시지를 작성한 뒤 고객의 이메일 주소가 변경되었습니다.",
           "emailNotConfigured": "이메일 발송 서비스가 설정되어 있지 않습니다.",
-          "writtenWrong": "잘못 작성되어 보낼 수 없었습니다."
+          "writtenWrong": "잘못 작성되어 보낼 수 없었습니다.",
+          "smsNotConfigured": "SMS 발송 서비스가 설정되어 있지 않습니다."
         }
       },
       "invitationNotSent": {

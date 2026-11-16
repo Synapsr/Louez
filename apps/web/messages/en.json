@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "Message not sent",
+        "titleWhy": "Message not sent: {why, select, email {no e-mail service} sms {no SMS service} recipient {address changed} other {written incorrectly}}",
         "toCustomer": "The {message, select, customer_request_accepted {acceptance message} customer_request_rejected {decline message} customer_reservation_cancelled {cancellation message} customer_reservation_modified {change message} customer_quote_sent {quote} customer_reservation_confirmed {confirmation message} other {message}} for booking #{number} didn't reach the customer. Contact them yourself.",
         "toCustomerNoBooking": "A message didn't reach a customer. Contact them yourself.",
         "toStore": "A notification to your team about booking #{number} was not sent.",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "The customer's e-mail address changed after it was written.",
           "emailNotConfigured": "No e-mail service is set up for sending.",
-          "writtenWrong": "It was written incorrectly and could not be sent."
+          "writtenWrong": "It was written incorrectly and could not be sent.",
+          "smsNotConfigured": "No SMS service is set up for sending."
         }
       },
       "invitationNotSent": {

@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "Nachricht nicht gesendet",
+        "titleWhy": "Nachricht nicht gesendet: {why, select, email {kein E-Mail-Dienst} sms {kein SMS-Dienst} recipient {Adresse geändert} other {fehlerhaft verfasst}}",
         "toCustomer": "Der Kunde hat {message, select, customer_request_accepted {die Annahmenachricht} customer_request_rejected {die Ablehnungsnachricht} customer_reservation_cancelled {die Stornierungsnachricht} customer_reservation_modified {die Änderungsnachricht} customer_quote_sent {das Angebot} customer_reservation_confirmed {die Bestätigungsnachricht} other {die Nachricht}} zu Buchung #{number} nicht erhalten. Kontaktiere ihn selbst.",
         "toCustomerNoBooking": "Eine Nachricht hat einen Kunden nicht erreicht. Kontaktiere ihn selbst.",
         "toStore": "Eine Benachrichtigung an dein Team zu Buchung #{number} wurde nicht gesendet.",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "Die E-Mail-Adresse des Kunden hat sich nach dem Verfassen geändert.",
           "emailNotConfigured": "Es ist kein E-Mail-Versanddienst eingerichtet.",
-          "writtenWrong": "Sie war fehlerhaft verfasst und konnte nicht gesendet werden."
+          "writtenWrong": "Sie war fehlerhaft verfasst und konnte nicht gesendet werden.",
+          "smsNotConfigured": "Es ist kein SMS-Versanddienst eingerichtet."
         }
       },
       "invitationNotSent": {

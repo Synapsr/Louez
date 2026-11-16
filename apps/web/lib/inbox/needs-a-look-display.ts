@@ -72,12 +72,17 @@ export const MESSAGE_NAMES = [
   "customer_reservation_confirmed",
 ] as const;
 
-/** Why the outbox gave up on a message at once (services/inbox.ts `GIVEN_UP_AT_ONCE`). */
-const MESSAGE_REASONS: Record<string, string> = {
-  recipient_changed: "messageNotSent.reasons.recipientChanged",
-  email_not_configured: "messageNotSent.reasons.emailNotConfigured",
-  invalid_payload: "messageNotSent.reasons.writtenWrong",
-  row_mismatch: "messageNotSent.reasons.writtenWrong",
+/**
+ * Why the outbox gave up on a message at once (services/inbox.ts `GIVEN_UP_AT_ONCE`):
+ * the sentence the disclosure says, and the short phrase the title carries
+ * (`messageNotSent.titleWhy`), wherever the item shows, the bell included.
+ */
+const MESSAGE_REASONS: Record<string, { sentence: string; why: string }> = {
+  recipient_changed: { sentence: "messageNotSent.reasons.recipientChanged", why: "recipient" },
+  email_not_configured: { sentence: "messageNotSent.reasons.emailNotConfigured", why: "email" },
+  sms_not_configured: { sentence: "messageNotSent.reasons.smsNotConfigured", why: "sms" },
+  invalid_payload: { sentence: "messageNotSent.reasons.writtenWrong", why: "written" },
+  row_mismatch: { sentence: "messageNotSent.reasons.writtenWrong", why: "written" },
 };
 
 /**
@@ -291,7 +296,9 @@ function describeItem(item: NeedsALookItem, format: DisplayFormat): NeedsALookDi
       const channel = text(d.channel);
       return {
         ...base,
-        title: { key: "messageNotSent.title" },
+        title: reason
+          ? { key: "messageNotSent.titleWhy", values: { why: reason.why } }
+          : { key: "messageNotSent.title" },
         line: [booking, customer].filter((part): part is string => Boolean(part)),
         sentences: [
           toCustomer
@@ -301,7 +308,7 @@ function describeItem(item: NeedsALookItem, format: DisplayFormat): NeedsALookDi
             : number
               ? { key: "messageNotSent.toStore", values: { number } }
               : { key: "messageNotSent.toStoreNoBooking" },
-          ...(reason ? [{ key: reason }] : []),
+          ...(reason ? [{ key: reason.sentence }] : []),
         ],
         facts:
           channel === "email" || channel === "sms"

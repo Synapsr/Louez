@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "メッセージ未送信",
+        "titleWhy": "メッセージ未送信：{why, select, email {メールサービス未設定} sms {SMSサービス未設定} recipient {宛先が変更されました} other {内容に誤り}}",
         "toCustomer": "予約 #{number} の{message, select, customer_request_accepted {承認メッセージ} customer_request_rejected {お断りメッセージ} customer_reservation_cancelled {キャンセルメッセージ} customer_reservation_modified {変更メッセージ} customer_quote_sent {見積もり} customer_reservation_confirmed {確認メッセージ} other {メッセージ}}がお客様に届きませんでした。ご自身で連絡してください。",
         "toCustomerNoBooking": "メッセージがお客様に届きませんでした。ご自身で連絡してください。",
         "toStore": "予約 #{number} に関するチームへの通知が送信されませんでした。",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "作成後にお客様のメールアドレスが変更されました。",
           "emailNotConfigured": "メール送信サービスが設定されていません。",
-          "writtenWrong": "内容に誤りがあり送信できませんでした。"
+          "writtenWrong": "内容に誤りがあり送信できませんでした。",
+          "smsNotConfigured": "SMS送信サービスが設定されていません。"
         }
       },
       "invitationNotSent": {

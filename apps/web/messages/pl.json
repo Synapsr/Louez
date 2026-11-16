@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "Wiadomość niewysłana",
+        "titleWhy": "Wiadomość niewysłana: {why, select, email {brak usługi e-mail} sms {brak usługi SMS} recipient {zmieniony adres} other {źle przygotowana}}",
         "toCustomer": "Do klienta nie dotarła {message, select, customer_request_accepted {wiadomość o akceptacji} customer_request_rejected {wiadomość o odrzuceniu} customer_reservation_cancelled {wiadomość o anulowaniu} customer_reservation_modified {wiadomość o zmianie} customer_quote_sent {oferta} customer_reservation_confirmed {wiadomość z potwierdzeniem} other {wiadomość}} dotycząca rezerwacji #{number}. Skontaktuj się z nim sam.",
         "toCustomerNoBooking": "Wiadomość nie dotarła do klienta. Skontaktuj się z nim sam.",
         "toStore": "Powiadomienie dla zespołu o rezerwacji #{number} nie zostało wysłane.",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "Adres e-mail klienta zmienił się po jej napisaniu.",
           "emailNotConfigured": "Nie skonfigurowano usługi wysyłki e-maili.",
-          "writtenWrong": "Była źle przygotowana i nie mogła zostać wysłana."
+          "writtenWrong": "Była źle przygotowana i nie mogła zostać wysłana.",
+          "smsNotConfigured": "Nie skonfigurowano usługi wysyłki SMS."
         }
       },
       "invitationNotSent": {

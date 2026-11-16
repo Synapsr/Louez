@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "Mensaje no enviado",
+        "titleWhy": "Mensaje no enviado: {why, select, email {sin servicio de correo} sms {sin servicio de SMS} recipient {dirección cambiada} other {mal redactado}}",
         "toCustomer": "El {message, select, customer_request_accepted {mensaje de aceptación} customer_request_rejected {mensaje de rechazo} customer_reservation_cancelled {mensaje de cancelación} customer_reservation_modified {mensaje de modificación} customer_quote_sent {presupuesto} customer_reservation_confirmed {mensaje de confirmación} other {mensaje}} de la reserva #{number} no llegó al cliente. Contáctalo tú mismo.",
         "toCustomerNoBooking": "Un mensaje no llegó a un cliente. Contáctalo tú mismo.",
         "toStore": "Una notificación a tu equipo sobre la reserva #{number} no se envió.",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "La dirección de correo del cliente cambió después de redactarlo.",
           "emailNotConfigured": "No hay ningún servicio de envío de correo configurado.",
-          "writtenWrong": "Estaba mal redactado y no se pudo enviar."
+          "writtenWrong": "Estaba mal redactado y no se pudo enviar.",
+          "smsNotConfigured": "No hay ningún servicio de envío de SMS configurado."
         }
       },
       "invitationNotSent": {

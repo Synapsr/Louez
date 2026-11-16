@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "Pesan tidak terkirim",
+        "titleWhy": "Pesan tidak terkirim: {why, select, email {tidak ada layanan email} sms {tidak ada layanan SMS} recipient {alamat berubah} other {ditulis dengan salah}}",
         "toCustomer": "{message, select, customer_request_accepted {pesan penerimaan} customer_request_rejected {pesan penolakan} customer_reservation_cancelled {pesan pembatalan} customer_reservation_modified {pesan perubahan} customer_quote_sent {penawaran} customer_reservation_confirmed {pesan konfirmasi} other {pesan}} untuk pemesanan #{number} tidak sampai ke pelanggan. Hubungi mereka sendiri.",
         "toCustomerNoBooking": "Sebuah pesan tidak sampai ke pelanggan. Hubungi mereka sendiri.",
         "toStore": "Notifikasi ke tim Anda tentang pemesanan #{number} tidak terkirim.",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "Alamat email pelanggan berubah setelah pesan ditulis.",
           "emailNotConfigured": "Belum ada layanan pengiriman email yang diatur.",
-          "writtenWrong": "Pesan ditulis dengan salah dan tidak dapat dikirim."
+          "writtenWrong": "Pesan ditulis dengan salah dan tidak dapat dikirim.",
+          "smsNotConfigured": "Belum ada layanan pengiriman SMS yang diatur."
         }
       },
       "invitationNotSent": {

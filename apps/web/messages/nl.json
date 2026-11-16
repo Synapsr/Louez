@@ -7320,6 +7320,7 @@
       },
       "messageNotSent": {
         "title": "Bericht niet verzonden",
+        "titleWhy": "Bericht niet verzonden: {why, select, email {geen e-maildienst} sms {geen sms-dienst} recipient {adres gewijzigd} other {verkeerd opgesteld}}",
         "toCustomer": "De klant heeft {message, select, customer_request_accepted {het acceptatiebericht} customer_request_rejected {het weigeringsbericht} customer_reservation_cancelled {het annuleringsbericht} customer_reservation_modified {het wijzigingsbericht} customer_quote_sent {de offerte} customer_reservation_confirmed {het bevestigingsbericht} other {het bericht}} voor reservering #{number} niet ontvangen. Neem zelf contact op.",
         "toCustomerNoBooking": "Een bericht heeft een klant niet bereikt. Neem zelf contact op.",
         "toStore": "Een melding aan je team over reservering #{number} is niet verzonden.",
@@ -7327,7 +7328,8 @@
         "reasons": {
           "recipientChanged": "Het e-mailadres van de klant is gewijzigd nadat het bericht was geschreven.",
           "emailNotConfigured": "Er is geen e-maildienst ingesteld voor verzending.",
-          "writtenWrong": "Het was verkeerd opgesteld en kon niet worden verzonden."
+          "writtenWrong": "Het was verkeerd opgesteld en kon niet worden verzonden.",
+          "smsNotConfigured": "Er is geen sms-dienst ingesteld voor verzending."
         }
       },
       "invitationNotSent": {
