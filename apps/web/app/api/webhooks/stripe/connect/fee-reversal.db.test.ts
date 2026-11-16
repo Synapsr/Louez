@@ -6,6 +6,8 @@ import { eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import type { BillingAlerts } from "@/lib/billing-sync/alerts";
+
 import type { FeeReversalStripe } from "./fee-reversal";
 
 // The fee refund at source (louez-billing docs/api, fees.md §9) on a migrated database,
@@ -53,7 +55,12 @@ function fakeStripe() {
       const fee = fees.get(feeId);
       if (!fee) throw new Error(`no such fee: ${feeId}`);
       await pause();
-      return { id: feeId, amount: fee.amount, amount_refunded: fee.amountRefunded };
+      return {
+        id: feeId,
+        amount: fee.amount,
+        amount_refunded: fee.amountRefunded,
+        currency: "eur",
+      };
     },
     async listDisputes(chargeId) {
       return charges.get(chargeId)?.disputes ?? [];
@@ -158,6 +165,38 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       .where(eq(louezDb.platformFees.id, id));
     return row;
   };
+
+  /** Whether no connection holds the charge's named lock. */
+  const lockIsFree = async (chargeId: string) => {
+    const [rows] = await louezDb.db.$client.query("SELECT IS_FREE_LOCK(?) AS free", [
+      reversal.feeReversalLockName(chargeId),
+    ]);
+    return Number((rows as Array<{ free: number | string }>)[0]?.free) === 1;
+  };
+
+  /**
+   * The platform's alerts, faked: each `fee_over_returned` keeps the fee given back in
+   * excess it names, and whether the charge's lock was free when it was raised.
+   */
+  function fakeAlerts() {
+    const sent: Array<{ chargeId: string; excessMinor: number; lockFree: boolean }> = [];
+    const alerts: BillingAlerts = {
+      log: { error() {}, info() {} },
+      async alert(kind, message) {
+        assert.equal(kind, "fee_over_returned");
+        const [, chargeId, excess] =
+          /^charge (\S+) on account .* by (\d+) \(minor units\)/.exec(message) ?? [];
+        assert.ok(chargeId && excess, message);
+        sent.push({
+          chargeId,
+          excessMinor: Number(excess),
+          lockFree: await lockIsFree(chargeId),
+        });
+      },
+    };
+    const excesses = () => sent.map((alert) => alert.excessMinor);
+    return { alerts, sent, excesses };
+  }
 
   test("partial refunds give back a cumulative share of the fee, recorded on the row", async () => {
     const stripe = fakeStripe();
@@ -487,5 +526,227 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       stripe: stripe.port,
     });
     assert.equal(retried.status, "refunded");
+  });
+
+  // The fee given back in excess (fees.md §9): one figure per charge, Stripe's fee
+  // refunded less its share of what the store no longer keeps, read again on every
+  // event that changes it, and alerted to the platform once the charge's lock is free.
+  describe("the fee given back in excess", () => {
+    async function excessCase(charge: { disputes?: FakeCharge["disputes"] } = {}) {
+      const stripe = fakeStripe();
+      const { chargeId } = await chargeWithFee(stripe, {
+        amount: 10_000,
+        fee: 300,
+        disputes: charge.disputes,
+      });
+      const state = stripe.charges.get(chargeId);
+      assert.ok(state);
+      const alerted = fakeAlerts();
+      const reverse = () =>
+        reversal.reverseFeeAtSource({
+          chargeId,
+          accountId: ACCOUNT,
+          stripe: stripe.port,
+          alerts: alerted.alerts,
+        });
+      return { stripe, chargeId, state, alerted, reverse };
+    }
+
+    test("a refund of 60.00 that fails after its share was given back is alerted once, at 1.80", async () => {
+      const { state, alerted, reverse } = await excessCase();
+      state.amountRefunded = 6_000;
+      await reverse();
+      assert.deepEqual(alerted.excesses(), []);
+      // The refund failed: Stripe no longer counts it.
+      state.amountRefunded = 0;
+      await reverse();
+      assert.deepEqual(alerted.excesses(), [180]);
+      assert.ok(alerted.sent.every((alert) => alert.lockFree));
+    });
+
+    test("two failed refunds of one charge leave 1.80, never their sum", async () => {
+      const { stripe, state, alerted, reverse } = await excessCase();
+      state.amountRefunded = 6_000;
+      await reverse();
+      state.amountRefunded = 0;
+      await reverse();
+      // A second refund of 30.00 while 1.80 is given back: its share is already given.
+      state.amountRefunded = 3_000;
+      await reverse();
+      state.amountRefunded = 0;
+      await reverse();
+      assert.deepEqual(alerted.excesses(), [180, 90, 180]);
+      assert.equal(stripe.refunds.length, 1);
+      assert.ok(alerted.sent.every((alert) => alert.lockFree));
+    });
+
+    test("a dispute opened then won gives 3.00 in excess; one lost gives none", async () => {
+      const won = await excessCase({
+        disputes: [{ id: "dp_won", amount: 10_000, status: "needs_response" }],
+      });
+      await won.reverse();
+      assert.deepEqual(won.alerted.excesses(), []);
+      won.state.disputes = [{ id: "dp_won", amount: 10_000, status: "won" }];
+      await won.reverse();
+      assert.deepEqual(won.alerted.excesses(), [300]);
+
+      const lost = await excessCase({
+        disputes: [{ id: "dp_lost", amount: 10_000, status: "needs_response" }],
+      });
+      await lost.reverse();
+      lost.state.disputes = [{ id: "dp_lost", amount: 10_000, status: "lost" }];
+      await lost.reverse();
+      assert.deepEqual(lost.alerted.excesses(), []);
+    });
+
+    test("a refund that failed, then a dispute: none while it is open, 3.00 once it is won", async () => {
+      const { state, alerted, reverse } = await excessCase();
+      state.amountRefunded = 6_000;
+      await reverse();
+      state.amountRefunded = 0;
+      await reverse();
+      assert.deepEqual(alerted.excesses(), [180]);
+      state.disputes = [{ id: "dp_after", amount: 10_000, status: "needs_response" }];
+      await reverse();
+      assert.deepEqual(alerted.excesses(), [180]);
+      state.disputes = [{ id: "dp_after", amount: 10_000, status: "won" }];
+      await reverse();
+      assert.deepEqual(alerted.excesses(), [180, 300]);
+    });
+
+    test("a dispute of 40.00, then a refund of 60.00 that fails: 1.80", async () => {
+      const { state, alerted, reverse } = await excessCase({
+        disputes: [{ id: "dp_before", amount: 4_000, status: "needs_response" }],
+      });
+      await reverse();
+      state.amountRefunded = 6_000;
+      await reverse();
+      assert.deepEqual(alerted.excesses(), []);
+      state.amountRefunded = 0;
+      await reverse();
+      assert.deepEqual(alerted.excesses(), [180]);
+    });
+
+    test("ordinary partial refunds raise no alert, call Stripe as before and write no row", async () => {
+      const { stripe, chargeId, state, alerted } = await excessCase();
+      const calls: string[] = [];
+      const counted: FeeReversalStripe = {
+        retrieveCharge: (...args) => (calls.push("charge"), stripe.port.retrieveCharge(...args)),
+        retrieveApplicationFee: (...args) => (
+          calls.push("fee"),
+          stripe.port.retrieveApplicationFee(...args)
+        ),
+        listDisputes: (...args) => (calls.push("disputes"), stripe.port.listDisputes(...args)),
+        refundApplicationFee: (...args) => (
+          calls.push("refund"),
+          stripe.port.refundApplicationFee(...args)
+        ),
+      };
+      const activity = async () =>
+        (
+          await louezDb.db
+            .select({ id: louezDb.reservationActivity.id })
+            .from(louezDb.reservationActivity)
+        ).length;
+      const before = await activity();
+      for (const refunded of [3_000, 8_000]) {
+        state.amountRefunded = refunded;
+        await reversal.reverseFeeAtSource({
+          chargeId,
+          accountId: ACCOUNT,
+          stripe: counted,
+          alerts: alerted.alerts,
+        });
+      }
+      assert.deepEqual(alerted.excesses(), []);
+      // Each reversal reads the charge, its fee and its disputes, then refunds its share.
+      const oneReversal = ["charge", "fee", "disputes", "refund"];
+      assert.deepEqual(calls, [...oneReversal, ...oneReversal]);
+      assert.equal(await activity(), before);
+    });
+
+    test("an alert that fails never fails the reversal", async () => {
+      const { state, chargeId, stripe } = await excessCase();
+      state.amountRefunded = 6_000;
+      const failing: BillingAlerts = {
+        log: { error() {}, info() {} },
+        alert: async () => {
+          throw new Error("the channel is down");
+        },
+      };
+      const reverse = () =>
+        reversal.reverseFeeAtSource({
+          chargeId,
+          accountId: ACCOUNT,
+          stripe: stripe.port,
+          alerts: failing,
+        });
+      await reverse();
+      state.amountRefunded = 0;
+      const result = await reverse();
+      assert.equal(result.status, "unchanged");
+    });
+
+    test("ten won disputes at once leave the pool its connections: each alert waits for its lock's release", async () => {
+      const stripe = fakeStripe();
+      const chargeIds: string[] = [];
+      const quiet: BillingAlerts["log"] = { error() {}, info() {} };
+      const noAlerts = fakeAlerts().alerts;
+      for (let index = 0; index < 10; index++) {
+        const { chargeId } = await chargeWithFee(stripe, {
+          amount: 10_000,
+          fee: 300,
+          disputes: [{ id: `dp_${RUN}_${index}`, amount: 10_000, status: "needs_response" }],
+        });
+        await reversal.reverseFeeAtSource({
+          chargeId,
+          accountId: ACCOUNT,
+          stripe: stripe.port,
+          alerts: noAlerts,
+        });
+        const charge = stripe.charges.get(chargeId);
+        assert.ok(charge);
+        charge.disputes = [{ id: `dp_${RUN}_${index}`, amount: 10_000, status: "won" }];
+        chargeIds.push(chargeId);
+      }
+      // The real alerts, whose hourly slot is a transaction on a pooled connection; the
+      // channel is faked.
+      const posted: string[] = [];
+      const { createBillingAlerts } = await import("@/lib/billing-sync/alerts");
+      const alerts = createBillingAlerts({
+        log: quiet,
+        notify: async (kind) => {
+          posted.push(kind);
+        },
+      });
+
+      // Six of the pool's ten connections are taken by the rest of the app.
+      const taken = await Promise.all(
+        Array.from({ length: 6 }, () => louezDb.db.$client.getConnection()),
+      );
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        const result = await Promise.race([
+          Promise.all(
+            chargeIds.map((chargeId) =>
+              reversal.reverseFeeAtSource({
+                chargeId,
+                accountId: ACCOUNT,
+                stripe: stripe.port,
+                alerts,
+              }),
+            ),
+          ),
+          new Promise<"stuck">((resolve) => {
+            timer = setTimeout(() => resolve("stuck"), 10_000);
+          }),
+        ]);
+        assert.notEqual(result, "stuck", "an alert waited for a connection while holding a lock");
+      } finally {
+        clearTimeout(timer);
+        for (const connection of taken) connection.release();
+      }
+      assert.ok(posted.length <= 1, `${posted.length} posts in the hour`);
+    });
   });
 });

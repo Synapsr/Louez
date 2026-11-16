@@ -28,6 +28,7 @@ export type BillingAlertKind =
   | "policies_stale"
   | "policies_cutoff_mismatch"
   | "fee_fail_closed"
+  | "fee_over_returned"
   | "manifest_rejected"
   | "final_snapshot_skipped"
   | "final_snapshot_large"

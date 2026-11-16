@@ -68,6 +68,11 @@ mock.module("@/lib/invoicing/refund-credit-note", {
     },
   },
 });
+// A refund that fails after its share of the fee was given back alerts the platform
+// (fee-reversal.ts): the channel is faked, the alert's log line stays.
+mock.module("@/lib/discord/platform-notifications", {
+  namedExports: { notifyBillingAlert: async () => {} },
+});
 
 // Under module mocks, @louez/utils is loaded through require for the API's services.
 mock.module("@louez/utils", { namedExports: createRequire(import.meta.url)("@louez/utils") });
@@ -258,7 +263,7 @@ function fakeStripe() {
         const refunded = feeRefunds
           .filter((refund) => refund.feeId === feeId)
           .reduce((sum, refund) => sum + refund.amount, 0);
-        return { id: feeId, amount: FEE_MINOR, amount_refunded: refunded };
+        return { id: feeId, amount: FEE_MINOR, amount_refunded: refunded, currency: "eur" };
       },
       async listDisputes() {
         return [];

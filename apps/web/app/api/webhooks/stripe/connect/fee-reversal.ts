@@ -1,5 +1,7 @@
+import { after } from "next/server";
 import type Stripe from "stripe";
 
+import { type BillingAlerts, createBillingAlerts } from "@/lib/billing-sync/alerts";
 import { createRunLimit, withNamedLock } from "@/lib/billing-sync/locks";
 import { reversalAtSource } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
@@ -29,7 +31,7 @@ export type FeeReversalStripe = {
   /** The fee, on the platform account. */
   retrieveApplicationFee(
     feeId: string,
-  ): Promise<Pick<Stripe.ApplicationFee, "id" | "amount" | "amount_refunded">>;
+  ): Promise<Pick<Stripe.ApplicationFee, "id" | "amount" | "amount_refunded" | "currency">>;
   /** Every dispute of the charge, on the connected account. */
   listDisputes(
     chargeId: string,
@@ -135,28 +137,71 @@ function disputedMinor(
   return total;
 }
 
+/** A fee given back past its share of what the store no longer keeps, as Stripe counts it. */
+type FeeGivenBackInExcess = {
+  readonly feeId: string;
+  /** Upper case. */
+  readonly currency: string;
+  readonly feeMinor: number;
+  readonly targetMinor: number;
+  readonly feeRefundedMinor: number;
+};
+
+/**
+ * Tells the platform of a fee given back past its share: after a refund failed or a
+ * dispute was won, Stripe cannot take it back. The figure is Stripe's and the billing
+ * service's, which bills it again for a store it bills; Louez stores none. Runs once
+ * the charge's lock and the run's turn are released, since the alert may take a pooled
+ * connection. Never throws: the webhook still answers.
+ */
+async function alertFeeGivenBackInExcess(
+  input: { readonly chargeId: string; readonly accountId: string },
+  excess: FeeGivenBackInExcess,
+  alerts: BillingAlerts | undefined,
+): Promise<void> {
+  try {
+    await (alerts ?? createBillingAlerts({ schedule: after })).alert(
+      "fee_over_returned",
+      `charge ${input.chargeId} on account ${input.accountId}: application fee ${excess.feeId} of ${excess.feeMinor} ${excess.currency} has ${excess.feeRefundedMinor} given back, above its share of ${excess.targetMinor} by ${excess.feeRefundedMinor - excess.targetMinor} (minor units). Stripe cannot take a fee refund back: the billing service bills it again for a store it bills; for a store Louez's legacy billing bills, check it in Stripe.`,
+    );
+  } catch (error) {
+    log.error(
+      "billing",
+      `the fee given back in excess on charge ${input.chargeId} could not be alerted: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 /**
  * Refunds the part of the charge's application fee the store no longer keeps, then
  * records Stripe's refunded amount on the legacy fee rows, on the lock's connection.
- * Throws on a Stripe or database error, and `FeeReversalBusyError` when the lock or a
- * turn stays taken, so the webhook answers 500 and Stripe retries: the next delivery
- * reads Stripe again.
+ * When the fee given back is above its share, alerts the platform once the lock is
+ * released (`fee_over_returned`). Throws on a Stripe or database error, and
+ * `FeeReversalBusyError` when the lock or a turn stays taken, so the webhook answers
+ * 500 and Stripe retries: the next delivery reads Stripe again.
  */
 export async function reverseFeeAtSource(input: {
   readonly chargeId: string;
   /** The connected account that took the charge, `event.account`. */
   readonly accountId: string;
   readonly stripe?: FeeReversalStripe;
+  /** The platform's alerts; tests fake them. */
+  readonly alerts?: BillingAlerts;
 }): Promise<FeeReversalResult> {
   const port = input.stripe ?? stripeFeeReversal;
   const turn = await reversalLimit(TURN_WAIT_MS, () =>
     withNamedLock(
       feeReversalLockName(input.chargeId),
       LOCK_TIMEOUT_SECONDS,
-      async (lockedDb): Promise<FeeReversalResult> => {
+      async (
+        lockedDb,
+      ): Promise<{
+        readonly result: FeeReversalResult;
+        readonly excess: FeeGivenBackInExcess | null;
+      }> => {
         const charge = await port.retrieveCharge(input.chargeId, input.accountId);
         const feeId = stripeId(charge.application_fee);
-        if (!feeId) return { status: "no_fee" };
+        if (!feeId) return { result: { status: "no_fee" }, excess: null };
         const [fee, disputes] = await Promise.all([
           port.retrieveApplicationFee(feeId),
           port.listDisputes(charge.id, input.accountId),
@@ -181,25 +226,41 @@ export async function reverseFeeAtSource(input: {
           );
         }
 
+        const feeRefundedMinor = fee.amount_refunded + incrementMinor;
         await recordApplicationFeeRefund(
           {
             applicationFeeId: fee.id,
             paymentIntentId: stripeId(charge.payment_intent),
-            feeRefundedMinor: fee.amount_refunded + incrementMinor,
+            feeRefundedMinor,
           },
           lockedDb,
         );
         return {
-          status: incrementMinor > 0 ? "refunded" : "unchanged",
-          feeId: fee.id,
-          targetMinor,
-          incrementMinor,
-          feeRefundedMinor: fee.amount_refunded + incrementMinor,
+          result: {
+            status: incrementMinor > 0 ? "refunded" : "unchanged",
+            feeId: fee.id,
+            targetMinor,
+            incrementMinor,
+            feeRefundedMinor,
+          },
+          excess:
+            feeRefundedMinor > targetMinor
+              ? {
+                  feeId: fee.id,
+                  currency: fee.currency.toUpperCase(),
+                  feeMinor: fee.amount,
+                  targetMinor,
+                  feeRefundedMinor,
+                }
+              : null,
         };
       },
     ),
   );
   if (!turn.ran) throw new FeeReversalBusyError(input.chargeId, "turn");
   if (!turn.value.ran) throw new FeeReversalBusyError(input.chargeId, "lock");
-  return turn.value.value;
+  // The lock's connection is back in the pool and the turn is free.
+  const { result, excess } = turn.value.value;
+  if (excess) await alertFeeGivenBackInExcess(input, excess, input.alerts);
+  return result;
 }
