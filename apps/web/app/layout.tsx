@@ -20,6 +20,7 @@ import { UmamiAnalytics } from "@/components/umami-analytics";
 import { env, getPublicEnv } from "@/env";
 import { getInstanceConfig } from "@/lib/deployment";
 import { ORPCProvider } from "@/lib/orpc/provider";
+import { NO_INDEX_ROBOTS, isSearchIndexingEnabled } from "@/lib/search-indexing";
 
 // Import translations directly since this is a root layout without NextIntlProvider
 import messages from "@/messages/fr.json";
@@ -30,7 +31,7 @@ import "./globals.css";
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   title: {
     default: messages.app.name,
     template: `%s | ${messages.app.name}`,
@@ -46,6 +47,14 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
   },
 };
+
+// Read at request time, so the prebuilt image honors LOUEZ_SEARCH_INDEXING. A page
+// that sets its own robots (lib/seo.tsx) applies the switch itself.
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  if (isSearchIndexingEnabled()) return baseMetadata;
+  return { ...baseMetadata, robots: NO_INDEX_ROBOTS };
+}
 
 export default async function RootLayout({
   children,

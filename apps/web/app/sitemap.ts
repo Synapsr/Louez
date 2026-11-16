@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
 
 import { and, asc, desc, eq } from "drizzle-orm";
+import { connection } from "next/server";
 
 import { db, products } from "@louez/db";
 
+import { isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { getCanonicalUrl } from "@/lib/seo";
 import { loadCatalogCategories } from "@/lib/storefront/catalog.queries";
 import { hasRichTextContent } from "@louez/utils";
@@ -22,6 +24,9 @@ const MAX_PRODUCT_URLS = 5_000;
  * them through the catalog grid.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  await connection();
+  if (!isSearchIndexingEnabled()) return [];
+
   const store = await resolveStoreFromHost();
 
   if (!store) {
