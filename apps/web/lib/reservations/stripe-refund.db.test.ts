@@ -68,6 +68,11 @@ mock.module("@/lib/invoicing/refund-credit-note", {
     },
   },
 });
+// A refund that fails after its share of the fee was given back alerts the platform
+// (fee-reversal.ts): the channel is faked, the alert's log line stays.
+mock.module("@/lib/discord/platform-notifications", {
+  namedExports: { notifyBillingAlert: async () => {} },
+});
 
 // Under module mocks, @louez/utils is loaded through require for the API's services.
 mock.module("@louez/utils", { namedExports: createRequire(import.meta.url)("@louez/utils") });
@@ -258,7 +263,7 @@ function fakeStripe() {
         const refunded = feeRefunds
           .filter((refund) => refund.feeId === feeId)
           .reduce((sum, refund) => sum + refund.amount, 0);
-        return { id: feeId, amount: FEE_MINOR, amount_refunded: refunded };
+        return { id: feeId, amount: FEE_MINOR, amount_refunded: refunded, currency: "eur" };
       },
       async listDisputes() {
         return [];
@@ -1211,27 +1216,20 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     assert.equal(settled?.status, "failed");
     assert.equal(settled?.failureCode, "expired_or_canceled_card");
 
-    // Named once each for the inbox (stripe-refund-inbox.db.test.ts): the refund
-    // undone, and the 1.80 of the 3.00 fee given back for the 60.00, which Stripe
-    // cannot take back.
+    // Named once for the inbox (stripe-refund-inbox.db.test.ts). The fee given back on
+    // it is Stripe's and the billing service's figure: Louez writes no line of it.
     const undoneLines = await louezDb.db
       .select({ metadata: louezDb.reservationActivity.metadata })
       .from(louezDb.reservationActivity)
       .where(
         and(
           eq(louezDb.reservationActivity.reservationId, reservationId),
-          sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) IN ('refund_undone', 'refund_fee_over_returned')`,
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) IS NOT NULL`,
         ),
       );
-    assert.deepEqual(undoneLines.map((line) => (line.metadata as { kind: string }).kind).sort(), [
-      "refund_fee_over_returned",
-      "refund_undone",
-    ]);
-    assert.equal(
-      undoneLines.find(
-        (line) => (line.metadata as { kind: string }).kind === "refund_fee_over_returned",
-      )?.metadata?.overReturnedMinor,
-      180,
+    assert.deepEqual(
+      undoneLines.map((line) => (line.metadata as { kind: string }).kind),
+      ["refund_undone"],
     );
 
     // The whole payment can be refunded again.
@@ -1612,77 +1610,6 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
         assert.deepEqual(notes, []);
       });
     }
-  }
-
-  for (const shape of ["linked", "unlinked", "stamped"] as const) {
-    test(`the fee given back on a refund recorded ${shape} that fails is recorded once`, async () => {
-      const stripe = fakeStripe();
-      const { reservationId, paymentId, chargeId } = await createPayment(stripe);
-      const made = stripe.refundInDashboard(chargeId, 6_000);
-      if (shape === "stamped") {
-        await louezDb.db
-          .update(louezDb.payments)
-          .set({ stripeRefundId: made.id })
-          .where(eq(louezDb.payments.id, paymentId));
-      } else {
-        await louezDb.db.insert(louezDb.payments).values({
-          id: `pay_legacy_fee_${++counter}`,
-          reservationId,
-          amount: "60.00",
-          type: "rental",
-          method: "stripe",
-          status: "completed",
-          stripeRefundId: made.id,
-          refundOfPaymentId: shape === "linked" ? paymentId : null,
-          stripeChargeId: shape === "unlinked" ? chargeId : null,
-          currency: "EUR",
-          grossMinor: 6_000,
-        });
-      }
-      // 1.80 of the 3.00 fee given back for the 60.00, then the refund fails.
-      await webhook.handleChargeRefunded(
-        stripe.refundedEvent(chargeId),
-        ACCOUNT,
-        stripe.webhookPort,
-      );
-      made.status = "failed";
-      for (let delivery = 0; delivery < 2; delivery++) {
-        await webhook.handleRefundUpdated(
-          { ...made, currency: "eur", charge: chargeId },
-          ACCOUNT,
-          stripe.webhookPort,
-        );
-      }
-
-      const [failedRow] = await louezDb.db
-        .select({ id: louezDb.payments.id })
-        .from(louezDb.payments)
-        .where(
-          and(
-            eq(louezDb.payments.stripeRefundId, made.id),
-            eq(louezDb.payments.status, "failed"),
-            sql`${louezDb.payments.stripePaymentIntentId} IS NULL`,
-          ),
-        );
-      assert.ok(failedRow);
-      const lines = await louezDb.db
-        .select({ metadata: louezDb.reservationActivity.metadata })
-        .from(louezDb.reservationActivity)
-        .where(
-          and(
-            eq(louezDb.reservationActivity.reservationId, reservationId),
-            sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) = 'refund_fee_over_returned'`,
-          ),
-        );
-      assert.deepEqual(
-        lines.map((line) => {
-          const metadata = line.metadata as { paymentId: string; overReturnedMinor: number };
-          return [metadata.paymentId, metadata.overReturnedMinor];
-        }),
-        [[failedRow.id, 180]],
-      );
-      assert.equal((await readPayment(paymentId))?.amount, "100.00");
-    });
   }
 
   test("a refund made through one row of a charge that fails is undone there, whichever row the event names", async () => {

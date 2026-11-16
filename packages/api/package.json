@@ -43,6 +43,7 @@
     "./services/reservation-create": "./src/services/reservation-create.ts",
     "./services/reservation-failure": "./src/services/reservation-failure.ts",
     "./services/reservation-dates": "./src/services/reservation-dates.ts",
+    "./services/reservation-editable": "./src/services/reservation-editable.ts",
     "./services/reservation-inventory": "./src/services/reservation-inventory.ts",
     "./services/reservation-number": "./src/services/reservation-number.ts",
     "./services/reservation-status": "./src/services/reservation-status.ts",

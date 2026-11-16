@@ -942,8 +942,8 @@ const unconfirmedRefunds: Source = async (window, shaper) => {
   });
 };
 
-const UNDONE_FEE_ACTIVITY = "inbox_undone_fee_activity";
-const undoneFeeActivity = alias(reservationActivity, UNDONE_FEE_ACTIVITY);
+const UNDONE_LISTED_ACTIVITY = "inbox_undone_listed_activity";
+const undoneListedActivity = alias(reservationActivity, UNDONE_LISTED_ACTIVITY);
 const CREDIT_NOTE_LINK = "inbox_credit_note_link";
 const creditNoteLink = alias(invoicePayments, CREDIT_NOTE_LINK);
 const CREDIT_NOTE = "inbox_credit_note";
@@ -952,23 +952,19 @@ const undoneOriginal = alias(payments, UNDONE_ORIGINAL);
 const creditNote = alias(invoices, CREDIT_NOTE);
 
 /**
- * A Stripe refund Louez recorded that Stripe then reported failed or canceled (apps/web
- * lib/reservations/stripe-refund-writes.ts): its row is `failed` and the payment is
- * back to what the store keeps, but what Louez cannot undo by itself is named here.
- * The credit note issued for it stands (invoicing has no document that cancels one):
- * the store corrects it by hand. The application fee given back on it stays given back
- * (Stripe cannot take an application fee refund back). A refund Stripe listed as moving
- * money after reporting it failed stays failed in Louez, for a person to check. Shown
- * while any of these is so.
+ * Every Stripe refund row that is `failed` (apps/web
+ * lib/reservations/stripe-refund-writes.ts): Stripe reported the refund failed or
+ * canceled, so the customer was not refunded and the payment counts it for nothing.
+ * The store checks it in Stripe and refunds again if needed. A credit note issued for
+ * it stands (invoicing has no document that cancels one): the store corrects it by
+ * hand. A refund Stripe listed as moving money after reporting it failed stays failed
+ * in Louez, and the store checks in Stripe whether the customer was refunded.
  */
 const undoneRefunds: Source = async (window, shaper) => {
   const creditNoteNumber = sql<
     string | null
   >`(SELECT ${creditNote.number} FROM ${invoicePayments} AS ${sql.identifier(CREDIT_NOTE_LINK)} INNER JOIN ${invoices} AS ${sql.identifier(CREDIT_NOTE)} ON ${creditNote.id} = ${creditNoteLink.invoiceId} WHERE ${creditNoteLink.paymentId} = ${payments.id} AND ${creditNote.type} = 'credit_note' LIMIT 1)`;
-  const feeOverReturnedMinor = sql<
-    string | null
-  >`(SELECT MAX(CAST(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.overReturnedMinor') AS SIGNED)) FROM ${reservationActivity} AS ${sql.identifier(UNDONE_FEE_ACTIVITY)} WHERE ${undoneFeeActivity.reservationId} = ${payments.reservationId} AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.kind')) = 'refund_fee_over_returned' AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.paymentId')) = ${payments.id})`;
-  const listedAfterFailure = sql<number>`EXISTS (SELECT 1 FROM ${reservationActivity} AS ${sql.identifier(UNDONE_FEE_ACTIVITY)} WHERE ${undoneFeeActivity.reservationId} = ${payments.reservationId} AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.kind')) = 'refund_failed_listed' AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.paymentId')) = ${payments.id})`;
+  const listedAfterFailure = sql<number>`EXISTS (SELECT 1 FROM ${reservationActivity} AS ${sql.identifier(UNDONE_LISTED_ACTIVITY)} WHERE ${undoneListedActivity.reservationId} = ${payments.reservationId} AND JSON_UNQUOTE(JSON_EXTRACT(${undoneListedActivity.metadata}, '$.kind')) = 'refund_failed_listed' AND JSON_UNQUOTE(JSON_EXTRACT(${undoneListedActivity.metadata}, '$.paymentId')) = ${payments.id})`;
   const occurred = sql<Date>`${payments.updatedAt}`.mapWith(payments.updatedAt);
   const rows = await db
     .select({
@@ -980,7 +976,6 @@ const undoneRefunds: Source = async (window, shaper) => {
       amount: payments.amount,
       currency: payments.currency,
       creditNoteNumber,
-      feeOverReturnedMinor,
     })
     .from(payments)
     .innerJoin(reservations, eq(reservations.id, payments.reservationId))
@@ -994,7 +989,6 @@ const undoneRefunds: Source = async (window, shaper) => {
         // the payment of its reservation that holds the same charge, as the writer
         // found it. The legacy row is not relinked.
         sql`(${payments.refundOfPaymentId} IS NOT NULL OR EXISTS (SELECT 1 FROM ${payments} AS ${sql.identifier(UNDONE_ORIGINAL)} WHERE ${undoneOriginal.reservationId} = ${payments.reservationId} AND ${undoneOriginal.stripeChargeId} = ${payments.stripeChargeId} AND ${undoneOriginal.id} <> ${payments.id} AND ${undoneOriginal.refundOfPaymentId} IS NULL AND (${undoneOriginal.stripePaymentIntentId} IS NOT NULL OR ${undoneOriginal.stripeCheckoutSessionId} IS NOT NULL)))`,
-        sql`(${creditNoteNumber} IS NOT NULL OR ${feeOverReturnedMinor} IS NOT NULL OR ${listedAfterFailure})`,
         inWindow(window, "refund_undone", occurred, payments.id),
       ),
     )
@@ -1005,22 +999,17 @@ const undoneRefunds: Source = async (window, shaper) => {
     const about = aboutReservation(shaper, row);
     const currency = row.currency ?? shaper.currency;
     const shown = money(row.amount, currency);
-    const fee =
-      row.feeOverReturnedMinor === null ? null : Number.parseInt(row.feeOverReturnedMinor, 10);
-    const feeAmount = fee === null ? null : minorToDecimal(fee, currency);
+    const listed = Number(row.listedAfterFailure) === 1;
+    const refund = `the refund${row.refundId ? ` ${row.refundId}` : ""}${shown ? ` of ${shown}` : ""} on ${about.name}`;
     return candidate("refund_undone", row.refundPaymentId, {
       severity: "warning",
       occurredAt: row.occurredAt,
       summary: [
-        `Stripe reported the refund${row.refundId ? ` ${row.refundId}` : ""}${shown ? ` of ${shown}` : ""} on ${about.name} failed after Louez recorded it: Louez marked it failed and put the payment back.`,
+        listed
+          ? `Stripe reported ${refund} failed, then listed it as moving money: Louez keeps it failed. Check in Stripe whether the customer was refunded, and refund again if needed.`
+          : `Stripe reported ${refund} failed: the customer was not refunded, and Louez counts the refund for nothing. Check it in Stripe and refund again if needed.`,
         row.creditNoteNumber
           ? `The credit note ${row.creditNoteNumber} issued for it stands: correct it by hand in your accounting.`
-          : null,
-        Number(row.listedAfterFailure) === 1
-          ? "Stripe has since listed it as moving money: Louez keeps it failed; check it in Stripe."
-          : null,
-        feeAmount
-          ? `Louez's fee given back on it (${money(feeAmount, currency) ?? feeAmount}) stays given back.`
           : null,
       ]
         .filter(Boolean)
@@ -1034,8 +1023,7 @@ const undoneRefunds: Source = async (window, shaper) => {
         amount: row.amount,
         currency,
         creditNoteNumber: row.creditNoteNumber,
-        feeOverReturned: feeAmount,
-        listedAfterFailure: Number(row.listedAfterFailure) === 1,
+        listedAfterFailure: listed,
       },
       tools: RESERVATION_TOOLS,
       links: about.links,
@@ -1702,6 +1690,7 @@ const unissuedCreditNotes: Source = async (window, shaper) => {
         paymentId: typeof payload.paymentId === "string" ? payload.paymentId : null,
         refundId: typeof payload.refundId === "string" ? payload.refundId : null,
         amount,
+        currency: row.currency ?? shaper.currency,
         lastError: row.lastError,
       },
       tools: RESERVATION_TOOLS,

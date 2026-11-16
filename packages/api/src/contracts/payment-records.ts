@@ -129,8 +129,19 @@ export interface RefundBalance {
 }
 
 /**
+ * Why an amount has too many decimals for its currency, as every payment
+ * write says it: none in yen, two in euros (`currencyMinorDigits`).
+ */
+export function tooPreciseMessage(currency: string, decimals: number): string {
+  return decimals === 0
+    ? `A ${currency} amount has no decimals: send whole units (such as "30").`
+    : `A ${currency} amount has at most ${decimals} decimals.`;
+}
+
+/**
  * The refusals of the payment writes. Each keeps the message the hand-written
- * tools answered with; `money` writes the amounts as they did (`€25.00`).
+ * tools answered with; `money` writes an amount in the currency it is in
+ * (`€25.00`, `¥2,500`).
  */
 export const paymentRecordErrors = {
   reservationNotFound: (id: string) =>
@@ -150,6 +161,22 @@ export const paymentRecordErrors = {
       message:
         'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50").',
       i18nKey: "errors.invalidAmount",
+    }),
+  /** A non-zero digit past the minor unit of the reservation's currency (no decimals in yen, two in euros). */
+  amountTooPrecise: (currency: string, decimals: number) =>
+    apiError("BAD_REQUEST", "PAYMENT_AMOUNT_INVALID", {
+      message: tooPreciseMessage(currency, decimals),
+      i18nKey: "errors.invalidAmount",
+      details: { currency, decimals },
+    }),
+  /**
+   * A reservation in a three-decimal currency, which Louez's billing does
+   * not carry: no payment nor deposit return is recorded on it.
+   */
+  currencyNotSupported: (currency: string) =>
+    apiError("CONFLICT", "PAYMENT_CURRENCY_NOT_SUPPORTED", {
+      message: `This reservation is in ${currency}, a three-decimal currency Louez's billing does not count: a payment on it cannot be recorded.`,
+      details: { currency },
     }),
   negativeOutsideAdjustment: () =>
     apiError("BAD_REQUEST", "PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT", {
@@ -172,6 +199,14 @@ export const paymentRecordErrors = {
         'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00").',
       i18nKey: "errors.invalidAmount",
     }),
+  /** A non-zero digit past the minor unit of the reservation's currency (no decimals in yen, two in euros). */
+  depositReturnAmountTooPrecise: (currency: string, decimals: number) =>
+    apiError("BAD_REQUEST", "DEPOSIT_RETURN_AMOUNT_INVALID", {
+      message: tooPreciseMessage(currency, decimals),
+      i18nKey: "errors.invalidAmount",
+      details: { currency, decimals },
+    }),
+  /** `money` writes an amount in the reservation's currency (`€25.00`, `¥2,500`). */
   depositReturnExceedsBalance: (balance: DepositBalance, money: (amount: string) => string) =>
     apiError("CONFLICT", "DEPOSIT_RETURN_EXCEEDS_BALANCE", {
       message:
@@ -191,10 +226,7 @@ export const paymentRecordErrors = {
   /** A non-zero digit past the minor unit of the payment's currency (no decimals in yen, two in euros). */
   refundAmountTooPrecise: (currency: string, decimals: number) =>
     apiError("BAD_REQUEST", "REFUND_AMOUNT_INVALID", {
-      message:
-        decimals === 0
-          ? `A ${currency} amount has no decimals: send whole units (such as "30").`
-          : `A ${currency} amount has at most ${decimals} decimals.`,
+      message: tooPreciseMessage(currency, decimals),
       i18nKey: "errors.invalidAmount",
       details: { currency, decimals },
     }),
