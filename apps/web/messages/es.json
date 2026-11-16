@@ -9921,7 +9921,15 @@
           "confirmPastBuffer": "¿Confirmar la reserva pese a tu margen entre alquileres?",
           "confirmBeyondStock": "¿Confirmar la reserva por encima de tu stock?",
           "confirmBeyondStockAndBuffer": "¿Confirmar la reserva por encima de tu stock y de tu margen entre alquileres?",
-          "recordDeposit": "¿Registrar un depósito cobrado?"
+          "recordDeposit": "¿Registrar un depósito cobrado?",
+          "createQuote": "¿Crear el presupuesto?",
+          "createQuotePastBuffer": "¿Crear el presupuesto pese a tu margen entre alquileres?",
+          "createQuoteBeyondStock": "¿Crear el presupuesto por encima de tu stock?",
+          "createQuoteBeyondStockAndBuffer": "¿Crear el presupuesto por encima de tu stock y de tu margen entre alquileres?",
+          "createBooking": "¿Crear la reserva?",
+          "createBookingPastBuffer": "¿Crear la reserva pese a tu margen entre alquileres?",
+          "createBookingBeyondStock": "¿Crear la reserva por encima de tu stock?",
+          "createBookingBeyondStockAndBuffer": "¿Crear la reserva por encima de tu stock y de tu margen entre alquileres?"
         },
         "facts": {
           "booking": "Reserva #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9959,11 @@
           "messageToCustomer": "El cliente recibirá {channels, select, email {el email} sms {el SMS} other {el email y el SMS}} «<v>{message}</v>»",
           "noMessage": "No se envía ningún mensaje al cliente.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> cobrados · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devueltos al cliente · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devueltos al cliente · <v>{method}</v>",
+          "bookingFor": "Para <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Para <v>{customer}</v> · <v>{email}</v>, cliente nuevo",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> y {others, plural, one {# línea más} other {# líneas más}}"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9986,9 @@
           "customerMessage": {
             "request_accepted": "solicitud aceptada",
             "request_rejected": "solicitud rechazada",
-            "reservation_cancelled": "reserva cancelada"
+            "reservation_cancelled": "reserva cancelada",
+            "quote_sent": "presupuesto",
+            "booking_confirmed": "reserva confirmada"
           }
         }
       }

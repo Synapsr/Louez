@@ -9921,7 +9921,15 @@
           "confirmPastBuffer": "Confermare la prenotazione nonostante il tuo margine tra due noleggi?",
           "confirmBeyondStock": "Confermare la prenotazione oltre la tua disponibilità?",
           "confirmBeyondStockAndBuffer": "Confermare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?",
-          "recordDeposit": "Registrare un deposito incassato?"
+          "recordDeposit": "Registrare un deposito incassato?",
+          "createQuote": "Creare il preventivo?",
+          "createQuotePastBuffer": "Creare il preventivo nonostante il tuo margine tra due noleggi?",
+          "createQuoteBeyondStock": "Creare il preventivo oltre la tua disponibilità?",
+          "createQuoteBeyondStockAndBuffer": "Creare il preventivo oltre la tua disponibilità e il tuo margine tra due noleggi?",
+          "createBooking": "Creare la prenotazione?",
+          "createBookingPastBuffer": "Creare la prenotazione nonostante il tuo margine tra due noleggi?",
+          "createBookingBeyondStock": "Creare la prenotazione oltre la tua disponibilità?",
+          "createBookingBeyondStockAndBuffer": "Creare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?"
         },
         "facts": {
           "booking": "Prenotazione #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9959,11 @@
           "messageToCustomer": "Il cliente riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
           "noMessage": "Al cliente non viene inviato alcun messaggio.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> incassati · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, restituiti al cliente · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, restituiti al cliente · <v>{method}</v>",
+          "bookingFor": "Per <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Per <v>{customer}</v> · <v>{email}</v>, nuovo cliente",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> e {others, plural, one {# altra riga} other {altre # righe}}"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9986,9 @@
           "customerMessage": {
             "request_accepted": "richiesta accettata",
             "request_rejected": "richiesta rifiutata",
-            "reservation_cancelled": "prenotazione annullata"
+            "reservation_cancelled": "prenotazione annullata",
+            "quote_sent": "preventivo",
+            "booking_confirmed": "prenotazione confermata"
           }
         }
       }

@@ -42,6 +42,12 @@ export interface ApiPorts {
    */
   dispatchEffects: (ids: readonly string[]) => void;
   /**
+   * Whether this instance sends e-mail at all (its SMTP settings), as the
+   * outbox's e-mail senders read it: a write that announces an e-mail says
+   * none goes when it does not. Absent: none goes.
+   */
+  emailConfigured?: () => boolean;
+  /**
    * Runs background jobs (`platform/jobs.ts`) a write queued, once its
    * transaction has committed. The app runs them after the answer, a few at
    * a time per process; its cron takes the ones left. Never throws. Absent
@@ -504,6 +510,14 @@ export type ApiEvent =
   /** A reservation's status or notes changed: its pages are revalidated. Its messages go to the outbox. */
   | { type: "reservation.statusChanged"; store: ApiEventStore; reservationId: string }
   | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
+  /** A reservation the store created (`reservations.create`): its pages, and the analytics event. */
+  | {
+      type: "reservation.created";
+      store: ApiEventStore;
+      reservationId: string;
+      /** Facts about the new reservation, for analytics. */
+      facts: Record<string, string | number | boolean | null>;
+    }
   /** A section of the store settings changed: its pages are revalidated. */
   | { type: "store.settingsUpdated"; store: ApiEventStore; section: SettingsSection }
   /** The online store's sections or look changed; `themeChanged`: its cached theme colour is stale. */

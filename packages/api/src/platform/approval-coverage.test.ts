@@ -56,6 +56,7 @@ const FILES = [
   "packages/api/src/routers/dashboard/product-units.ts",
   "packages/api/src/routers/dashboard/product-variants.ts",
   "packages/api/src/routers/dashboard/products.ts",
+  "packages/api/src/routers/dashboard/reservation-create.ts",
   "packages/api/src/routers/dashboard/reservation-follow-up.ts",
   "packages/api/src/routers/dashboard/settings.ts",
   "packages/api/src/routers/dashboard/stores.ts",
@@ -94,6 +95,10 @@ const DECLARED: Record<string, readonly string[]> = {
     'preview.deletedUnits.length + preview.deletedTierCount + preview.deletedSeasonalPricingCount > 0 ? ["deletion"] : ["change"]',
   ],
   "packages/api/src/routers/dashboard/products.ts#updateStatus": ['["change"]'],
+  // A creation: a change, a message when one goes, an override when a flag is sent.
+  "packages/api/src/routers/dashboard/reservation-create.ts#createConfirmation": [
+    "createConsequences(preview)",
+  ],
   // Its branches (overrides, a message, both, neither) are in that function.
   "packages/api/src/routers/dashboard/reservation-follow-up.ts#statusConfirmation": [
     "statusChangeConsequences(preview)",
@@ -133,6 +138,7 @@ const RAISES: Record<string, number> = {
   "packages/api/src/services/products.ts#updateProduct": 1,
   "packages/api/src/services/products.ts#updateProductStatus": 1,
   "packages/api/src/services/products.ts#deleteProduct": 1,
+  "packages/api/src/services/reservation-create.ts#createStoreReservation": 1,
   "packages/api/src/services/reservation-status.ts#changeStoreReservationStatus": 1,
   "packages/api/src/services/settings.ts#writeUnderLock": 1,
   "packages/api/src/services/team.ts#cancelInvitation": 1,

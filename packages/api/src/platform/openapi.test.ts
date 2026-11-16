@@ -187,6 +187,7 @@ describe("OpenAPI document", () => {
         "POST /reservations/{id}/status": "reservations_update_status",
         "POST /reservations/{id}/cancel": "reservations_cancel",
         "PATCH /reservations/{id}/notes": "reservations_update_notes",
+        "POST /reservations": "reservations_create",
         "POST /reservations/{reservationId}/payments": "record_payment",
         "POST /reservations/{reservationId}/deposit-returns": "record_deposit_return",
         "DELETE /payments/{paymentId}": "delete_payment",

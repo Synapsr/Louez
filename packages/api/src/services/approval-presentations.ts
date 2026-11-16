@@ -19,6 +19,7 @@ import {
 } from "./approval-display";
 import { oneLine } from "./approval-preview";
 import { depositReturnAmount, recordedPaymentAmount } from "./payment-amount";
+import type { ReservationCreatePreview } from "./reservation-create";
 import type { StatusChangePreview } from "./reservation-status";
 
 /**
@@ -396,3 +397,127 @@ const lineValues = (shortfall: CapacityShortfall) => ({
   requested: count(shortfall.requested),
   available: count(shortfall.available),
 });
+
+/**
+ * A reservation created by an agent (`dashboard.reservations.create`), from
+ * its preview: who, when and for how much, what it holds, what departs from
+ * the store's rules, and the e-mail the customer gets. At most `FACTS_MAX`
+ * facts: with more than one line past the rules, what it holds gives way to
+ * them, the first shown and the others counted, and the details list them
+ * all. Null where a value cannot be shown as a typed fact.
+ */
+export function createReservationPresentation(
+  preview: ReservationCreatePreview,
+): ApprovalPresentation | null {
+  const { customer, window, totals, currency, overbooking, turnoverBuffer, message } = preview;
+  const total = plainDecimal(totals.total);
+  const first = preview.lines[0];
+  if (!total || !CURRENCY.test(currency) || !first) return null;
+
+  const beyondStock = overbooking?.shortfalls ?? [];
+  const pastBuffer = turnoverBuffer?.shortfalls ?? [];
+  const departures: DisplayFact[] = [
+    ...beyondStock.map((shortfall) =>
+      fact("beyondStock", {
+        ...lineValues(shortfall),
+        missing: count(Math.max(0, shortfall.requested - shortfall.available)),
+      }),
+    ),
+    ...pastBuffer.map((shortfall) =>
+      fact("pastBuffer", {
+        ...lineValues(shortfall),
+        buffer: duration(turnoverBuffer?.turnoverBufferMinutes ?? 0),
+      }),
+    ),
+  ];
+  const flagged = overbooking !== null || turnoverBuffer !== null;
+  const what =
+    preview.lines.length === 1
+      ? fact("bookingLine", { product: text(first.productName), quantity: count(first.quantity) })
+      : fact("bookingLines", {
+          product: text(first.productName),
+          quantity: count(first.quantity),
+          others: count(preview.lines.length - 1),
+        });
+  // Who, when and the total, and the message, hold three places; what it holds the fourth.
+  const shown: DisplayFact[] =
+    departures.length > 1
+      ? [departures[0]!, fact("moreLines", { count: count(departures.length - 1) })]
+      : [what, ...(departures.length === 1 ? departures : flagged ? [fact("withinRules", {})] : [])];
+
+  const said = message.kind === "quote" ? "quote_sent" : "booking_confirmed";
+  const told =
+    message.sends && message.to
+      ? fact("message", {
+          customer: text(customer.name),
+          message: choice("customerMessage", said),
+          channels: choice("messageChannels", "email"),
+          to: text(message.to),
+        })
+      : fact("noMessage", {});
+
+  const departs =
+    beyondStock.length > 0 && pastBuffer.length > 0
+      ? "BeyondStockAndBuffer"
+      : beyondStock.length > 0
+        ? "BeyondStock"
+        : pastBuffer.length > 0
+          ? "PastBuffer"
+          : "";
+  const key = `${preview.status === "quote" ? "createQuote" : "createBooking"}${departs}` as
+    keyof typeof CREATION_OVERRIDES_SAID;
+
+  return {
+    display: {
+      headline: headline(key, {}),
+      facts: [
+        fact(
+          customer.created ? "bookingForNewCustomer" : "bookingFor",
+          { customer: text(customer.name), email: text(customer.email) },
+          customer.id ?? undefined,
+        ),
+        fact("period", {
+          period: dateRange(window.startDate, window.endDate),
+          total: money(total, currency),
+        }),
+        ...shown,
+        told,
+      ],
+    },
+    facts: {
+      // What it makes, as the headline says it (`CREATION_STATUS_SAID`).
+      status: preview.status,
+      // A customer of the store by its id, which the fact names; a new one by the e-mail shown.
+      customer: customer.id ?? customer.email,
+      total,
+      currency: currency.toUpperCase(),
+      // The overrides that pass something, as the headline says them.
+      overrides: [...CREATION_OVERRIDES_SAID[key]],
+      message: message.sends ? { message: said, channels: "email" } : null,
+    },
+  };
+}
+
+/** The overrides each headline of a creation says it passes, as `OVERRIDES_SAID` for a confirmation. */
+export const CREATION_OVERRIDES_SAID = {
+  createQuote: [],
+  createQuoteBeyondStock: ["stock"],
+  createQuotePastBuffer: ["turnover_buffer"],
+  createQuoteBeyondStockAndBuffer: ["stock", "turnover_buffer"],
+  createBooking: [],
+  createBookingBeyondStock: ["stock"],
+  createBookingPastBuffer: ["turnover_buffer"],
+  createBookingBeyondStockAndBuffer: ["stock", "turnover_buffer"],
+} as const satisfies Partial<Record<HeadlineKey, readonly string[]>>;
+
+/** What each headline of a creation says it makes: the identity's `status`. */
+export const CREATION_STATUS_SAID = {
+  createQuote: ["quote"],
+  createQuoteBeyondStock: ["quote"],
+  createQuotePastBuffer: ["quote"],
+  createQuoteBeyondStockAndBuffer: ["quote"],
+  createBooking: ["confirmed"],
+  createBookingBeyondStock: ["confirmed"],
+  createBookingPastBuffer: ["confirmed"],
+  createBookingBeyondStockAndBuffer: ["confirmed"],
+} as const satisfies Partial<Record<HeadlineKey, readonly string[]>>;

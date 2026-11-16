@@ -1,0 +1,269 @@
+import assert from "node:assert/strict";
+import * as nodeModule from "node:module";
+import { after, before, describe, test } from "node:test";
+
+import { and, asc, eq, ne } from "drizzle-orm";
+
+import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+
+// The store's creation through the API (`createStoreReservation`,
+// packages/api) prices a cart exactly as the online store's checkout
+// (`createReservation`) prices the same cart: the same catalog, promotion,
+// seasonal price and tax engine, the same totals, and the same pricing facts
+// on each line. Both run here on one database, cart against cart, in a store
+// that shows prices with tax and one that adds it on top, in two currencies.
+
+// The checkout modules import Next.js-only guards and the file storage SDK.
+Reflect.get(
+  nodeModule,
+  "registerHooks",
+)({
+  resolve(
+    specifier: string,
+    context: unknown,
+    next: (specifier: string, context: unknown) => unknown,
+  ) {
+    return specifier === "server-only" || specifier === "@/lib/storage/files"
+      ? { url: "node:module", shortCircuit: true }
+      : next(specifier, context);
+  },
+});
+
+const START = "2030-07-01T09:00:00.000Z";
+const END = "2030-07-04T09:00:00.000Z";
+
+const STORES = [
+  {
+    id: "parity_store_incl",
+    currency: "EUR",
+    tax: { enabled: true, defaultRate: 20, displayMode: "inclusive" as const },
+  },
+  {
+    id: "parity_store_excl",
+    currency: "USD",
+    tax: { enabled: true, defaultRate: 10, displayMode: "exclusive" as const },
+  },
+];
+
+describe(
+  "an agent's creation prices as the checkout prices (database)",
+  { skip: skipWithoutTestDatabase() },
+  () => {
+    let database: TestDatabase;
+    let louezDb: typeof import("@louez/db");
+    let checkout: typeof import("./create-reservation");
+    let agent: typeof import("@louez/api/services/reservation-create");
+    let counter = 0;
+    const nextId = (prefix: string) => `${prefix}_${String(++counter).padStart(8, "0")}`;
+
+    before(async () => {
+      database = await createTestDatabase("reservation_create_parity");
+      louezDb = await import("@louez/db");
+      checkout = await import("./create-reservation");
+      // packages/api is ES modules: it needs the CommonJS packages' names by
+      // hand. Loaded after the checkout, as the mocks change how later modules load.
+      await import("@louez/mcp/testing/cjs-named-exports");
+      agent = await import("@louez/api/services/reservation-create");
+      for (const store of STORES) {
+        await louezDb.db.insert(louezDb.stores).values({
+          id: store.id,
+          userId: "owner",
+          name: store.id,
+          slug: store.id.replaceAll("_", "-"),
+          settings: {
+            reservationMode: "request",
+            currency: store.currency,
+            advanceNoticeMinutes: 0,
+            pendingBlocksAvailability: false,
+            tax: store.tax,
+          },
+        });
+      }
+    });
+
+    after(async () => {
+      await louezDb?.db.$client.end();
+      await database?.drop();
+    });
+
+    /** A cart of four lines: a plain one, a tax-exempt one, one on promotion, one at a seasonal price. */
+    async function catalog(storeId: string) {
+      const product = async (values: Partial<typeof louezDb.products.$inferInsert>) => {
+        const id = nextId("parity_prd");
+        await louezDb.db.insert(louezDb.products).values({
+          id,
+          storeId,
+          name: `Product ${id}`,
+          price: "12.35",
+          deposit: "40.00",
+          pricingMode: "day",
+          quantity: 10,
+          images: [`https://files.parity.test/${id}.png`],
+          ...values,
+        });
+        return id;
+      };
+      const plain = await product({});
+      const exempt = await product({ taxSettings: { inheritFromStore: false, customRate: 0 } });
+      const promoted = await product({
+        price: "19.99",
+        promotion: { percentage: 15, startsOn: null, endsOn: null },
+      });
+      const seasonal = await product({ price: "8.00" });
+      await louezDb.db.insert(louezDb.productSeasonalPricing).values({
+        id: nextId("parity_sea"),
+        productId: seasonal,
+        name: "Summer",
+        startDate: "2030-06-15",
+        endDate: "2030-08-31",
+        price: "11.10",
+      });
+      return [
+        { productId: plain, quantity: 2 },
+        { productId: exempt, quantity: 1 },
+        { productId: promoted, quantity: 3 },
+        { productId: seasonal, quantity: 1 },
+      ];
+    }
+
+    const PRICE_COLUMNS = [
+      "subtotalAmount",
+      "depositAmount",
+      "totalAmount",
+      "subtotalExclTax",
+      "taxAmount",
+      "taxRate",
+      "discountAmount",
+      "deliveryFee",
+      "currency",
+    ] as const;
+    const LINE_COLUMNS = [
+      "productId",
+      "quantity",
+      "unitPrice",
+      "depositPerUnit",
+      "totalPrice",
+      "pricingBreakdown",
+      "taxRate",
+      "taxAmount",
+      "priceExclTax",
+      "totalExclTax",
+    ] as const;
+
+    /** A reservation's money and its lines' pricing facts, as stored. */
+    async function stored(reservationId: string) {
+      const [row] = await louezDb.db
+        .select()
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, reservationId));
+      assert.ok(row);
+      const items = await louezDb.db
+        .select()
+        .from(louezDb.reservationItems)
+        .where(eq(louezDb.reservationItems.reservationId, reservationId))
+        .orderBy(asc(louezDb.reservationItems.createdAt), asc(louezDb.reservationItems.id));
+      const byProduct = new Map(items.map((item) => [item.productId, item]));
+      return {
+        money: Object.fromEntries(PRICE_COLUMNS.map((column) => [column, row[column]])),
+        lines: [...byProduct.values()]
+          .sort((a, b) => String(a.productId).localeCompare(String(b.productId)))
+          .map(
+            (item): Record<string, unknown> => ({
+              ...Object.fromEntries(LINE_COLUMNS.map((column) => [column, item[column]])),
+              snapshot: {
+                name: item.productSnapshot?.name,
+                images: item.productSnapshot?.images,
+                description: item.productSnapshot?.description,
+              },
+            }),
+          ),
+      };
+    }
+
+    for (const store of STORES) {
+      test(`the same cart, the same money: ${store.currency}, prices ${store.tax.displayMode} of ${store.tax.defaultRate}% tax`, async () => {
+        const lines = await catalog(store.id);
+
+        const fromCheckout = await checkout.createReservation({
+          source: "online",
+          storeId: store.id,
+          customer: {
+            email: `buyer-${store.id}@parity.test`,
+            firstName: "Ada",
+            lastName: "Lovelace",
+          },
+          items: lines.map((line) => ({
+            ...line,
+            startDate: START,
+            endDate: END,
+            unitPrice: 0,
+            depositPerUnit: 0,
+          })),
+          subtotalAmount: 0,
+          depositAmount: 0,
+          totalAmount: 0,
+        });
+        assert.ok(fromCheckout.ok, JSON.stringify(fromCheckout));
+
+        const fromAgent = await agent.createStoreReservation(
+          {
+            storeId: store.id,
+            userId: null,
+            credential: { kind: "api_key", id: "parity_key" },
+            transport: "openapi",
+            store: { id: store.id, name: store.id, slug: store.id, ownerUserId: "owner" },
+            ports: {
+              afterCommit: () => {},
+              runReservationEffects: async () => {},
+              dispatchEffects: () => {},
+            },
+          },
+          {
+            customer: {
+              email: `agent-${store.id}@parity.test`,
+              firstName: "Ada",
+              lastName: "Lovelace",
+            },
+            startDate: START,
+            endDate: END,
+            lines,
+            status: "quote",
+            notifyCustomer: false,
+          },
+        );
+
+        const theirs = await stored(fromCheckout.reservationId);
+        const ours = await stored(fromAgent.id);
+        assert.deepEqual(ours.money, theirs.money);
+        assert.deepEqual(ours.lines, theirs.lines);
+
+        // The cart holds what each case is for: a promotion, a seasonal price, an exempt line, tax.
+        const promotedLine = ours.lines.find((line) => line.productId === lines[2]?.productId);
+        assert.ok(promotedLine?.pricingBreakdown, "the promotion's breakdown is stored");
+        assert.equal(
+          ours.lines.find((line) => line.productId === lines[1]?.productId)?.taxAmount,
+          "0.00",
+        );
+        assert.equal(
+          ours.lines.find((line) => line.productId === lines[3]?.productId)?.totalPrice,
+          "33.30",
+        );
+        assert.notEqual(ours.money.taxAmount, null);
+        assert.equal(ours.money.currency, store.currency);
+
+        // Nothing else of the store was booked by either.
+        const others = await louezDb.db
+          .select({ id: louezDb.reservations.id })
+          .from(louezDb.reservations)
+          .where(
+            and(
+              eq(louezDb.reservations.storeId, store.id),
+              ne(louezDb.reservations.id, fromCheckout.reservationId),
+              ne(louezDb.reservations.id, fromAgent.id),
+            ),
+          );
+        assert.deepEqual(others, []);
+      });
+    }
+  },
+);

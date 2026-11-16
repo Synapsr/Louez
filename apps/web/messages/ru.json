@@ -9921,7 +9921,15 @@
           "confirmPastBuffer": "Подтвердить бронирование, несмотря на ваш перерыв между арендами?",
           "confirmBeyondStock": "Подтвердить бронирование сверх вашего запаса?",
           "confirmBeyondStockAndBuffer": "Подтвердить бронирование сверх вашего запаса и вашего перерыва между арендами?",
-          "recordDeposit": "Записать полученный залог?"
+          "recordDeposit": "Записать полученный залог?",
+          "createQuote": "Создать предложение?",
+          "createQuotePastBuffer": "Создать предложение, несмотря на ваш перерыв между арендами?",
+          "createQuoteBeyondStock": "Создать предложение сверх вашего запаса?",
+          "createQuoteBeyondStockAndBuffer": "Создать предложение сверх вашего запаса и вашего перерыва между арендами?",
+          "createBooking": "Создать бронирование?",
+          "createBookingPastBuffer": "Создать бронирование, несмотря на ваш перерыв между арендами?",
+          "createBookingBeyondStock": "Создать бронирование сверх вашего запаса?",
+          "createBookingBeyondStockAndBuffer": "Создать бронирование сверх вашего запаса и вашего перерыва между арендами?"
         },
         "facts": {
           "booking": "Бронирование №<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9959,11 @@
           "messageToCustomer": "Клиент получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
           "noMessage": "Клиенту ничего не отправляется.",
           "depositCollected": "<v>{type}</v>: получено <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>",
+          "bookingFor": "Для <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Для <v>{customer}</v> · <v>{email}</v>, новый клиент",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> и {others, plural, one {ещё # позиция} few {ещё # позиции} other {ещё # позиций}}"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9986,9 @@
           "customerMessage": {
             "request_accepted": "запрос принят",
             "request_rejected": "запрос отклонён",
-            "reservation_cancelled": "бронирование отменено"
+            "reservation_cancelled": "бронирование отменено",
+            "quote_sent": "предложение",
+            "booking_confirmed": "бронирование подтверждено"
           }
         }
       }

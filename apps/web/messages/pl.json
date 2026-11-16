@@ -9921,7 +9921,15 @@
           "confirmPastBuffer": "Potwierdzić rezerwację mimo przerwy między wynajmami?",
           "confirmBeyondStock": "Potwierdzić rezerwację ponad stan magazynu?",
           "confirmBeyondStockAndBuffer": "Potwierdzić rezerwację ponad stan magazynu i mimo przerwy między wynajmami?",
-          "recordDeposit": "Zapisać pobraną kaucję?"
+          "recordDeposit": "Zapisać pobraną kaucję?",
+          "createQuote": "Utworzyć ofertę?",
+          "createQuotePastBuffer": "Utworzyć ofertę mimo przerwy między wynajmami?",
+          "createQuoteBeyondStock": "Utworzyć ofertę ponad stan magazynu?",
+          "createQuoteBeyondStockAndBuffer": "Utworzyć ofertę ponad stan magazynu i mimo przerwy między wynajmami?",
+          "createBooking": "Utworzyć rezerwację?",
+          "createBookingPastBuffer": "Utworzyć rezerwację mimo przerwy między wynajmami?",
+          "createBookingBeyondStock": "Utworzyć rezerwację ponad stan magazynu?",
+          "createBookingBeyondStockAndBuffer": "Utworzyć rezerwację ponad stan magazynu i mimo przerwy między wynajmami?"
         },
         "facts": {
           "booking": "Rezerwacja #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9959,11 @@
           "messageToCustomer": "Klient otrzyma {channels, select, email {e-mail} sms {SMS} other {e-mail i SMS}} „<v>{message}</v>”",
           "noMessage": "Klient nie dostaje żadnej wiadomości.",
           "depositCollected": "<v>{type}</v>: pobrano <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>",
+          "bookingFor": "Dla <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Dla <v>{customer}</v> · <v>{email}</v>, nowy klient",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> i {others, plural, one {jeszcze # pozycja} few {jeszcze # pozycje} other {jeszcze # pozycji}}"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9986,9 @@
           "customerMessage": {
             "request_accepted": "prośba przyjęta",
             "request_rejected": "prośba odrzucona",
-            "reservation_cancelled": "rezerwacja anulowana"
+            "reservation_cancelled": "rezerwacja anulowana",
+            "quote_sent": "oferta",
+            "booking_confirmed": "rezerwacja potwierdzona"
           }
         }
       }

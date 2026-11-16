@@ -105,6 +105,9 @@ function pathsToRevalidate(event: ApiEvent): Array<string | { path: string; type
       return ["/dashboard/reservations", `/dashboard/reservations/${event.reservationId}`];
     case "reservation.notesUpdated":
       return [`/dashboard/reservations/${event.reservationId}`];
+    case "reservation.created":
+      // As the dashboard's own creation revalidates them.
+      return ["/dashboard/reservations", "/dashboard"];
     case "store.settingsUpdated":
       return settingsPaths(event.section, event.store.slug);
     case "store.storefrontUpdated":
@@ -158,6 +161,20 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
           }),
         ]);
       };
+    case "reservation.created":
+      // The event the dashboard's own creation sends, from where the booking was made.
+      return () =>
+        captureProductServerEvent({
+          distinctId: store.ownerUserId,
+          event: productAnalyticsEvents.dashboardReservationCreated,
+          properties: {
+            feature: "reservation_management",
+            surface: event.facts.transport === "rpc" ? "dashboard" : "api",
+            store_id: store.id,
+            source: event.facts.transport === "rpc" ? "dashboard_procedure" : event.facts.transport,
+            ...event.facts,
+          },
+        });
     case "product.updated":
       return () => notifyProductUpdated(storeInfo, event.productName);
     case "team.memberInvited":

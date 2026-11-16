@@ -96,6 +96,7 @@ const STAND_INS: Record<string, string[]> = {
   "../services/launch": ["goLive"],
   "../services/team": ["cancelInvitation", "removeMember"],
   "../services/reservation-status": ["changeStoreReservationStatus"],
+  "../services/reservation-create": ["createStoreReservation"],
   "../services/payment-records": ["recordPayment", "recordDepositReturn", "deletePayment"],
 };
 
@@ -246,6 +247,43 @@ const statusPreview = (overrides: Record<string, unknown>) => ({
   recipientsHash: "recipients",
   ...overrides,
 });
+/** A creation's preview, as the service hands it (services/reservation-create.ts). */
+const createPreview = (overrides: Record<string, unknown>) => ({
+  summary: "Create a quote for Ann Lee (ann@cs.test).",
+  status: "quote",
+  customer: { id: "cs_customer_00000001", created: false, name: "Ann Lee", email: "ann@cs.test" },
+  window: { startDate: AT.toISOString(), endDate: UNTIL.toISOString() },
+  currency: "EUR",
+  lines: [
+    {
+      line: 0,
+      productId: PRODUCT,
+      productName: "City bike",
+      quantity: 2,
+      selectedAttributes: null,
+      unitPrice: "40.00",
+      totalPrice: "80.00",
+      promotion: false,
+    },
+  ],
+  totals: { subtotal: "80.00", taxAmount: null, taxIncluded: true, total: "80.00", deposit: "0.00" },
+  overbooking: null,
+  turnoverBuffer: null,
+  message: { sends: false, kind: null, channel: null, to: null, reason: "not_asked" },
+  warnings: [],
+  recipientsHash: "recipients",
+  demand: [],
+  ...overrides,
+});
+const createShortfall = {
+  line: 0,
+  productId: PRODUCT,
+  productName: "City bike",
+  combinationKey: null,
+  selectedAttributes: null,
+  requested: 2,
+  available: 1,
+};
 const shortfall = {
   reservationItemId: "cs_item_000000000001",
   productId: PRODUCT,
@@ -616,6 +654,46 @@ const SITES: Site[] = [
       ].slice(0, name === "cancel" ? 2 : undefined),
     }),
   ),
+  // A creation asks under its locks: a change always, a message when one
+  // goes, a stock override when a flag is sent.
+  {
+    path: ["dashboard", "reservations", "create"],
+    input: {
+      customer: { id: "cs_customer_00000001" },
+      startDate: AT.toISOString(),
+      endDate: UNTIL.toISOString(),
+      lines: [{ productId: PRODUCT, quantity: 2 }],
+      status: "quote",
+      notifyCustomer: false,
+    },
+    branches: [
+      { name: "nothing sent", preview: createPreview({}), asksWithOptionOff: false },
+      {
+        name: "a message goes",
+        preview: createPreview({
+          message: { sends: true, kind: "quote", channel: "email", to: "ann@cs.test", reason: null },
+        }),
+        asksWithOptionOff: false,
+      },
+      {
+        name: "booked over the stock",
+        preview: createPreview({ overbooking: { shortfalls: [createShortfall] } }),
+        asksWithOptionOff: true,
+        presentation: { facts: { customer: "cs_customer_00000001", overrides: ["stock"] } },
+      },
+      {
+        name: "past the turnover buffer, a message goes",
+        preview: createPreview({
+          turnoverBuffer: { shortfalls: [createShortfall], turnoverBufferMinutes: 60 },
+          message: { sends: true, kind: "quote", channel: "email", to: "ann@cs.test", reason: null },
+        }),
+        asksWithOptionOff: true,
+        presentation: {
+          facts: { customer: "cs_customer_00000001", overrides: ["turnover_buffer"] },
+        },
+      },
+    ],
+  },
   // The three payment writes ask in their transaction, under the
   // reservation's lock, with the preview and the state the token binds. The
   // deletion is money too: it erases a record of money received.
@@ -799,6 +877,14 @@ const FINGERPRINTS: Record<string, string> = {
     "bfd6897c223270bdc61a2fd3082c8bb97da3eb369ae94cf6c738a84af9f22e5f",
   "dashboard.reservations.cancel, no message":
     "0c4213cf9f48761267bb8fa2d0862ae1db4ce4c6e00a2c082b9feea305db2417",
+  "dashboard.reservations.create, nothing sent":
+    "7a20ec00c80753fb6a8518b6f803d3451f4edf160351b6963f1049beb874c8cc",
+  "dashboard.reservations.create, a message goes":
+    "0dca8cb502c523e830b2aa059d65e46bdc49df0f5d39807285520563f98ffdc5",
+  "dashboard.reservations.create, booked over the stock":
+    "111d268dd105ed608587c0ea5f795a4b007ed40013f24b28f02c9b9dc866d1ef",
+  "dashboard.reservations.create, past the turnover buffer, a message goes":
+    "731061290fae6a1b58603e208076867dbf623edb7d344ef89edcfed8f8137cba",
   "dashboard.payments.record, records a payment":
     "5dc4e9b7580e0f12b141acf99724ef683068990a543b6cbb5ce3cd9dfa7431f0",
   "dashboard.payments.recordDepositReturn, records a return":
@@ -857,6 +943,14 @@ const CONSEQUENCES: Record<string, readonly Consequence[] | null> = {
   "dashboard.reservations.updateStatus, past the turnover buffer": ["stock_override"],
   "dashboard.reservations.cancel, a message goes": ["customer_message"],
   "dashboard.reservations.cancel, no message": ["change"],
+  "dashboard.reservations.create, nothing sent": ["change"],
+  "dashboard.reservations.create, a message goes": ["change", "customer_message"],
+  "dashboard.reservations.create, booked over the stock": ["change", "stock_override"],
+  "dashboard.reservations.create, past the turnover buffer, a message goes": [
+    "change",
+    "customer_message",
+    "stock_override",
+  ],
   "dashboard.payments.record, records a payment": ["money"],
   "dashboard.payments.recordDepositReturn, records a return": ["money"],
   "dashboard.payments.delete, deletes": ["money"],

@@ -9921,7 +9921,15 @@
           "confirmPastBuffer": "不顾两次租赁之间的间隔，确认这笔预订？",
           "confirmBeyondStock": "超出库存确认这笔预订？",
           "confirmBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，确认这笔预订？",
-          "recordDeposit": "记录一笔已收押金？"
+          "recordDeposit": "记录一笔已收押金？",
+          "createQuote": "创建这份报价？",
+          "createQuotePastBuffer": "不顾两次租赁之间的间隔，创建这份报价？",
+          "createQuoteBeyondStock": "超出库存，创建这份报价？",
+          "createQuoteBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，创建这份报价？",
+          "createBooking": "创建这笔预订？",
+          "createBookingPastBuffer": "不顾两次租赁之间的间隔，创建这笔预订？",
+          "createBookingBeyondStock": "超出库存，创建这笔预订？",
+          "createBookingBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，创建这笔预订？"
         },
         "facts": {
           "booking": "预订 #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9959,11 @@
           "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
           "noMessage": "不会向客户发送任何消息。",
           "depositCollected": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "bookingFor": "<v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "<v>{customer}</v> · <v>{email}</v>（新客户）",
+          "bookingLine": "<v>{product}</v> × {quantity}",
+          "bookingLines": "<v>{product}</v> × {quantity}，另有 {others, plural, other {# 行}}"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9986,9 @@
           "customerMessage": {
             "request_accepted": "请求已接受",
             "request_rejected": "请求已拒绝",
-            "reservation_cancelled": "预订已取消"
+            "reservation_cancelled": "预订已取消",
+            "quote_sent": "报价",
+            "booking_confirmed": "预订已确认"
           }
         }
       }

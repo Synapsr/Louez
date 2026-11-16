@@ -53,6 +53,7 @@ import {
   updateNotes,
   updateStatus,
 } from "./reservation-follow-up";
+import { create } from "./reservation-create";
 
 function toDate(value: string | Date | undefined): Date | undefined {
   if (!value) return undefined;
@@ -727,6 +728,8 @@ export const dashboardReservationsRouter = {
   updateStatus,
   cancel,
   updateNotes,
+  // The store's creation (reservation-create.ts): on every transport.
+  create,
   getEditContext,
   getPaymentMethod,
   getAvailableUnitsForItem,

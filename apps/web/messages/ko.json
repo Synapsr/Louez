@@ -9921,7 +9921,15 @@
           "confirmPastBuffer": "대여 사이 간격을 지키지 않고 예약을 확정할까요?",
           "confirmBeyondStock": "재고를 넘겨 예약을 확정할까요?",
           "confirmBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 확정할까요?",
-          "recordDeposit": "받은 보증금을 기록할까요?"
+          "recordDeposit": "받은 보증금을 기록할까요?",
+          "createQuote": "견적을 만들까요?",
+          "createQuotePastBuffer": "대여 사이 간격을 지키지 않고 견적을 만들까요?",
+          "createQuoteBeyondStock": "재고를 넘겨 견적을 만들까요?",
+          "createQuoteBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 견적을 만들까요?",
+          "createBooking": "예약을 만들까요?",
+          "createBookingPastBuffer": "대여 사이 간격을 지키지 않고 예약을 만들까요?",
+          "createBookingBeyondStock": "재고를 넘겨 예약을 만들까요?",
+          "createBookingBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 만들까요?"
         },
         "facts": {
           "booking": "예약 #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9959,11 @@
           "messageToCustomer": "고객에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
           "noMessage": "고객에게 메시지가 가지 않습니다.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> 받음 · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>",
+          "bookingFor": "<v>{customer}</v> 님 · <v>{email}</v>",
+          "bookingForNewCustomer": "<v>{customer}</v> 님 · <v>{email}</v>, 새 고객",
+          "bookingLine": "<v>{product}</v> × {quantity}",
+          "bookingLines": "<v>{product}</v> × {quantity} 외 {others, plural, other {#개 항목}}"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9986,9 @@
           "customerMessage": {
             "request_accepted": "요청 수락",
             "request_rejected": "요청 거절",
-            "reservation_cancelled": "예약 취소"
+            "reservation_cancelled": "예약 취소",
+            "quote_sent": "견적",
+            "booking_confirmed": "예약 확정"
           }
         }
       }

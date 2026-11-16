@@ -9921,7 +9921,15 @@
           "confirmPastBuffer": "De boeking bevestigen ondanks je tijd tussen twee verhuren?",
           "confirmBeyondStock": "De boeking bevestigen boven je voorraad?",
           "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?",
-          "recordDeposit": "Een ontvangen borg registreren?"
+          "recordDeposit": "Een ontvangen borg registreren?",
+          "createQuote": "De offerte maken?",
+          "createQuotePastBuffer": "De offerte maken ondanks je tijd tussen twee verhuren?",
+          "createQuoteBeyondStock": "De offerte maken boven je voorraad?",
+          "createQuoteBeyondStockAndBuffer": "De offerte maken boven je voorraad en je tijd tussen twee verhuren?",
+          "createBooking": "De boeking maken?",
+          "createBookingPastBuffer": "De boeking maken ondanks je tijd tussen twee verhuren?",
+          "createBookingBeyondStock": "De boeking maken boven je voorraad?",
+          "createBookingBeyondStockAndBuffer": "De boeking maken boven je voorraad en je tijd tussen twee verhuren?"
         },
         "facts": {
           "booking": "Boeking #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9959,11 @@
           "messageToCustomer": "De klant krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
           "noMessage": "De klant krijgt geen bericht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>",
+          "bookingFor": "Voor <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Voor <v>{customer}</v> · <v>{email}</v>, nieuwe klant",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> en {others, plural, one {nog # regel} other {nog # regels}}"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9986,9 @@
           "customerMessage": {
             "request_accepted": "aanvraag geaccepteerd",
             "request_rejected": "aanvraag afgewezen",
-            "reservation_cancelled": "boeking geannuleerd"
+            "reservation_cancelled": "boeking geannuleerd",
+            "quote_sent": "offerte",
+            "booking_confirmed": "boeking bevestigd"
           }
         }
       }

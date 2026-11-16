@@ -12,24 +12,25 @@ A change to a reservation writer keeps every held rule held, and moves a partial
 
 ## The writers
 
-| What it writes                                                          | Where it lives                                                                                                                                                                                          |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A booking from the online store, the marketplace or the phone assistant | `createReservation`, `apps/web/lib/reservations/create-reservation.ts`                                                                                                                                  |
-| A booking typed in the dashboard                                        | `createManualReservation`, `apps/web/app/(dashboard)/dashboard/reservations/actions.ts`                                                                                                                 |
-| An edit of dates, lines, prices or delivery                             | `updateReservation`, same file                                                                                                                                                                          |
-| The billing identity of a reservation                                   | `packages/api/src/routers/dashboard/reservations.ts`                                                                                                                                                    |
-| An extension asked by the customer, and its reconciliation by the cron  | `apps/web/lib/reservations/extension-service.ts`, `extension-quote.ts`                                                                                                                                  |
-| A status change made by the store                                       | `changeStoreReservationStatus`, `packages/api/src/services/reservation-status.ts`                                                                                                                       |
-| A status change made by a customer, a payment or the marketplace        | `changeReservationStatus` from `@louez/db`, called directly                                                                                                                                             |
-| Units assigned to a line, replaced or removed                           | `assignUnitsToReservationItem` in the dashboard reservations file; `apps/web/app/(dashboard)/dashboard/products/[id]/actions.ts`; `packages/api/src/services/variant-axes.ts` when a variant is rekeyed |
-| A payment, a refund, a deposit return recorded by the store             | the payment actions of the dashboard reservations file, `apps/web/lib/reservations/dashboard-payment-writes.ts`                                                                                         |
-| The same, recorded by an agent                                          | `packages/api/src/services/payment-records.ts`, for MCP and the REST API; the in-app assistant writes no payment                                                                                        |
-| A payment or a deposit authorization made by the customer               | `apps/web/lib/reservations/payment-session.ts`, `start-checkout-payment.ts`, `complete-checkout-payment.ts`, `apps/web/app/(storefront)/[slug]/authorize-deposit/`, the Stripe webhooks                 |
-| A contract validated or signed                                          | `packages/api/src/services/reservation-contract-validation.ts`, `reservation-sign.ts`                                                                                                                   |
+| What it writes                                                             | Where it lives                                                                                                                                                                                          |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A booking from the online store, the marketplace or the phone assistant    | `createReservation`, `apps/web/lib/reservations/create-reservation.ts`                                                                                                                                  |
+| A booking typed in the dashboard                                           | `createManualReservation`, `apps/web/app/(dashboard)/dashboard/reservations/actions.ts`                                                                                                                 |
+| A booking created by an agent, the API or a member (`reservations.create`) | `createStoreReservation`, `packages/api/src/services/reservation-create.ts`                                                                                                                             |
+| An edit of dates, lines, prices or delivery                                | `updateReservation`, same file                                                                                                                                                                          |
+| The billing identity of a reservation                                      | `packages/api/src/routers/dashboard/reservations.ts`                                                                                                                                                    |
+| An extension asked by the customer, and its reconciliation by the cron     | `apps/web/lib/reservations/extension-service.ts`, `extension-quote.ts`                                                                                                                                  |
+| A status change made by the store                                          | `changeStoreReservationStatus`, `packages/api/src/services/reservation-status.ts`                                                                                                                       |
+| A status change made by a customer, a payment or the marketplace           | `changeReservationStatus` from `@louez/db`, called directly                                                                                                                                             |
+| Units assigned to a line, replaced or removed                              | `assignUnitsToReservationItem` in the dashboard reservations file; `apps/web/app/(dashboard)/dashboard/products/[id]/actions.ts`; `packages/api/src/services/variant-axes.ts` when a variant is rekeyed |
+| A payment, a refund, a deposit return recorded by the store                | the payment actions of the dashboard reservations file, `apps/web/lib/reservations/dashboard-payment-writes.ts`                                                                                         |
+| The same, recorded by an agent                                             | `packages/api/src/services/payment-records.ts`, for MCP and the REST API; the in-app assistant writes no payment                                                                                        |
+| A payment or a deposit authorization made by the customer                  | `apps/web/lib/reservations/payment-session.ts`, `start-checkout-payment.ts`, `complete-checkout-payment.ts`, `apps/web/app/(storefront)/[slug]/authorize-deposit/`, the Stripe webhooks                 |
+| A contract validated or signed                                             | `packages/api/src/services/reservation-contract-validation.ts`, `reservation-sign.ts`                                                                                                                   |
 
 A customer's request to change dates writes a request in the activity, not the dates: the store's edit applies it.
 
-Two implementations create a booking, a third reshapes one, and payments are recorded by three. Most of the partial and open rules below come from that: a rule fixed in one writer stays broken in the next. The reservation lots of the API migration ([API and agents](../architecture/api-and-agents.md)) end with one service per kind of write in `packages/api`, and every caller on it.
+Three implementations create a booking, a fourth reshapes one, and payments are recorded by three. Most of the partial and open rules below come from that: a rule fixed in one writer stays broken in the next. The reservation lots of the API migration ([API and agents](../architecture/api-and-agents.md)) end with one service per kind of write in `packages/api`, and every caller on it.
 
 ## Stock
 
@@ -135,6 +136,21 @@ _Partial._ The store's status changes do. The messages of a new booking, and tho
 
 **E2. A write sent twice with the same idempotency key runs once.**
 _Partial._ A procedure built on `storeProcedure` replays a recorded success and refuses a concurrent or unknown outcome (`runOperation`). A call that ends on a refusal (`isRefusal`) is `failed` and its key runs it again; a call that ends on any other error is `unknown` and its key never runs it again, so a handler that threw after its commit is not run twice. The rule rests on a convention: a handler raises a refusal only when nothing it wrote remains ([Raising a refusal](../architecture/api-and-agents.md#writes-audit-idempotency-receipts)). A record marked `failed` before that rule, also when its handler threw after its commit, keeps its status, and its key runs it again. A procedure with a secret output ignores the key. The server actions that are not procedures yet have none.
+
+## The API's creation
+
+What `createStoreReservation` holds, each with its database test in `packages/api/src/routers/dashboard/reservation-create.db.test.ts` unless named (slice 14 of [Reservation changes](reservation-changes.md)):
+
+- **S1, S2.** It allocates with `reserveInventory` under the product locks, without the buffer then with it, as a confirmation does, and refuses a cart without its required accessories.
+- **S3, S4.** `allowOverbooking` passes only what the stock itself lacks, `overrideTurnoverBuffer` only what the buffer alone stops; the verdict counts `overbooked` without the buffer; a consumable short on hand refuses whatever the flags; a key's or a token's flag needs a person's approval, bound to the shortfalls.
+- **S5.** A booking created confirmed takes its consumables (`consumeReservationStock`).
+- **M1, M2, M3.** Its totals are the tax engine's for its lines (`computeReservationTotals`), its currency is written on it at creation, and its lines keep the checkout's pricing facts: `reservation-create-parity.db.test.ts` compares them with the checkout's, cart against cart.
+- **T1.** It inserts through `insertReservation`, and `scripts/reservation-writes.test.mjs` reads it as any writer.
+- **T4.** Its number is drawn and checked in its transaction, under the store row's lock: two of its creations never share one. Against the checkout and the dashboard's creation, which take no such lock, T4 stays open.
+- **T5.** Its window must end after it starts; ISO instants with an offset always exist.
+- **C1, C2.** The store row, then the products by id (`lockReservationProducts`), then its own rows; it prices and checks on what it reads under them.
+- **C3, E1.** Its messages are outbox rows of its transaction; nothing else leaves before the commit.
+- **E2.** It requires an idempotency key from keys and tokens.
 
 ## Measuring
 
