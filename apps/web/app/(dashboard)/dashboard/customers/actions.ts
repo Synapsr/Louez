@@ -12,6 +12,7 @@ import {
   apiEffects,
   customers,
   db,
+  lockStoreRow,
   reservations,
 } from '@louez/db'
 import type { CustomerFieldValues, ResolvedCustomerProfileSettings } from '@louez/types'
@@ -369,28 +370,27 @@ export async function deleteCustomer(customerId: string) {
   try {
     const storeId = await getStoreId()
 
-    // Check if customer exists and belongs to store
-    const existingCustomer = await db.query.customers.findFirst({
-      columns: { id: true },
-      where: and(eq(customers.id, customerId), eq(customers.storeId, storeId)),
-    })
+    // Decided and done under the customer's lock, in the lock order of every
+    // writer that touches a customer and the outbox (docs/code-review/04-data-layer.md):
+    // the store row, then the customer, then what hangs on the customer. A
+    // reservation created for them meanwhile (reservations.create takes the same
+    // two locks first) is seen here, and refuses the deletion.
+    const refused = await db.transaction(async (tx) => {
+      if (!(await lockStoreRow(tx, storeId))) return 'errors.customerNotFound'
+      const [locked] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.id, customerId), eq(customers.storeId, storeId)))
+        .for('update')
+      if (!locked) return 'errors.customerNotFound'
 
-    if (!existingCustomer) {
-      return { error: 'errors.customerNotFound' }
-    }
+      const reservationCount = await tx
+        .select({ count: count() })
+        .from(reservations)
+        .where(eq(reservations.customerId, customerId))
+      if (reservationCount[0]?.count > 0) return 'errors.customerHasReservations'
 
-    // Check if customer has reservations
-    const reservationCount = await db
-      .select({ count: count() })
-      .from(reservations)
-      .where(eq(reservations.customerId, customerId))
-
-    if (reservationCount[0]?.count > 0) {
-      return { error: 'errors.customerHasReservations' }
-    }
-
-    // Nothing references these rows once the customer is gone, and they hold personal data.
-    await db.transaction(async (tx) => {
+      // Nothing references these rows once the customer is gone, and they hold personal data.
       await tx
         .delete(customerFieldValues)
         .where(
@@ -415,7 +415,9 @@ export async function deleteCustomer(customerId: string) {
       await tx
         .delete(customers)
         .where(and(eq(customers.id, customerId), eq(customers.storeId, storeId)))
+      return null
     })
+    if (refused) return { error: refused }
 
     revalidatePath('/dashboard/customers')
     return { success: true }

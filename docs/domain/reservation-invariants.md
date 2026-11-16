@@ -148,7 +148,7 @@ What `createStoreReservation` holds, each with its database test in `packages/ap
 - **T1.** It inserts through `insertReservation`, and `scripts/reservation-writes.test.mjs` reads it as any writer.
 - **T4.** Its number is drawn and checked in its transaction, under the store row's lock: two of its creations never share one. Against the checkout and the dashboard's creation, which take no such lock, T4 stays open.
 - **T5.** Its window must end after it starts; ISO instants with an offset always exist.
-- **C1, C2.** The store row, then the products by id (`lockReservationProducts`), then its own rows; it prices and checks on what it reads under them.
+- **C1, C2.** The store row, then the products by id (`lockReservationProducts`), then the customer, then its own rows and the outbox; it prices and checks on what it reads under them. A customer's deletion takes the store row then the customer, and counts their reservations under that lock.
 - **C3, E1.** Its messages are outbox rows of its transaction; nothing else leaves before the commit.
 - **E2.** It requires an idempotency key from keys and tokens.
 
