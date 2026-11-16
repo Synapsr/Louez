@@ -3,6 +3,7 @@ import {
   calculateTaxBreakdown,
   extractExclusiveFromInclusive,
   getEffectiveTaxRate,
+  minorUnitsPerUnit,
   taxSettingsToConfig,
   type TaxBreakdownCalculation,
   type TaxConfig,
@@ -50,6 +51,8 @@ export interface ReservationTotals {
   taxAmount: number | null;
   taxCalculation: TaxBreakdownCalculation;
   taxByLineId: Map<string, TaxBreakdownCalculation["lines"][number]>;
+  /** Minor units in one unit of the currency the totals are in: 1 for the yen, 100 for the euro. */
+  minorUnitsPerUnit: number;
 }
 
 /**
@@ -64,6 +67,7 @@ export const computeReservationTotals = <Line extends TaxedLine>({
   deliveryFee,
   totalDeposit,
   taxSettings,
+  currency,
 }: {
   lines: readonly Line[];
   insuranceAmount: number;
@@ -71,6 +75,12 @@ export const computeReservationTotals = <Line extends TaxedLine>({
   deliveryFee: number;
   totalDeposit: number;
   taxSettings: TaxSettings | undefined;
+  /**
+   * The reservation's currency: the tax, the discount and the totals are
+   * allocated and rounded in its minor unit (¥1, 1 cent). Every writer passes
+   * it; without one, cents.
+   */
+  currency?: string | null;
 }): ReservationTotals => {
   const taxConfig = taxSettingsToConfig(taxSettings);
   const taxEnabled = taxConfig?.enabled ?? false;
@@ -97,6 +107,7 @@ export const computeReservationTotals = <Line extends TaxedLine>({
       : undefined,
     depositAmount: totalDeposit,
     taxConfig,
+    currency: currency ?? undefined,
   });
 
   const lineSubtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
@@ -115,6 +126,7 @@ export const computeReservationTotals = <Line extends TaxedLine>({
     taxAmount: taxEnabled ? taxCalculation.taxAmount : null,
     taxCalculation,
     taxByLineId: new Map(taxCalculation.lines.map((line) => [line.id, line])),
+    minorUnitsPerUnit: minorUnitsPerUnit(currency ?? undefined),
   };
 };
 
@@ -141,7 +153,7 @@ export const getReservationItemTaxFields = (
     taxAmount: itemTax.taxAmount,
     priceExclTax:
       totals.displayMode === "inclusive"
-        ? extractExclusiveFromInclusive(line.unitPrice, itemTax.taxRate)
+        ? extractExclusiveFromInclusive(line.unitPrice, itemTax.taxRate, totals.minorUnitsPerUnit)
         : line.unitPrice,
     totalExclTax: itemTax.amountExclTax,
   };

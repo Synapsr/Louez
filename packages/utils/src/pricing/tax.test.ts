@@ -104,3 +104,92 @@ test("breakdown sums tax rounded on each line and reconciles to the cent", () =>
   assert.equal(calculation.subtotalExclTax + calculation.taxAmount, 0.08);
   assert.equal(calculation.totalInclTax, 0.08);
 });
+
+// The engine in the currency's minor unit: ¥1 for the yen, 1 cent for the euro.
+const YEN_HT = { enabled: true, rate: 10, displayMode: "exclusive" as const };
+const YEN_TTC = { enabled: true, rate: 10, displayMode: "inclusive" as const };
+
+test("yen before tax: the tax and the total are whole yen", () => {
+  const calculation = calculateTaxBreakdown({
+    lines: [{ id: "line", amount: 101, taxRate: 10 }],
+    taxConfig: YEN_HT,
+    currency: "JPY",
+  });
+  assert.deepEqual(
+    [calculation.subtotalExclTax, calculation.taxAmount, calculation.totalInclTax],
+    [101, 10, 111],
+  );
+});
+
+test("yen with tax included: the split is whole yen and adds up to the price", () => {
+  const calculation = calculateTaxBreakdown({
+    lines: [{ id: "line", amount: 101, taxRate: 10 }],
+    taxConfig: YEN_TTC,
+    currency: "JPY",
+  });
+  assert.deepEqual(
+    [calculation.subtotalExclTax, calculation.taxAmount, calculation.totalInclTax],
+    [92, 9, 101],
+  );
+});
+
+test("a yen discount is split across lines in whole yen, and the lines' tax adds up", () => {
+  const calculation = calculateTaxBreakdown({
+    lines: [
+      { id: "a", amount: 101, taxRate: 10 },
+      { id: "b", amount: 203, taxRate: 10 },
+      { id: "c", amount: 55, taxRate: 8 },
+    ],
+    discountAmount: 50,
+    taxConfig: YEN_HT,
+    currency: "JPY",
+  });
+  const discounts = calculation.lines.map((line) => line.discountAmount);
+  assert.ok(discounts.every(Number.isInteger), JSON.stringify(discounts));
+  assert.equal(
+    discounts.reduce((sum, value) => sum + value, 0),
+    50,
+  );
+  for (const line of calculation.lines) {
+    assert.ok(Number.isInteger(line.taxAmount) && Number.isInteger(line.amountInclTax));
+  }
+  assert.equal(
+    calculation.lines.reduce((sum, line) => sum + line.taxAmount, 0),
+    calculation.taxAmount,
+  );
+  assert.ok(Number.isInteger(calculation.totalInclTax));
+});
+
+test("euro carts are computed exactly as without a currency, which is how they were computed", () => {
+  // A small deterministic generator: the same carts on every run.
+  let seed = 7;
+  const next = () => {
+    seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+    return seed / 2_147_483_648;
+  };
+  const cents = (max: number) => Math.round(next() * max * 100) / 100;
+  const rates = [null, 0, 5.5, 10, 20];
+  for (let cart = 0; cart < 400; cart += 1) {
+    const lines = Array.from({ length: 1 + Math.floor(next() * 5) }, (_, index) => ({
+      id: `item:${index}`,
+      amount: cents(500),
+      taxRate: rates[Math.floor(next() * rates.length)]!,
+    }));
+    const input = {
+      lines,
+      deliveryFee: next() < 0.5 ? cents(40) : 0,
+      discountAmount: next() < 0.5 ? cents(60) : 0,
+      depositAmount: cents(300),
+      taxConfig: {
+        enabled: next() < 0.8,
+        rate: [5.5, 10, 20][Math.floor(next() * 3)]!,
+        displayMode: next() < 0.5 ? ("inclusive" as const) : ("exclusive" as const),
+      },
+    };
+    assert.deepEqual(
+      calculateTaxBreakdown({ ...input, currency: "EUR" }),
+      calculateTaxBreakdown(input),
+      `cart ${cart}`,
+    );
+  }
+});

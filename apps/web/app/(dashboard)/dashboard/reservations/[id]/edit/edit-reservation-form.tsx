@@ -1437,6 +1437,7 @@ export function EditReservationForm({
                   deposit: calculations.deposit,
                   storeTax: storeSettings?.tax,
                   recordedTaxDisplayMode: reservation.taxDisplayMode ?? null,
+                  currency,
                 })}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}

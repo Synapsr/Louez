@@ -55,6 +55,8 @@ export interface EditPricingInput {
   deliveryFee: number | ((subtotal: number, settings: StoreSettings | null) => number);
   /** The display mode the reservation recorded, null when it recorded none. */
   recordedTaxDisplayMode: TaxDisplayMode | null;
+  /** The reservation's currency: the tax and the totals in its minor unit. */
+  currency: string;
 }
 
 export type EditPricing =
@@ -126,6 +128,7 @@ export async function priceReservationEdit(
     deliveryFee,
     totalDeposit: input.totalDeposit,
     taxSettings: taxSettingsForRepricing(settings?.tax, input.recordedTaxDisplayMode),
+    currency: input.currency,
   });
   const insuranceTax = totals.taxEnabled
     ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)

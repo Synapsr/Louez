@@ -1026,6 +1026,7 @@ export async function createManualReservation(data: CreateReservationData) {
       deliveryFee: deliveryFeeAmount,
       totalDeposit: depositAmount,
       taxSettings,
+      currency: reservationCurrency(null, store.settings),
     });
     const lineTaxValues = (index: number) =>
       reservationItemTaxValues({
@@ -2893,6 +2894,7 @@ export async function updateReservation(
             totalDeposit: newDepositAmount,
             deliveryFee: deliveryFeeUnderLocks,
             recordedTaxDisplayMode: recordedMode === NOT_RECORDED ? null : recordedMode,
+            currency: reservationCurrency(reservation.currency, store.settings),
           });
           // A product's prices changed while the store was editing.
           if (!pricing.ok) return { kind: "changed_meanwhile" } as const;

@@ -381,6 +381,7 @@ export const quoteExtension = async (
       deliveryFee: Number(reservation.deliveryFee ?? 0),
       totalDeposit: Number(reservation.depositAmount),
       taxSettings: settings?.tax,
+      currency: reservationCurrency(reservation.currency, settings ?? null),
     });
   const originalTotals = totals(original.cart);
   if (

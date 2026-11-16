@@ -227,6 +227,8 @@ export function previewEditTotal(params: {
   deposit: number;
   storeTax: TaxSettings | undefined;
   recordedTaxDisplayMode: TaxDisplayMode | null;
+  /** The reservation's currency, as the server totals it. */
+  currency?: string;
 }): number {
   return computeReservationTotals({
     lines: params.items.map((item) => ({
@@ -239,6 +241,7 @@ export function previewEditTotal(params: {
     deliveryFee: params.deliveryFee,
     totalDeposit: params.deposit,
     taxSettings: taxSettingsForRepricing(params.storeTax, params.recordedTaxDisplayMode),
+    currency: params.currency,
   }).total;
 }
 

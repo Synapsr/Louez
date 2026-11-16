@@ -667,6 +667,46 @@ describe(
         assert.notEqual(row.taxAmount, null);
       });
 
+      for (const [mode, expected] of [
+        ["exclusive", { total: "244.00", tax: "22.00" }],
+        ["inclusive", { total: "222.00", tax: "20.00" }],
+      ] as const) {
+        test(`in yen, prices ${mode} of tax at 10 %: whole yen, the lines' tax adding up`, async () => {
+          await useStore({
+            currency: "JPY",
+            tax: { enabled: true, defaultRate: 10, displayMode: mode },
+          });
+          const taxed = await product();
+          const result = await actions.createManualReservation({
+            customerId: CUSTOMER,
+            startDate: START,
+            endDate: END,
+            // 10 a day for two days, and ¥101 a day for two days typed by hand.
+            items: [{ productId: taxed, quantity: 1 }],
+            customItems: [
+              {
+                name: "Guide",
+                description: "",
+                unitPrice: 101,
+                quantity: 1,
+                deposit: 0,
+                pricingMode: "day",
+              },
+            ],
+            sendConfirmationEmail: false,
+          });
+          assert.ok(result.reservationId, JSON.stringify(result));
+
+          const { row, items } = await stored(result.reservationId);
+          assert.deepEqual([row.totalAmount, row.taxAmount], [expected.total, expected.tax]);
+          const lineTax = items.reduce((sum, item) => sum + Number(item.taxAmount ?? 0), 0);
+          assert.equal(lineTax.toFixed(2), row.taxAmount);
+          for (const amount of [row.totalAmount, row.taxAmount, row.subtotalExclTax]) {
+            assert.ok(Number.isInteger(Number(amount)), `${amount} is whole yen`);
+          }
+        });
+      }
+
       test("created, then edited with nothing changed: the same totals to the cent", async () => {
         await useStore({ tax: HT });
         const id = await created();

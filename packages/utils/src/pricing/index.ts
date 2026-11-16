@@ -49,6 +49,7 @@ export {
   taxSettingsToConfig,
   getEffectiveTaxRate,
   calculateTaxBreakdown,
+  minorUnitsPerUnit,
   applyTaxToCalculation,
   calculateRentalPriceWithTax,
   formatTaxLabel,

@@ -482,6 +482,8 @@ const prepareReservation = async (
     deliveryFee: delivery.fee,
     totalDeposit: cart.totalDeposit,
     taxSettings: settings?.tax,
+    // The currency the reservation is written in: the tax and totals in its minor unit.
+    currency: normalizeCurrency(settings?.currency),
   });
 
   return {

@@ -306,6 +306,8 @@ const totalsOf = (cart: PricedCart, locked: LockedReservation) =>
     deliveryFee: Number(locked.deliveryFee ?? 0),
     totalDeposit: Number(locked.depositAmount),
     taxSettings: locked.store.settings?.tax,
+    // A row older than its own currency is in the store's (M2).
+    currency: locked.currency ?? locked.store.settings?.currency ?? null,
   });
 
 /**
