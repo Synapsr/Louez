@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { validateStripePaymentAmount } from "@louez/utils";
+import { validateStripePaymentAmount, ZERO_DECIMAL_CURRENCIES } from "@louez/utils";
 import { stripe, getStripe } from "./stripe/client";
 
 /**
@@ -429,25 +429,7 @@ export async function getPaymentMethodDetails(stripeAccountId: string, paymentMe
 // Currency Utilities
 // ============================================================================
 
-// Stripe zero-decimal currencies (amount in whole units, not cents)
-const ZERO_DECIMAL_CURRENCIES = new Set([
-  "BIF",
-  "CLP",
-  "DJF",
-  "GNF",
-  "JPY",
-  "KMF",
-  "KRW",
-  "MGA",
-  "PYG",
-  "RWF",
-  "UGX",
-  "VND",
-  "VUV",
-  "XAF",
-  "XOF",
-  "XPF",
-]);
+// Stripe zero-decimal currencies (amount in whole units, not cents): `ZERO_DECIMAL_CURRENCIES`, @louez/utils.
 
 export function toStripeCents(amount: number, currency: string): number {
   if (ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase())) {

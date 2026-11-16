@@ -36,7 +36,7 @@ function reservationLinkLine(ctx: McpRequestContext, reservation: { id: string }
 
 /**
  * The payments' hand-written read. The writes (record_payment,
- * record_deposit_return, delete_payment) are procedures
+ * record_deposit_return, record_refund, delete_payment) are procedures
  * (routers/dashboard/payments.ts in packages/api).
  */
 export function registerPaymentTools(server: McpServer, ctx: McpRequestContext) {

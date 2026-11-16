@@ -323,6 +323,25 @@ export interface ApiEffectPayloads {
     accountId: string;
     paymentIntentId: string;
   };
+  /**
+   * The credit note a refund the store gave by hand is owed
+   * (services/payment-records.ts, `recordPaymentRefund`). Added in the
+   * refund's own transaction, so it is owed as soon as the refund exists;
+   * the invoicing issues one credit note per refund, so a run after one that
+   * issued it changes nothing. It sends nothing.
+   */
+  "payment.refundCreditNote": {
+    storeId: string;
+    reservationId: string;
+    /** The payment refunded (`payments.id`). */
+    paymentId: string;
+    /** The refund's own row (`payments.id`), whose `refundOfPaymentId` is `paymentId`. */
+    refundId: string;
+    /** The refund's amount, as stored. */
+    amount: string;
+    /** Who recorded it, for the invoicing log. */
+    source: string;
+  };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;
