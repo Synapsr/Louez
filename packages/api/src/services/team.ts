@@ -231,8 +231,9 @@ const sendsEmail = (caller: Pick<TeamCaller, "ports">) =>
 
 /**
  * Refuses an invitation e-mail past the store's daily cap
- * (`INVITATION_EMAILS_PER_DAY`): the e-mails queued in the last 24 hours,
- * on the database's clock. Read under the store's lock, as every invitation
+ * (`INVITATION_EMAILS_PER_DAY`): every e-mail queued in the last 24 hours,
+ * whatever became of it, on the database's clock, whether this instance
+ * sends e-mail or not. Read under the store's lock, as every invitation
  * write of the store takes it.
  */
 async function assertEmailQuota(tx: Transaction, storeId: string) {
@@ -253,16 +254,15 @@ async function assertEmailQuota(tx: Transaction, storeId: string) {
  * The invitation e-mail, queued in the write's transaction. It is owed even
  * when this instance sends no e-mail: its sender then gives it up at once and
  * the inbox shows it (`invitation_not_sent`), and the answer says
- * `not_configured`, for the user to share the link. The daily cap counts only
- * e-mails that can go.
+ * `not_configured`, for the user to share the link. The daily cap holds
+ * either way.
  */
 async function queueInvitationEmail(
   tx: Transaction,
   caller: TeamCaller,
   invitationId: string,
 ): Promise<{ invitationEmail: "queued" | "not_configured"; effectIds: string[] }> {
-  const sends = sendsEmail(caller);
-  if (sends) await assertEmailQuota(tx, caller.storeId);
+  await assertEmailQuota(tx, caller.storeId);
   const effectIds = await enqueueEffects(tx, caller.storeId, [
     {
       type: "team.invitationEmail",
@@ -278,7 +278,7 @@ async function queueInvitationEmail(
       orderingKey: `invitation:${invitationId}:email`,
     },
   ]);
-  return { invitationEmail: sends ? "queued" : "not_configured", effectIds };
+  return { invitationEmail: sendsEmail(caller) ? "queued" : "not_configured", effectIds };
 }
 
 /**
@@ -561,7 +561,7 @@ export async function requestInvitationApproval(
     subject: sha256(email),
     prepare: async (tx, active) => {
       const { existingUserId } = await checkInvitable(tx, caller, email);
-      if (!existingUserId && sendsEmail(caller)) await assertEmailQuota(tx, caller.storeId);
+      if (!existingUserId) await assertEmailQuota(tx, caller.storeId);
       // A new approval, or an expired one coming back to life, opens one
       // more: the cap holds for both. Only one still open is asked again freely.
       if (!active || active.expiresAt.getTime() <= now.getTime()) {

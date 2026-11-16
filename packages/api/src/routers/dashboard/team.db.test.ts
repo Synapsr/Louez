@@ -1065,6 +1065,37 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal((await run("invite", { email: "new@tm.test" }, session())).outcome, "invited");
   });
 
+  test("without e-mail the daily cap holds as with it: every e-mail queued counts, and none is added past it", async () => {
+    emailConfigured = false;
+    try {
+      await run("invite", { email: "cap@tm.test" }, session());
+      const [invitation] = await invitations();
+      assert.ok(invitation);
+      for (let sent = 1; sent < INVITATION_EMAILS_PER_DAY; sent += 1) {
+        await run("resendInvitation", { id: invitation.id }, session());
+      }
+      const queued = async () =>
+        (await effectRows()).filter((row) => row.type === "team.invitationEmail").length;
+      assert.equal(await queued(), INVITATION_EMAILS_PER_DAY);
+
+      await rejects(
+        run("resendInvitation", { id: invitation.id }, session()),
+        "TEAM_INVITATION_EMAIL_LIMIT",
+      );
+      assert.equal(await queued(), INVITATION_EMAILS_PER_DAY, "no row is added past the cap");
+
+      // With e-mail, the same rows count the same: the cap is one rule.
+      emailConfigured = true;
+      await rejects(
+        run("invite", { email: "past-cap@tm.test" }, session()),
+        "TEAM_INVITATION_EMAIL_LIMIT",
+      );
+      assert.equal(await queued(), INVITATION_EMAILS_PER_DAY);
+    } finally {
+      emailConfigured = true;
+    }
+  });
+
   test("Codex's scenario: an expired approval asked again counts toward the cap", async () => {
     const context = await apiKey();
     const first = await run("invite", { email: "crew-a@tm.test" }, context());
