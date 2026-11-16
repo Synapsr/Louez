@@ -6887,6 +6887,27 @@
         "customers": "今月の新規顧客は何人ですか?",
         "overdue": "返却期限を過ぎたものはありますか?",
         "pending": "確認待ちの予約を表示"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "この支払いを記録しますか？",
+          "delete_payment": "この支払いを削除しますか？",
+          "return_deposit": "この保証金の返却を記録しますか？"
+        },
+        "amount": "金額",
+        "booking": "予約",
+        "open": "確認して判断する",
+        "expires": "{when} までに判断してください",
+        "status": {
+          "pending": "あなたの判断を待っています",
+          "approved": "承認済み。アシスタントが実行しています。",
+          "completed": "完了",
+          "declined": "拒否しました。何も行われていません。",
+          "expired": "期限切れです。何も行われていません。",
+          "ended": "実行されませんでした。何も行われていません。"
+        },
+        "continue": "続ける",
+        "followUp": "承認済み、続行します"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place>・「<who>{agent}</who>」からの依頼",
       "provenanceKey": "<place>{store}</place>・APIキーからの依頼",
       "provenanceAssistant": "<place>{store}</place>・AIアシスタントからの依頼",
+      "provenanceInApp": "<place>{store}</place>・Louez アシスタント経由の依頼",
       "trustShort": "有効なのはLouezの要約だけです。",
       "stake": {
         "access_removed": "ストアへのアクセス権を取り消します。",
@@ -9836,6 +9858,7 @@
       "apiKey": "APIキー「{name}」",
       "apiKeyUnnamed": "APIキー",
       "unnamedAgent": "AIアシスタント",
+      "inAppAssistant": "Louez アシスタント（ダッシュボードのチャットから）",
       "checked": "Louezが確認した内容",
       "messageDestinationOnFile": "メッセージは顧客の登録済みの連絡先に送られます。",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "レンタル間の間隔を守らずに予約を確定しますか？",
           "confirmBeyondStock": "在庫を超えて予約を確定しますか？",
           "confirmBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約を確定しますか？",
-          "recordDeposit": "受け取った保証金を記録しますか？"
+          "recordDeposit": "受け取った保証金を記録しますか？",
+          "moveDatesWithinRules": "予約の日程を変更しますか？",
+          "moveDatesPastBuffer": "レンタル間の間隔を守らずに予約の日程を変更しますか？",
+          "moveDatesBeyondStock": "在庫を超えて予約の日程を変更しますか？",
+          "moveDatesBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約の日程を変更しますか？"
         },
         "facts": {
           "booking": "予約 #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "お客様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
           "noMessage": "お客様にメッセージは送られません。",
           "depositCollected": "<v>{type}</v>：<v>{amount}</v> を受領 · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>、お客様に返却 · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>、お客様に返却 · <v>{method}</v>",
+          "datesMoved": "日程: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "新しい合計: <v>{total}</v>（差額: <v>{difference}</v>）。請求も返金も行いません。"
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "リクエスト承認",
             "request_rejected": "リクエスト不承認",
-            "reservation_cancelled": "予約キャンセル"
+            "reservation_cancelled": "予約キャンセル",
+            "reservation_modified": "予約変更"
           }
         }
       }

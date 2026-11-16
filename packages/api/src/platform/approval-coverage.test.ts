@@ -98,6 +98,10 @@ const DECLARED: Record<string, readonly string[]> = {
   "packages/api/src/routers/dashboard/reservation-follow-up.ts#statusConfirmation": [
     "statusChangeConsequences(preview)",
   ],
+  // A date change: a change always, a message and a stock override when they apply.
+  "packages/api/src/routers/dashboard/reservation-follow-up.ts#dateChangeConfirmation": [
+    "dateChangeConsequences(preview)",
+  ],
   "packages/api/src/routers/dashboard/settings.ts#confirmChanges": ['["change"]'],
   "packages/api/src/routers/dashboard/settings.ts#upsertLegalProfileProcedure": ['["change"]'],
   "packages/api/src/routers/dashboard/stores.ts#completeOnboarding": ['["change"]'],
@@ -133,6 +137,7 @@ const RAISES: Record<string, number> = {
   "packages/api/src/services/products.ts#updateProduct": 1,
   "packages/api/src/services/products.ts#updateProductStatus": 1,
   "packages/api/src/services/products.ts#deleteProduct": 1,
+  "packages/api/src/services/reservation-dates.ts#changeReservationDates": 1,
   "packages/api/src/services/reservation-status.ts#changeStoreReservationStatus": 1,
   "packages/api/src/services/settings.ts#writeUnderLock": 1,
   "packages/api/src/services/team.ts#cancelInvitation": 1,

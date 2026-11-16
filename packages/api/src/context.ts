@@ -124,6 +124,15 @@ export interface BaseContext {
   transport?: Transport;
   /** What the app lends the agent-ready procedures (platform/ports.ts). */
   ports?: ApiPorts;
+  /**
+   * The call is the in-app assistant's, acting for the signed-in user's
+   * session. Set only by the server code that builds the assistant's
+   * clients (apps/web/lib/ai/assistant-api.ts), never read from a request:
+   * no header, body or cookie sets it, and a transport handler never passes
+   * it on. A session marked so is asked a person's approval for a branch
+   * whose consequence is live (`levelOf`, platform/approval-rule.ts).
+   */
+  assistant?: true;
   /** Filled with the operation id of a write, for the transport to hand out. */
   receipt?: OperationReceipt;
   /**

@@ -14,19 +14,25 @@ import { closeNetworkForSuite } from "@/lib/testing/network-guard";
 
 import type { AIChatContext, createAITools } from "./tools";
 
-// The in-app assistant does not write money: recording a payment, deleting
-// one and recording a deposit return are done by a person on the
-// reservation's page, or by an agent through a person's approval.
+// The in-app assistant writes money only through a procedure that asks the
+// person's approval for it: recording a payment, deleting one and recording
+// a deposit return each wait for the person's decision on the approval's
+// page (`APPROVAL_LIVE`, platform/approval-rule.ts, for a session marked as
+// the assistant's), and the model can ask, never decide.
 //
 // What it can reach: no tool reaches a dashboard domain the assistant holds
 // no client of, and the payment-writing procedures within the domains it
-// holds are listed below, so a new one is a decision, not an accident.
-// What it does: every tool runs with each of its parameters filled, and once
-// more per other value of each top-level choice and yes/no, against an API
-// that refuses each call and against one that answers each call, so a tool
-// goes on past its first call; the database notes each table written, and
-// none may be the payments table. A tool that writes behind a value read from
-// an answer needs its own case here, with that answer.
+// holds are listed below, each with why it is safe, so a new one is a
+// decision, not an accident. What it does: every tool runs with each of its
+// parameters filled, and once more per other value of each top-level choice
+// and yes/no, against an API that refuses each call and against one that
+// answers each call, so a tool goes on past its first call; every
+// payment-writing procedure a tool called must be one that asks the person,
+// and the database notes each table written, none of which may be the
+// payments table. A tool that writes behind a value read from an answer
+// needs its own case here, with that answer. That the three ask the
+// assistant's caller, and carry out only what the person approved, once, is
+// proved on the database (lib/ai/payment-approval.db.test.ts).
 
 closeNetworkForSuite();
 
@@ -156,13 +162,39 @@ function proceduresOf(router: object, path: string[] = []): [string, { meta?: un
   });
 }
 
-describe("the in-app assistant writes no payment", () => {
+/**
+ * The payment-writing procedures within the domains the assistant holds,
+ * and why each is safe for it.
+ */
+const HELD_PAYMENT_WRITES: Record<string, string> = {
+  // Called by record_payment, delete_payment and return_deposit: each
+  // declares `money`, which asks the person's approval of a session marked
+  // as the assistant's, whatever any option.
+  "dashboard.payments.record": "asks the person",
+  "dashboard.payments.recordDepositReturn": "asks the person",
+  "dashboard.payments.delete": "asks the person",
+  // Session-only (`actors`), so refused to the assistant's session; no tool calls it.
+  "dashboard.reservations.resolveDepositAttempt": "not called",
+  // A refund given by hand: it declares `money`, so it asks the person's
+  // approval of the assistant's session too (lib/ai/payment-approval.db.test.ts);
+  // no tool calls it.
+  "dashboard.payments.recordRefund": "not called",
+};
+
+/** The ones a tool may call: they ask the person (`personApproval`). */
+const ASKS_THE_PERSON = Object.entries(HELD_PAYMENT_WRITES)
+  .filter(([, why]) => why === "asks the person")
+  .map(([path]) => path);
+
+describe("the in-app assistant writes money only through the person's approval", () => {
   /** `dashboard.<domain>.<procedure>`, each procedure a tool called. */
   const called: string[] = [];
   /** The database's write calls on the payments table. */
   const paymentTableWrites: string[] = [];
   /** The procedures whose scope is `payments:write`. */
   let paymentWrites: string[] = [];
+  /** Each procedure's meta, by its path. */
+  let metas = new Map<string, unknown>();
   /** The domains a tool asked a client of, outside those the assistant holds. */
   const outside: string[] = [];
   /** `tool: message`, each tool whose parameters could not be filled. */
@@ -203,6 +235,7 @@ describe("the in-app assistant writes no payment", () => {
 
     await import("@louez/mcp/testing/cjs-named-exports");
     const { appRouter } = await import("@louez/api/router");
+    metas = new Map(proceduresOf(appRouter).map(([path, { meta }]) => [path, meta]));
     paymentWrites = proceduresOf(appRouter)
       .filter(([, { meta }]) => {
         const scope = (meta as { scope?: { domain: string; level: string } } | undefined)?.scope;
@@ -286,44 +319,55 @@ describe("the in-app assistant writes no payment", () => {
     assert.deepEqual(outside, []);
   });
 
-  test("the payment-writing procedures within the assistant's domains are these, and no tool calls one", () => {
-    // A procedure added to this list is one a tool could be given tomorrow:
-    // adding it here is the moment to decide that no tool calls it.
+  test("the payment-writing procedures within the assistant's domains are these, each decided", () => {
+    // A procedure added here is one a tool could be given tomorrow: adding it
+    // to the list is the moment to decide whether it asks the person.
     const held = paymentWrites.filter((path) =>
       domains.some((domain) => path.startsWith(`dashboard.${domain}.`)),
     );
-    assert.deepEqual(held, ["dashboard.reservations.resolveDepositAttempt"]);
-    assert.deepEqual(
-      called.filter((path) => held.includes(path)),
-      [],
-    );
-  });
-
-  test("the procedures that write payments are known", () => {
-    for (const path of [
-      "dashboard.payments.record",
-      "dashboard.payments.recordDepositReturn",
-      "dashboard.payments.delete",
-    ]) {
-      assert.ok(paymentWrites.includes(path), path);
-    }
+    assert.deepEqual([...held].sort(), Object.keys(HELD_PAYMENT_WRITES).sort());
     assert.ok(called.length > 0, "the tools called the API");
   });
 
-  test("no tool calls a procedure that writes payments", () => {
+  test("every payment-writing procedure a tool calls asks the person's approval", () => {
+    const writes = [...new Set(called.filter((path) => paymentWrites.includes(path)))].sort();
+    assert.deepEqual(writes, [...ASKS_THE_PERSON].sort(), "the three payment tools call these");
+    for (const path of writes) {
+      const meta = metas.get(path) as { personApproval?: boolean };
+      assert.equal(meta.personApproval, true, `${path} asks a person`);
+    }
+  });
+
+  test("no payment-writing procedure that does not ask the person is called", () => {
     assert.deepEqual(
-      called.filter((path) => paymentWrites.includes(path)),
+      called.filter((path) => paymentWrites.includes(path) && !ASKS_THE_PERSON.includes(path)),
       [],
     );
+  });
+
+  test("the assistant's caller is asked a person for money, and a person's session is not", async () => {
+    const { confirmationStep } = await import("@louez/api/platform/approval-rule");
+    const assistant = {
+      kind: "session" as const,
+      confirmSensitive: false,
+      assistant: true as const,
+    };
+    assert.equal(confirmationStep(["money"], assistant), "approval");
+    assert.equal(confirmationStep(["money"], { kind: "session", confirmSensitive: false }), "none");
   });
 
   test("no tool writes the payments table", () => {
     assert.deepEqual(paymentTableWrites, []);
   });
 
-  test("record_payment, delete_payment and return_deposit are not offered", () => {
-    for (const name of ["record_payment", "delete_payment", "return_deposit"]) {
-      assert.equal(name in tools, false, name);
-    }
+  test("no tool reaches the decision of an approval", () => {
+    // Deciding is the person's, on the approval's page: the assistant holds
+    // no client of the handoffs (`handoffs.decide`), and a session marked as
+    // the assistant's is refused it (platform/procedures.ts).
+    assert.equal((domains as readonly string[]).includes("handoffs"), false);
+    assert.equal(
+      called.some((path) => path.startsWith("dashboard.handoffs.")),
+      false,
+    );
   });
 });

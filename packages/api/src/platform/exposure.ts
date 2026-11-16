@@ -77,6 +77,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.reservations.listUpcoming",
   "dashboard.reservations.listOverdue",
   "dashboard.reservations.updateStatus",
+  "dashboard.reservations.update",
   "dashboard.reservations.cancel",
   "dashboard.reservations.updateNotes",
   "dashboard.onlineStore.update",

@@ -50,6 +50,7 @@ import {
   listOverdue,
   listUpcoming,
   poll,
+  update,
   updateNotes,
   updateStatus,
 } from "./reservation-follow-up";
@@ -725,6 +726,7 @@ export const dashboardReservationsRouter = {
   listUpcoming,
   listOverdue,
   updateStatus,
+  update,
   cancel,
   updateNotes,
   getEditContext,

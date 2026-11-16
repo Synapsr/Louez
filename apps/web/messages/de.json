@@ -6887,6 +6887,27 @@
         "customers": "Wie viele neue Kunden diesen Monat?",
         "overdue": "Gibt es überfällige Rückgaben?",
         "pending": "Zeig mir Reservierungen, die auf Bestätigung warten"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Diese Zahlung erfassen?",
+          "delete_payment": "Diese Zahlung löschen?",
+          "return_deposit": "Diese Kautionsrückgabe erfassen?"
+        },
+        "amount": "Betrag",
+        "booking": "Buchung",
+        "open": "Prüfen und entscheiden",
+        "expires": "Entscheiden bis {when}",
+        "status": {
+          "pending": "Wartet auf Ihre Entscheidung",
+          "approved": "Genehmigt. Der Assistent führt es aus.",
+          "completed": "Erledigt",
+          "declined": "Abgelehnt. Es wurde nichts getan.",
+          "expired": "Abgelaufen. Es wurde nichts getan.",
+          "ended": "Nicht ausgeführt. Es wurde nichts getan."
+        },
+        "continue": "Weiter",
+        "followUp": "Genehmigt, es geht weiter"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place> · angefragt von „<who>{agent}</who>“",
       "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
       "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
+      "provenanceInApp": "<place>{store}</place> · angefragt über den Louez-Assistenten",
       "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
       "stake": {
         "access_removed": "Entzieht einen Zugang zu Ihrem Shop.",
@@ -9836,6 +9858,7 @@
       "apiKey": "API-Schlüssel „{name}“",
       "apiKeyUnnamed": "Ein API-Schlüssel",
       "unnamedAgent": "Ein KI-Assistent",
+      "inAppAssistant": "Der Louez-Assistent, aus dem Chat in Ihrem Dashboard",
       "checked": "Was Louez geprüft hat",
       "messageDestinationOnFile": "Nachrichten gehen an die hinterlegten Kontaktdaten des Kunden.",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "Die Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen bestätigen?",
           "confirmBeyondStock": "Die Buchung über Ihren Bestand hinaus bestätigen?",
           "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?",
-          "recordDeposit": "Eine erhaltene Kaution erfassen?"
+          "recordDeposit": "Eine erhaltene Kaution erfassen?",
+          "moveDatesWithinRules": "Die Daten der Buchung verschieben?",
+          "moveDatesPastBuffer": "Die Daten der Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen verschieben?",
+          "moveDatesBeyondStock": "Die Daten der Buchung über Ihren Bestand hinaus verschieben?",
+          "moveDatesBeyondStockAndBuffer": "Die Daten der Buchung über Ihren Bestand und Ihre Pufferzeit hinaus verschieben?"
         },
         "facts": {
           "booking": "Buchung #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "Der Kunde erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
           "noMessage": "Der Kunde erhält keine Nachricht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "datesMoved": "Daten: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Neuer Gesamtbetrag: <v>{total}</v> (Differenz: <v>{difference}</v>). Es wird nichts abgebucht oder erstattet."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "Anfrage angenommen",
             "request_rejected": "Anfrage abgelehnt",
-            "reservation_cancelled": "Buchung storniert"
+            "reservation_cancelled": "Buchung storniert",
+            "reservation_modified": "Buchung geändert"
           }
         }
       }

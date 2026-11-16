@@ -6887,6 +6887,27 @@
         "customers": "Quanti nuovi clienti questo mese?",
         "overdue": "Ci sono restituzioni in ritardo?",
         "pending": "Mostrami le prenotazioni in attesa di conferma"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Registrare questo pagamento?",
+          "delete_payment": "Eliminare questo pagamento?",
+          "return_deposit": "Registrare questa restituzione della cauzione?"
+        },
+        "amount": "Importo",
+        "booking": "Prenotazione",
+        "open": "Verifica e decidi",
+        "expires": "Decidi entro {when}",
+        "status": {
+          "pending": "In attesa della tua decisione",
+          "approved": "Approvato. L’assistente lo sta eseguendo.",
+          "completed": "Fatto",
+          "declined": "Rifiutato. Non è stato fatto nulla.",
+          "expired": "Scaduto. Non è stato fatto nulla.",
+          "ended": "Non eseguito. Non è stato fatto nulla."
+        },
+        "continue": "Continua",
+        "followUp": "Approvato, si continua"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place> · richiesto da «<who>{agent}</who>»",
       "provenanceKey": "<place>{store}</place> · richiesto da una chiave API",
       "provenanceAssistant": "<place>{store}</place> · richiesto da un assistente IA",
+      "provenanceInApp": "<place>{store}</place> · richiesto tramite l’assistente Louez",
       "trustShort": "Conta solo il riepilogo di Louez.",
       "stake": {
         "access_removed": "Revoca un accesso al tuo negozio.",
@@ -9836,6 +9858,7 @@
       "apiKey": "Chiave API «{name}»",
       "apiKeyUnnamed": "Una chiave API",
       "unnamedAgent": "Un assistente IA",
+      "inAppAssistant": "L’assistente Louez, dalla chat della tua dashboard",
       "checked": "Cosa ha verificato Louez",
       "messageDestinationOnFile": "I messaggi vanno ai recapiti del cliente registrati.",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "Confermare la prenotazione nonostante il tuo margine tra due noleggi?",
           "confirmBeyondStock": "Confermare la prenotazione oltre la tua disponibilità?",
           "confirmBeyondStockAndBuffer": "Confermare la prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?",
-          "recordDeposit": "Registrare un deposito incassato?"
+          "recordDeposit": "Registrare un deposito incassato?",
+          "moveDatesWithinRules": "Spostare le date della prenotazione?",
+          "moveDatesPastBuffer": "Spostare le date della prenotazione nonostante il tuo margine tra due noleggi?",
+          "moveDatesBeyondStock": "Spostare le date della prenotazione oltre la tua disponibilità?",
+          "moveDatesBeyondStockAndBuffer": "Spostare le date della prenotazione oltre la tua disponibilità e il tuo margine tra due noleggi?"
         },
         "facts": {
           "booking": "Prenotazione #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "Il cliente riceverà {channels, select, email {l’email} sms {l’SMS} other {l’email e l’SMS}} «<v>{message}</v>»",
           "noMessage": "Al cliente non viene inviato alcun messaggio.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> incassati · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, restituiti al cliente · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, restituiti al cliente · <v>{method}</v>",
+          "datesMoved": "Date: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nuovo totale: <v>{total}</v> (differenza: <v>{difference}</v>). Nulla viene addebitato o rimborsato."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "richiesta accettata",
             "request_rejected": "richiesta rifiutata",
-            "reservation_cancelled": "prenotazione annullata"
+            "reservation_cancelled": "prenotazione annullata",
+            "reservation_modified": "prenotazione modificata"
           }
         }
       }

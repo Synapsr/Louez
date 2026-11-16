@@ -6887,6 +6887,27 @@
         "customers": "How many new customers this month?",
         "overdue": "Are any returns overdue?",
         "pending": "Show me reservations awaiting confirmation"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Record this payment?",
+          "delete_payment": "Delete this payment?",
+          "return_deposit": "Record this deposit return?"
+        },
+        "amount": "Amount",
+        "booking": "Booking",
+        "open": "Review and decide",
+        "expires": "Decide by {when}",
+        "status": {
+          "pending": "Waiting for your decision",
+          "approved": "Approved. The assistant is carrying it out.",
+          "completed": "Done",
+          "declined": "Refused. Nothing was done.",
+          "expired": "Lapsed. Nothing was done.",
+          "ended": "Not carried out. Nothing was done."
+        },
+        "continue": "Continue",
+        "followUp": "Approved, continuing"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place> · asked by “<who>{agent}</who>”",
       "provenanceKey": "<place>{store}</place> · asked by an API key",
       "provenanceAssistant": "<place>{store}</place> · asked by an AI assistant",
+      "provenanceInApp": "<place>{store}</place> · asked through the Louez assistant",
       "trustShort": "Only Louez’s summary counts.",
       "stake": {
         "access_removed": "Revokes access to your store.",
@@ -9836,6 +9858,7 @@
       "apiKey": "API key “{name}”",
       "apiKeyUnnamed": "An API key",
       "unnamedAgent": "An AI assistant",
+      "inAppAssistant": "The Louez assistant, from your dashboard chat",
       "checked": "What Louez checked",
       "messageDestinationOnFile": "Messages go to the customer’s contact details on file.",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "Confirm the booking despite your turnover buffer?",
           "confirmBeyondStock": "Confirm the booking beyond your stock?",
           "confirmBeyondStockAndBuffer": "Confirm the booking beyond your stock and your turnover buffer?",
-          "recordDeposit": "Record a deposit collected?"
+          "recordDeposit": "Record a deposit collected?",
+          "moveDatesWithinRules": "Move the booking’s dates?",
+          "moveDatesPastBuffer": "Move the booking’s dates despite your turnover buffer?",
+          "moveDatesBeyondStock": "Move the booking’s dates beyond your stock?",
+          "moveDatesBeyondStockAndBuffer": "Move the booking’s dates beyond your stock and your turnover buffer?"
         },
         "facts": {
           "booking": "Booking #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "The customer will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
           "noMessage": "No message goes to the customer.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> collected · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, given back to the customer · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, given back to the customer · <v>{method}</v>",
+          "datesMoved": "Dates: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "New total: <v>{total}</v> (difference: <v>{difference}</v>). Nothing is charged or refunded."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "request accepted",
             "request_rejected": "request declined",
-            "reservation_cancelled": "booking cancelled"
+            "reservation_cancelled": "booking cancelled",
+            "reservation_modified": "booking modified"
           }
         }
       }

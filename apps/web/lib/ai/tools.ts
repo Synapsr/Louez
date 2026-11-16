@@ -16,7 +16,7 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import type { AppRouter, UrlsPort } from "@louez/api";
+import { ORPCError, type AppRouter, type UrlsPort } from "@louez/api";
 import { ANALYTICS_PERIODS } from "@louez/api/contracts/analytics";
 import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
@@ -33,6 +33,12 @@ import {
   checkCustomerFieldEntries,
   toReadableCustomerFields,
 } from "@louez/api/services/customer-tools";
+import {
+  RECORDED_PAYMENT_METHODS,
+  RECORDED_PAYMENT_TYPES,
+} from "@louez/api/contracts/payment-records";
+
+import { approvalResultOf, type ApprovalToolResult } from "./payment-approval";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -61,14 +67,31 @@ export type AIChatContext = {
 export const ASSISTANT_API_DOMAINS = [
   "analytics",
   "categories",
+  "payments",
   "products",
   "reservations",
   "settings",
 ] as const;
 
-/** The procedures the assistant calls, through a server-side client bound to the user's session. */
+/**
+ * What a tool hands a call besides its input: the approval id it presents,
+ * for a payment the person approved. The client puts it where every
+ * caller's approval goes (`louez-confirmation`), and the procedure checks it
+ * as it checks an agent's.
+ */
+export interface AssistantApiContext {
+  approvalId?: string;
+}
+
+/**
+ * The procedures the assistant calls, through a server-side client bound to
+ * the user's session and marked as the assistant's (lib/ai/assistant-api.ts).
+ */
 export type AssistantApi = {
-  [Domain in (typeof ASSISTANT_API_DOMAINS)[number]]: RouterClient<AppRouter["dashboard"][Domain]>;
+  [Domain in (typeof ASSISTANT_API_DOMAINS)[number]]: RouterClient<
+    AppRouter["dashboard"][Domain],
+    AssistantApiContext
+  >;
 };
 
 function assistantApi(ctx: AIChatContext): AssistantApi {
@@ -87,6 +110,59 @@ function requirePermission(
   }
   if (level === "write" && perm === "read") {
     throw new Error(`Permission denied: requires ${domain}:write (current: read)`);
+  }
+}
+
+/**
+ * The chat's own words for the payment procedures' refusals, as its tools
+ * answered before they called them.
+ */
+const PAYMENT_REFUSALS: Record<string, (details: Record<string, unknown>) => string> = {
+  RESERVATION_NOT_FOUND: () => "Reservation not found",
+  PAYMENT_NOT_FOUND: () => "Payment not found",
+  PAYMENT_AMOUNT_INVALID: () =>
+    'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50")',
+  PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT: () =>
+    'Only "adjustment" payments can have a negative amount',
+  PAYMENT_RESERVATION_CLOSED: (details) =>
+    `Cannot record payment on a ${String(details.status)} reservation`,
+  PAYMENT_STRIPE_NOT_DELETABLE: () =>
+    "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+  DEPOSIT_RETURN_AMOUNT_INVALID: () =>
+    'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00")',
+  DEPOSIT_RETURN_EXCEEDS_BALANCE: (details) =>
+    `Amount exceeds returnable deposit. Collected: ${String(details.collected)}, already returned: ${String(details.returned)}, max returnable: ${String(details.returnable)}`,
+};
+
+/** The optional argument of the three payment tools: the approval a later call presents. */
+const approvalIdArgument = z
+  .string()
+  .optional()
+  .describe(
+    "Leave it out the first time. Only once the chat says the person approved: the approvalId it gave for these exact same arguments. Never make one up, never ask the person for it.",
+  );
+
+/**
+ * A payment procedure's answer, its refusal in the chat's words, or where
+ * the person's approval stands (`approvalResultOf`): nothing is recorded
+ * until the procedure carries out a request the person approved, and it
+ * says so. Any other error is thrown. An `approvalId` that is not an
+ * approval's id is presented as it is: the procedure refuses it, never
+ * falling back to running without one.
+ */
+async function paymentAnswer<T>(
+  run: (context: AssistantApiContext) => Promise<T>,
+  approvalId: string | undefined,
+): Promise<T | ApprovalToolResult | { error: string }> {
+  try {
+    return await run(approvalId === undefined ? {} : { approvalId });
+  } catch (error) {
+    const approval = approvalResultOf(error);
+    if (approval) return approval;
+    const data = error instanceof ORPCError ? (error.data as Record<string, unknown>) : null;
+    const words = typeof data?.code === "string" ? PAYMENT_REFUSALS[data.code] : undefined;
+    if (!words) throw error;
+    return { error: words((data?.details as Record<string, unknown> | undefined) ?? {}) };
   }
 }
 
@@ -701,6 +777,87 @@ export function createAITools(ctx: AIChatContext) {
           }),
           reservationNumber: reservation.number,
         };
+      },
+    }),
+
+    // Each of the three asks the person's approval: the first call prepares
+    // the request and the chat shows its card; once the person approved it on
+    // its page, the same arguments with its approvalId carry it out, once.
+
+    record_payment: tool({
+      description:
+        "Prepare a manual payment on a reservation for the person's approval; once they approved it, carry it out. Nothing is recorded until this returns success.",
+      inputSchema: z.object({
+        reservationId: z.string().describe("The reservation ID"),
+        type: z.enum(RECORDED_PAYMENT_TYPES),
+        amount: z.string().describe('Amount (e.g. "150.00")'),
+        method: z.enum(RECORDED_PAYMENT_METHODS),
+        notes: z.string().optional(),
+        approvalId: approvalIdArgument,
+      }),
+      execute: async ({ approvalId, ...input }) => {
+        requirePermission(ctx, "payments", "write");
+        return paymentAnswer(async (context) => {
+          const recorded = await assistantApi(ctx).payments.record(input, { context });
+          return {
+            status: "done" as const,
+            success: true,
+            reservationNumber: recorded.number,
+            type: recorded.type,
+            amount: recorded.amount,
+            method: recorded.method,
+            ...(recorded.links ? { links: recorded.links } : {}),
+          };
+        }, approvalId);
+      },
+    }),
+
+    delete_payment: tool({
+      description:
+        "Prepare the deletion of a manual payment record for the person's approval (never a Stripe payment); once they approved it, carry it out. Nothing is deleted until this returns success.",
+      inputSchema: z.object({
+        paymentId: z.string().describe("The payment ID to delete"),
+        approvalId: approvalIdArgument,
+      }),
+      execute: async ({ approvalId, paymentId }) => {
+        requirePermission(ctx, "payments", "write");
+        return paymentAnswer(async (context) => {
+          const deleted = await assistantApi(ctx).payments.delete({ paymentId }, { context });
+          return {
+            status: "done" as const,
+            success: true,
+            reservationNumber: deleted.number,
+            ...(deleted.links ? { links: deleted.links } : {}),
+          };
+        }, approvalId);
+      },
+    }),
+
+    return_deposit: tool({
+      description:
+        "Prepare the record of a deposit given back on a reservation for the person's approval (at most the deposit still held); once they approved it, carry it out. Nothing is recorded until this returns success.",
+      inputSchema: z.object({
+        reservationId: z.string().describe("The reservation ID"),
+        amount: z.string().describe('Amount to return (e.g. "100.00")'),
+        method: z.enum(RECORDED_PAYMENT_METHODS).describe("Return method"),
+        notes: z.string().optional(),
+        approvalId: approvalIdArgument,
+      }),
+      execute: async ({ approvalId, ...input }) => {
+        requirePermission(ctx, "payments", "write");
+        return paymentAnswer(async (context) => {
+          const recorded = await assistantApi(ctx).payments.recordDepositReturn(input, {
+            context,
+          });
+          return {
+            status: "done" as const,
+            success: true,
+            reservationNumber: recorded.number,
+            amount: recorded.amount,
+            method: recorded.method,
+            ...(recorded.links ? { links: recorded.links } : {}),
+          };
+        }, approvalId);
       },
     }),
 

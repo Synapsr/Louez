@@ -6887,6 +6887,27 @@
         "customers": "Quantos novos clientes este mês?",
         "overdue": "Há devoluções em atraso?",
         "pending": "Mostra-me as reservas à espera de confirmação"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Registrar este pagamento?",
+          "delete_payment": "Excluir este pagamento?",
+          "return_deposit": "Registrar esta devolução de caução?"
+        },
+        "amount": "Valor",
+        "booking": "Reserva",
+        "open": "Revisar e decidir",
+        "expires": "Decida até {when}",
+        "status": {
+          "pending": "Aguardando sua decisão",
+          "approved": "Aprovado. O assistente está executando.",
+          "completed": "Concluído",
+          "declined": "Recusado. Nada foi feito.",
+          "expired": "Expirado. Nada foi feito.",
+          "ended": "Não executado. Nada foi feito."
+        },
+        "continue": "Continuar",
+        "followUp": "Aprovado, continuando"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place> · pedido por «<who>{agent}</who>»",
       "provenanceKey": "<place>{store}</place> · pedido por uma chave de API",
       "provenanceAssistant": "<place>{store}</place> · pedido por um assistente de IA",
+      "provenanceInApp": "<place>{store}</place> · pedido pelo assistente Louez",
       "trustShort": "Só conta o resumo do Louez.",
       "stake": {
         "access_removed": "Remove um acesso à sua loja.",
@@ -9836,6 +9858,7 @@
       "apiKey": "Chave de API «{name}»",
       "apiKeyUnnamed": "Uma chave de API",
       "unnamedAgent": "Um assistente de IA",
+      "inAppAssistant": "O assistente Louez, a partir do chat do seu painel",
       "checked": "O que o Louez verificou",
       "messageDestinationOnFile": "As mensagens vão para os contactos registados do cliente.",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "Confirmar a reserva apesar da sua margem entre alugueres?",
           "confirmBeyondStock": "Confirmar a reserva acima do seu stock?",
           "confirmBeyondStockAndBuffer": "Confirmar a reserva acima do seu stock e da sua margem entre alugueres?",
-          "recordDeposit": "Registar uma caução recebida?"
+          "recordDeposit": "Registar uma caução recebida?",
+          "moveDatesWithinRules": "Mudar as datas da reserva?",
+          "moveDatesPastBuffer": "Mudar as datas da reserva apesar da sua margem entre alugueres?",
+          "moveDatesBeyondStock": "Mudar as datas da reserva acima do seu stock?",
+          "moveDatesBeyondStockAndBuffer": "Mudar as datas da reserva acima do seu stock e da sua margem entre alugueres?"
         },
         "facts": {
           "booking": "Reserva #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "O cliente vai receber {channels, select, email {o email} sms {o SMS} other {o email e o SMS}} «<v>{message}</v>»",
           "noMessage": "Nenhuma mensagem é enviada ao cliente.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> recebidos · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>",
+          "datesMoved": "Datas: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Novo total: <v>{total}</v> (diferença: <v>{difference}</v>). Nada é cobrado nem reembolsado."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "pedido aceite",
             "request_rejected": "pedido recusado",
-            "reservation_cancelled": "reserva cancelada"
+            "reservation_cancelled": "reserva cancelada",
+            "reservation_modified": "reserva alterada"
           }
         }
       }

@@ -6887,6 +6887,27 @@
         "customers": "Ilu nowych klientów w tym miesiącu?",
         "overdue": "Czy są jakieś zaległe zwroty?",
         "pending": "Pokaż rezerwacje oczekujące na potwierdzenie"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Zarejestrować tę płatność?",
+          "delete_payment": "Usunąć tę płatność?",
+          "return_deposit": "Zarejestrować ten zwrot kaucji?"
+        },
+        "amount": "Kwota",
+        "booking": "Rezerwacja",
+        "open": "Sprawdź i zdecyduj",
+        "expires": "Zdecyduj do {when}",
+        "status": {
+          "pending": "Czeka na Twoją decyzję",
+          "approved": "Zatwierdzono. Asystent to wykonuje.",
+          "completed": "Gotowe",
+          "declined": "Odrzucono. Nic nie zostało zrobione.",
+          "expired": "Wygasło. Nic nie zostało zrobione.",
+          "ended": "Nie wykonano. Nic nie zostało zrobione."
+        },
+        "continue": "Dalej",
+        "followUp": "Zatwierdzono, kontynuujemy"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place> · prośba od „<who>{agent}</who>”",
       "provenanceKey": "<place>{store}</place> · prośba od klucza API",
       "provenanceAssistant": "<place>{store}</place> · prośba od asystenta AI",
+      "provenanceInApp": "<place>{store}</place> · prośba przez asystenta Louez",
       "trustShort": "Liczy się tylko podsumowanie Louez.",
       "stake": {
         "access_removed": "Odbiera dostęp do Twojego sklepu.",
@@ -9836,6 +9858,7 @@
       "apiKey": "Klucz API „{name}”",
       "apiKeyUnnamed": "Klucz API",
       "unnamedAgent": "Asystent AI",
+      "inAppAssistant": "Asystent Louez, z czatu w Twoim panelu",
       "checked": "Co Louez sprawdził",
       "messageDestinationOnFile": "Wiadomości trafiają na zapisane dane kontaktowe klienta.",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "Potwierdzić rezerwację mimo przerwy między wynajmami?",
           "confirmBeyondStock": "Potwierdzić rezerwację ponad stan magazynu?",
           "confirmBeyondStockAndBuffer": "Potwierdzić rezerwację ponad stan magazynu i mimo przerwy między wynajmami?",
-          "recordDeposit": "Zapisać pobraną kaucję?"
+          "recordDeposit": "Zapisać pobraną kaucję?",
+          "moveDatesWithinRules": "Przesunąć daty rezerwacji?",
+          "moveDatesPastBuffer": "Przesunąć daty rezerwacji mimo przerwy między wynajmami?",
+          "moveDatesBeyondStock": "Przesunąć daty rezerwacji ponad stan magazynu?",
+          "moveDatesBeyondStockAndBuffer": "Przesunąć daty rezerwacji ponad stan magazynu i mimo przerwy między wynajmami?"
         },
         "facts": {
           "booking": "Rezerwacja #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "Klient otrzyma {channels, select, email {e-mail} sms {SMS} other {e-mail i SMS}} „<v>{message}</v>”",
           "noMessage": "Klient nie dostaje żadnej wiadomości.",
           "depositCollected": "<v>{type}</v>: pobrano <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>",
+          "datesMoved": "Daty: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nowa suma: <v>{total}</v> (różnica: <v>{difference}</v>). Nic nie jest pobierane ani zwracane."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "prośba przyjęta",
             "request_rejected": "prośba odrzucona",
-            "reservation_cancelled": "rezerwacja anulowana"
+            "reservation_cancelled": "rezerwacja anulowana",
+            "reservation_modified": "rezerwacja zmieniona"
           }
         }
       }

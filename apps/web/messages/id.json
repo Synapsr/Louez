@@ -6887,6 +6887,27 @@
         "customers": "Berapa banyak pelanggan baru bulan ini?",
         "overdue": "Apakah ada pengembalian yang terlambat?",
         "pending": "Tunjukkan pada saya reservasi yang menunggu konfirmasi"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Catat pembayaran ini?",
+          "delete_payment": "Hapus pembayaran ini?",
+          "return_deposit": "Catat pengembalian deposit ini?"
+        },
+        "amount": "Jumlah",
+        "booking": "Pemesanan",
+        "open": "Tinjau dan putuskan",
+        "expires": "Putuskan sebelum {when}",
+        "status": {
+          "pending": "Menunggu keputusan Anda",
+          "approved": "Disetujui. Asisten sedang menjalankannya.",
+          "completed": "Selesai",
+          "declined": "Ditolak. Tidak ada yang dilakukan.",
+          "expired": "Kedaluwarsa. Tidak ada yang dilakukan.",
+          "ended": "Tidak dijalankan. Tidak ada yang dilakukan."
+        },
+        "continue": "Lanjutkan",
+        "followUp": "Disetujui, melanjutkan"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place> · diminta oleh “<who>{agent}</who>”",
       "provenanceKey": "<place>{store}</place> · diminta oleh kunci API",
       "provenanceAssistant": "<place>{store}</place> · diminta oleh asisten AI",
+      "provenanceInApp": "<place>{store}</place> · diminta melalui asisten Louez",
       "trustShort": "Hanya ringkasan Louez yang berlaku.",
       "stake": {
         "access_removed": "Mencabut sebuah akses ke toko Anda.",
@@ -9836,6 +9858,7 @@
       "apiKey": "Kunci API “{name}”",
       "apiKeyUnnamed": "Sebuah kunci API",
       "unnamedAgent": "Sebuah asisten AI",
+      "inAppAssistant": "Asisten Louez, dari chat di dasbor Anda",
       "checked": "Yang diperiksa Louez",
       "messageDestinationOnFile": "Pesan dikirim ke kontak pelanggan yang tersimpan.",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "Konfirmasi pemesanan meski melanggar jeda antarsewa Anda?",
           "confirmBeyondStock": "Konfirmasi pemesanan melebihi stok Anda?",
           "confirmBeyondStockAndBuffer": "Konfirmasi pemesanan melebihi stok dan jeda antarsewa Anda?",
-          "recordDeposit": "Catat uang jaminan yang diterima?"
+          "recordDeposit": "Catat uang jaminan yang diterima?",
+          "moveDatesWithinRules": "Pindahkan tanggal pemesanan?",
+          "moveDatesPastBuffer": "Pindahkan tanggal pemesanan meski melanggar jeda antarsewa Anda?",
+          "moveDatesBeyondStock": "Pindahkan tanggal pemesanan melebihi stok Anda?",
+          "moveDatesBeyondStockAndBuffer": "Pindahkan tanggal pemesanan melebihi stok dan jeda antarsewa Anda?"
         },
         "facts": {
           "booking": "Pemesanan #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "Pelanggan akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
           "noMessage": "Tidak ada pesan yang dikirim ke pelanggan.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> diterima · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>",
+          "datesMoved": "Tanggal: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Total baru: <v>{total}</v> (selisih: <v>{difference}</v>). Tidak ada yang ditagih atau dikembalikan."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "permintaan diterima",
             "request_rejected": "permintaan ditolak",
-            "reservation_cancelled": "pemesanan dibatalkan"
+            "reservation_cancelled": "pemesanan dibatalkan",
+            "reservation_modified": "pemesanan diubah"
           }
         }
       }

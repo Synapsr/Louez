@@ -6887,6 +6887,27 @@
         "customers": "Hoeveel nieuwe klanten deze maand?",
         "overdue": "Zijn er retouren te laat?",
         "pending": "Toon me de reserveringen die wachten op bevestiging"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Deze betaling registreren?",
+          "delete_payment": "Deze betaling verwijderen?",
+          "return_deposit": "Deze terugbetaling van de borg registreren?"
+        },
+        "amount": "Bedrag",
+        "booking": "Boeking",
+        "open": "Bekijken en beslissen",
+        "expires": "Beslis vóór {when}",
+        "status": {
+          "pending": "Wacht op je beslissing",
+          "approved": "Goedgekeurd. De assistent voert het uit.",
+          "completed": "Klaar",
+          "declined": "Geweigerd. Er is niets gedaan.",
+          "expired": "Verlopen. Er is niets gedaan.",
+          "ended": "Niet uitgevoerd. Er is niets gedaan."
+        },
+        "continue": "Doorgaan",
+        "followUp": "Goedgekeurd, we gaan verder"
       }
     },
     "breadcrumbs": {
@@ -9817,6 +9838,7 @@
       "provenance": "<place>{store}</place> · gevraagd door ‘<who>{agent}</who>’",
       "provenanceKey": "<place>{store}</place> · gevraagd door een API-sleutel",
       "provenanceAssistant": "<place>{store}</place> · gevraagd door een AI-assistent",
+      "provenanceInApp": "<place>{store}</place> · gevraagd via de Louez-assistent",
       "trustShort": "Alleen de samenvatting van Louez telt.",
       "stake": {
         "access_removed": "Trekt een toegang tot je winkel in.",
@@ -9836,6 +9858,7 @@
       "apiKey": "API-sleutel ‘{name}’",
       "apiKeyUnnamed": "Een API-sleutel",
       "unnamedAgent": "Een AI-assistent",
+      "inAppAssistant": "De Louez-assistent, vanuit de chat in je dashboard",
       "checked": "Wat Louez heeft gecontroleerd",
       "messageDestinationOnFile": "Berichten gaan naar de opgeslagen contactgegevens van de klant.",
       "values": {
@@ -9918,7 +9941,11 @@
           "confirmPastBuffer": "De boeking bevestigen ondanks je tijd tussen twee verhuren?",
           "confirmBeyondStock": "De boeking bevestigen boven je voorraad?",
           "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?",
-          "recordDeposit": "Een ontvangen borg registreren?"
+          "recordDeposit": "Een ontvangen borg registreren?",
+          "moveDatesWithinRules": "De data van de boeking verplaatsen?",
+          "moveDatesPastBuffer": "De data van de boeking verplaatsen ondanks je tijd tussen twee verhuren?",
+          "moveDatesBeyondStock": "De data van de boeking verplaatsen boven je voorraad?",
+          "moveDatesBeyondStockAndBuffer": "De data van de boeking verplaatsen boven je voorraad en je tijd tussen twee verhuren?"
         },
         "facts": {
           "booking": "Boeking #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9978,9 @@
           "messageToCustomer": "De klant krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
           "noMessage": "De klant krijgt geen bericht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>",
+          "datesMoved": "Data: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nieuw totaal: <v>{total}</v> (verschil: <v>{difference}</v>). Er wordt niets afgeschreven of terugbetaald."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +10003,8 @@
           "customerMessage": {
             "request_accepted": "aanvraag geaccepteerd",
             "request_rejected": "aanvraag afgewezen",
-            "reservation_cancelled": "boeking geannuleerd"
+            "reservation_cancelled": "boeking geannuleerd",
+            "reservation_modified": "boeking gewijzigd"
           }
         }
       }
