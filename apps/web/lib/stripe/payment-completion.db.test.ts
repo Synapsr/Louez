@@ -272,6 +272,28 @@ describe("checkout payment claim (database)", { skip: skipWithoutTestDatabase() 
     assert.deepEqual(replayed, { completedAt: CLAIMED_AT });
   });
 
+  test("a completion delivered again after the payment was refunded, in full or in part, claims nothing and writes nothing", async () => {
+    for (const [left, status] of [
+      ["0.00", "refunded"],
+      ["40.00", "completed"],
+    ] as const) {
+      const reservationId = await createReservation();
+      const first = await claim(reservationId, { amount: 60 });
+      assert.equal(first.claimed, true);
+      // The refund's writer nets the payment: what it still holds, refunded once nothing is left.
+      await louezDb.db
+        .update(louezDb.payments)
+        .set({ amount: left, status })
+        .where(eq(louezDb.payments.id, first.paymentId));
+      const before = await readPayment(reservationId);
+
+      const replay = await claim(reservationId, { amount: 60, grossMinor: 6000 });
+
+      assert.deepEqual(replay, { paymentId: first.paymentId, claimed: false }, status);
+      assert.deepEqual(await readPayment(reservationId), before, status);
+    }
+  });
+
   test("a v3 session's fee keys fill the legacy fee columns", async () => {
     const reservationId = await createReservation();
     await claim(reservationId, {

@@ -76,6 +76,15 @@ export const appFeeColumns = (facts: FeeFacts | null) =>
       }
     : {};
 
+/**
+ * The statuses of a row that was paid: `completed`, and `refunded` once the
+ * refund's writer (`recordChargeRefunds`) has given all of it back; a partial
+ * refund leaves it `completed` with its amount netted. A dispute is recorded on
+ * its own rows and changes neither. A completion delivered again finds such a
+ * row claimed, whatever became of it since, and writes nothing.
+ */
+const PAID_ROW_STATUSES: ReadonlySet<string> = new Set(["completed", "refunded"]);
+
 export async function claimCompletedCheckoutPayment(
   params: ClaimCompletedCheckoutPaymentParams,
 ): Promise<{ paymentId: string; claimed: boolean }> {
@@ -124,7 +133,7 @@ export async function claimCompletedCheckoutPayment(
       .limit(1)
       .for("update");
 
-    if (existingPayment?.status === "completed") {
+    if (existingPayment && PAID_ROW_STATUSES.has(existingPayment.status)) {
       return { paymentId: existingPayment.id, claimed: false };
     }
 
