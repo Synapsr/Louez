@@ -774,6 +774,55 @@ describe(
         assert.equal(line.pricingBreakdown?.isManualOverride, true);
       });
 
+      test("its price per period rounded to the cent, as a typed price: later edits leave it as written", async () => {
+        await useStore({});
+        // 100.00 for three days, as the checkout recorded it, beside another line.
+        const gone = await product();
+        const other = await product();
+        const breakdown = priceCart.checkoutLineBreakdown(
+          { price: 10, pricingMode: "day" },
+          {
+            productId: gone,
+            productName: "Kayak",
+            quantity: 1,
+            pricingKind: "duration",
+            duration: 3,
+            unitPrice: 100,
+            depositPerUnit: 0,
+            subtotal: 100,
+            originalSubtotal: 100,
+            savings: 0,
+            totalDeposit: 0,
+            taxSettings: null,
+          },
+          { taxRate: null, taxAmount: null, priceExclTax: null, totalExclTax: null },
+        );
+        const { id } = await booking(
+          [
+            { productId: gone, quantity: 1, totalPrice: "100.00", breakdown },
+            { productId: other, quantity: 1, totalPrice: "30.00" },
+          ],
+          { end: THREE_DAYS },
+        );
+        await deleteProduct(gone);
+
+        assert.equal((await actions.updateReservation(id, { endDate: FOUR_DAYS })).error, undefined);
+        const scaled = await lineOf(id, gone);
+        // 33.33 a day, four days: 133.32.
+        assert.deepEqual([scaled.unitPrice, scaled.totalPrice], ["33.33", "133.32"]);
+
+        // An edit of another line, then an edit of nothing.
+        const otherId = (await lineOf(id, other)).id;
+        for (const quantities of [{ [otherId]: 2 }, {}]) {
+          const result = await actions.updateReservation(id, {
+            items: await formLines(id, quantities),
+          });
+          assert.equal(result.error, undefined);
+          const line = await lineOf(id, gone);
+          assert.deepEqual([line.unitPrice, line.totalPrice], [scaled.unitPrice, scaled.totalPrice]);
+        }
+      });
+
       test("a duration whose unit no writer's mark tells, or none: refused, nothing written", async () => {
         await useStore({});
         // A breakdown with no `durationMinutes` and no promotion recorded: no

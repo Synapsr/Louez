@@ -191,8 +191,11 @@ export type ProductGoneLinePrice =
  * - its window moved: its price per period, its stored total divided by the
  *   periods it recorded (`recordedPeriods`) and its quantity, over the new
  *   window's periods of the same mode; the line then holds a price typed by
- *   hand, and the store is told (`scaled`). A fixed-price line keeps its
- *   price per unit;
+ *   hand, and the store is told (`scaled`). The price per period is rounded
+ *   to the cent first, as a typed price is stored, and the total is that
+ *   price times the periods and the quantity: 100.00 for three days gives
+ *   33.33 a day, 133.32 for four, the unit price and total a later edit
+ *   leaves as written. A fixed-price line keeps its price per unit;
  * - its window moved and its recorded periods cannot be told (no duration, or
  *   one whose unit no writer's mark tells): refused, never another price.
  */
