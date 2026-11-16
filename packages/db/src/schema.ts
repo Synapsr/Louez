@@ -2130,8 +2130,11 @@ export const payments = mysqlTable(
  * refund's idempotency key and travels in the refund's metadata. `requested` while it
  * may be sent, `unresolved` once its key can no longer be, until Stripe's account of
  * the charge settles it, whoever hears it first: the request, the outbox or the
- * Connect webhook. Both hold back its amount. Kept apart from `payments`, which holds
- * money that moved: the refund row it leads to is `refund_payment_id`.
+ * Connect webhook. `pending` once Stripe made the refund and states it pending (or
+ * awaiting an action): the money has not reached the customer, and no refund row is
+ * written until Stripe states it succeeded or failed. All three hold back its amount.
+ * Kept apart from `payments`, which holds money that moved: the refund row it leads to
+ * is `refund_payment_id`.
  */
 export const paymentRefundOperations = mysqlTable(
   "payment_refund_operations",
@@ -2152,7 +2155,7 @@ export const paymentRefundOperations = mysqlTable(
     // Stripe's reason for the refund.
     reason: mysqlEnum("reason", ["requested_by_customer", "duplicate", "fraudulent"]).notNull(),
     notes: text("notes"),
-    status: mysqlEnum("status", ["requested", "unresolved", "succeeded", "failed"])
+    status: mysqlEnum("status", ["requested", "unresolved", "pending", "succeeded", "failed"])
       .default("requested")
       .notNull(),
     // Why it failed: Stripe's code, or Louez's when Stripe never made the refund.

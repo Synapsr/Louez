@@ -1,0 +1,1 @@
+ALTER TABLE `payment_refund_operations` MODIFY COLUMN `status` enum('requested','unresolved','pending','succeeded','failed') NOT NULL DEFAULT 'requested';

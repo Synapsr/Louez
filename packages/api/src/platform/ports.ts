@@ -340,7 +340,7 @@ export interface StripeRefundChecked {
 /** A refund operation as its caller reads it. */
 export interface StripeRefundView {
   id: string;
-  status: "requested" | "unresolved" | "succeeded" | "failed";
+  status: "requested" | "unresolved" | "pending" | "succeeded" | "failed";
   paymentId: string;
   reservationId: string;
   amountMinor: number;

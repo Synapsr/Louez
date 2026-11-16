@@ -352,7 +352,7 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
     );
   });
 
-  test("every Stripe refund gets one row, once; a failed refund a failed row that counts for nothing", async () => {
+  test("every Stripe refund that succeeded gets one row, once; a failed refund a failed row that counts for nothing; a pending one none yet", async () => {
     const stripe = fakeStripe();
     const reservationId = await createReservation();
     const chargeId = `ch_${RUN}_rental`;
@@ -386,12 +386,12 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
         .map((row) => [row.type, row.refundId, row.amount, row.status, row.refundOf]),
       [
         ["rental", `re_${RUN}_a`, "30.00", "completed", paymentId],
-        ["rental", `re_${RUN}_b`, "10.00", "completed", paymentId],
         // Kept under its id, so an older listing that shows it moving money never records it.
         ["rental", `re_${RUN}_c`, "60.00", "failed", paymentId],
       ],
     );
-    assert.equal(rows.find((row) => row.id === paymentId)?.amount, "60.00");
+    // The pending one has not reached the customer: it nets nothing yet.
+    assert.equal(rows.find((row) => row.id === paymentId)?.amount, "70.00");
   });
 
   test("a payment stored without its charge id is found and gets it", async () => {

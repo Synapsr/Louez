@@ -142,6 +142,8 @@ function fakeStripe() {
   };
   /** How many refunds a page lists. */
   const listing = { pageSize: 100 };
+  /** The status Stripe gives the refunds it makes: `pending` for a card that refunds later. */
+  const makes = { status: "succeeded" };
   const feeRefunds: Array<{ feeId: string; amount: number }> = [];
 
   const chargeOf = (accountId: string, chargeId: string) => {
@@ -207,7 +209,7 @@ function fakeStripe() {
         id: `re_${RUN}_${++sequence}`,
         amount: request.amountMinor,
         created: Math.floor(Date.now() / 1000),
-        status: "succeeded",
+        status: makes.status,
         metadata: {
           [REFUND_OPERATION_METADATA]: request.operationId,
           reservationId: request.reservationId,
@@ -320,6 +322,7 @@ function fakeStripe() {
     behaviours,
     failures,
     listing,
+    makes,
     feeRefunds,
     refundedEvent,
     refundInDashboard,
@@ -1467,6 +1470,235 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     assert.equal((await failedListedLines(reservationId)).length, 1);
   });
 
+  // ---------------------------------------------------------------------------
+  // A refund Stripe holds pending is stated pending
+  // ---------------------------------------------------------------------------
+
+  /** What every reader of the rental's balance counts paid (`getRentalPaid`). */
+  const rentalPaidOf = async (reservationId: string) => {
+    const { getRentalPaid } = await import("@louez/utils");
+    const rows = await louezDb.db
+      .select({
+        id: louezDb.payments.id,
+        type: louezDb.payments.type,
+        status: louezDb.payments.status,
+        amount: louezDb.payments.amount,
+        refundOfPaymentId: louezDb.payments.refundOfPaymentId,
+        method: louezDb.payments.method,
+        currency: louezDb.payments.currency,
+        stripeRefundId: louezDb.payments.stripeRefundId,
+        stripePaymentIntentId: louezDb.payments.stripePaymentIntentId,
+        stripeCheckoutSessionId: louezDb.payments.stripeCheckoutSessionId,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, reservationId));
+    return getRentalPaid(rows, "EUR");
+  };
+
+  /** What a second request is told is left, refused just above it. */
+  async function leftAfter(stripe: FakeStripe, paymentId: string) {
+    const over = await requestOnly(stripe, request(paymentId, 10_001));
+    assert.equal(over.ok, false);
+    if (over.ok || over.code !== "REFUND_EXCEEDS_REFUNDABLE") throw new Error("not refused");
+    return {
+      refunded: over.refundedMinor,
+      inFlight: over.inFlightMinor,
+      refundable: over.refundableMinor,
+    };
+  }
+
+  /** A refund event as Stripe sends it: the refund as it is now, or as an older report. */
+  const refundEvent = (chargeId: string, refund: FakeRefund, reportedStatus?: string) => ({
+    ...refund,
+    status: reportedStatus ?? refund.status,
+    currency: "eur",
+    charge: chargeId,
+  });
+
+  /** The refund Stripe made last on the charge. */
+  const lastRefund = (fake: FakeStripe, chargeId: string) => {
+    const made = fake.charges.get(chargeId)?.refunds[0];
+    assert.ok(made);
+    return made;
+  };
+
+  test("a refund Stripe holds pending is pending, holds its amount and nets nothing until Stripe states it succeeded", async () => {
+    const fake = fakeStripe();
+    fake.makes.status = "pending";
+    const { reservationId, paymentId, chargeId } = await createPayment(fake);
+
+    const operation = await expectOk(await refund(fake, request(paymentId, 6_000)));
+    const made = lastRefund(fake, chargeId);
+    // Stripe sends charge.refunded at once: its amount_refunded counts the pending refund.
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await webhook.handleChargeRefunded(fake.refundedEvent(chargeId), ACCOUNT, fake.webhookPort);
+    }
+
+    assert.equal(operation.status, "pending");
+    assert.equal(operation.stripeRefundId, made.id);
+    assert.equal(operation.refundPaymentId, null);
+    const held = await readOperation(operation.id);
+    assert.equal(held?.status, "pending");
+    // No refund row, nothing netted, no credit note owed: the customer has not been refunded.
+    assert.deepEqual(await refundRowsOf(paymentId), []);
+    assert.deepEqual(await readPayment(paymentId), {
+      amount: "100.00",
+      status: "completed",
+      grossMinor: 10_000,
+    });
+    assert.deepEqual(dispatched, []);
+    assert.equal(await rentalPaidOf(reservationId), 100);
+    // What is left counts it: a second refund above the remainder is refused.
+    assert.deepEqual(await leftAfter(fake, paymentId), {
+      refunded: 0,
+      inFlight: 6_000,
+      refundable: 4_000,
+    });
+    assert.equal((await requestOnly(fake, request(paymentId, 4_001))).ok, false);
+    // The fee's share of it was given back with charge.refunded, whatever its status.
+    assert.equal(fake.feeRefunds.length, 1);
+
+    // Stripe states it succeeded. The first event to arrive is an older report of it
+    // pending: the listing, further along, stands.
+    made.status = "succeeded";
+    await webhook.handleRefundUpdated(
+      refundEvent(chargeId, made, "pending"),
+      ACCOUNT,
+      fake.webhookPort,
+    );
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+    // Each event delivered twice more, in either order.
+    for (let delivery = 0; delivery < 2; delivery++) {
+      for (const status of [undefined, "pending"]) {
+        // A stale report of it pending, delivered after, changes nothing.
+        await webhook.handleRefundUpdated(
+          refundEvent(chargeId, made, status),
+          ACCOUNT,
+          fake.webhookPort,
+        );
+      }
+    }
+    await webhook.handleChargeRefunded(fake.refundedEvent(chargeId), ACCOUNT, fake.webhookPort);
+
+    const settled = await readOperation(operation.id);
+    assert.equal(settled?.status, "succeeded");
+    const rows = await refundRowsOf(paymentId);
+    assert.deepEqual(
+      rows.map(({ amount, refundId }) => ({ amount, refundId })),
+      [{ amount: "60.00", refundId: made.id }],
+    );
+    assert.equal(settled?.refundPaymentId, rows[0]?.id);
+    assert.deepEqual(await statusOfRow(made.id), ["completed"]);
+    assert.equal((await readPayment(paymentId))?.amount, "40.00");
+    assert.equal(await rentalPaidOf(reservationId), 40);
+    assert.equal((await creditNoteRowsOf(rows[0]?.id ?? "")).length, 1);
+    assert.deepEqual(await leftAfter(fake, paymentId), {
+      refunded: 6_000,
+      inFlight: 0,
+      refundable: 4_000,
+    });
+  });
+
+  test("a refund Stripe holds awaiting an action that then fails runs the failure path, and the readers are back to before", async () => {
+    const fake = fakeStripe();
+    fake.makes.status = "requires_action";
+    const { reservationId, paymentId, chargeId } = await createPayment(fake);
+
+    const operation = await expectOk(await refund(fake, request(paymentId, 6_000)));
+    await webhook.handleChargeRefunded(fake.refundedEvent(chargeId), ACCOUNT, fake.webhookPort);
+    const made = lastRefund(fake, chargeId);
+    assert.equal(operation.status, "pending");
+    await webhook.handleRefundUpdated(refundEvent(chargeId, made), ACCOUNT, fake.webhookPort);
+    assert.equal((await readOperation(operation.id))?.status, "pending");
+    assert.deepEqual(await statusOfRow(made.id), []);
+    const feeRefunded = fake.feeRefunds.reduce((sum, refund) => sum + refund.amount, 0);
+
+    made.status = "failed";
+    made.failure_reason = "expired_or_canceled_card";
+    for (let delivery = 0; delivery < 2; delivery++) {
+      for (const status of [undefined, "pending", "requires_action"]) {
+        await webhook.handleRefundUpdated(
+          refundEvent(chargeId, made, status),
+          ACCOUNT,
+          fake.webhookPort,
+        );
+      }
+      await webhook.handleChargeRefunded(fake.refundedEvent(chargeId), ACCOUNT, fake.webhookPort);
+    }
+
+    const failed = await readOperation(operation.id);
+    assert.equal(failed?.status, "failed");
+    assert.equal(failed?.failureCode, "expired_or_canceled_card");
+    // The fact is kept under its id, in a row that counts for nothing and owes no note.
+    assert.deepEqual(await statusOfRow(made.id), ["failed"]);
+    assert.deepEqual(await readPayment(paymentId), {
+      amount: "100.00",
+      status: "completed",
+      grossMinor: 10_000,
+    });
+    assert.equal(await rentalPaidOf(reservationId), 100);
+    assert.deepEqual(dispatched, []);
+    assert.deepEqual(await leftAfter(fake, paymentId), {
+      refunded: 0,
+      inFlight: 0,
+      refundable: 10_000,
+    });
+    // A stale report of it pending is no report of it moving money.
+    assert.equal((await failedListedLines(reservationId)).length, 0);
+    // Stripe does not take the fee refund back; Louez gives back no more of it.
+    assert.equal(
+      fake.feeRefunds.reduce((sum, refund) => sum + refund.amount, 0),
+      feeRefunded,
+    );
+  });
+
+  test("a refund whose answer is lost and that Stripe holds pending is found pending, then settled by the cron's lookup", async () => {
+    // The pass reads every store's operations: the other tests' are closed first.
+    await louezDb.db.execute(
+      sql`UPDATE payment_refund_operations SET status = 'failed' WHERE status IN ('requested', 'unresolved', 'pending')`,
+    );
+    const fake = fakeStripe();
+    fake.makes.status = "pending";
+    fake.behaviours.push("lost_after");
+    const { reservationId, paymentId, chargeId } = await createPayment(fake);
+
+    const operation = await expectOk(await refund(fake, request(paymentId, 2_500)));
+    const made = lastRefund(fake, chargeId);
+    assert.equal(operation.status, "pending");
+    assert.equal(operation.stripeRefundId, made.id);
+    assert.equal(fake.creates.length, 1);
+    assert.equal(await rentalPaidOf(reservationId), 100);
+
+    // Its outbox row ran: the cron gives it a new one an hour later, which looks it up,
+    // never sends it again.
+    assert.deepEqual(await service.requeueStaleRefundOperations(louezDb.db), []);
+    await louezDb.db.execute(sql`
+      UPDATE api_effects SET created_at = NOW() - INTERVAL 2 HOUR
+      WHERE type = 'payment.refund'`);
+    const still = await service.requeueStaleRefundOperations(louezDb.db);
+    assert.equal(still.length, 1);
+    await outbox.dispatchEffects(still, senders(fake));
+    assert.equal((await readOperation(operation.id))?.status, "pending");
+
+    made.status = "succeeded";
+    await louezDb.db.execute(sql`
+      UPDATE api_effects SET created_at = NOW() - INTERVAL 2 HOUR
+      WHERE type = 'payment.refund'`);
+    const ids = await service.requeueStaleRefundOperations(louezDb.db);
+    assert.equal(ids.length, 1);
+    await outbox.dispatchEffects(ids, senders(fake));
+
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+    assert.equal(fake.creates.length, 1);
+    assert.deepEqual(await statusOfRow(made.id), ["completed"]);
+    assert.equal(await rentalPaidOf(reservationId), 75);
+    // Settled: nothing more to add.
+    await louezDb.db.execute(sql`
+      UPDATE api_effects SET created_at = NOW() - INTERVAL 2 HOUR
+      WHERE type = 'payment.refund'`);
+    assert.deepEqual(await service.requeueStaleRefundOperations(louezDb.db), []);
+  });
+
   test("a refund that fails before Louez wrote its row is kept failed, and a stale listing never records it", async () => {
     const stripe = fakeStripe();
     const { reservationId, paymentId, chargeId } = await createPayment(stripe);
@@ -2019,7 +2251,7 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   test("the cron gives an operation whose outbox row was abandoned a new one, once, within its bounds", async () => {
     // The pass reads every store's operations: the other tests' are closed first.
     await louezDb.db.execute(
-      sql`UPDATE payment_refund_operations SET status = 'failed' WHERE status IN ('requested', 'unresolved')`,
+      sql`UPDATE payment_refund_operations SET status = 'failed' WHERE status IN ('requested', 'unresolved', 'pending')`,
     );
     const stripe = fakeStripe();
     const { paymentId, chargeId } = await createPayment(stripe);

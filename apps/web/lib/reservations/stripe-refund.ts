@@ -55,8 +55,8 @@ import {
 // - Asked (`requestStripeRefund`): in the caller's transaction, under the reservation's
 //   row lock, the payment is checked, what it can still give back is counted, and the
 //   operation is written `requested` with its outbox row (`payment.refund`). Two
-//   requests share one limit: an open operation (`requested` or `unresolved`) takes
-//   its amount out of it.
+//   requests share one limit: an operation not settled (`requested`, `unresolved` or
+//   `pending`) takes its amount out of it.
 // - Sent (`sendRefundOperation`, the outbox's sender, run once inline after the commit,
 //   then by the outbox): it claims the operation under a token of its own and sends
 //   `refunds.create` with the key `refund:<operation id>` and the id in the refund's
@@ -65,8 +65,13 @@ import {
 //   request. Older, it never sends again: it is `unresolved`, and only Stripe's account
 //   of the charge settles it. The identity of a retry is the operation, never its
 //   amount: two refunds of one amount are two operations.
+// - Pending: Stripe made the refund and states it pending (or awaiting an action). The
+//   writer marks the operation `pending` and writes no refund row: the customer has not
+//   been refunded. Only Stripe settles it, through its refund events, a read of the
+//   refund, or the cron's lookup; nothing sends it again.
 // - Settled: `succeeded` by the one writer of a charge's refunds (stripe-refund-writes.ts),
-//   which the webhook's `charge.refunded` also runs. `failed` when Stripe refused its
+//   which the webhook's `charge.refunded` also runs, once Stripe states its refund
+//   succeeded. `failed` when Stripe refused its
 //   first request, when Stripe reports its refund failed or canceled, or on Stripe's
 //   own account of the charge: a fresh read of the charge and all its refunds that
 //   names none of the operation and adds up to what the charge says was refunded,
@@ -78,11 +83,23 @@ import {
 //   one from the cron (`requeueStaleRefundOperations`). One still open a day after it
 //   was asked is shown in the store's inbox (`refund_unconfirmed`); no age closes it.
 
-/** The states of an operation that still hold back what its payment can give back. */
+/**
+ * The states of an operation whose refund Stripe may not have made: it may still be
+ * sent, or looked up. Each holds back its amount.
+ */
 export const OPEN_REFUND_STATUSES = ["requested", "unresolved"] as const;
 
 const isOpenRefundStatus = (status: string): boolean =>
   (OPEN_REFUND_STATUSES as readonly string[]).includes(status);
+
+/**
+ * The states of an operation Stripe has not settled: the open ones, and `pending`, a
+ * refund Stripe made and still holds. A lookup may settle each; each holds its amount.
+ */
+export const UNSETTLED_REFUND_STATUSES = [...OPEN_REFUND_STATUSES, "pending"] as const;
+
+const isUnsettledRefundStatus = (status: string): boolean =>
+  (UNSETTLED_REFUND_STATUSES as readonly string[]).includes(status);
 
 /**
  * How long a sender holds an operation: every Stripe call one run makes at its longest
@@ -335,13 +352,14 @@ export type RequestedRefund = {
  *   not a refund row, not a hold (its capture is), not disputed, on an account;
  * - the amount is whole minor units, more than zero, in the charge's currency;
  * - it fits under the charge's ceiling, whichever of its payment rows is asked: the
- *   smaller of what Stripe says the charge still holds (`charge`, read before the lock)
- *   and what Louez counts (the payment's gross, or the charge's captured amount for a
- *   row without one or a charge on several rows, less the Stripe refunds recorded for
- *   any of its rows, once per refund), less the refunds given by hand against any of
- *   its rows and the operations still open on any of them. Stripe knows neither of
- *   those two; an open operation Stripe has already made comes off twice until it is
- *   recorded, which can refuse, never refund too much.
+ *   smaller of what Stripe says the charge still holds (`charge`, read before the lock,
+ *   which counts a refund Stripe holds pending) and what Louez counts (the payment's
+ *   gross, or the charge's captured amount for a row without one or a charge on several
+ *   rows, less the Stripe refunds recorded for any of its rows, once per refund, and
+ *   the `pending` operations, whose refund Stripe made and has no row yet), less the
+ *   refunds given by hand against any of its rows and the operations still open on any
+ *   of them. Stripe knows neither of those two; an open operation Stripe has already
+ *   made comes off twice until it is recorded, which can refuse, never refund too much.
  *
  * Writes the operation `requested` and its outbox row. Sends nothing.
  */
@@ -401,7 +419,7 @@ export type CheckedStripeRefund = {
   readonly grossMinor: number | null;
   /** The completed refunds of the charge's rows, by row id: Stripe's and those given by hand. */
   readonly refunds: readonly { readonly id: string; readonly amountMinor: number }[];
-  /** The open operations on the charge's rows. */
+  /** The operations not settled on the charge's rows: open, or pending at Stripe. */
   readonly openOperations: readonly { readonly id: string; readonly amountMinor: number }[];
   /** Every dispute ever opened on the payment, by id. */
   readonly disputes: readonly string[];
@@ -525,6 +543,9 @@ export async function checkStripeRefund(
     openMinor: operations
       .filter((operation) => isOpenRefundStatus(operation.status))
       .reduce((sum, operation) => sum + operation.amountMinor, 0),
+    pendingMinor: operations
+      .filter((operation) => operation.status === "pending")
+      .reduce((sum, operation) => sum + operation.amountMinor, 0),
   });
   const { rows: refunds, ...figures } = ceiling;
   if (input.amountMinor > figures.refundableMinor) {
@@ -541,7 +562,7 @@ export async function checkStripeRefund(
     grossMinor: payment.grossMinor,
     refunds,
     openOperations: operations
-      .filter((operation) => isOpenRefundStatus(operation.status))
+      .filter((operation) => isUnsettledRefundStatus(operation.status))
       .map(({ id, amountMinor }) => ({ id, amountMinor })),
     disputes: disputes.map((dispute) => dispute.id),
     ceiling: figures,
@@ -558,7 +579,13 @@ async function refundCeiling(
     readonly chargeId: string;
     readonly grossMinor: number | null;
     readonly charge: RefundCharge;
+    /** The operations Stripe may not have made: `requested` and `unresolved`. */
     readonly openMinor: number;
+    /**
+     * The `pending` operations: Stripe made their refund and counts it in the charge's
+     * `amount_refunded`, and Louez wrote no row of it yet.
+     */
+    readonly pendingMinor: number;
   },
 ): Promise<{
   readonly paidMinor: number;
@@ -614,16 +641,21 @@ async function refundCeiling(
   const recordedStripeMinor = [...stripeRefunds.values()].reduce((sum, value) => sum + value, 0);
 
   const paidMinor = input.grossMinor ?? charge.amountCapturedMinor;
+  // Stripe's figure already counts a pending refund: only Louez's own takes it off.
   const stripeLeft = charge.amountCapturedMinor - charge.amountRefundedMinor;
-  const louezLeft = paidMinor - recordedStripeMinor;
+  const louezLeft = paidMinor - recordedStripeMinor - input.pendingMinor;
   const refundableMinor = Math.max(
     0,
     Math.min(stripeLeft, louezLeft) - manualMinor - input.openMinor,
   );
   return {
     paidMinor,
-    refundedMinor: Math.max(charge.amountRefundedMinor, recordedStripeMinor) + manualMinor,
-    inFlightMinor: input.openMinor,
+    // Given back: what Stripe counts, less what it still holds pending, or what Louez
+    // recorded; a pending refund is being refunded, not refunded.
+    refundedMinor:
+      Math.max(Math.max(0, charge.amountRefundedMinor - input.pendingMinor), recordedStripeMinor) +
+      manualMinor,
+    inFlightMinor: input.openMinor + input.pendingMinor,
     refundableMinor,
     rows: rows.map((row) => ({
       id: row.id,
@@ -640,7 +672,7 @@ export type RefundOperation = {
   readonly storeId: string;
   readonly reservationId: string;
   readonly paymentId: string;
-  readonly status: "requested" | "unresolved" | "succeeded" | "failed";
+  readonly status: "requested" | "unresolved" | "pending" | "succeeded" | "failed";
   readonly amountMinor: number;
   readonly currency: string;
   readonly reason: RefundReason;
@@ -759,6 +791,8 @@ type Claim =
  * operation's, on the database's clock. An operation another sender holds, or one whose
  * last attempt set a time before which none is made (`claimed_until`), is `busy`.
  * The time of the request is written before it leaves: a process that dies leaves it.
+ * A `pending` one is claimed for a lookup only: Stripe made its refund, and it is never
+ * sent again.
  */
 async function claimOperation(database: Database, operationId: string): Promise<Claim> {
   const [peek] = await database
@@ -789,11 +823,12 @@ async function claimOperation(database: Database, operationId: string): Promise<
       .where(eq(o.id, operationId))
       .for("update");
     if (!operation) return { kind: "gone" as const };
-    if (!isOpenRefundStatus(operation.status)) return { kind: "settled" as const };
+    if (!isUnsettledRefundStatus(operation.status)) return { kind: "settled" as const };
     if (Number(operation.claimed) === 1) return { kind: "busy" as const };
 
     const token = nanoid();
-    const send = Number(operation.keySendable) === 1;
+    const pending = operation.status === "pending";
+    const send = !pending && Number(operation.keySendable) === 1;
     await tx
       .update(o)
       .set({
@@ -801,7 +836,7 @@ async function claimOperation(database: Database, operationId: string): Promise<
         claimedUntil: sql`NOW() + INTERVAL ${sql.raw(String(REFUND_CLAIM_SECONDS))} SECOND`,
         providerRequestedAt: send ? sql`NOW()` : undefined,
         // Its key can no longer be sent: only Stripe's account of the charge settles it.
-        status: send ? undefined : "unresolved",
+        status: send || pending ? undefined : "unresolved",
         updatedAt: sql`NOW()`,
       })
       .where(eq(o.id, operationId));
@@ -836,7 +871,7 @@ async function releaseClaim(database: Database, operation: ClaimedOperation): Pr
       .update(o)
       .set({
         claimToken: null,
-        claimedUntil: sql`CASE WHEN ${o.status} IN ('requested', 'unresolved') THEN ${retryNotBefore} ELSE NULL END`,
+        claimedUntil: sql`CASE WHEN ${o.status} IN ('requested', 'unresolved', 'pending') THEN ${retryNotBefore} ELSE NULL END`,
       })
       .where(
         and(
@@ -1098,8 +1133,11 @@ export const STALE_REFUNDS_PER_RUN = 20;
 export const STALE_REFUNDS_RUN_BUDGET_MS = 10_000;
 
 /**
- * The cron's pass over the operations still open whose outbox row was abandoned
- * or pruned: each gets a new one, the oldest first, bounded per run and in time. Under
+ * The cron's pass over the operations not settled whose outbox row was abandoned,
+ * pruned or ended (a `pending` operation's row ends once its lookup found the refund
+ * still pending): each gets a new one, the open ones first, then the oldest, bounded per
+ * run and in time, so a refund Stripe holds pending is looked up again about once an
+ * hour until Stripe settles it, whether or not its refund events reach Louez. Under
  * the reservation's lock the operation is read again: one settled meanwhile, or given
  * a row by another run, adds nothing. Makes no Stripe call: the senders do, each with
  * a short timeout and no retry of the client's own. The new rows' ids, for the
@@ -1120,9 +1158,12 @@ export async function requeueStaleRefundOperations(
     .select({ id: o.id, reservationId: o.reservationId, storeId: o.storeId })
     .from(o)
     .where(
-      and(inArray(o.status, [...OPEN_REFUND_STATUSES]), sql`NOT ${refundInFlight(sql`${o.id}`)}`),
+      and(
+        inArray(o.status, [...UNSETTLED_REFUND_STATUSES]),
+        sql`NOT ${refundInFlight(sql`${o.id}`)}`,
+      ),
     )
-    .orderBy(asc(o.createdAt), asc(o.id))
+    .orderBy(sql`${o.status} = 'pending'`, asc(o.createdAt), asc(o.id))
     .limit(options.limit ?? STALE_REFUNDS_PER_RUN);
 
   const enqueued: string[] = [];
@@ -1135,7 +1176,7 @@ export async function requeueStaleRefundOperations(
         .from(o)
         .where(eq(o.id, operation.id))
         .for("update");
-      if (!row || !isOpenRefundStatus(row.status) || Number(row.inFlight) === 1) return [];
+      if (!row || !isUnsettledRefundStatus(row.status) || Number(row.inFlight) === 1) return [];
       return enqueueEffects(tx, operation.storeId, [
         { type: "payment.refund", payload: { operationId: operation.id } },
       ]);

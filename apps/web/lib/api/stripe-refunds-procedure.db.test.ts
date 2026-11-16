@@ -127,6 +127,8 @@ function fakeStripe() {
   const creates: string[] = [];
   const behaviours: Behaviour[] = [];
   const failures = { list: 0 };
+  /** The status Stripe gives the refunds it makes: `pending` for a card that refunds later. */
+  const makes = { status: "succeeded" };
   /** Every call that reads Stripe, besides `creates`. */
   const reads = { charge: 0, list: 0 };
   let sequence = 0;
@@ -165,7 +167,7 @@ function fakeStripe() {
         id: `re_srf_${++sequence}`,
         amount: request.amountMinor,
         created: Math.floor(Date.now() / 1000),
-        status: "succeeded",
+        status: makes.status,
         currency: charge.currency,
         failureReason: null,
         operationId: request.operationId,
@@ -188,7 +190,15 @@ function fakeStripe() {
   };
   /** Every call this Stripe was made, so far. */
   const calls = () => creates.length + reads.charge + reads.list;
-  return { port, charges, creates, behaviours, failures, calls };
+  /** Stripe settles a refund it held: it now states `status`. */
+  const settle = (chargeId: string, refundId: string, status: string) => {
+    const charge = charges.get(chargeId);
+    const at = charge?.refunds.findIndex((refund) => refund.id === refundId) ?? -1;
+    const refund = charge?.refunds[at];
+    if (!charge || !refund) throw new Error(`No such refund: ${refundId}`);
+    charge.refunds[at] = { ...refund, status };
+  };
+  return { port, charges, creates, behaviours, failures, makes, settle, calls };
 }
 
 describe(
@@ -356,6 +366,7 @@ describe(
     beforeEach(() => {
       stripe.creates.length = 0;
       stripe.behaviours.length = 0;
+      stripe.makes.status = "succeeded";
       hooks.beforeRequest = undefined;
     });
 
@@ -792,6 +803,59 @@ describe(
       assert.equal(replayed.refund.status, "succeeded");
       assert.equal(stripe.creates.length, 1, "nothing sent again");
       assert.equal((await operationsOf(paid.paymentId)).length, 1);
+    });
+
+    test("a refund Stripe holds pending answers pending through both tools, holds its amount, and reads succeeded once Stripe says so", async () => {
+      const authorization = await key();
+      const paid = await onlinePayment();
+      stripe.makes.status = "pending";
+      const { result } = await refunded(authorization, {
+        paymentId: paid.paymentId,
+        amount: "45.00",
+      });
+      const asked = answer(result);
+      assert.equal(asked.refund.status, "pending");
+      assert.equal(asked.refund.detail, "processing");
+      assert.doesNotMatch(textOf(result), /succeeded/);
+      const [made] = stripe.charges.get(paid.chargeId)?.refunds ?? [];
+      assert.ok(made);
+      assert.deepEqual(
+        (await operationsOf(paid.paymentId)).map((operation) => operation.status),
+        ["pending"],
+      );
+
+      const read = () =>
+        mcpCall(authorization, "get_refund", {
+          paymentId: paid.paymentId,
+          refundId: asked.refund.id,
+        });
+      await waitPassed(asked.refund.id);
+      const still = answer(await read());
+      assert.equal(still.refund.status, "pending");
+      assert.equal(still.refund.detail, "processing");
+
+      // What is left counts it: above the remainder is refused, before any approval.
+      const over = await mcpCall(authorization, "refund_payment", {
+        paymentId: paid.paymentId,
+        amount: "75.01",
+      });
+      assert.equal(errorOf(over)?.code, "REFUND_EXCEEDS_REFUNDABLE");
+      assert.deepEqual(
+        {
+          refunded: errorOf(over)?.details?.refunded,
+          inFlight: errorOf(over)?.details?.inFlight,
+          refundable: errorOf(over)?.details?.refundable,
+        },
+        { refunded: "0.00", inFlight: "45.00", refundable: "75.00" },
+      );
+
+      // Stripe states it succeeded; the next read past the wait looks it up.
+      stripe.settle(paid.chargeId, made.id, "succeeded");
+      await waitPassed(asked.refund.id);
+      const done = answer(await read());
+      assert.equal(done.refund.status, "succeeded");
+      assert.equal(done.refund.detail, null);
+      assert.equal(stripe.creates.length, 1);
     });
 
     test("reading a pending refund often calls Stripe once per wait; two reads at once, once", async () => {
