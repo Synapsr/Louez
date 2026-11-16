@@ -947,6 +947,8 @@ const undoneFeeActivity = alias(reservationActivity, UNDONE_FEE_ACTIVITY);
 const CREDIT_NOTE_LINK = "inbox_credit_note_link";
 const creditNoteLink = alias(invoicePayments, CREDIT_NOTE_LINK);
 const CREDIT_NOTE = "inbox_credit_note";
+const UNDONE_ORIGINAL = "inbox_undone_original";
+const undoneOriginal = alias(payments, UNDONE_ORIGINAL);
 const creditNote = alias(invoices, CREDIT_NOTE);
 
 /**
@@ -987,8 +989,11 @@ const undoneRefunds: Source = async (window, shaper) => {
       and(
         eq(reservations.storeId, window.storeId),
         eq(payments.status, "failed"),
-        isNotNull(payments.refundOfPaymentId),
         isStripeRefundPaymentSql(),
+        // The payment it gives back: by its link, or, for an older refund row with none,
+        // the payment of its reservation that holds the same charge, as the writer
+        // found it. The legacy row is not relinked.
+        sql`(${payments.refundOfPaymentId} IS NOT NULL OR EXISTS (SELECT 1 FROM ${payments} AS ${sql.identifier(UNDONE_ORIGINAL)} WHERE ${undoneOriginal.reservationId} = ${payments.reservationId} AND ${undoneOriginal.stripeChargeId} = ${payments.stripeChargeId} AND ${undoneOriginal.id} <> ${payments.id} AND ${undoneOriginal.refundOfPaymentId} IS NULL AND (${undoneOriginal.stripePaymentIntentId} IS NOT NULL OR ${undoneOriginal.stripeCheckoutSessionId} IS NOT NULL)))`,
         sql`(${creditNoteNumber} IS NOT NULL OR ${feeOverReturnedMinor} IS NOT NULL OR ${listedAfterFailure})`,
         inWindow(window, "refund_undone", occurred, payments.id),
       ),

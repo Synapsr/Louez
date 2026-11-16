@@ -1400,6 +1400,146 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   });
 
   // ---------------------------------------------------------------------------
+  // A failed refund is final, for each shape a refund was ever recorded in
+  // ---------------------------------------------------------------------------
+
+  /** The rows that are a refund (never the payment the oldest webhooks stamped) for one refund id. */
+  const refundRowsFor = (refundId: string) =>
+    louezDb.db
+      .select({ status: louezDb.payments.status, refundOf: louezDb.payments.refundOfPaymentId })
+      .from(louezDb.payments)
+      .where(
+        and(
+          eq(louezDb.payments.stripeRefundId, refundId),
+          sql`${louezDb.payments.stripePaymentIntentId} IS NULL`,
+          sql`${louezDb.payments.stripeCheckoutSessionId} IS NULL`,
+        ),
+      );
+
+  for (const shape of ["linked", "unlinked", "stamped"] as const) {
+    for (const order of ["the failure first", "the older listing first"] as const) {
+      test(`a refund recorded ${shape} that fails ends at what was paid, ${order}, each heard twice`, async () => {
+        const stripe = fakeStripe();
+        const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+        const made = stripe.refundInDashboard(chargeId, 6_000);
+        // How the refund was recorded, as Louez's webhooks did over time.
+        if (shape === "stamped") {
+          await louezDb.db
+            .update(louezDb.payments)
+            .set({ stripeRefundId: made.id })
+            .where(eq(louezDb.payments.id, paymentId));
+        } else {
+          await louezDb.db.insert(louezDb.payments).values({
+            id: `pay_legacy_${++counter}`,
+            reservationId,
+            amount: "60.00",
+            type: "rental",
+            method: "stripe",
+            status: "completed",
+            stripeRefundId: made.id,
+            refundOfPaymentId: shape === "linked" ? paymentId : null,
+            stripeChargeId: shape === "unlinked" ? chargeId : null,
+            currency: "EUR",
+            grossMinor: 6_000,
+          });
+        }
+        await louezDb.db
+          .update(louezDb.payments)
+          .set({ amount: "40.00" })
+          .where(eq(louezDb.payments.id, paymentId));
+        const older = [providerRefundFromStripe({ ...made, currency: "eur" })];
+        made.status = "failed";
+
+        const failure = () =>
+          webhook.handleRefundUpdated(
+            { ...made, currency: "eur", charge: chargeId },
+            ACCOUNT,
+            stripe.webhookPort,
+          );
+        const olderListing = () =>
+          writes.recordChargeRefunds(louezDb.db, {
+            paymentId,
+            reservationId,
+            chargeId,
+            currency: "EUR",
+            amountCapturedMinor: 10_000,
+            refunds: older,
+            source: "test",
+          });
+        const steps =
+          order === "the failure first"
+            ? [failure, failure, olderListing, olderListing]
+            : [olderListing, olderListing, failure, failure];
+        for (const step of steps) await step();
+
+        assert.deepEqual(await readPayment(paymentId), {
+          amount: "100.00",
+          status: "completed",
+          grossMinor: 10_000,
+        });
+        const rows = await refundRowsFor(made.id);
+        assert.deepEqual(
+          rows.map((row) => row.status),
+          ["failed"],
+        );
+        // A legacy row keeps its link, or the lack of it; a new one is linked.
+        assert.equal(rows[0]?.refundOf, shape === "unlinked" ? null : paymentId);
+        // No credit note is owed for a refund Louez only ever recorded the old way.
+        const notes = await louezDb.db
+          .select({ id: louezDb.apiEffects.id })
+          .from(louezDb.apiEffects)
+          .where(
+            and(
+              eq(louezDb.apiEffects.type, "payment.refundCreditNote"),
+              sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.apiEffects.payload}, '$.paymentId')) = ${paymentId}`,
+            ),
+          );
+        assert.deepEqual(notes, []);
+      });
+    }
+  }
+
+  test("a refund made through one row of a charge that fails is undone there, whichever row the event names", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId: first, chargeId } = await createPayment(stripe);
+    const second = await secondRowOf(reservationId, chargeId);
+    const operation = await expectOk(await refund(stripe, request(second, 6_000)));
+    assert.equal(operation.status, "succeeded");
+    assert.equal((await readPayment(second))?.amount, "40.00");
+    const made = stripe.charges.get(chargeId)?.refunds[0];
+    assert.ok(made);
+    const listing = () => [providerRefundFromStripe({ ...made, currency: "eur" })];
+    const heardOn = (paymentId: string) =>
+      writes.recordChargeRefunds(louezDb.db, {
+        paymentId,
+        reservationId,
+        chargeId,
+        currency: "EUR",
+        amountCapturedMinor: 10_000,
+        refunds: listing(),
+        source: "test",
+      });
+
+    // Its success heard on the other row: recorded once.
+    await heardOn(first);
+    assert.equal((await refundRowsFor(made.id)).length, 1);
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+
+    // Its failure heard on the other row: undone on the row it came off.
+    made.status = "failed";
+    await heardOn(first);
+    await heardOn(first);
+
+    assert.equal((await readOperation(operation.id))?.status, "failed");
+    assert.equal((await readPayment(second))?.amount, "100.00");
+    assert.equal((await readPayment(first))?.amount, "100.00");
+    assert.deepEqual(
+      (await refundRowsFor(made.id)).map((row) => [row.status, row.refundOf]),
+      [["failed", second]],
+    );
+  });
+
+  // ---------------------------------------------------------------------------
   // The charge's ceiling, whichever of its rows is asked
   // ---------------------------------------------------------------------------
 
@@ -1460,10 +1600,9 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     const other = await createPayment(stripe);
     await secondRowOf(other.reservationId, chargeId);
 
-    assert.deepEqual(await refund(stripe, request(paymentId, 1_000)), {
-      ok: false,
-      code: "PAYMENT_CHARGE_SHARED",
-    });
+    const shared = await refund(stripe, request(paymentId, 1_000));
+    assert.equal(!shared.ok && shared.code, "PAYMENT_CHARGE_SHARED");
+    assert.match(!shared.ok && "message" in shared ? shared.message : "", /Stripe dashboard/);
   });
 
   // ---------------------------------------------------------------------------

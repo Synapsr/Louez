@@ -161,7 +161,7 @@ export type RefundRefusalReason =
   | { readonly code: "REFUND_CURRENCY_NOT_SUPPORTED"; readonly currency: string }
   | { readonly code: "PAYMENT_DISPUTED" }
   /** The charge is recorded on payment rows of several reservations: refused, never guessed. */
-  | { readonly code: "PAYMENT_CHARGE_SHARED" }
+  | { readonly code: "PAYMENT_CHARGE_SHARED"; readonly message: string }
   | { readonly code: "NO_STRIPE_ACCOUNT" }
   | { readonly code: "REFUND_APPROVAL_USED" };
 
@@ -346,7 +346,11 @@ export async function requestStripeRefund(
   // A charge whose rows span reservations is refused: their locks would be taken across
   // reservations, in no order every other writer follows.
   if (siblings.some((row) => row.reservationId !== charge.reservationId)) {
-    return refused({ code: "PAYMENT_CHARGE_SHARED" });
+    return refused({
+      code: "PAYMENT_CHARGE_SHARED",
+      message:
+        "This Stripe charge is recorded on payments of several reservations, so Louez cannot tell how much of it each may give back. Refund it from the Stripe dashboard; Louez records the refund when Stripe reports it.",
+    });
   }
   const chargePaymentIds = [...new Set([input.paymentId, ...siblings.map((row) => row.id)])].sort();
   const operations = await tx

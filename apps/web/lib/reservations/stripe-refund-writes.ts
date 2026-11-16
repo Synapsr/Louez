@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import {
   type Database,
   type Transaction,
+  isPaymentReceiptSql,
   isStripeRefundPaymentSql,
   markReservationIds,
   paymentRefundOperations,
@@ -78,10 +79,13 @@ export async function ensureRefundPaymentRecord(
   });
   if (!originalPayment) throw new Error("Original refund payment not found");
 
+  // A row that is a refund (`isStripeRefundPaymentSql`), never the original payment the
+  // oldest webhooks stamped with the refund's id.
   const existingRefund = await tx.query.payments.findFirst({
     where: and(
       eq(payments.reservationId, originalPayment.reservationId),
       eq(payments.stripeRefundId, input.stripeRefundId),
+      isStripeRefundPaymentSql(),
     ),
     columns: { id: true },
   });
@@ -246,6 +250,32 @@ export async function recordChargeRefunds(
     if (!payment || payment.reservationId !== input.reservationId) {
       throw new Error(`payment ${paymentId} not found on reservation ${input.reservationId}`);
     }
+    // Every payment row of the reservation that holds this charge's money, locked by id:
+    // a refund is reconciled on the row its operation or its own row names, whichever row
+    // the event resolved to.
+    const siblings = await tx
+      .select({
+        id: payments.id,
+        type: payments.type,
+        stampedRefundId: payments.stripeRefundId,
+      })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.reservationId, input.reservationId),
+          or(eq(payments.id, paymentId), eq(payments.stripeChargeId, chargeId)),
+          eq(payments.method, "stripe"),
+          sql`${payments.type} <> 'deposit_hold'`,
+          isPaymentReceiptSql(),
+        ),
+      )
+      .orderBy(asc(payments.id))
+      .for("update");
+    const siblingIds = new Set(siblings.map((row) => row.id));
+    /** The payment row the oldest webhooks stamped with this refund's id, if any. */
+    const stampedOn = (refundId: string) =>
+      siblings.find((row) => row.stampedRefundId === refundId)?.id ?? null;
+    const typeOf = (id: string) => siblings.find((row) => row.id === id)?.type ?? payment.type;
     // The rows already written for these refunds, after the payment's.
     const existingRows =
       refundIds.length > 0
@@ -255,6 +285,7 @@ export async function recordChargeRefunds(
               refundId: payments.stripeRefundId,
               status: payments.status,
               amount: payments.amount,
+              refundOf: payments.refundOfPaymentId,
             })
             .from(payments)
             .where(
@@ -273,7 +304,7 @@ export async function recordChargeRefunds(
     // An operation of another payment or charge is never settled from this charge:
     // its id was put on a refund by hand.
     const ours = operations.filter(
-      (operation) => operation.paymentId === paymentId && operation.chargeId === chargeId,
+      (operation) => siblingIds.has(operation.paymentId) && operation.chargeId === chargeId,
     );
     /** The operation a refund answers, when it is this payment's. */
     const operationOf = (refund: ProviderRefund) => {
@@ -302,9 +333,20 @@ export async function recordChargeRefunds(
     const undone: RecordedRefundRow[] = [];
     const effectIds: string[] = [];
     const settledOperationIds: string[] = [];
+    /** The payment row a refund gives money back from: its row's, its operation's, the one stamped with it, or the event's. */
+    const originalOf = (
+      refund: ProviderRefund,
+      operation: (typeof ours)[number] | null,
+      existing: (typeof existingRows)[number] | null,
+    ) =>
+      (existing?.refundOf && siblingIds.has(existing.refundOf) ? existing.refundOf : null) ??
+      operation?.paymentId ??
+      stampedOn(refund.id) ??
+      paymentId;
     for (const refund of input.refunds) {
       const operation = operationOf(refund);
       const existing = rowOf(refund);
+      const original = originalOf(refund, operation, existing);
       // A failed refund is final in Louez: a listing that shows it moving money, older
       // or not, changes nothing, and is named once for a person to look at.
       if (refundMovedMoney(refund) && existing?.status === "failed") {
@@ -330,7 +372,7 @@ export async function recordChargeRefunds(
             metadata: {
               kind: REFUND_FAILED_LISTED_ACTIVITY,
               paymentId: existing.id,
-              refundOfPaymentId: paymentId,
+              refundOfPaymentId: original,
               refundId: refund.id,
               refundStatus: refund.status,
             },
@@ -354,7 +396,7 @@ export async function recordChargeRefunds(
             metadata: {
               kind: REFUND_UNDONE_ACTIVITY,
               paymentId: existing.id,
-              refundOfPaymentId: paymentId,
+              refundOfPaymentId: original,
               refundId: refund.id,
               refundStatus: refund.status,
               amount,
@@ -364,15 +406,17 @@ export async function recordChargeRefunds(
           });
         }
         if (!existing) {
-          // Failed before Louez wrote its row: the fact is kept under its id, so an older
-          // listing that still shows it moving money never records it.
+          // Failed before Louez wrote a row of its own (also a refund the oldest webhooks
+          // only stamped on its payment): the fact is kept under its id, in a row linked to
+          // that payment, so an older listing that still shows it moving money never
+          // counts it again. The stamped payment itself is left as it is.
           await ensureRefundPaymentRecord(tx, {
-            originalPaymentId: paymentId,
+            originalPaymentId: original,
             stripeRefundId: refund.id,
             amount: fromStripeCents(refund.amount, currency),
             grossMinor: refund.amount,
             currency,
-            type: operation?.refundType ?? refundTypeOf(payment.type),
+            type: operation?.refundType ?? refundTypeOf(typeOf(original)),
             notes: operation?.notes ?? null,
             paidAt: new Date(refund.created * 1000),
             status: "failed",
@@ -396,14 +440,17 @@ export async function recordChargeRefunds(
         continue;
       }
 
+      // A refund the oldest webhooks stamped on its payment, with no row of its own: left
+      // as it was recorded, counted as Stripe lists it.
+      if (!existing && stampedOn(refund.id)) continue;
       const amount = fromStripeCents(refund.amount, currency);
       const refundPaymentId = await ensureRefundPaymentRecord(tx, {
-        originalPaymentId: paymentId,
+        originalPaymentId: original,
         stripeRefundId: refund.id,
         amount,
         grossMinor: refund.amount,
         currency,
-        type: operation?.refundType ?? refundTypeOf(payment.type),
+        type: operation?.refundType ?? refundTypeOf(typeOf(original)),
         notes: operation?.notes ?? null,
         paidAt: new Date(refund.created * 1000),
       });
@@ -418,7 +465,7 @@ export async function recordChargeRefunds(
               payload: {
                 storeId: reservation.storeId,
                 reservationId: input.reservationId,
-                paymentId,
+                paymentId: original,
                 refundId: refundPaymentId,
                 amount: amount.toFixed(2),
                 source: input.source,
@@ -473,10 +520,11 @@ export async function recordChargeRefunds(
       }
     }
 
-    // What came off the charge, from the rows after this merge: each refund once, by its
-    // id, counted while its row is `completed`. A refund with no row of its own (one
-    // whose id the oldest webhooks stamped on the payment itself) counts as Stripe
-    // lists it. So a listing applied after a newer one changes nothing.
+    // What came off the charge, from the rows after this merge, on each of its payment
+    // rows: each refund once, by its id, counted while its row of its own is `completed`,
+    // on the row it gives money back from. A refund with no row of its own (one the
+    // oldest webhooks stamped on its payment) counts as Stripe lists it. So a listing
+    // applied after a newer one changes nothing.
     const listed = new Map(input.refunds.map((refund) => [refund.id, refund]));
     const recorded = await tx
       .select({
@@ -484,6 +532,7 @@ export async function recordChargeRefunds(
         status: payments.status,
         grossMinor: payments.grossMinor,
         amount: payments.amount,
+        refundOf: payments.refundOfPaymentId,
       })
       .from(payments)
       .where(
@@ -491,38 +540,44 @@ export async function recordChargeRefunds(
           eq(payments.reservationId, input.reservationId),
           isStripeRefundPaymentSql(),
           or(
-            eq(payments.refundOfPaymentId, paymentId),
+            inArray(payments.refundOfPaymentId, [...siblingIds]),
             ...(refundIds.length > 0 ? [inArray(payments.stripeRefundId, refundIds)] : []),
           ),
         ),
       );
-    const counted = new Map<string, number>();
+    const refundedOf = new Map<string, number>([[paymentId, 0]]);
+    const add = (id: string, minor: number) =>
+      refundedOf.set(id, (refundedOf.get(id) ?? 0) + minor);
     const recordedIds = new Set<string>();
     for (const row of recorded) {
-      if (!row.refundId) continue;
+      if (!row.refundId || recordedIds.has(row.refundId)) continue;
       recordedIds.add(row.refundId);
+      // An older refund row with no link gives back the payment the event names.
+      const of = row.refundOf && siblingIds.has(row.refundOf) ? row.refundOf : paymentId;
+      add(of, 0);
       if (row.status !== "completed") continue;
       const minor =
         row.grossMinor ?? listed.get(row.refundId)?.amount ?? grossMinorOf(row.amount, currency);
-      if (minor !== null) counted.set(row.refundId, minor);
+      if (minor !== null) add(of, minor);
     }
     for (const refund of input.refunds) {
-      if (!recordedIds.has(refund.id) && refundMovedMoney(refund)) {
-        counted.set(refund.id, refund.amount);
-      }
+      if (recordedIds.has(refund.id) || !refundMovedMoney(refund)) continue;
+      add(originalOf(refund, operationOf(refund), null), refund.amount);
     }
-    let refundedMinor = 0;
-    for (const minor of counted.values()) refundedMinor += minor;
-    const netMinor = Math.max(0, input.amountCapturedMinor - refundedMinor);
-    await tx
-      .update(payments)
-      .set({
-        amount: fromStripeCents(netMinor, currency).toFixed(2),
-        status: netMinor > 0 ? "completed" : "refunded",
-        stripeChargeId: sql`COALESCE(${payments.stripeChargeId}, ${chargeId})`,
-        updatedAt: new Date(),
-      })
-      .where(eq(payments.id, paymentId));
+    let netMinor = 0;
+    for (const [id, refundedMinor] of refundedOf) {
+      const net = Math.max(0, input.amountCapturedMinor - refundedMinor);
+      if (id === paymentId) netMinor = net;
+      await tx
+        .update(payments)
+        .set({
+          amount: fromStripeCents(net, currency).toFixed(2),
+          status: net > 0 ? "completed" : "refunded",
+          stripeChargeId: sql`COALESCE(${payments.stripeChargeId}, ${chargeId})`,
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, id));
+    }
     await markReservationIds(tx, [input.reservationId]);
 
     return { rows, undone, netMinor, effectIds, settledOperationIds };

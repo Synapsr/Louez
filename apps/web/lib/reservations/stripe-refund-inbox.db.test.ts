@@ -227,6 +227,74 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
     );
   });
 
+  test("an undone refund row of the older shape, with no link, is shown with its credit note", async () => {
+    const { reservationId, n } = await paid();
+    // A refund row written before the link existed: it carries the charge instead.
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `ref_unlinked_${n}`,
+      reservationId,
+      amount: "60.00",
+      type: "rental",
+      method: "stripe",
+      status: "failed",
+      stripeRefundId: `re_unlinked_${n}`,
+      stripeChargeId: `ch_inbox_${n}`,
+      currency: "EUR",
+      grossMinor: 6_000,
+      updatedAt: new Date(Date.now() - 60_000),
+    });
+    // Another one, of no payment of its reservation: nothing ties it to a charge here.
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `ref_stray_${n}`,
+      reservationId,
+      amount: "60.00",
+      type: "rental",
+      method: "stripe",
+      status: "failed",
+      stripeRefundId: `re_stray_${n}`,
+      stripeChargeId: `ch_elsewhere_${n}`,
+      currency: "EUR",
+      grossMinor: 6_000,
+      updatedAt: new Date(Date.now() - 60_000),
+    });
+    for (const refundId of [`ref_unlinked_${n}`, `ref_stray_${n}`]) {
+      await louezDb.db.insert(louezDb.invoices).values({
+        id: `inv_${refundId}`,
+        storeId: STORE,
+        reservationId,
+        customerId: "customer",
+        type: "credit_note",
+        kind: "credit_note",
+        number: `AV-${refundId}`,
+        issueDate: "2026-10-02",
+        currency: "EUR",
+        sellerSnapshot: {} as never,
+        buyerSnapshot: {} as never,
+        lines: [],
+        vatBreakdown: [],
+        totalExclTax: "-50.00",
+        totalTax: "-10.00",
+        totalInclTax: "-60.00",
+        en16931Snapshot: {} as never,
+        documentId: `doc_${refundId}`,
+        processingRule: "b2c",
+      });
+      await louezDb.db.insert(louezDb.invoicePayments).values({
+        id: `ip_${refundId}`,
+        invoiceId: `inv_${refundId}`,
+        paymentId: refundId,
+      });
+    }
+
+    const shown = (await items("refund_undone")).filter(
+      (item) => item.reservation?.id === reservationId,
+    );
+    assert.deepEqual(
+      shown.map((item) => [item.details?.refundPaymentId, item.details?.creditNoteNumber]),
+      [[`ref_unlinked_${n}`, `AV-ref_unlinked_${n}`]],
+    );
+  });
+
   test("a credit note the outbox gave up on is shown, armed again a day later, once, and leaves once issued", async () => {
     const { reservationId, paymentId, n } = await paid();
     await louezDb.db.insert(louezDb.payments).values({
