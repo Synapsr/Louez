@@ -38,22 +38,24 @@ const SETTINGS: StoreSettings = {
   advanceNoticeMinutes: 0,
   currency: "eur",
 };
-// What the creation wrote for the facts test's input before 0107: no amount changes.
+// What the creation writes for the facts test's input: since slice 10, the tax
+// engine's totals, the 20 % added to prices given before tax, the insurance
+// outside it.
 const MANUAL_MONEY = {
   subtotal: "532.50",
   deposit: "0.00",
-  total: "532.50",
-  subtotalExclTax: null,
-  tax: null,
-  taxRate: null,
+  total: "636.50",
+  subtotalExclTax: "532.50",
+  tax: "104.00",
+  taxRate: "20.00",
   discount: "0.00",
   deliveryFee: "0.00",
   insurance: "12.50",
 };
 const MANUAL_LINES = [
-  ["Bike", "20.00", "20.00", null, null, null, null],
-  ["Delivery", "5.00", "500.00", null, null, null, null],
-  ["Garantie casse/vol", "12.50", "12.50", null, null, null, null],
+  ["Bike", "20.00", "20.00", "20.00", "4.00", "20.00", "20.00"],
+  ["Delivery", "5.00", "500.00", "20.00", "100.00", "5.00", "500.00"],
+  ["Garantie casse/vol", "12.50", "12.50", null, "0.00", "12.50", "12.50"],
 ];
 /** What the marketplace's checkout proves it is with. */
 const MARKETPLACE_SECRET = "test-marketplace-secret";
@@ -1097,7 +1099,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
   });
 
   describe("the facts it was priced with (slice 9)", () => {
-    test("the tax display mode and each line's exemption are recorded; no amount changes", async () => {
+    test("the tax display mode and each line's exemption are recorded", async () => {
       const bikes = await product("Bike", 1);
       Reflect.set(globalThis, INSURANCE_QUOTE_KEY, 12.5);
       try {
@@ -1118,7 +1120,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
           await louezDb.db.select().from(i).where(eq(i.reservationId, reservationId))
         ).sort((a, b) => a.productSnapshot.name.localeCompare(b.productSnapshot.name, "en"));
 
-        // The money, as the creation wrote it before the facts were recorded.
+        // The money: the tax engine's (slice 10).
         assert.deepEqual(
           {
             subtotal: row.subtotalAmount,

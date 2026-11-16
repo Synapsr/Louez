@@ -1097,22 +1097,18 @@ The new booking's messages belong to the creation lot.
 
 ### 10. Edit totals from the tax engine, under the locks
 
-**Proposed rule.** The edit prices from what it reads under its locks. Its totals are `calculateTaxBreakdown` of the lines, the delivery and the discount, as the checkout computes them, and they preserve:
+**Done**, ahead of slice 7, for the dashboard's edit (`updateReservation`) and the dashboard's creation (`createManualReservation`). The rule: the totals of a reservation the store edits or creates by hand are what the tax engine computes from its lines, its delivery and its discount, read and priced under the locks; they keep per-line rates and exemptions, the inclusion mode, insurance exempt from tax and the discount's allocation, exactly as the checkout computes them. They do not use the reservation's aggregate rate.
 
-- per-line rates and exemptions;
-- the inclusion mode;
-- insurance exempt from tax;
-- how the discount is allocated across lines.
+- **One engine.** `computeReservationTotals` (`packages/api/src/services/reservation-totals.ts`, pure, moved out of `price-cart.ts`, which re-exports it), for the checkout, the API's creation and date change, the extension, the dashboard's edit and creation, and the edit form's preview.
+- **The edit** (`priceReservationEdit`, `services/reservation-edit-pricing.ts`, called under the locks): the store's settings and the lines' products are read in the transaction. A line's amount is still the one the edit computes for it by today's rules (slice 11 changes which lines are repriced and how): a line priced from its product is priced again from the catalogue read under the locks (`priceRegularCatalogLine`, without the promotion, as the edit prices; archived products included), and an amount that differs to the cent refuses the edit as changed meanwhile (`errors.reservationChangedMeanwhile`). A price typed by hand and a custom line enter at their typed total, the insurance as an exempt amount, the discount as stored, allocated as the engine allocates it. The delivery fee of a new delivery is computed under the locks from the routes measured outside and the store's delivery settings read inside. Written: each line's tax figures and exemption, the insurance line's (exempt), the reservation's subtotal, subtotal before tax, tax, rate, total and display mode.
+- **The display mode.** A reservation that recorded its mode is priced in it, whatever the store's setting today; one that did not is priced in today's, which is then recorded. The rate and whether taxes are on are today's (`taxSettingsForRepricing`); a recorded rate is slice 11. An exemption is a line outside the tax by rule (the insurance): a product line is never exempt, and a product at 0 % is a rate, today's.
+- **Outside the transaction:** the insurer's quote and the route distances. What they were computed from is compared under the locks: the window and the lines through the edit's fingerprint, and the renter the insurer was told of (the reservation's billing identity and the customer's contact) and the store's position the routes start from, read again in the transaction. A difference refuses with `errors.reservationChangedMeanwhile`.
+- **The creation:** its lines are priced as before (no promotion); its totals and each line's tax figures are `computeReservationTotals` with the store's settings read in its transaction, and it records the mode they were computed in. A reservation created by hand and then edited with nothing changed keeps its totals to the cent.
+- **The preview:** the edit form shows the difference between the stored total and `previewEditTotal`, which calls the same engine with the same inputs (its lines, the insurance, the discount, the delivery fee, the recorded mode). Before, it showed the subtotal plus the delivery fee, without the discount or the tax.
 
-They do not use the reservation's aggregate rate.
+What changes for a store: with prices before tax, an edited or hand-created reservation's total now includes its tax (a line of 150.00 at 20 % totals 180.00, not 150.00); with prices with tax, the total is unchanged and the tax columns are filled; with taxes off, nothing changes. The balance the store sees (paid against total) follows the total.
 
-External quotes and routing (insurance quote, route distance) run outside the retryable transaction. Their input basis (window, lines, addresses) is checked again under the locks, and a changed basis refuses with `RESERVATION_CHANGED_MEANWHILE`. Product and store configuration, which the fingerprint does not cover, is read under the locks.
-
-**Test.**
-
-- Totals equal `calculateTaxBreakdown` for prices with tax and prices before tax, with an exempt line and exempt insurance.
-- Two edits at once.
-- An insurance quote whose window changed meanwhile is refused.
+**Test.** `edit-totals.db.test.ts`, the engine as oracle (every total and line tax figure equals `computeReservationTotals` of the stored lines): prices with tax, before tax, a 0 % line, insurance, a discount, a delivery fee, another currency; a recorded mode kept after the store switched; a reservation without recorded facts; taxes off; two edits at once; a product's price changed while the edit waited; the renter the insurer quoted changed while it waited; the quoted window changed (held by the fingerprint already); a creation before and with tax; a creation then an edit of nothing, totals to the cent. Each fails without its rule but the window's and taxes off's totals. `use-edit-reservation-pricing.test.ts`: the preview's total in the three modes, with a recorded mode, insurance, discount and delivery.
 
 ### 11. Repricing keeps the promotion and the tax facts
 

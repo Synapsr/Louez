@@ -438,4 +438,101 @@ describe("the totals of an edit and of a creation by hand (database)", {
       }
     });
   });
+
+  describe("a creation by hand", () => {
+    /** A reservation the store creates: a product line, a custom line, insurance. */
+    async function created() {
+      const taxed = await product();
+      Reflect.set(globalThis, INSURANCE_QUOTE_KEY, 12.5);
+      try {
+        const result = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: END,
+          items: [{ productId: taxed, quantity: 2 }],
+          customItems: [
+            {
+              name: "Cleaning",
+              description: "",
+              unitPrice: 5,
+              quantity: 2,
+              deposit: 0,
+              pricingMode: "day",
+            },
+          ],
+          discountAmount: 4,
+          tulipInsuranceOptIn: true,
+          sendConfirmationEmail: false,
+        });
+        assert.ok(result.reservationId, JSON.stringify(result));
+        return result.reservationId;
+      } finally {
+        Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
+      }
+    }
+
+    test("prices before tax: its totals are the engine's, the tax on top", async () => {
+      await useStore({ tax: HT });
+      const id = await created();
+
+      const { row, items } = await assertEngineTotals(id, HT);
+      // (40.00 + 20.00 - 4.00) before tax, 20 % on top, 12.50 of insurance with none.
+      assert.deepEqual(
+        [row.totalAmount, row.taxAmount, row.taxDisplayMode],
+        ["79.70", "11.20", "exclusive"],
+      );
+      assert.deepEqual(
+        items.map((item) => [item.productSnapshot.name.startsWith("Kayak"), item.taxExempt]),
+        [
+          [true, false],
+          [false, false],
+          [false, true],
+        ],
+      );
+    });
+
+    test("prices with tax: its total is what its prices add up to, the tax columns filled", async () => {
+      await useStore({ tax: TTC });
+      const id = await created();
+
+      const { row } = await assertEngineTotals(id, TTC);
+      assert.deepEqual([row.totalAmount, row.taxDisplayMode], ["68.50", "inclusive"]);
+      assert.notEqual(row.taxAmount, null);
+    });
+
+    test("created, then edited with nothing changed: the same totals to the cent", async () => {
+      await useStore({ tax: HT });
+      const id = await created();
+      const before = await stored(id);
+      Reflect.set(globalThis, INSURANCE_QUOTE_KEY, 12.5);
+      try {
+        const result = await actions.updateReservation(id, {});
+        assert.equal(result.error, undefined);
+      } finally {
+        Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
+      }
+
+      const after = await stored(id);
+      const money = (row: typeof before.row) => [
+        row.subtotalAmount,
+        row.totalAmount,
+        row.subtotalExclTax,
+        row.taxAmount,
+        row.taxRate,
+        row.taxDisplayMode,
+      ];
+      assert.deepEqual(money(after.row), money(before.row));
+      const lineMoney = (items: typeof before.items) =>
+        items
+          .map((item) => [
+            item.productSnapshot.name,
+            item.totalPrice,
+            item.taxRate,
+            item.taxAmount,
+            item.totalExclTax,
+          ])
+          .sort();
+      assert.deepEqual(lineMoney(after.items), lineMoney(before.items));
+    });
+  });
 });

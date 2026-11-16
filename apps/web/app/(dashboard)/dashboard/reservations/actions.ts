@@ -17,7 +17,6 @@ import {
   NOT_RECORDED,
   pricingBasisOf,
   recordedTaxDisplayMode,
-  taxDisplayModeOf,
   validateReservationContract,
 } from "@louez/api/services";
 import {
@@ -25,7 +24,12 @@ import {
   type EditedLine,
   type EditPricingInput,
 } from "@louez/api/services/reservation-edit-pricing";
-import type { ReservationItemTaxFields } from "@louez/api/services/reservation-totals";
+import {
+  computeReservationTotals,
+  getReservationItemTaxFields,
+  INSURANCE_TAX_LINE_ID,
+  type ReservationItemTaxFields,
+} from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -917,7 +921,6 @@ export async function createManualReservation(data: CreateReservationData) {
   ) {
     depositAmount = data.depositOverride;
   }
-  const totalAmount = subtotalAmount - manualDiscountAmount + deliveryFeeAmount;
 
   // Create reservation. Created as confirmed, insertReservation asks the card gate.
   const reservationId = nanoid();
@@ -1002,6 +1005,39 @@ export async function createManualReservation(data: CreateReservationData) {
       return { ok: false as const, error: split.error, shortfalls: [] };
     }
 
+    // The totals: the tax engine over the lines as priced above, the
+    // insurance (exempt), the delivery fee and the discount, as the checkout
+    // computes them, with the store's tax settings read here (slice 10, M1).
+    const taxSettings = availabilityRules?.settings?.tax;
+    const taxedLines = [
+      ...lines.map(({ detail }) => ({
+        subtotal: Number(detail.totalPrice),
+        unitPrice: Number(detail.unitPrice),
+        taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
+      })),
+      ...customItemDetails.map((customItem) => ({
+        subtotal: Number(customItem.totalPrice),
+        unitPrice: Number(customItem.unitPrice),
+        taxSettings: null,
+      })),
+    ];
+    const totals = computeReservationTotals({
+      lines: taxedLines,
+      insuranceAmount: tulipInsuranceAmount,
+      discountAmount: manualDiscountAmount,
+      deliveryFee: deliveryFeeAmount,
+      totalDeposit: depositAmount,
+      taxSettings,
+    });
+    const lineTaxValues = (index: number) =>
+      reservationItemTaxValues({
+        ...getReservationItemTaxFields(totals, taxedLines[index]!, index),
+        taxExempt: false,
+      });
+    const insuranceTax = totals.taxEnabled
+      ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)
+      : undefined;
+
     const { effects, lock } = await insertReservation(tx, {
       id: reservationId,
       storeId: store.id,
@@ -1012,13 +1048,15 @@ export async function createManualReservation(data: CreateReservationData) {
       currency: reservationCurrency(null, store.settings),
       startDate: data.startDate,
       endDate: data.endDate,
-      subtotalAmount: subtotalAmount.toFixed(2),
+      subtotalAmount: totals.subtotal.toFixed(2),
       depositAmount: depositAmount.toFixed(2),
-      totalAmount: totalAmount.toFixed(2),
+      totalAmount: totals.total.toFixed(2),
+      subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
+      taxAmount: totals.taxAmount?.toFixed(2) ?? null,
+      taxRate: totals.taxRate?.toFixed(2) ?? null,
       discountAmount: manualDiscountAmount.toFixed(2),
-      // The store's tax display mode, recorded (slice 9). Its totals do not
-      // run the tax engine yet: they are what the store's prices add up to.
-      taxDisplayMode: taxDisplayModeOf(store.settings?.tax),
+      // The mode its totals were computed in (slice 9).
+      taxDisplayMode: totals.displayMode,
       internalNotes: data.internalNotes || null,
       source: "manual",
       // Staff books on the customer's behalf: the profile's default identity
@@ -1057,7 +1095,7 @@ export async function createManualReservation(data: CreateReservationData) {
 
     // Create reservation items for catalog products. A line keeps the
     // combination it chose, also when it was booked over the stock.
-    for (const { detail, choice } of lines) {
+    for (const [lineIndex, { detail, choice }] of lines.entries()) {
       await tx.insert(reservationItems).values({
         reservationId,
         productId: detail.product.id,
@@ -1067,7 +1105,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: detail.depositPerUnit,
         totalPrice: detail.totalPrice,
         pricingBreakdown: detail.pricingBreakdown,
-        taxExempt: false,
+        ...lineTaxValues(lineIndex),
         combinationKey: choice.combinationKey,
         selectedAttributes: choice.selectedAttributes,
         productSnapshot: {
@@ -1081,7 +1119,7 @@ export async function createManualReservation(data: CreateReservationData) {
     }
 
     // Create reservation items for custom items
-    for (const customItem of customItemDetails) {
+    for (const [customIndex, customItem] of customItemDetails.entries()) {
       await tx.insert(reservationItems).values({
         reservationId,
         productId: null,
@@ -1091,7 +1129,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: customItem.depositPerUnit,
         totalPrice: customItem.totalPrice,
         pricingBreakdown: customItem.pricingBreakdown,
-        taxExempt: false,
+        ...lineTaxValues(lines.length + customIndex),
         productSnapshot: {
           name: customItem.name,
           description: customItem.description,
@@ -1110,7 +1148,13 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: "0.00",
         totalPrice: tulipInsuranceAmount.toFixed(2),
         // Insurance carries no VAT, whatever the store's settings.
-        taxExempt: true,
+        ...reservationItemTaxValues({
+          taxRate: null,
+          taxAmount: insuranceTax?.taxAmount ?? null,
+          priceExclTax: insuranceTax?.amountExclTax ?? null,
+          totalExclTax: insuranceTax?.amountExclTax ?? null,
+          taxExempt: true,
+        }),
         productSnapshot: {
           name: "Garantie casse/vol",
           description: "Garantie casse/vol",
@@ -1146,7 +1190,7 @@ export async function createManualReservation(data: CreateReservationData) {
       await validateReservationContract(tx, reservationId, store.id, "confirmation");
     }
 
-    return { ok: true as const, effects };
+    return { ok: true as const, effects, totalAmount: totals.total };
   }).catch(refuseCreation);
 
   if (!reservationWriteResult.ok) {
@@ -1155,6 +1199,8 @@ export async function createManualReservation(data: CreateReservationData) {
       shortfalls: reservationWriteResult.shortfalls,
     };
   }
+  // The total the tax engine gave, as written.
+  const { totalAmount } = reservationWriteResult;
 
   // Right after commit: a reservation created as confirmed records its
   // pay-as-you-go fee. A quote records it when it is accepted.
