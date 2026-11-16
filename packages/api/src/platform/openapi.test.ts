@@ -660,6 +660,7 @@ describe("the public reference", () => {
       REQUEST_TOO_LARGE: tooLarge.status,
       UNSUPPORTED_MEDIA_TYPE: unsupported.status,
       PATH_PARAMETER_CONFLICT: conflicting.status,
+      IDEMPOTENCY_KEY_REQUIRED: platformErrors.idempotencyKeyRequired("openapi").status,
       RATE_LIMITED: platformErrors.rateLimited(1).status,
       LARGE_BODY_BUSY: largeBodyBusy().status,
     };
@@ -674,6 +675,12 @@ describe("the public reference", () => {
     assert.equal(
       ((await conflicting.json()) as { data: { code: string } }).data.code,
       "PATH_PARAMETER_CONFLICT",
+    );
+    // A write may require a key: every integration meets its refusal.
+    assert.ok(
+      openapi.COMMON_ERROR_CODES.some(
+        ([status, code]) => status === 400 && code === "IDEMPOTENCY_KEY_REQUIRED",
+      ),
     );
     assert.deepEqual(
       openapi.COMMON_ERROR_CODES.map(([status, code]) => [code, status]),
@@ -1052,8 +1059,9 @@ describe("the public reference", () => {
       const writes = meta.scope?.level === "write";
       // procedures.ts passes no key to runOperation for these.
       const replays = writes && !meta.secretOutput;
+      const keyRef = meta.requiresIdempotencyKey ? "IdempotencyKeyRequired" : "IdempotencyKey";
       const takesKey = (operation.parameters ?? []).some(
-        (parameter) => parameter.$ref === "#/components/parameters/IdempotencyKey",
+        (parameter) => parameter.$ref === `#/components/parameters/${keyRef}`,
       );
       const headers = Object.keys(operation.responses["200"]?.headers ?? {});
       assert.equal(takesKey, replays, `${path}: Idempotency-Key`);

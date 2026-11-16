@@ -167,6 +167,17 @@ export interface ApiMeta {
    */
   secretOutput?: boolean;
   /**
+   * A write a retry must never do twice (one that creates a record): an API
+   * key or an OAuth token must send an idempotency key (a blank one is none),
+   * or the call is refused with `IDEMPOTENCY_KEY_REQUIRED` before its
+   * handler, any confirmation or approval, and its operation row; over REST
+   * before its store is read too, while the MCP transport resolves the store
+   * first. A dashboard session is not asked. Its OpenAPI operation marks
+   * `Idempotency-Key` required, and its MCP tool `idempotencyKey`. Only on a
+   * write without `secretOutput`.
+   */
+  requiresIdempotencyKey?: true;
+  /**
    * A store write whose stored answers may predate a field its contract has
    * since gained, one derivable from the answer itself: brings such an answer
    * to the contract when an idempotency key replays it. The write does not

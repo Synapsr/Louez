@@ -109,7 +109,6 @@ import {
   sendDepositAuthorizationRequestEmail,
   sendPaymentRequestEmail,
   sendReservationConfirmationEmail,
-  sendReservationModifiedEmail,
 } from "@/lib/email/send";
 import {
   createTulipContractForReservation,
@@ -165,6 +164,7 @@ import {
 } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { sendReservationModificationEmailForStore } from "@/lib/reservations/modification-email";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import {
   tryEnsureRefundPaymentRecord,
@@ -3165,6 +3165,7 @@ export async function updateReservation(
         startDate: reservation.startDate,
         endDate: reservation.endDate,
       },
+      period: { startDate: newStartDate, endDate: newEndDate },
     });
 
     if (emailResult.error) {
@@ -3870,6 +3871,8 @@ export async function sendReservationModificationEmail(
       startDate: Date;
       endDate: Date;
     };
+    /** The dates the change set; by default the reservation's now. */
+    period?: { startDate: Date; endDate: Date };
   },
 ) {
   // sendEmail degrades to a logged no-op without a transport; a manual send
@@ -3883,79 +3886,30 @@ export async function sendReservationModificationEmail(
     return { error: "errors.unauthorized" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
-    },
+  const sent = await sendReservationModificationEmailForStore({
+    store,
+    reservationId,
+    previousPeriod: data?.previousPeriod,
+    period: data?.period,
+    userId: await getActorUserId(),
   });
-
-  if (!reservation) {
+  if (sent.status === "not_found") {
     return { error: "errors.reservationNotFound" };
   }
 
-  const storeData = {
-    id: store.id,
-    name: store.name,
-    logoUrl: store.logoUrl,
-    darkLogoUrl: store.darkLogoUrl,
-    email: store.email,
-    phone: store.phone,
-    address: store.address,
-    theme: store.theme,
-    settings: store.settings,
-    emailSettings: store.emailSettings,
-  };
-
-  const customerData = {
-    firstName: reservation.customer.firstName,
-    lastName: reservation.customer.lastName,
-    email: reservation.customer.email,
-  };
-
-  const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
-
-  try {
-    await sendReservationModifiedEmail({
-      to: customerData.email,
-      store: storeData,
-      customer: customerData,
-      reservation: {
-        id: reservation.id,
-        number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-      },
-      previousPeriod: data?.previousPeriod,
-      reservationUrl,
-      locale: getLocaleFromCountry(store.settings?.country),
-    });
-
-    await logReservationActivity(reservationId, "note_updated", {
-      templateId: "reservation_modified",
-      to: customerData.email,
-      customerEmailNotification: "sent",
-    });
-
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.sendEmail,
-      properties: { template_id: "reservation_modified", channel: "email" },
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to send reservation modification email:", error);
-    await logReservationActivity(reservationId, "note_updated", {
-      templateId: "reservation_modified",
-      to: customerData.email,
-      customerEmailNotification: "failed",
-    });
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  if (sent.status === "failed") {
+    console.error("Failed to send reservation modification email:", sent.error);
     return { error: "errors.emailSendFailed" };
   }
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.sendEmail,
+    properties: { template_id: "reservation_modified", channel: "email" },
+  });
+  return { success: true };
 }
 
 /**

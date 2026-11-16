@@ -36,13 +36,13 @@ const STUBS: Record<string, string> = {
   "@/lib/notifications/customer-dispatcher":
     "export async function dispatchCustomerNotification() {}\n",
   // The messages to the customer: what they were asked to send, never sent.
-  "@/lib/email/send": messageStub("email", [
+  "@/lib/email/send": `${messageStub("email", [
     "logEmail",
     "sendDepositAuthorizationRequestEmail",
     "sendPaymentRequestEmail",
     "sendReservationConfirmationEmail",
     "sendReservationModifiedEmail",
-  ]),
+  ])}export async function isEmailDelivered() { return false; }\n`,
   "@/lib/sms": `${messageStub("sms", [
     "sendAccessLinkSms",
     "sendDepositAuthorizationRequestSms",
@@ -50,6 +50,8 @@ const STUBS: Record<string, string> = {
   ])}export function isSmsConfigured() { return true; }\n`,
 };
 const ACTIONS_FILE = "/dashboard/reservations/actions.ts";
+/** The modification e-mail the actions send through, with no session (lib/reservations). */
+const MODIFICATION_EMAIL_FILE = "/lib/reservations/modification-email.ts";
 const FILES_SDK = new URL("../../../../node_modules/files-sdk/dist/", import.meta.url);
 
 const registerHooks = Reflect.get(nodeModule, "registerHooks");
@@ -67,6 +69,9 @@ registerHooks({
     }
     const parent = context.parentURL ? decodeURIComponent(context.parentURL) : "";
     if (parent.endsWith(ACTIONS_FILE) && specifier in STUBS) {
+      return { shortCircuit: true, url: `${STUB_SCHEME}${specifier}` };
+    }
+    if (parent.endsWith(MODIFICATION_EMAIL_FILE) && specifier === "@/lib/email/send") {
       return { shortCircuit: true, url: `${STUB_SCHEME}${specifier}` };
     }
     return nextResolve(specifier, context);
