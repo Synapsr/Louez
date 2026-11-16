@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { Check, Copy, RefreshCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import {
   Button,
@@ -25,6 +26,9 @@ import {
 } from '@/app/(dashboard)/dashboard/reservations/calendar/actions';
 
 export const IcsCalendarConfigurationPanel = () => {
+  const t = useTranslations(
+    'dashboard.settings.integrationsHub.providers.icsCalendar',
+  );
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -71,7 +75,10 @@ export const IcsCalendarConfigurationPanel = () => {
     const result = await regenerateIcsToken();
     if (result.success && result.token) {
       setToken(result.token);
-      toastManager.add({ type: 'success', title: 'Lien ICS regenere' });
+      toastManager.add({
+        type: 'success',
+        title: t('panel.toasts.regenerated'),
+      });
     }
     setRegenerating(false);
   };
@@ -79,25 +86,25 @@ export const IcsCalendarConfigurationPanel = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Lien ICS</CardTitle>
-        <CardDescription>
-          Compatible Apple Calendar, Outlook et les agendas par abonnement.
-        </CardDescription>
+        <CardTitle>{t('name')}</CardTitle>
+        <CardDescription>{t('panel.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="ics-url">Lien calendrier</Label>
+          <Label htmlFor="ics-url">{t('panel.urlLabel')}</Label>
           <div className="flex gap-2">
             <Input
               id="ics-url"
               readOnly
-              value={loading ? 'Chargement...' : url}
+              value={loading ? t('panel.loading') : url}
               className="font-mono text-xs"
             />
             <Button
               type="button"
               variant="outline"
               size="icon"
+              aria-label={t('panel.copyAction')}
+              title={t('panel.copyAction')}
               disabled={!url}
               onClick={copyUrl}
             >
@@ -111,8 +118,7 @@ export const IcsCalendarConfigurationPanel = () => {
         </div>
 
         <p className="text-muted-foreground text-sm">
-          Louez publie les changements immediatement, mais la frequence de
-          rafraichissement depend de l'application d'agenda abonne.
+          {t('panel.refreshNote')}
         </p>
 
         <Button
@@ -122,7 +128,7 @@ export const IcsCalendarConfigurationPanel = () => {
           onClick={regenerate}
         >
           <RefreshCw className="mr-2 h-4 w-4" />
-          Regenerer le lien
+          {t('panel.regenerateAction')}
         </Button>
       </CardContent>
     </Card>

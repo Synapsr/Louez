@@ -17,7 +17,7 @@ export type CalendarIntegrationState = {
     enabled: boolean;
     connected: boolean;
     configured: boolean;
-    status: string;
+    status: (typeof storeIntegrations.$inferSelect)['status'];
     accountEmail: string | null;
     calendarName: string | null;
     lastSyncAt: string | null;

@@ -4577,6 +4577,39 @@
             },
             "resources": {
               "help": "Google Calendar-Hilfe"
+            },
+            "panel": {
+              "loading": "Verbindung wird geladen...",
+              "connectTitle": "Google Calendar verbinden",
+              "connectDescription": "Louez erstellt einen eigenen Kalender und synchronisiert Ihre Reservierungen dorthin.",
+              "oauthNotConfigured": "Google Calendar OAuth ist nicht konfiguriert. Fügen Sie GOOGLE_CALENDAR_CLIENT_ID und GOOGLE_CALENDAR_CLIENT_SECRET in apps/web/.env hinzu und starten Sie anschließend den Entwicklungsserver neu.",
+              "connectAction": "Google Calendar verbinden",
+              "connectionTitle": "Verbindung zu Google Calendar",
+              "accountFallback": "Verbundenes Google-Konto",
+              "calendarLabel": "Kalender",
+              "calendarFallback": "Louez-Kalender",
+              "lastSyncLabel": "Letzte Synchronisierung",
+              "neverSynced": "Noch nicht synchronisiert",
+              "resyncAction": "Erneut synchronisieren",
+              "disconnectAction": "Trennen",
+              "syncRulesTitle": "Synchronisierungsregeln",
+              "syncRulesDescription": "Synchronisierte Termine sind privat und blockieren Ihre Verfügbarkeit in Google nicht.",
+              "syncPendingLabel": "Ausstehende Anfragen synchronisieren",
+              "syncPendingDescription": "Ausstehende Anfragen erscheinen mit einem vorläufigen Status.",
+              "showCancelledLabel": "Stornierte Reservierungen im Kalender anzeigen",
+              "showCancelledDescription": "Stornierte Reservierungen bleiben mit ihrem Stornierungsstatus sichtbar.",
+              "status": {
+                "disabled": "Deaktiviert",
+                "active": "Aktiv",
+                "needs_reconnect": "Erneute Verbindung erforderlich",
+                "error": "Fehler",
+                "syncing": "Wird synchronisiert"
+              },
+              "toasts": {
+                "settingsSaved": "Einstellungen gespeichert",
+                "resyncStarted": "Erneute Synchronisierung gestartet",
+                "disconnected": "Google Calendar getrennt"
+              }
             }
           },
           "icsCalendar": {
@@ -4589,6 +4622,17 @@
             },
             "resources": {
               "help": "iCalendar-Referenz"
+            },
+            "panel": {
+              "description": "Kompatibel mit Apple Calendar, Outlook und anderen Abo-Kalendern.",
+              "urlLabel": "Kalender-Link",
+              "loading": "Wird geladen...",
+              "copyAction": "Link kopieren",
+              "refreshNote": "Louez veröffentlicht Änderungen sofort, die Aktualisierungshäufigkeit hängt jedoch von der abonnierten Kalender-App ab.",
+              "regenerateAction": "Link neu generieren",
+              "toasts": {
+                "regenerated": "ICS-Link neu generiert"
+              }
             }
           },
           "superpdp": {
