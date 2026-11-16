@@ -42,7 +42,7 @@ export const NeedsALookRow = ({
 
   const title = (
     <>
-      <span className="min-w-0 truncate font-medium">{t(display.title.key)}</span>
+      <span className="min-w-0 truncate font-medium">{t(display.title.key, display.title.values)}</span>
       {item.severity === "critical" && (
         <Badge variant="failed" size="sm" className="shrink-0">
           {t("urgent")}
