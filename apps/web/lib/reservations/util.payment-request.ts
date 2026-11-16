@@ -96,3 +96,42 @@ export function paymentRequestTerms(input: {
   if (amount < 0.5) return { ok: false, error: "errors.noDepositRequired" };
   return { ok: true, amount, description: "Deposit", currency };
 }
+
+/** What the server says it sent of a payment request, by channel; a channel not tried is absent. */
+export interface PaymentRequestNotificationResults {
+  readonly email?: boolean;
+  readonly sms?: boolean;
+}
+
+/**
+ * What a payment request's success screen says: of the channels the person
+ * chose, each sent or not, and whether all, some or none went. A chosen
+ * channel the server did not report (no phone for an SMS) did not go. The
+ * request and its link exist in every state.
+ */
+export type PaymentRequestDelivery =
+  | { readonly state: "sent"; readonly sent: "email" | "sms" | "both" }
+  | {
+      readonly state: "partly_sent";
+      readonly sent: "email" | "sms";
+      readonly failed: "email" | "sms";
+    }
+  | { readonly state: "not_sent"; readonly failed: "email" | "sms" | "both" };
+
+export function paymentRequestDelivery(
+  chosen: { readonly email: boolean; readonly sms: boolean },
+  results: PaymentRequestNotificationResults | undefined,
+): PaymentRequestDelivery {
+  const emailSent = chosen.email && results?.email === true;
+  const smsSent = chosen.sms && results?.sms === true;
+  const emailFailed = chosen.email && !emailSent;
+  const smsFailed = chosen.sms && !smsSent;
+  const which = (email: boolean, sms: boolean) => (email && sms ? "both" : email ? "email" : "sms");
+  if (!emailFailed && !smsFailed) return { state: "sent", sent: which(emailSent, smsSent) };
+  if (!emailSent && !smsSent) return { state: "not_sent", failed: which(emailFailed, smsFailed) };
+  return {
+    state: "partly_sent",
+    sent: emailSent ? "email" : "sms",
+    failed: emailFailed ? "email" : "sms",
+  };
+}

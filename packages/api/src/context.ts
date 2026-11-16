@@ -346,7 +346,13 @@ export interface BaseContext {
         channels: { email: boolean; sms: boolean };
         customMessage?: string;
       },
-    ) => Promise<{ success?: boolean; error?: string; paymentUrl?: string }>;
+    ) => Promise<{
+      success?: boolean;
+      error?: string;
+      paymentUrl?: string;
+      /** Each channel tried, and whether it went out; a channel not tried is absent. */
+      notificationResults?: { email?: boolean; sms?: boolean };
+    }>;
     recordPayment?: (
       reservationId: string,
       data: {

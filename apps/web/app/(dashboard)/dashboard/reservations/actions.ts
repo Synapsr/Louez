@@ -4769,6 +4769,7 @@ export async function requestPayment(
   success?: boolean;
   error?: string;
   paymentUrl?: string;
+  notificationResults?: { email?: boolean; sms?: boolean };
 }> {
   try {
     const store = await getStoreForUser();
@@ -5038,6 +5039,8 @@ export async function requestPayment(
     return {
       success: true,
       paymentUrl,
+      // What went out, by channel: the dialog says it as it is.
+      notificationResults,
     };
   } catch (error) {
     console.error("Failed to request payment:", error);

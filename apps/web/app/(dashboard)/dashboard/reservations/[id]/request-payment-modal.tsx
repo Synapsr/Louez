@@ -34,7 +34,11 @@ import { cn, currencyMinorDigits } from "@louez/utils";
 import { paymentAmount } from "@louez/api/services/payment-amount";
 
 import { orpc } from "@/lib/orpc/react";
-import { customRequestAmount } from "@/lib/reservations/util.payment-request";
+import {
+  customRequestAmount,
+  type PaymentRequestDelivery,
+  paymentRequestDelivery,
+} from "@/lib/reservations/util.payment-request";
 import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
@@ -93,6 +97,8 @@ export function RequestPaymentModal({
   const [customMessage, setCustomMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  // What the server sent of the request, by the channels chosen.
+  const [delivery, setDelivery] = useState<PaymentRequestDelivery | null>(null);
   const [copied, setCopied] = useState(false);
 
   // In hundredths, as the server compares it: 0.57 due with 0.07 paid leaves 0.50, not 0.4999….
@@ -207,7 +213,13 @@ export function RequestPaymentModal({
         },
       });
 
-      toastManager.add({ title: t("success"), type: "success" });
+      const sent = paymentRequestDelivery(
+        { email: sendEmail, sms: sendSms },
+        result.notificationResults,
+      );
+      setDelivery(sent);
+      // Only what went out is announced; the success screen says the rest.
+      if (sent.state === "sent") toastManager.add({ title: t("success"), type: "success" });
       if (result.paymentUrl) {
         setPaymentUrl(result.paymentUrl);
       }
@@ -248,6 +260,7 @@ export function RequestPaymentModal({
     setSendSms(false);
     setCustomMessage("");
     setPaymentUrl(null);
+    setDelivery(null);
     setCopied(false);
   };
 
@@ -258,21 +271,32 @@ export function RequestPaymentModal({
     onOpenChange(newOpen);
   };
 
-  // Success view after sending
+  // Success view after sending: what went out, and the link in every case.
   if (paymentUrl) {
+    const nothingSent = delivery?.state === "not_sent";
+    // A link the customer did not get is for the store to pass on: its copy comes first.
+    const linkFirst = delivery !== null && delivery.state !== "sent";
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" />
-              {t("successTitle")}
+              {nothingSent ? (
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+              ) : (
+                <Check className="h-5 w-5 text-green-600" />
+              )}
+              {t(nothingSent ? "notSentTitle" : "successTitle")}
             </DialogTitle>
-            <DialogDescription>
-              {t("successDescription", {
-                channel: sendEmail && sendSms ? "email et SMS" : sendEmail ? "email" : "SMS",
-              })}
-            </DialogDescription>
+            {delivery && (
+              <DialogDescription>
+                {delivery.state === "sent"
+                  ? t("sentBy", { channels: delivery.sent })
+                  : delivery.state === "partly_sent"
+                    ? t("partlySent", { sent: delivery.sent, failed: delivery.failed })
+                    : t("notSent", { channels: delivery.failed })}
+              </DialogDescription>
+            )}
           </DialogHeader>
 
           <DialogPanel>
@@ -285,16 +309,35 @@ export function RequestPaymentModal({
                   <code className="flex-1 text-xs break-all font-mono bg-background p-2 rounded border">
                     {paymentUrl}
                   </code>
-                  <Button variant="outline" onClick={handleCopyLink} className="shrink-0">
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+                  {!linkFirst && (
+                    <Button
+                      variant="outline"
+                      onClick={handleCopyLink}
+                      className="shrink-0"
+                      aria-label={t("copyLink")}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           </DialogPanel>
 
           <DialogFooter>
-            <Button onClick={() => handleOpenChange(false)}>{tCommon("close")}</Button>
+            {linkFirst ? (
+              <>
+                <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                  {tCommon("close")}
+                </Button>
+                <Button onClick={handleCopyLink}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {t("copyLink")}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => handleOpenChange(false)}>{tCommon("close")}</Button>
+            )}
           </DialogFooter>
         </DialogPopup>
       </Dialog>
