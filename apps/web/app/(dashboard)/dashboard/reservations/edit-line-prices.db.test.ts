@@ -5,7 +5,12 @@ import { after, before, describe, test } from "node:test";
 import { asc, eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
-import type { PricingBreakdown, StoreSettings, TaxSettings } from "@louez/types";
+import type {
+  AppliedProductPromotion,
+  PricingBreakdown,
+  StoreSettings,
+  TaxSettings,
+} from "@louez/types";
 
 import { storedProductLineOf } from "@louez/api/services/edit-line-pricing";
 import { pricingBasisOf } from "@louez/api/services/pricing-facts";
@@ -105,6 +110,7 @@ describe(
     let database: TestDatabase;
     let louezDb: typeof import("@louez/db");
     let actions: typeof import("./actions");
+    let priceCart: typeof import("@louez/api/services/price-cart");
     let counter = 0;
     const nextId = (prefix: string) => `${prefix}_${String(++counter).padStart(6, "0")}`;
 
@@ -138,6 +144,7 @@ describe(
       louezDb = await import("@louez/db");
       actions = await import("./actions");
       await import("@louez/mcp/testing/cjs-named-exports");
+      priceCart = await import("@louez/api/services/price-cart");
       await louezDb.db.insert(louezDb.stores).values({
         id: STORE,
         userId: "owner_line_prices",
@@ -160,14 +167,14 @@ describe(
     });
 
     /** A product priced by the day. */
-    async function product(price = "10.00") {
+    async function product(price = "10.00", pricingMode: "hour" | "day" | "week" = "day") {
       const id = nextId("prd");
       await louezDb.db.insert(louezDb.products).values({
         id,
         storeId: STORE,
         name: `Kayak ${id}`,
         price,
-        pricingMode: "day",
+        pricingMode,
         quantity: 20,
       });
       return id;
@@ -216,17 +223,36 @@ describe(
     }
 
     /** The lines as the form sends them: every line, the given quantities. */
-    const formLines = async (reservationId: string, quantities: Record<string, number> = {}) =>
-      (await items(reservationId)).map((item) => ({
-        id: item.id,
-        productId: item.productId,
-        quantity: quantities[item.id] ?? item.quantity,
-        unitPrice: Number(item.unitPrice),
-        depositPerUnit: 0,
-        isManualPrice: false,
-        pricingMode: "day" as const,
-        productSnapshot: { name: item.productSnapshot.name },
-      }));
+    /**
+     * The lines as the form sends them: every line, the given quantities; a
+     * price typed by hand as its price per period over the stored window.
+     */
+    const formLines = async (reservationId: string, quantities: Record<string, number> = {}) => {
+      const row = await reservationRow(reservationId);
+      return (await items(reservationId)).map((item) => {
+        const basis = pricingBasisOf(item.pricingBreakdown);
+        const typed = basis?.isManualOverride === true;
+        const pricingMode = typed ? basis.pricingMode : ("day" as const);
+        // Any started period in full, as the form counts it.
+        const minutes = { hour: 60, day: 1440, week: 10_080 }[pricingMode];
+        const periods = Math.max(
+          1,
+          Math.ceil((row.endDate.getTime() - row.startDate.getTime()) / 60_000 / minutes),
+        );
+        return {
+          id: item.id,
+          productId: item.productId,
+          quantity: quantities[item.id] ?? item.quantity,
+          unitPrice: typed
+            ? Number(item.totalPrice) / (periods * item.quantity)
+            : Number(item.unitPrice),
+          depositPerUnit: 0,
+          isManualPrice: typed,
+          pricingMode,
+          productSnapshot: { name: item.productSnapshot.name },
+        };
+      });
+    };
 
     const items = (reservationId: string) =>
       louezDb.db
@@ -359,7 +385,11 @@ describe(
         const result = await actions.updateReservation(id, {
           items: await formLines(id, { [itemIds[1]!]: 2 }),
         });
-        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
+        assert.equal(
+          shown,
+          (await reservationRow(id)).totalAmount,
+          "the form showed what is written",
+        );
 
         assert.equal(result.error, undefined);
         const [kayakLine, canoeLine] = await items(id);
@@ -396,7 +426,11 @@ describe(
         });
 
         assert.equal(result.error, undefined);
-        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
+        assert.equal(
+          shown,
+          (await reservationRow(id)).totalAmount,
+          "the form showed what is written",
+        );
         const [line] = await items(id);
         // Three days at 10.00, the promotion of 20 % taken off as recorded, though
         // the product holds no promotion any more.
@@ -479,56 +513,118 @@ describe(
     });
 
     describe("a line whose product was deleted since", () => {
-      /** Three days at 30.00 of a product deleted since: 90.00. */
-      async function goneLine(breakdown: PricingBreakdown | null = breakdownOf(3, 30)) {
-        const [gone, other] = [await product("30.00"), await product()];
-        const booked = await booking(
-          [
-            { productId: gone, quantity: 1, totalPrice: "90.00", breakdown },
-            { productId: other, quantity: 1, totalPrice: "30.00" },
-          ],
-          { end: THREE_DAYS },
+      /**
+       * A reservation the store made from the dashboard, over START to `end`:
+       * the dashboard's own breakdowns (a `duration` in minutes).
+       */
+      async function dashboardBooking(productIds: string[], end: Date) {
+        const result = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: end,
+          items: productIds.map((productId) => ({ productId, quantity: 1 })),
+          sendConfirmationEmail: false,
+        });
+        assert.ok(result.reservationId, JSON.stringify(result));
+        return result.reservationId;
+      }
+
+      /** The line of `productId` in the reservation. */
+      async function lineOf(reservationId: string, productId: string) {
+        const line = (await items(reservationId)).find((item) => item.productId === productId);
+        assert.ok(line);
+        return line;
+      }
+
+      /**
+       * A line as the checkout writes it (`checkoutLineBreakdown`): `subtotal`
+       * for `duration` days of a product at 10.00 a day, with `promotion`
+       * when one applied.
+       */
+      async function checkoutBooking(
+        line: { subtotal: number; duration: number; promotion?: AppliedProductPromotion },
+        end: Date,
+      ) {
+        const gone = await product();
+        const breakdown = priceCart.checkoutLineBreakdown(
+          { price: 10, pricingMode: "day" },
+          {
+            productId: gone,
+            productName: "Kayak",
+            quantity: 1,
+            pricingKind: "duration",
+            duration: line.duration,
+            unitPrice: line.subtotal,
+            depositPerUnit: 0,
+            subtotal: line.subtotal,
+            originalSubtotal: line.promotion?.originalSubtotal ?? line.subtotal,
+            savings: line.promotion?.discountAmount ?? 0,
+            totalDeposit: 0,
+            taxSettings: null,
+            ...(line.promotion ? { promotion: line.promotion } : {}),
+          },
+          { taxRate: null, taxAmount: null, priceExclTax: null, totalExclTax: null },
+        );
+        const { id } = await booking(
+          [{ productId: gone, quantity: 1, totalPrice: line.subtotal.toFixed(2), breakdown }],
+          { end },
         );
         await deleteProduct(gone);
-        return booked;
+        return { id, gone };
       }
 
       test("untouched while another line changes", async () => {
         await useStore({});
-        const { id, itemIds } = await goneLine();
+        const [gone, other] = [await product("30.00"), await product()];
+        const id = await dashboardBooking([gone, other], THREE_DAYS);
+        await deleteProduct(gone);
 
         const result = await actions.updateReservation(id, {
-          items: await formLines(id, { [itemIds[1]!]: 2 }),
+          items: await formLines(id, { [(await lineOf(id, other)).id]: 2 }),
         });
 
         assert.equal(result.error, undefined);
-        const [gone] = await items(id);
         // Untouched, it keeps its stored price (the rule of a line the edit does not change).
-        assert.equal(gone?.totalPrice, "90.00");
+        assert.equal((await lineOf(id, gone)).totalPrice, "90.00");
       });
 
       test("its quantity changed", async () => {
         await useStore({});
-        const { id, itemIds } = await goneLine();
-        const shown = await previewOf(id, { quantities: { [itemIds[0]!]: 2 } });
+        const [gone, other] = [await product("30.00"), await product()];
+        const id = await dashboardBooking([gone, other], THREE_DAYS);
+        await deleteProduct(gone);
+        const goneId = (await lineOf(id, gone)).id;
+        const shown = await previewOf(id, { quantities: { [goneId]: 2 } });
 
         const result = await actions.updateReservation(id, {
-          items: await formLines(id, { [itemIds[0]!]: 2 }),
+          items: await formLines(id, { [goneId]: 2 }),
         });
 
         assert.equal(result.error, undefined);
         // 180.00 for the line, the other kept at 30.00.
         assert.equal(shown, "210.00");
-        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
-        const [gone] = await items(id);
+        assert.equal(
+          shown,
+          (await reservationRow(id)).totalAmount,
+          "the form showed what is written",
+        );
         // Its price per unit for the whole window, 90.00, twice.
-        assert.equal(gone?.totalPrice, "180.00");
-        assert.equal(gone?.unitPrice, "90.00");
+        const line = await lineOf(id, gone);
+        assert.equal(line.totalPrice, "180.00");
+        assert.equal(line.unitPrice, "90.00");
       });
 
-      test("its window moved, its booked duration recorded", async () => {
+      test("the dashboard's breakdown (minutes), after a dashboard edit: priced by the day, then by hand", async () => {
         await useStore({});
-        const { id } = await goneLine();
+        const [gone, other] = [await product(), await product()];
+        // Booked for two days, extended to three by an edit: 30.00, its breakdown written again.
+        const id = await dashboardBooking([gone, other], TWO_DAYS);
+        assert.equal(
+          (await actions.updateReservation(id, { endDate: THREE_DAYS })).error,
+          undefined,
+        );
+        assert.equal((await lineOf(id, gone)).totalPrice, "30.00");
+        await deleteProduct(gone);
         const shown = await previewOf(id, { end: FOUR_DAYS });
 
         const result = await actions.updateReservation(id, {
@@ -537,60 +633,113 @@ describe(
         });
 
         assert.equal(result.error, undefined);
-        // 120.00 for the line, the other priced again at 40.00.
-        assert.equal(shown, "160.00");
-        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
-        const [gone] = await items(id);
-        // 90.00 for three days is 30.00 a day: four days, 120.00, now a price typed by hand.
-        assert.equal(gone?.totalPrice, "120.00");
-        assert.equal(gone?.unitPrice, "30.00");
-        assert.equal(gone?.pricingBreakdown?.isManualOverride, true);
-        assert.equal(gone?.pricingBreakdown?.duration, 4);
+        // 10.00 a day over four days, and the other line priced again at 40.00.
+        const line = await lineOf(id, gone);
+        assert.equal(line.totalPrice, "40.00");
+        assert.equal(line.unitPrice, "10.00");
+        assert.equal(line.pricingBreakdown?.isManualOverride, true);
+        assert.equal(shown, "80.00");
+        assert.equal(
+          shown,
+          (await reservationRow(id)).totalAmount,
+          "the form showed what is written",
+        );
         assert.deepEqual(
           result.warnings?.filter((warning) => warning.key === "errors.editProductGoneRepriced"),
-          [{ key: "errors.editProductGoneRepriced", params: { name: gone?.productSnapshot.name } }],
+          [{ key: "errors.editProductGoneRepriced", params: { name: line.productSnapshot.name } }],
         );
-      });
 
-      test("its window moved, its duration recorded by a breakdown of facts only: priced by hand from then on", async () => {
-        await useStore({});
-        const { id } = await goneLine(breakdownOf(3, 30, { promotion: null, factsOnly: true }));
-
-        const result = await actions.updateReservation(id, { endDate: FOUR_DAYS });
-
-        assert.equal(result.error, undefined);
-        const [gone] = await items(id);
-        assert.equal(gone?.totalPrice, "120.00");
-        // A full breakdown now: a later edit reads its price typed by hand.
-        assert.equal(gone?.pricingBreakdown?.factsOnly, undefined);
-        assert.equal(gone?.pricingBreakdown?.isManualOverride, true);
-      });
-
-      test("its window moved through a date change alone, its booked duration recorded", async () => {
-        await useStore({});
-        const { id } = await goneLine();
-
-        const result = await actions.updateReservation(id, { endDate: FOUR_DAYS });
-
-        assert.equal(result.error, undefined);
-        const [gone] = await items(id);
-        assert.equal(gone?.totalPrice, "120.00");
-      });
-
-      test("its window moved, its booked duration not recorded", async () => {
-        await useStore({});
-        const { id } = await goneLine(null);
-
-        const result = await actions.updateReservation(id, {
-          endDate: FOUR_DAYS,
+        // Scaled once, it is a price typed by hand: a second move prices it as one.
+        const again = await actions.updateReservation(id, {
+          endDate: new Date(START.getTime() + 5 * DAY),
           items: await formLines(id),
         });
+        assert.equal(again.error, undefined);
+        assert.equal((await lineOf(id, gone)).totalPrice, "50.00");
+      });
 
-        // No price follows from what it recorded: refused, nothing written.
-        assert.equal(result.error, "errors.editProductGonePriceUnknown");
-        const [gone] = await items(id);
-        assert.equal(gone?.totalPrice, "90.00");
-        assert.equal((await reservationRow(id)).endDate.getTime(), THREE_DAYS.getTime());
+      test("an hourly product's line, by a date change alone: priced by the hour", async () => {
+        await useStore({});
+        const gone = await product("5.00", "hour");
+        const id = await dashboardBooking([gone], new Date(START.getTime() + 2 * 3_600_000));
+        await deleteProduct(gone);
+
+        const result = await actions.updateReservation(id, {
+          endDate: new Date(START.getTime() + 3 * 3_600_000),
+        });
+
+        assert.equal(result.error, undefined);
+        // 10.00 for two hours, 5.00 an hour: three hours.
+        assert.equal((await lineOf(id, gone)).totalPrice, "15.00");
+      });
+
+      test("a weekly product's line: priced by the week", async () => {
+        await useStore({});
+        const gone = await product("70.00", "week");
+        const id = await dashboardBooking([gone], new Date(START.getTime() + 7 * DAY));
+        await deleteProduct(gone);
+
+        const result = await actions.updateReservation(id, {
+          endDate: new Date(START.getTime() + 14 * DAY),
+        });
+
+        assert.equal(result.error, undefined);
+        assert.equal((await lineOf(id, gone)).totalPrice, "140.00");
+      });
+
+      test("the checkout's breakdown of a promoted line (periods): its price per day, promotion included", async () => {
+        await useStore({});
+        // Two days at 10.00, 20 % off: 16.00.
+        const { id, gone } = await checkoutBooking(
+          {
+            subtotal: 16,
+            duration: 2,
+            promotion: { percentage: 20, originalSubtotal: 20, discountAmount: 4 },
+          },
+          TWO_DAYS,
+        );
+
+        const result = await actions.updateReservation(id, { endDate: THREE_DAYS });
+
+        assert.equal(result.error, undefined);
+        assert.equal((await lineOf(id, gone)).totalPrice, "24.00");
+      });
+
+      test("the checkout's breakdown of facts only: priced by hand from then on", async () => {
+        await useStore({});
+        const { id, gone } = await checkoutBooking({ subtotal: 20, duration: 2 }, TWO_DAYS);
+
+        const result = await actions.updateReservation(id, { endDate: THREE_DAYS });
+
+        assert.equal(result.error, undefined);
+        const line = await lineOf(id, gone);
+        assert.equal(line.totalPrice, "30.00");
+        // A full breakdown now: a later edit reads its price typed by hand.
+        assert.equal(line.pricingBreakdown?.factsOnly, undefined);
+        assert.equal(line.pricingBreakdown?.isManualOverride, true);
+      });
+
+      test("a duration whose unit no writer's mark tells, or none: refused, nothing written", async () => {
+        await useStore({});
+        // A breakdown with no `durationMinutes` and no promotion recorded: no
+        // writer of today leaves one, so its `duration` may be minutes or days.
+        for (const breakdown of [breakdownOf(3, 30), null]) {
+          const gone = await product("30.00");
+          const { id } = await booking(
+            [{ productId: gone, quantity: 1, totalPrice: "90.00", breakdown }],
+            { end: THREE_DAYS },
+          );
+          await deleteProduct(gone);
+
+          const result = await actions.updateReservation(id, {
+            endDate: FOUR_DAYS,
+            items: await formLines(id),
+          });
+
+          assert.equal(result.error, "errors.editProductGonePriceUnknown");
+          assert.equal((await lineOf(id, gone)).totalPrice, "90.00");
+          assert.equal((await reservationRow(id)).endDate.getTime(), THREE_DAYS.getTime());
+        }
       });
     });
   },

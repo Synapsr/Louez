@@ -1,4 +1,9 @@
-import type { AppliedProductPromotion, PricingBreakdown, ProductTaxSettings } from "@louez/types";
+import type {
+  AppliedProductPromotion,
+  PricingBreakdown,
+  PricingMode,
+  ProductTaxSettings,
+} from "@louez/types";
 import { calculateDuration } from "@louez/utils";
 
 import { NOT_RECORDED, pricingBasisOf, recordedPromotion } from "./pricing-facts";
@@ -163,10 +168,12 @@ export type ProductGoneLinePrice =
  *
  * - its quantity changed, the window as it was: the same price per unit;
  * - its window moved: its price per period, its stored total divided by the
- *   duration and quantity it recorded, over the new duration; the line then
- *   holds a price typed by hand, and the store is told (`scaled`). A
- *   fixed-price line keeps its price per unit;
- * - its window moved and no duration recorded: refused, never another price.
+ *   periods it recorded (`recordedPeriods`) and its quantity, over the new
+ *   window's periods of the same mode; the line then holds a price typed by
+ *   hand, and the store is told (`scaled`). A fixed-price line keeps its
+ *   price per unit;
+ * - its window moved and its recorded periods cannot be told (no duration, or
+ *   one whose unit no writer's mark tells): refused, never another price.
  */
 export function priceProductGoneLine(input: {
   stored: StoredProductLine | null;
@@ -189,24 +196,63 @@ export function priceProductGoneLine(input: {
       scaled: false,
     };
   }
-  if (!recorded || !(recorded.duration > 0) || !recorded.pricingMode) return { kind: "refused" };
-  const perPeriod = round2(stored.totalPrice / (recorded.duration * stored.quantity));
+  const periods = recorded ? recordedPeriods(recorded) : null;
+  if (!recorded || periods === null) return { kind: "refused" };
+  const perPeriod = round2(stored.totalPrice / (periods * stored.quantity));
+  // The new window counted in the mode the recorded periods were counted in.
   const duration = calculateDuration(input.window.start, input.window.end, recorded.pricingMode);
-  // A price typed by hand from now on, read as one by later edits.
-  const { factsOnly: _factsOnly, ...basis } = recorded;
   return {
     kind: "priced",
     subtotal: round2(perPeriod * duration * input.quantity),
     unitPrice: perPeriod,
+    // A price typed by hand from now on, as the edit writes one, read as one by later edits.
     breakdown: {
-      ...basis,
       basePrice: perPeriod,
       effectivePrice: perPeriod,
       duration,
+      pricingMode: recorded.pricingMode,
+      pricingKind: "duration",
+      discountPercent: null,
+      discountAmount: 0,
+      tierApplied: null,
+      taxRate: null,
+      taxAmount: null,
+      subtotalExclTax: null,
+      subtotalInclTax: null,
       isManualOverride: true,
     },
     scaled: true,
   };
+}
+
+const MINUTES_PER_PERIOD: Record<PricingMode, number> = { hour: 60, day: 1440, week: 10_080 };
+
+/**
+ * The periods of its `pricingMode` a line's breakdown recorded, or null when
+ * the unit of its `duration` cannot be told. The writers, by what each
+ * leaves on the breakdown:
+ *
+ * - the dashboard's creation and edit (`buildReservationPricingBreakdown`):
+ *   `duration` in minutes, with `durationMinutes` equal to it;
+ * - the API's date change and the extension: `duration` in periods, with
+ *   the window's `durationMinutes` beside it (never equal to it);
+ * - the checkout and the API's creation (`checkoutLineBreakdown`), and the
+ *   checkout's promoted lines before slice 9: `duration` in periods, no
+ *   `durationMinutes`, and a `promotion` key, `null` for none.
+ *
+ * A breakdown that holds none of these marks (an older writer's) is not
+ * read: its unit is not known. Minutes are counted in periods as
+ * `calculateDuration` counts a window: any started period in full.
+ */
+export function recordedPeriods(breakdown: PricingBreakdown): number | null {
+  const mode = breakdown.pricingMode;
+  if (!(mode in MINUTES_PER_PERIOD) || !(breakdown.duration > 0)) return null;
+  if (typeof breakdown.durationMinutes === "number") {
+    return breakdown.duration === breakdown.durationMinutes
+      ? Math.max(1, Math.ceil(breakdown.durationMinutes / MINUTES_PER_PERIOD[mode]))
+      : breakdown.duration;
+  }
+  return "promotion" in breakdown ? breakdown.duration : null;
 }
 
 /**
