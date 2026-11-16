@@ -270,7 +270,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
 
   const list = (
     context: BaseContext = session(),
-    input: { cursor?: string; limit?: number } = {},
+    input: { cursor?: string; limit?: number; types?: InboxItem["type"][] } = {},
   ) => run("list", input, context);
 
   async function rejects(promise: Promise<unknown>, code: string) {
@@ -1886,6 +1886,35 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     // Products alone open the inbox to the approvals of products, and to nothing else.
     const productsOnly = await apiKey({ ...none, products: "read" });
     assert.deepEqual((await list(productsOnly())).items, []);
+  });
+
+  test("types narrows the inbox to those types, never past what the caller may read; an unknown type is refused", async () => {
+    const id = await reservation("confirmed", {
+      depositStatus: "authorized",
+      depositExpiresAt: ahead(DAY),
+    });
+    await activity(id, "payment_failed", { amount: 20 }, ago(HOUR));
+    await reservation("pending");
+
+    const paymentItems = ["payment_failed", "deposit_expiring"] as const;
+    const only = await list(session(), { types: [...paymentItems] });
+    assert.deepEqual(new Set(only.items.map((item) => item.type)), new Set(paymentItems));
+
+    // A key without payments asks for payment items: it gets none, and its cursor still works.
+    const noPayments = await apiKey({ ...everything, payments: "none" });
+    const asked = await list(noPayments(), { types: ["payment_failed", "booking_request"] });
+    assert.deepEqual(
+      asked.items.map((item) => item.type),
+      ["booking_request"],
+    );
+    const again = await list(noPayments(), {
+      types: ["payment_failed", "booking_request"],
+      cursor: asked.nextCursor,
+    });
+    assert.deepEqual(again.items, []);
+
+    await rejects(list(session(), { types: ["not_a_type" as InboxItem["type"]] }), "BAD_REQUEST");
+    await rejects(list(session(), { types: [] }), "BAD_REQUEST");
   });
 
   test("a key of one store never sees another store's items", async () => {

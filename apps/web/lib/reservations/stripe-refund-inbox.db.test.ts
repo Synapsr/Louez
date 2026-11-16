@@ -396,8 +396,12 @@ describe("refunds in the inbox (database)", { skip: skipWithoutTestDatabase() },
     await giveUp(1);
     const shown = await items("credit_note_not_issued");
     assert.deepEqual(
-      shown.map((item) => [item.details?.reservationNumber, item.details?.amount]),
-      [[`R-${n}`, "25.00"]],
+      shown.map((item) => [
+        item.details?.reservationNumber,
+        item.details?.amount,
+        item.details?.currency,
+      ]),
+      [[`R-${n}`, "25.00", "EUR"]],
     );
     assert.deepEqual(await outbox.rearmAbandonedEffects(), []);
 
