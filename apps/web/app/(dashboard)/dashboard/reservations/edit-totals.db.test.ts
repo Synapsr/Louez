@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
 import { after, before, describe, test } from "node:test";
 
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 
 import {
   createTestDatabase,
@@ -888,6 +888,49 @@ describe(
         assert.deepEqual(
           { reservations: await reservationCount(), customers: await customerCount() },
           before,
+        );
+      });
+
+      test("two creations at once for one new customer: two reservations, one customer, no error", async () => {
+        await useStore({ tax: HT });
+        const [kayak, canoe] = [await product(), await product()];
+        const email = "same-new-renter@example.test";
+        const newCustomer = { email, firstName: "Same", lastName: "Renter" };
+
+        // Another transaction holds the gap where the e-mail would go: each
+        // creation reaches it with no customer of that e-mail, then waits.
+        const results = await raceOnOpenTransaction(
+          database,
+          async (holder) => {
+            await holder.query(
+              "SELECT id FROM customers WHERE store_id = ? AND email = ? FOR UPDATE",
+              [STORE, email],
+            );
+          },
+          [kayak, canoe].map(
+            (productId) => () =>
+              createKayak(productId, shown(HT), { customerId: undefined, newCustomer }),
+          ),
+        );
+
+        for (const result of results) assert.ok(result.reservationId, JSON.stringify(result));
+        const booked = await louezDb.db
+          .select({ customerId: louezDb.reservations.customerId })
+          .from(louezDb.reservations)
+          .where(
+            inArray(
+              louezDb.reservations.id,
+              results.map((result) => result.reservationId ?? ""),
+            ),
+          );
+        const customers = await louezDb.db
+          .select({ id: louezDb.customers.id })
+          .from(louezDb.customers)
+          .where(eq(louezDb.customers.email, email));
+        assert.equal(customers.length, 1);
+        assert.deepEqual(
+          booked.map((row) => row.customerId),
+          [customers[0]?.id, customers[0]?.id],
         );
       });
 

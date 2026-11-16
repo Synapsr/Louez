@@ -46,7 +46,9 @@ import {
   getEffectiveProductQuantities,
   insertReservation,
   isStoreNotAcceptingReservationsError,
+  lockCustomerRow,
   lockReservationInTransaction,
+  lockStoreRow,
   markReservation,
   reconcileReservationStock,
   reservationStatusConsumesStock,
@@ -947,14 +949,32 @@ export async function createManualReservation(data: CreateReservationData) {
   const reservationStatus = data.sendAsQuote ? "quote" : "confirmed";
   const actorUserId = await getActorUserId();
   const reservationWriteResult = await db.transaction(async (tx) => {
-    // The product locks first. Everything the stock decision reads comes
+    // The repository's lock order (DL-12), as the API's creation takes it:
+    // the store row first, so two creations of one store run one after the
+    // other; then the products by id; then the customer; then the
+    // reservation's rows. Everything the stock decision reads comes
     // after them: the products, the store's availability rules, the other
     // bookings, and which combination each line chose.
+    if (!(await lockStoreRow(tx, store.id))) {
+      return { ok: false as const, error: "errors.storeNotFound", shortfalls: [] };
+    }
     const lockedProductsById = await lockReservationProducts(
       tx,
       store.id,
       productDetails.map((detail) => detail.product.id),
     );
+    // A customer the store has is locked by its id, through the primary key
+    // (`lockCustomerRow`), and read again: one deleted meanwhile books nothing.
+    if (!pendingCustomer) {
+      await lockCustomerRow(tx, bookedCustomerId);
+      const [stillThere] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.id, bookedCustomerId), eq(customers.storeId, store.id)));
+      if (!stillThere) {
+        return { ok: false as const, error: "errors.customerNotFound", shortfalls: [] };
+      }
+    }
     const [availabilityRules] = await tx
       .select({ settings: stores.settings })
       .from(stores)
@@ -1121,15 +1141,20 @@ export async function createManualReservation(data: CreateReservationData) {
 
     // The new customer, once nothing refuses the creation any more, after the
     // products and before the reservation's rows: a refused creation writes
-    // nothing. One with this email created meanwhile is the one booked.
+    // nothing. It is added against the store's unique (store, e-mail), as the
+    // API's creation adds one: a customer with this e-mail added meanwhile
+    // makes the insert write nothing, and is the one booked, as it is.
     if (pendingCustomer) {
-      const [sameEmail] = await tx
+      await tx
+        .insert(customers)
+        .values(pendingCustomer)
+        .onDuplicateKeyUpdate({ set: { id: sql`id` } });
+      const [booked] = await tx
         .select({ id: customers.id })
         .from(customers)
-        .where(and(eq(customers.storeId, store.id), eq(customers.email, pendingCustomer.email)))
-        .for("update");
-      if (sameEmail) bookedCustomerId = sameEmail.id;
-      else await tx.insert(customers).values(pendingCustomer);
+        .where(and(eq(customers.storeId, store.id), eq(customers.email, pendingCustomer.email)));
+      if (!booked) throw new Error("The customer written in this transaction could not be read back.");
+      bookedCustomerId = booked.id;
     }
 
     const { effects, lock } = await insertReservation(tx, {
