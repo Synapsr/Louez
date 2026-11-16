@@ -158,3 +158,30 @@ test('the preview total: insurance outside the tax, the discount and the deliver
   // (150 - 10 + 20) before tax, 20 % on top, and 12.50 of insurance with none.
   assert.equal(total, 204.5)
 })
+
+// The line prices of the edit (slice 11), as the form previews them.
+const dayItem: EditableItem = {
+  ...fixedProductItem,
+  quantity: 1,
+  unitPrice: 15,
+  isManualPrice: false,
+  product: { ...fixedProductItem.product!, price: '15.00', pricingKind: 'duration' },
+}
+const TWO_DAYS = [new Date('2031-06-10T09:00:00.000Z'), new Date('2031-06-12T09:00:00.000Z')] as const
+const THREE_DAYS = [new Date('2031-06-10T09:00:00.000Z'), new Date('2031-06-13T09:00:00.000Z')] as const
+
+test('the preview of a line the edit leaves as it was: priced from the catalogue of now', () => {
+  // Booked at 10.00 a day, 20.00; the product costs 15.00 now.
+  assert.equal(calculateEditableItemPrice(dayItem, ...TWO_DAYS).totalPrice, 30)
+})
+
+test('the preview of a promoted line whose window moved: no promotion', () => {
+  const tenADay = { ...dayItem, product: { ...dayItem.product!, price: '10.00' } }
+  assert.equal(calculateEditableItemPrice(tenADay, ...THREE_DAYS).totalPrice, 30)
+})
+
+test('the preview of a line whose product is gone: its whole-period price taken for a daily one', () => {
+  // 90.00 for three days, as stored; the product deleted since.
+  const gone = { ...dayItem, unitPrice: 90, product: null }
+  assert.equal(calculateEditableItemPrice(gone, ...THREE_DAYS).totalPrice, 270)
+})
