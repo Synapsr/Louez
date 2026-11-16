@@ -176,11 +176,25 @@ type FeeGivenBackInExcess = {
  * the share and lowers the excess. What lowers the share, a refund that failed or a
  * dispute won, leaves a real excess. So a change landing between these reads can
  * only lower the excess, never make one up. Read before the fee, the disputes would
- * miss one opened while the fee is read, and give the excess from before it.
- * Only a charge with a candidate pays these three reads, each with a short timeout
- * and no retry. Returns the excess on the fresh figures, or null when they do not
+ * miss one opened while the fee is read, and give the excess from before it. The
+ * disputes are read once more after the charge: if they moved, the reads may mix two
+ * pictures, so no alert; the dispute's own event reviews the charge. Only a charge
+ * with a candidate pays these four reads, each with a short timeout and no retry. Returns the excess on the fresh figures, or null when they do not
  * confirm it.
  */
+/** A charge's disputes, as one comparable string: each id, amount and status. */
+const disputePicture = (
+  disputes: ReadonlyArray<{
+    readonly id: string;
+    readonly amount: number;
+    readonly status: string;
+  }>,
+) =>
+  disputes
+    .map((dispute) => `${dispute.id}:${dispute.amount}:${dispute.status}`)
+    .sort()
+    .join(",");
+
 async function confirmExcess(
   port: FeeReversalStripe,
   input: { readonly chargeId: string; readonly accountId: string },
@@ -197,6 +211,18 @@ async function confirmExcess(
     input.accountId,
     FEE_EXCESS_CONFIRMATION_READ,
   );
+  const disputesAfter = await port.listDisputes(
+    input.chargeId,
+    input.accountId,
+    FEE_EXCESS_CONFIRMATION_READ,
+  );
+  if (disputePicture(disputesAfter) !== disputePicture(disputes)) {
+    log.debug(
+      "billing",
+      `the fee given back in excess on charge ${input.chargeId} is not confirmed: its disputes changed while Stripe was read again; the dispute's own event reviews the charge`,
+    );
+    return null;
+  }
   const { targetMinor } = reversalAtSource({
     feeMinor: fee.amount,
     feeRefundedMinor: fee.amount_refunded,
@@ -275,6 +301,8 @@ export async function reverseFeeAtSource(input: {
   readonly stripe?: FeeReversalStripe;
   /** The platform's alerts; tests fake them. */
   readonly alerts?: BillingAlerts;
+  /** Where the unconfirmed candidate is written: Evlog; tests read it. */
+  readonly log?: { warn(tag: string, message: string): void };
   /** Runs the confirmation and the alert once the webhook answered: `after`; tests collect it. */
   readonly schedule?: (task: () => Promise<void>) => void;
 }): Promise<FeeReversalResult> {
@@ -352,6 +380,11 @@ export async function reverseFeeAtSource(input: {
   // The lock's connection is back in the pool and the turn is free.
   const { result, excess } = turn.value.value;
   if (excess) {
+    // On record before anything is deferred, should the process stop before the task.
+    (input.log ?? log).warn(
+      "billing",
+      `unconfirmed fee given back in excess on charge ${input.chargeId} on account ${input.accountId}: application fee ${excess.feeId} of ${excess.feeMinor} ${excess.currency} has ${excess.feeRefundedMinor} given back, above its share of ${excess.targetMinor} by ${excess.feeRefundedMinor - excess.targetMinor} (minor units). A candidate that may be false: the alert fee_over_returned follows once Stripe, read again, confirms it.`,
+    );
     // Already in a deferred task: its alert waits for its own Discord part.
     const alerts = input.alerts ?? createBillingAlerts();
     (input.schedule ?? scheduleAfterResponse)(() =>

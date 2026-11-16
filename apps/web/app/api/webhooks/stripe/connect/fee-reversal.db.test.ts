@@ -684,6 +684,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
             .from(louezDb.reservationActivity)
         ).length;
       const before = await activity();
+      const warned: string[] = [];
       for (const refunded of [3_000, 8_000]) {
         state.amountRefunded = refunded;
         await reverseThenAfter({
@@ -691,9 +692,11 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
           accountId: ACCOUNT,
           stripe: counted,
           alerts: alerted.alerts,
+          log: { warn: (_tag, message) => warned.push(message) },
         });
       }
       assert.deepEqual(alerted.excesses(), []);
+      assert.deepEqual(warned, []);
       // Each reversal reads the charge, its fee and its disputes, then refunds its share.
       const oneReversal = ["charge", "fee", "disputes", "refund"];
       assert.deepEqual(calls, [...oneReversal, ...oneReversal]);
@@ -787,8 +790,17 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       state.amountRefunded = 0;
       calls.length = 0;
       await reverse();
-      assert.deepEqual(calls, ["charge", "fee", "disputes", "fee", "disputes", "charge"]);
-      assert.deepEqual(atAlert, [6]);
+      // The reversal's reads, then the confirmation's.
+      assert.deepEqual(calls, [
+        "charge",
+        "fee",
+        "disputes",
+        "fee",
+        "disputes",
+        "charge",
+        "disputes",
+      ]);
+      assert.deepEqual(atAlert, [7]);
       assert.deepEqual(alerted.excesses(), [180]);
 
       // The same, with a refund of 30.00 landing before the second read of the charge.
@@ -827,18 +839,30 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         ),
       };
       const deferred: Array<() => Promise<void>> = [];
+      const warned: string[] = [];
       const result = await reversal.reverseFeeAtSource({
         chargeId,
         accountId: ACCOUNT,
         stripe: recorded,
         alerts: alerted.alerts,
+        log: { warn: (_tag, message) => warned.push(message) },
         schedule: (task) => {
           deferred.push(task);
         },
       });
-      // Answered: the confirmation and the alert wait in one task.
+      // Answered: the confirmation and the alert wait in one task, the candidate is
+      // already on record, marked unconfirmed.
       assert.equal(result.status, "unchanged");
       assert.equal(deferred.length, 1);
+      assert.equal(warned.length, 1);
+      for (const part of [
+        `charge ${chargeId}`,
+        `account ${ACCOUNT}`,
+        "fee_",
+        "of 300 EUR has 180 given back, above its share of 0 by 180",
+        "unconfirmed",
+      ])
+        assert.ok(warned[0]?.includes(part), `${part} in ${warned[0]}`);
       assert.deepEqual(
         reads.map((read) => read.read),
         ["charge", "fee", "disputes"],
@@ -854,6 +878,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         { read: "fee", options: short },
         { read: "disputes", options: short },
         { read: "charge", options: short },
+        { read: "disputes", options: short },
       ]);
     });
 
@@ -911,6 +936,38 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         chargeId,
         accountId: ACCOUNT,
         stripe: opening,
+        alerts: alerted.alerts,
+      });
+      assert.deepEqual(alerted.excesses(), []);
+    });
+
+    test("disputes that change while the confirmation reads Stripe raise no alert", async () => {
+      const { stripe, chargeId, state, alerted } = await excessCase();
+      let refunded = false;
+      const moving: FeeReversalStripe = {
+        ...stripe.port,
+        async retrieveCharge(id, account, options) {
+          const fee = [...stripe.fees.values()][0];
+          if (options) {
+            // Before the confirmation reads the charge: a dispute of 60.00 opens and
+            // the refund of 60.00 fails.
+            state.disputes = [{ id: "dp_moving", amount: 6_000, status: "needs_response" }];
+            state.amountRefunded = 0;
+          }
+          const charge = await stripe.port.retrieveCharge(id, account);
+          if (!options && !refunded && fee) {
+            // After the reversal read the charge: a refund of 60.00, its share given back.
+            refunded = true;
+            state.amountRefunded = 6_000;
+            fee.amountRefunded = 180;
+          }
+          return charge;
+        },
+      };
+      await reverseThenAfter({
+        chargeId,
+        accountId: ACCOUNT,
+        stripe: moving,
         alerts: alerted.alerts,
       });
       assert.deepEqual(alerted.excesses(), []);
