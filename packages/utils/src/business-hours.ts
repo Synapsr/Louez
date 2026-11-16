@@ -320,32 +320,6 @@ export function buildStoreDate(date: Date, time: string, timezone?: string): Dat
 }
 
 /**
- * The instant of a local date and time (`yyyy-MM-ddTHH:mm`) in a time zone,
- * or null when that local time does not exist there: the clocks skip it
- * (T5, docs/domain/reservation-invariants.md). The round trip decides: the
- * instant, written back in the zone, must give the same local time. A local
- * time the clocks pass twice exists. Checked where a local time is typed,
- * before it becomes an instant: an instant alone cannot show what was typed.
- */
-export function zonedLocalTimeToInstant(local: string, timezone: string): Date | null {
-  const instant = fromZonedTime(local, timezone);
-  if (!Number.isFinite(instant.getTime())) return null;
-  return formatInTimeZone(instant, timezone, "yyyy-MM-dd'T'HH:mm") === local ? instant : null;
-}
-
-/**
- * `buildStoreDate` that refuses a local time the store's time zone skips:
- * null, where `buildStoreDate` gives the instant the clocks moved it to.
- * `date` gives the calendar day, `time` is `HH:mm`; without a time zone, the
- * device's own decides.
- */
-export function buildExistingStoreDate(date: Date, time: string, timezone?: string): Date | null {
-  if (timezone) return zonedLocalTimeToInstant(`${format(date, "yyyy-MM-dd")}T${time}`, timezone);
-  const local = buildStoreDate(date, time);
-  return format(local, "HH:mm") === time ? local : null;
-}
-
-/**
  * Day keys in order starting from Monday (European convention).
  * 1 = Monday, 2 = Tuesday, ..., 6 = Saturday, 0 = Sunday
  */

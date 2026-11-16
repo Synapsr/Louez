@@ -1074,11 +1074,11 @@ The new booking's messages belong to the creation lot.
 **Done for the dashboard's edit**, ahead of slice 7, as 8a.
 
 - `endDate > startDate`: `updateReservation` refuses a window of no length with `errors.endDateBeforeStart` (whose text now says "after"), and so does its form before it sends.
-- A local date and time must exist in the store's time zone. The check lives where a local time is typed, before it is normalised: the edit form's date pickers (`ReservationDatePickerControl` with `onNonexistentTime`) compose each picked or typed day and time through `buildExistingStoreDate`, which refuses a time the clocks skip (`errors.localTimeDoesNotExist`) and leaves the dates as they were. The round trip is the extension's, now one function, `zonedLocalTimeToInstant` (`packages/utils/src/business-hours.ts`), which `parseExtensionEnd` uses. The action receives instants and cannot check it. The other forms that use the picker do not ask for the check yet: they still move a skipped time forward one hour, as the clocks do.
+- A local date and time must exist in the store's time zone. **Not done for the dashboard's edit:** the check belongs where a local time is typed, before it is normalised, and the edit form's date pickers still move a time the clocks skip forward, as every other form built on them does. The extension checks its own round trip. It stays open as its own change: it must leave an untouched date exactly as stored (seconds and the repeated hour of an autumn night included), read a typed hour in the store's time zone whatever the browser's, and never refuse a time that exists in the store's zone.
 - An input given as an ISO instant with an offset is already an instant, and it cannot show what was typed.
 - **An ongoing reservation's start still moves in the dashboard.** Pickup records `pickedUpAt` and never rewrites the start, so the edit is the store's only way to correct the start it recorded (a renter who came earlier or later); the form has always allowed it. The date change of the API and agents keeps refusing it (`ongoing_start_moved`, 12a).
 
-**Test.** `update-reservation.db.test.ts`: a window of no length refused and nothing written; an inverted one (`actions.db.test.ts`); an ongoing reservation's start moved. `packages/utils/src/business-hours.test.ts`: a time the clocks skip does not exist, the times around it and a time passed twice do. The zero-length and the skipped-time tests fail without their rule.
+**Test.** `update-reservation.db.test.ts`: a window of no length refused and nothing written; an inverted one (`actions.db.test.ts`); an ongoing reservation's start moved. The zero-length test fails without its rule.
 
 ### 9. Booking pricing facts preserved
 

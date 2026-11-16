@@ -9273,7 +9273,6 @@
     "reservationStatusChanged": "De reserveringsstatus is gewijzigd tijdens het bewerken. Laad de pagina opnieuw en probeer het nogmaals.",
     "reservationChangedMeanwhile": "De reservering is in de tussentijd gewijzigd. Laad de pagina opnieuw en probeer het nogmaals.",
     "endDateBeforeStart": "Einddatum moet na de startdatum liggen",
-    "localTimeDoesNotExist": "Dit tijdstip bestaat niet in de tijdzone van de winkel: de klok slaat het die nacht over. Kies een ander tijdstip.",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",
     "customerRequired": "Klant vereist",

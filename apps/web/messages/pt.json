@@ -9273,7 +9273,6 @@
     "reservationStatusChanged": "O estado da reserva mudou durante a edição. Recarregue a página e tente novamente.",
     "reservationChangedMeanwhile": "A reserva foi alterada entretanto. Recarregue a página e tente novamente.",
     "endDateBeforeStart": "A data de fim deve ser posterior à data de início",
-    "localTimeDoesNotExist": "Esta hora não existe no fuso horário da loja: os relógios saltam-na nessa noite. Escolha outra hora.",
     "negativeAmountOnlyForAdjustment": "Valores negativos são permitidos apenas para ajustes",
     "productRequired": "Produto obrigatório",
     "customerRequired": "Cliente obrigatório",

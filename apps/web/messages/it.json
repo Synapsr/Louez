@@ -9273,7 +9273,6 @@
     "reservationStatusChanged": "Lo stato della prenotazione è cambiato durante la modifica. Ricarica la pagina e riprova.",
     "reservationChangedMeanwhile": "La prenotazione è stata modificata nel frattempo. Ricarica la pagina e riprova.",
     "endDateBeforeStart": "La data di fine deve essere successiva alla data di inizio",
-    "localTimeDoesNotExist": "Quest'ora non esiste nel fuso orario del negozio: quella notte gli orologi la saltano. Scegli un'altra ora.",
     "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per gli aggiustamenti",
     "productRequired": "Prodotto richiesto",
     "customerRequired": "Cliente richiesto",

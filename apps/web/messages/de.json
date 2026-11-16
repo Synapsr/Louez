@@ -9273,7 +9273,6 @@
     "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "reservationChangedMeanwhile": "Die Reservierung wurde in der Zwischenzeit geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "endDateBeforeStart": "Das Enddatum muss nach dem Startdatum liegen",
-    "localTimeDoesNotExist": "Diese Uhrzeit gibt es in der Zeitzone des Shops nicht: Die Uhren überspringen sie in dieser Nacht. Wählen Sie eine andere Uhrzeit.",
     "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",
     "customerRequired": "Kunde erforderlich",

@@ -2,7 +2,7 @@ import type { BusinessHours } from "@louez/types";
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
-import { fromZonedTime } from "date-fns-tz";
+import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import {
   reservations,
   reservationItems,
@@ -15,7 +15,7 @@ import {
   type Transaction,
 } from "@louez/db";
 import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
-import { isWithinBusinessHours, zonedLocalTimeToInstant } from "@louez/utils";
+import { isWithinBusinessHours } from "@louez/utils";
 import { validateRentalDuration } from "./validate-rental-window";
 import {
   lockReservationProducts,
@@ -155,8 +155,13 @@ export const extensionFingerprint = (reservation: ExtensionReservation) =>
     .digest("hex");
 
 export const parseExtensionEnd = (value: string, timezone: string): Date => {
-  const end = zonedLocalTimeToInstant(value, timezone);
-  if (!end || end.getTime() > 2147483647000) throw new ExtensionError("invalidDate");
+  const end = fromZonedTime(value, timezone);
+  if (
+    !Number.isFinite(end.getTime()) ||
+    end.getTime() > 2147483647000 ||
+    formatInTimeZone(end, timezone, "yyyy-MM-dd'T'HH:mm") !== value
+  )
+    throw new ExtensionError("invalidDate");
   return end;
 };
 
