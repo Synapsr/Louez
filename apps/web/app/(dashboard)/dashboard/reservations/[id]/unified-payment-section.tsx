@@ -82,6 +82,7 @@ import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { paymentRefusalKey } from "@/lib/reservations/util.payment-refusal";
 import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
+  getDepositTotals,
   getRentalPaid,
   isFailedRefundRow,
   isRefundRow,
@@ -309,19 +310,17 @@ export function UnifiedPaymentSection({
 
   const rentalPaid = getRentalPaid(payments, currency);
 
-  const depositCollected = payments
-    .filter((p) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  const depositReturned = payments
-    .filter((p) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  // The deposit by the shared refund rule, as the cancellation preview reads it.
+  const {
+    collected: depositCollected,
+    returned: depositReturned,
+    held: depositToReturn,
+  } = getDepositTotals(payments);
 
   const damagesPaid = getNetCompletedPaymentAmount(payments, "damage");
 
   const rentalRemaining = getRentalRemaining({ totalAmount }, rentalPaid);
   const depositRemaining = Math.max(0, deposit - depositCollected);
-  const depositToReturn = depositCollected - depositReturned;
   const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100;
 
   const isRentalFullyPaid = rentalRemaining === 0;

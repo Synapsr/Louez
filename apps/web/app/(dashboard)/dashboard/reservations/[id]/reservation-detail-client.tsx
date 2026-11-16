@@ -34,7 +34,7 @@ import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes"
 import { SmartReservationActions } from "./smart-reservation-actions";
 import { UnifiedPaymentSection, type PaymentMethod } from "./unified-payment-section";
 import { hasMobileReservationQuickActions } from "./util.mobile-reservation-quick-actions";
-import { getRentalPaid } from "@/lib/reservations/util.payment-status";
+import { getDepositTotals, getRentalPaid } from "@/lib/reservations/util.payment-status";
 import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-store-legs-summary";
@@ -192,13 +192,10 @@ export function ReservationDetailClient({
 
   const rentalPaid = getRentalPaid(reservation.payments || [], currency);
 
-  const depositCollected = (reservation.payments || [])
-    .filter((p: any) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
-
-  const depositReturned = (reservation.payments || [])
-    .filter((p: any) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+  // The deposit by the shared refund rule, as the payment section reads it.
+  const { collected: depositCollected, returned: depositReturned } = getDepositTotals(
+    reservation.payments || [],
+  );
 
   const hasOnlinePaymentPending = (reservation.payments || []).some(
     (p: any) => p.method === "stripe" && p.type === "rental" && p.status === "pending",

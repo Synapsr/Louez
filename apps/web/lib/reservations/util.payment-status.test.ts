@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
+import { getSettledPaymentAmount } from "@louez/utils";
+
 import {
   getCustomerPaymentRows,
   getDamageFees,
+  getDepositTotals,
   getRentalPaid,
   getReservationPaymentStatus,
   hasRentalPaymentInProgress,
@@ -174,6 +177,47 @@ describe("getRentalPaid", () => {
         "EUR",
       ),
       70,
+    );
+  });
+});
+
+describe("getDepositTotals", () => {
+  test("a return linked to a deposit that failed gives back nothing held, as the cancellation preview reads it", () => {
+    const payments = [
+      { id: "held", type: "deposit", status: "completed", amount: "60.00" },
+      { id: "failed", type: "deposit", status: "failed", amount: "40.00" },
+      {
+        id: "return",
+        type: "deposit_return",
+        status: "completed",
+        amount: "20.00",
+        refundOfPaymentId: "failed",
+      },
+    ];
+
+    assert.deepEqual(getDepositTotals(payments), { collected: 60, returned: 0, held: 60 });
+    // The cancellation preview's reading of the same rows.
+    assert.equal(
+      getSettledPaymentAmount(payments, "deposit") -
+        getSettledPaymentAmount(payments, "deposit_return"),
+      60,
+    );
+  });
+
+  test("returns linked to a deposit and returns made apart both go back", () => {
+    assert.deepEqual(
+      getDepositTotals([
+        { id: "held", type: "deposit", status: "completed", amount: "100.00" },
+        {
+          id: "linked",
+          type: "deposit_return",
+          status: "completed",
+          amount: "30.00",
+          refundOfPaymentId: "held",
+        },
+        { id: "apart", type: "deposit_return", status: "completed", amount: "20.00" },
+      ]),
+      { collected: 100, returned: 50, held: 50 },
     );
   });
 });

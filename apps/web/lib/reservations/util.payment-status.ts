@@ -73,6 +73,31 @@ export const getReservationPaymentStatus = (
 // What settles a rental, defined once beside the money it reads.
 export { getRentalPaid };
 
+/**
+ * The deposit as the reservation's page reads it, by the shared refund rule
+ * (`getSettledPaymentAmount`), as the cancellation preview reads it: `held`
+ * is the completed deposits, less the completed returns linked to them and
+ * the returns made apart, never below zero. A return linked to a deposit that
+ * is not completed gives back nothing that was held. `collected` is the
+ * completed deposits received; `returned` what of them went back.
+ */
+export const getDepositTotals = (
+  payments: readonly PaymentLike[],
+): { collected: number; returned: number; held: number } => {
+  const collected = payments
+    .filter(
+      (payment) =>
+        payment.type === "deposit" && payment.status === "completed" && !isRefundRow(payment),
+    )
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const held = Math.max(
+    0,
+    getSettledPaymentAmount(payments, "deposit") -
+      getSettledPaymentAmount(payments, "deposit_return"),
+  );
+  return { collected, returned: Math.max(0, collected - held), held };
+};
+
 /** Damage fees charged on top of the rental, refunds subtracted. */
 export const getDamageFees = (payments: readonly PaymentLike[]): number =>
   getSettledPaymentAmount(payments, "damage");
