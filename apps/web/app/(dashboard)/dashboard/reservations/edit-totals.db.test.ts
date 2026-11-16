@@ -451,6 +451,160 @@ describe(
       });
     });
 
+    describe("an edit that changes nothing that prices the reservation", () => {
+      /**
+       * An old reservation made by hand in a store that prices before tax: one
+       * line of 150.00, its total 150.00 with no tax, paid in full.
+       */
+      async function oldManualBooking() {
+        const kayak = await product();
+        const id = nextId("res");
+        await louezDb.db.insert(louezDb.reservations).values({
+          id,
+          storeId: STORE,
+          customerId: CUSTOMER,
+          number: id,
+          status: "confirmed",
+          startDate: START,
+          endDate: END,
+          subtotalAmount: "150.00",
+          depositAmount: "0.00",
+          totalAmount: "150.00",
+          deliveryFee: "0.00",
+          discountAmount: "0.00",
+          currency: "USD",
+          source: "manual",
+        });
+        const itemId = nextId("itm");
+        await louezDb.db.insert(louezDb.reservationItems).values({
+          id: itemId,
+          reservationId: id,
+          productId: kayak,
+          quantity: 1,
+          unitPrice: "75.00",
+          depositPerUnit: "0.00",
+          totalPrice: "150.00",
+          productSnapshot: { name: "Kayak", description: null, images: [] },
+          pricingBreakdown: {
+            basePrice: 75,
+            effectivePrice: 75,
+            duration: 2,
+            pricingMode: "day",
+            discountPercent: null,
+            discountAmount: 0,
+            tierApplied: null,
+            taxRate: null,
+            taxAmount: null,
+            subtotalExclTax: null,
+            subtotalInclTax: null,
+            isManualOverride: true,
+          },
+        });
+        await louezDb.db.insert(louezDb.payments).values({
+          id: nextId("pay"),
+          reservationId: id,
+          amount: "150.00",
+          type: "rental",
+          method: "cash",
+          status: "completed",
+          currency: "USD",
+        });
+        return { id, itemId, kayak };
+      }
+
+      const moneyOf = async (id: string) => {
+        const { row, items } = await stored(id);
+        return {
+          row: [
+            row.subtotalAmount,
+            row.totalAmount,
+            row.subtotalExclTax,
+            row.taxAmount,
+            row.taxRate,
+            row.taxDisplayMode,
+            row.depositAmount,
+          ],
+          items: items.map((item) => [
+            item.totalPrice,
+            item.unitPrice,
+            item.taxRate,
+            item.taxAmount,
+            item.taxExempt,
+          ]),
+        };
+      };
+
+      test("no field at all: every amount stays as stored, nothing is recorded", async () => {
+        await useStore({ tax: HT });
+        const { id } = await oldManualBooking();
+        const before = await moneyOf(id);
+
+        const result = await actions.updateReservation(id, {});
+
+        assert.equal(result.error, undefined);
+        assert.deepEqual(await moneyOf(id), before);
+        assert.equal(result.newTotal, 150);
+      });
+
+      test("the form's whole payload sent again unchanged: every amount stays as stored", async () => {
+        await useStore({ tax: HT });
+        const { id, itemId, kayak } = await oldManualBooking();
+        const before = await moneyOf(id);
+
+        const result = await actions.updateReservation(id, {
+          startDate: START,
+          endDate: END,
+          tulipInsuranceOptIn: false,
+          items: [
+            {
+              id: itemId,
+              productId: kayak,
+              quantity: 1,
+              unitPrice: 75,
+              depositPerUnit: 0,
+              isManualPrice: true,
+              pricingMode: "day",
+              productSnapshot: { name: "Kayak" },
+            },
+          ],
+        });
+
+        assert.equal(result.error, undefined);
+        assert.deepEqual(await moneyOf(id), before);
+      });
+
+      test("a line changed: the totals are the engine's, and the answer says the tax was added", async () => {
+        await useStore({ tax: HT });
+        const { id, itemId, kayak } = await oldManualBooking();
+
+        const result = await actions.updateReservation(id, {
+          items: [
+            {
+              id: itemId,
+              productId: kayak,
+              quantity: 2,
+              unitPrice: 75,
+              depositPerUnit: 0,
+              isManualPrice: true,
+              pricingMode: "day",
+              productSnapshot: { name: "Kayak" },
+            },
+          ],
+        });
+
+        assert.equal(result.error, undefined);
+        const { row } = await assertEngineTotals(id, HT);
+        // Two at 75.00 a day for two days, 20 % on top.
+        assert.equal(row.totalAmount, "360.00");
+        assert.deepEqual(result.warnings, [
+          {
+            key: "errors.editTaxAdded",
+            params: { previousTotal: "150.00", newTotal: "360.00" },
+          },
+        ]);
+      });
+    });
+
     describe("a creation by hand", () => {
       /** A reservation the store creates: a product line, a custom line, insurance. */
       async function created() {
@@ -494,12 +648,13 @@ describe(
           ["79.70", "11.20", "exclusive"],
         );
         assert.deepEqual(
-          items.map((item) => [item.productSnapshot.name.startsWith("Kayak"), item.taxExempt]),
-          [
-            [true, false],
-            [false, false],
-            [false, true],
-          ],
+          Object.fromEntries(
+            items.map((item) => [
+              item.productSnapshot.name.startsWith("Kayak") ? "product" : item.productSnapshot.name,
+              item.taxExempt,
+            ]),
+          ),
+          { product: false, Cleaning: false, [INSURANCE_ITEM_NAME]: true },
         );
       });
 

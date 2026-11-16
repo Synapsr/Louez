@@ -9272,6 +9272,7 @@
     "cannotCancelReservation": "Diese Reservierung kann nicht storniert werden",
     "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "reservationChangedMeanwhile": "Die Reservierung wurde in der Zwischenzeit geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "editTaxAdded": "Der Gesamtbetrag enthält jetzt die Steuer: vorher {previousTotal}, jetzt {newTotal}.",
     "endDateBeforeStart": "Das Enddatum muss nach dem Startdatum liegen",
     "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",

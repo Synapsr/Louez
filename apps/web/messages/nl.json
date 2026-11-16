@@ -9272,6 +9272,7 @@
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
     "reservationStatusChanged": "De reserveringsstatus is gewijzigd tijdens het bewerken. Laad de pagina opnieuw en probeer het nogmaals.",
     "reservationChangedMeanwhile": "De reservering is in de tussentijd gewijzigd. Laad de pagina opnieuw en probeer het nogmaals.",
+    "editTaxAdded": "Het totaal is nu inclusief belasting: eerst {previousTotal}, nu {newTotal}.",
     "endDateBeforeStart": "Einddatum moet na de startdatum liggen",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",

@@ -9272,6 +9272,7 @@
     "cannotCancelReservation": "Reservasi ini tidak dapat dibatalkan",
     "reservationStatusChanged": "Status reservasi berubah saat Anda mengedit. Muat ulang halaman dan coba lagi.",
     "reservationChangedMeanwhile": "Reservasi diubah sementara Anda mengedit. Muat ulang halaman dan coba lagi.",
+    "editTaxAdded": "Total kini sudah termasuk pajak: sebelumnya {previousTotal}, sekarang {newTotal}.",
     "endDateBeforeStart": "Tanggal akhir harus setelah tanggal mulai",
     "negativeAmountOnlyForAdjustment": "Jumlah negatif hanya diperbolehkan untuk penyesuaian",
     "productRequired": "Produk diperlukan",

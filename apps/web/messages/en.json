@@ -9272,6 +9272,7 @@
     "cannotCancelReservation": "This reservation cannot be cancelled",
     "reservationStatusChanged": "The reservation status changed while you were editing. Reload the page and try again.",
     "reservationChangedMeanwhile": "The reservation was changed in the meantime. Reload the page and try again.",
+    "editTaxAdded": "The total now includes the tax: {previousTotal} before, {newTotal} now.",
     "endDateBeforeStart": "End date must be after the start date",
     "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
     "productRequired": "Product required",

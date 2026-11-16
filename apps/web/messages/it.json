@@ -9272,6 +9272,7 @@
     "cannotCancelReservation": "Questa prenotazione non può essere annullata",
     "reservationStatusChanged": "Lo stato della prenotazione è cambiato durante la modifica. Ricarica la pagina e riprova.",
     "reservationChangedMeanwhile": "La prenotazione è stata modificata nel frattempo. Ricarica la pagina e riprova.",
+    "editTaxAdded": "Il totale ora include l'imposta: {previousTotal} prima, {newTotal} ora.",
     "endDateBeforeStart": "La data di fine deve essere successiva alla data di inizio",
     "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per gli aggiustamenti",
     "productRequired": "Prodotto richiesto",
