@@ -108,12 +108,26 @@ export interface NotificationContext {
 export interface DispatchNotificationDeps {
   sendAdminEventEmail: typeof sendAdminEventEmail;
   sendAdminSms: typeof sendAdminSms;
+  /** Where a channel that threw is logged; the application's logger when absent. */
+  logError?: (tag: string, message: string) => void;
 }
 
 const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail, sendAdminSms };
 
 const describeChannelError = (error: unknown): string =>
   error instanceof Error ? error.message : "Unknown error";
+
+/**
+ * What a log may say of a channel's error: its class and code, never its
+ * message, which a provider can fill with a customer's name or address.
+ */
+const channelErrorLabel = (error: unknown): string => {
+  if (!(error instanceof Error)) return typeof error;
+  const code: unknown = Reflect.get(error, "code");
+  return typeof code === "string" || typeof code === "number"
+    ? `${error.name} (${code})`
+    : error.name;
+};
 
 export interface NotificationResult {
   email: { sent: boolean; error?: string };
@@ -935,10 +949,9 @@ export async function dispatchNotification(
   // Each channel answers for itself: one that throws never hides another's
   // outcome. Callers often drop the result, so a channel that threw is logged here.
   const failed = (channel: string, error: unknown) => {
-    log.error(
-      "notifications",
-      `${eventType} ${channel} to the owner of store ${ctx.store.id} failed: ${describeChannelError(error)}`,
-    );
+    const line = `${eventType} ${channel} to the owner of store ${ctx.store.id} failed: ${channelErrorLabel(error)}`;
+    if (deps.logError) deps.logError("notifications", line);
+    else log.error("notifications", line);
   };
 
   // Email to the store owner. Events without an owner template answer "not sent".

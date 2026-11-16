@@ -288,6 +288,10 @@ describe(
       assert.deepEqual(provider, [{ event: "customer_request_accepted", channel: "sms" }]);
       const [still] = await outbox.readEffects([row.id]);
       assert.equal(still?.status, "abandoned");
+      assert.ok(
+        (await unsent()).some((entry) => entry.id === `message_not_sent:${row.id}`),
+        "the inbox still lists it",
+      );
     });
   },
 );

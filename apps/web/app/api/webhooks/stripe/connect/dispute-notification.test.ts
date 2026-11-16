@@ -255,4 +255,41 @@ describe("dispute alert retries", () => {
     assert.deepEqual(outcome.email, { sent: true });
     assert.deepEqual(outcome.sms, { sent: false, error: "quota lookup failed" });
   });
+
+  test("the dispatcher's own log of a channel that threw: its class and code, never its message", async () => {
+    const refusal = "Mailbox of Ada Lovelace <ada.lovelace@example.test> refused";
+    const logged: string[] = [];
+    const outcome = await dispatcher.dispatchNotification(
+      "payment_disputed",
+      {
+        ...CTX,
+        store: {
+          ...CTX.store,
+          ownerPhone: "+33612345678",
+          notificationSettings: {
+            ...DEFAULT_NOTIFICATION_SETTINGS,
+            payment_disputed: { email: true, sms: true, discord: false, push: false },
+          },
+        },
+      },
+      {
+        sendAdminEventEmail: async () => {
+          throw Object.assign(new Error(`SMTP 550: ${refusal}`), { code: "EENVELOPE" });
+        },
+        sendAdminSms: async () => {
+          throw new TypeError(refusal);
+        },
+        logError: (tag, message) => void logged.push(`${tag} ${message}`),
+      },
+    );
+
+    // The caller still gets each channel's own error.
+    assert.equal(outcome.email.sent, false);
+    assert.equal(outcome.sms.sent, false);
+    assert.deepEqual(logged, [
+      "notifications payment_disputed email to the owner of store store_dispute failed: Error (EENVELOPE)",
+      "notifications payment_disputed sms to the owner of store store_dispute failed: TypeError",
+    ]);
+    assert.doesNotMatch(logged.join("\n"), /Ada|ada\.lovelace|example\.test|Mailbox/);
+  });
 });
