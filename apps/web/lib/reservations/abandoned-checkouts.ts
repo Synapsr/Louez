@@ -2,6 +2,7 @@ import {
   type SQL,
   and,
   eq,
+  exists,
   gt,
   gte,
   inArray,
@@ -92,10 +93,26 @@ export interface AbandonedCheckout {
 }
 
 /**
+ * Whether the reservation of the row the query starts from is a storefront
+ * checkout: it has a session row of its checkout's own (`checkoutSessionRowIn`),
+ * not only a payment request's. Which sessions must be over before it is
+ * cancelled, and which mark is its newest, is asked of every rental session.
+ */
+function isStorefrontCheckout(): SQL {
+  const own = alias(payments, "checkout_payment");
+  return exists(
+    db
+      .select({ id: own.id })
+      .from(own)
+      .where(and(eq(own.reservationId, reservations.id), checkoutSessionRowIn(own))),
+  );
+}
+
+/**
  * The checkouts with an unsettled rental session old enough to be over: a
- * reservation from the storefront's online checkout, still `pending`, with no
- * rental payment `completed`, with a rental row of its checkout (`checkoutSessionRowIn`:
- * not a payment request's) whose session is unsettled
+ * reservation from the storefront's online checkout (`isStorefrontCheckout`),
+ * still `pending`, with no rental payment `completed`, with a rental row,
+ * a payment request's included, whose session is unsettled
  * (`unsettledCheckoutSession`) and that was written more than a session's
  * lifetime and a margin ago and less than 48 hours ago; a batch in `order` (at
  * random). The query starts from `payments`, through
@@ -111,9 +128,10 @@ export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
     .innerJoin(reservations, eq(reservations.id, payments.reservationId))
     .where(
       and(
+        // Any rental session, a payment request's included: money can still
+        // arrive on it. The reservation must be a storefront checkout.
         unsettledCheckoutSession,
-        // A payment request's session never makes a reservation a checkout.
-        checkoutSessionRowIn(payments),
+        isStorefrontCheckout(),
         gt(payments.createdAt, reachAfter(now)),
         lt(payments.createdAt, lookBefore(now)),
         eq(reservations.status, "pending"),
@@ -139,10 +157,10 @@ export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
 
 /**
  * The checkouts whose sessions are all settled and that have no payment left: a
- * reservation from the storefront's online checkout, still `pending`, with a
- * session row of its checkout (not a payment request's) marked settled, with no
- * rental payment `pending` or `completed`, no unsettled session, and whose newest
- * mark (`session_settled_at` of its rental sessions) is more than a session's
+ * reservation from the storefront's online checkout (`isStorefrontCheckout`),
+ * still `pending`, with no rental payment `pending` or `completed`, no unsettled
+ * session, and whose newest mark (`session_settled_at` of every rental session
+ * of the reservation, a payment request's included) is more than a session's
  * lifetime and a margin and less than 48 hours old. The delay is on the mark: a
  * resume in flight marks the session it replaces and installs its successor a
  * moment later, and the delay keeps the pass away from it; the cancellation's
@@ -159,8 +177,11 @@ export function settledCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
     .innerJoin(reservations, eq(reservations.id, payments.reservationId))
     .where(
       and(
-        // A payment request's session never makes a reservation a checkout.
-        checkoutSessionRowIn(payments),
+        // Any rental session's mark, a payment request's included; the
+        // reservation must be a storefront checkout.
+        eq(payments.type, "rental"),
+        isNotNull(payments.stripeCheckoutSessionId),
+        isStorefrontCheckout(),
         gt(payments.sessionSettledAt, reachAfter(now)),
         lt(payments.sessionSettledAt, lookBefore(now)),
         eq(reservations.status, "pending"),
@@ -311,7 +332,8 @@ export async function settleAbandonedCheckout(
   }
   if (states.some(({ state }) => state === "unknown")) return "unreadable";
 
-  // The cancellation names the checkout's newest session, never a payment request's.
+  // The cancellation names the checkout's own newest session; a reservation with
+  // none is no checkout, and is left.
   const [newest] = rows
     .filter(isCheckoutSessionRow)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());

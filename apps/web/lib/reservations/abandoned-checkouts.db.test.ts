@@ -457,7 +457,80 @@ describe(
       }
     });
 
-    test("a storefront checkout whose store also sent a payment request: once both are over, drawn and cancelled as a checkout", async () => {
+    test("a checkout whose payment request's session is still unsettled: drawn for it, that session read and marked, then the checkout cancelled", async () => {
+      // The checkout's session is settled; the request's, given since, never heard of.
+      const { id, sessions } = await checkout([
+        { status: "cancelled", age: 60 * MINUTE, settled: true },
+        { status: "pending", age: 40 * MINUTE, origin: "payment_request" },
+      ]);
+      const [own, request] = sessions.map(String);
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+      assert.deepEqual(
+        found.map((checkout) => [checkout.id, checkout.branch]),
+        [[id, "unsettled"]],
+      );
+
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ cancelled: 1 }));
+
+      assert.deepEqual(stripeCalls, [`retrieve ${request}`]);
+      assert.deepEqual(await settledOf(id), [own, request].sort());
+      assert.equal((await stateOf(id)).status, "cancelled");
+    });
+
+    test("a checkout dated by its newest mark, a payment request's included: its own settled two days ago, the request's since, drawn and cancelled", async () => {
+      const { id } = await checkout([
+        { status: "cancelled", age: 49 * HOUR, settled: true },
+        { status: "cancelled", age: 41 * MINUTE, settled: 40 * MINUTE, origin: "payment_request" },
+      ]);
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+      assert.deepEqual(
+        found.map((checkout) => [checkout.id, checkout.branch]),
+        [[id, "settled"]],
+      );
+
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ cancelled: 1 }));
+      assert.equal((await stateOf(id)).status, "cancelled");
+    });
+
+    test("a checkout whose payment request's session may still be paid is not cancelled", async () => {
+      // Given a moment ago: under the delay, not drawn, and left when its cancellation is asked.
+      const young = await checkout([
+        { status: "cancelled", age: 60 * MINUTE, settled: true },
+        { status: "pending", age: 10 * MINUTE, origin: "payment_request" },
+      ]);
+      // Old enough to be read, and still open at Stripe.
+      const open = await checkout([
+        { status: "cancelled", age: 60 * MINUTE, settled: true },
+        { status: "pending", age: 40 * MINUTE, origin: "payment_request" },
+      ]);
+      atStripe.set(String(open.sessions[1]), "open");
+
+      const found = await pass.findAbandonedCheckouts(new Date(), sql`1`);
+      assert.ok(!found.some((checkout) => checkout.id === young.id));
+      assert.deepEqual(await pass.settleAbandonedCheckouts(), counts({ unreadable: 1 }));
+
+      const { changeSystemReservationStatus } =
+        await import("@louez/api/services/system-reservation-status");
+      for (const { id, sessions } of [young, open]) {
+        assert.equal(
+          await changeSystemReservationStatus(
+            {
+              reason: "checkout_abandoned",
+              reservationId: id,
+              checkoutSessionId: String(sessions[0]),
+            },
+            async () => {},
+          ),
+          false,
+          id,
+        );
+        assert.equal((await stateOf(id)).status, "pending", id);
+      }
+    });
+
+    test("a storefront checkout whose store also sent a payment request, both settled together: drawn and cancelled", async () => {
       const { id } = await checkout([
         { status: "cancelled", age: 50 * MINUTE, settled: true },
         { status: "cancelled", age: 40 * MINUTE, settled: true, origin: "payment_request" },
@@ -473,7 +546,7 @@ describe(
       assert.equal((await stateOf(id)).status, "cancelled");
     });
 
-    test("a customer's own session is never opened on a pending reservation from the account page: only the checkout's resume pays one", async () => {
+    test("the account page opens no session on a pending reservation", async () => {
       const { id } = await checkout([]);
 
       assert.deepEqual(
