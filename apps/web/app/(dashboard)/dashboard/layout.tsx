@@ -36,6 +36,7 @@ import { isSelfHosted } from "@/lib/hosting";
 import { parseKeyboardShortcutOverrides } from "@/lib/keyboard-shortcuts";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { areAiCreditsEnabled } from "@/lib/plans";
+import { readNeedsALook } from "@/lib/inbox/needs-a-look-server";
 import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
@@ -130,6 +131,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     marketplaceListingUrl,
     electronicInvoicingEnabled,
     legacyBillingEnabled,
+    needsALook,
   ] = await Promise.all([
     getCurrentPlanSlug(store.id),
     getStoreLimits(store.id),
@@ -145,6 +147,8 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     getMarketplaceListingUrl(store.id),
     isElectronicInvoicingEnabled(store.id),
     legacyBillingApplies(store.id, new Date()),
+    // Whether anything needs a look, for the sidebar's marker: one item is enough.
+    readNeedsALook(1),
   ]);
   const billingAccess = await getBillingAccess(store, isPlatformAdmin);
 
@@ -177,6 +181,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                     userImage={session.user.image}
                     isPlatformAdmin={isPlatformAdmin}
                     aiCredits={aiCredits}
+                    needsALookWaiting={(needsALook?.items.length ?? 0) > 0}
                     marketplaceListingUrl={marketplaceListingUrl}
                     isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
                     reservationsPaused={

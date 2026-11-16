@@ -1,8 +1,8 @@
 /**
- * Where the sample approvals script may write: stricter than the other seed
- * scripts' guard (`validateEnvironment`), as it writes a credential row and
- * approvals. It runs only on a database on this machine, and only when its
- * command says it knows it writes sample data. Checked before anything
+ * Where the sample-data scripts (the approvals, what needs a look) may write:
+ * stricter than the other seed scripts' guard (`validateEnvironment`), as they
+ * write credential, payment and outbox rows. They run only on a database on
+ * this machine, and only when their command says it knows it writes sample data. Checked before anything
  * connects to the database; what it checked is what the script connects
  * with (`SampleConnection`), never the URL itself, whose query could name
  * another host or socket for the driver.
@@ -37,10 +37,12 @@ export function checkSampleDatabase(input: {
   databaseUrl: string | undefined;
   nodeEnv: string | undefined;
   flagged: boolean;
+  /** What the script writes, for the refusal that asks for the flag. */
+  writes: string;
 }): SampleDatabaseVerdict {
   const refuse = (reason: string) => ({ ok: false, reason }) as const;
   if (input.nodeEnv === "production") {
-    return refuse("NODE_ENV is production: the sample approvals are never written there.");
+    return refuse("NODE_ENV is production: sample data is never written there.");
   }
   const raw = input.databaseUrl;
   if (!raw) return refuse("DATABASE_URL is not set.");
@@ -59,7 +61,7 @@ export function checkSampleDatabase(input: {
   const host = url.hostname.toLowerCase();
   if (!LOOPBACK_HOSTS.has(host)) {
     return refuse(
-      `DATABASE_URL points at ${host || "no host"}, not at this machine (localhost, 127.0.0.1 or ::1): the sample approvals are written to a local database only.`,
+      `DATABASE_URL points at ${host || "no host"}, not at this machine (localhost, 127.0.0.1 or ::1): sample data is written to a local database only.`,
     );
   }
   const port = url.port === "" ? 3306 : Number(url.port);
@@ -69,7 +71,7 @@ export function checkSampleDatabase(input: {
   }
   if (!input.flagged) {
     return refuse(
-      `It writes an API key and three approvals to the database at ${host}: run it again with ${WRITE_SAMPLES_FLAG} to say you know.`,
+      `It writes ${input.writes} to the database at ${host}: run it again with ${WRITE_SAMPLES_FLAG} to say you know.`,
     );
   }
   return {

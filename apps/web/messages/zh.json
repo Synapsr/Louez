@@ -526,7 +526,8 @@
       "reservationLimitReached": "达到限制",
       "help": "帮助",
       "feedback": "帮助和反馈",
-      "aiCreditsLow": "信贷余额所剩无几"
+      "aiCreditsLow": "信贷余额所剩无几",
+      "needsALookWaiting": "有需要检查的事项"
     },
     "shortcuts": {
       "actions": {
@@ -938,7 +939,8 @@
       "settings": "设置",
       "store": "我的商店",
       "multiStore": "多店",
-      "aiCredits": "AI 额度"
+      "aiCredits": "AI 额度",
+      "needsALook": "待检查"
     },
     "multiStore": {
       "title": "多店",
@@ -6957,7 +6959,8 @@
       "settingsTaxes": "税收",
       "productsEdit": "编辑",
       "reservationsEdit": "编辑",
-      "settingsCustomerFields": "客户档案"
+      "settingsCustomerFields": "客户档案",
+      "needsALook": "待检查"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7186,6 +7189,112 @@
         "participantName": "使用者是谁？",
         "participantNamePlaceholder": "名字",
         "saved": "租赁详情已保存"
+      }
+    },
+    "needsALook": {
+      "title": "待检查",
+      "description": "Louez 无法自行处理的事项。",
+      "empty": {
+        "title": "没有需要检查的事项",
+        "description": "需要您处理的退款、押金、红字发票或消息会显示在这里。"
+      },
+      "incomplete": "部分事项无法加载。请稍后刷新页面。",
+      "urgent": "紧急",
+      "details": "详情",
+      "markHandled": "标记为已处理",
+      "confirm": {
+        "title": "标记为已处理？",
+        "description": "它将对整个团队隐藏。如果问题再次出现，它会重新显示。",
+        "heldBack": "在 Stripe 回复之前，退款金额仍会被保留。",
+        "cancel": "取消",
+        "confirm": "标记为已处理"
+      },
+      "handled": "已标记为已处理",
+      "changed": "该事项已发生变化：列表已更新。",
+      "alert": {
+        "title": "{count, plural, other {# 项待检查}}",
+        "titleCapped": "99+ 项待检查",
+        "description": "Louez 无法自行处理的退款、押金或消息。",
+        "action": "查看"
+      },
+      "actions": {
+        "viewPayment": "查看付款",
+        "viewBooking": "查看预订",
+        "viewProduct": "查看产品",
+        "invoicingSettings": "开票设置",
+        "notificationSettings": "通知设置",
+        "openTeam": "打开团队"
+      },
+      "facts": {
+        "stripeCharge": "Stripe 扣款",
+        "stripeRefund": "Stripe 退款",
+        "stripePayment": "Stripe 付款",
+        "stripeDispute": "Stripe 争议",
+        "creditNote": "红字发票",
+        "invoice": "发票",
+        "channel": "渠道",
+        "reference": "参考编号"
+      },
+      "refundUnconfirmed": {
+        "title": "退款未确认",
+        "summary": "Stripe 尚未确认 {day} 为预订 #{number} 发起的 {amount} 退款。再次退款前请在 Stripe 中核实。",
+        "heldBack": "在 Stripe 回复之前，Louez 会从该付款仍可退还的金额中保留这笔款项。"
+      },
+      "refundUndone": {
+        "title": "退款失败",
+        "summary": "预订 #{number} 的 {amount} 退款未成功：客户未收到退款。请在 Stripe 中核实，必要时重新退款。",
+        "summaryListed": "Stripe 先报告预订 #{number} 的 {amount} 退款失败，随后又显示为已退出。请在 Stripe 中核实客户是否已收到退款，必要时重新退款。",
+        "creditNote": "红字发票 {creditNote} 仍然有效：请在您的账务中更正。"
+      },
+      "creditNoteNotIssued": {
+        "title": "缺少红字发票",
+        "summary": "预订 #{number} 的 {amount} 退款尚无红字发票。请检查您的开票设置。",
+        "reasons": {
+          "mismatch": "记录的退款与请求不符，Louez 无法自行开具：请联系 Louez 支持。",
+          "pending": "Louez 尝试时退款尚未完成；Louez 每天都会重试。",
+          "unknown": "无法开具；Louez 每天都会重试。"
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "押金未确认",
+        "summary": "Stripe 尚未确认 {day} 为预订 #{number} 申请的 {amount} 押金预授权。请在 Stripe 中核实；在 Louez 中重新申请绝不会产生第二笔预授权。",
+        "summaryUnmatched": "Stripe 为预订 #{number} 持有一笔押金，但与 {day} 申请的 {amount} 不符，因此 Louez 未记录。请在 Stripe 中取消，然后在预订的押金部分关闭该请求。"
+      },
+      "depositReleaseFailed": {
+        "title": "押金可能仍被冻结",
+        "summary": "Stripe 尚未确认预订 #{number} 上第二笔 {amount} 押金预授权的释放：客户的卡上可能仍有该冻结。Louez 会继续请求；如果在 Stripe 中仍被冻结，请在那里取消。"
+      },
+      "disputeOpen": {
+        "title": "付款被争议",
+        "summaryAnswer": "客户对预订 #{number} 的一笔 {amount} 付款提出了争议。请在截止日期前在 Stripe 中回应。",
+        "summaryReview": "预订 #{number} 有一笔 {amount} 的争议正在处理中：Stripe 正在审核。"
+      },
+      "einvoiceRejected": {
+        "titleRejected": "电子发票被拒",
+        "titleNotSent": "电子发票未发送",
+        "summaryRejected": "预订 #{number} 的发票 {invoice} 被电子发票网络拒绝。请在预订中查看。",
+        "summaryNotSent": "预订 #{number} 的发票 {invoice} 无法发送到电子发票网络。请在预订中查看。"
+      },
+      "messageNotSent": {
+        "title": "消息未发送",
+        "toCustomer": "预订 #{number} 的{message, select, customer_request_accepted {接受通知} customer_request_rejected {拒绝通知} customer_reservation_cancelled {取消通知} customer_reservation_modified {变更通知} customer_quote_sent {报价} customer_reservation_confirmed {确认通知} other {消息}}未送达客户。请您亲自联系客户。",
+        "toCustomerNoBooking": "有一条消息未送达客户。请您亲自联系客户。",
+        "toStore": "关于预订 #{number} 发给您团队的通知未发送。",
+        "toStoreNoBooking": "发给您团队的一条通知未发送。",
+        "reasons": {
+          "recipientChanged": "客户的邮箱地址在消息写好后发生了变化。",
+          "emailNotConfigured": "未设置邮件发送服务。",
+          "writtenWrong": "消息内容有误，无法发送。"
+        }
+      },
+      "invitationNotSent": {
+        "title": "邀请未发送",
+        "summary": "发给 {email} 的邀请邮件未发送。请在团队页面重新发送或分享其链接。"
+      },
+      "operationUnknown": {
+        "title": "待核实的操作",
+        "summary": "{day} 的一项操作可能未保存。重做之前请先检查记录。",
+        "summaryBy": "{client} 在 {day} 的一项操作可能未保存。重做之前请先检查记录。"
       }
     }
   },

@@ -78,6 +78,8 @@ interface DashboardSidebarProps {
    * A zero count stays silent until the store has actually spent a credit.
    */
   aiCredits?: { low: boolean; credits: number | null; hasUsedCredits: boolean } | null;
+  /** Something needs a look (dashboard/inbox): its entry carries the warning marker. */
+  needsALookWaiting: boolean;
   /** Public reeent listing of the store, null while it is not published there. */
   marketplaceListingUrl: string | null;
   /** The store signed up from the reeent consumer marketplace (ADR 010). */
@@ -283,6 +285,7 @@ export const DashboardSidebar = ({
   planSlug,
   isPlatformAdmin,
   aiCredits = null,
+  needsALookWaiting,
   marketplaceListingUrl,
   isFromReeent,
   reservationsPaused,
@@ -314,7 +317,11 @@ export const DashboardSidebar = ({
           isFromReeent={isFromReeent}
         />
 
-        <DashboardNavigation pathname={pathname} aiCredits={liveAiCredits} />
+        <DashboardNavigation
+          pathname={pathname}
+          aiCredits={liveAiCredits}
+          needsALook={{ waiting: needsALookWaiting }}
+        />
         <SidebarFooter className="border-sidebar-border border-t">
           <SidebarMenu>
             {/* Nudges sit in the same menu as the utilities they resemble —

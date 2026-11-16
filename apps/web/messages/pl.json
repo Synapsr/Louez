@@ -526,7 +526,8 @@
       "reservationLimitReached": "Limit osiągnięty",
       "help": "Pomoc",
       "feedback": "Pomoc i opinie",
-      "aiCreditsLow": "Niskie saldo kredytów"
+      "aiCreditsLow": "Niskie saldo kredytów",
+      "needsALookWaiting": "Są elementy do sprawdzenia"
     },
     "shortcuts": {
       "actions": {
@@ -938,7 +939,8 @@
       "analyticsSales": "Sprzedaż",
       "analyticsTraffic": "Ruch",
       "multiStore": "Multi-sklep",
-      "aiCredits": "Kredyty AI"
+      "aiCredits": "Kredyty AI",
+      "needsALook": "Do sprawdzenia"
     },
     "home": {
       "viewAll": "Zobacz wszystko",
@@ -6957,7 +6959,8 @@
       "settingsTaxes": "Podatki",
       "productsEdit": "Edytuj",
       "reservationsEdit": "Edytuj",
-      "settingsCustomerFields": "Karta klienta"
+      "settingsCustomerFields": "Karta klienta",
+      "needsALook": "Do sprawdzenia"
     },
     "notificationsCenter": {
       "title": "Powiadomienia",
@@ -7186,6 +7189,112 @@
         "participantName": "Dla kogo?",
         "participantNamePlaceholder": "Imię",
         "saved": "Zapisano szczegóły wynajmu"
+      }
+    },
+    "needsALook": {
+      "title": "Do sprawdzenia",
+      "description": "To, czego Louez nie mógł załatwić sam.",
+      "empty": {
+        "title": "Nic do sprawdzenia",
+        "description": "Tutaj pojawią się zwroty, kaucje, faktury korygujące lub wiadomości wymagające Twojej uwagi."
+      },
+      "incomplete": "Niektórych elementów nie udało się wczytać. Odśwież stronę za chwilę.",
+      "urgent": "Pilne",
+      "details": "Szczegóły",
+      "markHandled": "Oznacz jako załatwione",
+      "confirm": {
+        "title": "Oznaczyć jako załatwione?",
+        "description": "Zostanie ukryte dla całego zespołu. Wróci, jeśli problem się powtórzy.",
+        "heldBack": "Zwracana kwota pozostaje wstrzymana do odpowiedzi Stripe.",
+        "cancel": "Anuluj",
+        "confirm": "Oznacz jako załatwione"
+      },
+      "handled": "Oznaczono jako załatwione",
+      "changed": "Ten element zmienił się w międzyczasie: lista jest aktualna.",
+      "alert": {
+        "title": "{count, plural, one {# rzecz do sprawdzenia} few {# rzeczy do sprawdzenia} many {# rzeczy do sprawdzenia} other {# rzeczy do sprawdzenia}}",
+        "titleCapped": "99+ rzeczy do sprawdzenia",
+        "description": "Zwroty, kaucje lub wiadomości, których Louez nie mógł załatwić sam.",
+        "action": "Zobacz"
+      },
+      "actions": {
+        "viewPayment": "Zobacz płatność",
+        "viewBooking": "Zobacz rezerwację",
+        "viewProduct": "Zobacz produkt",
+        "invoicingSettings": "Ustawienia fakturowania",
+        "notificationSettings": "Ustawienia powiadomień",
+        "openTeam": "Otwórz zespół"
+      },
+      "facts": {
+        "stripeCharge": "Obciążenie Stripe",
+        "stripeRefund": "Zwrot Stripe",
+        "stripePayment": "Płatność Stripe",
+        "stripeDispute": "Spór Stripe",
+        "creditNote": "Faktura korygująca",
+        "invoice": "Faktura",
+        "channel": "Kanał",
+        "reference": "Numer referencyjny"
+      },
+      "refundUnconfirmed": {
+        "title": "Zwrot niepotwierdzony",
+        "summary": "Stripe nie potwierdził zwrotu {amount} wykonanego {day} dla rezerwacji #{number}. Sprawdź go w Stripe, zanim zwrócisz ponownie.",
+        "heldBack": "Do odpowiedzi Stripe Louez wstrzymuje tę kwotę z tego, co płatność może jeszcze zwrócić."
+      },
+      "refundUndone": {
+        "title": "Zwrot nieudany",
+        "summary": "Zwrot {amount} dla rezerwacji #{number} nie doszedł do skutku: klient nie otrzymał zwrotu. Sprawdź go w Stripe i w razie potrzeby zwróć ponownie.",
+        "summaryListed": "Stripe zgłosił, że zwrot {amount} dla rezerwacji #{number} się nie powiódł, a potem pokazał go jako wypłacony. Sprawdź w Stripe, czy klient otrzymał zwrot, i w razie potrzeby zwróć ponownie.",
+        "creditNote": "Faktura korygująca {creditNote} pozostaje wystawiona: popraw ją w księgowości."
+      },
+      "creditNoteNotIssued": {
+        "title": "Brak faktury korygującej",
+        "summary": "Zwrot {amount} dla rezerwacji #{number} nie ma jeszcze faktury korygującej. Sprawdź ustawienia fakturowania.",
+        "reasons": {
+          "mismatch": "Zarejestrowany zwrot nie zgadza się z żądaniem, więc Louez nie może jej wystawić sam: skontaktuj się z pomocą Louez.",
+          "pending": "Zwrot nie był jeszcze rozliczony, gdy Louez próbował; Louez ponawia próbę codziennie.",
+          "unknown": "Nie udało się jej wystawić; Louez ponawia próbę codziennie."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Kaucja niepotwierdzona",
+        "summary": "Stripe nie potwierdził blokady kaucji {amount} zleconej {day} dla rezerwacji #{number}. Sprawdź ją w Stripe; ponowne zlecenie w Louez nigdy nie tworzy drugiej blokady.",
+        "summaryUnmatched": "Stripe trzyma kaucję dla rezerwacji #{number}, która nie zgadza się z kwotą {amount} zleconą {day}, więc Louez jej nie zapisał. Anuluj ją w Stripe, a potem zamknij żądanie w sekcji kaucji rezerwacji."
+      },
+      "depositReleaseFailed": {
+        "title": "Kaucja może być nadal zablokowana",
+        "summary": "Stripe nie potwierdził zwolnienia drugiej blokady kaucji {amount} dla rezerwacji #{number}: karta klienta może ją nadal mieć. Louez nadal o to prosi; jeśli w Stripe jest wciąż zablokowana, anuluj ją tam."
+      },
+      "disputeOpen": {
+        "title": "Płatność zakwestionowana",
+        "summaryAnswer": "Klient zakwestionował płatność {amount} za rezerwację #{number}. Odpowiedz na spór w Stripe przed terminem.",
+        "summaryReview": "Spór na {amount} dotyczący rezerwacji #{number} jest otwarty: Stripe go rozpatruje."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "E-faktura odrzucona",
+        "titleNotSent": "E-faktura niewysłana",
+        "summaryRejected": "Faktura {invoice} dla rezerwacji #{number} została odrzucona przez sieć e-fakturowania. Sprawdź ją w rezerwacji.",
+        "summaryNotSent": "Nie udało się wysłać faktury {invoice} dla rezerwacji #{number} do sieci e-fakturowania. Sprawdź ją w rezerwacji."
+      },
+      "messageNotSent": {
+        "title": "Wiadomość niewysłana",
+        "toCustomer": "Do klienta nie dotarła {message, select, customer_request_accepted {wiadomość o akceptacji} customer_request_rejected {wiadomość o odrzuceniu} customer_reservation_cancelled {wiadomość o anulowaniu} customer_reservation_modified {wiadomość o zmianie} customer_quote_sent {oferta} customer_reservation_confirmed {wiadomość z potwierdzeniem} other {wiadomość}} dotycząca rezerwacji #{number}. Skontaktuj się z nim sam.",
+        "toCustomerNoBooking": "Wiadomość nie dotarła do klienta. Skontaktuj się z nim sam.",
+        "toStore": "Powiadomienie dla zespołu o rezerwacji #{number} nie zostało wysłane.",
+        "toStoreNoBooking": "Powiadomienie dla zespołu nie zostało wysłane.",
+        "reasons": {
+          "recipientChanged": "Adres e-mail klienta zmienił się po jej napisaniu.",
+          "emailNotConfigured": "Nie skonfigurowano usługi wysyłki e-maili.",
+          "writtenWrong": "Była źle przygotowana i nie mogła zostać wysłana."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Zaproszenie niewysłane",
+        "summary": "E-mail z zaproszeniem do {email} nie został wysłany. Wyślij go ponownie lub udostępnij link na stronie zespołu."
+      },
+      "operationUnknown": {
+        "title": "Działanie do sprawdzenia",
+        "summary": "Działanie z {day} mogło nie zostać zapisane. Sprawdź rekord, zanim je powtórzysz.",
+        "summaryBy": "Działanie {client} z {day} mogło nie zostać zapisane. Sprawdź rekord, zanim je powtórzysz."
       }
     }
   },
