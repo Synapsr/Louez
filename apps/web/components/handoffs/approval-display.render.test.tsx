@@ -18,6 +18,7 @@ import type { ApprovalPage, ShownPreview } from "@louez/api/services/approval-pa
 import {
   cancelInvitationPresentation,
   confirmOverridePresentation,
+  moveDatesPresentation,
   deletePaymentPresentation,
   recordDepositReturnPresentation,
   recordPaymentPresentation,
@@ -26,6 +27,7 @@ import {
   OVERRIDES_SAID,
 } from "@louez/api/services/approval-presentations";
 import { shownDisplay, shownPreview } from "@louez/api/services/approval-preview";
+import type { DateChangePreview } from "@louez/api/services/reservation-dates";
 import type { StatusChangePreview } from "@louez/api/services/reservation-status";
 
 import { sampleApprovals } from "../../scripts/seed/approvals-samples";
@@ -92,6 +94,41 @@ const short = (productName: string, requested: number, available: number) => ({
   available,
 });
 
+/** A booking's dates moved with an override, as the date change's preview holds it. */
+const datesPreview = (overrides: Partial<DateChangePreview> = {}): DateChangePreview => ({
+  summary:
+    "Move reservation #R-00094 for Camille Simon from 2026-12-13T13:00:00.000Z – 2026-12-17T13:00:00.000Z to 2026-12-13T13:00:00.000Z – 2026-12-19T13:00:00.000Z. Its total goes from 98.00 to 128.00 EUR (difference 30.00 EUR) …",
+  reservation: {
+    id: RESERVATION,
+    number: "R-00094",
+    status: "confirmed",
+    currency: "EUR",
+    previousStartDate: "2026-12-13T13:00:00.000Z",
+    previousEndDate: "2026-12-17T13:00:00.000Z",
+    startDate: "2026-12-13T13:00:00.000Z",
+    endDate: "2026-12-19T13:00:00.000Z",
+    previousTotal: "98.00",
+    total: "128.00",
+    previousTaxAmount: null,
+    taxAmount: null,
+    subtotalExclTax: null,
+    deposit: "50.00",
+    difference: "30.00",
+  },
+  customer: { name: "Camille Simon", email: "camille.simon@example.com" },
+  lines: [{ id: "itm_1", product: "Kayak biplace", quantity: 2, previousTotal: "98.00", total: "128.00" }],
+  capacity: { overbooked: true, shortfalls: [short("Paddle", 2, 1)] },
+  overbooking: { shortfalls: [short("Paddle", 2, 1)] },
+  turnoverBuffer: null,
+  units: [],
+  messages: [],
+  warnings: [],
+  recipientsHash: "0".repeat(64),
+  demand: [],
+  fingerprint: "[]",
+  ...overrides,
+});
+
 /** A status change's presentation, as the service builds it: from its preview. */
 const confirmed = (preview: StatusChangePreview) => ({
   preview,
@@ -113,6 +150,22 @@ const BRANCHES: Array<{
   /** For a status change: the preview it was built from, which says who the customer is to the caller. */
   preview?: StatusChangePreview;
 }> = [
+  {
+    name: "a booking's dates moved beyond the stock, no message",
+    summary: datesPreview().summary,
+    presentation: moveDatesPresentation(datesPreview()),
+  },
+  {
+    name: "a booking's dates moved past the buffer, a message goes",
+    summary: "Move reservation #R-00094 …",
+    presentation: moveDatesPresentation(
+      datesPreview({
+        overbooking: null,
+        turnoverBuffer: { shortfalls: [short("Kayak", 1, 0)], turnoverBufferMinutes: 120 },
+        messages: [{ message: "reservation_modified", channel: "email", to: "camille.simon@example.com" }],
+      }),
+    ),
+  },
   {
     name: "a payment recorded",
     summary: "Record a rental payment of €120.00 (cash) on reservation #R-00094.",
@@ -321,6 +374,42 @@ const screenLines = (html: string) => {
 
 /** What the six branches' screens read, in English and in French: the headline, then each fact. */
 const SCREENS: Record<string, { en: string[]; fr: string[] }> = {
+  "a booking's dates moved beyond the stock, no message": {
+    en: [
+      "Move the booking’s dates beyond your stock?",
+      "Booking #R-00094 · Camille Simon",
+      "Dates: Dec 13, 2026 – Dec 17, 2026 → Dec 13, 2026 2:00 PM – Dec 19, 2026 2:00 PM",
+      "New total: €128.00 (difference: €30.00). Nothing is charged or refunded.",
+      "Paddle: 2 requested, only 1 in stock: 1 missing",
+      "No message goes to the customer.",
+    ],
+    fr: [
+      "Déplacer les dates de la réservation au-delà de votre stock ?",
+      "Réservation #R-00094 · Camille Simon",
+      "Dates déplacées : 13 déc. 2026 – 17 déc. 2026 → 13 déc. 2026 14:00 – 19 déc. 2026 14:00",
+      "Nouveau total : 128,00 € (écart : 30,00 €). Rien n’est débité ni remboursé.",
+      "Paddle : 2 demandés, 1 seul en stock : 1 manquant",
+      "Aucun message n’est envoyé au client.",
+    ],
+  },
+  "a booking's dates moved past the buffer, a message goes": {
+    en: [
+      "Move the booking’s dates despite your turnover buffer?",
+      "Booking #R-00094 · Camille Simon",
+      "Dates: Dec 13, 2026 – Dec 17, 2026 → Dec 13, 2026 2:00 PM – Dec 19, 2026 2:00 PM",
+      "New total: €128.00 (difference: €30.00). Nothing is charged or refunded.",
+      "Kayak: 1 requested, none free with your 2 hr turnover buffer",
+      "Camille Simon will receive the “booking modified” email at camille.simon@example.com",
+    ],
+    fr: [
+      "Déplacer les dates de la réservation malgré votre délai entre deux locations ?",
+      "Réservation #R-00094 · Camille Simon",
+      "Dates déplacées : 13 déc. 2026 – 17 déc. 2026 → 13 déc. 2026 14:00 – 19 déc. 2026 14:00",
+      "Nouveau total : 128,00 € (écart : 30,00 €). Rien n’est débité ni remboursé.",
+      "Kayak : 1 demandé, aucun libre en respectant votre délai de 2 h",
+      "Camille Simon recevra l’e-mail « réservation modifiée » à camille.simon@example.com",
+    ],
+  },
   "a payment recorded": {
     en: [
       "Record a payment received?",

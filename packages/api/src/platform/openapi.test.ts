@@ -184,6 +184,7 @@ describe("OpenAPI document", () => {
         "GET /reservations/planning": "reservations_get_planning_timeline",
         "GET /reservations/upcoming": "reservations_list_upcoming",
         "GET /reservations/overdue": "reservations_list_overdue",
+        "POST /reservations/{id}": "reservations_update",
         "POST /reservations/{id}/status": "reservations_update_status",
         "POST /reservations/{id}/cancel": "reservations_cancel",
         "PATCH /reservations/{id}/notes": "reservations_update_notes",
