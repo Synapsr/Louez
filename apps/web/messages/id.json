@@ -6957,7 +6957,8 @@
       "settingsTaxes": "Pajak",
       "productsEdit": "Sunting",
       "reservationsEdit": "Sunting",
-      "settingsCustomerFields": "Data pelanggan"
+      "settingsCustomerFields": "Data pelanggan",
+      "needsALook": "Perlu dicek"
     },
     "notificationsCenter": {
       "title": "Pemberitahuan",
@@ -7187,6 +7188,109 @@
         "participantNamePlaceholder": "Nama depan",
         "saved": "Detail penyewaan disimpan"
       }
+    },
+    "needsALook": {
+      "title": "Perlu dicek",
+      "description": "Hal yang tidak bisa diselesaikan Louez sendiri.",
+      "empty": {
+        "title": "Tidak ada yang perlu dicek",
+        "description": "Pengembalian dana, deposit, nota kredit, atau pesan yang memerlukan Anda akan muncul di sini."
+      },
+      "incomplete": "Beberapa item tidak dapat dimuat. Muat ulang halaman sebentar lagi.",
+      "urgent": "Mendesak",
+      "details": "Detail",
+      "markHandled": "Tandai sudah ditangani",
+      "confirm": {
+        "title": "Tandai sudah ditangani?",
+        "description": "Item ini akan disembunyikan untuk seluruh tim Anda. Item muncul lagi jika masalahnya terulang.",
+        "heldBack": "Jumlah yang dikembalikan tetap ditahan sampai Stripe menjawab.",
+        "cancel": "Batal",
+        "confirm": "Tandai sudah ditangani"
+      },
+      "handled": "Ditandai sudah ditangani",
+      "changed": "Item ini berubah sementara itu: daftar sudah diperbarui.",
+      "actions": {
+        "viewPayment": "Lihat pembayaran",
+        "viewBooking": "Lihat pemesanan",
+        "viewProduct": "Lihat produk",
+        "invoicingSettings": "Pengaturan faktur",
+        "notificationSettings": "Pengaturan notifikasi",
+        "openTeam": "Buka tim"
+      },
+      "facts": {
+        "stripeCharge": "Tagihan Stripe",
+        "stripeRefund": "Pengembalian Stripe",
+        "stripePayment": "Pembayaran Stripe",
+        "stripeDispute": "Sengketa Stripe",
+        "creditNote": "Nota kredit",
+        "invoice": "Faktur",
+        "channel": "Saluran",
+        "reference": "Referensi"
+      },
+      "refundUnconfirmed": {
+        "title": "Pengembalian dana belum dikonfirmasi",
+        "summary": "Stripe belum mengonfirmasi pengembalian dana {amount} pada {day} untuk pemesanan #{number}. Periksa di Stripe sebelum mengembalikan dana lagi.",
+        "heldBack": "Sampai Stripe menjawab, Louez menahan jumlah ini dari yang masih bisa dikembalikan dari pembayaran."
+      },
+      "refundUndone": {
+        "title": "Pengembalian dana gagal",
+        "summary": "Pengembalian dana {amount} untuk pemesanan #{number} tidak berhasil: pelanggan belum menerima dana. Periksa di Stripe dan kembalikan lagi jika perlu.",
+        "summaryListed": "Laporan Stripe tentang pengembalian dana {amount} untuk pemesanan #{number} saling bertentangan. Periksa di Stripe apakah pelanggan sudah menerima dana, dan kembalikan lagi jika perlu.",
+        "creditNote": "Nota kredit {creditNote} tetap berlaku: koreksi di pembukuan Anda."
+      },
+      "creditNoteNotIssued": {
+        "title": "Nota kredit belum terbit",
+        "summary": "Pengembalian dana {amount} untuk pemesanan #{number} belum memiliki nota kredit. Periksa pengaturan faktur Anda.",
+        "reasons": {
+          "mismatch": "Pengembalian dana yang tercatat tidak cocok dengan permintaan, jadi Louez tidak bisa menerbitkannya sendiri: hubungi dukungan Louez.",
+          "pending": "Pengembalian dana belum selesai saat Louez mencoba; Louez mencoba lagi setiap hari.",
+          "unknown": "Nota kredit tidak dapat diterbitkan; Louez mencoba lagi setiap hari."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Deposit belum dikonfirmasi",
+        "summary": "Stripe belum mengonfirmasi penahanan deposit {amount} yang diminta pada {day} untuk pemesanan #{number}. Periksa di Stripe; meminta lagi di Louez tidak pernah membuat penahanan kedua.",
+        "summaryUnmatched": "Stripe menahan deposit untuk pemesanan #{number} yang tidak cocok dengan {amount} yang diminta pada {day}, jadi Louez tidak mencatatnya. Batalkan di Stripe, lalu tutup permintaannya di bagian deposit pemesanan."
+      },
+      "depositReleaseFailed": {
+        "title": "Deposit mungkin masih ditahan",
+        "summary": "Stripe belum mengonfirmasi pelepasan penahanan deposit kedua sebesar {amount} pada pemesanan #{number}: kartu pelanggan mungkin masih menanggungnya. Louez terus meminta; jika masih ditahan di Stripe, batalkan di sana."
+      },
+      "disputeOpen": {
+        "title": "Pembayaran disengketakan",
+        "summaryAnswer": "Pelanggan menyengketakan pembayaran {amount} untuk pemesanan #{number}. Tanggapi sengketa di Stripe sebelum tenggat.",
+        "summaryReview": "Sengketa {amount} untuk pemesanan #{number} sedang terbuka: Stripe sedang meninjaunya."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "E-faktur ditolak",
+        "titleNotSent": "E-faktur tidak terkirim",
+        "summaryRejected": "Faktur {invoice} untuk pemesanan #{number} ditolak oleh jaringan e-faktur. Periksa di pemesanan.",
+        "summaryNotSent": "Faktur {invoice} untuk pemesanan #{number} tidak dapat dikirim ke jaringan e-faktur. Periksa di pemesanan."
+      },
+      "messageNotSent": {
+        "title": "Pesan tidak terkirim",
+        "toCustomer": "{message, select, customer_request_accepted {pesan penerimaan} customer_request_rejected {pesan penolakan} customer_reservation_cancelled {pesan pembatalan} customer_reservation_modified {pesan perubahan} customer_quote_sent {penawaran} customer_reservation_confirmed {pesan konfirmasi} other {pesan}} untuk pemesanan #{number} tidak sampai ke pelanggan. Hubungi mereka sendiri.",
+        "toCustomerNoBooking": "Sebuah pesan tidak sampai ke pelanggan. Hubungi mereka sendiri.",
+        "toStore": "Notifikasi ke tim Anda tentang pemesanan #{number} tidak terkirim.",
+        "toStoreNoBooking": "Notifikasi ke tim Anda tidak terkirim.",
+        "reasons": {
+          "recipientChanged": "Alamat email pelanggan berubah setelah pesan ditulis.",
+          "emailNotConfigured": "Belum ada layanan pengiriman email yang diatur.",
+          "writtenWrong": "Pesan ditulis dengan salah dan tidak dapat dikirim."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Undangan tidak terkirim",
+        "summary": "Email undangan ke {email} tidak terkirim. Kirim lagi, atau bagikan tautannya, dari halaman tim."
+      },
+      "operationUnknown": {
+        "title": "Tindakan perlu dicek",
+        "summary": "Tindakan pada {day} mungkin tidak tersimpan. Periksa catatannya sebelum mengulanginya.",
+        "summaryBy": "Tindakan oleh {client} pada {day} mungkin tidak tersimpan. Periksa catatannya sebelum mengulanginya."
+      },
+      "unknownTitle": "Sesuatu perlu dicek",
+      "neutral": "Louez tidak bisa menyelesaikan ini sendiri. Buka untuk melihat apa yang terjadi.",
+      "viewAll": "Lihat semua"
     }
   },
   "storefront": {

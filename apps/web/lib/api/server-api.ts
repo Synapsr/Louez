@@ -39,6 +39,10 @@ export async function serverApi() {
       context,
       path: ["dashboard", "stores"],
     }),
+    inbox: createRouterClient(appRouter.dashboard.inbox, {
+      context,
+      path: ["dashboard", "inbox"],
+    }),
     team: createRouterClient(appRouter.dashboard.team, {
       context,
       path: ["dashboard", "team"],

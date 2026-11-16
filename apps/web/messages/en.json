@@ -6957,7 +6957,8 @@
       "settingsTaxes": "Taxes",
       "productsEdit": "Edit",
       "reservationsEdit": "Edit",
-      "settingsCustomerFields": "Customer record"
+      "settingsCustomerFields": "Customer record",
+      "needsALook": "To check"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -7187,6 +7188,109 @@
         "participantNamePlaceholder": "First name",
         "saved": "Rental details saved"
       }
+    },
+    "needsALook": {
+      "title": "To check",
+      "description": "What Louez couldn't settle on its own.",
+      "empty": {
+        "title": "Nothing to check",
+        "description": "Refunds, deposits, credit notes or messages that need you will show here."
+      },
+      "incomplete": "Some items couldn't be loaded. Reload the page in a moment.",
+      "urgent": "Urgent",
+      "details": "Details",
+      "markHandled": "Mark as handled",
+      "confirm": {
+        "title": "Mark as handled?",
+        "description": "It will be hidden for your whole team. It comes back if the problem happens again.",
+        "heldBack": "The refunded amount stays held back until Stripe answers.",
+        "cancel": "Cancel",
+        "confirm": "Mark as handled"
+      },
+      "handled": "Marked as handled",
+      "changed": "This item changed in the meantime: the list is up to date.",
+      "actions": {
+        "viewPayment": "View payment",
+        "viewBooking": "View booking",
+        "viewProduct": "View product",
+        "invoicingSettings": "Invoicing settings",
+        "notificationSettings": "Notification settings",
+        "openTeam": "Open team"
+      },
+      "facts": {
+        "stripeCharge": "Stripe charge",
+        "stripeRefund": "Stripe refund",
+        "stripePayment": "Stripe payment",
+        "stripeDispute": "Stripe dispute",
+        "creditNote": "Credit note",
+        "invoice": "Invoice",
+        "channel": "Channel",
+        "reference": "Reference"
+      },
+      "refundUnconfirmed": {
+        "title": "Refund not confirmed",
+        "summary": "Stripe hasn't confirmed the {amount} refund made on {day} for booking #{number}. Check it in Stripe before refunding again.",
+        "heldBack": "Until Stripe answers, Louez holds this amount back from what the payment can still refund."
+      },
+      "refundUndone": {
+        "title": "Refund failed",
+        "summary": "The {amount} refund on booking #{number} didn't go through: the customer wasn't refunded. Check it in Stripe and refund again if needed.",
+        "summaryListed": "Stripe's reports on the {amount} refund on booking #{number} contradict each other. Check in Stripe whether the customer was refunded, and refund again if needed.",
+        "creditNote": "Credit note {creditNote} still stands: correct it in your accounting."
+      },
+      "creditNoteNotIssued": {
+        "title": "Credit note missing",
+        "summary": "The {amount} refund on booking #{number} has no credit note yet. Check your invoicing settings.",
+        "reasons": {
+          "mismatch": "The refund recorded doesn't match the request, so Louez can't issue it on its own: contact Louez support.",
+          "pending": "The refund wasn't settled yet when Louez tried; Louez retries every day.",
+          "unknown": "It could not be issued; Louez retries every day."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Deposit not confirmed",
+        "summary": "Stripe hasn't confirmed the {amount} deposit hold asked on {day} for booking #{number}. Check it in Stripe; asking again in Louez never takes a second hold.",
+        "summaryUnmatched": "Stripe holds a deposit for booking #{number} that doesn't match the {amount} asked on {day}, so Louez didn't record it. Cancel it in Stripe, then close the request in the booking's deposit section."
+      },
+      "depositReleaseFailed": {
+        "title": "Deposit may still be held",
+        "summary": "Stripe hasn't confirmed the release of a second {amount} deposit hold on booking #{number}: the customer's card may still carry it. Louez keeps asking; if it's still held in Stripe, cancel it there."
+      },
+      "disputeOpen": {
+        "title": "Payment disputed",
+        "summaryAnswer": "The customer disputed a {amount} payment on booking #{number}. Answer the dispute in Stripe before its deadline.",
+        "summaryReview": "A {amount} dispute on booking #{number} is open: Stripe is reviewing it."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "E-invoice rejected",
+        "titleNotSent": "E-invoice not sent",
+        "summaryRejected": "Invoice {invoice} for booking #{number} was rejected by the e-invoicing network. Check it on the booking.",
+        "summaryNotSent": "Invoice {invoice} for booking #{number} could not be sent to the e-invoicing network. Check it on the booking."
+      },
+      "messageNotSent": {
+        "title": "Message not sent",
+        "toCustomer": "The {message, select, customer_request_accepted {acceptance message} customer_request_rejected {decline message} customer_reservation_cancelled {cancellation message} customer_reservation_modified {change message} customer_quote_sent {quote} customer_reservation_confirmed {confirmation message} other {message}} for booking #{number} didn't reach the customer. Contact them yourself.",
+        "toCustomerNoBooking": "A message didn't reach a customer. Contact them yourself.",
+        "toStore": "A notification to your team about booking #{number} was not sent.",
+        "toStoreNoBooking": "A notification to your team was not sent.",
+        "reasons": {
+          "recipientChanged": "The customer's e-mail address changed after it was written.",
+          "emailNotConfigured": "No e-mail service is set up for sending.",
+          "writtenWrong": "It was written incorrectly and could not be sent."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Invitation not sent",
+        "summary": "The invitation e-mail to {email} was not sent. Send it again, or share its link, from the team page."
+      },
+      "operationUnknown": {
+        "title": "Action to check",
+        "summary": "An action on {day} may not have been saved. Check the record before doing it again.",
+        "summaryBy": "An action by {client} on {day} may not have been saved. Check the record before doing it again."
+      },
+      "unknownTitle": "Something to check",
+      "neutral": "Louez couldn't settle this on its own. Open it to see what happened.",
+      "viewAll": "See all"
     }
   },
   "storefront": {

@@ -115,6 +115,15 @@ const ALLOWLIST = [
   },
   {
     rule: "R1",
+    file: "apps/web/scripts/seed/needs-a-look-write.ts",
+    expression: "reservations",
+    count: 1,
+    reason:
+      "local sample booking for the needs-a-look page, written as is: no status " +
+      "change to run effects for, never billable (no billableAt)",
+  },
+  {
+    rule: "R1",
     file: "apps/web/scripts/storefront-qa/seed.ts",
     expression: "schema.reservations",
     count: 2,

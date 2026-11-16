@@ -356,6 +356,39 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
       .where(orm.eq(louezDb.stores.id, "pl_store_0_000000001"));
   });
 
+  test("a session that names its store reads that one, whatever its active store, and only as a member", async () => {
+    const { resolveStoreActor } = await import("./actor");
+    const session = (userId: string) => ({
+      transport: "rpc" as const,
+      isPlatformAdmin: false,
+      credential: {
+        kind: "session" as const,
+        id: null,
+        clientName: null,
+        userId,
+        email: "session@pl.test",
+        storeId: null,
+        stores: null,
+        scopes: null,
+        confirmSensitive: false,
+        bundles: null,
+      },
+    });
+    // The page was rendered for STORE; another tab made OTHER_STORE the active one.
+    const elsewhere = new Headers({ cookie: `louez_active_store=${OTHER_STORE}` });
+
+    const named = await resolveStoreActor(session(OWNER), {
+      headers: elsewhere,
+      requestedStoreId: STORE,
+    });
+    assert.equal(named.storeId, STORE);
+
+    await rejects(
+      resolveStoreActor(session(MEMBER), { headers: elsewhere, requestedStoreId: OTHER_STORE }),
+      "NO_STORE_ACCESS",
+    );
+  });
+
   test("a store whose plan has no API access refuses keys", async () => {
     const { key: raw } = await key();
     apiAccess = false;

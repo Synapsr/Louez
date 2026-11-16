@@ -140,6 +140,13 @@ const ALLOWLIST = [
     reason: "development seed; `pnpm billing:mark --all` queues what it writes",
   },
   {
+    file: "apps/web/scripts/seed/needs-a-look-write.ts",
+    writes: { payments: 3 },
+    reason:
+      "local sample rows for the needs-a-look page, left unmarked on purpose: billing " +
+      "never syncs them, and their booking is never billable (no billableAt)",
+  },
+  {
     file: "apps/web/scripts/seed/demo/index.ts",
     writes: {
       payments: 1,

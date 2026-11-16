@@ -750,7 +750,8 @@ export function UnifiedPaymentSection({
 
   return (
     <TooltipProvider>
-      <Card>
+      {/* `#payment`: where "needs a look" opens a money item (dashboard/inbox). */}
+      <Card id="payment" className="scroll-mt-20">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">

@@ -6957,7 +6957,8 @@
       "settingsTaxes": "세금",
       "productsEdit": "편집",
       "reservationsEdit": "편집",
-      "settingsCustomerFields": "고객 정보"
+      "settingsCustomerFields": "고객 정보",
+      "needsALook": "확인 필요"
     },
     "notificationsCenter": {
       "title": "알림",
@@ -7187,6 +7188,109 @@
         "participantNamePlaceholder": "이름",
         "saved": "대여 세부 정보가 저장되었습니다"
       }
+    },
+    "needsALook": {
+      "title": "확인 필요",
+      "description": "Louez가 스스로 해결하지 못한 항목입니다.",
+      "empty": {
+        "title": "확인할 항목이 없습니다",
+        "description": "확인이 필요한 환불, 보증금, 신용 메모 또는 메시지가 여기에 표시됩니다."
+      },
+      "incomplete": "일부 항목을 불러오지 못했습니다. 잠시 후 페이지를 새로 고치세요.",
+      "urgent": "긴급",
+      "details": "세부 정보",
+      "markHandled": "처리됨으로 표시",
+      "confirm": {
+        "title": "처리됨으로 표시할까요?",
+        "description": "팀 전체에서 숨겨집니다. 문제가 다시 발생하면 다시 표시됩니다.",
+        "heldBack": "Stripe가 응답할 때까지 환불 금액은 계속 보류됩니다.",
+        "cancel": "취소",
+        "confirm": "처리됨으로 표시"
+      },
+      "handled": "처리됨으로 표시했습니다",
+      "changed": "그 사이 이 항목이 변경되었습니다. 목록이 최신 상태입니다.",
+      "actions": {
+        "viewPayment": "결제 보기",
+        "viewBooking": "예약 보기",
+        "viewProduct": "상품 보기",
+        "invoicingSettings": "청구 설정",
+        "notificationSettings": "알림 설정",
+        "openTeam": "팀 열기"
+      },
+      "facts": {
+        "stripeCharge": "Stripe 청구",
+        "stripeRefund": "Stripe 환불",
+        "stripePayment": "Stripe 결제",
+        "stripeDispute": "Stripe 분쟁",
+        "creditNote": "신용 메모",
+        "invoice": "청구서",
+        "channel": "채널",
+        "reference": "참조 번호"
+      },
+      "refundUnconfirmed": {
+        "title": "환불 미확인",
+        "summary": "Stripe가 {day}에 예약 #{number}에 대해 진행한 {amount} 환불을 아직 확인하지 않았습니다. 다시 환불하기 전에 Stripe에서 확인하세요.",
+        "heldBack": "Stripe가 응답할 때까지 Louez는 이 결제에서 아직 환불할 수 있는 금액에서 이 금액을 보류합니다."
+      },
+      "refundUndone": {
+        "title": "환불 실패",
+        "summary": "예약 #{number}의 {amount} 환불이 처리되지 않았습니다. 고객은 환불받지 못했습니다. Stripe에서 확인하고 필요하면 다시 환불하세요.",
+        "summaryListed": "예약 #{number}의 {amount} 환불에 대한 Stripe의 보고가 서로 맞지 않습니다. 고객이 환불받았는지 Stripe에서 확인하고 필요하면 다시 환불하세요.",
+        "creditNote": "신용 메모 {creditNote}는 발행된 상태로 남아 있습니다. 회계에서 수정하세요."
+      },
+      "creditNoteNotIssued": {
+        "title": "신용 메모 미발행",
+        "summary": "예약 #{number}의 {amount} 환불에 아직 신용 메모가 없습니다. 청구 설정을 확인하세요.",
+        "reasons": {
+          "mismatch": "기록된 환불이 요청과 일치하지 않아 Louez가 스스로 발행할 수 없습니다. Louez 지원팀에 문의하세요.",
+          "pending": "Louez가 시도했을 때 환불이 아직 완료되지 않았습니다. Louez는 매일 다시 시도합니다.",
+          "unknown": "발행하지 못했습니다. Louez는 매일 다시 시도합니다."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "보증금 미확인",
+        "summary": "Stripe가 {day}에 예약 #{number}에 대해 요청한 {amount} 보증금 승인 보류를 아직 확인하지 않았습니다. Stripe에서 확인하세요. Louez에서 다시 요청해도 두 번째 보류는 생기지 않습니다.",
+        "summaryUnmatched": "Stripe가 예약 #{number}에 대해 {day}에 요청한 {amount}와 일치하지 않는 보증금을 보유하고 있어 Louez가 기록하지 않았습니다. Stripe에서 취소한 뒤 예약의 보증금 섹션에서 요청을 닫으세요."
+      },
+      "depositReleaseFailed": {
+        "title": "보증금이 아직 보류 중일 수 있음",
+        "summary": "Stripe가 예약 #{number}의 두 번째 {amount} 보증금 보류 해제를 아직 확인하지 않았습니다. 고객 카드에 아직 남아 있을 수 있습니다. Louez는 계속 요청합니다. Stripe에서 아직 보류 중이면 그곳에서 취소하세요."
+      },
+      "disputeOpen": {
+        "title": "결제 이의 제기",
+        "summaryAnswer": "고객이 예약 #{number}의 {amount} 결제에 이의를 제기했습니다. 기한 전에 Stripe에서 답변하세요.",
+        "summaryReview": "예약 #{number}의 {amount} 분쟁이 진행 중입니다. Stripe가 검토하고 있습니다."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "전자 청구서 거부됨",
+        "titleNotSent": "전자 청구서 미전송",
+        "summaryRejected": "예약 #{number}의 청구서 {invoice}가 전자 청구 네트워크에서 거부되었습니다. 예약에서 확인하세요.",
+        "summaryNotSent": "예약 #{number}의 청구서 {invoice}를 전자 청구 네트워크로 보내지 못했습니다. 예약에서 확인하세요."
+      },
+      "messageNotSent": {
+        "title": "메시지 미전송",
+        "toCustomer": "예약 #{number}의 {message, select, customer_request_accepted {수락 메시지} customer_request_rejected {거절 메시지} customer_reservation_cancelled {취소 메시지} customer_reservation_modified {변경 메시지} customer_quote_sent {견적} customer_reservation_confirmed {확인 메시지} other {메시지}}가 고객에게 전달되지 않았습니다. 직접 연락하세요.",
+        "toCustomerNoBooking": "메시지가 고객에게 전달되지 않았습니다. 직접 연락하세요.",
+        "toStore": "예약 #{number}에 대한 팀 알림이 전송되지 않았습니다.",
+        "toStoreNoBooking": "팀 알림이 전송되지 않았습니다.",
+        "reasons": {
+          "recipientChanged": "메시지를 작성한 뒤 고객의 이메일 주소가 변경되었습니다.",
+          "emailNotConfigured": "이메일 발송 서비스가 설정되어 있지 않습니다.",
+          "writtenWrong": "잘못 작성되어 보낼 수 없었습니다."
+        }
+      },
+      "invitationNotSent": {
+        "title": "초대 미전송",
+        "summary": "{email}에게 보낸 초대 이메일이 전송되지 않았습니다. 팀 페이지에서 다시 보내거나 링크를 공유하세요."
+      },
+      "operationUnknown": {
+        "title": "확인이 필요한 작업",
+        "summary": "{day}의 작업이 저장되지 않았을 수 있습니다. 다시 하기 전에 기록을 확인하세요.",
+        "summaryBy": "{day}에 {client}의 작업이 저장되지 않았을 수 있습니다. 다시 하기 전에 기록을 확인하세요."
+      },
+      "unknownTitle": "확인할 항목",
+      "neutral": "Louez가 스스로 해결하지 못했습니다. 열어서 무슨 일이 있었는지 확인하세요.",
+      "viewAll": "모두 보기"
     }
   },
   "storefront": {
