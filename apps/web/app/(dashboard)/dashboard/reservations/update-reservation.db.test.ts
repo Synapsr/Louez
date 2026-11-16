@@ -39,6 +39,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
   let inbox: typeof import("@louez/api/services/inbox");
   let statusChange: typeof import("@louez/api/services/reservation-status");
   let editContext: typeof import("@louez/api/services");
+  let priceCart: typeof import("@louez/api/services/price-cart");
   let counter = 0;
 
   const useStore = (settings: Settings = { currency: "eur" }) =>
@@ -64,6 +65,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     inbox = await import("@louez/api/services/inbox");
     statusChange = await import("@louez/api/services/reservation-status");
     editContext = await import("@louez/api/services");
+    priceCart = await import("@louez/api/services/price-cart");
 
     await louezDb.db
       .insert(louezDb.stores)
@@ -625,6 +627,78 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
 
       assert.equal(result.error, undefined);
       assert.equal((await rowsOf(booking.id)).row?.startDate.getTime(), earlier.getTime());
+    });
+  });
+
+  describe("a line whose breakdown only records its facts (slice 9)", () => {
+    test("its product deleted, its dates moved: priced as a line with no breakdown, as before", async () => {
+      // 10.00 an hour, booked for two hours by the checkout: 20.00.
+      const hourly = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: hourly,
+        storeId: STORE,
+        name: "Paddle",
+        price: "10.00",
+        pricingMode: "hour",
+        quantity: 5,
+      });
+      const end = new Date(START.getTime() + 2 * 3_600_000);
+      // The checkout's own breakdown of an unpromoted line.
+      const breakdown = priceCart.checkoutLineBreakdown(
+        { price: 10, pricingMode: "hour" },
+        {
+          productId: hourly,
+          productName: "Paddle",
+          quantity: 1,
+          pricingKind: "duration",
+          duration: 2,
+          unitPrice: 20,
+          depositPerUnit: 0,
+          subtotal: 20,
+          originalSubtotal: 20,
+          savings: 0,
+          totalDeposit: 0,
+          taxSettings: null,
+        },
+        { taxRate: null, taxAmount: null, priceExclTax: null, totalExclTax: null },
+      );
+      const id = nextId("res");
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId: "customer_edits",
+        number: id,
+        status: "confirmed",
+        startDate: START,
+        endDate: end,
+        subtotalAmount: "20.00",
+        depositAmount: "0.00",
+        totalAmount: "20.00",
+        deliveryFee: "0.00",
+        discountAmount: "0.00",
+        source: "online",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: nextId("itm"),
+        reservationId: id,
+        productId: hourly,
+        quantity: 1,
+        unitPrice: "20.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        pricingBreakdown: breakdown,
+        productSnapshot: { name: "Paddle", description: null, images: [] },
+      });
+      await louezDb.db.delete(louezDb.products).where(eq(louezDb.products.id, hourly));
+
+      const result = await actions.updateReservation(id, {
+        endDate: new Date(START.getTime() + 3 * 3_600_000),
+      });
+
+      assert.equal(result.error, undefined);
+      // The fallback for a product gone reads no breakdown: the day it defaults to, once.
+      const { row, items } = await rowsOf(id);
+      assert.deepEqual([items[0]?.totalPrice, row?.totalAmount], ["20.00", "20.00"]);
     });
   });
 

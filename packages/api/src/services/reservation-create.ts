@@ -65,6 +65,7 @@ import { createReservationPresentation } from "./approval-presentations";
 import { capacityVerdictMetadata, turnoverBufferVerdictMetadata } from "./capacity-verdict";
 import { buildPrimaryLocationSnapshot } from "./location-snapshots";
 import {
+  checkoutLineBreakdown,
   computeReservationTotals,
   getReservationItemTaxFields,
   priceCart,
@@ -794,6 +795,8 @@ export async function createStoreReservation(
         subtotalExclTax: totals.subtotalExclTax === null ? null : money(totals.subtotalExclTax),
         taxAmount: totals.taxAmount === null ? null : money(totals.taxAmount),
         taxRate: totals.taxRate === null ? null : money(totals.taxRate),
+        // The facts it was priced with (slice 9), as the checkout records them.
+        taxDisplayMode: totals.displayMode,
         discountAmount: money(totals.discount),
         deliveryFee: money(totals.deliveryFee),
         // Frozen at creation, as the checkout writes it.
@@ -832,29 +835,8 @@ export async function createStoreReservation(
           unitPrice: money(line.unitPrice),
           depositPerUnit: money(line.depositPerUnit),
           totalPrice: money(line.subtotal),
-          // The checkout's pricing facts: a line with a promotion keeps its breakdown.
-          ...(line.promotion
-            ? {
-                pricingBreakdown: {
-                  basePrice: product.price,
-                  effectivePrice: line.unitPrice,
-                  duration: line.duration,
-                  pricingMode: product.pricingMode,
-                  pricingKind: line.pricingKind,
-                  discountPercent: line.promotion.percentage,
-                  discountAmount: line.promotion.discountAmount,
-                  tierApplied: null,
-                  promotion: line.promotion,
-                  taxRate: tax.taxRate,
-                  taxAmount: tax.taxAmount,
-                  subtotalExclTax: tax.totalExclTax,
-                  subtotalInclTax:
-                    tax.totalExclTax !== null && tax.taxAmount !== null
-                      ? tax.totalExclTax + tax.taxAmount
-                      : line.subtotal,
-                },
-              }
-            : {}),
+          // The checkout's pricing facts, the promotion included, on every line (slice 9).
+          pricingBreakdown: checkoutLineBreakdown(product, line, tax),
           productSnapshot: snapshot,
           combinationKey: choice.combinationKey,
           selectedAttributes: choice.selectedAttributes,
@@ -862,6 +844,7 @@ export async function createStoreReservation(
           taxAmount: tax.taxAmount?.toFixed(2) ?? null,
           priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
           totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+          taxExempt: false,
         });
       }
 

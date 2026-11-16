@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
+import { pricingBasisOf } from "@louez/api/services/pricing-facts";
 import { toastManager } from "@louez/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Plus, PenLine, AlertTriangle, Check, Mail } from "lucide-react";
@@ -200,10 +201,11 @@ function toReservationItemPayload(item: EditableItem) {
 }
 
 function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): EditableItem {
-  const isManualPrice =
-    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride === true;
+  // A breakdown written only to record facts is read as none, as before (slice 9).
+  const pricingBasis = pricingBasisOf(item.pricingBreakdown);
+  const isManualPrice = pricingBasis?.isManualOverride === true;
   const fallbackPricingMode = (item.product?.pricingMode ??
-    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.pricingMode ??
+    pricingBasis?.pricingMode ??
     "day") as PricingMode;
   const pricingMode = isManualPrice
     ? resolveInitialManualPricingMode(item.product, fallbackPricingMode, startDate, endDate)

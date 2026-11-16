@@ -771,6 +771,8 @@ export const SCHEMA_NAMES = {
     "target_mode",
     "target_type",
     "tax_amount",
+    "tax_display_mode",
+    "tax_exempt",
     "tax_rate",
     "tax_settings",
     "template_field_id",

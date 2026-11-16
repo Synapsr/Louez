@@ -19,6 +19,12 @@ import type { ApiEvent } from "../../platform/ports";
 import { createMemoryStorage } from "../../platform/memory-storage";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
+import {
+  NOT_RECORDED,
+  recordedPromotion,
+  recordedTaxDisplayMode,
+  recordedTaxExempt,
+} from "../../services/pricing-facts";
 
 process.env.AUTH_SECRET ??= "reservation-dates-test-secret";
 process.env.NODE_ENV = "test";
@@ -68,6 +74,12 @@ const OTHER_CUSTOMER = "rd_customer_00000002";
 const START = new Date("2030-06-01T09:00:00.000Z");
 const END = new Date("2030-06-03T09:00:00.000Z");
 const day = (date: Date, days: number) => new Date(date.getTime() + days * 86_400_000);
+// What the date change wrote for the facts test's input before 0107: no amount changes.
+const DATE_CHANGE_MONEY = ["52.50", "63.00", "52.50", "10.50", "20.00"];
+const DATE_CHANGE_LINES = [
+  ["22.50", "22.50", "20.00", "4.50", "22.50", "22.50"],
+  ["30.00", "30.00", "20.00", "6.00", "30.00", "30.00"],
+];
 const iso = (date: Date) => date.toISOString();
 
 describe(
@@ -695,6 +707,88 @@ describe(
         const [item] = await itemRows(id);
         assert.ok(expected.lines[0]?.promotion, "the engine applies it");
         assert.deepEqual(item?.pricingBreakdown?.promotion, expected.lines[0]?.promotion);
+      });
+
+      test("the facts it was priced with are carried through (slice 9); no amount changes", async () => {
+        await setSettings({ tax: HT });
+        const promoted = await product({
+          quantity: 3,
+          promotion: { percentage: 25, startsOn: null, endsOn: null },
+        });
+        const plain = await product({ quantity: 3 });
+        const lines = [{ productId: promoted }, { productId: plain }];
+        const { id, items } = await book(lines, {
+          edit: { taxDisplayMode: "exclusive" },
+          lineEdit: { taxExempt: false },
+        });
+        // The plain line records that no promotion applied, as the checkout writes it now.
+        await louezDb.db
+          .update(louezDb.reservationItems)
+          .set({
+            pricingBreakdown: {
+              basePrice: 10,
+              effectivePrice: 20,
+              duration: 2,
+              pricingMode: "day",
+              discountPercent: null,
+              discountAmount: 0,
+              tierApplied: null,
+              promotion: null,
+              taxRate: null,
+              taxAmount: null,
+              subtotalExclTax: null,
+              subtotalInclTax: null,
+            },
+          })
+          .where(orm.eq(louezDb.reservationItems.id, items[1]!));
+
+        await update(move(id, day(END, 1)), session());
+
+        const row = await reservationRow(id);
+        const written = await itemRows(id);
+        // The money, as the change wrote it before the facts were recorded.
+        assert.deepEqual(
+          [row.subtotalAmount, row.totalAmount, row.subtotalExclTax, row.taxAmount, row.taxRate],
+          DATE_CHANGE_MONEY,
+        );
+        assert.deepEqual(
+          written.map((item) => [
+            item.unitPrice,
+            item.totalPrice,
+            item.taxRate,
+            item.taxAmount,
+            item.priceExclTax,
+            item.totalExclTax,
+          ]),
+          DATE_CHANGE_LINES,
+        );
+        // The facts: kept as recorded; the promotion recorded, as the new price applied it.
+        assert.equal(recordedTaxDisplayMode(row), "exclusive");
+        assert.deepEqual(written.map(recordedTaxExempt), [false, false]);
+        const [kept, none] = written.map(recordedPromotion);
+        assert.ok(kept !== NOT_RECORDED && kept?.percentage === 25, JSON.stringify(kept));
+        assert.equal(none, null, "a line that recorded no promotion still records none");
+      });
+
+      test("the mode it records is the one its amounts were computed with", async () => {
+        // Booked before tax; the store now shows prices with tax. A line at 0 %
+        // costs the same in both modes, so the guard reproduces it.
+        await setSettings({ tax: TTC });
+        const zeroRated = await product({
+          quantity: 3,
+          taxSettings: { inheritFromStore: false, customRate: 0 },
+        });
+        const lines = [{ productId: zeroRated }];
+        const { id } = await book(lines, {
+          edit: { taxDisplayMode: "exclusive" },
+          lineEdit: { taxExempt: false },
+        });
+
+        await update(move(id, day(END, 1)), session());
+
+        await assertPricedByEngine(id, lines, { start: START, end: day(END, 1) });
+        assert.equal(recordedTaxDisplayMode(await reservationRow(id)), "inclusive");
+        assert.deepEqual((await itemRows(id)).map(recordedTaxExempt), [false]);
       });
 
       test("a promotion that ended since the booking is refused, nothing written", async () => {

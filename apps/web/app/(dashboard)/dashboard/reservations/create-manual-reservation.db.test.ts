@@ -14,6 +14,13 @@ import {
 import type { StoreSettings, UnitAttributes } from "@louez/types";
 import { buildCombinationKey } from "@louez/utils";
 
+import {
+  NOT_RECORDED,
+  recordedPromotion,
+  recordedTaxDisplayMode,
+  recordedTaxExempt,
+} from "@louez/api/services/pricing-facts";
+
 import { STORE_KEY } from "./actions-test-stubs";
 
 // A booking typed in the dashboard, on a migrated database: what stock it is
@@ -31,6 +38,23 @@ const SETTINGS: StoreSettings = {
   advanceNoticeMinutes: 0,
   currency: "eur",
 };
+// What the creation wrote for the facts test's input before 0107: no amount changes.
+const MANUAL_MONEY = {
+  subtotal: "532.50",
+  deposit: "0.00",
+  total: "532.50",
+  subtotalExclTax: null,
+  tax: null,
+  taxRate: null,
+  discount: "0.00",
+  deliveryFee: "0.00",
+  insurance: "12.50",
+};
+const MANUAL_LINES = [
+  ["Bike", "20.00", "20.00", null, null, null, null],
+  ["Delivery", "5.00", "500.00", null, null, null, null],
+  ["Garantie casse/vol", "12.50", "12.50", null, null, null, null],
+];
 /** What the marketplace's checkout proves it is with. */
 const MARKETPLACE_SECRET = "test-marketplace-secret";
 
@@ -1066,6 +1090,73 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
           await create([{ productId: bikes, quantity: 1 }], { tulipInsuranceOptIn: true }),
           refusedWith(shortfall(bikes, "Bike", 1, 0)),
         );
+      } finally {
+        Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
+      }
+    });
+  });
+
+  describe("the facts it was priced with (slice 9)", () => {
+    test("the tax display mode and each line's exemption are recorded; no amount changes", async () => {
+      const bikes = await product("Bike", 1);
+      Reflect.set(globalThis, INSURANCE_QUOTE_KEY, 12.5);
+      try {
+        const result = await withSettings(
+          { tax: { enabled: true, defaultRate: 20, displayMode: "exclusive" } },
+          () =>
+            create([{ productId: bikes, quantity: 1 }], {
+              customLines: [{ name: "Delivery", unitPrice: 5, quantity: 50 }],
+              tulipInsuranceOptIn: true,
+            }),
+        );
+        const { reservationId } = await writtenBy(result);
+        const r = louezDb.reservations;
+        const i = louezDb.reservationItems;
+        const [row] = await louezDb.db.select().from(r).where(eq(r.id, reservationId));
+        assert.ok(row);
+        const items = (
+          await louezDb.db.select().from(i).where(eq(i.reservationId, reservationId))
+        ).sort((a, b) => a.productSnapshot.name.localeCompare(b.productSnapshot.name, "en"));
+
+        // The money, as the creation wrote it before the facts were recorded.
+        assert.deepEqual(
+          {
+            subtotal: row.subtotalAmount,
+            deposit: row.depositAmount,
+            total: row.totalAmount,
+            subtotalExclTax: row.subtotalExclTax,
+            tax: row.taxAmount,
+            taxRate: row.taxRate,
+            discount: row.discountAmount,
+            deliveryFee: row.deliveryFee,
+            insurance: row.tulipInsuranceAmount,
+          },
+          MANUAL_MONEY,
+        );
+        assert.deepEqual(
+          items.map((item) => [
+            item.productSnapshot.name,
+            item.unitPrice,
+            item.totalPrice,
+            item.taxRate,
+            item.taxAmount,
+            item.priceExclTax,
+            item.totalExclTax,
+          ]),
+          MANUAL_LINES,
+        );
+
+        // The facts: the store's mode; the insurance outside the tax; no promotion priced.
+        assert.equal(recordedTaxDisplayMode(row), "exclusive");
+        assert.deepEqual(
+          items.map((item) => [item.productSnapshot.name, recordedTaxExempt(item)]),
+          [
+            ["Bike", false],
+            ["Delivery", false],
+            ["Garantie casse/vol", true],
+          ],
+        );
+        assert.equal(recordedPromotion(items[0]!), NOT_RECORDED);
       } finally {
         Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
       }
