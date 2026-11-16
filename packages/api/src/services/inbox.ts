@@ -8,8 +8,11 @@ import {
   inboxAcknowledgements,
   isPaymentReceiptSql,
   lockStoreRow,
+  invoicePayments,
   invoices,
+  isStripeRefundPaymentSql,
   paymentDisputes,
+  paymentRefundOperations,
   payments,
   productUnits,
   products,
@@ -113,6 +116,12 @@ const DEPOSIT_UNCONFIRMED_MINUTES = 15;
  * again after 1, 2, 4… minutes. It never leaves by age.
  */
 const DEPOSIT_RELEASE_GRACE_MINUTES = 30;
+/**
+ * A refund of an online payment still open shows once it is this old: past its key's
+ * life, only Stripe's account of the charge settles it (apps/web
+ * lib/reservations/stripe-refund.ts). It never leaves by age.
+ */
+const REFUND_UNCONFIRMED_HOURS = 24;
 /** Rejected e-invoices older than this are left out. */
 const EINVOICE_DAYS = 90;
 /** Operations older than this are left out. */
@@ -136,6 +145,9 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   payment_failed: ["payments", "reservations"],
   deposit_unconfirmed: ["payments", "reservations"],
   deposit_release_failed: ["payments", "reservations"],
+  refund_unconfirmed: ["payments", "reservations"],
+  refund_undone: ["payments", "reservations"],
+  credit_note_not_issued: ["payments", "reservations"],
   dispute_open: ["payments", "reservations"],
   unit_conflict: ["reservations", "products"],
   overbooking: ["reservations"],
@@ -867,6 +879,155 @@ const unreleasedDeposits: Source = async (window, shaper) => {
 };
 
 /**
+ * A refund of an online payment the store asked for, still open a day after it was
+ * asked (apps/web lib/reservations/stripe-refund.ts): Stripe has not said whether it
+ * made it. Its amount stays held back from what the payment can give back, and no age
+ * closes it: only Stripe's account of the charge does, or its refund when it is heard.
+ */
+const unconfirmedRefunds: Source = async (window, shaper) => {
+  const o = paymentRefundOperations;
+  const occurred =
+    sql<Date>`(${o.createdAt} + INTERVAL ${sql.raw(String(REFUND_UNCONFIRMED_HOURS))} HOUR)`.mapWith(
+      o.createdAt,
+    );
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      operationId: o.id,
+      occurredAt: occurred,
+      askedAt: o.createdAt,
+      paymentId: o.paymentId,
+      chargeId: o.stripeChargeId,
+      amountMinor: o.amountMinor,
+      currency: o.currency,
+      status: o.status,
+    })
+    .from(o)
+    .innerJoin(reservations, eq(reservations.id, o.reservationId))
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(o.storeId, window.storeId),
+        inArray(o.status, ["requested", "unresolved"]),
+        inWindow(window, "refund_unconfirmed", occurred, o.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, o.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const amount = minorToDecimal(row.amountMinor, row.currency);
+    const shown = money(amount, row.currency);
+    return candidate("refund_unconfirmed", row.operationId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: `Stripe has not confirmed the refund${shown ? ` of ${shown}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}: check the charge ${row.chargeId} in Stripe. Louez never sends it again once its request is a day old; it keeps the amount held back until Stripe shows the refund or shows it was never made.`,
+      reservation: about.reservation,
+      details: {
+        reservationId: row.id,
+        reservationNumber: row.number,
+        operationId: row.operationId,
+        paymentId: row.paymentId,
+        chargeId: row.chargeId,
+        amount,
+        currency: row.currency,
+        status: row.status,
+        askedAt: row.askedAt.toISOString(),
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
+const UNDONE_FEE_ACTIVITY = "inbox_undone_fee_activity";
+const undoneFeeActivity = alias(reservationActivity, UNDONE_FEE_ACTIVITY);
+const CREDIT_NOTE_LINK = "inbox_credit_note_link";
+const creditNoteLink = alias(invoicePayments, CREDIT_NOTE_LINK);
+const CREDIT_NOTE = "inbox_credit_note";
+const creditNote = alias(invoices, CREDIT_NOTE);
+
+/**
+ * A Stripe refund Louez recorded that Stripe then reported failed or canceled (apps/web
+ * lib/reservations/stripe-refund-writes.ts): its row is `failed` and the payment is
+ * back to what the store keeps, but what Louez cannot undo by itself is named here.
+ * The credit note issued for it stands (invoicing has no document that cancels one):
+ * the store corrects it by hand. The application fee given back on it stays given back
+ * (Stripe cannot take an application fee refund back). Shown while either is so.
+ */
+const undoneRefunds: Source = async (window, shaper) => {
+  const creditNoteNumber = sql<
+    string | null
+  >`(SELECT ${creditNote.number} FROM ${invoicePayments} AS ${sql.identifier(CREDIT_NOTE_LINK)} INNER JOIN ${invoices} AS ${sql.identifier(CREDIT_NOTE)} ON ${creditNote.id} = ${creditNoteLink.invoiceId} WHERE ${creditNoteLink.paymentId} = ${payments.id} AND ${creditNote.type} = 'credit_note' LIMIT 1)`;
+  const feeOverReturnedMinor = sql<
+    string | null
+  >`(SELECT MAX(CAST(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.overReturnedMinor') AS SIGNED)) FROM ${reservationActivity} AS ${sql.identifier(UNDONE_FEE_ACTIVITY)} WHERE ${undoneFeeActivity.reservationId} = ${payments.reservationId} AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.kind')) = 'refund_fee_over_returned' AND JSON_UNQUOTE(JSON_EXTRACT(${undoneFeeActivity.metadata}, '$.paymentId')) = ${payments.id})`;
+  const occurred = sql<Date>`${payments.updatedAt}`.mapWith(payments.updatedAt);
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      refundPaymentId: payments.id,
+      occurredAt: occurred,
+      refundId: payments.stripeRefundId,
+      amount: payments.amount,
+      currency: payments.currency,
+      creditNoteNumber,
+      feeOverReturnedMinor,
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(reservations.storeId, window.storeId),
+        eq(payments.status, "failed"),
+        isNotNull(payments.refundOfPaymentId),
+        isStripeRefundPaymentSql(),
+        sql`(${creditNoteNumber} IS NOT NULL OR ${feeOverReturnedMinor} IS NOT NULL)`,
+        inWindow(window, "refund_undone", occurred, payments.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, payments.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const currency = row.currency ?? shaper.currency;
+    const shown = money(row.amount, currency);
+    const fee =
+      row.feeOverReturnedMinor === null ? null : Number.parseInt(row.feeOverReturnedMinor, 10);
+    const feeAmount = fee === null ? null : minorToDecimal(fee, currency);
+    return candidate("refund_undone", row.refundPaymentId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: [
+        `Stripe reported the refund${row.refundId ? ` ${row.refundId}` : ""}${shown ? ` of ${shown}` : ""} on ${about.name} failed after Louez recorded it: Louez marked it failed and put the payment back.`,
+        row.creditNoteNumber
+          ? `The credit note ${row.creditNoteNumber} issued for it stands: correct it by hand in your accounting.`
+          : null,
+        feeAmount ? `Louez's fee given back on it (${money(feeAmount, currency) ?? feeAmount}) stays given back.` : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      reservation: about.reservation,
+      details: {
+        reservationId: row.id,
+        reservationNumber: row.number,
+        refundPaymentId: row.refundPaymentId,
+        refundId: row.refundId,
+        amount: row.amount,
+        currency,
+        creditNoteNumber: row.creditNoteNumber,
+        feeOverReturned: feeAmount,
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
+/**
  * The latest failed online payment or deposit hold of an open reservation,
  * when nothing made it good since: a rental payment completed after the
  * failure (money received, not a refund; a payment request only sends a
@@ -1468,6 +1629,67 @@ const unsentMessages: Source = async (window, shaper) => {
 };
 
 /**
+ * A refund's credit note the outbox gave up on after its tries
+ * (`payment.refundCreditNote`, abandoned): the refund is recorded and has no credit
+ * note. It stays owed: the cron arms the row again once a day (apps/web
+ * lib/reservations/stripe-refund-cron.ts), and the item leaves once the note is issued
+ * or turns out not to apply.
+ */
+const unissuedCreditNotes: Source = async (window, shaper) => {
+  const rows = await db
+    .select({
+      effectId: apiEffects.id,
+      payload: apiEffects.payload,
+      lastError: apiEffects.lastError,
+      // An abandoned row's next attempt is the time it was abandoned (platform/effects.ts).
+      occurredAt: apiEffects.nextAttemptAt,
+      ...reservationColumns,
+      // The refund row's own currency: a refund is in its payment's.
+      currency: sql<string | null>`(SELECT ${payments.currency} FROM ${payments} WHERE ${payments.id} = JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.refundId')))`,
+    })
+    .from(apiEffects)
+    .innerJoin(
+      reservations,
+      and(eq(reservations.id, apiEffects.reservationId), eq(reservations.storeId, window.storeId)),
+    )
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(apiEffects.storeId, window.storeId),
+        eq(apiEffects.status, "abandoned"),
+        eq(apiEffects.type, "payment.refundCreditNote"),
+        inWindow(window, "credit_note_not_issued", apiEffects.nextAttemptAt, apiEffects.id),
+      ),
+    )
+    .orderBy(...inOrder(apiEffects.nextAttemptAt, apiEffects.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const payload = row.payload ?? {};
+    const about = aboutReservation(shaper, row);
+    const amount = typeof payload.amount === "string" ? payload.amount : null;
+    const shown = amount ? money(amount, row.currency ?? shaper.currency) : null;
+    return candidate("credit_note_not_issued", row.effectId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: `The credit note was not issued for the refund${shown ? ` of ${shown}` : ""} on ${about.name}, after every try. Louez tries again once a day; if your invoicing settings changed, check them.`,
+      reservation: about.reservation,
+      details: {
+        effectId: row.effectId,
+        reservationId: row.id,
+        reservationNumber: row.number,
+        paymentId: typeof payload.paymentId === "string" ? payload.paymentId : null,
+        refundId: typeof payload.refundId === "string" ? payload.refundId : null,
+        amount,
+        lastError: row.lastError,
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
+/**
  * A write whose outcome is unknown: it went through but could not be
  * recorded, or it stayed running past its lease (platform/operations.ts).
  * None of a procedure the caller's agent may no longer reach (a ChatGPT
@@ -2001,6 +2223,9 @@ const SOURCES: Record<InboxItemType, Source> = {
   payment_failed: failedPayments,
   deposit_unconfirmed: unconfirmedDeposits,
   deposit_release_failed: unreleasedDeposits,
+  refund_unconfirmed: unconfirmedRefunds,
+  refund_undone: undoneRefunds,
+  credit_note_not_issued: unissuedCreditNotes,
   dispute_open: openDisputes,
   unit_conflict: unitConflicts,
   overbooking: overbookings,

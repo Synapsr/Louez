@@ -20,6 +20,8 @@ import {
   stores,
 } from "@louez/db";
 
+import { currencyMinorDigits } from "@louez/utils";
+
 import { log } from "@/lib/evlog";
 import { toStripeCents } from "@/lib/stripe";
 
@@ -38,7 +40,6 @@ import {
 } from "./stripe-refund-stripe";
 import {
   REFUND_TRANSACTION,
-  issueRefundCreditNotes,
   lockRefundReservation,
   recordChargeRefunds,
   refundTypeOf,
@@ -155,6 +156,8 @@ export type RefundRefusalReason =
     }
   /** A Stripe payment is refunded in its charge's currency, which this one is. */
   | { readonly code: "REFUND_CURRENCY_MISMATCH"; readonly currency: string }
+  /** A three-decimal currency, which Louez's billing does not count. */
+  | { readonly code: "REFUND_CURRENCY_NOT_SUPPORTED"; readonly currency: string }
   | { readonly code: "PAYMENT_DISPUTED" }
   | { readonly code: "NO_STRIPE_ACCOUNT" }
   | { readonly code: "REFUND_APPROVAL_USED" };
@@ -344,6 +347,10 @@ export async function requestStripeRefund(
   const currency = charge.currency.toUpperCase();
   if (input.currency.trim().toUpperCase() !== currency) {
     return refused({ code: "REFUND_CURRENCY_MISMATCH", currency });
+  }
+  // Louez and its billing count no three-decimal currency (`currencyMinorDigits`).
+  if (currencyMinorDigits(currency) === null) {
+    return refused({ code: "REFUND_CURRENCY_NOT_SUPPORTED", currency });
   }
 
   const [dispute] = await tx
@@ -542,6 +549,15 @@ export async function getRefundOperation(
 export type StripeRefundDeps = {
   readonly database: Database;
   readonly stripe: StripeRefundPort;
+  /** Runs the outbox rows a write added (the refund rows' credit notes), after its commit. */
+  readonly dispatchEffects?: (ids: readonly string[]) => void | Promise<void>;
+};
+
+/** The app's dispatcher, loaded when first used: it imports this module's sender. */
+const dispatchAppEffects = async (ids: readonly string[]) => {
+  if (ids.length === 0) return;
+  const { dispatchApiEffects } = await import("@/lib/api/effects");
+  dispatchApiEffects(ids);
 };
 
 /**
@@ -815,14 +831,16 @@ async function recordFound(
   const refunds = snapshot.refunds.some((candidate) => candidate.id === refund.id)
     ? snapshot.refunds
     : [refund, ...snapshot.refunds];
-  await recordChargeRefunds(deps.database, {
+  const recorded = await recordChargeRefunds(deps.database, {
     paymentId: operation.paymentId,
     reservationId: operation.reservationId,
     chargeId: operation.chargeId,
     currency: snapshot.charge.currency,
     amountCapturedMinor: snapshot.charge.amountCapturedMinor,
     refunds,
+    source: "stripe_refund_operation",
   });
+  await (deps.dispatchEffects ?? dispatchAppEffects)(recorded.effectIds);
 }
 
 /**

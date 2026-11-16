@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -12,8 +12,9 @@ import {
   reservations,
 } from "@louez/db";
 
+import { enqueueEffects } from "@louez/api/platform/effects";
+
 import { log } from "@/lib/evlog";
-import { tryGenerateCreditNoteForRefund } from "@/lib/invoicing/service";
 import { grossMinorOf } from "@/lib/reservations/payment-billing-facts";
 import { fromStripeCents } from "@/lib/stripe";
 
@@ -144,6 +145,8 @@ export type RecordedChargeRefunds = {
   readonly undone: readonly RecordedRefundRow[];
   /** What the store keeps of the charge. */
   readonly netMinor: number;
+  /** The credit notes owed for the rows written now: hand them to the dispatcher. */
+  readonly effectIds: readonly string[];
   /** The operations this write settled, `succeeded` or `failed`. */
   readonly settledOperationIds: readonly string[];
 };
@@ -182,6 +185,8 @@ export async function recordChargeRefunds(
     readonly amountCapturedMinor: number;
     /** Every refund of the charge, as Stripe lists it now. */
     readonly refunds: readonly ProviderRefund[];
+    /** Who heard it, for the invoicing log of each credit note. */
+    readonly source: string;
   },
 ): Promise<RecordedChargeRefunds> {
   const { paymentId, chargeId, currency } = input;
@@ -281,6 +286,7 @@ export async function recordChargeRefunds(
 
     const rows: RecordedRefundRow[] = [];
     const undone: RecordedRefundRow[] = [];
+    const effectIds: string[] = [];
     const settledOperationIds: string[] = [];
     for (const refund of input.refunds) {
       const operation = operationOf(refund);
@@ -345,6 +351,25 @@ export async function recordChargeRefunds(
         paidAt: new Date(refund.created * 1000),
       });
       rows.push({ refundId: refund.id, refundPaymentId, amount });
+      // Its credit note is owed from the transaction that writes the row.
+      if (!existing) {
+        effectIds.push(
+          ...(await enqueueEffects(tx, reservation.storeId, [
+            {
+              type: "payment.refundCreditNote",
+              reservationId: input.reservationId,
+              payload: {
+                storeId: reservation.storeId,
+                reservationId: input.reservationId,
+                paymentId,
+                refundId: refundPaymentId,
+                amount: amount.toFixed(2),
+                source: input.source,
+              },
+            },
+          ])),
+        );
+      }
 
       if (
         operation &&
@@ -422,84 +447,81 @@ export async function recordChargeRefunds(
       .where(eq(payments.id, paymentId));
     await markReservationIds(tx, [input.reservationId]);
 
-    return { rows, undone, netMinor, settledOperationIds };
+    return { rows, undone, netMinor, effectIds, settledOperationIds };
   }, REFUND_TRANSACTION);
 }
 
 /**
- * The credit note of each refund row, after the commit: one per refund row
- * (`generateCreditNoteForRefund` links it to the row, and skips a row already linked).
+ * Records the application fee Louez gave back on refunds that failed afterwards, once
+ * per fee and amount: Stripe cannot take an application fee refund back, so what was
+ * given back past the fee's share of what the store no longer keeps stays given back.
+ * An activity line on the payment's latest undone refund row names it, and the inbox's
+ * `refund_undone` shows it.
  */
-export async function issueRefundCreditNotes(
-  originalPaymentId: string,
-  rows: readonly RecordedRefundRow[],
-  source: string,
-): Promise<void> {
-  for (const row of rows) {
-    await tryGenerateCreditNoteForRefund(
-      { originalPaymentId, refundPaymentId: row.refundPaymentId },
-      row.amount,
-      source,
-    );
-  }
-}
-
-/**
- * Records that a refund failed or was canceled after Stripe made it (`refund.failed`,
- * `refund.updated`, `charge.refund.updated`): the operation it answers is `failed`
- * with Stripe's reason. A refund of no operation, or of an operation on another
- * account, changes nothing. The refund row already written for it, if any, stays as it
- * was: see docs/domain/reservation-invariants.md, M8.
- */
-export async function recordRefundFailure(
+export async function recordFeeOverReturned(
   database: Database,
-  input: { readonly accountId: string; readonly refund: ProviderRefund },
-): Promise<{ readonly operationId: string; readonly hadRefundRow: boolean } | null> {
-  const { refund } = input;
-  if (refundMovedMoney(refund)) return null;
-  const match = [
-    eq(paymentRefundOperations.stripeRefundId, refund.id),
-    ...(refund.operationId ? [eq(paymentRefundOperations.id, refund.operationId)] : []),
-  ];
-  const [found] = await database
-    .select({
-      id: paymentRefundOperations.id,
-      reservationId: paymentRefundOperations.reservationId,
-    })
-    .from(paymentRefundOperations)
-    .where(or(...match))
-    .limit(1);
-  if (!found) return null;
-
+  input: {
+    readonly reservationId: string;
+    readonly paymentId: string;
+    readonly fee: {
+      readonly feeId: string;
+      readonly targetMinor: number;
+      readonly feeRefundedMinor: number;
+    } | null;
+  },
+): Promise<boolean> {
+  const { fee } = input;
+  if (!fee || fee.feeRefundedMinor <= fee.targetMinor) return false;
+  const overReturnedMinor = fee.feeRefundedMinor - fee.targetMinor;
   return database.transaction(async (tx) => {
-    if (!(await lockRefundReservation(tx, found.reservationId))) return null;
-    const [operation] = await tx
-      .select({
-        status: paymentRefundOperations.status,
-        accountId: paymentRefundOperations.stripeAccountId,
-        stripeRefundId: paymentRefundOperations.stripeRefundId,
-        refundPaymentId: paymentRefundOperations.refundPaymentId,
-      })
-      .from(paymentRefundOperations)
-      .where(eq(paymentRefundOperations.id, found.id))
-      .for("update");
-    if (!operation || operation.accountId !== input.accountId) return null;
-    // An operation answered by another refund is not this one's.
-    if (operation.stripeRefundId !== null && operation.stripeRefundId !== refund.id) return null;
-    if (operation.status !== "failed") {
-      await tx
-        .update(paymentRefundOperations)
-        .set({
-          status: "failed",
-          stripeRefundId: refund.id,
-          failureCode: (refund.failureReason ?? refund.status ?? "failed").slice(0, 64),
-          failureMessage: null,
-          claimToken: null,
-          claimedUntil: null,
-          updatedAt: sql`NOW()`,
-        })
-        .where(eq(paymentRefundOperations.id, found.id));
-    }
-    return { operationId: found.id, hadRefundRow: operation.refundPaymentId !== null };
+    if (!(await lockRefundReservation(tx, input.reservationId))) return false;
+    const [undone] = await tx
+      .select({ id: payments.id })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.refundOfPaymentId, input.paymentId),
+          eq(payments.status, "failed"),
+          isStripeRefundPaymentSql(),
+        ),
+      )
+      .orderBy(desc(payments.updatedAt), desc(payments.id))
+      .limit(1);
+    if (!undone) return false;
+    const [recorded] = await tx
+      .select({ id: reservationActivity.id })
+      .from(reservationActivity)
+      .where(
+        and(
+          eq(reservationActivity.reservationId, input.reservationId),
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.kind')) = ${REFUND_FEE_OVER_RETURNED_ACTIVITY}`,
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.feeId')) = ${fee.feeId}`,
+          sql`CAST(JSON_EXTRACT(${reservationActivity.metadata}, '$.overReturnedMinor') AS SIGNED) >= ${overReturnedMinor}`,
+        ),
+      )
+      .limit(1);
+    if (recorded) return false;
+    await tx.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId: input.reservationId,
+      activityType: "payment_updated",
+      metadata: {
+        kind: REFUND_FEE_OVER_RETURNED_ACTIVITY,
+        paymentId: undone.id,
+        refundOfPaymentId: input.paymentId,
+        feeId: fee.feeId,
+        overReturnedMinor,
+      },
+      createdAt: new Date(),
+    });
+    log.error({
+      stripeRefund: {
+        issue: "fee_over_returned",
+        feeId: fee.feeId,
+        refundPaymentId: undone.id,
+        overReturnedMinor,
+      },
+    });
+    return true;
   }, REFUND_TRANSACTION);
 }

@@ -910,6 +910,60 @@ export async function retryDueEffects(
   );
 }
 
+/**
+ * The effects that are a debt, not a message: one the outbox gave up on stays owed,
+ * is kept past the retention, and is armed again by the cron.
+ */
+export const OWED_EFFECT_TYPES = ["payment.refundCreditNote"] as const satisfies readonly ApiEffectType[];
+
+/** How long an abandoned debt waits before the cron arms it again. */
+export const OWED_EFFECT_REARM_MS = 86_400_000;
+
+/**
+ * Arms again the abandoned rows of the owed effect types (`OWED_EFFECT_TYPES`) that
+ * were abandoned a day ago or more: back to pending with no attempt counted, so the
+ * outbox tries them again. A row armed again and abandoned again waits another day.
+ * The oldest first, bounded per run, in the database's time. The rows' ids, for the
+ * dispatcher.
+ */
+export async function rearmAbandonedEffects(limit = 20): Promise<string[]> {
+  const due = await db
+    .select({ id: apiEffects.id })
+    .from(apiEffects)
+    .where(
+      and(
+        eq(apiEffects.status, "abandoned"),
+        inArray(apiEffects.type, [...OWED_EFFECT_TYPES]),
+        // An abandoned row's next attempt is the time it was abandoned.
+        lte(apiEffects.nextAttemptAt, dbNowPlus(-OWED_EFFECT_REARM_MS)),
+      ),
+    )
+    .orderBy(asc(apiEffects.nextAttemptAt), asc(apiEffects.id))
+    .limit(limit);
+  const armed: string[] = [];
+  for (const { id } of due) {
+    // Only a row still abandoned and still due: a second run, at once, arms nothing.
+    const [result] = await db
+      .update(apiEffects)
+      .set({
+        status: "pending",
+        attempts: 0,
+        claimToken: null,
+        lockedUntil: null,
+        nextAttemptAt: dbNowPlus(0),
+      })
+      .where(
+        and(
+          eq(apiEffects.id, id),
+          eq(apiEffects.status, "abandoned"),
+          lte(apiEffects.nextAttemptAt, dbNowPlus(-OWED_EFFECT_REARM_MS)),
+        ),
+      );
+    if (result.affectedRows === 1) armed.push(id);
+  }
+  return armed;
+}
+
 /** Deletes the done rows older than the retention: their payloads hold personal data. */
 export async function pruneEffects(limit = 500) {
   const old = await db
@@ -919,6 +973,8 @@ export async function pruneEffects(limit = 500) {
       and(
         inArray(apiEffects.status, [...DONE]),
         lt(apiEffects.createdAt, dbNowPlus(-EFFECT_RETENTION_MS)),
+        // A debt is kept while it is owed: the cron arms it again (`rearmAbandonedEffects`).
+        sql`NOT (${apiEffects.status} = 'abandoned' AND ${inArray(apiEffects.type, [...OWED_EFFECT_TYPES])})`,
       ),
     )
     .limit(limit);

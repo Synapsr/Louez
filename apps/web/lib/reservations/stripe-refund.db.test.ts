@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import * as nodeModule from "node:module";
+import { createRequire } from "node:module";
 import { after, afterEach, before, beforeEach, describe, mock, test } from "node:test";
 
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -58,6 +59,18 @@ registerHooks({
 mock.module("@/lib/referral/rewards", {
   namedExports: { clawbackReferrerRewardForQualifyingPayment: async () => {} },
 });
+// The credit note's own document (a PDF, its storage) is not under test here: the
+// sender is given its issuer in each test that runs it.
+mock.module("@/lib/invoicing/refund-credit-note", {
+  namedExports: {
+    issueRefundCreditNote: async () => {
+      throw new Error("no credit note is issued in this suite");
+    },
+  },
+});
+
+// Under module mocks, @louez/utils is loaded through require for the API's services.
+mock.module("@louez/utils", { namedExports: createRequire(import.meta.url)("@louez/utils") });
 
 closeNetworkForSuite();
 withoutProviderSettings();
@@ -115,7 +128,15 @@ function fakeStripe() {
   >();
   const creates: Array<{ key: string; chargeId: string; amount: number }> = [];
   const behaviours: Behaviour[] = [];
-  const failures = { readCharge: 0, list: 0, incompleteListing: false };
+  const failures = {
+    readCharge: 0,
+    list: 0,
+    incompleteListing: false,
+    /** A refund the charge counts and its listing does not show. */
+    hiddenRefundedMinor: 0,
+  };
+  /** How many refunds a page lists. */
+  const listing = { pageSize: 100 };
   const feeRefunds: Array<{ feeId: string; amount: number }> = [];
 
   const chargeOf = (accountId: string, chargeId: string) => {
@@ -145,7 +166,7 @@ function fakeStripe() {
       return {
         chargeId,
         amountCapturedMinor: charge.captured,
-        amountRefundedMinor: movedMinor(charge),
+        amountRefundedMinor: movedMinor(charge) + failures.hiddenRefundedMinor,
         currency: charge.currency.toUpperCase(),
       };
     },
@@ -193,16 +214,22 @@ function fakeStripe() {
       if (behaviour === "lost_after") return indeterminate(false);
       return { kind: "created", refund: asProvider(charge, refund) };
     },
-    async listChargeRefunds({ accountId, chargeId }) {
+    async listChargeRefunds({ accountId, chargeId, startingAfter }) {
       const charge = chargeOf(accountId, chargeId);
       if (failures.list > 0) {
         failures.list--;
         throw new Error("Stripe could not be listed");
       }
       if (failures.incompleteListing) return { refunds: [], hasMore: true };
+      // Newest first, after the cursor, one page at a time.
+      const from = startingAfter
+        ? charge.refunds.findIndex((refund) => refund.id === startingAfter) + 1
+        : 0;
+      if (startingAfter && from === 0) throw new Error(`No such refund: ${startingAfter}`);
+      const page = charge.refunds.slice(from, from + listing.pageSize);
       return {
-        refunds: charge.refunds.map((refund) => asProvider(charge, refund)),
-        hasMore: false,
+        refunds: page.map((refund) => asProvider(charge, refund)),
+        hasMore: from + page.length < charge.refunds.length,
       };
     },
   };
@@ -287,6 +314,7 @@ function fakeStripe() {
     creates,
     behaviours,
     failures,
+    listing,
     feeRefunds,
     refundedEvent,
     refundInDashboard,
@@ -305,27 +333,13 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   let webhook: typeof import("@/app/api/webhooks/stripe/connect/charge-refund");
   let outbox: typeof import("@louez/api/platform/effects");
   let counter = 0;
-  /** Every credit note asked for: the generator links one to a refund row once. */
-  const creditNotes: Array<{ originalPaymentId: string; refundPaymentId: string }> = [];
+  /** The outbox rows the writes handed to the dispatcher, not run here. */
+  const dispatched: string[] = [];
   const env = { billing: process.env.LOUEZ_BILLING, url: process.env.BILLING_SERVICE_URL };
 
   before(async () => {
     database = await createTestDatabase("stripe_refund");
     // DATABASE_URL now points at the test database.
-    // The credit note's generator renders a PDF and stores it; its own guard links one
-    // to a refund row once (`already_invoiced`). It is replaced by one that notes what
-    // it is asked, so the suite sees each request for a credit note.
-    mock.module("@/lib/invoicing/service", {
-      namedExports: {
-        tryGenerateCreditNoteForRefund: async (context: {
-          originalPaymentId: string;
-          refundPaymentId: string;
-        }) => {
-          creditNotes.push(context);
-          return { status: "skipped", reason: "payment_not_eligible" };
-        },
-      },
-    });
     louezDb = await import("@louez/db");
     service = await import("./stripe-refund");
     writes = await import("./stripe-refund-writes");
@@ -349,7 +363,7 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   });
 
   beforeEach(() => {
-    creditNotes.length = 0;
+    dispatched.length = 0;
   });
 
   afterEach(() => {
@@ -450,7 +464,22 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   const deps = (stripe: FakeStripe): StripeRefundDeps => ({
     database: louezDb.db,
     stripe: stripe.port,
+    dispatchEffects: (ids) => {
+      dispatched.push(...ids);
+    },
   });
+
+  /** The credit notes owed for a refund row: the outbox rows that issue them, every one. */
+  const creditNoteRowsOf = (refundPaymentId: string) =>
+    louezDb.db
+      .select({ id: louezDb.apiEffects.id, status: louezDb.apiEffects.status })
+      .from(louezDb.apiEffects)
+      .where(
+        and(
+          eq(louezDb.apiEffects.type, "payment.refundCreditNote"),
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.apiEffects.payload}, '$.refundId')) = ${refundPaymentId}`,
+        ),
+      );
 
   /** The outbox's own sender, for this fake Stripe. */
   const senders = (stripe: FakeStripe) =>
@@ -609,7 +638,9 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
       status: "completed",
       grossMinor: 10_000,
     });
-    assert.deepEqual(creditNotes, [{ originalPaymentId: paymentId, refundPaymentId: rows[0]?.id }]);
+    const notes = await creditNoteRowsOf(rows[0]?.id ?? "");
+    assert.equal(notes.length, 1);
+    assert.deepEqual(dispatched, [notes[0]?.id]);
     assert.deepEqual(await refundEffects(operation.id), [
       { id: (await refundEffects(operation.id))[0]?.id, status: "sent" },
     ]);
@@ -752,13 +783,13 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     // 23 and a half hours: not sent again, and the key may still make it.
     await age(operation.id, { created: 23.5, sent: 23.5 });
     await assert.rejects(send(stripe, operation.id), /too old to send again/);
-    assert.equal((await readOperation(operation.id))?.status, "requested");
+    assert.equal((await readOperation(operation.id))?.status, "unresolved");
 
     // 25 hours, a listing that stops short: nothing proven.
     await age(operation.id, { created: 25, sent: 25 });
     stripe.failures.incompleteListing = true;
     await assert.rejects(send(stripe, operation.id));
-    assert.equal((await readOperation(operation.id))?.status, "requested");
+    assert.equal((await readOperation(operation.id))?.status, "unresolved");
 
     // 25 hours, a complete listing: it never happened.
     stripe.failures.incompleteListing = false;
@@ -867,10 +898,8 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     const rows = await refundRowsOf(paymentId);
     assert.equal(rows.length, 1);
     assert.equal((await readPayment(paymentId))?.amount, netAmount);
-    assert.deepEqual(
-      [...new Set(creditNotes.map((note) => `${note.originalPaymentId}/${note.refundPaymentId}`))],
-      [`${paymentId}/${rows[0]?.id}`],
-    );
+    // One credit note owed, counted without merging duplicates.
+    assert.equal((await creditNoteRowsOf(rows[0]?.id ?? "")).length, 1);
     assert.equal(
       stripe.feeRefunds.filter((refund) => refund.feeId === `fee_${chargeId}`).length,
       1,
@@ -999,39 +1028,260 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     );
   });
 
-  test("a refund that fails after Stripe made it fails its operation; its recorded row stays", async () => {
+  /** A credit note issued for a refund row, as invoicing links one. */
+  async function linkCreditNote(reservationId: string, refundPaymentId: string, number: string) {
+    const invoiceId = `inv_${++counter}`;
+    await louezDb.db.insert(louezDb.invoices).values({
+      id: invoiceId,
+      storeId: STORE,
+      reservationId,
+      customerId: "customer",
+      type: "credit_note",
+      kind: "credit_note",
+      number,
+      issueDate: "2026-10-02",
+      currency: "EUR",
+      sellerSnapshot: {} as never,
+      buyerSnapshot: {} as never,
+      lines: [],
+      vatBreakdown: [],
+      totalExclTax: "-50.00",
+      totalTax: "-10.00",
+      totalInclTax: "-60.00",
+      en16931Snapshot: {} as never,
+      documentId: `doc_${counter}`,
+      processingRule: "b2c",
+    });
+    await louezDb.db
+      .insert(louezDb.invoicePayments)
+      .values({ id: `ip_${counter}`, invoiceId, paymentId: refundPaymentId, amount: "-60.00" } as never);
+  }
+
+  test("a refund that fails after it was recorded is undone in the books, once, whatever arrives after", async () => {
     const stripe = fakeStripe();
-    const { paymentId, chargeId } = await createPayment(stripe);
-    const operation = await expectOk(await refund(stripe, request(paymentId, 1_000)));
+    const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+    const operation = await expectOk(await refund(stripe, request(paymentId, 6_000)));
+    await webhook.handleChargeRefunded(stripe.refundedEvent(chargeId), ACCOUNT, stripe.webhookPort);
+    const [row] = await refundRowsOf(paymentId);
+    assert.ok(row);
+    assert.equal((await readPayment(paymentId))?.amount, "40.00");
+    await linkCreditNote(reservationId, row.id, "AV-2026-0001");
+
     const made = stripe.charges.get(chargeId)?.refunds[0];
     assert.ok(made);
     made.status = "failed";
     made.failure_reason = "expired_or_canceled_card";
+    const event = { ...made, currency: "eur", charge: chargeId };
+    // Delivered twice, and charge.refunded after it.
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await webhook.handleRefundUpdated(event, ACCOUNT, stripe.webhookPort);
+    }
+    await webhook.handleChargeRefunded(stripe.refundedEvent(chargeId), ACCOUNT, stripe.webhookPort);
 
-    // On another account, nothing happens.
-    assert.deepEqual(
-      await webhook.handleRefundUpdated({ ...made, currency: "eur" }, OTHER_ACCOUNT),
-      { status: "no_operation" },
-    );
-    assert.deepEqual(await webhook.handleRefundUpdated({ ...made, currency: "eur" }, ACCOUNT), {
-      status: "operation_failed",
-      operationId: operation.id,
+    assert.deepEqual(await readPayment(paymentId), {
+      amount: "100.00",
+      status: "completed",
+      grossMinor: 10_000,
     });
-    assert.deepEqual(await webhook.handleRefundUpdated({ ...made, currency: "eur" }, ACCOUNT), {
-      status: "operation_failed",
-      operationId: operation.id,
-    });
-
-    const after = await readOperation(operation.id);
+    const [after] = await louezDb.db
+      .select({ status: louezDb.payments.status })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.id, row.id));
     assert.equal(after?.status, "failed");
-    assert.equal(after?.failureCode, "expired_or_canceled_card");
-    assert.equal((await refundRowsOf(paymentId)).length, 1);
-    // A refund of no operation is not Louez's to close.
-    const byHand = stripe.refundInDashboard(chargeId, 500);
+    const settled = await readOperation(operation.id);
+    assert.equal(settled?.status, "failed");
+    assert.equal(settled?.failureCode, "expired_or_canceled_card");
+
+    // Named once each for the inbox (stripe-refund-inbox.db.test.ts): the refund
+    // undone, and the 1.80 of the 3.00 fee given back for the 60.00, which Stripe
+    // cannot take back.
+    const undoneLines = await louezDb.db
+      .select({ metadata: louezDb.reservationActivity.metadata })
+      .from(louezDb.reservationActivity)
+      .where(
+        and(
+          eq(louezDb.reservationActivity.reservationId, reservationId),
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) IN ('refund_undone', 'refund_fee_over_returned')`,
+        ),
+      );
     assert.deepEqual(
-      await webhook.handleRefundUpdated({ ...byHand, status: "failed", currency: "eur" }, ACCOUNT),
-      { status: "no_operation" },
+      undoneLines.map((line) => (line.metadata as { kind: string }).kind).sort(),
+      ["refund_fee_over_returned", "refund_undone"],
     );
+    assert.equal(
+      undoneLines.find(
+        (line) => (line.metadata as { kind: string }).kind === "refund_fee_over_returned",
+      )?.metadata?.overReturnedMinor,
+      180,
+    );
+
+    // The whole payment can be refunded again.
+    const over = await refund(stripe, request(paymentId, 10_001));
+    assert.equal(!over.ok && over.code === "REFUND_EXCEEDS_REFUNDABLE" && over.refundableMinor, 10_000);
+
+    // The billing snapshot exports no refund for it.
+    const { buildReservationSnapshot } = await import(
+      "@/lib/billing-sync/snapshots/reservation-snapshot"
+    );
+    const snapshot = await buildReservationSnapshot(louezDb.db, {
+      aggregateType: "reservation",
+      aggregateId: reservationId,
+      storeId: STORE,
+    } as never);
+    assert.ok(!JSON.stringify(snapshot).includes(made.id));
+  });
+
+  test("a refund made in Stripe's dashboard that fails is undone the same way; one of another account changes nothing", async () => {
+    const stripe = fakeStripe();
+    const { paymentId, chargeId } = await createPayment(stripe);
+    const byHand = stripe.refundInDashboard(chargeId, 2_500);
+    await webhook.handleChargeRefunded(stripe.refundedEvent(chargeId), ACCOUNT, stripe.webhookPort);
+    assert.equal((await readPayment(paymentId))?.amount, "75.00");
+    byHand.status = "canceled";
+
+    assert.deepEqual(
+      await webhook.handleRefundUpdated(
+        { ...byHand, currency: "eur", charge: chargeId },
+        OTHER_ACCOUNT,
+        stripe.webhookPort,
+      ),
+      { status: "payment_not_found" },
+    );
+    assert.equal((await readPayment(paymentId))?.amount, "75.00");
+    assert.deepEqual(
+      await webhook.handleRefundUpdated(
+        { ...byHand, currency: "eur", charge: chargeId },
+        ACCOUNT,
+        stripe.webhookPort,
+      ),
+      { status: "recorded", paymentId, undone: 1 },
+    );
+    assert.equal((await readPayment(paymentId))?.amount, "100.00");
+  });
+
+  // ---------------------------------------------------------------------------
+  // Absence is proven by Stripe's account of the charge only
+  // ---------------------------------------------------------------------------
+
+  test("past the key's life, a listing that does not add up to the charge keeps the operation open and its amount held", async () => {
+    const stripe = fakeStripe();
+    const { paymentId } = await createPayment(stripe);
+    stripe.behaviours.push("timeout_before");
+    const operation = await expectOk(await refund(stripe, request(paymentId, 10_000)));
+    await age(operation.id, { created: 25, sent: 25 });
+    // The charge says 100.00 was refunded; its listing shows none.
+    stripe.failures.hiddenRefundedMinor = 10_000;
+
+    await assert.rejects(send(stripe, operation.id), /do not add up/);
+
+    assert.equal((await readOperation(operation.id))?.status, "unresolved");
+    const again = await refund(stripe, request(paymentId, 10_000));
+    assert.equal(
+      !again.ok && again.code === "REFUND_EXCEEDS_REFUNDABLE" && again.inFlightMinor,
+      10_000,
+    );
+  });
+
+  test("an unresolved operation whose refund surfaces late is recorded once", async () => {
+    const stripe = fakeStripe();
+    const { paymentId, chargeId } = await createPayment(stripe);
+    stripe.behaviours.push("lost_after");
+    stripe.failures.list = 1;
+    const operation = await expectOk(await refund(stripe, request(paymentId, 3_000)));
+    await age(operation.id, { created: 23.5, sent: 23.5 });
+    stripe.failures.incompleteListing = true;
+    await assert.rejects(send(stripe, operation.id));
+    assert.equal((await readOperation(operation.id))?.status, "unresolved");
+
+    stripe.failures.incompleteListing = false;
+    await webhook.handleChargeRefunded(stripe.refundedEvent(chargeId), ACCOUNT, stripe.webhookPort);
+    await send(stripe, operation.id);
+
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+    assert.equal((await refundRowsOf(paymentId)).length, 1);
+    assert.equal(stripe.creates.length, 1);
+  });
+
+  test("a refund on the listing's second page is found", async () => {
+    const stripe = fakeStripe();
+    stripe.listing.pageSize = 1;
+    const { paymentId, chargeId } = await createPayment(stripe);
+    stripe.behaviours.push("lost_after");
+    stripe.failures.list = 1;
+    const operation = await expectOk(await refund(stripe, request(paymentId, 3_000)));
+    // A newer refund comes first in the listing.
+    stripe.refundInDashboard(chargeId, 1_000);
+    await age(operation.id, { created: 23.5, sent: 23.5 });
+
+    await send(stripe, operation.id);
+
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+    assert.equal((await readPayment(paymentId))?.amount, "60.00");
+  });
+
+  // ---------------------------------------------------------------------------
+  // The manual writer and the online payment
+  // ---------------------------------------------------------------------------
+
+  test("a refund given by hand is refused on a payment taken through Stripe, also while an operation holds part of it", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId } = await createPayment(stripe);
+    await requestOnly(stripe, request(paymentId, 8_000));
+    const refunds = await import("@louez/api/services/payment-records");
+    const unused = async () => {
+      throw new Error("the writer is never reached");
+    };
+    await assert.rejects(
+      refunds.recordPaymentRefund(
+        {
+          storeId: STORE,
+          storeSettings: null,
+          port: { insert: unused, creditNote: unused } as never,
+          confirm: async () => null,
+          dispatchEffects: () => {},
+        },
+        { reservationId, paymentId, amount: "50.00", method: "cash" },
+        { source: "test" },
+      ),
+      (error: { data?: { code?: string } }) => error.data?.code === "REFUND_STRIPE_PAYMENT",
+    );
+    assert.deepEqual(await refundRowsOf(paymentId), []);
+  });
+
+  // ---------------------------------------------------------------------------
+  // The credit note is owed durably
+  // ---------------------------------------------------------------------------
+
+  test("a credit note that fails once is issued by the outbox's retry", async () => {
+    const stripe = fakeStripe();
+    const { paymentId } = await createPayment(stripe);
+    await expectOk(await refund(stripe, request(paymentId, 2_000)));
+    const [row] = await refundRowsOf(paymentId);
+    assert.ok(row);
+    const [note] = await creditNoteRowsOf(row.id);
+    assert.ok(note);
+
+    const issued: string[] = [];
+    let failures = 1;
+    const { createRefundCreditNoteEffectSenders } = await import(
+      "@/lib/invoicing/refund-credit-note-effects"
+    );
+    const senders = createRefundCreditNoteEffectSenders({
+      issue: async (request) => {
+        if (failures-- > 0) return { status: "failed", reason: "pdf_failed" } as never;
+        issued.push(request.refundId);
+        return { status: "issued" } as never;
+      },
+    }) as unknown as ApiEffectSenders;
+    await outbox.dispatchEffects([note.id], senders);
+    assert.equal((await creditNoteRowsOf(row.id))[0]?.status, "failed");
+    await louezDb.db.execute(
+      sql`UPDATE api_effects SET next_attempt_at = NOW() - INTERVAL 1 MINUTE WHERE id = ${note.id}`,
+    );
+    await outbox.dispatchEffects([note.id], senders);
+
+    assert.deepEqual(issued, [row.id]);
+    assert.equal((await creditNoteRowsOf(row.id))[0]?.status, "sent");
   });
 
   // ---------------------------------------------------------------------------
@@ -1236,6 +1486,12 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
       "REFUND_CURRENCY_MISMATCH",
     );
 
+    const dinars = await createPayment(stripe, { currency: "KWD" });
+    assert.equal(
+      await refusal(request(dinars.paymentId, 100, { currency: "KWD" })),
+      "REFUND_CURRENCY_NOT_SUPPORTED",
+    );
+
     const disputed = await createPayment(stripe);
     await louezDb.db.insert(louezDb.paymentDisputes).values({
       id: `dp_${RUN}_${++counter}`,
@@ -1263,7 +1519,7 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
         .where(eq(louezDb.stores.id, STORE));
     }
 
-    for (const payment of [paid, cash, pending, noCharge, disputed, orphan]) {
+    for (const payment of [paid, cash, pending, noCharge, dinars, disputed, orphan]) {
       assert.deepEqual(await operationsOf(payment.paymentId), []);
     }
     const effectsAfter = await louezDb.db
@@ -1329,7 +1585,7 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   test("the cron gives an operation whose outbox row was abandoned a new one, once, within its bounds", async () => {
     // The pass reads every store's operations: the other tests' are closed first.
     await louezDb.db.execute(
-      sql`UPDATE payment_refund_operations SET status = 'failed' WHERE status = 'requested'`,
+      sql`UPDATE payment_refund_operations SET status = 'failed' WHERE status IN ('requested', 'unresolved')`,
     );
     const stripe = fakeStripe();
     const { paymentId, chargeId } = await createPayment(stripe);

@@ -377,6 +377,7 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
     const chargeId = `ch_${RUN}_no_fee`;
     stripe.charges.set(chargeId, {
       amount: 10_000,
+      amountCaptured: 10_000,
       amountRefunded: 10_000,
       feeId: null,
       paymentIntentId: `pi_${RUN}_no_fee`,
