@@ -2131,8 +2131,9 @@ export const payments = mysqlTable(
  * may be sent, `unresolved` once its key can no longer be, until Stripe's account of
  * the charge settles it, whoever hears it first: the request, the outbox or the
  * Connect webhook. `pending` once Stripe made the refund and states it pending (or
- * awaiting an action): the money has not reached the customer, and no refund row is
- * written until Stripe states it succeeded or failed. All three hold back its amount.
+ * awaiting an action): its refund row is written, as Stripe counts the refund, and the
+ * money has not reached the customer yet. `requested` and `unresolved` hold back its
+ * amount; a `pending` one is counted through its row.
  * Kept apart from `payments`, which holds money that moved: the refund row it leads to
  * is `refund_payment_id`.
  */

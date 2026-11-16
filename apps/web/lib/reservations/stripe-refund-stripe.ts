@@ -227,10 +227,20 @@ export type RefundLookup =
   /** The listing is incomplete, or does not add up to the charge: it says nothing. */
   | { readonly kind: "unknown" };
 
-/** What a snapshot of the charge says of the operation's refund, by its id in the refund's metadata. */
-export function lookUpOperationRefund(snapshot: ChargeSnapshot, operationId: string): RefundLookup {
+/**
+ * What a snapshot of the charge says of the operation's refund: the refund whose id
+ * the operation recorded, when it recorded one, else the one whose metadata names the
+ * operation. Metadata can be edited at Stripe; a refund's id cannot.
+ */
+export function lookUpOperationRefund(
+  snapshot: ChargeSnapshot,
+  operation: { readonly id: string; readonly stripeRefundId: string | null },
+): RefundLookup {
   if (!snapshot.refunds) return { kind: "unknown" };
-  const refund = snapshot.refunds.find((candidate) => candidate.operationId === operationId);
+  const refund =
+    snapshot.refunds.find(
+      (candidate) => operation.stripeRefundId !== null && candidate.id === operation.stripeRefundId,
+    ) ?? snapshot.refunds.find((candidate) => candidate.operationId === operation.id);
   if (refund) return { kind: "found", refund };
   const listedMinor = snapshot.refunds
     .filter(refundCountedByStripe)

@@ -759,6 +759,8 @@ type ClaimedOperation = {
   readonly chargeId: string;
   readonly amountMinor: number;
   readonly reason: RefundReason;
+  /** The refund Stripe made for it, once Louez recorded it. */
+  readonly stripeRefundId: string | null;
   readonly token: string;
   /** Sent now: Stripe has never seen its key, or the key's first request is under 23 hours. */
   readonly send: boolean;
@@ -801,6 +803,7 @@ async function claimOperation(database: Database, operationId: string): Promise<
         chargeId: o.stripeChargeId,
         amountMinor: o.amountMinor,
         reason: o.reason,
+        stripeRefundId: o.stripeRefundId,
         status: o.status,
         claimed: sql<number | null>`${o.claimedUntil} > NOW()`,
         sentBefore: sql<number>`${o.providerRequestedAt} IS NOT NULL`,
@@ -838,6 +841,7 @@ async function claimOperation(database: Database, operationId: string): Promise<
         chargeId: operation.chargeId,
         amountMinor: operation.amountMinor,
         reason: operation.reason,
+        stripeRefundId: operation.stripeRefundId,
         token,
         send,
         fresh: Number(operation.sentBefore) !== 1,
@@ -966,7 +970,7 @@ async function askStripe(
 
   context.throwIfAborted();
   const snapshot = await readChargeSnapshot(port, operation);
-  const found = lookUpOperationRefund(snapshot, operation.id);
+  const found = lookUpOperationRefund(snapshot, operation);
   if (found.kind === "found") return { kind: "found", refund: found.refund, snapshot };
   if (found.kind === "absent") {
     if (refusal) return { kind: "absent", ...refusal };

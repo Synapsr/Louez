@@ -1778,6 +1778,37 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     assert.deepEqual(await service.requeueStaleRefundOperations(louezDb.db), []);
   });
 
+  test("a pending refund whose metadata was removed at Stripe is still settled, by the refund id the operation recorded", async () => {
+    // The pass reads every store's operations: the other tests' are closed first.
+    await louezDb.db.execute(
+      sql`UPDATE payment_refund_operations SET status = 'failed' WHERE status IN ('requested', 'unresolved', 'pending')`,
+    );
+    const fake = fakeStripe();
+    fake.makes.status = "pending";
+    const { reservationId, paymentId, chargeId } = await createPayment(fake);
+
+    const operation = await expectOk(await refund(fake, request(paymentId, 2_500)));
+    const made = lastRefund(fake, chargeId);
+    assert.equal(operation.status, "pending");
+    assert.equal(operation.stripeRefundId, made.id);
+
+    // Its metadata no longer names the operation; Stripe then says it succeeded, and
+    // no event of it arrives.
+    made.metadata = {};
+    made.status = "succeeded";
+    await louezDb.db.execute(sql`
+      UPDATE api_effects SET created_at = NOW() - INTERVAL 2 HOUR
+      WHERE type = 'payment.refund'`);
+    const ids = await service.requeueStaleRefundOperations(louezDb.db);
+    assert.equal(ids.length, 1);
+    await outbox.dispatchEffects(ids, senders(fake));
+
+    assert.equal((await readOperation(operation.id))?.status, "succeeded");
+    assert.equal(fake.creates.length, 1);
+    assert.deepEqual(await statusOfRow(made.id), ["completed"]);
+    assert.equal(await rentalPaidOf(reservationId), 75);
+  });
+
   test("a refund that fails before Louez wrote its row is kept failed, and a stale listing never records it", async () => {
     const stripe = fakeStripe();
     const { reservationId, paymentId, chargeId } = await createPayment(stripe);
