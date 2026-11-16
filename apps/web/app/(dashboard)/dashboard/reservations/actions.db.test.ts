@@ -615,7 +615,8 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       const notFound = { error: "errors.reservationNotFound" };
       const paymentNotFound = { error: "errors.paymentNotFound" };
       try {
-        for (const crafted of [[], "", 7, null, undefined, { id: reservationId }]) {
+        // The last one is longer than any id: refused before a read like the others.
+        for (const crafted of [[], "", 7, null, undefined, { id: reservationId }, "x".repeat(22)]) {
           const id = crafted as unknown as string;
           const label = JSON.stringify(crafted) ?? "undefined";
           const table: Array<[string, Promise<unknown>, unknown]> = [

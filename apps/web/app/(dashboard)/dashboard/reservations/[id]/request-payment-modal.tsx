@@ -92,7 +92,8 @@ export function RequestPaymentModal({
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const remainingRental = totalAmount - paidAmount;
+  // In hundredths, as the server compares it: 0.57 due with 0.07 paid leaves 0.50, not 0.4999….
+  const remainingRental = (Math.round(totalAmount * 100) - Math.round(paidAmount * 100)) / 100;
   const canRequestDeposit =
     depositAmount > 0 && depositStatus !== "held" && depositStatus !== "captured";
   const canRequestRental = remainingRental >= 0.5;

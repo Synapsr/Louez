@@ -3277,13 +3277,16 @@ function formAmount(
   );
 }
 
+/** The length of a record id's column (`id()`, `@louez/db` schema): none is longer. */
+const RECORD_ID_MAX_LENGTH = 21;
+
 /**
- * Whether a call names a record by a non-empty string. An action called
- * directly with anything else (an array, a number) is refused as a record
- * not found, before any read: never a database error.
+ * Whether a call names a record by a string an id can be. An action called
+ * directly with anything else (an array, a number, megabytes of text) is
+ * refused as a record not found, before any read: never a database error.
  */
 function isRecordId(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0;
+  return typeof value === "string" && value.length > 0 && value.length <= RECORD_ID_MAX_LENGTH;
 }
 
 /** The dashboard's text for an amount `formAmount` refused. */
