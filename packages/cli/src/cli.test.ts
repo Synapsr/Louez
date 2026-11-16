@@ -408,10 +408,39 @@ describe("choosing the key", () => {
     ]);
   });
 
-  test("a value that is no key is never redacted: the version and the answers stay whole", async () => {
-    const version = await louez(["--version", "--api-key", "1"]);
-    assert.match(version.out(), /^louez \d+\.\d+\.\d+ \(API \d/);
-    assert.doesNotMatch(version.out(), /redacted/);
+  test("a malformed key is refused without repeating it, wherever it was given", async () => {
+    const { keys, fetch } = recorder();
+    const cases: Array<[string[], Record<string, string | undefined>, RegExp]> = [
+      // The argument would otherwise be echoed as unexpected.
+      [
+        ["stores", "list", "lz_hello_bad", "--api-key", "lz_hello_bad"],
+        {},
+        /--api-key is not a Louez API key/,
+      ],
+      [["--version", "--api-key", "lz_hello_bad"], {}, /--api-key is not a Louez API key/],
+      [
+        ["stores", "list"],
+        { LOUEZ_API_KEY: "lz_hello_bad" },
+        /LOUEZ_API_KEY is not a Louez API key/,
+      ],
+    ];
+    for (const [argv, env, message] of cases) {
+      const run = await louez(argv, { env, fetch });
+      assert.equal(run.code, EXIT.usage, argv.join(" "));
+      assert.match(run.err(), message);
+      assert.doesNotMatch(run.err() + run.out(), /hello/);
+    }
+    assert.deepEqual(keys, []);
+  });
+
+  test("a malformed LOUEZ_API_KEY under a valid --api-key is no secret: the answer stays whole", async () => {
+    const answer = { id: "X2hlbGxv", other: "lz_hello", count: 1 };
+    await serve((_, response) => sendJson(response, 200, answer));
+    const run = await louez(["stores", "list", "--api-key", OTHER], {
+      env: { LOUEZ_API_KEY: "lz_hello" },
+    });
+    assert.equal(run.code, EXIT.ok);
+    assert.equal(run.out(), `${JSON.stringify(answer)}\n`);
   });
 });
 
@@ -508,6 +537,86 @@ describe("encoded forms of the key", () => {
     assert.match(first, /"\[redacted\]":1,"count":1/);
     for (const value of Object.values(forms)) assert.ok(!run.err().includes(value));
   });
+});
+
+describe("Ctrl-C during the approved write", () => {
+  /** An API that asks for an approval, says it is approved, then never answers the approved write. */
+  async function stalledWrite(onWrite: (io: TestIo) => void) {
+    const writes: string[] = [];
+    const io = await testIo([...RECORD, "--wait"], {
+      env: { LOUEZ_API_KEY: KEY, LOUEZ_API_URL: "https://app.louez.test/api/v1" },
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (String(input).includes("/handoffs/")) {
+          return Promise.resolve(
+            Response.json({ id: "apr_1", status: "approved", failure: null, decision: null }),
+          );
+        }
+        if (headers.get("louez-confirmation") !== "apr_1") {
+          return Promise.resolve(
+            Response.json(approvalRequired("https://app.louez.test/handoffs/apr_1"), {
+              status: 412,
+            }),
+          );
+        }
+        writes.push(headers.get("idempotency-key") ?? "");
+        onWrite(io);
+        return new Promise((resolve, reject) => {
+          const signal = init?.signal;
+          signal?.addEventListener("abort", () => reject(signal.reason));
+          // Answers only when the test says so.
+          stalled.answer = () => resolve(Response.json(payment));
+        });
+      },
+    });
+    const stalled: { answer?: () => void } = {};
+    return { io, writes, stalled };
+  }
+
+  test(
+    "a first Ctrl-C says the write was sent and its result awaited; the result still comes",
+    { timeout: 10_000 },
+    async () => {
+      const { io, writes, stalled } = await stalledWrite((io) =>
+        queueMicrotask(() => {
+          io.interrupt();
+          queueMicrotask(() => stalled.answer?.());
+        }),
+      );
+      const code = await main(io);
+      assert.equal(code, EXIT.ok);
+      assert.deepEqual(JSON.parse(io.out()), payment);
+      assert.match(
+        io.err(),
+        /the approved write was sent; waiting for its result\. Ctrl-C again stops waiting/,
+      );
+      assert.equal(writes.length, 1);
+    },
+  );
+
+  test(
+    "a second Ctrl-C stops waiting: exit 4, an unknown outcome, the command to repeat with the same key",
+    { timeout: 10_000 },
+    async () => {
+      const { io, writes } = await stalledWrite((io) =>
+        queueMicrotask(() => {
+          io.interrupt();
+          io.interrupt();
+        }),
+      );
+      const code = await main(io);
+      assert.equal(code, EXIT.network);
+      assert.equal(writes.length, 1);
+      assert.match(io.err(), /Its outcome is unknown: Louez may have carried it out/);
+      assert.match(
+        io.err(),
+        new RegExp(
+          `\\n {2}louez payments record r1 --type rental --amount 10\\.00 --method cash --confirmation apr_1 --idempotency-key ${writes[0]}\\n`,
+        ),
+      );
+      assert.equal(writes[0], "generated-key-1");
+    },
+  );
 });
 
 describe("Ctrl-C during a read in flight", () => {

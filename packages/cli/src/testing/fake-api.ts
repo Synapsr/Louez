@@ -101,7 +101,7 @@ export interface TestIo extends Io {
   err(): string;
   /** Every wait the CLI asked for, in ms. */
   sleeps: number[];
-  /** Ctrl-C, now. */
+  /** Ctrl-C, now: it reaches the handlers watching at this moment. */
   interrupt(): void;
 }
 
@@ -127,7 +127,13 @@ export async function testIo(
   let stderr = "";
   let clock = options.startAt ?? Date.parse("2026-11-15T10:00:00Z");
   const sleeps: number[] = [];
-  const interrupt = new AbortController();
+  // As process.once("SIGINT"): a Ctrl-C reaches each handler watching, once.
+  const watching = new Set<AbortController>();
+  const interrupt = () => {
+    const reached = [...watching];
+    watching.clear();
+    for (const controller of reached) controller.abort();
+  };
   return {
     argv,
     env: Object.fromEntries(
@@ -148,7 +154,7 @@ export async function testIo(
     sleep: async (ms) => {
       sleeps.push(ms);
       clock += ms;
-      if (sleeps.length === options.interruptOnSleep) interrupt.abort();
+      if (sleeps.length === options.interruptOnSleep) interrupt();
     },
     now: () => clock,
     // No real timer: a request never times out, or does at once.
@@ -158,12 +164,16 @@ export async function testIo(
             new DOMException("The operation was aborted due to timeout", "TimeoutError"),
           )
         : new AbortController().signal,
-    watchInterrupt: () => ({ signal: interrupt.signal, stop: () => {} }),
+    watchInterrupt: () => {
+      const controller = new AbortController();
+      watching.add(controller);
+      return { signal: controller.signal, stop: () => watching.delete(controller) };
+    },
     configDir: options.configDir ?? (await tempDir()),
     newIdempotencyKey: () => "generated-key-1",
     out: () => stdout,
     err: () => stderr,
     sleeps,
-    interrupt: () => interrupt.abort(),
+    interrupt,
   };
 }

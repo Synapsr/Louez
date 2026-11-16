@@ -103,10 +103,11 @@ function apiKeyArguments(argv: readonly string[]): string[] {
 
 /**
  * Runs the command. Everything it writes goes through one redaction
- * (`Redactor`, secrets.ts) of the API key in use, of `LOUEZ_API_KEY` and of
- * every value given to `--api-key`, when they are keys or start like one:
- * JSON is redacted value by value before it is written, so it stays valid;
- * other text, as text.
+ * (`Redactor`, secrets.ts) of the well-formed keys in play: the key in use,
+ * `LOUEZ_API_KEY` and every `--api-key` value, when they are keys. A
+ * malformed value is no secret: it is refused (exit 2), and no message
+ * repeats it. JSON is redacted value by value before it is written, so it
+ * stays valid; other text, as text.
  */
 export async function main(io: Io): Promise<number> {
   const redactor = new Redactor();
@@ -130,6 +131,9 @@ export async function main(io: Io): Promise<number> {
   };
 
   try {
+    // A malformed --api-key stops the command before anything could echo it.
+    for (const key of apiKeyArguments(io.argv))
+      if (!key.startsWith("--")) wellFormed(key, "--api-key");
     return await run(session);
   } catch (error) {
     if (error instanceof UsageError) {
@@ -247,6 +251,7 @@ interface Credential {
   given: boolean;
 }
 
+/** `key`, or a usage error that names `source` and never repeats the value. */
 function wellFormed(key: string, source: string): string {
   if (!isApiKey(key)) {
     throw new UsageError(
@@ -461,22 +466,57 @@ async function callAndReport(
     io.stderr.write(`louez: this write needs a person's approval. Open:\n  ${approval.url}\n`);
     const waited = await waitForApproval(io, target, approval, rerun);
     if (waited !== "approved") return waited;
-    const again = await perform(io, target, { ...full, confirmation: approval.id });
-    if (!again.ok) return networkFailure(io, target, again.error, full, givenKey === undefined);
+    const again = await carryOut(io, target, { ...full, confirmation: approval.id });
+    if (!again.ok) {
+      // Sent, and no answer: only the same key tells whether it ran.
+      io.stderr.write(
+        `louez: ${again.error.name === "AbortError" ? "stopped waiting for the approved write" : describeNetworkError(again.error, target)}\nIts outcome is unknown: Louez may have carried it out. To find out without running it twice, run the same command with the same approval and idempotency key; Louez then answers with the first call's outcome:\n  ${rerun(approval.id, full.idempotencyKey)}\n`,
+      );
+      return EXIT.network;
+    }
     answer = again.answer;
   }
   return report(io, answer, rerun);
 }
 
-/** Builds the command to run again, with `--confirmation <id>`. */
-type Rerun = (confirmation: string) => string;
+/**
+ * Sends the approved write. Ctrl-C does not abort it: the first one says the
+ * write was sent and its result is awaited; a second one stops waiting,
+ * which the caller reports as an unknown outcome.
+ */
+async function carryOut(io: Session, target: Target, call: Call): Promise<SendResult> {
+  const stop = new AbortController();
+  const watchers = [io.watchInterrupt()];
+  const first = watchers[0];
+  first?.signal.addEventListener(
+    "abort",
+    () => {
+      io.stderr.write(
+        "louez: the approved write was sent; waiting for its result. Ctrl-C again stops waiting, and its outcome is then unknown.\n",
+      );
+      const second = io.watchInterrupt();
+      watchers.push(second);
+      second.signal.addEventListener("abort", () => stop.abort(), { once: true });
+    },
+    { once: true },
+  );
+  try {
+    return await perform(io, target, call, stop.signal);
+  } finally {
+    for (const watcher of watchers) watcher.stop();
+  }
+}
+
+/** Builds the command to run again, with `--confirmation <id>` (and the idempotency key when given). */
+type Rerun = (confirmation: string, idempotencyKey?: string) => string;
 
 async function rerunHint(
   argv: readonly string[],
   stdin: Promise<string> | undefined,
 ): Promise<Rerun> {
   const stdinText = stdin ? await stdin : undefined;
-  return (confirmation) => rerunCommand(argv, confirmation, stdinText);
+  return (confirmation, idempotencyKey) =>
+    rerunCommand(argv, confirmation, stdinText, idempotencyKey);
 }
 
 function shellQuote(word: string): string {
@@ -492,12 +532,16 @@ export function rerunCommand(
   argv: readonly string[],
   confirmation: string,
   stdinText?: string,
+  idempotencyKey?: string,
 ): string {
   const words: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i] ?? "";
     const [flag, inline] = token.startsWith("--") ? token.split(/=(.*)/s, 2) : [token, undefined];
-    if (flag === "--confirmation") {
+    if (
+      flag === "--confirmation" ||
+      (idempotencyKey !== undefined && flag === "--idempotency-key")
+    ) {
       if (inline === undefined) i++;
     } else if (flag === "--wait") {
       // dropped
@@ -512,6 +556,7 @@ export function rerunCommand(
     }
   }
   words.push("--confirmation", shellQuote(confirmation));
+  if (idempotencyKey !== undefined) words.push("--idempotency-key", shellQuote(idempotencyKey));
   return `louez ${words.join(" ")}`;
 }
 
