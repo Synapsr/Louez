@@ -9,7 +9,12 @@ import {
   type Transaction,
 } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
-import { isStripeRefundRow, normalizeCurrency } from "@louez/utils";
+import {
+  currencyMinorDigits,
+  exactMoneyDecimals,
+  isStripeRefundRow,
+  normalizeCurrency,
+} from "@louez/utils";
 import { and, asc, eq } from "drizzle-orm";
 
 import {
@@ -18,6 +23,8 @@ import {
   type RecordDepositReturnInput,
   type RecordPaymentInput,
   type RecordRefundInput,
+  type RefundBalance,
+  type RefundCreditNoteStatus,
 } from "../contracts/payment-records";
 import { reservationErrors } from "../contracts/reservations";
 import {
@@ -25,7 +32,12 @@ import {
   type ConfirmationPreview,
   type ConfirmationRefusal,
 } from "../platform/confirmation";
-import type { PaymentRecordsPort, PaymentRefundsPort } from "../platform/ports";
+import { enqueueEffects } from "../platform/effects";
+import type {
+  PaymentRecordsPort,
+  PaymentRefundsPort,
+  RefundCreditNoteOutcome,
+} from "../platform/ports";
 import type { ApprovalPresentation } from "./approval-display";
 import {
   deletePaymentPresentation,
@@ -34,11 +46,14 @@ import {
   recordRefundPresentation,
 } from "./approval-presentations";
 import {
+  currencyMinorOf,
   depositReturnAmount,
-  fromMinorUnits,
-  minorUnits,
+  fromHundredths,
+  hundredthsOf,
+  paymentAmount,
   recordedPaymentAmount,
   refundAmount,
+  type RefundVerdict,
 } from "./payment-amount";
 
 /**
@@ -86,8 +101,6 @@ export interface PaymentWriteCaller<Port> {
 
 /** The payments recorded with the app's writer of a recorded payment. */
 export type PaymentRecordsCaller = PaymentWriteCaller<PaymentRecordsPort>;
-/** A refund given by hand, with the app's writer of a refund and its credit note. */
-export type PaymentRefundCaller = PaymentWriteCaller<PaymentRefundsPort>;
 
 /**
  * An amount as the previews and messages wrote it: in euros, whatever the
@@ -449,12 +462,18 @@ const MANUAL_METHODS: ReadonlySet<string> = new Set(["cash", "card", "transfer",
 
 /**
  * An amount in a payment's own currency, as the refund's preview and its
- * refusal write it (`£30.00`): never the euros of `money`, which the older
- * writes keep.
+ * refusals write it (`£30.00`, `¥1,500`): with exactly the digits it holds
+ * (`exactMoneyDecimals`), as the approval's page writes it, so the two never
+ * disagree. Never the euros of `money`, which the older writes keep.
  */
-export function moneyIn(amount: string | number, currency: string): string {
-  const value = typeof amount === "string" ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat("en-IE", { style: "currency", currency }).format(value);
+export function moneyIn(amount: string, currency: string): string {
+  const decimals = exactMoneyDecimals(amount, currency);
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(Number(amount));
 }
 
 /**
@@ -474,8 +493,14 @@ function refundablePaymentRefusal(payment: StorePayment): Error | null {
     return paymentRecordErrors.refundPaymentNotCompleted(payment.status);
   }
   if (!MANUAL_METHODS.has(payment.method)) return paymentRecordErrors.refundStripePayment();
-  if (!(minorUnits(payment.amount) > 0)) return paymentRecordErrors.refundPaymentNotReceived();
+  if (!(hundredthsOf(payment.amount) > 0)) return paymentRecordErrors.refundPaymentNotReceived();
   return null;
+}
+
+/** Where the refund's credit note stands, as the answer says it. */
+export interface RefundCreditNote {
+  status: RefundCreditNoteStatus;
+  number: string | null;
 }
 
 /** What a refund given by hand answers: its row, the payment it gives back, its credit note. */
@@ -487,7 +512,54 @@ export interface RecordedPaymentRefund {
   amount: string;
   currency: string;
   method: RecordRefundInput["method"];
-  creditNoteNumber: string | null;
+  creditNote: RefundCreditNote;
+}
+
+/** A refund's writer: who writes, with the app's refund writer, and the outbox's dispatch. */
+export interface PaymentRefundCaller extends PaymentWriteCaller<PaymentRefundsPort> {
+  /** Sends committed outbox rows (`ApiPorts.dispatchEffects`). Never throws. */
+  dispatchEffects: (ids: readonly string[]) => void;
+}
+
+/** The refusal of an amount `refundAmount` judged, for the payment's currency and balance. */
+function refundAmountRefusal(
+  refusal: Exclude<RefundVerdict, { ok: true }>["refusal"],
+  currency: string,
+  balance: RefundBalance,
+): Error {
+  switch (refusal) {
+    case "amount_invalid":
+      return paymentRecordErrors.refundAmountInvalid();
+    case "too_precise":
+      return paymentRecordErrors.refundAmountTooPrecise(currency, currencyMinorDigits(currency) ?? 0);
+    case "currency_unsupported":
+      return paymentRecordErrors.refundCurrencyNotSupported(currency);
+    case "exceeds_refundable":
+      return paymentRecordErrors.refundExceedsRefundable(balance, (amount) => moneyIn(amount, currency));
+  }
+}
+
+/** The one attempt at the credit note after the commit, as the answer says it. */
+async function attemptCreditNote(
+  caller: PaymentRefundCaller,
+  refund: { paymentId: string; refundId: string; amount: string },
+  source: string,
+): Promise<RefundCreditNote> {
+  let outcome: RefundCreditNoteOutcome;
+  try {
+    outcome = await caller.port.creditNote({
+      paymentId: refund.paymentId,
+      refundId: refund.refundId,
+      amount: refund.amount,
+      source,
+    });
+  } catch (error) {
+    outcome = { status: "failed", reason: error instanceof Error ? error.message : String(error) };
+  }
+  if (outcome.status === "issued") return { status: "issued", number: outcome.number };
+  if (outcome.status === "not_applicable") return { status: "not_applicable", number: null };
+  // Owed all the same: the outbox row added with the refund issues it.
+  return { status: "pending", number: null };
 }
 
 /**
@@ -500,13 +572,18 @@ export interface RecordedPaymentRefund {
  *
  * Under the reservation's lock, then the payment's row: refused for a
  * payment that is not one the store took by hand and can give back
- * (`refundablePaymentRefusal`), and above the payment's amount less every
- * completed refund linked to it, read under that lock, so two refunds sent
- * together never pass it between them. The preview binds the payment's
- * status and amount and those refunds: one recorded between an approval and
- * the call that carries it out voids it. Once committed, the credit note is
- * asked of the app; when none is issued, the refund stands and the answer's
- * number is null.
+ * (`refundablePaymentRefusal`), for an amount its currency cannot hold
+ * (`currencyFit`), and above the payment's amount less every completed
+ * refund linked to it, read under that lock, so two refunds sent together
+ * never pass it between them. The preview binds the payment's status and
+ * amount and those refunds: one recorded between an approval and the call
+ * that carries it out voids it.
+ *
+ * The credit note is owed by an outbox row added in the refund's own
+ * transaction (`payment.refundCreditNote`): once committed, the writer tries
+ * it once and says where it stands (`issued`, `pending`, `not_applicable`),
+ * then hands the row to the outbox, which issues it if the attempt did not.
+ * The invoicing issues one credit note per refund, whoever asks first.
  *
  * `reservationId`, when given (the dashboard's page), must be the payment's:
  * a payment of another reservation is not found.
@@ -517,8 +594,10 @@ export async function recordPaymentRefund(
   options: { source: string },
 ): Promise<RecordedPaymentRefund> {
   const { storeId } = caller;
-  // Refused whatever anyone answers, before anything is read.
-  if (!refundAmount(input.amount, Infinity).ok) throw paymentRecordErrors.refundAmountInvalid();
+  // Refused whatever anyone answers, before anything is read: the text, and
+  // zero and below. The currency is the payment's, read under the lock.
+  const text = paymentAmount(input.amount);
+  if (!text || text.startsWith("-")) throw paymentRecordErrors.refundAmountInvalid();
   const ofThisCall = (payment: StorePayment | null) =>
     payment && (!input.reservationId || payment.reservationId === input.reservationId)
       ? payment
@@ -543,30 +622,25 @@ export async function recordPaymentRefund(
       .from(payments)
       .where(and(eq(payments.refundOfPaymentId, payment.id), eq(payments.status, "completed")))
       .orderBy(asc(payments.id));
-    const paidMinor = minorUnits(payment.amount);
-    const refundedMinor = refunds.reduce((sum, row) => sum + minorUnits(row.amount), 0);
-    const refundableMinor = Math.max(0, paidMinor - refundedMinor);
+    const paid = hundredthsOf(payment.amount);
+    const refunded = refunds.reduce((sum, row) => sum + hundredthsOf(row.amount), 0);
+    const refundable = Math.max(0, paid - refunded);
     // The payment's own currency, else its reservation's, else the store's.
     const currency = normalizeCurrency(
       payment.currency,
       currencyOf(caller, { currency: payment.reservationCurrency }),
     );
-    const inCurrency = (amount: string | number) => moneyIn(amount, currency);
+    const inCurrency = (amount: string) => moneyIn(amount, currency);
 
-    const verdict = refundAmount(input.amount, refundableMinor);
+    const verdict = refundAmount(input.amount, currency, refundable);
     if (!verdict.ok) {
       return refused(
-        verdict.refusal === "amount_invalid"
-          ? paymentRecordErrors.refundAmountInvalid()
-          : paymentRecordErrors.refundExceedsRefundable(
-              {
-                paid: fromMinorUnits(paidMinor),
-                refunded: fromMinorUnits(refundedMinor),
-                refundable: fromMinorUnits(refundableMinor),
-                currency,
-              },
-              inCurrency,
-            ),
+        refundAmountRefusal(verdict.refusal, currency, {
+          paid: fromHundredths(paid),
+          refunded: fromHundredths(refunded),
+          refundable: fromHundredths(refundable),
+          currency,
+        }),
       );
     }
     const { amount } = verdict;
@@ -587,15 +661,23 @@ export async function recordPaymentRefund(
           ...details,
           currency,
           payment: { type: payment.type, amount: payment.amount, method: payment.method },
-          alreadyRefunded: fromMinorUnits(refundedMinor),
-          refundableAfter: fromMinorUnits(refundableMinor - minorUnits(amount)),
+          alreadyRefunded: fromHundredths(refunded),
+          refundableAfter: fromHundredths(refundable - hundredthsOf(amount)),
           ...(notes ? { notes } : {}),
         },
       },
+      // In the currency's minor units (yen, cents): the payment's, its refunds', this one's.
       state: {
-        refund: { amountMinor: minorUnits(amount), currency, method: input.method },
-        payment: { status: payment.status, amountMinor: paidMinor },
-        refunds: refunds.map((row) => ({ id: row.id, amountMinor: minorUnits(row.amount) })),
+        refund: {
+          amountMinor: currencyMinorOf(amount, currency),
+          currency,
+          method: input.method,
+        },
+        payment: { status: payment.status, amountMinor: currencyMinorOf(payment.amount, currency) },
+        refunds: refunds.map((row) => ({
+          id: row.id,
+          amountMinor: currencyMinorOf(row.amount, currency),
+        })),
       },
       presentation: recordRefundPresentation(details, {
         type: payment.type,
@@ -603,8 +685,8 @@ export async function recordPaymentRefund(
         method: payment.method,
         currency,
         paidAt: payment.paidAt ?? payment.createdAt,
-        paidMinor,
-        refundedMinor,
+        paidHundredths: paid,
+        refundedHundredths: refunded,
       }),
     });
     if (refusal) return unconfirmed(refusal);
@@ -620,31 +702,40 @@ export async function recordPaymentRefund(
       paidAt: new Date(),
       notes,
     });
+    // Owed with the refund, in its transaction: a crash after the commit leaves it owed.
+    const effectIds = await enqueueEffects(tx, storeId, [
+      {
+        type: "payment.refundCreditNote",
+        reservationId: payment.reservationId,
+        payload: {
+          storeId,
+          reservationId: payment.reservationId,
+          paymentId: payment.id,
+          refundId: id,
+          amount,
+          source: options.source,
+        },
+      },
+    ]);
     return {
       ok: true,
       value: {
-        refundId: id,
-        paymentId: payment.id,
-        reservationId: payment.reservationId,
-        number: payment.number,
-        amount,
-        currency,
-        method: input.method,
+        effectIds,
+        refund: {
+          refundId: id,
+          paymentId: payment.id,
+          reservationId: payment.reservationId,
+          number: payment.number,
+          amount,
+          currency,
+          method: input.method,
+        },
       },
     };
   });
 
-  // Once committed: a credit note that fails leaves the refund recorded.
-  let creditNoteNumber: string | null = null;
-  try {
-    creditNoteNumber = await caller.port.creditNote({
-      paymentId: recorded.paymentId,
-      refundId: recorded.refundId,
-      amount: recorded.amount,
-      source: options.source,
-    });
-  } catch {
-    creditNoteNumber = null;
-  }
-  return { ...recorded, creditNoteNumber };
+  const { refund, effectIds } = recorded;
+  const creditNote = await attemptCreditNote(caller, refund, options.source);
+  caller.dispatchEffects(effectIds);
+  return { ...refund, creditNote };
 }

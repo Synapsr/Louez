@@ -76,6 +76,10 @@ export const recordDepositReturnOutput = z.object({
 });
 export type RecordDepositReturnOutput = z.infer<typeof recordDepositReturnOutput>;
 
+/** Where a refund's credit note stands in the answer. */
+export const REFUND_CREDIT_NOTE_STATUSES = ["issued", "pending", "not_applicable"] as const;
+export type RefundCreditNoteStatus = (typeof REFUND_CREDIT_NOTE_STATUSES)[number];
+
 export const recordRefundOutput = z.object({
   refundId: z.string().describe("The ID of the refund's own payment row."),
   paymentId: z.string().describe("The payment refunded."),
@@ -84,12 +88,16 @@ export const recordRefundOutput = z.object({
   amount: z.string().describe("The amount given back, as recorded."),
   currency: z.string().describe("The currency of the payment refunded, which the refund takes."),
   method: z.enum(RECORDED_PAYMENT_METHODS),
-  creditNoteNumber: z
-    .string()
-    .nullable()
-    .describe(
-      "The credit note's number; null when none was issued: the store does not issue invoices, or it could not be produced, and the refund stands.",
-    ),
+  creditNote: z
+    .object({
+      status: z
+        .enum(REFUND_CREDIT_NOTE_STATUSES)
+        .describe(
+          "`issued`: the credit note exists. `pending`: it is owed and not issued yet; Louez issues it, retrying on its own. `not_applicable`: the store issues no invoices, or the payment refunded has none, so there is nothing to issue.",
+        ),
+      number: z.string().nullable().describe("The credit note's number once issued; null otherwise."),
+    })
+    .describe("The refund's credit note. The refund stands whatever its status."),
   links: reservationLinksField,
 });
 export type RecordRefundOutput = z.infer<typeof recordRefundOutput>;
@@ -177,6 +185,22 @@ export const paymentRecordErrors = {
         'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "30.00").',
       i18nKey: "errors.invalidAmount",
     }),
+  /** A non-zero digit past the minor unit of the payment's currency (no decimals in yen, two in euros). */
+  refundAmountTooPrecise: (currency: string, decimals: number) =>
+    apiError("BAD_REQUEST", "REFUND_AMOUNT_INVALID", {
+      message:
+        decimals === 0
+          ? `A ${currency} amount has no decimals: send whole units (such as "30").`
+          : `A ${currency} amount has at most ${decimals} decimals.`,
+      i18nKey: "errors.invalidAmount",
+      details: { currency, decimals },
+    }),
+  /** A three-decimal currency: Louez's billing does not carry it. */
+  refundCurrencyNotSupported: (currency: string) =>
+    apiError("CONFLICT", "REFUND_CURRENCY_NOT_SUPPORTED", {
+      message: `This payment is in ${currency}, a three-decimal currency Louez's billing does not count: a refund of it cannot be recorded.`,
+      details: { currency },
+    }),
   /** A refund's own row: a refund is recorded against the payment it gives back. */
   refundOfRefund: () =>
     apiError("CONFLICT", "REFUND_OF_REFUND", {
@@ -185,7 +209,7 @@ export const paymentRecordErrors = {
     }),
   refundTypeNotRefundable: (type: string) =>
     apiError("CONFLICT", "REFUND_PAYMENT_TYPE_NOT_REFUNDABLE", {
-      message: `A ${type} payment cannot be refunded: only rental, damage, adjustment and kept deposit (deposit_capture) payments can. A deposit given back is recorded with record_deposit_return.`,
+      message: `A ${type} payment cannot be refunded: only rental, damage, adjustment and kept deposit (deposit_capture) payments can. A deposit given back is recorded as a deposit return instead.`,
       details: { type },
     }),
   refundPaymentNotCompleted: (status: string) =>

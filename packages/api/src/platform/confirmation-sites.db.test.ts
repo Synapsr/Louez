@@ -1207,7 +1207,7 @@ describe(
         insert: async () => {
           throw new Error("the refund writer is not reached");
         },
-        creditNote: async () => null,
+        creditNote: async () => ({ status: "not_applicable" as const, reason: "invoicing_disabled" }),
       },
     };
 

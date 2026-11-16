@@ -343,7 +343,7 @@ const recordDepositReturnProcedure = storeProcedure
  */
 const inBackticks = (name: string) => "`" + name + "`";
 const refundRefusals = (code: (name: string) => string) =>
-  `a payment the store does not have (${code("PAYMENT_NOT_FOUND")}); an amount that is zero, negative or not a plain decimal with at most 8 digits before the point and 2 after (${code("REFUND_AMOUNT_INVALID")}); a payment that is itself a refund (${code("REFUND_OF_REFUND")}); a deposit, a deposit return or a deposit hold (${code("REFUND_PAYMENT_TYPE_NOT_REFUNDABLE")}); a payment not completed (${code("REFUND_PAYMENT_NOT_COMPLETED")}); a payment taken online through Stripe, whose refunds are not available through this action yet (${code("REFUND_STRIPE_PAYMENT")}); a payment of zero or below (${code("REFUND_PAYMENT_NOT_RECEIVED")}); and an amount above the payment's amount less every completed refund already recorded against it (${code("REFUND_EXCEEDS_REFUNDABLE")}, whose details give the amounts paid, already refunded and refundable, and the currency)`;
+  `a payment the store does not have (${code("PAYMENT_NOT_FOUND")}); an amount that is zero, negative, not a plain decimal with at most 8 digits before the point and 2 after, or with a digit past the minor unit of the payment's currency, such as decimals in yen (${code("REFUND_AMOUNT_INVALID")}); a payment in a three-decimal currency, which Louez's billing does not count (${code("REFUND_CURRENCY_NOT_SUPPORTED")}); a payment that is itself a refund (${code("REFUND_OF_REFUND")}); a deposit, a deposit return or a deposit hold (${code("REFUND_PAYMENT_TYPE_NOT_REFUNDABLE")}); a payment not completed (${code("REFUND_PAYMENT_NOT_COMPLETED")}); a payment taken online through Stripe, whose refunds are not available through this action yet (${code("REFUND_STRIPE_PAYMENT")}); a payment of zero or below (${code("REFUND_PAYMENT_NOT_RECEIVED")}); and an amount above the payment's amount less every completed refund already recorded against it (${code("REFUND_EXCEEDS_REFUNDABLE")}, whose details give the amounts paid, already refunded and refundable, and the currency)`;
 
 const recordRefund = storeProcedure
   .meta({
@@ -354,21 +354,24 @@ const recordRefund = storeProcedure
     mcp: {
       name: "record_refund",
       title: "Record Refund",
-      description: `Record a refund the store already gave by hand (cash, card terminal, transfer, check or other) against one payment of a reservation, taken by hand: a rental, damage, adjustment or kept deposit (deposit_capture) payment, by its id among the payments reservations_get returns. It moves no money: Louez only records it, the payment keeps its amount, and the refund, in the payment's own currency, comes off what the reservation received. Partial refunds may follow one another up to the payment's amount. Refused, before anything is asked, for ${refundRefusals(String)}. ${approvalAsked("a preview of the refund, the payment and what is left to refund")} Returns the refund's id, its currency and, when the store issues invoices, its credit note's number (null when none was issued: the refund stands). ${LINKS_NOTE}`,
+      description: `Record a refund the store already gave by hand (cash, card terminal, transfer, check or other) against one payment of a reservation, taken by hand: a rental, damage, adjustment or kept deposit (deposit_capture) payment, by its id among the payments reservations_get returns. It moves no money: Louez only records it, the payment keeps its amount, and the refund, in the payment's own currency, comes off what the reservation received. Partial refunds may follow one another up to the payment's amount. Refused, before anything is asked, for ${refundRefusals(String)}. ${approvalAsked("a preview of the refund, the payment and what is left to refund")} Returns the refund's id, its currency and its creditNote: issued with its number, pending (owed: Louez issues it, retrying on its own), or not_applicable (the store issues no invoices, or the payment has none). The refund stands whatever its creditNote says. ${LINKS_NOTE}`,
       bundle: "daily",
       effect: "additive",
     },
   })
   .route({
     method: "POST",
-    path: "/payments/{paymentId}/refunds",
-    description: `Records a refund the store already gave by hand (cash, card terminal, bank transfer, check or other) against one payment it took by hand: a \`rental\`, \`damage\`, \`adjustment\` or \`deposit_capture\` payment. It moves no money. The refund is its own positive \`completed\` row pointing at the payment, in the payment's own currency; the payment keeps its amount. Partial refunds may follow one another, up to the payment's amount less every completed refund already recorded against it, counted under the reservation's lock. Refused, before anything is asked, for ${refundRefusals(inBackticks)}. ${restApprovalAsked("a preview of the refund, the payment and what is left to refund")} Returns the refund's id (\`refundId\`), its \`currency\` and \`creditNoteNumber\`, the credit note's number when the store issues invoices, null when none was issued (the refund stands). ${REST_LINKS_NOTE}`,
+    path: "/payments/{paymentId}/refund-records",
+    description: `Records a refund the store already gave by hand (cash, card terminal, bank transfer, check or other) against one payment it took by hand: a \`rental\`, \`damage\`, \`adjustment\` or \`deposit_capture\` payment. It moves no money. The refund is its own positive \`completed\` row pointing at the payment, in the payment's own currency; the payment keeps its amount. Partial refunds may follow one another, up to the payment's amount less every completed refund already recorded against it, counted under the reservation's lock. Refused, before anything is asked, for ${refundRefusals(inBackticks)}. ${restApprovalAsked("a preview of the refund, the payment and what is left to refund")} Returns the refund's id (\`refundId\`), its \`currency\` and \`creditNote\`: \`status\` \`issued\` with its \`number\`, \`pending\` (owed: Louez issues it, retrying on its own), or \`not_applicable\` (the store issues no invoices, or the payment refunded has none). The refund stands whatever \`creditNote\` says. ${REST_LINKS_NOTE}`,
   })
   .input(recordRefundInput)
   .output(recordRefundOutput)
   .handler(async ({ context, input, path }) => {
     const refund = await recordPaymentRefund(
-      paymentRecordsCaller(context, path, input, "money", context.ports.paymentRefunds),
+      {
+        ...paymentRecordsCaller(context, path, input, "money", context.ports.paymentRefunds),
+        dispatchEffects: context.ports.dispatchEffects,
+      },
       input,
       { source: "api_record_refund" },
     );

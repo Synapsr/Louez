@@ -20,8 +20,8 @@ import {
 import { oneLine } from "./approval-preview";
 import {
   depositReturnAmount,
-  fromMinorUnits,
-  minorUnits,
+  fromHundredths,
+  hundredthsOf,
   recordedPaymentAmount,
   refundAmount,
 } from "./payment-amount";
@@ -173,9 +173,9 @@ export function recordDepositReturnPresentation(
 /**
  * A refund the store gave by hand, recorded against one payment
  * (`dashboard.payments.recordRefund`). Every amount is in the payment's own
- * currency, which the refund's row takes. `refundedMinor` is what the
- * completed refunds linked to it already gave back, as the writer counts it
- * under the reservation's lock.
+ * currency, which the refund's row takes. `refundedHundredths` is what the
+ * completed refunds linked to it already gave back, in hundredths, as the
+ * writer counts it under the reservation's lock.
  */
 export function recordRefundPresentation(
   details: {
@@ -191,13 +191,13 @@ export function recordRefundPresentation(
     method: string;
     currency: string;
     paidAt: Date;
-    refundedMinor: number;
-    paidMinor: number;
+    refundedHundredths: number;
+    paidHundredths: number;
   },
 ): ApprovalPresentation | null {
-  const refundableMinor = payment.paidMinor - payment.refundedMinor;
+  const refundable = payment.paidHundredths - payment.refundedHundredths;
   // Judged as the write judges it: a refund it refuses gets no display.
-  const verdict = refundAmount(details.amount, refundableMinor);
+  const verdict = refundAmount(details.amount, payment.currency, refundable);
   const paid = plainDecimal(payment.amount);
   const { currency, type } = payment;
   const { method } = details;
@@ -205,7 +205,7 @@ export function recordRefundPresentation(
   if (!isChoice("paymentType", type) || !isChoice("paymentMethod", payment.method)) return null;
   if (!isChoice("paymentMethod", method)) return null;
   const { amount } = verdict;
-  const left = refundableMinor - minorUnits(amount);
+  const left = refundable - hundredthsOf(amount);
   return {
     display: {
       headline: headline("recordRefund", {}),
@@ -226,8 +226,8 @@ export function recordRefundPresentation(
           details.paymentId,
         ),
         fact("refundBalance", {
-          refunded: money(fromMinorUnits(payment.refundedMinor), currency),
-          left: money(fromMinorUnits(left), currency),
+          refunded: money(fromHundredths(payment.refundedHundredths), currency),
+          left: money(fromHundredths(left), currency),
         }),
         fact("recordOnly", {}),
       ],

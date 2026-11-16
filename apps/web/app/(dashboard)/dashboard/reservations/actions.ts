@@ -133,7 +133,9 @@ import {
   productAnalyticsEvents,
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
+import { dispatchApiEffects } from "@/lib/api/effects";
 import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
+import { refundErrorKey } from "@/lib/reservations/util.refund-error-key";
 import {
   deleteRecordedPayment,
   insertRecordedPayment,
@@ -183,7 +185,6 @@ import {
 } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
 import { evaluateReservationRules } from "@louez/utils";
-import { isApiError } from "@louez/api/platform/errors";
 import { recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
@@ -3363,6 +3364,7 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
         storeSettings: store.settings ?? null,
         port: paymentRefundsPort,
         confirm: async () => null,
+        dispatchEffects: dispatchApiEffects,
       },
       {
         reservationId,
@@ -3374,12 +3376,7 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
       { source: "dashboard_refund_manual_payment" },
     );
   } catch (error) {
-    return {
-      error:
-        isApiError(error) && error.data.code === "PAYMENT_NOT_FOUND"
-          ? "errors.paymentNotFound"
-          : "errors.invalidAmount",
-    };
+    return { error: refundErrorKey(error) };
   }
 
   await logReservationActivity(reservationId, "payment_updated", {
@@ -3396,7 +3393,7 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
   return {
     success: true,
     refundPaymentId: refund.refundId,
-    creditNoteNumber: refund.creditNoteNumber ?? undefined,
+    creditNoteNumber: refund.creditNote.number ?? undefined,
   };
 }
 

@@ -69,7 +69,14 @@ export { hasReservationInsuranceCoverage } from "./util.reservation-insurance";
 export * from "./pricing/product-promotion";
 
 // Currency code and tax rate as the billing snapshots count them
-export { beforeTaxRateBps, normalizeCurrency } from "./billing-money";
+export {
+  beforeTaxRateBps,
+  currencyMinorDigits,
+  exactMoneyDecimals,
+  normalizeCurrency,
+  THREE_DECIMAL_CURRENCIES,
+  ZERO_DECIMAL_CURRENCIES,
+} from "./billing-money";
 
 // Payment rows: a Stripe refund told apart from the charge it refunds
 export * from "./util.deposit-hold-row";

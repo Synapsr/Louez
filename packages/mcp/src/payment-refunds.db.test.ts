@@ -34,7 +34,7 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 });
 
 // A refund the store gave by hand, as a connected assistant records it
-// (record_refund) and as the REST API serves it (POST /payments/{id}/refunds):
+// (record_refund) and as the REST API serves it (POST /payments/{id}/refund-records):
 // through the real MCP and OpenAPI handlers, with an API key, on a database,
 // the key's owner approving through the dashboard's RPC handler with their
 // session, as the approval's page does. What it previews and binds its
@@ -104,15 +104,20 @@ describe(
       amount: string;
       source: string;
     }> = [];
-    /** What the next credit note does: a number, none, or a failure. */
-    let creditNoteOutcome: "number" | "none" | "throws" = "number";
+    /** What the next credit note does: issued, nothing to issue, a failure, or a throw. */
+    let creditNoteOutcome: "issued" | "not_applicable" | "failed" | "throws" = "issued";
+    /** The outbox rows each committed write handed to dispatch. */
+    let dispatched: string[][] = [];
 
     const ports = {
       planFeatures: async () => ({ apiAccess: true }),
       runReservationEffects: async () => {},
       insurance: { createContract: async () => null, cancelContract: async () => {} },
       newStores: createTestNewStores(),
-      dispatchEffects: () => {},
+      // An approval's request hands an empty list: only rows count here.
+      dispatchEffects: (ids: readonly string[]) => {
+        if (ids.length > 0) dispatched.push([...ids]);
+      },
       storage: createMemoryStorage(),
       urls: createTestUrls(),
       afterCommit: () => {},
@@ -153,7 +158,13 @@ describe(
         }) => {
           creditNotes.push(refund);
           if (creditNoteOutcome === "throws") throw new Error("The invoicing failed.");
-          return creditNoteOutcome === "number" ? `AV-${creditNotes.length}` : null;
+          if (creditNoteOutcome === "failed") {
+            return { status: "failed" as const, reason: "generation_failed" };
+          }
+          if (creditNoteOutcome === "not_applicable") {
+            return { status: "not_applicable" as const, reason: "invoicing_disabled" };
+          }
+          return { status: "issued" as const, number: `AV-${creditNotes.length}` };
         },
       },
     };
@@ -270,7 +281,8 @@ describe(
     beforeEach(async () => {
       recorded = [];
       creditNotes = [];
-      creditNoteOutcome = "number";
+      creditNoteOutcome = "issued";
+      dispatched = [];
       await louezDb.db.delete(louezDb.billingSyncQueue);
     });
 
@@ -486,7 +498,7 @@ describe(
       );
 
       const document = await openApiDocument();
-      const entry = document.paths["/payments/{paymentId}/refunds"]?.post as
+      const entry = document.paths["/payments/{paymentId}/refund-records"]?.post as
         | {
             operationId?: string;
             tags?: string[];
@@ -494,7 +506,7 @@ describe(
             parameters?: Array<{ $ref?: string }>;
           }
         | undefined;
-      assert.ok(entry, "POST /payments/{paymentId}/refunds is documented");
+      assert.ok(entry, "POST /payments/{paymentId}/refund-records is documented");
       assert.equal(entry.operationId, "record_refund");
       assert.deepEqual(entry.tags, ["Payments"]);
       assert.deepEqual(
@@ -575,7 +587,7 @@ describe(
           amount: "30.00",
           currency: "CHF",
           method: "cash",
-          creditNoteNumber: "AV-1",
+          creditNote: { status: "issued", number: "AV-1" },
           links: { dashboard: link(id) },
         },
       );
@@ -898,7 +910,7 @@ describe(
       assert.equal(reused.code, "IDEMPOTENCY_KEY_REUSED");
 
       // REST: the person approves, the request with its key runs once, then replays.
-      const path = `/payments/${paid}/refunds`;
+      const path = `/payments/${paid}/refund-records`;
       const body = { amount: "15.00", method: "transfer" };
       const headers = { authorization, "idempotency-key": "rf-refund-rest-1" };
       const asked = await openApi("POST", path, body, headers);
@@ -923,24 +935,168 @@ describe(
       assert.deepEqual((await refundsOf(paid)).map((row) => row.amount).sort(), ["15.00", "25.00"]);
       assert.equal(recorded.length, 2);
       assert.equal(creditNotes.length, 2, "a replay asks for no second credit note");
+      assert.equal(dispatched.length, 2, "a replay owes no second one either");
+      const owed = (
+        await louezDb.db
+          .select({ payload: louezDb.apiEffects.payload })
+          .from(louezDb.apiEffects)
+          .where(orm.eq(louezDb.apiEffects.type, "payment.refundCreditNote"))
+      ).filter((row) => (row.payload as { paymentId?: string }).paymentId === paid);
+      assert.equal(owed.length, 2);
     });
 
-    test("a credit note that fails or is not issued leaves the refund recorded, with no number", async () => {
+    test("the credit note is owed by an outbox row written with the refund, and the answer says where it stands", async () => {
       const authorization = await key();
       const { id } = await reservation();
       const paid = await payment(id, { amount: "80.00" });
+      const rowsOf = async () =>
+        (
+          await louezDb.db
+            .select({
+              id: louezDb.apiEffects.id,
+              storeId: louezDb.apiEffects.storeId,
+              reservationId: louezDb.apiEffects.reservationId,
+              type: louezDb.apiEffects.type,
+              payload: louezDb.apiEffects.payload,
+              status: louezDb.apiEffects.status,
+            })
+            .from(louezDb.apiEffects)
+            .where(orm.eq(louezDb.apiEffects.type, "payment.refundCreditNote"))
+        ).filter((row) => (row.payload as { paymentId?: string }).paymentId === paid);
 
+      // Asking for the approval writes no row: nothing is owed before the refund.
+      const asked = approval(
+        await mcpCall(authorization, "record_refund", {
+          paymentId: paid,
+          amount: "10.00",
+          method: "cash",
+        }),
+      );
+      assert.deepEqual(await rowsOf(), []);
+      await approve(asked.id);
+
+      // Issued at once: the answer has its number, and the row still goes to the outbox.
+      const issued = answer(
+        await mcpCall(authorization, "record_refund", {
+          paymentId: paid,
+          amount: "10.00",
+          method: "cash",
+          confirmationToken: asked.id,
+        }),
+      );
+      assert.deepEqual(issued.creditNote, { status: "issued", number: "AV-1" });
+      const [row] = await rowsOf();
+      assert.ok(row);
+      assert.deepEqual(
+        { ...row, id: "(id)" },
+        {
+          id: "(id)",
+          storeId: STORE,
+          reservationId: id,
+          type: "payment.refundCreditNote",
+          payload: {
+            storeId: STORE,
+            reservationId: id,
+            paymentId: paid,
+            refundId: issued.refundId,
+            amount: "10.00",
+            source: "api_record_refund",
+          },
+          status: "pending",
+        },
+      );
+      assert.deepEqual(dispatched, [[row.id]], "handed to the outbox once committed");
+
+      // A failure is owed, never reported as done; nothing to issue is said so.
+      creditNoteOutcome = "failed";
+      const failed = answer(await approved(authorization, { paymentId: paid, amount: "20.00", method: "cash" }));
+      assert.deepEqual(failed.creditNote, { status: "pending", number: null });
       creditNoteOutcome = "throws";
-      const failed = answer(
-        await approved(authorization, { paymentId: paid, amount: "10.00", method: "cash" }),
+      const threw = answer(await approved(authorization, { paymentId: paid, amount: "5.00", method: "cash" }));
+      assert.deepEqual(threw.creditNote, { status: "pending", number: null });
+      creditNoteOutcome = "not_applicable";
+      const none = answer(await approved(authorization, { paymentId: paid, amount: "1.00", method: "cash" }));
+      assert.deepEqual(none.creditNote, { status: "not_applicable", number: null });
+      assert.equal((await rowsOf()).length, 4, "one row per refund, whatever the attempt came to");
+      assert.deepEqual(
+        (await refundsOf(paid)).map((refund) => refund.amount).sort(),
+        ["1.00", "10.00", "20.00", "5.00"],
       );
-      assert.equal(failed.creditNoteNumber, null);
-      creditNoteOutcome = "none";
-      const none = answer(
-        await approved(authorization, { paymentId: paid, amount: "20.00", method: "cash" }),
+    });
+
+    test("an amount has the precision of the payment's currency: no decimals in yen, and none at all in a three-decimal currency", async () => {
+      const authorization = await key();
+      const { id, number } = await reservation({ currency: "JPY" });
+      const yen = await payment(id, { amount: "1.00", currency: "JPY" });
+      const asked = await approvalCount();
+
+      const half = refusal(
+        await mcpCall(authorization, "record_refund", { paymentId: yen, amount: "0.5", method: "cash" }),
       );
-      assert.equal(none.creditNoteNumber, null);
-      assert.deepEqual((await refundsOf(paid)).map((row) => row.amount).sort(), ["10.00", "20.00"]);
+      assert.equal(half.code, "REFUND_AMOUNT_INVALID");
+      assert.equal(half.message, 'A JPY amount has no decimals: send whole units (such as "30").');
+      assert.deepEqual(half.details, { currency: "JPY", decimals: 0 });
+      assert.equal(await approvalCount(), asked, "nothing is asked for it");
+
+      // One yen, previewed as the page shows it: ¥1, never ¥0.50 or ¥1.00.
+      const one = approval(
+        await mcpCall(authorization, "record_refund", { paymentId: yen, amount: "1", method: "cash" }),
+      );
+      assert.equal(
+        (one.preview as { summary: string }).summary,
+        `Record a refund of ¥1 (cash) of the rental payment of ¥1 on reservation #${number}.`,
+      );
+      await approve(one.id);
+      const done = answer(
+        await mcpCall(authorization, "record_refund", {
+          paymentId: yen,
+          amount: "1",
+          method: "cash",
+          confirmationToken: one.id,
+        }),
+      );
+      assert.equal(done.amount, "1.00");
+      assert.equal(done.currency, "JPY");
+      // The second yen is not there.
+      const again = refusal(
+        await mcpCall(authorization, "record_refund", { paymentId: yen, amount: "1", method: "cash" }),
+      );
+      assert.equal(again.code, "REFUND_EXCEEDS_REFUNDABLE");
+      assert.equal(
+        again.message,
+        "Amount exceeds what is left to refund on this payment. Paid: ¥1, already refunded: ¥1, refundable: ¥0.",
+      );
+
+      const dinars = await payment(id, { amount: "10.00", currency: "KWD" });
+      const kwd = refusal(
+        await mcpCall(authorization, "record_refund", { paymentId: dinars, amount: "1", method: "cash" }),
+      );
+      assert.equal(kwd.code, "REFUND_CURRENCY_NOT_SUPPORTED");
+      assert.deepEqual(kwd.details, { currency: "KWD" });
+      assert.deepEqual(await refundsOf(dinars), []);
+      assert.equal(await approvalCount(), asked + 1, "only the yen that fits was asked");
+    });
+
+    test("a key that may write payments but not read reservations sees the booking's number, not its link, as delete_payment shows it", async () => {
+      const authorization = await key({ ...WRITE, reservations: "none" });
+      const { id, number } = await reservation();
+      const paid = await payment(id, { amount: "80.00" });
+      const removable = await payment(id, { type: "damage", amount: "5.00", method: "cash" });
+
+      for (const [name, args] of [
+        ["record_refund", { paymentId: paid, amount: "10.00", method: "cash" }],
+        ["delete_payment", { paymentId: removable }],
+      ] as const) {
+        const asked = approval(await mcpCall(authorization, name, args));
+        assert.equal((asked.preview as { details: { number?: string } }).details.number, number, name);
+        await approve(asked.id);
+        const done = answer(
+          await mcpCall(authorization, name, { ...args, confirmationToken: asked.id }),
+        );
+        assert.equal(done.number, number, name);
+        assert.equal(done.reservationId, id, name);
+        assert.equal("links" in done, false, `${name}: no dashboard link without reservations read`);
+      }
     });
 
     test("the dashboard's writer refuses a payment of another reservation than its page's, and asks nothing", async () => {
@@ -954,6 +1110,7 @@ describe(
         confirm: async () => {
           throw new Error("a session is never asked");
         },
+        dispatchEffects: () => {},
       };
       await assert.rejects(
         refunds.recordPaymentRefund(

@@ -37,6 +37,7 @@ export type {
   RecordedPaymentDraft,
   RecordedPaymentFacts,
   RecordedRefund,
+  RefundCreditNoteOutcome,
   StoragePort,
   UrlsPort,
 } from "./platform/ports";

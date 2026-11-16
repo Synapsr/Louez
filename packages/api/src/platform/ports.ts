@@ -237,6 +237,17 @@ export interface RecordedRefund {
   notes: string | null;
 }
 
+/**
+ * What issuing a refund's credit note came to: issued (now, or by an
+ * earlier run: one credit note per refund), nothing to issue (the store
+ * issues no invoices, or the payment refunded has none), or a failure that
+ * may pass.
+ */
+export type RefundCreditNoteOutcome =
+  | { status: "issued"; number: string }
+  | { status: "not_applicable"; reason: string }
+  | { status: "failed"; reason: string };
+
 /** The app's writer of the refunds a store gives by hand (`ApiPorts.paymentRefunds`). */
 export interface PaymentRefundsPort {
   /**
@@ -246,9 +257,9 @@ export interface PaymentRefundsPort {
    */
   insert: (tx: Transaction, refund: RecordedRefund) => Promise<{ id: string }>;
   /**
-   * Once the refund is committed: its credit note, when the store issues
-   * invoices. The number, or null when none was issued (invoicing off, or the
-   * note could not be produced: the refund stands). Never throws.
+   * The refund's credit note, issued once per refund whoever asks and
+   * however often: the writer's one attempt once the refund committed, and
+   * the outbox row it owes it by (`payment.refundCreditNote`). Never throws.
    */
   creditNote: (refund: {
     paymentId: string;
@@ -256,7 +267,7 @@ export interface PaymentRefundsPort {
     amount: string;
     /** Who asked, for the invoicing log. */
     source: string;
-  }) => Promise<string | null>;
+  }) => Promise<RefundCreditNoteOutcome>;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */
