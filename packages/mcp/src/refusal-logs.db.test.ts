@@ -58,26 +58,41 @@ function capture() {
 }
 
 /**
- * The answer with the values each call draws afresh (its token, its approval and
- * their dates) replaced, in place, by their names: two answers to the same call
- * compare byte for byte.
+ * The answer with the values a confirmation draws afresh for each call replaced, in
+ * place, by their names: its token (random) and when it expires (the call's time plus
+ * its life). Nothing else is normalised: every other byte, the preview's ids and
+ * dates included, must be the same. An approval asked twice for one request is the
+ * same approval, its id and link alike: only its expiry, set from the time of each
+ * ask, is named (`withApprovalExpiryNamed`).
  */
-function sameBytes(text: string): string {
-  let out = text;
-  const visit = (value: unknown, key: string) => {
-    if (typeof value === "string") {
-      if (/token|^id$|url|At$/i.test(key) && value.length > 0) {
-        out = out.split(value).join(`<${key}>`);
-      }
-      return;
-    }
-    if (Array.isArray(value)) value.forEach((item) => visit(item, key));
-    else if (value && typeof value === "object") {
-      for (const [k, v] of Object.entries(value)) visit(v, k);
-    }
-  };
-  visit(JSON.parse(text), "");
-  return out;
+function withConfirmationNamed(text: string, details: unknown): string {
+  const named = (value: unknown, name: string, into: string) =>
+    typeof value === "string" && value.length > 0 ? into.split(value).join(`<${name}>`) : into;
+  const fields = details && typeof details === "object" ? details : {};
+  const token = Reflect.get(fields, "confirmationToken");
+  const expiresAt = Reflect.get(fields, "expiresAt");
+  assert.equal(typeof token, "string", "a confirmation names its token");
+  return named(expiresAt, "expiresAt", named(token, "confirmationToken", text));
+}
+
+/** The answer with an approval's expiry, set from the time of each ask, named in place. */
+function withApprovalExpiryNamed(text: string): string {
+  const parsed: unknown = JSON.parse(text);
+  const expiresAt = ["json", "data", "details", "approval", "expiresAt"].reduce<unknown>(
+    (value, key) => (value && typeof value === "object" ? Reflect.get(value, key) : undefined),
+    parsed,
+  );
+  assert.equal(typeof expiresAt, "string", "an approval names when it expires");
+  return text.split(String(expiresAt)).join("<expiresAt>");
+}
+
+/** The headers a caller acts on: its type, an authentication challenge, a wait, a limit. */
+function meaningfulHeaders(response: Response): Record<string, string> {
+  return Object.fromEntries(
+    [...response.headers.entries()].filter(([name]) =>
+      /^(content-type|www-authenticate|retry-after|(x-)?ratelimit.*)$/i.test(name),
+    ),
+  );
 }
 
 describe("refused calls in the request log (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -288,10 +303,17 @@ describe("refused calls in the request log (database)", { skip: skipWithoutTestD
     );
 
     assert.equal(logged.status, 412);
-    const body = await logged.text();
-    assert.match(body, new RegExp(`${FIRST_NAME} ${LAST_NAME}`), "the caller still reads it");
-    assert.equal(sameBytes(body), sameBytes(await reference.text()));
     assert.equal(reference.status, logged.status);
+    assert.deepEqual(meaningfulHeaders(logged), meaningfulHeaders(reference));
+    const body = await logged.text();
+    const referenceBody = await reference.text();
+    assert.match(body, new RegExp(`${FIRST_NAME} ${LAST_NAME}`), "the caller still reads it");
+    const detailsOf = (text: string) =>
+      (JSON.parse(text) as { data: { details: unknown } }).data.details;
+    assert.equal(
+      withConfirmationNamed(body, detailsOf(body)),
+      withConfirmationNamed(referenceBody, detailsOf(referenceBody)),
+    );
     assertLogged(log, {
       code: "CONFIRMATION_REQUIRED",
       procedure: "dashboard.reservations.cancel",
@@ -311,9 +333,11 @@ describe("refused calls in the request log (database)", { skip: skipWithoutTestD
     const reference = await rpc(null, "dashboard.reservations.updateStatus", input);
 
     assert.equal(logged.status, 412);
+    assert.equal(reference.status, logged.status);
+    assert.deepEqual(meaningfulHeaders(logged), meaningfulHeaders(reference));
     const body = await logged.text();
     assert.match(body, new RegExp(`${FIRST_NAME} ${LAST_NAME}`), "the caller still reads it");
-    assert.equal(sameBytes(body), sameBytes(await reference.text()));
+    assert.equal(withApprovalExpiryNamed(body), withApprovalExpiryNamed(await reference.text()));
     assertLogged(log, {
       code: "APPROVAL_REQUIRED",
       procedure: "dashboard.reservations.updateStatus",
@@ -331,10 +355,17 @@ describe("refused calls in the request log (database)", { skip: skipWithoutTestD
     });
     const reference = await mcpCall(null, agent.authorization, "reservations_cancel", { id });
 
+    // A tool's result has no HTTP headers of its own: the whole result is compared. The
+    // bridge always runs its interceptor; the reference differs by the log port alone.
     assert.equal(logged.isError, true);
     const body = JSON.stringify(logged);
     assert.match(body, new RegExp(`${FIRST_NAME} ${LAST_NAME}`), "the caller still reads it");
-    assert.equal(sameBytes(body), sameBytes(JSON.stringify(reference)));
+    const detailsOf = (result: ToolResult) =>
+      (result.structuredContent as { error: { details: unknown } }).error.details;
+    assert.equal(
+      withConfirmationNamed(body, detailsOf(logged)),
+      withConfirmationNamed(JSON.stringify(reference), detailsOf(reference)),
+    );
     assertLogged(log, {
       code: "CONFIRMATION_REQUIRED",
       procedure: "dashboard.reservations.cancel",
