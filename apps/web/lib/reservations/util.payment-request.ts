@@ -106,8 +106,10 @@ export interface PaymentRequestNotificationResults {
 /**
  * What a payment request's success screen says: of the channels the person
  * chose, each sent or not, and whether all, some or none went. A chosen
- * channel the server did not report (no phone for an SMS) did not go. The
- * request and its link exist in every state.
+ * channel the server did not report did not go. The server refuses a request
+ * with no channel, or an SMS to a customer without a phone, before creating
+ * it, so a success always names at least one channel. The request and its
+ * link exist in every state.
  */
 export type PaymentRequestDelivery =
   | { readonly state: "sent"; readonly sent: "email" | "sms" | "both" }

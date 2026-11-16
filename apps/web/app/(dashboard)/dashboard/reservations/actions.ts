@@ -4875,10 +4875,13 @@ export async function requestPayment(
       paymentUrl = `${baseUrl}/pay/${reservationId}?token=${token}`;
     }
 
-    // Send notifications
+    // Send notifications. A channel counts as sent only when its message
+    // really went out; the request and its link stay whatever happened.
     const notificationResults: { email?: boolean; sms?: boolean } = {};
 
-    if (data.channels.email) {
+    if (data.channels.email && !isEmailConfigured()) {
+      notificationResults.email = false;
+    } else if (data.channels.email) {
       try {
         if (data.type === "deposit") {
           await sendDepositAuthorizationRequestEmail({
@@ -4947,8 +4950,11 @@ export async function requestPayment(
 
     if (data.channels.sms && reservation.customer.phone) {
       try {
+        // The sender answers a missing provider, the quota or a refused number
+        // with `success: false`, without throwing.
+        let smsResult: { success: boolean };
         if (data.type === "deposit") {
-          await sendDepositAuthorizationRequestSms({
+          smsResult = await sendDepositAuthorizationRequestSms({
             store: {
               id: store.id,
               name: store.name,
@@ -4976,7 +4982,7 @@ export async function requestPayment(
                 ?.smsMessage,
           });
         } else {
-          await sendPaymentRequestSms({
+          smsResult = await sendPaymentRequestSms({
             store: {
               id: store.id,
               name: store.name,
@@ -5002,7 +5008,7 @@ export async function requestPayment(
               store.customerNotificationSettings?.templates?.customer_payment_requested?.smsMessage,
           });
         }
-        notificationResults.sms = true;
+        notificationResults.sms = smsResult.success === true;
       } catch (error) {
         console.error("Failed to send payment request SMS:", error);
         notificationResults.sms = false;
