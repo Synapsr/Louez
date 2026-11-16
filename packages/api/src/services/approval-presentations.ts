@@ -98,7 +98,7 @@ export function recordPaymentPresentation(
 ): ApprovalPresentation | null {
   const { type, method } = details;
   // Judged as the write judges it: an amount it refuses gets no display.
-  const verdict = recordedPaymentAmount(details.amount, type);
+  const verdict = recordedPaymentAmount(details.amount, type, currency);
   if (!verdict.ok || !CURRENCY.test(currency) || !isRecordedType(type)) return null;
   if (!isChoice("paymentType", type) || !isChoice("paymentMethod", method)) return null;
   const { amount } = verdict;
@@ -145,7 +145,7 @@ export function recordDepositReturnPresentation(
   balance: number,
 ): ApprovalPresentation | null {
   // Judged as the write judges it: a return it refuses gets no display.
-  const verdict = depositReturnAmount(details.amount, balance);
+  const verdict = depositReturnAmount(details.amount, currency, balance);
   const held = plainDecimal(details.returnable);
   const { method } = details;
   if (!verdict.ok || !held || !CURRENCY.test(currency) || !isChoice("paymentMethod", method)) {

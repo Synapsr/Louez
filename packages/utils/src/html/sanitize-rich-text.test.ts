@@ -43,15 +43,90 @@ const depthOf = (html: string) => {
   return deepest;
 };
 
-/** Milliseconds one call takes, the best of three (a busy machine adds noise). */
-const timed = (html: string) =>
-  Math.min(
-    ...[0, 1, 2].map(() => {
-      const start = performance.now();
-      sanitize(html);
-      return performance.now() - start;
-    }),
-  );
+/** The length of the longest value a write takes. */
+const WRITE_LIMIT = 100_000;
+
+/**
+ * The characters the HTML parser reads while `work` runs: htmlparser2's
+ * tokenizer reads its input one `charCodeAt` at a time, so this counts the
+ * parser's steps, the same on any machine however busy.
+ */
+function parserReads(work: () => void): number {
+  const charCodeAt = String.prototype.charCodeAt;
+  let reads = 0;
+  String.prototype.charCodeAt = function (this: string, index: number) {
+    reads += 1;
+    return charCodeAt.call(this, index);
+  };
+  try {
+    work();
+  } finally {
+    String.prototype.charCodeAt = charCodeAt;
+  }
+  return reads;
+}
+
+/**
+ * The CPU time this process spends on `work`, in microseconds: the time the
+ * machine gives to other processes is not counted, so a busy runner does not
+ * add to it.
+ */
+function cpuTime(work: () => void): number {
+  const start = process.cpuUsage();
+  work();
+  const used = process.cpuUsage(start);
+  return used.user + used.system;
+}
+
+/** How much larger the large input is than the small one. */
+const SCALE = 16;
+
+/**
+ * What one input at the write limit costs against `SCALE` inputs of a
+ * `SCALE`th of it: the same text either way, so a linear pass costs about
+ * the same (a ratio about 1) and a quadratic one `SCALE` times as much. No
+ * duration is compared with a fixed bound, only two costs measured side by
+ * side. Each is the cheapest of five runs, taken in turn: load only ever
+ * adds to a run.
+ */
+function costRatio(build: (length: number) => string, work: (html: string) => unknown): number {
+  const small = build(WRITE_LIMIT / SCALE);
+  const large = build(WRITE_LIMIT);
+  let smalls = Number.POSITIVE_INFINITY;
+  let larges = Number.POSITIVE_INFINITY;
+  for (let run = 0; run < 5; run += 1) {
+    smalls = Math.min(
+      smalls,
+      cpuTime(() => {
+        for (let copy = 0; copy < SCALE; copy += 1) work(small);
+      }),
+    );
+    larges = Math.min(
+      larges,
+      cpuTime(() => work(large)),
+    );
+  }
+  return larges / Math.max(smalls, 1);
+}
+
+/**
+ * Whether `work` costs about as much per character at the write limit as
+ * at a `SCALE`th of it: under 4 passes, where linear is about 1 and
+ * quadratic about 16. A ratio spoiled by load is measured again; a
+ * quadratic one fails each time.
+ */
+function linear(build: (length: number) => string, work: (html: string) => unknown) {
+  let ratio = 0;
+  const passes = [0, 1, 2].some(() => {
+    ratio = costRatio(build, work);
+    return ratio < 4;
+  });
+  return { passes, ratio: ratio.toFixed(2) };
+}
+
+/** An input of `unit` repeated, as long as `length` allows. */
+const repeated = (unit: string) => (length: number) =>
+  unit.repeat(Math.floor(length / unit.length));
 
 test("plain text is escaped once, with its line breaks", () => {
   assert.equal(stable("Fish & chips < 10 € > 5"), "Fish &amp; chips &lt; 10 € &gt; 5");
@@ -139,75 +214,37 @@ test("an editor left empty shows nothing", () => {
 });
 
 /**
- * Inputs at the write limit (100,000 characters) built to make a naive
- * parser or pre-pass slow. A linear pass takes a few milliseconds each; the
- * bound is wide, so a CI runner busy with every other package's tests does
- * not fail it (one took 237 ms for the best of three), and a quadratic path
- * (seconds at this size) still does. The ratio test below is the finer check.
+ * Inputs built to make a naive parser or pre-pass slow, of any length: each
+ * test builds them at the write limit and at a sixteenth of it.
  */
-const HOSTILE_INPUTS: ReadonlyArray<[string, string]> = [
-  ['"<script " × 12,500', "<script ".repeat(12_500)],
-  ['"<" + a × 99,999', `<${"a".repeat(99_999)}`],
-  ['"<a " × 33,000', "<a ".repeat(33_000)],
-  ['"<!--" × 25,000', "<!--".repeat(25_000)],
-  ['"&" × 100,000', "&".repeat(100_000)],
-  ['"<b>" × 33,000', "<b>".repeat(33_000)],
-  ['"<em/>" × 20,000', "<em/>".repeat(20_000)],
-  ['"<em></bogus>" × 8,000', "<em></bogus>".repeat(8_000)],
-  ['"<em>" × 25,000', "<em>".repeat(25_000)],
-  ['"<div>" × 20,000', "<div>".repeat(20_000)],
-  ['"<p><strong><em>" × 6,600', "<p><strong><em>".repeat(6_600)],
-  ['"<ul><li>" × 12,500', "<ul><li>".repeat(12_500)],
-  ['"<a title=\\"" × 9,000', '<a title="'.repeat(9_000)],
-  ['"<em title=\\"<b>\\">" × 6,000', '<em title="<b>">'.repeat(6_000)],
-  ["a 64 KB description", `<p>${"Planche de surf à la journée. ".repeat(2_200)}</p>`],
+const HOSTILE_INPUTS: ReadonlyArray<[string, (length: number) => string]> = [
+  ['"<script " repeated', repeated("<script ")],
+  ['"<" then "a" to the end', (length) => `<${"a".repeat(length - 1)}`],
+  ['"<a " repeated', repeated("<a ")],
+  ['"<a>" repeated', repeated("<a>")],
+  ['"<!--" repeated', repeated("<!--")],
+  ['"&" repeated', repeated("&")],
+  ['"<b>" repeated', repeated("<b>")],
+  ['"<em/>" repeated', repeated("<em/>")],
+  ['"<em></bogus>" repeated', repeated("<em></bogus>")],
+  ['"<em>x</em>" repeated', repeated("<em>x</em>")],
+  ['"<em>" repeated', repeated("<em>")],
+  ['"<div>" repeated', repeated("<div>")],
+  ['"<p><strong><em>" repeated', repeated("<p><strong><em>")],
+  ['"<ul><li>" repeated', repeated("<ul><li>")],
+  ['"<a title=\\"" repeated', repeated('<a title="')],
+  ['"<em title=\\"<b>\\">" repeated', repeated('<em title="<b>">')],
+  [
+    "a long description",
+    (length) => `<p>${repeated("Planche de surf à la journée. ")(length)}</p>`,
+  ],
 ];
 
-test("hostile inputs at the write limit are sanitised in linear time", () => {
+test("hostile inputs cost as much per character at the write limit as at a sixteenth of it", () => {
   sanitize("<p>warm up</p>");
-  for (const [name, html] of HOSTILE_INPUTS) {
-    const ms = timed(html);
-    assert.ok(ms < 1_000, `${name} took ${ms.toFixed(1)} ms`);
-  }
-});
-
-/** The median of an odd count of measures. */
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[values.length >> 1] ?? 0;
-
-/**
- * How much more a four times larger input costs: medians of seven runs,
- * the two sizes taken in turn so a busy machine slows both alike.
- */
-function growth(unit: string): { small: number; large: number } {
-  const smallHtml = unit.repeat(10_000);
-  const largeHtml = unit.repeat(40_000);
-  const small: number[] = [];
-  const large: number[] = [];
-  for (let run = 0; run < 7; run += 1) {
-    for (const [html, into] of [
-      [smallHtml, small],
-      [largeHtml, large],
-    ] as const) {
-      const start = performance.now();
-      sanitize(html);
-      into.push(performance.now() - start);
-    }
-  }
-  return { small: median(small), large: median(large) };
-}
-
-test("four times the input costs about four times as much, never sixteen", () => {
-  sanitize("<p>warm up</p>");
-  for (const unit of ["<a>", "<em>x</em>", "<a ", "<script ", "<b>", "<em/>", "<em></bogus>"]) {
-    // Linear grows about 4×, quadratic about 16×: under 10× passes. A
-    // measure spoiled by load is taken again; a quadratic one fails each time.
-    let last = { small: 0, large: 0 };
-    const passes = [0, 1, 2].some(() => {
-      last = growth(unit);
-      // The floor absorbs timer noise on runs of a fraction of a millisecond.
-      return last.large < Math.max(last.small, 1) * 10;
-    });
-    assert.ok(passes, `${unit}: ${last.small.toFixed(2)} ms, then ${last.large.toFixed(2)} ms`);
+  for (const [name, build] of HOSTILE_INPUTS) {
+    const { passes, ratio } = linear(build, sanitize);
+    assert.ok(passes, `${name}: the input at the write limit costs ${ratio} times as much`);
   }
 });
 
@@ -288,14 +325,20 @@ test("editor nesting is untouched", () => {
   assert.equal(richTextTooDeep(nested), false);
 });
 
-test("the depth check stops at the limit: deep inputs at the write limit cost almost nothing", () => {
-  richTextTooDeep("<p>warm up</p>");
+test("the depth check stops at the limit: a deep input at the write limit is read only that far", () => {
+  // The count sees the parser's work: a shallow input is read whole.
+  const shallow = repeated("<p>x</p>")(WRITE_LIMIT);
+  assert.ok(parserReads(() => richTextTooDeep(shallow)) >= shallow.length);
   for (const unit of ["<b>", "<em>", "<em/>", "<em></bogus>", "<svg><g>", "<ul><li>"]) {
-    const html = unit.repeat(Math.floor(100_000 / unit.length));
-    const start = performance.now();
-    assert.equal(richTextTooDeep(html), true, unit);
-    const ms = performance.now() - start;
-    assert.ok(ms < 50, `${unit}: ${ms.toFixed(1)} ms`);
+    const html = repeated(unit)(WRITE_LIMIT);
+    let tooDeep = false;
+    const reads = parserReads(() => {
+      tooDeep = richTextTooDeep(html);
+    });
+    assert.equal(tooDeep, true, unit);
+    // Reaching the limit takes at most a unit per level: well under twice that, never the input.
+    const toTheLimit = (RICH_TEXT_MAX_DEPTH + 1) * unit.length;
+    assert.ok(reads < 2 * toTheLimit, `${unit}: ${reads} characters read of ${html.length}`);
   }
 });
 
@@ -329,11 +372,15 @@ test("too deep, a value shows its visible text only, as the sanitiser would", ()
 test("the deep fallback reads text in one pass, however deep", () => {
   sanitize("<p>warm up</p>");
   for (const unit of ["<b>", "<em></bogus>", "<svg><g>", "<em><script>x</script>"]) {
-    const html = unit.repeat(Math.floor(100_000 / unit.length));
-    const start = performance.now();
-    sanitize(html);
-    const ms = performance.now() - start;
-    assert.ok(ms < 200, `${unit}: ${ms.toFixed(1)} ms`);
+    const build = repeated(unit);
+    const html = build(WRITE_LIMIT);
+    assert.equal(richTextTooDeep(html), true, unit);
+    // One pass over the input, and the depth check that stops at the limit.
+    const reads = parserReads(() => sanitize(html));
+    assert.ok(reads < 2 * html.length, `${unit}: ${reads} characters read of ${html.length}`);
+    // And no step of it grows with the depth.
+    const { passes, ratio } = linear(build, sanitize);
+    assert.ok(passes, `${unit}: the input at the write limit costs ${ratio} times as much`);
   }
 });
 
