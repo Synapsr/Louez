@@ -10,6 +10,7 @@ import type { Connection, RowDataPacket } from "mysql2/promise";
 import type { ReservationBillingEffect, ReservationStatus } from "@louez/db";
 import {
   createTestDatabase,
+  raceOnOpenTransaction,
   reservationChangeTestHooks,
   skipWithoutTestDatabase,
   waitForLockWaits,
@@ -1337,23 +1338,22 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
 
       test("leaves a checkout the store confirmed between its read and its lock", async () => {
         const id = await systemCheckout();
-        const hooks = reservationChangeTestHooks();
-        let confirmedMeanwhile = false;
-        hooks.beforeReservationLock = async () => {
-          if (confirmedMeanwhile) return;
-          confirmedMeanwhile = true;
-          await raw.query("UPDATE reservations SET reservation_status = 'confirmed' WHERE id = ?", [
-            id,
-          ]);
-        };
         const runs: Runs = [];
 
-        let cancelled: boolean;
-        try {
-          cancelled = await abandonCheckout(expired(id), recordingRunner(id, runs));
-        } finally {
-          hooks.beforeReservationLock = null;
-        }
+        // The store confirms it in a transaction that holds the row: the
+        // cancellation reads it still pending, waits on its lock, and gets it
+        // once the confirmation commits. The write is in an explicit
+        // transaction, so its trigger always finds that transaction's event.
+        const [cancelled] = await raceOnOpenTransaction(
+          database,
+          async (store) => {
+            await store.query(
+              "UPDATE reservations SET reservation_status = 'confirmed' WHERE id = ?",
+              [id],
+            );
+          },
+          [() => abandonCheckout(expired(id), recordingRunner(id, runs))],
+        );
 
         assert.equal(cancelled, false);
         assert.deepEqual(runs, []);
