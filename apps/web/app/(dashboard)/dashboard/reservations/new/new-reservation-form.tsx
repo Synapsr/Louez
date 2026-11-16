@@ -43,7 +43,7 @@ import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-d
 import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { isInsufficientCapacityResult } from "@/lib/reservations/util.insufficient-capacity";
-import { invalidateReservationList } from "@/lib/orpc/invalidation";
+import { invalidateManualCreationQuotes, invalidateReservationList } from "@/lib/orpc/invalidation";
 import { trackOpenReplayEvent } from "@/lib/openreplay/client";
 import { openReplayEvents } from "@/lib/openreplay/events";
 import { orpc } from "@/lib/orpc/react";
@@ -483,10 +483,13 @@ export function NewReservationForm({
         setGateDialogOpen(true);
         return;
       }
-      // A price, a rate or the display mode changed while the form was open:
-      // what it prices from is read again, and it shows the total to confirm.
+      // A price, a rate, the display mode, the insurer's premium or a route
+      // changed while the form was open: what it prices from is read again,
+      // the page and the outside quotes alike, and it shows the total the
+      // next attempt is compared with.
       if (error instanceof Error && error.message === "errors.reservationChangedMeanwhile") {
         router.refresh();
+        void invalidateManualCreationQuotes(queryClient).then(delivery.remeasure);
       }
       toastManager.add({
         title: getActionErrorMessage(error),
