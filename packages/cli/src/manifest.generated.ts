@@ -4461,7 +4461,7 @@ export const manifest: Manifest = {
       "method": "POST",
       "path": "/payments/{paymentId}/refund-records",
       "summary": "Record Refund",
-      "description": "Records a refund the store already gave by hand (cash, card terminal, bank transfer, check or other) against one payment it took by hand: a `rental`, `damage`, `adjustment` or `deposit_capture` payment. It moves no money. The refund is its own positive `completed` row pointing at the payment, in the payment's own currency; the payment keeps its amount. Partial refunds may follow one another, up to the payment's amount less every completed refund already recorded against it, counted under the reservation's lock. Refused, before anything is asked, for a payment the store does not have (`PAYMENT_NOT_FOUND`); an amount that is zero, negative, not a plain decimal with at most 8 digits before the point and 2 after, or with a digit past the minor unit of the payment's currency, such as decimals in yen (`REFUND_AMOUNT_INVALID`); a payment in a three-decimal currency, which Louez's billing does not count (`REFUND_CURRENCY_NOT_SUPPORTED`); a payment that is itself a refund (`REFUND_OF_REFUND`); a deposit, a deposit return or a deposit hold (`REFUND_PAYMENT_TYPE_NOT_REFUNDABLE`); a payment not completed (`REFUND_PAYMENT_NOT_COMPLETED`); a payment taken online through Stripe, whose refunds are not available through this action yet (`REFUND_STRIPE_PAYMENT`); a payment of zero or below (`REFUND_PAYMENT_NOT_RECEIVED`); and an amount above the payment's amount less every completed refund already recorded against it (`REFUND_EXCEEDS_REFUNDABLE`, whose details give the amounts paid, already refunded and refundable, and the currency). It needs the approval of the key's owner, whatever the key's confirmation setting: the first call changes nothing and answers 412 `APPROVAL_REQUIRED` with a preview of the refund, the payment and what is left to refund and `data.details.approval.url`, a Louez page where the key's owner, signed in, approves or refuses within 24 hours. `GET /handoffs/{id}`, with the approval's id, says where it stands; read it every 30 seconds or more. Once it is approved, the same request with the approval's id in `Louez-Confirmation` carries it out, once, within an hour and while the store is still as the preview showed. The operation's own refusals (a record not found, a balance exceeded) answer first, so an approval error comes only for a request that is otherwise still valid. A refusal answers 409 `APPROVAL_DECLINED`. For 412 `APPROVAL_INVALID`, check `details.reason` before retrying: `used` means the action already ran; `approver_not_allowed` means someone allowed must act in Louez; `expired` or `state_changed` requires a new preview, requested without `Louez-Confirmation`; `other_request` requires this request's approval, or a new approval. Too many approval requests answers 429 `APPROVALS_FULL`, with `Retry-After`. The guide's \"Approvals\" section describes each answer. Returns the refund's id (`refundId`), its `currency` and `creditNote`: `status` `issued` with its `number`, `pending` (owed: Louez issues it, retrying on its own), or `not_applicable` (the store issues no invoices, or the payment refunded has none). The refund stands whatever `creditNote` says. Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.",
+      "description": "Records a refund the store already gave by hand (cash, card terminal, bank transfer, check or other) against one payment it took by hand: a `rental`, `damage`, `adjustment` or `deposit_capture` payment. It moves no money. The refund is its own positive `completed` row pointing at the payment, in the payment's own currency; the payment keeps its amount. Partial refunds may follow one another, up to the payment's amount less every completed refund already recorded against it, counted under the reservation's lock. Refused, before anything is asked, for a payment the store does not have (`PAYMENT_NOT_FOUND`); an amount that is zero, negative, not a plain decimal with at most 8 digits before the point and 2 after, or with a digit past the minor unit of the payment's currency, such as decimals in yen (`REFUND_AMOUNT_INVALID`); a payment in a three-decimal currency, which Louez's billing does not count (`REFUND_CURRENCY_NOT_SUPPORTED`); a payment that is itself a refund (`REFUND_OF_REFUND`); a deposit, a deposit return or a deposit hold (`REFUND_PAYMENT_TYPE_NOT_REFUNDABLE`); a payment not completed (`REFUND_PAYMENT_NOT_COMPLETED`); a payment taken online through Stripe, which is refunded by refunding the payment instead (`REFUND_STRIPE_PAYMENT`); a payment of zero or below (`REFUND_PAYMENT_NOT_RECEIVED`); and an amount above the payment's amount less every completed refund already recorded against it (`REFUND_EXCEEDS_REFUNDABLE`, whose details give the amounts paid, already refunded and refundable, and the currency). It needs the approval of the key's owner, whatever the key's confirmation setting: the first call changes nothing and answers 412 `APPROVAL_REQUIRED` with a preview of the refund, the payment and what is left to refund and `data.details.approval.url`, a Louez page where the key's owner, signed in, approves or refuses within 24 hours. `GET /handoffs/{id}`, with the approval's id, says where it stands; read it every 30 seconds or more. Once it is approved, the same request with the approval's id in `Louez-Confirmation` carries it out, once, within an hour and while the store is still as the preview showed. The operation's own refusals (a record not found, a balance exceeded) answer first, so an approval error comes only for a request that is otherwise still valid. A refusal answers 409 `APPROVAL_DECLINED`. For 412 `APPROVAL_INVALID`, check `details.reason` before retrying: `used` means the action already ran; `approver_not_allowed` means someone allowed must act in Louez; `expired` or `state_changed` requires a new preview, requested without `Louez-Confirmation`; `other_request` requires this request's approval, or a new approval. Too many approval requests answers 429 `APPROVALS_FULL`, with `Retry-After`. The guide's \"Approvals\" section describes each answer. Returns the refund's id (`refundId`), its `currency` and `creditNote`: `status` `issued` with its `number`, `pending` (owed: Louez issues it, retrying on its own), or `not_applicable` (the store issues no invoices, or the payment refunded has none). The refund stands whatever `creditNote` says. Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.",
       "pathParams": [
         {
           "name": "paymentId",
@@ -4506,6 +4506,84 @@ export const manifest: Manifest = {
       },
       "idempotent": true,
       "confirmation": true
+    },
+    {
+      "id": "refund_payment",
+      "group": "payments",
+      "action": "refund",
+      "method": "POST",
+      "path": "/payments/{paymentId}/refunds",
+      "summary": "Refund Payment",
+      "description": "Refunds all or part of a payment the store took online, back to the means that paid it, through Stripe: a `rental`, `damage`, `adjustment` or `deposit_capture` payment. The amount is in the payment's own currency, with at most its decimals. Partial refunds may follow one another. One refund is one durable operation: it reaches Stripe at most once, and its outcome can always be read with `GET /payments/{paymentId}/refunds/{refundId}`. No message is sent to the customer. Refused, before anything is asked, for a payment the store does not have (`PAYMENT_NOT_FOUND`); one taken by hand, whose refund is recorded instead (`REFUND_PAYMENT_TAKEN_BY_HAND`); an amount that is zero, negative, or has more decimals than the payment's currency (`REFUND_AMOUNT_INVALID`); a three-decimal currency (`REFUND_CURRENCY_NOT_SUPPORTED`); a deposit hold, a refund row or a failed payment (`PAYMENT_NOT_REFUNDABLE`); a payment not settled at Stripe (`PAYMENT_NOT_SETTLED`); an open dispute (`PAYMENT_DISPUTED`); a charge recorded on several reservations (`PAYMENT_CHARGE_SHARED`); no Stripe account (`NO_STRIPE_ACCOUNT`); and an amount above what the charge can still give back, refunds given by hand and refunds in progress counted (`REFUND_EXCEEDS_REFUNDABLE`, whose details give the amounts paid, refunded, being refunded and refundable, and the currency). Stripe not answering the first read refuses with `STRIPE_UNAVAILABLE`, nothing asked. A dashboard session is refused with `REFUND_NOT_FROM_DASHBOARD`. It needs the approval of the key's owner, whatever the key's confirmation setting: the first call changes nothing and answers 412 `APPROVAL_REQUIRED` with a preview of the refund, the payment and what stays refundable and `data.details.approval.url`, a Louez page where the key's owner, signed in, approves or refuses within 24 hours. `GET /handoffs/{id}`, with the approval's id, says where it stands; read it every 30 seconds or more. Once it is approved, the same request with the approval's id in `Louez-Confirmation` carries it out, once, within an hour and while the store is still as the preview showed. The operation's own refusals (a record not found, a balance exceeded) answer first, so an approval error comes only for a request that is otherwise still valid. A refusal answers 409 `APPROVAL_DECLINED`. For 412 `APPROVAL_INVALID`, check `details.reason` before retrying: `used` means the action already ran; `approver_not_allowed` means someone allowed must act in Louez; `expired` or `state_changed` requires a new preview, requested without `Louez-Confirmation`; `other_request` requires this request's approval, or a new approval. Too many approval requests answers 429 `APPROVALS_FULL`, with `Retry-After`. The guide's \"Approvals\" section describes each answer. Even once approved, Stripe may still refuse the refund (a dispute opened meanwhile, a balance too low): it then answers failed with the reason, the approval is spent, and nothing else changes. The answer is the refund's state: `pending` while Stripe has not given the outcome (`detail` `sending` while Louez may still send it, `awaiting_provider` once only Stripe's own account of the charge settles it), `succeeded`, or `failed` with `failure`. It never answers an error once the refund is recorded. The platform's `Idempotency-Key` replays the first answer, which may be `pending`: read the refund for its outcome rather than repeating the request. Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.",
+      "pathParams": [
+        {
+          "name": "paymentId",
+          "flag": "payment-id",
+          "kind": "string",
+          "required": true,
+          "description": "The ID of the payment taken online to refund"
+        }
+      ],
+      "query": [],
+      "body": {
+        "required": true,
+        "fields": [
+          {
+            "name": "amount",
+            "flag": "amount",
+            "kind": "string",
+            "required": true,
+            "description": "Amount to give back, in the payment's own currency, with at most its decimals (e.g. \"45.00\"; whole units in yen)"
+          },
+          {
+            "name": "reason",
+            "flag": "reason",
+            "kind": "string",
+            "enum": [
+              "requested_by_customer",
+              "duplicate"
+            ],
+            "description": "Why it is refunded, as Stripe records it (default requested_by_customer)"
+          },
+          {
+            "name": "notes",
+            "flag": "notes",
+            "kind": "string",
+            "description": "Optional notes, kept on the refund"
+          }
+        ]
+      },
+      "idempotent": true,
+      "confirmation": true
+    },
+    {
+      "id": "get_refund",
+      "group": "payments",
+      "action": "get-refund",
+      "method": "GET",
+      "path": "/payments/{paymentId}/refunds/{refundId}",
+      "summary": "Get Refund",
+      "description": "Reads a refund made with `POST /payments/{paymentId}/refunds`. The answer is the refund's state: `pending` while Stripe has not given the outcome (`detail` `sending` while Louez may still send it, `awaiting_provider` once only Stripe's own account of the charge settles it), `succeeded`, or `failed` with `failure`. It never answers an error once the refund is recorded. While it is pending, a read may settle it with Stripe once, under the refund's own rules (never a second request to Stripe beyond them). A refund made in Stripe's own dashboard has no refund here: 404 `REFUND_NOT_FOUND`, by design; it shows among the reservation's payments. Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.",
+      "pathParams": [
+        {
+          "name": "paymentId",
+          "flag": "payment-id",
+          "kind": "string",
+          "required": true,
+          "description": "The ID of the payment refunded"
+        },
+        {
+          "name": "refundId",
+          "flag": "refund-id",
+          "kind": "string",
+          "required": true,
+          "description": "The refund's ID, as refund_payment returned it"
+        }
+      ],
+      "query": [],
+      "body": null,
+      "idempotent": false,
+      "confirmation": false
     },
     {
       "id": "delete_payment",
