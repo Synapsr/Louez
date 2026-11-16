@@ -541,15 +541,13 @@ describe(
     test("a cart without its required accessory is refused, naming the accessory to add", async () => {
       const bike = await product({ quantity: 2 });
       const helmet = await product({ quantity: 5 });
-      await louezDb.db
-        .insert(louezDb.productAccessories)
-        .values({
-          id: nextId("rc_acc"),
-          productId: bike,
-          accessoryId: helmet,
-          required: true,
-          quantity: 1,
-        });
+      await louezDb.db.insert(louezDb.productAccessories).values({
+        id: nextId("rc_acc"),
+        productId: bike,
+        accessoryId: helmet,
+        required: true,
+        quantity: 1,
+      });
       const refusal = await rejects(
         create(base(bike, { lines: [{ productId: bike, quantity: 2 }] }), session()),
         "RESERVATION_REQUIRED_ACCESSORIES_MISSING",
@@ -915,6 +913,110 @@ describe(
       }
     });
 
+    async function approvedForNewCustomer(email: string, key: string) {
+      const kayak = await product({ quantity: 5 });
+      const agent = await agentKey();
+      const input = base(kayak, {
+        customer: { email, firstName: "Alice", lastName: "New" },
+        allowOverbooking: true,
+      });
+      const asked = await rejects(
+        create(input, agent.call({ "idempotency-key": key })),
+        "APPROVAL_REQUIRED",
+      );
+      return { agent, input, approval: await approvedOf(asked) };
+    }
+    const handoffStatus = async (id: string) =>
+      (
+        await louezDb.db
+          .select({ status: louezDb.apiHandoffs.status })
+          .from(louezDb.apiHandoffs)
+          .where(orm.eq(louezDb.apiHandoffs.id, id))
+      )[0]?.status;
+
+    test("the customer approved is the customer written: an e-mail taken before the carry-out reads it", async () => {
+      const email = "alice-before@rc.test";
+      const { agent, input, approval } = await approvedForNewCustomer(email, "bound-1");
+      // Bob takes the e-mail in a transaction still open: the carry-out's read waits for it.
+      const bob = nextId("rc_cus");
+      const [refusal] = await raceOnOpenTransaction(
+        database,
+        async (holder) => {
+          await holder.query(
+            "INSERT INTO customers (id, store_id, email, first_name, last_name) VALUES (?, ?, ?, 'Bob', 'Other')",
+            [bob, STORE, email],
+          );
+        },
+        [
+          () =>
+            rejects(
+              create(
+                input,
+                agent.call({ "idempotency-key": "bound-1", "louez-confirmation": approval }),
+              ),
+              "APPROVAL_INVALID",
+            ),
+        ],
+      );
+      // Read after Bob committed, the request is another one: for Bob, not for a new Alice.
+      assert.equal(refusal?.data.details?.reason, "other_request");
+      assert.deepEqual(await created(), [], "nothing created, for Bob or anyone");
+      assert.equal(await handoffStatus(approval), "approved", "the approval was not used");
+      const again = await rejects(
+        create(input, agent.call({ "idempotency-key": "bound-2" })),
+        "APPROVAL_REQUIRED",
+      );
+      const preview = (again.data.details as { preview: { details: { customer: unknown } } })
+        .preview;
+      assert.deepEqual(preview.details.customer, {
+        id: bob,
+        created: false,
+        name: "Bob Other",
+        email,
+      });
+    });
+
+    test("the customer approved is the customer written: an e-mail taken after the carry-out read it voids the approval", async () => {
+      const email = "alice-after@rc.test";
+      const { agent, input, approval } = await approvedForNewCustomer(email, "bound-3");
+      const bob = nextId("rc_cus");
+      const holder = await database.connect();
+      try {
+        await holder.beginTransaction();
+        // The approval's row, which the carry-out takes after it read the customer: it waits there.
+        await holder.query("SELECT id FROM api_handoffs WHERE id = ? FOR UPDATE", [approval]);
+        const running = rejects(
+          create(
+            input,
+            agent.call({ "idempotency-key": "bound-3", "louez-confirmation": approval }),
+          ),
+          "APPROVAL_INVALID",
+        );
+        await waitForLockWaits(holder, database.name, 1);
+        // Bob takes the e-mail while it waits, after its read found none.
+        await holder.query(
+          "INSERT INTO customers (id, store_id, email, first_name, last_name) VALUES (?, ?, ?, 'Bob', 'Other')",
+          [bob, STORE, email],
+        );
+        await holder.commit();
+        const refusal = await running;
+        assert.equal(refusal.data.details?.reason, "state_changed");
+      } finally {
+        await holder.end();
+      }
+      assert.deepEqual(await created(), [], "nothing created, for Bob or anyone");
+      assert.equal(
+        await handoffStatus(approval),
+        "approved",
+        "rolled back: the approval was not used",
+      );
+      const [bobRow] = await louezDb.db
+        .select({ firstName: louezDb.customers.firstName })
+        .from(louezDb.customers)
+        .where(orm.eq(louezDb.customers.id, bob));
+      assert.equal(bobRow?.firstName, "Bob", "Bob's details untouched");
+    });
+
     test("a flag with nothing short still asks a person; the refusals answer before anyone is asked", async () => {
       const kayak = await product({ quantity: 5 });
       const agent = await agentKey();
@@ -978,6 +1080,52 @@ describe(
       await rejects(
         create(base(kayak, { notifyCustomer: false }), agent.call({ "idempotency-key": "once-1" })),
         "IDEMPOTENCY_KEY_REUSED",
+      );
+    });
+
+    test("a creation whose answer was lost after its commit is answered from its key, nothing created again", async () => {
+      const kayak = await product({ quantity: 5 });
+      const agent = await agentKey({ confirmSensitive: false });
+      const input = base(kayak, {
+        customer: { email: "lost@rc.test", firstName: "Lou", lastName: "Lost" },
+        notifyCustomer: true,
+      });
+      // The record of the answer fails, after the creation committed.
+      const connection = await database.connect();
+      await connection.query(`CREATE TRIGGER rc_lose_answer BEFORE UPDATE ON api_operations FOR EACH ROW
+      BEGIN
+        IF NEW.status = 'succeeded' AND NEW.procedure = 'dashboard.reservations.create' THEN
+          SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the answer is lost';
+        END IF;
+      END`);
+      try {
+        await rejects(
+          create(input, agent.call({ "idempotency-key": "lost-1" })),
+          "OPERATION_OUTCOME_UNKNOWN",
+        );
+      } finally {
+        await connection.query("DROP TRIGGER rc_lose_answer");
+        await connection.end();
+      }
+      const [first] = await created();
+      assert.ok(first, "the creation committed");
+
+      const context = agent.call({ "idempotency-key": "lost-1" });
+      const answer = await create(input, context);
+      assert.equal(answer.id, first.id, "the reservation it created");
+      assert.equal(context.receipt.replayed, true);
+      assert.deepEqual(answer.customer, { id: first.customerId, created: true });
+      assert.deepEqual(answer.message, {
+        sent: true,
+        kind: "quote",
+        to: "lost@rc.test",
+        reason: null,
+      });
+      assert.equal((await created()).length, 1, "nothing created again");
+      assert.equal(
+        (await outbox()).filter((effect) => effect.type === "reservation.quoteEmail").length,
+        1,
+        "one message",
       );
     });
 

@@ -1,6 +1,7 @@
 import type { CredentialKind, StoreActor } from "./actor";
 import type { ProcedureScope } from "./permissions";
-import type { UrlsPort } from "./ports";
+import type { ApiPorts, UrlsPort } from "./ports";
+import type { ActorStore } from "./procedures";
 
 /**
  * What a sensitive operation does, when it needs a confirmation from a
@@ -191,6 +192,18 @@ export interface ApiMeta {
    * nothing is replayed then. The write does not run again.
    */
   authorizeReplay?: (stored: unknown, actor: StoreActor) => Promise<void>;
+  /**
+   * A store write that records what it created in its own transaction
+   * (`recordOperationTarget`, platform/operations.ts): the answer to its
+   * idempotency key when the write committed and the record of its answer
+   * was lost, built from that record as it is now. Answered as a replay
+   * (`Louez-Replayed`), through the output schema; the write does not run
+   * again. Without it, such a key answers `OPERATION_OUTCOME_UNKNOWN`.
+   */
+  recoverUnknown?: (
+    targetId: string,
+    context: { actor: StoreActor; store: ActorStore; ports: ApiPorts },
+  ) => Promise<unknown>;
   /**
    * Largest request body this procedure legitimately takes, when it is more
    * than the transports take by default (2 MiB on `/api/v1`, 4 MiB on

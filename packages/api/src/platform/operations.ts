@@ -1,5 +1,6 @@
 import {
   apiOperations,
+  currentApiOperation,
   db,
   isTransactionInterrupted,
   retryTransactionOnDeadlock,
@@ -108,6 +109,15 @@ export async function runOperation<T>(
     recordedEffects?: RecordedEffects;
     /** Hands the rows' ids to the app once committed (`ApiPorts.dispatchEffects`). */
     dispatchEffects?: (ids: readonly string[]) => void;
+    /**
+     * For a write that records its target in its own transaction
+     * (`recordOperationTarget`): the answer to a key whose outcome is
+     * unknown but whose record names that target, which then committed with
+     * the write. It reads the target as it is now, and is answered as a
+     * replay. Without it, or without a target, the key answers
+     * `OPERATION_OUTCOME_UNKNOWN`.
+     */
+    recoverUnknown?: (targetId: string) => Promise<T>;
   },
   execute: () => Promise<T>,
 ): Promise<T> {
@@ -145,6 +155,15 @@ export async function runOperation<T>(
       if (params.receipt)
         Object.assign(params.receipt, { operationId: claimed.id, replayed: true });
       return decodeResult(claimed.result) as T;
+    }
+    if (claimed.kind === "lost") {
+      // Its write committed with its target; only the record of its answer was lost.
+      if (!params.recoverUnknown || !claimed.targetId) {
+        throw platformErrors.operationOutcomeUnknown(claimed.id);
+      }
+      if (params.receipt)
+        Object.assign(params.receipt, { operationId: claimed.id, replayed: true });
+      return params.recoverUnknown(claimed.targetId);
     }
     operationId = claimed.id;
   }
@@ -227,6 +246,21 @@ export async function runOperation<T>(
   return result;
 }
 
+/**
+ * Records the target of the running write in the write's own transaction:
+ * the record that a write creates is named with it, so a key whose answer
+ * was lost after the commit still says what it created (`recoverUnknown`).
+ * Nothing outside a recorded write.
+ */
+export async function recordOperationTarget(tx: Transaction, targetId: string): Promise<void> {
+  const operation = currentApiOperation();
+  if (!operation) return;
+  await tx
+    .update(apiOperations)
+    .set({ targetId })
+    .where(eq(apiOperations.id, operation.operationId));
+}
+
 /** Builds a write's recorded effects, in the record's transaction. */
 export type RecordedEffects = (
   tx: Transaction,
@@ -260,7 +294,11 @@ async function enqueueRecordedEffects(
   }
 }
 
-type ClaimResult = { kind: "run"; id: string } | { kind: "replay"; id: string; result: unknown };
+type ClaimResult =
+  | { kind: "run"; id: string }
+  | { kind: "replay"; id: string; result: unknown }
+  /** Its outcome is unknown; `targetId` is what its write recorded in its own transaction, if anything. */
+  | { kind: "lost"; id: string; targetId: string | null };
 
 async function claimIdempotencyKey(
   row: typeof apiOperations.$inferInsert & { idempotencyKey: string },
@@ -280,6 +318,7 @@ async function claimIdempotencyKey(
       procedure: apiOperations.procedure,
       status: apiOperations.status,
       result: apiOperations.result,
+      targetId: apiOperations.targetId,
       // Read on the database clock, which also wrote `updated_at`.
       leaseExpired: sql<number>`${apiOperations.updatedAt} < NOW() - INTERVAL ${OPERATION_LEASE_SECONDS} SECOND`,
     })
@@ -306,9 +345,11 @@ async function claimIdempotencyKey(
       .update(apiOperations)
       .set({ status: "unknown" })
       .where(and(eq(apiOperations.id, existing.id), eq(apiOperations.status, "running")));
-    throw platformErrors.operationOutcomeUnknown(existing.id);
+    return { kind: "lost", id: existing.id, targetId: existing.targetId };
   }
-  if (existing.status === "unknown") throw platformErrors.operationOutcomeUnknown(existing.id);
+  if (existing.status === "unknown") {
+    return { kind: "lost", id: existing.id, targetId: existing.targetId };
+  }
 
   // It failed: Louez refused it, and a refusal leaves nothing the handler
   // wrote (`isRefusal`), so the same key may run again (procedures that

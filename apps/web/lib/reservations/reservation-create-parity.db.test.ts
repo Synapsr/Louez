@@ -118,11 +118,31 @@ describe(
         endDate: "2030-08-31",
         price: "11.10",
       });
+      // Degressive by duration: 12.5 % off from three days.
+      const tiered = await product({ price: "9.90" });
+      await louezDb.db.insert(louezDb.productPricingTiers).values({
+        id: nextId("parity_tie"),
+        productId: tiered,
+        minDuration: 3,
+        discountPercent: "12.500000",
+        displayOrder: 0,
+      });
+      // A rate-based product: 12.00 a day, or a package of 29.90 for three days.
+      const rated = await product({ price: "12.00", basePeriodMinutes: 24 * 60 });
+      await louezDb.db.insert(louezDb.productPricingTiers).values({
+        id: nextId("parity_rat"),
+        productId: rated,
+        period: 3 * 24 * 60,
+        price: "29.90",
+        displayOrder: 0,
+      });
       return [
         { productId: plain, quantity: 2 },
         { productId: exempt, quantity: 1 },
         { productId: promoted, quantity: 3 },
         { productId: seasonal, quantity: 1 },
+        { productId: tiered, quantity: 2 },
+        { productId: rated, quantity: 4 },
       ];
     }
 
@@ -248,6 +268,11 @@ describe(
           ours.lines.find((line) => line.productId === lines[3]?.productId)?.totalPrice,
           "33.30",
         );
+        // Three days of 9.90, two of them, 12.5 % off; four packages of three days at 29.90.
+        const total = (index: number) =>
+          Number(ours.lines.find((line) => line.productId === lines[index]?.productId)?.totalPrice);
+        assert.ok(total(4) < 9.9 * 3 * 2, "the duration tier applies");
+        assert.notEqual(total(5), 12 * 3 * 4, "the period's rate applies");
         assert.notEqual(ours.money.taxAmount, null);
         assert.equal(ours.money.currency, store.currency);
 

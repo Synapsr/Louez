@@ -3,7 +3,11 @@ import {
   createReservationOutput,
 } from "../../contracts/reservation-create";
 import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
-import type { Consequence, Consequences } from "../../platform/approval-rule";
+import {
+  confirmationStep,
+  type Consequence,
+  type Consequences,
+} from "../../platform/approval-rule";
 import { platformErrors } from "../../platform/errors";
 import { customerLinks, reservationLinks } from "../../platform/links";
 import { allows, type ProcedureScope } from "../../platform/permissions";
@@ -11,6 +15,8 @@ import { storeProcedure } from "../../platform/procedures";
 import { readAfterCommit } from "../../platform/errors";
 import {
   createStoreReservation,
+  recoverCreatedReservation,
+  type CreatedReservation,
   type ReservationCreateCaller,
   type ReservationCreatePreview,
 } from "../../services/reservation-create";
@@ -98,6 +104,42 @@ const caller = (context: ProductContext): ReservationCreateCaller => ({
   ports: context.ports,
 });
 
+/** What a creation answers: its reservation as `reservations.get` reads it now, with what it decided. */
+async function answerOf(
+  context: Pick<ProductContext, "actor" | "store" | "ports">,
+  created: CreatedReservation,
+) {
+  const { urls } = context.ports;
+  const reservation = await readAfterCommit(() =>
+    getReservation(
+      {
+        storeId: context.actor.storeId,
+        currency: context.store.settings?.currency ?? "EUR",
+        customers: true,
+        payments: mayRead(context, "payments"),
+      },
+      created.id,
+    ),
+  );
+  const links = reservationLinks(urls, context.store, reservation);
+  return {
+    id: created.id,
+    reservation: {
+      ...reservation,
+      links,
+      customer: reservation.customer && {
+        ...reservation.customer,
+        links: customerLinks(urls, context.store, reservation.customer),
+      },
+    },
+    customer: created.customer,
+    capacity: created.capacity,
+    message: created.message,
+    warnings: created.warnings,
+    links,
+  };
+}
+
 const REFUSED =
   "Custom lines, prices or deposits typed by hand, discounts and promo codes, delivery, insurance and a pending status are the dashboard's: each answers RESERVATION_OPTION_NOT_AVAILABLE with details.option.";
 
@@ -108,6 +150,9 @@ const create = storeProcedure
     sensitive: "send",
     personApproval: true,
     requiresIdempotencyKey: true,
+    // Its answer lost after the commit: the reservation it recorded, as it is now.
+    recoverUnknown: async (targetId, context) =>
+      answerOf(context, await recoverCreatedReservation(context.actor.storeId, targetId)),
     mcp: {
       name: "reservations_create",
       title: "Create Reservation",
@@ -147,36 +192,10 @@ const create = storeProcedure
     requireCustomerRights(context, "email" in input.customer);
     const created = await createStoreReservation(caller(context), input, {
       confirm: createConfirmation(context, path, input),
+      // How this caller was asked for the branch the preview shows.
+      asked: (preview) => confirmationStep(createConsequences(preview), context.actor.credential),
     });
-    const { urls } = context.ports;
-    const reservation = await readAfterCommit(() =>
-      getReservation(
-        {
-          storeId: context.actor.storeId,
-          currency: context.store.settings?.currency ?? "EUR",
-          customers: true,
-          payments: mayRead(context, "payments"),
-        },
-        created.id,
-      ),
-    );
-    const links = reservationLinks(urls, context.store, reservation);
-    return {
-      id: created.id,
-      reservation: {
-        ...reservation,
-        links,
-        customer: reservation.customer && {
-          ...reservation.customer,
-          links: customerLinks(urls, context.store, reservation.customer),
-        },
-      },
-      customer: created.customer,
-      capacity: created.capacity,
-      message: created.message,
-      warnings: created.warnings,
-      links,
-    };
+    return answerOf(context, created);
   });
 
 export { create };

@@ -5,6 +5,7 @@ import {
   assertStoreCanTakeReservations,
   consumeReservationStock,
   customers,
+  db,
   getBlockingReservationStatuses,
   insertReservation,
   isReservationChangeBusyError,
@@ -14,6 +15,7 @@ import {
   products,
   reservationActivity,
   reservationItems,
+  reservations,
   runReservationTransaction,
   storeIntegrations,
   storeTulipIntegrations,
@@ -52,8 +54,9 @@ import {
 import { reservationErrors } from "../contracts/reservations";
 import type { Credential, Transport } from "../platform/actor";
 import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
-import { platformErrors } from "../platform/errors";
+import { approvalErrors, platformErrors } from "../platform/errors";
 import { enqueueEffects, type ApiEffect } from "../platform/effects";
+import { recordOperationTarget } from "../platform/operations";
 import { sha256, stableStringify } from "../platform/hash";
 import type { ApiEventStore, ApiPorts } from "../platform/ports";
 import type { ApprovalPresentation } from "./approval-display";
@@ -180,6 +183,9 @@ export interface ReservationCreatePreview {
   /** The stock the booking asks for, never shown: bound (`stockDemandOf`). */
   demand: StockDemandLine[];
 }
+
+/** How a branch was asked, as the confirmation rule decides it (`confirmationStep`). */
+export type CreateAskedStep = (preview: ReservationCreatePreview) => "approval" | "token" | "none";
 
 export type CreateConfirmStep = (
   preview: ReservationCreatePreview,
@@ -455,7 +461,7 @@ type Outcome =
 export async function createStoreReservation(
   caller: ReservationCreateCaller,
   input: CreateReservationInput,
-  options: { confirm?: CreateConfirmStep } = {},
+  options: { confirm?: CreateConfirmStep; asked?: CreateAskedStep } = {},
 ): Promise<CreatedReservation> {
   const option = refusedOption(input);
   if (option) throw option;
@@ -504,13 +510,16 @@ export async function createStoreReservation(
         }
       }
 
-      // The customer, read: the preview names them; one added comes after the ask.
+      // The customer, resolved and locked before the preview, so what is shown and
+      // bound is what is written: an existing customer's row is held to the commit;
+      // a new one is added after the ask, and checked again then (`resolveCustomer`).
       let customer: ResolvedCustomer;
       if ("id" in input.customer) {
         const [row] = await tx
           .select()
           .from(customers)
-          .where(and(eq(customers.id, input.customer.id), eq(customers.storeId, storeId)));
+          .where(and(eq(customers.id, input.customer.id), eq(customers.storeId, storeId)))
+          .for("update");
         if (!row) return refuse(reservationCreateErrors.customerNotFound(input.customer.id));
         customer = { kind: "existing", row };
       } else {
@@ -518,7 +527,8 @@ export async function createStoreReservation(
         const [row] = await tx
           .select()
           .from(customers)
-          .where(and(eq(customers.storeId, storeId), eq(customers.email, email)));
+          .where(and(eq(customers.storeId, storeId), eq(customers.email, email)))
+          .for("update");
         customer = row
           ? { kind: "existing", row }
           : {
@@ -715,6 +725,18 @@ export async function createStoreReservation(
         country: settings?.country ?? "FR",
         createdVia: caller.transport === "rpc" ? "dashboard" : "api",
       });
+      // A new customer was shown, and another write added this e-mail since
+      // the read: the insert waited for it under the e-mail's unique key and
+      // found its customer. A call that was asked was bound to "a new
+      // customer" and never writes for another: thrown, so the transaction
+      // rolls back, the token or the approval it carried out with it, and the
+      // caller gets a new preview that names the existing customer. A call
+      // nobody asked uses the existing customer unchanged (`created: false`).
+      if (customer.kind === "new" && !resolved.created) {
+        const step = options.asked?.(preview) ?? "none";
+        if (step === "approval") throw approvalErrors.invalid("state_changed");
+        if (step === "token") throw platformErrors.confirmationInvalid();
+      }
       const reservationId = nanoid();
       const number = await generateUniqueReservationNumber(storeId, 5, tx);
       const primary = buildPrimaryLocationSnapshot(store);
@@ -806,6 +828,9 @@ export async function createStoreReservation(
 
       // Its lines change what the billing snapshot reads: marked in this transaction (DL-13).
       await markReservation(tx, { id: reservationId, storeId });
+      // The operation names the reservation it created, with it: a key whose
+      // answer is lost after this commit still finds it (`recoverCreatedReservation`).
+      await recordOperationTarget(tx, reservationId);
 
       const credential = { kind: caller.credential.kind, id: caller.credential.id };
       await tx.insert(reservationActivity).values({
@@ -828,7 +853,9 @@ export async function createStoreReservation(
           ...(warnings.length > 0
             ? { validationWarnings: warnings, validationWarningsCount: warnings.length }
             : {}),
-          ...(message.sends ? { customerMessage: message.kind } : {}),
+          ...(message.sends
+            ? { customerMessage: message.kind, customerMessageTo: resolved.row.email }
+            : { customerMessageReason: message.reason }),
         },
         // Whole seconds, as a status change dates its row.
         createdAt: toWholeSeconds(new Date()),
@@ -937,6 +964,71 @@ export async function createStoreReservation(
     }),
   );
   return outcome.created;
+}
+
+/**
+ * What a creation answered, read back from its reservation and its `created`
+ * activity row: for a key whose answer was lost after the commit
+ * (`meta.recoverUnknown`). The reservation is read as it is now; what the
+ * creation decided (the customer added or found, the stock verdicts, the
+ * message, the warnings) as its row recorded it.
+ */
+export async function recoverCreatedReservation(
+  storeId: string,
+  reservationId: string,
+): Promise<CreatedReservation> {
+  const [reservation] = await db
+    .select({
+      id: reservations.id,
+      number: reservations.number,
+      customerId: reservations.customerId,
+    })
+    .from(reservations)
+    .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)));
+  if (!reservation) throw new Error("The reservation an operation created is gone.");
+  const [row] = await db
+    .select({ metadata: reservationActivity.metadata })
+    .from(reservationActivity)
+    .where(
+      and(
+        eq(reservationActivity.reservationId, reservationId),
+        eq(reservationActivity.activityType, "created"),
+      ),
+    )
+    .limit(1);
+  const facts = (row?.metadata ?? {}) as {
+    customerCreated?: boolean;
+    status?: "quote" | "confirmed";
+    overbookingShortfalls?: CreateShortfall[];
+    turnoverBufferShortfalls?: CreateShortfall[];
+    validationWarnings?: CreatedReservation["warnings"];
+    customerMessage?: CreateMessageKind;
+    customerMessageTo?: string;
+    customerMessageReason?: CreatedReservation["message"]["reason"];
+  };
+  const shortfalls = facts.overbookingShortfalls ?? [];
+  return {
+    id: reservation.id,
+    number: reservation.number,
+    customer: { id: reservation.customerId, created: facts.customerCreated === true },
+    capacity: {
+      overbooked: shortfalls.length > 0,
+      shortfalls,
+      pastTurnoverBuffer: facts.turnoverBufferShortfalls ?? [],
+    },
+    message: facts.customerMessage
+      ? {
+          sent: true,
+          kind: facts.customerMessage,
+          to: facts.customerMessageTo ?? null,
+          reason: null,
+        }
+      : { sent: false, kind: null, to: null, reason: facts.customerMessageReason ?? null },
+    warnings: (facts.validationWarnings ?? []).map(({ key, params }) => ({
+      key,
+      ...(params ? { params } : {}),
+    })),
+  };
 }
 
 /**
