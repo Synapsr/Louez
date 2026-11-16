@@ -458,12 +458,15 @@ describe(
       ["payment_intent.payment_failed", depositHold],
     ];
 
+    /** The id of the last event sent. */
+    let lastEventId = "";
     async function send(type: string, object: Record<string, unknown>, account: string) {
+      lastEventId = nextId("evt");
       const response = await route.POST(
         new Request("https://louez.test/api/webhooks/stripe/connect", {
           method: "POST",
           body: JSON.stringify({
-            id: nextId("evt"),
+            id: lastEventId,
             type,
             livemode: false,
             account,
@@ -499,11 +502,17 @@ describe(
           JSON.stringify(entry).includes("handler_failed"),
         );
         assert.equal(failed.length, 1, "the handler's failure is logged once");
+        // Diagnosable without any message: the event and the account it came from.
+        assert.match(
+          JSON.stringify(failed[0]),
+          new RegExp(`"stripeEventId":"${lastEventId}","accountId":"${ACCOUNT}"`),
+        );
         // An account Louez holds payments of: the platform hears of it.
         const alerts = calls.filter(([name]) => name === "alerts.alert");
         assert.equal(alerts.length, 1, type);
         assert.equal(alerts[0]?.[1], "connected_account_unreachable");
         assert.match(String(alerts[0]?.[2]), new RegExp(`${ACCOUNT} of store ${STORE}`));
+        assert.match(String(alerts[0]?.[2]), new RegExp(`event ${lastEventId} failed`));
         assert.doesNotMatch(JSON.stringify(calls), /sk_test_|abcd/);
       });
 
@@ -520,7 +529,14 @@ describe(
         assert.deepEqual(logs(), [
           [
             "log.warn",
-            { stripeWebhook: { event: type, issue: "account_unknown", accountId: UNKNOWN } },
+            {
+              stripeWebhook: {
+                event: type,
+                issue: "account_unknown",
+                stripeEventId: lastEventId,
+                accountId: UNKNOWN,
+              },
+            },
           ],
         ]);
       });

@@ -221,6 +221,7 @@ export async function POST(request: Request) {
   let accountOwner: { readonly storeId: string } | null = null;
   const mayAct = async () => {
     const verdict = await connectedAccountVerdict({
+      id: event.id,
       type: event.type,
       accountId: connectedAccountId,
     });
@@ -330,10 +331,16 @@ export async function POST(request: Request) {
   } catch (error) {
     // Every failure, whatever Stripe answered: Stripe delivers the event again.
     log.error({
-      stripeWebhook: { event: event.type, issue: "handler_failed", ...describeWebhookError(error) },
+      stripeWebhook: {
+        event: event.type,
+        issue: "handler_failed",
+        stripeEventId: event.id,
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        ...describeWebhookError(error),
+      },
     });
     await alertIfAccountUnreachable(
-      { type: event.type, accountId: connectedAccountId, owner: accountOwner },
+      { id: event.id, type: event.type, accountId: connectedAccountId, owner: accountOwner },
       error,
     );
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });

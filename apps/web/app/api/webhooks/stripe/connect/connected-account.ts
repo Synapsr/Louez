@@ -64,14 +64,20 @@ export type ConnectedAccountVerdict =
  * event without an account goes to its handler, which says so itself.
  */
 export async function connectedAccountVerdict(
-  event: { readonly type: string; readonly accountId: string | undefined },
+  event: {
+    readonly id: string;
+    readonly type: string;
+    readonly accountId: string | undefined;
+  },
   owner: typeof connectedAccountOwner = connectedAccountOwner,
 ): Promise<ConnectedAccountVerdict> {
-  const { type, accountId } = event;
+  const { id, type, accountId } = event;
   if (!accountId) return { act: true, owner: null };
   const known = await owner(accountId);
   if (!known) {
-    log.warn({ stripeWebhook: { event: type, issue: "account_unknown", accountId } });
+    log.warn({
+      stripeWebhook: { event: type, issue: "account_unknown", stripeEventId: id, accountId },
+    });
     return { act: false };
   }
   return { act: true, owner: known };
@@ -85,6 +91,7 @@ export async function connectedAccountVerdict(
  */
 export async function alertIfAccountUnreachable(
   event: {
+    readonly id: string;
     readonly type: string;
     readonly accountId: string | undefined;
     readonly owner: { readonly storeId: string } | null;
@@ -92,12 +99,12 @@ export async function alertIfAccountUnreachable(
   error: unknown,
   alerts: () => BillingAlerts = () => createBillingAlerts({ schedule: after }),
 ): Promise<void> {
-  const { type, accountId, owner } = event;
+  const { id, type, accountId, owner } = event;
   if (!accountId || !owner || !isAccountAccessRefused(error)) return;
   try {
     await alerts().alert(
       "connected_account_unreachable",
-      `Stripe answers that the platform has no access to the connected account ${accountId} of store ${owner.storeId}: its ${type} event failed. Stripe sends it again while it retries, then drops it; connect the account again to have it recorded.`,
+      `Stripe answers that the platform has no access to the connected account ${accountId} of store ${owner.storeId}: its ${type} event ${id} failed. Stripe sends it again while it retries, then drops it; connect the account again to have it recorded.`,
     );
   } catch {
     // An alert that cannot be raised never changes the answer.
