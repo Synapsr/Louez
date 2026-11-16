@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import {
   type ApiEffectSenders,
   type EffectSendContext,
+  effectRetryDelayMs,
   enqueueEffects,
 } from "@louez/api/platform/effects";
 import {
@@ -104,6 +105,8 @@ const KEY_SENDABLE_HOURS = 23;
  */
 const KEY_WINDOW_HOURS = 24;
 
+const hours = (count: number) => sql.raw(String(count));
+
 /**
  * After an attempt that did not settle the operation, no other attempt (the outbox's,
  * the scheduled pass's, a read's) reaches Stripe for this long: a quarter of the
@@ -113,15 +116,36 @@ const KEY_WINDOW_HOURS = 24;
  */
 export const REFUND_RETRY_MIN_SECONDS = 30;
 export const REFUND_RETRY_MAX_SECONDS = 3_600;
-const retryNotBefore = sql`NOW() + INTERVAL GREATEST(${REFUND_RETRY_MIN_SECONDS}, LEAST(${REFUND_RETRY_MAX_SECONDS}, TIMESTAMPDIFF(SECOND, ${paymentRefundOperations.createdAt}, NOW()) DIV 4)) SECOND`;
+
+/**
+ * Room for one full attempt before the key may no longer be sent: the sender's claim
+ * (every call of one run at its longest, `REFUND_CLAIM_SECONDS`) and the outbox's
+ * shortest retry delay. The wait never ends inside it while the key may be sent.
+ */
+export const REFUND_RESEND_MARGIN_SECONDS = REFUND_CLAIM_SECONDS + effectRetryDelayMs(1) / 1000;
+
+const retryWaitSeconds = sql`GREATEST(${REFUND_RETRY_MIN_SECONDS}, LEAST(${REFUND_RETRY_MAX_SECONDS}, TIMESTAMPDIFF(SECOND, ${paymentRefundOperations.createdAt}, NOW()) DIV 4))`;
+
+/**
+ * When the next attempt may reach Stripe. While the key may still be sent (under
+ * `KEY_SENDABLE_HOURS` old), never later than the last moment that leaves one full
+ * attempt (`REFUND_RESEND_MARGIN_SECONDS`) before that ends: at once when that moment
+ * has passed. A lookup after it waits the whole wait.
+ */
+const retryNotBefore = sql`CASE
+  WHEN ${paymentRefundOperations.createdAt} > NOW() - INTERVAL ${hours(KEY_SENDABLE_HOURS)} HOUR
+  THEN LEAST(
+    NOW() + INTERVAL ${retryWaitSeconds} SECOND,
+    GREATEST(NOW(), ${paymentRefundOperations.createdAt} + INTERVAL ${hours(KEY_SENDABLE_HOURS)} HOUR - INTERVAL ${REFUND_RESEND_MARGIN_SECONDS} SECOND)
+  )
+  ELSE NOW() + INTERVAL ${retryWaitSeconds} SECOND
+END`;
 
 /** An open operation gets a new outbox row this long after its last one. */
 const REFUND_REQUEUE_HOURS = 1;
 
 /** The inline attempt after the commit: short, the outbox has the rest. */
 export const INLINE_REFUND_SEND_TIMEOUT_MS = 15_000;
-
-const hours = (count: number) => sql.raw(String(count));
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
