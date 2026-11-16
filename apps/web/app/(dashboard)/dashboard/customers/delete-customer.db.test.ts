@@ -257,18 +257,15 @@ describe(
     test("the customer's lock, by either form and by the deletion, reads through the primary key", async () => {
       const connection = await database.connect();
       try {
-        for (const statement of [
-          // lockCustomerRow (packages/db), which the creation takes for both forms.
-          "EXPLAIN SELECT id FROM customers FORCE INDEX (PRIMARY) WHERE id = ? FOR UPDATE",
-          // The deletion's lock.
-          "EXPLAIN SELECT id FROM customers WHERE id = ? AND store_id = ? FOR UPDATE",
-        ]) {
-          const [plan] = await connection.query<import("mysql2/promise").RowDataPacket[]>(
-            statement,
-            [customer, STORE],
-          );
-          assert.equal(plan[0]?.key, "PRIMARY", statement);
-        }
+        // lockCustomerRow (packages/db): the one statement the creation takes
+        // for both forms and the deletion takes before it reads the customer.
+        const statement =
+          "EXPLAIN SELECT id FROM customers FORCE INDEX (PRIMARY) WHERE id = ? FOR UPDATE";
+        const [plan] = await connection.query<import("mysql2/promise").RowDataPacket[]>(
+          statement,
+          [customer],
+        );
+        assert.equal(plan[0]?.key, "PRIMARY", statement);
       } finally {
         await connection.end();
       }
