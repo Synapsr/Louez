@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Veuillez indiquer un motif",
     "invalidAmount": "Montant invalide",
+    "amountTooPrecise": "Ce montant a plus de décimales que sa devise n’en permet.",
+    "currencyNotSupportedForPayments": "Les paiements dans cette devise ne peuvent pas être enregistrés : Louez ne gère pas les devises à trois décimales.",
     "invalidOrExpiredToken": "Ce lien est invalide ou a expiré. Veuillez demander un nouveau lien d'accès.",
     "alreadyPaid": "Cette réservation est déjà payée.",
     "invalidStatus": "Cette réservation ne peut plus être payée ni modifiée en ligne. Contactez la boutique.",

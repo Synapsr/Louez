@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Geef een reden op",
     "invalidAmount": "Ongeldig bedrag",
+    "amountTooPrecise": "Dit bedrag heeft meer decimalen dan de valuta toestaat.",
+    "currencyNotSupportedForPayments": "Betalingen in deze valuta kunnen niet worden geregistreerd: Louez ondersteunt geen valuta met drie decimalen.",
     "invalidOrExpiredToken": "Deze link is ongeldig of verlopen. Vraag een nieuwe toegangslink aan.",
     "alreadyPaid": "Deze reservering is al betaald.",
     "invalidStatus": "Deze reservering kan niet meer online worden betaald of gewijzigd. Neem contact op met de winkel.",

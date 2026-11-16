@@ -24,6 +24,20 @@ export function paymentAmount(raw: string): string | null {
   return `${sign}${digits.slice(0, -2)}.${digits.slice(-2)}`;
 }
 
+/**
+ * A text `paymentAmount` refuses only for its decimals: a plain decimal, not
+ * zero, with more of them than any row holds ("19.999", "-0.004"). Such a
+ * text is refused as too precise for its currency, whose message names the
+ * decimals it allows, not as malformed: what is accepted stays the same.
+ */
+function pastTheRowsDecimals(raw: string): boolean {
+  return /^-?\d{1,8}\.\d{3,}$/.test(raw) && /[1-9]/.test(raw);
+}
+
+/** Why a text with too many decimals is refused in `currency`: its decimals, or the currency itself. */
+const precisionRefusal = (currency: string): Exclude<CurrencyFit, "fits"> =>
+  currencyMinorDigits(currency) === null ? "currency_unsupported" : "too_precise";
+
 /** Why a payment's amount is refused: its text, its sign for its type, or its currency. */
 export type RecordedAmountVerdict =
   | { ok: true; amount: string }
@@ -44,7 +58,13 @@ export function recordedPaymentAmount(
   currency: string,
 ): RecordedAmountVerdict {
   const amount = paymentAmount(raw);
-  if (!amount) return { ok: false, refusal: "amount_invalid" };
+  if (!amount) {
+    if (!pastTheRowsDecimals(raw)) return { ok: false, refusal: "amount_invalid" };
+    if (raw.startsWith("-") && type !== "adjustment") {
+      return { ok: false, refusal: "negative_outside_adjustment" };
+    }
+    return { ok: false, refusal: precisionRefusal(currency) };
+  }
   if (amount.startsWith("-") && type !== "adjustment") {
     return { ok: false, refusal: "negative_outside_adjustment" };
   }
@@ -71,6 +91,9 @@ export function depositReturnAmount(
   returnableHundredths: number,
 ): DepositReturnVerdict {
   const amount = paymentAmount(raw);
+  if (!amount && pastTheRowsDecimals(raw) && !raw.startsWith("-")) {
+    return { ok: false, refusal: precisionRefusal(currency) };
+  }
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
   const fit = currencyFit(amount, currency);
   if (fit !== "fits") return { ok: false, refusal: fit };
@@ -135,6 +158,19 @@ export function currencyMinorOf(amount: string, currency: string): number {
   return currencyMinorDigits(currency) === 0 ? hundredths / 100 : hundredths;
 }
 
+/**
+ * Whether a write that does not know the currency yet refuses `raw` for its
+ * text: not a plain decimal `paymentAmount` takes, unless it is one only
+ * refused for its decimals (`pastTheRowsDecimals`), which waits for the
+ * currency so its refusal names them. `positive` refuses zero and below too.
+ */
+export function refusedWhateverTheCurrency(raw: string, positive: boolean): boolean {
+  const amount = paymentAmount(raw);
+  if (amount) return positive && amount.startsWith("-");
+  if (!pastTheRowsDecimals(raw)) return true;
+  return positive && raw.startsWith("-");
+}
+
 /** Why an amount does not fit its currency: digits past its minor unit, or a currency Louez does not count. */
 export type CurrencyFit = "fits" | "too_precise" | "currency_unsupported";
 
@@ -172,6 +208,9 @@ export function refundAmount(
   refundableHundredths: number,
 ): RefundVerdict {
   const amount = paymentAmount(raw);
+  if (!amount && pastTheRowsDecimals(raw) && !raw.startsWith("-")) {
+    return { ok: false, refusal: precisionRefusal(currency) };
+  }
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
   const fit = currencyFit(amount, currency);
   if (fit !== "fits") return { ok: false, refusal: fit };

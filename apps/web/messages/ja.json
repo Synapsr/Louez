@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "理由を教えてください",
     "invalidAmount": "無効な金額です",
+    "amountTooPrecise": "この金額は通貨で許可される小数桁数を超えています。",
+    "currencyNotSupportedForPayments": "この通貨の支払いは記録できません。Louez は小数点以下 3 桁の通貨に対応していません。",
     "invalidOrExpiredToken": "このリンクは無効であるか、有効期限が切れています。新しいアクセス リンクをリクエストしてください。",
     "alreadyPaid": "この予約はすでに支払われています。",
     "invalidStatus": "この予約はオンラインでのお支払いや変更ができなくなりました。ストアにお問い合わせください。",

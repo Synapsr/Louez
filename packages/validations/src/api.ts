@@ -257,11 +257,18 @@ export const dashboardReservationGetPaymentMethodInputSchema = z.object({
   reservationId: z.string().length(21),
 });
 
+/**
+ * An amount a dashboard payment form sends: the text the person typed, which
+ * the write judges as it is (no number in between to round it). The write
+ * refuses any text that is not a plain decimal its currency holds.
+ */
+const typedAmountSchema = z.string().max(32);
+
 export const dashboardReservationRecordPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
     type: z.enum(["rental", "deposit", "deposit_return", "damage", "adjustment"]),
-    amount: z.number(),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     paidAt: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     notes: z.string().max(10000).optional(),
@@ -272,7 +279,7 @@ export const dashboardReservationRefundManualPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
     paymentId: z.string().length(21),
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     notes: z.string().max(10000).optional(),
   }),
@@ -285,7 +292,7 @@ export const dashboardReservationDeletePaymentInputSchema = z.object({
 export const dashboardReservationReturnDepositInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     notes: z.string().max(10000).optional(),
   }),
@@ -294,7 +301,7 @@ export const dashboardReservationReturnDepositInputSchema = z.object({
 export const dashboardReservationRecordDamageInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     notes: z.string().max(10000),
   }),

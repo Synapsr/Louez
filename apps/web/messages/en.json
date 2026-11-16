@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Please provide a reason",
     "invalidAmount": "Invalid amount",
+    "amountTooPrecise": "This amount has more decimals than its currency allows.",
+    "currencyNotSupportedForPayments": "Payments in this currency cannot be recorded: Louez does not count three-decimal currencies.",
     "invalidOrExpiredToken": "This link is invalid or has expired. Please request a new access link.",
     "alreadyPaid": "This reservation is already paid.",
     "invalidStatus": "This reservation can no longer be paid or changed online. Please contact the store.",

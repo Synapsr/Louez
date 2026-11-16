@@ -350,7 +350,8 @@ export interface BaseContext {
       reservationId: string,
       data: {
         type: "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         paidAt?: Date;
         notes?: string;
@@ -365,7 +366,8 @@ export interface BaseContext {
       reservationId: string,
       data: {
         paymentId: string;
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         notes?: string;
       },
@@ -379,7 +381,8 @@ export interface BaseContext {
     returnDeposit?: (
       reservationId: string,
       data: {
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         notes?: string;
       },
@@ -387,7 +390,8 @@ export interface BaseContext {
     recordDamage?: (
       reservationId: string,
       data: {
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         notes: string;
       },

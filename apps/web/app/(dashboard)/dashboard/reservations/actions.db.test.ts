@@ -3,7 +3,12 @@ import { after, afterEach, before, beforeEach, describe, test } from "node:test"
 
 import { and, eq } from "drizzle-orm";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  raceOnLockedRow,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import { SENT_KEY, STORE_KEY } from "./actions-test-stubs";
 
@@ -168,7 +173,11 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       const reservationId = await createReservation({ withItems: true });
 
       const paymentId = paymentIdOf(
-        await actions.recordPayment(reservationId, { type: "rental", amount: 55, method: "cash" }),
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "55",
+          method: "cash",
+        }),
       );
 
       assert.deepEqual(await readPayment(paymentId), {
@@ -190,7 +199,7 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       const paymentId = paymentIdOf(
         await actions.recordPayment(reservationId, {
           type: "adjustment",
-          amount: -10,
+          amount: "-10",
           method: "other",
         }),
       );
@@ -205,7 +214,7 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       const reservationId = await createReservation();
 
       assert.deepEqual(
-        await actions.recordPayment(reservationId, { type: "rental", amount: 0, method: "cash" }),
+        await actions.recordPayment(reservationId, { type: "rental", amount: "0", method: "cash" }),
         { error: "errors.invalidAmount" },
       );
       assert.equal(await countPayments(reservationId), 0);
@@ -217,7 +226,11 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       const reservationId = await createReservation();
 
       const paymentId = paymentIdOf(
-        await actions.recordPayment(reservationId, { type: "deposit", amount: 50, method: "cash" }),
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "50",
+          method: "cash",
+        }),
       );
 
       assert.equal((await readPayment(paymentId))?.grossMinor, 5000);
@@ -228,14 +241,14 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
   test("returnDeposit and recordDamage record their facts and mark the reservation", async () => {
     const reservationId = await createReservation();
     paymentIdOf(
-      await actions.recordPayment(reservationId, { type: "deposit", amount: 50, method: "cash" }),
+      await actions.recordPayment(reservationId, { type: "deposit", amount: "50", method: "cash" }),
     );
 
     const returnId = paymentIdOf(
-      await actions.returnDeposit(reservationId, { amount: 20, method: "cash" }),
+      await actions.returnDeposit(reservationId, { amount: "20", method: "cash" }),
     );
     const damageId = paymentIdOf(
-      await actions.recordDamage(reservationId, { amount: 15, method: "card", notes: "scratch" }),
+      await actions.recordDamage(reservationId, { amount: "15", method: "card", notes: "scratch" }),
     );
 
     const returned = await readPayment(returnId);
@@ -253,33 +266,45 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
     test("in yen, half a yen is refused by the three forms' writes and nothing is written; whole yen are recorded as the column holds them", async () => {
       const reservationId = await createReservation({ currency: "JPY" });
       paymentIdOf(
-        await actions.recordPayment(reservationId, { type: "deposit", amount: 5, method: "cash" }),
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "5",
+          method: "cash",
+        }),
       );
       const before = await countPayments(reservationId);
 
-      const invalid = { error: "errors.invalidAmount" };
+      const invalid = { error: "errors.amountTooPrecise" };
       assert.deepEqual(
-        await actions.recordPayment(reservationId, { type: "rental", amount: 0.5, method: "cash" }),
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "0.5",
+          method: "cash",
+        }),
         invalid,
       );
       assert.deepEqual(
-        await actions.returnDeposit(reservationId, { amount: 0.5, method: "cash" }),
+        await actions.returnDeposit(reservationId, { amount: "0.5", method: "cash" }),
         invalid,
       );
       assert.deepEqual(
-        await actions.recordDamage(reservationId, { amount: 0.5, method: "card", notes: "chip" }),
+        await actions.recordDamage(reservationId, { amount: "0.5", method: "card", notes: "chip" }),
         invalid,
       );
       assert.equal(await countPayments(reservationId), before, "nothing is written");
 
       const rental = paymentIdOf(
-        await actions.recordPayment(reservationId, { type: "rental", amount: 100, method: "cash" }),
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "100",
+          method: "cash",
+        }),
       );
       const returned = paymentIdOf(
-        await actions.returnDeposit(reservationId, { amount: 2, method: "cash" }),
+        await actions.returnDeposit(reservationId, { amount: "2", method: "cash" }),
       );
       const damage = paymentIdOf(
-        await actions.recordDamage(reservationId, { amount: 1, method: "card", notes: "chip" }),
+        await actions.recordDamage(reservationId, { amount: "1", method: "card", notes: "chip" }),
       );
       for (const [id, amount, grossMinor] of [
         [rental, "100.00", 100],
@@ -296,13 +321,18 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
 
     test("a reservation in a three-decimal currency records no payment", async () => {
       const reservationId = await createReservation({ currency: "KWD" });
+      const unsupported = { error: "errors.currencyNotSupportedForPayments" };
       assert.deepEqual(
-        await actions.recordPayment(reservationId, { type: "rental", amount: 1, method: "cash" }),
-        { error: "errors.invalidAmount" },
+        await actions.recordPayment(reservationId, { type: "rental", amount: "1", method: "cash" }),
+        unsupported,
       );
       assert.deepEqual(
-        await actions.recordDamage(reservationId, { amount: 1, method: "card", notes: "chip" }),
-        { error: "errors.invalidAmount" },
+        await actions.recordDamage(reservationId, { amount: "1", method: "card", notes: "chip" }),
+        unsupported,
+      );
+      assert.deepEqual(
+        await actions.returnDeposit(reservationId, { amount: "1", method: "cash" }),
+        unsupported,
       );
       assert.equal(await countPayments(reservationId), 0);
     });
@@ -313,19 +343,19 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
         paymentIdOf(
           await actions.recordPayment(reservationId, {
             type: "rental",
-            amount: 7.5,
+            amount: "7.5",
             method: "cash",
           }),
         ),
         paymentIdOf(
           await actions.recordPayment(reservationId, {
             type: "adjustment",
-            amount: -20.05,
+            amount: "-20.05",
             method: "card",
           }),
         ),
         paymentIdOf(
-          await actions.recordDamage(reservationId, { amount: 0.01, method: "card", notes: "x" }),
+          await actions.recordDamage(reservationId, { amount: "0.01", method: "card", notes: "x" }),
         ),
       ];
       assert.deepEqual(await Promise.all(ids.map(async (id) => (await readPayment(id))?.amount)), [
@@ -340,24 +370,125 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       paymentIdOf(
         await actions.recordPayment(reservationId, {
           type: "deposit",
-          amount: 0.3,
+          amount: "0.3",
           method: "cash",
         }),
       );
-      paymentIdOf(await actions.returnDeposit(reservationId, { amount: 0.1, method: "cash" }));
+      paymentIdOf(await actions.returnDeposit(reservationId, { amount: "0.1", method: "cash" }));
 
       assert.deepEqual(
-        await actions.returnDeposit(reservationId, { amount: 0.21, method: "cash" }),
+        await actions.returnDeposit(reservationId, { amount: "0.21", method: "cash" }),
         { error: "errors.amountExceedsDeposit" },
       );
       const last = paymentIdOf(
-        await actions.returnDeposit(reservationId, { amount: 0.2, method: "cash" }),
+        await actions.returnDeposit(reservationId, { amount: "0.2", method: "cash" }),
       );
       assert.equal((await readPayment(last))?.amount, "0.20");
       assert.deepEqual(
-        await actions.returnDeposit(reservationId, { amount: 0.01, method: "cash" }),
+        await actions.returnDeposit(reservationId, { amount: "0.01", method: "cash" }),
         { error: "errors.amountExceedsDeposit" },
       );
+    });
+  });
+
+  describe("an amount judged as typed", () => {
+    test("too many decimals for the currency says so; a malformed amount is still invalid", async () => {
+      const reservationId = await createReservation({ currency: "EUR" });
+      const tooPrecise = { error: "errors.amountTooPrecise" };
+      assert.deepEqual(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "19.999",
+          method: "cash",
+        }),
+        tooPrecise,
+      );
+      assert.deepEqual(
+        await actions.recordDamage(reservationId, { amount: "0.004", method: "card", notes: "x" }),
+        tooPrecise,
+      );
+      for (const amount of ["abc", "1e2", "0.000", ""]) {
+        assert.deepEqual(
+          await actions.recordPayment(reservationId, { type: "rental", amount, method: "cash" }),
+          { error: "errors.invalidAmount" },
+          JSON.stringify(amount),
+        );
+      }
+      assert.equal(await countPayments(reservationId), 0);
+    });
+
+    test("a refund given by hand is judged as typed: €19.999 is refused, not rounded to €20.00", async () => {
+      const reservationId = await createReservation({ currency: "EUR" });
+      const paid = paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "30",
+          method: "cash",
+        }),
+      );
+      const refund = (amount: string) =>
+        actions.refundManualPayment(reservationId, { paymentId: paid, amount, method: "cash" });
+
+      assert.deepEqual(await refund("19.999"), { error: "errors.amountTooPrecise" });
+      assert.equal(await countPayments(reservationId), 1, "nothing is written");
+      const done = await refund("20.00");
+      assert.equal(done.error, undefined);
+      assert.ok(done.refundPaymentId);
+      assert.equal((await readPayment(done.refundPaymentId))?.amount, "20.00");
+    });
+
+    test("a refund of a yen payment has no decimals: ¥0.999 is refused", async () => {
+      const reservationId = await createReservation({ currency: "JPY" });
+      const paid = paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "rental",
+          amount: "100",
+          method: "cash",
+        }),
+      );
+      assert.deepEqual(
+        await actions.refundManualPayment(reservationId, {
+          paymentId: paid,
+          amount: "0.999",
+          method: "cash",
+        }),
+        { error: "errors.amountTooPrecise" },
+      );
+      assert.equal(await countPayments(reservationId), 1, "nothing is written");
+    });
+
+    test("two returns of the whole deposit sent together: one is recorded, the other refused", async () => {
+      const reservationId = await createReservation({ currency: "EUR" });
+      paymentIdOf(
+        await actions.recordPayment(reservationId, {
+          type: "deposit",
+          amount: "50",
+          method: "cash",
+        }),
+      );
+      // Both wait on the reservation's lock, held here, then run one after the other.
+      const answers = await raceOnLockedRow(
+        database,
+        { table: "reservations", id: reservationId },
+        [
+          () => actions.returnDeposit(reservationId, { amount: "50", method: "cash" }),
+          () => actions.returnDeposit(reservationId, { amount: "50", method: "cash" }),
+        ],
+      );
+      assert.deepEqual(answers.map((answer) => answer.error ?? "recorded").sort(), [
+        "errors.amountExceedsDeposit",
+        "recorded",
+      ]);
+      const returns = await louezDb.db
+        .select({ amount: louezDb.payments.amount })
+        .from(louezDb.payments)
+        .where(
+          and(
+            eq(louezDb.payments.reservationId, reservationId),
+            eq(louezDb.payments.type, "deposit_return"),
+          ),
+        );
+      assert.deepEqual(returns, [{ amount: "50.00" }]);
     });
   });
 
@@ -365,7 +496,7 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
     test("deletes the payment and marks the reservation", async () => {
       const reservationId = await createReservation();
       const paymentId = paymentIdOf(
-        await actions.recordPayment(reservationId, { type: "damage", amount: 5, method: "cash" }),
+        await actions.recordPayment(reservationId, { type: "damage", amount: "5", method: "cash" }),
       );
 
       assert.deepEqual(await actions.deletePayment(paymentId), { success: true });

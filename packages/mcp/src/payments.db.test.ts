@@ -981,7 +981,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
       ),
     );
     // An amount is a plain decimal of at most two decimals, as its row holds it.
-    for (const amount of ["1e2", "+5", " 5", "5.", ".5", "12abc", "0.004", "1.234", "100000000"]) {
+    for (const amount of ["1e2", "+5", " 5", "5.", ".5", "12abc", "0.000", "100000000"]) {
       assert.deepEqual(
         refusal(await record(open.id, "adjustment", amount)),
         refused(
@@ -989,6 +989,19 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
           'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50").',
         ),
         JSON.stringify(amount),
+      );
+    }
+    // A plain decimal with too many decimals is refused for them: its
+    // message and details name the currency's.
+    for (const amount of ["0.004", "1.234", "-19.999"]) {
+      const result = await record(open.id, "adjustment", amount);
+      assert.deepEqual(
+        { ...refusal(result), details: errorOf(result)?.details },
+        {
+          ...refused("PAYMENT_AMOUNT_INVALID", "A CHF amount has at most 2 decimals."),
+          details: { currency: "CHF", decimals: 2 },
+        },
+        amount,
       );
     }
     assert.deepEqual(
@@ -1029,10 +1042,7 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     );
     assert.deepEqual(
       refusal(await giveBack("10.005")),
-      refused(
-        "DEPOSIT_RETURN_AMOUNT_INVALID",
-        'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00").',
-      ),
+      refused("DEPOSIT_RETURN_AMOUNT_INVALID", "A CHF amount has at most 2 decimals."),
     );
     assert.deepEqual(
       refusal(await giveBack("30.01")),

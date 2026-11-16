@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Harap berikan alasannya",
     "invalidAmount": "Jumlah tidak valid",
+    "amountTooPrecise": "Jumlah ini memiliki lebih banyak desimal daripada yang diizinkan mata uangnya.",
+    "currencyNotSupportedForPayments": "Pembayaran dalam mata uang ini tidak dapat dicatat: Louez tidak mendukung mata uang dengan tiga desimal.",
     "invalidOrExpiredToken": "Tautan ini tidak valid atau telah kedaluwarsa. Silakan minta tautan akses baru.",
     "alreadyPaid": "Reservasi ini sudah dibayar.",
     "invalidStatus": "Reservasi ini tidak dapat lagi dibayar atau diubah secara online. Silakan hubungi toko.",

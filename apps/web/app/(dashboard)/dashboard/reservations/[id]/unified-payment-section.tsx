@@ -60,6 +60,7 @@ import {
   currencyMinorDigits,
   depositHoldRowKind,
   getCurrencySymbol,
+  normalizeCurrency,
   withLatestFailedHoldOnly,
 } from "@louez/utils";
 import {
@@ -97,6 +98,8 @@ import { useFormatLocale } from "@/hooks/use-format-locale";
 interface Payment {
   id: string;
   amount: string;
+  /** Its own currency; null on an older row, which is in its reservation's. */
+  currency?: string | null;
   type:
     | "rental"
     | "deposit"
@@ -470,8 +473,9 @@ export function UnifiedPaymentSection({
 
   // Payment handlers
   const handleRecordPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    const verdict = recordedPaymentAmount(String(amount), paymentType, currency);
+    // As typed: the write judges this very text.
+    const amount = paymentAmount.trim();
+    const verdict = recordedPaymentAmount(amount, paymentType, currency);
     if (!verdict.ok) {
       toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
       return;
@@ -521,12 +525,8 @@ export function UnifiedPaymentSection({
   };
 
   const handleReturnDeposit = async () => {
-    const amount = parseFloat(paymentAmount);
-    const verdict = depositReturnAmount(
-      String(amount),
-      currency,
-      depositBalance(payments).returnable,
-    );
+    const amount = paymentAmount.trim();
+    const verdict = depositReturnAmount(amount, currency, depositBalance(payments).returnable);
     if (!verdict.ok) {
       toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
       return;
@@ -567,8 +567,8 @@ export function UnifiedPaymentSection({
   };
 
   const handleRecordDamage = async () => {
-    const amount = parseFloat(paymentAmount);
-    const verdict = recordedPaymentAmount(String(amount), "damage", currency);
+    const amount = paymentAmount.trim();
+    const verdict = recordedPaymentAmount(amount, "damage", currency);
     if (!verdict.ok) {
       // A damage charge is never negative: the amount is simply not valid.
       const refusal =
@@ -1723,6 +1723,7 @@ export function UnifiedPaymentSection({
           reservationId={reservationId}
           paymentId={paymentToRefund.id}
           remainingAmount={getRemainingRefundableAmount(paymentToRefund, payments)}
+          currency={normalizeCurrency(paymentToRefund.currency, currency)}
           currencySymbol={currencySymbol}
           defaultMethod={paymentToRefund.method}
           onClose={() => setPaymentToRefund(null)}

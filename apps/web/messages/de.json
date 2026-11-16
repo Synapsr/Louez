@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Bitte geben Sie einen Grund an",
     "invalidAmount": "Ungültiger Betrag",
+    "amountTooPrecise": "Dieser Betrag hat mehr Nachkommastellen, als seine Währung zulässt.",
+    "currencyNotSupportedForPayments": "Zahlungen in dieser Währung können nicht erfasst werden: Louez unterstützt keine Währungen mit drei Nachkommastellen.",
     "invalidOrExpiredToken": "Dieser Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen Zugriffslink an.",
     "alreadyPaid": "Diese Reservierung ist bereits bezahlt.",
     "invalidStatus": "Diese Reservierung kann online nicht mehr bezahlt oder geändert werden. Bitte kontaktieren Sie den Shop.",

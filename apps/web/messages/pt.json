@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "Por favor indique um motivo",
     "invalidAmount": "Valor inválido",
+    "amountTooPrecise": "Este valor tem mais casas decimais do que a sua moeda permite.",
+    "currencyNotSupportedForPayments": "Não é possível registar pagamentos nesta moeda: o Louez não suporta moedas com três casas decimais.",
     "invalidOrExpiredToken": "Este link é inválido ou expirou. Por favor solicite um novo link de acesso.",
     "alreadyPaid": "Esta reserva já foi paga.",
     "invalidStatus": "Esta reserva não pode mais ser paga nem alterada online. Entre em contato com a loja.",

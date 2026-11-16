@@ -51,10 +51,10 @@ import {
   depositReturnAmount,
   fromHundredths,
   hundredthsOf,
-  paymentAmount,
   recordedPaymentAmount,
   type RecordedAmountVerdict,
   refundAmount,
+  refusedWhateverTheCurrency,
   type RefundVerdict,
 } from "./payment-amount";
 
@@ -196,12 +196,12 @@ const notesOf = (notes: string | undefined) => (notes ? { notes } : {});
 
 /**
  * What an amount is refused for whatever the reservation's currency: its
- * text (`paymentAmount`), then a negative amount outside an adjustment.
+ * text (`refusedWhateverTheCurrency`), then a negative amount outside an
+ * adjustment. Too many decimals wait for the currency, which names them.
  */
 function recordTextRefusal(input: RecordPaymentInput): Error | null {
-  const amount = paymentAmount(input.amount);
-  if (!amount) return paymentRecordErrors.amountInvalid();
-  if (amount.startsWith("-") && input.type !== "adjustment") {
+  if (refusedWhateverTheCurrency(input.amount, false)) return paymentRecordErrors.amountInvalid();
+  if (input.amount.startsWith("-") && input.type !== "adjustment") {
     return paymentRecordErrors.negativeOutsideAdjustment();
   }
   return null;
@@ -293,12 +293,11 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
   });
 }
 
-/** What a return is refused for whatever the reservation's currency: its text (`paymentAmount`), or zero and below. */
+/** What a return is refused for whatever the reservation's currency: its text (`refusedWhateverTheCurrency`), or zero and below. */
 function returnTextRefusal(input: RecordDepositReturnInput): Error | null {
-  const amount = paymentAmount(input.amount);
-  return amount && !amount.startsWith("-")
-    ? null
-    : paymentRecordErrors.depositReturnAmountInvalid();
+  return refusedWhateverTheCurrency(input.amount, true)
+    ? paymentRecordErrors.depositReturnAmountInvalid()
+    : null;
 }
 
 /**
@@ -650,9 +649,11 @@ export async function recordPaymentRefund(
 ): Promise<RecordedPaymentRefund> {
   const { storeId } = caller;
   // Refused whatever anyone answers, before anything is read: the text, and
-  // zero and below. The currency is the payment's, read under the lock.
-  const text = paymentAmount(input.amount);
-  if (!text || text.startsWith("-")) throw paymentRecordErrors.refundAmountInvalid();
+  // zero and below. The currency is the payment's, read under the lock: too
+  // many decimals are judged there, with the decimals it allows.
+  if (refusedWhateverTheCurrency(input.amount, true)) {
+    throw paymentRecordErrors.refundAmountInvalid();
+  }
   const ofThisCall = (payment: StorePayment | null) =>
     payment && (!input.reservationId || payment.reservationId === input.reservationId)
       ? payment

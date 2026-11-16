@@ -9345,6 +9345,8 @@
     },
     "reasonRequired": "请给出理由",
     "invalidAmount": "金额无效",
+    "amountTooPrecise": "该金额的小数位数超过了其货币允许的位数。",
+    "currencyNotSupportedForPayments": "无法记录此货币的付款：Louez 不支持三位小数的货币。",
     "invalidOrExpiredToken": "该链接无效或已过期。请请求新的访问链接。",
     "alreadyPaid": "该预订已付款。",
     "invalidStatus": "该预订已无法在线付款或更改。请联系商店。",
