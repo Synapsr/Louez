@@ -125,7 +125,7 @@ Every write the API lets repeat is sent with an `Idempotency-Key`: yours with `-
 - A request stays under the base URL's path: a path, or a path parameter, holding a `.` or `..` segment, a backslash, or an encoded slash or backslash (`%2e%2e`, `%2F`, `%5C`) is refused before anything is sent.
 - The CLI never follows a redirect, which would take the key to another server: a 3xx answer exits 1.
 - The base URL must be `https://`, except on `localhost`, `127.0.0.1`, `[::1]` or a `.localify` host; anything else needs `--insecure`.
-- A command printed to run again (an approval, a confirmation, an interrupted or timed-out write) holds no key and no variable that holds one; it keeps `--api-url` when you gave it, and the line under it says which key to run it with: the one given with `--api-key`, the one in `LOUEZ_API_KEY`, or the one `louez auth login` saved. An empty `--idempotency-key` stops the command (exit 2).
+- A command printed to run again (an approval, a confirmation, an interrupted or timed-out write) holds no key and no variable that holds one, and keeps `--api-url` when you gave it. When the key came from `LOUEZ_API_KEY` or from `louez auth login`, the command runs as printed, with that same key, and the line under it names it. When it came from `--api-key`, the command carries `--api-key SAME_KEY_AS_THIS_COMMAND`, which louez refuses (exit 2, nothing sent) until you replace it with the key you gave, so pasting it never sends another key, such as the environment's, to that URL. An empty `--idempotency-key` stops the command (exit 2).
 
 ## Development
 

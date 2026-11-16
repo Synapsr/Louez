@@ -105,21 +105,12 @@ function apiKeyArguments(argv: readonly string[]): string[] {
 }
 
 /**
- * What a usage error says, once the credential sources are checked: a
- * malformed one is reported first, and an argument equal to any credential
- * value (well-formed or not, the flag's or the environment's) is named by
- * its position, never quoted.
+ * What a usage error says (the credential sources were checked first, in
+ * `main`): an argument equal to any credential value (well-formed or not,
+ * the flag's or the environment's) is named by its position, never quoted.
  */
 function usageMessage(io: Io, error: UsageError): string {
   const values = [...apiKeyArguments(io.argv), io.env.LOUEZ_API_KEY ?? ""].filter((v) => v !== "");
-  if (apiKeyArguments(io.argv).length === 0 && io.env.LOUEZ_API_KEY !== undefined) {
-    try {
-      wellFormed(io.env.LOUEZ_API_KEY, "LOUEZ_API_KEY");
-    } catch (refusal) {
-      if (refusal instanceof UsageError) return refusal.message;
-      throw refusal;
-    }
-  }
   let message = error.message;
   for (const value of values) {
     if (!message.includes(value)) continue;
@@ -168,6 +159,9 @@ export async function main(io: Io): Promise<number> {
   try {
     // A malformed --api-key stops the command before anything could echo it.
     for (const key of apiKeyArguments(io.argv)) wellFormed(key, "--api-key");
+    const flagGiven = apiKeyArguments(io.argv).length > 0 || io.argv.includes("--api-key");
+    if (!flagGiven && io.env.LOUEZ_API_KEY !== undefined)
+      wellFormed(io.env.LOUEZ_API_KEY, "LOUEZ_API_KEY");
     return await run(session);
   } catch (error) {
     if (error instanceof UsageError) {
@@ -556,7 +550,7 @@ type Rerun = (confirmation: string, idempotencyKey?: string) => string;
 function sameCredential(keySource: string): string {
   const where =
     keySource === "--api-key"
-      ? "the key you gave with --api-key (give it again, the same way)"
+      ? `the key you gave with --api-key: replace ${KEY_PLACEHOLDER} with it`
       : keySource === "LOUEZ_API_KEY"
         ? "the key in the environment variable LOUEZ_API_KEY"
         : `the key saved by \`louez auth login\` (${keySource})`;
@@ -583,6 +577,13 @@ function shellQuote(word: string): string {
  * its value), `--api-url` kept, and a body read from standard input written
  * inline, as the input is gone.
  */
+/**
+ * What a printed command carries for a key given with `--api-key`: no key,
+ * and a word the CLI refuses as one (exit 2, nothing sent), so the command
+ * is not run as is with another key, such as the environment's.
+ */
+export const KEY_PLACEHOLDER = "SAME_KEY_AS_THIS_COMMAND";
+
 export function rerunCommand(
   argv: readonly string[],
   confirmation: string,
@@ -601,8 +602,9 @@ export function rerunCommand(
     } else if (flag === "--wait") {
       // dropped
     } else if (flag === "--api-key") {
-      // Never a key, nor a variable that holds one: see `sameCredential`.
+      // Never the key, nor a variable that holds one: the placeholder, to replace.
       if (inline === undefined) i++;
+      words.push("--api-key", KEY_PLACEHOLDER);
     } else if (flag === "--json" && (inline ?? argv[i + 1]) === "-" && stdinText !== undefined) {
       if (inline === undefined) i++;
       words.push("--json", shellQuote(JSON.stringify(JSON.parse(stdinText))));

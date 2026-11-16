@@ -721,7 +721,7 @@ describe("a command printed to run again", () => {
       [
         ["--api-key", OTHER, "--api-url", server.url],
         { LOUEZ_API_KEY: KEY, LOUEZ_API_URL: undefined },
-        /the key you gave with --api-key/,
+        /the key you gave with --api-key: replace SAME_KEY_AS_THIS_COMMAND with it/,
       ],
       [
         ["--api-url", server.url],
@@ -738,7 +738,11 @@ describe("a command printed to run again", () => {
       const run = await louez([...RECORD, ...extra], { configDir, env });
       assert.equal(run.code, EXIT.person, run.err());
       const { command, note } = printed(run.err());
-      assert.doesNotMatch(command, /lz_|LOUEZ_API_KEY|--api-key|\$/, command);
+      assert.doesNotMatch(command, /lz_|LOUEZ_API_KEY|\$/, command);
+      // A key given with the flag leaves a placeholder in its place; another source, nothing.
+      if (extra.includes("--api-key"))
+        assert.match(command, / --api-key SAME_KEY_AS_THIS_COMMAND /);
+      else assert.doesNotMatch(command, /--api-key/);
       if (extra.includes("--api-url")) assert.match(command, new RegExp(`--api-url ${server.url}`));
       assert.match(note, /^Run it with the same key as this command: /);
       assert.match(note, source);
@@ -747,7 +751,43 @@ describe("a command printed to run again", () => {
   });
 });
 
+describe("a printed command for a key given with --api-key", () => {
+  const OTHER = "lz_othr_GivenGivenGivenGiven";
+
+  test("is refused when pasted as is: another key in the environment is never sent to its URL", async () => {
+    const asked = await serve((_, response) =>
+      sendJson(response, 412, approvalRequired("https://app.louez.test/handoffs/apr_1")),
+    );
+    const first = await louez(
+      ["api", "POST", "/reservations", "--json", "{}", "--api-key", OTHER, "--api-url", asked.url],
+      {
+        env: { LOUEZ_API_KEY: KEY, LOUEZ_API_URL: undefined },
+      },
+    );
+    assert.equal(first.code, EXIT.person);
+    const command = /run:\n {2}louez (.+)\n/.exec(first.err())?.[1] ?? "";
+    assert.doesNotMatch(command, /lz_/);
+    await asked.close();
+    api = undefined;
+
+    // Pasted verbatim, with another valid key in the environment, against a server that records.
+    const staging = await serve((_, response) => sendJson(response, 200, {}));
+    const argv = command.split(" ").map((word) => (word === asked.url ? staging.url : word));
+    const pasted = await louez(argv, { env: { LOUEZ_API_KEY: KEY, LOUEZ_API_URL: undefined } });
+    assert.equal(pasted.code, EXIT.usage);
+    assert.match(pasted.err(), /--api-key is not a Louez API key/);
+    assert.equal(staging.received.length, 0);
+  });
+});
+
 describe("a usage error never quotes a credential", () => {
+  test("a malformed LOUEZ_API_KEY stops even a command that would print usage", async () => {
+    const run = await louez([], { env: { LOUEZ_API_KEY: "lz_hello" } });
+    assert.equal(run.code, EXIT.usage);
+    assert.match(run.err(), /LOUEZ_API_KEY is not a Louez API key/);
+    assert.doesNotMatch(run.err(), /hello|Usage:/);
+  });
+
   test("a malformed LOUEZ_API_KEY is reported before any other diagnostic", async () => {
     const run = await louez(["stores", "list", "lz_hello"], { env: { LOUEZ_API_KEY: "lz_hello" } });
     assert.equal(run.code, EXIT.usage);
@@ -882,7 +922,7 @@ describe("a write a person must approve", () => {
     const command = /Once it is approved, run:\n {2}(.+)\n/.exec(first.err())?.[1];
     assert.equal(
       command,
-      `louez payments record r1 --type rental --amount 10.00 --method cash --confirmation apr_1`,
+      `louez payments record r1 --type rental --amount 10.00 --method cash --api-key SAME_KEY_AS_THIS_COMMAND --confirmation apr_1`,
     );
 
     approved = true;
