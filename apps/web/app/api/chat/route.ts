@@ -1,5 +1,5 @@
 import { stepCountIs, streamText } from "ai";
-import { env as authEnv } from "@louez/auth/env";
+import { isTrustedAuthOrigin } from "@louez/auth";
 import { db, aiChats, aiChatMessages } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -10,7 +10,8 @@ import { getCurrentStore } from "@/lib/store-context";
 
 import { apiPorts } from "@/lib/api/ports";
 import { createAssistantApi } from "@/lib/ai/assistant-api";
-import { chatRequestRefusal } from "@/lib/ai/chat-request";
+import { chatRequestRefusal, refusalLogLine } from "@/lib/ai/chat-request";
+import { log } from "@/lib/evlog";
 import { getAIModel, isAIChatConfigured } from "@/lib/ai/provider";
 import { checkRateLimit, validateMessageLength } from "@/lib/ai/rate-limit";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
@@ -62,12 +63,16 @@ function roleToPermissions(role: string): ApiKeyPermissions {
 
 export async function POST(req: Request) {
   // Only this app's own pages, with the chat's JSON: first, before the session.
-  const refusal = chatRequestRefusal(req, {
+  const refusal = await chatRequestRefusal(req, {
     appUrl: env.NEXT_PUBLIC_APP_URL,
-    authUrl: authEnv.AUTH_URL,
-    development: authEnv.NODE_ENV === "development",
+    isTrusted: isTrustedAuthOrigin,
   });
-  if (refusal) return refusal;
+  if (refusal) {
+    // One line per origin now and then, for an operator: never a header or the body.
+    const line = refusalLogLine(refusal);
+    if (line) log.warn("chat", line);
+    return refusal.response;
+  }
 
   // Auth check
   const session = await auth();

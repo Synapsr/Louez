@@ -1,11 +1,13 @@
 /**
- * The origins the app is served on, as the auth layer trusts them: the
- * configured AUTH_URL, and in development every Localify host of the
- * project (`DEV_AUTH_HOSTS`): the namespace, each worktree and storefront
- * under it, and its Localify Cloud public URLs. Better Auth takes its base
- * URL from these (index.ts); a same-origin check of the app that must accept
- * exactly those pages reads them here (`isTrustedAppOrigin`), never from the
- * request's own URL or a forwarded header.
+ * The origins the app is served on, as the auth layer trusts them, in one
+ * place. `authOriginOptions` is what the auth configuration hands Better
+ * Auth (index.ts), and nothing else of it names an origin: AUTH_URL, and in
+ * development every Localify host of the project (`DEV_AUTH_HOSTS`). Better
+ * Auth adds the origins an operator lists in `BETTER_AUTH_TRUSTED_ORIGINS`,
+ * read by Better Auth itself. A same-origin check of the app that must accept
+ * exactly those pages asks Better Auth's own resolver, built from these
+ * options (`trustedOriginCheck`), never the request's own URL nor a
+ * forwarded header: the two cannot drift.
  */
 export const DEV_AUTH_HOSTS = [
   "louez.localify",
@@ -18,34 +20,33 @@ export const DEV_AUTH_HOSTS = [
   "louez-*.localify.fyi",
 ];
 
-/** A host pattern as a whole-host match: `*` stands for one label's characters, never a dot. */
-const hostPattern = (pattern: string) =>
-  new RegExp(
-    `^${pattern
-      .split("*")
-      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-      .join("[a-z0-9-]+")}$`,
-  );
+/**
+ * The options Better Auth takes its trusted origins from. In development it
+ * takes its base URL, and the origin it trusts, from the host a request came
+ * in on, read from X-Forwarded-Host, among `DEV_AUTH_HOSTS` only; any other
+ * host falls back to AUTH_URL. So a new worktree or a public URL works
+ * without editing AUTH_URL. Production keeps the fixed AUTH_URL.
+ */
+export function authOriginOptions(config: { authUrl: string; development: boolean }) {
+  return {
+    baseURL: config.development
+      ? { allowedHosts: DEV_AUTH_HOSTS, fallback: config.authUrl }
+      : config.authUrl,
+    trustedOrigins: [config.authUrl],
+  };
+}
 
-const DEV_HOST_PATTERNS = DEV_AUTH_HOSTS.map(hostPattern);
+/** What `trustedOriginCheck` reads of a Better Auth instance: its resolved context. */
+export interface TrustedOriginSource {
+  $context: Promise<{ isTrustedOrigin: (url: string) => boolean }>;
+}
 
 /**
- * Whether `origin` (a request's `Origin`, as the browser wrote it) is one the
- * app is served on: AUTH_URL's origin, or, in development, an `https`
- * origin on one of `DEV_AUTH_HOSTS` with no port.
+ * Whether an origin is one the auth layer trusts, as Better Auth itself
+ * decides it from its options and `BETTER_AUTH_TRUSTED_ORIGINS`: the same
+ * list, the same parsing, the same patterns.
  */
-export function isTrustedAppOrigin(
-  origin: string,
-  policy: { authUrl: string; development: boolean },
-): boolean {
-  if (origin === new URL(policy.authUrl).origin) return true;
-  if (!policy.development) return false;
-  let url: URL;
-  try {
-    url = new URL(origin);
-  } catch {
-    return false;
-  }
-  if (url.origin !== origin || url.protocol !== "https:" || url.port !== "") return false;
-  return DEV_HOST_PATTERNS.some((pattern) => pattern.test(url.hostname));
-}
+export const trustedOriginCheck =
+  (instance: TrustedOriginSource) =>
+  async (origin: string): Promise<boolean> =>
+    (await instance.$context).isTrustedOrigin(origin);

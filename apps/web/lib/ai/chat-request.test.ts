@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { chatRequestRefusal, type AppOrigins } from "./chat-request";
+import {
+  REFUSAL_LOG_INTERVAL_MS,
+  chatRequestRefusal,
+  refusalLogLine,
+  type AppOrigins,
+} from "./chat-request";
 
 // Same origin is decided against the origins the app is served on (its
 // configured URL, and those the auth layer trusts), never against the URL
@@ -17,50 +22,71 @@ const chat = (headers: Record<string, string>) =>
     body: "{}",
   });
 
-const accepted = (headers: Record<string, string>, app: AppOrigins) =>
-  chatRequestRefusal(chat(headers), app) === null;
+const accepted = async (headers: Record<string, string>, app: AppOrigins) =>
+  (await chatRequestRefusal(chat(headers), app)) === null;
+
+/**
+ * The auth layer's answer, as `isTrustedAuthOrigin` gives it from Better
+ * Auth's resolver (packages/auth/src/trusted-origins.test.ts holds that
+ * resolver to the auth configuration): here, a list.
+ */
+const trusting =
+  (...origins: string[]) =>
+  (origin: string) =>
+    origins.includes(origin);
 
 /** A development checkout: the configured app URL, and the project's Localify hosts. */
 const DEVELOPMENT: AppOrigins = {
   appUrl: "https://louez.localify",
-  authUrl: "https://louez.localify",
-  development: true,
+  isTrusted: trusting(
+    "https://louez.localify",
+    "https://louez.localify.fyi",
+    "https://feat-chat.louez.localify",
+    "https://louez--feat-chat.localify.fyi",
+  ),
 };
 
-/** Production: the configured app URL alone. */
+/** Production, with an alias the operator lists in BETTER_AUTH_TRUSTED_ORIGINS. */
 const PRODUCTION: AppOrigins = {
-  appUrl: "https://app.louez.test",
-  authUrl: "https://app.louez.test",
-  development: false,
+  appUrl: "https://app.example.org",
+  isTrusted: trusting("https://app.example.org", "https://alias.example.org"),
 };
 
 describe("chatRequestRefusal behind a proxy", () => {
-  test("the configured origin is accepted", () => {
+  test("the configured origin is accepted", async () => {
     for (const app of [DEVELOPMENT, PRODUCTION]) {
       const origin = new URL(app.appUrl).origin;
-      assert.equal(accepted({ origin, "sec-fetch-site": "same-origin" }, app), true, origin);
+      assert.equal(await accepted({ origin, "sec-fetch-site": "same-origin" }, app), true, origin);
     }
   });
 
-  test("an origin the auth layer trusts is accepted", () => {
+  test("an origin the auth layer trusts is accepted", async () => {
     for (const origin of [
       "https://louez.localify.fyi",
       "https://feat-chat.louez.localify",
       "https://louez--feat-chat.localify.fyi",
     ]) {
       assert.equal(
-        accepted({ origin, "sec-fetch-site": "same-origin" }, DEVELOPMENT),
+        await accepted({ origin, "sec-fetch-site": "same-origin" }, DEVELOPMENT),
         true,
         origin,
       );
     }
+    // The operator's own alias, in production.
+    assert.equal(
+      await accepted(
+        { origin: "https://alias.example.org", "sec-fetch-site": "same-origin" },
+        PRODUCTION,
+      ),
+      true,
+    );
   });
 
-  test("an untrusted origin is refused, whatever a forwarded header says", () => {
+  test("an untrusted origin is refused, whatever a forwarded header says", async () => {
     for (const app of [DEVELOPMENT, PRODUCTION]) {
       const origin = "https://elsewhere.test";
       assert.equal(
-        accepted(
+        await accepted(
           {
             origin,
             "x-forwarded-host": "elsewhere.test",
@@ -74,22 +100,36 @@ describe("chatRequestRefusal behind a proxy", () => {
     }
   });
 
-  test("another subdomain of the same site is refused", () => {
-    assert.equal(
-      accepted({ origin: "https://shop.louez.test", "sec-fetch-site": "same-site" }, PRODUCTION),
-      false,
-    );
-    assert.equal(accepted({ origin: "https://shop.louez.test" }, PRODUCTION), false);
-    // Production trusts no development host.
-    assert.equal(accepted({ origin: "https://louez.localify.fyi" }, PRODUCTION), false);
-    // Not one of the project's hosts, nor a host with a port or over plain HTTP.
+  test("an origin in neither list is refused, another subdomain of the site included", async () => {
     for (const origin of [
-      "https://other.localify.fyi",
-      "https://a.b.louez.localify",
-      "https://louez.localify.fyi:8443",
-      "http://louez.localify.fyi",
+      "https://shop.example.org",
+      "https://alias.example.org.evil.test",
+      "https://louez.localify.fyi",
     ]) {
-      assert.equal(accepted({ origin }, DEVELOPMENT), false, origin);
+      assert.equal(await accepted({ origin, "sec-fetch-site": "same-site" }, PRODUCTION), false);
+      assert.equal(await accepted({ origin }, PRODUCTION), false, origin);
     }
+    assert.equal(await accepted({ origin: "https://other.localify.fyi" }, DEVELOPMENT), false);
+  });
+
+  test("a refusal logs one line, naming its origin and nothing else, now and then", async () => {
+    const request = new Request(UPSTREAM, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://unlisted.example.org",
+        cookie: "session=secret-cookie",
+      },
+      body: '{"messages":["secret-body"]}',
+    });
+    const refusal = await chatRequestRefusal(request, PRODUCTION);
+    assert.ok(refusal);
+    const now = Date.UTC(2030, 5, 1);
+    const line = refusalLogLine(refusal, now);
+    assert.ok(line);
+    assert.match(line, /refused for its origin: Origin https:\/\/unlisted\.example\.org is not among the configured origins/);
+    assert.doesNotMatch(line, /secret-cookie|secret-body|127\.0\.0\.1/);
+    assert.equal(refusalLogLine(refusal, now + 1_000), null, "the same origin, soon after");
+    assert.ok(refusalLogLine(refusal, now + REFUSAL_LOG_INTERVAL_MS));
   });
 });

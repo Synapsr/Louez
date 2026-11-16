@@ -11,7 +11,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { render } from "@react-email/render";
 
-import { DEV_AUTH_HOSTS } from "./trusted-origins";
+import { authOriginOptions, trustedOriginCheck } from "./trusted-origins";
 
 import { db } from "@louez/db";
 import * as schema from "@louez/db";
@@ -146,19 +146,10 @@ const AUTH_COOKIE_PREFIX = dbEnv.DATABASE_URL.endsWith(PROD_DATABASE_SUFFIX)
     ? "louez-dev"
     : "better-auth";
 
-/**
- * In development the app answers on every Localify host of the project
- * (`DEV_AUTH_HOSTS`, ./trusted-origins.ts). Better Auth then takes its base
- * URL, and the origin it trusts, from the host a request came in on, read
- * from X-Forwarded-Host, among these hosts only; any other host falls back
- * to AUTH_URL. So a new worktree or a public URL works without editing
- * AUTH_URL. Production keeps the fixed AUTH_URL.
- */
 const isDevelopment = env.NODE_ENV === "development";
 
-const authBaseURL = isDevelopment
-  ? { allowedHosts: DEV_AUTH_HOSTS, fallback: env.AUTH_URL }
-  : env.AUTH_URL;
+/** Where Better Auth takes its base URL and trusted origins from (./trusted-origins.ts). */
+const authOrigins = authOriginOptions({ authUrl: env.AUTH_URL, development: isDevelopment });
 
 /**
  * OAuth for MCP clients, on AUTH_URL's origin (./oauth.ts). Null on a
@@ -173,8 +164,7 @@ export const mcpOAuth = mcpOAuthEndpoints(env.AUTH_URL);
 export const authInstance = betterAuth({
   basePath: "/api/auth",
   secret: env.AUTH_SECRET,
-  baseURL: authBaseURL,
-  trustedOrigins: [env.AUTH_URL],
+  ...authOrigins,
 
   database: drizzleAdapter(db, {
     provider: "mysql",
@@ -415,6 +405,13 @@ export const authInstance = betterAuth({
     },
   },
 });
+
+/**
+ * Whether an origin is one this instance trusts, as Better Auth decides it
+ * (`trustedOriginCheck`, ./trusted-origins.ts): the chat endpoint's
+ * same-origin check asks it.
+ */
+export const isTrustedAuthOrigin = trustedOriginCheck(authInstance);
 
 /**
  * Verifies an access token sent to the MCP endpoint: signature against this

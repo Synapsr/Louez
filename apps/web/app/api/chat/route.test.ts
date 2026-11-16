@@ -13,8 +13,6 @@ import { pathToFileURL } from "node:url";
 
 const APP = "https://app.louez.test";
 process.env.NEXT_PUBLIC_APP_URL = APP;
-process.env.AUTH_URL = APP;
-Reflect.set(process.env, "NODE_ENV", "production");
 // Behind the reverse proxy, the URL the route is handed is the upstream one.
 const UPSTREAM = "https://127.0.0.1:60441";
 
@@ -50,7 +48,12 @@ export const ASSISTANT_API_DOMAINS = [];`,
   ),
   "@louez/auth": stub(
     "louez-auth",
-    "export const auth = {}; export const mcpOAuth = null; export const authInstance = {};",
+    `export const auth = {}; export const mcpOAuth = null; export const authInstance = {};
+export const isTrustedAuthOrigin = async (origin) => origin === ${JSON.stringify(APP)};`,
+  ),
+  "@/lib/evlog": stub(
+    "evlog",
+    "export const log = { warn: (...line) => { globalThis.__chatLogs ??= []; globalThis.__chatLogs.push(line.join(' ')); } };",
   ),
 };
 after(() => rmSync(directory, { recursive: true }));
