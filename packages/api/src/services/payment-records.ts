@@ -52,6 +52,7 @@ import {
   hundredthsOf,
   paymentAmount,
   recordedPaymentAmount,
+  type RecordedAmountVerdict,
   refundAmount,
   type RefundVerdict,
 } from "./payment-amount";
@@ -71,10 +72,10 @@ import {
  * it asks, so nobody is asked to approve what cannot happen, and once it has
  * asked it only writes: a refusal never follows an approval carried out.
  *
- * Kept as the hand-written tools had it: the amounts written in euros in the
- * previews and messages (`money`), no history line, and the refusals'
- * messages. The refund, which no hand-written tool had, writes its amounts
- * in the payment's own currency (`moneyIn`).
+ * Kept as the hand-written tools had it: no history line, and the refusals'
+ * messages. A payment recorded, a deposit return and a refund write their
+ * amounts in their own currency (`moneyIn`): the reservation's, or the
+ * payment's for a refund. A deletion's preview still writes euros (`money`).
  */
 
 /** Who writes, on which store, with which of the app's writers, and how the confirmation is asked. */
@@ -103,8 +104,8 @@ export interface PaymentWriteCaller<Port> {
 export type PaymentRecordsCaller = PaymentWriteCaller<PaymentRecordsPort>;
 
 /**
- * An amount as the previews and messages wrote it: in euros, whatever the
- * reservation's currency, as the hand-written tools did.
+ * An amount as the deletion's preview writes it: in euros, whatever the
+ * payment's currency, as the hand-written tools did.
  */
 export function money(amount: string | number): string {
   const value = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -192,34 +193,63 @@ const factsOf = (
 /** The notes a write records, shown with its preview when there are any. */
 const notesOf = (notes: string | undefined) => (notes ? { notes } : {});
 
-/** The amount's text (`paymentAmount`), then a negative amount outside an adjustment. */
-function recordAmountRefusal(input: RecordPaymentInput): Error | null {
-  const verdict = recordedPaymentAmount(input.amount, input.type);
-  if (verdict.ok) return null;
-  return verdict.refusal === "amount_invalid"
-    ? paymentRecordErrors.amountInvalid()
-    : paymentRecordErrors.negativeOutsideAdjustment();
+/**
+ * What an amount is refused for whatever the reservation's currency: its
+ * text (`paymentAmount`), then a negative amount outside an adjustment.
+ */
+function recordTextRefusal(input: RecordPaymentInput): Error | null {
+  const amount = paymentAmount(input.amount);
+  if (!amount) return paymentRecordErrors.amountInvalid();
+  if (amount.startsWith("-") && input.type !== "adjustment") {
+    return paymentRecordErrors.negativeOutsideAdjustment();
+  }
+  return null;
 }
 
-/** Records a payment received, or paid back as a negative adjustment. */
+/** The refusal of an amount `recordedPaymentAmount` judged, in the reservation's currency. */
+function recordAmountRefusal(
+  refusal: Exclude<RecordedAmountVerdict, { ok: true }>["refusal"],
+  currency: string,
+): Error {
+  switch (refusal) {
+    case "amount_invalid":
+      return paymentRecordErrors.amountInvalid();
+    case "negative_outside_adjustment":
+      return paymentRecordErrors.negativeOutsideAdjustment();
+    case "too_precise":
+      return paymentRecordErrors.amountTooPrecise(currency, currencyMinorDigits(currency) ?? 0);
+    case "currency_unsupported":
+      return paymentRecordErrors.currencyNotSupported(currency);
+  }
+}
+
+/**
+ * Records a payment received, or paid back as a negative adjustment. Its
+ * amount has at most the decimals of the reservation's currency, which the
+ * app's facts read under the lock (`currencyFit`): judged once that
+ * currency is known, before anything is asked.
+ */
 export async function recordPayment(caller: PaymentRecordsCaller, input: RecordPaymentInput) {
   const { storeId } = caller;
   return underReservationLock(storeId, input.reservationId, async (tx) => {
     const reservation = await lockedReservation(tx, storeId, input.reservationId);
     if (!reservation) {
       return refused(
-        recordAmountRefusal(input) ?? paymentRecordErrors.reservationNotFound(input.reservationId),
+        recordTextRefusal(input) ?? paymentRecordErrors.reservationNotFound(input.reservationId),
       );
     }
 
     // Refused whatever anyone answers: before asking.
-    const amountRefusal = recordAmountRefusal(input);
-    if (amountRefusal) return refused(amountRefusal);
+    const textRefusal = recordTextRefusal(input);
+    if (textRefusal) return refused(textRefusal);
     if (reservation.status === "cancelled" || reservation.status === "rejected") {
       return refused(paymentRecordErrors.reservationClosed(reservation.status));
     }
 
     const facts = await factsOf(tx, caller, reservation.id, input);
+    const { currency } = facts;
+    const verdict = recordedPaymentAmount(input.amount, input.type, currency);
+    if (!verdict.ok) return refused(recordAmountRefusal(verdict.refusal, currency));
     // The reservation as read: one record, whatever case its id was sent in.
     const details = {
       reservationId: reservation.id,
@@ -230,11 +260,11 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
     };
     const refusal = await caller.confirm(tx, {
       preview: {
-        summary: `Record a ${input.type} payment of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
+        summary: `Record a ${input.type} payment of ${moneyIn(verdict.amount, currency)} (${input.method}) on reservation #${reservation.number}.`,
         details: { ...details, ...notesOf(input.notes) },
       },
       state: { status: reservation.status, facts },
-      presentation: recordPaymentPresentation(details, facts.currency),
+      presentation: recordPaymentPresentation(details, currency),
     });
     if (refusal) return unconfirmed(refusal);
 
@@ -262,16 +292,19 @@ export async function recordPayment(caller: PaymentRecordsCaller, input: RecordP
   });
 }
 
-/** The amount's text (`paymentAmount`), or zero and below; the balance is judged under the lock. */
-function returnAmountRefusal(input: RecordDepositReturnInput): Error | null {
-  const verdict = depositReturnAmount(input.amount, Infinity);
-  return verdict.ok ? null : paymentRecordErrors.depositReturnAmountInvalid();
+/** What a return is refused for whatever the reservation's currency: its text (`paymentAmount`), or zero and below. */
+function returnTextRefusal(input: RecordDepositReturnInput): Error | null {
+  const amount = paymentAmount(input.amount);
+  return amount && !amount.startsWith("-")
+    ? null
+    : paymentRecordErrors.depositReturnAmountInvalid();
 }
 
 /**
  * Records a deposit the store already gave back. Refused above the deposit
  * collected and not yet returned, read under the lock: the balance the
- * preview binds is the one the refusal checks.
+ * preview binds is the one the refusal checks. Its amount has at most the
+ * decimals of the reservation's currency, as a payment recorded.
  */
 export async function recordDepositReturn(
   caller: PaymentRecordsCaller,
@@ -282,9 +315,13 @@ export async function recordDepositReturn(
     const reservation = await lockedReservation(tx, storeId, input.reservationId);
     if (!reservation) {
       return refused(
-        returnAmountRefusal(input) ?? paymentRecordErrors.reservationNotFound(input.reservationId),
+        returnTextRefusal(input) ?? paymentRecordErrors.reservationNotFound(input.reservationId),
       );
     }
+    // Refused whatever anyone answers: before asking.
+    const textRefusal = returnTextRefusal(input);
+    if (textRefusal) return refused(textRefusal);
+
     const rows = await tx
       .select({ type: payments.type, status: payments.status, amount: payments.amount })
       .from(payments)
@@ -297,27 +334,39 @@ export async function recordDepositReturn(
     const returned = completed("deposit_return");
     const returnable = collected - returned;
 
-    // Refused whatever anyone answers: before asking.
-    const verdict = depositReturnAmount(input.amount, returnable);
+    const facts = await factsOf(tx, caller, reservation.id, {
+      type: "deposit_return",
+      amount: input.amount,
+    });
+    const { currency } = facts;
+    const verdict = depositReturnAmount(input.amount, currency, returnable);
     if (!verdict.ok) {
-      return refused(
-        verdict.refusal === "amount_invalid"
-          ? paymentRecordErrors.depositReturnAmountInvalid()
-          : paymentRecordErrors.depositReturnExceedsBalance(
+      switch (verdict.refusal) {
+        case "amount_invalid":
+          return refused(paymentRecordErrors.depositReturnAmountInvalid());
+        case "too_precise":
+          return refused(
+            paymentRecordErrors.depositReturnAmountTooPrecise(
+              currency,
+              currencyMinorDigits(currency) ?? 0,
+            ),
+          );
+        case "currency_unsupported":
+          return refused(paymentRecordErrors.currencyNotSupported(currency));
+        case "exceeds_balance":
+          return refused(
+            paymentRecordErrors.depositReturnExceedsBalance(
               {
                 collected: collected.toFixed(2),
                 returned: returned.toFixed(2),
                 returnable: returnable.toFixed(2),
               },
-              money,
+              (amount) => moneyIn(amount, currency),
             ),
-      );
+          );
+      }
     }
 
-    const facts = await factsOf(tx, caller, reservation.id, {
-      type: "deposit_return",
-      amount: input.amount,
-    });
     // The reservation as read: one record, whatever case its id was sent in.
     const details = {
       reservationId: reservation.id,
@@ -328,11 +377,11 @@ export async function recordDepositReturn(
     };
     const refusal = await caller.confirm(tx, {
       preview: {
-        summary: `Record a deposit return of ${money(input.amount)} (${input.method}) on reservation #${reservation.number}.`,
+        summary: `Record a deposit return of ${moneyIn(verdict.amount, currency)} (${input.method}) on reservation #${reservation.number}.`,
         details: { ...details, ...notesOf(input.notes) },
       },
       state: { returnable: returnable.toFixed(2), facts },
-      presentation: recordDepositReturnPresentation(details, facts.currency, returnable),
+      presentation: recordDepositReturnPresentation(details, currency, returnable),
     });
     if (refusal) return unconfirmed(refusal);
 
@@ -464,10 +513,11 @@ const REFUNDABLE_TYPES: ReadonlySet<string> = new Set([
 const MANUAL_METHODS: ReadonlySet<string> = new Set(["cash", "card", "transfer", "check", "other"]);
 
 /**
- * An amount in a payment's own currency, as the refund's preview and its
- * refusals write it (`£30.00`, `¥1,500`): with exactly the digits it holds
- * (`exactMoneyDecimals`), as the approval's page writes it, so the two never
- * disagree. Never the euros of `money`, which the older writes keep.
+ * An amount in its own currency, as the previews and refusals of a payment
+ * recorded, a deposit return and a refund write it (`£30.00`, `¥1,500`):
+ * with exactly the digits it holds (`exactMoneyDecimals`), as the
+ * approval's page writes it, so the two never disagree. A euro amount with
+ * its two decimals (`paymentAmount`) reads as `money` wrote it.
  */
 export function moneyIn(amount: string, currency: string): string {
   const decimals = exactMoneyDecimals(amount, currency);

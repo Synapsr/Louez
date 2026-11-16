@@ -443,6 +443,72 @@ describe(
       assert.deepEqual(await paymentsOf(reservationId), []);
     });
 
+    test("in yen, half a yen is refused in the chat's words with nothing asked; one yen is asked in yen, and its approval names the amount in yen", async () => {
+      const reservationId = await reservation();
+      const inCurrency = (currency: string) =>
+        louezDb.db
+          .update(louezDb.reservations)
+          .set({ currency })
+          .where(eq(louezDb.reservations.id, reservationId));
+      await inCurrency("JPY");
+      await louezDb.db.insert(louezDb.payments).values({
+        reservationId,
+        type: "deposit",
+        amount: "5.00",
+        method: "cash",
+        status: "completed",
+        currency: "JPY",
+      });
+      const tools = toolsFor();
+      const asked = async () => (await louezDb.db.select().from(louezDb.apiHandoffs)).length;
+      const noDecimals = 'A JPY amount has no decimals: send whole units (such as "30")';
+
+      assert.deepEqual(
+        await run(tools, "record_payment", recordInput(reservationId, { amount: "0.5" })),
+        { error: noDecimals },
+      );
+      assert.deepEqual(
+        await run(tools, "return_deposit", { reservationId, amount: "0.5", method: "cash" }),
+        { error: noDecimals },
+      );
+      assert.equal(await asked(), 0, "nothing is asked");
+
+      const one = recordInput(reservationId, { amount: "1" });
+      const first = await run(tools, "record_payment", one);
+      assert.equal(first.status, "approval_required");
+      assert.match(
+        String(first.summary),
+        /^Record a rental payment of ¥1 \(cash\) on reservation #/,
+      );
+      const id = String(first.approvalId);
+      await decide(id, "approve");
+      const done = await run(tools, "record_payment", { ...one, approvalId: id });
+      assert.equal(done.status, "done");
+      const [row] = (await paymentsOf(reservationId)).filter(
+        (payment) => payment.type === "rental",
+      );
+      assert.deepEqual([row?.amount, row?.currency, row?.grossMinor], ["1.00", "JPY", 1]);
+
+      // The approval names the amount in its currency, and binds its billing
+      // facts (gross in minor units): the same text in euros (100 cents, not
+      // 1 yen) is another request, and runs nothing.
+      const back = { reservationId, amount: "1", method: "cash" };
+      const returning = await run(tools, "return_deposit", back);
+      assert.equal(returning.status, "approval_required");
+      await decide(String(returning.approvalId), "approve");
+      await inCurrency("EUR");
+      const moved = await run(tools, "return_deposit", {
+        ...back,
+        approvalId: returning.approvalId,
+      });
+      assert.deepEqual([moved.status, moved.reason], ["invalid", "other_request"]);
+      assert.equal(
+        (await paymentsOf(reservationId)).filter((payment) => payment.type === "deposit_return")
+          .length,
+        0,
+      );
+    });
+
     test("a deposit return and a deletion wait for the person too, then run once", async () => {
       const reservationId = await reservation();
       await louezDb.db.insert(louezDb.payments).values({

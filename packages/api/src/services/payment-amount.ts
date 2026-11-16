@@ -2,7 +2,7 @@ import { currencyMinorDigits } from "@louez/utils";
 
 /**
  * The amount a payment written by hand takes (`dashboard.payments.record`,
- * `recordDepositReturn`, `recordRefund`): a plain decimal, an optional minus sign, one to
+ * `recordDepositReturn`, `recordRefund`), whatever its currency: a plain decimal, an optional minus sign, one to
  * eight integer digits, at most two decimals, and not zero. That is exactly
  * what its row, `payments.amount` (`decimal(10,2)`), holds as sent: no
  * rounding, no text MySQL would read otherwise ("1e2", " 5", "+5", "5.",
@@ -24,40 +24,55 @@ export function paymentAmount(raw: string): string | null {
   return `${sign}${digits.slice(0, -2)}.${digits.slice(-2)}`;
 }
 
-/** Why a payment's amount is refused: its text, or its sign for its type. */
+/** Why a payment's amount is refused: its text, its sign for its type, or its currency. */
 export type RecordedAmountVerdict =
   | { ok: true; amount: string }
-  | { ok: false; refusal: "amount_invalid" | "negative_outside_adjustment" };
+  | {
+      ok: false;
+      refusal: "amount_invalid" | "negative_outside_adjustment" | Exclude<CurrencyFit, "fits">;
+    };
 
 /**
  * The amount of a payment recorded (`dashboard.payments.record`), as the
  * write judges it before it asks: `paymentAmount`, then a negative amount
- * for an adjustment only. The display of a payment recorded judges it the
- * same way.
+ * for an adjustment only, then, in the reservation's `currency`,
+ * `currencyFit`. The display of a payment recorded judges it the same way.
  */
-export function recordedPaymentAmount(raw: string, type: string): RecordedAmountVerdict {
+export function recordedPaymentAmount(
+  raw: string,
+  type: string,
+  currency: string,
+): RecordedAmountVerdict {
   const amount = paymentAmount(raw);
   if (!amount) return { ok: false, refusal: "amount_invalid" };
   if (amount.startsWith("-") && type !== "adjustment") {
     return { ok: false, refusal: "negative_outside_adjustment" };
   }
+  const fit = currencyFit(amount, currency);
+  if (fit !== "fits") return { ok: false, refusal: fit };
   return { ok: true, amount };
 }
 
 export type DepositReturnVerdict =
   | { ok: true; amount: string }
-  | { ok: false; refusal: "amount_invalid" | "exceeds_balance" };
+  | { ok: false; refusal: "amount_invalid" | Exclude<CurrencyFit, "fits"> | "exceeds_balance" };
 
 /**
  * The amount of a deposit return (`dashboard.payments.recordDepositReturn`),
- * as the write judges it before it asks: `paymentAmount`, above zero, and
- * within `returnable`, the deposit collected and not yet returned as the
- * write counts it under the reservation's lock. Its display judges it the
- * same way.
+ * as the write judges it before it asks: `paymentAmount`, above zero; then,
+ * in the reservation's `currency`, `currencyFit`; then within `returnable`,
+ * the deposit collected and not yet returned as the write counts it under
+ * the reservation's lock. Its display judges it the same way.
  */
-export function depositReturnAmount(raw: string, returnable: number): DepositReturnVerdict {
+export function depositReturnAmount(
+  raw: string,
+  currency: string,
+  returnable: number,
+): DepositReturnVerdict {
   const amount = paymentAmount(raw);
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
+  const fit = currencyFit(amount, currency);
+  if (fit !== "fits") return { ok: false, refusal: fit };
   if (parseFloat(amount) > returnable) return { ok: false, refusal: "exceeds_balance" };
   return { ok: true, amount };
 }
