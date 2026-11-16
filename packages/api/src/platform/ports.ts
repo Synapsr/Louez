@@ -94,6 +94,11 @@ export interface ApiPorts {
    */
   team?: TeamPort;
   /**
+   * Whether this instance can send e-mail (SMTP configured): a write that
+   * promises the customer an e-mail refuses it without. Absent: it can.
+   */
+  emailConfigured?: () => boolean;
+  /**
    * Sends an unexpected server error to the app's error tracking
    * (platform/error-reporting.ts). Never throws, never waits. Absent: nothing
    * is sent (tests, scripts, an instance without error tracking).
@@ -565,6 +570,17 @@ export type ApiEvent =
   /** A reservation's status or notes changed: its pages are revalidated. Its messages go to the outbox. */
   | { type: "reservation.statusChanged"; store: ApiEventStore; reservationId: string }
   | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
+  /** A reservation's dates moved through the API: its pages, and the edit's analytics event. */
+  | {
+      type: "reservation.datesChanged";
+      store: ApiEventStore;
+      reservationId: string;
+      transport: Transport;
+      status: string;
+      itemCount: number;
+      warningCount: number;
+      notifyCustomer: boolean;
+    }
   /** A section of the store settings changed: its pages are revalidated. */
   | { type: "store.settingsUpdated"; store: ApiEventStore; section: SettingsSection }
   /** The online store's sections or look changed; `themeChanged`: its cached theme colour is stale. */

@@ -9945,7 +9945,11 @@
           "confirmPastBuffer": "不顾两次租赁之间的间隔，确认这笔预订？",
           "confirmBeyondStock": "超出库存确认这笔预订？",
           "confirmBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，确认这笔预订？",
-          "recordDeposit": "记录一笔已收押金？"
+          "recordDeposit": "记录一笔已收押金？",
+          "moveDatesWithinRules": "更改这笔预订的日期？",
+          "moveDatesPastBuffer": "不顾两次租赁之间的间隔，更改这笔预订的日期？",
+          "moveDatesBeyondStock": "超出库存更改这笔预订的日期？",
+          "moveDatesBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，更改这笔预订的日期？"
         },
         "facts": {
           "booking": "预订 #<v>{number}</v> · <v>{customer}</v>",
@@ -9978,7 +9982,9 @@
           "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
           "noMessage": "不会向客户发送任何消息。",
           "depositCollected": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "datesMoved": "日期：<v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "新总额：<v>{total}</v>（差额：<v>{difference}</v>）。不会扣款，也不会退款。"
         },
         "choices": {
           "paymentType": {
@@ -10001,7 +10007,8 @@
           "customerMessage": {
             "request_accepted": "请求已接受",
             "request_rejected": "请求已拒绝",
-            "reservation_cancelled": "预订已取消"
+            "reservation_cancelled": "预订已取消",
+            "reservation_modified": "预订已修改"
           }
         }
       }

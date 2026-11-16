@@ -9945,7 +9945,11 @@
           "confirmPastBuffer": "Confirm the booking despite your turnover buffer?",
           "confirmBeyondStock": "Confirm the booking beyond your stock?",
           "confirmBeyondStockAndBuffer": "Confirm the booking beyond your stock and your turnover buffer?",
-          "recordDeposit": "Record a deposit collected?"
+          "recordDeposit": "Record a deposit collected?",
+          "moveDatesWithinRules": "Move the booking’s dates?",
+          "moveDatesPastBuffer": "Move the booking’s dates despite your turnover buffer?",
+          "moveDatesBeyondStock": "Move the booking’s dates beyond your stock?",
+          "moveDatesBeyondStockAndBuffer": "Move the booking’s dates beyond your stock and your turnover buffer?"
         },
         "facts": {
           "booking": "Booking #<v>{number}</v> · <v>{customer}</v>",
@@ -9978,7 +9982,9 @@
           "messageToCustomer": "The customer will receive the “<v>{message}</v>” {channels, select, email {email} sms {text message} other {email and text message}}",
           "noMessage": "No message goes to the customer.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> collected · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, given back to the customer · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, given back to the customer · <v>{method}</v>",
+          "datesMoved": "Dates: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "New total: <v>{total}</v> (difference: <v>{difference}</v>). Nothing is charged or refunded."
         },
         "choices": {
           "paymentType": {
@@ -10001,7 +10007,8 @@
           "customerMessage": {
             "request_accepted": "request accepted",
             "request_rejected": "request declined",
-            "reservation_cancelled": "booking cancelled"
+            "reservation_cancelled": "booking cancelled",
+            "reservation_modified": "booking modified"
           }
         }
       }

@@ -9945,7 +9945,11 @@
           "confirmPastBuffer": "Die Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen bestätigen?",
           "confirmBeyondStock": "Die Buchung über Ihren Bestand hinaus bestätigen?",
           "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?",
-          "recordDeposit": "Eine erhaltene Kaution erfassen?"
+          "recordDeposit": "Eine erhaltene Kaution erfassen?",
+          "moveDatesWithinRules": "Die Daten der Buchung verschieben?",
+          "moveDatesPastBuffer": "Die Daten der Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen verschieben?",
+          "moveDatesBeyondStock": "Die Daten der Buchung über Ihren Bestand hinaus verschieben?",
+          "moveDatesBeyondStockAndBuffer": "Die Daten der Buchung über Ihren Bestand und Ihre Pufferzeit hinaus verschieben?"
         },
         "facts": {
           "booking": "Buchung #<v>{number}</v> · <v>{customer}</v>",
@@ -9978,7 +9982,9 @@
           "messageToCustomer": "Der Kunde erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
           "noMessage": "Der Kunde erhält keine Nachricht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "datesMoved": "Daten: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Neuer Gesamtbetrag: <v>{total}</v> (Differenz: <v>{difference}</v>). Es wird nichts abgebucht oder erstattet."
         },
         "choices": {
           "paymentType": {
@@ -10001,7 +10007,8 @@
           "customerMessage": {
             "request_accepted": "Anfrage angenommen",
             "request_rejected": "Anfrage abgelehnt",
-            "reservation_cancelled": "Buchung storniert"
+            "reservation_cancelled": "Buchung storniert",
+            "reservation_modified": "Buchung geändert"
           }
         }
       }

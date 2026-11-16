@@ -9945,7 +9945,11 @@
           "confirmPastBuffer": "De boeking bevestigen ondanks je tijd tussen twee verhuren?",
           "confirmBeyondStock": "De boeking bevestigen boven je voorraad?",
           "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?",
-          "recordDeposit": "Een ontvangen borg registreren?"
+          "recordDeposit": "Een ontvangen borg registreren?",
+          "moveDatesWithinRules": "De data van de boeking verplaatsen?",
+          "moveDatesPastBuffer": "De data van de boeking verplaatsen ondanks je tijd tussen twee verhuren?",
+          "moveDatesBeyondStock": "De data van de boeking verplaatsen boven je voorraad?",
+          "moveDatesBeyondStockAndBuffer": "De data van de boeking verplaatsen boven je voorraad en je tijd tussen twee verhuren?"
         },
         "facts": {
           "booking": "Boeking #<v>{number}</v> · <v>{customer}</v>",
@@ -9978,7 +9982,9 @@
           "messageToCustomer": "De klant krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
           "noMessage": "De klant krijgt geen bericht.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>",
+          "datesMoved": "Data: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nieuw totaal: <v>{total}</v> (verschil: <v>{difference}</v>). Er wordt niets afgeschreven of terugbetaald."
         },
         "choices": {
           "paymentType": {
@@ -10001,7 +10007,8 @@
           "customerMessage": {
             "request_accepted": "aanvraag geaccepteerd",
             "request_rejected": "aanvraag afgewezen",
-            "reservation_cancelled": "boeking geannuleerd"
+            "reservation_cancelled": "boeking geannuleerd",
+            "reservation_modified": "boeking gewijzigd"
           }
         }
       }

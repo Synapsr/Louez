@@ -9945,7 +9945,11 @@
           "confirmPastBuffer": "Confirmar a reserva apesar da sua margem entre alugueres?",
           "confirmBeyondStock": "Confirmar a reserva acima do seu stock?",
           "confirmBeyondStockAndBuffer": "Confirmar a reserva acima do seu stock e da sua margem entre alugueres?",
-          "recordDeposit": "Registar uma caução recebida?"
+          "recordDeposit": "Registar uma caução recebida?",
+          "moveDatesWithinRules": "Mudar as datas da reserva?",
+          "moveDatesPastBuffer": "Mudar as datas da reserva apesar da sua margem entre alugueres?",
+          "moveDatesBeyondStock": "Mudar as datas da reserva acima do seu stock?",
+          "moveDatesBeyondStockAndBuffer": "Mudar as datas da reserva acima do seu stock e da sua margem entre alugueres?"
         },
         "facts": {
           "booking": "Reserva #<v>{number}</v> · <v>{customer}</v>",
@@ -9978,7 +9982,9 @@
           "messageToCustomer": "O cliente vai receber {channels, select, email {o email} sms {o SMS} other {o email e o SMS}} «<v>{message}</v>»",
           "noMessage": "Nenhuma mensagem é enviada ao cliente.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> recebidos · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devolvidos ao cliente · <v>{method}</v>",
+          "datesMoved": "Datas: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Novo total: <v>{total}</v> (diferença: <v>{difference}</v>). Nada é cobrado nem reembolsado."
         },
         "choices": {
           "paymentType": {
@@ -10001,7 +10007,8 @@
           "customerMessage": {
             "request_accepted": "pedido aceite",
             "request_rejected": "pedido recusado",
-            "reservation_cancelled": "reserva cancelada"
+            "reservation_cancelled": "reserva cancelada",
+            "reservation_modified": "reserva alterada"
           }
         }
       }

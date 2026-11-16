@@ -9945,7 +9945,11 @@
           "confirmPastBuffer": "Confirmer la réservation malgré votre délai entre deux locations ?",
           "confirmBeyondStock": "Confirmer la réservation au-delà de votre stock ?",
           "confirmBeyondStockAndBuffer": "Confirmer la réservation au-delà de votre stock et de votre délai entre deux locations ?",
-          "recordDeposit": "Enregistrer une caution encaissée ?"
+          "recordDeposit": "Enregistrer une caution encaissée ?",
+          "moveDatesWithinRules": "Déplacer les dates de la réservation ?",
+          "moveDatesPastBuffer": "Déplacer les dates de la réservation malgré votre délai entre deux locations ?",
+          "moveDatesBeyondStock": "Déplacer les dates de la réservation au-delà de votre stock ?",
+          "moveDatesBeyondStockAndBuffer": "Déplacer les dates de la réservation au-delà de votre stock et de votre délai entre deux locations ?"
         },
         "facts": {
           "booking": "Réservation #<v>{number}</v> · <v>{customer}</v>",
@@ -9978,7 +9982,9 @@
           "messageToCustomer": "Le client recevra {channels, select, email {l’e-mail} sms {le SMS} other {l’e-mail et le SMS}} « <v>{message}</v> »",
           "noMessage": "Aucun message n’est envoyé au client.",
           "depositCollected": "<v>{type}</v> : <v>{amount}</v> encaissés · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v> : <v>{amount}</v> remis au client · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v> : <v>{amount}</v> remis au client · <v>{method}</v>",
+          "datesMoved": "Dates déplacées : <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nouveau total : <v>{total}</v> (écart : <v>{difference}</v>). Rien n’est débité ni remboursé."
         },
         "choices": {
           "paymentType": {
@@ -10001,7 +10007,8 @@
           "customerMessage": {
             "request_accepted": "demande acceptée",
             "request_rejected": "demande refusée",
-            "reservation_cancelled": "réservation annulée"
+            "reservation_cancelled": "réservation annulée",
+            "reservation_modified": "réservation modifiée"
           }
         }
       }

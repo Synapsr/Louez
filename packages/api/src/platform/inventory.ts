@@ -417,8 +417,11 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "updateReservation"),
       procedure("reservations", "updateReservation"),
+      // The dates alone, for every transport (docs/domain/reservation-changes.md, slice 12a).
+      procedure("reservations", "update"),
     ],
     kind: "write",
+    sensitive: "send",
     plan: { lot: "2b" },
   },
   {
