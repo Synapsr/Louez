@@ -17,9 +17,9 @@ export function getReservationRentalAmount(reservation: {
 }
 
 /**
- * What is still owed for the rental: its total less what was paid toward it
- * (`getRentalPaid`, completed rental payments net of their refunds), counted in
- * whole hundredths, never below zero. The one reading of the payment request,
+ * What is still owed for the rental: its total less what settles it
+ * (`getRentalPaid`, in the reservation's currency), counted in whole
+ * hundredths, never below zero. The one reading of the payment request,
  * the reservation's page and payment section, the reservation list and the
  * payment recorded by hand.
  */

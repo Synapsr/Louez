@@ -10,6 +10,7 @@ import { drizzle } from "drizzle-orm/mysql-proxy";
 import { formatInTimeZone } from "date-fns-tz";
 import * as paymentReceipts from "@louez/db/payment-receipts";
 import * as schema from "@louez/db/schema";
+import utils from "@louez/utils";
 import * as windowUtils from "./sales-window.ts";
 
 // Exercise the actual query builders without loading app auth or opening a live database.
@@ -264,6 +265,69 @@ test("upcoming balances subtract only payments in the reservation's currency", a
     const result = await f.queries.getUpcomingRevenue(STORE, now);
     assert.equal(result.revenue, 121);
     assert.equal(result.reservationCount, 1);
+  } finally {
+    f.sqlite.close();
+  }
+});
+
+/**
+ * What the reservation `r` still owes, its payments read by `getRentalPaid`: the
+ * figure the SQL of getUpcomingRevenue must give for the same rows.
+ */
+function owedByFunction(f, total) {
+  const rows = f.sqlite
+    .prepare(
+      `SELECT id, amount, payment_status AS status, payment_type AS type, payment_method AS method,
+        currency, refund_of_payment_id AS refundOfPaymentId, stripe_refund_id AS stripeRefundId,
+        stripe_payment_intent_id AS stripePaymentIntentId,
+        stripe_checkout_session_id AS stripeCheckoutSessionId
+      FROM payments WHERE reservation_id = 'r'`,
+    )
+    .all();
+  const paid = utils.getRentalPaid(rows, "EUR");
+  return Math.max(0, Math.round(total * 100) - Math.round(paid * 100)) / 100;
+}
+
+test("what settles a rental, function and SQL alike: only payments and their refunds in the reservation's currency", async () => {
+  const f = fixture();
+  try {
+    f.sqlite.exec("UPDATE reservations SET total_amount = 120, currency = 'EUR' WHERE id = 'r'");
+    // 120 dollars charged through Stripe settle nothing of a 120 euro rental.
+    f.pay("dollars", 120, new Date("2026-09-01"), {
+      method: "stripe",
+      currency: "USD",
+      stripeIntent: "pi_usd",
+    });
+    assert.equal(owedByFunction(f, 120), 120);
+    assert.equal((await f.queries.getUpcomingRevenue(STORE, now)).revenue, 120);
+    // 70 euros in the shop settle 70; a refund of the dollars gives back none of them.
+    f.pay("cash", 70, new Date("2026-09-02"), { method: "cash" });
+    f.pay("dollar-refund", 50, new Date("2026-09-03"), { method: "cash", refund: "dollars" });
+    assert.equal(owedByFunction(f, 120), 50);
+    assert.equal((await f.queries.getUpcomingRevenue(STORE, now)).revenue, 50);
+  } finally {
+    f.sqlite.close();
+  }
+});
+
+test("what settles a rental, function and SQL alike: never below zero, and only refunds of completed payments", async () => {
+  const f = fixture();
+  try {
+    f.sqlite.exec("UPDATE reservations SET total_amount = 100, currency = 'EUR' WHERE id = 'r'");
+    // 100 received, 120 given back against it: nothing settles the rental, 100 is owed.
+    f.pay("receipt", 100, new Date("2026-09-01"), { method: "cash" });
+    f.pay("refund-1", 60, new Date("2026-09-02"), { method: "cash", refund: "receipt" });
+    f.pay("refund-2", 60, new Date("2026-09-03"), { method: "cash", refund: "receipt" });
+    assert.equal(owedByFunction(f, 100), 100);
+    assert.equal((await f.queries.getUpcomingRevenue(STORE, now)).revenue, 100);
+    // A refund linked to a payment still pending takes off nothing that was counted.
+    f.sqlite.exec("DELETE FROM payments");
+    f.pay("receipt", 100, new Date("2026-09-01"), { method: "cash" });
+    f.pay("pending", 40, new Date("2026-09-01"), { method: "cash", status: "pending" });
+    f.pay("refund-of-pending", 40, new Date("2026-09-02"), { method: "cash", refund: "pending" });
+    assert.equal(owedByFunction(f, 120), 20);
+    f.sqlite.exec("UPDATE reservations SET total_amount = 120 WHERE id = 'r'");
+    assert.equal((await f.queries.getUpcomingRevenue(STORE, now)).revenue, 20);
   } finally {
     f.sqlite.close();
   }

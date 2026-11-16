@@ -3756,7 +3756,10 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   const amount = Number(verdict.amount);
 
   if (amount > 0 && data.type === "rental") {
-    const rentalPaid = getRentalPaid(reservation.payments);
+    const rentalPaid = getRentalPaid(
+      reservation.payments,
+      reservationCurrency(reservation.currency, store.settings),
+    );
     const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
 
     if (amount > rentalRemaining) {

@@ -5,6 +5,7 @@
  */
 
 import {
+  getRentalPaid,
   getSettledPaymentAmount,
   isCustomerDepositHoldRow,
   isPaymentInCurrency,
@@ -69,12 +70,8 @@ export const getReservationPaymentStatus = (
   return "unpaid";
 };
 
-/**
- * What the customer paid toward the rental itself: deposits never count. With
- * `currency`, the reservation's, neither does a payment in another currency.
- */
-export const getRentalPaid = (payments: readonly PaymentLike[], currency?: string): number =>
-  getSettledPaymentAmount(payments, "rental", currency);
+// What settles a rental, defined once beside the money it reads.
+export { getRentalPaid };
 
 /** Damage fees charged on top of the rental, refunds subtracted. */
 export const getDamageFees = (payments: readonly PaymentLike[]): number =>

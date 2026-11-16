@@ -118,52 +118,61 @@ describe("getReservationPaymentStatus", () => {
 describe("getRentalPaid", () => {
   test("counts completed rental money only, refunds of it subtracted", () => {
     assert.equal(
-      getRentalPaid([
-        { id: "a", type: "rental", status: "completed", amount: "100.50" },
-        { id: "b", type: "deposit", status: "completed", amount: 200 },
-        { id: "c", type: "deposit_return", status: "completed", amount: "200" },
-        { id: "d", type: "rental", status: "pending", amount: "999" },
-        { id: "e", type: "rental", status: "completed", amount: "abc" },
-        { id: "f", type: "rental", status: "completed", amount: "20", refundOfPaymentId: "a" },
-        { id: "g", type: "damage", status: "completed", amount: "30" },
-        {
-          id: "h",
-          type: "deposit_return",
-          status: "completed",
-          amount: "5",
-          refundOfPaymentId: "x",
-        },
-      ]),
+      getRentalPaid(
+        [
+          { id: "a", type: "rental", status: "completed", amount: "100.50" },
+          { id: "b", type: "deposit", status: "completed", amount: 200 },
+          { id: "c", type: "deposit_return", status: "completed", amount: "200" },
+          { id: "d", type: "rental", status: "pending", amount: "999" },
+          { id: "e", type: "rental", status: "completed", amount: "abc" },
+          { id: "f", type: "rental", status: "completed", amount: "20", refundOfPaymentId: "a" },
+          { id: "g", type: "damage", status: "completed", amount: "30" },
+          {
+            id: "h",
+            type: "deposit_return",
+            status: "completed",
+            amount: "5",
+            refundOfPaymentId: "x",
+          },
+        ],
+        "EUR",
+      ),
       80.5,
     );
   });
 
   test("a Stripe refund row is neither added nor subtracted: its charge is already net", () => {
     assert.equal(
-      getRentalPaid([
-        {
-          id: "a",
-          type: "rental",
-          status: "completed",
-          amount: "70",
-          stripePaymentIntentId: "pi_1",
-        },
-        { id: "b", ...stripeRefund("30") },
-      ]),
+      getRentalPaid(
+        [
+          {
+            id: "a",
+            type: "rental",
+            status: "completed",
+            amount: "70",
+            stripePaymentIntentId: "pi_1",
+          },
+          { id: "b", ...stripeRefund("30") },
+        ],
+        "EUR",
+      ),
       70,
     );
     // Same once the refund row also points at its charge.
     assert.equal(
-      getRentalPaid([
-        {
-          id: "a",
-          type: "rental",
-          status: "completed",
-          amount: "70",
-          stripePaymentIntentId: "pi_1",
-        },
-        { id: "b", ...stripeRefund("30"), refundOfPaymentId: "a" },
-      ]),
+      getRentalPaid(
+        [
+          {
+            id: "a",
+            type: "rental",
+            status: "completed",
+            amount: "70",
+            stripePaymentIntentId: "pi_1",
+          },
+          { id: "b", ...stripeRefund("30"), refundOfPaymentId: "a" },
+        ],
+        "EUR",
+      ),
       70,
     );
   });

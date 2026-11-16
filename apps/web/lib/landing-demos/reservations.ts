@@ -169,6 +169,7 @@ export function createDemoReservationPages(
             name: item.product?.name ?? product.name,
           },
         })),
+        rentalPaid: status === "pending" ? "0.00" : display.subtotalAmount,
         payments:
           status === "pending"
             ? []

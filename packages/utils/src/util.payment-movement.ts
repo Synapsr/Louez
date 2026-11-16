@@ -61,7 +61,8 @@ const toAmount = (value: string | number): number => {
  *
  * With `currency`, the reservation's, a payment in another currency counts for
  * nothing: it does not reduce what the reservation is owed. Neither does a refund
- * of such a payment, which gives back money that was never counted.
+ * of such a payment, nor of a payment that is not completed: it gives back
+ * money that was never counted.
  */
 export const getSettledPaymentAmount = (
   payments: readonly SettledPaymentRow[],
@@ -75,10 +76,22 @@ export const getSettledPaymentAmount = (
     const amount = toAmount(payment.amount);
     if (payment.refundOfPaymentId) {
       const original = byId.get(payment.refundOfPaymentId);
-      if (original?.type !== type) return sum;
+      if (original?.type !== type || original.status !== "completed") return sum;
       return currency && !isPaymentInCurrency(original, currency) ? sum : sum - amount;
     }
     if (currency && !isPaymentInCurrency(payment, currency)) return sum;
     return payment.type === type ? sum + amount : sum;
   }, 0);
 };
+
+/**
+ * The payments that settle a rental: the completed rental payments in the
+ * reservation's currency, net of the completed refunds linked to them, never
+ * below zero. The one definition every reader of a rental's balance uses (the
+ * reservation's page and payment section, the list, the payment recorded by
+ * hand, the payment request, the extension). `getUpcomingRevenue` in
+ * `packages/api/src/services/sales-analytics.ts` holds the same rule in SQL:
+ * change one, change the other.
+ */
+export const getRentalPaid = (payments: readonly SettledPaymentRow[], currency: string): number =>
+  Math.max(0, getSettledPaymentAmount(payments, "rental", currency));

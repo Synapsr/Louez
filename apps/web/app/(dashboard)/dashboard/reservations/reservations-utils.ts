@@ -1,4 +1,3 @@
-import { getRentalPaid } from '@/lib/reservations/util.payment-status';
 import {
   getRentalRemaining,
   getReservationRentalAmount,
@@ -78,7 +77,8 @@ export function getPaymentStatus(reservation: Reservation): {
 } {
   // The rental costs its stored total, which never contains the deposit.
   const totalDue = getReservationRentalAmount(reservation);
-  const rentalPaid = getRentalPaid(reservation.payments);
+  // The server's reading: the list's payments carry no currency.
+  const rentalPaid = Number(reservation.rentalPaid);
 
   const depositCollected = reservation.payments
     .filter((p) => p.type === 'deposit' && p.status === 'completed')

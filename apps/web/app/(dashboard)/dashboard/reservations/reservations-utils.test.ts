@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { getRentalPaid } from '@louez/utils';
+
 import type { Reservation } from './reservations-types';
 import { getPaymentStatus } from './reservations-utils';
 
@@ -33,6 +35,8 @@ const createReservation = (overrides: Partial<Reservation>): Reservation => ({
   ],
   payments: [],
   ...overrides,
+  // As the server reads it for the list (`getRentalPaid`), in a euro reservation.
+  rentalPaid: overrides.rentalPaid ?? getRentalPaid(overrides.payments ?? [], 'EUR').toFixed(2),
 });
 
 test('reservation list payment status ignores uncollected deposit', () => {

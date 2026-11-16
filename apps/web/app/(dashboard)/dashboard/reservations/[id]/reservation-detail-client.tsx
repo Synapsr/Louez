@@ -34,7 +34,7 @@ import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes"
 import { SmartReservationActions } from "./smart-reservation-actions";
 import { UnifiedPaymentSection, type PaymentMethod } from "./unified-payment-section";
 import { hasMobileReservationQuickActions } from "./util.mobile-reservation-quick-actions";
-import { getNetCompletedPaymentAmount } from "./util.payment-refunds";
+import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-store-legs-summary";
@@ -190,7 +190,7 @@ export function ReservationDetailClient({
     showStoreLocations,
   });
 
-  const rentalPaid = getNetCompletedPaymentAmount(reservation.payments || [], "rental");
+  const rentalPaid = getRentalPaid(reservation.payments || [], currency);
 
   const depositCollected = (reservation.payments || [])
     .filter((p: any) => p.type === "deposit" && p.status === "completed")

@@ -1,5 +1,16 @@
 import { alias } from "drizzle-orm/mysql-core";
-import { and, count, desc, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lt,
+  sql,
+  type SQL,
+  type SQLWrapper,
+} from "drizzle-orm";
 import {
   db,
   customers,
@@ -63,8 +74,11 @@ export function salesStore(store: {
  * holds the "EUR" default. Rows from before reservations froze theirs take
  * the store's.
  */
-const receiptCurrency = (store: SalesStore) =>
-  sql<string>`UPPER(COALESCE(CASE WHEN ${payments.method} = 'stripe' THEN NULLIF(${payments.currency}, '') END, NULLIF(${reservations.currency}, ''), ${store.currency}))`;
+const receiptCurrency = (
+  store: SalesStore,
+  row: { method: SQLWrapper; currency: SQLWrapper } = payments,
+) =>
+  sql<string>`UPPER(COALESCE(CASE WHEN ${row.method} = 'stripe' THEN NULLIF(${row.currency}, '') END, NULLIF(${reservations.currency}, ''), ${store.currency}))`;
 
 /** A reservation's currency: the one frozen on it, else (older rows) the store's. */
 const reservationCurrency = (store: SalesStore) =>
@@ -507,13 +521,21 @@ export async function getUpcomingRevenue(
   now: Date,
 ): Promise<UpcomingRevenueStats> {
   const original = alias(payments, "original_payment");
+  // What settles a rental, as `getRentalPaid` (@louez/utils) defines it: the
+  // completed rental payments in the reservation's currency, net of the
+  // completed refunds linked to them, never below zero (below). Change one,
+  // change the other. The receipt date before `now` is a reporting input, the
+  // figure's "as of" cut-off, which the function does not have.
   const paid = db
     .select({
       reservationId: payments.reservationId,
       amount: sql<string>`SUM(CASE
       WHEN ${isStripeRefundPaymentSql()} THEN 0
-      WHEN ${payments.refundOfPaymentId} IS NULL AND ${payments.type} = 'rental' THEN ${payments.amount}
-      WHEN ${original.type} = 'rental' AND ${original.status} = 'completed' THEN -${payments.amount}
+      WHEN ${payments.refundOfPaymentId} IS NULL THEN CASE
+        WHEN ${payments.type} = 'rental' AND ${receiptCurrency(store)} = ${reservationCurrency(store)} THEN ${payments.amount}
+        ELSE 0 END
+      WHEN ${original.type} = 'rental' AND ${original.status} = 'completed'
+        AND ${receiptCurrency(store, original)} = ${reservationCurrency(store)} THEN -${payments.amount}
       ELSE 0 END)`.as("net_paid"),
     })
     .from(payments)
@@ -530,8 +552,6 @@ export async function getUpcomingRevenue(
         eq(reservations.storeId, store.id),
         eq(payments.status, "completed"),
         sql`${receiptDate} < ${instantSql(now)}`,
-        // Only a payment in the balance's currency pays it off.
-        sql`${receiptCurrency(store)} = ${reservationCurrency(store)}`,
       ),
     )
     .groupBy(payments.reservationId)

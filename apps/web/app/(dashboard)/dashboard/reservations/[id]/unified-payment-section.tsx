@@ -82,6 +82,7 @@ import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { paymentRefusalKey } from "@/lib/reservations/util.payment-refusal";
 import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
+  getRentalPaid,
   isFailedRefundRow,
   isRefundRow,
   isStripeRefundRow,
@@ -306,7 +307,7 @@ export function UnifiedPaymentSection({
   const deposit = parseFloat(depositAmount);
   const depositStatusVal = depositStatusProp || "none";
 
-  const rentalPaid = getNetCompletedPaymentAmount(payments, "rental");
+  const rentalPaid = getRentalPaid(payments, currency);
 
   const depositCollected = payments
     .filter((p) => p.type === "deposit" && p.status === "completed")
