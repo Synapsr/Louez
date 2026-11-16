@@ -26,7 +26,10 @@ import {
   Send,
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
-import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
+import {
+  getRentalRemaining,
+  getReservationRentalAmount,
+} from "@/lib/reservations/util.rental-amount";
 import { formatDistanceToNow } from "date-fns";
 
 import { Button } from "@louez/ui";
@@ -149,12 +152,8 @@ interface UnifiedPaymentSectionProps {
   readOnly?: boolean;
   reservationId: string;
   reservationNumber: string;
-  subtotalAmount: string;
   depositAmount: string;
   totalAmount: string;
-  /** With the recorded display mode: whether the stored total may still include the deposit. */
-  reservationCreatedAt: Date | string;
-  taxDisplayMode: string | null;
   payments: Payment[];
   status: string;
   currency?: string;
@@ -199,11 +198,8 @@ const VISIBLE_HISTORY_COUNT = 3;
 export function UnifiedPaymentSection({
   reservationId,
   reservationNumber,
-  subtotalAmount,
   depositAmount,
   totalAmount,
-  reservationCreatedAt,
-  taxDisplayMode,
   payments,
   status,
   currency = "EUR",
@@ -262,14 +258,7 @@ export function UnifiedPaymentSection({
     { value: "other", label: t("payment.methods.other") },
   ];
 
-  // totalAmount should exclude the deposit, but older rows may include it.
-  const rental = getReservationRentalAmount({
-    subtotalAmount,
-    depositAmount,
-    totalAmount,
-    createdAt: reservationCreatedAt,
-    taxDisplayMode,
-  });
+  const rental = getReservationRentalAmount({ totalAmount });
   const deposit = parseFloat(depositAmount);
   const depositStatusVal = depositStatusProp || "none";
 
@@ -285,7 +274,7 @@ export function UnifiedPaymentSection({
 
   const damagesPaid = getNetCompletedPaymentAmount(payments, "damage");
 
-  const rentalRemaining = Math.max(0, rental - rentalPaid);
+  const rentalRemaining = getRentalRemaining({ totalAmount }, rentalPaid);
   const depositRemaining = Math.max(0, deposit - depositCollected);
   const depositToReturn = depositCollected - depositReturned;
   const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100;

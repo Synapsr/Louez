@@ -792,6 +792,13 @@
       "when": 1794815430675,
       "tag": "0107_reservation_pricing_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "5",
+      "when": 1794821967812,
+      "tag": "0108_deposit_out_of_total",
+      "breakpoints": true
     }
   ]
 }

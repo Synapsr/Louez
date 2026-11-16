@@ -68,31 +68,15 @@ test("getMondayOf returns the Monday of the week at midnight", () => {
   assert.equal(monday.getHours(), 0);
 });
 
-test("getTimelineRentalAmount excludes deposits from legacy totals", () => {
-  assert.equal(
-    getTimelineRentalAmount({
-      subtotalAmount: "100.00",
-      depositAmount: "500.00",
-      totalAmount: "100.00",
-    }),
-    100,
-  );
-  assert.equal(
-    getTimelineRentalAmount({
-      subtotalAmount: "100.00",
-      depositAmount: "500.00",
-      totalAmount: "600.00",
-    }),
-    100,
-  );
-  assert.equal(
-    getTimelineRentalAmount({
-      subtotalAmount: "75.00",
-      depositAmount: "500.00",
-      totalAmount: "0.00",
-    }),
-    75,
-  );
+test("getTimelineRentalAmount is the stored total, which never contains the deposit", () => {
+  // 100 before tax and 20 of tax, a deposit of 20: the rental is 120.
+  const taxedOnTop = { subtotalAmount: "100.00", depositAmount: "20.00", totalAmount: "120.00" };
+  assert.equal(getTimelineRentalAmount(taxedOnTop), 120);
+  // A discount that covers the rental: nothing to pay, never the subtotal.
+  const covered = { subtotalAmount: "75.00", depositAmount: "50.00", totalAmount: "0.00" };
+  assert.equal(getTimelineRentalAmount(covered), 0);
+  // A negative value owes nothing.
+  assert.equal(getTimelineRentalAmount({ totalAmount: "-5.00" }), 0);
 });
 
 test("timeline range helpers detect visible items and find the nearest direction", () => {

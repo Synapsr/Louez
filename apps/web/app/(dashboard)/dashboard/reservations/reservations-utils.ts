@@ -1,4 +1,8 @@
 import { getRentalPaid } from '@/lib/reservations/util.payment-status';
+import {
+  getRentalRemaining,
+  getReservationRentalAmount,
+} from '@/lib/reservations/util.rental-amount';
 
 import type {
   PaymentStatusType,
@@ -72,16 +76,8 @@ export function getPaymentStatus(reservation: Reservation): {
   totalDue: number;
   totalPaid: number;
 } {
-  const subtotal = parseFloat(reservation.subtotalAmount || '0');
-  const deposit = parseFloat(reservation.depositAmount || '0');
-  const total = parseFloat(reservation.totalAmount || '0');
-  const totalDue =
-    Number.isFinite(total) && total > 0
-      ? deposit > 0 && total - subtotal >= deposit - 0.01
-        ? Math.max(0, total - deposit)
-        : total
-      : subtotal;
-
+  // The rental costs its stored total, which never contains the deposit.
+  const totalDue = getReservationRentalAmount(reservation);
   const rentalPaid = getRentalPaid(reservation.payments);
 
   const depositCollected = reservation.payments
@@ -91,7 +87,7 @@ export function getPaymentStatus(reservation: Reservation): {
   const totalPaid = rentalPaid;
 
   let status: PaymentStatusType = 'unpaid';
-  if (totalPaid >= totalDue) {
+  if (getRentalRemaining(reservation, rentalPaid) === 0) {
     status = 'paid';
   } else if (totalPaid > 0) {
     status = 'partial';

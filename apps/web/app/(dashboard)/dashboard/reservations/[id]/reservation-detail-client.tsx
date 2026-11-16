@@ -39,7 +39,10 @@ import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-s
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-store-legs-summary";
 import { storeLegLocationFromSnapshot } from "@/components/dashboard/util.reservation-store-legs";
-import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
+import {
+  getRentalRemaining,
+  getReservationRentalAmount,
+} from "@/lib/reservations/util.rental-amount";
 import { InvoiceDocumentsCard, type ReservationInvoiceDocument } from "./invoice-documents-card";
 import { getReservationDeliveryDisplayMode } from "./util.reservation-delivery-display";
 
@@ -236,7 +239,7 @@ export function ReservationDetailClient({
   const hasActiveDepositAuthorization =
     reservation.depositStatus === "authorized" &&
     (!depositAuthorizationExpiresAt || depositAuthorizationExpiresAt > new Date());
-  const rentalRemaining = Math.max(0, rental - rentalPaid);
+  const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
   const showMobileQuickActions = hasMobileReservationQuickActions({
     status,
     rentalRemaining,
@@ -639,11 +642,8 @@ export function ReservationDetailClient({
             readOnly={readOnly}
             reservationId={reservation.id}
             reservationNumber={reservation.number}
-            subtotalAmount={reservation.subtotalAmount}
             depositAmount={reservation.depositAmount}
             totalAmount={reservation.totalAmount}
-            reservationCreatedAt={reservation.createdAt}
-            taxDisplayMode={reservation.taxDisplayMode ?? null}
             payments={reservation.payments}
             status={status}
             currency={currency}

@@ -111,12 +111,13 @@ test('reservation list payment status keeps partial for rental payments only', (
   assert.equal(status.totalDue, 100);
 });
 
-test('reservation list payment status handles legacy totals that included deposit', () => {
+test('reservation list payment status reads the total as stored: its tax is never taken for the deposit', () => {
+  // 100 before tax, 20 of tax on top, a deposit of 20; 100 of rental paid.
   const status = getPaymentStatus(
     createReservation({
       subtotalAmount: '100.00',
-      depositAmount: '200.00',
-      totalAmount: '300.00',
+      depositAmount: '20.00',
+      totalAmount: '120.00',
       payments: [
         {
           id: 'payment-1',
@@ -129,8 +130,17 @@ test('reservation list payment status handles legacy totals that included deposi
     }),
   );
 
+  assert.equal(status.status, 'partial');
+  assert.equal(status.totalDue, 120);
+});
+
+test('reservation list payment status: a total of zero is paid with nothing', () => {
+  const status = getPaymentStatus(
+    createReservation({ subtotalAmount: '20.00', depositAmount: '50.00', totalAmount: '0.00' }),
+  );
+
   assert.equal(status.status, 'paid');
-  assert.equal(status.totalDue, 100);
+  assert.equal(status.totalDue, 0);
 });
 
 test('reservation list payment status subtracts refunds and ignores Stripe refund rows', () => {

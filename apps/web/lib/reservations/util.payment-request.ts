@@ -2,7 +2,7 @@ import type { StoreSettings } from "@louez/types";
 
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { type PaymentLike, getRentalPaid } from "@/lib/reservations/util.payment-status";
-import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
+import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 
 export type PaymentRequestTerms =
   | {
@@ -27,11 +27,8 @@ export function paymentRequestTerms(input: {
   readonly customAmount?: number;
   readonly reservation: {
     readonly currency: string | null;
-    readonly subtotalAmount: string;
     readonly depositAmount: string;
     readonly totalAmount: string;
-    readonly createdAt: Date;
-    readonly taxDisplayMode: string | null;
     readonly payments: readonly PaymentLike[];
   };
   readonly storeSettings: Pick<StoreSettings, "currency"> | null;
@@ -49,8 +46,7 @@ export function paymentRequestTerms(input: {
   if (input.type === "rental") {
     // What was received in the reservation's currency: a payment in another one does
     // not reduce what is owed (invariant M6).
-    const amount =
-      getReservationRentalAmount(reservation) - getRentalPaid(reservation.payments, currency);
+    const amount = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
     if (amount < 0.5) return { ok: false, error: "errors.noAmountDue" };
     return { ok: true, amount, description: "Rental", currency };
   }

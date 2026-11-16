@@ -8,6 +8,8 @@
  */
 
 /** One product line of a reservation, as shown in the timeline tooltip */
+import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
+
 export interface TimelineReservationItem {
   name: string;
   quantity: number;
@@ -46,30 +48,9 @@ export interface TimelineReservation {
   returnDeliveryAddress?: string | null;
 }
 
-/** Rental price excluding the security deposit, including legacy reservations. */
-export function getTimelineRentalAmount(
-  reservation: Pick<TimelineReservation, "subtotalAmount" | "depositAmount" | "totalAmount">,
-): number {
-  const subtotal = Number.parseFloat(reservation.subtotalAmount ?? "");
-  const deposit = Number.parseFloat(reservation.depositAmount ?? "");
-  const total = Number.parseFloat(reservation.totalAmount);
-
-  if (!Number.isFinite(total) || total <= 0) {
-    return Number.isFinite(subtotal) ? Math.max(0, subtotal) : 0;
-  }
-
-  // Current rows already exclude the deposit. Older rows sometimes added it
-  // to totalAmount, which is detectable when total covers subtotal + deposit.
-  if (
-    Number.isFinite(subtotal) &&
-    Number.isFinite(deposit) &&
-    deposit > 0 &&
-    total - subtotal >= deposit - 0.01
-  ) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
+/** The rental's price: its stored total, which never contains the deposit. */
+export function getTimelineRentalAmount(reservation: Pick<TimelineReservation, "totalAmount">): number {
+  return getReservationRentalAmount(reservation);
 }
 
 /**

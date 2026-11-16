@@ -1,4 +1,3 @@
-import { totalMayIncludeDeposit } from "../reservations/util.rental-amount";
 import type { StoreSettings } from "@louez/types";
 import {
   beforeTaxRateBps,
@@ -102,6 +101,23 @@ export function insuranceShare(input: {
   return Number(share);
 }
 
+/**
+ * The billing snapshot's own reading of a total that may hold the deposit,
+ * kept as it was sent until the billing service decides otherwise: a row
+ * created before this date, with no recorded display mode, whose total
+ * exceeds its subtotal by the deposit, is sent without it. Migration 0108 took
+ * the deposit out of the totals that held it, which this reading then leaves
+ * as they are; the dashboard reads every total as stored
+ * (`getReservationRentalAmount`).
+ */
+const SNAPSHOT_DEPOSIT_READING_BEFORE = new Date("2026-04-01T00:00:00Z");
+
+const snapshotMayIncludeDeposit = (reservation: {
+  readonly createdAt: Date;
+  readonly taxDisplayMode?: string | null;
+}): boolean =>
+  !reservation.taxDisplayMode && reservation.createdAt < SNAPSHOT_DEPOSIT_READING_BEFORE;
+
 export type ReservationTotalsInput = {
   readonly reservation: {
     readonly createdAt: Date;
@@ -150,7 +166,7 @@ type ToMinor = (value: string | null) => number;
  * The row does not record the display mode the dashboard priced under, so such a
  * total follows the store's tax settings as they are now, and a change of
  * `beforeTaxRateBps` moves it. Rows whose total may include the deposit
- * (`totalMayIncludeDeposit`) are read the way `getReservationRentalAmount` reads them.
+ * are read by `snapshotMayIncludeDeposit`.
  */
 export function reservationTotalsMinor(input: ReservationTotalsInput): ReservationTotalsMinor {
   const { reservation } = input;
@@ -164,7 +180,7 @@ export function reservationTotalsMinor(input: ReservationTotalsInput): Reservati
   const subtotal = minor(reservation.subtotalAmount);
   const deposit = minor(reservation.depositAmount);
   let total = minor(reservation.totalAmount);
-  const mayIncludeDeposit = totalMayIncludeDeposit(reservation);
+  const mayIncludeDeposit = snapshotMayIncludeDeposit(reservation);
   if (mayIncludeDeposit && total > 0 && deposit > 0 && total - subtotal >= deposit - 1) {
     total = Math.max(0, total - deposit);
   }

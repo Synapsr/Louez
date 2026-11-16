@@ -537,18 +537,11 @@ export async function getUpcomingRevenue(
     .groupBy(payments.reservationId)
     .as("rental_paid");
 
-  // The reservation payment form's rule (`getReservationRentalAmount`): only a
-  // total written before the deposit was left out of it (2026-04-01), and
-  // never repriced since (no recorded display mode), may include the deposit.
-  const rentalAmount = sql`CASE
-    WHEN ${reservations.totalAmount} <= 0 THEN ${reservations.subtotalAmount}
-    WHEN ${reservations.depositAmount} > 0
-      AND ${reservations.taxDisplayMode} IS NULL
-      AND ${reservations.createdAt} < '2026-04-01 00:00:00'
-      AND ${reservations.totalAmount} - ${reservations.subtotalAmount} >= ${reservations.depositAmount} - 0.01
-      THEN GREATEST(0, ${reservations.totalAmount} - ${reservations.depositAmount})
-    ELSE ${reservations.totalAmount} END`;
-  const remaining = sql`GREATEST(0, ${rentalAmount} - GREATEST(0, COALESCE(${paid.amount}, 0)))`;
+  // The reservation page's reading (`getRentalRemaining`): the rental costs its
+  // stored total, which never contains the deposit (migration 0108); what is
+  // still owed is that total less the rental paid, in whole hundredths, never
+  // below zero.
+  const remaining = sql`GREATEST(0, ROUND(GREATEST(0, ${reservations.totalAmount}) * 100) - ROUND(GREATEST(0, COALESCE(${paid.amount}, 0)) * 100)) / 100`;
   const [row] = await db
     .select({
       total: sql<string>`COALESCE(SUM(${remaining}), 0)`,

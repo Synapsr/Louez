@@ -196,7 +196,8 @@ test("upcoming balances subtract payments, restore manual refunds and ignore dep
     f.sqlite.exec("DELETE FROM payments; UPDATE reservations SET total_amount=391 WHERE id='r'");
     f.pay("paid", 200, new Date("2026-09-01"));
     result = await f.queries.getUpcomingRevenue(STORE, now);
-    assert.equal(result.revenue, 91, "legacy total includes a 100 euro deposit");
+    // A total never contains the deposit (migration 0108): 391 less the 200 paid.
+    assert.equal(result.revenue, 191, "the total as stored, beside its 100 euro deposit");
   } finally {
     f.sqlite.close();
   }

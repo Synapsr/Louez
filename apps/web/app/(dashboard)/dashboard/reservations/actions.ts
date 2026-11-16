@@ -166,7 +166,7 @@ import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 import { resolveReservationLocationSnapshot } from "@louez/api/services/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { paymentRequestTerms } from "@/lib/reservations/util.payment-request";
-import { getReservationRentalAmount } from "@/lib/reservations/util.rental-amount";
+import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 import {
   compareReservationDemand,
   fingerprintReservationEdit,
@@ -3603,7 +3603,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
 
   if (data.amount > 0 && data.type === "rental") {
     const rentalPaid = getRentalPaid(reservation.payments);
-    const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
+    const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
 
     if (data.amount > rentalRemaining) {
       return { error: "errors.invalidAmount" };
