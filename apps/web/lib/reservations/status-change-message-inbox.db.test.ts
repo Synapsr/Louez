@@ -13,7 +13,8 @@ import { closeNetworkForSuite } from "@/lib/testing/network-guard";
 // instance with no e-mail service: its e-mail is owed and can never go out,
 // so its sender gives it up at once (one attempt, `abandoned`), and the
 // store's inbox lists it with why, for the store to tell the customer itself.
-// With e-mail, the same row goes out. The provider is a fake: nothing leaves.
+// A row given up is never sent later: an instance with the service sends the
+// rows queued from then on. The provider is a fake: nothing leaves.
 
 // The API's modules import these shared packages by name; loaded through require.
 for (const name of [
@@ -252,7 +253,7 @@ describe(
       );
     });
 
-    test("with an e-mail service, the same row goes out once and the inbox stays empty", async () => {
+    test("with an e-mail service, an acceptance e-mail queued goes out once and the inbox stays empty", async () => {
       transport.configured = true;
       const row = await dispatchOne();
       assert.equal(row.status, "sent");
@@ -261,7 +262,7 @@ describe(
       assert.deepEqual(await unsent(), []);
     });
 
-    test("an SMS without an SMS provider: given up after one attempt, and the inbox says why", async () => {
+    test("an SMS without an SMS provider: given up after one attempt and the inbox says why; one queued once there is a provider goes out", async () => {
       transport.configured = true;
       const row = await dispatchOne("sms");
       assert.equal(row.status, "abandoned");
@@ -277,12 +278,16 @@ describe(
         /^The acceptance message \(sms\) to the customer of .+ was not sent \(no SMS service is set up\): contact the customer yourself\.$/,
       );
 
-      // With a provider, the same row goes out.
+      // With a provider, an SMS queued from then on goes out; the one given up
+      // stays given up, and is still in the inbox for the store to act on.
       smsProvider.configured = true;
       provider.length = 0;
       const sent = await dispatchOne("sms");
+      assert.notEqual(sent.id, row.id);
       assert.equal(sent.status, "sent");
       assert.deepEqual(provider, [{ event: "customer_request_accepted", channel: "sms" }]);
+      const [still] = await outbox.readEffects([row.id]);
+      assert.equal(still?.status, "abandoned");
     });
   },
 );
