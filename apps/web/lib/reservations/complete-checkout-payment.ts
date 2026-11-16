@@ -267,6 +267,23 @@ const runCheckoutPaymentCompletion = async ({
     feeFacts,
   });
 
+  // A payment given back in full since an earlier delivery (`refunded`) is no
+  // longer the booking's: the replay leaves the contract, the marketplace
+  // attempt, the invoice, the messages and the confirmation as they are. A
+  // payment that stands (a partial refund netted included) finishes what an
+  // earlier delivery left undone.
+  if (!paymentClaim.stands) {
+    log.info({
+      checkout: {
+        event: "payment_no_longer_held",
+        source,
+        reservationId,
+        paymentId: paymentClaim.paymentId,
+      },
+    });
+    return { status: "completed", claimed: false, reservationConfirmed: false };
+  }
+
   await db.transaction((tx) =>
     validateReservationContract(tx, reservationId, reservation.storeId, "payment"),
   );
@@ -329,6 +346,7 @@ const runCheckoutPaymentCompletion = async ({
     {
       reservationId,
       storeId: store.id,
+      paymentId: paymentClaim.paymentId,
       stripeCustomerId: stripeDetails.stripeCustomerId,
       stripePaymentMethodId: stripeDetails.stripePaymentMethodId,
       depositStatus,

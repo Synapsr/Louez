@@ -35,6 +35,12 @@ export type PaidConfirmationDepositStatus = "none" | "card_saved" | "pending";
 export interface PaidConfirmationInput {
   reservationId: string;
   storeId: string;
+  /**
+   * The payment that pays it: the confirmation writes nothing unless that row is
+   * `completed` under the reservation's lock (a refund in full since leaves it
+   * `refunded`). The checkout's completion always passes it.
+   */
+  paymentId?: string;
   stripeCustomerId: string | null;
   stripePaymentMethodId: string | null;
   depositStatus: PaidConfirmationDepositStatus;
@@ -62,6 +68,20 @@ const depositLedgerHoldsFunds = async (tx: Transaction, reservationId: string) =
     )
     .limit(1);
   return row !== undefined;
+};
+
+/**
+ * Whether the payment still stands, read after the reservation's lock, which the
+ * claim and the refund's writer take first: `completed`, a partial refund netted
+ * included. Without a payment named, the caller vouches for it.
+ */
+const paymentStands = async (tx: Transaction, input: PaidConfirmationInput) => {
+  if (!input.paymentId) return true;
+  const [row] = await tx
+    .select({ status: payments.status })
+    .from(payments)
+    .where(and(eq(payments.id, input.paymentId), eq(payments.reservationId, input.reservationId)));
+  return row?.status === "completed";
 };
 
 /**
@@ -113,6 +133,7 @@ export async function confirmPaidReservation(
   await runReservationOnlyChange(scope, async (tx) => {
     const found = await readDepositUnderLock(tx, scope);
     if (found?.status !== "pending" || found.keeps) return;
+    if (!(await paymentStands(tx, input))) return;
     await tx
       .update(reservations)
       .set({
@@ -139,6 +160,8 @@ export async function confirmPaidReservation(
     async (tx, lock): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
       // After the lock the owner entry took: the deposit and the ledger as the hold
       // writer last committed them, decided on with the status change.
+      // A payment given back in full since its claim confirms nothing.
+      if (!(await paymentStands(tx, input))) return { confirmed: false, effects: [] };
       const found = await readDepositUnderLock(tx, scope);
       const change = await changeReservationStatus(tx, {
         lock,

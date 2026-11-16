@@ -1053,6 +1053,111 @@ describe("the paid checkout's completion (database)", { skip: skipWithoutTestDat
     ]);
   });
 
+  /** A paid booking left pending by a stock refusal, and the booking that holds its stock. */
+  async function paidBookingLeftPending() {
+    const booking = await bookingOf({ stock: 1 });
+    const other = nextId("res");
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: other,
+      storeId: STORE,
+      customerId: customerOf(STORE),
+      number: `P-${counter}`,
+      status: "confirmed",
+      startDate: START,
+      endDate: END,
+      subtotalAmount: "40.00",
+      depositAmount: "0.00",
+      totalAmount: "40.00",
+      source: "manual",
+    });
+    await louezDb.db.insert(louezDb.reservationItems).values({
+      id: nextId("itm"),
+      reservationId: other,
+      productId: booking.productId,
+      quantity: 1,
+      unitPrice: "40.00",
+      depositPerUnit: "0.00",
+      totalPrice: "40.00",
+      productSnapshot: { name: "Kayak", description: null, images: [] },
+    });
+    const refused = await completion.completeCheckoutPayment(webhookInput(booking));
+    assert.deepEqual(refused, { status: "completed", claimed: true, reservationConfirmed: false });
+    return { booking, other };
+  }
+
+  /** The refund's writer, given all of the payment back: nothing left, `refunded`. */
+  const refundInFull = (booking: Booking) =>
+    louezDb.db
+      .update(louezDb.payments)
+      .set({ amount: "0.00", status: "refunded" })
+      .where(eq(louezDb.payments.reservationId, booking.id));
+
+  test("a completion delivered again after its payment was given back in full confirms nothing and sends nothing", async () => {
+    const { booking, other } = await paidBookingLeftPending();
+    await refundInFull(booking);
+    // The stock is freed: a confirmation would now pass its check.
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ status: "cancelled" })
+      .where(eq(louezDb.reservations.id, other));
+    await writes();
+    calls.length = 0;
+
+    const replay = await completion.completeCheckoutPayment(webhookInput(booking));
+
+    assert.deepEqual(replay, { status: "completed", claimed: false, reservationConfirmed: false });
+    assert.deepEqual(await writes(), []);
+    assert.equal((await stateOf(booking.id)).status, "pending");
+    assert.equal((await paymentOf(booking)).status, "refunded");
+    const sent = calls.map(([name]) => name).filter((name) => !name.startsWith("log."));
+    assert.deepEqual(sent, []);
+  });
+
+  test("a refund landing between the claim and the confirmation: given back in full, nothing confirmed; partly, confirmed", async () => {
+    for (const [left, status, confirmed] of [
+      ["0.00", "refunded", false],
+      ["40.00", "completed", true],
+    ] as const) {
+      const booking = await bookingOf({});
+      // The refund's writer commits as the confirmation comes to the reservation's lock.
+      let refunded = false;
+      const recordLock = hooks.beforeReservationLock;
+      hooks.beforeReservationLock = async (scope) => {
+        if (!refunded && scope.reservationId === booking.id) {
+          refunded = true;
+          await louezDb.db
+            .update(louezDb.payments)
+            .set({ amount: left, status })
+            .where(eq(louezDb.payments.reservationId, booking.id));
+        }
+        await recordLock?.(scope);
+      };
+
+      const answer = await completion.completeCheckoutPayment(webhookInput(booking));
+
+      assert.deepEqual(
+        answer,
+        { status: "completed", claimed: true, reservationConfirmed: confirmed },
+        status,
+      );
+      assert.equal(
+        (await stateOf(booking.id)).status,
+        confirmed ? "confirmed" : "pending",
+        status,
+      );
+      assert.equal(
+        calls.some(
+          ([name, event]) =>
+            name === "dispatchCustomerNotification" && event === "customer_reservation_confirmed",
+        ),
+        confirmed,
+        status,
+      );
+      hooks.beforeReservationLock = recordLock;
+      calls.length = 0;
+    }
+  });
+
   test("a marketplace booking refused for its consumable: its attempt confirmed, the booking pending", async () => {
     const booking = await bookingOf({ source: "marketplace", consumableStock: 0 });
     await louezDb.db.insert(louezDb.marketplaceBookingAttempts).values({

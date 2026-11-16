@@ -144,6 +144,7 @@ describe("checkout payment claim (database)", { skip: skipWithoutTestDatabase() 
     assert.deepEqual(await claim(reservationId), {
       paymentId: `pay_${reservationId}`,
       claimed: true,
+      stands: true,
     });
 
     const payment = await readPayment(reservationId);
@@ -196,6 +197,7 @@ describe("checkout payment claim (database)", { skip: skipWithoutTestDatabase() 
     assert.deepEqual(await claim(reservationId, { grossMinor: 1 }), {
       paymentId: `pay_${reservationId}`,
       claimed: false,
+      stands: true,
     });
     assert.equal((await readPayment(reservationId)).grossMinor, 6000);
     assert.equal((await readMark(reservationId)).version, 1);
@@ -289,7 +291,11 @@ describe("checkout payment claim (database)", { skip: skipWithoutTestDatabase() 
 
       const replay = await claim(reservationId, { amount: 60, grossMinor: 6000 });
 
-      assert.deepEqual(replay, { paymentId: first.paymentId, claimed: false }, status);
+      assert.deepEqual(
+        replay,
+        { paymentId: first.paymentId, claimed: false, stands: status === "completed" },
+        status,
+      );
       assert.deepEqual(await readPayment(reservationId), before, status);
     }
   });

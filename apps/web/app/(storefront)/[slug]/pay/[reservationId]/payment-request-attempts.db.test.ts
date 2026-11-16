@@ -570,7 +570,7 @@ describe(
 
       assert.equal(late.claimed, true);
       assert.equal(current.claimed, true);
-      assert.deepEqual(replay, { paymentId: late.paymentId, claimed: false });
+      assert.deepEqual(replay, { paymentId: late.paymentId, claimed: false, stands: true });
       assert.deepEqual(
         (await sessionRows(link.id)).map(({ id, session, status }) => [id, session, status]),
         [
