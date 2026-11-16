@@ -1570,6 +1570,59 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     });
   }
 
+  for (const arrival of ["R1 then R2", "R2 then R1", "together"] as const) {
+    test(`the fee given back in excess is one figure per charge, ${arrival}, each heard twice`, async () => {
+      const stripe = fakeStripe();
+      const { reservationId, chargeId } = await createPayment(stripe);
+      // 20.00 and 30.00 refunded: 1.50 of the 3.00 fee given back.
+      const r1 = stripe.refundInDashboard(chargeId, 2_000);
+      const r2 = stripe.refundInDashboard(chargeId, 3_000);
+      await webhook.handleChargeRefunded(
+        stripe.refundedEvent(chargeId),
+        ACCOUNT,
+        stripe.webhookPort,
+      );
+      const fail = (refund: typeof r1) => async () => {
+        refund.status = "failed";
+        await webhook.handleRefundUpdated(
+          { ...refund, currency: "eur", charge: chargeId },
+          ACCOUNT,
+          stripe.webhookPort,
+        );
+      };
+      const steps =
+        arrival === "R1 then R2"
+          ? [fail(r1), fail(r1), fail(r2), fail(r2)]
+          : arrival === "R2 then R1"
+            ? [fail(r2), fail(r2), fail(r1), fail(r1)]
+            : [
+                async () => {
+                  r1.status = "failed";
+                  r2.status = "failed";
+                },
+                fail(r1),
+                fail(r2),
+                fail(r1),
+              ];
+      for (const step of steps) await step();
+
+      const lines = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(
+          and(
+            eq(louezDb.reservationActivity.reservationId, reservationId),
+            sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) = 'refund_fee_over_returned'`,
+          ),
+        );
+      // One figure for the charge: the 1.50 given back, never 0.60 + 1.50.
+      assert.deepEqual(
+        lines.map((line) => (line.metadata as { overReturnedMinor: number }).overReturnedMinor),
+        [150],
+      );
+    });
+  }
+
   test("a refund made through one row of a charge that fails is undone there, whichever row the event names", async () => {
     const stripe = fakeStripe();
     const { reservationId, paymentId: first, chargeId } = await createPayment(stripe);

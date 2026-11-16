@@ -585,11 +585,13 @@ export async function recordChargeRefunds(
 }
 
 /**
- * Records the application fee Louez gave back on refunds that failed afterwards, once
- * per fee and amount: Stripe cannot take an application fee refund back, so what was
- * given back past the fee's share of what the store no longer keeps stays given back.
- * An activity line on the payment's latest undone refund row names it, and the inbox's
- * `refund_undone` shows it.
+ * Records the application fee Louez gave back on refunds that failed afterwards: Stripe
+ * cannot take an application fee refund back, so what was given back past the fee's
+ * share of what the store still does not keep stays given back. One figure per charge's
+ * fee (what Stripe returned less what the refunds that still stand justify), on one
+ * activity line, named on the charge's latest undone refund row, where the inbox's
+ * `refund_undone` shows it; when another refund of the charge fails, that line is
+ * updated, never doubled.
  */
 export async function recordFeeOverReturned(
   database: Database,
@@ -645,32 +647,45 @@ export async function recordFeeOverReturned(
       .orderBy(desc(payments.updatedAt), desc(payments.id))
       .limit(1);
     if (!undone) return false;
-    const [recorded] = await tx
-      .select({ id: reservationActivity.id })
+    const metadata = {
+      kind: REFUND_FEE_OVER_RETURNED_ACTIVITY,
+      paymentId: undone.id,
+      refundOfPaymentId: input.paymentId,
+      feeId: fee.feeId,
+      overReturnedMinor,
+    };
+    const recorded = await tx
+      .select({ id: reservationActivity.id, metadata: reservationActivity.metadata })
       .from(reservationActivity)
       .where(
         and(
           eq(reservationActivity.reservationId, input.reservationId),
           sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.kind')) = ${REFUND_FEE_OVER_RETURNED_ACTIVITY}`,
           sql`JSON_UNQUOTE(JSON_EXTRACT(${reservationActivity.metadata}, '$.feeId')) = ${fee.feeId}`,
-          sql`CAST(JSON_EXTRACT(${reservationActivity.metadata}, '$.overReturnedMinor') AS SIGNED) >= ${overReturnedMinor}`,
         ),
       )
-      .limit(1);
-    if (recorded) return false;
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId: input.reservationId,
-      activityType: "payment_updated",
-      metadata: {
-        kind: REFUND_FEE_OVER_RETURNED_ACTIVITY,
-        paymentId: undone.id,
-        refundOfPaymentId: input.paymentId,
-        feeId: fee.feeId,
-        overReturnedMinor,
-      },
-      createdAt: new Date(),
-    });
+      .orderBy(asc(reservationActivity.id))
+      .limit(1)
+      .for("update");
+    const [line] = recorded;
+    if (line) {
+      const current = line.metadata as { paymentId?: unknown; overReturnedMinor?: unknown };
+      if (current.overReturnedMinor === overReturnedMinor && current.paymentId === undone.id) {
+        return false;
+      }
+      await tx
+        .update(reservationActivity)
+        .set({ metadata })
+        .where(eq(reservationActivity.id, line.id));
+    } else {
+      await tx.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId: input.reservationId,
+        activityType: "payment_updated",
+        metadata,
+        createdAt: new Date(),
+      });
+    }
     log.error({
       stripeRefund: {
         issue: "fee_over_returned",
