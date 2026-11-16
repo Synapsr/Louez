@@ -805,7 +805,7 @@ describe(
       assert.equal((await operationsOf(paid.paymentId)).length, 1);
     });
 
-    test("a refund Stripe holds pending answers pending through both tools, holds its amount, and reads succeeded once Stripe says so", async () => {
+    test("a refund Stripe holds pending answers pending and processing through both tools, counts once in what is left, and reads succeeded once Stripe says so", async () => {
       const authorization = await key();
       const paid = await onlinePayment();
       stripe.makes.status = "pending";
@@ -834,7 +834,7 @@ describe(
       assert.equal(still.refund.status, "pending");
       assert.equal(still.refund.detail, "processing");
 
-      // What is left counts it: above the remainder is refused, before any approval.
+      // Recorded as Stripe counts it: 45.00 refunded, counted once in what is left.
       const over = await mcpCall(authorization, "refund_payment", {
         paymentId: paid.paymentId,
         amount: "75.01",
@@ -846,7 +846,7 @@ describe(
           inFlight: errorOf(over)?.details?.inFlight,
           refundable: errorOf(over)?.details?.refundable,
         },
-        { refunded: "0.00", inFlight: "45.00", refundable: "75.00" },
+        { refunded: "45.00", inFlight: "0.00", refundable: "75.00" },
       );
 
       // Stripe states it succeeded; the next read past the wait looks it up.

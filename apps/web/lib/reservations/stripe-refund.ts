@@ -55,8 +55,8 @@ import {
 // - Asked (`requestStripeRefund`): in the caller's transaction, under the reservation's
 //   row lock, the payment is checked, what it can still give back is counted, and the
 //   operation is written `requested` with its outbox row (`payment.refund`). Two
-//   requests share one limit: an operation not settled (`requested`, `unresolved` or
-//   `pending`) takes its amount out of it.
+//   requests share one limit: an open operation (`requested` or `unresolved`) takes
+//   its amount out of it, and a refund Stripe made, pending or not, its row's.
 // - Sent (`sendRefundOperation`, the outbox's sender, run once inline after the commit,
 //   then by the outbox): it claims the operation under a token of its own and sends
 //   `refunds.create` with the key `refund:<operation id>` and the id in the refund's
@@ -66,9 +66,10 @@ import {
 //   of the charge settles it. The identity of a retry is the operation, never its
 //   amount: two refunds of one amount are two operations.
 // - Pending: Stripe made the refund and states it pending (or awaiting an action). The
-//   writer marks the operation `pending` and writes no refund row: the customer has not
-//   been refunded. Only Stripe settles it, through its refund events, a read of the
-//   refund, or the cron's lookup; nothing sends it again.
+//   writer records it as Stripe counts it (its row, the netting, its credit note) and
+//   states the operation `pending`: issued, not received yet. Only Stripe settles it,
+//   through its refund events, a read of the refund, or the cron's lookup; nothing
+//   sends it again.
 // - Settled: `succeeded` by the one writer of a charge's refunds (stripe-refund-writes.ts),
 //   which the webhook's `charge.refunded` also runs, once Stripe states its refund
 //   succeeded. `failed` when Stripe refused its
@@ -85,7 +86,8 @@ import {
 
 /**
  * The states of an operation whose refund Stripe may not have made: it may still be
- * sent, or looked up. Each holds back its amount.
+ * sent, or looked up. Each holds back its amount. A `pending` one has its refund row,
+ * which counts it.
  */
 export const OPEN_REFUND_STATUSES = ["requested", "unresolved"] as const;
 
@@ -94,7 +96,7 @@ const isOpenRefundStatus = (status: string): boolean =>
 
 /**
  * The states of an operation Stripe has not settled: the open ones, and `pending`, a
- * refund Stripe made and still holds. A lookup may settle each; each holds its amount.
+ * refund Stripe made and still holds. A lookup may settle each.
  */
 export const UNSETTLED_REFUND_STATUSES = [...OPEN_REFUND_STATUSES, "pending"] as const;
 
@@ -352,14 +354,13 @@ export type RequestedRefund = {
  *   not a refund row, not a hold (its capture is), not disputed, on an account;
  * - the amount is whole minor units, more than zero, in the charge's currency;
  * - it fits under the charge's ceiling, whichever of its payment rows is asked: the
- *   smaller of what Stripe says the charge still holds (`charge`, read before the lock,
- *   which counts a refund Stripe holds pending) and what Louez counts (the payment's
- *   gross, or the charge's captured amount for a row without one or a charge on several
- *   rows, less the Stripe refunds recorded for any of its rows, once per refund, and
- *   the `pending` operations, whose refund Stripe made and has no row yet), less the
- *   refunds given by hand against any of its rows and the operations still open on any
- *   of them. Stripe knows neither of those two; an open operation Stripe has already
- *   made comes off twice until it is recorded, which can refuse, never refund too much.
+ *   smaller of what Stripe says the charge still holds (`charge`, read before the lock)
+ *   and what Louez counts (the payment's gross, or the charge's captured amount for a
+ *   row without one or a charge on several rows, less the Stripe refunds recorded for
+ *   any of its rows, once per refund, pending or not), less the refunds given by hand
+ *   against any of its rows and the operations still open on any of them. Stripe knows
+ *   neither of those two; an open operation Stripe has already made comes off twice
+ *   until it is recorded, which can refuse, never refund too much.
  *
  * Writes the operation `requested` and its outbox row. Sends nothing.
  */
@@ -419,7 +420,7 @@ export type CheckedStripeRefund = {
   readonly grossMinor: number | null;
   /** The completed refunds of the charge's rows, by row id: Stripe's and those given by hand. */
   readonly refunds: readonly { readonly id: string; readonly amountMinor: number }[];
-  /** The operations not settled on the charge's rows: open, or pending at Stripe. */
+  /** The open operations on the charge's rows. */
   readonly openOperations: readonly { readonly id: string; readonly amountMinor: number }[];
   /** Every dispute ever opened on the payment, by id. */
   readonly disputes: readonly string[];
@@ -543,9 +544,6 @@ export async function checkStripeRefund(
     openMinor: operations
       .filter((operation) => isOpenRefundStatus(operation.status))
       .reduce((sum, operation) => sum + operation.amountMinor, 0),
-    pendingMinor: operations
-      .filter((operation) => operation.status === "pending")
-      .reduce((sum, operation) => sum + operation.amountMinor, 0),
   });
   const { rows: refunds, ...figures } = ceiling;
   if (input.amountMinor > figures.refundableMinor) {
@@ -562,7 +560,7 @@ export async function checkStripeRefund(
     grossMinor: payment.grossMinor,
     refunds,
     openOperations: operations
-      .filter((operation) => isUnsettledRefundStatus(operation.status))
+      .filter((operation) => isOpenRefundStatus(operation.status))
       .map(({ id, amountMinor }) => ({ id, amountMinor })),
     disputes: disputes.map((dispute) => dispute.id),
     ceiling: figures,
@@ -579,13 +577,7 @@ async function refundCeiling(
     readonly chargeId: string;
     readonly grossMinor: number | null;
     readonly charge: RefundCharge;
-    /** The operations Stripe may not have made: `requested` and `unresolved`. */
     readonly openMinor: number;
-    /**
-     * The `pending` operations: Stripe made their refund and counts it in the charge's
-     * `amount_refunded`, and Louez wrote no row of it yet.
-     */
-    readonly pendingMinor: number;
   },
 ): Promise<{
   readonly paidMinor: number;
@@ -641,21 +633,16 @@ async function refundCeiling(
   const recordedStripeMinor = [...stripeRefunds.values()].reduce((sum, value) => sum + value, 0);
 
   const paidMinor = input.grossMinor ?? charge.amountCapturedMinor;
-  // Stripe's figure already counts a pending refund: only Louez's own takes it off.
   const stripeLeft = charge.amountCapturedMinor - charge.amountRefundedMinor;
-  const louezLeft = paidMinor - recordedStripeMinor - input.pendingMinor;
+  const louezLeft = paidMinor - recordedStripeMinor;
   const refundableMinor = Math.max(
     0,
     Math.min(stripeLeft, louezLeft) - manualMinor - input.openMinor,
   );
   return {
     paidMinor,
-    // Given back: what Stripe counts, less what it still holds pending, or what Louez
-    // recorded; a pending refund is being refunded, not refunded.
-    refundedMinor:
-      Math.max(Math.max(0, charge.amountRefundedMinor - input.pendingMinor), recordedStripeMinor) +
-      manualMinor,
-    inFlightMinor: input.openMinor + input.pendingMinor,
+    refundedMinor: Math.max(charge.amountRefundedMinor, recordedStripeMinor) + manualMinor,
+    inFlightMinor: input.openMinor,
     refundableMinor,
     rows: rows.map((row) => ({
       id: row.id,

@@ -12,7 +12,7 @@ import {
   type StripeRefundObject,
   laterRefundReport,
   providerRefundFromStripe,
-  refundStateOf,
+  refundCountedByStripe,
 } from "@/lib/reservations/stripe-refund-stripe";
 import { recordChargeRefunds } from "@/lib/reservations/stripe-refund-writes";
 import { fromStripeCents } from "@/lib/stripe";
@@ -25,9 +25,9 @@ import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from ".
 // `charge.refunded` on a connected account (louez-billing design §5.6, docs/api
 // fees.md §9 and README Q7): the fee refund at source, then, through the one writer of
 // a charge's refunds (lib/reservations/stripe-refund-writes.ts), the payment netted,
-// one refund row per Stripe refund of the charge that succeeded or failed whatever the
-// payment's kind, and the refund operation each refund names settled (or `pending`,
-// while Stripe holds its refund).
+// one refund row per Stripe refund of the charge whatever the payment's kind, and the
+// refund operation each refund names stated as Stripe states its refund (`pending` while
+// Stripe holds it, `succeeded` once it says so).
 //
 // Stripe counts a refund in the charge's `amount_refunded` from its creation, pending
 // or not, and sends `charge.refunded` then: the fee's share of it is given back at
@@ -179,8 +179,8 @@ export async function handleChargeRefunded(
   const listed = (await port.listRefunds(charge.id, accountId)).map((refund) =>
     listedRefund(refund, currency),
   );
-  // What went back to the customer: a refund Stripe still holds pending is not, yet.
-  const refunds = listed.filter((refund) => refundStateOf(refund) === "succeeded");
+  // What came off the charge, as Stripe counts it: pending refunds included.
+  const refunds = listed.filter(refundCountedByStripe);
   const refundedMinor = refunds.reduce((sum, refund) => sum + refund.amount, 0);
   const recorded = await recordChargeRefunds(db, {
     paymentId: payment.paymentId,
@@ -252,10 +252,10 @@ export type RefundUpdatedResult =
  * first, as for `charge.refunded`; then the one writer of the charge's refunds runs on
  * the charge's refunds as Stripe lists them now, the later of the event's report and
  * the listing's standing for its own refund (`laterRefundReport`). A refund that
- * succeeded gets its row and nets the payment, its operation `succeeded`; one that
- * failed or was canceled makes its row `failed`, the payment netted again, the
- * operation that asked for it `failed`; one still pending changes nothing but its
- * operation, `pending`. Each delivered again writes nothing more.
+ * succeeded makes its operation `succeeded` (its row was written when Stripe made it);
+ * one that failed or was canceled makes its row `failed`, the payment netted again, the
+ * operation that asked for it `failed`; one still pending stays as recorded. Each
+ * delivered again writes nothing more.
  */
 export async function handleRefundUpdated(
   refund: StripeRefundObject & {
