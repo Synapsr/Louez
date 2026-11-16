@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { recordedPeriods } from '@louez/api/services/edit-line-pricing'
 import type { PricingBreakdown } from '@louez/types'
 
 import type { EditableItem } from '../types'
@@ -215,28 +214,16 @@ test('the preview of a promoted line whose window moved: the promotion recorded 
   assert.equal(calculateEditableItemPrice(tenADay, ...THREE_DAYS, undefined, true).totalPrice, 24)
 })
 
-test('the preview of a line whose product is gone: what it recorded', () => {
-  // 90.00 for three days, as the dashboard stored it (its duration in minutes); the product deleted since.
+test('the preview of a line whose product is gone: what it stored, or its stored total when the server refuses', () => {
+  // 90.00 for three days, as the dashboard stored it; the product deleted since.
   const minutes = dayBreakdown(4320, 30, { durationMinutes: 4320 })
   const gone = { ...dayItem, unitPrice: 90, product: null, stored: stored(90, minutes) }
   assert.equal(calculateEditableItemPrice(gone, ...THREE_DAYS).totalPrice, 90)
+  // Three units at 90.00 for two: in proportion, rounded once.
+  assert.equal(calculateEditableItemPrice({ ...gone, quantity: 3 }, ...THREE_DAYS).totalPrice, 270)
+  // Its window moved: the server refuses; the stored total stays on screen.
   const fourDays = new Date('2031-06-14T09:00:00.000Z')
-  assert.equal(calculateEditableItemPrice(gone, THREE_DAYS[0], fourDays, undefined, true).totalPrice, 120)
-  // A duration whose unit no writer's mark tells: the server refuses, the stored price stays on screen.
-  const unknown = { ...gone, stored: stored(90, dayBreakdown(3, 30)) }
-  assert.equal(calculateEditableItemPrice(unknown, THREE_DAYS[0], fourDays, undefined, true).totalPrice, 90)
-})
-
-test('the periods a breakdown recorded, by the marks each writer leaves', () => {
-  // The dashboard's (`buildReservationPricingBreakdown`): minutes, durationMinutes equal.
-  assert.equal(recordedPeriods(dayBreakdown(4320, 30, { durationMinutes: 4320 })), 3)
-  assert.equal(recordedPeriods(dayBreakdown(150, 5, { pricingMode: 'hour', durationMinutes: 150 })), 3)
-  // The API's date change and the extension: periods, the window's minutes beside.
-  assert.equal(recordedPeriods(dayBreakdown(3, 30, { durationMinutes: 4320 })), 3)
-  // The checkout (`checkoutLineBreakdown`): periods, its promotion recorded.
-  assert.equal(recordedPeriods(dayBreakdown(3, 30, { promotion: null, factsOnly: true })), 3)
-  // None of these marks: the unit is not known.
-  assert.equal(recordedPeriods(dayBreakdown(3, 30)), null)
+  assert.equal(calculateEditableItemPrice(gone, THREE_DAYS[0], fourDays, undefined, true).totalPrice, 90)
 })
 
 test('the preview total: a line kept at its stored price keeps the rate it recorded', () => {

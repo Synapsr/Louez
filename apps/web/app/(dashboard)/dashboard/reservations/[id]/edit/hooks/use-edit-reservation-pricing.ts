@@ -159,7 +159,6 @@ export function calculateEditableItemPrice(
             stored: item.stored,
             quantity: item.quantity,
             windowChanged,
-            window: { start: startDate, end: endDate },
           });
     if (kept.kind === "kept" || gone) {
       // A line the server refuses (its product gone, no duration recorded) is written nothing.

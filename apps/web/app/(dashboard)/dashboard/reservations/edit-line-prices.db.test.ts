@@ -597,7 +597,13 @@ describe(
        * when one applied.
        */
       async function checkoutBooking(
-        line: { subtotal: number; duration: number; promotion?: AppliedProductPromotion },
+        line: {
+          subtotal: number;
+          duration: number;
+          quantity?: number;
+          pricingKind?: "duration" | "fixed";
+          promotion?: AppliedProductPromotion;
+        },
         end: Date,
       ) {
         const gone = await product();
@@ -606,10 +612,10 @@ describe(
           {
             productId: gone,
             productName: "Kayak",
-            quantity: 1,
-            pricingKind: "duration",
+            quantity: line.quantity ?? 1,
+            pricingKind: line.pricingKind ?? "duration",
             duration: line.duration,
-            unitPrice: line.subtotal,
+            unitPrice: line.subtotal / (line.quantity ?? 1),
             depositPerUnit: 0,
             subtotal: line.subtotal,
             originalSubtotal: line.promotion?.originalSubtotal ?? line.subtotal,
@@ -621,7 +627,14 @@ describe(
           { taxRate: null, taxAmount: null, priceExclTax: null, totalExclTax: null },
         );
         const { id } = await booking(
-          [{ productId: gone, quantity: 1, totalPrice: line.subtotal.toFixed(2), breakdown }],
+          [
+            {
+              productId: gone,
+              quantity: line.quantity ?? 1,
+              totalPrice: line.subtotal.toFixed(2),
+              breakdown,
+            },
+          ],
           { end },
         );
         await deleteProduct(gone);
@@ -669,181 +682,114 @@ describe(
         assert.equal(line.unitPrice, "90.00");
       });
 
-      test("the dashboard's breakdown (minutes), after a dashboard edit: priced by the day, then by hand", async () => {
+      test("its quantity changed: its stored total in proportion, rounded once", async () => {
         await useStore({});
-        const [gone, other] = [await product(), await product()];
-        // Booked for two days, extended to three by an edit: 30.00, its breakdown written again.
-        const id = await dashboardBooking([gone, other], TWO_DAYS);
-        assert.equal(
-          (await actions.updateReservation(id, { endDate: THREE_DAYS })).error,
-          undefined,
+        // 100.00 for three units, as the checkout recorded it.
+        const { id, gone } = await checkoutBooking(
+          { subtotal: 100, duration: 3, quantity: 3 },
+          THREE_DAYS,
         );
-        assert.equal((await lineOf(id, gone)).totalPrice, "30.00");
+        const goneId = (await lineOf(id, gone)).id;
+        const shown = await previewOf(id, { quantities: { [goneId]: 4 } });
+
+        const result = await actions.updateReservation(id, {
+          items: await formLines(id, { [goneId]: 4 }),
+          expectedTotal: Number(shown),
+        });
+
+        assert.equal(result.error, undefined);
+        // 100.00 × 4 / 3, rounded once: 133.33 (never 33.33 × 4), its unit price as stored.
+        const line = await lineOf(id, gone);
+        assert.deepEqual([line.totalPrice, line.unitPrice], ["133.33", "33.33"]);
+        assert.equal(shown, "133.33");
+      });
+
+      test("a fixed-price line: kept exactly when its window moves, in proportion when its quantity changes", async () => {
+        await useStore({});
+        // Three units at a fixed price, 15.01 in all, as the checkout recorded it.
+        const { id, gone } = await checkoutBooking(
+          { subtotal: 15.01, duration: 1, quantity: 3, pricingKind: "fixed" },
+          THREE_DAYS,
+        );
+        const before = await lineOf(id, gone);
+
+        const moved = await actions.updateReservation(id, {
+          endDate: FOUR_DAYS,
+          items: await formLines(id),
+        });
+
+        assert.equal(moved.error, undefined);
+        const kept = await lineOf(id, gone);
+        assert.deepEqual(
+          [kept.totalPrice, kept.unitPrice, kept.pricingBreakdown],
+          [before.totalPrice, before.unitPrice, before.pricingBreakdown],
+        );
+        assert.equal(kept.totalPrice, "15.01");
+
+        const more = await actions.updateReservation(id, {
+          endDate: new Date(START.getTime() + 5 * DAY),
+          items: await formLines(id, { [kept.id]: 4 }),
+        });
+
+        assert.equal(more.error, undefined);
+        // 15.01 × 4 / 3, rounded once.
+        assert.equal((await lineOf(id, gone)).totalPrice, "20.01");
+      });
+
+      test("a line priced by its duration whose window moved: refused with its own message, nothing written", async () => {
+        await useStore({});
+        const [gone, other] = [await product("30.00"), await product()];
+        const id = await dashboardBooking([gone, other], THREE_DAYS);
         await deleteProduct(gone);
+        const before = await reservationRow(id);
+        // The form shows the line at its stored total, and sends the total it shows.
         const shown = await previewOf(id, { end: FOUR_DAYS });
 
         const result = await actions.updateReservation(id, {
           endDate: FOUR_DAYS,
           items: await formLines(id),
+          expectedTotal: Number(shown),
         });
 
-        assert.equal(result.error, undefined);
-        // 10.00 a day over four days, and the other line priced again at 40.00.
-        const line = await lineOf(id, gone);
-        assert.equal(line.totalPrice, "40.00");
-        assert.equal(line.unitPrice, "10.00");
-        assert.equal(line.pricingBreakdown?.isManualOverride, true);
-        assert.equal(shown, "80.00");
-        assert.equal(
-          shown,
-          (await reservationRow(id)).totalAmount,
-          "the form showed what is written",
-        );
+        assert.equal(result.error, "errors.editProductGonePriceUnknown");
+        assert.equal((await lineOf(id, gone)).totalPrice, "90.00");
+        const after = await reservationRow(id);
         assert.deepEqual(
-          result.warnings?.filter((warning) => warning.key === "errors.editProductGoneRepriced"),
-          [{ key: "errors.editProductGoneRepriced", params: { name: line.productSnapshot.name } }],
+          [after.endDate.getTime(), after.totalAmount],
+          [before.endDate.getTime(), before.totalAmount],
         );
-
-        // Scaled once, it is a price typed by hand: a second move prices it as one.
-        const again = await actions.updateReservation(id, {
-          endDate: new Date(START.getTime() + 5 * DAY),
-          items: await formLines(id),
-        });
-        assert.equal(again.error, undefined);
-        assert.equal((await lineOf(id, gone)).totalPrice, "50.00");
       });
 
-      test("an hourly product's line, by a date change alone: priced by the hour", async () => {
+      test("the same, by a date change alone, and for the checkout's breakdown", async () => {
         await useStore({});
-        const gone = await product("5.00", "hour");
-        const id = await dashboardBooking([gone], new Date(START.getTime() + 2 * 3_600_000));
+        const dashboard = await product("30.00");
+        const fromDashboard = await dashboardBooking([dashboard], THREE_DAYS);
+        await deleteProduct(dashboard);
+        const fromCheckout = await checkoutBooking({ subtotal: 20, duration: 2 }, TWO_DAYS);
+
+        for (const id of [fromDashboard, fromCheckout.id]) {
+          const result = await actions.updateReservation(id, { endDate: FOUR_DAYS });
+          assert.equal(result.error, "errors.editProductGonePriceUnknown");
+        }
+      });
+
+      test("the store's way out: the line's price typed by hand, then the dates changed", async () => {
+        await useStore({});
+        const [gone, other] = [await product("30.00"), await product()];
+        const id = await dashboardBooking([gone, other], THREE_DAYS);
         await deleteProduct(gone);
+        const goneId = (await lineOf(id, gone)).id;
 
-        const result = await actions.updateReservation(id, {
-          endDate: new Date(START.getTime() + 3 * 3_600_000),
-        });
-
-        assert.equal(result.error, undefined);
-        // 10.00 for two hours, 5.00 an hour: three hours.
-        assert.equal((await lineOf(id, gone)).totalPrice, "15.00");
-      });
-
-      test("a weekly product's line: priced by the week", async () => {
-        await useStore({});
-        const gone = await product("70.00", "week");
-        const id = await dashboardBooking([gone], new Date(START.getTime() + 7 * DAY));
-        await deleteProduct(gone);
-
-        const result = await actions.updateReservation(id, {
-          endDate: new Date(START.getTime() + 14 * DAY),
-        });
-
-        assert.equal(result.error, undefined);
-        assert.equal((await lineOf(id, gone)).totalPrice, "140.00");
-      });
-
-      test("the checkout's breakdown of a promoted line (periods): its price per day, promotion included", async () => {
-        await useStore({});
-        // Two days at 10.00, 20 % off: 16.00.
-        const { id, gone } = await checkoutBooking(
-          {
-            subtotal: 16,
-            duration: 2,
-            promotion: { percentage: 20, originalSubtotal: 20, discountAmount: 4 },
-          },
-          TWO_DAYS,
+        // The form's line made a typed price: 30.00 a day.
+        const lines = (await formLines(id)).map((line) =>
+          line.id === goneId ? { ...line, isManualPrice: true, unitPrice: 30 } : line,
         );
-
-        const result = await actions.updateReservation(id, { endDate: THREE_DAYS });
-
-        assert.equal(result.error, undefined);
-        assert.equal((await lineOf(id, gone)).totalPrice, "24.00");
-      });
-
-      test("the checkout's breakdown of facts only: priced by hand from then on", async () => {
-        await useStore({});
-        const { id, gone } = await checkoutBooking({ subtotal: 20, duration: 2 }, TWO_DAYS);
-
-        const result = await actions.updateReservation(id, { endDate: THREE_DAYS });
+        const result = await actions.updateReservation(id, { endDate: FOUR_DAYS, items: lines });
 
         assert.equal(result.error, undefined);
         const line = await lineOf(id, gone);
-        assert.equal(line.totalPrice, "30.00");
-        // A full breakdown now: a later edit reads its price typed by hand.
-        assert.equal(line.pricingBreakdown?.factsOnly, undefined);
+        assert.equal(line.totalPrice, "120.00");
         assert.equal(line.pricingBreakdown?.isManualOverride, true);
-      });
-
-      test("its window moved: the total rounded once, and later edits leave it as written", async () => {
-        await useStore({});
-        // 100.00 for three days, as the checkout recorded it, beside another line.
-        const gone = await product();
-        const other = await product();
-        const breakdown = priceCart.checkoutLineBreakdown(
-          { price: 10, pricingMode: "day" },
-          {
-            productId: gone,
-            productName: "Kayak",
-            quantity: 1,
-            pricingKind: "duration",
-            duration: 3,
-            unitPrice: 100,
-            depositPerUnit: 0,
-            subtotal: 100,
-            originalSubtotal: 100,
-            savings: 0,
-            totalDeposit: 0,
-            taxSettings: null,
-          },
-          { taxRate: null, taxAmount: null, priceExclTax: null, totalExclTax: null },
-        );
-        const { id } = await booking(
-          [
-            { productId: gone, quantity: 1, totalPrice: "100.00", breakdown },
-            { productId: other, quantity: 1, totalPrice: "30.00" },
-          ],
-          { end: THREE_DAYS },
-        );
-        await deleteProduct(gone);
-
-        assert.equal((await actions.updateReservation(id, { endDate: FOUR_DAYS })).error, undefined);
-        const scaled = await lineOf(id, gone);
-        // 100.00 for three days, four days: 133.33, rounded once, at 33.33 a day.
-        assert.deepEqual([scaled.unitPrice, scaled.totalPrice], ["33.33", "133.33"]);
-
-        // An edit of another line, then an edit of nothing.
-        const otherId = (await lineOf(id, other)).id;
-        for (const quantities of [{ [otherId]: 2 }, {}]) {
-          const result = await actions.updateReservation(id, {
-            items: await formLines(id, quantities),
-          });
-          assert.equal(result.error, undefined);
-          const line = await lineOf(id, gone);
-          assert.deepEqual([line.unitPrice, line.totalPrice], [scaled.unitPrice, scaled.totalPrice]);
-        }
-      });
-
-      test("a duration whose unit no writer's mark tells, or none: refused, nothing written", async () => {
-        await useStore({});
-        // A breakdown with no `durationMinutes` and no promotion recorded: no
-        // writer of today leaves one, so its `duration` may be minutes or days.
-        for (const breakdown of [breakdownOf(3, 30), null]) {
-          const gone = await product("30.00");
-          const { id } = await booking(
-            [{ productId: gone, quantity: 1, totalPrice: "90.00", breakdown }],
-            { end: THREE_DAYS },
-          );
-          await deleteProduct(gone);
-
-          const result = await actions.updateReservation(id, {
-            endDate: FOUR_DAYS,
-            items: await formLines(id),
-          });
-
-          assert.equal(result.error, "errors.editProductGonePriceUnknown");
-          assert.equal((await lineOf(id, gone)).totalPrice, "90.00");
-          assert.equal((await reservationRow(id)).endDate.getTime(), THREE_DAYS.getTime());
-        }
       });
     });
 

@@ -2206,8 +2206,6 @@ export async function updateReservation(
   // does not change at its stored price, the others by the edit's rules
   // (slice 11); the tax engine totals them under the locks (slice 10).
   const editedLines: Array<Omit<EditedLine, "taxExempt"> & { id: string }> = [];
-  // The lines whose product was deleted, priced again for a moved window from their price per period.
-  const productGoneRepricedNames: string[] = [];
   let linesChanged = false;
   let newDepositAmount = 0;
   let nextTulipInsuranceAmount: number | null = null;
@@ -2405,18 +2403,16 @@ export async function updateReservation(
           finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
           totalPrice = priced.subtotal;
         } else {
-          // Its product deleted since: priced from what the line recorded (slice 11).
+          // Its product deleted since: only what it stored prices it, or the edit is refused (slice 11).
           const gone = priceProductGoneLine({
             stored: storedProductLine,
             quantity: item.quantity,
             windowChanged: dateChanged,
-            window: { start: newStartDate, end: newEndDate },
           });
           if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
           finalUnitPrice = gone.unitPrice;
           totalPrice = gone.subtotal;
           pricingBreakdown = gone.breakdown;
-          if (gone.scaled) productGoneRepricedNames.push(item.productSnapshot.name);
         }
       } else if (item.isManualPrice) {
         pricingBreakdown = {
@@ -2627,17 +2623,15 @@ export async function updateReservation(
             });
           }
         } else {
-          // Its product deleted since: priced from what the line recorded (slice 11).
+          // Its product deleted since: only what it stored prices it, or the edit is refused (slice 11).
           const gone = priceProductGoneLine({
             stored: storedProductLine,
             quantity: item.quantity,
             windowChanged: dateChanged,
-            window: { start: newStartDate, end: newEndDate },
           });
           if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
           finalUnitPrice = gone.unitPrice;
           totalPrice = gone.subtotal;
-          if (gone.scaled) productGoneRepricedNames.push(item.productSnapshot.name);
           const itemValues = {
             productId: item.productId,
             isCustomItem: item.isCustomItem,
@@ -3743,10 +3737,6 @@ export async function updateReservation(
       params: warning.params,
     })),
     ...tulipWarnings,
-    ...productGoneRepricedNames.map((name) => ({
-      key: "errors.editProductGoneRepriced",
-      params: { name },
-    })),
     // Repriced, a total stored without its tax now carries it: the store is told.
     ...(transactionResult.taxAdded
       ? [

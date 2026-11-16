@@ -1,10 +1,4 @@
-import type {
-  AppliedProductPromotion,
-  PricingBreakdown,
-  PricingMode,
-  ProductTaxSettings,
-} from "@louez/types";
-import { calculateDuration } from "@louez/utils";
+import type { AppliedProductPromotion, PricingBreakdown, ProductTaxSettings } from "@louez/types";
 
 import { NOT_RECORDED, pricingBasisOf, recordedPromotion } from "./pricing-facts";
 
@@ -170,117 +164,42 @@ export function subtotalWithRecordedPromotion(
 }
 
 export type ProductGoneLinePrice =
-  | {
-      kind: "priced";
-      subtotal: number;
-      unitPrice: number;
-      breakdown: PricingBreakdown | null;
-      /** Its window moved: priced from its booked price per period, now a price typed by hand. */
-      scaled: boolean;
-    }
-  /** Its window moved and its booked duration was not recorded: no price follows from what it recorded. */
+  | { kind: "priced"; subtotal: number; unitPrice: number; breakdown: PricingBreakdown | null }
+  /** A duration-priced line whose window moved: no price follows from what it recorded. */
   | { kind: "refused" };
 
 /**
  * A line whose product was deleted since, which the edit changes (an
- * untouched one keeps its price, `priceEditedProductLine`). Its stored unit
- * price is the whole period's price per unit, so it is never multiplied by
- * the duration again. It follows what it recorded:
+ * untouched one keeps its price, `priceEditedProductLine`). Nothing prices it
+ * any more but what it stored:
  *
- * - its quantity changed, the window as it was: the same price per unit;
- * - its window moved: its price per period, its stored total divided by the
- *   periods it recorded (`recordedPeriods`) and its quantity, over the new
- *   window's periods of the same mode; the line then holds a price typed by
- *   hand, and the store is told (`scaled`). The total is rounded once, from
- *   the stored total and the two durations, and the price per period shown
- *   beside it is that ratio to the cent: 100.00 for three days gives 133.33
- *   for four, at 33.33 a day. The edit form reads a typed price from its
- *   total, so later edits leave both as written. A fixed-price line keeps
- *   its price per unit;
- * - its window moved and its recorded periods cannot be told (no duration, or
- *   one whose unit no writer's mark tells): refused, never another price.
+ * - a fixed-price line (`pricingKind: "fixed"`) whose window moved, at the
+ *   same quantity: kept as stored, its unit price, total and breakdown; a
+ *   fixed price does not depend on the window;
+ * - its quantity changed, the window as it was, or a fixed-price line whose
+ *   quantity changed: its stored total in proportion to the quantities,
+ *   rounded once, its stored unit price and breakdown left as they are;
+ * - a line priced by its duration whose window moved: refused, always. The
+ *   store types the line's price by hand, then changes the dates.
  */
 export function priceProductGoneLine(input: {
   stored: StoredProductLine | null;
   quantity: number;
   windowChanged: boolean;
-  window: { start: Date; end: Date };
 }): ProductGoneLinePrice {
   const { stored } = input;
   if (!stored || stored.quantity <= 0) return { kind: "refused" };
-  // What the line recorded of its pricing: a breakdown written only to record
-  // facts (slice 9) records its duration and mode too.
-  const recorded = stored.pricingBreakdown;
-  if (!input.windowChanged || recorded?.pricingKind === "fixed") {
-    const perUnit = round2(stored.totalPrice / stored.quantity);
-    return {
-      kind: "priced",
-      subtotal: round2(perUnit * input.quantity),
-      unitPrice: perUnit,
-      breakdown: stored.pricingBreakdown,
-      scaled: false,
-    };
-  }
-  const periods = recorded ? recordedPeriods(recorded) : null;
-  if (!recorded || periods === null) return { kind: "refused" };
-  const perPeriod = round2(stored.totalPrice / (periods * stored.quantity));
-  // The new window counted in the mode the recorded periods were counted in.
-  const duration = calculateDuration(input.window.start, input.window.end, recorded.pricingMode);
+  const fixed = stored.pricingBreakdown?.pricingKind === "fixed";
+  if (input.windowChanged && !fixed) return { kind: "refused" };
   return {
     kind: "priced",
-    // Rounded once: the stored total over the two durations and quantities.
-    subtotal: round2(
-      (stored.totalPrice * duration * input.quantity) / (periods * stored.quantity),
-    ),
-    unitPrice: perPeriod,
-    // A price typed by hand from now on, as the edit writes one, read as one by later edits.
-    breakdown: {
-      basePrice: perPeriod,
-      effectivePrice: perPeriod,
-      duration,
-      pricingMode: recorded.pricingMode,
-      pricingKind: "duration",
-      discountPercent: null,
-      discountAmount: 0,
-      tierApplied: null,
-      taxRate: null,
-      taxAmount: null,
-      subtotalExclTax: null,
-      subtotalInclTax: null,
-      isManualOverride: true,
-    },
-    scaled: true,
+    subtotal:
+      input.quantity === stored.quantity
+        ? stored.totalPrice
+        : round2((stored.totalPrice * input.quantity) / stored.quantity),
+    unitPrice: stored.unitPrice,
+    breakdown: stored.pricingBreakdown,
   };
-}
-
-const MINUTES_PER_PERIOD: Record<PricingMode, number> = { hour: 60, day: 1440, week: 10_080 };
-
-/**
- * The periods of its `pricingMode` a line's breakdown recorded, or null when
- * the unit of its `duration` cannot be told. The writers, by what each
- * leaves on the breakdown:
- *
- * - the dashboard's creation and edit (`buildReservationPricingBreakdown`):
- *   `duration` in minutes, with `durationMinutes` equal to it;
- * - the API's date change and the extension: `duration` in periods, with
- *   the window's `durationMinutes` beside it (never equal to it);
- * - the checkout and the API's creation (`checkoutLineBreakdown`), and the
- *   checkout's promoted lines before slice 9: `duration` in periods, no
- *   `durationMinutes`, and a `promotion` key, `null` for none.
- *
- * A breakdown that holds none of these marks (an older writer's) is not
- * read: its unit is not known. Minutes are counted in periods as
- * `calculateDuration` counts a window: any started period in full.
- */
-export function recordedPeriods(breakdown: PricingBreakdown): number | null {
-  const mode = breakdown.pricingMode;
-  if (!(mode in MINUTES_PER_PERIOD) || !(breakdown.duration > 0)) return null;
-  if (typeof breakdown.durationMinutes === "number") {
-    return breakdown.duration === breakdown.durationMinutes
-      ? Math.max(1, Math.ceil(breakdown.durationMinutes / MINUTES_PER_PERIOD[mode]))
-      : breakdown.duration;
-  }
-  return "promotion" in breakdown ? breakdown.duration : null;
 }
 
 /**
