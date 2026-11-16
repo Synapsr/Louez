@@ -229,12 +229,13 @@ describe(
       assert.ok((await bookings()).every((row) => row.exists));
     });
 
-    test("the deletion reaches its customer through the primary key", async () => {
+    test("the customer's lock, the checkout's and the deletion's, reads through the primary key", async () => {
       const connection = await database.connect();
       try {
+        // lockCustomerRow (packages/db): the one statement both take.
         const [plan] = await connection.query<import("mysql2/promise").RowDataPacket[]>(
-          "EXPLAIN SELECT id FROM customers WHERE id = ? AND store_id = ? FOR UPDATE",
-          [customer, STORE],
+          "EXPLAIN SELECT id FROM customers FORCE INDEX (PRIMARY) WHERE id = ? FOR UPDATE",
+          [customer],
         );
         assert.equal(plan[0]?.key, "PRIMARY");
       } finally {

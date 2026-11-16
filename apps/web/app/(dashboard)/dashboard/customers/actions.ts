@@ -12,6 +12,7 @@ import {
   apiEffects,
   customers,
   db,
+  lockCustomerRow,
   lockStoreRow,
   reservations,
 } from '@louez/db'
@@ -377,11 +378,11 @@ export async function deleteCustomer(customerId: string) {
     // two locks first) is seen here, and refuses the deletion.
     const refused = await db.transaction(async (tx) => {
       if (!(await lockStoreRow(tx, storeId))) return 'errors.customerNotFound'
+      await lockCustomerRow(tx, customerId)
       const [locked] = await tx
         .select({ id: customers.id })
         .from(customers)
         .where(and(eq(customers.id, customerId), eq(customers.storeId, storeId)))
-        .for('update')
       if (!locked) return 'errors.customerNotFound'
 
       const reservationCount = await tx
