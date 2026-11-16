@@ -27,7 +27,7 @@ import {
   type HandoffView,
   type StepKind,
 } from "../contracts/handoffs";
-import { mayApprove } from "../platform/approval-rule";
+import { ASSISTANT_REQUESTER, mayApprove, requesterOf } from "../platform/approval-rule";
 import { databaseNow } from "../platform/database-clock";
 import { isApiError, platformErrors, readAfterCommit } from "../platform/errors";
 import { sha256 } from "../platform/hash";
@@ -112,15 +112,24 @@ export function approvalPayloadOf(
 /**
  * Whether a connection reads an approval: the one that asked for it, while
  * it reads the approval's procedure domain. `handoffs_get` and the inbox
- * give an approval to a connection by this rule alone.
+ * give an approval to a connection by this rule alone. What the in-app
+ * assistant asked for is read by its user's session, through the assistant
+ * or not (`ASSISTANT_REQUESTER`), and by no other user.
  */
 export function connectionReadsApproval(
-  credential: { kind: string; id: string | null },
-  row: Pick<HandoffRow, "kind" | "payload" | "credentialKind" | "credentialId">,
+  credential: { kind: string; id: string | null; userId?: string; assistant?: true },
+  row: Pick<HandoffRow, "kind" | "payload" | "credentialKind" | "credentialId" | "userId">,
   reads: (domain: ApiDomain) => boolean,
 ): boolean {
   if (row.kind !== "operation_approval") return false;
-  if (row.credentialKind !== credential.kind || row.credentialId !== credential.id) return false;
+  const requester = requesterOf(credential);
+  const asked = row.credentialKind === requester.kind && row.credentialId === requester.id;
+  // What the in-app assistant asked for is its user's: their own session
+  // reads where it stands (the chat's card does), as the assistant does.
+  const ownAssistant = row.credentialKind === ASSISTANT_REQUESTER && credential.kind === "session";
+  if (!asked && !ownAssistant) return false;
+  // A requester without an id is a user's: no one else's.
+  if (row.credentialId === null && row.userId !== credential.userId) return false;
   const domain = handoffDomain(row);
   return domain !== null && reads(domain);
 }
@@ -800,13 +809,20 @@ export async function liveConnections(
     oauth: new Set(grants.map((grant) => grant.id)),
   };
   return (row) => {
-    if (!row.credentialId) return row.credentialKind === "session";
+    if (!row.credentialId) return sessionRequester(row.credentialKind);
     if (row.credentialKind === "api_key" || row.credentialKind === "oauth") {
       return live[row.credentialKind].has(row.credentialId);
     }
     return false;
   };
 }
+
+/**
+ * A step asked without a connection id: by a session, or by the in-app
+ * assistant for its session (`ASSISTANT_REQUESTER`). Nothing revokes either:
+ * the person signs in to decide, and the assistant's call is the session's.
+ */
+const sessionRequester = (kind: string) => kind === "session" || kind === ASSISTANT_REQUESTER;
 
 /**
  * Whether the connection that asked for the step still exists: a revoked
@@ -817,7 +833,7 @@ export async function connectionAlive(
   row: Pick<HandoffRow, "credentialKind" | "credentialId">,
   executor: Transaction | typeof db = db,
 ): Promise<boolean> {
-  if (!row.credentialId) return row.credentialKind === "session";
+  if (!row.credentialId) return sessionRequester(row.credentialKind);
   if (row.credentialKind === "api_key") {
     const [key] = await executor
       .select({ id: apiKeys.id })

@@ -71,6 +71,11 @@ export interface Credential {
   structuredContentOnly?: boolean;
   /** The OAuth client's directory (`clientDirectory`), for error tracking. Absent: not OAuth. */
   directory?: ClientDirectory;
+  /**
+   * A session the in-app assistant acts for (`BaseContext.assistant`, set by
+   * the server alone). Absent: a person in the dashboard, or a key or a token.
+   */
+  assistant?: true;
 }
 
 /** Someone authenticated, before any store is chosen. */
@@ -128,6 +133,11 @@ export async function resolveAccountActor(input: {
   transport: Transport;
   headers: Headers;
   readSession?: SessionReader;
+  /**
+   * The server's own mark of the in-app assistant (`BaseContext.assistant`):
+   * it applies to a session alone, and nothing in `headers` sets it.
+   */
+  assistant?: boolean;
 }): Promise<AccountActor> {
   const accepted = ACCEPTED_CREDENTIALS[input.transport];
   const token = bearerToken(input.headers);
@@ -186,6 +196,7 @@ export async function resolveAccountActor(input: {
       scopes: null,
       confirmSensitive: false,
       bundles: null,
+      ...(input.assistant === true ? { assistant: true as const } : {}),
     },
   };
 }

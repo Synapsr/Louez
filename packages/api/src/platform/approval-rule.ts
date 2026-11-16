@@ -53,18 +53,27 @@ const LEVELS: Record<Consequence, { optionOn: ApprovalLevel; optionOff: Approval
 
 const STRICTNESS: Record<ApprovalLevel, number> = { none: 0, caller: 1, person: 2 };
 
+/**
+ * What the rule reads of a credential: its kind, the connection's option,
+ * and whether a session is the in-app assistant's (`Credential.assistant`).
+ */
+export type RuleCredential = Pick<Credential, "kind" | "confirmSensitive" | "assistant">;
+
 /** One consequence's level for this credential. */
-function levelOf(
-  consequence: Consequence,
-  credential: Pick<Credential, "kind" | "confirmSensitive">,
-): ApprovalLevel {
-  // A session is the user: they clicked in the dashboard, or asked the in-app assistant.
+function levelOf(consequence: Consequence, credential: RuleCredential): ApprovalLevel {
   // A name forced past the type must not find a level by accident (an object
   // inherits `toString`): the rule knows its consequences and no other.
   if (!isConsequence(consequence)) {
     throw new Error(`Unknown consequence: ${String(consequence)}`);
   }
-  if (credential.kind === "session") return "none";
+  if (credential.kind === "session") {
+    // The in-app assistant acts with the session, but the model decides
+    // nothing a person must: a live consequence asks the person, as for a
+    // connected agent, whatever any option. Anything else runs as the
+    // session does. A session without the mark is the user, who clicked in
+    // the dashboard: never asked.
+    return credential.assistant === true && APPROVAL_LIVE.includes(consequence) ? "person" : "none";
+  }
   const levels = LEVELS[consequence];
   return credential.confirmSensitive ? levels.optionOn : levels.optionOff;
 }
@@ -77,7 +86,7 @@ function levelOf(
  */
 export function approvalLevel(
   consequences: readonly Consequence[],
-  credential: Pick<Credential, "kind" | "confirmSensitive">,
+  credential: RuleCredential,
 ): ApprovalLevel {
   let level: ApprovalLevel = "none";
   for (const consequence of consequences) {
@@ -109,7 +118,7 @@ export type ConfirmationStep = "approval" | "token" | "none";
  */
 export function confirmationStep(
   consequences: readonly Consequence[],
-  credential: Pick<Credential, "kind" | "confirmSensitive">,
+  credential: RuleCredential,
 ): ConfirmationStep {
   const level = approvalLevel(consequences, credential);
   if (level === "none") return "none";
@@ -123,7 +132,10 @@ export function confirmationStep(
 /** The request an approval is for: its store, who asked, and the right the action needs. */
 export interface ApprovalFacts {
   storeId: string;
-  /** The user the requesting connection acts for: an API key's owner, an OAuth grant's user. */
+  /**
+   * The user the requesting connection acts for: an API key's owner, an
+   * OAuth grant's user, the session's user for the in-app assistant.
+   */
   requesterUserId: string;
   scope: ProcedureScope;
 }
@@ -138,12 +150,45 @@ export interface ApproverFacts {
 
 /**
  * Who may decide an approval: today its requester's user, still a member of
- * its store whose role allows the action. One named rule, so that it can
- * later widen to any member holding the permission the action needs.
+ * its store whose role allows the action. For the in-app assistant, that is
+ * the person who asked it: the decision is theirs, recorded on the page.
+ * One named rule, so that it can later widen to any member holding the
+ * permission the action needs.
  */
 export function mayApprove(user: ApproverFacts, approval: ApprovalFacts): boolean {
   if (user.userId !== approval.requesterUserId) return false;
   if (user.storeId !== approval.storeId || user.role === null) return false;
   // A person in the dashboard: the role alone, never a connection's scopes.
   return allows(user.role, null, approval.scope);
+}
+
+/**
+ * Who an approval records as having asked (`api_handoffs.credential_kind`
+ * and `credential_id`): a key or a token by its kind and id; the in-app
+ * assistant by its own kind, for the session's user, with no id. Its caps,
+ * its identity and who reads it key on this.
+ */
+export const ASSISTANT_REQUESTER = "assistant";
+
+/** The name an approval the in-app assistant asked for records as its client. */
+export const ASSISTANT_CLIENT_NAME = "Louez assistant";
+
+export interface Requester {
+  /** A credential's kind (`CredentialKind`), or `ASSISTANT_REQUESTER`. */
+  kind: string;
+  id: string | null;
+  clientName: string | null;
+}
+
+/** Who asks, as an approval records it (`ASSISTANT_REQUESTER`). */
+export function requesterOf(credential: {
+  kind: string;
+  id: string | null;
+  clientName?: string | null;
+  assistant?: true;
+}): Requester {
+  if (credential.kind === "session" && credential.assistant === true) {
+    return { kind: ASSISTANT_REQUESTER, id: null, clientName: ASSISTANT_CLIENT_NAME };
+  }
+  return { kind: credential.kind, id: credential.id, clientName: credential.clientName ?? null };
 }
