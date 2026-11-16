@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "Erstattung fehlgeschlagen",
         "summary": "Die Erstattung von {amount} für Buchung #{number} ist nicht durchgegangen: der Kunde wurde nicht erstattet. Prüfe sie in Stripe und erstatte bei Bedarf erneut.",
-        "summaryListed": "Stripe meldete die Erstattung von {amount} für Buchung #{number} als fehlgeschlagen und zeigte sie dann als ausgezahlt. Prüfe in Stripe, ob der Kunde erstattet wurde, und erstatte bei Bedarf erneut.",
+        "summaryListed": "Die Angaben von Stripe zur Erstattung von {amount} für Buchung #{number} widersprechen sich. Prüfe in Stripe, ob der Kunde erstattet wurde, und erstatte bei Bedarf erneut.",
         "creditNote": "Die Gutschrift {creditNote} bleibt bestehen: korrigiere sie in deiner Buchhaltung."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "Aktion zu prüfen",
         "summary": "Eine Aktion vom {day} wurde möglicherweise nicht gespeichert. Prüfe den Eintrag, bevor du sie wiederholst.",
         "summaryBy": "Eine Aktion von {client} am {day} wurde möglicherweise nicht gespeichert. Prüfe den Eintrag, bevor du sie wiederholst."
-      }
+      },
+      "unknownTitle": "Etwas zu prüfen",
+      "neutral": "Louez konnte das nicht selbst klären. Öffne es, um zu sehen, was passiert ist."
     }
   },
   "storefront": {

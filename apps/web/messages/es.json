@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "Reembolso fallido",
         "summary": "El reembolso de {amount} de la reserva #{number} no se realizó: el cliente no fue reembolsado. Compruébalo en Stripe y vuelve a reembolsar si hace falta.",
-        "summaryListed": "Stripe indicó que el reembolso de {amount} de la reserva #{number} falló y luego lo mostró como pagado. Comprueba en Stripe si el cliente fue reembolsado y vuelve a reembolsar si hace falta.",
+        "summaryListed": "La información de Stripe sobre el reembolso de {amount} de la reserva #{number} es contradictoria. Comprueba en Stripe si el cliente fue reembolsado y vuelve a reembolsar si hace falta.",
         "creditNote": "La nota de crédito {creditNote} sigue emitida: corrígela en tu contabilidad."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "Acción por revisar",
         "summary": "Una acción del {day} quizá no se guardó. Revisa la ficha antes de repetirla.",
         "summaryBy": "Una acción de {client} el {day} quizá no se guardó. Revisa la ficha antes de repetirla."
-      }
+      },
+      "unknownTitle": "Algo por revisar",
+      "neutral": "Louez no pudo resolver esto por sí solo. Ábrelo para ver qué ha pasado."
     }
   },
   "storefront": {

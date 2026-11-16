@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "Refund failed",
         "summary": "The {amount} refund on booking #{number} didn't go through: the customer wasn't refunded. Check it in Stripe and refund again if needed.",
-        "summaryListed": "Stripe said the {amount} refund on booking #{number} failed, then showed it as paid out. Check in Stripe whether the customer was refunded, and refund again if needed.",
+        "summaryListed": "Stripe's reports on the {amount} refund on booking #{number} contradict each other. Check in Stripe whether the customer was refunded, and refund again if needed.",
         "creditNote": "Credit note {creditNote} still stands: correct it in your accounting."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "Action to check",
         "summary": "An action on {day} may not have been saved. Check the record before doing it again.",
         "summaryBy": "An action by {client} on {day} may not have been saved. Check the record before doing it again."
-      }
+      },
+      "unknownTitle": "Something to check",
+      "neutral": "Louez couldn't settle this on its own. Open it to see what happened."
     }
   },
   "storefront": {

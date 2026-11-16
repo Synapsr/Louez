@@ -25,6 +25,20 @@ import type { SampleConnection } from "./approvals-guard";
 import { openSampleDatabase } from "./approvals-write";
 
 const newId = () => randomBytes(16).toString("base64url").slice(0, 21);
+
+/**
+ * Past every date a worker waits for, within MySQL's TIMESTAMP range: the
+ * sample refund stays claimed and its outbox row never falls due.
+ */
+const NEVER = new Date("2038-01-01T00:00:00Z");
+/**
+ * How long ago the sample credit note is owed: past the 90 days the cron arms a debt
+ * again (`OWED_EFFECT_REARM_DAYS`, platform/effects.ts, not imported: it would load the
+ * app's database module, which this script never uses). Its test checks the two agree.
+ */
+const SAMPLE_OWED_DAYS = 120;
+/** Not a Stripe account: were the refund ever sent, Stripe would refuse it. */
+const SAMPLE_ACCOUNT = "acct_louez_sample_inert";
 const tag = () => randomBytes(3).toString("hex").toUpperCase();
 
 function fail(message: string): never {
@@ -66,7 +80,6 @@ async function writeSamples(
       id: stores.id,
       name: stores.name,
       settings: stores.settings,
-      stripeAccountId: stores.stripeAccountId,
     })
     .from(stores)
     .where(or(eq(stores.id, storeRef), eq(stores.slug, storeRef)))
@@ -123,19 +136,37 @@ async function writeSamples(
   });
 
   // 1. A refund Stripe has not confirmed a day after it was asked (`refund_unconfirmed`).
+  // Inert for every worker (stripe-refund.ts): claimed until NEVER, so the sender and
+  // a reconciliation on read find it busy and call nobody; and an outbox row of its own
+  // that is `failed` until NEVER, so the cron's pass sees it in flight and adds none,
+  // and the outbox's retry never runs it.
+  const operationId = newId();
   await db.insert(paymentRefundOperations).values({
-    id: newId(),
+    id: operationId,
     storeId: store.id,
     reservationId,
     paymentId,
-    stripeAccountId: store.stripeAccountId ?? "acct_sample",
+    stripeAccountId: SAMPLE_ACCOUNT,
     stripeChargeId: chargeId,
     amountMinor: 4_000,
     currency,
     refundType: "rental",
     reason: "requested_by_customer",
     status: "requested",
+    claimToken: "sample_never_sent_00",
+    claimedUntil: NEVER,
     createdAt: sql`NOW() - INTERVAL 25 HOUR`,
+  });
+  await db.insert(apiEffects).values({
+    id: newId(),
+    storeId: store.id,
+    reservationId,
+    type: "payment.refund",
+    payload: { operationId },
+    status: "failed",
+    attempts: 1,
+    lastError: "sample data: never sent",
+    nextAttemptAt: NEVER,
   });
 
   // 2. A Stripe refund that failed, its credit note standing (`refund_undone`).
@@ -181,6 +212,8 @@ async function writeSamples(
     .values({ id: newId(), invoiceId: creditNoteId, paymentId: failedRefundId });
 
   // 3. A refund whose credit note the outbox gave up on (`credit_note_not_issued`).
+  // Written as owed SAMPLE_OWED_DAYS ago, past OWED_EFFECT_REARM_DAYS: the cron never arms it again
+  // (`rearmAbandonedEffects`), and an owed note is never pruned, so it stays as written.
   const refundId = newId();
   await db.insert(payments).values({
     id: refundId,
@@ -209,9 +242,11 @@ async function writeSamples(
     attempts: 8,
     lastError: "The refund's credit note was not issued: sample data",
     nextAttemptAt: new Date(now),
+    createdAt: new Date(now - SAMPLE_OWED_DAYS * 86_400_000),
   });
 
-  // 4. A message to the customer that was not sent (`message_not_sent`).
+  // 4. A message to the customer that was not sent (`message_not_sent`). The outbox
+  // never runs an abandoned message again (`retryDueEffects`): it stays unsent.
   await db.insert(apiEffects).values({
     id: newId(),
     storeId: store.id,
@@ -234,5 +269,5 @@ Sample items in “${store.name}” for ${email}, on booking #${number}:
 
 Open it signed in as that owner, with “${store.name}” as the current store,
 in 30 seconds (the inbox shows an item once it is 30 seconds old). “Mark as
-handled” clears each one. The cron arms the credit note again in a day.`);
+handled” clears each one. No worker sends or re-runs any of them.`);
 }

@@ -7,7 +7,9 @@ import {
   NEEDS_A_LOOK_TYPES,
   acknowledgeNeedsALook,
   loadNeedsALook,
+  loadNeedsALookWithin,
   needsALookCount,
+  needsALookWaiting,
   type NeedsALookItem,
 } from "./needs-a-look";
 
@@ -69,5 +71,45 @@ describe("the loader and the acknowledgement", () => {
     assert.equal(await acknowledgeNeedsALook(answer(1, 0), item), "handled");
     assert.equal(await acknowledgeNeedsALook(answer(0, 1), item), "handled");
     assert.equal(await acknowledgeNeedsALook(answer(0, 0), item), "changed");
+  });
+});
+
+describe("the sidebar's marker and the home's line never wait on the inbox", () => {
+  test("a read that never answers is given up after the timeout, its request aborted", async () => {
+    let signal: AbortSignal | undefined;
+    const started = Date.now();
+    await assert.rejects(
+      loadNeedsALookWithin(
+        {
+          list: (_input, options) => {
+            signal = options?.signal;
+            return new Promise(() => {});
+          },
+        },
+        { timeoutMs: 20 },
+      ),
+      /did not answer in time/,
+    );
+    assert.ok(Date.now() - started < 1_000);
+    assert.equal(signal?.aborted, true);
+  });
+
+  test("a read that answers in time gives what needs a look", async () => {
+    const loaded = await loadNeedsALookWithin(
+      {
+        list: async () => ({
+          items: [{ id: "refund_undone:a", type: "refund_undone" }] as InboxItem[],
+          hasMore: false,
+        }),
+      },
+      { timeoutMs: 1_000 },
+    );
+    assert.equal(loaded.items.length, 1);
+  });
+
+  test("the marker shows only for something read and waiting: not while loading, not after a failure", () => {
+    assert.equal(needsALookWaiting(undefined), false);
+    assert.equal(needsALookWaiting({ items: [], more: false, incomplete: false }), false);
+    assert.equal(needsALookWaiting({ items: items(1), more: false, incomplete: false }), true);
   });
 });

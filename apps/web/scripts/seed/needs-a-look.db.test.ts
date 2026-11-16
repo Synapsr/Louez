@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import * as nodeModule from "node:module";
 import { createRequire } from "node:module";
 import { after, before, describe, mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,8 @@ import { WRITE_SAMPLES_FLAG } from "./approvals-guard";
 // The "needs a look" sample script on a migrated database: run as its command
 // runs it, it leaves one item of each money kind and a message not sent in
 // the store's inbox, and prints the page's URL; it refuses anyone but an owner.
+// No worker ever takes its rows to a provider: the outbox's retry, the cron's
+// pass over refunds and credit notes, the refund's sender and a reconciliation.
 
 // tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
 const require = createRequire(import.meta.url);
@@ -22,6 +25,22 @@ for (const name of [
 ]) {
   mock.module(name, { namedExports: require(name) });
 }
+
+// The refund module imports "server-only"; its credit-note issuer never runs here.
+type NextResolve = (specifier: string, context: object) => { url: string };
+Reflect.get(nodeModule, "registerHooks")({
+  resolve(specifier: string, context: object, nextResolve: NextResolve) {
+    if (specifier === "server-only") return { shortCircuit: true, url: "node:module" };
+    return nextResolve(specifier, context);
+  },
+});
+mock.module("@/lib/invoicing/refund-credit-note", {
+  namedExports: {
+    issueRefundCreditNote: async () => {
+      throw new Error("a sample credit note reached the issuer");
+    },
+  },
+});
 
 const APP_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const OWNER = "nl_owner_user_000001";
@@ -123,5 +142,44 @@ describe("the needs-a-look sample script (database)", { skip: skipWithoutTestDat
       items.find((item) => item.type === "credit_note_not_issued")?.details.currency,
       "EUR",
     );
+  });
+  test("no worker takes a sample row to a provider, nor runs it again", async () => {
+    const effects = await import("@louez/api/platform/effects");
+    const refunds = await import("@/lib/reservations/stripe-refund");
+    const calls: string[] = [];
+    // Any provider call or any sender run is recorded, whatever its name.
+    const recorder = <T extends object>(what: string) =>
+      new Proxy({} as T, {
+        get: (_target, name) => async () => {
+          calls.push(`${what}.${String(name)}`);
+          throw new Error(`${what}.${String(name)} was called`);
+        },
+      });
+    const deps = {
+      database: louezDb.db,
+      stripe: recorder<import("@/lib/reservations/stripe-refund-stripe").StripeRefundPort>("stripe"),
+      dispatchEffects: () => {},
+    };
+    const [operation] = await louezDb.db.select().from(louezDb.paymentRefundOperations);
+    assert.ok(operation, "the sample refund operation");
+
+    // The cron's pass: no new outbox row for the refund, no credit note armed again.
+    assert.deepEqual(await refunds.requeueStaleRefundOperations(louezDb.db), []);
+    assert.deepEqual(await effects.rearmAbandonedEffects(), []);
+    // The outbox's retry: none of the sample rows is due.
+    await effects.retryDueEffects(recorder("sender"));
+    // The refund's sender, and a reconciliation on read: busy, nobody called.
+    await assert.rejects(
+      refunds.sendRefundOperation(deps, operation.id, {
+        assertClaim: async () => {},
+        throwIfAborted: () => {},
+      }),
+      /being sent by another sender/,
+    );
+    await refunds.reconcileRefundOperation(deps, operation.id, 2_000);
+    assert.deepEqual(calls, []);
+
+    // Still in the inbox, as written.
+    assert.equal((await inboxTypes()).length, 4);
   });
 });

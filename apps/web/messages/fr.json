@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "Remboursement échoué",
         "summary": "Le remboursement de {amount} sur la réservation #{number} n'a pas abouti : le client n'a pas été remboursé. Vérifiez-le dans Stripe et remboursez à nouveau si besoin.",
-        "summaryListed": "Stripe a indiqué l'échec du remboursement de {amount} sur la réservation #{number}, puis l'a montré comme versé. Vérifiez dans Stripe si le client a été remboursé, et remboursez à nouveau si besoin.",
+        "summaryListed": "Les informations de Stripe concernant le remboursement de {amount} sur la réservation #{number} se contredisent. Vérifiez dans Stripe si le client a été remboursé, et remboursez à nouveau si besoin.",
         "creditNote": "L'avoir {creditNote} reste émis : corrigez-le dans votre comptabilité."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "Action à vérifier",
         "summary": "Une action du {day} n'a peut-être pas été enregistrée. Vérifiez la fiche avant de la refaire.",
         "summaryBy": "Une action de {client} le {day} n'a peut-être pas été enregistrée. Vérifiez la fiche avant de la refaire."
-      }
+      },
+      "unknownTitle": "Un élément à vérifier",
+      "neutral": "Louez n'a pas pu régler cela seul. Ouvrez-le pour voir ce qui s'est passé."
     }
   },
   "storefront": {

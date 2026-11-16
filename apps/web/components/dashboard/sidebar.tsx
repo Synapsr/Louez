@@ -50,7 +50,9 @@ import { WhatsNewSidebarItem } from "@/components/dashboard/whats-new-sidebar-it
 import { LanguageMenuSub } from "@/components/ui/language-switcher";
 
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
+import { needsALookWaiting } from "@/lib/inbox/needs-a-look";
 import { aiCreditsQueries } from "@/lib/queries/ai-credits.queries";
+import { needsALookQueries } from "@/lib/queries/needs-a-look.queries";
 import { cn } from "@/lib/utils";
 import { DashboardNavigation } from "./dashboard-navigation";
 
@@ -78,8 +80,6 @@ interface DashboardSidebarProps {
    * A zero count stays silent until the store has actually spent a credit.
    */
   aiCredits?: { low: boolean; credits: number | null; hasUsedCredits: boolean } | null;
-  /** Something needs a look (dashboard/inbox): its entry carries the warning marker. */
-  needsALookWaiting: boolean;
   /** Public reeent listing of the store, null while it is not published there. */
   marketplaceListingUrl: string | null;
   /** The store signed up from the reeent consumer marketplace (ADR 010). */
@@ -285,7 +285,6 @@ export const DashboardSidebar = ({
   planSlug,
   isPlatformAdmin,
   aiCredits = null,
-  needsALookWaiting,
   marketplaceListingUrl,
   isFromReeent,
   reservationsPaused,
@@ -304,6 +303,8 @@ export const DashboardSidebar = ({
         }
       : null
     : aiCredits;
+  // After paint, as the AI credits: a slow or failing inbox shows no marker.
+  const needsALookQuery = useQuery(needsALookQueries.summary());
 
   return (
     <TooltipProvider>
@@ -320,7 +321,7 @@ export const DashboardSidebar = ({
         <DashboardNavigation
           pathname={pathname}
           aiCredits={liveAiCredits}
-          needsALook={{ waiting: needsALookWaiting }}
+          needsALook={{ waiting: needsALookWaiting(needsALookQuery.data) }}
         />
         <SidebarFooter className="border-sidebar-border border-t">
           <SidebarMenu>

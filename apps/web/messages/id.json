@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "Pengembalian dana gagal",
         "summary": "Pengembalian dana {amount} untuk pemesanan #{number} tidak berhasil: pelanggan belum menerima dana. Periksa di Stripe dan kembalikan lagi jika perlu.",
-        "summaryListed": "Stripe melaporkan pengembalian dana {amount} untuk pemesanan #{number} gagal, lalu menampilkannya sebagai sudah dibayarkan. Periksa di Stripe apakah pelanggan sudah menerima dana, dan kembalikan lagi jika perlu.",
+        "summaryListed": "Laporan Stripe tentang pengembalian dana {amount} untuk pemesanan #{number} saling bertentangan. Periksa di Stripe apakah pelanggan sudah menerima dana, dan kembalikan lagi jika perlu.",
         "creditNote": "Nota kredit {creditNote} tetap berlaku: koreksi di pembukuan Anda."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "Tindakan perlu dicek",
         "summary": "Tindakan pada {day} mungkin tidak tersimpan. Periksa catatannya sebelum mengulanginya.",
         "summaryBy": "Tindakan oleh {client} pada {day} mungkin tidak tersimpan. Periksa catatannya sebelum mengulanginya."
-      }
+      },
+      "unknownTitle": "Sesuatu perlu dicek",
+      "neutral": "Louez tidak bisa menyelesaikan ini sendiri. Buka untuk melihat apa yang terjadi."
     }
   },
   "storefront": {

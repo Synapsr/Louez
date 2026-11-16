@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -9,19 +10,26 @@ import { TriangleAlertIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
 import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-tile";
+import { needsALookCount } from "@/lib/inbox/needs-a-look";
+import { needsALookQueries } from "@/lib/queries/needs-a-look.queries";
 
 interface NeedsALookAlertProps {
-  /** Items that need a look, up to NEEDS_A_LOOK_COUNT_MAX. */
-  count: number;
-  /** More than that wait: the line reads "99+". */
-  capped: boolean;
   className?: string;
 }
 
-/** The home's line to the page of what needs a look, as the pending-bookings alert reads. */
-export const NeedsALookAlert = ({ count, capped, className }: NeedsALookAlertProps) => {
+/**
+ * The home's line to the page of what needs a look, as the pending-bookings
+ * alert reads. Read after paint (`needsALookQueries.summary`, shared with the
+ * sidebar's marker): nothing while it loads, when it fails or when nothing waits.
+ */
+export const NeedsALookAlert = ({ className }: NeedsALookAlertProps) => {
   const t = useTranslations("dashboard.needsALook.alert");
+  const { data } = useQuery(needsALookQueries.summary());
 
+  if (!data) {
+    return null;
+  }
+  const { count, capped } = needsALookCount(data);
   if (count === 0) {
     return null;
   }

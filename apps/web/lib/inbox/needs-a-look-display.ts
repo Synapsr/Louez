@@ -92,19 +92,82 @@ export function creditNoteReason(lastError: unknown): "mismatch" | "pending" | "
   return "unknown";
 }
 
+/** Each kind's title, also for a row whose details could not be read. */
+const TITLES: Record<NeedsALookItem["type"], string> = {
+  refund_unconfirmed: "refundUnconfirmed.title",
+  refund_undone: "refundUndone.title",
+  credit_note_not_issued: "creditNoteNotIssued.title",
+  deposit_unconfirmed: "depositUnconfirmed.title",
+  deposit_release_failed: "depositReleaseFailed.title",
+  dispute_open: "disputeOpen.title",
+  einvoice_rejected: "einvoiceRejected.titleRejected",
+  message_not_sent: "messageNotSent.title",
+  invitation_not_sent: "invitationNotSent.title",
+  operation_unknown: "operationUnknown.title",
+};
+
+/** Said when a sentence would miss one of its values: nothing wrong, nothing blank. */
+const NEUTRAL: DisplayMessage = { key: "neutral" };
+
+const safely = <T>(make: () => T): T | null => {
+  try {
+    return make();
+  } catch {
+    return null;
+  }
+};
+
+/** A row from what can be read of any item, whatever its details: the kind's title and the neutral sentence. */
+function neutralDisplay(item: NeedsALookItem): NeedsALookDisplay {
+  const reservation = item.reservation;
+  const number = typeof reservation?.number === "string" ? reservation.number : null;
+  const customer = typeof reservation?.customerName === "string" ? reservation.customerName : null;
+  return {
+    title: { key: TITLES[item.type] ?? "unknownTitle" },
+    line: [number ? `#${number}` : null, customer].filter((part): part is string => Boolean(part)),
+    sentences: [NEUTRAL],
+    facts: [],
+    action: viewBooking(typeof reservation?.id === "string" ? reservation.id : null),
+    secondary: null,
+    heldBack: item.type === "refund_unconfirmed",
+  };
+}
+
+/**
+ * The row of an item. Total: for any details (missing, of another type, an invalid
+ * currency or date) or a kind it does not know, it returns a row and never throws;
+ * a sentence that would miss a value gives way to the neutral one.
+ */
 export function describeNeedsALookItem(
   item: NeedsALookItem,
   format: DisplayFormat,
 ): NeedsALookDisplay {
-  const d = item.details;
-  const reservationId = text(d.reservationId) ?? item.reservation?.id ?? null;
-  const number = text(d.reservationNumber) ?? item.reservation?.number ?? "";
-  const customer = item.reservation?.customerName ?? null;
+  const display = safely(() => describeItem(item, format));
+  if (!display) return neutralDisplay(item);
+  const blank = display.sentences.some((sentence) =>
+    Object.values(sentence.values ?? {}).some((value) => value === ""),
+  );
+  return blank ? { ...display, sentences: [NEUTRAL] } : display;
+}
+
+function describeItem(item: NeedsALookItem, format: DisplayFormat): NeedsALookDisplay | null {
+  const d: NeedsALookItem["details"] = item.details ?? {};
+  const reservationId = text(d.reservationId) ?? text(item.reservation?.id) ?? null;
+  const number = text(d.reservationNumber) ?? text(item.reservation?.number) ?? "";
+  const customer = text(item.reservation?.customerName);
   const currency = text(d.currency);
+  const amountValue =
+    typeof d.amount === "string" || typeof d.amount === "number" ? Number(d.amount) : Number.NaN;
   const amount =
-    (typeof d.amount === "string" || typeof d.amount === "number") && currency
-      ? format.money(d.amount, currency)
+    Number.isFinite(amountValue) && currency && /^[A-Za-z]{3}$/.test(currency)
+      ? safely(() => format.money(d.amount as string | number, currency.toUpperCase()))
       : null;
+  /** A day, or "" when the value is not one. */
+  const dayOf = (value: unknown): string => {
+    const date = value instanceof Date ? value : text(value);
+    if (!date || Number.isNaN(new Date(date).getTime())) return "";
+    return safely(() => format.day(date)) ?? "";
+  };
   const booking = number ? `#${number}` : null;
   const line = [booking, customer, amount].filter((part): part is string => Boolean(part));
   const base = {
@@ -118,14 +181,13 @@ export function describeNeedsALookItem(
 
   switch (item.type) {
     case "refund_unconfirmed": {
-      const askedAt = text(d.askedAt);
       return {
         ...base,
         title: { key: "refundUnconfirmed.title" },
         sentences: [
           {
             key: "refundUnconfirmed.summary",
-            values: { ...values, day: askedAt ? format.day(askedAt) : "" },
+            values: { ...values, day: dayOf(d.askedAt) },
           },
           { key: "refundUnconfirmed.heldBack" },
         ],
@@ -163,7 +225,6 @@ export function describeNeedsALookItem(
         secondary: { label: "actions.invoicingSettings", href: "/dashboard/settings/invoicing" },
       };
     case "deposit_unconfirmed": {
-      const askedAt = text(d.askedAt);
       const unmatched = text(d.unmatchedPaymentIntentId);
       return {
         ...base,
@@ -171,7 +232,7 @@ export function describeNeedsALookItem(
         sentences: [
           {
             key: unmatched ? "depositUnconfirmed.summaryUnmatched" : "depositUnconfirmed.summary",
-            values: { ...values, day: askedAt ? format.day(askedAt) : "" },
+            values: { ...values, day: dayOf(d.askedAt) },
           },
         ],
         facts: fact("facts.stripePayment", unmatched),
@@ -234,14 +295,12 @@ export function describeNeedsALookItem(
         line: [booking, customer].filter((part): part is string => Boolean(part)),
         sentences: [
           toCustomer
-            ? {
-                key: number ? "messageNotSent.toCustomer" : "messageNotSent.toCustomerNoBooking",
-                values: { number, message },
-              }
-            : {
-                key: number ? "messageNotSent.toStore" : "messageNotSent.toStoreNoBooking",
-                values: { number },
-              },
+            ? number
+              ? { key: "messageNotSent.toCustomer", values: { number, message } }
+              : { key: "messageNotSent.toCustomerNoBooking" }
+            : number
+              ? { key: "messageNotSent.toStore", values: { number } }
+              : { key: "messageNotSent.toStoreNoBooking" },
           ...(reason ? [{ key: reason }] : []),
         ],
         facts:
@@ -265,7 +324,7 @@ export function describeNeedsALookItem(
     }
     case "operation_unknown": {
       const client = text(d.clientName);
-      const day = format.day(item.occurredAt);
+      const day = dayOf(item.occurredAt);
       const procedure = text(d.procedure) ?? "";
       const target = text(d.targetId);
       return {
@@ -273,10 +332,9 @@ export function describeNeedsALookItem(
         title: { key: "operationUnknown.title" },
         line: [client, day].filter((part): part is string => Boolean(part)),
         sentences: [
-          {
-            key: client ? "operationUnknown.summaryBy" : "operationUnknown.summary",
-            values: { client: client ?? "", day },
-          },
+          client
+            ? { key: "operationUnknown.summaryBy", values: { client, day } }
+            : { key: "operationUnknown.summary", values: { day } },
         ],
         facts: fact("facts.reference", d.operationId),
         action:
@@ -287,6 +345,9 @@ export function describeNeedsALookItem(
               : null,
       };
     }
+    default:
+      // A kind this dashboard does not know yet.
+      return null;
   }
 }
 

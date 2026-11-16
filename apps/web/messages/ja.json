@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "返金に失敗",
         "summary": "予約 #{number} の {amount} の返金は完了しませんでした。お客様には返金されていません。Stripe で確認し、必要なら再度返金してください。",
-        "summaryListed": "Stripe は予約 #{number} の {amount} の返金を失敗と報告した後、支払い済みと表示しました。お客様に返金されたか Stripe で確認し、必要なら再度返金してください。",
+        "summaryListed": "予約 #{number} の {amount} の返金について、Stripe の報告が食い違っています。お客様に返金されたか Stripe で確認し、必要なら再度返金してください。",
         "creditNote": "クレジットノート {creditNote} は発行されたままです。会計で修正してください。"
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "確認が必要な操作",
         "summary": "{day} の操作が保存されていない可能性があります。やり直す前に記録を確認してください。",
         "summaryBy": "{client} による {day} の操作が保存されていない可能性があります。やり直す前に記録を確認してください。"
-      }
+      },
+      "unknownTitle": "確認事項",
+      "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。"
     }
   },
   "storefront": {

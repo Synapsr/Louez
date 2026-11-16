@@ -12,8 +12,6 @@ import { getStoreCalendar, type StoreCalendar } from "@louez/api/services/sales-
 import { determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import { serverApi } from "@/lib/api/server-api";
-import { needsALookCount } from "@/lib/inbox/needs-a-look";
-import { readNeedsALook } from "@/lib/inbox/needs-a-look-server";
 import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
 import {
@@ -147,25 +145,16 @@ async function DashboardContent({
   const now = new Date();
   const calendar = getStoreCalendar(now, timezone);
   // Fetch all data in parallel
-  const [
-    metrics,
-    departures,
-    returns,
-    pending,
-    channelState,
-    cohort,
-    hasAgentConnection,
-    needsALook,
-  ] = await Promise.all([
-    getStoreMetrics({ id: storeId, currency }, { timezone, now }),
-    getTodaysDeparturesList(storeId, now, calendar),
-    getTodaysReturnsList(storeId, now, calendar),
-    getPendingReservationsList(storeId),
-    getMarketplaceChannelState({ storeId }),
-    getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
-    storeHasAgentConnection(storeId),
-    readNeedsALook(),
-  ]);
+  const [metrics, departures, returns, pending, channelState, cohort, hasAgentConnection] =
+    await Promise.all([
+      getStoreMetrics({ id: storeId, currency }, { timezone, now }),
+      getTodaysDeparturesList(storeId, now, calendar),
+      getTodaysReturnsList(storeId, now, calendar),
+      getPendingReservationsList(storeId),
+      getMarketplaceChannelState({ storeId }),
+      getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
+      storeHasAgentConnection(storeId),
+    ]);
 
   const storeState = determineStoreState(metrics);
   const timeOfDay = getTimeOfDay();
@@ -186,8 +175,9 @@ async function DashboardContent({
       {/* Priority Alert for pending requests */}
       <DashboardAlert pendingCount={metrics.pendingReservations} />
 
-      {/* What Louez could not settle on its own, under the bookings to answer. */}
-      {needsALook && <NeedsALookAlert {...needsALookCount(needsALook)} />}
+      {/* What Louez could not settle on its own, under the bookings to answer:
+          read after paint, so the inbox never holds the home up. */}
+      <NeedsALookAlert />
 
       {/* The offer to let an AI assistant set up and run the store: first of
           the setup notices, under the alert that asks for an action. */}

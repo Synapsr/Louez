@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "Terugbetaling mislukt",
         "summary": "De terugbetaling van {amount} voor reservering #{number} is niet gelukt: de klant is niet terugbetaald. Controleer die in Stripe en betaal zo nodig opnieuw terug.",
-        "summaryListed": "Stripe meldde dat de terugbetaling van {amount} voor reservering #{number} mislukte en toonde die daarna als uitbetaald. Controleer in Stripe of de klant is terugbetaald en betaal zo nodig opnieuw terug.",
+        "summaryListed": "De meldingen van Stripe over de terugbetaling van {amount} voor reservering #{number} spreken elkaar tegen. Controleer in Stripe of de klant is terugbetaald en betaal zo nodig opnieuw terug.",
         "creditNote": "Creditnota {creditNote} blijft staan: corrigeer die in je boekhouding."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "Actie te controleren",
         "summary": "Een actie van {day} is mogelijk niet opgeslagen. Controleer het record voordat je die herhaalt.",
         "summaryBy": "Een actie van {client} op {day} is mogelijk niet opgeslagen. Controleer het record voordat je die herhaalt."
-      }
+      },
+      "unknownTitle": "Iets te controleren",
+      "neutral": "Louez kon dit niet zelf oplossen. Open het om te zien wat er is gebeurd."
     }
   },
   "storefront": {

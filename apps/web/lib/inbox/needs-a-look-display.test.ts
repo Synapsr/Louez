@@ -146,11 +146,12 @@ describe("the three money items, word for word", () => {
     ]);
 
     const listed = refundUndone({ listedAfterFailure: true });
+    // Stripe's later listing may say pending as well as paid: the text asserts no payment.
     assert.deepEqual(read(listed, "en").sentences, [
-      "Stripe said the €120.00 refund on booking #R-1042 failed, then showed it as paid out. Check in Stripe whether the customer was refunded, and refund again if needed.",
+      "Stripe's reports on the €120.00 refund on booking #R-1042 contradict each other. Check in Stripe whether the customer was refunded, and refund again if needed.",
     ]);
     assert.deepEqual(read(listed, "fr").sentences, [
-      `Stripe a indiqué l'échec du remboursement de 120,00${NBSP}€ sur la réservation #R-1042, puis l'a montré comme versé. Vérifiez dans Stripe si le client a été remboursé, et remboursez à nouveau si besoin.`,
+      `Les informations de Stripe concernant le remboursement de 120,00${NBSP}€ sur la réservation #R-1042 se contredisent. Vérifiez dans Stripe si le client a été remboursé, et remboursez à nouveau si besoin.`,
     ]);
 
     const noted = refundUndone({ creditNoteNumber: "AV-0031" });
@@ -535,5 +536,96 @@ describe("every other kind, every clause", () => {
         }
       }
     }
+  });
+});
+
+describe("any item gives a row and never throws", () => {
+  const MALFORMED: Array<[string, unknown]> = [
+    ["no details", null],
+    ["empty details", {}],
+    ["no amount", { currency: "EUR", askedAt: "2026-11-12T10:00:00.000Z" }],
+    [
+      "a currency that is not one",
+      { amount: "12", currency: "EU", askedAt: "2026-11-12T10:00:00.000Z" },
+    ],
+    ["an amount that is not a number", { amount: "twelve", currency: "EUR" }],
+    ["a date that is not one", { amount: "12", currency: "EUR", askedAt: "not a date" }],
+    [
+      "values of another type",
+      { amount: true, currency: 42, reservationNumber: 7, email: false, clientName: 3, askedAt: 5 },
+    ],
+  ];
+
+  for (const type of NEEDS_A_LOOK_TYPES) {
+    test(`${type}: each malformed detail gives its title and sentences with no blank`, () => {
+      for (const [label, details] of MALFORMED) {
+        const malformed = {
+          ...item(type, {}),
+          details,
+          reservation: label === "values of another type" ? { id: 1, number: null } : null,
+          occurredAt: label === "a date that is not one" ? new Date("nope") : new Date(),
+        } as unknown as NeedsALookItem;
+        const { display, title, sentences } = read(malformed, "en");
+        assert.ok(title.length > 0, `${type}, ${label}: title`);
+        assert.notEqual(title, "Something to check", `${type}, ${label}: its kind's title`);
+        for (const sentence of sentences) {
+          assert.doesNotMatch(
+            sentence,
+            /NaN|undefined|null|Invalid|\s{2}|\s[.,:;]|#\s/,
+            `${type}, ${label}: ${sentence}`,
+          );
+        }
+        for (const part of display.line) assert.ok(part.trim(), `${type}, ${label}: line`);
+      }
+    });
+  }
+
+  test("an amount in a currency that is not one reads as the neutral sentence, under the kind's title", () => {
+    const { title, sentences } = read(
+      item("refund_unconfirmed", {
+        amount: "12",
+        currency: "EU",
+        askedAt: "2026-11-12T10:00:00.000Z",
+      }),
+      "fr",
+    );
+    assert.equal(title, "Remboursement non confirmé");
+    assert.deepEqual(sentences, [
+      "Louez n'a pas pu régler cela seul. Ouvrez-le pour voir ce qui s'est passé.",
+    ]);
+  });
+
+  test("a formatter that throws gives a row all the same", () => {
+    const throwing: DisplayFormat = {
+      money: () => {
+        throw new RangeError("Invalid currency code");
+      },
+      day: () => {
+        throw new RangeError("Invalid time value");
+      },
+    };
+    for (const type of NEEDS_A_LOOK_TYPES) {
+      const display = describeNeedsALookItem(
+        refundUnconfirmed.type === type
+          ? refundUnconfirmed
+          : item(type, { amount: "1", currency: "EUR", askedAt: "2026-11-12T10:00:00.000Z" }),
+        throwing,
+      );
+      assert.ok(display.title.key, type);
+      assert.ok(display.sentences.length > 0, type);
+    }
+  });
+
+  test("a kind the dashboard does not know reads as something to check, with the neutral sentence", () => {
+    const unknown = item("brand_new_kind" as NeedsALookType, { amount: "1", currency: "EUR" });
+    const { display, title, sentences } = read(unknown, "en");
+    assert.equal(title, "Something to check");
+    assert.deepEqual(sentences, [
+      "Louez couldn't settle this on its own. Open it to see what happened.",
+    ]);
+    assert.deepEqual(display.action, {
+      label: "actions.viewBooking",
+      href: `/dashboard/reservations/${RESERVATION.id}`,
+    });
   });
 });

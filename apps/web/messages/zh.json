@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "退款失败",
         "summary": "预订 #{number} 的 {amount} 退款未成功：客户未收到退款。请在 Stripe 中核实，必要时重新退款。",
-        "summaryListed": "Stripe 先报告预订 #{number} 的 {amount} 退款失败，随后又显示为已退出。请在 Stripe 中核实客户是否已收到退款，必要时重新退款。",
+        "summaryListed": "Stripe 关于预订 #{number} 的 {amount} 退款的报告相互矛盾。请在 Stripe 中核实客户是否已收到退款，必要时重新退款。",
         "creditNote": "红字发票 {creditNote} 仍然有效：请在您的账务中更正。"
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "待核实的操作",
         "summary": "{day} 的一项操作可能未保存。重做之前请先检查记录。",
         "summaryBy": "{client} 在 {day} 的一项操作可能未保存。重做之前请先检查记录。"
-      }
+      },
+      "unknownTitle": "待检查事项",
+      "neutral": "Louez 无法自行处理此事项。打开查看发生了什么。"
     }
   },
   "storefront": {

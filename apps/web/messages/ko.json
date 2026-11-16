@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "환불 실패",
         "summary": "예약 #{number}의 {amount} 환불이 처리되지 않았습니다. 고객은 환불받지 못했습니다. Stripe에서 확인하고 필요하면 다시 환불하세요.",
-        "summaryListed": "Stripe가 예약 #{number}의 {amount} 환불이 실패했다고 알린 뒤 지급된 것으로 표시했습니다. 고객이 환불받았는지 Stripe에서 확인하고 필요하면 다시 환불하세요.",
+        "summaryListed": "예약 #{number}의 {amount} 환불에 대한 Stripe의 보고가 서로 맞지 않습니다. 고객이 환불받았는지 Stripe에서 확인하고 필요하면 다시 환불하세요.",
         "creditNote": "신용 메모 {creditNote}는 발행된 상태로 남아 있습니다. 회계에서 수정하세요."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "확인이 필요한 작업",
         "summary": "{day}의 작업이 저장되지 않았을 수 있습니다. 다시 하기 전에 기록을 확인하세요.",
         "summaryBy": "{day}에 {client}의 작업이 저장되지 않았을 수 있습니다. 다시 하기 전에 기록을 확인하세요."
-      }
+      },
+      "unknownTitle": "확인할 항목",
+      "neutral": "Louez가 스스로 해결하지 못했습니다. 열어서 무슨 일이 있었는지 확인하세요."
     }
   },
   "storefront": {

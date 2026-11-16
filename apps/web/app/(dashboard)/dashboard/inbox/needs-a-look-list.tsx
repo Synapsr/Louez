@@ -10,6 +10,7 @@ import type { NeedsALookItem } from "@/lib/inbox/needs-a-look";
 import { describeNeedsALookItem } from "@/lib/inbox/needs-a-look-display";
 
 import { NeedsALookRow } from "./needs-a-look-row";
+import { NeedsALookRowBoundary } from "./needs-a-look-row-boundary";
 import { useNeedsALook } from "./use-needs-a-look";
 
 interface NeedsALookListProps {
@@ -43,14 +44,16 @@ export const NeedsALookList = ({ items, incomplete, canAcknowledge }: NeedsALook
           ) : (
             <ul className="divide-border divide-y">
               {visible.map((item) => (
-                <li key={item.id} className="py-1 first:pt-0 last:pb-0">
-                  <NeedsALookRow
-                    item={item}
-                    display={describeNeedsALookItem(item, format)}
-                    canAcknowledge={canAcknowledge}
-                    pending={pendingId === item.id}
-                    onAcknowledge={() => acknowledge(item)}
-                  />
+                <li key={item.id} className="py-1 first:pt-0 last:pb-0 empty:hidden">
+                  <NeedsALookRowBoundary>
+                    <NeedsALookRow
+                      item={item}
+                      display={describeNeedsALookItem(item, format)}
+                      canAcknowledge={canAcknowledge}
+                      pending={pendingId === item.id}
+                      onAcknowledge={() => acknowledge(item)}
+                    />
+                  </NeedsALookRowBoundary>
                 </li>
               ))}
             </ul>

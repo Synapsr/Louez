@@ -7243,7 +7243,7 @@
       "refundUndone": {
         "title": "Zwrot nieudany",
         "summary": "Zwrot {amount} dla rezerwacji #{number} nie doszedł do skutku: klient nie otrzymał zwrotu. Sprawdź go w Stripe i w razie potrzeby zwróć ponownie.",
-        "summaryListed": "Stripe zgłosił, że zwrot {amount} dla rezerwacji #{number} się nie powiódł, a potem pokazał go jako wypłacony. Sprawdź w Stripe, czy klient otrzymał zwrot, i w razie potrzeby zwróć ponownie.",
+        "summaryListed": "Informacje Stripe o zwrocie {amount} dla rezerwacji #{number} są sprzeczne. Sprawdź w Stripe, czy klient otrzymał zwrot, i w razie potrzeby zwróć ponownie.",
         "creditNote": "Faktura korygująca {creditNote} pozostaje wystawiona: popraw ją w księgowości."
       },
       "creditNoteNotIssued": {
@@ -7295,7 +7295,9 @@
         "title": "Działanie do sprawdzenia",
         "summary": "Działanie z {day} mogło nie zostać zapisane. Sprawdź rekord, zanim je powtórzysz.",
         "summaryBy": "Działanie {client} z {day} mogło nie zostać zapisane. Sprawdź rekord, zanim je powtórzysz."
-      }
+      },
+      "unknownTitle": "Coś do sprawdzenia",
+      "neutral": "Louez nie mógł załatwić tego sam. Otwórz, aby zobaczyć, co się stało."
     }
   },
   "storefront": {

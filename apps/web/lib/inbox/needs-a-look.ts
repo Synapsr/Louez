@@ -32,7 +32,10 @@ export const isNeedsALookItem = (item: InboxItem): item is NeedsALookItem =>
 
 /** The part of the inbox client this module calls: the dashboard's, or a test's. */
 export interface InboxReader {
-  list: (input: { types: NeedsALookType[]; limit: number }) => Promise<{
+  list: (
+    input: { types: NeedsALookType[]; limit: number },
+    options?: { signal?: AbortSignal },
+  ) => Promise<{
     items: InboxItem[];
     hasMore: boolean;
     unavailable?: InboxItemType[];
@@ -61,14 +64,55 @@ export interface NeedsALook {
 export async function loadNeedsALook(
   inbox: InboxReader,
   limit: number = INBOX_PAGE_MAX,
+  signal?: AbortSignal,
 ): Promise<NeedsALook> {
-  const page = await inbox.list({ types: [...NEEDS_A_LOOK_TYPES], limit });
+  const page = await inbox.list({ types: [...NEEDS_A_LOOK_TYPES], limit }, { signal });
   return {
     items: page.items.filter(isNeedsALookItem),
     more: page.hasMore,
     incomplete: (page.unavailable?.length ?? 0) > 0,
   };
 }
+
+/** How long the sidebar's marker and the home's line wait for the inbox before showing nothing. */
+export const NEEDS_A_LOOK_TIMEOUT_MS = 5_000;
+
+/**
+ * `loadNeedsALook`, given up after `timeoutMs` (or when `signal` aborts): the
+ * request is aborted and the call rejects, so a slow inbox shows no marker
+ * rather than holding anything up.
+ */
+export async function loadNeedsALookWithin(
+  inbox: InboxReader,
+  {
+    timeoutMs = NEEDS_A_LOOK_TIMEOUT_MS,
+    signal,
+  }: { timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<NeedsALook> {
+  const controller = new AbortController();
+  const abort = () => controller.abort(signal?.reason);
+  if (signal?.aborted) abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(
+    () => controller.abort(new Error("The inbox did not answer in time.")),
+    timeoutMs,
+  );
+  const givenUp = new Promise<never>((_, reject) => {
+    controller.signal.addEventListener("abort", () => reject(controller.signal.reason), {
+      once: true,
+    });
+  });
+  try {
+    return await Promise.race([loadNeedsALook(inbox, INBOX_PAGE_MAX, controller.signal), givenUp]);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+
+/** Whether the sidebar's entry carries its marker: something read, and waiting. Nothing read yet, or a failed read: no marker. */
+export const needsALookWaiting = (summary: NeedsALook | undefined): boolean =>
+  (summary?.items.length ?? 0) > 0;
 
 /** Past this, the count reads "99+". */
 export const NEEDS_A_LOOK_COUNT_MAX = 99;
