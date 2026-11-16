@@ -19,15 +19,19 @@ import {
   reservationOutput,
   reservationWindowInput,
   statusChangeOutput,
+  updateReservationInput,
   updateReservationNotesInput,
   updateReservationNotesOutput,
+  updateReservationOutput,
   updateReservationStatusInput,
   type CalendarEntry,
   type PlanningEntry,
 } from "../../contracts/reservations";
 import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { customerLinks, productLinks, reservationLinks } from "../../platform/links";
+import { readAfterCommit } from "../../platform/errors";
 import { storeProcedure } from "../../platform/procedures";
+import { changeReservationDates, type DateChangePreview } from "../../services/reservation-dates";
 import {
   changeStoreReservationStatus,
   type StatusChangeCaller,
@@ -124,6 +128,48 @@ function statusChangeConsequences(preview: StatusChangePreview): Consequences {
   if (overrides) return ["stock_override"];
   if (message) return ["customer_message"];
   return ["change"];
+}
+
+/**
+ * The confirmation of a date change, bound to what its preview shows (the
+ * dates before and after, each line's old and new price, the totals, the tax,
+ * the deposit, the stock verdicts, the units, the message and the warnings),
+ * to the reservation as the change read it (`fingerprint`: its lines, units
+ * and stored prices), to its stock demand and to where the message goes. A
+ * change since (a line or a price changed, a competing booking that changes
+ * the shortfalls, the customer's address) voids the token or the approval.
+ */
+const dateChangeConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
+  confirmUnderLock(
+    context,
+    path,
+    input,
+    (preview: DateChangePreview) => {
+      const { summary: _summary, recipientsHash, demand, fingerprint, ...details } = preview;
+      // The recipients, the stock demand and the fingerprint are bound, and never shown.
+      return {
+        state: { ...details, recipientsHash, demand, fingerprint },
+        details,
+        consequences: dateChangeConsequences(preview),
+      };
+    },
+    RESERVATIONS_WRITE,
+  );
+
+/**
+ * What a date change does: a change the store can put back, always; a
+ * message to the customer when one goes; a stock override when either flag
+ * is sent, even with nothing short (D2, slice 5). Never money: the
+ * difference is reported, not charged or refunded.
+ */
+function dateChangeConsequences(preview: DateChangePreview): Consequences {
+  return [
+    "change",
+    ...(preview.messages.length > 0 ? (["customer_message"] as const) : []),
+    ...(preview.overbooking !== null || preview.turnoverBuffer !== null
+      ? (["stock_override"] as const)
+      : []),
+  ];
 }
 
 /**
@@ -437,6 +483,66 @@ const updateStatus = storeProcedure
     ),
   );
 
+const update = storeProcedure
+  .meta({
+    capability: "reservations.update",
+    scope: RESERVATIONS_WRITE,
+    sensitive: "send",
+    personApproval: true,
+    mcp: {
+      name: "reservations_update",
+      title: "Change Reservation Dates",
+      description: `Move a pending, quote, confirmed or ongoing reservation's dates (startDate, endDate: ISO 8601 with offset; an absent one stays; an ongoing reservation's start cannot move). Its lines keep their products, quantities and assigned units; the deposit and the delivery stay as stored. It is priced by the checkout's own pricing and taxes, and only when they give the reservation's stored prices back to the cent: otherwise, and for an insured, custom-priced, discounted, marketplace or delivered reservation, or one with an extension checkout open, it answers RESERVATION_EDIT_IN_DASHBOARD with details.reason and changes nothing; give the user the reservation's dashboard link then. The same dates as stored answer changed: false and do nothing. notifyCustomer is required: true sends the customer the “booking modified” e-mail. New dates the stock cannot cover answer RESERVATION_INSUFFICIENT_CAPACITY with each short line; allowOverbooking: true moves them all the same. Lines stopped only by the turnover buffer answer RESERVATION_TURNOVER_BUFFER_CONFLICT; overrideTurnoverBuffer: true passes them, for this change only. Neither passes RESERVATION_UNITS_UNAVAILABLE. Sending either flag, even when nothing is short, is the user's to approve. A change first answers CONFIRMATION_REQUIRED with a preview (old and new dates, each line's old and new price, the new total, the tax, the difference, the message, the warnings) when the connection asks for confirmations. ${approvalAsked("that preview")} Nothing is charged or refunded: the difference is reported, with warnings for an open payment session, a deposit hold that lapses before the new end, and a balance now owed or over-paid. Returns the reservation as reservations_get does, with previousStartDate, previousEndDate, previousTotal, difference (in the reservation's currency), warnings, capacity and its \`links\`, its dashboard page to give the user.`,
+      bundle: "daily",
+      effect: "overwrite",
+      reach: "customer",
+    },
+  })
+  .route({
+    method: "POST",
+    path: "/reservations/{id}",
+    description: [
+      "Moves a reservation's dates. Only `startDate` and `endDate` change (ISO 8601 with an offset; an absent one keeps its stored value); its lines keep their products, quantities and assigned units, and its deposit and delivery stay as stored. Any other field is refused. Only a pending, quote, confirmed or ongoing reservation is changed (`RESERVATION_NOT_EDITABLE` otherwise); the end must come after the start, and an ongoing reservation's start cannot move (`RESERVATION_WINDOW_INVALID`).",
+      "",
+      "The new prices come from the checkout's own pricing and the tax engine, and only when they give the reservation's stored prices back, to the cent, over its stored dates. When they do not (a promotion that ended, a price or a tax setting changed, a price typed by hand), and for an insured, discounted, marketplace or delivered reservation, or one whose extension checkout is open, the answer is `RESERVATION_EDIT_IN_DASHBOARD` with `details.reason`, and nothing changes: the change is made from the reservation's page in the dashboard.",
+      "",
+      "The same dates as stored answer `changed: false` and write nothing. `notifyCustomer` is required: `true` queues the customer's “booking modified” e-mail with the change; it is refused with `RESERVATION_CUSTOMER_UNREACHABLE` when the customer has no e-mail address or the instance sends no e-mail.",
+      "",
+      "New dates the stock cannot cover answer `RESERVATION_INSUFFICIENT_CAPACITY` with each short line; `allowOverbooking: true` moves them all the same. Lines that fit the stock but not the turnover buffer answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes them, for this change only. Neither passes `RESERVATION_UNITS_UNAVAILABLE`. Dates that stay inside the stored ones are never refused for the stock.",
+      "",
+      `On a key set to ask for confirmations (the default), the change first answers 412 \`CONFIRMATION_REQUIRED\` with its preview. Sending either flag, even when nothing is short, is the key's owner's to approve. ${restApprovalAsked("the preview")}`,
+      "",
+      "Nothing is charged or refunded. Returns the reservation as `GET /reservations/{id}` does, with `previousStartDate`, `previousEndDate`, `previousTotal` and `difference` in the reservation's currency, `warnings`, `capacity`, `customerMessage`, `changed` and `links.dashboard`.",
+    ].join("\n"),
+  })
+  .input(updateReservationInput)
+  .output(updateReservationOutput)
+  .handler(async ({ context, input, path }) => {
+    const change = await changeReservationDates(
+      {
+        storeId: context.actor.storeId,
+        userId: context.actor.credential.userId,
+        credential: { kind: context.actor.credential.kind, id: context.actor.credential.id },
+        transport: context.actor.transport,
+        customers: mayRead(context, "customers"),
+        store: statusCaller(context).store,
+        ports: context.ports,
+      },
+      {
+        id: input.id,
+        startDate: input.startDate === undefined ? undefined : new Date(input.startDate),
+        endDate: input.endDate === undefined ? undefined : new Date(input.endDate),
+        notifyCustomer: input.notifyCustomer,
+        allowOverbooking: input.allowOverbooking,
+        overrideTurnoverBuffer: input.overrideTurnoverBuffer,
+      },
+      { confirm: dateChangeConfirmation(context, path, input) },
+    );
+    const { id: _id, ...facts } = change;
+    const reservation = await readAfterCommit(() => getReservation(reader(context), input.id));
+    return { ...withLinks(linker(context), reservation), ...facts };
+  });
+
 const cancel = storeProcedure
   .meta({
     capability: "reservations.cancel",
@@ -559,6 +665,7 @@ export {
   listOverdueProcedure as listOverdue,
   listUpcomingProcedure as listUpcoming,
   poll,
+  update,
   updateNotes,
   updateStatus,
 };

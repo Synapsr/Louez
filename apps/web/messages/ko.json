@@ -9921,7 +9921,11 @@
           "confirmPastBuffer": "대여 사이 간격을 지키지 않고 예약을 확정할까요?",
           "confirmBeyondStock": "재고를 넘겨 예약을 확정할까요?",
           "confirmBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약을 확정할까요?",
-          "recordDeposit": "받은 보증금을 기록할까요?"
+          "recordDeposit": "받은 보증금을 기록할까요?",
+          "moveDatesWithinRules": "예약 날짜를 변경할까요?",
+          "moveDatesPastBuffer": "대여 사이 간격을 지키지 않고 예약 날짜를 변경할까요?",
+          "moveDatesBeyondStock": "재고를 넘겨 예약 날짜를 변경할까요?",
+          "moveDatesBeyondStockAndBuffer": "재고와 대여 사이 간격을 넘겨 예약 날짜를 변경할까요?"
         },
         "facts": {
           "booking": "예약 #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9955,9 @@
           "messageToCustomer": "고객에게 ‘<v>{message}</v>’ {channels, select, email {이메일이} sms {문자가} other {이메일과 문자가}} 갑니다",
           "noMessage": "고객에게 메시지가 가지 않습니다.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> 받음 · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, 고객에게 돌려줌 · <v>{method}</v>",
+          "datesMoved": "날짜: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "새 합계: <v>{total}</v> (차액: <v>{difference}</v>). 청구도 환불도 하지 않습니다."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9980,8 @@
           "customerMessage": {
             "request_accepted": "요청 수락",
             "request_rejected": "요청 거절",
-            "reservation_cancelled": "예약 취소"
+            "reservation_cancelled": "예약 취소",
+            "reservation_modified": "예약 변경"
           }
         }
       }

@@ -9921,7 +9921,11 @@
           "confirmPastBuffer": "Подтвердить бронирование, несмотря на ваш перерыв между арендами?",
           "confirmBeyondStock": "Подтвердить бронирование сверх вашего запаса?",
           "confirmBeyondStockAndBuffer": "Подтвердить бронирование сверх вашего запаса и вашего перерыва между арендами?",
-          "recordDeposit": "Записать полученный залог?"
+          "recordDeposit": "Записать полученный залог?",
+          "moveDatesWithinRules": "Перенести даты бронирования?",
+          "moveDatesPastBuffer": "Перенести даты бронирования, несмотря на ваш перерыв между арендами?",
+          "moveDatesBeyondStock": "Перенести даты бронирования сверх вашего запаса?",
+          "moveDatesBeyondStockAndBuffer": "Перенести даты бронирования сверх вашего запаса и вашего перерыва между арендами?"
         },
         "facts": {
           "booking": "Бронирование №<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9955,9 @@
           "messageToCustomer": "Клиент получит {channels, select, email {письмо} sms {SMS} other {письмо и SMS}} «<v>{message}</v>»",
           "noMessage": "Клиенту ничего не отправляется.",
           "depositCollected": "<v>{type}</v>: получено <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, возвращено клиенту · <v>{method}</v>",
+          "datesMoved": "Даты: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Новая сумма: <v>{total}</v> (разница: <v>{difference}</v>). Ничего не списывается и не возвращается."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9980,8 @@
           "customerMessage": {
             "request_accepted": "запрос принят",
             "request_rejected": "запрос отклонён",
-            "reservation_cancelled": "бронирование отменено"
+            "reservation_cancelled": "бронирование отменено",
+            "reservation_modified": "бронирование изменено"
           }
         }
       }

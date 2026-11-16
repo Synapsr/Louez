@@ -9921,7 +9921,11 @@
           "confirmPastBuffer": "¿Confirmar la reserva pese a tu margen entre alquileres?",
           "confirmBeyondStock": "¿Confirmar la reserva por encima de tu stock?",
           "confirmBeyondStockAndBuffer": "¿Confirmar la reserva por encima de tu stock y de tu margen entre alquileres?",
-          "recordDeposit": "¿Registrar un depósito cobrado?"
+          "recordDeposit": "¿Registrar un depósito cobrado?",
+          "moveDatesWithinRules": "¿Cambiar las fechas de la reserva?",
+          "moveDatesPastBuffer": "¿Cambiar las fechas de la reserva pese a tu margen entre alquileres?",
+          "moveDatesBeyondStock": "¿Cambiar las fechas de la reserva por encima de tu stock?",
+          "moveDatesBeyondStockAndBuffer": "¿Cambiar las fechas de la reserva por encima de tu stock y de tu margen entre alquileres?"
         },
         "facts": {
           "booking": "Reserva #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9955,9 @@
           "messageToCustomer": "El cliente recibirá {channels, select, email {el email} sms {el SMS} other {el email y el SMS}} «<v>{message}</v>»",
           "noMessage": "No se envía ningún mensaje al cliente.",
           "depositCollected": "<v>{type}</v>: <v>{amount}</v> cobrados · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devueltos al cliente · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, devueltos al cliente · <v>{method}</v>",
+          "datesMoved": "Fechas: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nuevo total: <v>{total}</v> (diferencia: <v>{difference}</v>). No se cobra ni se reembolsa nada."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9980,8 @@
           "customerMessage": {
             "request_accepted": "solicitud aceptada",
             "request_rejected": "solicitud rechazada",
-            "reservation_cancelled": "reserva cancelada"
+            "reservation_cancelled": "reserva cancelada",
+            "reservation_modified": "reserva modificada"
           }
         }
       }

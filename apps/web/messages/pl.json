@@ -9921,7 +9921,11 @@
           "confirmPastBuffer": "Potwierdzić rezerwację mimo przerwy między wynajmami?",
           "confirmBeyondStock": "Potwierdzić rezerwację ponad stan magazynu?",
           "confirmBeyondStockAndBuffer": "Potwierdzić rezerwację ponad stan magazynu i mimo przerwy między wynajmami?",
-          "recordDeposit": "Zapisać pobraną kaucję?"
+          "recordDeposit": "Zapisać pobraną kaucję?",
+          "moveDatesWithinRules": "Przesunąć daty rezerwacji?",
+          "moveDatesPastBuffer": "Przesunąć daty rezerwacji mimo przerwy między wynajmami?",
+          "moveDatesBeyondStock": "Przesunąć daty rezerwacji ponad stan magazynu?",
+          "moveDatesBeyondStockAndBuffer": "Przesunąć daty rezerwacji ponad stan magazynu i mimo przerwy między wynajmami?"
         },
         "facts": {
           "booking": "Rezerwacja #<v>{number}</v> · <v>{customer}</v>",
@@ -9951,7 +9955,9 @@
           "messageToCustomer": "Klient otrzyma {channels, select, email {e-mail} sms {SMS} other {e-mail i SMS}} „<v>{message}</v>”",
           "noMessage": "Klient nie dostaje żadnej wiadomości.",
           "depositCollected": "<v>{type}</v>: pobrano <v>{amount}</v> · <v>{method}</v>",
-          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>"
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, zwrócone klientowi · <v>{method}</v>",
+          "datesMoved": "Daty: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nowa suma: <v>{total}</v> (różnica: <v>{difference}</v>). Nic nie jest pobierane ani zwracane."
         },
         "choices": {
           "paymentType": {
@@ -9974,7 +9980,8 @@
           "customerMessage": {
             "request_accepted": "prośba przyjęta",
             "request_rejected": "prośba odrzucona",
-            "reservation_cancelled": "rezerwacja anulowana"
+            "reservation_cancelled": "rezerwacja anulowana",
+            "reservation_modified": "rezerwacja zmieniona"
           }
         }
       }
