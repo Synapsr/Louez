@@ -744,9 +744,15 @@ async function handleCheckoutExpired(
     });
   }
 
-  // A marketplace booking's attempt fails with its own session only: without
-  // the payment row, nothing ties this session to the booking's checkout.
-  if (existingPayment) await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
+  // A marketplace booking's attempt fails with the expiry of its own open
+  // checkout only: the expiry recorded on a row this delivery, or an earlier one
+  // whose line names the session, moved out of pending. A session another
+  // attempt replaced (its row cancelled before its expiry), a session no row
+  // names and a payment request's session fail nothing: the booking's checkout
+  // may still be paid, or another attempt opened since.
+  if (abandoned && existingPayment?.origin !== "payment_request") {
+    await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
+  }
 
   // The flow is a hint of the metadata, not an identifier: it only chooses
   // whether the entry is asked about this payment's own reservation, which

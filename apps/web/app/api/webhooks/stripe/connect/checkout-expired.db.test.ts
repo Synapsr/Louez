@@ -23,7 +23,9 @@ import { closeNetworkForSuite } from "@/lib/testing/network-guard";
 
 // The Connect webhook's `checkout.session.expired` on a migrated database, its
 // POST run whole: the session's payment cancelled with its `payment_expired`
-// row, the marketplace attempt failed, then the abandoned checkout cancelled,
+// row, the marketplace attempt failed by its own checkout's recorded expiry
+// alone (never a replaced session's, never a payment request's), then the
+// abandoned checkout cancelled,
 // each in its own commit, in this order, and the answer and the log. The
 // signature check, the log and the fee runner are replaced; each call is
 // recorded with its payload, in order. A move of the cancellation into
@@ -650,6 +652,122 @@ describe("checkout.session.expired (database)", { skip: skipWithoutTestDatabase(
       },
       paymentExpired(sessionId),
     ]);
+  });
+
+  /** A pending marketplace booking whose attempt waits on its checkout. */
+  async function marketplaceBooking() {
+    const id = await booking("marketplace");
+    await raw.query(
+      `INSERT INTO marketplace_booking_attempts
+         (id, booking_attempt_id, store_id, quote_token_hash, reservation_id, status, expires_at)
+       VALUES (?, ?, ?, ?, ?, 'checkout_pending', ?)`,
+      [nextId("att"), `attempt-${id}`, STORE, "0".repeat(64), id, new Date("2030-01-01T00:00:00Z")],
+    );
+    return id;
+  }
+
+  /** A session's rental row with its origin, as the rental's gate writes it. */
+  async function originPayment(
+    reservationId: string,
+    origin: "customer_session" | "payment_request",
+    status: "pending" | "cancelled",
+  ) {
+    const sessionId = nextId("cs");
+    await louezDb.db.insert(louezDb.payments).values({
+      id: nextId("pay"),
+      reservationId,
+      amount: "10.00",
+      type: "rental",
+      method: "stripe",
+      status,
+      stripeCheckoutSessionId: sessionId,
+      origin,
+      paymentRequestId: origin === "payment_request" ? nextId("prq") : null,
+    });
+    return sessionId;
+  }
+
+  async function attemptStatus(reservationId: string) {
+    const [rows] = await raw.query<RowDataPacket[]>(
+      "SELECT status FROM marketplace_booking_attempts WHERE reservation_id = ?",
+      [reservationId],
+    );
+    return rows[0]?.status;
+  }
+
+  test("a marketplace booking's attempt is failed by no session another attempt replaced: a request's or the customer's, the open one left payable", async () => {
+    for (const origin of ["payment_request", "customer_session"] as const) {
+      const id = await marketplaceBooking();
+      // The first session, replaced by the second before it expired.
+      const replaced = await originPayment(id, origin, "cancelled");
+      const open = await originPayment(id, origin, "pending");
+
+      for (const delivery of [1, 2]) {
+        assert.deepEqual(
+          await expire(id, replaced, null, undefined, {
+            metadata: {
+              reservationId: id,
+              ...(origin === "payment_request" && { paymentRequestId: nextId("prq") }),
+            },
+          }),
+          { status: 200, body: { received: true } },
+          `${origin}, delivery ${delivery}`,
+        );
+        assert.equal(
+          await attemptStatus(id),
+          "checkout_pending",
+          `${origin}, delivery ${delivery}`,
+        );
+        assert.equal(await readStatus(id), "pending", `${origin}, delivery ${delivery}`);
+      }
+      const [row] = await louezDb.db
+        .select({ status: louezDb.payments.status })
+        .from(louezDb.payments)
+        .where(eq(louezDb.payments.stripeCheckoutSessionId, open));
+      assert.equal(row?.status, "pending", `${origin}: the open session's payment`);
+    }
+  });
+
+  test("a payment request's own session expiring on a marketplace booking records its line and fails nothing", async () => {
+    const id = await marketplaceBooking();
+    const sessionId = await originPayment(id, "payment_request", "pending");
+
+    await expire(id, sessionId, null, undefined, {
+      metadata: { reservationId: id, paymentRequestId: nextId("prq") },
+    });
+
+    assert.deepEqual(await readWrites(id), [
+      "1: payments pending > cancelled",
+      "1: reservation_activity + payment_expired",
+    ]);
+    assert.equal(await attemptStatus(id), "checkout_pending");
+    assert.equal(await readStatus(id), "pending");
+  });
+
+  test("the booking's own checkout expiry fails its attempt, and so does a delivery again that finds that expiry recorded", async () => {
+    const id = await marketplaceBooking();
+    const sessionId = await originPayment(id, "customer_session", "pending");
+
+    await expire(id, sessionId, null);
+
+    assert.equal(await attemptStatus(id), "expired");
+    assert.equal(await readStatus(id), "cancelled");
+
+    // An earlier delivery recorded the expiry and its line, then stopped before the
+    // attempt: the delivery again finds its own line and fails the attempt.
+    const stopped = await marketplaceBooking();
+    const stoppedSession = await originPayment(stopped, "customer_session", "cancelled");
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("act"),
+      reservationId: stopped,
+      activityType: "payment_expired",
+      metadata: paymentExpired(stoppedSession).metadata,
+    });
+
+    await expire(stopped, stoppedSession, null);
+
+    assert.equal(await attemptStatus(stopped), "expired");
+    assert.equal(await readStatus(stopped), "cancelled");
   });
 
   test("a cancellation still busy after three runs answers 500 and logs it; its payment stays cancelled, and the event again cancels the checkout", async () => {
