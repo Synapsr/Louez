@@ -99,7 +99,7 @@ type CalendarIntegrationState = {
     enabled: boolean;
     connected: boolean;
     configured: boolean;
-    status: string;
+    status: "disabled" | "active" | "needs_reconnect" | "error" | "syncing";
     accountEmail: string | null;
     calendarName: string | null;
     lastSyncAt: string | null;

@@ -3704,7 +3704,7 @@
             "renterLabel": "Penyewa tulip",
             "renterPlaceholder": "Masukkan dan validasi pengenal akun terlebih dahulu",
             "renterNone": "Tidak ada penyewa yang dipilih",
-            "renterDisabled": "dengan disabilitas",
+            "renterDisabled": "dinonaktifkan",
             "saveButton": "Simpan konfigurasi",
             "savingButton": "Menyimpan..."
           },
@@ -3793,7 +3793,7 @@
         "statusFilters": {
           "all": "Semua",
           "enabled": "Diaktifkan",
-          "disabled": "Dengan disabilitas"
+          "disabled": "Dinonaktifkan"
         },
         "categoriesTitle": "Kategori",
         "categoryCount": "Integrasi {count}",
@@ -3802,7 +3802,7 @@
         "viewAll": "Lihat semuanya",
         "statusLabels": {
           "enabled": "Diaktifkan",
-          "disabled": "Dengan disabilitas",
+          "disabled": "Dinonaktifkan",
           "connected": "Terhubung",
           "notConnected": "Tidak terhubung"
         },
@@ -3864,6 +3864,39 @@
             },
             "resources": {
               "help": "Bantuan Google Kalender"
+            },
+            "panel": {
+              "loading": "Memuat koneksi...",
+              "connectTitle": "Hubungkan Google Kalender",
+              "connectDescription": "Louez akan membuat kalender khusus dan menyinkronkan reservasi Anda ke kalender tersebut.",
+              "oauthNotConfigured": "OAuth Google Kalender belum dikonfigurasi. Tambahkan GOOGLE_CALENDAR_CLIENT_ID dan GOOGLE_CALENDAR_CLIENT_SECRET ke apps/web/.env, lalu mulai ulang server pengembangan.",
+              "connectAction": "Hubungkan Google Kalender",
+              "connectionTitle": "Koneksi Google Kalender",
+              "accountFallback": "Akun Google terhubung",
+              "calendarLabel": "Kalender",
+              "calendarFallback": "Kalender Louez",
+              "lastSyncLabel": "Sinkronisasi terakhir",
+              "neverSynced": "Belum disinkronkan",
+              "resyncAction": "Sinkronkan ulang",
+              "disconnectAction": "Putuskan koneksi",
+              "syncRulesTitle": "Aturan sinkronisasi",
+              "syncRulesDescription": "Acara yang disinkronkan bersifat pribadi dan tidak memblokir ketersediaan Anda di Google.",
+              "syncPendingLabel": "Sinkronkan permintaan yang tertunda",
+              "syncPendingDescription": "Permintaan yang tertunda ditampilkan dengan status sementara.",
+              "showCancelledLabel": "Tampilkan reservasi yang dibatalkan di kalender",
+              "showCancelledDescription": "Reservasi yang dibatalkan tetap terlihat dengan status pembatalannya.",
+              "status": {
+                "disabled": "Nonaktif",
+                "active": "Aktif",
+                "needs_reconnect": "Perlu dihubungkan ulang",
+                "error": "Kesalahan",
+                "syncing": "Sedang menyinkronkan"
+              },
+              "toasts": {
+                "settingsSaved": "Pengaturan disimpan",
+                "resyncStarted": "Sinkronisasi ulang dimulai",
+                "disconnected": "Koneksi Google Kalender diputuskan"
+              }
             }
           },
           "icsCalendar": {
@@ -3876,6 +3909,17 @@
             },
             "resources": {
               "help": "referensi iCalendar"
+            },
+            "panel": {
+              "description": "Kompatibel dengan Kalender Apple, Outlook, dan kalender langganan lainnya.",
+              "urlLabel": "Tautan kalender",
+              "loading": "Memuat...",
+              "copyAction": "Salin tautan",
+              "refreshNote": "Louez langsung memublikasikan perubahan, tetapi frekuensi pembaruannya bergantung pada aplikasi kalender yang berlangganan.",
+              "regenerateAction": "Buat ulang tautan",
+              "toasts": {
+                "regenerated": "Tautan ICS dibuat ulang"
+              }
             }
           },
           "superpdp": {
@@ -4936,7 +4980,7 @@
         "description": "Tetapkan jam buka toko Anda",
         "navDescription": "Jam dan penutupan",
         "enabled": "Diaktifkan",
-        "disabled": "Dengan disabilitas",
+        "disabled": "Dinonaktifkan",
         "enabledDescription": "Batasi slot pengambilan/pengembalian pada jam buka",
         "weeklySchedule": "Jadwal mingguan",
         "weeklyScheduleDescription": "Tetapkan jam kerja Anda untuk setiap hari dalam seminggu",
@@ -5266,7 +5310,7 @@
           "description": "Pilih apakah Louez harus menerbitkan faktur Anda sekarang. Anda dapat mengubah pilihan ini kapan saja.",
           "statusActive": "Penerbitan diaktifkan",
           "statusReceptionOnly": "Penerimaan saja",
-          "statusInactive": "Dengan disabilitas",
+          "statusInactive": "Dinonaktifkan",
           "lockedTitle": "Lengkapi identitas hukum Anda terlebih dahulu",
           "lockedDescription": "Faktur resmi harus mencantumkan nama resmi, bentuk resmi, nomor perusahaan, dan alamat terdaftar Anda. Isi langkah 1 sebelum memilih mode faktur Anda.",
           "choiceLabel": "Bagaimana Anda ingin menggunakan faktur elektronik?",
@@ -5677,7 +5721,7 @@
         "activeDescription": "Akun Stripe Anda terhubung dan beroperasi. Anda dapat menerima pembayaran online.",
         "incompleteDescription": "Penyiapan Stripe Anda belum selesai. Silakan selesaikan pengaturan untuk menerima pembayaran.",
         "connectStripe": "Hubungkan Stripe",
-        "completeSetup": "Penyetelan Lengkap",
+        "completeSetup": "Selesaikan penyiapan",
         "openDashboard": "Dasbor Stripe",
         "sync": "Sinkronisasi",
         "synced": "Status disinkronkan",
@@ -6288,7 +6332,7 @@
             "pending": "Menunggu publikasi",
             "published": "Diterbitkan",
             "paused": "Dijeda",
-            "disabled": "Dengan disabilitas"
+            "disabled": "Dinonaktifkan"
           },
           "publishedAt": "Diterbitkan di {date}",
           "reason": {
