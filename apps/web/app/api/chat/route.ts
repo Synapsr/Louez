@@ -9,12 +9,15 @@ import { getCurrentStore } from "@/lib/store-context";
 
 import { apiPorts } from "@/lib/api/ports";
 import { createAssistantApi } from "@/lib/ai/assistant-api";
+import { chatRequestRefusal } from "@/lib/ai/chat-request";
 import { getAIModel, isAIChatConfigured } from "@/lib/ai/provider";
 import { checkRateLimit, validateMessageLength } from "@/lib/ai/rate-limit";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { createAITools } from "@/lib/ai/tools";
 import type { AIChatContext } from "@/lib/ai/tools";
 import { notifyAiChatStarted } from "@/lib/discord/platform-notifications";
+
+import { env } from "@/env";
 
 const chatRequestSchema = z.object({
   messages: z
@@ -57,6 +60,10 @@ function roleToPermissions(role: string): ApiKeyPermissions {
 }
 
 export async function POST(req: Request) {
+  // Only this app's own pages, with the chat's JSON: first, before the session.
+  const refusal = chatRequestRefusal(req, env.NEXT_PUBLIC_APP_URL);
+  if (refusal) return refusal;
+
   // Auth check
   const session = await auth();
   if (!session?.user?.id) {
