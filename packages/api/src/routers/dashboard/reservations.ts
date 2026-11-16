@@ -691,7 +691,11 @@ const requestPayment = requirePermission("write")
       if (result.error) {
         throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
-      return { success: true as const, paymentUrl: result.paymentUrl || null };
+      return {
+        success: true as const,
+        paymentUrl: result.paymentUrl || null,
+        notificationResults: result.notificationResults ?? {},
+      };
     } catch (error) {
       throw toORPCError(error);
     }

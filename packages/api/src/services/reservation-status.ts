@@ -98,7 +98,15 @@ export interface StatusChangeCaller {
   /** May read customers: the preview then names the customer. */
   customers: boolean;
   store: ApiEventStore;
-  ports: Pick<ApiPorts, "afterCommit" | "runReservationEffects" | "insurance" | "dispatchEffects">;
+  ports: Pick<
+    ApiPorts,
+    | "afterCommit"
+    | "runReservationEffects"
+    | "insurance"
+    | "dispatchEffects"
+    | "emailConfigured"
+    | "smsConfigured"
+  >;
 }
 
 /** What a status change will do, under its locks, for its confirmation. */
@@ -121,6 +129,16 @@ export interface StatusChangePreview {
    * caller may read customers, the address or number it goes to.
    */
   messages: Array<{ message: CustomerStatusMessage; channel: "email" | "sms"; to?: string }>;
+  /**
+   * The messages owed to the customer that cannot go out, and why: an e-mail
+   * on an instance with no e-mail service (`email_not_configured`), an SMS on
+   * one with no SMS provider (`sms_not_configured`). Each is
+   * still queued, given up at once by its sender, and listed in the store's
+   * inbox (`message_not_sent`), so the store tells the customer itself.
+   * Absent when every message goes, so the binding of such a preview is
+   * what it was before the field.
+   */
+  messagesNotSent?: StatusChangeOutput["messagesNotSent"];
   /** The items leave the stock for these dates (a request or a quote is confirmed). */
   reducesAvailability: boolean;
   /**
@@ -360,6 +378,13 @@ const recipientsOf = (
 ): Array<{ channel: "email" | "sms"; to: string | undefined }> =>
   messages.map((entry) => ({ channel: entry.channel, to: addressOf(entry.channel, locked) }));
 
+/** Why a channel cannot go, and how the preview names it. */
+const NOT_CONFIGURED = {
+  email: "email_not_configured",
+  sms: "sms_not_configured",
+} as const satisfies Record<"email" | "sms", string>;
+const CHANNEL_NAMES = { email: "e-mail", sms: "SMS" } as const;
+
 /** Each message as the preview names it. */
 const MESSAGE_NAMES: Record<CustomerStatusMessage, string> = {
   request_accepted: "request accepted",
@@ -413,14 +438,39 @@ async function buildPreview(
   const period = `${locked.startDate.toISOString()} to ${locked.endDate.toISOString()}`;
 
   const message = customerMessageOf(locked.status, to);
-  const messages =
+  const owed =
     message && locked.customer
       ? customerMessages(store.customerNotificationSettings, message, locked.customer)
       : [];
-  const sends =
+  // As the creation's preview says it: a message this instance cannot send never goes.
+  const configured = {
+    email: caller.ports.emailConfigured?.() !== false,
+    sms: caller.ports.smsConfigured?.() !== false,
+  };
+  const messages = owed.filter((entry) => configured[entry.channel]);
+  const messagesNotSent = owed
+    .filter((entry) => !configured[entry.channel])
+    .map((entry) => ({
+      message: entry.message,
+      channel: entry.channel,
+      reason: NOT_CONFIGURED[entry.channel],
+    }));
+  const sends = [
     message && messages.length > 0
       ? `${who} gets the "${MESSAGE_NAMES[message]}" message by ${messages.map((entry) => entry.channel).join(" and ")}.`
-      : "No message goes to the customer.";
+      : "No message goes to the customer.",
+    ...(message
+      ? messagesNotSent.map(
+          (entry) =>
+            `The "${MESSAGE_NAMES[message]}" ${CHANNEL_NAMES[entry.channel]} cannot go out: this instance has no ${CHANNEL_NAMES[entry.channel]} service (${entry.reason}).`,
+        )
+      : []),
+    message && messagesNotSent.length > 0
+      ? "The store's inbox lists it as not sent, for the store to tell the customer itself."
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   let moneyFacts: StatusChangePreview["money"] = null;
   if (to === "cancelled") {
@@ -494,6 +544,7 @@ async function buildPreview(
     messages: caller.customers
       ? messages.map((entry) => ({ ...entry, to: addressOf(entry.channel, locked) }))
       : messages,
+    ...(messagesNotSent.length > 0 ? { messagesNotSent } : {}),
     reducesAvailability: takesStock(locked.status, to),
     overbooking,
     turnoverBuffer,
@@ -528,6 +579,7 @@ type TransactionOutcome =
       warnings: StatusChangeOutput["warnings"];
       /** The outbox rows of the change; the last is its analytics event. */
       effectIds: string[];
+      messagesNotSent: StatusChangeOutput["messagesNotSent"];
     };
 
 /**
@@ -687,7 +739,9 @@ export async function changeStoreReservationStatus(
             transport: caller.transport,
             rejectionReason: request.rejectionReason ?? null,
             warningCount: warnings.length,
-            messages: preview.messages,
+            // The e-mail that cannot go is queued too: its sender gives it
+            // up at once, and the store's inbox shows it.
+            messages: [...preview.messages, ...(preview.messagesNotSent ?? [])],
           }),
         );
         return {
@@ -698,6 +752,7 @@ export async function changeStoreReservationStatus(
           effects: change.effects,
           warnings: warnings.map(({ key, params }) => ({ key, ...(params ? { params } : {}) })),
           effectIds,
+          messagesNotSent: preview.messagesNotSent ?? [],
         };
       },
     );
@@ -762,6 +817,7 @@ export async function changeStoreReservationStatus(
     from: outcome.from,
     to: outcome.to,
     warnings,
+    messagesNotSent: outcome.messagesNotSent,
   };
 }
 

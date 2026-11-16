@@ -105,6 +105,11 @@ export interface ApiPorts {
    */
   emailConfigured?: () => boolean;
   /**
+   * Whether this instance can send SMS (an SMS provider configured): a
+   * preview names an SMS it cannot send as not sent. Absent: it can.
+   */
+  smsConfigured?: () => boolean;
+  /**
    * Sends an unexpected server error to the app's error tracking
    * (platform/error-reporting.ts). Never throws, never waits. Absent: nothing
    * is sent (tests, scripts, an instance without error tracking).

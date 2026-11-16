@@ -3925,7 +3925,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
 
     if (amount > rentalRemaining) {
-      return { error: "errors.invalidAmount" };
+      return { error: "errors.amountExceedsDue" };
     }
   }
 
@@ -3938,7 +3938,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     );
 
     if (amount > depositRemaining) {
-      return { error: "errors.invalidAmount" };
+      return { error: "errors.amountExceedsDue" };
     }
   }
 
@@ -4885,6 +4885,7 @@ export async function requestPayment(
   success?: boolean;
   error?: string;
   paymentUrl?: string;
+  notificationResults?: { email?: boolean; sms?: boolean };
 }> {
   try {
     const store = await getStoreForUser();
@@ -4990,10 +4991,13 @@ export async function requestPayment(
       paymentUrl = `${baseUrl}/pay/${reservationId}?token=${token}`;
     }
 
-    // Send notifications
+    // Send notifications. A channel counts as sent only when its message
+    // really went out; the request and its link stay whatever happened.
     const notificationResults: { email?: boolean; sms?: boolean } = {};
 
-    if (data.channels.email) {
+    if (data.channels.email && !isEmailConfigured()) {
+      notificationResults.email = false;
+    } else if (data.channels.email) {
       try {
         if (data.type === "deposit") {
           await sendDepositAuthorizationRequestEmail({
@@ -5062,8 +5066,11 @@ export async function requestPayment(
 
     if (data.channels.sms && reservation.customer.phone) {
       try {
+        // The sender answers a missing provider, the quota or a refused number
+        // with `success: false`, without throwing.
+        let smsResult: { success: boolean };
         if (data.type === "deposit") {
-          await sendDepositAuthorizationRequestSms({
+          smsResult = await sendDepositAuthorizationRequestSms({
             store: {
               id: store.id,
               name: store.name,
@@ -5091,7 +5098,7 @@ export async function requestPayment(
                 ?.smsMessage,
           });
         } else {
-          await sendPaymentRequestSms({
+          smsResult = await sendPaymentRequestSms({
             store: {
               id: store.id,
               name: store.name,
@@ -5117,7 +5124,7 @@ export async function requestPayment(
               store.customerNotificationSettings?.templates?.customer_payment_requested?.smsMessage,
           });
         }
-        notificationResults.sms = true;
+        notificationResults.sms = smsResult.success === true;
       } catch (error) {
         console.error("Failed to send payment request SMS:", error);
         notificationResults.sms = false;
@@ -5154,6 +5161,8 @@ export async function requestPayment(
     return {
       success: true,
       paymentUrl,
+      // What went out, by channel: the dialog says it as it is.
+      notificationResults,
     };
   } catch (error) {
     console.error("Failed to request payment:", error);
