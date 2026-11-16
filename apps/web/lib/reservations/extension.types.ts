@@ -50,6 +50,16 @@ export const extensionAttemptSchema = z.object({
             discountPercent: z.number().nullable(),
             discountAmount: z.number(),
             tierApplied: z.string().nullable(),
+            // The line's recorded promotion, carried through as stored (slice 9);
+            // absent when the line recorded none.
+            promotion: z
+              .object({
+                percentage: z.number(),
+                originalSubtotal: z.number(),
+                discountAmount: z.number(),
+              })
+              .nullable()
+              .optional(),
             taxRate: z.number().nullable(),
             taxAmount: z.number().nullable(),
             subtotalExclTax: z.number().nullable(),

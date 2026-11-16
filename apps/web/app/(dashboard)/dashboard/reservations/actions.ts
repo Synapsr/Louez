@@ -12,7 +12,7 @@ import {
   splitShortfallsByTurnoverBuffer,
 } from "@louez/api/services/reservation-inventory";
 
-import { validateReservationContract } from "@louez/api/services";
+import { taxDisplayModeOf, validateReservationContract } from "@louez/api/services";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -1003,6 +1003,9 @@ export async function createManualReservation(data: CreateReservationData) {
       depositAmount: depositAmount.toFixed(2),
       totalAmount: totalAmount.toFixed(2),
       discountAmount: manualDiscountAmount.toFixed(2),
+      // The store's tax display mode, recorded (slice 9). Its totals do not
+      // run the tax engine yet: they are what the store's prices add up to.
+      taxDisplayMode: taxDisplayModeOf(store.settings?.tax),
       internalNotes: data.internalNotes || null,
       source: "manual",
       // Staff books on the customer's behalf: the profile's default identity
@@ -1051,6 +1054,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: detail.depositPerUnit,
         totalPrice: detail.totalPrice,
         pricingBreakdown: detail.pricingBreakdown,
+        taxExempt: false,
         combinationKey: choice.combinationKey,
         selectedAttributes: choice.selectedAttributes,
         productSnapshot: {
@@ -1074,6 +1078,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: customItem.depositPerUnit,
         totalPrice: customItem.totalPrice,
         pricingBreakdown: customItem.pricingBreakdown,
+        taxExempt: false,
         productSnapshot: {
           name: customItem.name,
           description: customItem.description,
@@ -1091,6 +1096,8 @@ export async function createManualReservation(data: CreateReservationData) {
         unitPrice: tulipInsuranceAmount.toFixed(2),
         depositPerUnit: "0.00",
         totalPrice: tulipInsuranceAmount.toFixed(2),
+        // Insurance carries no VAT, whatever the store's settings.
+        taxExempt: true,
         productSnapshot: {
           name: "Garantie casse/vol",
           description: "Garantie casse/vol",

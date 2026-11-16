@@ -1083,15 +1083,18 @@ The new booking's messages belong to the creation lot.
 
 ### 9. Booking pricing facts preserved
 
-**Proposed rule.** The facts that a line's first pricing used are kept on the line:
+**Done**, ahead of slice 7. The rule: the facts a reservation was priced with are recorded with it: the tax display mode on the reservation, the exemption and the promotion on each line. A fact that was not recorded reads as "not recorded", never as zero, false or none. No amount, total, tax figure or price changes.
 
-- the applied promotion (`AppliedProductPromotion` on `pricingBreakdown`, `packages/types/src/store.ts:531`), as percentage and amounts;
-- the line's tax rate and exemption (`reservation_items.tax_rate`, `schema.ts:1954`), and the inclusion mode;
-- the promo code's discount.
+- **Where they live.** Migration 0107 adds two nullable columns: `reservations.tax_display_mode` (`inclusive`, `exclusive`; with taxes off the engine prices as `inclusive`, and that is recorded) and `reservation_items.tax_exempt` (outside the tax by rule, whatever the store's settings: the insurance line; a product line is not). The promotion is `pricingBreakdown.promotion` (`AppliedProductPromotion`): the promotion, or `null` when none applied; a breakdown without the key, or no breakdown, did not record it. The line's tax rate stays `reservation_items.tax_rate`; the promo code's discount stays `reservations.discount_amount`. Rows written before 0107 keep null: no backfill.
+- **Who records what.**
+  - The storefront checkout (`create-reservation.ts`) and the API's creation (`reservation-create.ts`): the mode the engine priced with, `tax_exempt` on every line (`true` on the insurance line), and a breakdown on every line (`checkoutLineBreakdown`, `services/price-cart.ts`), its promotion or `null`. Before, only a promoted line had a breakdown.
+  - The date change of the API and agents (`reservation-dates.ts`) leaves the mode and the exemptions as stored; a line that recorded its promotion keeps it recorded: the one its new price applied, which its pricing guard has shown is the stored one still in force, or `null`. Before, a recorded "none" was dropped.
+  - The extension (`extension-quote.ts`) does the same; before, it rebuilt the breakdown without the promotion. Its plan carries the promotion through the attempt (`extension.types.ts`).
+  - The dashboard's creation (`createManualReservation`) records the store's mode and each line's exemption. Its totals do not run the tax engine yet (slice 10), and it records no promotion: it prices without one, through the seasonal engine, and the dashboard's edit, which rewrites its breakdowns, carries none yet (slice 11).
+  - The dashboard's edit writes no fact yet: a line it adds records none, and a line it reprices loses its recorded promotion, as before (slice 11).
+- **Readers.** `recordedTaxDisplayMode`, `recordedTaxExempt`, `recordedPromotion` (`packages/api/src/services/pricing-facts.ts`) return the fact or `"not_recorded"`. The date change's pricing guard does not use the recorded mode: it still compares with today's settings, so a store that changed its mode since the booking is still sent to the dashboard. Using the recorded mode there would let such a change through and write amounts, which this slice does not do.
 
-A fact that is missing on the line today gets an additive field. Existing rows keep null, which means "not recorded".
-
-**Test.** A new booking stores every fact. A row with a missing fact reads as "not recorded", never as zero.
+**Test.** Per creator, the money it stores for one input is the base's, and the new facts are present; on the base, each test passes its money assertions and fails on the facts: `reservation-create-parity.db.test.ts` (the checkout and the API's creation), `create-manual-reservation.db.test.ts`, `reservation-dates.db.test.ts`, `extension-pricing-facts.db.test.ts`. The existing suites of each creator pass unchanged.
 
 ### 10. Edit totals from the tax engine, under the locks
 

@@ -63,6 +63,7 @@ import {
   runPostCreationEffects,
 } from "./post-creation-effects";
 import {
+  checkoutLineBreakdown,
   computeReservationTotals,
   getReservationItemTaxFields,
   INSURANCE_TAX_LINE_ID,
@@ -683,6 +684,8 @@ const buildReservationValues = (
     subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
     taxAmount: totals.taxAmount?.toFixed(2) ?? null,
     taxRate: totals.taxRate?.toFixed(2) ?? null,
+    // The facts it was priced with (slice 9).
+    taxDisplayMode: totals.displayMode,
     customerNotes: request.customerNotes || null,
     source: request.source,
     // The web checkout requires accepting the rental terms: the customer signs here.
@@ -756,28 +759,8 @@ const buildReservationItemValues = (
       unitPrice: line.unitPrice.toFixed(2),
       depositPerUnit: line.depositPerUnit.toFixed(2),
       totalPrice: line.subtotal.toFixed(2),
-      ...(line.promotion
-        ? {
-            pricingBreakdown: {
-              basePrice: prepared.catalog.get(line.productId)?.price ?? line.unitPrice,
-              effectivePrice: line.unitPrice,
-              duration: line.duration,
-              pricingMode: prepared.catalog.get(line.productId)?.pricingMode ?? "day",
-              pricingKind: line.pricingKind,
-              discountPercent: line.promotion.percentage,
-              discountAmount: line.promotion.discountAmount,
-              tierApplied: null,
-              promotion: line.promotion,
-              taxRate: tax.taxRate,
-              taxAmount: tax.taxAmount,
-              subtotalExclTax: tax.totalExclTax,
-              subtotalInclTax:
-                tax.totalExclTax !== null && tax.taxAmount !== null
-                  ? tax.totalExclTax + tax.taxAmount
-                  : line.subtotal,
-            },
-          }
-        : {}),
+      // What its pricing used, the promotion included, on every line (slice 9).
+      pricingBreakdown: checkoutLineBreakdown(prepared.catalog.get(line.productId), line, tax),
       productSnapshot: buildProductSnapshot(prepared.catalog, item, resolved),
       combinationKey: resolved?.combinationKey || item.resolvedCombinationKey || null,
       selectedAttributes:
@@ -786,6 +769,7 @@ const buildReservationItemValues = (
       taxAmount: tax.taxAmount?.toFixed(2) ?? null,
       priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
       totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+      taxExempt: false,
     };
   });
 
@@ -804,6 +788,8 @@ const buildReservationItemValues = (
       taxAmount: insuranceTax?.taxAmount.toFixed(2) ?? null,
       priceExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
       totalExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
+      // Insurance carries no VAT, whatever the store's settings.
+      taxExempt: true,
       productSnapshot: {
         name: INSURANCE_ITEM_NAME,
         description: null,

@@ -4,6 +4,12 @@ import { after, before, describe, test } from "node:test";
 
 import { and, asc, eq, ne } from "drizzle-orm";
 
+import {
+  NOT_RECORDED,
+  recordedPromotion,
+  recordedTaxDisplayMode,
+  recordedTaxExempt,
+} from "@louez/api/services/pricing-facts";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 // The store's creation through the API (`createStoreReservation`,
@@ -45,6 +51,32 @@ const STORES = [
   },
 ];
 
+/** A store of its own for the facts test, whose bookings the parity tests do not count. */
+const FACTS_STORE = {
+  id: "parity_store_facts",
+  currency: "EUR",
+  tax: { enabled: true, defaultRate: 20, displayMode: "exclusive" as const },
+};
+// What each creator wrote for the facts test's cart before 0107: no amount
+// changes. Per line, in the cart's order: unit price, total, tax rate, tax,
+// price before tax, total before tax.
+const FACTS_MONEY = {
+  subtotal: "468.94",
+  deposit: "520.00",
+  total: "555.31",
+  subtotalExclTax: "468.94",
+  tax: "86.37",
+  taxRate: "20.00",
+};
+const FACTS_LINES = [
+  ["37.05", "74.10", "20.00", "14.82", "37.05", "74.10"],
+  ["37.05", "37.05", "0.00", "0.00", "37.05", "37.05"],
+  ["50.97", "152.92", "20.00", "30.58", "50.97", "152.92"],
+  ["33.30", "33.30", "20.00", "6.66", "33.30", "33.30"],
+  ["25.98", "51.97", "20.00", "10.39", "25.98", "51.97"],
+  ["29.90", "119.60", "20.00", "23.92", "29.90", "119.60"],
+];
+
 describe(
   "an agent's creation prices as the checkout prices (database)",
   { skip: skipWithoutTestDatabase() },
@@ -64,7 +96,7 @@ describe(
       // hand. Loaded after the checkout, as the mocks change how later modules load.
       await import("@louez/mcp/testing/cjs-named-exports");
       agent = await import("@louez/api/services/reservation-create");
-      for (const store of STORES) {
+      for (const store of [...STORES, FACTS_STORE]) {
         await louezDb.db.insert(louezDb.stores).values({
           id: store.id,
           userId: "owner",
@@ -200,57 +232,66 @@ describe(
       };
     }
 
+    /** The same cart booked through the checkout and through the API's creation. */
+    async function bookBoth(
+      store: (typeof STORES)[number],
+      lines: Awaited<ReturnType<typeof catalog>>,
+    ) {
+      const fromCheckout = await checkout.createReservation({
+        source: "online",
+        storeId: store.id,
+        customer: {
+          email: `buyer-${store.id}@parity.test`,
+          firstName: "Ada",
+          lastName: "Lovelace",
+        },
+        items: lines.map((line) => ({
+          ...line,
+          startDate: START,
+          endDate: END,
+          unitPrice: 0,
+          depositPerUnit: 0,
+        })),
+        subtotalAmount: 0,
+        depositAmount: 0,
+        totalAmount: 0,
+      });
+      assert.ok(fromCheckout.ok, JSON.stringify(fromCheckout));
+
+      const fromAgent = await agent.createStoreReservation(
+        {
+          storeId: store.id,
+          userId: null,
+          credential: { kind: "api_key", id: "parity_key" },
+          transport: "openapi",
+          store: { id: store.id, name: store.id, slug: store.id, ownerUserId: "owner" },
+          ports: {
+            afterCommit: () => {},
+            runReservationEffects: async () => {},
+            dispatchEffects: () => {},
+          },
+        },
+        {
+          customer: {
+            email: `agent-${store.id}@parity.test`,
+            firstName: "Ada",
+            lastName: "Lovelace",
+          },
+          startDate: START,
+          endDate: END,
+          lines,
+          status: "quote",
+          notifyCustomer: false,
+        },
+      );
+      return { fromCheckout, fromAgent };
+    }
+
     for (const store of STORES) {
       test(`the same cart, the same money: ${store.currency}, prices ${store.tax.displayMode} of ${store.tax.defaultRate}% tax`, async () => {
         const lines = await catalog(store.id);
 
-        const fromCheckout = await checkout.createReservation({
-          source: "online",
-          storeId: store.id,
-          customer: {
-            email: `buyer-${store.id}@parity.test`,
-            firstName: "Ada",
-            lastName: "Lovelace",
-          },
-          items: lines.map((line) => ({
-            ...line,
-            startDate: START,
-            endDate: END,
-            unitPrice: 0,
-            depositPerUnit: 0,
-          })),
-          subtotalAmount: 0,
-          depositAmount: 0,
-          totalAmount: 0,
-        });
-        assert.ok(fromCheckout.ok, JSON.stringify(fromCheckout));
-
-        const fromAgent = await agent.createStoreReservation(
-          {
-            storeId: store.id,
-            userId: null,
-            credential: { kind: "api_key", id: "parity_key" },
-            transport: "openapi",
-            store: { id: store.id, name: store.id, slug: store.id, ownerUserId: "owner" },
-            ports: {
-              afterCommit: () => {},
-              runReservationEffects: async () => {},
-              dispatchEffects: () => {},
-            },
-          },
-          {
-            customer: {
-              email: `agent-${store.id}@parity.test`,
-              firstName: "Ada",
-              lastName: "Lovelace",
-            },
-            startDate: START,
-            endDate: END,
-            lines,
-            status: "quote",
-            notifyCustomer: false,
-          },
-        );
+        const { fromCheckout, fromAgent } = await bookBoth(store, lines);
 
         const theirs = await stored(fromCheckout.reservationId);
         const ours = await stored(fromAgent.id);
@@ -290,5 +331,66 @@ describe(
         assert.deepEqual(others, []);
       });
     }
+
+    test("each creator records the facts it priced with (slice 9); no amount changes", async () => {
+      const lines = await catalog(FACTS_STORE.id);
+      const { fromCheckout, fromAgent } = await bookBoth(FACTS_STORE, lines);
+
+      for (const id of [fromCheckout.reservationId, fromAgent.id]) {
+        const [row] = await louezDb.db
+          .select()
+          .from(louezDb.reservations)
+          .where(eq(louezDb.reservations.id, id));
+        assert.ok(row);
+        const rows = await louezDb.db
+          .select()
+          .from(louezDb.reservationItems)
+          .where(eq(louezDb.reservationItems.reservationId, id));
+        const items = lines.map((line) => {
+          const item = rows.find((candidate) => candidate.productId === line.productId);
+          assert.ok(item, line.productId);
+          return item;
+        });
+
+        assert.deepEqual(
+          {
+            subtotal: row.subtotalAmount,
+            deposit: row.depositAmount,
+            total: row.totalAmount,
+            subtotalExclTax: row.subtotalExclTax,
+            tax: row.taxAmount,
+            taxRate: row.taxRate,
+          },
+          FACTS_MONEY,
+          id,
+        );
+        assert.deepEqual(
+          items.map((item) => [
+            item.unitPrice,
+            item.totalPrice,
+            item.taxRate,
+            item.taxAmount,
+            item.priceExclTax,
+            item.totalExclTax,
+          ]),
+          FACTS_LINES,
+          id,
+        );
+
+        assert.equal(recordedTaxDisplayMode(row), "exclusive");
+        assert.deepEqual(
+          items.map(recordedTaxExempt),
+          lines.map(() => false),
+        );
+        // The promoted line records its promotion; every other line records none.
+        assert.deepEqual(
+          items.map((item) => {
+            const promotion = recordedPromotion(item);
+            return promotion === NOT_RECORDED ? promotion : (promotion?.percentage ?? null);
+          }),
+          [null, null, 15, null, null, null],
+        );
+      }
+    });
   },
 );

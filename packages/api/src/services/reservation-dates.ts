@@ -49,6 +49,7 @@ import {
   type ReservationTotals,
 } from "./price-cart";
 import { loadPricingCatalog, type PricingCatalog } from "./pricing-catalog";
+import { NOT_RECORDED, recordedPromotion } from "./pricing-facts";
 import { validateReservationContract } from "./reservation-contract-validation";
 import {
   ReservationCapacityShortfallError,
@@ -383,14 +384,22 @@ async function hasVanishedVariant(
   return exact.some((line) => !carried.has(`${line.productId}\u0000${line.combinationKey}`));
 }
 
-/** The line's pricing breakdown as the checkout writes it, from the new window's price. */
+/**
+ * The line's pricing breakdown as the checkout writes it, from the new
+ * window's price. A line that recorded its promotion keeps it recorded
+ * (slice 9): the one its new price applied, which the pricing guard has shown
+ * is the stored one still in force, or `null` for none. A line that recorded
+ * nothing records the promotion its new price applied, if any, as before.
+ */
 function breakdownOf(
   catalog: PricingCatalog,
   cart: PricedCart,
   totals: ReservationTotals,
   index: number,
   window: { start: Date; end: Date },
+  stored: Pick<LockedItem, "pricingBreakdown">,
 ): PricingBreakdown {
+  const recorded = recordedPromotion(stored) !== NOT_RECORDED;
   const line = cart.lines[index]!;
   const product = catalog.get(line.productId);
   const tax = getReservationItemTaxFields(totals, line, index);
@@ -408,7 +417,7 @@ function breakdownOf(
         : null,
     discountAmount: line.savings,
     tierApplied: null,
-    ...(line.promotion ? { promotion: line.promotion } : {}),
+    ...(recorded || line.promotion ? { promotion: line.promotion ?? null } : {}),
     taxRate: tax.taxRate,
     taxAmount: tax.taxAmount,
     subtotalExclTax: tax.totalExclTax,
@@ -722,7 +731,7 @@ export async function changeReservationDates(
             taxAmount: nullableMoney(tax.taxAmount),
             priceExclTax: nullableMoney(tax.priceExclTax),
             totalExclTax: nullableMoney(tax.totalExclTax),
-            pricingBreakdown: breakdownOf(catalog, cart, totals, index, window),
+            pricingBreakdown: breakdownOf(catalog, cart, totals, index, window, item),
           })
           .where(and(eq(reservationItems.id, item.id), eq(reservationItems.reservationId, id)));
       }

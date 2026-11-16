@@ -24,4 +24,5 @@ export * from "./required-accessories";
 export * from "./reservation-edit-context";
 export * from "./variant-axes";
 export * from "./pricing-catalog";
+export * from "./pricing-facts";
 export * from "./promo";
