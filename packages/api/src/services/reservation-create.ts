@@ -10,6 +10,7 @@ import {
   insertReservation,
   isReservationChangeBusyError,
   isStoreNotAcceptingReservationsError,
+  lockCustomerRow,
   markReservation,
   productAccessories,
   products,
@@ -185,7 +186,7 @@ export interface ReservationCreatePreview {
 }
 
 /** How a branch was asked, as the confirmation rule decides it (`confirmationStep`). */
-export type CreateAskedStep = (preview: ReservationCreatePreview) => "approval" | "token" | "none";
+export type CreateAskedStep = (branch: { flagged: boolean }) => "approval" | "token" | "none";
 
 export type CreateConfirmStep = (
   preview: ReservationCreatePreview,
@@ -311,6 +312,36 @@ async function requiresInsurance(tx: Transaction, storeId: string): Promise<bool
     )
     .limit(1);
   return row?.publicMode === "required";
+}
+
+/** How many times an e-mail is resolved again when its customer changed under the lock. */
+const CUSTOMER_LOCK_ATTEMPTS = 3;
+
+/**
+ * The store's customer with this e-mail, locked by its id: the id found with
+ * no lock, the row locked through the primary key (`lockCustomerRow`), then
+ * read again and checked under the lock. A row gone, moved or given another
+ * e-mail since resolves the e-mail again, `CUSTOMER_LOCK_ATTEMPTS` times at
+ * most, then "changed". Null when the store has no customer with it.
+ */
+async function lockCustomerByEmail(
+  tx: Transaction,
+  storeId: string,
+  email: string,
+): Promise<typeof customers.$inferSelect | null | "changed"> {
+  for (let attempt = 0; attempt < CUSTOMER_LOCK_ATTEMPTS; attempt += 1) {
+    const [candidate] = await tx
+      .select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.storeId, storeId), eq(customers.email, email)))
+      .limit(1);
+    if (!candidate) return null;
+    await lockCustomerRow(tx, candidate.id);
+    const [row] = await tx.select().from(customers).where(eq(customers.id, candidate.id));
+    // The column's collation compares e-mails without case, as the read did.
+    if (row?.storeId === storeId && row.email.toLowerCase() === email.toLowerCase()) return row;
+  }
+  return "changed";
 }
 
 /** The store row, locked: every creation of this service waits for the one before it. */
@@ -513,22 +544,27 @@ export async function createStoreReservation(
       // The customer, resolved and locked before the preview, so what is shown and
       // bound is what is written: an existing customer's row is held to the commit;
       // a new one is added after the ask, and checked again then (`resolveCustomer`).
+      // Every customer is locked by its id, through the primary key (`lockCustomerRow`).
       let customer: ResolvedCustomer;
       if ("id" in input.customer) {
+        await lockCustomerRow(tx, input.customer.id);
         const [row] = await tx
           .select()
           .from(customers)
-          .where(and(eq(customers.id, input.customer.id), eq(customers.storeId, storeId)))
-          .for("update");
+          .where(and(eq(customers.id, input.customer.id), eq(customers.storeId, storeId)));
         if (!row) return refuse(reservationCreateErrors.customerNotFound(input.customer.id));
         customer = { kind: "existing", row };
       } else {
         const email = normalizeCustomerEmail(input.customer.email);
-        const [row] = await tx
-          .select()
-          .from(customers)
-          .where(and(eq(customers.storeId, storeId), eq(customers.email, email)))
-          .for("update");
+        const found = await lockCustomerByEmail(tx, storeId, email);
+        if (found === "changed") {
+          // The e-mail's customer kept changing under the lock: nothing was bound to it yet.
+          const step = options.asked?.({ flagged: allowOverbooking || overrideTurnoverBuffer });
+          if (step === "approval") return refuse(approvalErrors.invalid("state_changed"));
+          if (step === "token") return refuse(platformErrors.confirmationInvalid());
+          return refuse(reservationCreateErrors.busy());
+        }
+        const row = found;
         customer = row
           ? { kind: "existing", row }
           : {
@@ -733,7 +769,10 @@ export async function createStoreReservation(
       // caller gets a new preview that names the existing customer. A call
       // nobody asked uses the existing customer unchanged (`created: false`).
       if (customer.kind === "new" && !resolved.created) {
-        const step = options.asked?.(preview) ?? "none";
+        const step =
+          options.asked?.({
+            flagged: preview.overbooking !== null || preview.turnoverBuffer !== null,
+          }) ?? "none";
         if (step === "approval") throw approvalErrors.invalid("state_changed");
         if (step === "token") throw platformErrors.confirmationInvalid();
       }

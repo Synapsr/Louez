@@ -192,12 +192,8 @@ const create = storeProcedure
       // A call that went on with a token or an approval id was bound to its
       // preview: an approval when a flag was sent (a person always approves
       // an override), else a token. Without one, nobody was asked.
-      asked: (preview) =>
-        !context.headers.get(CONFIRMATION_HEADER)
-          ? "none"
-          : preview.overbooking !== null || preview.turnoverBuffer !== null
-            ? "approval"
-            : "token",
+      asked: ({ flagged }) =>
+        !context.headers.get(CONFIRMATION_HEADER) ? "none" : flagged ? "approval" : "token",
     });
     return answerOf(context, created);
   });

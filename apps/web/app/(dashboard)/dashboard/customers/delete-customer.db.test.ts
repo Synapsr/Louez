@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 
 import {
   createTestDatabase,
+  reservationChangeTestHooks,
   skipWithoutTestDatabase,
   waitForLockWaits,
   type TestDatabase,
@@ -106,6 +107,8 @@ describe(
 
     let customer = "";
     beforeEach(async () => {
+      // The creation's owner entry runs again on a lost deadlock: counted, to be none.
+      reservationChangeTestHooks().restarts = 0;
       customer = nextId("cus");
       await louezDb.db.insert(louezDb.customers).values({
         id: customer,
@@ -117,7 +120,8 @@ describe(
     });
 
     /** The store's creation for the customer, through the service; `confirm` runs under its locks. */
-    const create = (confirm: () => Promise<null>) =>
+    type Form = "id" | "email";
+    const create = (confirm: () => Promise<null>, form: Form = "id") =>
       creation.createStoreReservation(
         {
           storeId: STORE,
@@ -132,7 +136,10 @@ describe(
           },
         },
         {
-          customer: { id: customer },
+          customer:
+            form === "id"
+              ? { id: customer }
+              : { email: `${customer}@delete.test`, firstName: "Someone", lastName: "Else" },
           startDate: START,
           endDate: END,
           lines: [{ productId: product, quantity: 1 }],
@@ -155,62 +162,116 @@ describe(
           .where(eq(louezDb.customers.id, customer))
       ).length === 1;
 
-    test("the creation locks first: the deletion waits, then is refused, the customer having a reservation", async () => {
-      const monitor = await database.connect();
-      try {
-        let deletion: Promise<unknown> | null = null;
-        const created = await create(async () => {
-          // Under the creation's locks, the store and the customer held: the deletion starts.
-          deletion = actions.deleteCustomer(customer);
-          await waitForLockWaits(monitor, database.name, 1);
-          return null;
-        });
-        assert.ok(deletion, "the deletion ran");
-        assert.deepEqual(await deletion, { error: "errors.customerHasReservations" });
-        assert.deepEqual(
-          (await reservationsOf()).map((row) => row.id),
-          [created.id],
-        );
-        assert.equal(await customerExists(), true);
-      } finally {
-        await monitor.end();
-      }
-    });
+    /** The indexes of `customers` the database's record locks are on. */
+    const customerLockIndexes = async (monitor: import("mysql2/promise").Connection) => {
+      const [rows] = await monitor.query<import("mysql2/promise").RowDataPacket[]>(
+        `SELECT DISTINCT INDEX_NAME AS name FROM performance_schema.data_locks
+         WHERE OBJECT_SCHEMA = ? AND OBJECT_NAME = 'customers' AND LOCK_TYPE = 'RECORD'`,
+        [database.name],
+      );
+      return rows.map((row) => String(row.name)).sort();
+    };
 
-    test("the deletion locks first: the creation waits, then finds no customer, nothing created, nothing asked", async () => {
-      // A session of the customer, locked, holds the deletion inside its transaction.
-      const session = nextId("ses");
-      await louezDb.db.insert(louezDb.customerSessions).values({
-        id: session,
-        customerId: customer,
-        token: `token-${session}`,
-        expiresAt: new Date(Date.now() + 3_600_000),
+    for (const form of ["id", "email"] as const) {
+      test(`by ${form}, the creation locks first: it holds its customer by the primary key; the deletion waits, then is refused`, async () => {
+        const monitor = await database.connect();
+        try {
+          let deletion: Promise<unknown> | null = null;
+          let indexes: string[] = [];
+          const created = await create(async () => {
+            // Under the creation's locks: the customer is held through the primary key only.
+            indexes = await customerLockIndexes(monitor);
+            deletion = actions.deleteCustomer(customer);
+            await waitForLockWaits(monitor, database.name, 1);
+            return null;
+          }, form);
+          assert.deepEqual(indexes, ["PRIMARY"], "no lock on another index of customers");
+          assert.ok(deletion, "the deletion ran");
+          assert.deepEqual(await deletion, { error: "errors.customerHasReservations" });
+          assert.deepEqual(
+            (await reservationsOf()).map((row) => row.id),
+            [created.id],
+          );
+          assert.deepEqual(created.customer, { id: customer, created: false });
+          assert.equal(await customerExists(), true);
+          assert.equal(
+            reservationChangeTestHooks().restarts,
+            0,
+            "no deadlock: the creation never ran again",
+          );
+        } finally {
+          await monitor.end();
+        }
       });
-      const holder = await database.connect();
-      let asked = 0;
-      try {
-        await holder.beginTransaction();
-        await holder.query("SELECT id FROM customer_sessions WHERE id = ? FOR UPDATE", [session]);
-        const deletion = actions.deleteCustomer(customer);
-        await waitForLockWaits(holder, database.name, 1);
-        const creating = create(async () => {
-          asked += 1;
-          return null;
-        }).then(
-          () => "created",
-          (error: { data?: { code?: string } }) => error.data?.code ?? String(error),
+
+      test(`by ${form}, the deletion locks first: the creation waits, then ${form === "id" ? "finds no customer, nothing created, nothing asked" : "adds the customer again"}`, async () => {
+        // A session of the customer, locked, holds the deletion inside its transaction.
+        const session = nextId("ses");
+        await louezDb.db.insert(louezDb.customerSessions).values({
+          id: session,
+          customerId: customer,
+          token: `token-${session}`,
+          expiresAt: new Date(Date.now() + 3_600_000),
+        });
+        const holder = await database.connect();
+        let asked = 0;
+        let outcome: unknown;
+        try {
+          await holder.beginTransaction();
+          await holder.query("SELECT id FROM customer_sessions WHERE id = ? FOR UPDATE", [session]);
+          const deletion = actions.deleteCustomer(customer);
+          await waitForLockWaits(holder, database.name, 1);
+          const creating = create(async () => {
+            asked += 1;
+            return null;
+          }, form).then(
+            (created) => created,
+            (error: { data?: { code?: string } }) => error.data?.code ?? String(error),
+          );
+          // The creation waits for the store row the deletion holds.
+          await waitForLockWaits(holder, database.name, 2);
+          await holder.commit();
+          assert.deepEqual(await deletion, { success: true });
+          outcome = await creating;
+        } finally {
+          await holder.end();
+        }
+        assert.equal(await customerExists(), false);
+        assert.equal(
+          reservationChangeTestHooks().restarts,
+          0,
+          "no deadlock: the creation never ran again",
         );
-        // The creation waits for the store row the deletion holds.
-        await waitForLockWaits(holder, database.name, 2);
-        await holder.commit();
-        assert.deepEqual(await deletion, { success: true });
-        assert.equal(await creating, "CUSTOMER_NOT_FOUND");
+        if (form === "id") {
+          assert.equal(outcome, "CUSTOMER_NOT_FOUND");
+          assert.equal(asked, 0, "nothing asked: an approval it carried would be unused");
+          assert.deepEqual(await reservationsOf(), []);
+        } else {
+          const created = outcome as { customer: { id: string; created: boolean } };
+          assert.equal(created.customer.created, true, "a customer with that e-mail, added again");
+          assert.notEqual(created.customer.id, customer);
+        }
+      });
+    }
+
+    test("the customer's lock, by either form and by the deletion, reads through the primary key", async () => {
+      const connection = await database.connect();
+      try {
+        for (const statement of [
+          // lockCustomerRow (packages/db), which the creation takes for both forms.
+          "EXPLAIN SELECT id FROM customers FORCE INDEX (PRIMARY) WHERE id = ? FOR UPDATE",
+          // The deletion's lock.
+          "EXPLAIN SELECT id FROM customers WHERE id = ? AND store_id = ? FOR UPDATE",
+        ]) {
+          const [plan] = await connection.query<import("mysql2/promise").RowDataPacket[]>(
+            statement,
+            [customer, STORE],
+          );
+          assert.equal(plan[0]?.key, "PRIMARY", statement);
+        }
       } finally {
-        await holder.end();
+        await connection.end();
       }
-      assert.equal(asked, 0, "nothing asked: an approval it carried would be unused");
-      assert.deepEqual(await reservationsOf(), []);
-      assert.equal(await customerExists(), false);
     });
 
     test("a customer with a reservation is refused, one without is deleted, as before", async () => {
