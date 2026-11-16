@@ -6904,7 +6904,8 @@
           "completed": "완료",
           "declined": "거절됨. 아무것도 실행되지 않았습니다.",
           "expired": "만료됨. 아무것도 실행되지 않았습니다.",
-          "ended": "실행되지 않음. 아무것도 실행되지 않았습니다."
+          "ended": "실행되지 않음. 아무것도 실행되지 않았습니다.",
+          "unavailable": "이 요청은 여기에서 더 이상 읽을 수 없습니다."
         },
         "continue": "계속",
         "followUp": "승인됨, 계속 진행"
@@ -9331,10 +9332,6 @@
       "syncFailed": "상태 동기화 오류",
       "dashboardLinkFailed": "Stripe 대시보드를 여는 중 오류가 발생했습니다.",
       "alreadyConnected": "Stripe 계정이 이미 연결되어 있습니다",
-      "noChargeToRefund": "환불할 Stripe 결제가 없습니다.",
-      "alreadyRefunded": "이 결제 금액은 이미 환불되었습니다.",
-      "refundExceedsCharge": "환불 금액이 결제 금액을 초과합니다.",
-      "refundFailed": "환불 처리 중 오류가 발생했습니다.",
       "noSavedCard": "이 고객에 대해 저장된 카드가 없습니다.",
       "invalidDepositStatus": "입금 상태가 해당 작업을 허용하지 않습니다.",
       "noDepositRequired": "이 예약에는 보증금이 필요하지 않습니다.",

@@ -18,6 +18,9 @@ mock.module("@/lib/api/effects", {
 mock.module("@/lib/reservations/deposit-hold-debts", {
   namedExports: { runDepositReleaseDebtsCron: fake("runDepositReleaseDebtsCron") },
 });
+mock.module("@/lib/reservations/stripe-refund-cron", {
+  namedExports: { runStaleRefundOperationsCron: fake("runStaleRefundOperationsCron") },
+});
 /** While set, the abandoned checkouts' pass waits on its provider for ever. */
 let passHangs = false;
 mock.module("@/lib/reservations/abandoned-checkouts", {
@@ -45,7 +48,7 @@ mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
 
-test("every cron call requeues the deposit releases owed, runs the outbox, each purge of the agent-ready API, its background jobs, then settles the abandoned checkouts", async () => {
+test("every cron call requeues the deposit releases owed and the refunds still requested, runs the outbox, each purge of the agent-ready API, its background jobs, then settles the abandoned checkouts", async () => {
   const { apiTasks } = await import("./api-tasks");
   const tasks = apiTasks();
   const results = [];
@@ -55,6 +58,11 @@ test("every cron call requeues the deposit releases owed, runs the outbox, each 
       task: "deposit-release-debts",
       key: "depositReleaseDebts",
       runs: "runDepositReleaseDebtsCron",
+    },
+    {
+      task: "stale-refund-operations",
+      key: "staleRefundOperations",
+      runs: "runStaleRefundOperationsCron",
     },
     { task: "api-effects", key: "apiEffects", runs: "runApiEffectsCron" },
     {
@@ -90,6 +98,7 @@ test("a pass over abandoned checkouts that hangs on its provider holds no other 
 
   assert.deepEqual(called, [
     "runDepositReleaseDebtsCron",
+    "runStaleRefundOperationsCron",
     "runApiEffectsCron",
     "pruneInboxAcknowledgements",
     "purgeHandoffs",

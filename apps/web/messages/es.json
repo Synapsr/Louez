@@ -6904,7 +6904,8 @@
           "completed": "Hecho",
           "declined": "Rechazado. No se hizo nada.",
           "expired": "Caducado. No se hizo nada.",
-          "ended": "No realizado. No se hizo nada."
+          "ended": "No realizado. No se hizo nada.",
+          "unavailable": "Esta solicitud ya no se puede leer aquí."
         },
         "continue": "Continuar",
         "followUp": "Aprobado, seguimos"
@@ -9331,10 +9332,6 @@
       "syncFailed": "Error en la sincronización",
       "dashboardLinkFailed": "Error al abrir el panel de Stripe",
       "alreadyConnected": "Cuenta de Stripe ya conectada",
-      "noChargeToRefund": "No hay pago de Stripe para reembolsar",
-      "alreadyRefunded": "Este pago ya ha sido reembolsado",
-      "refundExceedsCharge": "El monto del reembolso excede el monto del pago",
-      "refundFailed": "Error en el reembolso",
       "noSavedCard": "No hay tarjeta guardada para este cliente",
       "invalidDepositStatus": "El estado del depósito no permite esta operación",
       "noDepositRequired": "No se requiere depósito para esta reserva",

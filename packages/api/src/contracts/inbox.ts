@@ -27,6 +27,12 @@ export const INBOX_ITEM_TYPES = [
   "deposit_unconfirmed",
   /** A second deposit authorization whose release Stripe has not confirmed: the card may still carry it. */
   "deposit_release_failed",
+  /** A refund of an online payment Stripe has not confirmed a day after it was asked. */
+  "refund_unconfirmed",
+  /** A recorded Stripe refund that failed afterwards: its credit note, or Louez's fee given back on it, to see to. */
+  "refund_undone",
+  /** A refund's credit note the outbox gave up on: tried again once a day. */
+  "credit_note_not_issued",
   /** A Stripe dispute (chargeback) still open. */
   "dispute_open",
   /** A booking holds a unit that is retired or out of service over its dates. */

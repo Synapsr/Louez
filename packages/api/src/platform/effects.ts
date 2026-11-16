@@ -1,6 +1,15 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { apiEffects, db, reservations, stores, type Transaction } from "@louez/db";
+import {
+  apiEffects,
+  db,
+  invoicePayments,
+  invoices,
+  payments,
+  reservations,
+  stores,
+  type Transaction,
+} from "@louez/db";
 import { and, asc, eq, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -324,8 +333,20 @@ export interface ApiEffectPayloads {
     paymentIntentId: string;
   };
   /**
-   * The credit note a refund the store gave by hand is owed
-   * (services/payment-records.ts, `recordPaymentRefund`). Added in the
+   * A refund of an online payment, asked of the payment provider (apps/web
+   * lib/reservations/stripe-refund.ts). Added in the write that records the
+   * operation (`payment_refund_operations`); the operation's row says what to send,
+   * so a run after a lost answer asks about the same refund. An operation already
+   * settled is skipped. It sends nothing to anyone.
+   */
+  "payment.refund": {
+    /** The operation's row (`payment_refund_operations.id`). */
+    operationId: string;
+  };
+  /**
+   * The credit note a refund is owed: one the store gave by hand
+   * (services/payment-records.ts, `recordPaymentRefund`), or a Stripe refund
+   * (apps/web lib/reservations/stripe-refund-writes.ts). Added in the
    * refund's own transaction, so it is owed as soon as the refund exists;
    * the invoicing issues one credit note per refund, so a run after one that
    * issued it changes nothing. It sends nothing.
@@ -899,6 +920,90 @@ export async function retryDueEffects(
   );
 }
 
+/**
+ * The effects that are a debt, not a message: one the outbox gave up on stays owed,
+ * is kept past the retention, and is armed again by the cron.
+ */
+export const OWED_EFFECT_TYPES = [
+  "payment.refundCreditNote",
+] as const satisfies readonly ApiEffectType[];
+
+/** How long an abandoned debt waits before the cron arms it again. */
+export const OWED_EFFECT_REARM_MS = 86_400_000;
+
+/**
+ * How long after it was owed the cron keeps arming a debt again: past it, one whose
+ * note never came is left abandoned, still shown in the inbox, for a person.
+ */
+export const OWED_EFFECT_REARM_DAYS = 90;
+
+/**
+ * Whether a `payment.refundCreditNote` row is still owed: its refund row exists, is
+ * `completed`, and has no credit note yet. One whose refund failed, or that names no
+ * refund row, owes nothing.
+ */
+export const creditNoteStillOwedSql = () =>
+  sql<boolean>`EXISTS (
+    SELECT 1 FROM ${payments}
+    WHERE ${payments.id} = JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.refundId'))
+      AND ${payments.status} = 'completed'
+      AND NOT EXISTS (
+        SELECT 1 FROM ${invoicePayments}
+        INNER JOIN ${invoices} ON ${invoices.id} = ${invoicePayments.invoiceId}
+        WHERE ${invoicePayments.paymentId} = ${payments.id} AND ${invoices.type} = 'credit_note'
+      )
+  )`;
+
+/**
+ * Arms again the abandoned rows of the owed effect types (`OWED_EFFECT_TYPES`) that
+ * were abandoned a day ago or more and are still owed (`creditNoteStillOwedSql`): back
+ * to pending with no attempt counted, so the outbox tries them again. A row armed again
+ * and abandoned again waits another day; one owed more than 90 days ago is armed no
+ * more. A row ends when its note is issued, when it turns out not to apply (its refund
+ * failed: the sender ends it with nothing to issue), or when it names no refund row
+ * (never owed: left abandoned, as the sender reported it). The oldest first, bounded
+ * per run, in the database's time. The rows' ids, for the dispatcher.
+ */
+export async function rearmAbandonedEffects(limit = 20): Promise<string[]> {
+  const due = await db
+    .select({ id: apiEffects.id })
+    .from(apiEffects)
+    .where(
+      and(
+        eq(apiEffects.status, "abandoned"),
+        inArray(apiEffects.type, [...OWED_EFFECT_TYPES]),
+        // An abandoned row's next attempt is the time it was abandoned.
+        lte(apiEffects.nextAttemptAt, dbNowPlus(-OWED_EFFECT_REARM_MS)),
+        sql`${apiEffects.createdAt} > NOW(3) - INTERVAL ${sql.raw(String(OWED_EFFECT_REARM_DAYS))} DAY`,
+        creditNoteStillOwedSql(),
+      ),
+    )
+    .orderBy(asc(apiEffects.nextAttemptAt), asc(apiEffects.id))
+    .limit(limit);
+  const armed: string[] = [];
+  for (const { id } of due) {
+    // Only a row still abandoned and still due: a second run, at once, arms nothing.
+    const [result] = await db
+      .update(apiEffects)
+      .set({
+        status: "pending",
+        attempts: 0,
+        claimToken: null,
+        lockedUntil: null,
+        nextAttemptAt: dbNowPlus(0),
+      })
+      .where(
+        and(
+          eq(apiEffects.id, id),
+          eq(apiEffects.status, "abandoned"),
+          lte(apiEffects.nextAttemptAt, dbNowPlus(-OWED_EFFECT_REARM_MS)),
+        ),
+      );
+    if (result.affectedRows === 1) armed.push(id);
+  }
+  return armed;
+}
+
 /** Deletes the done rows older than the retention: their payloads hold personal data. */
 export async function pruneEffects(limit = 500) {
   const old = await db
@@ -908,6 +1013,8 @@ export async function pruneEffects(limit = 500) {
       and(
         inArray(apiEffects.status, [...DONE]),
         lt(apiEffects.createdAt, dbNowPlus(-EFFECT_RETENTION_MS)),
+        // A debt is kept while it is owed: the cron arms it again (`rearmAbandonedEffects`).
+        sql`NOT (${apiEffects.status} = 'abandoned' AND ${inArray(apiEffects.type, [...OWED_EFFECT_TYPES])} AND ${creditNoteStillOwedSql()})`,
       ),
     )
     .limit(limit);

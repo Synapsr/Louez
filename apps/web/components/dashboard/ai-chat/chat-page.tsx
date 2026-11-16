@@ -34,6 +34,7 @@ export const ChatPage = ({ advisorDiscovery, voiceDiscovery }: ChatPageProps) =>
     messages,
     isLoading,
     continueApproval,
+    followUpIds,
     chatId,
     historyRef,
     errorMessage,
@@ -143,6 +144,7 @@ export const ChatPage = ({ advisorDiscovery, voiceDiscovery }: ChatPageProps) =>
                 messages={messages}
                 isLoading={isLoading}
                 onApprovalContinue={continueApproval}
+                followUpIds={followUpIds}
               />
             ) : (
               <ChatEmptyState

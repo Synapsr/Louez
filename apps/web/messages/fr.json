@@ -6904,7 +6904,8 @@
           "completed": "Fait",
           "declined": "Refusé. Rien n’a été fait.",
           "expired": "Expiré. Rien n’a été fait.",
-          "ended": "Non effectué. Rien n’a été fait."
+          "ended": "Non effectué. Rien n’a été fait.",
+          "unavailable": "Cette demande ne peut plus être lue ici."
         },
         "continue": "Continuer",
         "followUp": "Approuvé, on continue"
@@ -9331,10 +9332,6 @@
       "syncFailed": "Erreur lors de la synchronisation",
       "dashboardLinkFailed": "Erreur lors de l'ouverture du tableau de bord Stripe",
       "alreadyConnected": "Compte Stripe déjà connecté",
-      "noChargeToRefund": "Aucun paiement Stripe à rembourser",
-      "alreadyRefunded": "Ce paiement a déjà été remboursé",
-      "refundExceedsCharge": "Le montant du remboursement dépasse le montant du paiement",
-      "refundFailed": "Erreur lors du remboursement",
       "noSavedCard": "Aucune carte enregistrée pour ce client",
       "invalidDepositStatus": "Le statut de la caution ne permet pas cette opération",
       "noDepositRequired": "Aucune caution n'est requise pour cette réservation",

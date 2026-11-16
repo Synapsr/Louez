@@ -21,7 +21,10 @@ export type FeeReversalStripe = {
     chargeId: string,
     accountId: string,
   ): Promise<
-    Pick<Stripe.Charge, "id" | "amount" | "amount_refunded" | "application_fee" | "payment_intent">
+    Pick<
+      Stripe.Charge,
+      "id" | "amount" | "amount_captured" | "amount_refunded" | "application_fee" | "payment_intent"
+    >
   >;
   /** The fee, on the platform account. */
   retrieveApplicationFee(
@@ -98,6 +101,12 @@ export type FeeReversalResult =
       readonly feeId: string;
       readonly targetMinor: number;
       readonly incrementMinor: number;
+      /**
+       * The fee given back in all once this call is done, as Stripe counts it. Above
+       * `targetMinor` when a refund failed after its share of the fee was given back:
+       * Stripe cannot take an application fee refund back.
+       */
+      readonly feeRefundedMinor: number;
     };
 
 /**
@@ -156,7 +165,9 @@ export async function reverseFeeAtSource(input: {
         const { targetMinor, incrementMinor } = reversalAtSource({
           feeMinor: fee.amount,
           feeRefundedMinor: fee.amount_refunded,
-          chargeMinor: charge.amount,
+          // What the charge took: after a partial capture, `amount` is the
+          // authorization, more than the money the fee was taken on.
+          chargeMinor: charge.amount_captured,
           refundedMinor: charge.amount_refunded,
           disputedMinor: disputedMinor(charge.id, disputes),
         });
@@ -183,6 +194,7 @@ export async function reverseFeeAtSource(input: {
           feeId: fee.id,
           targetMinor,
           incrementMinor,
+          feeRefundedMinor: fee.amount_refunded + incrementMinor,
         };
       },
     ),

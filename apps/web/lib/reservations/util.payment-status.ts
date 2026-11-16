@@ -40,6 +40,13 @@ export const isRefundRow = (payment: PaymentLike): boolean =>
   isStripeRefundRow(payment) ||
   payment.type === "deposit_return";
 
+/**
+ * A refund that gave nothing back: Stripe reported it failed or canceled. Its row counts
+ * for nothing, and is never shown as money given back.
+ */
+export const isFailedRefundRow = (payment: PaymentLike): boolean =>
+  isRefundRow(payment) && (payment.status === "failed" || payment.status === "cancelled");
+
 /** With `currency`, the reservation's, a payment in another currency pays nothing. */
 export const isRentalPaid = (payments: readonly PaymentLike[], currency?: string): boolean =>
   payments.some(
@@ -90,6 +97,8 @@ export const getCustomerPaymentRows = <T extends PaymentLike>(
     (payment) => payment.type === "deposit_capture" && payment.status === "completed",
   );
   return payments.filter((payment) => {
+    // A refund that gave nothing back is no money given back to the customer.
+    if (isFailedRefundRow(payment)) return false;
     if (payment.type !== "deposit_hold") return true;
     if (!isCustomerDepositHoldRow(payment, depositPaymentIntentId)) return false;
     return !(captured && payment.status === "completed");

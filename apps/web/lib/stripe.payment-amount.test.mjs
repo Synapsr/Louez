@@ -63,7 +63,7 @@ for (const amount of [9, 10, 49]) {
 }
 
 test("a direct payment request cannot bypass the minimum; the exact minimum works", async () => {
-  const f = fixture("createPaymentRequestSession", "createRefund");
+  const f = fixture("createPaymentRequestSession", "createDepositAuthorizationIntent");
   await assert.rejects(f.fn({ currency: "EUR", amount: 10 }), /errors.paymentAmountTooSmall/);
   assert.equal(f.calls.length, 0);
   const result = await f.fn({

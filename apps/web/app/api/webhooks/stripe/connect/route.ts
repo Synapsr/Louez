@@ -39,9 +39,10 @@ import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-pa
 import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
 import { env } from "@/env";
+import { dispatchApiEffects } from "@/lib/api/effects";
 
 import { handleChargeDispute } from "./charge-dispute";
-import { handleChargeRefunded } from "./charge-refund";
+import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
 import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
 import { failedAttemptBinding, failedAttemptReservationId } from "./failed-attempt-binding";
 import { matchesDeploymentMode } from "./matches-deployment-mode";
@@ -254,7 +255,25 @@ export async function POST(request: Request) {
 
       // Refund events
       case "charge.refunded":
-        await handleChargeRefunded(event.data.object, connectedAccountId);
+        await handleChargeRefunded(
+          event.data.object,
+          connectedAccountId,
+          stripeChargeRefund,
+          dispatchApiEffects,
+        );
+        break;
+
+      // A refund that failed or was canceled after Stripe made it. Each is handled
+      // only when enabled on the Connect webhook endpoint.
+      case "refund.failed":
+      case "refund.updated":
+      case "charge.refund.updated":
+        await handleRefundUpdated(
+          event.data.object,
+          connectedAccountId,
+          stripeChargeRefund,
+          dispatchApiEffects,
+        );
         break;
 
       // Dispute / chargeback. Stripe only sends the events enabled on the Connect

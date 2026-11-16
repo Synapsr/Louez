@@ -6904,7 +6904,8 @@
           "completed": "已完成",
           "declined": "已拒绝。未执行任何操作。",
           "expired": "已过期。未执行任何操作。",
-          "ended": "未执行。未执行任何操作。"
+          "ended": "未执行。未执行任何操作。",
+          "unavailable": "此处已无法读取该请求。"
         },
         "continue": "继续",
         "followUp": "已批准，继续"
@@ -9331,10 +9332,6 @@
       "syncFailed": "同步状态时出错",
       "dashboardLinkFailed": "打开 Stripe 仪表板时出错",
       "alreadyConnected": "Stripe 账户已连接",
-      "noChargeToRefund": "Stripe 未付款可退款",
-      "alreadyRefunded": "该笔款项已被退回",
-      "refundExceedsCharge": "退款金额超过付款金额",
-      "refundFailed": "处理退款时出错",
       "noSavedCard": "没有为该客户保存卡",
       "invalidDepositStatus": "充值状态不允许此操作",
       "noDepositRequired": "此预订无需支付押金",

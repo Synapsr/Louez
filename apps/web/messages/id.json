@@ -6904,7 +6904,8 @@
           "completed": "Selesai",
           "declined": "Ditolak. Tidak ada yang dilakukan.",
           "expired": "Kedaluwarsa. Tidak ada yang dilakukan.",
-          "ended": "Tidak dijalankan. Tidak ada yang dilakukan."
+          "ended": "Tidak dijalankan. Tidak ada yang dilakukan.",
+          "unavailable": "Permintaan ini tidak dapat dibaca lagi di sini."
         },
         "continue": "Lanjutkan",
         "followUp": "Disetujui, melanjutkan"
@@ -9331,10 +9332,6 @@
       "syncFailed": "Kesalahan saat menyinkronkan status",
       "dashboardLinkFailed": "Kesalahan saat membuka dasbor Stripe",
       "alreadyConnected": "Akun Stripe sudah terhubung",
-      "noChargeToRefund": "Tidak ada pembayaran Stripe yang dapat dikembalikan",
-      "alreadyRefunded": "Pembayaran ini telah dikembalikan",
-      "refundExceedsCharge": "Jumlah pengembalian dana melebihi jumlah pembayaran",
-      "refundFailed": "Terjadi kesalahan saat memproses pengembalian dana",
       "noSavedCard": "Tidak ada kartu yang disimpan untuk pelanggan ini",
       "invalidDepositStatus": "Status deposit tidak mengizinkan operasi ini",
       "noDepositRequired": "Tidak diperlukan deposit untuk reservasi ini",

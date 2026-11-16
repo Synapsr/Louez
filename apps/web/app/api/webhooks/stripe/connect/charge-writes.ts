@@ -1,10 +1,9 @@
 import { type SQL, and, eq, isNull, ne, or, sql } from "drizzle-orm";
 
-import { db, isPaymentReceiptSql, markReservation, markReservationIds } from "@louez/db";
+import { db, isPaymentReceiptSql, markReservation } from "@louez/db";
 import { paymentDisputes, payments, reservations, stores } from "@louez/db";
 
 import { log } from "@/lib/evlog";
-import { fromStripeCents } from "@/lib/stripe";
 
 import {
   type DisputeEventType,
@@ -13,38 +12,9 @@ import {
   readDisputeFacts,
 } from "./dispute-facts";
 
-// The Connect webhook's writes to a charge's payment and its disputes, each in one
-// transaction with the reservation's billing mark (louez-billing docs/api, §5.2).
-
-/**
- * Brings the payment down to what the store keeps, `netMinor`: the charge's captured
- * amount less its refunds, read from Stripe, never from the event (Stripe does not
- * order events). Only `amount` is netted: `gross_minor` keeps the charge amount
- * (README Q7). A payment found through its PaymentIntent gets the charge id it lacked
- * (README Q36).
- */
-export async function netRefundedChargePayment(input: {
-  readonly paymentId: string;
-  readonly reservationId: string;
-  readonly chargeId: string;
-  /** Upper case. */
-  readonly currency: string;
-  readonly netMinor: number;
-}): Promise<void> {
-  const netAmount = fromStripeCents(input.netMinor, input.currency);
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payments)
-      .set({
-        amount: netAmount.toFixed(2),
-        status: input.netMinor > 0 ? "completed" : "refunded",
-        stripeChargeId: sql`COALESCE(${payments.stripeChargeId}, ${input.chargeId})`,
-        updatedAt: new Date(),
-      })
-      .where(eq(payments.id, input.paymentId));
-    await markReservationIds(tx, [input.reservationId]);
-  });
-}
+// The Connect webhook's reads of a charge's payment, and its writes of the charge's
+// disputes, in one transaction with the reservation's billing mark (louez-billing
+// docs/api, §5.2). A charge's refunds are written by lib/reservations/stripe-refund-writes.ts.
 
 /**
  * The payment was taken on this connected account, or, for rows written before

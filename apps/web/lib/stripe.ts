@@ -301,58 +301,6 @@ export async function createPaymentRequestSession({
 }
 
 // ============================================================================
-// Refunds
-// ============================================================================
-
-interface CreateRefundParams {
-  stripeAccountId: string;
-  chargeId: string;
-  amount?: number; // In cents, omit for full refund
-  reason?: "requested_by_customer" | "duplicate" | "fraudulent";
-}
-
-export async function createRefund({
-  stripeAccountId,
-  chargeId,
-  amount,
-  reason = "requested_by_customer",
-}: CreateRefundParams) {
-  const refundParams: Stripe.RefundCreateParams = {
-    charge: chargeId,
-    reason,
-  };
-
-  if (amount) {
-    refundParams.amount = amount;
-  }
-
-  const refund = await stripe.refunds.create(refundParams, {
-    stripeAccount: stripeAccountId,
-  });
-
-  return {
-    refundId: refund.id,
-    amount: refund.amount,
-    status: refund.status,
-    currency: refund.currency.toUpperCase(),
-  };
-}
-
-export async function getChargeRefundableAmount(stripeAccountId: string, chargeId: string) {
-  const charge = await stripe.charges.retrieve(chargeId, {
-    stripeAccount: stripeAccountId,
-  });
-
-  return {
-    refundable: !charge.refunded && charge.amount > charge.amount_refunded,
-    amount: charge.amount - charge.amount_refunded,
-    alreadyRefunded: charge.amount_refunded,
-    /** The charge's own currency, which a refund of it is counted in. */
-    currency: charge.currency.toUpperCase(),
-  };
-}
-
-// ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
 

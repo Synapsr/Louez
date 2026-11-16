@@ -6904,7 +6904,8 @@
           "completed": "Klaar",
           "declined": "Geweigerd. Er is niets gedaan.",
           "expired": "Verlopen. Er is niets gedaan.",
-          "ended": "Niet uitgevoerd. Er is niets gedaan."
+          "ended": "Niet uitgevoerd. Er is niets gedaan.",
+          "unavailable": "Deze aanvraag kan hier niet meer worden gelezen."
         },
         "continue": "Doorgaan",
         "followUp": "Goedgekeurd, we gaan verder"
@@ -9331,10 +9332,6 @@
       "syncFailed": "Fout bij synchronisatie",
       "dashboardLinkFailed": "Fout bij openen van Stripe-dashboard",
       "alreadyConnected": "Stripe-account al verbonden",
-      "noChargeToRefund": "Geen Stripe-betaling om terug te betalen",
-      "alreadyRefunded": "Deze betaling is al terugbetaald",
-      "refundExceedsCharge": "Het terugbetalingsbedrag overschrijdt het betalingsbedrag",
-      "refundFailed": "Fout bij terugbetaling",
       "noSavedCard": "Geen kaart opgeslagen voor deze klant",
       "invalidDepositStatus": "De borgstatus staat deze bewerking niet toe",
       "noDepositRequired": "Geen borg vereist voor deze reservering",
