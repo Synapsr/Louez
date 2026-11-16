@@ -8153,6 +8153,7 @@
         "expiredDescription": "Dieser Zahlungslink ist abgelaufen. Bitte kontaktieren Sie den Vermieter für einen neuen Link.",
         "alreadyPaidTitle": "Bereits bezahlt",
         "alreadyPaidDescription": "Diese Zahlung wurde bereits abgeschlossen.",
+        "noLongerCurrentDescription": "Diese Zahlungsanforderung entspricht nicht mehr dem, was für die Reservierung noch offen ist. Bitte kontaktieren Sie den Shop.",
         "cancelledTitle": "Zahlung storniert",
         "cancelledDescription": "Diese Zahlungsanfrage wurde vom Vermieter storniert.",
         "unavailableTitle": "Zahlung nicht verfügbar",

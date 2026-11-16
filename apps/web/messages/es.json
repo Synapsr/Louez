@@ -8153,6 +8153,7 @@
         "expiredDescription": "Este enlace de pago ha caducado. Contacte con la tienda para solicitar uno nuevo.",
         "alreadyPaidTitle": "Ya pagado",
         "alreadyPaidDescription": "Este pago ya ha sido realizado.",
+        "noLongerCurrentDescription": "Esta solicitud de pago ya no corresponde a lo que queda por pagar de la reserva. Ponte en contacto con la tienda.",
         "cancelledTitle": "Pago cancelado",
         "cancelledDescription": "Esta solicitud de pago ha sido cancelada por la tienda.",
         "unavailableTitle": "Pago no disponible",

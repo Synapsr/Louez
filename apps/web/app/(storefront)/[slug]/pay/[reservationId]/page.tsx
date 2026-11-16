@@ -25,10 +25,16 @@ type OutcomeTone = "success" | "pending" | "info" | "destructive";
 
 const ERROR_PRESENTATION: Record<
   Exclude<PaymentRequestError, "store_not_found" | "reservation_not_found">,
-  { tone: OutcomeTone; icon: ReactNode; key: string }
+  { tone: OutcomeTone; icon: ReactNode; key: string; titleKey?: string }
 > = {
   invalid_token: { tone: "destructive", icon: <CircleAlertIcon />, key: "expired" },
   already_paid: { tone: "success", icon: <CheckIcon />, key: "alreadyPaid" },
+  no_longer_current: {
+    tone: "info",
+    icon: <InfoIcon />,
+    key: "noLongerCurrent",
+    titleKey: "unavailable",
+  },
   cancelled: { tone: "info", icon: <BanIcon />, key: "cancelled" },
   stripe_not_configured: { tone: "info", icon: <InfoIcon />, key: "unavailable" },
   session_creation_failed: { tone: "destructive", icon: <CircleAlertIcon />, key: "error" },
@@ -78,7 +84,7 @@ const PayPage = async ({ params, searchParams }: PayPageProps) => {
         <OutcomeHeader
           tone={presentation.tone}
           icon={presentation.icon}
-          title={t(`errors.${presentation.key}Title`)}
+          title={t(`errors.${presentation.titleKey ?? presentation.key}Title`)}
           description={t(`errors.${presentation.key}Description`)}
         >
           <Button

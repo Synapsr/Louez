@@ -8153,6 +8153,7 @@
         "expiredDescription": "Ce lien de paiement a expiré. Veuillez contacter le loueur pour en obtenir un nouveau.",
         "alreadyPaidTitle": "Déjà payé",
         "alreadyPaidDescription": "Ce paiement a déjà été effectué.",
+        "noLongerCurrentDescription": "Cette demande de paiement ne correspond plus à ce qui reste dû sur la réservation. Veuillez contacter la boutique.",
         "cancelledTitle": "Paiement annulé",
         "cancelledDescription": "Cette demande de paiement a été annulée par le loueur.",
         "unavailableTitle": "Paiement indisponible",

@@ -8153,6 +8153,7 @@
         "expiredDescription": "Deze betalingslink is verlopen. Neem contact op met de verhuurder voor een nieuwe link.",
         "alreadyPaidTitle": "Reeds betaald",
         "alreadyPaidDescription": "Deze betaling is al voltooid.",
+        "noLongerCurrentDescription": "Dit betalingsverzoek komt niet meer overeen met wat er voor de reservering nog verschuldigd is. Neem contact op met de winkel.",
         "cancelledTitle": "Betaling geannuleerd",
         "cancelledDescription": "Dit betalingsverzoek is geannuleerd door de verhuurder.",
         "unavailableTitle": "Betaling niet beschikbaar",

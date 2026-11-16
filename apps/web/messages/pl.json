@@ -8153,6 +8153,7 @@
         "expiredDescription": "Ten link do płatności wygasł. Skontaktuj się ze sklepem, aby uzyskać nowy.",
         "alreadyPaidTitle": "Już zapłacono",
         "alreadyPaidDescription": "Ta płatność została już zrealizowana.",
+        "noLongerCurrentDescription": "To żądanie płatności nie odpowiada już kwocie pozostałej do zapłaty za rezerwację. Skontaktuj się ze sklepem.",
         "cancelledTitle": "Płatność anulowana",
         "cancelledDescription": "To żądanie płatności zostało anulowane przez sklep.",
         "unavailableTitle": "Płatność niedostępna",

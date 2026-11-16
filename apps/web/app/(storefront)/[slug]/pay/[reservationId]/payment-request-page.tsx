@@ -31,6 +31,7 @@ const ERROR_KEYS: Record<PaymentRequestError, string> = {
   reservation_not_found: "errors.errorDescription",
   invalid_token: "errors.expiredDescription",
   already_paid: "errors.alreadyPaidDescription",
+  no_longer_current: "errors.noLongerCurrentDescription",
   cancelled: "errors.cancelledDescription",
   stripe_not_configured: "errors.unavailableDescription",
   session_creation_failed: "errors.generic",

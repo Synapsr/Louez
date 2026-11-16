@@ -8153,6 +8153,7 @@
         "expiredDescription": "この支払いリンクの有効期限が切れています。新規ご希望の場合は販売店までご連絡ください。",
         "alreadyPaidTitle": "すでに支払われています",
         "alreadyPaidDescription": "この支払いはすでに完了しています。",
+        "noLongerCurrentDescription": "この支払いリクエストは、予約の未払い額と一致しなくなりました。ストアにお問い合わせください。",
         "cancelledTitle": "支払いがキャンセルされました",
         "cancelledDescription": "この支払いリクエストはストアによってキャンセルされました。",
         "unavailableTitle": "支払いは利用できません",

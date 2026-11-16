@@ -8153,6 +8153,7 @@
         "expiredDescription": "Tautan pembayaran ini telah kedaluwarsa. Silakan hubungi toko untuk meminta yang baru.",
         "alreadyPaidTitle": "Sudah dibayar",
         "alreadyPaidDescription": "Pembayaran ini telah selesai.",
+        "noLongerCurrentDescription": "Permintaan pembayaran ini tidak lagi sesuai dengan sisa tagihan reservasi. Silakan hubungi toko.",
         "cancelledTitle": "Pembayaran dibatalkan",
         "cancelledDescription": "Permintaan pembayaran ini telah dibatalkan oleh toko.",
         "unavailableTitle": "Pembayaran tidak tersedia",

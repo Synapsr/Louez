@@ -8153,6 +8153,7 @@
         "expiredDescription": "该付款链接已过期。请联系商店索取新的。",
         "alreadyPaidTitle": "已付款",
         "alreadyPaidDescription": "这笔付款已经完成。",
+        "noLongerCurrentDescription": "此付款请求已与预订的待付金额不符。请联系店铺。",
         "cancelledTitle": "付款已取消",
         "cancelledDescription": "该付款请求已被商店取消。",
         "unavailableTitle": "无法付款",

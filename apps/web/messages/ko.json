@@ -8153,6 +8153,7 @@
         "expiredDescription": "이 결제 링크는 만료되었습니다. 새 제품을 요청하려면 매장에 문의하세요.",
         "alreadyPaidTitle": "이미 지불함",
         "alreadyPaidDescription": "이 결제는 이미 완료되었습니다.",
+        "noLongerCurrentDescription": "이 결제 요청은 더 이상 예약의 남은 금액과 일치하지 않습니다. 매장에 문의하세요.",
         "cancelledTitle": "결제가 취소되었습니다.",
         "cancelledDescription": "해당 결제 요청은 매장에서 취소되었습니다.",
         "unavailableTitle": "결제 불가",
