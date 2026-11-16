@@ -3474,27 +3474,30 @@ export async function updateReservation(
             );
         }
 
+        const repriced = priced.kind === "priced" ? priced : null;
         await tx
           .update(reservations)
           .set({
             startDate: newStartDate,
             endDate: newEndDate,
-            ...(priced.kind === "priced"
-              ? {
-                  subtotalAmount: priced.totals.subtotal.toFixed(2),
-                  depositAmount: newDepositAmount.toFixed(2),
-                  totalAmount: newTotalAmount.toFixed(2),
-                  subtotalExclTax: priced.totals.subtotalExclTax?.toFixed(2) ?? null,
-                  taxAmount: priced.totals.taxAmount?.toFixed(2) ?? null,
-                  taxRate: priced.totals.taxRate?.toFixed(2) ?? null,
-                  taxDisplayMode: priced.taxDisplayMode,
-                  tulipInsuranceOptIn: nextTulipInsuranceOptIn,
-                  tulipInsuranceAmount:
-                    nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
-                      ? nextTulipInsuranceAmount.toFixed(2)
-                      : null,
-                }
-              : {}),
+            // An edit that does not reprice writes no monetary column: each key
+            // is undefined then, which Drizzle leaves out. A repriced edit
+            // writes null where the engine clears a column.
+            subtotalAmount: repriced ? repriced.totals.subtotal.toFixed(2) : undefined,
+            depositAmount: repriced ? newDepositAmount.toFixed(2) : undefined,
+            totalAmount: repriced ? newTotalAmount.toFixed(2) : undefined,
+            subtotalExclTax: repriced
+              ? (repriced.totals.subtotalExclTax?.toFixed(2) ?? null)
+              : undefined,
+            taxAmount: repriced ? (repriced.totals.taxAmount?.toFixed(2) ?? null) : undefined,
+            taxRate: repriced ? (repriced.totals.taxRate?.toFixed(2) ?? null) : undefined,
+            taxDisplayMode: repriced ? repriced.taxDisplayMode : undefined,
+            tulipInsuranceOptIn: repriced ? nextTulipInsuranceOptIn : undefined,
+            tulipInsuranceAmount: repriced
+              ? nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
+                ? nextTulipInsuranceAmount.toFixed(2)
+                : null
+              : undefined,
             ...deliveryUpdateFields,
             updatedAt: new Date(),
             // The inbox dates a late pickup or return from its last schedule change.
