@@ -145,24 +145,72 @@ type FeeGivenBackInExcess = {
   readonly feeMinor: number;
   readonly targetMinor: number;
   readonly feeRefundedMinor: number;
+  /** What the charge's disputes withdrew, as the reversal read them. */
+  readonly disputedMinor: number;
 };
+
+/**
+ * The excess read under the lock is a candidate: the lock keeps other reversals out,
+ * not changes at Stripe. A refund made outside Louez that gives back its fee share
+ * between the reversal's read of the charge and its read of the fee makes the fee
+ * look given back past its share. So the fee, then the charge, are read again, in
+ * that order: a refund landing between those two reads can only lower the excess,
+ * never make one up. The disputes are the reversal's own read: a dispute's change
+ * runs its own reversal. Only a charge with a candidate pays these two reads.
+ * Returns the excess on the fresh figures, or null when they do not confirm it.
+ */
+async function confirmExcess(
+  port: FeeReversalStripe,
+  input: { readonly chargeId: string; readonly accountId: string },
+  candidate: FeeGivenBackInExcess,
+): Promise<FeeGivenBackInExcess | null> {
+  const fee = await port.retrieveApplicationFee(candidate.feeId);
+  const charge = await port.retrieveCharge(input.chargeId, input.accountId);
+  const { targetMinor } = reversalAtSource({
+    feeMinor: fee.amount,
+    feeRefundedMinor: fee.amount_refunded,
+    chargeMinor: charge.amount_captured,
+    refundedMinor: charge.amount_refunded,
+    disputedMinor: candidate.disputedMinor,
+  });
+  if (fee.amount_refunded > targetMinor) {
+    return {
+      feeId: fee.id,
+      currency: fee.currency.toUpperCase(),
+      feeMinor: fee.amount,
+      targetMinor,
+      feeRefundedMinor: fee.amount_refunded,
+      disputedMinor: candidate.disputedMinor,
+    };
+  }
+  log.debug(
+    "billing",
+    `the fee given back in excess on charge ${input.chargeId} (${candidate.feeRefundedMinor} for a share of ${candidate.targetMinor}) is not confirmed: Stripe now counts ${fee.amount_refunded} for a share of ${targetMinor}`,
+  );
+  return null;
+}
 
 /**
  * Tells the platform of a fee given back past its share: after a refund failed or a
  * dispute was won, Stripe cannot take it back. The figure is Stripe's and the billing
  * service's, which bills it again for a store it bills; Louez stores none. Runs once
- * the charge's lock and the run's turn are released, since the alert may take a pooled
- * connection. Never throws: the webhook still answers.
+ * the charge's lock and the run's turn are released: the candidate's two reads hold
+ * no connection, and the alert may take a pooled one. Never throws: the webhook still
+ * answers.
  */
 async function alertFeeGivenBackInExcess(
+  port: FeeReversalStripe,
   input: { readonly chargeId: string; readonly accountId: string },
-  excess: FeeGivenBackInExcess,
+  candidate: FeeGivenBackInExcess,
   alerts: BillingAlerts | undefined,
 ): Promise<void> {
   try {
+    const excess = await confirmExcess(port, input, candidate);
+    if (!excess) return;
     await (alerts ?? createBillingAlerts({ schedule: after })).alert(
       "fee_over_returned",
       `charge ${input.chargeId} on account ${input.accountId}: application fee ${excess.feeId} of ${excess.feeMinor} ${excess.currency} has ${excess.feeRefundedMinor} given back, above its share of ${excess.targetMinor} by ${excess.feeRefundedMinor - excess.targetMinor} (minor units). Stripe cannot take a fee refund back: the billing service bills it again for a store it bills; for a store Louez's legacy billing bills, check it in Stripe.`,
+      "This is the first fee_over_returned alert this hour: the error log holds every occurrence, each with its charge.",
     );
   } catch (error) {
     log.error(
@@ -175,8 +223,8 @@ async function alertFeeGivenBackInExcess(
 /**
  * Refunds the part of the charge's application fee the store no longer keeps, then
  * records Stripe's refunded amount on the legacy fee rows, on the lock's connection.
- * When the fee given back is above its share, alerts the platform once the lock is
- * released (`fee_over_returned`). Throws on a Stripe or database error, and
+ * When the fee given back is above its share, and two fresh reads once the lock is
+ * released still say so, alerts the platform (`fee_over_returned`). Throws on a Stripe or database error, and
  * `FeeReversalBusyError` when the lock or a turn stays taken, so the webhook answers
  * 500 and Stripe retries: the next delivery reads Stripe again.
  */
@@ -207,6 +255,7 @@ export async function reverseFeeAtSource(input: {
           port.listDisputes(charge.id, input.accountId),
         ]);
 
+        const disputed = disputedMinor(charge.id, disputes);
         const { targetMinor, incrementMinor } = reversalAtSource({
           feeMinor: fee.amount,
           feeRefundedMinor: fee.amount_refunded,
@@ -214,7 +263,7 @@ export async function reverseFeeAtSource(input: {
           // authorization, more than the money the fee was taken on.
           chargeMinor: charge.amount_captured,
           refundedMinor: charge.amount_refunded,
-          disputedMinor: disputedMinor(charge.id, disputes),
+          disputedMinor: disputed,
         });
         if (incrementMinor > 0) {
           // The fee refunded before this call is in the key: a refund made elsewhere in
@@ -251,6 +300,7 @@ export async function reverseFeeAtSource(input: {
                   feeMinor: fee.amount,
                   targetMinor,
                   feeRefundedMinor,
+                  disputedMinor: disputed,
                 }
               : null,
         };
@@ -261,6 +311,6 @@ export async function reverseFeeAtSource(input: {
   if (!turn.value.ran) throw new FeeReversalBusyError(input.chargeId, "lock");
   // The lock's connection is back in the pool and the turn is free.
   const { result, excess } = turn.value.value;
-  if (excess) await alertFeeGivenBackInExcess(input, excess, input.alerts);
+  if (excess) await alertFeeGivenBackInExcess(port, input, excess, input.alerts);
   return result;
 }

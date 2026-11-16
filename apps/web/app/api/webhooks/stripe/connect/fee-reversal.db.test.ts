@@ -1,14 +1,27 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { after, afterEach, before, beforeEach, describe, test } from "node:test";
+import { after, afterEach, before, beforeEach, describe, mock, test } from "node:test";
 
 import { eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import type { BillingAlerts } from "@/lib/billing-sync/alerts";
+import { closeNetworkForSuite } from "@/lib/testing/network-guard";
 
 import type { FeeReversalStripe } from "./fee-reversal";
+
+// The platform's channel, faked for the whole suite: a reversal that finds a fee given
+// back in excess with no alerts of its own runs the real ones, whose post lands here.
+const posted: Array<{ kind: string; message: string }> = [];
+mock.module("@/lib/discord/platform-notifications", {
+  namedExports: {
+    notifyBillingAlert: async (kind: string, message: string) => {
+      posted.push({ kind, message });
+    },
+  },
+});
+closeNetworkForSuite();
 
 // The fee refund at source (louez-billing docs/api, fees.md §9) on a migrated database,
 // against a fake Stripe that keeps the fee's refunded amount as Stripe would.
@@ -687,6 +700,83 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       assert.equal(result.status, "unchanged");
     });
 
+    test("a refund made outside Louez between the reversal's reads of the charge and the fee is no excess", async () => {
+      const { stripe, chargeId, state, alerted } = await excessCase();
+      let moved = false;
+      const racing: FeeReversalStripe = {
+        ...stripe.port,
+        async retrieveApplicationFee(feeId) {
+          // A refund of 60.00 made in Stripe's dashboard gives back its share, 1.80,
+          // after the reversal read the charge.
+          const fee = stripe.fees.get(feeId);
+          if (!moved && fee) {
+            moved = true;
+            state.amountRefunded = 6_000;
+            fee.amountRefunded = 180;
+          }
+          return stripe.port.retrieveApplicationFee(feeId);
+        },
+      };
+      const result = await reversal.reverseFeeAtSource({
+        chargeId,
+        accountId: ACCOUNT,
+        stripe: racing,
+        alerts: alerted.alerts,
+      });
+      assert.equal(result.status, "unchanged");
+      assert.deepEqual(alerted.excesses(), []);
+      assert.deepEqual(stripe.refunds, []);
+    });
+
+    test("an excess is alerted once the fee and the charge, read again, still show it, with their figures", async () => {
+      const { stripe, chargeId, state, alerted } = await excessCase();
+      const calls: string[] = [];
+      let atAlert: number[] = [];
+      // Before the charge is read again, a refund of 30.00 made in the meantime: the
+      // fresh share is 0.90, the excess 0.90.
+      let refundBeforeSecondRead = false;
+      const counted: FeeReversalStripe = {
+        ...stripe.port,
+        retrieveCharge: (...args) => {
+          calls.push("charge");
+          if (refundBeforeSecondRead && calls.filter((call) => call === "charge").length === 2)
+            state.amountRefunded = 3_000;
+          return stripe.port.retrieveCharge(...args);
+        },
+        retrieveApplicationFee: (...args) => (
+          calls.push("fee"),
+          stripe.port.retrieveApplicationFee(...args)
+        ),
+        listDisputes: (...args) => (calls.push("disputes"), stripe.port.listDisputes(...args)),
+      };
+      const alerts: BillingAlerts = {
+        ...alerted.alerts,
+        alert: async (kind, message, note) => {
+          atAlert.push(calls.length);
+          await alerted.alerts.alert(kind, message, note);
+        },
+      };
+      const reverse = () =>
+        reversal.reverseFeeAtSource({ chargeId, accountId: ACCOUNT, stripe: counted, alerts });
+
+      state.amountRefunded = 6_000;
+      await reverse();
+      // The refund failed: one alert, after the fee and the charge are read again.
+      state.amountRefunded = 0;
+      calls.length = 0;
+      await reverse();
+      assert.deepEqual(calls, ["charge", "fee", "disputes", "fee", "charge"]);
+      assert.deepEqual(atAlert, [5]);
+      assert.deepEqual(alerted.excesses(), [180]);
+
+      // The same, with a refund of 30.00 landing before the second read of the charge.
+      calls.length = 0;
+      atAlert = [];
+      refundBeforeSecondRead = true;
+      await reverse();
+      assert.deepEqual(alerted.excesses(), [180, 90]);
+    });
+
     test("ten won disputes at once leave the pool its connections: each alert waits for its lock's release", async () => {
       const stripe = fakeStripe();
       const chargeIds: string[] = [];
@@ -709,16 +799,14 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         charge.disputes = [{ id: `dp_${RUN}_${index}`, amount: 10_000, status: "won" }];
         chargeIds.push(chargeId);
       }
-      // The real alerts, whose hourly slot is a transaction on a pooled connection; the
-      // channel is faked.
-      const posted: string[] = [];
+      // The real alerts, whose hourly slot is a transaction on a pooled connection,
+      // from a clean slot; the channel is the suite's fake.
       const { createBillingAlerts } = await import("@/lib/billing-sync/alerts");
-      const alerts = createBillingAlerts({
-        log: quiet,
-        notify: async (kind) => {
-          posted.push(kind);
-        },
-      });
+      const { readSyncState } = await import("@/lib/billing-sync/state");
+      await readSyncState();
+      await louezDb.db.update(louezDb.billingSyncState).set({ alerts: {} });
+      posted.length = 0;
+      const alerts = createBillingAlerts({ log: quiet });
 
       // Six of the pool's ten connections are taken by the rest of the app.
       const taken = await Promise.all(
@@ -746,7 +834,13 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
         clearTimeout(timer);
         for (const connection of taken) connection.release();
       }
-      assert.ok(posted.length <= 1, `${posted.length} posts in the hour`);
+      // Ten alerts, one post: the first of its kind this hour, which says so.
+      assert.equal(posted.length, 1);
+      assert.equal(posted[0]?.kind, "fee_over_returned");
+      assert.match(
+        posted[0]?.message ?? "",
+        /first fee_over_returned alert this hour: the error log holds every occurrence, each with its charge\.$/,
+      );
     });
   });
 });
