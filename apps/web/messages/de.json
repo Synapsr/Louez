@@ -2924,6 +2924,8 @@
         "damageRecorded": "Schäden erfasst",
         "invalidAmount": "Ungültiger Betrag",
         "amountExceedsDeposit": "Betrag übersteigt eingezogene Kaution",
+        "amountTooPrecise": "{decimals, plural, =0 {Ein Betrag in {currency} hat keine Nachkommastellen: Geben Sie ganze Einheiten ein.} other {Ein Betrag in {currency} hat höchstens # Nachkommastellen.}}",
+        "currencyNotSupported": "Zahlungen in {currency} können nicht erfasst werden: Louez unterstützt keine Währungen mit drei Nachkommastellen.",
         "deleteConfirmTitle": "Diese Zahlung löschen?",
         "deleteConfirmDescription": "Diese Aktion ist unwiderruflich. Die Zahlung wird dauerhaft aus dem Verlauf gelöscht.",
         "unpaidWarning": "Es sind noch {formattedAmount} für diese Reservierung einzuziehen",

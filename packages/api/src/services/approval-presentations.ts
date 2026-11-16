@@ -130,8 +130,9 @@ export function recordPaymentPresentation(
 
 /**
  * A deposit the store gave back, recorded (`dashboard.payments.recordDepositReturn`).
- * `balance` is the deposit still held, as the number the writer compares the
- * amount with: the text in `details.returnable` is that number rounded.
+ * `returnableHundredths` is the deposit still held, in hundredths, as the
+ * writer counts it (`depositBalance`): `details.returnable` is the same
+ * amount written as a decimal.
  */
 export function recordDepositReturnPresentation(
   details: {
@@ -142,10 +143,10 @@ export function recordDepositReturnPresentation(
     returnable: string;
   },
   currency: string,
-  balance: number,
+  returnableHundredths: number,
 ): ApprovalPresentation | null {
   // Judged as the write judges it: a return it refuses gets no display.
-  const verdict = depositReturnAmount(details.amount, currency, balance);
+  const verdict = depositReturnAmount(details.amount, currency, returnableHundredths);
   const held = plainDecimal(details.returnable);
   const { method } = details;
   if (!verdict.ok || !held || !CURRENCY.test(currency) || !isChoice("paymentMethod", method)) {

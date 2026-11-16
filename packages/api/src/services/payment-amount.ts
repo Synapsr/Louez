@@ -58,23 +58,53 @@ export type DepositReturnVerdict =
   | { ok: false; refusal: "amount_invalid" | Exclude<CurrencyFit, "fits"> | "exceeds_balance" };
 
 /**
- * The amount of a deposit return (`dashboard.payments.recordDepositReturn`),
- * as the write judges it before it asks: `paymentAmount`, above zero; then,
- * in the reservation's `currency`, `currencyFit`; then within `returnable`,
- * the deposit collected and not yet returned as the write counts it under
- * the reservation's lock. Its display judges it the same way.
+ * The amount of a deposit return (`dashboard.payments.recordDepositReturn`,
+ * and the dashboard's own return), as the write judges it before it asks:
+ * `paymentAmount`, above zero; then, in the reservation's `currency`,
+ * `currencyFit`; then within `returnableHundredths`, the deposit collected
+ * and not yet returned (`depositBalance`) as the write counts it under the
+ * reservation's lock. Its display judges it the same way.
  */
 export function depositReturnAmount(
   raw: string,
   currency: string,
-  returnable: number,
+  returnableHundredths: number,
 ): DepositReturnVerdict {
   const amount = paymentAmount(raw);
   if (!amount || amount.startsWith("-")) return { ok: false, refusal: "amount_invalid" };
   const fit = currencyFit(amount, currency);
   if (fit !== "fits") return { ok: false, refusal: fit };
-  if (parseFloat(amount) > returnable) return { ok: false, refusal: "exceeds_balance" };
+  if (hundredthsOf(amount) > returnableHundredths) {
+    return { ok: false, refusal: "exceeds_balance" };
+  }
   return { ok: true, amount };
+}
+
+/** A reservation's deposit, in hundredths: collected, returned, and still returnable. */
+export interface DepositBalanceHundredths {
+  collected: number;
+  returned: number;
+  returnable: number;
+}
+
+/**
+ * The deposit a reservation's payments hold, counted in hundredths, as exact
+ * integers (`hundredthsOf`): its completed `deposit` rows, its completed
+ * `deposit_return` rows, and the difference. Never in floating point, where
+ * €0.30 less €0.10 is 0.19999999999999998 and a return of €0.20 would not
+ * fit. Hundredths are the unit the rows hold (`decimal(10,2)`), whatever
+ * their currency, as for the refund's ceiling: a yen is a hundred of them.
+ */
+export function depositBalance(
+  rows: ReadonlyArray<{ type: string; status: string; amount: string }>,
+): DepositBalanceHundredths {
+  const completed = (type: string) =>
+    rows
+      .filter((row) => row.type === type && row.status === "completed")
+      .reduce((sum, row) => sum + hundredthsOf(row.amount), 0);
+  const collected = completed("deposit");
+  const returned = completed("deposit_return");
+  return { collected, returned, returnable: collected - returned };
 }
 
 /**

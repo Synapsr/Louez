@@ -47,6 +47,7 @@ import {
 } from "./approval-presentations";
 import {
   currencyMinorOf,
+  depositBalance,
   depositReturnAmount,
   fromHundredths,
   hundredthsOf,
@@ -326,20 +327,16 @@ export async function recordDepositReturn(
       .select({ type: payments.type, status: payments.status, amount: payments.amount })
       .from(payments)
       .where(eq(payments.reservationId, reservation.id));
-    const completed = (type: string) =>
-      rows
-        .filter((row) => row.type === type && row.status === "completed")
-        .reduce((sum, row) => sum + parseFloat(row.amount), 0);
-    const collected = completed("deposit");
-    const returned = completed("deposit_return");
-    const returnable = collected - returned;
+    // In hundredths, exact: never a float that leaves €0.20 above €0.30 less €0.10.
+    const balance = depositBalance(rows);
+    const returnable = fromHundredths(balance.returnable);
 
     const facts = await factsOf(tx, caller, reservation.id, {
       type: "deposit_return",
       amount: input.amount,
     });
     const { currency } = facts;
-    const verdict = depositReturnAmount(input.amount, currency, returnable);
+    const verdict = depositReturnAmount(input.amount, currency, balance.returnable);
     if (!verdict.ok) {
       switch (verdict.refusal) {
         case "amount_invalid":
@@ -357,9 +354,9 @@ export async function recordDepositReturn(
           return refused(
             paymentRecordErrors.depositReturnExceedsBalance(
               {
-                collected: collected.toFixed(2),
-                returned: returned.toFixed(2),
-                returnable: returnable.toFixed(2),
+                collected: fromHundredths(balance.collected),
+                returned: fromHundredths(balance.returned),
+                returnable,
               },
               (amount) => moneyIn(amount, currency),
             ),
@@ -373,15 +370,15 @@ export async function recordDepositReturn(
       number: reservation.number,
       amount: input.amount,
       method: input.method,
-      returnable: returnable.toFixed(2),
+      returnable,
     };
     const refusal = await caller.confirm(tx, {
       preview: {
         summary: `Record a deposit return of ${moneyIn(verdict.amount, currency)} (${input.method}) on reservation #${reservation.number}.`,
         details: { ...details, ...notesOf(input.notes) },
       },
-      state: { returnable: returnable.toFixed(2), facts },
-      presentation: recordDepositReturnPresentation(details, currency, returnable),
+      state: { returnable, facts },
+      presentation: recordDepositReturnPresentation(details, currency, balance.returnable),
     });
     if (refusal) return unconfirmed(refusal);
 

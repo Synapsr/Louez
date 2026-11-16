@@ -2933,6 +2933,8 @@
         "damageRecorded": "Dommages enregistrés",
         "invalidAmount": "Montant invalide",
         "amountExceedsDeposit": "Le montant dépasse la caution encaissée",
+        "amountTooPrecise": "{decimals, plural, =0 {Un montant en {currency} n’a pas de décimales : saisissez des unités entières.} other {Un montant en {currency} a au plus # décimales.}}",
+        "currencyNotSupported": "Les paiements en {currency} ne peuvent pas être enregistrés : Louez ne gère pas les devises à trois décimales.",
         "deleteConfirmTitle": "Supprimer ce paiement ?",
         "deleteConfirmDescription": "Cette action est irréversible. Le paiement sera définitivement supprimé de l'historique.",
         "unpaidWarning": "Il reste {formattedAmount} à encaisser sur cette réservation",

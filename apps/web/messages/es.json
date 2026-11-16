@@ -2924,6 +2924,8 @@
         "damageRecorded": "Daños registrados",
         "invalidAmount": "Monto inválido",
         "amountExceedsDeposit": "El monto excede el depósito cobrado",
+        "amountTooPrecise": "{decimals, plural, =0 {Un importe en {currency} no tiene decimales: introduce unidades enteras.} other {Un importe en {currency} tiene como máximo # decimales.}}",
+        "currencyNotSupported": "No se pueden registrar pagos en {currency}: Louez no admite monedas con tres decimales.",
         "deleteConfirmTitle": "¿Eliminar este pago?",
         "deleteConfirmDescription": "Esta acción es irreversible. El pago será eliminado permanentemente del historial.",
         "unpaidWarning": "Quedan {formattedAmount} por cobrar en esta reserva",

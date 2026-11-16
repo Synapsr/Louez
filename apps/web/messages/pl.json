@@ -2885,6 +2885,8 @@
         "damageRecorded": "Uszkodzenia zapisane",
         "invalidAmount": "Nieprawidłowa kwota",
         "amountExceedsDeposit": "Kwota przekracza pobraną kaucję",
+        "amountTooPrecise": "{decimals, plural, =0 {Kwota w {currency} nie ma miejsc po przecinku: wpisz pełne jednostki.} other {Kwota w {currency} ma najwyżej # miejsca po przecinku.}}",
+        "currencyNotSupported": "Nie można rejestrować płatności w {currency}: Louez nie obsługuje walut z trzema miejscami po przecinku.",
         "deleteConfirmTitle": "Usunąć tę płatność?",
         "deleteConfirmDescription": "Ta akcja jest nieodwracalna. Płatność zostanie trwale usunięta z historii.",
         "unpaidWarning": "Pozostało {formattedAmount} do pobrania dla tej rezerwacji",

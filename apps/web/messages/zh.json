@@ -2924,6 +2924,8 @@
         "damageRecorded": "损坏记录",
         "invalidAmount": "金额无效",
         "amountExceedsDeposit": "金额超过收取押金",
+        "amountTooPrecise": "{decimals, plural, =0 {{currency} 金额没有小数，请输入整数。} other {{currency} 金额最多 # 位小数。}}",
+        "currencyNotSupported": "无法记录 {currency} 付款：Louez 不支持三位小数的货币。",
         "deleteConfirmTitle": "删除这笔付款吗？",
         "deleteConfirmDescription": "此操作是不可逆转的。该付款将从历史记录中永久删除。",
         "unpaidWarning": "此预订仍有 {formattedAmount} 可供领取",

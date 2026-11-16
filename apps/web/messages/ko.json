@@ -2924,6 +2924,8 @@
         "damageRecorded": "기록된 피해",
         "invalidAmount": "잘못된 금액",
         "amountExceedsDeposit": "금액이 징수된 입금액을 초과했습니다.",
+        "amountTooPrecise": "{decimals, plural, =0 {{currency} 금액에는 소수점이 없습니다. 정수로 입력하세요.} other {{currency} 금액은 소수점 이하 최대 #자리입니다.}}",
+        "currencyNotSupported": "{currency} 결제는 기록할 수 없습니다. Louez는 소수점 세 자리 통화를 지원하지 않습니다.",
         "deleteConfirmTitle": "이 결제를 삭제하시겠습니까?",
         "deleteConfirmDescription": "이 작업은 되돌릴 수 없습니다. 결제 내역에서 영구적으로 삭제됩니다.",
         "unpaidWarning": "이 예약에는 아직 징수할 {formattedAmount}가 있습니다.",

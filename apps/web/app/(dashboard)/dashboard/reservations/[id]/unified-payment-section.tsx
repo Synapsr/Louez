@@ -57,10 +57,16 @@ import { Progress } from "@louez/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
 import {
   cn,
+  currencyMinorDigits,
   depositHoldRowKind,
   getCurrencySymbol,
   withLatestFailedHoldOnly,
 } from "@louez/utils";
+import {
+  depositBalance,
+  depositReturnAmount,
+  recordedPaymentAmount,
+} from "@louez/api/services/payment-amount";
 
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { useStoreTimezone } from "@/contexts/store-context";
@@ -237,6 +243,38 @@ export function UnifiedPaymentSection({
   const tErrors = useTranslations("errors");
   const timezone = useStoreTimezone();
   const currencySymbol = getCurrencySymbol(currency);
+  // The amount inputs take the currency's decimals: whole units in yen.
+  const amountStep = currencyMinorDigits(currency) === 0 ? "1" : "0.01";
+  const amountPlaceholder = currencyMinorDigits(currency) === 0 ? "0" : "0.00";
+  /**
+   * What the form says of an amount the write would refuse, judged by the
+   * write's own functions (`recordedPaymentAmount`, `depositReturnAmount`)
+   * on the number it sends, before anything is sent.
+   */
+  const amountRefusal = (
+    refusal:
+      | "amount_invalid"
+      | "negative_outside_adjustment"
+      | "too_precise"
+      | "currency_unsupported"
+      | "exceeds_balance",
+  ) => {
+    switch (refusal) {
+      case "negative_outside_adjustment":
+        return t("payment.negativeAmountOnlyForAdjustment");
+      case "too_precise":
+        return t("payment.amountTooPrecise", {
+          currency,
+          decimals: currencyMinorDigits(currency) ?? 0,
+        });
+      case "currency_unsupported":
+        return t("payment.currencyNotSupported", { currency });
+      case "exceeds_balance":
+        return t("payment.amountExceedsDeposit");
+      case "amount_invalid":
+        return t("payment.invalidAmount");
+    }
+  };
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -433,12 +471,9 @@ export function UnifiedPaymentSection({
   // Payment handlers
   const handleRecordPayment = async () => {
     const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount === 0) {
-      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
-      return;
-    }
-    if (amount < 0 && paymentType !== "adjustment") {
-      toastManager.add({ title: t("payment.negativeAmountOnlyForAdjustment"), type: "error" });
+    const verdict = recordedPaymentAmount(String(amount), paymentType, currency);
+    if (!verdict.ok) {
+      toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
       return;
     }
 
@@ -487,13 +522,13 @@ export function UnifiedPaymentSection({
 
   const handleReturnDeposit = async () => {
     const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
-      return;
-    }
-
-    if (amount > depositToReturn) {
-      toastManager.add({ title: t("payment.amountExceedsDeposit"), type: "error" });
+    const verdict = depositReturnAmount(
+      String(amount),
+      currency,
+      depositBalance(payments).returnable,
+    );
+    if (!verdict.ok) {
+      toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
       return;
     }
 
@@ -533,8 +568,12 @@ export function UnifiedPaymentSection({
 
   const handleRecordDamage = async () => {
     const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
+    const verdict = recordedPaymentAmount(String(amount), "damage", currency);
+    if (!verdict.ok) {
+      // A damage charge is never negative: the amount is simply not valid.
+      const refusal =
+        verdict.refusal === "negative_outside_adjustment" ? "amount_invalid" : verdict.refusal;
+      toastManager.add({ title: amountRefusal(refusal), type: "error" });
       return;
     }
 
@@ -1392,11 +1431,13 @@ export function UnifiedPaymentSection({
                 <div className="relative">
                   <Input
                     type="number"
-                    step="0.01"
+                    step={amountStep}
                     min={paymentType === "adjustment" ? undefined : "0"}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder={paymentType === "adjustment" ? "-0.00" : "0.00"}
+                    placeholder={
+                      paymentType === "adjustment" ? `-${amountPlaceholder}` : amountPlaceholder
+                    }
                     className="pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -1524,12 +1565,12 @@ export function UnifiedPaymentSection({
                 <div className="relative">
                   <Input
                     type="number"
-                    step="0.01"
+                    step={amountStep}
                     min="0"
                     max={depositToReturn}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={amountPlaceholder}
                     className="pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -1609,11 +1650,11 @@ export function UnifiedPaymentSection({
                 <div className="relative">
                   <Input
                     type="number"
-                    step="0.01"
+                    step={amountStep}
                     min="0"
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={amountPlaceholder}
                     className="pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">

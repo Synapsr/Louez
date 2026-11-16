@@ -2885,6 +2885,8 @@
         "damageRecorded": "Danni registrati",
         "invalidAmount": "Importo non valido",
         "amountExceedsDeposit": "L'importo supera il deposito riscosso",
+        "amountTooPrecise": "{decimals, plural, =0 {Un importo in {currency} non ha decimali: inserisci unità intere.} other {Un importo in {currency} ha al massimo # decimali.}}",
+        "currencyNotSupported": "Non è possibile registrare pagamenti in {currency}: Louez non gestisce valute con tre decimali.",
         "deleteConfirmTitle": "Eliminare questo pagamento?",
         "deleteConfirmDescription": "Questa azione è irreversibile. Il pagamento sarà eliminato definitivamente dalla cronologia.",
         "unpaidWarning": "C'è ancora {formattedAmount} da riscuotere su questa prenotazione",

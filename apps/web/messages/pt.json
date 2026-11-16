@@ -2885,6 +2885,8 @@
         "damageRecorded": "Danos registrados",
         "invalidAmount": "Valor inválido",
         "amountExceedsDeposit": "O valor excede a caução coletada",
+        "amountTooPrecise": "{decimals, plural, =0 {Um valor em {currency} não tem casas decimais: insira unidades inteiras.} other {Um valor em {currency} tem no máximo # casas decimais.}}",
+        "currencyNotSupported": "Não é possível registar pagamentos em {currency}: o Louez não suporta moedas com três casas decimais.",
         "deleteConfirmTitle": "Excluir este pagamento?",
         "deleteConfirmDescription": "Esta ação é irreversível. O pagamento será excluído permanentemente do histórico.",
         "unpaidWarning": "Ainda há {formattedAmount} a coletar nesta reserva",

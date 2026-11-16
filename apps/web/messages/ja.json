@@ -2924,6 +2924,8 @@
         "damageRecorded": "記録された損害",
         "invalidAmount": "無効な金額です",
         "amountExceedsDeposit": "徴収されたデポジットを超える金額",
+        "amountTooPrecise": "{decimals, plural, =0 {{currency} の金額に小数はありません。整数で入力してください。} other {{currency} の金額は小数点以下 # 桁までです。}}",
+        "currencyNotSupported": "{currency} の支払いは記録できません。Louez は小数点以下 3 桁の通貨に対応していません。",
         "deleteConfirmTitle": "この支払いを削除しますか?",
         "deleteConfirmDescription": "この操作は元に戻せません。支払いは履歴から完全に削除されます。",
         "unpaidWarning": "この予約ではまだ {formattedAmount} を集める必要があります",

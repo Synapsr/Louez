@@ -2924,6 +2924,8 @@
         "damageRecorded": "Ущерб зафиксирован",
         "invalidAmount": "Неверная сумма",
         "amountExceedsDeposit": "Сумма превышает собранный депозит",
+        "amountTooPrecise": "{decimals, plural, =0 {Сумма в {currency} не имеет дробной части: введите целое число.} other {Сумма в {currency} имеет не более # знаков после запятой.}}",
+        "currencyNotSupported": "Платежи в {currency} нельзя записать: Louez не поддерживает валюты с тремя знаками после запятой.",
         "deleteConfirmTitle": "Удалить этот платеж?",
         "deleteConfirmDescription": "Это действие необратимо. Платеж будет навсегда удален из истории.",
         "unpaidWarning": "В этой резервации еще нужно собрать {formattedAmount}.",

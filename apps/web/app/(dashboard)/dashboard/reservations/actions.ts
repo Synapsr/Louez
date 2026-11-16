@@ -175,6 +175,12 @@ import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delive
 import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
 import { evaluateReservationRules } from "@louez/utils";
+import {
+  depositBalance,
+  depositReturnAmount,
+  recordedPaymentAmount,
+  type RecordedAmountVerdict,
+} from "@louez/api/services/payment-amount";
 import { recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
@@ -3233,6 +3239,26 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * An amount a payment form sent, judged as the agents' writes judge it
+ * (`recordedPaymentAmount`, packages/api services/payment-amount.ts): its
+ * text, its sign for its type, and at most the decimals of the reservation's
+ * currency, in a currency the money layer carries. Accepted, it is the text
+ * the row holds, as `toFixed(2)` wrote it ("1500.00" in yen, "7.50" in euros).
+ */
+function formAmount(
+  amount: number,
+  type: PaymentType,
+  reservation: { currency: string | null },
+  storeSettings: Parameters<typeof reservationCurrency>[1],
+): RecordedAmountVerdict {
+  return recordedPaymentAmount(
+    String(amount),
+    type,
+    reservationCurrency(reservation.currency, storeSettings),
+  );
+}
+
 export async function recordPayment(reservationId: string, data: RecordPaymentData) {
   const store = await getStoreForUser();
   if (!store) {
@@ -3250,13 +3276,15 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     return { error: "errors.reservationNotFound" };
   }
 
-  if (data.amount === 0) {
-    return { error: "errors.invalidAmount" };
-  }
-
-  // Only adjustment type can have negative amounts
-  if (data.amount < 0 && data.type !== "adjustment") {
-    return { error: "errors.negativeAmountOnlyForAdjustment" };
+  // Only an adjustment can be negative; the decimals are the currency's.
+  const verdict = formAmount(data.amount, data.type, reservation, store.settings);
+  if (!verdict.ok) {
+    return {
+      error:
+        verdict.refusal === "negative_outside_adjustment"
+          ? "errors.negativeAmountOnlyForAdjustment"
+          : "errors.invalidAmount",
+    };
   }
 
   if (data.amount > 0 && data.type === "rental") {
@@ -3288,7 +3316,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
       reservationId,
       storeId: store.id,
       storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
+      amount: verdict.amount,
       type: data.type,
       method: data.method,
       origin: "manual",
@@ -3483,24 +3511,20 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
     return { error: "errors.reservationNotFound" };
   }
 
-  if (data.amount <= 0) {
-    return { error: "errors.invalidAmount" };
-  }
-
-  // Calculate how much deposit was collected
-  const depositCollected = reservation.payments
-    .filter((p) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  // Calculate how much was already returned
-  const depositReturned = reservation.payments
-    .filter((p) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  const maxReturnable = depositCollected - depositReturned;
-
-  if (data.amount > maxReturnable) {
-    return { error: "errors.amountExceedsDeposit" };
+  // Judged as the agents' deposit return judges it: the currency's decimals,
+  // and the deposit collected and not yet returned counted in hundredths.
+  const verdict = depositReturnAmount(
+    String(data.amount),
+    reservationCurrency(reservation.currency, store.settings),
+    depositBalance(reservation.payments).returnable,
+  );
+  if (!verdict.ok) {
+    return {
+      error:
+        verdict.refusal === "exceeds_balance"
+          ? "errors.amountExceedsDeposit"
+          : "errors.invalidAmount",
+    };
   }
 
   const paymentId = nanoid();
@@ -3510,7 +3534,7 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
       reservationId,
       storeId: store.id,
       storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
+      amount: verdict.amount,
       type: "deposit_return",
       method: data.method,
       origin: "deposit",
@@ -3559,7 +3583,8 @@ export async function recordDamage(
     return { error: "errors.reservationNotFound" };
   }
 
-  if (data.amount <= 0) {
+  const verdict = formAmount(data.amount, "damage", reservation, store.settings);
+  if (!verdict.ok) {
     return { error: "errors.invalidAmount" };
   }
 
@@ -3570,7 +3595,7 @@ export async function recordDamage(
       reservationId,
       storeId: store.id,
       storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
+      amount: verdict.amount,
       type: "damage",
       method: data.method,
       origin: "manual",

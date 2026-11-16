@@ -2885,6 +2885,8 @@
         "damageRecorded": "Schade geregistreerd",
         "invalidAmount": "Ongeldig bedrag",
         "amountExceedsDeposit": "Bedrag overschrijdt geïnde borg",
+        "amountTooPrecise": "{decimals, plural, =0 {Een bedrag in {currency} heeft geen decimalen: voer hele eenheden in.} other {Een bedrag in {currency} heeft hoogstens # decimalen.}}",
+        "currencyNotSupported": "Betalingen in {currency} kunnen niet worden geregistreerd: Louez ondersteunt geen valuta met drie decimalen.",
         "deleteConfirmTitle": "Deze betaling verwijderen?",
         "deleteConfirmDescription": "Deze actie is onomkeerbaar. De betaling wordt permanent uit de geschiedenis verwijderd.",
         "unpaidWarning": "Er moet nog {formattedAmount} worden geïnd voor deze reservering",

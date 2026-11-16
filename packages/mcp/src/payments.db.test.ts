@@ -1193,6 +1193,41 @@ describe("payment writes through MCP (database)", { skip: skipWithoutTestDatabas
     );
   });
 
+  test("the deposit still returnable is counted in the rows' hundredths: 0.30 less 0.10 leaves 0.20, and in yen whole yen", async () => {
+    const authorization = await key();
+    const giveBack = (reservationId: string, amount: string) =>
+      mcpCall(authorization, "record_deposit_return", { reservationId, amount, method: "cash" });
+    const exceeded = (result: ToolResult) => {
+      const error = errorOf(result);
+      assert.equal(error?.code, "DEPOSIT_RETURN_EXCEEDS_BALANCE", textOf(result));
+      return { message: error?.message, details: error?.details };
+    };
+
+    const cents = await reservation();
+    await payment(cents.id, { type: "deposit", amount: "0.30" });
+    await payment(cents.id, { type: "deposit_return", amount: "0.10" });
+    assert.deepEqual(exceeded(await giveBack(cents.id, "0.21")), {
+      message:
+        "Amount exceeds returnable deposit. Collected: CHF\u00a00.30, already returned: CHF\u00a00.10, max returnable: CHF\u00a00.20.",
+      details: { collected: "0.30", returned: "0.10", returnable: "0.20" },
+    });
+    const twenty = approval(await giveBack(cents.id, "0.20"));
+    assert.deepEqual(
+      (twenty.preview as { details: { returnable: string } }).details.returnable,
+      "0.20",
+    );
+
+    const yen = await reservation("confirmed", STORE, "JPY");
+    await payment(yen.id, { type: "deposit", amount: "3.00" });
+    await payment(yen.id, { type: "deposit_return", amount: "1.00" });
+    assert.deepEqual(exceeded(await giveBack(yen.id, "3")), {
+      message:
+        "Amount exceeds returnable deposit. Collected: ¥3, already returned: ¥1, max returnable: ¥2.",
+      details: { collected: "3.00", returned: "1.00", returnable: "2.00" },
+    });
+    approval(await giveBack(yen.id, "2"));
+  });
+
   test("a member may record and delete; a connection that reads payments may do neither", async () => {
     const member = await key(WRITE, { userId: MEMBER });
     const { id } = await reservation();
