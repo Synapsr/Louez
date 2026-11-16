@@ -14,6 +14,7 @@ import {
 import type { StoreSettings, TaxSettings } from "@louez/types";
 
 import { STORE_KEY } from "./actions-test-stubs";
+import { creationTotals } from "./new/utils/creation-totals";
 
 // The totals of a reservation the store edits or creates by hand are the tax
 // engine's (slice 10, M1): computed from its lines, its insurance (exempt),
@@ -705,12 +706,86 @@ describe(
         });
       }
 
+      /** What the form shows for one kayak over START–END at 10.00 a day, in `tax`. */
+      const shown = (tax: TaxSettings | undefined) => ({
+        total: creationTotals({
+          productLines: [{ amount: 20, taxSettings: null }],
+          customLines: [],
+          insuranceAmount: 0,
+          deliveryFee: 0,
+          discountAmount: 0,
+          deposit: 0,
+          taxSettings: tax,
+          currency: "USD",
+        }).total,
+        deliveryFee: 0,
+        insuranceAmount: 0,
+      });
+
+      async function reservationCount() {
+        return (await louezDb.db.select({ id: louezDb.reservations.id }).from(louezDb.reservations))
+          .length;
+      }
+
+      const createKayak = (
+        kayak: string,
+        expectedTotals: { total: number; deliveryFee: number; insuranceAmount: number },
+      ) =>
+        actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: END,
+          items: [{ productId: kayak, quantity: 1 }],
+          sendConfirmationEmail: false,
+          expectedTotals,
+        });
+
+      test("the total the form showed is the one written: accepted", async () => {
+        await useStore({ tax: HT });
+        const kayak = await product();
+
+        const result = await createKayak(kayak, shown(HT));
+
+        assert.ok(result.reservationId, JSON.stringify(result));
+        const { row } = await stored(result.reservationId);
+        assert.equal(row.totalAmount, "24.00");
+      });
+
+      for (const [change, apply] of [
+        [
+          "a catalogue price",
+          async (kayak: string) => {
+            await louezDb.db
+              .update(louezDb.products)
+              .set({ price: "20.00" })
+              .where(eq(louezDb.products.id, kayak));
+          },
+        ],
+        ["a tax rate", async () => useStore({ tax: { ...HT, defaultRate: 10 } })],
+        ["the display mode", async () => useStore({ tax: TTC })],
+      ] as const) {
+        test(`${change} changed while the form was open: refused, nothing written`, async () => {
+          await useStore({ tax: HT });
+          const kayak = await product();
+          // The form shows 24.00: 20.00 before tax, 20 % on top.
+          const seen = shown(HT);
+          await apply(kayak);
+          const before = await reservationCount();
+
+          await assert.rejects(
+            createKayak(kayak, seen).then((result) => {
+              throw new Error(result.error ?? "written");
+            }),
+            /errors\.reservationChangedMeanwhile/,
+          );
+          assert.equal(await reservationCount(), before);
+        });
+      }
+
       test("a product's price changed while the creation waited on its lock: refused, nothing written", async () => {
         await useStore({ tax: HT });
         const kayak = await product();
-        const reservationsBefore = await louezDb.db
-          .select({ id: louezDb.reservations.id })
-          .from(louezDb.reservations);
+        const before = await reservationCount();
 
         const [result] = await raceOnOpenTransaction(
           database,
@@ -718,26 +793,14 @@ describe(
             await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [kayak]);
             await holder.query("UPDATE products SET price = '20.00' WHERE id = ?", [kayak]);
           },
-          [
-            () =>
-              actions.createManualReservation({
-                customerId: CUSTOMER,
-                startDate: START,
-                endDate: END,
-                items: [{ productId: kayak, quantity: 1 }],
-                sendConfirmationEmail: false,
-              }),
-          ],
+          [() => createKayak(kayak, shown(HT))],
         );
 
         assert.deepEqual(result, {
           error: "errors.reservationChangedMeanwhile",
           shortfalls: [],
         });
-        const reservationsAfter = await louezDb.db
-          .select({ id: louezDb.reservations.id })
-          .from(louezDb.reservations);
-        assert.equal(reservationsAfter.length, reservationsBefore.length);
+        assert.equal(await reservationCount(), before);
       });
 
       test("created, then edited with nothing changed: the same totals to the cent", async () => {

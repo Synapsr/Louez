@@ -429,6 +429,12 @@ export function NewReservationForm({
           sendConfirmationEmail: sendAsQuoteRef.current ? true : sendConfirmationEmail,
           sendAsQuote: sendAsQuoteRef.current,
           allowOverbooking: options.allowOverbooking,
+          // What the person sees: the server refuses a creation whose total differs.
+          expectedTotals: {
+            total: totals.total,
+            deliveryFee: delivery.totalFee,
+            insuranceAmount: tulipInsuranceAmount,
+          },
         },
       });
 
@@ -480,6 +486,11 @@ export function NewReservationForm({
       if (isReservationGateRefusal(error)) {
         setGateDialogOpen(true);
         return;
+      }
+      // A price, a rate or the display mode changed while the form was open:
+      // what it prices from is read again, and it shows the total to confirm.
+      if (error instanceof Error && error.message === "errors.reservationChangedMeanwhile") {
+        router.refresh();
       }
       toastManager.add({
         title: getActionErrorMessage(error),
@@ -1293,7 +1304,8 @@ export function NewReservationForm({
     customLines: customItems.map((item) => ({ amount: getCustomItemTotal(item) })),
     insuranceAmount: tulipInsuranceAmount,
     deliveryFee: delivery.totalFee,
-    discountAmount: globalDiscountAmount,
+    // Rounded as it is sent.
+    discountAmount: Math.round(globalDiscountAmount * 100) / 100,
     deposit: effectiveDeposit,
     taxSettings,
     currency,

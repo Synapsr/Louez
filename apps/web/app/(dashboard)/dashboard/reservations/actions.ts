@@ -190,7 +190,7 @@ import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delive
 
 import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
-import { evaluateReservationRules } from "@louez/utils";
+import { evaluateReservationRules, minorUnitsPerUnit } from "@louez/utils";
 import { recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
@@ -513,6 +513,12 @@ interface CreateReservationData {
   sendConfirmationEmail?: boolean;
   sendAsQuote?: boolean;
   allowOverbooking?: boolean;
+  /**
+   * What the form showed: the total, with the delivery fee and the insurance
+   * it was computed with. Compared under the locks with the total about to be
+   * written; a difference refuses the creation as changed meanwhile.
+   */
+  expectedTotals?: { total: number; deliveryFee: number; insuranceAmount: number };
 }
 
 /**
@@ -897,7 +903,6 @@ export async function createManualReservation(data: CreateReservationData) {
   // Generate reservation number
   const reservationNumber = await generateReservationNumber(store.id);
 
-  const manualDiscountAmount = Math.min(Math.max(data.discountAmount ?? 0, 0), subtotalAmount);
   if (
     data.depositOverride != null &&
     Number.isFinite(data.depositOverride) &&
@@ -940,30 +945,40 @@ export async function createManualReservation(data: CreateReservationData) {
     }
 
     // Priced under the locks (slice 10): a line priced from its product is
-    // priced again from the catalogue the locks hold, and a price that moved
-    // since the form was read refuses the creation. A price typed by hand
-    // stands as typed.
-    const catalogLines = lines.filter(({ detail }) => !detail.pricingBreakdown.isManualOverride);
+    // priced from the catalogue the locks hold, and that is what is written.
+    // A price typed by hand stands as typed.
     const lockedCatalog = await loadPricingCatalog(tx, {
       storeId: store.id,
-      productIds: catalogLines.map(({ detail }) => detail.product.id),
+      productIds: lines.map(({ detail }) => detail.product.id),
       timezone: availabilityRules?.settings?.timezone,
       includeInactive: true,
     });
-    for (const { detail } of catalogLines) {
-      const lockedProduct = lockedCatalog.get(detail.product.id);
-      const priced =
-        lockedProduct &&
-        priceRegularCatalogLine(lockedProduct, {
-          productId: lockedProduct.id,
-          quantity: detail.quantity,
-          startDate: data.startDate.toISOString(),
-          endDate: data.endDate.toISOString(),
-        });
-      if (!priced || toCents(priced.subtotal) !== toCents(detail.totalPrice)) {
-        return { ok: false as const, error: "errors.reservationChangedMeanwhile", shortfalls: [] };
+    const lockedLines: Array<{ unitPrice: string; totalPrice: string }> = [];
+    for (const { detail } of lines) {
+      if (detail.pricingBreakdown.isManualOverride) {
+        lockedLines.push({ unitPrice: detail.unitPrice, totalPrice: detail.totalPrice });
+        continue;
       }
+      const lockedProduct = lockedCatalog.get(detail.product.id);
+      if (!lockedProduct) {
+        return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
+      }
+      const priced = priceRegularCatalogLine(lockedProduct, {
+        productId: lockedProduct.id,
+        quantity: detail.quantity,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
+      });
+      lockedLines.push({
+        unitPrice: priced.unitPrice.toFixed(2),
+        totalPrice: priced.subtotal.toFixed(2),
+      });
     }
+    const lockedSubtotal =
+      lockedLines.reduce((sum, line) => sum + Number(line.totalPrice), 0) +
+      customItemDetails.reduce((sum, customItem) => sum + Number(customItem.totalPrice), 0) +
+      tulipInsuranceAmount;
+    const discountUnderLocks = Math.min(Math.max(data.discountAmount ?? 0, 0), lockedSubtotal);
     // The delivery fee, from the routes measured above and the delivery
     // settings the store holds now.
     const lockedDelivery = availabilityRules?.settings?.delivery;
@@ -975,8 +990,51 @@ export async function createManualReservation(data: CreateReservationData) {
             deliveryDistanceKm,
             returnDistanceKm,
             lockedDelivery,
-            subtotalAmount,
+            lockedSubtotal,
           ).totalFee;
+
+    // The totals: the tax engine over the lines as priced here, the
+    // insurance (exempt), the delivery fee and the discount, as the checkout
+    // computes them, with the store's tax settings read here (slice 10, M1).
+    const taxSettings = availabilityRules?.settings?.tax;
+    const currency = reservationCurrency(null, store.settings);
+    const taxedLines = [
+      ...lines.map(({ detail }, index) => ({
+        subtotal: Number(lockedLines[index]!.totalPrice),
+        unitPrice: Number(lockedLines[index]!.unitPrice),
+        taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
+      })),
+      ...customItemDetails.map((customItem) => ({
+        subtotal: Number(customItem.totalPrice),
+        unitPrice: Number(customItem.unitPrice),
+        taxSettings: null,
+      })),
+    ];
+    const totalsWith = (insuranceAmount: number, deliveryFee: number) =>
+      computeReservationTotals({
+        lines: taxedLines,
+        insuranceAmount,
+        discountAmount: discountUnderLocks,
+        deliveryFee,
+        totalDeposit: depositAmount,
+        taxSettings,
+        currency,
+      });
+    // What the person saw: the total the form showed, compared to the minor
+    // unit with the total of what is about to be written. The delivery fee
+    // and the insurance come from the routing service and the insurer, asked
+    // again at submission: the form's own enter this comparison, so it
+    // weighs the store's prices, rates and display mode, and the discount.
+    if (data.expectedTotals) {
+      const perUnit = minorUnitsPerUnit(currency);
+      const seen = totalsWith(
+        data.expectedTotals.insuranceAmount,
+        data.expectedTotals.deliveryFee,
+      ).total;
+      if (Math.round(seen * perUnit) !== Math.round(data.expectedTotals.total * perUnit)) {
+        return { ok: false as const, error: "errors.reservationChangedMeanwhile", shortfalls: [] };
+      }
+    }
 
     // The stock rule every booking is checked against. Each shortfall is
     // listed, for the store to book over on purpose. Consumables are checked
@@ -1028,31 +1086,7 @@ export async function createManualReservation(data: CreateReservationData) {
       return { ok: false as const, error: split.error, shortfalls: [] };
     }
 
-    // The totals: the tax engine over the lines as priced above, the
-    // insurance (exempt), the delivery fee and the discount, as the checkout
-    // computes them, with the store's tax settings read here (slice 10, M1).
-    const taxSettings = availabilityRules?.settings?.tax;
-    const taxedLines = [
-      ...lines.map(({ detail }) => ({
-        subtotal: Number(detail.totalPrice),
-        unitPrice: Number(detail.unitPrice),
-        taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
-      })),
-      ...customItemDetails.map((customItem) => ({
-        subtotal: Number(customItem.totalPrice),
-        unitPrice: Number(customItem.unitPrice),
-        taxSettings: null,
-      })),
-    ];
-    const totals = computeReservationTotals({
-      lines: taxedLines,
-      insuranceAmount: tulipInsuranceAmount,
-      discountAmount: manualDiscountAmount,
-      deliveryFee: deliveryFeeUnderLocks,
-      totalDeposit: depositAmount,
-      taxSettings,
-      currency: reservationCurrency(null, store.settings),
-    });
+    const totals = totalsWith(tulipInsuranceAmount, deliveryFeeUnderLocks);
     const lineTaxValues = (index: number) =>
       reservationItemTaxValues({
         ...getReservationItemTaxFields(totals, taxedLines[index]!, index),
@@ -1069,7 +1103,7 @@ export async function createManualReservation(data: CreateReservationData) {
       number: reservationNumber,
       status: reservationStatus,
       // Frozen at creation: the store can change its currency later (billing contract Q4).
-      currency: reservationCurrency(null, store.settings),
+      currency,
       startDate: data.startDate,
       endDate: data.endDate,
       subtotalAmount: totals.subtotal.toFixed(2),
@@ -1078,7 +1112,7 @@ export async function createManualReservation(data: CreateReservationData) {
       subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
       taxAmount: totals.taxAmount?.toFixed(2) ?? null,
       taxRate: totals.taxRate?.toFixed(2) ?? null,
-      discountAmount: manualDiscountAmount.toFixed(2),
+      discountAmount: discountUnderLocks.toFixed(2),
       // The mode its totals were computed in (slice 9).
       taxDisplayMode: totals.displayMode,
       internalNotes: data.internalNotes || null,
@@ -1125,9 +1159,9 @@ export async function createManualReservation(data: CreateReservationData) {
         productId: detail.product.id,
         isCustomItem: false,
         quantity: detail.quantity,
-        unitPrice: detail.unitPrice,
+        unitPrice: lockedLines[lineIndex]!.unitPrice,
         depositPerUnit: detail.depositPerUnit,
-        totalPrice: detail.totalPrice,
+        totalPrice: lockedLines[lineIndex]!.totalPrice,
         pricingBreakdown: detail.pricingBreakdown,
         ...lineTaxValues(lineIndex),
         combinationKey: choice.combinationKey,
@@ -1218,6 +1252,8 @@ export async function createManualReservation(data: CreateReservationData) {
       ok: true as const,
       effects,
       totalAmount: totals.total,
+      subtotalAmount: totals.subtotal,
+      discountAmount: discountUnderLocks,
       deliveryFee: deliveryFeeUnderLocks,
     };
   }).catch(refuseCreation);
@@ -1262,8 +1298,8 @@ export async function createManualReservation(data: CreateReservationData) {
       tulip_insurance_opt_in: appliedTulipInsuranceOptIn,
       sent_as_quote: Boolean(data.sendAsQuote),
       send_confirmation_email: shouldSendEmail,
-      subtotal_amount_cents: toAnalyticsAmountCents(subtotalAmount),
-      discount_amount_cents: toAnalyticsAmountCents(manualDiscountAmount),
+      subtotal_amount_cents: toAnalyticsAmountCents(reservationWriteResult.subtotalAmount),
+      discount_amount_cents: toAnalyticsAmountCents(reservationWriteResult.discountAmount),
       delivery_fee_cents: toAnalyticsAmountCents(reservationWriteResult.deliveryFee),
       deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
       total_amount_cents: toAnalyticsAmountCents(totalAmount),
@@ -1360,7 +1396,7 @@ export async function createManualReservation(data: CreateReservationData) {
           startDate: data.startDate,
           endDate: data.endDate,
           totalAmount,
-          subtotalAmount,
+          subtotalAmount: reservationWriteResult.subtotalAmount,
           depositAmount,
         },
         items: emailItems,
@@ -1389,7 +1425,7 @@ export async function createManualReservation(data: CreateReservationData) {
               number: reservationNumber,
               startDate: data.startDate,
               endDate: data.endDate,
-              subtotalAmount,
+              subtotalAmount: reservationWriteResult.subtotalAmount,
               depositAmount,
               totalAmount,
             },

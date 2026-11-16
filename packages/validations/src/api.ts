@@ -516,6 +516,14 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     sendConfirmationEmail: z.boolean().optional(),
     sendAsQuote: z.boolean().optional(),
     allowOverbooking: z.boolean().optional(),
+    // What the form showed, compared under the locks with what is written.
+    expectedTotals: z
+      .object({
+        total: z.number().min(0),
+        deliveryFee: z.number().min(0),
+        insuranceAmount: z.number().min(0),
+      })
+      .optional(),
   }),
 });
 
