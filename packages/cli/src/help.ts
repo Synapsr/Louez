@@ -146,7 +146,13 @@ export function operationHelp(operation: Operation): string {
     );
   }
   const headers: string[] = [];
-  if (operation.idempotent) headers.push("--idempotency-key: safe to repeat with the same key.");
+  if (operation.idempotencyRequired) {
+    headers.push(
+      "--idempotency-key (required by the API; louez generates one unless you give it): safe to repeat with the same key.",
+    );
+  } else if (operation.idempotent) {
+    headers.push("--idempotency-key: safe to repeat with the same key.");
+  }
   if (operation.confirmation) {
     headers.push("--confirmation: the token or approval id an earlier answer asked for.");
   }

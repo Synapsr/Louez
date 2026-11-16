@@ -108,7 +108,7 @@ Once it is approved, run:
 Or run the same command with --wait to wait for the decision.
 ```
 
-Once they approved it on that page, the printed command carries the payment out, once. With `--wait`, the CLI reads the approval every 30 seconds (the reference's interval, or longer when the answer asks), then carries the payment out as soon as it is approved, or stops at a refusal or at expiry. Ctrl-C ends the wait without carrying anything out; the approval stays open, and the CLI prints the command to run once it is approved:
+Once they approved it on that page, the printed command carries the payment out, once. With `--wait`, the CLI reads the approval every 30 seconds (the reference's interval, or longer when the answer asks), then carries the payment out as soon as it is approved, or stops at a refusal or at expiry. Ctrl-C ends the wait, a read in flight included, without carrying anything out; the approval stays open, and the CLI prints the command to run once it is approved. Once the approved payment is sent, a first Ctrl-C only says its result is awaited; a second one stops waiting and exits 4: the outcome is then unknown, and the CLI prints the command to repeat safely, with `--confirmation` and the same `--idempotency-key`:
 
 ```sh
 louez payments record res_123 --type rental --amount 150.00 --method cash --wait
@@ -116,12 +116,12 @@ louez payments record res_123 --type rental --amount 150.00 --method cash --wait
 
 ## Safe retries
 
-Every write the API lets repeat is sent with an `Idempotency-Key`: yours with `--idempotency-key`, or a new one per command. If the network fails before the answer, the CLI prints the key it used: run the same command again with `--idempotency-key <that key>`, and Louez answers with the first call's outcome instead of running it twice. The CLI never sends a write again by itself; `--wait` sends it a second time only once a person approved it.
+Every write the API lets repeat is sent with an `Idempotency-Key`: yours with `--idempotency-key`, or a new one per command. Where the API requires one, `--help` says so, and the CLI sends its own unless you give one. If the network fails before the answer, the CLI prints the key it used: run the same command again with `--idempotency-key <that key>`, and Louez answers with the first call's outcome instead of running it twice. The CLI never sends a write again by itself; `--wait` sends it a second time only once a person approved it.
 
 ## Security
 
 - The key is sent only to the base URL's origin, in the `Authorization` header, and never in a URL. The saved key goes only to the origin it was saved for (above).
-- Nothing the CLI writes shows a key: the key in use, `LOUEZ_API_KEY` and every value given to `--api-key` (when it is a key, or starts like one) are replaced by `[redacted]` wherever they appear, an error quoting the request included: as is, percent-encoded (any of its characters), and in base64 or base64url (of the key, of `Bearer <key>`, and inside a longer base64 text). JSON is redacted value by value, so it stays valid. Ctrl-C during `--wait` also cancels a read in flight. `louez auth status` says where the key comes from, not what it is.
+- Nothing the CLI writes shows a key: the key in use, and `LOUEZ_API_KEY` and `--api-key` when they hold a key, are replaced by `[redacted]` wherever they appear, an error quoting the request included. Only the complete key is ever replaced: as is, percent-encoded in any of its characters (only the key's span), or a whole base64 or base64url run whose decoded bytes hold the complete key (alone, in `Bearer <key>` or in a longer text; runs over 64 KiB are not decoded). A malformed value is no secret: it is refused with exit 2, and no message repeats it. JSON is redacted value by value, so it stays valid, and a property named with the key keeps its value under `[redacted]`, or `[redacted] (2)` when that name is taken. `louez auth status` says where the key comes from, not what it is.
 - A request stays under the base URL's path: a path, or a path parameter, holding a `.` or `..` segment, a backslash, or an encoded slash or backslash (`%2e%2e`, `%2F`, `%5C`) is refused before anything is sent.
 - The CLI never follows a redirect, which would take the key to another server: a 3xx answer exits 1.
 - The base URL must be `https://`, except on `localhost`, `127.0.0.1`, `[::1]` or a `.localify` host; anything else needs `--insecure`.

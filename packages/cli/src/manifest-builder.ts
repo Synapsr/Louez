@@ -229,6 +229,9 @@ export function buildManifest(document: OpenApiDocument): Manifest {
         .filter((p) => p.in === "query")
         .map((p) => field(p.name, p.schema, p.required === true, p.description));
       const headers = new Set(parameters.filter((p) => p.in === "header").map((p) => p.name));
+      const idempotencyRequired = parameters.some(
+        (p) => p.in === "header" && p.name === "Idempotency-Key" && p.required === true,
+      );
 
       const json = source.requestBody?.content?.["application/json"];
       let body: Operation["body"] = null;
@@ -269,6 +272,8 @@ export function buildManifest(document: OpenApiDocument): Manifest {
         query,
         body,
         idempotent: headers.has("Idempotency-Key"),
+        // Only when true, so the manifest of the other operations does not change.
+        ...(idempotencyRequired ? { idempotencyRequired: true as const } : {}),
         confirmation: headers.has("Louez-Confirmation"),
       });
     }

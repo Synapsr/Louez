@@ -49,6 +49,8 @@ export interface Operation {
   body: { required: boolean; fields: Field[] } | null;
   /** It documents `Idempotency-Key`. */
   idempotent: boolean;
+  /** It documents `Idempotency-Key` as required: a request without one is refused. */
+  idempotencyRequired?: true;
   /** It documents `Louez-Confirmation`. */
   confirmation: boolean;
 }

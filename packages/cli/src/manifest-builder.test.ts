@@ -223,6 +223,27 @@ describe("buildManifest", () => {
     );
   });
 
+  test("records an Idempotency-Key the spec requires, and only where it does", () => {
+    const document = fixture();
+    document.components!.parameters!.IdempotencyKeyRequired = {
+      name: "Idempotency-Key",
+      in: "header",
+      required: true,
+    };
+    document.paths["/reservations"]!.post = {
+      operationId: "reservations_create",
+      summary: "Create Reservation",
+      tags: ["Reservations"],
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKeyRequired" }],
+    };
+    const operations = buildManifest(document).operations;
+    const create = operations.find((operation) => operation.id === "reservations_create");
+    assert.equal(create?.idempotent, true);
+    assert.equal(create?.idempotencyRequired, true);
+    const others = operations.filter((operation) => operation.id !== "reservations_create");
+    assert.ok(others.every((operation) => !("idempotencyRequired" in operation)));
+  });
+
   test("refuses a field whose flag the CLI keeps for itself", () => {
     const document = fixture();
     document.paths["/reservations"]!.get!.parameters!.push({

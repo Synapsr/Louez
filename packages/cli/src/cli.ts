@@ -210,7 +210,10 @@ async function run(io: Session): Promise<number> {
       path: input.path,
       query: input.query,
       body: input.body,
-      idempotent: operation.method !== "GET" && operation.idempotent,
+      // A key is generated for every write that takes one, and always where it is required.
+      idempotent:
+        operation.idempotencyRequired === true ||
+        (operation.method !== "GET" && operation.idempotent),
     },
     reader.stdinText,
   );

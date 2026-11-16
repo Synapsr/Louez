@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Io } from "../cli.js";
+import type { Manifest } from "../manifest.js";
 
 interface Received {
   method: string;
@@ -121,6 +122,8 @@ export async function testIo(
     interruptOnSleep?: number;
     /** Every request runs out of time at once. */
     timedOut?: boolean;
+    /** The commands, instead of the generated manifest. */
+    manifest?: Manifest;
   } = {},
 ): Promise<TestIo> {
   let stdout = "";
@@ -170,6 +173,7 @@ export async function testIo(
       return { signal: controller.signal, stop: () => watching.delete(controller) };
     },
     configDir: options.configDir ?? (await tempDir()),
+    ...(options.manifest ? { manifest: options.manifest } : {}),
     newIdempotencyKey: () => "generated-key-1",
     out: () => stdout,
     err: () => stderr,

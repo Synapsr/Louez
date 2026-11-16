@@ -4,6 +4,7 @@ import { after, afterEach, describe, test } from "node:test";
 
 import { APPROVAL_POLL_SECONDS, EXIT, main, rerunCommand } from "./cli.js";
 import { configFile, writeConfig } from "./config.js";
+import type { Manifest, Operation } from "./manifest.js";
 import {
   apiErrorBody,
   removeTempDirs,
@@ -657,6 +658,47 @@ describe("Ctrl-C during a read in flight", () => {
       assert.equal(posts, 1);
     },
   );
+});
+
+describe("a write that requires an idempotency key", () => {
+  const create: Operation = {
+    id: "reservations_create",
+    group: "reservations",
+    action: "create",
+    method: "POST",
+    path: "/reservations",
+    summary: "Create Reservation",
+    description: "Creates a reservation.",
+    pathParams: [],
+    query: [],
+    body: { required: true, fields: [] },
+    idempotent: true,
+    idempotencyRequired: true,
+    confirmation: false,
+  };
+  const manifest: Manifest = {
+    apiVersion: "test",
+    groups: [{ name: "reservations", title: "Reservations", description: "" }],
+    operations: [create],
+  };
+
+  test("is sent the key louez generates, or the one given, and its help says so", async () => {
+    const server = await serve((_, response) => sendJson(response, 200, { id: "res_1" }));
+    assert.equal((await louez(["reservations", "create"], { manifest })).code, EXIT.ok);
+    assert.equal(
+      (await louez(["reservations", "create", "--idempotency-key", "mine"], { manifest })).code,
+      EXIT.ok,
+    );
+    assert.deepEqual(
+      server.received.map((request) => request.headers["idempotency-key"]),
+      ["generated-key-1", "mine"],
+    );
+    const help = await louez(["reservations", "create", "--help"], { manifest });
+    assert.match(
+      help.out(),
+      /--idempotency-key \(required by the API; louez generates one unless you give it\)/,
+    );
+  });
 });
 
 describe("usage errors", () => {
