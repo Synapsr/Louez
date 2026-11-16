@@ -6904,7 +6904,8 @@
           "completed": "Done",
           "declined": "Refused. Nothing was done.",
           "expired": "Lapsed. Nothing was done.",
-          "ended": "Not carried out. Nothing was done."
+          "ended": "Not carried out. Nothing was done.",
+          "unavailable": "This request can no longer be read here."
         },
         "continue": "Continue",
         "followUp": "Approved, continuing"

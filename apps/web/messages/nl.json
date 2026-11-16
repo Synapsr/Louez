@@ -6904,7 +6904,8 @@
           "completed": "Klaar",
           "declined": "Geweigerd. Er is niets gedaan.",
           "expired": "Verlopen. Er is niets gedaan.",
-          "ended": "Niet uitgevoerd. Er is niets gedaan."
+          "ended": "Niet uitgevoerd. Er is niets gedaan.",
+          "unavailable": "Deze aanvraag kan hier niet meer worden gelezen."
         },
         "continue": "Doorgaan",
         "followUp": "Goedgekeurd, we gaan verder"
