@@ -571,10 +571,6 @@ export async function getReservation(
           createdAt: true,
         },
         with: { user: { columns: { name: true, email: true, image: true } } },
-        // The fee given back in excess at zero is bookkeeping (apps/web lib/reservations
-        // stripe-refund-writes.ts, recordFeeOverReturned), not something that happened.
-        where: (activity) =>
-          sql`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(${activity.metadata}, '$.kind')), '') <> 'refund_fee_over_returned' OR CAST(JSON_EXTRACT(${activity.metadata}, '$.overReturnedMinor') AS SIGNED) <> 0`,
         orderBy: [desc(reservationActivity.createdAt)],
       },
     },

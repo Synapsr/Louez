@@ -1,13 +1,9 @@
-import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
-
-import { db } from "@louez/db";
 
 import { createRunLimit, withNamedLock } from "@/lib/billing-sync/locks";
 import { reversalAtSource } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
 import { recordApplicationFeeRefund } from "@/lib/pay-as-you-go/metering";
-import { recordFeeOverReturned } from "@/lib/reservations/stripe-refund-writes";
 import { stripe } from "@/lib/stripe/client";
 
 import { mapDisputeStatus } from "./dispute-facts";
@@ -111,12 +107,6 @@ export type FeeReversalResult =
        * Stripe cannot take an application fee refund back.
        */
       readonly feeRefundedMinor: number;
-      /**
-       * When these figures were read, on the database's clock, under the charge's lock
-       * (`YYYY-MM-DD HH:MM:SS.ffffff`): two reversals of a charge never hold it at once,
-       * so the later of two readings is the newer, whichever is recorded first.
-       */
-      readonly readAt: string;
     };
 
 /**
@@ -199,17 +189,12 @@ export async function reverseFeeAtSource(input: {
           },
           lockedDb,
         );
-        const [stamp] = await lockedDb
-          .select({ readAt: sql<string>`DATE_FORMAT(NOW(6), '%Y-%m-%d %H:%i:%s.%f')` })
-          .from(sql`(SELECT 1) AS reading`);
-        if (!stamp) throw new Error("the database did not give its time");
         return {
           status: incrementMinor > 0 ? "refunded" : "unchanged",
           feeId: fee.id,
           targetMinor,
           incrementMinor,
           feeRefundedMinor: fee.amount_refunded + incrementMinor,
-          readAt: stamp.readAt,
         };
       },
     ),
@@ -217,33 +202,4 @@ export async function reverseFeeAtSource(input: {
   if (!turn.ran) throw new FeeReversalBusyError(input.chargeId, "turn");
   if (!turn.value.ran) throw new FeeReversalBusyError(input.chargeId, "lock");
   return turn.value.value;
-}
-
-/**
- * Records a reversal's reading as the charge's fee given back in excess
- * (`recordFeeOverReturned`), under the charge's lock: every handler that runs the
- * reversal (a refund recorded or failed, a dispute opened, changed or closed) passes
- * its reading here, once the rows it changes are written. Throws `FeeReversalBusyError`
- * when the lock stays taken, so the webhook answers 500 and Stripe retries.
- */
-export async function recordFeeExcess(input: {
-  readonly reservationId: string;
-  readonly paymentId: string;
-  readonly chargeId: string;
-  readonly reading: FeeReversalResult | null;
-}): Promise<void> {
-  const { reading } = input;
-  if (!reading || reading.status === "no_fee") return;
-  const locked = await withNamedLock(
-    feeReversalLockName(input.chargeId),
-    LOCK_TIMEOUT_SECONDS,
-    () =>
-      recordFeeOverReturned(db, {
-        reservationId: input.reservationId,
-        paymentId: input.paymentId,
-        chargeId: input.chargeId,
-        fee: reading,
-      }),
-  );
-  if (!locked.ran) throw new FeeReversalBusyError(input.chargeId, "lock");
 }
