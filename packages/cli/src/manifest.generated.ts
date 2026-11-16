@@ -13,7 +13,7 @@ export const manifest: Manifest = {
     {
       "name": "payments",
       "title": "Payments",
-      "description": "The payments and deposit returns recorded on a reservation: record one, or delete one recorded by mistake."
+      "description": "The payments, deposit returns and refunds given by hand recorded on a reservation: record one, or delete one recorded by mistake."
     },
     {
       "name": "inbox",
@@ -2214,6 +2214,132 @@ export const manifest: Manifest = {
       "confirmation": false
     },
     {
+      "id": "reservations_create",
+      "group": "reservations",
+      "action": "create",
+      "method": "POST",
+      "path": "/reservations",
+      "summary": "Create Reservation",
+      "description": "Creates a reservation of catalog products, picked up at the store's main location, as a `quote` (the customer accepts it; it takes no stock) or `confirmed` (its items leave the stock for these dates).\n\n- `customer` is `{ id }`, a customer of the store, or `{ email, firstName, lastName, phone? }`: a customer the store has with that e-mail is used as is and never changed (`customer.created: false`), else one is added. The key must read customers, and write them for the e-mail form.\n- Each line is priced as the online store's checkout prices the same cart: the catalog, the product's promotion, seasonal prices and the store's taxes, in the store's currency. No price is sent.\n- The store's booking rules (opening hours, notice, durations) come back in `warnings`, never as a refusal.\n- `notifyCustomer` is required: `true` queues the quote e-mail or the booking confirmation when the store sends that e-mail; the preview and `message` say whether one goes.\n- It requires an `Idempotency-Key`: the same key returns the first call's result and creates nothing more.\n\nA product that is not active, a missing required accessory (`details.missing`), or a consumable out of stock is refused. A booking the stock cannot cover answers `RESERVATION_INSUFFICIENT_CAPACITY` with `details.shortfalls`; lines short only with the turnover buffer answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`. `allowOverbooking: true` and `overrideTurnoverBuffer: true` each pass only their own refusal.\n\nOn a key set to ask for confirmations (the default), a creation without either flag first answers 412 `CONFIRMATION_REQUIRED` with its preview. Sending either flag, even when nothing is short, is the key's owner's to approve. It needs the approval of the key's owner, whatever the key's confirmation setting: the first call changes nothing and answers 412 `APPROVAL_REQUIRED` with the preview and `data.details.approval.url`, a Louez page where the key's owner, signed in, approves or refuses within 24 hours. `GET /handoffs/{id}`, with the approval's id, says where it stands; read it every 30 seconds or more. Once it is approved, the same request with the approval's id in `Louez-Confirmation` carries it out, once, within an hour and while the store is still as the preview showed. The operation's own refusals (a record not found, a balance exceeded) answer first, so an approval error comes only for a request that is otherwise still valid. A refusal answers 409 `APPROVAL_DECLINED`. For 412 `APPROVAL_INVALID`, check `details.reason` before retrying: `used` means the action already ran; `approver_not_allowed` means someone allowed must act in Louez; `expired` or `state_changed` requires a new preview, requested without `Louez-Confirmation`; `other_request` requires this request's approval, or a new approval. Too many approval requests answers 429 `APPROVALS_FULL`, with `Retry-After`. The guide's \"Approvals\" section describes each answer.\n\nCustom lines, prices or deposits typed by hand, discounts and promo codes, delivery, insurance and a pending status are the dashboard's: each answers `RESERVATION_OPTION_NOT_AVAILABLE` with `details.option`.\n\nReturns the reservation as `GET /reservations/{id}` does, `customer: { id, created }`, `capacity`, `message`, `warnings` and `links.dashboard`.",
+      "pathParams": [],
+      "query": [],
+      "body": {
+        "required": true,
+        "fields": [
+          {
+            "name": "customer",
+            "flag": "customer",
+            "kind": "json",
+            "required": true,
+            "description": "Either `{ id }`, a customer of this store, or `{ email, firstName, lastName, phone? }`: the customer with that e-mail if the store has one (its details are never changed), else a new customer."
+          },
+          {
+            "name": "startDate",
+            "flag": "start-date",
+            "kind": "string",
+            "required": true,
+            "description": "When the rental starts: ISO 8601 with its offset."
+          },
+          {
+            "name": "endDate",
+            "flag": "end-date",
+            "kind": "string",
+            "required": true,
+            "description": "When it ends, after the start: ISO 8601 with its offset."
+          },
+          {
+            "name": "lines",
+            "flag": "lines",
+            "kind": "json",
+            "required": true,
+            "description": "The catalog products booked, each once or more."
+          },
+          {
+            "name": "status",
+            "flag": "status",
+            "kind": "string",
+            "enum": [
+              "quote",
+              "confirmed",
+              "pending"
+            ],
+            "required": true,
+            "description": "quote (sent to the customer to accept; it takes no stock) or confirmed (its items leave the stock for these dates). pending is refused: it is the customer's own checkout."
+          },
+          {
+            "name": "notifyCustomer",
+            "flag": "notify-customer",
+            "kind": "boolean",
+            "required": true,
+            "description": "true sends the customer the quote e-mail (status quote) or the booking confirmation (status confirmed), when the store sends that e-mail; false sends nothing. Required."
+          },
+          {
+            "name": "allowOverbooking",
+            "flag": "allow-overbooking",
+            "kind": "boolean",
+            "description": "Refused with RESERVATION_INSUFFICIENT_CAPACITY: true creates it all the same, booking over the stock, for when the user chose to. It never passes a consumable out of stock, nor a shortfall the turnover buffer alone makes (that is overrideTurnoverBuffer)."
+          },
+          {
+            "name": "overrideTurnoverBuffer",
+            "flag": "override-turnover-buffer",
+            "kind": "boolean",
+            "description": "Refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock but not the turnover buffer the store keeps between rentals): true creates it all the same, for when the user chose a shorter turnaround. It never passes a line the stock itself cannot cover (that is allowOverbooking)."
+          },
+          {
+            "name": "internalNotes",
+            "flag": "internal-notes",
+            "kind": "string",
+            "description": "Notes only the store's team sees."
+          },
+          {
+            "name": "customLines",
+            "flag": "custom-lines",
+            "kind": "json",
+            "description": "Not taken by this version: lines that are not catalog products. Refused with RESERVATION_OPTION_NOT_AVAILABLE."
+          },
+          {
+            "name": "depositOverride",
+            "flag": "deposit-override",
+            "kind": "string",
+            "description": "Not taken by this version: a deposit typed by hand; the deposit is the products' own. Refused with RESERVATION_OPTION_NOT_AVAILABLE."
+          },
+          {
+            "name": "discountAmount",
+            "flag": "discount-amount",
+            "kind": "string",
+            "description": "Not taken by this version: a discount. Refused with RESERVATION_OPTION_NOT_AVAILABLE."
+          },
+          {
+            "name": "promoCode",
+            "flag": "promo-code",
+            "kind": "string",
+            "description": "Not taken by this version: a promo code. Refused with RESERVATION_OPTION_NOT_AVAILABLE."
+          },
+          {
+            "name": "delivery",
+            "flag": "delivery",
+            "kind": "json",
+            "description": "Not taken by this version: delivery; the customer picks up at the store's main location. Refused with RESERVATION_OPTION_NOT_AVAILABLE."
+          },
+          {
+            "name": "insurance",
+            "flag": "insurance",
+            "kind": "boolean",
+            "description": "Not taken by this version: insurance. Refused with RESERVATION_OPTION_NOT_AVAILABLE."
+          },
+          {
+            "name": "tulipInsuranceOptIn",
+            "flag": "tulip-insurance-opt-in",
+            "kind": "boolean",
+            "description": "Not taken by this version: insurance. Refused with RESERVATION_OPTION_NOT_AVAILABLE."
+          }
+        ]
+      },
+      "idempotent": true,
+      "idempotencyRequired": true,
+      "confirmation": true
+    },
+    {
       "id": "reservations_get",
       "group": "reservations",
       "action": "get",
@@ -2233,6 +2359,62 @@ export const manifest: Manifest = {
       "body": null,
       "idempotent": false,
       "confirmation": false
+    },
+    {
+      "id": "reservations_update",
+      "group": "reservations",
+      "action": "update",
+      "method": "POST",
+      "path": "/reservations/{id}",
+      "summary": "Change Reservation Dates",
+      "description": "Moves a reservation's dates. Only `startDate` and `endDate` change (ISO 8601 with an offset; an absent one keeps its stored value); its lines keep their products, quantities and assigned units, and its deposit and delivery stay as stored. Any other field is refused. Only a pending, quote, confirmed or ongoing reservation is changed (`RESERVATION_NOT_EDITABLE` otherwise); the end must come after the start, and an ongoing reservation's start cannot move (`RESERVATION_WINDOW_INVALID`).\n\nThe new prices come from the checkout's own pricing and the tax engine, and only when they give the reservation's stored prices back, to the cent, over its stored dates. When they do not (a promotion that ended, a price or a tax setting changed, a price typed by hand), and for an insured, discounted, marketplace or delivered reservation, or one whose extension checkout is open, the answer is `RESERVATION_EDIT_IN_DASHBOARD` with `details.reason`, and nothing changes: the change is made from the reservation's page in the dashboard.\n\nThe same dates as stored answer `changed: false` and write nothing. `notifyCustomer` is required: `true` queues the customer's “booking modified” e-mail with the change; it is refused with `RESERVATION_CUSTOMER_UNREACHABLE` when the customer has no e-mail address or the instance sends no e-mail.\n\nNew dates the stock cannot cover answer `RESERVATION_INSUFFICIENT_CAPACITY` with each short line; `allowOverbooking: true` moves them all the same. Lines that fit the stock but not the turnover buffer answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes them, for this change only. Neither passes `RESERVATION_UNITS_UNAVAILABLE`. Dates that stay inside the stored ones are never refused for the stock.\n\nOn a key set to ask for confirmations (the default), the change first answers 412 `CONFIRMATION_REQUIRED` with its preview. Sending either flag, even when nothing is short, is the key's owner's to approve. It needs the approval of the key's owner, whatever the key's confirmation setting: the first call changes nothing and answers 412 `APPROVAL_REQUIRED` with the preview and `data.details.approval.url`, a Louez page where the key's owner, signed in, approves or refuses within 24 hours. `GET /handoffs/{id}`, with the approval's id, says where it stands; read it every 30 seconds or more. Once it is approved, the same request with the approval's id in `Louez-Confirmation` carries it out, once, within an hour and while the store is still as the preview showed. The operation's own refusals (a record not found, a balance exceeded) answer first, so an approval error comes only for a request that is otherwise still valid. A refusal answers 409 `APPROVAL_DECLINED`. For 412 `APPROVAL_INVALID`, check `details.reason` before retrying: `used` means the action already ran; `approver_not_allowed` means someone allowed must act in Louez; `expired` or `state_changed` requires a new preview, requested without `Louez-Confirmation`; `other_request` requires this request's approval, or a new approval. Too many approval requests answers 429 `APPROVALS_FULL`, with `Retry-After`. The guide's \"Approvals\" section describes each answer.\n\nNothing is charged or refunded. Returns the reservation as `GET /reservations/{id}` does, with `previousStartDate`, `previousEndDate`, `previousTotal` and `difference` in the reservation's currency, `warnings`, `capacity`, `customerMessage`, `changed` and `links.dashboard`.",
+      "pathParams": [
+        {
+          "name": "id",
+          "flag": "id",
+          "kind": "string",
+          "required": true
+        }
+      ],
+      "query": [],
+      "body": {
+        "required": true,
+        "fields": [
+          {
+            "name": "startDate",
+            "flag": "start-date",
+            "kind": "string",
+            "description": "The new start, ISO 8601 with its offset (2030-06-01T09:00:00+02:00, or Z). Absent: the start stays as it is. The start of an ongoing reservation cannot move: its goods are out."
+          },
+          {
+            "name": "endDate",
+            "flag": "end-date",
+            "kind": "string",
+            "description": "The new end, ISO 8601 with its offset. Absent: the end stays as it is. It must come after the start."
+          },
+          {
+            "name": "notifyCustomer",
+            "flag": "notify-customer",
+            "kind": "boolean",
+            "required": true,
+            "description": "true: the customer gets the “booking modified” e-mail, with the previous and the new dates, at the address the preview names. Refused with RESERVATION_CUSTOMER_UNREACHABLE when the customer has no e-mail address or this instance sends no e-mail. false: no message. Required: always say which."
+          },
+          {
+            "name": "allowOverbooking",
+            "flag": "allow-overbooking",
+            "kind": "boolean",
+            "description": "For new dates the stock cannot cover (RESERVATION_INSUFFICIENT_CAPACITY): true moves them all the same, booking over the stock, and the reservation's history records the shortfalls. Send it only when the user chose to. It never passes a shortfall that comes from the turnover buffer alone (that is overrideTurnoverBuffer), a unit the reservation holds that another booking holds or needs (RESERVATION_UNITS_UNAVAILABLE), or a consumable out of stock."
+          },
+          {
+            "name": "overrideTurnoverBuffer",
+            "flag": "override-turnover-buffer",
+            "kind": "boolean",
+            "description": "For new dates refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock, not the turnover buffer the store keeps between rentals): true moves them all the same, for this change only. Send it only when the user chose to. It never passes a line the stock itself cannot cover (that is allowOverbooking)."
+          }
+        ]
+      },
+      "idempotent": true,
+      "confirmation": true
     },
     {
       "id": "reservations_poll",
@@ -4260,6 +4442,59 @@ export const manifest: Manifest = {
             ],
             "required": true,
             "description": "How the deposit was given back"
+          },
+          {
+            "name": "notes",
+            "flag": "notes",
+            "kind": "string",
+            "description": "Optional notes"
+          }
+        ]
+      },
+      "idempotent": true,
+      "confirmation": true
+    },
+    {
+      "id": "record_refund",
+      "group": "payments",
+      "action": "record-refund",
+      "method": "POST",
+      "path": "/payments/{paymentId}/refund-records",
+      "summary": "Record Refund",
+      "description": "Records a refund the store already gave by hand (cash, card terminal, bank transfer, check or other) against one payment it took by hand: a `rental`, `damage`, `adjustment` or `deposit_capture` payment. It moves no money. The refund is its own positive `completed` row pointing at the payment, in the payment's own currency; the payment keeps its amount. Partial refunds may follow one another, up to the payment's amount less every completed refund already recorded against it, counted under the reservation's lock. Refused, before anything is asked, for a payment the store does not have (`PAYMENT_NOT_FOUND`); an amount that is zero, negative, not a plain decimal with at most 8 digits before the point and 2 after, or with a digit past the minor unit of the payment's currency, such as decimals in yen (`REFUND_AMOUNT_INVALID`); a payment in a three-decimal currency, which Louez's billing does not count (`REFUND_CURRENCY_NOT_SUPPORTED`); a payment that is itself a refund (`REFUND_OF_REFUND`); a deposit, a deposit return or a deposit hold (`REFUND_PAYMENT_TYPE_NOT_REFUNDABLE`); a payment not completed (`REFUND_PAYMENT_NOT_COMPLETED`); a payment taken online through Stripe, whose refunds are not available through this action yet (`REFUND_STRIPE_PAYMENT`); a payment of zero or below (`REFUND_PAYMENT_NOT_RECEIVED`); and an amount above the payment's amount less every completed refund already recorded against it (`REFUND_EXCEEDS_REFUNDABLE`, whose details give the amounts paid, already refunded and refundable, and the currency). It needs the approval of the key's owner, whatever the key's confirmation setting: the first call changes nothing and answers 412 `APPROVAL_REQUIRED` with a preview of the refund, the payment and what is left to refund and `data.details.approval.url`, a Louez page where the key's owner, signed in, approves or refuses within 24 hours. `GET /handoffs/{id}`, with the approval's id, says where it stands; read it every 30 seconds or more. Once it is approved, the same request with the approval's id in `Louez-Confirmation` carries it out, once, within an hour and while the store is still as the preview showed. The operation's own refusals (a record not found, a balance exceeded) answer first, so an approval error comes only for a request that is otherwise still valid. A refusal answers 409 `APPROVAL_DECLINED`. For 412 `APPROVAL_INVALID`, check `details.reason` before retrying: `used` means the action already ran; `approver_not_allowed` means someone allowed must act in Louez; `expired` or `state_changed` requires a new preview, requested without `Louez-Confirmation`; `other_request` requires this request's approval, or a new approval. Too many approval requests answers 429 `APPROVALS_FULL`, with `Retry-After`. The guide's \"Approvals\" section describes each answer. Returns the refund's id (`refundId`), its `currency` and `creditNote`: `status` `issued` with its `number`, `pending` (owed: Louez issues it, retrying on its own), or `not_applicable` (the store issues no invoices, or the payment refunded has none). The refund stands whatever `creditNote` says. Returns the reservation's number and, with a key that can read reservations, its `links.dashboard`.",
+      "pathParams": [
+        {
+          "name": "paymentId",
+          "flag": "payment-id",
+          "kind": "string",
+          "required": true,
+          "description": "The ID of the payment the store refunded"
+        }
+      ],
+      "query": [],
+      "body": {
+        "required": true,
+        "fields": [
+          {
+            "name": "amount",
+            "flag": "amount",
+            "kind": "string",
+            "required": true,
+            "description": "Amount given back, in the payment's own currency (e.g. \"30.00\")"
+          },
+          {
+            "name": "method",
+            "flag": "method",
+            "kind": "string",
+            "enum": [
+              "cash",
+              "card",
+              "transfer",
+              "check",
+              "other"
+            ],
+            "required": true,
+            "description": "How the money was given back"
           },
           {
             "name": "notes",
