@@ -1,0 +1,44 @@
+{
+  "name": "louez",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Louez on the command line: every operation of the Louez REST API, with an API key.",
+  "keywords": [
+    "cli",
+    "equipment-rental",
+    "louez",
+    "rental"
+  ],
+  "homepage": "https://github.com/Synapsr/Louez/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/Synapsr/Louez/issues"
+  },
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Synapsr/Louez.git",
+    "directory": "packages/cli"
+  },
+  "bin": {
+    "louez": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "generate": "node --import tsx --experimental-test-module-mocks scripts/generate-manifest.ts",
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --import ./src/testing/network-guard.ts --test \"src/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@louez/api": "workspace:*",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.21.0",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.3"
+  }
+}
