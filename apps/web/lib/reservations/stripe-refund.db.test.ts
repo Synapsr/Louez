@@ -59,6 +59,10 @@ registerHooks({
 mock.module("@/lib/referral/rewards", {
   namedExports: { clawbackReferrerRewardForQualifyingPayment: async () => {} },
 });
+// The dispute's alert to the owner is not under test either, for the same reason.
+mock.module("@/app/api/webhooks/stripe/connect/dispute-notification", {
+  namedExports: { notifyPaymentDisputed: async () => {} },
+});
 // The credit note's own document (a PDF, its storage) is not under test here: the
 // sender is given its issuer in each test that runs it.
 mock.module("@/lib/invoicing/refund-credit-note", {
@@ -108,6 +112,7 @@ type FakeCharge = {
   captured: number;
   /** Newest first, as Stripe lists them. */
   refunds: FakeRefund[];
+  disputes?: { id: string; amount: number; status: string }[];
 };
 type Behaviour =
   | "ok"
@@ -260,8 +265,8 @@ function fakeStripe() {
           .reduce((sum, refund) => sum + refund.amount, 0);
         return { id: feeId, amount: FEE_MINOR, amount_refunded: refunded };
       },
-      async listDisputes() {
-        return [];
+      async listDisputes(chargeId, accountId) {
+        return chargeOf(accountId, chargeId).disputes ?? [];
       },
       async refundApplicationFee(feeId, amount) {
         feeRefunds.push({ feeId, amount });
@@ -331,6 +336,7 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
   let service: typeof import("./stripe-refund");
   let writes: typeof import("./stripe-refund-writes");
   let webhook: typeof import("@/app/api/webhooks/stripe/connect/charge-refund");
+  let disputeWebhook: typeof import("@/app/api/webhooks/stripe/connect/charge-dispute");
   let outbox: typeof import("@louez/api/platform/effects");
   let counter = 0;
   /** The outbox rows the writes handed to the dispatcher, not run here. */
@@ -344,6 +350,7 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     service = await import("./stripe-refund");
     writes = await import("./stripe-refund-writes");
     webhook = await import("@/app/api/webhooks/stripe/connect/charge-refund");
+    disputeWebhook = await import("@/app/api/webhooks/stripe/connect/charge-dispute");
     outbox = await import("@louez/api/platform/effects");
     await louezDb.db.insert(louezDb.stores).values([
       { id: STORE, userId: "owner", name: "Refunds", slug: "refunds", stripeAccountId: ACCOUNT },
@@ -1717,6 +1724,122 @@ describe("refund of an online payment (database)", { skip: skipWithoutTestDataba
     await webhook.handleChargeRefunded(stripe.refundedEvent(chargeId), ACCOUNT, stripe.webhookPort);
     assert.deepEqual(await feeLines(reservationId), [0]);
   });
+
+  test("a first reading of zero keeps an older one from landing after it", async () => {
+    const stripe = fakeStripe();
+    const { reservationId, paymentId, chargeId } = await createPayment(stripe);
+    // A refund of 20.00 Stripe reported failed, its row written failed.
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `pay_zero_fee_${++counter}`,
+      reservationId,
+      amount: "20.00",
+      type: "rental",
+      method: "stripe",
+      status: "failed",
+      stripeRefundId: `re_zero_fee_${counter}`,
+      refundOfPaymentId: paymentId,
+      currency: "EUR",
+      grossMinor: 2_000,
+    });
+    const reading = (feeRefundedMinor: number, targetMinor: number, second: number) =>
+      writes.recordFeeOverReturned(louezDb.db, {
+        reservationId,
+        paymentId,
+        chargeId,
+        fee: {
+          feeId: `fee_${chargeId}`,
+          feeRefundedMinor,
+          targetMinor,
+          readAt: `2999-01-01 00:00:0${second}.000000`,
+        },
+      });
+    await reading(300, 300, 2);
+    await reading(60, 0, 1);
+    assert.deepEqual(await feeLines(reservationId), [0]);
+  });
+
+  for (const outcome of ["won", "lost"] as const) {
+    test(`a dispute opened then ${outcome} is read into the fee given back in excess, whatever is heard again`, async () => {
+      const stripe = fakeStripe();
+      const { reservationId, chargeId } = await createPayment(stripe);
+      const charge = stripe.charges.get(chargeId);
+      assert.ok(charge);
+      // 20.00 refunded, 0.60 of the 3.00 fee given back; the refund fails.
+      const refund = stripe.refundInDashboard(chargeId, 2_000);
+      const refunded = () =>
+        webhook.handleChargeRefunded(stripe.refundedEvent(chargeId), ACCOUNT, stripe.webhookPort);
+      const failed = () =>
+        webhook.handleRefundUpdated(
+          { ...refund, currency: "eur", charge: chargeId },
+          ACCOUNT,
+          stripe.webhookPort,
+        );
+      await refunded();
+      refund.status = "failed";
+      await failed();
+      assert.deepEqual(await feeLines(reservationId), [60]);
+
+      // A dispute on the whole 100.00: the rest of the fee, 2.40, is given back.
+      const disputed = (eventType: "charge.dispute.created" | "charge.dispute.closed") =>
+        disputeWebhook.handleChargeDispute(
+          {
+            eventType,
+            dispute: {
+              id: `dp_${chargeId}`,
+              amount: 10_000,
+              currency: "eur",
+              created: 1_790_000_000,
+              charge: chargeId,
+              payment_intent: null,
+              status: charge.disputes?.[0]?.status ?? "needs_response",
+              balance_transactions: [],
+            },
+            eventCreatedAt: new Date(),
+            connectedAccountId: ACCOUNT,
+          },
+          stripe.webhookPort.feeReversal,
+          { notify: async () => {}, schedule: () => {} },
+        );
+      charge.disputes = [{ id: `dp_${chargeId}`, amount: 10_000, status: "needs_response" }];
+      await disputed("charge.dispute.created");
+      await failed();
+      assert.deepEqual(await feeLines(reservationId), [0], "the dispute justifies the whole fee");
+
+      // Won: the store keeps the 100.00 and the 3.00 given back stays given back. Lost:
+      // the store keeps nothing of it, so the whole fee given back is due.
+      charge.disputes = [{ id: `dp_${chargeId}`, amount: 10_000, status: outcome }];
+      await disputed("charge.dispute.closed");
+      const expected = outcome === "won" ? 300 : 0;
+      assert.deepEqual(await feeLines(reservationId), [expected]);
+      for (const heard of [failed, () => disputed("charge.dispute.created"), refunded, failed]) {
+        await heard();
+      }
+      assert.deepEqual(await feeLines(reservationId), [expected], "heard again: nothing changes");
+      // Named on the failed refund row, where the inbox shows it.
+      const [line] = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(
+          and(
+            eq(louezDb.reservationActivity.reservationId, reservationId),
+            sql`JSON_UNQUOTE(JSON_EXTRACT(${louezDb.reservationActivity.metadata}, '$.kind')) = 'refund_fee_over_returned'`,
+          ),
+        );
+      const [failedRow] = await louezDb.db
+        .select({ id: louezDb.payments.id })
+        .from(louezDb.payments)
+        .where(
+          and(
+            eq(louezDb.payments.stripeRefundId, refund.id),
+            eq(louezDb.payments.status, "failed"),
+          ),
+        );
+      assert.equal(
+        (line?.metadata as { paymentId?: string } | undefined)?.paymentId,
+        failedRow?.id,
+      );
+    });
+  }
 
   test("several lines of one fee's excess are folded into one", async () => {
     const { reservationId, chargeId, reading } = await twoUndoneRefunds();

@@ -13,15 +13,17 @@ import {
   providerRefundFromStripe,
   refundMovedMoney,
 } from "@/lib/reservations/stripe-refund-stripe";
-import {
-  recordChargeRefunds,
-  recordFeeOverReturned,
-} from "@/lib/reservations/stripe-refund-writes";
+import { recordChargeRefunds } from "@/lib/reservations/stripe-refund-writes";
 import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
 
 import { findChargePayment, isKnownPaymentIntent } from "./charge-writes";
-import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from "./fee-reversal";
+import {
+  type FeeReversalStripe,
+  recordFeeExcess,
+  reverseFeeAtSource,
+  stripeFeeReversal,
+} from "./fee-reversal";
 
 // `charge.refunded` on a connected account (louez-billing design §5.6, docs/api
 // fees.md §9 and README Q7): the fee refund at source, then, through the one writer of
@@ -185,11 +187,11 @@ export async function handleChargeRefunded(
     source: "stripe_charge_refunded_webhook",
   });
   dispatchEffects(recorded.effectIds);
-  await recordFeeOverReturned(db, {
+  await recordFeeExcess({
     reservationId: payment.reservationId,
     paymentId: payment.paymentId,
     chargeId: charge.id,
-    fee: fee?.status === "no_fee" ? null : fee,
+    reading: fee,
   });
   const netMinor = recorded.netMinor;
   const fullyRefunded = netMinor === 0;
@@ -307,11 +309,11 @@ export async function handleRefundUpdated(
     source: "stripe_refund_updated_webhook",
   });
   dispatchEffects(recorded.effectIds);
-  await recordFeeOverReturned(db, {
+  await recordFeeExcess({
     reservationId: payment.reservationId,
     paymentId: payment.paymentId,
     chargeId,
-    fee: fee?.status === "no_fee" ? null : fee,
+    reading: fee,
   });
   return { status: "recorded", paymentId: payment.paymentId, undone: recorded.undone.length };
 }

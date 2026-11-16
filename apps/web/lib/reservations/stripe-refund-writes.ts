@@ -589,12 +589,16 @@ export async function recordChargeRefunds(
  * cannot take an application fee refund back, so what was given back past the fee's
  * share of what the store still does not keep stays given back. One record per charge's
  * fee, on one activity line, named on the charge's latest undone refund row, where the
- * inbox's `refund_undone` shows it. Its figure is the charge's state as of the newest
- * reading of it (`readAt`, taken under the charge's lock by `reverseFeeAtSource`):
+ * inbox's `refund_undone` shows it. Every handler that runs the fee reversal (a refund
+ * recorded or failed, a dispute opened, changed or closed) records its reading here,
+ * under the charge's lock (`recordFeeExcess`). Its figure is the charge's state as of
+ * the newest reading of it (`readAt`, taken under that lock by `reverseFeeAtSource`):
  *
  * - a reading older than the one recorded changes nothing, whichever is recorded first;
- * - a newer one replaces it, down to zero when refunds that stand since justify all the
- *   fee given back (a zero is no inbox item);
+ * - a newer one replaces it, down to zero when refunds or disputes since justify all
+ *   the fee given back, and up again when they no longer do (a dispute won);
+ * - a first reading of zero is recorded too, so an older one cannot land after it; a
+ *   zero is no inbox item and no line of the reservation's activity;
  * - other lines of the same fee are folded into the one kept (the oldest).
  */
 export async function recordFeeOverReturned(
@@ -646,7 +650,6 @@ export async function recordFeeOverReturned(
     if (typeof current.readAt === "string" && current.readAt > fee.readAt) {
       return folded.length > 0;
     }
-    if (!line && overReturnedMinor === 0) return false;
 
     let undoneId = typeof current.paymentId === "string" ? current.paymentId : null;
     if (overReturnedMinor > 0) {
@@ -687,7 +690,8 @@ export async function recordFeeOverReturned(
         .limit(1);
       if (undone) undoneId = undone.id;
     }
-    if (!undoneId) return folded.length > 0;
+    // With no undone refund row the record stands all the same: its time keeps an older
+    // reading from landing after it.
     const metadata = {
       kind: REFUND_FEE_OVER_RETURNED_ACTIVITY,
       paymentId: undoneId,

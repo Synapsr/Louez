@@ -7,7 +7,13 @@ import { fromStripeCents } from "@/lib/stripe";
 import { recordChargeDispute } from "./charge-writes";
 import { type DisputeEventType, type DisputeInput, mapDisputeStatus } from "./dispute-facts";
 import { type DisputeNotificationInput, notifyPaymentDisputed } from "./dispute-notification";
-import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from "./fee-reversal";
+import {
+  type FeeReversalResult,
+  type FeeReversalStripe,
+  recordFeeExcess,
+  reverseFeeAtSource,
+  stripeFeeReversal,
+} from "./fee-reversal";
 
 // `charge.dispute.*` on a connected account (louez-billing docs/api, fees.md §9 and
 // README Q15): the fee refund at source, then the dispute's billing facts.
@@ -42,7 +48,9 @@ const stripeId = (value: string | { readonly id: string } | null): string | null
 /**
  * Every `charge.dispute.*` event updates the dispute's billing facts. The fee refund at
  * source runs first, reading the charge's disputes from Stripe; a reinstatement
- * restores no fee. The referral clawback runs on creation. The owner is told once,
+ * restores no fee, and its reading is recorded as the charge's fee given back in
+ * excess once the dispute is (`recordFeeExcess`). The referral clawback runs on
+ * creation. The owner is told once,
  * by the first event Louez records of an open dispute, whatever its type: Stripe
  * does not order events. The alert and its retries run after the webhook answered,
  * so Stripe hears back as soon as the dispute is recorded. Throws when the fee
@@ -63,8 +71,13 @@ export async function handleChargeDispute(
   const { eventType, dispute, connectedAccountId } = input;
   const chargeId = stripeId(dispute.charge);
   const paymentIntentId = stripeId(dispute.payment_intent);
+  let reading: FeeReversalResult | null = null;
   if (chargeId && connectedAccountId && FEE_REVERSAL_DISPUTE_EVENTS.has(eventType)) {
-    await reverseFeeAtSource({ chargeId, accountId: connectedAccountId, stripe: feeReversal });
+    reading = await reverseFeeAtSource({
+      chargeId,
+      accountId: connectedAccountId,
+      stripe: feeReversal,
+    });
   }
   if (eventType === "charge.dispute.created" && paymentIntentId) {
     // Referral Program: a disputed qualifying payment claws back the Referrer Reward
@@ -89,6 +102,16 @@ export async function handleChargeDispute(
     eventCreatedAt: input.eventCreatedAt,
     accountId: connectedAccountId,
   });
+  // What the dispute changes in the fee given back in excess (a dispute won leaves the
+  // fee given back while it was open given back), recorded as the refunds' readings are.
+  if (result.recorded && chargeId) {
+    await recordFeeExcess({
+      reservationId: result.reservationId,
+      paymentId: result.paymentId,
+      chargeId,
+      reading,
+    });
+  }
   log.info({
     stripeWebhook: {
       event: eventType,
