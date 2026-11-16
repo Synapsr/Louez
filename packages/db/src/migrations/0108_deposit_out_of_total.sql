@@ -10,7 +10,14 @@
 -- (no recorded display mode) are considered. Once changed, a row no longer
 -- matches: a second run changes nothing. `updated_at` is left as it is; the
 -- history line written first records the total before and the deposit taken
--- out.
+-- out. A row whose total would fall below zero is left as it is.
+--
+-- Interrupted and run again, it says the truth: both statements run in one
+-- transaction on the runner's one connection, and the history line is
+-- written only for a row that holds none of this migration's yet, so each
+-- changed row ends with exactly one line and one decrement. Each statement
+-- reads the reservations table once, at start-up.
+START TRANSACTION;--> statement-breakpoint
 INSERT INTO `reservation_activity` (
 	`id`,
 	`reservation_id`,
@@ -35,13 +42,19 @@ SELECT
 	),
 	NOW()
 FROM `reservations`
-WHERE `deposit_amount` > 0
+WHERE NOT EXISTS (
+		SELECT 1 FROM `reservation_activity`
+		WHERE `reservation_activity`.`reservation_id` = `reservations`.`id`
+			AND JSON_UNQUOTE(JSON_EXTRACT(`reservation_activity`.`metadata`, '$.migration')) = '0108'
+	)
+	AND `deposit_amount` > 0
 	AND `source` = 'online'
 	AND UNIX_TIMESTAMP(`created_at`) < 1775001600
 	AND `tax_display_mode` IS NULL
 	AND `total_amount` = `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + `deposit_amount`
 	AND `total_amount` <> `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + COALESCE(`tax_amount`, 0)
-	AND `total_amount` <> `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + COALESCE(`tulip_insurance_amount`, 0);--> statement-breakpoint
+	AND `total_amount` <> `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + COALESCE(`tulip_insurance_amount`, 0)
+	AND `total_amount` - `deposit_amount` >= 0;--> statement-breakpoint
 UPDATE `reservations`
 SET `total_amount` = `total_amount` - `deposit_amount`
 WHERE `deposit_amount` > 0
@@ -50,4 +63,6 @@ WHERE `deposit_amount` > 0
 	AND `tax_display_mode` IS NULL
 	AND `total_amount` = `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + `deposit_amount`
 	AND `total_amount` <> `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + COALESCE(`tax_amount`, 0)
-	AND `total_amount` <> `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + COALESCE(`tulip_insurance_amount`, 0);
+	AND `total_amount` <> `subtotal_amount` - COALESCE(`discount_amount`, 0) + COALESCE(`delivery_fee`, 0) + COALESCE(`tulip_insurance_amount`, 0)
+	AND `total_amount` - `deposit_amount` >= 0;--> statement-breakpoint
+COMMIT;

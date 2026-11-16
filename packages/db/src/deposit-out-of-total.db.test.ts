@@ -79,6 +79,8 @@ const ROWS: Row[] = [
   { id: "no_deposit", subtotal: "100.00", deposit: "0.00", total: "100.00" },
   // A current row: its total is its parts, the deposit apart.
   { id: "current", subtotal: "100.00", deposit: "30.00", total: "100.00" },
+  // Its parts plus the deposit, but the total would fall below zero without it.
+  { id: "negative", subtotal: "10.00", discount: "50.00", deposit: "50.00", total: "10.00" },
 ];
 
 describe(
@@ -90,37 +92,39 @@ describe(
     let database: TestDatabase;
     let connection: Connection;
 
+    async function insertRow(row: Row) {
+      await connection.query(
+        `INSERT INTO reservations
+        (id, store_id, customer_id, number, reservation_status, start_date, end_date, subtotal_amount,
+         discount_amount, delivery_fee, tax_amount, tulip_insurance_amount,
+         deposit_amount, total_amount, source, tax_display_mode, created_at, updated_at)
+       VALUES (?, ?, 'customer', ?, 'completed', '2026-02-10 09:00:00', '2026-02-12 09:00:00',
+         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '2026-03-01 08:00:00')`,
+        [
+          row.id,
+          STORE,
+          row.id,
+          row.subtotal,
+          row.discount ?? "0.00",
+          row.deliveryFee ?? "0.00",
+          row.tax ?? null,
+          row.insurance ?? null,
+          row.deposit,
+          row.total,
+          row.source ?? "online",
+          row.taxDisplayMode ?? null,
+          row.createdAt ?? "2026-02-01 08:00:00",
+        ],
+      );
+    }
+
     before(async () => {
       database = await createTestDatabase("deposit_out_of_total");
       connection = await database.connect();
       // The test database is migrated already: the rows are written after 0108
       // ran on an empty table, as the rows of an instance were written before.
       await connection.query("SET time_zone = '+00:00'");
-      for (const row of ROWS) {
-        await connection.query(
-          `INSERT INTO reservations
-          (id, store_id, customer_id, number, reservation_status, start_date, end_date, subtotal_amount,
-           discount_amount, delivery_fee, tax_amount, tulip_insurance_amount,
-           deposit_amount, total_amount, source, tax_display_mode, created_at, updated_at)
-         VALUES (?, ?, 'customer', ?, 'completed', '2026-02-10 09:00:00', '2026-02-12 09:00:00',
-           ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '2026-03-01 08:00:00')`,
-          [
-            row.id,
-            STORE,
-            row.id,
-            row.subtotal,
-            row.discount ?? "0.00",
-            row.deliveryFee ?? "0.00",
-            row.tax ?? null,
-            row.insurance ?? null,
-            row.deposit,
-            row.total,
-            row.source ?? "online",
-            row.taxDisplayMode ?? null,
-            row.createdAt ?? "2026-02-01 08:00:00",
-          ],
-        );
-      }
+      for (const row of ROWS) await insertRow(row);
     });
 
     after(async () => {
@@ -194,6 +198,23 @@ describe(
         "SELECT DISTINCT updated_at AS updatedAt FROM reservations",
       );
       assert.equal(stamps.length, 1, "updated_at is left as it was");
+    });
+
+    test("interrupted after its history line, run again: one line, one decrement", async () => {
+      await insertRow({ id: "retry", subtotal: "100.00", deposit: "30.00", total: "130.00" });
+      const statements = (await readFile(MIGRATION, "utf8")).split("--> statement-breakpoint");
+      const insert = statements.find((statement) => statement.includes("INSERT INTO"));
+      assert.ok(insert);
+      // The history line is written, then the run stops before the update.
+      await connection.query(insert);
+
+      await runMigration();
+
+      const [lines] = await connection.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS count FROM reservation_activity WHERE reservation_id = 'retry'",
+      );
+      assert.equal(Number(lines[0]?.count), 1);
+      assert.equal((await totals()).retry, "100.00");
     });
   },
 );
