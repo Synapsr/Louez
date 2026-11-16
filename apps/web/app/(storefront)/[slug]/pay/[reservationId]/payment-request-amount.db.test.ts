@@ -89,7 +89,12 @@ describe(
     });
 
     /** A signed reservation of `total`, with a rental request of `requested`. */
-    async function requested(total: string, requestedAmount: string, paid?: string) {
+    async function requested(
+      total: string,
+      requestedAmount: string,
+      paid?: string,
+      requestCurrency = "EUR",
+    ) {
       const id = nextId("res");
       await louezDb.db.insert(louezDb.reservations).values({
         id,
@@ -113,7 +118,7 @@ describe(
         reservationId: id,
         token,
         amount: requestedAmount,
-        currency: "EUR",
+        currency: requestCurrency,
         description: "Rental",
         type: "rental",
         expiresAt: new Date(Date.now() + 86_400_000),
@@ -166,6 +171,16 @@ describe(
 
       assert.deepEqual(await load(request), { ok: false, error: "no_longer_current" });
       assert.deepEqual(await open(request), { ok: false, error: "no_longer_current" });
+    });
+
+    test("a request in another currency than the reservation's: no longer current, no session", async () => {
+      // A euro reservation owes 100; an older request asks 100 dollars.
+      const request = await requested("100.00", "100.00", undefined, "USD");
+
+      assert.deepEqual(await load(request), { ok: false, error: "no_longer_current" });
+      assert.deepEqual(await open(request), { ok: false, error: "no_longer_current" });
+      assert.equal(Reflect.get(globalThis, SESSIONS_KEY), undefined, "no session asked for");
+      assert.deepEqual(await requestRow(request.requestId), { amount: "100.00", status: "pending" });
     });
 
     test("nothing left to pay: already paid", async () => {

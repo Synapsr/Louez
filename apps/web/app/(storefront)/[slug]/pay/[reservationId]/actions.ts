@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { acceptReservationContract } from "@louez/api/services";
 import { db, paymentRequests, reservations } from "@louez/db";
-import { validateStripePaymentAmount } from "@louez/utils";
+import { normalizeCurrency, validateStripePaymentAmount } from "@louez/utils";
 
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
@@ -125,9 +125,14 @@ const loadPaymentRequestContext = async ({
   // when the page loads and again when the session is opened: a request
   // written before the total went down, or before a payment was recorded,
   // is no longer current and the store asks again. Nothing is charged and
-  // the request is left as it is. A custom request asks what the store chose.
+  // the request is left as it is. A request in another currency than the
+  // reservation's settles none of it, and is no longer current either. A
+  // custom request asks what the store chose.
   if (paymentRequest.type === "rental") {
     const currency = reservationCurrency(reservation.currency, store.settings);
+    if (normalizeCurrency(paymentRequest.currency, "") !== currency) {
+      return { ok: false as const, error: "no_longer_current" as const };
+    }
     const owed = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
     const owedHundredths = Math.round(owed * 100);
     if (owedHundredths === 0) {
