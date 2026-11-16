@@ -1,7 +1,7 @@
 import type { AppliedProductPromotion, PricingBreakdown, ProductTaxSettings } from "@louez/types";
 import { calculateDuration } from "@louez/utils";
 
-import { NOT_RECORDED, recordedPromotion } from "./pricing-facts";
+import { NOT_RECORDED, pricingBasisOf, recordedPromotion } from "./pricing-facts";
 
 /**
  * The line prices of a reservation the store edits from the dashboard
@@ -21,6 +21,28 @@ export interface StoredProductLine {
   /** Its recorded tax rate; null when it recorded none. */
   taxRate: number | null;
   pricingBreakdown: PricingBreakdown | null;
+}
+
+/**
+ * A stored line priced from its product, as the edit reads it, from its row
+ * or from the edit form's copy of it; null for one whose price was typed by
+ * hand.
+ */
+export function storedProductLineOf(item: {
+  quantity: number;
+  unitPrice: string | number;
+  totalPrice: string | number;
+  taxRate: string | number | null;
+  pricingBreakdown: PricingBreakdown | null;
+}): StoredProductLine | null {
+  if (pricingBasisOf(item.pricingBreakdown)?.isManualOverride === true) return null;
+  return {
+    quantity: item.quantity,
+    unitPrice: Number(item.unitPrice),
+    totalPrice: Number(item.totalPrice),
+    taxRate: item.taxRate === null ? null : Number(item.taxRate),
+    pricingBreakdown: item.pricingBreakdown,
+  };
 }
 
 export type EditedProductLinePrice =
@@ -93,23 +115,32 @@ export function cataloguePriceWithRecordedPromotion(
   /** The promotion applied, to apply again under the locks; null for none. */
   promotion: AppliedProductPromotion | null;
 } {
-  const recorded = stored ? recordedPromotion(stored) : NOT_RECORDED;
-  if (recorded === NOT_RECORDED) {
+  const priced = subtotalWithRecordedPromotion(regular.subtotal, stored);
+  if (priced.recorded === NOT_RECORDED) {
     return { subtotal: regular.subtotal, breakdown: regular.breakdown, promotion: null };
   }
-  if (recorded === null) {
-    return {
-      subtotal: regular.subtotal,
-      breakdown: { ...regular.breakdown, promotion: null },
-      promotion: null,
-    };
-  }
-  const applied = applyRecordedPromotion(regular.subtotal, recorded);
   return {
-    subtotal: applied.subtotal,
-    breakdown: { ...regular.breakdown, promotion: applied.promotion },
-    promotion: applied.promotion,
+    subtotal: priced.subtotal,
+    breakdown: { ...regular.breakdown, promotion: priced.promotion },
+    promotion: priced.promotion,
   };
+}
+
+/** The new price of a line with the promotion it recorded, and what it recorded. */
+export function subtotalWithRecordedPromotion(
+  subtotal: number,
+  stored: StoredProductLine | null,
+): {
+  subtotal: number;
+  promotion: AppliedProductPromotion | null;
+  recorded: AppliedProductPromotion | null | typeof NOT_RECORDED;
+} {
+  const recorded = stored ? recordedPromotion(stored) : NOT_RECORDED;
+  if (recorded === NOT_RECORDED || recorded === null) {
+    return { subtotal, promotion: null, recorded };
+  }
+  const applied = applyRecordedPromotion(subtotal, recorded);
+  return { subtotal: applied.subtotal, promotion: applied.promotion, recorded };
 }
 
 export type ProductGoneLinePrice =

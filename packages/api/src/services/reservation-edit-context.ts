@@ -303,6 +303,8 @@ export async function getDashboardReservationEditContext(params: {
         unitPrice: item.unitPrice,
         depositPerUnit: item.depositPerUnit,
         totalPrice: item.totalPrice,
+        // The rate a line the edit leaves as it was keeps (slice 11).
+        taxRate: item.taxRate,
         isCustomItem: item.isCustomItem,
         pricingBreakdown: item.pricingBreakdown,
         productSnapshot: item.productSnapshot,

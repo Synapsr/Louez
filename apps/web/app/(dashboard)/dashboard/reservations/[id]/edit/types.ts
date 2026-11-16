@@ -1,3 +1,4 @@
+import type { StoredProductLine } from "@louez/api/services/edit-line-pricing";
 import type { DateChangeRequest } from "@louez/validations";
 import type {
   DeliverySettings,
@@ -49,6 +50,7 @@ export interface ReservationItem {
   unitPrice: string;
   depositPerUnit: string;
   totalPrice: string;
+  taxRate: string | null;
   isCustomItem: boolean;
   pricingBreakdown: PricingBreakdown | null;
   productSnapshot: ProductSnapshot;
@@ -127,6 +129,12 @@ export interface EditableItem {
   enforceStrictTiers?: boolean;
   productSnapshot: ProductSnapshot;
   product: Product | null;
+  /**
+   * The line as stored, when it is priced from its product: what the edit
+   * keeps or prices again from (slice 11). Null for a new line or a price
+   * typed by hand.
+   */
+  stored: StoredProductLine | null;
 }
 
 export interface AvailabilityWarning {
@@ -177,6 +185,8 @@ export interface CalculatedEditableItem extends EditableItem {
   originalSubtotal: number;
   savings: number;
   discountPercent: number | null;
+  /** The rate it recorded, when it keeps its stored price; null otherwise. */
+  keptTaxRate: number | null;
 }
 
 export interface ReservationCalculations {

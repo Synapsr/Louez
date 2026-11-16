@@ -23,7 +23,7 @@ import {
   cataloguePriceWithRecordedPromotion,
   priceEditedProductLine,
   priceProductGoneLine,
-  type StoredProductLine,
+  storedProductLineOf,
 } from "@louez/api/services/edit-line-pricing";
 import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
 import {
@@ -1701,27 +1701,6 @@ type ReservationDeliveryUpdateValues = Partial<
 function normalizeMoney(value: string | number) {
   const parsed = typeof value === "number" ? value : parseFloat(value);
   return Number.isFinite(parsed) ? parsed.toFixed(2) : "0.00";
-}
-
-/**
- * A stored line priced from its product, as `priceEditedProductLine` reads
- * it; null for one whose price was typed by hand.
- */
-function storedProductLineOf(item: {
-  quantity: number;
-  unitPrice: string;
-  totalPrice: string;
-  taxRate: string | null;
-  pricingBreakdown: PricingBreakdown | null;
-}): StoredProductLine | null {
-  if (pricingBasisOf(item.pricingBreakdown)?.isManualOverride === true) return null;
-  return {
-    quantity: item.quantity,
-    unitPrice: Number(item.unitPrice),
-    totalPrice: Number(item.totalPrice),
-    taxRate: item.taxRate === null ? null : Number(item.taxRate),
-    pricingBreakdown: item.pricingBreakdown,
-  };
 }
 
 function hasReservationItemChanges(

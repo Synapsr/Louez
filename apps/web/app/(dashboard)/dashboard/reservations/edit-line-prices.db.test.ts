@@ -7,6 +7,14 @@ import { asc, eq } from "drizzle-orm";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 import type { PricingBreakdown, StoreSettings, TaxSettings } from "@louez/types";
 
+import { storedProductLineOf } from "@louez/api/services/edit-line-pricing";
+import { pricingBasisOf } from "@louez/api/services/pricing-facts";
+
+import type { EditableItem } from "./[id]/edit/types";
+import {
+  calculateEditableItemPrice,
+  previewEditTotal,
+} from "./[id]/edit/hooks/use-edit-reservation-pricing";
 import { STORE_KEY } from "./actions-test-stubs";
 
 // The line prices of a reservation the store edits from the dashboard
@@ -239,6 +247,76 @@ describe(
     const deleteProduct = (productId: string) =>
       louezDb.db.delete(louezDb.products).where(eq(louezDb.products.id, productId));
 
+    /**
+     * The total the edit form shows for an edit, from the reservation as
+     * stored, its lines built as the form builds them (`toEditableItem`).
+     */
+    async function previewOf(
+      reservationId: string,
+      edit: { end?: Date; quantities?: Record<string, number> },
+    ) {
+      const row = await reservationRow(reservationId);
+      const end = edit.end ?? row.endDate;
+      const [store] = await louezDb.db
+        .select({ settings: louezDb.stores.settings })
+        .from(louezDb.stores)
+        .where(eq(louezDb.stores.id, STORE));
+      const editable: EditableItem[] = [];
+      for (const item of await items(reservationId)) {
+        const [product] = item.productId
+          ? await louezDb.db
+              .select()
+              .from(louezDb.products)
+              .where(eq(louezDb.products.id, item.productId))
+          : [];
+        const basis = pricingBasisOf(item.pricingBreakdown);
+        editable.push({
+          id: item.id,
+          productId: item.productId,
+          quantity: edit.quantities?.[item.id] ?? item.quantity,
+          consumedQuantity: 0,
+          unitPrice: Number(item.unitPrice),
+          depositPerUnit: 0,
+          isManualPrice: basis?.isManualOverride === true,
+          pricingMode: product?.pricingMode ?? basis?.pricingMode ?? "day",
+          productSnapshot: item.productSnapshot,
+          product: product
+            ? {
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                deposit: product.deposit ?? "0.00",
+                quantity: product.quantity,
+                stockKind: product.stockKind,
+                pricingKind: product.pricingKind,
+                pricingMode: product.pricingMode,
+                basePeriodMinutes: product.basePeriodMinutes,
+                enforceStrictTiers: product.enforceStrictTiers,
+                taxSettings: product.taxSettings,
+                pricingTiers: [],
+                seasonalPricings: [],
+              }
+            : null,
+          stored: item.productId ? storedProductLineOf(item) : null,
+        });
+      }
+      const windowChanged = end.getTime() !== row.endDate.getTime();
+      const calculated = editable.map((item) => ({
+        ...item,
+        ...calculateEditableItemPrice(item, row.startDate, end, undefined, windowChanged),
+      }));
+      return previewEditTotal({
+        items: calculated,
+        insuranceAmount: 0,
+        discountAmount: 0,
+        deliveryFee: 0,
+        deposit: 0,
+        storeTax: store?.settings?.tax,
+        recordedTaxDisplayMode: row.taxDisplayMode,
+        currency: "EUR",
+      }).toFixed(2);
+    }
+
     describe("a line the edit does not change", () => {
       test("keeps its price when another line changes, whatever its product's price did since", async () => {
         await useStore({});
@@ -276,10 +354,12 @@ describe(
           { taxDisplayMode: "exclusive" },
         );
         await useStore({ tax: { ...HT, defaultRate: 10 } });
+        const shown = await previewOf(id, { quantities: { [itemIds[1]!]: 2 } });
 
         const result = await actions.updateReservation(id, {
           items: await formLines(id, { [itemIds[1]!]: 2 }),
         });
+        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
 
         assert.equal(result.error, undefined);
         const [kayakLine, canoeLine] = await items(id);
@@ -308,12 +388,15 @@ describe(
           },
         ]);
 
+        const shown = await previewOf(id, { end: THREE_DAYS });
+
         const result = await actions.updateReservation(id, {
           endDate: THREE_DAYS,
           items: await formLines(id),
         });
 
         assert.equal(result.error, undefined);
+        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
         const [line] = await items(id);
         // Three days at 10.00, the promotion of 20 % taken off as recorded, though
         // the product holds no promotion any more.
@@ -427,12 +510,16 @@ describe(
       test("its quantity changed", async () => {
         await useStore({});
         const { id, itemIds } = await goneLine();
+        const shown = await previewOf(id, { quantities: { [itemIds[0]!]: 2 } });
 
         const result = await actions.updateReservation(id, {
           items: await formLines(id, { [itemIds[0]!]: 2 }),
         });
 
         assert.equal(result.error, undefined);
+        // 180.00 for the line, the other kept at 30.00.
+        assert.equal(shown, "210.00");
+        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
         const [gone] = await items(id);
         // Its price per unit for the whole window, 90.00, twice.
         assert.equal(gone?.totalPrice, "180.00");
@@ -442,6 +529,7 @@ describe(
       test("its window moved, its booked duration recorded", async () => {
         await useStore({});
         const { id } = await goneLine();
+        const shown = await previewOf(id, { end: FOUR_DAYS });
 
         const result = await actions.updateReservation(id, {
           endDate: FOUR_DAYS,
@@ -449,6 +537,9 @@ describe(
         });
 
         assert.equal(result.error, undefined);
+        // 120.00 for the line, the other priced again at 40.00.
+        assert.equal(shown, "160.00");
+        assert.equal(shown, (await reservationRow(id)).totalAmount, "the form showed what is written");
         const [gone] = await items(id);
         // 90.00 for three days is 30.00 a day: four days, 120.00, now a price typed by hand.
         assert.equal(gone?.totalPrice, "120.00");

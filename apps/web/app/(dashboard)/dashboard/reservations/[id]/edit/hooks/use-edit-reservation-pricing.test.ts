@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
+import type { PricingBreakdown } from '@louez/types'
+
 import type { EditableItem } from '../types'
 import {
   calculateEditableItemPrice,
@@ -40,6 +42,7 @@ const fixedProductItem: EditableItem = {
     pricingTiers: [],
     seasonalPricings: [],
   },
+  stored: null,
 }
 
 test('manual fixed-price overrides stay independent of reservation dates', () => {
@@ -170,18 +173,68 @@ const dayItem: EditableItem = {
 const TWO_DAYS = [new Date('2031-06-10T09:00:00.000Z'), new Date('2031-06-12T09:00:00.000Z')] as const
 const THREE_DAYS = [new Date('2031-06-10T09:00:00.000Z'), new Date('2031-06-13T09:00:00.000Z')] as const
 
-test('the preview of a line the edit leaves as it was: priced from the catalogue of now', () => {
+const stored = (totalPrice: number, pricingBreakdown: PricingBreakdown | null = null) => ({
+  quantity: 1,
+  unitPrice: totalPrice,
+  totalPrice,
+  taxRate: 20,
+  pricingBreakdown,
+})
+const dayBreakdown = (duration: number, price: number, extra: Partial<PricingBreakdown> = {}): PricingBreakdown => ({
+  basePrice: price,
+  effectivePrice: price,
+  duration,
+  pricingMode: 'day',
+  pricingKind: 'duration',
+  discountPercent: null,
+  discountAmount: 0,
+  tierApplied: null,
+  taxRate: null,
+  taxAmount: null,
+  subtotalExclTax: null,
+  subtotalInclTax: null,
+  ...extra,
+})
+
+test('the preview of a line the edit leaves as it was: its stored price and rate', () => {
   // Booked at 10.00 a day, 20.00; the product costs 15.00 now.
-  assert.equal(calculateEditableItemPrice(dayItem, ...TWO_DAYS).totalPrice, 30)
+  const result = calculateEditableItemPrice({ ...dayItem, stored: stored(20) }, ...TWO_DAYS)
+  assert.equal(result.totalPrice, 20)
+  assert.equal(result.keptTaxRate, 20)
+  // The same line once the window moved: priced again from the catalogue.
+  assert.equal(calculateEditableItemPrice({ ...dayItem, stored: stored(20) }, ...THREE_DAYS, undefined, true).totalPrice, 45)
 })
 
-test('the preview of a promoted line whose window moved: no promotion', () => {
-  const tenADay = { ...dayItem, product: { ...dayItem.product!, price: '10.00' } }
-  assert.equal(calculateEditableItemPrice(tenADay, ...THREE_DAYS).totalPrice, 30)
+test('the preview of a promoted line whose window moved: the promotion recorded applied', () => {
+  const tenADay = {
+    ...dayItem,
+    product: { ...dayItem.product!, price: '10.00' },
+    stored: stored(16, dayBreakdown(2, 10, { promotion: { percentage: 20, originalSubtotal: 20, discountAmount: 4 } })),
+  }
+  assert.equal(calculateEditableItemPrice(tenADay, ...THREE_DAYS, undefined, true).totalPrice, 24)
 })
 
-test('the preview of a line whose product is gone: its whole-period price taken for a daily one', () => {
+test('the preview of a line whose product is gone: what it recorded', () => {
   // 90.00 for three days, as stored; the product deleted since.
-  const gone = { ...dayItem, unitPrice: 90, product: null }
-  assert.equal(calculateEditableItemPrice(gone, ...THREE_DAYS).totalPrice, 270)
+  const gone = { ...dayItem, unitPrice: 90, product: null, stored: stored(90, dayBreakdown(3, 30)) }
+  assert.equal(calculateEditableItemPrice(gone, ...THREE_DAYS).totalPrice, 90)
+  const fourDays = new Date('2031-06-14T09:00:00.000Z')
+  assert.equal(calculateEditableItemPrice(gone, THREE_DAYS[0], fourDays, undefined, true).totalPrice, 120)
+})
+
+test('the preview total: a line kept at its stored price keeps the rate it recorded', () => {
+  // The store's rate is 10 % now; the kept line recorded 20 %.
+  const total = previewEditTotal({
+    items: [
+      { totalPrice: 20, effectiveUnitPrice: 10, product: dayItem.product, keptTaxRate: 20 },
+      { totalPrice: 40, effectiveUnitPrice: 10, product: dayItem.product, keptTaxRate: null },
+    ],
+    insuranceAmount: 0,
+    discountAmount: 0,
+    deliveryFee: 0,
+    deposit: 0,
+    storeTax: { enabled: true, defaultRate: 10, displayMode: 'exclusive' },
+    recordedTaxDisplayMode: 'exclusive',
+  })
+  assert.equal(total, 68)
 })

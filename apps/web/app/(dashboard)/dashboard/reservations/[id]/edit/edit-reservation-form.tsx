@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
+import { storedProductLineOf } from "@louez/api/services/edit-line-pricing";
 import { pricingBasisOf } from "@louez/api/services/pricing-facts";
 import { toastManager } from "@louez/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -231,6 +232,7 @@ function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): 
     enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
     productSnapshot: item.productSnapshot,
     product: item.product,
+    stored: item.productId ? storedProductLineOf(item) : null,
   };
 }
 
@@ -510,6 +512,10 @@ export function EditReservationForm({
       items,
       originalSubtotal,
       fixedChargesTotal: fixedTulipInsuranceAmount,
+      storedWindow: {
+        start: new Date(reservation.startDate),
+        end: new Date(reservation.endDate),
+      },
     });
   const { availabilityWarnings, availableQuantityByProduct } = useEditReservationAvailability({
     startDate,
@@ -643,6 +649,7 @@ export function EditReservationForm({
       pricingMode: (product.pricingMode ?? "day") as PricingMode,
       basePeriodMinutes: product.basePeriodMinutes ?? null,
       enforceStrictTiers: product.enforceStrictTiers ?? false,
+      stored: null,
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -737,6 +744,7 @@ export function EditReservationForm({
       },
       product: null,
       pricingMode: customItemForm.pricingMode,
+      stored: null,
     };
 
     setItems((prev) => [...prev, newItem]);
