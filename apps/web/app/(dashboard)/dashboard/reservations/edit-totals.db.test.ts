@@ -455,7 +455,9 @@ describe(
        * An old reservation made by hand in a store that prices before tax: one
        * line of 150.00, its total 150.00 with no tax, paid in full.
        */
-      async function oldManualBooking() {
+      async function oldManualBooking(
+        written: Partial<typeof louezDb.reservations.$inferInsert> = {},
+      ) {
         const kayak = await product();
         const id = nextId("res");
         await louezDb.db.insert(louezDb.reservations).values({
@@ -473,6 +475,7 @@ describe(
           discountAmount: "0.00",
           currency: "USD",
           source: "manual",
+          ...written,
         });
         const itemId = nextId("itm");
         await louezDb.db.insert(louezDb.reservationItems).values({
@@ -570,6 +573,48 @@ describe(
 
         assert.equal(result.error, undefined);
         assert.deepEqual(await moneyOf(id), before);
+      });
+
+      const twoKayaks = (itemId: string, kayak: string) => [
+        {
+          id: itemId,
+          productId: kayak,
+          quantity: 2,
+          unitPrice: 75,
+          depositPerUnit: 0,
+          isManualPrice: true,
+          pricingMode: "day" as const,
+          productSnapshot: { name: "Kayak" },
+        },
+      ];
+
+      test("a row the engine never totalled warns, whatever its tax columns hold", async () => {
+        await useStore({ tax: HT });
+        // Its tax columns left from an earlier pricing, its total rewritten without them.
+        const { id, itemId, kayak } = await oldManualBooking({
+          subtotalExclTax: "125.00",
+          taxAmount: "25.00",
+          taxRate: "20.00",
+        });
+
+        const result = await actions.updateReservation(id, { items: twoKayaks(itemId, kayak) });
+
+        assert.deepEqual(result.warnings, [
+          {
+            key: "errors.editTaxAdded",
+            params: { previousTotal: "150.00", newTotal: "360.00" },
+          },
+        ]);
+      });
+
+      test("a row the engine totalled does not warn", async () => {
+        await useStore({ tax: HT });
+        const { id, itemId, kayak } = await oldManualBooking({ taxDisplayMode: "exclusive" });
+
+        const result = await actions.updateReservation(id, { items: twoKayaks(itemId, kayak) });
+
+        assert.equal(result.error, undefined);
+        assert.equal(result.warnings, undefined);
       });
 
       test("a line changed: the totals are the engine's, and the answer says the tax was added", async () => {
