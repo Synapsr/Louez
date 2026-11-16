@@ -8,7 +8,8 @@ import {
 import { appRouter } from "@louez/api/router";
 
 import { apiPorts } from "@/lib/api/ports";
-import { log, useLogger, withEvlog } from "@/lib/evlog";
+import { requestLog } from "@/lib/api/request-log";
+import { useLogger, withEvlog } from "@/lib/evlog";
 
 // Only the procedures of the exposure registry. A body stops at 2 MiB, more
 // for the procedures that take more (routeBodyLimits: an image's bytes, a
@@ -16,16 +17,8 @@ import { log, useLogger, withEvlog } from "@/lib/evlog";
 // its reference (/api/v1/docs) are public, in every environment: anyone reads
 // them without a key, and the document names this deployment's URL.
 const exposure = createExposure(appRouter);
-const handler = createOpenApiHandler(exposure.router, {
-  onError: (error) => {
-    const apiError = error instanceof Error ? error : new Error("Unknown oRPC error");
-    try {
-      useLogger().error(apiError, { step: "openapi" });
-    } catch {
-      log.error("openapi", apiError.message);
-    }
-  },
-});
+// A refused call is logged by its facts, never its words; a fault as it is.
+const handler = createOpenApiHandler(exposure.router, { log: requestLog("openapi") });
 const reference = createApiReference(exposure.router);
 
 const bodyLimits = routeBodyLimits(exposure.procedures);

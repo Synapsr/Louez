@@ -34,6 +34,13 @@ export interface ErrorScope {
   client?: CredentialKind | "storefront";
   /** The OAuth client's directory (ChatGPT/Codex, Claude). */
   directory?: ClientDirectory;
+  /**
+   * The API key's or OAuth grant's id, or the user's for a session: for the request
+   * log of a refusal (platform/refusal-log.ts), never sent to error tracking.
+   */
+  actorId?: string;
+  /** The store the call acts on, once resolved: for the request log, as `actorId`. */
+  storeId?: string;
 }
 
 /** What may go with an error: names and ids, nothing a caller sent. */
@@ -358,16 +365,18 @@ export async function reportUnexpectedErrors<
 >(options: TOptions & { next: (options?: TOptions) => Promise<TResult> }): Promise<TResult> {
   const { next, ...rest } = options;
   const report = rest.context.ports?.reportError;
-  if (!report) return next();
+  // Filled for the request log too (platform/refusal-log.ts), reported or not.
   const errorScope: ErrorScope = {};
   try {
     return await next({ ...rest, context: { ...rest.context, errorScope } } as unknown as TOptions);
   } catch (error) {
+    if (!report) throw error;
     report(error, {
       source: "procedure",
       transport: rest.context.transport,
       procedure: rest.path.join("."),
-      ...errorScope,
+      ...(errorScope.client ? { client: errorScope.client } : {}),
+      ...(errorScope.directory ? { directory: errorScope.directory } : {}),
     });
     throw error;
   }

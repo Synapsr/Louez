@@ -54,6 +54,10 @@ export const apiPorts: ApiPorts = {
   emailConfigured: isEmailConfigured,
   smsConfigured: isSmsConfigured,
   reportError: reportServerError,
-  // Through evlog, so its redaction and its drain apply too.
-  log: { error: (event) => log.error(event) },
+  // Through evlog, so its redaction and its drain apply too. A refusal (the MCP
+  // bridge's) by its facts only: platform/refusal-log.ts.
+  log: {
+    error: (event) => log.error(event),
+    refusal: (event) => log.warn({ apiRefusal: event }),
+  },
 };
