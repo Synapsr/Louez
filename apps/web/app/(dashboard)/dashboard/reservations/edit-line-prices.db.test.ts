@@ -112,6 +112,8 @@ describe(
     let actions: typeof import("./actions");
     let priceCart: typeof import("@louez/api/services/price-cart");
     let reservationDates: typeof import("@louez/api/services/reservation-dates");
+    let editContext: typeof import("@louez/api/services");
+    let editableItems: typeof import("./[id]/edit/utils/editable-items");
     let counter = 0;
     const nextId = (prefix: string) => `${prefix}_${String(++counter).padStart(6, "0")}`;
 
@@ -147,6 +149,8 @@ describe(
       await import("@louez/mcp/testing/cjs-named-exports");
       priceCart = await import("@louez/api/services/price-cart");
       reservationDates = await import("@louez/api/services/reservation-dates");
+      editContext = await import("@louez/api/services");
+      editableItems = await import("./[id]/edit/utils/editable-items");
       await louezDb.db.insert(louezDb.stores).values({
         id: STORE,
         userId: "owner_line_prices",
@@ -890,6 +894,91 @@ describe(
           (await reservationRow(id)).totalAmount,
           "the form showed what is written",
         );
+      });
+    });
+
+    describe("a line the store did not type, through the form's own payload", () => {
+      /**
+       * The edit form's lines, read from the edit context as the page reads
+       * it (`getDashboardReservationEditContext`) and built by the form's own
+       * `toEditableItem`; `quantities` changed as the store changes them, then
+       * every line's price and total fields left as they showed: they commit
+       * on blur (`InputPrice`), what they showed, to the cent.
+       */
+      async function formPayloadAfterBlur(
+        reservationId: string,
+        quantities: Record<string, number> = {},
+      ) {
+        const context = await editContext.getDashboardReservationEditContext({
+          reservationId,
+          storeId: STORE,
+        });
+        assert.ok(context.editable);
+        const { reservation } = context;
+        const start = reservation.startDate;
+        const end = reservation.endDate;
+        return reservation.items
+          .map((item) => editableItems.toEditableItem(item, start, end))
+          .map((item) => ({ ...item, quantity: quantities[item.id] ?? item.quantity }))
+          .map((item) => {
+            const shown = calculateEditableItemPrice(item, start, end, undefined, false, "EUR");
+            const shownUnitPrice = item.isManualPrice ? item.unitPrice : shown.effectiveUnitPrice;
+            const afterUnit = editableItems.withUnitPriceCommitted(item, {
+              price: Number(shownUnitPrice.toFixed(2)),
+              shownUnitPrice,
+              pricingMode: shown.displayPricingMode,
+            });
+            return editableItems.withTotalPriceCommitted(afterUnit, {
+              totalPrice: Number(shown.totalPrice.toFixed(2)),
+              shownTotalPrice: shown.totalPrice,
+              pricingMode: shown.displayPricingMode,
+              duration: shown.displayDuration,
+            });
+          })
+          .map(editableItems.toReservationItemPayload);
+      }
+
+      test("a dashboard creation, then another line's quantity changed: the untouched line keeps its price, breakdown and mark", async () => {
+        await useStore({});
+        const [a, b] = [await product("10.00"), await product("8.00")];
+        const created = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: TWO_DAYS,
+          items: [
+            { productId: a, quantity: 1 },
+            { productId: b, quantity: 2 },
+          ],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(created.reservationId, JSON.stringify(created));
+        const id = created.reservationId;
+        const before = await items(id);
+        const lineA = before.find((item) => item.productId === a);
+        const lineB = before.find((item) => item.productId === b);
+        assert.ok(lineA && lineB);
+
+        const payload = await formPayloadAfterBlur(id, { [lineA.id]: 2 });
+        // The form sends no line the store did not type as typed.
+        assert.deepEqual(
+          payload.map((line) => line.isManualPrice),
+          [false, false],
+        );
+        const result = await actions.updateReservation(id, { items: payload });
+
+        assert.equal(result.error, undefined);
+        const after = await items(id);
+        const afterB = after.find((item) => item.id === lineB.id);
+        assert.ok(afterB);
+        // B as the creation wrote it: 2 × 8.00 × 2 days, its unit price for the whole window.
+        assert.equal(afterB.totalPrice, "32.00");
+        assert.equal(afterB.unitPrice, lineB.unitPrice);
+        assert.deepEqual(afterB.pricingBreakdown, lineB.pricingBreakdown);
+        // A priced again from its product, not typed.
+        const afterA = after.find((item) => item.id === lineA.id);
+        assert.ok(afterA);
+        assert.notEqual(pricingBasisOf(afterA.pricingBreakdown)?.isManualOverride, true);
+        assert.equal(afterA.totalPrice, "40.00");
       });
     });
 

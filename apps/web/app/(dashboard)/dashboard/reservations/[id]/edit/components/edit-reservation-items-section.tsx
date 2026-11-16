@@ -26,8 +26,19 @@ interface EditReservationItemsSectionProps {
   onOpenCustomItemDialog: () => void;
   onAddProduct: (productId: string) => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
-  onPriceChange: (itemId: string, price: number, pricingMode?: PricingMode) => void;
-  onTotalPriceChange: (itemId: string, totalPrice: number, pricingMode?: PricingMode) => void;
+  /** A price the field committed, with the one it showed: an unchanged one types nothing. */
+  onPriceChange: (
+    itemId: string,
+    price: number,
+    shownUnitPrice: number,
+    pricingMode: PricingMode,
+  ) => void;
+  onTotalPriceChange: (
+    itemId: string,
+    totalPrice: number,
+    shownTotalPrice: number,
+    pricingMode: PricingMode,
+  ) => void;
   onDepositChange: (itemId: string, depositPerUnit: number) => void;
   onToggleManualPrice: (
     itemId: string,
