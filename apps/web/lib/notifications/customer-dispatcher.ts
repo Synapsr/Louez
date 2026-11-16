@@ -301,7 +301,11 @@ export async function sendCustomerNotificationChannel(
   ctx: CustomerNotificationContext,
   channel: "email" | "sms",
   beforeSend: () => Promise<void>,
-  /** The outbox row's id: an SMS it already sent is not sent again (lib/sms/delivery.ts). */
+  /**
+   * The outbox row's id: an SMS it already sent is not sent again
+   * (lib/sms/delivery.ts); a quote's or a confirmation's e-mail keys its
+   * `sent` log row on it (`isEmailDelivered`).
+   */
   deliveryKey?: string,
 ): Promise<{ skipped: string } | undefined> {
   const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
@@ -319,7 +323,7 @@ export async function sendCustomerNotificationChannel(
       ctx.store.emailSettings,
     );
     await beforeSend();
-    await sendCustomerEmail(eventType, ctx, locale, mergedContent);
+    await sendCustomerEmail(eventType, ctx, locale, mergedContent, deliveryKey);
     return undefined;
   }
 
@@ -351,6 +355,8 @@ async function sendCustomerEmail(
   ctx: CustomerNotificationContext,
   locale: EmailLocale,
   customContent?: { subject?: string; greeting?: string; message?: string; signature?: string },
+  /** The id of the `sent` log row, for the e-mails an outbox row may send again. */
+  logId?: string,
 ) {
   const emailParams = {
     to: ctx.customer.email,
@@ -411,6 +417,7 @@ async function sendCustomerEmail(
         reservationUrl: ctx.reservationUrl || "",
         documentAttachments: ctx.documentAttachments,
         contractSignatureUrl: ctx.contractSignatureUrl,
+        logId,
       });
 
     case "customer_reservation_cancelled":
@@ -482,6 +489,7 @@ async function sendCustomerEmail(
         })),
         reservationUrl: ctx.reservationUrl || "",
         locale,
+        logId,
       });
 
     case "customer_quote_accepted":

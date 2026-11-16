@@ -3,6 +3,7 @@ import { env } from '@/env'
 import { sendEmail, type EmailAttachment } from './client'
 import { db } from '@louez/db'
 import { emailLogs } from '@louez/db'
+import { and, eq } from 'drizzle-orm'
 import { getEmailTranslations, type EmailLocale } from './i18n'
 import { getLogoForLightBackground } from '@louez/utils'
 import { resolveEmailLogo } from './logo'
@@ -107,6 +108,7 @@ interface ReservationItem {
 
 // Log email in database
 export async function logEmail({
+  id,
   storeId,
   reservationId,
   customerId,
@@ -117,6 +119,12 @@ export async function logEmail({
   messageId,
   error,
 }: {
+  /**
+   * The row's id, when the caller keys its record of a delivery on it (an
+   * outbox row's id): a run after a lost outcome then finds it
+   * (`isEmailDelivered`). Random otherwise.
+   */
+  id?: string
   storeId: string
   reservationId?: string
   customerId?: string
@@ -129,6 +137,7 @@ export async function logEmail({
 }) {
   try {
     await db.insert(emailLogs).values({
+      ...(id && { id }),
       storeId,
       reservationId: reservationId || null,
       customerId: customerId || null,
@@ -142,6 +151,16 @@ export async function logEmail({
   } catch (e) {
     console.error('Failed to log email:', e)
   }
+}
+
+/** Whether the e-mail whose `sent` log row has this id went out (`logEmail`'s `id`). */
+export async function isEmailDelivered(id: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: emailLogs.id })
+    .from(emailLogs)
+    .where(and(eq(emailLogs.id, id), eq(emailLogs.status, 'sent')))
+    .limit(1)
+  return Boolean(row)
 }
 
 // Verification Code Email
@@ -206,6 +225,7 @@ export async function sendReservationConfirmationEmail({
   documentAttachments = [],
   contractSignatureUrl,
   locale = 'fr',
+  logId,
 }: {
   to: string
   store: Store
@@ -233,6 +253,8 @@ export async function sendReservationConfirmationEmail({
   documentAttachments?: EmailAttachment[]
   contractSignatureUrl?: string
   locale?: EmailLocale
+  /** The id of the e-mail's `sent` log row (`logEmail`). */
+  logId?: string
 }) {
   const t = getEmailTranslations(locale)
   const customContent = store.emailSettings?.confirmationContent
@@ -282,6 +304,7 @@ export async function sendReservationConfirmationEmail({
       fromName: store.name,
     })
     await logEmail({
+      id: logId,
       storeId: store.id,
       reservationId: reservation.id,
       to,
@@ -314,6 +337,7 @@ export async function sendReservationModifiedEmail({
   reservationUrl,
   previousPeriod,
   locale = 'fr',
+  logId,
 }: {
   to: string
   store: Store
@@ -330,6 +354,8 @@ export async function sendReservationModifiedEmail({
     endDate: Date
   } | null
   locale?: EmailLocale
+  /** The id of the e-mail's `sent` log row (`logEmail`). */
+  logId?: string
 }) {
   const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const subject = `${getReservationModifiedEmailSubject(reservation.number, locale)} - ${store.name}`
@@ -363,6 +389,7 @@ export async function sendReservationModifiedEmail({
       fromName: store.name,
     })
     await logEmail({
+      id: logId,
       storeId: store.id,
       reservationId: reservation.id,
       to,
@@ -2235,6 +2262,7 @@ export async function sendQuoteSentEmail({
   items,
   reservationUrl,
   locale = 'fr',
+  logId,
 }: {
   to: string
   store: Store
@@ -2251,6 +2279,8 @@ export async function sendQuoteSentEmail({
   items: { name: string; quantity: number; totalPrice: number }[]
   reservationUrl: string
   locale?: EmailLocale
+  /** The id of the e-mail's `sent` log row (`logEmail`). */
+  logId?: string
 }) {
   const t = getEmailTranslations(locale)
   const subject = `${t.quoteSent.subject.replace('{number}', reservation.number)} - ${store.name}`
@@ -2281,6 +2311,7 @@ export async function sendQuoteSentEmail({
   try {
     const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
+      id: logId,
       storeId: store.id,
       reservationId: reservation.id,
       to,

@@ -435,7 +435,7 @@ describe(
       assert.equal(typeof answer.data.details.retryAfterSeconds, "number");
     });
 
-    test("the app's OpenAPI document: the approval's codes, its guide, its responses on the six operations, and the header", async () => {
+    test("the app's OpenAPI document: the approval's codes, its guide, its responses on the seven operations, and the header", async () => {
       const document = (await appDocument()) as {
         info: { description: string };
         paths: Record<string, Record<string, { responses: Record<string, { $ref?: string }> }>>;
@@ -491,7 +491,7 @@ describe(
       }
       assert.match(guide, /for instance `CONFIRMATION_REQUIRED`, `APPROVAL_REQUIRED`/);
 
-      // The six operations a person approves, and only they, document the approval's answers.
+      // The seven operations a person approves, and only they, document the approval's answers.
       const approving: string[] = [];
       for (const [path, operations] of Object.entries(document.paths)) {
         for (const [method, operation] of Object.entries(operations)) {
@@ -504,6 +504,7 @@ describe(
       assert.deepEqual(approving.sort(), [
         "DELETE /payments/{paymentId}",
         "DELETE /team/members/{id}",
+        "POST /payments/{paymentId}/refund-records",
         "POST /reservations/{id}/status",
         "POST /reservations/{reservationId}/deposit-returns",
         "POST /reservations/{reservationId}/payments",
