@@ -7,7 +7,7 @@ import type { ErrorScope } from "./error-reporting";
 /**
  * How a refusal raised by a procedure is logged (docs/architecture/api-and-agents.md,
  * "Logs"). A refusal (a confirmation or an approval to ask, a validation error, a
- * record not found, a limit) is the API working: the request log records what it was
+ * record not found, a limit the procedure checks) is the API working: the request log records what it was
  * and who asked, and keeps only what Louez knows to be an identifier or a field name
  * of its own schema. Its message, its preview, its stack and anything the caller sent
  * stay in the answer the caller gets, which this changes in nothing. A fault (a 5xx,
