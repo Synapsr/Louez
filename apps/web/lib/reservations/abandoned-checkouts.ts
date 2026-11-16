@@ -18,7 +18,9 @@ import {
   changeSystemReservationStatus,
 } from "@louez/api/services/system-reservation-status";
 import {
+  checkoutSessionRowIn,
   db,
+  isCheckoutSessionRow,
   isUnsettledCheckoutSession,
   markCheckoutSessionSettled,
   payments,
@@ -92,7 +94,8 @@ export interface AbandonedCheckout {
 /**
  * The checkouts with an unsettled rental session old enough to be over: a
  * reservation from the storefront's online checkout, still `pending`, with no
- * rental payment `completed`, with a rental row whose session is unsettled
+ * rental payment `completed`, with a rental row of its checkout (`checkoutSessionRowIn`:
+ * not a payment request's) whose session is unsettled
  * (`unsettledCheckoutSession`) and that was written more than a session's
  * lifetime and a margin ago and less than 48 hours ago; a batch in `order` (at
  * random). The query starts from `payments`, through
@@ -109,6 +112,8 @@ export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
     .where(
       and(
         unsettledCheckoutSession,
+        // A payment request's session never makes a reservation a checkout.
+        checkoutSessionRowIn(payments),
         gt(payments.createdAt, reachAfter(now)),
         lt(payments.createdAt, lookBefore(now)),
         eq(reservations.status, "pending"),
@@ -134,7 +139,8 @@ export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
 
 /**
  * The checkouts whose sessions are all settled and that have no payment left: a
- * reservation from the storefront's online checkout, still `pending`, with no
+ * reservation from the storefront's online checkout, still `pending`, with a
+ * session row of its checkout (not a payment request's) marked settled, with no
  * rental payment `pending` or `completed`, no unsettled session, and whose newest
  * mark (`session_settled_at` of its rental sessions) is more than a session's
  * lifetime and a margin and less than 48 hours old. The delay is on the mark: a
@@ -153,8 +159,8 @@ export function settledCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
     .innerJoin(reservations, eq(reservations.id, payments.reservationId))
     .where(
       and(
-        eq(payments.type, "rental"),
-        isNotNull(payments.stripeCheckoutSessionId),
+        // A payment request's session never makes a reservation a checkout.
+        checkoutSessionRowIn(payments),
         gt(payments.sessionSettledAt, reachAfter(now)),
         lt(payments.sessionSettledAt, lookBefore(now)),
         eq(reservations.status, "pending"),
@@ -305,7 +311,10 @@ export async function settleAbandonedCheckout(
   }
   if (states.some(({ state }) => state === "unknown")) return "unreadable";
 
-  const [newest] = rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  // The cancellation names the checkout's newest session, never a payment request's.
+  const [newest] = rows
+    .filter(isCheckoutSessionRow)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   if (!newest) return "left";
   const cancelled = await changeSystemReservationStatus(
     {

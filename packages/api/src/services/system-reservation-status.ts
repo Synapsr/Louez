@@ -1,6 +1,7 @@
 import {
   changeReservationStatus,
   db,
+  isCheckoutSessionRow,
   payments,
   reservationActivity,
   reservationCalendarEvents,
@@ -11,7 +12,7 @@ import {
   type ReservationEffectRunner,
   unsettledCheckoutSession,
 } from "@louez/db";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 /**
@@ -50,8 +51,11 @@ export type SystemReservationStatusRequest =
  */
 export const ONLINE_CHECKOUT_SOURCE = "online";
 
-/** Thrown under the lock to leave a checkout that can still be paid. */
-class CheckoutStillPayableError extends Error {}
+/**
+ * Thrown under the lock to leave the reservation: its checkout can still be
+ * paid, or it never had one (a payment request's session is not a checkout).
+ */
+class CheckoutLeftError extends Error {}
 
 /**
  * A storefront checkout whose only payment window closed without a payment
@@ -60,7 +64,8 @@ class CheckoutStillPayableError extends Error {}
  * Anything already confirmed, paid, or paid through another open session is
  * left alone, and so is a checkout one of whose rental sessions is unsettled
  * (`unsettledCheckoutSession`): Stripe may still take its payment, and a resume
- * may be replacing it. The fee effects run through `runReservationEffects` after commit.
+ * may be replacing it. So is a reservation whose sessions are all a payment
+ * request's (`isCheckoutSessionRow`): it never had a checkout to abandon. The fee effects run through `runReservationEffects` after commit.
  * It locks the reservation alone: a pending checkout gives back no stock. Still
  * busy after the owner entry's runs, it throws and the webhook answers non-2xx,
  * as a lost deadlock did before. Stripe sends the event again, and the
@@ -109,7 +114,27 @@ const cancelAbandonedCheckout = async (
           )
           .limit(1)
           .for("share");
-        if (payment) throw new CheckoutStillPayableError();
+        if (payment) throw new CheckoutLeftError();
+        // A reservation whose sessions are all a payment request's never had a
+        // checkout to abandon: the store's request leaves it as it is.
+        const sessions = await tx
+          .select({
+            type: payments.type,
+            stripeCheckoutSessionId: payments.stripeCheckoutSessionId,
+            origin: payments.origin,
+          })
+          .from(payments)
+          .where(
+            and(
+              eq(payments.reservationId, reservationId),
+              eq(payments.type, "rental"),
+              isNotNull(payments.stripeCheckoutSessionId),
+            ),
+          )
+          .for("share");
+        if (sessions.length > 0 && !sessions.some(isCheckoutSessionRow)) {
+          throw new CheckoutLeftError();
+        }
         return changeReservationStatus(tx, {
           lock,
           reservationId,
@@ -123,7 +148,7 @@ const cancelAbandonedCheckout = async (
       },
     );
   } catch (error) {
-    if (error instanceof CheckoutStillPayableError) return false;
+    if (error instanceof CheckoutLeftError) return false;
     throw error;
   }
   if (!change.changed) return false;

@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
 
-import { db, payments, reservations } from "@louez/db";
+import { checkoutSessionRowIn, db, payments, reservations } from "@louez/db";
 
 import { log } from "@/lib/evlog";
 import { createReservationPaymentSessionForCustomer } from "@/lib/reservations/payment-session";
@@ -62,10 +62,11 @@ export const resumeCheckoutPayment = async ({
   }
 
   // The checkout's own payment row: its amount is the charge the customer saw
-  // (a partial deposit or the full total) and its session may still be open.
+  // (a partial deposit or the full total) and its session may still be open. A
+  // payment request's row is the store's request, not the checkout.
   const checkoutPayment = await db.query.payments.findFirst({
     columns: { amount: true, status: true, stripeCheckoutSessionId: true },
-    where: and(eq(payments.reservationId, reservationId), eq(payments.type, "rental")),
+    where: and(eq(payments.reservationId, reservationId), checkoutSessionRowIn(payments)),
     orderBy: desc(payments.createdAt),
   });
   if (!checkoutPayment?.stripeCheckoutSessionId) {
