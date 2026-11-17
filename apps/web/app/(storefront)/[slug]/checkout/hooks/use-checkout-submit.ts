@@ -32,7 +32,6 @@ import { buildReservationPayload } from "../util.reservation-payload";
 import type { CartItem } from "@/contexts/cart-context";
 import { testPaymentPath } from "@/lib/test-reservations/checkout";
 import {
-  clearPendingCheckout,
   readPendingCheckout,
   writePendingCheckout,
 } from "@/lib/storefront/util.pending-checkout-storage";
@@ -205,13 +204,14 @@ export const useCheckoutSubmit = ({
 
       if (reservationMode === "payment" && result.paymentUrl) {
         // A test reservation is never resumed: its payment page is simulated, on
-        // this host, where the test-mode cookie lives.
+        // this host, where the test-mode cookie lives. Its record replaces any
+        // resume hint this browser held and never resumes.
         if (isTestMode) {
-          clearPendingCheckout();
+          writePendingCheckout({ storeId, reservationId: result.reservationId, resumable: false });
           window.location.assign(getUrl(testPaymentPath(result.reservationId)));
           return;
         }
-        writePendingCheckout({ storeId, reservationId: result.reservationId });
+        writePendingCheckout({ storeId, reservationId: result.reservationId, resumable: true });
         trackEvent({
           eventType: "payment_initiated",
           metadata: { reservationId: result.reservationId, amount: totals.amountDueNow },
@@ -220,7 +220,9 @@ export const useCheckoutSubmit = ({
         return;
       }
 
-      clearPendingCheckout();
+      // A request is never resumed; the record only lets the reservation page
+      // empty this browser's cart, once.
+      writePendingCheckout({ storeId, reservationId: result.reservationId, resumable: false });
       window.location.assign(
         result.instantAccessUrl ??
           getUrl(`/account/reservations/${result.reservationId}?event=requested`),

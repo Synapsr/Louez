@@ -90,17 +90,33 @@ export const parseLoginErrorCode = (
   return LOGIN_ERROR_CODES.find((code) => code === single) ?? null;
 };
 
-/** `/account/login` with its optional `redirect` and `error` parameters. */
+/**
+ * `/account/login` with its optional `redirect` and `error` parameters, and
+ * `owner=1` when the sign-in is for the customer the redirect's reservation
+ * belongs to: the login page then shows its form to a visitor signed in as
+ * another customer, instead of sending them to a reservation they cannot open.
+ */
 export const buildLoginPath = ({
   redirect,
   error,
+  ownerOnly,
 }: {
   redirect?: string | null;
   error?: LoginErrorCode | null;
+  ownerOnly?: boolean;
 }): string => {
   const params = new URLSearchParams();
   if (error) params.set("error", error);
   if (redirect && redirect !== ACCOUNT_PATH) params.set("redirect", redirect);
+  if (ownerOnly) params.set("owner", "1");
   const query = params.toString();
   return query ? `${ACCOUNT_PATH}/login?${query}` : `${ACCOUNT_PATH}/login`;
 };
+
+/** The login page's `owner` parameter: set by `buildLoginPath({ ownerOnly })`. */
+export const isOwnerOnlyLogin = (value: string | string[] | null | undefined): boolean =>
+  (Array.isArray(value) ? value[0] : value) === "1";
+
+/** The reservation a store-relative account redirect opens, or null for any other page. */
+export const getRedirectReservationId = (path: string): string | null =>
+  /^\/account\/reservations\/([^/?#]+)(?:[/?#]|$)/.exec(path)?.[1] ?? null;

@@ -95,12 +95,8 @@ export const CHECKOUT_DEMO_ADDRESS_SOURCE: AddressInputSource = {
       secondaryText: `${address.postalCode} ${address.city}`,
     }));
   },
-  resolve: (query) =>
-    CHECKOUT_DEMO_ADDRESSES.find(
-      (address) =>
-        address.placeId === query ||
-        normalizeAddress(address.formattedAddress) === normalizeAddress(query),
-    ) ?? null,
+  details: (placeId) =>
+    CHECKOUT_DEMO_ADDRESSES.find((address) => address.placeId === placeId) ?? null,
 };
 
 export const resolveDemoCheckoutDistance = ({

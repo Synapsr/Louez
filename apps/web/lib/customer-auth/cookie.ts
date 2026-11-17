@@ -24,7 +24,7 @@ export interface CustomerSessionCookie {
  * it, plain-http local development does not. `lax` everywhere so the email
  * links (`/r/{id}?token`) and the Stripe return keep the session.
  */
-const isSecureOrigin = (): boolean =>
+export const isSecureCookieOrigin = (): boolean =>
   process.env.NODE_ENV === "production" || (env.NEXT_PUBLIC_APP_URL ?? "").startsWith("https://");
 
 export const buildCustomerSessionCookie = (
@@ -35,7 +35,7 @@ export const buildCustomerSessionCookie = (
   value,
   options: {
     httpOnly: true,
-    secure: isSecureOrigin(),
+    secure: isSecureCookieOrigin(),
     sameSite: "lax",
     expires: expiresAt,
     path: "/",

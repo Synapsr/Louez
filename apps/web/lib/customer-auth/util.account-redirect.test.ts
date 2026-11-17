@@ -3,6 +3,8 @@ import { describe, test } from "node:test";
 
 import {
   buildLoginPath,
+  getRedirectReservationId,
+  isOwnerOnlyLogin,
   getInstantAccessRedirectPath,
   getSafeAccountRedirect,
   parseLoginErrorCode,
@@ -87,5 +89,40 @@ describe("buildLoginPath", () => {
       buildLoginPath({ redirect: "/account/reservations/r1?event=paid", error: "invalidToken" }),
       "/account/login?error=invalidToken&redirect=%2Faccount%2Freservations%2Fr1%3Fevent%3Dpaid",
     );
+  });
+});
+
+describe("the owner-only sign-in", () => {
+  test("is asked for in the login path, after the redirect", () => {
+    assert.equal(
+      buildLoginPath({ redirect: "/account/reservations/r1?event=paid", ownerOnly: true }),
+      "/account/login?redirect=%2Faccount%2Freservations%2Fr1%3Fevent%3Dpaid&owner=1",
+    );
+    assert.equal(
+      buildLoginPath({ redirect: "/account/reservations/r1", ownerOnly: false }),
+      "/account/login?redirect=%2Faccount%2Freservations%2Fr1",
+    );
+  });
+
+  test("is read only from its own value", () => {
+    assert.equal(isOwnerOnlyLogin("1"), true);
+    assert.equal(isOwnerOnlyLogin(["1"]), true);
+    for (const value of [undefined, null, "", "0", "true", ["0"]]) {
+      assert.equal(isOwnerOnlyLogin(value), false);
+    }
+  });
+
+  test("names the reservation a redirect opens, and only one", () => {
+    assert.equal(getRedirectReservationId("/account/reservations/r1"), "r1");
+    assert.equal(getRedirectReservationId("/account/reservations/r1?event=paid"), "r1");
+    assert.equal(getRedirectReservationId("/account/reservations/r1/contract"), "r1");
+    for (const path of [
+      "/account",
+      "/checkout",
+      "/account/reservations",
+      "/account/reservations/",
+    ]) {
+      assert.equal(getRedirectReservationId(path), null);
+    }
   });
 });

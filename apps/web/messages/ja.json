@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "住所を検索してください...",
       "coordinatesSaved": "座標が保存されました",
-      "editLocation": "場所を編集する"
+      "editLocation": "場所を編集する",
+      "chooseFromList": "リストから住所を選択してください。",
+      "chooseFromListOrMap": "リストから住所を選択するか、地図上で指定してください。"
     },
     "addressModal": {
       "title": "住所詳細",
@@ -2543,6 +2545,8 @@
           "included": "付属",
           "totalFee": "配送料の合計",
           "tooFar": "住所が最大距離 ({maxDistance} km) を超えています",
+          "outboundAddressNotChosen": "リストから配送先住所を選択するか、地図上で指定してください。",
+          "returnAddressNotChosen": "リストから回収先住所を選択するか、地図上で指定してください。",
           "savings": "貯蓄",
           "deliveryFee": "配送料"
         }
@@ -8246,6 +8250,13 @@
           "sessionFailed": "支払いを再開できませんでした。しばらくしてからもう一度試してください。"
         }
       },
+      "paid": {
+        "metaTitle": "お支払い",
+        "received": "{store}での予約{number}のお支払いを受け付けました。",
+        "receivedEmailed": "{store}での予約{number}のお支払いを受け付けました。確認メールをお送りしました。",
+        "unverifiedTitle": "お支払いはまだ確認できていません",
+        "unverified": "{store}での予約{number}のお支払いをまだ確認できていません。お支払いが完了していれば、予約は更新されます。"
+      },
       "customFields": {
         "savedSummary": "入力済みの情報",
         "detailsIntro": "この情報は、{store}が機材を準備する際に役立ちます。"
@@ -9640,6 +9651,8 @@
     "deliveryNotEnabled": "このストアでは配達が有効になっていません",
     "deliveryMinimumOrderAmountNotMet": "レンタルの{amount}より配送可能です",
     "deliveryAddressRequired": "有効な配送先住所を入力してください",
+    "deliveryAddressNotChosen": "配送先住所はリストから選択するか、地図上で指定する必要があります。",
+    "returnAddressNotChosen": "回収先住所はリストから選択するか、地図上で指定する必要があります。",
     "storeCoordinatesNotConfigured": "店舗座標が設定されていません",
     "deliveryTooFar": "配送先住所が遠すぎます (最大 {maxDistance} km)",
     "deliveryRequired": "この店舗には配達が必要です",

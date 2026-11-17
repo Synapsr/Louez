@@ -205,6 +205,7 @@ import { sendReservationModificationEmailForStore } from "@/lib/reservations/mod
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { creationTotals } from "./new/utils/creation-totals";
 import { typedLineSubtotal } from "./new/utils/product-line-pricing";
+import { lacksChosenPlace } from "./util.delivery-leg-choice";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 import { sendForReservation } from "@/lib/test-reservations/message-policy";
@@ -3213,6 +3214,14 @@ export async function updateReservation(
           reservationEditToken(lockedReservation, lockedItems) !== data.loadedEditToken
         ) {
           return { error: "errors.reservationChangedMeanwhile" };
+        }
+        // Every address leg the edit saves has its place: without it the leg
+        // has no distance and would be saved free, changed or not.
+        if (data.delivery && lacksChosenPlace(data.delivery.outbound)) {
+          return { error: "errors.deliveryAddressNotChosen" };
+        }
+        if (data.delivery && lacksChosenPlace(data.delivery.return)) {
+          return { error: "errors.returnAddressNotChosen" };
         }
 
         for (const itemWrite of itemWrites) {

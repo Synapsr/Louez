@@ -25,12 +25,16 @@ import messages from "@/messages/en.json";
 import { AddressInput } from "./address-input";
 
 // The address field as the fields that need coordinates use it (delivery at
-// checkout and in the dashboard, the store's addresses): leaving it resolves
-// the typed text. An answer only lands if nothing happened to the field since
-// it was asked, and the spinner belongs to the request that started it.
+// checkout and in the dashboard, the store's addresses): coordinates come only
+// from a suggestion the person picks, never from a best match of what they
+// typed. An answer only lands if nothing happened to the field since it was
+// asked, the spinner belongs to the request that started it, and a request
+// that does not answer in time is given up.
 
 const SEARCH_DELAY = 300;
 const BLUR_DELAY = 120;
+const REQUEST_BOUND = 10_000;
+const CHOOSE_HINT = messages.common.addressInput.chooseFromList;
 
 const details = (placeId: string, formattedAddress: string): AddressDetails => ({
   placeId,
@@ -52,7 +56,7 @@ const controlledSource = () => {
     answer: ReturnType<typeof deferred<AddressSuggestion[]>>;
   }> = [];
   const resolves: Array<{
-    query: string;
+    placeId: string;
     answer: ReturnType<typeof deferred<AddressDetails | null>>;
   }> = [];
   return {
@@ -64,9 +68,9 @@ const controlledSource = () => {
         searches.push({ query, answer });
         return answer.promise;
       },
-      resolve: (query: string) => {
+      details: (placeId: string) => {
         const answer = deferred<AddressDetails | null>();
-        resolves.push({ query, answer });
+        resolves.push({ placeId, answer });
         return answer.promise;
       },
     },
@@ -119,6 +123,13 @@ const renderField = () => {
     </QueryClientProvider>,
   );
   const isSpinning = () => view.container.querySelector(".animate-spin") !== null;
+  const hint = () =>
+    view.container.querySelector("[data-address-choice-hint]")?.textContent ?? null;
+  /** Whether the field's own controls (here, clearing it) show, rather than only the spinner. */
+  const canClear = () =>
+    [...view.container.querySelectorAll("button")].some(
+      (button) => !button.querySelector(".animate-spin"),
+    );
   const option = (placeId: string) =>
     document.querySelector(`[data-address-suggestion="${placeId}"]`) as unknown as HTMLElement;
   const shownSuggestions = () =>
@@ -138,6 +149,8 @@ const renderField = () => {
     },
     state,
     isSpinning,
+    hint,
+    canClear,
     option,
     shownSuggestions,
     remount,
@@ -167,26 +180,165 @@ afterEach(() => {
   mock.timers.reset();
 });
 
-test("leaving the delivery field still replaces the typed text by the lookup's best match", async () => {
+test("leaving the delivery field keeps the typed text, without coordinates, and asks for a choice", async () => {
   const field = renderField();
   unmount = field.unmount;
 
   typeInto(field.input, "8 quai de la douane");
+  assert.equal(field.hint(), null, "no sentence while the person types");
   blur(field.input);
   await tick(BLUR_DELAY);
-  assert.deepEqual(
-    field.resolves.map((resolve) => resolve.query),
-    ["8 quai de la douane"],
-  );
-  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, 29200 Brest"));
+
+  assert.deepEqual(field.resolves, []);
+  assert.equal(field.input.value, "8 quai de la douane");
+  assert.deepEqual(field.state.current, {
+    address: "8 quai de la douane",
+    latitude: null,
+    longitude: null,
+  });
+  assert.equal(field.hint(), CHOOSE_HINT);
+});
+
+test("focusing the field again shows the suggestions for the text it was left with", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  blur(field.input);
+  await tick(BLUR_DELAY);
+  assert.deepEqual(field.shownSuggestions(), []);
+
+  focus(field.input);
   await settle();
 
+  assert.deepEqual(field.shownSuggestions(), ["brest"]);
+  assert.equal(field.searches.length, 1, "the list it already had is shown again");
+  assert.equal(field.hint(), null);
+});
+
+test("a text set from outside without coordinates asks for a choice and searches on focus", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  field.locate({ address: "8 quai de la douane, 29200 Brest", latitude: null, longitude: null });
+  assert.equal(field.hint(), CHOOSE_HINT);
+
+  focus(field.input);
+  await settle();
+  assert.deepEqual(
+    field.searches.map((search) => search.query),
+    ["8 quai de la douane, 29200 Brest"],
+  );
+  field.searches[0].answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
+  await settle();
+
+  assert.deepEqual(field.shownSuggestions(), ["brest"]);
+});
+
+test("a keyboard pick is final: no lookup of the text typed before it follows", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  pressKey(field.input, "ArrowDown");
+  pressKey(field.input, "Enter");
+  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, 29200 Brest"));
+  await settle();
+  await tick(BLUR_DELAY * 2);
+
+  assert.deepEqual(
+    field.resolves.map((resolve) => resolve.placeId),
+    ["brest"],
+  );
   assert.equal(field.input.value, "8 Quai de la Douane, 29200 Brest");
   assert.deepEqual(field.state.current, {
     address: "8 Quai de la Douane, 29200 Brest",
     latitude: 5,
     longitude: 2,
   });
+  assert.equal(field.hint(), null);
+});
+
+test("a pointer pick keeps its coordinates when the field is focused and left again", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  pointerClick(field.option("brest"));
+  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, 29200 Brest"));
+  await settle();
+  await tick(BLUR_DELAY);
+  focus(field.input);
+  blur(field.input);
+  await tick(BLUR_DELAY);
+
+  assert.equal(field.resolves.length, 1);
+  assert.deepEqual(field.state.current, {
+    address: "8 Quai de la Douane, 29200 Brest",
+    latitude: 5,
+    longitude: 2,
+  });
+  assert.equal(field.hint(), null);
+});
+
+test("a saved address with coordinates is left as it is by focusing and leaving the field", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  const saved = { address: "1 Place de la Liberté, Brest", latitude: 48.39, longitude: -4.48 };
+  field.locate(saved);
+  focus(field.input);
+  pressKey(field.input, "Enter");
+  blur(field.input);
+  await tick(BLUR_DELAY);
+
+  assert.deepEqual(field.resolves, []);
+  assert.deepEqual(field.searches, []);
+  assert.deepEqual(field.state.current, saved);
+  assert.equal(field.hint(), null);
+});
+
+test("a search that never answers is given up at the bound and its late list is ignored", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  typeInto(field.input, "8 quai");
+  await tick(SEARCH_DELAY);
+  assert.equal(field.isSpinning(), true);
+  assert.equal(field.canClear(), false);
+
+  await tick(REQUEST_BOUND);
+  assert.equal(field.isSpinning(), false);
+  assert.equal(field.canClear(), true);
+
+  field.searches[0].answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
+  await settle();
+  assert.deepEqual(field.shownSuggestions(), []);
+});
+
+test("a pick that never answers is given up at the bound and its late details write nothing", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  pointerClick(field.option("brest"));
+  await tick(BLUR_DELAY);
+  assert.equal(field.isSpinning(), true);
+
+  await tick(REQUEST_BOUND);
+  assert.equal(field.isSpinning(), false);
+  assert.equal(field.input.value, "8 Quai de la Douane, Brest");
+  assert.deepEqual(field.state.current, {
+    address: "8 Quai de la Douane, Brest",
+    latitude: null,
+    longitude: null,
+  });
+  assert.equal(field.hint(), CHOOSE_HINT);
+
+  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, 29200 Brest"));
+  await settle();
+  assert.equal(field.state.current.latitude, null);
+  assert.equal(field.input.value, "8 Quai de la Douane, Brest");
 });
 
 for (const outcome of ["answers", "fails"] as const) {
@@ -201,7 +353,7 @@ for (const outcome of ["answers", "fails"] as const) {
     typeInto(field.input, "12 rue de Siam");
 
     const pick = field.resolves[0];
-    assert.equal(pick.query, "brest");
+    assert.equal(pick.placeId, "brest");
     if (outcome === "answers") pick.answer.resolve(details("brest", "8 Quai de la Douane, Brest"));
     else pick.answer.reject(new Error("details failed"));
     await settle();
@@ -214,6 +366,79 @@ for (const outcome of ["answers", "fails"] as const) {
     });
   });
 }
+
+test("after a search that timed out, Enter searches the text again", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  typeInto(field.input, "12 rue de Siam");
+  await tick(SEARCH_DELAY);
+  await tick(REQUEST_BOUND);
+  assert.equal(field.searches.length, 2);
+  assert.deepEqual(field.shownSuggestions(), []);
+
+  pressKey(field.input, "Enter");
+  await settle();
+  assert.deepEqual(
+    field.searches.map((search) => search.query),
+    ["8 quai", "12 rue de Siam", "12 rue de Siam"],
+  );
+  field.searches[2].answer.resolve([suggestion("siam", "12 Rue de Siam, Brest")]);
+  await settle();
+  assert.deepEqual(field.shownSuggestions(), ["siam"]);
+});
+
+test("after a search that failed, Enter searches the text again", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+
+  await showSuggestions(field, "8 quai", [suggestion("brest", "8 Quai de la Douane, Brest")]);
+  typeInto(field.input, "12 rue de Siam");
+  await tick(SEARCH_DELAY);
+  field.searches[1].answer.reject(new Error("search failed"));
+  await settle();
+
+  pressKey(field.input, "Enter");
+  await settle();
+  assert.equal(field.searches.length, 3);
+  assert.equal(field.searches[2].query, "12 rue de Siam");
+});
+
+test("once the field is gone, none of its timers is left pending", async () => {
+  const field = renderField();
+  unmount = field.unmount;
+  // The timers set from here on, and those still waiting to run.
+  const pending = new Set<unknown>();
+  const set = globalThis.setTimeout;
+  const clear = globalThis.clearTimeout;
+  globalThis.setTimeout = ((callback: (...args: unknown[]) => void, delay?: number) => {
+    const id = set(() => {
+      pending.delete(id);
+      callback();
+    }, delay);
+    pending.add(id);
+    return id;
+  }) as typeof setTimeout;
+  globalThis.clearTimeout = ((id: Parameters<typeof clearTimeout>[0]) => {
+    pending.delete(id);
+    clear(id);
+  }) as typeof clearTimeout;
+  try {
+    // A search waiting for its answer, under its bound, and a blur waiting to close the list.
+    typeInto(field.input, "8 quai");
+    await tick(SEARCH_DELAY);
+    blur(field.input);
+    assert.ok(pending.size >= 2, "the bound and the blur are armed");
+
+    field.hide();
+    await settle();
+    assert.equal(pending.size, 0);
+  } finally {
+    globalThis.setTimeout = set;
+    globalThis.clearTimeout = clear;
+  }
+});
 
 test("a picked suggestion answering after another pick writes nothing", async () => {
   const field = renderField();
@@ -235,48 +460,6 @@ test("a picked suggestion answering after another pick writes nothing", async ()
 
   assert.equal(field.input.value, "8 Quai des Indes, Lorient");
   assert.equal(field.state.current.address, "8 Quai des Indes, Lorient");
-});
-
-test("a typed-text lookup answering after the text was edited writes nothing", async () => {
-  const field = renderField();
-  unmount = field.unmount;
-
-  typeInto(field.input, "8 quai de la douane");
-  blur(field.input);
-  await tick(BLUR_DELAY);
-  focus(field.input);
-  typeInto(field.input, "12 rue de Siam");
-  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, Brest"));
-  await settle();
-
-  assert.equal(field.input.value, "12 rue de Siam");
-  assert.deepEqual(field.state.current, {
-    address: "12 rue de Siam",
-    latitude: null,
-    longitude: null,
-  });
-});
-
-test("a typed-text lookup answering after a newer one writes nothing", async () => {
-  const field = renderField();
-  unmount = field.unmount;
-
-  typeInto(field.input, "8 quai de la douane");
-  blur(field.input);
-  await tick(BLUR_DELAY);
-  focus(field.input);
-  typeInto(field.input, "12 rue de Siam");
-  blur(field.input);
-  await tick(BLUR_DELAY);
-
-  const [older, newer] = field.resolves;
-  newer.answer.resolve(details("siam", "12 Rue de Siam, Brest"));
-  await settle();
-  older.answer.resolve(details("brest", "8 Quai de la Douane, Brest"));
-  await settle();
-
-  assert.equal(field.input.value, "12 Rue de Siam, Brest");
-  assert.equal(field.state.current.address, "12 Rue de Siam, Brest");
 });
 
 test("leaving with text too short to look up keeps the pending search's spinner", async () => {
@@ -323,7 +506,7 @@ for (const outcome of ["answers", "fails"] as const) {
   });
 }
 
-test("Enter in the delivery field with the list closed resolves the typed text", async () => {
+test("Enter in the delivery field with the list closed shows the suggestions for the typed text", async () => {
   const field = renderField();
   unmount = field.unmount;
 
@@ -331,9 +514,28 @@ test("Enter in the delivery field with the list closed resolves the typed text",
   pressKey(field.input, "Enter");
   await settle();
 
+  assert.equal(field.resolves.length, 0);
   assert.deepEqual(
-    field.resolves.map((resolve) => resolve.query),
+    field.searches.map((search) => search.query),
     ["8 quai de la douane"],
+  );
+  field.searches[0].answer.resolve([suggestion("brest", "8 Quai de la Douane, Brest")]);
+  await settle();
+  assert.deepEqual(field.shownSuggestions(), ["brest"]);
+  assert.deepEqual(field.state.current, {
+    address: "8 quai de la douane",
+    latitude: null,
+    longitude: null,
+  });
+
+  // Enter with nothing highlighted picks nothing; ArrowDown then Enter picks.
+  pressKey(field.input, "Enter");
+  assert.equal(field.resolves.length, 0);
+  pressKey(field.input, "ArrowDown");
+  pressKey(field.input, "Enter");
+  assert.deepEqual(
+    field.resolves.map((resolve) => resolve.placeId),
+    ["brest"],
   );
 });
 
@@ -430,22 +632,6 @@ for (const outcome of ["answers", "fails"] as const) {
     });
   });
 }
-
-test("a typed-text lookup answering after its field unmounted writes nothing", async () => {
-  const field = renderField();
-  unmount = field.unmount;
-
-  typeInto(field.input, "8 quai de la douane");
-  blur(field.input);
-  await tick(BLUR_DELAY);
-  field.remount();
-  typeInto(field.input, "12 rue de Siam");
-  field.resolves[0].answer.resolve(details("brest", "8 Quai de la Douane, Brest"));
-  await settle();
-
-  assert.equal(field.input.value, "12 rue de Siam");
-  assert.equal(field.state.current.address, "12 rue de Siam");
-});
 
 test("a blur whose delay ends after the field unmounted looks nothing up", async () => {
   const field = renderField();
