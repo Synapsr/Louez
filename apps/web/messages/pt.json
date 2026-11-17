@@ -8154,6 +8154,13 @@
           "sessionFailed": "Não foi possível retomar o pagamento. Tente novamente daqui a instantes."
         }
       },
+      "paid": {
+        "metaTitle": "Pagamento",
+        "received": "O pagamento da reserva {number} em {store} foi recebido.",
+        "receivedEmailed": "O pagamento da reserva {number} em {store} foi recebido. Enviámos-lhe uma confirmação por e-mail.",
+        "unverifiedTitle": "Pagamento ainda não verificado",
+        "unverified": "Ainda não conseguimos verificar o pagamento da reserva {number} em {store}. Se foi efetuado, a sua reserva será atualizada."
+      },
       "customFields": {
         "savedSummary": "Informações já registadas",
         "detailsIntro": "Estas informações ajudam {store} a preparar o seu equipamento."

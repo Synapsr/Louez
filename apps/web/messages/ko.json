@@ -8154,6 +8154,13 @@
           "sessionFailed": "결제를 다시 시작할 수 없습니다. 잠시 후에 다시 시도해 보세요."
         }
       },
+      "paid": {
+        "metaTitle": "결제",
+        "received": "{store}의 예약 {number} 결제가 완료되었습니다.",
+        "receivedEmailed": "{store}의 예약 {number} 결제가 완료되었습니다. 확인 이메일을 보내 드렸습니다.",
+        "unverifiedTitle": "결제가 아직 확인되지 않았습니다",
+        "unverified": "{store}의 예약 {number} 결제를 아직 확인하지 못했습니다. 결제가 완료되었다면 예약이 업데이트됩니다."
+      },
       "customFields": {
         "savedSummary": "이미 등록된 정보",
         "detailsIntro": "이 정보는 {store}에서 장비를 준비하는 데 도움이 됩니다."

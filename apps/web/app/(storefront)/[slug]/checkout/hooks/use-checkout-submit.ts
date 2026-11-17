@@ -31,7 +31,6 @@ import { getStepForErrorKey, sanitizeTranslationParams } from "../util.checkout-
 import { buildReservationPayload } from "../util.reservation-payload";
 import type { CartItem } from "@/contexts/cart-context";
 import {
-  clearPendingCheckout,
   readPendingCheckout,
   writePendingCheckout,
 } from "@/lib/storefront/util.pending-checkout-storage";
@@ -193,7 +192,7 @@ export const useCheckoutSubmit = ({
       });
 
       if (reservationMode === "payment" && result.paymentUrl) {
-        writePendingCheckout({ storeId, reservationId: result.reservationId });
+        writePendingCheckout({ storeId, reservationId: result.reservationId, resumable: true });
         trackEvent({
           eventType: "payment_initiated",
           metadata: { reservationId: result.reservationId, amount: totals.amountDueNow },
@@ -202,7 +201,9 @@ export const useCheckoutSubmit = ({
         return;
       }
 
-      clearPendingCheckout();
+      // A request is never resumed; the record only lets the reservation page
+      // empty this browser's cart, once.
+      writePendingCheckout({ storeId, reservationId: result.reservationId, resumable: false });
       window.location.assign(
         result.instantAccessUrl ??
           getUrl(`/account/reservations/${result.reservationId}?event=requested`),

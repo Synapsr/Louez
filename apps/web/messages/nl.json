@@ -8154,6 +8154,13 @@
           "sessionFailed": "De betaling kon niet opnieuw worden gestart. Probeer het zo meteen opnieuw."
         }
       },
+      "paid": {
+        "metaTitle": "Betaling",
+        "received": "Je betaling voor boeking {number} bij {store} is ontvangen.",
+        "receivedEmailed": "Je betaling voor boeking {number} bij {store} is ontvangen. Er is een bevestiging naar je e-mail gestuurd.",
+        "unverifiedTitle": "Betaling nog niet gecontroleerd",
+        "unverified": "We konden de betaling voor boeking {number} bij {store} nog niet controleren. Als die gelukt is, wordt je boeking bijgewerkt."
+      },
       "customFields": {
         "savedSummary": "Gegevens al opgeslagen",
         "detailsIntro": "Zo kan {store} uw materiaal klaarzetten."

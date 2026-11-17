@@ -8154,6 +8154,13 @@
           "sessionFailed": "无法重新开始付款。稍后再试一次。"
         }
       },
+      "paid": {
+        "metaTitle": "付款",
+        "received": "您在{store}的预订{number}的付款已收到。",
+        "receivedEmailed": "您在{store}的预订{number}的付款已收到。确认信息已通过电子邮件发送给您。",
+        "unverifiedTitle": "付款尚未核实",
+        "unverified": "我们尚未能核实您在{store}的预订{number}的付款。如果付款已完成，您的预订将会更新。"
+      },
       "customFields": {
         "savedSummary": "已填写的信息",
         "detailsIntro": "这些信息有助于 {store} 为您准备设备。"

@@ -8154,6 +8154,13 @@
           "sessionFailed": "No se ha podido reanudar el pago. Inténtelo de nuevo en unos instantes."
         }
       },
+      "paid": {
+        "metaTitle": "Pago",
+        "received": "Su pago de la reserva {number} en {store} se ha recibido.",
+        "receivedEmailed": "Su pago de la reserva {number} en {store} se ha recibido. Le hemos enviado una confirmación por correo electrónico.",
+        "unverifiedTitle": "Pago aún no verificado",
+        "unverified": "Todavía no hemos podido verificar el pago de la reserva {number} en {store}. Si se ha realizado, su reserva se actualizará."
+      },
       "customFields": {
         "savedSummary": "Datos ya registrados",
         "detailsIntro": "Esta información ayuda a {store} a preparar su material."

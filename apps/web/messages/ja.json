@@ -8154,6 +8154,13 @@
           "sessionFailed": "支払いを再開できませんでした。しばらくしてからもう一度試してください。"
         }
       },
+      "paid": {
+        "metaTitle": "お支払い",
+        "received": "{store}での予約{number}のお支払いを受け付けました。",
+        "receivedEmailed": "{store}での予約{number}のお支払いを受け付けました。確認メールをお送りしました。",
+        "unverifiedTitle": "お支払いはまだ確認できていません",
+        "unverified": "{store}での予約{number}のお支払いをまだ確認できていません。お支払いが完了していれば、予約は更新されます。"
+      },
       "customFields": {
         "savedSummary": "入力済みの情報",
         "detailsIntro": "この情報は、{store}が機材を準備する際に役立ちます。"
