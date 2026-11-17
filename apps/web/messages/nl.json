@@ -1080,6 +1080,26 @@
         "hideQR": "QR-code verbergen",
         "qrDescription": "Scan deze code om de winkel te bezoeken",
         "downloadQR": "Downloaden"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "Deze maand betaalde je {paid} aan commissie.",
+        "titlePreviousCommission": "Vorige maand betaalde je {paid} aan commissie.",
+        "titleCurrentFees": "Deze maand betaalde je {paid} aan reserveringskosten.",
+        "titlePreviousFees": "Vorige maand betaalde je {paid} aan reserveringskosten.",
+        "comparisonWithVat": "Met {plan} had je {price} excl. btw betaald ({priceWithVat} incl. btw).",
+        "comparison": "Met {plan} had je {price} excl. btw betaald.",
+        "cta": "Overstappen naar {plan}",
+        "noCommitment": "Geen verplichting, altijd opzegbaar.",
+        "dismiss": "30 dagen verbergen",
+        "detailsToggle": "Zo wordt het berekend",
+        "detailsMonth": "Maand",
+        "detailsPaidCommission": "Betaalde commissie, incl. btw",
+        "detailsPaidFees": "Betaalde reserveringskosten",
+        "detailsPlan": "Abonnement {plan}",
+        "detailsPlanPrice": "{price} excl. btw per maand",
+        "detailsPlanPriceWithVat": "{price} excl. btw per maand, dus {priceWithVat} met {vatRate} btw",
+        "detailsSavings": "Besparing",
+        "detailsNote": "Berekend met de tarieven van je winkel. Met een abonnement blijven Stripe-kosten en kosten van de reeent-marktplaats verschuldigd."
       }
     },
     "products": {
@@ -9656,7 +9676,8 @@
     "depositAttempt": {
       "needsStripe": "Louez heeft bij Stripe een autorisatie voor dit verzoek gevonden, maar die komt niet overeen met wat werd gevraagd (bedrag, kaart of referentie gewijzigd): Louez heeft ze niet geregistreerd en het verzoek blijft open. Annuleer ze via het Stripe-dashboard en klik daarna op ‘Verzoek sluiten’. Int u ze in plaats daarvan in Stripe, dan registreert Louez dat bedrag niet en blijft het verzoek open: neem contact op met Louez-support.",
       "none": "Deze reservering heeft geen onbevestigde autorisatie meer."
-    }
+    },
+    "planOfferUnavailable": "Dit aanbod geldt niet meer voor je winkel. De abonnementen staan op de pagina Abonnement."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

@@ -386,5 +386,22 @@
   },
   "customMessage": {
     "subject": "À propos de votre réservation #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName} : l'abonnement {plan} vous reviendrait moins cher ce mois-ci",
+    "subjectPrevious": "{storeName} : l'abonnement {plan} vous serait revenu moins cher le mois dernier",
+    "title": "{plan} vous aurait fait économiser {savings}",
+    "bodyCurrentCommission": "Ce mois-ci, {storeName} a déjà payé {paid} de commission à Louez. Avec l'abonnement {plan}, vous ne payez plus de commission sur vos locations.",
+    "bodyPreviousCommission": "Le mois dernier, {storeName} a payé {paid} de commission à Louez. Avec l'abonnement {plan}, vous ne payez plus de commission sur vos locations.",
+    "bodyCurrentFees": "Ce mois-ci, {storeName} a déjà payé {paid} de frais de réservation à Louez. Avec l'abonnement {plan}, vous ne payez plus de frais par réservation.",
+    "bodyPreviousFees": "Le mois dernier, {storeName} a payé {paid} de frais de réservation à Louez. Avec l'abonnement {plan}, vous ne payez plus de frais par réservation.",
+    "monthLabel": "Mois :",
+    "paidLabel": "Payé à Louez :",
+    "planLabel": "Abonnement {plan} :",
+    "planPrice": "{price} HT par mois",
+    "planPriceWithVat": "{price} HT par mois ({priceWithVat} TTC)",
+    "savingsLabel": "Économie :",
+    "cta": "Voir l'offre",
+    "footer": "Abonnement mensuel, sans engagement, résiliable à tout moment. Les frais Stripe et ceux de la marketplace reeent restent dus."
   }
 }

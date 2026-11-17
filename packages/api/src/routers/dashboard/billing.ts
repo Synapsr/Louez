@@ -1,13 +1,28 @@
 import {
   billingStatusSchema,
+  dismissPlanOfferInput,
+  dismissPlanOfferOutput,
   getBillingStatusInput,
+  getPlanOfferInput,
+  getPlanOfferOutput,
+  planOfferErrors,
+  recordPlanOfferShownInput,
+  recordPlanOfferShownOutput,
   startCardSetupInput,
   startCardSetupOutput,
+  startPlanOfferInput,
+  startPlanOfferOutput,
 } from "../../contracts/billing";
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
 import { assertCardSetupAllowed, getBillingStatus } from "../../services/billing";
 import { upgradeStoredLink } from "../../services/handoffs";
+import {
+  dismissPlanOffer,
+  getPlanOffer,
+  recordPlanOfferShown,
+  startPlanOffer,
+} from "../../services/plan-offer";
 import { HANDOFF_HELP, REST_HANDOFF_HELP, startHandoff } from "./handoffs";
 
 /**
@@ -83,4 +98,83 @@ const startCardSetup = storeProcedure
     return startHandoff(context, "billing_card_setup");
   });
 
-export const dashboardBillingRouter = { getStatus, startCardSetup };
+/**
+ * The dashboard's offer of a Louez plan that would have cost the store less
+ * (services/plan-offer.ts): a card on the home, for the store's owner only, as the
+ * billing pages are (a platform admin reads them, never buys). An agent reads what the
+ * store pays with billing_get_status; the card's figures and its Checkout stay in the
+ * dashboard.
+ */
+const planOfferCard = storeProcedure.meta({
+  actors: ["session"],
+  mcp: {
+    exclude: "a card of the dashboard's home: the plan is bought on Stripe's page, by the user",
+  },
+});
+
+/** The owner's, as the billing pages are: anyone else is refused before anything runs. */
+const assertOwner = (role: string) => {
+  if (role !== "owner") throw planOfferErrors.ownerOnly();
+};
+
+const getPlanOfferCard = planOfferCard
+  .meta({ capability: "billing.getPlanOffer", scope: READ })
+  .input(getPlanOfferInput)
+  .output(getPlanOfferOutput)
+  .handler(async ({ context }) => {
+    // Anyone but the owner is offered nothing, without an error to show.
+    if (context.actor.role !== "owner") return { offer: null };
+    return { offer: await getPlanOffer({ storeId: context.actor.storeId, ports: context.ports }) };
+  });
+
+const recordPlanOfferShownCard = planOfferCard
+  .meta({ capability: "billing.recordPlanOfferShown", scope: READ })
+  .input(recordPlanOfferShownInput)
+  .output(recordPlanOfferShownOutput)
+  .handler(async ({ context, input }) => {
+    assertOwner(context.actor.role);
+    await recordPlanOfferShown({
+      storeId: context.actor.storeId,
+      userId: context.actor.credential.userId,
+      offer: input.offer,
+      ports: context.ports,
+    });
+    return { recorded: true as const };
+  });
+
+const dismissPlanOfferCard = planOfferCard
+  .meta({ capability: "billing.dismissPlanOffer", scope: WRITE })
+  .input(dismissPlanOfferInput)
+  .output(dismissPlanOfferOutput)
+  .handler(async ({ context }) => {
+    assertOwner(context.actor.role);
+    await dismissPlanOffer({
+      storeId: context.actor.storeId,
+      userId: context.actor.credential.userId,
+      ports: context.ports,
+    });
+    return { dismissed: true as const };
+  });
+
+const startPlanOfferCard = planOfferCard
+  .meta({ capability: "billing.startPlanOffer", scope: WRITE })
+  .input(startPlanOfferInput)
+  .output(startPlanOfferOutput)
+  .handler(({ context, input }) => {
+    assertOwner(context.actor.role);
+    return startPlanOffer({
+      storeId: context.actor.storeId,
+      userId: context.actor.credential.userId,
+      affiliateReferral: input.affiliateReferral ?? null,
+      ports: context.ports,
+    });
+  });
+
+export const dashboardBillingRouter = {
+  getStatus,
+  startCardSetup,
+  getPlanOffer: getPlanOfferCard,
+  recordPlanOfferShown: recordPlanOfferShownCard,
+  dismissPlanOffer: dismissPlanOfferCard,
+  startPlanOffer: startPlanOfferCard,
+};

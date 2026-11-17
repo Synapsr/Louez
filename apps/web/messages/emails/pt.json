@@ -376,5 +376,22 @@
   },
   "customMessage": {
     "subject": "Sobre a sua reserva #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: a assinatura {plan} sair-lhe-ia mais barata este mês",
+    "subjectPrevious": "{storeName}: a assinatura {plan} ter-lhe-ia saído mais barata no mês passado",
+    "title": "Com o {plan} teria poupado {savings}",
+    "bodyCurrentCommission": "Este mês, {storeName} já pagou {paid} de comissão à Louez. Com a assinatura {plan}, não paga comissão sobre os seus alugueres.",
+    "bodyPreviousCommission": "No mês passado, {storeName} pagou {paid} de comissão à Louez. Com a assinatura {plan}, não paga comissão sobre os seus alugueres.",
+    "bodyCurrentFees": "Este mês, {storeName} já pagou {paid} em taxas por reserva à Louez. Com a assinatura {plan}, não paga taxa por reserva.",
+    "bodyPreviousFees": "No mês passado, {storeName} pagou {paid} em taxas por reserva à Louez. Com a assinatura {plan}, não paga taxa por reserva.",
+    "monthLabel": "Mês:",
+    "paidLabel": "Pago à Louez:",
+    "planLabel": "Assinatura {plan}:",
+    "planPrice": "{price} s/ IVA por mês",
+    "planPriceWithVat": "{price} s/ IVA por mês ({priceWithVat} c/ IVA)",
+    "savingsLabel": "Poupança:",
+    "cta": "Ver a oferta",
+    "footer": "Assinatura mensal, sem fidelização, cancele quando quiser. As taxas da Stripe e do marketplace reeent continuam devidas."
   }
 }
