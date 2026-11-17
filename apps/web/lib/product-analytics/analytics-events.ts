@@ -42,6 +42,11 @@ export const productAnalyticsEvents = {
   whatsNewListViewed: 'whats_new_list_viewed',
   whatsNewAnnouncementViewed: 'whats_new_announcement_viewed',
   whatsNewAnnouncementCompleted: 'whats_new_announcement_completed',
+  // Test reservations (docs/analytics/test-reservation.md)
+  testReservationStarted: 'test_reservation_started',
+  testReservationCompleted: 'test_reservation_completed',
+  testReservationManaged: 'test_reservation_managed',
+  testReservationDeleted: 'test_reservation_deleted',
 } as const;
 
 export type ProductAnalyticsEvent =
