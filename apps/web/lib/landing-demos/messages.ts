@@ -75,6 +75,8 @@ const RESERVATION_FILE_PATHS = [
   "dashboard.calendar",
   "dashboard.products.form",
   "dashboard.reservations",
+  // The card gate's dialog under the file's actions reads its text even while closed.
+  "dashboard.reservationGate",
   "dashboard.emailContact",
   "dashboard.phoneContact",
   "dashboard.referrals.nudge",
@@ -175,6 +177,7 @@ export const getDemoMessages = (scene: DemoScene, messages: DemoMessages) => {
     calendar: messages.dashboard.calendar,
     products: { form: messages.dashboard.products.form },
     reservations: messages.dashboard.reservations,
+    reservationGate: messages.dashboard.reservationGate,
     emailContact: messages.dashboard.emailContact,
     phoneContact: messages.dashboard.phoneContact,
     referrals: { nudge: messages.dashboard.referrals.nudge },
