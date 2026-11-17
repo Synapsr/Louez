@@ -10,6 +10,7 @@ import { isStandaloneMode } from "@/lib/deployment";
 import { NO_INDEX_DIRECTIVE, isSearchIndexingEnabled } from "@/lib/search-indexing";
 import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
+import { MARKETPLACE_SALES_CHANNEL, SALES_CHANNEL_COOKIE } from "@/lib/util.sales-channel";
 import {
   buildDemoSecurityHeaders,
   buildEmbedSecurityHeaders,
@@ -100,9 +101,6 @@ function withRuntimeSecurityHeaders(
   return response;
 }
 
-const SALES_CHANNEL_COOKIE = "louez_channel";
-const MARKETPLACE_CHANNEL = "marketplace";
-
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [
   "/login",
@@ -179,9 +177,9 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
   const url = createInternalRewriteUrl(request, `/${slug}${pathname}`);
   const requestedChannel = request.nextUrl.searchParams.get("channel");
   const hasMarketplaceCookie =
-    request.cookies.get(SALES_CHANNEL_COOKIE)?.value === MARKETPLACE_CHANNEL;
+    request.cookies.get(SALES_CHANNEL_COOKIE)?.value === MARKETPLACE_SALES_CHANNEL;
   const isMarketplaceChannel =
-    requestedChannel === MARKETPLACE_CHANNEL ||
+    requestedChannel === MARKETPLACE_SALES_CHANNEL ||
     (requestedChannel !== "direct" && hasMarketplaceCookie);
   const requestHeaders = new Headers(request.headers);
 
@@ -200,7 +198,7 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
   requestHeaders.set("x-storefront-path", `${pathname}${request.nextUrl.search}`);
 
   if (isMarketplaceChannel) {
-    requestHeaders.set("x-sales-channel", MARKETPLACE_CHANNEL);
+    requestHeaders.set("x-sales-channel", MARKETPLACE_SALES_CHANNEL);
   }
 
   // Embed routes drop the app chrome (used by the layout).
@@ -214,8 +212,8 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
     },
   });
 
-  if (requestedChannel === MARKETPLACE_CHANNEL) {
-    response.cookies.set(SALES_CHANNEL_COOKIE, MARKETPLACE_CHANNEL, {
+  if (requestedChannel === MARKETPLACE_SALES_CHANNEL) {
+    response.cookies.set(SALES_CHANNEL_COOKIE, MARKETPLACE_SALES_CHANNEL, {
       path: "/",
       sameSite: "lax",
       httpOnly: true,

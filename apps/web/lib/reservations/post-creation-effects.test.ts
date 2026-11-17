@@ -163,3 +163,66 @@ test("the funnel event and the platform's ping state the reservation's currency"
   assert.deepEqual(await run("EUR"), ["EUR", "EUR"]);
   assert.deepEqual(await run(null), ["USD", "USD"]);
 });
+
+const createdInput = (source: "online" | "marketplace", salesChannel: "marketplace" | null) =>
+  ({
+    store,
+    reservation: { ...reservation("EUR"), lineCount: 1, totalQuantity: 1, source, salesChannel },
+    totals,
+    delivery: { hasAnyDelivery: false, hasOutboundDelivery: false, hasReturnDelivery: false },
+    insurance: { amount: 0, optIn: false },
+    promoCodeUsed: false,
+  }) as unknown as Omit<Parameters<Effects["runPostCreationEffects"]>[0], "customer">;
+
+/** The funnel event's properties, once its deferred capture has run. */
+const capturedProperties = async (): Promise<Record<string, unknown>> => {
+  await new Promise((resolve) => setImmediate(resolve));
+  const events = calls.filter((call) => call.name === "captureProductServerEvent");
+  assert.equal(events.length, 1);
+  const [event] = events[0].args as [{ distinctId: string; properties: Record<string, unknown> }];
+  return { ...event.properties, distinctId: event.distinctId };
+};
+
+test("a storefront checkout from reeent states its channel and keeps its online source", async () => {
+  await effects.runPostCreationEffects({ ...createdInput("online", "marketplace"), customer });
+
+  const properties = await capturedProperties();
+  assert.equal(properties.surface, "storefront");
+  assert.equal(properties.source, "storefront_checkout");
+  assert.equal(properties.reservation_source, "online");
+  assert.equal(properties.sales_channel, "marketplace");
+  assert.equal(properties.marketplace, "reeent");
+});
+
+test("a storefront checkout with no channel states none", async () => {
+  await effects.runPostCreationEffects({ ...createdInput("online", null), customer });
+
+  const properties = await capturedProperties();
+  assert.equal(properties.reservation_source, "online");
+  assert.equal(properties.sales_channel, null);
+  assert.equal("marketplace" in properties, false);
+});
+
+test("a Booking API hold sends its funnel event alone, with no personal data", async () => {
+  effects.captureReservationCreated({
+    ...createdInput("marketplace", "marketplace"),
+    customerId: customer.id,
+  });
+
+  const properties = await capturedProperties();
+  assert.equal(properties.distinctId, customer.id);
+  assert.equal(properties.surface, "marketplace");
+  assert.equal(properties.source, "marketplace_booking_api");
+  assert.equal(properties.reservation_source, "marketplace");
+  assert.equal(properties.sales_channel, "marketplace");
+  assert.equal(properties.marketplace, "reeent");
+  // No message and no ping: only the event.
+  assert.deepEqual(
+    calls.map((call) => call.name),
+    ["captureProductServerEvent"],
+  );
+  const values = JSON.stringify(properties);
+  for (const personal of [customer.email, customer.firstName, customer.lastName]) {
+    assert.equal(values.includes(personal), false, personal);
+  }
+});

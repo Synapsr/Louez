@@ -83,6 +83,8 @@ for (const mode of ["request", "payment", "payment-unavailable"]) {
 const checkoutFixture = ({
   total = 0.1,
   source = "online",
+  salesChannel = undefined,
+  replay = false,
   mode = "payment",
   paymentUrl = "https://stripe.example.test/pay",
   gate = { accepts: true },
@@ -94,6 +96,8 @@ const checkoutFixture = ({
   const cancellations = [];
   const notifications = [];
   const gateChecks = [];
+  const postCreations = [];
+  const createdEvents = [];
   const runReservationEffects = async () => {};
   const prepared = {
     store: {
@@ -126,7 +130,7 @@ const checkoutFixture = ({
       writes.push(true);
       return {
         ok: true,
-        replay: false,
+        replay,
         reused: false,
         reservationId: "booking",
         reservationNumber: "TEST",
@@ -134,7 +138,12 @@ const checkoutFixture = ({
         currency: writtenCurrency,
       };
     },
-    runPostCreationEffects: async () => {},
+    runPostCreationEffects: async (input) => {
+      postCreations.push(input);
+    },
+    captureReservationCreated: (input) => {
+      createdEvents.push(input);
+    },
     notifyRequestReceived: async (input) => {
       notifications.push(input);
     },
@@ -153,10 +162,13 @@ const checkoutFixture = ({
     cancellations,
     notifications,
     gateChecks,
+    postCreations,
+    createdEvents,
     runReservationEffects,
     submit: () =>
       create({
         source,
+        ...(salesChannel !== undefined && { salesChannel }),
         items: [{ quantity: 1 }],
         customer: { email: "guest@example.test", firstName: "Test", lastName: "Guest" },
       }),
@@ -246,6 +258,89 @@ for (const source of ["online", "marketplace", "phone"]) {
     assert.equal(fixture.writes.length, 1);
   });
 }
+
+test("a Booking API hold sends its funnel event and nothing else", async () => {
+  const fixture = checkoutFixture({
+    total: 10,
+    source: "marketplace",
+    salesChannel: "marketplace",
+  });
+  const result = await fixture.submit();
+  assert.equal(result.ok, true);
+  assert.equal(result.idempotentReplay, false);
+  assert.equal(result.paymentUrl, null);
+  assert.equal(fixture.createdEvents.length, 1);
+  assert.equal(fixture.createdEvents[0].customerId, "customer");
+  assert.equal(fixture.createdEvents[0].reservation.source, "marketplace");
+  assert.equal(fixture.createdEvents[0].reservation.salesChannel, "marketplace");
+  // Still silent: no calendar, no ping, no message, no payment.
+  assert.equal(fixture.postCreations.length, 0);
+  assert.equal(fixture.notifications.length, 0);
+});
+
+test("a replayed Booking API hold sends no second event", async () => {
+  const fixture = checkoutFixture({
+    total: 10,
+    source: "marketplace",
+    salesChannel: "marketplace",
+    replay: true,
+  });
+  const result = await fixture.submit();
+  assert.equal(result.ok, true);
+  assert.equal(result.idempotentReplay, true);
+  assert.equal(fixture.createdEvents.length, 0);
+  assert.equal(fixture.postCreations.length, 0);
+});
+
+for (const salesChannel of ["marketplace", null]) {
+  test(`a storefront checkout hands its creation effects the channel ${salesChannel}`, async () => {
+    const fixture = checkoutFixture({ total: 10, mode: "request", salesChannel });
+    assert.equal((await fixture.submit()).ok, true);
+    assert.equal(fixture.createdEvents.length, 0);
+    assert.equal(fixture.postCreations.length, 1);
+    const { reservation, customer } = fixture.postCreations[0];
+    assert.equal(reservation.source, "online");
+    assert.equal(reservation.salesChannel, salesChannel);
+    assert.equal(customer.id, "customer");
+  });
+}
+
+const buildValuesSource = stripTypeScriptTypes(
+  source.slice(
+    source.indexOf("const buildReservationValues ="),
+    source.indexOf("/** The `reservation_items` rows"),
+  ),
+);
+const buildReservationValues = runInNewContext(`${buildValuesSource}; buildReservationValues`, {
+  normalizeCurrency: (currency) => currency ?? "EUR",
+  buildReservationBillingSnapshot: () => null,
+});
+const preparedForValues = {
+  store: { id: "store", settings: { currency: "EUR" } },
+  delivery: { hasAnyDelivery: false },
+  insurance: { appliedOptIn: false, amount: 0 },
+  promo: null,
+  totals: { subtotal: 10, deposit: 0, total: 10, deliveryFee: 0, discount: 0 },
+  window: { start: new Date(), end: new Date() },
+};
+
+test("the row keeps the request's source and writes its sales channel apart", () => {
+  for (const [request, expected] of [
+    // A storefront visit from reeent: still online, so no marketplace fee.
+    [{ source: "online", salesChannel: "marketplace" }, ["online", "marketplace"]],
+    [{ source: "online" }, ["online", null]],
+    [{ source: "online", salesChannel: null }, ["online", null]],
+    [{ source: "marketplace", salesChannel: "marketplace" }, ["marketplace", "marketplace"]],
+    [{ source: "phone" }, ["phone", null]],
+  ]) {
+    const values = buildReservationValues(
+      { ...request, customer: {}, items: [] },
+      preparedForValues,
+      "customer",
+    );
+    assert.deepEqual([values.source, values.salesChannel], expected, JSON.stringify(request));
+  }
+});
 
 const writeSource = stripTypeScriptTypes(
   source.slice(
