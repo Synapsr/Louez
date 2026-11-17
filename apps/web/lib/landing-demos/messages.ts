@@ -146,8 +146,10 @@ const FEATURE_PATHS: Partial<Record<FeatureDemoScene, string[]>> = {
     "dashboard.calendar",
     "dashboard.reservations",
   ],
+  // A product's timeline bar opens the reservation file, as in the products list.
   "products-filter": [
     ...FRAME_PATHS,
+    ...RESERVATION_FILE_PATHS,
     "dashboard.products",
     "dashboard.inventory",
     "dashboard.calendar",

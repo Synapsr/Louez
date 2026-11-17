@@ -30,6 +30,7 @@ const RESERVATION_FILE_SCENES: DemoScene[] = [
   "customers-search",
   "delivery-calendar",
   "products-list",
+  "products-filter",
   "product-availability",
   "contract-document",
   "contract-content",
