@@ -25,6 +25,17 @@ export type PriceCartResult =
   | { ok: true; cart: PricedCart }
   | { ok: false; missingProductId: string };
 
+/** One line priced from its catalogue entry, as the checkout prices it, the promotion in force at `now` included. */
+export const priceCartLine = (
+  product: PricingCatalogProduct,
+  line: PricingCatalogLineInput,
+  now: Date,
+): PricedCartLine => ({
+  ...priceCatalogLine(product, line, now),
+  productName: product.name,
+  taxSettings: product.taxSettings,
+});
+
 /** Price every line from the batch catalog; the first unknown product aborts. */
 export const priceCart = ({
   catalog,
@@ -45,8 +56,8 @@ export const priceCart = ({
       return { ok: false, missingProductId: line.productId };
     }
 
-    const priced = priceCatalogLine(product, line, now);
-    pricedLines.push({ ...priced, productName: product.name, taxSettings: product.taxSettings });
+    const priced = priceCartLine(product, line, now);
+    pricedLines.push(priced);
     subtotal += priced.subtotal;
     totalDeposit += priced.totalDeposit;
   }
@@ -93,4 +104,27 @@ export const checkoutLineBreakdown = (
       : line.subtotal,
   // An unpromoted line kept no breakdown before: this one records its facts only.
   ...(line.promotion ? {} : { factsOnly: true as const }),
+});
+
+/**
+ * A line priced from the catalogue as it is stored, by every writer that
+ * creates one: the checkout, the API's creation and the dashboard's creation
+ * and edit. Its unit price and total as the pricing gave them, to the cent,
+ * never rounded to the currency's minor unit (a ¥101 line at 50 % stores
+ * 50.50; M4), its breakdown (`checkoutLineBreakdown`) and its tax figures.
+ */
+export const catalogueLineValues = (
+  product: Pick<PricingCatalogProduct, "price" | "pricingMode"> | undefined,
+  line: PricedCartLine,
+  tax: ReservationItemTaxFields,
+) => ({
+  unitPrice: line.unitPrice.toFixed(2),
+  depositPerUnit: line.depositPerUnit.toFixed(2),
+  totalPrice: line.subtotal.toFixed(2),
+  pricingBreakdown: checkoutLineBreakdown(product, line, tax),
+  taxRate: tax.taxRate?.toFixed(2) ?? null,
+  taxAmount: tax.taxAmount?.toFixed(2) ?? null,
+  priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
+  totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+  taxExempt: false,
 });

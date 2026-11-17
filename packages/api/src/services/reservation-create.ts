@@ -65,7 +65,7 @@ import { createReservationPresentation } from "./approval-presentations";
 import { capacityVerdictMetadata, turnoverBufferVerdictMetadata } from "./capacity-verdict";
 import { buildPrimaryLocationSnapshot } from "./location-snapshots";
 import {
-  checkoutLineBreakdown,
+  catalogueLineValues,
   computeReservationTotals,
   getReservationItemTaxFields,
   priceCart,
@@ -833,19 +833,11 @@ export async function createStoreReservation(
           productId: line.productId,
           isCustomItem: false,
           quantity: line.quantity,
-          unitPrice: money(line.unitPrice),
-          depositPerUnit: money(line.depositPerUnit),
-          totalPrice: money(line.subtotal),
-          // The checkout's pricing facts, the promotion included, on every line (slice 9).
-          pricingBreakdown: checkoutLineBreakdown(product, line, tax),
+          // The checkout's stored line, the promotion included (slice 9).
+          ...catalogueLineValues(product, line, tax),
           productSnapshot: snapshot,
           combinationKey: choice.combinationKey,
           selectedAttributes: choice.selectedAttributes,
-          taxRate: tax.taxRate?.toFixed(2) ?? null,
-          taxAmount: tax.taxAmount?.toFixed(2) ?? null,
-          priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
-          totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
-          taxExempt: false,
         });
       }
 

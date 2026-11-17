@@ -27,7 +27,15 @@ import {
   TAX_OF_TODAY,
   type EditedLineTax,
 } from "@louez/api/services/edit-line-pricing";
-import { loadPricingCatalog, priceCatalogLine } from "@louez/api/services/pricing-catalog";
+import {
+  catalogueLineValues,
+  priceCartLine,
+  type PricedCartLine,
+} from "@louez/api/services/price-cart";
+import {
+  loadPricingCatalog,
+  type PricingCatalogProduct,
+} from "@louez/api/services/pricing-catalog";
 import {
   priceReservationEdit,
   type EditedLine,
@@ -38,6 +46,7 @@ import {
   getReservationItemTaxFields,
   INSURANCE_TAX_LINE_ID,
   type ReservationItemTaxFields,
+  type TaxedLine,
 } from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
@@ -1006,26 +1015,32 @@ export async function createManualReservation(data: CreateReservationData) {
 
     // Priced under the locks (slice 10): a line priced from its product is
     // priced from the catalogue the locks hold, as the checkout prices it,
-    // the product's promotion in force today included, and that is what is
-    // written, with the promotion it applied or none. A price typed by hand
-    // stands as typed, never discounted.
+    // the product's promotion in force now included, and stored as the
+    // checkout stores it (`catalogueLineValues`): its amounts to the cent,
+    // never rounded to the currency's minor unit, its breakdown and its tax
+    // figures. A price typed by hand stands as typed, never discounted, its
+    // total rounded once in the minor unit.
     const lockedCatalog = await loadPricingCatalog(tx, {
       storeId: store.id,
       productIds: lines.map(({ detail }) => detail.product.id),
       timezone: availabilityRules?.settings?.timezone,
       includeInactive: true,
     });
-    const lockedLines: Array<{
-      unitPrice: string;
-      totalPrice: string;
-      pricingBreakdown: PricingBreakdown;
-    }> = [];
+    const pricedAt = new Date();
+    const lockedLines: Array<
+      | { typed: true; taxed: TaxedLine; detail: (typeof productDetails)[number] }
+      | { typed: false; taxed: PricedCartLine; product: PricingCatalogProduct }
+    > = [];
     for (const { detail } of lines) {
       if (detail.pricingBreakdown.isManualOverride) {
         lockedLines.push({
-          unitPrice: detail.unitPrice,
-          totalPrice: detail.totalPrice,
-          pricingBreakdown: detail.pricingBreakdown,
+          typed: true,
+          detail,
+          taxed: {
+            subtotal: Number(detail.totalPrice),
+            unitPrice: Number(detail.unitPrice),
+            taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
+          },
         });
         continue;
       }
@@ -1033,21 +1048,23 @@ export async function createManualReservation(data: CreateReservationData) {
       if (!lockedProduct) {
         return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
       }
-      const priced = priceCatalogLine(lockedProduct, {
-        productId: lockedProduct.id,
-        quantity: detail.quantity,
-        startDate: data.startDate.toISOString(),
-        endDate: data.endDate.toISOString(),
-      });
       lockedLines.push({
-        unitPrice: roundToMinorUnit(priced.unitPrice, currency).toFixed(2),
-        totalPrice: roundToMinorUnit(priced.subtotal, currency).toFixed(2),
-        // The promotion in the checkout's shape, for a later edit to apply (slice 11).
-        pricingBreakdown: { ...detail.pricingBreakdown, promotion: priced.promotion ?? null },
+        typed: false,
+        product: lockedProduct,
+        taxed: priceCartLine(
+          lockedProduct,
+          {
+            productId: lockedProduct.id,
+            quantity: detail.quantity,
+            startDate: data.startDate.toISOString(),
+            endDate: data.endDate.toISOString(),
+          },
+          pricedAt,
+        ),
       });
     }
     const lockedSubtotal =
-      lockedLines.reduce((sum, line) => sum + Number(line.totalPrice), 0) +
+      lockedLines.reduce((sum, line) => sum + line.taxed.subtotal, 0) +
       customItemDetails.reduce((sum, customItem) => sum + Number(customItem.totalPrice), 0) +
       tulipInsuranceAmount;
     const discountUnderLocks = Math.min(Math.max(data.discountAmount ?? 0, 0), lockedSubtotal);
@@ -1069,12 +1086,8 @@ export async function createManualReservation(data: CreateReservationData) {
     // insurance (exempt), the delivery fee and the discount, as the checkout
     // computes them, with the store's tax settings read here (slice 10, M1).
     const taxSettings = availabilityRules?.settings?.tax;
-    const taxedLines = [
-      ...lines.map(({ detail }, index) => ({
-        subtotal: Number(lockedLines[index]!.totalPrice),
-        unitPrice: Number(lockedLines[index]!.unitPrice),
-        taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
-      })),
+    const taxedLines: TaxedLine[] = [
+      ...lockedLines.map((line) => line.taxed),
       ...customItemDetails.map((customItem) => ({
         subtotal: Number(customItem.totalPrice),
         unitPrice: Number(customItem.unitPrice),
@@ -1240,16 +1253,25 @@ export async function createManualReservation(data: CreateReservationData) {
     // Create reservation items for catalog products. A line keeps the
     // combination it chose, also when it was booked over the stock.
     for (const [lineIndex, { detail, choice }] of lines.entries()) {
+      const locked = lockedLines[lineIndex]!;
       await tx.insert(reservationItems).values({
         reservationId,
         productId: detail.product.id,
         isCustomItem: false,
         quantity: detail.quantity,
-        unitPrice: lockedLines[lineIndex]!.unitPrice,
-        depositPerUnit: detail.depositPerUnit,
-        totalPrice: lockedLines[lineIndex]!.totalPrice,
-        pricingBreakdown: lockedLines[lineIndex]!.pricingBreakdown,
-        ...lineTaxValues(lineIndex),
+        ...(locked.typed
+          ? {
+              unitPrice: detail.unitPrice,
+              depositPerUnit: detail.depositPerUnit,
+              totalPrice: detail.totalPrice,
+              pricingBreakdown: detail.pricingBreakdown,
+              ...lineTaxValues(lineIndex),
+            }
+          : catalogueLineValues(
+              locked.product,
+              locked.taxed,
+              getReservationItemTaxFields(totals, locked.taxed, lineIndex),
+            )),
         combinationKey: choice.combinationKey,
         selectedAttributes: choice.selectedAttributes,
         productSnapshot: {

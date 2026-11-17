@@ -637,7 +637,7 @@ describe(
     describe("a line whose product was deleted since", () => {
       /**
        * A reservation the store made from the dashboard, over START to `end`:
-       * the dashboard's own breakdowns (a `duration` in minutes).
+       * its lines stored as the checkout stores them (`catalogueLineValues`).
        */
       async function dashboardBooking(productIds: string[], end: Date) {
         const result = await actions.createManualReservation({
@@ -801,6 +801,39 @@ describe(
         assert.equal(more.error, undefined);
         // 15.01 × 4 / 3, rounded once.
         assert.equal((await lineOf(id, gone)).totalPrice, "20.01");
+      });
+
+      test("a fixed-price line the dashboard created: kept exactly when its window moves, in proportion when its quantity changes", async () => {
+        await useStore({});
+        const gone = await product("15.01");
+        await louezDb.db
+          .update(louezDb.products)
+          .set({ pricingKind: "fixed" })
+          .where(eq(louezDb.products.id, gone));
+        const id = await dashboardBooking([gone], THREE_DAYS);
+        await deleteProduct(gone);
+        const before = await lineOf(id, gone);
+
+        const moved = await actions.updateReservation(id, {
+          endDate: FOUR_DAYS,
+          items: await formLines(id),
+        });
+
+        assert.equal(moved.error, undefined);
+        const kept = await lineOf(id, gone);
+        assert.deepEqual(
+          [kept.totalPrice, kept.unitPrice, kept.pricingBreakdown],
+          [before.totalPrice, before.unitPrice, before.pricingBreakdown],
+        );
+        const shown = await previewOf(id, { quantities: { [kept.id]: 3 } });
+        const more = await actions.updateReservation(id, {
+          items: await formLines(id, { [kept.id]: 3 }),
+          expectedTotal: Number(shown),
+        });
+
+        assert.equal(more.error, undefined);
+        assert.equal((await lineOf(id, gone)).totalPrice, "45.03");
+        assert.equal(shown, "45.03");
       });
 
       test("a line priced by its duration whose window moved: refused with its own message, nothing written", async () => {
@@ -1025,6 +1058,45 @@ describe(
         assert.ok(afterA);
         assert.notEqual(pricingBasisOf(afterA.pricingBreakdown)?.isManualOverride, true);
         assert.equal(afterA.totalPrice, "40.00");
+      });
+
+      test("a dashboard creation, then its dates moved and a quantity changed: priced again, the form showed what is written", async () => {
+        await useStore({ tax: HT });
+        const [a, b] = [await product("5.35"), await product("8.00")];
+        await louezDb.db
+          .update(louezDb.products)
+          .set({ promotion: { percentage: 50, startsOn: null, endsOn: null } })
+          .where(eq(louezDb.products.id, a));
+        const created = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: TWO_DAYS,
+          items: [
+            { productId: a, quantity: 1 },
+            { productId: b, quantity: 2 },
+          ],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(created.reservationId, JSON.stringify(created));
+        const id = created.reservationId;
+        const lineB = (await items(id)).find((item) => item.productId === b);
+        assert.ok(lineB);
+
+        const shown = await previewOf(id, { end: THREE_DAYS, quantities: { [lineB.id]: 3 } });
+        const result = await actions.updateReservation(id, {
+          endDate: THREE_DAYS,
+          items: await formLines(id, { [lineB.id]: 3 }),
+          expectedTotal: Number(shown),
+        });
+
+        assert.equal(result.error, undefined);
+        const after = await items(id);
+        // A: three days at 5.35, 16.05, less the 50 % it recorded (8.03): 8.02; B: three for three days at 8.00.
+        assert.deepEqual(
+          Object.fromEntries(after.map((item) => [item.productId, item.totalPrice])),
+          { [a]: "8.02", [b]: "72.00" },
+        );
+        assert.equal(shown, (await reservationRow(id)).totalAmount);
       });
     });
 

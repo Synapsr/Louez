@@ -122,6 +122,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
   let actions: typeof import("./actions");
   let checkout: typeof import("@/lib/reservations/create-reservation");
   let inbox: typeof import("@louez/api/services/inbox");
+  let extension: typeof import("@/lib/reservations/extension-quote");
   let counter = 0;
   const savedMarketplaceSecret = process.env.MARKETPLACE_CATALOG_SECRET;
 
@@ -166,6 +167,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
     louezDb = await import("@louez/db");
     actions = await import("./actions");
     checkout = await import("@/lib/reservations/create-reservation");
+    extension = await import("@/lib/reservations/extension-quote");
     // packages/api is ES modules: its services need the CommonJS packages'
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
@@ -1172,6 +1174,250 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
         );
       } finally {
         Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
+      }
+    });
+  });
+
+  describe("a line priced from the catalogue is stored as the checkout stores it", () => {
+    // Promotions without dates: in force whatever the day.
+    const ALWAYS = { startsOn: null, endsOn: null };
+    const BEFORE_TAX = { enabled: true, defaultRate: 20, displayMode: "exclusive" as const };
+
+    interface Case {
+      name: string;
+      settings: Partial<StoreSettings>;
+      product: Partial<typeof louezDb.products.$inferInsert>;
+      /** Duration tiers, or the rates of a rate-based product. */
+      tiers?: Array<
+        { minDuration: number; discountPercent: string } | { period: number; price: string }
+      >;
+      days: number;
+      quantity: number;
+    }
+
+    const CASES: Case[] = [
+      {
+        name: "EUR, 5.35 a day for one day, two of them, 50 % off: 2.675 a unit",
+        settings: {},
+        product: { price: "5.35", promotion: { percentage: 50, ...ALWAYS } },
+        days: 1,
+        quantity: 2,
+      },
+      {
+        name: "JPY, ¥101 a day for one day, 50 % off: a line of ¥50.50",
+        settings: { currency: "JPY" },
+        product: { price: "101.00", promotion: { percentage: 50, ...ALWAYS } },
+        days: 1,
+        quantity: 1,
+      },
+      {
+        name: "a duration tier and a promotion, three days, two of them",
+        settings: {},
+        product: { price: "9.90", promotion: { percentage: 15, ...ALWAYS } },
+        tiers: [{ minDuration: 3, discountPercent: "12.500000" }],
+        days: 3,
+        quantity: 2,
+      },
+      {
+        name: "a rate-based product, four days, three of them, 10 % off",
+        settings: {},
+        product: {
+          price: "12.00",
+          basePeriodMinutes: 24 * 60,
+          promotion: { percentage: 10, ...ALWAYS },
+        },
+        tiers: [{ period: 3 * 24 * 60, price: "29.90" }],
+        days: 4,
+        quantity: 3,
+      },
+      {
+        name: "a fixed price, three of them, 20 % off",
+        settings: {},
+        product: {
+          price: "19.99",
+          pricingKind: "fixed",
+          promotion: { percentage: 20, ...ALWAYS },
+        },
+        days: 2,
+        quantity: 3,
+      },
+      {
+        name: "a product at its own 5.5 % in a store that prices before tax at 20 %, 50 % off",
+        settings: { tax: BEFORE_TAX },
+        product: {
+          price: "7.15",
+          taxSettings: { inheritFromStore: false, customRate: 5.5 },
+          promotion: { percentage: 50, ...ALWAYS },
+        },
+        days: 3,
+        quantity: 2,
+      },
+      {
+        name: "no promotion, JPY, prices before tax",
+        settings: { currency: "JPY", tax: BEFORE_TAX },
+        product: { price: "333.00" },
+        days: 1,
+        quantity: 1,
+      },
+    ];
+
+    async function catalogueProduct(spec: Case) {
+      const id = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Kayak",
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 50,
+        ...spec.product,
+      });
+      for (const [index, tier] of (spec.tiers ?? []).entries()) {
+        await louezDb.db.insert(louezDb.productPricingTiers).values({
+          id: nextId("tie"),
+          productId: id,
+          displayOrder: index,
+          ...tier,
+        });
+      }
+      return id;
+    }
+
+    /** What a reservation stores of its money, and of its one line. */
+    async function storedRow(reservationId: string) {
+      const r = louezDb.reservations;
+      const i = louezDb.reservationItems;
+      const [row] = await louezDb.db.select().from(r).where(eq(r.id, reservationId));
+      const [line] = await louezDb.db.select().from(i).where(eq(i.reservationId, reservationId));
+      assert.ok(row && line);
+      return {
+        reservation: {
+          currency: row.currency,
+          subtotalAmount: row.subtotalAmount,
+          depositAmount: row.depositAmount,
+          totalAmount: row.totalAmount,
+          subtotalExclTax: row.subtotalExclTax,
+          taxAmount: row.taxAmount,
+          taxRate: row.taxRate,
+          taxDisplayMode: row.taxDisplayMode,
+        },
+        line: {
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          depositPerUnit: line.depositPerUnit,
+          totalPrice: line.totalPrice,
+          pricingBreakdown: line.pricingBreakdown,
+          taxRate: line.taxRate,
+          taxAmount: line.taxAmount,
+          priceExclTax: line.priceExclTax,
+          totalExclTax: line.totalExclTax,
+          taxExempt: line.taxExempt,
+        },
+      };
+    }
+
+    /** The same booking by hand and through the checkout (a trusted caller, nothing paid). */
+    async function bookBoth(spec: Case) {
+      const productId = await catalogueProduct(spec);
+      const end = new Date(START.getTime() + spec.days * DAY);
+      return withSettings(spec.settings, async () => {
+        const byHand = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: end,
+          items: [{ productId, quantity: spec.quantity }],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(byHand.reservationId, JSON.stringify(byHand));
+        const byCheckout = await checkout.createReservation({
+          source: "phone",
+          storeId: STORE,
+          customer: { email: "caller@example.test", firstName: "Call", lastName: "In" },
+          items: [
+            {
+              lineId: "0",
+              productId,
+              quantity: spec.quantity,
+              startDate: START.toISOString(),
+              endDate: end.toISOString(),
+              unitPrice: 0,
+              depositPerUnit: 0,
+            },
+          ],
+          subtotalAmount: 0,
+          depositAmount: 0,
+          totalAmount: 0,
+        });
+        assert.ok(byCheckout.ok, JSON.stringify(byCheckout));
+        return {
+          productId,
+          byHand: await storedRow(byHand.reservationId),
+          byCheckout: await storedRow(byCheckout.reservationId),
+        };
+      });
+    }
+
+    for (const spec of CASES) {
+      test(`${spec.name}: the same stored row`, async () => {
+        const { byHand, byCheckout } = await bookBoth(spec);
+        assert.deepEqual(byHand, byCheckout);
+      });
+    }
+
+    test("the reviewer's figures: 2.67 a unit in EUR, a line of ¥50.50", async () => {
+      const [euros, yen] = [await bookBoth(CASES[0]!), await bookBoth(CASES[1]!)];
+      assert.deepEqual(
+        [euros.byHand.line.unitPrice, euros.byHand.line.totalPrice],
+        ["2.67", "5.35"],
+      );
+      assert.equal(yen.byHand.line.totalPrice, "50.50");
+    });
+
+    test("a paid hand-created promoted line in yen is extended automatically, not left to the store", async () => {
+      const { byHand } = await bookBoth(CASES[1]!);
+      const reservationId = await withSettings({ currency: "JPY" }, async () => {
+        const productId = await catalogueProduct(CASES[1]!);
+        const created = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: new Date(START.getTime() + DAY),
+          items: [{ productId, quantity: 1 }],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(created.reservationId, JSON.stringify(created));
+        return created.reservationId;
+      });
+      // Paid in full, in yen.
+      await louezDb.db.insert(louezDb.payments).values({
+        id: nextId("pay"),
+        reservationId,
+        amount: byHand.reservation.totalAmount,
+        type: "rental",
+        method: "cash",
+        status: "completed",
+        currency: "JPY",
+      });
+      // The store takes payments online: a supplement can be charged.
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ stripeAccountId: "acct_creations", stripeChargesEnabled: true })
+        .where(eq(louezDb.stores.id, STORE));
+      try {
+        const quoted = await withSettings({ currency: "JPY" }, () =>
+          extension.runExtensionQuote({ storeId: STORE, reservationId }, (tx, reservation) =>
+            extension.quoteExtension(tx, reservation, new Date(START.getTime() + 2 * DAY)),
+          ),
+        );
+        assert.notEqual(
+          quoted.preview.mode === "manual" ? quoted.preview.reason : null,
+          "manualPrice",
+        );
+        assert.ok(quoted.plan, JSON.stringify(quoted.preview));
+      } finally {
+        await louezDb.db
+          .update(louezDb.stores)
+          .set({ stripeAccountId: null, stripeChargesEnabled: false })
+          .where(eq(louezDb.stores.id, STORE));
       }
     });
   });
