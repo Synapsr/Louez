@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { FilesError } from "files-sdk";
 
-import { db, isTestReservation } from "@louez/db";
+import { db, isTestReservation, type Transaction } from "@louez/db";
 import {
   inspectionItems,
   inspectionPhotos,
@@ -41,6 +41,26 @@ export interface RepairDowntimeSuggestion {
     productName: string;
     productId: string;
   }>;
+}
+
+/**
+ * Locks the reservation's row in the write's transaction, before any of its
+ * rows (the lock order: reservations, then their rows). False when it is gone:
+ * a test reservation's purge (packages/api services/test-reservations.ts)
+ * may delete it between the checks above and this write, which then writes
+ * nothing rather than leave rows of a reservation that no longer exists.
+ */
+async function lockStoreReservation(
+  tx: Transaction,
+  storeId: string,
+  reservationId: string,
+): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: reservations.id })
+    .from(reservations)
+    .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
+    .for("update");
+  return row !== undefined;
 }
 
 // ============================================================================
@@ -167,7 +187,8 @@ export async function createInspection(data: CreateInspectionInput): Promise<{
     }
   }
 
-  await db.transaction(async (tx) => {
+  const written = await db.transaction(async (tx) => {
+    if (!(await lockStoreReservation(tx, store.id, reservationId))) return false;
     await tx.insert(inspections).values({
       id: inspectionId,
       storeId: store.id,
@@ -193,7 +214,11 @@ export async function createInspection(data: CreateInspectionInput): Promise<{
         type === "departure" ? "inspection_departure_started" : "inspection_return_started",
       userId: store.userId,
     });
+    return true;
   });
+  if (!written) {
+    return { error: "errors.reservationNotFound" };
+  }
 
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
@@ -261,7 +286,8 @@ export async function completeInspection(
 
   const now = new Date();
 
-  await db.transaction(async (tx) => {
+  const written = await db.transaction(async (tx) => {
+    if (!(await lockStoreReservation(tx, store.id, inspection.reservationId))) return false;
     await tx
       .update(inspections)
       .set({
@@ -295,7 +321,11 @@ export async function completeInspection(
         },
       });
     }
+    return true;
   });
+  if (!written) {
+    return { error: "errors.inspectionNotFound" };
+  }
 
   let repairDowntimeSuggestion: RepairDowntimeSuggestion | undefined;
 
@@ -400,23 +430,30 @@ export async function signInspection(
 
   const now = new Date();
 
-  // Update inspection with signature
-  await db
-    .update(inspections)
-    .set({
-      status: "signed",
-      customerSignature,
-      signedAt: now,
-      updatedAt: now,
-    })
-    .where(eq(inspections.id, inspectionId));
+  const written = await db.transaction(async (tx) => {
+    if (!(await lockStoreReservation(tx, store.id, inspection.reservationId))) return false;
+    // Update inspection with signature
+    await tx
+      .update(inspections)
+      .set({
+        status: "signed",
+        customerSignature,
+        signedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(inspections.id, inspectionId));
 
-  // Log activity
-  await db.insert(reservationActivity).values({
-    reservationId: inspection.reservationId,
-    activityType: "inspection_signed",
-    userId: store.userId,
+    // Log activity
+    await tx.insert(reservationActivity).values({
+      reservationId: inspection.reservationId,
+      activityType: "inspection_signed",
+      userId: store.userId,
+    });
+    return true;
   });
+  if (!written) {
+    return { error: "errors.inspectionNotFound" };
+  }
 
   revalidatePath(`/dashboard/reservations/${inspection.reservationId}`);
 

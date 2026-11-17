@@ -8,7 +8,20 @@ import {
   findTestModeMember,
   testModeCookieOptions,
 } from "@/lib/test-reservations/storefront-test-mode";
+import { testModeRoutePaths } from "@/lib/test-reservations/util.test-mode-route";
 import { getStorefrontPathPrefix } from "@/lib/util.storefront-host";
+
+/** A same-origin 303 to `location`, which nothing in the URL can turn into another host. */
+const redirectTo = (location: string) =>
+  new NextResponse(null, {
+    status: 303,
+    headers: {
+      Location: location,
+      "Cache-Control": "no-store",
+      // The token is in this URL: no page it leads to learns it.
+      "Referrer-Policy": "no-referrer",
+    },
+  });
 
 /**
  * `/test-mode?token=…`: the dashboard's link that opens the store in test mode
@@ -16,46 +29,42 @@ import { getStorefrontPathPrefix } from "@/lib/util.storefront-host";
  * the test-mode cookie, for the time the pass has left; anything else lands on the
  * store's home page without it. `/test-mode?leave=1` clears it.
  *
- * Every answer goes back to the store's home on the host the visitor typed (the
- * store's own host, or `/{slug}` on the dashboard's), where the cookie lives: the
- * redirect is relative for that reason.
+ * The store is found first, and every answer goes back to its home on the host the
+ * visitor typed (the store's own host, or `/{slug}` on the dashboard's), where the
+ * cookie lives: the redirect is relative, built from the store's slug as one path
+ * segment (util.test-mode-route.ts). An unknown store lands on `/`.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const prefix = await getStorefrontPathPrefix(slug);
-  const cookiePath = prefix || "/";
-  const home = new NextResponse(null, {
-    status: 303,
-    headers: {
-      Location: `${prefix}/`,
-      "Cache-Control": "no-store",
-      // The token is in this URL: no page it leads to learns it.
-      "Referrer-Policy": "no-referrer",
-    },
-  });
-
-  if (request.nextUrl.searchParams.get("leave") === "1") {
-    home.cookies.set(TEST_MODE_COOKIE, "", testModeCookieOptions(cookiePath, 0));
-    return home;
-  }
 
   try {
     const store = await getStoreBySlug(slug);
-    if (!store) return home;
+    if (!store) return redirectTo("/");
+    const { home, cookiePath } = testModeRoutePaths(
+      store.slug,
+      (await getStorefrontPathPrefix(store.slug)) === "",
+    );
+    const response = redirectTo(home);
+
+    if (request.nextUrl.searchParams.get("leave") === "1") {
+      response.cookies.set(TEST_MODE_COOKIE, "", testModeCookieOptions(cookiePath, 0));
+      return response;
+    }
+
     const token = request.nextUrl.searchParams.get("token");
     const pass = readTestModePass(token, store.id);
-    if (!token || !pass || !(await findTestModeMember(store.id, pass.userId))) return home;
+    if (!token || !pass || !(await findTestModeMember(store.id, pass.userId))) return response;
 
     const maxAgeSeconds = Math.floor((pass.exp - Date.now()) / 1000);
-    if (maxAgeSeconds <= 0) return home;
+    if (maxAgeSeconds <= 0) return response;
     // The cookie holds the pass itself: signed, bound to the store and the member.
-    home.cookies.set(TEST_MODE_COOKIE, token, testModeCookieOptions(cookiePath, maxAgeSeconds));
-    return home;
+    response.cookies.set(TEST_MODE_COOKIE, token, testModeCookieOptions(cookiePath, maxAgeSeconds));
+    return response;
   } catch (error) {
     log.error(
       "test-reservations",
       `test mode entry failed: ${error instanceof Error ? error.message : String(error)}`,
     );
-    return home;
+    return redirectTo("/");
   }
 }

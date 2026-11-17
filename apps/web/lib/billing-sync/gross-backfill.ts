@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, isNull, ne, or, sql, type SQL } from "drizzle-or
 import {
   billingSyncState,
   db,
+  excludeTestReservations,
   isPaymentReceiptSql,
   markReservation,
   paymentRequests,
@@ -249,6 +250,8 @@ async function loadCandidates(): Promise<Candidate[]> {
       and(
         inArray(payments.status, [...MOVED_STATUSES]),
         isPaymentReceiptSql(),
+        // A test reservation's payments are simulated and never billed (packages/db test-reservations.ts).
+        excludeTestReservations(),
         or(
           isNull(payments.grossMinor),
           isNull(payments.insuranceShareMinor),

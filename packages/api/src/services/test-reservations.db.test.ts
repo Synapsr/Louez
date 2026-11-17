@@ -4,7 +4,12 @@ import { after, before, describe, mock, test } from "node:test";
 
 import { eq } from "drizzle-orm";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 // The deletion of a test reservation on a migrated database: every row that
 // hangs from it goes, its test customer too once nothing else is left of it,
@@ -221,6 +226,55 @@ describe("test reservations (database)", { skip: skipWithoutTestDatabase() }, ()
       .from(louezDb.customers)
       .where(eq(louezDb.customers.id, testCustomer));
     assert.ok(kept);
+  });
+
+  test("a real checkout holding the test customer makes the purge keep it", async () => {
+    const storeId = await store();
+    const testCustomer = await customer(storeId, true);
+    const testRow = await reservation(storeId, testCustomer, { isTest: true });
+    const realId = nextId("res");
+
+    // The checkout (upsertCustomer): the customer locked by id, made real, then
+    // a real reservation inserted for it, not committed yet.
+    const checkout = await database.connect();
+    try {
+      await checkout.beginTransaction();
+      await checkout.query(
+        "SELECT id FROM customers FORCE INDEX (PRIMARY) WHERE id = ? FOR UPDATE",
+        [testCustomer],
+      );
+      await checkout.query("UPDATE customers SET is_test = 0 WHERE id = ?", [testCustomer]);
+      await checkout.query(
+        `INSERT INTO reservations
+           (id, store_id, customer_id, number, start_date, end_date,
+            subtotal_amount, deposit_amount, total_amount)
+         VALUES (?, ?, ?, ?, '2031-06-01 09:00:00', '2031-06-02 09:00:00', '10.00', '0.00', '10.00')`,
+        [realId, storeId, testCustomer, realId],
+      );
+
+      const purge = service.deleteTestReservation({
+        storeId,
+        reservationId: testRow.id,
+        analytics: { distinctId: "user", trigger: "manual" },
+      });
+      await waitForLockWaits(checkout, database.name, 1);
+      await checkout.commit();
+      assert.equal((await purge).deleted, true);
+    } finally {
+      await checkout.end();
+    }
+
+    assert.equal(await count("reservations", testRow.id), 0);
+    assert.equal(await count("reservations", realId), 1);
+    const [kept] = await louezDb.db
+      .select({ id: louezDb.customers.id, isTest: louezDb.customers.isTest })
+      .from(louezDb.customers)
+      .where(eq(louezDb.customers.id, testCustomer));
+    assert.deepEqual(
+      kept,
+      { id: testCustomer, isTest: false },
+      "the customer the checkout made real",
+    );
   });
 
   test("the daily cleanup takes only the test reservations past their lifetime", async () => {

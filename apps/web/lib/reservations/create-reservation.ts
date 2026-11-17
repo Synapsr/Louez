@@ -168,6 +168,7 @@ type PrepareInput = QuoteReservationRequest & {
   customerFields?: CreateReservationRequest["customerFields"];
   itemDetails?: CreateReservationRequest["itemDetails"];
   profileFields?: CreateReservationRequest["profileFields"];
+  testMode?: CreateReservationRequest["testMode"];
 };
 
 const getErrorKey = (error: unknown, fallback: string): string =>
@@ -458,6 +459,8 @@ const prepareReservation = async (
       endDate: window.end,
       tulipInsuranceOptIn: input.tulipInsuranceOptIn,
       fallbackCountry: storeCountry,
+      // A test checkout is never insured: Tulip is never asked for it.
+      testReservation: input.testMode !== undefined,
     });
   } catch (error) {
     return failReservation(getErrorKey(error, "errors.tulipQuoteFailed"));

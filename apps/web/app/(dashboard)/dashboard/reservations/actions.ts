@@ -207,6 +207,7 @@ import { creationTotals } from "./new/utils/creation-totals";
 import { typedLineSubtotal } from "./new/utils/product-line-pricing";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
+import { sendForReservation } from "@/lib/test-reservations/message-policy";
 import { TEST_RESERVATION_REFUSED_ERROR } from "@/lib/test-reservations/refusal";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
@@ -2070,6 +2071,11 @@ export async function previewReservationTulipQuote(
     });
   }
 
+  // A test reservation is never insured, and Tulip never asked (lib/test-reservations).
+  if (reservation.isTest) {
+    return createEmptyReservationTulipQuotePreview("no_public", { requestedOptIn: false });
+  }
+
   if (!reservation.customer) {
     return createEmptyReservationTulipQuotePreview(mode, {
       requestedOptIn,
@@ -2231,7 +2237,10 @@ export async function updateReservation(
   const previousPeriodMs = reservation.endDate.getTime() - reservation.startDate.getTime();
   const nextPeriodMs = newEndDate.getTime() - newStartDate.getTime();
   const isPeriodReduced = nextPeriodMs < previousPeriodMs;
-  const tulipMode = await getDashboardTulipInsuranceMode(store.id);
+  // A test reservation is never insured, and Tulip never asked (lib/test-reservations).
+  const tulipMode: TulipPublicMode = reservation.isTest
+    ? "no_public"
+    : await getDashboardTulipInsuranceMode(store.id);
   const requestedTulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
@@ -4661,13 +4670,16 @@ export async function sendReservationEmail(reservationId: string, data: SendRese
     }
 
     try {
-      const result = await sendEmail({
-        to: email.to,
-        subject: email.subject,
-        html: email.html,
-        attachments: email.attachments,
-        fromName: store.name,
-      });
+      // A test reservation's e-mail is marked and goes to the member who started it.
+      const result = await sendForReservation(reservationId, () =>
+        sendEmail({
+          to: email.to,
+          subject: email.subject,
+          html: email.html,
+          attachments: email.attachments,
+          fromName: store.name,
+        }),
+      );
 
       if (email.logTemplateType) {
         await logEmail({
@@ -4836,13 +4848,16 @@ export async function sendAccessLink(reservationId: string, data?: { customMessa
     }
 
     try {
-      const result = await sendEmail({
-        to: email.to,
-        subject: email.subject,
-        html: email.html,
-        attachments: email.attachments,
-        fromName: store.name,
-      });
+      // A test reservation's e-mail is marked and goes to the member who started it.
+      const result = await sendForReservation(reservationId, () =>
+        sendEmail({
+          to: email.to,
+          subject: email.subject,
+          html: email.html,
+          attachments: email.attachments,
+          fromName: store.name,
+        }),
+      );
 
       await logEmail({
         storeId: store.id,

@@ -6,6 +6,7 @@ import { db, reservationActivity, reservations, type stores } from "@louez/db";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { isEmailDelivered, sendReservationModifiedEmail } from "@/lib/email/send";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import { sendForReservation } from "@/lib/test-reservations/message-policy";
 
 type StoreRow = typeof stores.$inferSelect;
 
@@ -96,25 +97,28 @@ export async function sendReservationModificationEmailForStore({
 
   try {
     await delivery?.beforeSend();
-    await sendReservationModifiedEmail({
-      to: recipient,
-      store,
-      customer: {
-        firstName: reservation.customer.firstName,
-        lastName: reservation.customer.lastName,
-        email: reservation.customer.email,
-      },
-      reservation: {
-        id: reservation.id,
-        number: reservation.number,
-        startDate: period?.startDate ?? reservation.startDate,
-        endDate: period?.endDate ?? reservation.endDate,
-      },
-      previousPeriod,
-      reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`),
-      locale: getLocaleFromCountry(store.settings?.country),
-      logId: delivery?.key,
-    });
+    // A test reservation's e-mail is marked and goes to the member who started it.
+    await sendForReservation(reservationId, () =>
+      sendReservationModifiedEmail({
+        to: recipient,
+        store,
+        customer: {
+          firstName: reservation.customer.firstName,
+          lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+        },
+        reservation: {
+          id: reservation.id,
+          number: reservation.number,
+          startDate: period?.startDate ?? reservation.startDate,
+          endDate: period?.endDate ?? reservation.endDate,
+        },
+        previousPeriod,
+        reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`),
+        locale: getLocaleFromCountry(store.settings?.country),
+        logId: delivery?.key,
+      }),
+    );
     await recordActivity(reservationId, userId, recipient, "sent", delivery?.key);
     return { status: "sent", to: recipient };
   } catch (error) {

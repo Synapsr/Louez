@@ -77,6 +77,7 @@ describe(
     let analytics: typeof import("./analytics");
     let sales: typeof import("./sales-analytics");
     let launch: typeof import("./launch");
+    let unitHistory: typeof import("./product-unit-history");
     let router: typeof import("../routers/dashboard/reservations").dashboardReservationsRouter;
 
     const ports = {
@@ -115,6 +116,7 @@ describe(
       analytics = await import("./analytics");
       sales = await import("./sales-analytics");
       launch = await import("./launch");
+      unitHistory = await import("./product-unit-history");
       ({ dashboardReservationsRouter: router } = await import("../routers/dashboard/reservations"));
 
       await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@tr.test" });
@@ -467,6 +469,56 @@ describe(
       );
     });
 
+    test("a unit's history shows the test reservation's assignment events only to a session", async () => {
+      const seeded = await seed();
+      const unitId = seeded.unitIds[0] ?? "";
+      const event = (reservation: { id: string; itemId: string }) => ({
+        id: nextId("tr_uev"),
+        productUnitId: unitId,
+        storeId: seeded.storeId,
+        type: "assigned" as const,
+        payload: { reservationId: reservation.id, reservationItemId: reservation.itemId },
+      });
+      const realEvent = event(seeded.real ?? { id: "", itemId: "" });
+      const testEvent = event(seeded.test);
+      // An event naming the test reservation's line alone.
+      const itemOnlyEvent = {
+        ...event(seeded.test),
+        payload: { reservationItemId: seeded.test.itemId },
+      };
+      await louezDb.db
+        .insert(louezDb.productUnitEvents)
+        .values([realEvent, testEvent, itemOnlyEvent]);
+
+      const ids = (history: Awaited<ReturnType<typeof unitHistory.getProductUnitHistory>>) =>
+        (history?.timeline ?? [])
+          .map((entry) => (entry.kind === "event" ? entry.id : `asg:${entry.reservationId}`))
+          .sort();
+
+      const hidden = await unitHistory.getProductUnitHistory({
+        storeId: seeded.storeId,
+        unitId,
+        testReservations: false,
+      });
+      assert.deepEqual(ids(hidden), [`asg:${seeded.real?.id}`, realEvent.id].sort());
+
+      const seen = await unitHistory.getProductUnitHistory({
+        storeId: seeded.storeId,
+        unitId,
+        testReservations: true,
+      });
+      assert.deepEqual(
+        ids(seen),
+        [
+          `asg:${seeded.real?.id}`,
+          `asg:${seeded.test.id}`,
+          realEvent.id,
+          testEvent.id,
+          itemOnlyEvent.id,
+        ].sort(),
+      );
+    });
+
     // --- TR3: no figure -------------------------------------------------------
 
     test("the home's counters and the sales figures leave the test reservation and its payment out", async () => {
@@ -743,6 +795,14 @@ describe(
       );
       assert.equal((await reservationRow(confirmedId))?.billableAt, null);
       assert.equal((await queueRows(confirmedId)).length, 0);
+
+      // A later write that marks by reservation (a payment, an edit, a refund).
+      await louezDb.db.transaction(async (tx) => {
+        await louezDb.markReservation(tx, { id: confirmedId, storeId: seeded.storeId });
+        await louezDb.markReservation(tx, { id: realId, storeId: seeded.storeId });
+      });
+      assert.equal((await queueRows(confirmedId)).length, 0, "a test reservation is never marked");
+      assert.equal((await queueRows(realId)).length, 1);
     });
   },
 );

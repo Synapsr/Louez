@@ -40,10 +40,7 @@ import {
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { isSmsAccepted } from "@/lib/sms/delivery-record";
-import {
-  readTestReservationMessagesForDispatch,
-  sendAsTestReservation,
-} from "@/lib/test-reservations/message-policy";
+import { planReservationDispatch, sendWithTestMark } from "@/lib/test-reservations/message-policy";
 import type { EmailAttachment } from "@/lib/email/client";
 import {
   withCustomerNotificationDefaults,
@@ -246,9 +243,15 @@ export async function dispatchCustomerNotification(
     ? await getCustomerReminderPreferences(ctx.store.id, ctx.customer.id)
     : null;
   const resolvedChannels = resolveCustomerReminderChannels(eventType, prefs, customerPreferences);
-  // A test reservation sends its e-mails marked "[Test]" and never an SMS.
-  const testPolicy = await readTestReservationMessagesForDispatch(ctx.reservation.id);
-  const channels = testPolicy ? { ...resolvedChannels, sms: false } : resolvedChannels;
+  // A test reservation sends its e-mails marked "[Test]", to the member who started
+  // it, and never an SMS; one gone sends nothing (lib/test-reservations message-policy.ts).
+  const plan = await planReservationDispatch(ctx.reservation.id);
+  if (!plan.send) {
+    result.email.skipped = true;
+    result.sms.skipped = true;
+    return result;
+  }
+  const channels = plan.emailOnly ? { ...resolvedChannels, sms: false } : resolvedChannels;
 
   // Get custom template if any, with backward compatibility
   const customTemplate = settings.templates?.[eventType];
@@ -257,7 +260,7 @@ export async function dispatchCustomerNotification(
   // Send email if enabled
   if (channels.email && ctx.customer.email) {
     try {
-      await sendAsTestReservation(testPolicy, () =>
+      await sendWithTestMark(plan.mark, () =>
         sendCustomerEmail(eventType, ctx, locale, mergedContent),
       );
       result.email.sent = true;

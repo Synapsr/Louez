@@ -56,9 +56,10 @@ export const simulatedPaymentAmount = (input: {
  * The simulated payment of a test reservation (packages/db test-reservations.ts):
  * the confirmation a paid checkout gets, with nothing asked of Stripe and nothing
  * billed. Under the reservation's lock it writes one completed `other` rental
- * payment, once; then the contract is validated, the reservation confirmed as paid
- * (no deposit is taken), and the confirmation's messages sent, by whichever call
- * confirmed it. A second call finds the payment and confirms nothing more.
+ * payment, once; then the call that wrote it validates the contract, the
+ * reservation is confirmed as paid (no deposit is taken), and the confirmation's
+ * messages sent, by whichever call confirmed it. A second call finds the payment,
+ * generates no contract, and confirms nothing more.
  *
  * Never a Stripe call, a fee, a referral or marketplace effect, or an invoice (the
  * invoicing service refuses a test reservation, and attaches its watermarked
@@ -70,7 +71,8 @@ export async function simulateTestReservationPayment(input: {
 }): Promise<SimulatedPaymentResult> {
   const paidAt = toWholeSeconds(new Date());
 
-  type Claim = { paymentId: string } | { error: "not_found" | "not_pending" };
+  // `created`: this call wrote the payment, and alone generates the contract.
+  type Claim = { paymentId: string; created: boolean } | { error: "not_found" | "not_pending" };
   const claim = await db.transaction(async (tx): Promise<Claim> => {
     const [locked] = await tx
       .select({
@@ -95,7 +97,7 @@ export async function simulateTestReservationPayment(input: {
         ),
       )
       .limit(1);
-    if (existing) return { paymentId: existing.id };
+    if (existing) return { paymentId: existing.id, created: false };
     if (locked.status !== "pending") return { error: "not_pending" };
 
     const store = await tx.query.stores.findFirst({
@@ -130,16 +132,19 @@ export async function simulateTestReservationPayment(input: {
       metadata: { amount, currency, method: "other", type: "rental", simulated: true },
       createdAt: paidAt,
     });
-    return { paymentId };
+    return { paymentId, created: true };
   });
   if (!("paymentId" in claim)) return { ok: false, error: claim.error };
 
-  await db.transaction((tx) =>
-    validateReservationContract(tx, input.reservationId, input.storeId, "payment"),
-  );
-  // Refused for a test reservation: it only generates the watermarked contract
-  // where the store would attach documents to the confirmation.
-  await tryGenerateInvoiceForPayment(claim.paymentId, "test_reservation_simulated_payment");
+  // Only the call that wrote the payment: two clicks at once generate one contract.
+  if (claim.created) {
+    await db.transaction((tx) =>
+      validateReservationContract(tx, input.reservationId, input.storeId, "payment"),
+    );
+    // Refused for a test reservation: it only generates the watermarked contract
+    // where the store would attach documents to the confirmation.
+    await tryGenerateInvoiceForPayment(claim.paymentId, "test_reservation_simulated_payment");
+  }
 
   // Its items hold no stock, but its capacity is still checked: one past it stays
   // pending, as a paid checkout does, and the owner confirms it from the dashboard.

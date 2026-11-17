@@ -5,7 +5,64 @@ import {
   addTestReservationBanner,
   addTestReservationSubjectPrefix,
   isWithheldForTestReservation,
+  planDispatch,
+  planOutboxRow,
+  type ReservationMessagePolicy,
 } from "./util.message-policy";
+
+const mark = { subjectPrefix: "[Test] ", banner: "Test", recipient: "member@example.test" };
+const real: ReservationMessagePolicy = { kind: "real" };
+const missing: ReservationMessagePolicy = { kind: "missing" };
+const testPolicy: ReservationMessagePolicy = { kind: "test", mark };
+
+describe("an outbox row, by its reservation", () => {
+  test("of an ordinary reservation goes as it is, whatever its channel", () => {
+    for (const [type, payload] of [
+      ["reservation.storeNotification", { channel: "sms" }],
+      ["reservation.platformNotification", {}],
+      ["reservation.confirmationEmail", { to: "customer@example.test" }],
+    ] as const) {
+      assert.deepEqual(planOutboxRow(real, type, payload), { send: true, mark: null }, type);
+    }
+  });
+
+  test("of a reservation gone is skipped, e-mails too", () => {
+    for (const type of ["reservation.confirmationEmail", "reservation.storeNotification"]) {
+      const plan = planOutboxRow(missing, type, { channel: "email" });
+      assert.equal(plan.send, false, type);
+    }
+  });
+
+  test("of a test reservation sends its e-mails marked, and nothing else", () => {
+    assert.deepEqual(
+      planOutboxRow(testPolicy, "reservation.storeNotification", { channel: "email" }),
+      { send: true, mark },
+    );
+    assert.equal(
+      planOutboxRow(testPolicy, "reservation.storeNotification", { channel: "push" }).send,
+      false,
+    );
+    assert.equal(planOutboxRow(testPolicy, "reservation.platformNotification", {}).send, false);
+  });
+});
+
+describe("a one-shot send, by its reservation", () => {
+  test("of an ordinary reservation uses every channel, unmarked", () => {
+    assert.deepEqual(planDispatch(real), { send: true, emailOnly: false, mark: null });
+  });
+
+  test("of a reservation gone sends nothing", () => {
+    assert.equal(planDispatch(missing).send, false);
+  });
+
+  test("of a test reservation sends e-mail only, marked to its member", () => {
+    assert.deepEqual(planDispatch(testPolicy), { send: true, emailOnly: true, mark });
+  });
+
+  test("whose reservation could not be read sends the e-mail only, unmarked", () => {
+    assert.deepEqual(planDispatch("unknown"), { send: true, emailOnly: true, mark: null });
+  });
+});
 
 describe("a test reservation's outbox rows", () => {
   test("withholds platform notices, analytics, SMS and every channel but e-mail", () => {

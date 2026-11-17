@@ -35,6 +35,10 @@ before(async () => {
   dispatcher = await import("@/lib/notifications/dispatcher");
 });
 
+// An ordinary reservation for the test-reservation message plan, read from the
+// database otherwise (lib/test-reservations/message-policy.ts).
+const ordinaryReservation = async () => ({ send: true, emailOnly: false, mark: null });
+
 const INPUT = { reservationId: "res_dispute", amount: 100, currency: "EUR" };
 
 const CTX: NotificationContext = {
@@ -159,6 +163,7 @@ describe("dispute alert retries", () => {
             emails.push(event);
             return { sent: true };
           },
+          planDispatch: ordinaryReservation,
           sendAdminSms: async () => {
             smsCalls += 1;
             throw new Error("quota lookup failed");
@@ -247,6 +252,7 @@ describe("dispute alert retries", () => {
       },
       {
         sendAdminEventEmail: async () => ({ sent: true }),
+        planDispatch: ordinaryReservation,
         sendAdminSms: async () => {
           throw new Error("quota lookup failed");
         },
@@ -276,6 +282,7 @@ describe("dispute alert retries", () => {
         sendAdminEventEmail: async () => {
           throw Object.assign(new Error(`SMTP 550: ${refusal}`), { code: "EENVELOPE" });
         },
+        planDispatch: ordinaryReservation,
         sendAdminSms: async () => {
           throw new TypeError(refusal);
         },

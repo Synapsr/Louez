@@ -16,6 +16,7 @@ import {
   inspectionPhotos,
   inspections,
   isReservationChangeBusyError,
+  lockCustomerRow,
   marketplaceBookingAttempts,
   paymentDisputes,
   paymentRefundOperations,
@@ -327,8 +328,18 @@ async function deleteReservationRows(
  * Deletes the test customer once its last reservation is gone, with its
  * sessions and the rows that hang from it. A customer a real checkout made
  * real (`isTest` false), or one with another reservation, stays.
+ *
+ * Both are read under the customer's row lock, held to the commit: a real
+ * checkout locks the customer before it turns it real and inserts its
+ * reservation (`upsertCustomer`), so it either commits first and is seen
+ * here, or waits for the deletion and adds the customer again. The lock
+ * comes after the reservation's, as the checkout takes its customer after
+ * the reservation it resumes (DL lock order: customers after reservations).
+ * The transaction is READ COMMITTED (`runReservationChange`), so the reads
+ * after the lock see what the checkout committed.
  */
 async function deleteTestCustomer(tx: Transaction, storeId: string, customerId: string) {
+  await lockCustomerRow(tx, customerId);
   const [customer] = await tx
     .select({ id: customers.id, email: customers.email, isTest: customers.isTest })
     .from(customers)

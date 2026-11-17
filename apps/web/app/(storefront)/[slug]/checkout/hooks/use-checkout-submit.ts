@@ -52,7 +52,10 @@ interface UseCheckoutSubmitParams {
   storeId: string;
   storeSlug: string;
   reservationMode: ReservationMode;
-  /** A test checkout (lib/test-reservations): its events say so, the store's stats skip it. */
+  /**
+   * A test checkout (lib/test-reservations): no completion event, its failures say
+   * so, the store's stats skip it.
+   */
   isTestMode: boolean;
   locale: Locale;
   items: CartItem[];
@@ -174,6 +177,8 @@ export const useCheckoutSubmit = ({
       setServerError(null);
       setIsRedirecting(true);
 
+      // A test checkout counts in no funnel and no store statistic: the server
+      // records `test_reservation_completed` for it (lib/test-reservations).
       if (!isTestMode) {
         trackEvent({
           eventType: "checkout_completed",
@@ -185,19 +190,18 @@ export const useCheckoutSubmit = ({
             reservationMode,
           },
         });
+        // Captured client-side so the PostHog funnel keeps the browser's
+        // distinct_id; the server-side event is attributed to the customer.
+        posthog.capture(productAnalyticsEvents.checkoutCompleted, {
+          ...checkoutAnalyticsBaseProperties,
+          store_id: storeId,
+          reservation_id: result.reservationId,
+          reservation_mode: reservationMode,
+          item_count: items.length,
+          subtotal_amount_cents: Math.round(subtotal * 100),
+          total_amount_cents: Math.round(totals.total * 100),
+        });
       }
-      // Captured client-side so the PostHog funnel keeps the browser's
-      // distinct_id; the server-side event is attributed to the customer.
-      posthog.capture(productAnalyticsEvents.checkoutCompleted, {
-        ...checkoutAnalyticsBaseProperties,
-        ...(isTestMode ? { is_test: true } : {}),
-        store_id: storeId,
-        reservation_id: result.reservationId,
-        reservation_mode: reservationMode,
-        item_count: items.length,
-        subtotal_amount_cents: Math.round(subtotal * 100),
-        total_amount_cents: Math.round(totals.total * 100),
-      });
 
       if (reservationMode === "payment" && result.paymentUrl) {
         // A test reservation is never resumed: its payment page is simulated, on

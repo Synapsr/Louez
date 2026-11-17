@@ -155,9 +155,14 @@ export async function getTulipQuotePreview(input: unknown): Promise<TulipQuotePr
     });
   }
 
+  // A test checkout (lib/test-reservations), read from the signed cookie: never
+  // insured, and Tulip never asked.
+  const testMode = await getStorefrontTestMode(store.id);
+
   try {
     const quote = await resolveTulipInsurance({
       storeId: store.id,
+      testReservation: testMode !== null,
       modeOverride: data.modeOverride,
       customer: data.customer,
       items: data.items,

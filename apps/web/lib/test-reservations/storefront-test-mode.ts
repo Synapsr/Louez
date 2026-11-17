@@ -40,6 +40,19 @@ export async function findTestModeMember(
     : null;
 }
 
+/**
+ * Whether the test reservation is the one this browser's member started: the
+ * checkout writes the member's account e-mail on its customer. Another member of
+ * the store, in test mode too, neither pays for it nor gets its access link.
+ */
+export const isOwnTestReservation = (
+  testMode: Pick<StorefrontTestMode, "ownerEmail">,
+  customerEmail: string | null | undefined,
+): boolean =>
+  typeof customerEmail === "string" &&
+  customerEmail.trim() !== "" &&
+  testMode.ownerEmail.trim().toLowerCase() === customerEmail.trim().toLowerCase();
+
 /** The store's test mode in this browser, or null. Never trusts anything but the signed cookie. */
 export async function getStorefrontTestMode(storeId: string): Promise<StorefrontTestMode | null> {
   const pass = readTestModePass((await cookies()).get(TEST_MODE_COOKIE)?.value, storeId);

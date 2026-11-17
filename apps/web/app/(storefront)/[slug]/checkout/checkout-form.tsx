@@ -349,10 +349,11 @@ export const CheckoutForm = ({
 
   const checkoutStartedRef = useRef(false);
   useEffect(() => {
-    if (items.length === 0 || checkoutStartedRef.current) return;
+    // A test checkout (lib/test-reservations) counts in no store statistic.
+    if (items.length === 0 || checkoutStartedRef.current || testMode !== null) return;
     checkoutStartedRef.current = true;
     trackEvent({ eventType: "checkout_started", metadata: { itemCount: items.length, subtotal } });
-  }, [items.length, subtotal, trackEvent]);
+  }, [items.length, subtotal, trackEvent, testMode]);
 
   useEffect(() => {
     if (items.length === 0) return;

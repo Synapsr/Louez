@@ -48,10 +48,7 @@ import {
   reservationCurrencyOf,
 } from "@/lib/notifications/util.notification-currency";
 import { isPushConfigured, sendPush } from "@/lib/push/client";
-import {
-  readTestReservationMessagesForDispatch,
-  sendAsTestReservation,
-} from "@/lib/test-reservations/message-policy";
+import { planReservationDispatch, sendWithTestMark } from "@/lib/test-reservations/message-policy";
 import { log } from "@/lib/evlog";
 import { buildAdminPushPayload } from "@/lib/push/notifications";
 import type { NotificationEventType, NotificationSettings } from "@louez/types";
@@ -114,6 +111,8 @@ export interface DispatchNotificationDeps {
   sendAdminSms: typeof sendAdminSms;
   /** Where a channel that threw is logged; the application's logger when absent. */
   logError?: (tag: string, message: string) => void;
+  /** The test-reservation message plan; read from the database when absent. */
+  planDispatch?: typeof planReservationDispatch;
 }
 
 const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail, sendAdminSms };
@@ -946,9 +945,11 @@ export async function dispatchNotification(
   // still inherit that channel's default instead of resolving to undefined.
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
   const storePrefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
-  // A test reservation reaches the owner by e-mail only, marked "[Test]".
-  const testPolicy = await readTestReservationMessagesForDispatch(ctx.reservation?.id);
-  const prefs = testPolicy
+  // A test reservation reaches only the member who started it, by e-mail, marked
+  // "[Test]"; one gone sends nothing (lib/test-reservations message-policy.ts).
+  const plan = await (deps.planDispatch ?? planReservationDispatch)(ctx.reservation?.id);
+  if (!plan.send) return result;
+  const prefs = plan.emailOnly
     ? { ...storePrefs, sms: false, push: false, discord: false }
     : storePrefs;
 
@@ -966,7 +967,7 @@ export async function dispatchNotification(
   // Email to the store owner. Events without an owner template answer "not sent".
   if (prefs.email) {
     try {
-      result.email = await sendAsTestReservation(testPolicy, () =>
+      result.email = await sendWithTestMark(plan.mark, () =>
         deps.sendAdminEventEmail(eventType, ctx),
       );
     } catch (error) {

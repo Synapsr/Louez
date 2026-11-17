@@ -17,7 +17,10 @@ import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { formatCurrency } from "@/lib/utils";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { simulatedPaymentAmount } from "@/lib/test-reservations/simulate-payment";
-import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-mode";
+import {
+  getStorefrontTestMode,
+  isOwnTestReservation,
+} from "@/lib/test-reservations/storefront-test-mode";
 
 import { SimulatePaymentButton } from "./simulate-payment-button";
 
@@ -76,9 +79,11 @@ const TestPaymentPage = async ({ params, searchParams }: TestPaymentPageProps) =
           depositAmount: true,
           currency: true,
         },
+        with: { customer: { columns: { email: true } } },
       })
     : undefined;
-  if (!reservation) notFound();
+  // Only the member who started it sees it: another member's test is not found.
+  if (!reservation || !isOwnTestReservation(testMode, reservation.customer.email)) notFound();
 
   if (reservation.status !== "pending") {
     return (
