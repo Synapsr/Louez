@@ -376,5 +376,22 @@
   },
   "customMessage": {
     "subject": "W sprawie Twojej rezerwacji #{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}: abonament {plan} byłby w tym miesiącu tańszy",
+    "subjectPrevious": "{storeName}: abonament {plan} byłby w zeszłym miesiącu tańszy",
+    "title": "Z planem {plan} zaoszczędzono by {savings}",
+    "bodyCurrentCommission": "W tym miesiącu {storeName} zapłacił już Louez {paid} prowizji. W abonamencie {plan} nie płacisz prowizji od wynajmów.",
+    "bodyPreviousCommission": "W zeszłym miesiącu {storeName} zapłacił Louez {paid} prowizji. W abonamencie {plan} nie płacisz prowizji od wynajmów.",
+    "bodyCurrentFees": "W tym miesiącu {storeName} zapłacił już Louez {paid} opłat za rezerwacje. W abonamencie {plan} nie płacisz opłat za rezerwację.",
+    "bodyPreviousFees": "W zeszłym miesiącu {storeName} zapłacił Louez {paid} opłat za rezerwacje. W abonamencie {plan} nie płacisz opłat za rezerwację.",
+    "monthLabel": "Miesiąc:",
+    "paidLabel": "Zapłacono Louez:",
+    "planLabel": "Abonament {plan}:",
+    "planPrice": "{price} netto miesięcznie",
+    "planPriceWithVat": "{price} netto miesięcznie ({priceWithVat} brutto)",
+    "savingsLabel": "Oszczędność:",
+    "cta": "Zobacz ofertę",
+    "footer": "Abonament miesięczny, bez zobowiązań, rezygnacja w każdej chwili. Opłaty Stripe i marketplace'u reeent nadal obowiązują."
   }
 }

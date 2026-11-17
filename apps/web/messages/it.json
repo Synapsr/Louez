@@ -1078,6 +1078,26 @@
         "hideQR": "Nascondi codice QR",
         "qrDescription": "Scansiona questo codice per accedere al negozio",
         "downloadQR": "Scarica"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "Questo mese hai pagato {paid} di commissione.",
+        "titlePreviousCommission": "Il mese scorso hai pagato {paid} di commissione.",
+        "titleCurrentFees": "Questo mese hai pagato {paid} di costi per prenotazione.",
+        "titlePreviousFees": "Il mese scorso hai pagato {paid} di costi per prenotazione.",
+        "comparisonWithVat": "Con {plan} avresti pagato {price} IVA esclusa ({priceWithVat} IVA inclusa).",
+        "comparison": "Con {plan} avresti pagato {price} IVA esclusa.",
+        "cta": "Passa a {plan}",
+        "noCommitment": "Senza vincoli, disdici quando vuoi.",
+        "dismiss": "Nascondi per 30 giorni",
+        "detailsToggle": "Come viene calcolato",
+        "detailsMonth": "Mese",
+        "detailsPaidCommission": "Commissione pagata, IVA inclusa",
+        "detailsPaidFees": "Costi per prenotazione pagati",
+        "detailsPlan": "Abbonamento {plan}",
+        "detailsPlanPrice": "{price} IVA esclusa al mese",
+        "detailsPlanPriceWithVat": "{price} IVA esclusa al mese, cioè {priceWithVat} con IVA al {vatRate}",
+        "detailsSavings": "Risparmio",
+        "detailsNote": "Calcolato con le tariffe del tuo negozio. Con un abbonamento restano dovute le commissioni Stripe e quelle del marketplace reeent."
       }
     },
     "products": {
@@ -9643,7 +9663,8 @@
     "depositAttempt": {
       "needsStripe": "Louez ha trovato su Stripe un'autorizzazione per questa richiesta, ma non corrisponde a quanto richiesto (importo, carta o riferimento modificati): Louez non l'ha registrata e la richiesta resta aperta. Annullala dalla dashboard di Stripe, poi fai clic su «Chiudi la richiesta». Se invece la incassi su Stripe, Louez non registra quell'importo e la richiesta resta aperta: contatta l'assistenza Louez.",
       "none": "Questa prenotazione non ha più autorizzazioni non confermate."
-    }
+    },
+    "planOfferUnavailable": "Questa offerta non vale più per il tuo negozio. Trovi gli abbonamenti nella pagina Abbonamento."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

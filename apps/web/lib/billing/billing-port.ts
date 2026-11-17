@@ -6,6 +6,11 @@ import { isBillingSyncEnabled } from "@louez/db";
 import { localizedLabel } from "@/lib/billing/billing-overview";
 import { finishCardReturn } from "@/lib/billing/card-return";
 import { isBillingEnabled } from "@/lib/billing/mode";
+import {
+  readPlanOffer,
+  recordPlanOfferShown,
+  startPlanOfferCheckout,
+} from "@/lib/billing/plan-offer";
 import { getEffectivePolicy } from "@/lib/billing/policy";
 import { getBillingOverview, startCardSetup } from "@/lib/billing-sync/pages";
 import { summarizePayAsYouGoBands } from "@/lib/pay-as-you-go/config";
@@ -209,4 +214,7 @@ export const billingPort: BillingPort = {
   },
   finishCardSetup: ({ storeId, checkoutSessionId }) =>
     finishCardReturn({ storeId, checkoutSessionId, after }),
+  planOffer: readPlanOffer,
+  recordPlanOfferShown,
+  startPlanOfferCheckout,
 };

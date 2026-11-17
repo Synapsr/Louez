@@ -1117,6 +1117,26 @@
         "hideQR": "Masquer le QR code",
         "qrDescription": "Scannez ce code pour accéder à la boutique",
         "downloadQR": "Télécharger"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "Ce mois-ci, vous avez payé {paid} de commission.",
+        "titlePreviousCommission": "Le mois dernier, vous avez payé {paid} de commission.",
+        "titleCurrentFees": "Ce mois-ci, vous avez payé {paid} de frais de réservation.",
+        "titlePreviousFees": "Le mois dernier, vous avez payé {paid} de frais de réservation.",
+        "comparisonWithVat": "Avec {plan}, vous auriez payé {price} HT ({priceWithVat} TTC).",
+        "comparison": "Avec {plan}, vous auriez payé {price} HT.",
+        "cta": "Passer à {plan}",
+        "noCommitment": "Sans engagement, résiliable à tout moment.",
+        "dismiss": "Masquer pendant 30 jours",
+        "detailsToggle": "Comment c'est calculé",
+        "detailsMonth": "Mois",
+        "detailsPaidCommission": "Commission payée, TTC",
+        "detailsPaidFees": "Frais de réservation payés",
+        "detailsPlan": "Abonnement {plan}",
+        "detailsPlanPrice": "{price} HT par mois",
+        "detailsPlanPriceWithVat": "{price} HT par mois, soit {priceWithVat} avec la TVA à {vatRate}",
+        "detailsSavings": "Économie",
+        "detailsNote": "Calculé avec le tarif de votre boutique. Avec un abonnement, les frais Stripe et ceux de la marketplace reeent restent dus."
       }
     },
     "products": {
@@ -9643,7 +9663,8 @@
     "depositAttempt": {
       "needsStripe": "Louez a trouvé chez Stripe une autorisation pour cette demande d'empreinte, mais elle ne correspond pas à ce qui a été demandé (montant, carte ou référence modifiés) : Louez ne l'a pas enregistrée et la demande reste ouverte. Annulez-la depuis le tableau de bord Stripe, puis cliquez sur « Clore la demande ». Si vous la prélevez dans Stripe à la place, Louez n'enregistre pas ce montant et la demande reste ouverte : contactez le support Louez.",
       "none": "Cette réservation n'a plus d'empreinte non confirmée."
-    }
+    },
+    "planOfferUnavailable": "Cette offre ne s'applique plus à votre boutique. Retrouvez les abonnements sur la page Abonnement."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

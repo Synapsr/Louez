@@ -3,6 +3,7 @@
 import { z } from 'zod'
 
 import { parseAffiliateReferral } from '@/lib/acquisition/klibon'
+import { planCheckoutReturnUrls } from '@/lib/stripe/plan-checkout-urls'
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { BILLING_SETTINGS_PATH } from '@/lib/billing/billing-routes'
 import { log } from '@/lib/evlog'
@@ -60,8 +61,7 @@ function openPlanCheckout(
     currency,
     trialDays: store.trialDays ?? 0,
     stripeCouponId: store.stripeCouponId ?? undefined,
-    successUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?success=true`,
-    cancelUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?canceled=true`,
+    ...planCheckoutReturnUrls(env.NEXT_PUBLIC_APP_URL),
     affiliateReferral: parseAffiliateReferral(affiliateReferral),
   })
 }

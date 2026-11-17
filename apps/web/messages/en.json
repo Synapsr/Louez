@@ -1117,6 +1117,26 @@
         "hideQR": "Hide QR code",
         "qrDescription": "Scan this code to access the store",
         "downloadQR": "Download"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "This month, you paid {paid} in commission.",
+        "titlePreviousCommission": "Last month, you paid {paid} in commission.",
+        "titleCurrentFees": "This month, you paid {paid} in booking fees.",
+        "titlePreviousFees": "Last month, you paid {paid} in booking fees.",
+        "comparisonWithVat": "With {plan}, you would have paid {price} excl. VAT ({priceWithVat} incl. VAT).",
+        "comparison": "With {plan}, you would have paid {price} excl. VAT.",
+        "cta": "Switch to {plan}",
+        "noCommitment": "No commitment, cancel anytime.",
+        "dismiss": "Hide for 30 days",
+        "detailsToggle": "How this is calculated",
+        "detailsMonth": "Month",
+        "detailsPaidCommission": "Commission paid, incl. VAT",
+        "detailsPaidFees": "Booking fees paid",
+        "detailsPlan": "{plan} plan",
+        "detailsPlanPrice": "{price} excl. VAT per month",
+        "detailsPlanPriceWithVat": "{price} excl. VAT per month, or {priceWithVat} with {vatRate} VAT",
+        "detailsSavings": "Savings",
+        "detailsNote": "Calculated with your store's own rates. On a plan, Stripe fees and reeent marketplace fees still apply."
       }
     },
     "products": {
@@ -9643,7 +9663,8 @@
     "depositAttempt": {
       "needsStripe": "Louez found an authorization at Stripe for this hold request, but it does not match what was asked (amount, card or reference changed): Louez did not record it, and the request stays open. Cancel it from the Stripe dashboard, then click “Close the request”. If you capture it in Stripe instead, Louez does not record that amount and the request stays open: contact Louez support.",
       "none": "This reservation has no unconfirmed authorization left."
-    }
+    },
+    "planOfferUnavailable": "This offer no longer applies to your store. You can find the plans on the Subscription page."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

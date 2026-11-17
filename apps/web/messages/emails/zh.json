@@ -386,5 +386,22 @@
   },
   "customMessage": {
     "subject": "关于您的预订#{number}"
+  },
+  "planOffer": {
+    "subjectCurrent": "{storeName}：本月使用 {plan} 套餐会更划算",
+    "subjectPrevious": "{storeName}：上月使用 {plan} 套餐会更划算",
+    "title": "使用 {plan}，您本可节省 {savings}",
+    "bodyCurrentCommission": "本月 {storeName} 已向 Louez 支付 {paid} 的佣金。订阅 {plan} 套餐后，您的租赁无需再支付佣金。",
+    "bodyPreviousCommission": "上月 {storeName} 向 Louez 支付了 {paid} 的佣金。订阅 {plan} 套餐后，您的租赁无需再支付佣金。",
+    "bodyCurrentFees": "本月 {storeName} 已向 Louez 支付 {paid} 的预订费用。订阅 {plan} 套餐后，无需按预订付费。",
+    "bodyPreviousFees": "上月 {storeName} 向 Louez 支付了 {paid} 的预订费用。订阅 {plan} 套餐后，无需按预订付费。",
+    "monthLabel": "月份：",
+    "paidLabel": "已付给 Louez：",
+    "planLabel": "{plan} 套餐：",
+    "planPrice": "每月 {price}（不含税）",
+    "planPriceWithVat": "每月 {price}（不含增值税，含税 {priceWithVat}）",
+    "savingsLabel": "节省：",
+    "cta": "查看优惠",
+    "footer": "按月订阅，无需长期合约，可随时取消。Stripe 手续费和 reeent 市场费用仍需支付。"
   }
 }

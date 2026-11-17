@@ -1117,6 +1117,26 @@
         "hideQR": "QR-Code ausblenden",
         "qrDescription": "Scannen Sie diesen Code, um auf den Shop zuzugreifen",
         "downloadQR": "Herunterladen"
+      },
+      "planOffer": {
+        "titleCurrentCommission": "Diesen Monat haben Sie {paid} Provision gezahlt.",
+        "titlePreviousCommission": "Letzten Monat haben Sie {paid} Provision gezahlt.",
+        "titleCurrentFees": "Diesen Monat haben Sie {paid} Buchungsgebühren gezahlt.",
+        "titlePreviousFees": "Letzten Monat haben Sie {paid} Buchungsgebühren gezahlt.",
+        "comparisonWithVat": "Mit {plan} hätten Sie {price} zzgl. MwSt. gezahlt ({priceWithVat} inkl. MwSt.).",
+        "comparison": "Mit {plan} hätten Sie {price} zzgl. MwSt. gezahlt.",
+        "cta": "Zu {plan} wechseln",
+        "noCommitment": "Ohne Vertragsbindung, jederzeit kündbar.",
+        "dismiss": "30 Tage ausblenden",
+        "detailsToggle": "So wird gerechnet",
+        "detailsMonth": "Monat",
+        "detailsPaidCommission": "Gezahlte Provision, inkl. MwSt.",
+        "detailsPaidFees": "Gezahlte Buchungsgebühren",
+        "detailsPlan": "Abo {plan}",
+        "detailsPlanPrice": "{price} zzgl. MwSt. pro Monat",
+        "detailsPlanPriceWithVat": "{price} zzgl. MwSt. pro Monat, also {priceWithVat} mit {vatRate} MwSt.",
+        "detailsSavings": "Ersparnis",
+        "detailsNote": "Berechnet mit den Tarifen Ihres Shops. Mit einem Abo bleiben Stripe-Gebühren und Gebühren des reeent-Marktplatzes fällig."
       }
     },
     "products": {
@@ -9643,7 +9663,8 @@
     "depositAttempt": {
       "needsStripe": "Louez hat bei Stripe eine Autorisierung für diese Anfrage gefunden, die aber nicht dem Angefragten entspricht (Betrag, Karte oder Referenz geändert): Louez hat sie nicht erfasst, und die Anfrage bleibt offen. Stornieren Sie sie im Stripe-Dashboard und klicken Sie dann auf „Anfrage schließen“. Ziehen Sie sie stattdessen in Stripe ein, erfasst Louez diesen Betrag nicht und die Anfrage bleibt offen: Wenden Sie sich an den Louez-Support.",
       "none": "Diese Reservierung hat keine unbestätigte Autorisierung mehr."
-    }
+    },
+    "planOfferUnavailable": "Dieses Angebot gilt nicht mehr für Ihren Shop. Die Abos finden Sie auf der Seite Abonnement."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",
