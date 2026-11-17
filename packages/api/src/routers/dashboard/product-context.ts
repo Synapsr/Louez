@@ -1,9 +1,11 @@
+import type { Consequences } from "../../platform/approval-rule";
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { platformErrors } from "../../platform/errors";
-import { allows, type ApiDomain } from "../../platform/permissions";
+import { allows, type ApiDomain, type ProcedureScope } from "../../platform/permissions";
 import type { StoreActor } from "../../platform/actor";
 import type { ActorStore } from "../../platform/procedures";
 import type { ApiPorts } from "../../platform/ports";
+import type { ApprovalPresentation } from "../../services/approval-display";
 import type { ProductActor } from "../../services/products";
 
 /**
@@ -35,7 +37,7 @@ export function productActor(context: ProductContext): ProductActor {
 }
 
 /** Whether the caller may read a domain: the member's role, cut down to the connection's scopes. */
-export function mayRead(context: ProductContext, domain: ApiDomain) {
+export function mayRead(context: Pick<ProductContext, "actor">, domain: ApiDomain) {
   return allows(context.actor.role, context.actor.credential.scopes, { domain, level: "read" });
 }
 
@@ -49,17 +51,32 @@ export function requireReservationsAndCustomers(context: ProductContext) {
 /**
  * A confirmation asked under the write's lock, bound to what the preview
  * shows: `state`, and the summary and details themselves, so a name or a
- * date the caller was shown that changes since voids the token.
+ * date the caller was shown that changes since voids the token. `describe`
+ * declares the consequences of the branch the preview shows. A branch a
+ * person approves hands, with its preview, what the person reads first
+ * (`presentation`): its display is stored with the approval, never bound,
+ * and its identity facts, with `scope` (the right the procedure needs), are
+ * what the approval is about (`ConfirmationCheck.approval`).
  */
 export function confirmUnderLock<TPreview extends { summary: string }>(
   context: ProductContext,
   path: readonly string[],
   input: unknown,
-  describe: (preview: TPreview) => { state: unknown; details: ConfirmationPreview["details"] },
+  describe: (preview: TPreview) => {
+    state: unknown;
+    details: ConfirmationPreview["details"];
+    consequences: Consequences;
+  },
+  scope?: ProcedureScope,
 ) {
-  return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
-    const { state, details } = describe(preview);
+  return (
+    preview: TPreview,
+    tx: Parameters<typeof checkConfirmation>[0]["executor"],
+    presentation?: ApprovalPresentation | null,
+  ) => {
+    const { state, details, consequences } = describe(preview);
     return checkConfirmation({
+      consequences,
       executor: tx,
       actor: context.actor,
       headers: context.headers,
@@ -67,6 +84,11 @@ export function confirmUnderLock<TPreview extends { summary: string }>(
       input,
       state: { state, summary: preview.summary, details: details ?? null },
       preview: { summary: preview.summary, details },
+      display: presentation?.display,
+      approval:
+        presentation && scope
+          ? { facts: presentation.facts, scope, urls: context.ports.urls }
+          : undefined,
     });
   };
 }

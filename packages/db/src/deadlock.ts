@@ -57,9 +57,11 @@ export async function retryOnceOnDeadlock<T>(operation: () => Promise<T>): Promi
  * provider calls) run after this returns, once. `retryOn` widens what starts
  * a new run, such as a caller's own "start over" error.
  *
- * For the writers that still lock a reservation before its products
- * (docs/code-review/04-data-layer.md, DL-12): either side of that lock pair
- * may lose, and losing must not fail the request.
+ * A reservation's status change does not call it: its owner entry
+ * (`runReservationChange`, reservation-change.ts) holds the same rule. It
+ * stays for other transactions that may lose a deadlock to a concurrent path
+ * (docs/code-review/04-data-layer.md, DL-12), where losing must not fail the
+ * request.
  */
 export async function retryTransactionOnDeadlock<T>(
   operation: () => Promise<T>,

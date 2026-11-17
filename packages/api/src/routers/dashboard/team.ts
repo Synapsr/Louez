@@ -1,12 +1,11 @@
 import {
   INVITATION_EMAILS_PER_DAY,
   MAX_OPEN_INVITATION_APPROVALS,
+  TEAM_PAGE_MAX,
   acceptInvitationInput,
   acceptInvitationOutput,
   cancelInvitationInput,
   cancelInvitationOutput,
-  decideInvitationInput,
-  decideInvitationOutput,
   invitationLinkInput,
   invitationLinkOutput,
   inviteMemberInput,
@@ -20,6 +19,9 @@ import {
   resendInvitationInput,
   resendInvitationOutput,
 } from "../../contracts/team";
+import { HANDOFF_TTL_HOURS } from "../../contracts/handoffs";
+import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
+import type { Consequences } from "../../platform/approval-rule";
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { dashboardPageLinks } from "../../platform/links";
 import type { UrlsPort } from "../../platform/ports";
@@ -30,10 +32,11 @@ import {
   type ActorStore,
 } from "../../platform/procedures";
 import type { StoreActor } from "../../platform/actor";
+import type { ApprovalPresentation } from "../../services/approval-display";
+import { upgradeStoredLink } from "../../services/handoffs";
 import {
   acceptInvitation,
   cancelInvitation,
-  decideInvitation,
   invitationToken,
   inviteMember,
   listInvitations,
@@ -53,10 +56,12 @@ import {
  * No escalation (plan, section 2): an invitation is for a member only,
  * never an owner, and no procedure changes a role. An agent's invitation
  * creates nothing: an owner approves it from a link (a `team_invitation`
- * handoff), as a confirmation token the agent holds would prove nothing.
- * Removing a member and cancelling an invitation always ask an agent to
- * confirm, even a connection whose confirmations are off: each one takes a
- * person's access away, and an agent cannot undo it on its own say.
+ * handoff, answered through `handoffs.decide`), as a confirmation token the
+ * agent holds would prove nothing.
+ * Removing a member and cancelling an invitation need a person's approval
+ * when an agent asks, even on a connection whose confirmations are off: each
+ * one takes a person's access away, and an agent cannot undo it on its own
+ * say.
  */
 
 const MANAGE = { domain: "team", level: "write", role: "manage_members" } as const;
@@ -64,6 +69,16 @@ const READ = { domain: "team", level: "read" } as const;
 
 const TEAM_PAGE_HELP =
   "Its `links` hold the dashboard's team page, the URL to give the user: there they send an invitation again or share its link.";
+
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_TEAM_PAGE_NOTE =
+  "`links.dashboard` is the team page in the Louez dashboard, where invitations are sent again and their links shared.";
+
+const REST_OWNERS_ONLY = "Only a key of an owner of the store may call it.";
+
+const REST_APPROVAL = restApprovalAsked("a preview naming the person");
+
+const REST_PAGE_NOTE = `Returns up to \`limit\` rows (${TEAM_PAGE_MAX} by default and at most); pass \`nextCursor\` back as \`cursor\` to read on, null on the last page. A cursor this list did not return answers \`INVALID_CURSOR\`.`;
 
 interface TeamContext {
   actor: StoreActor;
@@ -84,17 +99,29 @@ const caller = (context: TeamContext): TeamCaller => ({
 
 /**
  * Asks for the confirmation under the write's lock, bound to what the
- * preview shows. Always asked of an agent, never of a dashboard session.
+ * preview shows (its state and summary). `describe` declares the
+ * consequences of the branch the preview shows. The presentation's identity
+ * facts, with the team's right (`MANAGE`), are what a person's approval is
+ * about.
  */
-function confirmAlways<TPreview extends { summary: string }>(
+function confirmTeamChange<TPreview extends { summary: string }>(
   context: TeamContext,
   path: readonly string[],
   input: unknown,
-  describe: (preview: TPreview) => { state: unknown; details: ConfirmationPreview["details"] },
+  describe: (preview: TPreview) => {
+    state: unknown;
+    details: ConfirmationPreview["details"];
+    consequences: Consequences;
+  },
 ) {
-  return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
-    const { state, details } = describe(preview);
+  return (
+    preview: TPreview,
+    tx: Parameters<typeof checkConfirmation>[0]["executor"],
+    presentation?: ApprovalPresentation,
+  ) => {
+    const { state, details, consequences } = describe(preview);
     return checkConfirmation({
+      consequences,
       executor: tx,
       actor: context.actor,
       headers: context.headers,
@@ -102,7 +129,10 @@ function confirmAlways<TPreview extends { summary: string }>(
       input,
       state: { state, summary: preview.summary },
       preview: { summary: preview.summary, details },
-      always: true,
+      display: presentation?.display,
+      approval: presentation
+        ? { facts: presentation.facts, scope: MANAGE, urls: context.ports.urls }
+        : undefined,
     });
   };
 }
@@ -118,7 +148,11 @@ const listMembersProcedure = storeProcedure
       bundle: "team",
     },
   })
-  .route({ method: "GET", path: "/team/members" })
+  .route({
+    method: "GET",
+    path: "/team/members",
+    description: `Lists the people who work in the store, the newest to join first: name, e-mail, role (\`owner\` or \`member\`) and when they joined. Each \`id\` is the membership's, which \`DELETE /team/members/{id}\` takes. \`memberLimit\` is the store's allowance of members, owners aside: \`current\`, \`limit\` (null: unlimited) and \`canAddMember\`. ${REST_PAGE_NOTE} ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(listMembersInput)
   .output(listMembersOutput)
   .handler(async ({ context, input }) => ({
@@ -137,7 +171,11 @@ const listInvitationsProcedure = storeProcedure
       bundle: "team",
     },
   })
-  .route({ method: "GET", path: "/team/invitations" })
+  .route({
+    method: "GET",
+    path: "/team/invitations",
+    description: `Lists the store's pending invitations, the newest first: the e-mail invited, the role, when it was sent (\`invitedAt\`) and when it expires (\`expiresAt\`; \`expired\` is true once past, when its link no longer works). Each \`id\` is what \`POST /team/invitations/{id}/cancel\` takes. ${REST_PAGE_NOTE} ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(listInvitationsInput)
   .output(listInvitationsOutput)
   .handler(async ({ context, input }) => ({
@@ -145,21 +183,31 @@ const listInvitationsProcedure = storeProcedure
     links: teamLinks(context),
   }));
 
+/** An answer of `invite` kept for its idempotency key, its approval's view as views are now. */
+function upgradeStoredInvite(stored: unknown, urls: UrlsPort): unknown {
+  if (!stored || typeof stored !== "object" || !("approval" in stored)) return stored;
+  return { ...stored, approval: upgradeStoredLink(stored.approval, urls) };
+}
+
 const invite = storeProcedure
   .meta({
     capability: "team.inviteMember",
     scope: MANAGE,
-    // An agent's answer holds the approval link, which an owner opens: never stored.
-    secretOutput: true,
+    // Its answers stored before views carried `decision` replay with it.
+    upgradeReplay: upgradeStoredInvite,
     mcp: {
       name: "team_invite_member",
       title: "Invite Team Member",
-      description: `Ask to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Nothing is created yet: the answer (\`outcome: "approval_requested"\`) holds \`approval.url\`, a link to give the user as is, and the user approves the invitation from the link, signed in as an owner of the store, within 24 hours. handoffs_get with \`approval.handoff.id\` says when it is approved (completed: the invitation e-mail went out, or someone with a Louez account joined at once) or declined (failed). The same address asked again gets the same approval with a new link. Refused when the person is already a member, when an invitation of theirs is pending, when the store has reached its team-member limit, when ${MAX_OPEN_INVITATION_APPROVALS} approvals are already open, or past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails a day. ${TEAM_PAGE_HELP}`,
+      description: `Ask to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Nothing is created yet: the answer (\`outcome: "approval_requested"\`) holds \`approval.url\`, a link to give the user as is, and the user approves the invitation from the link, signed in as an owner of the store, within 24 hours. handoffs_get with \`approval.handoff.id\` follows it: \`decision\` says what the user decided (approved or refused), when, and the words they added, if any; the step is completed once approved and carried out (the invitation e-mail went out, or someone with a Louez account joined at once), and failed when refused, or approved but no longer possible (\`failure\` says why). The same address asked again gets the same approval and link, with 24 more hours to answer; a page the user opened before that shows the request again rather than approve it. Refused when the person is already a member, when an invitation of theirs is pending, when the store has reached its team-member limit, when ${MAX_OPEN_INVITATION_APPROVALS} approvals are already open, or past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails a day. ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "additive",
     },
   })
-  .route({ method: "POST", path: "/team/invitations" })
+  .route({
+    method: "POST",
+    path: "/team/invitations",
+    description: `Asks to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. ${REST_OWNERS_ONLY} With an API key, the call creates no invitation and sends no e-mail yet: it answers \`outcome: "approval_requested"\` with \`approval.url\`, the request's page in Louez, and \`approval.handoff\`. That page must be opened, signed in to Louez, by the user the key acts for, while they are still an owner of the store: they approve or refuse the request there, within ${HANDOFF_TTL_HOURS} hours. \`GET /handoffs/{id}\` with \`approval.handoff.id\` then says what happened: read both its \`status\` and its \`decision\`, as an approved request can still fail to go out (\`failure\` says why). While the request is active, the same address asked again gets the same link, for ${HANDOFF_TTL_HOURS} more hours. Refused with \`TEAM_ALREADY_MEMBER\` when the person is already a member, \`TEAM_INVITATION_ALREADY_SENT\` when an invitation of theirs is pending, \`TEAM_LIMIT_REACHED\` when the store has reached its member allowance, \`TEAM_APPROVALS_FULL\` when ${MAX_OPEN_INVITATION_APPROVALS} such requests are already open, and \`TEAM_INVITATION_EMAIL_LIMIT\` past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails in 24 hours. ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(inviteMemberInput)
   .output(inviteMemberOutput)
   .handler(async ({ context, input }) => {
@@ -203,20 +251,27 @@ const cancel = storeProcedure
     capability: "team.cancelInvitation",
     scope: MANAGE,
     sensitive: "destructive",
+    personApproval: true,
     mcp: {
       name: "team_cancel_invitation",
       title: "Cancel Team Invitation",
-      description: `Cancel a pending invitation: its link stops working and the person does not join. Owners only. It always asks for a confirmation, whatever the connection's confirmation setting: the first call answers CONFIRMATION_REQUIRED with a preview naming the person. ${TEAM_PAGE_HELP}`,
+      description: `Cancel a pending invitation: its link stops working and the person does not join. Owners only. ${approvalAsked("a preview naming the person")} ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "overwrite",
     },
   })
-  .route({ method: "POST", path: "/team/invitations/{id}/cancel" })
+  .route({
+    method: "POST",
+    path: "/team/invitations/{id}/cancel",
+    description: `Cancels a pending invitation: its link stops working and the person does not join. Takes the invitation's \`id\` from \`GET /team/invitations\`; one that is not a pending invitation of the store answers \`TEAM_INVITATION_NOT_FOUND\`. ${REST_OWNERS_ONLY} ${REST_APPROVAL} Returns the invitation's \`id\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(cancelInvitationInput)
   .output(cancelInvitationOutput)
   .handler(async ({ context, input, path }) => {
     const result = await cancelInvitation(caller(context), input.id, {
-      confirm: confirmAlways(context, path, input, (preview) => ({
+      confirm: confirmTeamChange(context, path, input, (preview) => ({
+        // The invitation's link stops letting the person in.
+        consequences: ["access_removed"],
         state: {
           id: preview.invitation.id,
           email: preview.invitation.email,
@@ -234,28 +289,42 @@ const remove = storeProcedure
     capability: "team.removeMember",
     scope: MANAGE,
     sensitive: "destructive",
+    personApproval: true,
     mcp: {
       name: "team_remove_member",
       title: "Remove Team Member",
-      description: `Remove a member from the store: they lose access to it at once. Takes the membership's id from team_list_members. Owners only. An owner is never removed, and nobody removes themselves. It always asks for a confirmation, whatever the connection's confirmation setting: the first call answers CONFIRMATION_REQUIRED with a preview naming the person. ${TEAM_PAGE_HELP}`,
+      description: `Remove a member from the store: they lose access to it at once. Takes the membership's id from team_list_members. Owners only. An owner is never removed, and nobody removes themselves. ${approvalAsked("a preview naming the person")} ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "delete",
     },
   })
-  .route({ method: "DELETE", path: "/team/members/{id}" })
+  .route({
+    method: "DELETE",
+    path: "/team/members/{id}",
+    description: `Removes a member from the store: they lose access to it at once, and their pending invitations to the store are cancelled. Takes the membership's \`id\` from \`GET /team/members\`, not the user id. ${REST_OWNERS_ONLY} Refused with \`TEAM_CANNOT_REMOVE_SELF\` for the membership of the user the key belongs to, \`TEAM_OWNER_NOT_REMOVABLE\` for an owner, and \`TEAM_MEMBER_NOT_FOUND\` for an id the store does not have. ${REST_APPROVAL} Returns the membership's \`id\`, the member's \`userId\` and \`email\`. ${REST_TEAM_PAGE_NOTE}`,
+  })
   .input(removeMemberInput)
   .output(removeMemberOutput)
   .handler(async ({ context, input, path }) => {
     const result = await removeMember(caller(context), input.id, {
-      confirm: confirmAlways(context, path, input, (preview) => ({
-        state: {
-          id: preview.member.id,
-          userId: preview.member.userId,
-          email: preview.member.email,
-          role: preview.member.role,
-        },
-        details: { member: preview.member },
-      })),
+      confirm: confirmTeamChange(context, path, input, (preview) => {
+        // Said, and bound, when the removal also cancels invitations of theirs.
+        const cancelled =
+          preview.pendingInvitations > 0
+            ? { pendingInvitationsCancelled: preview.pendingInvitations }
+            : {};
+        return {
+          consequences: ["access_removed"],
+          state: {
+            id: preview.member.id,
+            userId: preview.member.userId,
+            email: preview.member.email,
+            role: preview.member.role,
+            ...cancelled,
+          },
+          details: { member: preview.member, ...cancelled },
+        };
+      }),
     });
     return { ...result, removed: true as const, links: teamLinks(context) };
   });
@@ -290,33 +359,6 @@ const invitationLink = dashboardOnly
       `/invitation/${await invitationToken(context.actor.storeId, input.id)}`,
     ),
   }));
-
-/**
- * An owner approves or declines an agent's invitation, on its link's page
- * (`/handoffs/<token>`): a session only, the link's user, still allowed to
- * manage the team. Approving runs the invitation as the dashboard does.
- */
-const decideInvitationProcedure = accountProcedure
-  .meta({
-    capability: "team.approveInvitation",
-    scope: { domain: "team", level: "write" },
-    actors: ["session"],
-    // The token is the approval link's secret.
-    secretOutput: true,
-    mcp: { exclude: "an owner approves an agent's invitation, signed in to Louez" },
-  })
-  .input(decideInvitationInput)
-  .output(decideInvitationOutput)
-  .handler(async ({ context, input }) => {
-    const { ports } = context;
-    if (!ports) throw missingTransport();
-    const { effectIds, ...result } = await decideInvitation(
-      { ...input, userId: context.actor.credential.userId },
-      ports,
-    );
-    ports.dispatchEffects(effectIds);
-    return result;
-  });
 
 /**
  * The invited person accepts, from the invitation's page: a session only,
@@ -356,6 +398,5 @@ export const dashboardTeamRouter = {
   removeMember: remove,
   resendInvitation: resend,
   invitationLink,
-  decideInvitation: decideInvitationProcedure,
   acceptInvitation: acceptInvitationProcedure,
 };

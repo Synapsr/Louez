@@ -1766,6 +1766,10 @@ export const reservations = mysqlTable(
     subtotalExclTax: decimal("subtotal_excl_tax", { precision: 10, scale: 2 }),
     taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
     taxRate: decimal("tax_rate", { precision: 5, scale: 2 }),
+    // How the reservation's prices were entered: tax included (`inclusive`) or
+    // added on top (`exclusive`); with taxes off, `inclusive` (the engine's
+    // own default). Null: not recorded (a reservation created before 0107).
+    taxDisplayMode: mysqlEnum("tax_display_mode", ["inclusive", "exclusive"]),
 
     // The customer's acceptance of the contract: at checkout, on the payment page, from
     // their account, or in store on the renter's device. Never set by a status change.
@@ -1955,6 +1959,9 @@ export const reservationItems = mysqlTable(
     taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
     priceExclTax: decimal("price_excl_tax", { precision: 10, scale: 2 }),
     totalExclTax: decimal("total_excl_tax", { precision: 10, scale: 2 }),
+    // Outside the tax by rule (insurance), whatever the store's settings; a
+    // product line is not. Null: not recorded (a line written before 0107).
+    taxExempt: boolean("tax_exempt"),
 
     // Pricing breakdown for audit trail (tiered pricing details)
     pricingBreakdown: json("pricing_breakdown").$type<PricingBreakdown>(),
@@ -2060,10 +2067,34 @@ export const payments = mysqlTable(
     appFeeMetadataVersion: int("app_fee_metadata_version"),
 
     // Authorization hold (empreinte)
+    // Until when the provider keeps this authorization, as the provider states it; null
+    // when it states none. It means nothing else.
     authorizationExpiresAt: timestamp("authorization_expires_at", {
       mode: "date",
     }),
     capturedAmount: decimal("captured_amount", { precision: 10, scale: 2 }),
+    // A deposit hold Louez decided against (the reservation holds another) while the
+    // provider still keeps it: when that was decided. Null once the provider confirmed
+    // its cancellation or its capture, and on every other row.
+    releaseOwedAt: timestamp("release_owed_at", { mode: "date" }),
+    // A deposit hold the store asked for: when the request that creates its
+    // authorization was last sent to the provider. Null when none was sent.
+    providerRequestedAt: timestamp("provider_requested_at", { mode: "date" }),
+    // A request of Louez is settling that attempt with the provider until then, on the
+    // database's clock. Null when none is.
+    claimedUntil: timestamp("claimed_until", { mode: "date" }),
+    // The request that holds that claim: a random value it wrote when it claimed the
+    // attempt, which no other request writes. Null when no request holds it.
+    claimToken: varchar("claim_token", { length: 21 }),
+    // A deposit hold the store asked for: the provider's customer the request was sent
+    // with, so the attempt can still be looked up once the card is detached. Null on
+    // every other row, and on attempts claimed before the column.
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+    // A rental row's Checkout Session: when Louez learnt from Stripe that the session
+    // can no longer be paid (its `checkout.session.expired`, a read that said
+    // `expired`, or an expire Stripe accepted). Null while that is not known, on rows
+    // that name no session, and on rows written before the column.
+    sessionSettledAt: timestamp("session_settled_at", { mode: "date" }),
 
     // Currency (for multi-currency support)
     currency: varchar("currency", { length: 3 }).default("EUR"),
@@ -2083,6 +2114,88 @@ export const payments = mysqlTable(
       table.stripeCheckoutSessionId,
     ),
     refundOfPaymentIdx: index("payments_refund_of_payment_idx").on(table.refundOfPaymentId),
+    paymentIntentIdx: index("payments_payment_intent_idx").on(table.stripePaymentIntentId),
+    // The pass over abandoned checkouts: the rows not settled, by their age.
+    sessionSettledCreatedIdx: index("payments_session_settled_created_idx").on(
+      table.sessionSettledAt,
+      table.createdAt,
+    ),
+  }),
+);
+
+/**
+ * A refund of an online payment, asked of Stripe (apps/web
+ * lib/reservations/stripe-refund.ts). Written before Stripe is called, in the
+ * transaction that checks what the payment can still give back; its id is the
+ * refund's idempotency key and travels in the refund's metadata. `requested` while it
+ * may be sent, `unresolved` once its key can no longer be, until Stripe's account of
+ * the charge settles it, whoever hears it first: the request, the outbox or the
+ * Connect webhook. `pending` once Stripe made the refund and states it pending (or
+ * awaiting an action): its refund row is written, as Stripe counts the refund, and the
+ * money has not reached the customer yet. `requested` and `unresolved` hold back its
+ * amount; a `pending` one is counted through its row.
+ * Kept apart from `payments`, which holds money that moved: the refund row it leads to
+ * is `refund_payment_id`.
+ */
+export const paymentRefundOperations = mysqlTable(
+  "payment_refund_operations",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    // The payment it gives money back from, and where that payment was taken: the
+    // account and the charge its row names, never the store's account of today.
+    paymentId: varchar("payment_id", { length: 21 }).notNull(),
+    stripeAccountId: varchar("stripe_account_id", { length: 255 }).notNull(),
+    stripeChargeId: varchar("stripe_charge_id", { length: 255 }).notNull(),
+    // In the charge's own currency, minor units, upper case.
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull(),
+    // What the refund row will be: a deposit's money goes back as a deposit return.
+    refundType: mysqlEnum("refund_type", ["rental", "deposit_return"]).notNull(),
+    // Stripe's reason for the refund.
+    reason: mysqlEnum("reason", ["requested_by_customer", "duplicate", "fraudulent"]).notNull(),
+    notes: text("notes"),
+    status: mysqlEnum("status", ["requested", "unresolved", "pending", "succeeded", "failed"])
+      .default("requested")
+      .notNull(),
+    // Why it failed: Stripe's code, or Louez's when Stripe never made the refund.
+    failureCode: varchar("failure_code", { length: 64 }),
+    failureMessage: text("failure_message"),
+    // The refund Stripe made for it, and the `payments` row that records it.
+    stripeRefundId: varchar("stripe_refund_id", { length: 255 }),
+    refundPaymentId: varchar("refund_payment_id", { length: 21 }),
+    // The approval a person gave for it: one approval gives one refund at most.
+    approvalId: varchar("approval_id", { length: 21 }),
+    // Who asked: a user, or an API key or agent credential.
+    requestedByUserId: varchar("requested_by_user_id", { length: 21 }),
+    requestedByCredentialId: varchar("requested_by_credential_id", { length: 64 }),
+    // When the request was last sent to Stripe. Null while it never was.
+    providerRequestedAt: timestamp("provider_requested_at", { mode: "date" }),
+    // No attempt reaches Stripe for it before then, on the database's clock: a sender
+    // holds it under the random token it wrote, or, with no token, the last attempt left
+    // it open and the next waits (apps/web lib/reservations/stripe-refund.ts). Null when
+    // an attempt may be made now.
+    claimedUntil: timestamp("claimed_until", { mode: "date" }),
+    claimToken: varchar("claim_token", { length: 21 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // What a payment still has in flight.
+    paymentStatusIdx: index("payment_refund_operations_payment_status_idx").on(
+      table.paymentId,
+      table.status,
+    ),
+    // The scheduled pass and the inbox: the operations still open, oldest first.
+    statusCreatedIdx: index("payment_refund_operations_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    stripeRefundUnique: unique("payment_refund_operations_stripe_refund_unique").on(
+      table.stripeRefundId,
+    ),
+    approvalUnique: unique("payment_refund_operations_approval_unique").on(table.approvalId),
   }),
 );
 
@@ -4231,7 +4344,7 @@ export const inspectionPhotosRelations = relations(inspectionPhotos, ({ one }) =
 }));
 
 // ============================================================================
-// API Keys (for MCP Server & future REST API)
+// API Keys (for the MCP server and the REST API)
 // ============================================================================
 
 export type ApiKeyPermissions = {
@@ -4263,8 +4376,10 @@ export const apiKeys = mysqlTable(
 
     permissions: json("permissions").$type<ApiKeyPermissions>().notNull(),
     /**
-     * Sensitive operations (money, deletion, sends, spending) wait for a
-     * confirmation when true. Only a dashboard session may change it.
+     * Controls optional caller confirmations. Money, stock overrides and
+     * access removals always require a person's approval; priced credit
+     * spending always requires caller confirmation. Only a dashboard session
+     * may change this setting.
      */
     confirmSensitive: boolean("confirm_sensitive").default(true).notNull(),
 
@@ -4335,6 +4450,12 @@ export const apiOperations = mysqlTable(
      * with the write, whatever the record's status says.
      */
     setupStoreId: varchar("setup_store_id", { length: 21 }),
+    /**
+     * The person's approval this write carried out (`api_handoffs`, kind
+     * `operation_approval`): set in the write's own transaction, with the
+     * approval's consumption, and only then. Null for every other write.
+     */
+    approvalId: varchar("approval_id", { length: 21 }),
     result: json("result"),
     error: json("error").$type<{ code: string; message: string }>(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -4348,6 +4469,7 @@ export const apiOperations = mysqlTable(
     ),
     storeCreatedIdx: index("api_operations_store_created_idx").on(table.storeId, table.createdAt),
     setupStoreIdx: index("api_operations_setup_store_idx").on(table.setupStoreId),
+    approvalIdx: index("api_operations_approval_idx").on(table.approvalId),
   }),
 );
 
@@ -4489,7 +4611,8 @@ export type ApiHandoffKind =
   | "stripe_connect_onboarding"
   | "stripe_dashboard"
   | "billing_card_setup"
-  | "team_invitation";
+  | "team_invitation"
+  | "operation_approval";
 
 /** What a handoff carries for its page, by kind: the invitation an owner approves. */
 export interface ApiHandoffPayload {
@@ -4501,16 +4624,40 @@ export interface ApiHandoffPayload {
 }
 
 /**
+ * What a person's approval of an operation carries (`operation_approval`,
+ * packages/api services/approvals.ts): the request as the agent sent it,
+ * the preview Louez showed for it, and the right the action needs.
+ */
+export interface ApiApprovalPayload {
+  /** The procedure's input, exactly as the requesting call sent it. */
+  input: unknown;
+  /** The preview Louez computed for that call: one sentence and the facts to check. */
+  preview: { summary: string; details?: Record<string, unknown> };
+  /**
+   * What the approval's page shows first, when the branch built one: a
+   * headline and typed facts (packages/api `ApprovalDisplay`), read by the
+   * page alone, which checks it before it shows it.
+   */
+  display?: unknown;
+  /** The procedure's scope (packages/api `ProcedureScope`): its domain, level and member permission. */
+  scope: { domain: string; level: "read" | "write"; role?: string; anyOf?: readonly string[] };
+  /** What the branch does (packages/api `Consequence`), as it declared them. */
+  consequences: readonly string[];
+}
+
+/**
  * A step only the human can take (Stripe identity checks, a billing card),
- * handed over by an agent: a short-lived link to a Louez page that checks who
- * opens it, then sends them to the provider and back. The link's secret is
- * stored hashed; a new link for the same handoff replaces it. Each click on
+ * handed over by an agent: a link to its Louez page (`/handoffs/<id>`), which
+ * checks who opens it, then sends them to the provider and back. Asking again
+ * keeps the link and raises `revision`. Each click on
  * the page starts an attempt, named by `return_state_hash`; the provider's
  * answers only ever change the attempt they belong to. One active
  * handoff (pending or opened) per store, kind and subject: `active_slot` is 1
  * while it is, null after, so the unique key holds only the active one. The
  * subject is empty for a store-wide step (Stripe, the billing card) and names
- * what the step is about otherwise (a team invitation: its address's hash).
+ * what the step is about otherwise (a team invitation: its address's hash;
+ * an operation's approval: the request's identity). An approval is open,
+ * and holds its slot, while pending or approved.
  */
 export const apiHandoffs = mysqlTable(
   "api_handoffs",
@@ -4521,9 +4668,28 @@ export const apiHandoffs = mysqlTable(
     /** What the step is about within its kind: empty, or a team invitation's address hash. */
     subject: varchar("subject", { length: 64 }).default("").notNull(),
     /** What the page shows and the step acts on, for the kinds that need it. */
-    payload: json("payload").$type<ApiHandoffPayload>(),
-    /** `expired` is not stored: an active handoff past `expires_at` reads as expired. */
-    status: mysqlEnum("status", ["pending", "opened", "completed", "failed"])
+    payload: json("payload").$type<ApiHandoffPayload | ApiApprovalPayload>(),
+    /** An approval's procedure, by its router path (`dashboard.payments.record`); null for the other kinds. */
+    procedure: varchar("procedure", { length: 128 }),
+    /**
+     * An approval's binding, SHA-256 hex: the user, the credential, the
+     * store, the procedure, the exact input and the state its preview showed.
+     * A decision names the binding its page showed, and a different one
+     * decides nothing. Null for the other kinds.
+     */
+    bindingHash: varchar("binding_hash", { length: 64 }),
+    /**
+     * Raised each time the payload or the binding changes (a repeated
+     * request, another user starting over): a decision names the revision
+     * its page showed, and a different one decides nothing.
+     */
+    revision: int("revision", { unsigned: true }).default(1).notNull(),
+    /**
+     * `expired` is not stored: an active handoff past `expires_at` reads as
+     * expired. `approved` is an approval a person approved, which the agent
+     * has not carried out yet.
+     */
+    status: mysqlEnum("status", ["pending", "opened", "completed", "failed", "approved"])
       .default("pending")
       .notNull(),
     activeSlot: tinyint("active_slot"),
@@ -4533,9 +4699,18 @@ export const apiHandoffs = mysqlTable(
     credentialKind: varchar("credential_kind", { length: 16 }).notNull(),
     credentialId: varchar("credential_id", { length: 64 }),
     clientName: varchar("client_name", { length: 100 }),
-    /** SHA-256 of the link's secret, hex. */
-    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    /**
+     * SHA-256 of a secret, hex: a link given before links were addressed by id
+     * carried it after the id; a new row's secret is given to nobody. Null
+     * for an approval, whose link has only ever been its id.
+     */
+    tokenHash: varchar("token_hash", { length: 64 }),
     linkIssuedAt: timestamp("link_issued_at", { mode: "date", fsp: 3 }).notNull(),
+    /**
+     * When the step's current state stops working: its link, or an
+     * approval's time to decide while pending and to carry it out once
+     * approved.
+     */
     expiresAt: timestamp("expires_at", { mode: "date", fsp: 3 }).notNull(),
     openedAt: timestamp("opened_at", { mode: "date", fsp: 3 }),
     /** SHA-256 of the state the provider's return must carry, hex; set when the user continues. */
@@ -4552,6 +4727,26 @@ export const apiHandoffs = mysqlTable(
     completedAt: timestamp("completed_at", { mode: "date", fsp: 3 }),
     failedAt: timestamp("failed_at", { mode: "date", fsp: 3 }),
     failureCode: varchar("failure_code", { length: 60 }),
+    /**
+     * What a person decided on the step's page (a team invitation's
+     * approval), written once, in the statement that ends the step, and never
+     * rewritten. Null until a person decided, for the steps a provider
+     * settles, and for a step decided before these columns existed.
+     */
+    decision: mysqlEnum("decision", ["approved", "refused"]),
+    decidedAt: timestamp("decided_at", { mode: "date", fsp: 3 }),
+    /** The user who decided: the step's user, signed in on its page. */
+    decidedByUserId: varchar("decided_by_user_id", { length: 21 }),
+    /** The person's own words with their decision, plain text, if they gave any. */
+    decisionReason: varchar("decision_reason", { length: 500 }),
+    /**
+     * When an approved approval was carried out, and by which operation
+     * (`api_operations`, the agent's call): written in that write's own
+     * transaction, in the statement that completes the approval, and never
+     * after. Null for every other step and state.
+     */
+    consumedAt: timestamp("consumed_at", { mode: "date", fsp: 3 }),
+    consumedOperationId: varchar("consumed_operation_id", { length: 21 }),
     createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
   },
@@ -4566,6 +4761,18 @@ export const apiHandoffs = mysqlTable(
     storeIdx: index("api_handoffs_store_idx").on(table.storeId, table.createdAt),
     // The retention deletes the oldest first.
     updatedIdx: index("api_handoffs_updated_idx").on(table.updatedAt),
+    /**
+     * A connection's own steps, led by the credential: a revocation ends them
+     * through it (packages/api `failCredentialHandoffs`), reading and locking
+     * that connection's rows alone, never every row of the table.
+     */
+    credentialIdx: index("api_handoffs_credential_idx").on(
+      table.credentialKind,
+      table.credentialId,
+      table.storeId,
+      table.kind,
+      table.createdAt,
+    ),
   }),
 );
 

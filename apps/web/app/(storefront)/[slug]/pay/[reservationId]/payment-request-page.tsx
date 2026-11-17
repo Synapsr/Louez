@@ -19,7 +19,7 @@ interface PaymentRequestPageProps {
   slug: string;
   storeName: string;
   reservation: { id: string; number: string };
-  paymentRequest: { id: string; amount: number; currency: string; description: string };
+  paymentRequest: { id: string; amount: number; currency: string; type: "rental" | "custom" };
   customerFirstName: string;
   /** Not signed yet: the customer accepts the rental terms before paying. */
   requiresContractAcceptance: boolean;
@@ -31,6 +31,7 @@ const ERROR_KEYS: Record<PaymentRequestError, string> = {
   reservation_not_found: "errors.errorDescription",
   invalid_token: "errors.expiredDescription",
   already_paid: "errors.alreadyPaidDescription",
+  no_longer_current: "errors.noLongerCurrentDescription",
   cancelled: "errors.cancelledDescription",
   stripe_not_configured: "errors.unavailableDescription",
   session_creation_failed: "errors.generic",
@@ -104,9 +105,9 @@ export const PaymentRequestPage = ({
       />
       <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 shadow-card sm:p-6">
         <div className="flex flex-col items-center gap-1 rounded-2xl bg-muted p-4 text-center">
-          {paymentRequest.description ? (
-            <span className="text-xs text-muted-foreground">{paymentRequest.description}</span>
-          ) : null}
+          <span className="text-xs text-muted-foreground">
+            {t(`requestKind.${paymentRequest.type}`)}
+          </span>
           <Price amount={paymentRequest.amount} size="xl" tone="primary" />
         </div>
 

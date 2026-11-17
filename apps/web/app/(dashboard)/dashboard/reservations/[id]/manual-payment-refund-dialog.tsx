@@ -25,9 +25,14 @@ import {
   toastManager,
 } from "@louez/ui";
 
+import { refundAmount } from "@louez/api/services/payment-amount";
+import { currencyMinorDigits } from "@louez/utils";
+
 import { orpc } from "@/lib/orpc/react";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 
+import { useReservationMoney } from "./use-reservation-money";
 import {
   isManualPaymentMethod,
   type ManualPaymentMethod,
@@ -37,7 +42,8 @@ interface ManualPaymentRefundDialogProps {
   reservationId: string;
   paymentId: string;
   remainingAmount: number;
-  currencySymbol: string;
+  /** The payment's own currency, else its reservation's: the refund's. */
+  currency: string;
   defaultMethod: ManualPaymentMethod;
   onClose: () => void;
 }
@@ -46,13 +52,14 @@ export const ManualPaymentRefundDialog = ({
   reservationId,
   paymentId,
   remainingAmount,
-  currencySymbol,
+  currency,
   defaultMethod,
   onClose,
 }: ManualPaymentRefundDialogProps) => {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
+  const money = useReservationMoney(currency);
   const queryClient = useQueryClient();
   const router = useRouter();
   const [amount, setAmount] = useState(remainingAmount.toFixed(2));
@@ -67,14 +74,21 @@ export const ManualPaymentRefundDialog = ({
     }),
   );
 
+  const decimals = currencyMinorDigits(currency);
+
   const handleRefund = async () => {
-    const parsedAmount = Number(amount);
-    if (
-      !Number.isFinite(parsedAmount) ||
-      parsedAmount <= 0 ||
-      parsedAmount > remainingAmount
-    ) {
-      toastManager.add({ title: t("payment.invalidRefundAmount"), type: "error" });
+    // As typed, judged by the writer's own function before anything is sent:
+    // 19.999 is too precise in euros, never 20.00.
+    const typed = typedAmount(amount) ?? "";
+    const verdict = refundAmount(typed, currency, Math.round(remainingAmount * 100));
+    if (!verdict.ok) {
+      const title =
+        verdict.refusal === "too_precise"
+          ? t("payment.amountTooPrecise", { currency, decimals: decimals ?? 0 })
+          : verdict.refusal === "currency_unsupported"
+            ? t("payment.currencyNotSupported", { currency })
+            : t("payment.invalidRefundAmount");
+      toastManager.add({ title, type: "error" });
       return;
     }
 
@@ -83,7 +97,7 @@ export const ManualPaymentRefundDialog = ({
         reservationId,
         payload: {
           paymentId,
-          amount: parsedAmount,
+          amount: typed,
           method,
           notes: notes.trim() || undefined,
         },
@@ -121,7 +135,7 @@ export const ManualPaymentRefundDialog = ({
           <DialogTitle>{t("payment.refundTitle")}</DialogTitle>
           <DialogDescription>
             {t("payment.refundDescription", {
-              amount: `${remainingAmount.toFixed(2)}${currencySymbol}`,
+              amount: money(remainingAmount),
             })}
           </DialogDescription>
         </DialogHeader>
@@ -132,9 +146,9 @@ export const ManualPaymentRefundDialog = ({
               <Input
                 id="manual-refund-amount"
                 type="number"
-                min="0.01"
+                min={decimals === 0 ? "1" : "0.01"}
                 max={remainingAmount.toFixed(2)}
-                step="0.01"
+                step={decimals === 0 ? "1" : "0.01"}
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
               />

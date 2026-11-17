@@ -18,6 +18,7 @@ import type { ConfirmStep } from "./products";
 import { toStoredHtml } from "./rich-text";
 import type { SettingsActor } from "./settings";
 import { assertSlugFree, checkStoreSlug } from "./store-creation";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * The online store: the editor's sections (identity, home, contact, legal,
@@ -272,7 +273,7 @@ export async function updateStoreSlug(
   if (input.slug === actor.store.slug) throw onlineStoreErrors.slugUnchanged(input.slug);
   await assertSlugFree(input.slug);
 
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let previousSlug = actor.store.slug;
   let online = false;
   try {
@@ -314,7 +315,7 @@ export async function updateStoreSlug(
     const { suggestions } = await checkStoreSlug({ slug: input.slug });
     throw storeErrors.slugTaken(input.slug, suggestions);
   }
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
 
   emit(actor, {
     type: "store.slugChanged",

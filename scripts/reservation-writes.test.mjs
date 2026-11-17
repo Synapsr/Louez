@@ -4,6 +4,20 @@
  * the pay-as-you-go fee effects, and a write that skips them skips the fee.
  * The rule is DL-12 in docs/code-review/04-data-layer.md.
  *
+ * A status change and a consumable stock move also run under the
+ * reservation's lock token (`lock`), which only the owner entry of
+ * packages/db (`runReservationChange`) issues: the types already require it in
+ * TypeScript, and the helpers refuse a missing or forged token at run time.
+ * R6 adds what the syntax shows, for JavaScript files and casts: the token is
+ * passed by name.
+ *
+ * Only the store may book over its stock, or confirm past its turnover
+ * buffer, at a confirmation (S3 and S4 in docs/domain/reservation-invariants.md):
+ * R7 keeps the store's stock check, the one that takes `allowOverbooking` and
+ * `overrideTurnoverBuffer`, to the store's status service. The customer's
+ * acceptance and the paid confirmation call
+ * `checkExistingReservationInventory`, which takes no override.
+ *
  * The test parses every source file under apps/ and packages/ and looks for
  * the forms in RULES. It reads syntax only, with no types and no tsconfig.
  * A table counts when the file binds it: an import of a schema table, a
@@ -45,10 +59,21 @@ const RULES = {
   R3: "inserts or updates a table that is not named directly",
   R4: "writes reservations in raw SQL",
   R5: "calls a reservation helper but never runs its effects with runReservationEffects",
+  R6: "changes a status or moves consumable stock without passing the reservation's lock",
+  R7: "calls the store's confirmation stock check, which may book over the stock or past the turnover buffer, outside the store's status service",
 };
+
+// The store's confirmation stock check: it takes `allowOverbooking` and `overrideTurnoverBuffer`.
+const STORE_STOCK_CHECK = "checkStoreConfirmationInventory";
 
 const FORBIDDEN_KEYS = new Set(["status", "billableAt", "withdrawnAt"]);
 const STATUS_HELPERS = new Set(["changeReservationStatus", "insertReservation"]);
+// Helper → how its call names the lock: a `lock` key in its input, or a second argument.
+const LOCKED_HELPERS = new Map([
+  ["changeReservationStatus", "inputKey"],
+  ["consumeReservationStock", "argument"],
+  ["restoreReservationStock", "argument"],
+]);
 // A Drizzle write method → the call it chains on, which receives the table.
 const WRITE_CHAINS = new Map([
   ["set", "update"],
@@ -60,7 +85,20 @@ const WRITE_CHAINS = new Map([
 const HELPER_FILES = {
   R1: "packages/db/src/reservation-insert.ts",
   R2: "packages/db/src/reservation-status.ts",
+  R7: "packages/api/src/services/reservation-status.ts",
 };
+
+/** Whether a helper call passes the lock as its form requires. */
+function passesLock(call, form) {
+  if (form === "argument") return call.arguments.length >= 2;
+  const input = unwrap(call.arguments[1]);
+  return (
+    input?.type === "ObjectExpression" &&
+    input.properties.some(
+      (property) => property.type !== "SpreadElement" && propertyKey(property) === "lock",
+    )
+  );
+}
 
 /**
  * Each entry allows `count` violations of one rule, in one file, on one
@@ -74,6 +112,15 @@ const ALLOWLIST = [
     expression: "schema.reservations",
     count: 1,
     reason: "dev seed with backdated rows; sets billableAt with initialBillableAt",
+  },
+  {
+    rule: "R1",
+    file: "apps/web/scripts/seed/needs-a-look-write.ts",
+    expression: "reservations",
+    count: 1,
+    reason:
+      "local sample booking for the needs-a-look page, written as is: no status " +
+      "change to run effects for, never billable (no billableAt)",
   },
   {
     rule: "R1",
@@ -145,6 +192,10 @@ function findViolations(code, file, tables) {
   // `.update(t)` call → the `.set(…)` call chained on it.
   const setCalls = new Map();
   const helperNames = new Set(STATUS_HELPERS);
+  // Local name → the locked helper it imports.
+  const lockedHelperOf = new Map([...LOCKED_HELPERS.keys()].map((name) => [name, name]));
+  // Local names of the store's stock check.
+  const storeStockCheckNames = new Set([STORE_STOCK_CHECK]);
   const calls = [];
   let runsEffects = false;
 
@@ -176,6 +227,8 @@ function findViolations(code, file, tables) {
         if (specifier.type !== "ImportSpecifier") continue;
         const imported = specifier.imported.name ?? specifier.imported.value;
         if (STATUS_HELPERS.has(imported)) helperNames.add(specifier.local.name);
+        if (LOCKED_HELPERS.has(imported)) lockedHelperOf.set(specifier.local.name, imported);
+        if (imported === STORE_STOCK_CHECK) storeStockCheckNames.add(specifier.local.name);
       }
     }
 
@@ -221,6 +274,31 @@ function findViolations(code, file, tables) {
     return isMember(callee) && isNamespace(callee.object) && STATUS_HELPERS.has(memberName(callee));
   });
   if (helperCall && !runsEffects) report("R5", helperCall, text(helperCall.callee));
+
+  // R6: a status change or a stock move names its lock.
+  for (const call of calls) {
+    const callee = unwrap(call.callee);
+    const helper =
+      callee.type === "Identifier"
+        ? lockedHelperOf.get(callee.name)
+        : isMember(callee) && isNamespace(callee.object) && LOCKED_HELPERS.has(memberName(callee))
+          ? memberName(callee)
+          : undefined;
+    if (helper && !passesLock(call, LOCKED_HELPERS.get(helper))) {
+      report("R6", call, text(call.callee));
+    }
+  }
+
+  // R7: the store's stock check, under any name or on any object.
+  for (const call of calls) {
+    const callee = unwrap(call.callee);
+    if (
+      (callee.type === "Identifier" && storeStockCheckNames.has(callee.name)) ||
+      (isMember(callee) && memberName(callee) === STORE_STOCK_CHECK)
+    ) {
+      report("R7", call, text(call.callee));
+    }
+  }
 
   return violations;
 }
@@ -397,12 +475,60 @@ test("each forbidden form gives exactly one violation", () => {
     aliasedHelperWithoutEffects: [
       "R5",
       `import { changeReservationStatus as change } from "@louez/db";
-       await change(tx, { reservationId, storeId, to: "confirmed", actor: "store_user" });`,
+       await change(tx, { lock, reservationId, storeId, to: "confirmed", actor: "store_user" });`,
     ],
     namespacedHelperWithoutEffects: [
       "R5",
       `import * as db from "@louez/db";
-       await db.changeReservationStatus(tx, input);`,
+       await db.changeReservationStatus(tx, { ...input, lock });`,
+    ],
+    statusChangeWithoutLock: [
+      "R6",
+      `import { changeReservationStatus } from "@louez/db";
+       import { runReservationEffects } from "@/lib/billing/reservation-effects";
+       const change = await db.transaction((tx) =>
+         changeReservationStatus(tx, { reservationId, storeId, to: "confirmed", actor }),
+       );
+       await runReservationEffects(change.effects);`,
+    ],
+    statusChangeWithLockInSpread: [
+      "R6",
+      `import * as louez from "@louez/db";
+       import { runReservationEffects } from "@/lib/billing/reservation-effects";
+       await louez.changeReservationStatus(tx, { ...input });
+       await runReservationEffects([]);`,
+    ],
+    stockMoveWithoutLock: [
+      "R6",
+      `import { consumeReservationStock as take } from "@louez/db";
+       await take(tx);`,
+    ],
+    stockRestoreWithoutLock: [
+      "R6",
+      `import * as louez from "@louez/db";
+       await louez.restoreReservationStock(tx);`,
+    ],
+    // A customer's or a payment's confirmation that could book over the stock.
+    storeStockCheck: [
+      "R7",
+      `import { checkStoreConfirmationInventory } from "@louez/api/services/reservation-inventory";
+       await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true });`,
+    ],
+    storeStockCheckRenamed: [
+      "R7",
+      `import { checkStoreConfirmationInventory as check } from "@louez/api/services/reservation-inventory";
+       await check(tx, id, storeId, { allowOverbooking: false });`,
+    ],
+    // A customer's or a payment's confirmation that could pass the turnover buffer.
+    storeStockCheckPastBuffer: [
+      "R7",
+      `import { checkStoreConfirmationInventory } from "@louez/api/services/reservation-inventory";
+       await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: false, overrideTurnoverBuffer: true });`,
+    ],
+    storeStockCheckOnModule: [
+      "R7",
+      `const inventory = await import("@louez/api/services/reservation-inventory");
+       await inventory.checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true });`,
     ],
   };
   for (const [name, [rule, code]] of Object.entries(forbidden)) {
@@ -429,11 +555,17 @@ test("each allowed form gives no violation", () => {
     proseInsert: `const prompt = "Insert reservations into the calendar (one per line)";`,
     otherTableSql: "await db.execute(sql`UPDATE reservation_items SET quantity = 0`);",
     readInSubquery: `const s = "UPDATE products SET stock = (SELECT COUNT(*) FROM reservations)";`,
-    helperWithEffects: `import { changeReservationStatus } from "@louez/db";
+    helperWithEffects: `import { changeReservationStatus, runReservationChange } from "@louez/db";
       import { runReservationEffects } from "@/lib/billing/reservation-effects";
-      const change = await db.transaction((tx) => changeReservationStatus(tx, input));
+      const change = await runReservationChange(scope, (tx, lock) =>
+        changeReservationStatus(tx, { ...input, lock }),
+      );
       if (change.changed) await runReservationEffects(change.effects);`,
+    stockMoveWithLock: `import { consumeReservationStock } from "@louez/db";
+      await consumeReservationStock(tx, lock);`,
     injectedWrapper: `const result = await deps.changeReservationStatus({ reservationId, to });`,
+    customerStockCheck: `import { checkExistingReservationInventory } from "@louez/api/services/reservation-inventory";
+      await checkExistingReservationInventory(tx, id, storeId);`,
   };
   for (const [name, code] of Object.entries(allowed)) {
     assert.deepEqual(rulesIn(code), [], name);
@@ -470,7 +602,44 @@ test("a helper file may break its own rule only, and is reported once it stops",
   );
   // The status helper may update reservations, not insert them.
   assert.deepEqual(remaining, [violation("R1", HELPER_FILES.R2)]);
-  assert.deepEqual(missingHelpers, [HELPER_FILES.R1]);
+  assert.deepEqual(missingHelpers, [HELPER_FILES.R1, HELPER_FILES.R7]);
+});
+
+test("the customer's status service may not call the store's stock check", () => {
+  // Only the store's status service file is exempt from R7: an entry of
+  // another actor, in its own file, is seen.
+  const file = "packages/api/src/services/customer-reservation-status.ts";
+  const code = `${SNIPPET_IMPORTS}import { checkStoreConfirmationInventory } from "./reservation-inventory";
+    await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true, overrideTurnoverBuffer: true });`;
+  const { remaining } = applyAllowlist(findViolations(code, file, tables), ALLOWLIST);
+  assert.deepEqual(
+    remaining.map(({ rule }) => rule),
+    ["R7"],
+  );
+});
+
+test("the payment's status service may not call the store's stock check", () => {
+  // The paid confirmation's entry, in its own file, is seen as the customer's is.
+  const file = "packages/api/src/services/payment-reservation-status.ts";
+  const code = `${SNIPPET_IMPORTS}import { checkStoreConfirmationInventory } from "./reservation-inventory";
+    await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true, overrideTurnoverBuffer: true });`;
+  const { remaining } = applyAllowlist(findViolations(code, file, tables), ALLOWLIST);
+  assert.deepEqual(
+    remaining.map(({ rule }) => rule),
+    ["R7"],
+  );
+});
+
+test("the system's status service may not call the store's stock check", () => {
+  // The system's checkout cancellations, in their own file, are seen as the others are.
+  const file = "packages/api/src/services/system-reservation-status.ts";
+  const code = `${SNIPPET_IMPORTS}import { checkStoreConfirmationInventory } from "./reservation-inventory";
+    await checkStoreConfirmationInventory(tx, id, storeId, { allowOverbooking: true, overrideTurnoverBuffer: true });`;
+  const { remaining } = applyAllowlist(findViolations(code, file, tables), ALLOWLIST);
+  assert.deepEqual(
+    remaining.map(({ rule }) => rule),
+    ["R7"],
+  );
 });
 
 test("reservation status writes and inserts go through the helpers", () => {
@@ -485,7 +654,8 @@ test("reservation status writes and inserts go through the helpers", () => {
   const help =
     "See [DL-12] in docs/code-review/04-data-layer.md: change a status with " +
     "changeReservationStatus, insert with insertReservation, and run the returned " +
-    "effects with runReservationEffects after commit. Fix or remove an allowlist " +
+    "effects with runReservationEffects after commit. Only the store's status service " +
+    "may book over the stock or pass the turnover buffer at a confirmation (R7). Fix or remove an allowlist " +
     "entry that matches the wrong count, and update HELPER_FILES when a helper file " +
     "has no write left.";
   assert.deepEqual(

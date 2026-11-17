@@ -2,23 +2,44 @@ import { eq, max } from "drizzle-orm";
 
 import { reservationActivity, type Transaction } from "@louez/db";
 
-import type { CapacityShortfall } from "./reservation-inventory";
+import type { CapacityShortfall } from "../contracts/reservations";
 
 /**
- * A capacity verdict: what a stock check said of a reservation when it was
- * created or edited, kept on that activity row. `overbooked: true` with its
- * shortfalls when the team booked over the stock, `overbooked: false` when an
- * edit was checked and fits. A reservation's latest verdict is the one that
- * counts: the inbox shows an overbooking until a later edit fits.
+ * A capacity verdict, for the activity row of a write that checked the stock
+ * (`CAPACITY_VERDICT_ACTIVITY_TYPES`, contracts/reservations.ts).
  */
-export const CAPACITY_VERDICT_ACTIVITY_TYPES = ["created", "modified"] as const;
-
 export const capacityVerdictMetadata = (
   shortfalls: readonly CapacityShortfall[],
 ): { overbooked: true; overbookingShortfalls: CapacityShortfall[] } | { overbooked: false } =>
   shortfalls.length > 0
     ? { overbooked: true, overbookingShortfalls: [...shortfalls] }
     : { overbooked: false };
+
+/**
+ * A turnover-buffer verdict, next to the capacity verdict on the activity row
+ * of a store confirmation sent with `overrideTurnoverBuffer`: the lines it
+ * confirmed although they fit the stock only without the buffer, and the
+ * buffer it checked them with, or `false` when the buffer stopped none. It is
+ * a trace of what the store did on that change, never an authority: no later
+ * change reads it (decision D5, docs/domain/reservation-changes.md).
+ */
+export const turnoverBufferVerdictMetadata = (
+  shortfalls: readonly CapacityShortfall[],
+  turnoverBufferMinutes: number,
+):
+  | {
+      turnoverBufferOverridden: true;
+      turnoverBufferShortfalls: CapacityShortfall[];
+      turnoverBufferMinutes: number;
+    }
+  | { turnoverBufferOverridden: false } =>
+  shortfalls.length > 0
+    ? {
+        turnoverBufferOverridden: true,
+        turnoverBufferShortfalls: [...shortfalls],
+        turnoverBufferMinutes,
+      }
+    : { turnoverBufferOverridden: false };
 
 /**
  * The date of a new verdict row, under the reservation's lock. Activity rows

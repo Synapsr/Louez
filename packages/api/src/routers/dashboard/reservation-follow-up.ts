@@ -19,8 +19,10 @@ import {
   reservationOutput,
   reservationWindowInput,
   statusChangeOutput,
+  updateReservationInput,
   updateReservationNotesInput,
   updateReservationNotesOutput,
+  updateReservationOutput,
   updateReservationStatusInput,
   type CalendarEntry,
   type PlanningEntry,
@@ -28,6 +30,7 @@ import {
 import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { customerLinks, productLinks, reservationLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
+import { changeReservationDates, type DateChangePreview } from "../../services/reservation-dates";
 import {
   changeStoreReservationStatus,
   type StatusChangeCaller,
@@ -45,6 +48,9 @@ import {
   updateReservationNotes,
   type ReservationReader,
 } from "../../services/reservations";
+import { approvalAsked, restApprovalAsked } from "../../platform/approval-help";
+import type { Consequences } from "../../platform/approval-rule";
+import type { ProcedureScope } from "../../platform/permissions";
 import { confirmUnderLock, mayRead, type ProductContext } from "./product-context";
 
 /**
@@ -67,6 +73,7 @@ const reader = (context: ProductContext): ReservationReader => ({
 const statusCaller = (context: ProductContext): StatusChangeCaller => ({
   storeId: context.actor.storeId,
   userId: context.actor.credential.userId,
+  credential: { kind: context.actor.credential.kind, id: context.actor.credential.id },
   transport: context.actor.transport,
   customers: mayRead(context, "customers"),
   store: {
@@ -78,19 +85,91 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
   ports: context.ports,
 });
 
+/** The right a status change needs: what a person's approval of one asks of the approver. */
+const RESERVATIONS_WRITE: ProcedureScope = { domain: "reservations", level: "write" };
+
 /**
  * The confirmation of a status change, bound to what its preview shows (the
- * status it starts from, the dates, the amounts, the messages and the money)
- * and to where the messages go. A change since (the reservation moved, a
- * payment recorded, a setting that stops a message, the customer's email or
- * phone) voids the token.
+ * status it starts from, the dates, the amounts, the messages, the money and
+ * the shortfalls booked over or confirmed past the turnover buffer, and that
+ * buffer), to where the messages go, and to the stock the change takes (each
+ * line's product and quantity, and a consumable's units). A change since (the
+ * reservation moved, a payment recorded, a setting that stops a message, the
+ * customer's email or phone, a shortfall that grew or changed, a line
+ * changed) voids the token or the approval. A
+ * confirmation sent with either override is a stock override, even when
+ * nothing is short (decision D2 and slice 5,
+ * docs/domain/reservation-changes.md); a message to the customer is one too.
  */
 const statusConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
-  confirmUnderLock(context, path, input, (preview: StatusChangePreview) => {
-    const { summary: _summary, recipientsHash, ...details } = preview;
-    // The recipients are bound even where the preview may not show them.
-    return { state: { ...details, recipientsHash }, details };
-  });
+  confirmUnderLock(
+    context,
+    path,
+    input,
+    (preview: StatusChangePreview) => {
+      const { summary: _summary, recipientsHash, demand, ...details } = preview;
+      // The recipients and the stock demand are bound, and never shown.
+      return {
+        state: { ...details, recipientsHash, demand },
+        details,
+        consequences: statusChangeConsequences(preview),
+      };
+    },
+    RESERVATIONS_WRITE,
+  );
+
+/** What the status change the preview shows does, branch by branch. */
+function statusChangeConsequences(preview: StatusChangePreview): Consequences {
+  // A flag the change passes is set on the preview, even with nothing short.
+  const overrides = preview.overbooking !== null || preview.turnoverBuffer !== null;
+  const message = preview.messages.length > 0;
+  if (overrides && message) return ["stock_override", "customer_message"];
+  if (overrides) return ["stock_override"];
+  if (message) return ["customer_message"];
+  return ["change"];
+}
+
+/**
+ * The confirmation of a date change, bound to what its preview shows (the
+ * dates before and after, each line's old and new price, the totals, the tax,
+ * the deposit, the stock verdicts, the units, the message and the warnings),
+ * to the reservation as the change read it (`fingerprint`: its lines, units
+ * and stored prices), to its stock demand and to where the message goes. A
+ * change since (a line or a price changed, a competing booking that changes
+ * the shortfalls, the customer's address) voids the token or the approval.
+ */
+const dateChangeConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
+  confirmUnderLock(
+    context,
+    path,
+    input,
+    (preview: DateChangePreview) => {
+      const { summary: _summary, recipientsHash, demand, fingerprint, ...details } = preview;
+      // The recipients, the stock demand and the fingerprint are bound, and never shown.
+      return {
+        state: { ...details, recipientsHash, demand, fingerprint },
+        details,
+        consequences: dateChangeConsequences(preview),
+      };
+    },
+    RESERVATIONS_WRITE,
+  );
+
+/**
+ * What a date change does: a change the store can put back, always; a
+ * message to the customer when one goes; a stock override when either flag
+ * is sent, even with nothing short (D2, slice 5). Never money: the
+ * difference is reported, not charged or refunded.
+ */
+function dateChangeConsequences(preview: DateChangePreview): Consequences {
+  return [
+    "change",
+    ...(preview.messages.length > 0 ? (["customer_message"] as const) : []),
+    ...(preview.overbooking !== null || preview.turnoverBuffer !== null
+      ? (["stock_override"] as const)
+      : []),
+  ];
+}
 
 /**
  * The links an answer's records get: each reservation its dashboard page,
@@ -123,6 +202,16 @@ const withLinks = <T extends { id: string; customer: { id: string } | null }>(
 const LINKS_NOTE =
   "Each reservation has `links` (its dashboard page) and each customer shown its own, the URLs to give the user.";
 
+/** The REST reference's own texts (`.route({ description })`), for a developer. */
+const REST_LINKS_NOTE =
+  "Each reservation, and its customer when shown, comes with `links.dashboard`: its page in the Louez dashboard.";
+
+const REST_CUSTOMER_NOTE =
+  "With a key that cannot read customers, the customer's name, email, addresses and notes are left out; with one that cannot read payments, so are the payment rows and Stripe ids (`rentalPaid` stays).";
+
+const REST_WINDOW_NOTE =
+  "`from` and `to` are ISO 8601 dates at most 400 days apart. Without `limit`, the answer holds the whole window; with one, pass `nextCursor` back as `cursor` to read on.";
+
 const CUSTOMER_NOTE =
   "Without read access to customers, the customer's name, email, addresses and notes are left out; without read access to payments, so are payment rows and Stripe ids (rentalPaid stays).";
 
@@ -139,7 +228,11 @@ const list = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations" })
+  .route({
+    method: "GET",
+    path: "/reservations",
+    description: `Lists the store's reservations, by start date, newest first. Filter by \`status\` (by default, every open one), \`period\` (today, this week or this month, on the start date or, with \`operation: return\`, the end date), \`paymentMethod\` (with a key that can read payments) or \`search\` (part of the number, or of the customer's name with a key that can read customers); \`sort\` and \`sortDirection\` change the order. Returns up to \`limit\` reservations (25 by default, 100 at most), the count per status and the total that match. To read on, pass \`nextCursor\` back as \`cursor\` with the same filters and sort; it is null on the last page. Numbered pages (\`page\`) stop at the first 10,000 reservations. A reservation's lines, payments and history are in \`GET /reservations/{id}\`. ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(listReservationsInput)
   .output(listReservationsOutput)
   .handler(async ({ context, input }) => {
@@ -168,7 +261,11 @@ const get = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/{id}" })
+  .route({
+    method: "GET",
+    path: "/reservations/{id}",
+    description: `Returns one reservation with everything its dashboard page shows: status and dates, customer, lines with their products and assigned units, amounts and taxes, payments, deposit, delivery or pickup, insurance, notes, documents and history (newest first). ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(getReservationInput)
   .output(reservationOutput)
   .handler(async ({ context, input }) =>
@@ -187,7 +284,12 @@ const poll = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/counters" })
+  .route({
+    method: "GET",
+    path: "/reservations/counters",
+    description:
+      "Counters cheap enough to poll: the requests waiting for an answer (with the five newest), the reservations per status, and the supplier invoices to handle. Each reservation listed comes with `links.dashboard`, its page in the Louez dashboard.",
+  })
   .input(pollReservationsInput)
   .output(pollReservationsOutput)
   .handler(async ({ context }) => {
@@ -201,7 +303,7 @@ const poll = storeProcedure
   });
 
 /** The windows' lists come a page at a time to an agent (`answerPage`). */
-const WINDOW_PAGE_NOTE = `An agent gets ${ANSWER_PAGE_MCP_DEFAULT} entries a page without a limit (the API, every entry); nextCursor, when not null, reads on.`;
+const WINDOW_PAGE_NOTE = `Without a limit, a page holds ${ANSWER_PAGE_MCP_DEFAULT} entries over MCP and every entry over the REST API; nextCursor, when not null, reads on.`;
 
 const listCalendarPeriodProcedure = storeProcedure
   .meta({
@@ -214,14 +316,20 @@ const listCalendarPeriodProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/calendar" })
+  .route({
+    method: "GET",
+    path: "/reservations/calendar",
+    description: `Lists the reservations that overlap a window, by start date, as the dashboard's calendar shows them: status, dates, amounts, customer, lines and delivery legs. ${REST_WINDOW_NOTE} ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(reservationWindowInput)
   .output(listCalendarPeriodOutput)
   .handler(async ({ context, input }) => {
     const link = linker(context);
     const period = await listCalendarPeriod(reader(context), { from: input.from, to: input.to });
     // By start date, then id: the calendar's order, total.
-    const order = { key: (item: CalendarEntry) => `${item.startDate.toISOString()}\u0000${item.id}` };
+    const order = {
+      key: (item: CalendarEntry) => `${item.startDate.toISOString()}\u0000${item.id}`,
+    };
     const page = answerPage(period.items, order, input, {
       transport: context.actor.transport,
       tool: "reservations_list_calendar_period",
@@ -244,7 +352,11 @@ const getPlanningTimelineProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/planning" })
+  .route({
+    method: "GET",
+    path: "/reservations/planning",
+    description: `Returns the planning of a window: one entry per reservation and product, with the quantity, the assigned units and the delivery legs. ${REST_WINDOW_NOTE} Each entry comes with \`links.dashboard\`, its reservation's page in the Louez dashboard. ${REST_CUSTOMER_NOTE}`,
+  })
   .input(reservationWindowInput)
   .output(getPlanningTimelineOutput)
   .handler(async ({ context, input }) => {
@@ -273,7 +385,11 @@ const listUpcomingProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/upcoming" })
+  .route({
+    method: "GET",
+    path: "/reservations/upcoming",
+    description: `Lists what is due from the start of today over the next \`days\` (7 by default, 1 for today only, 90 at most), soonest first: the confirmed reservations to hand over (\`pickups\`) and the ongoing ones due back (\`returns\`). ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(listUpcomingInput)
   .output(listUpcomingOutput)
   .handler(async ({ context, input }) => {
@@ -297,7 +413,11 @@ const listOverdueProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/reservations/overdue" })
+  .route({
+    method: "GET",
+    path: "/reservations/overdue",
+    description: `Lists the late returns: ongoing reservations past their end date, the longest overdue first, with the number of days late. ${REST_LINKS_NOTE} ${REST_CUSTOMER_NOTE}`,
+  })
   .input(listOverdueInput)
   .output(listOverdueOutput)
   .handler(async ({ context, input }) => {
@@ -311,35 +431,122 @@ const listOverdueProcedure = storeProcedure
 const updateStatus = storeProcedure
   .meta({
     capability: "reservations.updateStatus",
-    scope: { domain: "reservations", level: "write" },
+    scope: RESERVATIONS_WRITE,
     sensitive: "send",
+    personApproval: true,
     mcp: {
       name: "reservations_update_status",
       title: "Change Reservation Status",
-      description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
+      description: `Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel: the customer gets the cancellation message). The customer's messages go out on the channels the store set for each, and the store's notifications follow as set. Confirming without either flag below, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. A confirmation the stock cannot cover answers RESERVATION_INSUFFICIENT_CAPACITY with each line short (details.shortfalls: each short line by its reservationItemId, with its product, its combination or the attributes it chose, requested, available). The same input with allowOverbooking: true books over the stock, for when the user chose to: its preview lists every shortfall, and the approval holds only while the shortfalls stay as previewed. A confirmation refused with RESERVATION_TURNOVER_BUFFER_CONFLICT (lines that fit the stock but not the turnover buffer the store keeps between rentals, details.shortfalls counted with the buffer) is confirmed all the same with overrideTurnoverBuffer: true, for when the user chose a shorter turnaround: its preview lists those lines and the buffer, and it covers this confirmation only. Neither flag passes the other's refusal: a reservation short both ways needs both, and one preview lists both. Neither passes RESERVATION_UNITS_UNAVAILABLE or a consumable out of stock. Confirming with either flag, even when nothing is short, is the user's to approve. ${approvalAsked("that preview")} Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance), the customer messages that could not go out (messagesNotSent: an e-mail on an instance with no e-mail service, an SMS on one with no SMS provider, which the inbox lists for the user to tell the customer) and the reservation's \`links\`, its dashboard page to give the user.`,
       bundle: "daily",
       effect: "overwrite",
       reach: "customer",
     },
   })
-  .route({ method: "POST", path: "/reservations/{id}/status" })
+  .route({
+    method: "POST",
+    path: "/reservations/{id}/status",
+    description: [
+      "Changes a reservation's status, with the same effects as in the dashboard:",
+      "",
+      "- `confirmed` confirms a request or a quote: its items leave the stock and the customer gets the acceptance message. For a reservation with insurance, Louez then creates the insurance contract; a failure comes back in `warnings`, and the confirmation stands.",
+      "- `rejected` rejects a request; the customer gets the rejection message, with `rejectionReason`.",
+      "- `ongoing` marks it picked up. Refused with `CONTRACT_UNSIGNED` when the store requires a signed contract and the customer has not signed.",
+      "- `completed` marks it returned.",
+      "- `cancelled` cancels it, as `POST /reservations/{id}/cancel` does.",
+      "",
+      "The customer's messages go out on the channels the store set for each. On a key set to ask for confirmations (the default), confirming a request or a quote without either flag below, rejecting and cancelling first answer 412 `CONFIRMATION_REQUIRED`, with a preview of the messages and the stock; on a key whose confirmations are off, they run at once.",
+      "",
+      "A confirmation the stock cannot cover answers `RESERVATION_INSUFFICIENT_CAPACITY`, with each short line in `details.shortfalls`. The same request with `allowOverbooking: true` confirms over the stock: its preview lists every shortfall, and the approval holds only while the shortfalls stay as previewed. Lines that fit the stock but not the turnover buffer the store keeps between rentals answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes it, for this confirmation only, with a preview of those lines and the buffer. Each flag passes only its own refusal, and neither passes `RESERVATION_UNITS_UNAVAILABLE` or a consumable out of stock.",
+      "",
+      `Confirming with either flag, even when nothing is short, is the key's owner's to approve. ${restApprovalAsked("the preview")}`,
+      "",
+      "Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance), the customer messages that could not go out (`messagesNotSent`: an e-mail on an instance with no e-mail service, an SMS on one with no SMS provider, listed in the inbox) and the reservation's `links.dashboard`.",
+    ].join("\n"),
+  })
   .input(updateReservationStatusInput)
   .output(statusChangeOutput)
   .handler(async ({ context, input, path }) =>
     linker(context).reservation(
       await changeStoreReservationStatus(
         statusCaller(context),
-        { id: input.id, to: input.status, rejectionReason: input.rejectionReason },
+        {
+          id: input.id,
+          to: input.status,
+          rejectionReason: input.rejectionReason,
+          allowOverbooking: input.allowOverbooking,
+          overrideTurnoverBuffer: input.overrideTurnoverBuffer,
+        },
         { confirm: statusConfirmation(context, path, input) },
       ),
     ),
   );
 
+const update = storeProcedure
+  .meta({
+    capability: "reservations.update",
+    scope: RESERVATIONS_WRITE,
+    sensitive: "send",
+    personApproval: true,
+    mcp: {
+      name: "reservations_update",
+      title: "Change Reservation Dates",
+      description: `Move a pending, quote, confirmed or ongoing reservation's dates (startDate, endDate: ISO 8601 with offset; an absent one stays; an ongoing reservation's start cannot move). Its lines keep their products, quantities and assigned units; the deposit and the delivery stay as stored. It is priced by the checkout's own pricing and taxes, and only when they give the reservation's stored prices back to the cent: otherwise, and for an insured, custom-priced, discounted, marketplace or delivered reservation, or one with an extension checkout open, it answers RESERVATION_EDIT_IN_DASHBOARD with details.reason and changes nothing; give the user the reservation's dashboard link then. The same dates as stored answer changed: false and do nothing. notifyCustomer is required: true sends the customer the “booking modified” e-mail. New dates the stock cannot cover answer RESERVATION_INSUFFICIENT_CAPACITY with each short line; allowOverbooking: true moves them all the same. Lines stopped only by the turnover buffer answer RESERVATION_TURNOVER_BUFFER_CONFLICT; overrideTurnoverBuffer: true passes them, for this change only. Neither passes RESERVATION_UNITS_UNAVAILABLE. Sending either flag, even when nothing is short, is the user's to approve. A change first answers CONFIRMATION_REQUIRED with a preview (old and new dates, each line's old and new price, the new total, the tax, the difference, the message, the warnings) when the connection asks for confirmations. ${approvalAsked("that preview")} Nothing is charged or refunded: the difference is reported, with warnings for an open payment session, a deposit hold that lapses before the new end, and a balance now owed or over-paid. Returns the reservation as reservations_get does, with previousStartDate, previousEndDate, previousTotal, difference (in the reservation's currency), warnings, capacity and its \`links\`, its dashboard page to give the user.`,
+      bundle: "daily",
+      effect: "overwrite",
+      reach: "customer",
+    },
+  })
+  .route({
+    method: "POST",
+    path: "/reservations/{id}",
+    description: [
+      "Moves a reservation's dates. Only `startDate` and `endDate` change (ISO 8601 with an offset; an absent one keeps its stored value); its lines keep their products, quantities and assigned units, and its deposit and delivery stay as stored. Any other field is refused. Only a pending, quote, confirmed or ongoing reservation is changed (`RESERVATION_NOT_EDITABLE` otherwise); the end must come after the start, and an ongoing reservation's start cannot move (`RESERVATION_WINDOW_INVALID`).",
+      "",
+      "The new prices come from the checkout's own pricing and the tax engine, and only when they give the reservation's stored prices back, to the cent, over its stored dates. When they do not (a promotion that ended, a price or a tax setting changed, a price typed by hand), and for an insured, discounted, marketplace or delivered reservation, or one whose extension checkout is open, the answer is `RESERVATION_EDIT_IN_DASHBOARD` with `details.reason`, and nothing changes: the change is made from the reservation's page in the dashboard.",
+      "",
+      "The same dates as stored answer `changed: false` and write nothing. `notifyCustomer` is required: `true` queues the customer's “booking modified” e-mail with the change; it is refused with `RESERVATION_CUSTOMER_UNREACHABLE` when the customer has no e-mail address or the instance sends no e-mail.",
+      "",
+      "New dates the stock cannot cover answer `RESERVATION_INSUFFICIENT_CAPACITY` with each short line; `allowOverbooking: true` moves them all the same. Lines that fit the stock but not the turnover buffer answer `RESERVATION_TURNOVER_BUFFER_CONFLICT`; `overrideTurnoverBuffer: true` passes them, for this change only. Neither passes `RESERVATION_UNITS_UNAVAILABLE`. Dates that stay inside the stored ones are never refused for the stock.",
+      "",
+      `On a key set to ask for confirmations (the default), the change first answers 412 \`CONFIRMATION_REQUIRED\` with its preview. Sending either flag, even when nothing is short, is the key's owner's to approve. ${restApprovalAsked("the preview")}`,
+      "",
+      "Nothing is charged or refunded. Returns the reservation as `GET /reservations/{id}` does, with `previousStartDate`, `previousEndDate`, `previousTotal` and `difference` in the reservation's currency, `warnings`, `capacity`, `customerMessage`, `changed` and `links.dashboard`.",
+    ].join("\n"),
+  })
+  .input(updateReservationInput)
+  .output(updateReservationOutput)
+  .handler(async ({ context, input, path }) => {
+    const change = await changeReservationDates(
+      {
+        storeId: context.actor.storeId,
+        userId: context.actor.credential.userId,
+        credential: { kind: context.actor.credential.kind, id: context.actor.credential.id },
+        transport: context.actor.transport,
+        customers: mayRead(context, "customers"),
+        reader: reader(context),
+        store: statusCaller(context).store,
+        ports: context.ports,
+      },
+      {
+        id: input.id,
+        startDate: input.startDate === undefined ? undefined : new Date(input.startDate),
+        endDate: input.endDate === undefined ? undefined : new Date(input.endDate),
+        notifyCustomer: input.notifyCustomer,
+        allowOverbooking: input.allowOverbooking,
+        overrideTurnoverBuffer: input.overrideTurnoverBuffer,
+      },
+      { confirm: dateChangeConfirmation(context, path, input) },
+    );
+    // The reservation as the change's own transaction read it after its write.
+    const { reservation, ...facts } = change;
+    return { ...withLinks(linker(context), reservation), ...facts };
+  });
+
 const cancel = storeProcedure
   .meta({
     capability: "reservations.cancel",
-    scope: { domain: "reservations", level: "write" },
+    scope: RESERVATIONS_WRITE,
     sensitive: "destructive",
     mcp: {
       name: "reservations_cancel",
@@ -351,7 +558,12 @@ const cancel = storeProcedure
       reach: "customer",
     },
   })
-  .route({ method: "POST", path: "/reservations/{id}/cancel" })
+  .route({
+    method: "POST",
+    path: "/reservations/{id}/cancel",
+    description:
+      "Cancels a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock and the customer gets the cancellation message on the channels the store set. If the reservation has an insurance contract, Louez asks the insurer to cancel it; if that fails, the reservation is cancelled all the same and the answer does not say so. Nothing is refunded or released, and the message does not mention a refund. On a key set to ask for confirmations (the default), it first answers 412 `CONFIRMATION_REQUIRED`, with a preview of the customer, the dates, what was paid and the message; on a key whose confirmations are off, it runs at once. Returns the change and the reservation's `links.dashboard`.",
+  })
   .input(cancelReservationInput)
   .output(statusChangeOutput)
   .handler(async ({ context, input, path }) =>
@@ -378,7 +590,12 @@ const updateNotes = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "PATCH", path: "/reservations/{id}/notes" })
+  .route({
+    method: "PATCH",
+    path: "/reservations/{id}/notes",
+    description:
+      "Replaces a reservation's internal notes, which only the store's team sees; an empty string clears them. Returns the notes and the reservation's `links.dashboard`.",
+  })
   .input(updateReservationNotesInput)
   .output(updateReservationNotesOutput)
   .handler(async ({ context, input }) =>
@@ -409,7 +626,12 @@ export const globalSearchProcedure = storeProcedure
       bundle: "daily",
     },
   })
-  .route({ method: "GET", path: "/search" })
+  .route({
+    method: "GET",
+    path: "/search",
+    description:
+      "Searches the store at once, as the dashboard's search bar does, for `query` (1 to 100 characters, matched anywhere in the field). Returns up to 5 products by name, A to Z; up to 5 reservations by number, or by the customer's name or company with a key that can read customers, newest first; and up to 5 customers by name, company, email, phone or a searchable custom field the store has not flagged sensitive, newest first. With a key that cannot read products, `products` comes back empty; with one that cannot read customers, so does `customers`, and each reservation's `customerName` is null. Each hit comes with `links.dashboard`, its page in the Louez dashboard.",
+  })
   .input(globalSearchInput)
   .output(globalSearchOutput)
   .handler(async ({ context, input }) => {
@@ -443,6 +665,7 @@ export {
   listOverdueProcedure as listOverdue,
   listUpcomingProcedure as listUpcoming,
   poll,
+  update,
   updateNotes,
   updateStatus,
 };

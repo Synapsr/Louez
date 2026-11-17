@@ -214,11 +214,13 @@ export const toPricingCatalogProduct = (
 });
 
 /**
- * Price one cart line from the catalog entry. Fixed-price products ignore the
- * duration; everything else goes through the seasonal-aware engine (which
- * handles legacy tiers, rate-based and strict tiers).
+ * Price one cart line from the catalog entry, without the product's
+ * promotion. Fixed-price products ignore the duration; everything else goes
+ * through the seasonal-aware engine (which handles legacy tiers, rate-based
+ * and strict tiers). The dashboard's edit prices its lines this way: it
+ * applies no promotion yet (slice 11).
  */
-const priceRegularCatalogLine = (
+export const priceRegularCatalogLine = (
   product: PricingCatalogProduct,
   line: PricingCatalogLineInput,
 ): PricedCatalogLine => {
@@ -305,7 +307,13 @@ export const priceCatalogLine = (
  */
 export const loadPricingCatalog = async (
   database: Pick<Database, "select">,
-  params: { storeId: string; productIds: string[]; timezone?: string },
+  params: {
+    storeId: string;
+    productIds: string[];
+    timezone?: string;
+    /** Also the store's products that are not active: an edit reprices a line whose product was archived since. */
+    includeInactive?: boolean;
+  },
 ): Promise<PricingCatalog> => {
   const productIds = [...new Set(params.productIds)];
   if (productIds.length === 0) {
@@ -318,7 +326,7 @@ export const loadPricingCatalog = async (
     .where(
       and(
         eq(products.storeId, params.storeId),
-        eq(products.status, "active"),
+        params.includeInactive ? undefined : eq(products.status, "active"),
         inArray(products.id, productIds),
       ),
     );

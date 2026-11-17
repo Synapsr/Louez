@@ -1,27 +1,21 @@
 "use server";
 
 import { and, eq, gt } from "drizzle-orm";
-import { nanoid } from "nanoid";
 import { z } from "zod";
 
-import {
-  db,
-  markReservation,
-  payments,
-  reservationActivity,
-  reservations,
-  verificationCodes,
-} from "@louez/db";
+import { db, reservations, verificationCodes } from "@louez/db";
 
 import { log } from "@/lib/evlog";
 import {
   INSTANT_ACCESS_SHORT_TTL_MS,
   createReservationInstantAccessUrl,
 } from "@/lib/customer-auth/instant-access";
+import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
+import { stripeDepositHold } from "@/lib/reservations/deposit-hold-stripe";
+import { settleDepositIntent } from "@/lib/reservations/deposit-hold-writes";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { createDepositAuthorizationIntent, toStripeCents } from "@/lib/stripe";
-import { getStripe } from "@/lib/stripe/client";
 
 import { verifyDepositHold } from "./util.deposit-hold";
 
@@ -59,8 +53,6 @@ export type DepositPaymentIntentResult =
 export type ConfirmDepositAuthorizationResult =
   | { ok: true; redirectUrl: string }
   | { ok: false; error: DepositAuthorizationError };
-
-const AUTHORIZATION_HOLD_DAYS = 7;
 
 const accessInputSchema = z.object({
   slug: z.string().trim().min(1).max(100),
@@ -209,6 +201,8 @@ export const createDepositPaymentIntent = async (
  * Record the hold once Stripe confirms it. The PaymentIntent is re-read from
  * Stripe: only a `requires_capture` intent of this reservation, for the
  * deposit amount, marks the deposit authorised. Idempotent on the intent id.
+ * An authorization that is not the reservation's hold, because the reservation
+ * holds another, is recorded with its release owed, and the outbox releases it.
  */
 export const confirmDepositAuthorization = async (
   rawInput: z.input<typeof confirmInputSchema>,
@@ -236,33 +230,15 @@ export const confirmDepositAuthorization = async (
     });
 
   try {
-    const existingHold = await db.query.payments.findFirst({
-      columns: { id: true },
-      where: and(
-        eq(payments.reservationId, reservation.id),
-        eq(payments.stripePaymentIntentId, paymentIntentId),
-      ),
-    });
-    if (existingHold) {
-      return { ok: true, redirectUrl: await buildRedirectUrl() };
-    }
-    if (isDepositHeld(reservation.depositStatus)) {
-      return { ok: false, error: "deposit_already_authorized" };
-    }
-
-    const intent = await getStripe().paymentIntents.retrieve(paymentIntentId, {
-      stripeAccount: store.stripeAccountId,
-    });
+    const intent = await stripeDepositHold.readIntent(store.stripeAccountId, paymentIntentId);
+    const alreadyHeld = isDepositHeld(reservation.depositStatus);
     const verdict = verifyDepositHold(
       {
         status: intent.status,
-        amount: intent.amount,
+        amount: intent.amountMinor,
         currency: intent.currency,
-        paymentMethodId:
-          typeof intent.payment_method === "string"
-            ? intent.payment_method
-            : intent.payment_method?.id,
-        metadataReservationId: intent.metadata?.reservationId,
+        paymentMethodId: intent.paymentMethodId,
+        metadataReservationId: intent.reservationId,
       },
       {
         reservationId: reservation.id,
@@ -272,56 +248,35 @@ export const confirmDepositAuthorization = async (
     );
     if (!verdict.ok) {
       log.warn("authorize-deposit", `hold rejected: ${verdict.reason} (${paymentIntentId})`);
+      return { ok: false, error: alreadyHeld ? "deposit_already_authorized" : "not_authorized" };
+    }
+
+    // The Connect webhook records the same PaymentIntent: one write, whoever comes
+    // first (lib/reservations/deposit-hold-writes.ts).
+    const settled = await settleDepositIntent(db, {
+      reservationId: reservation.id,
+      storeId: store.id,
+      accountId: store.stripeAccountId,
+      intent,
+      actorUserId: null,
+    });
+    if (settled.status === "reservation_not_found") {
+      return { ok: false, error: "reservation_not_found" };
+    }
+    if (settled.status === "refused") {
+      log.warn("authorize-deposit", `hold refused: ${settled.reason} (${paymentIntentId})`);
       return { ok: false, error: "not_authorized" };
     }
-    const { paymentMethodId } = verdict;
-
-    const now = new Date();
-    const authorizationExpiresAt = new Date(now);
-    authorizationExpiresAt.setDate(authorizationExpiresAt.getDate() + AUTHORIZATION_HOLD_DAYS);
-
-    await db.transaction(async (tx) => {
-      await tx
-        .update(reservations)
-        .set({
-          depositStatus: "authorized",
-          depositPaymentIntentId: paymentIntentId,
-          depositAuthorizationExpiresAt: authorizationExpiresAt,
-          stripePaymentMethodId: paymentMethodId,
-          updatedAt: now,
-        })
-        .where(and(eq(reservations.id, reservation.id), eq(reservations.storeId, store.id)));
-
-      await tx.insert(payments).values({
-        id: nanoid(),
-        reservationId: reservation.id,
-        amount: depositAmount.toFixed(2),
-        currency,
-        status: "authorized",
-        type: "deposit_hold",
-        method: "stripe",
-        stripePaymentIntentId: paymentIntentId,
-        stripePaymentMethodId: paymentMethodId,
-        // Billing facts (contract Q36): a hold is never insured rental money.
-        origin: "deposit",
-        grossMinor: intent.amount,
-        insuranceShareMinor: 0,
-        stripeAccountId: store.stripeAccountId,
-        authorizationExpiresAt,
-        notes: "Deposit authorization hold",
-        createdAt: now,
-        updatedAt: now,
-      });
-      await markReservation(tx, { id: reservation.id, storeId: store.id });
-
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
-        reservationId: reservation.id,
-        activityType: "deposit_authorized",
-        metadata: { paymentIntentId, amount: depositAmount, currency },
-        createdAt: now,
-      });
-    });
+    // The reservation already holds an authorization: a second one, confirmed in
+    // another tab or after the store's own, has its release owed, which the outbox
+    // asks Stripe for.
+    depositHoldDeps.dispatchEffects(settled.effectIds);
+    if (settled.outcome === "superseded") {
+      return { ok: false, error: "deposit_already_authorized" };
+    }
+    if (settled.outcome !== "authorized") {
+      return { ok: false, error: alreadyHeld ? "deposit_already_authorized" : "not_authorized" };
+    }
 
     return { ok: true, redirectUrl: await buildRedirectUrl() };
   } catch (error) {

@@ -1,6 +1,15 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { apiEffects, db, reservations, stores, type Transaction } from "@louez/db";
+import {
+  apiEffects,
+  db,
+  invoicePayments,
+  invoices,
+  payments,
+  reservations,
+  stores,
+  type Transaction,
+} from "@louez/db";
 import { and, asc, eq, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -10,7 +19,7 @@ import type { AgentClient, SetupActor, SetupFacts, StoreSetupSummary } from "./s
 /**
  * The outbox of the agent-ready API: the effects of a committed write that
  * must not be lost (a customer's email, a store notification, an analytics
- * event). A service adds them in its transaction (`enqueueEffects`), one row
+ * event, the release of a deposit authorization). A service adds them in its transaction (`enqueueEffects`), one row
  * per effect and channel, with everything they need, so a rollback leaves
  * none and a later edit changes none. Once committed it hands their ids to
  * `ports.dispatchEffects`; the app sends them with its senders
@@ -172,6 +181,48 @@ export interface ApiEffectPayloads {
     totalAmount: string;
     currency: string | null;
   };
+  /**
+   * The customer's e-mail that their reservation's dates changed, from the
+   * previous period to the one this write set: two changes sent late say
+   * each its own step. The store and the customer's name are read when it
+   * goes out; the address is the one the write announced. Nothing is sent
+   * once the reservation is cancelled, rejected or declined. A success adds
+   * the reservation's `note_updated` activity row, as the dashboard's send does.
+   */
+  "reservation.modifiedEmail": {
+    storeId: string;
+    reservationId: string;
+    /** The customer's address the write announced. */
+    to: string;
+    /** The dates before the change, ISO 8601: nothing else keeps them. */
+    previousPeriod: { startDate: string; endDate: string };
+    /** The dates this change set, ISO 8601. */
+    period: { startDate: string; endDate: string };
+    /** Who made the change, for the activity row; null for no person. */
+    userId: string | null;
+  };
+  /**
+   * The customer's e-mail of a reservation created as a quote, with a link
+   * that signs them in to it, minted when it goes out. Nothing is sent once
+   * the reservation is no longer a quote, or when the store turned the quote
+   * e-mail off.
+   */
+  "reservation.quoteEmail": { storeId: string; reservationId: string; to: string };
+  /**
+   * The customer's confirmation e-mail of a reservation the store created
+   * confirmed, with a link that signs them in to sign it, minted when it goes
+   * out. Nothing is sent once the reservation is no longer confirmed (or
+   * picked up, or returned), or when the store turned confirmations off.
+   */
+  "reservation.confirmationEmail": { storeId: string; reservationId: string; to: string };
+  /** The platform's notice of a new reservation, on one channel. */
+  "reservation.createdPlatformNotification": {
+    channel: "discord" | "fromhello";
+    storeId: string;
+    reservationId: string;
+    /** The total when it was created; a later edit does not change the notice. */
+    totalAmount: string;
+  };
   /** The product analytics event of a status change. */
   "reservation.statusAnalytics": Partial<AnalyticsEventIdentity> & {
     ownerUserId: string;
@@ -265,6 +316,53 @@ export interface ApiEffectPayloads {
     recordId: string;
     storeId: string;
   };
+  /**
+   * The release, at the payment provider, of a deposit authorization Louez decided
+   * against because the reservation holds another (apps/web
+   * lib/reservations/deposit-hold-writes.ts). Added in the write that records the release as
+   * owed on the hold's row (`payments.release_owed_at`); a release already made is
+   * success. It carries no `reservationId` on its row: the card is released even when
+   * the reservation is gone. It sends nothing.
+   */
+  "deposit.holdRelease": {
+    reservationId: string;
+    /** The hold's payment row (`payments.id`). */
+    paymentId: string;
+    /** The connected account that holds the authorization. */
+    accountId: string;
+    paymentIntentId: string;
+  };
+  /**
+   * A refund of an online payment, asked of the payment provider (apps/web
+   * lib/reservations/stripe-refund.ts). Added in the write that records the
+   * operation (`payment_refund_operations`); the operation's row says what to send,
+   * so a run after a lost answer asks about the same refund. An operation already
+   * settled is skipped. It sends nothing to anyone.
+   */
+  "payment.refund": {
+    /** The operation's row (`payment_refund_operations.id`). */
+    operationId: string;
+  };
+  /**
+   * The credit note a refund is owed: one the store gave by hand
+   * (services/payment-records.ts, `recordPaymentRefund`), or a Stripe refund
+   * (apps/web lib/reservations/stripe-refund-writes.ts). Added in the
+   * refund's own transaction, so it is owed as soon as the refund exists;
+   * the invoicing issues one credit note per refund, so a run after one that
+   * issued it changes nothing. It sends nothing.
+   */
+  "payment.refundCreditNote": {
+    storeId: string;
+    reservationId: string;
+    /** The payment refunded (`payments.id`). */
+    paymentId: string;
+    /** The refund's own row (`payments.id`), whose `refundOfPaymentId` is `paymentId`. */
+    refundId: string;
+    /** The refund's amount, as stored. */
+    amount: string;
+    /** Who recorded it, for the invoicing log. */
+    source: string;
+  };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;
@@ -288,6 +386,11 @@ export interface EffectSendContext {
    * record of what it did on, so a run after a lost outcome sees it.
    */
   effectId: string;
+  /**
+   * The row's own store, reservation and customer, as it was added: a sender
+   * sends about these only, whatever its payload names.
+   */
+  row: { storeId: string; reservationId: string | null; customerId: string | null };
   /** Aborted at the sender's timeout: pass it to every provider call, and send nothing after it. */
   signal: AbortSignal;
   /**
@@ -301,15 +404,31 @@ export interface EffectSendContext {
 }
 
 /**
+ * What a sender answers besides success:
+ * - `skipped` when there is nothing to send any more (its channel turned
+ *   off, the news no longer true, a limit reached): the row is `cancelled`;
+ * - `abandoned` when the message is owed but can never go out from this row
+ *   (its payload unreadable, its recipient changed, no transport): the row
+ *   is given up at once, kept with its payload, and shows where unsent
+ *   messages show. `report` sends it to error tracking: a row written wrong.
+ *
+ * Each reason starts with a code (`recipient_changed: …`) that readers of
+ * the row may map to their own words.
+ */
+export type EffectSendOutcome =
+  | void
+  | { skipped: string }
+  | { abandoned: string; report?: boolean };
+
+/**
  * The app's sender of each effect type. A sender throws when the effect
- * failed and may succeed later; it returns `{ skipped }` when there is
- * nothing to send (its channel turned off, no address, a limit reached).
+ * failed and may succeed later.
  */
 export type ApiEffectSenders = {
   [K in ApiEffectType]: (
     payload: ApiEffectPayloads[K],
     context: EffectSendContext,
-  ) => Promise<void | { skipped: string }>;
+  ) => Promise<EffectSendOutcome>;
 };
 
 /** How long a sender holds a row before another may take it over. */
@@ -400,6 +519,7 @@ export async function amendEffectPayload(id: string, field: string, value: numbe
 
 type Claimed = {
   id: string;
+  row: EffectSendContext["row"];
   type: string;
   payload: Record<string, unknown>;
   attempts: number;
@@ -436,6 +556,7 @@ export async function claimEffect(
         seq: apiEffects.seq,
         storeId: apiEffects.storeId,
         reservationId: apiEffects.reservationId,
+        customerId: apiEffects.customerId,
         orderingKey: apiEffects.orderingKey,
         type: apiEffects.type,
         payload: apiEffects.payload,
@@ -533,6 +654,7 @@ export async function claimEffect(
       .where(eq(apiEffects.id, id));
     return {
       id: row.id,
+      row: { storeId: row.storeId, reservationId: row.reservationId, customerId: row.customerId },
       type: row.type,
       payload: row.payload,
       attempts: row.attempts + 1,
@@ -583,6 +705,21 @@ async function recordSkipped(id: string, token: string, reason: string) {
       lockedUntil: null,
       claimToken: null,
       lastError: `Skipped: ${reason}`.slice(0, 1000),
+    })
+    .where(fenced(id, token));
+}
+
+/** A row its sender cannot ever send: given up now, its payload kept for whoever looks. */
+async function recordAbandoned(id: string, token: string, reason: string) {
+  await db
+    .update(apiEffects)
+    .set({
+      status: "abandoned",
+      lockedUntil: null,
+      claimToken: null,
+      lastError: `Abandoned: ${reason}`.slice(0, 1000),
+      // The time it was abandoned, as claimEffect and recordFailure keep it.
+      nextAttemptAt: dbNowPlus(0),
     })
     .where(fenced(id, token));
 }
@@ -693,6 +830,7 @@ export async function dispatchEffects(
     };
     const context: EffectSendContext = {
       effectId: id,
+      row: claimed.row,
       signal: controller.signal,
       throwIfAborted,
       assertClaim: async () => {
@@ -711,11 +849,21 @@ export async function dispatchEffects(
       const send = senders[type] as (
         payload: unknown,
         context: EffectSendContext,
-      ) => Promise<void | { skipped: string }>;
+      ) => Promise<EffectSendOutcome>;
       const result = await Promise.race([send(claimed.payload, context), timeout]);
       if (result && "skipped" in result) {
         await recordSkipped(id, token, result.skipped);
         outcome.skipped += 1;
+      } else if (result && "abandoned" in result) {
+        // No retry can send it. A row written wrong: whoever wrote it should know.
+        if (result.report) {
+          options.report?.(new Error(`Effect ${type} abandoned: ${result.abandoned}`), {
+            source: "effects",
+            effect: type,
+          });
+        }
+        await recordAbandoned(id, token, result.abandoned);
+        outcome.failed += 1;
       } else {
         await recordSent(id, token);
         outcome.sent += 1;
@@ -772,6 +920,90 @@ export async function retryDueEffects(
   );
 }
 
+/**
+ * The effects that are a debt, not a message: one the outbox gave up on stays owed,
+ * is kept past the retention, and is armed again by the cron.
+ */
+export const OWED_EFFECT_TYPES = [
+  "payment.refundCreditNote",
+] as const satisfies readonly ApiEffectType[];
+
+/** How long an abandoned debt waits before the cron arms it again. */
+export const OWED_EFFECT_REARM_MS = 86_400_000;
+
+/**
+ * How long after it was owed the cron keeps arming a debt again: past it, one whose
+ * note never came is left abandoned, still shown in the inbox, for a person.
+ */
+export const OWED_EFFECT_REARM_DAYS = 90;
+
+/**
+ * Whether a `payment.refundCreditNote` row is still owed: its refund row exists, is
+ * `completed`, and has no credit note yet. One whose refund failed, or that names no
+ * refund row, owes nothing.
+ */
+export const creditNoteStillOwedSql = () =>
+  sql<boolean>`EXISTS (
+    SELECT 1 FROM ${payments}
+    WHERE ${payments.id} = JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.refundId'))
+      AND ${payments.status} = 'completed'
+      AND NOT EXISTS (
+        SELECT 1 FROM ${invoicePayments}
+        INNER JOIN ${invoices} ON ${invoices.id} = ${invoicePayments.invoiceId}
+        WHERE ${invoicePayments.paymentId} = ${payments.id} AND ${invoices.type} = 'credit_note'
+      )
+  )`;
+
+/**
+ * Arms again the abandoned rows of the owed effect types (`OWED_EFFECT_TYPES`) that
+ * were abandoned a day ago or more and are still owed (`creditNoteStillOwedSql`): back
+ * to pending with no attempt counted, so the outbox tries them again. A row armed again
+ * and abandoned again waits another day; one owed more than 90 days ago is armed no
+ * more. A row ends when its note is issued, when it turns out not to apply (its refund
+ * failed: the sender ends it with nothing to issue), or when it names no refund row
+ * (never owed: left abandoned, as the sender reported it). The oldest first, bounded
+ * per run, in the database's time. The rows' ids, for the dispatcher.
+ */
+export async function rearmAbandonedEffects(limit = 20): Promise<string[]> {
+  const due = await db
+    .select({ id: apiEffects.id })
+    .from(apiEffects)
+    .where(
+      and(
+        eq(apiEffects.status, "abandoned"),
+        inArray(apiEffects.type, [...OWED_EFFECT_TYPES]),
+        // An abandoned row's next attempt is the time it was abandoned.
+        lte(apiEffects.nextAttemptAt, dbNowPlus(-OWED_EFFECT_REARM_MS)),
+        sql`${apiEffects.createdAt} > NOW(3) - INTERVAL ${sql.raw(String(OWED_EFFECT_REARM_DAYS))} DAY`,
+        creditNoteStillOwedSql(),
+      ),
+    )
+    .orderBy(asc(apiEffects.nextAttemptAt), asc(apiEffects.id))
+    .limit(limit);
+  const armed: string[] = [];
+  for (const { id } of due) {
+    // Only a row still abandoned and still due: a second run, at once, arms nothing.
+    const [result] = await db
+      .update(apiEffects)
+      .set({
+        status: "pending",
+        attempts: 0,
+        claimToken: null,
+        lockedUntil: null,
+        nextAttemptAt: dbNowPlus(0),
+      })
+      .where(
+        and(
+          eq(apiEffects.id, id),
+          eq(apiEffects.status, "abandoned"),
+          lte(apiEffects.nextAttemptAt, dbNowPlus(-OWED_EFFECT_REARM_MS)),
+        ),
+      );
+    if (result.affectedRows === 1) armed.push(id);
+  }
+  return armed;
+}
+
 /** Deletes the done rows older than the retention: their payloads hold personal data. */
 export async function pruneEffects(limit = 500) {
   const old = await db
@@ -781,6 +1013,8 @@ export async function pruneEffects(limit = 500) {
       and(
         inArray(apiEffects.status, [...DONE]),
         lt(apiEffects.createdAt, dbNowPlus(-EFFECT_RETENTION_MS)),
+        // A debt is kept while it is owed: the cron arms it again (`rearmAbandonedEffects`).
+        sql`NOT (${apiEffects.status} = 'abandoned' AND ${inArray(apiEffects.type, [...OWED_EFFECT_TYPES])} AND ${creditNoteStillOwedSql()})`,
       ),
     )
     .limit(limit);

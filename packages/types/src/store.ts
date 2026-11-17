@@ -549,6 +549,13 @@ export interface PricingBreakdown {
   subtotalInclTax: number | null;
   // Manual price override fields
   isManualOverride?: boolean;
+  /**
+   * Written only to record the facts its pricing used (slice 9): an
+   * unpromoted line from the checkout, which kept no breakdown before. The
+   * dashboard's edit reads its pricing basis from a breakdown; it reads none
+   * from this one, as it read none before (`pricingBasisOf`).
+   */
+  factsOnly?: true;
   originalPrice?: number; // Price before manual override
   // Seasonal pricing breakdown
   seasonalSegments?: Array<{

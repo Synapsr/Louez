@@ -36,6 +36,16 @@ const RELEASE = [
   "0097_api_operation_setup_store",
   "0098_api_jobs",
   "0099_api_handoffs_subject",
+  "0100_deposit_hold_release_and_attempt",
+  "0101_api_handoffs_revision",
+  "0102_api_handoffs_decision",
+  "0103_api_handoffs_approval",
+  "0104_api_approval_consumption",
+  "0105_payment_session_settled",
+  "0106_payment_refund_operations",
+  "0107_reservation_pricing_facts",
+  "0108_deposit_out_of_total",
+  "0109_refund_operation_pending",
 ];
 
 interface Journal {
@@ -122,7 +132,14 @@ describe("Docker migrator after the app's runner (database)", { skip: skipWithou
       ["inbox_acknowledgements", "occurred_at"],
       ["reservations", "schedule_changed_at"],
       ["api_handoffs", "provider_checks"],
+      ["api_handoffs", "decision_reason"],
       ["api_jobs", "slot_key"],
+      ["payments", "release_owed_at"],
+      ["payments", "provider_requested_at"],
+      ["payments", "claimed_until"],
+      ["payments", "claim_token"],
+      ["payments", "stripe_customer_id"],
+      ["payments", "session_settled_at"],
     ] as const) {
       assert.ok(await columnExists(table, column), `${table}.${column} exists`);
     }

@@ -9,7 +9,11 @@ import {
 
 import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
+import { createRefundCreditNoteEffectSenders } from "@/lib/invoicing/refund-credit-note-effects";
+import { createDepositHoldEffectSenders } from "@/lib/reservations/deposit-hold-effects";
+import { createReservationMessageEffectSenders } from "@/lib/reservations/reservation-message-effects";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
+import { createStripeRefundEffectSenders } from "@/lib/reservations/stripe-refund";
 import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
 import { createStoreLaunchEffectSenders } from "@/lib/stores/store-launch-effects";
@@ -21,7 +25,11 @@ import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-ef
  * effect type. A domain that adds an effect type adds its sender here.
  */
 export const apiEffectSenders: ApiEffectSenders = {
+  ...createDepositHoldEffectSenders(),
+  ...createRefundCreditNoteEffectSenders(),
   ...createReservationEffectSenders(),
+  ...createStripeRefundEffectSenders(),
+  ...createReservationMessageEffectSenders(),
   ...createSmsEffectSenders(),
   ...createStoreCreationEffectSenders(),
   ...createStoreLaunchEffectSenders(),

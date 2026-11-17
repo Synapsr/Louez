@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { usePostHog } from "posthog-js/react";
 import { useState } from "react";
 
 import {
@@ -47,15 +48,27 @@ import type { ContractSignatureMode } from "@louez/types";
 import { cn, formatCurrency } from "@louez/utils";
 
 import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
+import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { useStoreTimezone } from "@/contexts/store-context";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { isContractSignatureRequiredRefusal } from "@/lib/reservations/contract-signature-refusal";
+import {
+  CONFIRMED_ANYWAY_EVENT,
+  overridesAfter,
+  readStatusStockRefusal,
+  type StatusStockOverrides,
+  type StatusStockRefusal,
+} from "@/lib/reservations/status-stock-refusal";
+import { readUnitConflictRefusal } from "@/lib/reservations/unit-conflict-refusal";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
-import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
+import {
+  reservationAnalyticsActions,
+  reservationManagementAnalyticsBaseProperties,
+} from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
   captureReservationActionStarted,
@@ -139,8 +152,15 @@ export function SmartReservationActions({
   const { intl: formatLocale } = useFormatLocale();
   const timezone = useStoreTimezone();
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
 
   const [isLoading, setIsLoading] = useState(false);
+  // A confirmation the stock or the turnover buffer cannot cover: the
+  // refusal, and the flags it was sent with, until the store chooses.
+  const [stockRefusal, setStockRefusal] = useState<{
+    refusal: StatusStockRefusal;
+    sent: StatusStockOverrides;
+  } | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
@@ -306,7 +326,11 @@ export function SmartReservationActions({
     }),
   );
 
-  const handleStatusChange = async (newStatus: StoreTargetStatus, reason?: string) => {
+  const handleStatusChange = async (
+    newStatus: StoreTargetStatus,
+    reason?: string,
+    overrides: StatusStockOverrides = {},
+  ) => {
     const analyticsAction = getReservationStatusAnalyticsAction(newStatus);
     if (analyticsAction) {
       captureReservationActionStarted({
@@ -323,6 +347,7 @@ export function SmartReservationActions({
         id: reservationId,
         status: newStatus,
         rejectionReason: reason,
+        ...overrides,
       });
 
       const warnings =
@@ -342,14 +367,41 @@ export function SmartReservationActions({
           properties: { error_code: "status_update_failed", status_after: newStatus },
         });
       }
+      const refusal = readStatusStockRefusal(error);
       if (isReservationGateRefusal(error)) setGateDialogOpen(true);
       else if (isContractSignatureRequiredRefusal(error))
         toastManager.add({ title: tErrors("contractSignatureRequired"), type: "error" });
-      else toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The stock, or the turnover buffer, is short: the store may confirm
+      // anyway, from the dialog.
+      else if (refusal) setStockRefusal({ refusal, sent: overrides });
+      else {
+        // Units the reservation holds cannot serve it: the store is told which.
+        const unitConflict = readUnitConflictRefusal(error);
+        toastManager.add({
+          title: unitConflict
+            ? tErrors("assignedUnitsConflict", { identifiers: unitConflict.identifiers })
+            : tErrors("generic"),
+          type: "error",
+        });
+      }
     } finally {
       setIsLoading(false);
       setAcknowledgeWarnings(false);
     }
+  };
+
+  const handleConfirmAnyway = async () => {
+    if (!stockRefusal) return;
+    const { refusal, sent } = stockRefusal;
+    posthog.capture(CONFIRMED_ANYWAY_EVENT[refusal.kind], {
+      ...reservationManagementAnalyticsBaseProperties,
+      reservation_id: reservationId,
+      shortfall_count: refusal.shortfalls.length,
+      source: "reservation_confirmation",
+      entry_point: "reservation_detail",
+    });
+    setStockRefusal(null);
+    await handleStatusChange("confirmed", undefined, overridesAfter(refusal, sent));
   };
 
   const handleReject = async () => {
@@ -1169,6 +1221,17 @@ export function SmartReservationActions({
       />
 
       <ReservationGateDialog open={gateDialogOpen} onOpenChange={setGateDialogOpen} />
+
+      <ReservationOverbookingDialog
+        open={stockRefusal !== null}
+        onOpenChange={(open) => {
+          if (!open) setStockRefusal(null);
+        }}
+        shortfalls={stockRefusal?.refusal.shortfalls ?? []}
+        intent={stockRefusal?.refusal.kind === "buffer" ? "confirmPastBuffer" : "confirm"}
+        isPending={isLoading}
+        onConfirm={handleConfirmAnyway}
+      />
     </>
   );
 }

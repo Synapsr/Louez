@@ -1,5 +1,5 @@
 import { db, stores } from "@louez/db";
-import { os } from "@orpc/server";
+import { os, type AnyProcedure } from "@orpc/server";
 import { eq } from "drizzle-orm";
 
 import type { BaseContext } from "../context";
@@ -66,6 +66,52 @@ export function missingTransport() {
   });
 }
 
+/**
+ * An idempotency key a write that requires one accepts
+ * (`meta.requiresIdempotencyKey`): an absent key is missing, and so is one
+ * made of nothing but whitespace and commas, as two empty `Idempotency-Key`
+ * headers combine into `", "`.
+ */
+export function hasIdempotencyKey(key: string | null | undefined): boolean {
+  return typeof key === "string" && key.replace(/[\s,]/g, "") !== "";
+}
+
+/**
+ * What a call is refused on its caller alone, in this order: a procedure the
+ * client's directory forbids, a credential the procedure does not take,
+ * platform staff only, and a write that requires an idempotency key called by
+ * a key or a token without one. Null when the caller may go on. Every
+ * procedure asks it in `authenticated`, before it resolves its store and
+ * before its handler, so before any confirmation, approval or operation row.
+ */
+export function callerRefusal(meta: ApiMeta, actor: AccountActor, idempotencyKey: string | null) {
+  // A procedure the client's directory forbids is refused first, before any
+  // confirmation or idempotency key: a replay never reaches it either.
+  if (meta.capability && actor.credential.withheld?.capabilities.includes(meta.capability)) {
+    return platformErrors.capabilityWithheldFromClient(meta.capability);
+  }
+  if (meta.actors && !meta.actors.includes(actor.credential.kind)) {
+    return platformErrors.sessionOnly();
+  }
+  // What only a person does in the dashboard (deciding an approval, keys,
+  // the team, the account) is never the in-app assistant's, though it acts
+  // with the person's session.
+  if (meta.actors && actor.credential.assistant) return platformErrors.sessionOnly();
+  if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
+    return platformErrors.permissionDenied("platform_admin");
+  }
+  // A write a retry must not do twice wants a key from an agent, asked before
+  // the handler, a confirmation, an approval or an operation record.
+  if (
+    meta.requiresIdempotencyKey &&
+    actor.credential.kind !== "session" &&
+    !hasIdempotencyKey(idempotencyKey)
+  ) {
+    return platformErrors.idempotencyKeyRequired(actor.transport);
+  }
+  return null;
+}
+
 /** Who calls, checked on every call: shared by the account and the store procedures. */
 const authenticated = base.use(async ({ context, next, procedure }) => {
   if (!context.transport) throw missingTransport();
@@ -73,23 +119,38 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
   const actor: AccountActor = await resolveAccountActor({
     transport: context.transport,
     headers: context.headers,
+    // The server's own mark, never the request's (`BaseContext.assistant`).
+    assistant: context.assistant === true,
   });
   if (context.errorScope) {
     context.errorScope.client = actor.credential.kind;
+    context.errorScope.actorId = actor.credential.id ?? actor.credential.userId;
     if (actor.credential.directory) context.errorScope.directory = actor.credential.directory;
   }
-  // A procedure the client's directory forbids is refused first, before any
-  // confirmation or idempotency key: a replay never reaches it either.
-  if (meta.capability && actor.credential.withheld?.capabilities.includes(meta.capability)) {
-    throw platformErrors.capabilityWithheldFromClient(meta.capability);
-  }
-  if (meta.actors && !meta.actors.includes(actor.credential.kind))
-    throw platformErrors.sessionOnly();
-  if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
-    throw platformErrors.permissionDenied("platform_admin");
+  const refusal = callerRefusal(meta, actor, context.headers.get(IDEMPOTENCY_HEADER));
+  if (refusal) {
+    // A keyless call spends one call of the connection's rate limit, as the
+    // call would have: the procedure counts tool calls, not the transports.
+    if (refusal.data.code === "IDEMPOTENCY_KEY_REQUIRED") {
+      const limit = await consumeRateLimit(rateLimitKey(actor.credential));
+      if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
+    }
+    throw refusal;
   }
   return next({ context: { actor } });
 });
+/** The caller checks' middleware itself, as every procedure built on `authenticated` carries it. */
+const checkCaller = authenticated["~orpc"].middlewares.at(-1);
+
+/**
+ * Whether a procedure runs the caller checks of `accountProcedure` and
+ * `storeProcedure` (`callerRefusal`): built on one of them, it carries their
+ * middleware, told by identity. The exposure registry serves a write that
+ * requires an idempotency key only when it does.
+ */
+export function checksCaller(procedure: AnyProcedure): boolean {
+  return checkCaller !== undefined && procedure["~orpc"].middlewares.includes(checkCaller);
+}
 
 /**
  * A write's run through `runOperation`: recorded, and replayed for a repeated
@@ -107,8 +168,10 @@ async function recordWrite<T extends { output: unknown }>(input: {
   receipt: BaseContext["receipt"];
   rawInput: unknown;
   dispatchEffects?: (ids: readonly string[]) => void;
+  /** `meta.recoverUnknown`, bound to the call's context. */
+  recoverUnknown?: (targetId: string) => Promise<unknown>;
   run: () => T | PromiseLike<T>;
-  replay: (output: unknown) => T;
+  replay: (output: unknown) => T | PromiseLike<T>;
 }): Promise<T> {
   let ran: T | undefined;
   const { actor } = input;
@@ -130,13 +193,14 @@ async function recordWrite<T extends { output: unknown }>(input: {
         input: input.rawInput,
       }),
       dispatchEffects: input.dispatchEffects,
+      recoverUnknown: input.recoverUnknown,
     },
     async () => {
       ran = await input.run();
       return ran.output;
     },
   );
-  return ran ?? input.replay(result);
+  return ran ?? (await input.replay(result));
 }
 
 /**
@@ -233,6 +297,7 @@ export const storeProcedure = authenticated.use(
       headers: context.headers,
       requestedStoreId: context.headers.get(STORE_HEADER) ?? undefined,
     });
+    if (context.errorScope) context.errorScope.storeId = storeActor.storeId;
 
     if (!allows(storeActor.role, credential.scopes, meta.scope)) {
       throw scopeRefusal(credential, meta.scope);
@@ -263,9 +328,24 @@ export const storeProcedure = authenticated.use(
       receipt: context.receipt,
       rawInput: input,
       dispatchEffects: ports.dispatchEffects,
+      recoverUnknown: meta.recoverUnknown
+        ? (targetId) => meta.recoverUnknown!(targetId, nextContext)
+        : undefined,
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
-      replay: (result) => output(result) as Awaited<ReturnType<typeof next<typeof nextContext>>>,
+      replay: async (result) => {
+        // A stored answer goes only to a caller the handler would answer now;
+        // refused, nothing was replayed, and the receipt says so.
+        try {
+          await meta.authorizeReplay?.(result, storeActor);
+        } catch (error) {
+          if (context.receipt) context.receipt.replayed = false;
+          throw error;
+        }
+        return output(
+          meta.upgradeReplay ? meta.upgradeReplay(result, ports.urls) : result,
+        ) as Awaited<ReturnType<typeof next<typeof nextContext>>>;
+      },
     });
   },
 );

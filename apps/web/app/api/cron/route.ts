@@ -35,9 +35,19 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Review requests: every minute (checks for eligible reservations)
  * - Automatic reminders: every minute (checks for upcoming pickups/returns)
  * - Calendar sync: every minute (pushes reservation updates to calendar providers)
+ * - Deposit release debts: every minute, before the API effects. A release of a second
+ *   deposit authorization Louez still owes (payments.release_owed_at) whose outbox row
+ *   was abandoned or deleted gets a new one, a day at most after the last
+ *   (lib/reservations/deposit-hold-debts.ts)
  * - API effects: every minute, alongside the other tasks so none of them holds it back
  *   (retries the outbox rows of committed writes: customer messages, notifications,
  *   analytics events; deletes done rows after 30 days; packages/api platform/effects.ts)
+ * - Abandoned checkouts: every minute, after the API effects and the agent-ready
+ *   API's tasks (api-tasks.ts). An online checkout still pending with an unsettled
+ *   session past its lifetime and under 48 hours old: each such session is read at
+ *   Stripe (5 seconds at most, no retry), one over marked, a paid one recorded, and
+ *   the checkout cancelled when nothing of it can still be paid; at most 20 a run,
+ *   drawn at random, and none taken after 20 seconds (lib/reservations/abandoned-checkouts.ts)
  * - Agent-ready API: every minute, with the API effects (api-tasks.ts). The background
  *   jobs the first dispatch left, such as AI photos, run in the background, never in
  *   this request. Retention, each bounded per run: inbox acknowledgements, handoffs and

@@ -22,6 +22,8 @@ export * from "./reservation-sign";
 export * from "./reservation-contract-validation";
 export * from "./required-accessories";
 export * from "./reservation-edit-context";
+export * from "./reservation-editable";
 export * from "./variant-axes";
 export * from "./pricing-catalog";
+export * from "./pricing-facts";
 export * from "./promo";

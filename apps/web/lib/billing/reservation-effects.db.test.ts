@@ -86,8 +86,9 @@ describe("reservation fee effects (database)", { skip: skipWithoutTestDatabase()
     to: ReservationStatus,
     now?: Date,
   ) {
-    const result = await louezDb.db.transaction((tx) =>
+    const result = await louezDb.runReservationChange({ reservationId, storeId }, (tx, lock) =>
       louezDb.changeReservationStatus(tx, {
+        lock,
         reservationId,
         storeId,
         to,

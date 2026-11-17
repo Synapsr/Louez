@@ -1,17 +1,54 @@
-import { OpenAPIGenerator, type OpenAPIGeneratorGenerateOptions } from "@orpc/openapi";
-import { OpenAPIHandler } from "@orpc/openapi/fetch";
-import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { onError, ORPCError, type AnyRouter } from "@orpc/server";
+import type { OpenAPI } from "@orpc/contract";
+import {
+  isAnySchema,
+  isObjectSchema,
+  OpenAPIGenerator,
+  separateObjectSchema,
+  simplifyComposedObjectJsonSchemasAndRefs,
+  toOpenAPIContent,
+  type JSONSchema,
+  type OpenAPIGeneratorGenerateOptions,
+} from "@orpc/openapi";
+import {
+  getDynamicParams,
+  StandardBracketNotationSerializer,
+  StandardOpenAPIJsonSerializer,
+  StandardOpenAPISerializer,
+} from "@orpc/openapi-client/standard";
+import { StandardOpenAPICodec, StandardOpenAPIMatcher } from "@orpc/openapi/standard";
+import { onError, ORPCError, type AnyProcedure, type AnyRouter } from "@orpc/server";
+import { FetchHandler } from "@orpc/server/fetch";
+import { StandardHandler, type StandardHandlerOptions } from "@orpc/server/standard";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { z } from "zod";
 
 import type { BaseContext } from "../context";
 import { resolveAccountActor } from "./actor";
+import {
+  APPROVAL_COOL_DOWN_TIME,
+  APPROVAL_DECIDE_TIME,
+  APPROVAL_EXECUTE_TIME,
+} from "./approval-help";
+import { CONFIRMATION_TTL_MS } from "./confirmation";
 import { reportUnexpectedErrors } from "./error-reporting";
+import { type RequestLogSink, logRefusals, logRequestError } from "./refusal-log";
 import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
-import type { ApiErrorData } from "./errors";
+import { APPROVAL_POLL_SECONDS, apiError, type ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
-import type { OperationReceipt } from "./operations";
+import { REFERENCE_TAGS } from "./openapi-tags";
+import { sha256 } from "./hash";
+import {
+  MAX_IDEMPOTENCY_KEY_LENGTH,
+  OPERATION_RETENTION_MONTHS,
+  type OperationReceipt,
+} from "./operations";
 import type { ApiPorts } from "./ports";
+import { API_RATE_LIMIT } from "./rate-limit";
+import {
+  APPROVAL_REQUESTS_PER_HOUR,
+  MAX_PENDING_APPROVALS,
+  MAX_STORE_PENDING_APPROVALS,
+} from "../services/approvals";
 
 /** Response header with the id of the operation a write recorded (its receipt). */
 export const OPERATION_ID_HEADER = "Louez-Operation-Id";
@@ -20,6 +57,57 @@ export const REPLAYED_HEADER = "Louez-Replayed";
 
 /** Where the app mounts the OpenAPI transport. */
 export const OPENAPI_PREFIX = "/api/v1";
+
+/** Where `/api/v1` serves its OpenAPI document, and the reference that renders it. */
+export const OPENAPI_DOCUMENT_PATH = "/openapi.json";
+export const OPENAPI_REFERENCE_PATH = "/docs";
+
+/** `info.version`: the first version of `/api/v1`, in beta until it is declared stable. */
+export const OPENAPI_VERSION = "1.0.0-beta";
+
+/** Where changes to the API are announced: the repository's changelog. */
+export const API_CHANGELOG_URL = "https://github.com/Synapsr/Louez/blob/main/CHANGELOG.md";
+
+/** The dashboard page where a store owner creates API keys (its "API keys" section). */
+export const API_KEYS_PAGE_PATH = "/dashboard/settings/integrations/mcp";
+
+/**
+ * The reference's renderer, Scalar, from jsDelivr: pinned to one file, which
+ * the browser runs only if it matches this hash.
+ */
+const REFERENCE_SCRIPT = {
+  url: "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.76.0/dist/browser/standalone.js",
+  integrity: "sha384-oH1C0RwqcwbVXkC+r8A+4qRoyEUQdtxAzOwumkxZtQBBcsy61FOoPt7B50OVJYYQ",
+};
+
+/**
+ * The reference's layout over Scalar's, by its class names in the pinned
+ * version. Where Scalar shows two columns, the introduction's text takes the
+ * width and its cards (server, key, client) a narrow column, rather than half
+ * each; narrower, Scalar stacks them, and this rule stays out of it. The
+ * introduction's tables size their columns to their content, rather than
+ * evenly, and their first two (the error table's status and code) never wrap.
+ */
+const REFERENCE_CSS = [
+  "@container references-container (width > 900px) { .introduction-section .section-column:nth-of-type(2) { flex: 0 0 340px; } }",
+  ".introduction-section .markdown table { table-layout: auto; }",
+  ".introduction-section .markdown :is(td, th):nth-child(-n + 2) { white-space: nowrap; }",
+].join("\n");
+
+/**
+ * How long a client or a shared cache may keep the document and the
+ * reference: they change only with a deployment.
+ */
+const REFERENCE_CACHE_CONTROL = "public, max-age=300";
+
+/**
+ * The reference page may not be framed by any site, its own included (Scalar
+ * renders in the page, not in a frame): no CSP reaches `/api/*` otherwise.
+ */
+export const REFERENCE_PAGE_FRAMING_HEADERS = {
+  "Content-Security-Policy": "frame-ancestors 'none'",
+  "X-Frame-Options": "DENY",
+} as const;
 
 /**
  * Largest body `/api/v1` reads, unless the procedure takes more
@@ -62,8 +150,78 @@ export function routeBodyLimits(procedures: readonly ExposedProcedure[]): RouteB
   return limits;
 }
 
+/**
+ * The media types `/api/v1` reads an operation's body in, decided from its
+ * input as JSON Schema and its route as oRPC's generator documents its
+ * request body (`OpenAPIGenerator`, for an input of compact structure, the
+ * only one Louez uses): a read (GET) takes its input from the query string;
+ * otherwise the path parameters are taken out of the input
+ * (`separateObjectSchema`), and an input with nothing left beside them takes
+ * no body. What is left is read as JSON, and also as a multipart form when it
+ * holds a file (`toOpenAPIContent`). A body in another type, or any body
+ * where none is taken, is refused with 415 (`handleOpenApiRequest`).
+ */
+export function requestBodyMediaTypes(
+  inputJsonSchema: unknown,
+  route: { method?: string; path?: `/${string}` } = {},
+): string[] {
+  if ((route.method ?? "POST") === "GET") return [];
+  const parameters = getDynamicParams(route.path)?.map(({ name }) => name) ?? [];
+  let schema = inputJsonSchema as JSONSchema;
+  if (isAnySchema(schema) && parameters.length === 0) return [];
+  if (parameters.length > 0) {
+    const input = simplifyComposedObjectJsonSchemasAndRefs(schema);
+    // The generator refuses such a route: its document could not be served.
+    if (!isObjectSchema(input)) {
+      throw new Error(
+        `The input of ${route.path} must be an object that holds its path parameters.`,
+      );
+    }
+    const [, rest] = separateObjectSchema(input, parameters);
+    if (!rest.required?.length && !rest.properties) return [];
+    schema = rest;
+  }
+  return Object.keys(toOpenAPIContent(schema));
+}
+
+/**
+ * Whether oRPC merges a decoded input over the path parameters: an object it
+ * reads as plain (`isObject` of `@orpc/shared`), such as the null-prototype
+ * objects its form and query string decoder builds.
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  const prototype = Object.getPrototypeOf(value) as { constructor?: unknown } | null;
+  return prototype === Object.prototype || !prototype || !prototype.constructor;
+}
+
+/** Whether a body is JSON's empty object, `{}`, spaces aside. */
+function isEmptyJsonObject(body: Uint8Array): boolean {
+  try {
+    const value: unknown = JSON.parse(new TextDecoder().decode(body));
+    return isPlainObject(value) && Object.keys(value).length === 0;
+  } catch {
+    return false;
+  }
+}
+
+/** A `Content-Type` value's media type, lowercase, without its parameters. */
+const mediaTypeOf = (contentType: string) => contentType.split(";")[0].trim().toLowerCase();
+
 const errorResponse = (error: ORPCError<string, unknown>, headers?: HeadersInit) =>
   Response.json(error.toJSON(), { status: error.status, headers });
+
+function unsupportedMediaType(contentTypes: readonly string[]): Response {
+  return errorResponse(
+    new ORPCError<"UNSUPPORTED_MEDIA_TYPE", ApiErrorData>("UNSUPPORTED_MEDIA_TYPE", {
+      message:
+        contentTypes.length > 0
+          ? `This operation reads a request body only as ${contentTypes.join(" or ")}, named in the Content-Type header, without Content-Disposition.`
+          : "This operation takes no request body.",
+      data: { code: "UNSUPPORTED_MEDIA_TYPE", retryable: false, details: { contentTypes } },
+    }),
+  );
+}
 
 function tooLarge(maxBytes: number): Response {
   return errorResponse(
@@ -75,17 +233,17 @@ function tooLarge(maxBytes: number): Response {
 }
 
 /**
- * The request with its body read, streaming, at most `maxBytes`: a body past
- * it, declared or sent, gets 413 before anything parses it. Past
- * `OPENAPI_MAX_BODY_BYTES` (declared, or once that much was read), the
- * request must first pass `enterLarge`, which answers a refusal or null.
+ * The request's body, read streaming, at most `maxBytes` (null when it has
+ * none): a body past it, declared or sent, gets 413 before anything parses
+ * it. Past `OPENAPI_MAX_BODY_BYTES` (declared, or once that much was read),
+ * the request must first pass `enterLarge`, which answers a refusal or null.
  */
-async function withBoundedBody(
+async function readBoundedBody(
   request: Request,
   maxBytes: number,
   enterLarge: () => Promise<Response | null>,
-): Promise<Request | Response> {
-  if (!request.body) return request;
+): Promise<Uint8Array<ArrayBuffer> | null | Response> {
+  if (!request.body) return null;
   const declared = Number(request.headers.get("content-length"));
   if (declared > maxBytes) {
     await request.body.cancel().catch(() => {});
@@ -121,32 +279,287 @@ async function withBoundedBody(
     }
     chunks.push(value);
   }
-  return new Request(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body: Buffer.concat(chunks),
-    signal: request.signal,
-  });
+  return Buffer.concat(chunks);
 }
+
+const jsonSchemaConverter = new ZodToJsonSchemaConverter();
 
 /** What the OpenAPI generator and the reference plugin need to read Zod 4 schemas. */
 const openApiGeneratorOptions = {
-  schemaConverters: [new ZodToJsonSchemaConverter()],
+  schemaConverters: [jsonSchemaConverter],
 };
 
 /**
+ * What the reference shows first, and every reader of the document gets: the
+ * API is in beta, and what that means.
+ */
+export const OPENAPI_BETA_NOTICE = `> **Beta.** The Louez REST API is in beta. It runs in production, but anything in it may still change while it is in beta: its operations and their fields, the \`/api/v1\` base path, the authentication, the error format and its codes, and the \`Idempotency-Key\` and \`Louez-Confirmation\` headers. Every change is announced in the [Louez changelog](${API_CHANGELOG_URL}) when it ships.
+>
+> An operation may gain an additional approval step: follow the flow its description states. An answer may gain fields at any time: ignore the ones you do not know. The version \`${OPENAPI_VERSION}\` marks the first version of \`/api/v1\`, before it is declared stable.`;
+
+/**
+ * How long a completed write replays for its idempotency key, in whole
+ * months: its record is kept `OPERATION_RETENTION_MONTHS` after its last
+ * change, and the purge may take it up to `OPERATION_PURGE_MARGIN_DAYS`
+ * (under a month) sooner.
+ */
+export const IDEMPOTENCY_REPLAY_MONTHS = OPERATION_RETENTION_MONTHS - 1;
+
+const MAX_BODY_MIB = OPENAPI_MAX_BODY_BYTES / (1024 * 1024);
+const CONFIRMATION_MINUTES = CONFIRMATION_TTL_MS / 60_000;
+
+/**
+ * The codes shared by the operations, which every integration should
+ * handle: the platform's own (platform/errors.ts, confirmation.ts,
+ * operations.ts, answer-pages.ts, the body cap, the content types and the
+ * path parameters below, large-bodies.ts, and a person's approval:
+ * `approvalErrors`). Those only an OAuth connection
+ * meets (STORE_REQUIRED, NOT_AVAILABLE_TO_THIS_AGENT) or no exposed procedure
+ * throws (SESSION_ONLY) are left out.
+ */
+export const COMMON_ERROR_CODES = [
+  [
+    400,
+    "INVALID_CURSOR",
+    "The `cursor` is not one this operation returned: start again without it.",
+  ],
+  [
+    400,
+    "PATH_PARAMETER_CONFLICT",
+    "A field of the body, or of a GET's query string, has the name of a path parameter and another value (`details.parameter`).",
+  ],
+  [
+    400,
+    "IDEMPOTENCY_KEY_REQUIRED",
+    "The write documents `Idempotency-Key` as required and the request sent none, or a blank one (`details.header`). Nothing was done: send it again with a new key.",
+  ],
+  [401, "UNAUTHENTICATED", "No API key, or one that is invalid, expired or revoked."],
+  [401, "CREDENTIAL_NOT_ACCEPTED", "The credential is not an API key."],
+  [
+    403,
+    "PERMISSION_DENIED",
+    "The key's rights or its owner's role do not allow it; `details.required` says what is needed.",
+  ],
+  [
+    403,
+    "NO_STORE_ACCESS",
+    "The store asked for is not the key's, the key's owner is no longer a member of its store, or the store no longer exists.",
+  ],
+  [403, "API_ACCESS_NOT_IN_PLAN", "The store's plan does not include the API."],
+  [
+    403,
+    "CONNECTION_BOUND_TO_STORES",
+    "The operation needs a connection over all of the user's stores; an API key is bound to its store. Its description says so.",
+  ],
+  [
+    409,
+    "IDEMPOTENCY_KEY_REUSED",
+    `The idempotency key was already used with another input or for another operation, or is not 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters long.`,
+  ],
+  [
+    409,
+    "OPERATION_IN_PROGRESS",
+    "The same write is still running: retry shortly with the same idempotency key.",
+  ],
+  [
+    409,
+    "OPERATION_OUTCOME_UNKNOWN",
+    "Louez does not know whether an earlier call with this idempotency key went through (`details.operationId`): it ended on an error Louez did not expect, or its outcome was not recorded. The key never runs the write again: check the current state before trying again with a new idempotency key.",
+  ],
+  [
+    409,
+    "APPROVAL_DECLINED",
+    "The key's owner refused the write on its approval page (`details.reason`: their words, if any). Nothing was done.",
+  ],
+  [
+    409,
+    "APPROVAL_RECENTLY_DECLINED",
+    `The same request was refused less than ${APPROVAL_COOL_DOWN_TIME} ago: it may be asked again from \`details.retryAt\`.`,
+  ],
+  [412, "CONFIRMATION_REQUIRED", "The write waits for a confirmation (below)."],
+  [
+    412,
+    "CONFIRMATION_INVALID",
+    "The confirmation token is unknown, expired, used, or no longer matches: call again without it for a new preview.",
+  ],
+  [412, "APPROVAL_REQUIRED", "The write waits for a person's approval (below)."],
+  [
+    412,
+    "APPROVAL_PENDING",
+    "The approval sent has not been decided yet: read it again, then retry (retryable).",
+  ],
+  [
+    412,
+    "APPROVAL_INVALID",
+    "The approval does not authorize this request. Check `details.reason` and follow the “Approvals” section before retrying.",
+  ],
+  [413, "REQUEST_TOO_LARGE", "The body is larger than the operation takes (`details.maxBytes`)."],
+  [
+    415,
+    "UNSUPPORTED_MEDIA_TYPE",
+    "The body is not in a content type the operation takes (`details.contentTypes`; empty when it takes no body), or has no `Content-Type`.",
+  ],
+  [429, "RATE_LIMITED", "Too many calls: retry after `details.retryAfterSeconds`."],
+  [
+    429,
+    "APPROVALS_FULL",
+    "Too many approval requests are open or were made this hour (`details.limit`): retry after the `Retry-After` header.",
+  ],
+  [
+    503,
+    "LARGE_BODY_BUSY",
+    "Too many large bodies are being read: retry after the `Retry-After` header.",
+  ],
+] as const satisfies ReadonlyArray<readonly [number, string, string]>;
+
+const errorTable = [
+  "| Status | `data.code` | Meaning |",
+  "| --- | --- | --- |",
+  ...COMMON_ERROR_CODES.map(
+    ([status, code, meaning]) => `| ${status} | \`${code}\` | ${meaning} |`,
+  ),
+].join("\n");
+
+const OPENAPI_DESCRIPTION = `${OPENAPI_BETA_NOTICE}
+
+Louez's dashboard operations for scripts and integrations: products and categories, the follow-up of reservations and the payments recorded on them, statistics, the store's settings, its Stripe connection, the online store, the team, billing and more. The list grows; this reference is the list. Each operation is also a tool of Louez's MCP server for AI assistants, under its \`operationId\`. Operation descriptions name other operations by method and path, such as \`GET /products/{id}\`; some field descriptions still name them by \`operationId\`.
+
+## Authentication
+
+Send an API key in the \`Authorization\` header: \`Bearer lz_…\`. Keys are created in the Louez dashboard, under Settings > Integrations > MCP, in the API keys section (\`${API_KEYS_PAGE_PATH}\`), with what each key may read and change. The key is shown once. It works on its own store only; an operation outside its rights answers \`PERMISSION_DENIED\`, and an operation no API key can call says so in its description. OAuth access tokens are for the MCP server: this API refuses them with \`CREDENTIAL_NOT_ACCEPTED\`.
+
+## Errors
+
+Send JSON bodies with \`Content-Type: application/json\`. A body is read only as JSON, or in another content type an operation's request body lists; any other, or a body without \`Content-Type\`, answers 415 \`UNSUPPORTED_MEDIA_TYPE\` before the operation runs. A \`GET\` reads its input from its path and its query string. Any other operation without a request body takes its whole input from its path: it reads no body, and one with anything in it answers 415 with an empty \`details.contentTypes\`; an empty body, or the JSON object \`{}\`, is accepted. A path parameter names the record an operation acts on: a body field (on a GET, a query parameter) with the same name may repeat it, but another value answers 400 \`PATH_PARAMETER_CONFLICT\` before the operation runs. An error answers with its HTTP status and, but for one case below, a JSON body of the \`Error\` schema: \`code\` (the HTTP-level code, such as \`FORBIDDEN\`), \`status\`, \`message\` (plain English, for a developer or a model: do not parse it) and, most of the time, \`data\`.
+
+- A refusal by Louez has \`data.code\`, a code to branch on rather than the message, such as \`PERMISSION_DENIED\`, and \`data.retryable\`, whether the same call can succeed later unchanged; \`data.details\`, when present, holds the facts behind it.
+- An input the operation does not accept answers 400 \`BAD_REQUEST\` with \`data.issues\` and no \`data.code\`. Each issue has a \`message\` and a \`path\`: the field at fault, such as \`["items", 0, "price"]\`, or \`[]\` when the issue is with the input as a whole.
+- A body sent as \`application/json\` that cannot be parsed answers 400 \`BAD_REQUEST\` without \`data\`; an empty body is read as an input with nothing in it.
+- An unexpected failure answers 500 \`INTERNAL_SERVER_ERROR\`, often without \`data\`.
+- A path that matches no operation answers 404 with the body \`{"message":"Not found"}\`, the one case not in the \`Error\` shape.
+
+The codes shared by the operations, which every integration should handle:
+
+${errorTable}
+
+Other codes belong to one operation or a few, such as \`PRODUCT_NOT_FOUND\`. Some descriptions name the codes to expect; this reference does not list them all yet. Branch on the codes you handle, and treat any other by its HTTP status and \`data.retryable\`.
+
+## Confirmations
+
+Some writes change what customers see or pay, or cannot be undone; their description says so and they take the \`Louez-Confirmation\` header. On a key that asks for confirmations (the default; an option of each key), their first call changes nothing and answers 412 \`CONFIRMATION_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` holds the facts to check, and \`data.details.confirmationToken\` is the token. Show the preview to the person who decides, then send the same request again with the token in the \`Louez-Confirmation\` header. A token works once, for ${CONFIRMATION_MINUTES} minutes, for the same key, input and state. A few operations always ask, whatever the key's option; their description says so. The writes below need a person's approval instead.
+
+## Approvals
+
+Recording a payment or a deposit return, deleting a payment, removing a member, cancelling an invitation, and confirming a reservation over the stock or past the turnover buffer need the approval of the key's owner, on a Louez page, whatever the key's confirmation option. Their description says so.
+
+1. The first call changes nothing and answers 412 \`APPROVAL_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` holds the facts, and \`data.details.approval\` the approval: its \`id\` (also \`data.details.confirmationToken\`), \`url\`, \`status\`, \`expiresAt\` and \`pollAfterSeconds\`.
+2. Give \`url\` to the key's owner. They open it signed in to Louez, read Louez's own summary of the write, and approve or refuse it, within ${APPROVAL_DECIDE_TIME}.
+3. Read \`GET /handoffs/{id}\` with the approval's id every \`pollAfterSeconds\` (${APPROVAL_POLL_SECONDS}) seconds or more, until its \`status\` is \`approved\`, \`completed\`, \`failed\` or \`expired\`, and no later than \`expiresAt\`; \`decision\` says what the owner decided, when, and their words. Only the key that asked reads its approval. It returns neither the input nor the operation: keep the request you sent.
+4. Approved, send the same request again, with the same input and the approval's id in the \`Louez-Confirmation\` header, within ${APPROVAL_EXECUTE_TIME}. It runs once, if the store is still as the preview showed, and answers as the operation always does. The same \`Idempotency-Key\` may be kept for the whole flow.
+
+The operation's own refusals come first: a request that fails them, such as an approved deletion sent again (\`PAYMENT_NOT_FOUND\`) or a deposit return above what is left (\`DEPOSIT_RETURN_EXCEEDS_BALANCE\`), answers that refusal whatever approval it carries. An approval error comes only for a request that is otherwise still valid. The other answers, each with nothing done:
+
+- \`APPROVAL_PENDING\` (412, retryable): the approval sent is not decided yet.
+- \`APPROVAL_DECLINED\` (409): the owner refused; \`details.reason\` holds their words, if any, as plain text.
+- \`APPROVAL_INVALID\` (412): inspect \`details.reason\`. For \`used\`, the action already ran: check the current record before requesting another action. For \`approver_not_allowed\`, the key’s owner can no longer authorize it; someone allowed must act in Louez. For \`expired\` or \`state_changed\`, send the request without \`Louez-Confirmation\` for a new preview and approval. For \`other_request\`, use this request’s approval, or omit the header to request one.
+- \`APPROVAL_RECENTLY_DECLINED\` (409): the owner refused the same request less than ${APPROVAL_COOL_DOWN_TIME} ago; it may be asked again from \`details.retryAt\`.
+- \`APPROVALS_FULL\` (429, with \`Retry-After\`): a key holds at most ${MAX_PENDING_APPROVALS} open approvals and makes at most ${APPROVAL_REQUESTS_PER_HOUR} requests an hour in its store, and a store holds at most ${MAX_STORE_PENDING_APPROVALS} open approvals.
+
+Sending the same request again while its approval is open answers with that approval, not a new one. A confirmation token sent where an approval is needed is no approval: the call asks for one.
+
+## Idempotency and receipts
+
+Writes that document the \`Idempotency-Key\` header accept one of 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters. A write that documents it as required answers a request without it, or with a blank one, with 400 \`IDEMPOTENCY_KEY_REQUIRED\` and does nothing. Use a new key for each write you mean, and the same key for its retries. While the write's operation record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months after its last change), a retry with the same key, from the same API key, for the same operation and input, answers by how the first call ended:
+
+- It succeeded: the retry returns its stored result without running it again, with \`Louez-Replayed: true\`.
+- Louez refused it before doing it, for instance \`CONFIRMATION_REQUIRED\`, \`APPROVAL_REQUIRED\`, \`PERMISSION_DENIED\` or \`RESERVATION_BUSY\`: the retry runs the write again. So one key serves a write's whole approval, from the first call to the one that carries it out.
+- Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers \`OPERATION_OUTCOME_UNKNOWN\` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation or an approval, call it without the token or the approval's id for a new preview, as either is spent if the write went through.
+- It still runs: the retry answers \`OPERATION_IN_PROGRESS\`; retry shortly with the same key.
+
+If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was. Writes that return a temporary upload URL do not replay: they ignore the header, and a retry issues a new URL. A successful write answers with \`Louez-Operation-Id\`, the id of the operation it recorded.
+
+## Limits
+
+Each API key spends at most ${API_RATE_LIMIT.max} request units a minute, shared with what the same key spends over MCP. A REST call costs at most one unit; over MCP, a request with a large body costs more. Past the limit, calls answer \`RATE_LIMITED\` with \`details.retryAfterSeconds\`. A request body is at most ${MAX_BODY_MIB} MiB, but for the few operations that take more: an image sent as its bytes, a product with its units. Where an answer has \`nextCursor\`, pass it as \`cursor\` to read on.`;
+
+/** The body of every error the operations answer, but a 404 for a path that matches none. */
+const ERROR_SCHEMA: OpenAPI.SchemaObject = {
+  type: "object",
+  description:
+    'An error. A path that matches no operation answers 404 with `{"message":"Not found"}` instead.',
+  properties: {
+    defined: { type: "boolean" },
+    code: { type: "string", description: "HTTP-level code, such as FORBIDDEN." },
+    status: { type: "integer", description: "The HTTP status." },
+    message: {
+      type: "string",
+      description: "Plain English, written for a developer or a model. Do not parse it.",
+    },
+    data: {
+      type: "object",
+      description:
+        "Absent when a JSON body cannot be parsed, and often on a 500. A refusal by Louez has `code` and `retryable`; an input the operation does not accept has `issues` instead.",
+      properties: {
+        code: {
+          type: "string",
+          description: "The code to branch on, such as PERMISSION_DENIED.",
+        },
+        retryable: {
+          type: "boolean",
+          description: "Whether the same call can succeed later unchanged.",
+        },
+        i18nKey: {
+          type: "string",
+          description: "The key under which the Louez dashboard translates this error.",
+        },
+        details: {
+          type: "object",
+          additionalProperties: true,
+          description: "The facts behind the error, such as `retryAfterSeconds`.",
+        },
+        issues: {
+          type: "array",
+          description: "For an input the operation does not accept: what is wrong with it.",
+          items: {
+            type: "object",
+            properties: {
+              code: { type: "string" },
+              path: {
+                type: "array",
+                items: { type: ["string", "integer"] },
+                description: "The field at fault; empty when the issue is with the whole input.",
+              },
+              message: { type: "string" },
+            },
+            required: ["path", "message"],
+          },
+        },
+      },
+    },
+  },
+  required: ["defined", "code", "status", "message"],
+};
+
+/** A response whose body is the `Error` schema. */
+const errorBodyResponse = (description: string) => ({
+  description,
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+});
+
+/**
  * The parts of the `/api/v1` document that do not come from the procedures:
- * the API key scheme, the idempotency and confirmation headers, the receipt
- * headers, and the error body every transport sends.
+ * the beta notice and the guide to the API, the API key scheme, the
+ * idempotency and confirmation headers, the receipt headers, and the error
+ * body and responses every operation refers to (`documented` in exposure.ts).
  */
 const openApiDocumentOptions = {
   info: {
     title: "Louez API",
-    version: "1.0.0",
-    description:
-      "Every action of the Louez dashboard, for scripts and integrations. Authenticate with an API key from Settings > API.",
+    version: OPENAPI_VERSION,
+    description: OPENAPI_DESCRIPTION,
   },
   security: [{ apiKey: [] }],
+  tags: REFERENCE_TAGS,
   components: {
     securitySchemes: {
       apiKey: {
@@ -162,20 +575,29 @@ const openApiDocumentOptions = {
         name: "Idempotency-Key",
         in: "header",
         required: false,
-        description:
-          "Makes a write safe to retry. The same key with the same input returns the stored result without running again; with another input it fails with IDEMPOTENCY_KEY_REUSED.",
-        schema: { type: "string", minLength: 1, maxLength: 100 },
+        description: `Makes this write safe to retry. While its record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months), a retry that succeeded with the same key, operation and input returns the stored result without running again; another input or operation fails with IDEMPOTENCY_KEY_REUSED.`,
+        schema: { type: "string", minLength: 1, maxLength: MAX_IDEMPOTENCY_KEY_LENGTH },
+      },
+      IdempotencyKeyRequired: {
+        name: "Idempotency-Key",
+        in: "header",
+        required: true,
+        description: `Required: a retry of this write must never do it twice, so a request without the header, or with a blank one, answers 400 IDEMPOTENCY_KEY_REQUIRED and does nothing. While its record is kept (at least ${IDEMPOTENCY_REPLAY_MONTHS} months), a retry that succeeded with the same key, operation and input returns the stored result without running again; another input or operation fails with IDEMPOTENCY_KEY_REUSED.`,
+        schema: { type: "string", minLength: 1, maxLength: MAX_IDEMPOTENCY_KEY_LENGTH },
       },
       LouezConfirmation: {
         name: "Louez-Confirmation",
         in: "header",
         required: false,
-        description:
-          "The token a CONFIRMATION_REQUIRED error returned. Send the same input again with it to go ahead. Valid ten minutes, once.",
+        description: `What lets a write that asked go ahead, from \`data.details.confirmationToken\` of its answer: the token a CONFIRMATION_REQUIRED error returned (valid ${CONFIRMATION_MINUTES} minutes, once), or the id of the approval an APPROVAL_REQUIRED error returned, once the key's owner approved it (valid for ${APPROVAL_EXECUTE_TIME} after the approval, once). Send the same input again with it.`,
         schema: { type: "string" },
       },
     },
     headers: {
+      RetryAfter: {
+        description: "Seconds to wait before calling again.",
+        schema: { type: "integer", minimum: 1 },
+      },
       LouezOperationId: {
         description: "Id of the operation this write recorded.",
         schema: { type: "string" },
@@ -185,33 +607,39 @@ const openApiDocumentOptions = {
         schema: { type: "string", enum: ["true"] },
       },
     },
-  },
-  customErrorResponseBodySchema: () => ({
-    type: "object",
-    properties: {
-      defined: { type: "boolean" },
-      code: { type: "string", description: "HTTP-level code, such as FORBIDDEN." },
-      status: { type: "number" },
-      message: {
-        type: "string",
-        description: "Plain English, written for a model or a developer.",
+    schemas: { Error: ERROR_SCHEMA },
+    responses: {
+      BadRequest: errorBodyResponse(
+        "A JSON body that cannot be parsed (no `data`), an input that is not accepted (`data.issues`), or a refusal such as INVALID_CURSOR or PATH_PARAMETER_CONFLICT (`data.code`).",
+      ),
+      Unauthorized: errorBodyResponse(
+        "No valid API key (UNAUTHENTICATED), or a credential that is not an API key (CREDENTIAL_NOT_ACCEPTED).",
+      ),
+      Forbidden: errorBodyResponse(
+        "The key's rights, its owner's role or membership, or the store's plan do not allow it: PERMISSION_DENIED, NO_STORE_ACCESS, API_ACCESS_NOT_IN_PLAN, CONNECTION_BOUND_TO_STORES.",
+      ),
+      ConfirmationRequired: errorBodyResponse(
+        "CONFIRMATION_REQUIRED, with the preview and the token to send in `Louez-Confirmation`; or CONFIRMATION_INVALID.",
+      ),
+      ApprovalRequired: errorBodyResponse(
+        "APPROVAL_REQUIRED, with the preview and the approval (`data.details.approval`: its `url` for the key's owner, its `id` to send in `Louez-Confirmation` once approved); APPROVAL_PENDING, not decided yet; or APPROVAL_INVALID, with `details.reason`. Where the description says a branch asks for a confirmation instead: CONFIRMATION_REQUIRED or CONFIRMATION_INVALID.",
+      ),
+      ApprovalDeclined: errorBodyResponse(
+        `APPROVAL_DECLINED: the key's owner refused, with their words in \`details.reason\`; APPROVAL_RECENTLY_DECLINED: the same request was refused less than ${APPROVAL_COOL_DOWN_TIME} ago, and may be asked again from \`details.retryAt\`; or another conflict, by its \`data.code\`.`,
+      ),
+      UnsupportedMediaType: errorBodyResponse(
+        "UNSUPPORTED_MEDIA_TYPE: the body is not in a content type the operation takes; `details.contentTypes` lists them, and is empty when the operation takes no body.",
+      ),
+      RateLimited: errorBodyResponse("RATE_LIMITED: retry after `details.retryAfterSeconds`."),
+      ApprovalsFull: {
+        ...errorBodyResponse(
+          "RATE_LIMITED: retry after `details.retryAfterSeconds`; or APPROVALS_FULL: too many approval requests are open or were made this hour, retry after `Retry-After`.",
+        ),
+        headers: { "Retry-After": { $ref: "#/components/headers/RetryAfter" } },
       },
-      data: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description: "Stable code to branch on, such as PERMISSION_DENIED.",
-          },
-          retryable: { type: "boolean", description: "Whether the same call can succeed later." },
-          i18nKey: { type: "string" },
-          details: { type: "object", additionalProperties: true },
-        },
-        required: ["code", "retryable"],
-      },
+      Error: errorBodyResponse("Any other error, in the same shape: branch on `data.code`."),
     },
-    required: ["defined", "code", "status", "message"],
-  }),
+  },
 } satisfies OpenAPIGeneratorGenerateOptions;
 
 /** The OpenAPI 3.1 document of a router, as `/api/v1/openapi.json` serves it. */
@@ -223,44 +651,274 @@ export function generateOpenApiDocument(router: AnyRouter, serverUrl?: string) {
 }
 
 /**
+ * oRPC's OpenAPI codec, which first refuses a field sent beside the path (in
+ * the body, or in a read's query string) under the name of a path parameter
+ * and with another value. oRPC merges those fields over the path parameters:
+ * the field would choose the record the call acts on, not the path. The
+ * path's own value, repeated, is read.
+ */
+class PathParameterCodec extends StandardOpenAPICodec {
+  readonly #serializer: StandardOpenAPISerializer;
+
+  constructor(serializer: StandardOpenAPISerializer) {
+    super(serializer);
+    this.#serializer = serializer;
+  }
+
+  override async decode(...args: Parameters<StandardOpenAPICodec["decode"]>): Promise<unknown> {
+    const [request, params, procedure] = args;
+    if (params && procedure["~orpc"].route.inputStructure !== "detailed") {
+      // The fields oRPC merges, as it reads them; the body is read once.
+      const sent = this.#serializer.deserialize(
+        request.method === "GET" ? request.url.searchParams : await request.body(),
+      );
+      const parameter = isPlainObject(sent)
+        ? Object.keys(params).find(
+            (name) => Object.hasOwn(sent, name) && sent[name] !== params[name],
+          )
+        : undefined;
+      if (parameter) {
+        throw apiError("BAD_REQUEST", "PATH_PARAMETER_CONFLICT", {
+          message: `The path names the record by its ${parameter}; the input may repeat it only with the same value.`,
+          details: { parameter },
+        });
+      }
+    }
+    return super.decode(...args);
+  }
+}
+
+/**
+ * oRPC's OpenAPI handler, built as oRPC builds it but with the codec above.
+ * It also says which media types the operation a request reaches reads its
+ * body in: found by the handler's own matcher, so it is the operation the
+ * handler runs.
+ */
+export class OpenApiTransportHandler extends FetchHandler<BaseContext> {
+  readonly #matcher: StandardOpenAPIMatcher;
+  readonly #mediaTypes = new WeakMap<AnyProcedure, string[]>();
+
+  constructor(router: AnyRouter, options: StandardHandlerOptions<BaseContext>) {
+    const matcher = new StandardOpenAPIMatcher();
+    const serializer = new StandardOpenAPISerializer(
+      new StandardOpenAPIJsonSerializer(),
+      new StandardBracketNotationSerializer(),
+    );
+    super(new StandardHandler(router, matcher, new PathParameterCodec(serializer), options));
+    this.#matcher = matcher;
+  }
+
+  /**
+   * `requestBodyMediaTypes` of the operation at `method` and `path` (under
+   * the prefix, as oRPC matches it): empty when it takes no body; undefined
+   * when no operation is there.
+   */
+  async bodyMediaTypes(method: string, path: string): Promise<string[] | undefined> {
+    const match = await this.#matcher.match(method, `/${path.replace(/^\/|\/$/g, "")}`);
+    if (!match) return undefined;
+    let types = this.#mediaTypes.get(match.procedure);
+    if (!types) {
+      const [, schema] = jsonSchemaConverter.convert(match.procedure["~orpc"].inputSchema, {
+        strategy: "input",
+      });
+      types = requestBodyMediaTypes(schema, match.procedure["~orpc"].route);
+      this.#mediaTypes.set(match.procedure, types);
+    }
+    return types;
+  }
+}
+
+/**
  * The OpenAPI transport over the exposed router (`createExposure(...).router`),
- * never the whole router. With `docs`, it also serves the spec at
- * `/openapi.json` and a Scalar reference at `/docs`; otherwise those paths
- * match nothing. The app turns them on in development only.
+ * never the whole router. Its document and reference are `createApiReference`.
  */
 export function createOpenApiHandler(
   router: AnyRouter,
-  options: { docs: boolean; onError?: (error: unknown) => void },
-): OpenAPIHandler<BaseContext> {
-  return new OpenAPIHandler<BaseContext>(router, {
-    plugins: options.docs
-      ? [
-          new OpenAPIReferencePlugin<BaseContext>({
-            ...openApiGeneratorOptions,
-            specPath: "/openapi.json",
-            docsPath: "/docs",
-            docsTitle: openApiDocumentOptions.info.title,
-            // Pinned: oRPC's default loads whatever version jsdelivr serves today.
-            docsScriptUrl: "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.76.0",
-            specGenerateOptions: openApiDocumentOptions,
-          }),
-        ]
-      : [],
-    interceptors: options.onError ? [onError(options.onError)] : [],
+  /**
+   * Where the request log goes: a refusal by its facts, a fault as it is
+   * (platform/refusal-log.ts). Absent: nothing is logged.
+   */
+  options: { log?: RequestLogSink } = {},
+): OpenApiTransportHandler {
+  const { log } = options;
+  return new OpenApiTransportHandler(router, {
+    interceptors: log ? [onError(logRequestError(log))] : [],
     // An unexpected error reaches error tracking through `ports.reportError`.
-    clientInterceptors: [reportUnexpectedErrors],
+    clientInterceptors: log
+      ? [reportUnexpectedErrors, logRefusals(log.refusal)]
+      : [reportUnexpectedErrors],
   });
+}
+
+/** A document or a page, ready to answer as is. */
+interface ServedFile {
+  body: string;
+  contentType: string;
+  etag: string;
+}
+
+const servedFile = (body: string, contentType: string): ServedFile => ({
+  body,
+  contentType,
+  etag: `"${sha256(body).slice(0, 32)}"`,
+});
+
+/** Whether `If-None-Match` names this ETag: the client's copy is current. */
+function isCurrent(request: Request, etag: string): boolean {
+  const header = request.headers.get("if-none-match");
+  if (!header) return false;
+  return header
+    .split(",")
+    .map((tag) => tag.trim().replace(/^W\//, ""))
+    .some((tag) => tag === etag || tag === "*");
+}
+
+/**
+ * The reference page: Scalar renders the document, read from the same origin.
+ * The beta notice heads the document's description, which Scalar shows first.
+ * A plain link to the document ends the page, so it is never empty when
+ * Scalar's script does not load.
+ */
+function referenceHtml(documentPath: string): string {
+  const config = {
+    url: documentPath,
+    // Scalar's usage telemetry and its AI chat stay off.
+    telemetry: false,
+    agent: { disabled: true },
+    customCss: REFERENCE_CSS,
+  };
+  const script = JSON.stringify(config).replace(/</g, "\\u003c");
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${openApiDocumentOptions.info.title} reference (beta)</title>
+    <meta name="description" content="The REST API of Louez, the rental management software: every operation the API exposes, its input and its answer. In beta." />
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript><p>This reference needs JavaScript.</p></noscript>
+    <p style="margin: 1rem; font: 14px/1.5 system-ui, sans-serif">The OpenAPI document of this reference: <a href="${documentPath}">${documentPath}</a></p>
+    <script src="${REFERENCE_SCRIPT.url}" integrity="${REFERENCE_SCRIPT.integrity}" crossorigin="anonymous"></script>
+    <script>Scalar.createApiReference("#app", ${script});</script>
+  </body>
+</html>
+`;
+}
+
+/** Serves the OpenAPI document and its reference page to anyone, without a key. */
+export interface ApiReference {
+  /**
+   * The answer to `request` when it asks for the document
+   * (`OPENAPI_DOCUMENT_PATH`) or the reference (`OPENAPI_REFERENCE_PATH`),
+   * `path` being the request's path under `prefix`; null otherwise. The
+   * document names `serverUrl`, the public URL of `/api/v1` on this
+   * deployment, as its server.
+   */
+  serve(
+    request: Request,
+    at: { path: string; prefix: string; serverUrl: string },
+  ): Promise<Response | null>;
+}
+
+/**
+ * The document of `router` and its reference page. The document is generated
+ * once per process and server URL (the app's weighs about 340 KB and takes
+ * tens of milliseconds), then answered from memory, with an ETag and a
+ * public cache lifetime: it changes only with a deployment.
+ */
+export function createApiReference(router: AnyRouter): ApiReference {
+  let cached: { serverUrl: string; document: Promise<ServedFile> } | undefined;
+  const documentFor = (serverUrl: string): Promise<ServedFile> => {
+    if (cached?.serverUrl === serverUrl) return cached.document;
+    const document = generateOpenApiDocument(router, serverUrl).then((generated) =>
+      servedFile(JSON.stringify(generated), "application/json; charset=utf-8"),
+    );
+    cached = { serverUrl, document };
+    // A failed generation is tried again on the next request.
+    document.catch(() => {
+      if (cached?.document === document) cached = undefined;
+    });
+    return document;
+  };
+
+  return {
+    async serve(request, { path, prefix, serverUrl }) {
+      if (request.method !== "GET" && request.method !== "HEAD") return null;
+      const route = path.replace(/\/+$/, "");
+      let file: ServedFile;
+      if (route === OPENAPI_DOCUMENT_PATH) file = await documentFor(serverUrl);
+      else if (route === OPENAPI_REFERENCE_PATH) {
+        file = servedFile(
+          referenceHtml(`${prefix}${OPENAPI_DOCUMENT_PATH}`),
+          "text/html; charset=utf-8",
+        );
+      } else return null;
+
+      const headers = new Headers({
+        "Content-Type": file.contentType,
+        "Cache-Control": REFERENCE_CACHE_CONTROL,
+        ETag: file.etag,
+      });
+      // A public document: any site may read it, without credentials.
+      if (route === OPENAPI_DOCUMENT_PATH) headers.set("Access-Control-Allow-Origin", "*");
+      else {
+        for (const [name, value] of Object.entries(REFERENCE_PAGE_FRAMING_HEADERS)) {
+          headers.set(name, value);
+        }
+      }
+      if (isCurrent(request, file.etag)) return new Response(null, { status: 304, headers });
+      return new Response(request.method === "HEAD" ? null : file.body, { status: 200, headers });
+    },
+  };
+}
+
+/**
+ * The refusals that answer `Retry-After`, from their `details.retryAfterSeconds`:
+ * too many approvals wait for the person (429). `RATE_LIMITED` gives its
+ * seconds in its details only; `APPROVAL_RECENTLY_DECLINED` is no retry
+ * (409): when it may be asked again is in its details, for the caller to
+ * put to its user.
+ */
+export const RETRY_AFTER_CODES: ReadonlySet<string> = new Set(["APPROVALS_FULL"]);
+
+/** The part of an error's body `Retry-After` is read from. */
+const retryAfterBody = z.object({
+  data: z.object({
+    code: z.string(),
+    details: z.object({ retryAfterSeconds: z.number().int().positive() }),
+  }),
+});
+
+/** The `Retry-After` of an error answer, when its code is one of `RETRY_AFTER_CODES`. */
+async function retryAfterOf(response: Response): Promise<string | null> {
+  if (response.status !== 429) return null;
+  const body = retryAfterBody.safeParse(
+    await response
+      .clone()
+      .json()
+      .catch(() => null),
+  );
+  if (!body.success || !RETRY_AFTER_CODES.has(body.data.data.code)) return null;
+  return String(body.data.data.details.retryAfterSeconds);
 }
 
 /**
  * Serves one request with an API key: the transport is `openapi`, and a write
  * answers with its receipt in the `Louez-Operation-Id` header (and
  * `Louez-Replayed: true` when an idempotency key replayed it). Errors keep
- * oRPC's JSON shape, with our `data` (code, retryable, i18nKey, details).
- * Undefined when no procedure matches.
+ * oRPC's JSON shape, with our `data` (code, retryable, i18nKey, details),
+ * and `Retry-After` for the codes of `RETRY_AFTER_CODES`. With `reference`,
+ * it also serves the OpenAPI document and its reference page, to anyone;
+ * their server is this deployment's `ports.urls`. A body in
+ * a media type its operation does not take (`requestBodyMediaTypes`), or any
+ * body but an empty one or `{}` where it takes none, gets 415 before the
+ * operation runs; a field named as a path parameter with another value gets
+ * 400 (`PathParameterCodec`). Undefined when nothing matches.
  */
 export async function handleOpenApiRequest(
-  handler: OpenAPIHandler<BaseContext>,
+  handler: OpenApiTransportHandler,
   incoming: Request,
   options: {
     ports: ApiPorts;
@@ -273,11 +931,21 @@ export async function handleOpenApiRequest(
      * the API key or access token, as the procedures resolve it.
      */
     authenticate?: (headers: Headers) => Promise<unknown>;
+    /** The document and its reference (`createApiReference`), served before any procedure. */
+    reference?: ApiReference;
   },
 ): Promise<Response | undefined> {
   const prefix = options.prefix ?? OPENAPI_PREFIX;
   const { pathname } = new URL(incoming.url);
   const path = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname;
+  if (options.reference) {
+    const served = await options.reference.serve(incoming, {
+      path,
+      prefix,
+      serverUrl: options.ports.urls.dashboard(prefix),
+    });
+    if (served) return served;
+  }
   const larger = options.bodyLimits?.find(
     (limit) => limit.method === incoming.method && limit.pattern.test(path),
   );
@@ -303,20 +971,75 @@ export async function handleOpenApiRequest(
     return null;
   };
 
+  // A body is read only in the media types its operation takes; any other is
+  // refused before anything reads it. An operation whose whole input is in
+  // its path takes none: whatever its type, only an empty body, or JSON's
+  // empty object, which adds nothing to its input, passes, and neither
+  // reaches oRPC. A read (GET) takes its input from the query string, and its
+  // body is never read.
+  let headers = incoming.headers;
+  const routed = pathname === prefix || pathname.startsWith(`${prefix}/`);
+  const bodyTypes =
+    !routed || incoming.method === "GET" || incoming.method === "HEAD"
+      ? undefined
+      : await handler.bodyMediaTypes(incoming.method, path);
+  const takesNoBody = bodyTypes?.length === 0;
+  const contentType = incoming.headers.get("content-type");
+  // oRPC reads a body sent with Content-Disposition as one file, whatever its
+  // type, even an empty one.
+  if (
+    bodyTypes &&
+    (incoming.headers.has("content-disposition") ||
+      (!takesNoBody && contentType !== null && !bodyTypes.includes(mediaTypeOf(contentType))))
+  ) {
+    await incoming.body?.cancel().catch(() => {});
+    return unsupportedMediaType(bodyTypes);
+  }
+  if (takesNoBody) {
+    headers = new Headers(headers);
+    headers.delete("content-type");
+    headers.delete("content-length");
+  } else if (bodyTypes && contentType !== null) {
+    const type = mediaTypeOf(contentType);
+    // oRPC tells the types apart by the header's first characters, in their case.
+    const separator = contentType.indexOf(";");
+    const normalized = separator === -1 ? type : `${type}${contentType.slice(separator)}`;
+    if (normalized !== contentType) {
+      headers = new Headers(headers);
+      headers.set("content-type", normalized);
+    }
+  }
+
   try {
-    const bounded = await withBoundedBody(
+    const body = await readBoundedBody(
       incoming,
       larger?.maxBytes ?? OPENAPI_MAX_BODY_BYTES,
       enterLarge,
     );
-    if (bounded instanceof Response) return bounded;
-    const request = bounded;
+    if (body instanceof Response) return body;
+    if (bodyTypes && body && body.byteLength > 0) {
+      const json = contentType !== null && mediaTypeOf(contentType) === "application/json";
+      // Where the operation takes no body, only JSON's `{}` adds nothing to
+      // its input; where it takes one, a body without a Content-Type is read
+      // in none of its types.
+      if (takesNoBody ? !(json && isEmptyJsonObject(body)) : contentType === null) {
+        return unsupportedMediaType(bodyTypes);
+      }
+    }
+    const request = new Request(incoming.url, {
+      method: incoming.method,
+      headers,
+      body: takesNoBody ? null : body,
+      signal: incoming.signal,
+    });
     const receipt: OperationReceipt = {};
     const { response } = await handler.handle(request, {
       prefix,
       context: { headers: request.headers, transport: "openapi", ports: options.ports, receipt },
     });
     if (!response) return undefined;
+    const retryAfter = await retryAfterOf(response);
+    if (retryAfter) response.headers.set("Retry-After", retryAfter);
     if (receipt.operationId) {
       response.headers.set(OPERATION_ID_HEADER, receipt.operationId);
       if (receipt.replayed) response.headers.set(REPLAYED_HEADER, "true");

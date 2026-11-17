@@ -575,6 +575,7 @@
       "invitationCancelled": "邀请已取消",
       "invitationResent": "邀请已重新发送",
       "invitationAlreadySent": "邀请已发送至此电子邮件地址",
+      "invitationEmailLimit": "此店铺在过去 24 小时内已请求发送 {max} 封邀请邮件（无论是否成功发出），已达上限。请稍后再试。",
       "resend": "Resend",
       "cancel": "取消",
       "invitedOn": "受邀于 {date}",
@@ -2251,7 +2252,16 @@
         "confirmRelease": "释放押金",
         "invalidCaptureAmount": "金额无效",
         "captureExceedsDeposit": "金额超过存款",
-        "reasonRequired": "请给出理由"
+        "reasonRequired": "请给出理由",
+        "unconfirmed": {
+          "open": "在 Stripe 中处理",
+          "title": "未确认的授权",
+          "description": "Stripe 从未确认此授权请求。请在发起请求的账户的 Stripe 控制台中查看“付款”。",
+          "explanation": "关闭请求不会在 Stripe 取消任何内容。Louez 会先自行查找该授权，如果与请求相符就记录下来。如果找到的授权与请求不符（金额、卡片或参考信息已更改），请求将保持打开，Louez 会提示您：请在 Stripe 中取消该授权（这会释放冻结的金额），然后再次关闭请求。如果您改为在 Stripe 中扣款，Louez 不会记录这笔金额，请求仍保持打开：请联系 Louez 客服。如果之后出现授权，且与请求相符，Louez 会在 Stripe 通知时记录它：若此预订尚无押金，它将成为此预订的押金；若已有其他预授权担保此预订，它将被释放。因此，在已有预授权时关闭请求，可能会让客户卡上暂时多出一笔预授权。您在 Stripe 中看到但 Louez 未记录的授权，请在 Stripe 中处理：在那里取消。",
+          "confirm": "关闭请求",
+          "closed": "请求已关闭。您可以创建新的授权。",
+          "recorded": "Louez 已在 Stripe 找到该授权并记录。"
+        }
       },
       "subtotal": "小计",
       "source": "来源",
@@ -2547,6 +2557,7 @@
         "subtotal": "小计",
         "deposit": "押金",
         "total": "总计",
+        "taxLine": "税费",
         "tulipInsurance": {
           "title": "Tulip 保险",
           "appliesMappedProducts": "仅适用于映射到 Tulip 的产品。",
@@ -2709,7 +2720,13 @@
           "shortfall": "请求：{requested} · 可用：{available}",
           "createAnyway": "无论如何创建",
           "editDescription": "某些产品在该时间段内数量不足。您仍然可以保存更改并在时间线中跟踪覆盖情况。",
-          "saveAnyway": "无论如何保存"
+          "saveAnyway": "无论如何保存",
+          "confirmDescription": "此预订期间库存不足。您仍可以超出可用库存确认此预订，该选择将记录在历史中。",
+          "confirmAnyway": "仍然确认",
+          "bufferTitle": "周转缓冲不足",
+          "bufferDescription": "这些项目在库存范围内，但计入您在两次租赁之间保留的周转缓冲后则不够。您仍可以缩短租赁之间的间隔来确认此预订，该选择将记录在历史中。",
+          "bufferShortfall": "请求：{requested} · 计入缓冲后可用：{available}",
+          "confirmPastBuffer": "仍然确认"
         },
         "addUnavailable": {
           "title": "产品不可用",
@@ -2761,6 +2778,7 @@
         "quote_accepted": "接受报价",
         "quote_declined": "报价被拒绝",
         "overbooked": "超额预订",
+        "turnoverBufferOverridden": "缓冲已缩短",
         "contract_signed": "合同已签署",
         "contractUnsigned": "合同未签署",
         "signedBy": "签署人：{name}",
@@ -2787,7 +2805,8 @@
             "incorrectCvc": "卡安全码 (CVC) 对于本次存款授权无效。",
             "processingError": "由于临时处理问题，存款授权失败。几分钟后重试。",
             "doNotHonor": "银行拒绝了存款授权，但未提供详细信息。请客户联系他们的银行或使用其他卡。",
-            "generic": "存款授权失败。请客户重试或使用另一张卡。"
+            "generic": "存款授权失败。请客户重试或使用另一张卡。",
+            "closedByStore": "店铺已关闭请求：在 Stripe 中未找到授权。"
           }
         }
       },
@@ -2907,6 +2926,8 @@
         "damageRecorded": "损坏记录",
         "invalidAmount": "金额无效",
         "amountExceedsDeposit": "金额超过收取押金",
+        "amountTooPrecise": "{decimals, plural, =0 {{currency} 金额没有小数，请输入整数。} other {{currency} 金额最多 # 位小数。}}",
+        "currencyNotSupported": "无法记录 {currency} 付款：Louez 不支持三位小数的货币。",
         "deleteConfirmTitle": "删除这笔付款吗？",
         "deleteConfirmDescription": "此操作是不可逆转的。该付款将从历史记录中永久删除。",
         "unpaidWarning": "此预订仍有 {formattedAmount} 可供领取",
@@ -2949,6 +2970,8 @@
         "statusAuthorized": "授权",
         "statusRefunded": "已退款",
         "statusCancelled": "取消",
+        "statusFailed": "失败",
+        "statusReleasePending": "正在释放",
         "requestPayment": "请求付款",
         "invoiceGenerated": "生成发票 {number}"
       },
@@ -2983,9 +3006,13 @@
         "send": "发送请求",
         "success": "付款请求已发送",
         "successTitle": "请求已发送！",
-        "successDescription": "客户将通过 {channel} 收到付款链接",
+        "notSentTitle": "付款链接已创建",
+        "sentBy": "已通过{channels, select, email {邮件} sms {短信} other {邮件和短信}}发送。",
+        "partlySent": "已通过{sent, select, email {邮件} other {短信}}发送，但{failed, select, email {邮件} other {短信}}未能发送，如有需要请复制链接。",
+        "notSent": "{channels, select, email {邮件未能发送} sms {短信未能发送} other {邮件和短信均未能发送}}，请复制链接自行发送。",
         "error": "发送请求时出错",
         "paymentLink": "付款链接",
+        "copyLink": "复制链接",
         "linkCopied": "链接已复制",
         "copyFailed": "复制失败",
         "stripeNotConfigured": "Stripe 未配置",
@@ -3944,7 +3971,6 @@
           }
         },
         "recommended": "推荐",
-        "comingSoon": "即将推出",
         "noIntegrations": "尚无可用的集成。",
         "sections": {
           "byLouez": "作者：Louez.io",
@@ -3963,7 +3989,10 @@
           "api": {
             "name": "API REST",
             "description": "将您的商店连接到现有工具并自动化您的日常任务。",
-            "comingSoonDescription": "REST API 正在开发中。您很快就可以将您的商店连接到任何工具或服务。"
+            "betaTitle": "贝塔版现已可用",
+            "betaDescription": "借助 REST API，您的脚本和工具可以读取和修改商店的数据。参考文档列出了它能做的事。每个工具都通过 API 密钥连接，API 密钥可在 MCP 页面创建。",
+            "openReference": "打开 API 参考文档",
+            "createKey": "创建 API 密钥"
           }
         }
       },
@@ -4894,12 +4923,12 @@
         "description": "管理 API 密钥以将外部工具、AI 助手或自定义集成连接到您的商店。",
         "backToIntegrations": "集成",
         "keysTitle": "API 按键",
-        "keysDescription": "创建和管理 MCP 服务器和未来的 REST API 的密钥。",
+        "keysDescription": "创建和管理 MCP 服务器和 REST API 的密钥。",
         "createKey": "创建密钥",
         "noKeys": "还没有 API 密钥。创建一个以开始使用。",
         "keyRevoked": "API 密钥已撤销。",
         "lastUsed": "上次使用",
-        "confirmSensitive": "敏感操作前需确认",
+        "confirmSensitive": "可选确认（必须批准的操作仍需批准）",
         "confirmSensitiveSaved": "设置已保存",
         "endpointsTitle": "端点",
         "endpointsDescription": "使用这些端点连接到您的商店数据。",
@@ -4935,7 +4964,11 @@
           "categories": "类别",
           "payments": "付款方式",
           "analytics": "分析",
-          "settings": "设置"
+          "settings": "设置",
+          "online_store": "网上商店",
+          "team": "团队",
+          "billing": "订阅",
+          "integrations": "集成"
         },
         "levels": {
           "none": "无法访问",
@@ -6906,6 +6939,28 @@
         "customers": "这个月有多少新客户？",
         "overdue": "是否有逾期退货？",
         "pending": "显示等待确认的预订"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "记录这笔付款？",
+          "delete_payment": "删除这笔付款？",
+          "return_deposit": "记录这笔押金退还？"
+        },
+        "amount": "金额",
+        "booking": "预订",
+        "open": "查看并决定",
+        "expires": "请在 {when} 前决定",
+        "status": {
+          "pending": "等待您的决定",
+          "approved": "已批准。助手正在执行。",
+          "completed": "已完成",
+          "declined": "已拒绝。未执行任何操作。",
+          "expired": "已过期。未执行任何操作。",
+          "ended": "未执行。未执行任何操作。",
+          "unavailable": "此处已无法读取该请求。"
+        },
+        "continue": "继续",
+        "followUp": "已批准，继续"
       }
     },
     "breadcrumbs": {
@@ -6954,7 +7009,8 @@
       "settingsTaxes": "税收",
       "productsEdit": "编辑",
       "reservationsEdit": "编辑",
-      "settingsCustomerFields": "客户档案"
+      "settingsCustomerFields": "客户档案",
+      "needsALook": "待检查"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7184,6 +7240,111 @@
         "participantNamePlaceholder": "名字",
         "saved": "租赁详情已保存"
       }
+    },
+    "needsALook": {
+      "title": "待检查",
+      "description": "Louez 无法自行处理的事项。",
+      "empty": {
+        "title": "没有需要检查的事项",
+        "description": "需要您处理的退款、押金、红字发票或消息会显示在这里。"
+      },
+      "incomplete": "部分事项无法加载。请稍后刷新页面。",
+      "urgent": "紧急",
+      "details": "详情",
+      "markHandled": "标记为已处理",
+      "confirm": {
+        "title": "标记为已处理？",
+        "description": "它将对整个团队隐藏。如果问题再次出现，它会重新显示。",
+        "heldBack": "在 Stripe 回复之前，退款金额仍会被保留。",
+        "cancel": "取消",
+        "confirm": "标记为已处理"
+      },
+      "handled": "已标记为已处理",
+      "changed": "该事项已发生变化：列表已更新。",
+      "actions": {
+        "viewPayment": "查看付款",
+        "viewBooking": "查看预订",
+        "viewProduct": "查看产品",
+        "invoicingSettings": "开票设置",
+        "notificationSettings": "通知设置",
+        "openTeam": "打开团队"
+      },
+      "facts": {
+        "stripeCharge": "Stripe 扣款",
+        "stripeRefund": "Stripe 退款",
+        "stripePayment": "Stripe 付款",
+        "stripeDispute": "Stripe 争议",
+        "creditNote": "红字发票",
+        "invoice": "发票",
+        "channel": "渠道",
+        "reference": "参考编号"
+      },
+      "refundUnconfirmed": {
+        "title": "退款未确认",
+        "summary": "Stripe 尚未确认 {day} 为预订 #{number} 发起的 {amount} 退款。再次退款前请在 Stripe 中核实。",
+        "heldBack": "在 Stripe 回复之前，Louez 会从该付款仍可退还的金额中保留这笔款项。"
+      },
+      "refundUndone": {
+        "title": "退款失败",
+        "summary": "预订 #{number} 的 {amount} 退款未成功：客户未收到退款。请在 Stripe 中核实，必要时重新退款。",
+        "summaryListed": "Stripe 关于预订 #{number} 的 {amount} 退款的报告相互矛盾。请在 Stripe 中核实客户是否已收到退款，必要时重新退款。",
+        "creditNote": "红字发票 {creditNote} 仍然有效：请在您的账务中更正。"
+      },
+      "creditNoteNotIssued": {
+        "title": "缺少红字发票",
+        "summary": "预订 #{number} 的 {amount} 退款尚无红字发票。请检查您的开票设置。",
+        "reasons": {
+          "mismatch": "记录的退款与请求不符，Louez 无法自行开具：请联系 Louez 支持。",
+          "pending": "Louez 尝试时退款尚未完成；Louez 每天都会重试。",
+          "unknown": "无法开具；Louez 每天都会重试。"
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "押金未确认",
+        "summary": "Stripe 尚未确认 {day} 为预订 #{number} 申请的 {amount} 押金预授权。请在 Stripe 中核实；在 Louez 中重新申请绝不会产生第二笔预授权。",
+        "summaryUnmatched": "Stripe 为预订 #{number} 持有一笔押金，但与 {day} 申请的 {amount} 不符，因此 Louez 未记录。请在 Stripe 中取消，然后在预订的押金部分关闭该请求。"
+      },
+      "depositReleaseFailed": {
+        "title": "押金可能仍被冻结",
+        "summary": "Stripe 尚未确认预订 #{number} 上第二笔 {amount} 押金预授权的释放：客户的卡上可能仍有该冻结。Louez 会继续请求；如果在 Stripe 中仍被冻结，请在那里取消。"
+      },
+      "disputeOpen": {
+        "title": "付款被争议",
+        "summaryAnswer": "客户对预订 #{number} 的一笔 {amount} 付款提出了争议。请在截止日期前在 Stripe 中回应。",
+        "summaryReview": "预订 #{number} 有一笔 {amount} 的争议正在处理中：Stripe 正在审核。"
+      },
+      "einvoiceRejected": {
+        "titleRejected": "电子发票被拒",
+        "titleNotSent": "电子发票未发送",
+        "summaryRejected": "预订 #{number} 的发票 {invoice} 被电子发票网络拒绝。请在预订中查看。",
+        "summaryNotSent": "预订 #{number} 的发票 {invoice} 无法发送到电子发票网络。请在预订中查看。"
+      },
+      "messageNotSent": {
+        "title": "消息未发送",
+        "titleWhy": "消息未发送：{why, select, email {未设置邮件服务} sms {未设置短信服务} recipient {地址已变更} other {内容有误}}",
+        "toCustomer": "预订 #{number} 的{message, select, customer_request_accepted {接受通知} customer_request_rejected {拒绝通知} customer_reservation_cancelled {取消通知} customer_reservation_modified {变更通知} customer_quote_sent {报价} customer_reservation_confirmed {确认通知} other {消息}}未送达客户。请您亲自联系客户。",
+        "toCustomerNoBooking": "有一条消息未送达客户。请您亲自联系客户。",
+        "toStore": "关于预订 #{number} 发给您团队的通知未发送。",
+        "toStoreNoBooking": "发给您团队的一条通知未发送。",
+        "reasons": {
+          "recipientChanged": "客户的邮箱地址在消息写好后发生了变化。",
+          "emailNotConfigured": "未设置邮件发送服务。",
+          "writtenWrong": "消息内容有误，无法发送。",
+          "smsNotConfigured": "未设置短信发送服务。"
+        }
+      },
+      "invitationNotSent": {
+        "title": "邀请未发送",
+        "summary": "发给 {email} 的邀请邮件未发送。请在团队页面重新发送或分享其链接。"
+      },
+      "operationUnknown": {
+        "title": "待核实的操作",
+        "summary": "{day} 的一项操作可能未保存。重做之前请先检查记录。",
+        "summaryBy": "{client} 在 {day} 的一项操作可能未保存。重做之前请先检查记录。"
+      },
+      "unknownTitle": "待检查事项",
+      "neutral": "Louez 无法自行处理此事项。打开查看发生了什么。",
+      "viewAll": "查看全部"
     }
   },
   "storefront": {
@@ -8031,6 +8192,10 @@
     "pay": {
       "subtitle": "预订#{number}",
       "amountDue": "应付金额",
+      "requestKind": {
+        "rental": "租赁",
+        "custom": "付款"
+      },
       "greeting": "您好 {name}，{store} 正在请求付款。",
       "payButton": "支付{amount}",
       "redirecting": "正在重定向至付款...",
@@ -8043,6 +8208,7 @@
         "expiredDescription": "该付款链接已过期。请联系商店索取新的。",
         "alreadyPaidTitle": "已付款",
         "alreadyPaidDescription": "这笔付款已经完成。",
+        "noLongerCurrentDescription": "此付款请求已与预订的待付金额不符。请联系店铺。",
         "cancelledTitle": "付款已取消",
         "cancelledDescription": "该付款请求已被商店取消。",
         "unavailableTitle": "无法付款",
@@ -9267,10 +9433,11 @@
     "emailAlreadyExists": "使用此电子邮件地址的客户已存在",
     "customerHasReservations": "无法删除已预订的客户",
     "cannotCancelReservation": "此预订无法取消",
-    "cannotEditCompletedReservation": "已完成的预订无法编辑",
     "reservationStatusChanged": "当您编辑时，预订状态发生了变化。重新加载页面并重试。",
     "reservationChangedMeanwhile": "当您编辑时，预订已被修改。重新加载页面并重试。",
-    "endDateBeforeStart": "结束日期必须晚于或等于开始日期",
+    "editTaxAdded": "总额现已包含税费：之前 {previousTotal}，现在 {newTotal}。",
+    "editProductGonePriceUnknown": "某行的商品已被删除，因此无法计算其他日期的价格。请先手动输入其价格，再更改日期。",
+    "endDateBeforeStart": "结束日期必须晚于开始日期",
     "negativeAmountOnlyForAdjustment": "负数仅允许用于调整",
     "productRequired": "所需产品",
     "customerRequired": "客户要求",
@@ -9283,6 +9450,7 @@
     "assignedUnitsConflict": "分配的单位在新日期不可用：{identifiers}",
     "invalidUnits": "所选的一个或多个单位无效",
     "turnoverBufferConflict": "所选单元仅被周转缓冲区阻塞",
+    "turnoverBufferShortfall": "两次租赁之间的周转缓冲导致此预订的部分项目无法确认。请释放这些日期前后的库存、调整日期，或缩短租赁之间的间隔仍然确认。",
     "unitProductMismatch": "所选单位不属于该产品",
     "unitCombinationMismatch": "所选单位与该订单项的预留组合不匹配",
     "cannotDisableUnitTrackingWithCombinations": "当活动预订使用该产品的跟踪组合时，无法禁用单位跟踪。",
@@ -9328,22 +9496,26 @@
       "syncFailed": "同步状态时出错",
       "dashboardLinkFailed": "打开 Stripe 仪表板时出错",
       "alreadyConnected": "Stripe 账户已连接",
-      "noChargeToRefund": "Stripe 未付款可退款",
-      "alreadyRefunded": "该笔款项已被退回",
-      "refundExceedsCharge": "退款金额超过付款金额",
-      "refundFailed": "处理退款时出错",
       "noSavedCard": "没有为该客户保存卡",
       "invalidDepositStatus": "充值状态不允许此操作",
       "noDepositRequired": "此预订无需支付押金",
       "authorizationFailed": "无法创建授权保留",
+      "authorizationInProgress": "此预订的押金预授权正在创建中。请稍后重试。",
+      "authorizationUnconfirmed": "Stripe 未确认押金预授权。请重试：请求的是同一笔预授权，不会产生第二笔。",
       "noActiveAuthorization": "此预订没有有效授权",
       "captureFailed": "无法提取存款",
       "releaseFailed": "无法释放押金"
     },
     "reasonRequired": "请给出理由",
     "invalidAmount": "金额无效",
+    "amountExceedsDeposit": "金额超过收取押金",
+    "amountExceedsDue": "金额超过剩余应付金额",
+    "paymentNotFound": "该付款已不存在。请刷新页面。",
+    "amountTooPrecise": "该金额的小数位数超过了其货币允许的位数。",
+    "currencyNotSupportedForPayments": "无法记录此货币的付款：Louez 不支持三位小数的货币。",
     "invalidOrExpiredToken": "该链接无效或已过期。请请求新的访问链接。",
     "alreadyPaid": "该预订已付款。",
+    "invalidStatus": "该预订已无法在线付款或更改。请联系商店。",
     "paymentNotAvailable": "本店不支持网上支付。",
     "paymentSessionError": "创建付款会话时出错",
     "accessLinkSendFailed": "发送访问链接时出错",
@@ -9451,7 +9623,11 @@
     "agentConnectionNotFound": "此已连接的智能体已不存在。",
     "oauthRequestInvalid": "此连接请求已失效。请在您的智能体中重新发起。",
     "stripeRequiredForPaymentMode": "在线支付模式需要已连接的 Stripe 账户。请在“设置 > 付款”中连接 Stripe。",
-    "locationLimitReached": "每家店铺最多可设置 50 个取货点。请停用一个或重新使用已有的取货点。"
+    "locationLimitReached": "每家店铺最多可设置 50 个取货点。请停用一个或重新使用已有的取货点。",
+    "depositAttempt": {
+      "needsStripe": "Louez 在 Stripe 中找到了此请求的授权，但它与所请求的内容不符（金额、卡片或参考信息已更改）：Louez 未记录它，请求仍保持打开。请在 Stripe 控制台中取消，然后点击“关闭请求”。如果您改为在 Stripe 中扣款，Louez 不会记录这笔金额，请求仍保持打开：请联系 Louez 客服。",
+      "none": "此预订已没有未确认的授权。"
+    }
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",
@@ -9569,7 +9745,7 @@
     },
     "confirm": {
       "label": "敏感操作前请求确认",
-      "description": "在删除或给客户发消息之前，智能体会先收到预览，并且必须确认；它会被要求先把预览给您看。记录、退还或删除付款、消耗 AI 积分、移除成员和取消邀请，即使关闭此项也始终需要确认。"
+      "description": "在删除或给客户发消息之前，智能体会先收到预览，并且必须确认；它会被要求先把预览给您看。记录付款或已完成的押金退还、删除付款、确认超出可用库存或两次租赁之间的间隔短于周转缓冲时间的预订、移除成员和取消邀请，即使关闭此项也仍需您的批准：智能体会给您一个链接，您登录自己的账户后在 Louez 页面上批准或拒绝。消耗 AI 积分即使关闭此项也始终需要确认。"
     },
     "bundlesTitle": "显示的工具",
     "bundlesHint": "智能体会看到这些工具组。您以后可以添加更多。",
@@ -9747,6 +9923,10 @@
       "not_allowed": {
         "title": "您无法为此商店执行此操作",
         "description": "您在此商店中的角色不允许执行此步骤。请联系商店所有者。"
+      },
+      "changed": {
+        "title": "您阅读期间此请求已更改",
+        "description": "未执行任何操作：此页面打开后，您的代理再次发出了请求。请重新阅读下方内容，然后作答。"
       }
     },
     "done": {
@@ -9780,6 +9960,10 @@
       "access": "成员可以查看店铺的客户、预订和付款，并可以修改商品和预订。",
       "approve": "批准邀请",
       "decline": "拒绝",
+      "reason": {
+        "label": "给你的智能体留言（可选）",
+        "hint": "你的 AI 智能体会连同你的回答一起读到。最多 {max} 个字符。"
+      },
       "error": {
         "failed": "邀请未能发出。请重新加载页面查看状态。"
       },
@@ -9807,6 +9991,209 @@
         "changed": {
           "title": "自您的代理提出请求以来情况已变化",
           "description": "该地址现在已有 Louez 账户、邀请或团队席位。请让您的代理重新提出请求。"
+        }
+      }
+    },
+    "operation_approval": {
+      "title": {
+        "access_removed": "批准移除访问权限？",
+        "money": "批准一笔付款？",
+        "stock_override": "批准超出库存的预订？",
+        "deletion": "批准删除？",
+        "customer_message": "批准发给客户的消息？",
+        "credits": "批准使用点数？",
+        "change": "批准此项修改？",
+        "unknown": "批准此请求？"
+      },
+      "provenance": "<place>{store}</place> · 由“<who>{agent}</who>”请求",
+      "provenanceKey": "<place>{store}</place> · 由 API 密钥请求",
+      "provenanceAssistant": "<place>{store}</place> · 由 AI 助手请求",
+      "provenanceInApp": "<place>{store}</place> · 通过 Louez 助手请求",
+      "trustShort": "只有 Louez 的摘要才算数。",
+      "stake": {
+        "access_removed": "撤销对你店铺的访问权限。",
+        "money": "更改你店铺记录的付款信息。",
+        "stock_override": "允许确认超出可用库存或不满足两次租赁间隔要求的预订。",
+        "deletion": "永久删除：无法撤销。",
+        "customer_message": "向客户发送消息：无法撤回。",
+        "credits": "消耗点数：不会退还。"
+      },
+      "lapsesSoon": "{when}失效。",
+      "acknowledge": "我已阅读 Louez 将执行的操作",
+      "approve": "批准",
+      "refuse": "拒绝",
+      "details": "详情",
+      "askedBy": "请求方",
+      "forAccount": "代表你的账号 {email}，在“{store}”中。",
+      "apiKey": "API 密钥“{name}”",
+      "apiKeyUnnamed": "一个 API 密钥",
+      "unnamedAgent": "一个 AI 助手",
+      "inAppAssistant": "Louez 助手，来自您控制台中的聊天",
+      "checked": "Louez 核对的内容",
+      "messageDestinationOnFile": "消息发送到客户存档的联系方式。",
+      "values": {
+        "yes": "是",
+        "no": "否",
+        "none": "无"
+      },
+      "computedAt": "Louez 于{when}根据你店铺的数据得出以上内容。",
+      "expires": "如果你不回复，此请求将于{when}失效。",
+      "trust": "无论助手在聊天中怎么说，只有 Louez 的这份摘要才算数。如果两者不一致，请拒绝。",
+      "reason": {
+        "toggle": "给助手留言",
+        "label": "你的留言（可选）",
+        "hint": "助手会连同你的回复一起读到。最多 {max} 个字符。"
+      },
+      "error": {
+        "failed": "无法保存你的回复。请重新阅读请求后再回复。",
+        "acknowledge": "请先勾选，再批准。尚未做出任何决定。"
+      },
+      "unreadable": {
+        "title": "无法显示此请求",
+        "description": "因此不能在这里批准。未执行任何操作。"
+      },
+      "tooLong": {
+        "title": "此请求太长，无法显示",
+        "description": "因此不能在这里批准。未执行任何操作。"
+      },
+      "done": {
+        "request": "请求内容",
+        "yourWords": "你的留言",
+        "approved": {
+          "title": "已批准",
+          "description": "你的助手现在可以执行了。如果它没有执行，你的批准将于{when}失效，且不会执行任何操作。"
+        },
+        "completed": {
+          "title": "已完成",
+          "description": "你的助手已于{when}执行。你可以回到聊天了。"
+        },
+        "approved_expired": {
+          "title": "你的批准已失效",
+          "description": "你的批准在一小时后失效，Louez 未记录到它已执行。如果助手在最后一刻执行了，重新加载后此页面会显示；否则不会执行任何操作。"
+        },
+        "refused": {
+          "title": "已拒绝",
+          "description": "未执行任何操作。你的助手能看到你的回复，若要再试，需要重新请求你。"
+        },
+        "state_changed": {
+          "title": "未执行：请求已不一致",
+          "description": "助手请求的内容或你的店铺，已与你批准的内容不一致，因此未执行任何操作。如仍有需要，它会重新请求。"
+        },
+        "approver_not_allowed": {
+          "title": "未执行：你的角色已变化",
+          "description": "助手尝试执行时，你在店铺中的角色已不再允许此操作，因此未执行任何操作。"
+        },
+        "connection_revoked": {
+          "title": "已结束：助手已断开连接",
+          "description": "助手与 Louez 的连接已被移除，因此此请求无法再回复或执行。如果助手在此之前的最后一刻执行了，重新加载后此页面会显示；否则不会执行任何操作。"
+        },
+        "expired": {
+          "title": "此请求已失效",
+          "description": "一天内无人回复，因此请求已失效。如果恰好在那一刻有回复正在记录，重新加载后此页面会显示；否则不会执行任何操作，助手如仍有需要会重新请求。"
+        },
+        "ended": {
+          "title": "此请求已结束",
+          "description": "这里已无事可做，也未执行任何操作。如果助手仍有需要，它会重新请求。"
+        },
+        "shortened": "摘要太长，无法完整显示。"
+      },
+      "display": {
+        "told": "告诉你的助手的内容",
+        "headline": {
+          "recordPayment": "记录一笔已收款项？",
+          "paidBack": "记录退还给客户的款项？",
+          "returnDeposit": "记录已退还的押金？",
+          "recordRefund": "记录一笔手动完成的退款？",
+          "refundOnline": "退还一笔在线付款？",
+          "deletePayment": "删除一笔已记录的款项？",
+          "removeMember": "将某人移出你的团队？",
+          "cancelInvitation": "取消一份团队邀请？",
+          "confirmWithinRules": "确认这笔预订？",
+          "confirmPastBuffer": "不顾两次租赁之间的间隔，确认这笔预订？",
+          "confirmBeyondStock": "超出库存确认这笔预订？",
+          "confirmBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，确认这笔预订？",
+          "recordDeposit": "记录一笔已收押金？",
+          "createQuote": "创建这份报价？",
+          "createQuotePastBuffer": "不顾两次租赁之间的间隔，创建这份报价？",
+          "createQuoteBeyondStock": "超出库存，创建这份报价？",
+          "createQuoteBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，创建这份报价？",
+          "createBooking": "创建这笔预订？",
+          "createBookingPastBuffer": "不顾两次租赁之间的间隔，创建这笔预订？",
+          "createBookingBeyondStock": "超出库存，创建这笔预订？",
+          "createBookingBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，创建这笔预订？",
+          "moveDatesWithinRules": "更改这笔预订的日期？",
+          "moveDatesPastBuffer": "不顾两次租赁之间的间隔，更改这笔预订的日期？",
+          "moveDatesBeyondStock": "超出库存更改这笔预订的日期？",
+          "moveDatesBeyondStockAndBuffer": "超出库存和两次租赁之间的间隔，更改这笔预订的日期？"
+        },
+        "facts": {
+          "booking": "预订 #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "预订 #<v>{number}</v>",
+          "received": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "returned": "已退押金：<v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "此前仍持有的押金：<v>{held}</v>",
+          "recordOnly": "Louez 只做记录：不会扣款，也不会退款。",
+          "refundToCard": "退款：<v>{amount}</v>，退至尾号 <v>{last4}</v> 的 <v>{brand}</v> 卡",
+          "refundToPayer": "退款：<v>{amount}</v>，退回原付款方式",
+          "leavesStripeBalance": "款项从您的 Stripe 余额中扣除；该部分的平台费用将退还。",
+          "refundGiven": "退款：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "refundOf": "被退款的付款：<v>{type}</v>，<v>{amount}</v>（<v>{atDate}</v>） · <v>{method}</v>",
+          "refundBalance": "已退款：<v>{refunded}</v> · 此后仍可退款：<v>{left}</v>",
+          "deleted": "<v>{type}</v>：<v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "记录于 <v>{atDate}</v> <v>{atTime}</v>",
+          "leavesBalance": "它将从预订余额和你的数据中移除。",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "自 <v>{sinceDate}</v> 起为成员",
+          "losesAccess": "立即失去访问你的客户、预订和款项的权限。",
+          "invited": "发送给 <v>{email}</v> 的邀请",
+          "invitedOn": "发送于 <v>{atDate}</v>",
+          "linkStops": "邀请链接将失效：此人不会加入你的团队。",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>–<v>{periodEndTime}</v>} other {从 <v>{periodStartDate}</v> <v>{periodStartTime}</v> 到 <v>{periodEndDate}</v> <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>：需要 {requested} 件，按 <v>{buffer}</v> 的间隔{available, plural, =0 {没有空闲} other {仅空闲 # 件}}",
+          "beyondStock": "<v>{product}</v>：需要 {requested} 件，{available, plural, =0 {没有库存} other {库存仅 # 件}}：缺 {missing} 件",
+          "moreLines": "{count, plural, other {还有 # 行超出你的规则}}：请查看详情",
+          "withinRules": "库存和两次租赁之间的间隔都够用：没有任何超出。",
+          "message": "<v>{customer}</v>（<v>{to}</v>）将收到“<v>{message}</v>”{channels, select, sms {短信} other {邮件}}",
+          "messageEmailAndText": "<v>{customer}</v> 将收到“<v>{message}</v>”邮件（<v>{email}</v>）和短信（<v>{phone}</v>）",
+          "messageToCustomer": "客户将收到“<v>{message}</v>”{channels, select, email {邮件} sms {短信} other {邮件和短信}}",
+          "noMessage": "不会向客户发送任何消息。",
+          "depositCollected": "<v>{type}</v>：已收 <v>{amount}</v> · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>，已退还给客户 · <v>{method}</v>",
+          "bookingFor": "<v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "<v>{customer}</v> · <v>{email}</v>（新客户）",
+          "bookingLine": "<v>{product}</v> × {quantity}",
+          "bookingLines": "<v>{product}</v> × {quantity}，另有 {others, plural, other {# 行}}",
+          "datesMoved": "日期：<v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "新总额：<v>{total}</v>（差额：<v>{difference}</v>）。不会扣款，也不会退款。"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "租金",
+            "deposit": "押金",
+            "deposit_hold": "押金预授权",
+            "deposit_capture": "扣取的押金",
+            "deposit_return": "退还押金",
+            "damage": "损坏赔偿",
+            "adjustment": "调整"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "现金",
+            "card": "银行卡",
+            "transfer": "银行转账",
+            "check": "支票",
+            "other": "其他"
+          },
+          "customerMessage": {
+            "request_accepted": "请求已接受",
+            "request_rejected": "请求已拒绝",
+            "reservation_cancelled": "预订已取消",
+            "quote_sent": "报价",
+            "booking_confirmed": "预订已确认",
+            "reservation_modified": "预订已修改"
+          }
         }
       }
     }

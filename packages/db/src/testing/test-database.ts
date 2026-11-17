@@ -27,6 +27,10 @@ import mysql from "mysql2/promise";
 
 import type { RunMigrationsOptions } from "../migrate";
 
+// The owner entry's restart count and lock hook (packages/db reservation-change.ts):
+// the races assert no run started over, the exhaustion tests force restarts.
+export { reservationChangeTestHooks, type ReservationChangeTestHooks } from "../reservation-lock";
+
 export interface TestDatabase {
   /** The database name, `louez_<suite>_<random>`. */
   name: string;
@@ -185,4 +189,52 @@ export async function waitForLockWaits(
     }
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
+}
+
+/** A row lock: its table, and the row's primary key. */
+export interface RowLock {
+  table: string;
+  id: string;
+}
+
+/** A transaction of the database that waits on a lock: the rows it waits for, the rows it holds. */
+export interface LockWaiter {
+  transactionId: string;
+  waitsFor: RowLock[];
+  holds: RowLock[];
+}
+
+/**
+ * The transactions of the database that wait on a lock, each with its row
+ * locks, granted or waiting, on primary keys. An exclusive lock taken through
+ * another index locks the row's primary key too, so these are all the rows it
+ * locks for writing. A lock on the gap before a row alone (a range read at
+ * REPEATABLE READ takes them) is not a lock on that row, and is left out.
+ * Read while a holder keeps the calls waiting, it shows the order in which a
+ * call takes its locks, whether or not that order ends in a deadlock.
+ */
+export async function readLockWaiters(
+  connection: mysql.Connection,
+  databaseName: string,
+): Promise<LockWaiter[]> {
+  const [rows] = await connection.query<mysql.RowDataPacket[]>(
+    `SELECT ENGINE_TRANSACTION_ID AS transactionId, OBJECT_NAME AS tableName,
+            LOCK_DATA AS lockData, LOCK_STATUS AS status
+     FROM performance_schema.data_locks
+     WHERE OBJECT_SCHEMA = ? AND LOCK_TYPE = 'RECORD' AND INDEX_NAME = 'PRIMARY'
+       AND LOCK_MODE NOT LIKE '%,GAP%'`,
+    [databaseName],
+  );
+  const byTransaction = new Map<string, LockWaiter>();
+  for (const row of rows) {
+    const transactionId = String(row.transactionId);
+    // A single-column key reads 'value'; the gap after the last row, "supremum pseudo-record".
+    const match = /^'(.*)'$/.exec(String(row.lockData ?? ""));
+    if (!match?.[1]) continue;
+    const lock = { table: String(row.tableName), id: match[1] };
+    const waiter = byTransaction.get(transactionId) ?? { transactionId, waitsFor: [], holds: [] };
+    byTransaction.set(transactionId, waiter);
+    (row.status === "WAITING" ? waiter.waitsFor : waiter.holds).push(lock);
+  }
+  return [...byTransaction.values()].filter((waiter) => waiter.waitsFor.length > 0);
 }

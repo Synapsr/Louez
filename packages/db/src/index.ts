@@ -57,7 +57,6 @@ export function databaseOnConnection(connection: mysql.PoolConnection) {
 }
 
 export type DatabaseOnConnection = ReturnType<typeof databaseOnConnection>;
-export { cancelFailedCheckoutReservation } from "./failed-checkout";
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Re-export schema for convenience
@@ -86,6 +85,8 @@ export type { BlockingReservationStatus, BusyUnitReason } from "./unit-availabil
 export {
   ConsumableStockError,
   canTransitionReservationStatus,
+  checkReservationConsumables,
+  readReservationStockDemand,
   consumeReservationStock,
   getAllowedReservationStatusTransitions,
   getProductStockKindChangeBlockers,
@@ -100,6 +101,7 @@ export type {
   ConsumableStockItem,
   ConsumableStockMutationMode,
   ConsumableStockMutationPlan,
+  ReservationDemandLine,
   StockKindChangeBlocker,
 } from "./consumable-stock";
 export {
@@ -108,8 +110,45 @@ export {
   isBillableReservationStatus,
   isFeeVoidingReservationStatus,
   requiresReservationGate,
+  reservationStatusChangeMovesStock,
+  reservationStatusStockAction,
   toWholeSeconds,
 } from "./reservation-status";
+export { lockCustomerRow } from "./customer-lock";
+export { lockProductRows, lockStoreProductRows } from "./product-lock";
+export {
+  checkoutSessionRowIn,
+  isCheckoutSessionRow,
+  isUnsettledCheckoutSession,
+  markCheckoutSessionSettled,
+  unsettledCheckoutSession,
+  unsettledCheckoutSessionIn,
+} from "./checkout-session";
+export {
+  ReservationLockError,
+  ReservationProductsChangedError,
+  isReservationProductsChangedError,
+  lockReservationInTransaction,
+  lockReservationOnlyInTransaction,
+} from "./reservation-lock";
+export type {
+  InsertedReservationLock,
+  ReservationLock,
+  ReservationOnlyLock,
+  ReservationProductsLock,
+  ReservationScope,
+  ReservationStatusLock,
+  ReservationStockLock,
+  ReservationTransaction,
+} from "./reservation-lock";
+export {
+  ReservationChangeBusyError,
+  isReservationChangeBusyError,
+  runReservationChange,
+  runReservationChangeByStatus,
+  runReservationOnlyChange,
+  runReservationTransaction,
+} from "./reservation-change";
 export {
   STORE_NOT_ACCEPTING_RESERVATIONS,
   StoreNotAcceptingReservationsError,

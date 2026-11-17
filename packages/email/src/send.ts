@@ -96,7 +96,8 @@ export async function sendEmail({
   // (auth flows, notification dispatchers) degrade instead of throwing.
   // Blocking flows should pre-check isEmailConfigured() to show an honest UI.
   if (!isEmailConfigured()) {
-    console.log(`[email] SMTP not configured — skipped "${subject}" to ${to}`);
+    // Neither the recipient nor the subject: both can name a person.
+    console.log("[email] SMTP not configured: an e-mail was skipped");
     return { messageId: `email-disabled-${Date.now()}`, success: true };
   }
 

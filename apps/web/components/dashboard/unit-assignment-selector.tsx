@@ -229,7 +229,11 @@ export function UnitAssignmentSelector({
   };
 
   const showAssignmentFailure = (failure: AssignmentFailure) => {
-    const identifiers = getUnitIdentifiers(failure.failedUnitIds);
+    // Short of stock, the units themselves are fine: the store reads why.
+    const identifiers =
+      failure.error === 'errors.insufficientCapacity'
+        ? ''
+        : getUnitIdentifiers(failure.failedUnitIds);
     toastManager.add({
       title: identifiers
         ? t('invalidUnitsToast', { identifiers })

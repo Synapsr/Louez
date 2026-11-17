@@ -5,12 +5,32 @@ import { after, before, beforeEach, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  raceOnLockedRow,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+  waitForLockWaits,
+} from "@louez/db/testing";
+
+import { closeNetworkForSuite } from "@/lib/testing/network-guard";
 
 // The customer's online payment of a reservation: charged in the reservation's
 // currency, frozen when it was made, whatever the store's is now, and only a
-// payment in that currency has paid it (invariants M2 and M6). Stripe is a fake
-// that notes the session it is asked for: no network. The database is real.
+// payment in that currency has paid it (invariants M2 and M6). A resumed
+// checkout cancels the rental's open payments, then expires their sessions, then
+// creates its own, and installs it only on a reservation that, under its lock,
+// is still payable, has no other open or paid rental payment and no unsettled
+// session; otherwise it expires the session it created. Each unsettled rental
+// session (the ones it replaces, and the `cancelled` ones Stripe has not said
+// are over, whatever their age) is expired, or read when Stripe no longer
+// expires it, and marked settled once Stripe says it is over; a marked one is
+// never read again. When one's state is unknown, no session is created, the
+// rows stay `cancelled`, and the next call asks again
+// (docs/domain/reservation-changes.md). A session found
+// paid is recorded through the completion, whose suite covers it. Stripe is a
+// fake that notes the sessions it is asked to create, expire and read: no
+// network. The database is real.
 
 process.env.SKIP_ENV_VALIDATION = "true";
 // The Stripe client is built from this key, then its session creation is replaced.
@@ -43,16 +63,37 @@ registerHooks({
   },
 });
 
+/** What Stripe answers about an earlier session (see `replacedAtStripe`). */
+type AtStripe = "expirable" | "open" | "expired" | "unreachable";
+
 const STORE = "store_pay_session";
 const SLUG = "pay-session";
 const CUSTOMER = "customer_pay_session";
 
 describe("the customer's payment session (database)", { skip: skipWithoutTestDatabase() }, () => {
+  // No test of this suite reaches a provider: Stripe is a fake.
+  closeNetworkForSuite();
+
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let paymentSession: typeof import("./payment-session");
   let counter = 0;
   const sessions: Stripe.Checkout.SessionCreateParams[] = [];
+  /** The account each session was created on, in order. */
+  const accounts: (string | undefined)[] = [];
+  /** The sessions expired at Stripe, in order. */
+  const expired: string[] = [];
+  /** The sessions Stripe was asked to expire, expired or not, in order. */
+  const expireAsked: string[] = [];
+  /** The sessions read at Stripe, in order. */
+  const retrieved: string[] = [];
+  /**
+   * What Stripe answers about a replaced session: by default it expires it. Else
+   * the expire fails, and the retrieve answers that state, or fails too.
+   */
+  let replacedAtStripe: AtStripe = "expirable";
+  /** Runs after a session is created, before its payment is installed: a test's moment. */
+  let afterCreate: (() => Promise<void>) | null = null;
 
   before(async () => {
     database = await createTestDatabase("payment_session");
@@ -63,15 +104,29 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     Reflect.set(
       getStripe().checkout.sessions,
       "create",
-      async (params: Stripe.Checkout.SessionCreateParams) => {
+      async (params: Stripe.Checkout.SessionCreateParams, options?: Stripe.RequestOptions) => {
         sessions.push(params);
-        return {
-          id: `cs_pay_${sessions.length}`,
-          url: "https://checkout.stripe.test/pay",
-          expires_at: 1_900_000_000,
-        };
+        accounts.push(options?.stripeAccount);
+        const id = `cs_pay_${sessions.length}`;
+        await afterCreate?.();
+        return { id, url: `https://checkout.stripe.test/${id}`, expires_at: 1_900_000_000 };
       },
     );
+    // A session this test created is open; another is the replaced one.
+    const created = (id: string) => sessions.some((_, index) => id === `cs_pay_${index + 1}`);
+    Reflect.set(getStripe().checkout.sessions, "expire", async (id: string) => {
+      expireAsked.push(id);
+      if (!created(id) && replacedAtStripe !== "expirable") {
+        throw new Error("This Checkout Session is not in an expireable state.");
+      }
+      expired.push(id);
+      return { id, status: "expired" };
+    });
+    Reflect.set(getStripe().checkout.sessions, "retrieve", async (id: string) => {
+      retrieved.push(id);
+      if (replacedAtStripe === "unreachable") throw new Error("Stripe not reached");
+      return { id, status: replacedAtStripe, payment_status: "unpaid" };
+    });
 
     // The store has moved to dollars since its reservations were booked.
     await louezDb.db.insert(louezDb.stores).values({
@@ -99,6 +154,12 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
 
   beforeEach(() => {
     sessions.length = 0;
+    accounts.length = 0;
+    expired.length = 0;
+    expireAsked.length = 0;
+    retrieved.length = 0;
+    replacedAtStripe = "expirable";
+    afterCreate = null;
   });
 
   /** A confirmed reservation of 100.00, with a deposit of 300.00. */
@@ -206,5 +267,361 @@ describe("the customer's payment session (database)", { skip: skipWithoutTestDat
     assert.ok(!("error" in stillOwed), JSON.stringify(stillOwed));
     assert.deepEqual(asked(), [["eur", 10_000]]);
     assert.deepEqual(alreadyPaid, { error: "errors.alreadyPaid" });
+  });
+
+  test("the pending payment records the account its session was created on", async () => {
+    const reservationId = await createReservation("EUR");
+
+    const result = await start(reservationId);
+
+    assert.ok(!("error" in result), JSON.stringify(result));
+    assert.deepEqual(accounts, ["acct_pay_session"]);
+    const rows = await louezDb.db
+      .select({
+        status: louezDb.payments.status,
+        origin: louezDb.payments.origin,
+        stripeCheckoutSessionId: louezDb.payments.stripeCheckoutSessionId,
+        stripeAccountId: louezDb.payments.stripeAccountId,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, reservationId));
+    assert.deepEqual(rows, [
+      {
+        status: "pending",
+        origin: "customer_session",
+        stripeCheckoutSessionId: result.sessionId,
+        stripeAccountId: "acct_pay_session",
+      },
+    ]);
+  });
+
+  /** A storefront checkout of 100.00 EUR, pending, with its session's payment open. */
+  async function openCheckout() {
+    const id = `res_pay_${++counter}`;
+    await louezDb.db.insert(louezDb.reservations).values({
+      id,
+      storeId: STORE,
+      customerId: CUSTOMER,
+      number: id,
+      status: "pending",
+      startDate: new Date("2031-04-10T09:00:00.000Z"),
+      endDate: new Date("2031-04-12T09:00:00.000Z"),
+      subtotalAmount: "100.00",
+      depositAmount: "0.00",
+      totalAmount: "100.00",
+      currency: "EUR",
+      source: "online",
+    });
+    const openSession = `cs_open_${id}`;
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `pay_open_${id}`,
+      reservationId: id,
+      amount: "100.00",
+      type: "rental",
+      method: "stripe",
+      status: "pending",
+      stripeCheckoutSessionId: openSession,
+      stripeAccountId: "acct_pay_session",
+      origin: "checkout",
+      currency: "EUR",
+    });
+    return { id, openSession };
+  }
+
+  /** The checkout's payment resumed, as the cancelled page asks for it. */
+  const resume = (reservationId: string) =>
+    paymentSession.createReservationPaymentSessionForCustomer(
+      SLUG,
+      reservationId,
+      CUSTOMER,
+      "checkout_resume",
+      { allowPendingReservation: true, chargeAmount: 100 },
+    );
+
+  /** The reservation's status, and its rental payments: their status and session. */
+  async function stateOf(reservationId: string) {
+    const [reservation] = await louezDb.db
+      .select({ status: louezDb.reservations.status })
+      .from(louezDb.reservations)
+      .where(eq(louezDb.reservations.id, reservationId));
+    const rows = await louezDb.db
+      .select({
+        status: louezDb.payments.status,
+        session: louezDb.payments.stripeCheckoutSessionId,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, reservationId));
+    rows.sort((a, b) => String(a.session).localeCompare(String(b.session)));
+    return { status: reservation?.status, payments: rows };
+  }
+
+  /** The sessions of the reservation whose rows are marked settled, sorted. */
+  async function settledOf(reservationId: string) {
+    const rows = await louezDb.db
+      .select({
+        session: louezDb.payments.stripeCheckoutSessionId,
+        settledAt: louezDb.payments.sessionSettledAt,
+      })
+      .from(louezDb.payments)
+      .where(eq(louezDb.payments.reservationId, reservationId));
+    return rows.flatMap(({ session, settledAt }) => (settledAt ? [String(session)] : [])).sort();
+  }
+
+  /**
+   * Runs `statements` in a transaction on another connection, which keeps their
+   * locks until a transaction waits on one of them, then commits. Resolves once
+   * the locks are held, with the commit to wait for.
+   */
+  async function commitOnceWaitedOn(statements: ReadonlyArray<[string, unknown[]]>) {
+    const holder = await database.connect();
+    await holder.beginTransaction();
+    for (const [statement, values] of statements) await holder.query(statement, values);
+    const committed = (async () => {
+      try {
+        await waitForLockWaits(holder, database.name, 1);
+      } finally {
+        await holder.commit();
+        await holder.end();
+      }
+    })();
+    return { committed };
+  }
+
+  test("a resumed checkout replaces the open payment: its row cancelled, its session expired, the new one installed", async () => {
+    const { id, openSession } = await openCheckout();
+
+    const result = await resume(id);
+
+    assert.ok(!("error" in result), JSON.stringify(result));
+    assert.equal(result.sessionId, "cs_pay_1");
+    assert.deepEqual(expired, [openSession]);
+    assert.deepEqual(await stateOf(id), {
+      status: "pending",
+      payments: [
+        { status: "cancelled", session: openSession },
+        { status: "pending", session: "cs_pay_1" },
+      ],
+    });
+  });
+
+  test("a reservation the store cancels while the new session is created: nothing installed, the new session expired, errors.invalidStatus", async () => {
+    const { id, openSession } = await openCheckout();
+    let cancellation: { committed: Promise<void> } | undefined;
+    // The store's cancellation holds the reservation's row when the new payment
+    // comes to be installed, and commits once the install waits on it.
+    afterCreate = async () => {
+      cancellation = await commitOnceWaitedOn([
+        ["UPDATE reservations SET reservation_status = 'cancelled' WHERE id = ?", [id]],
+      ]);
+    };
+
+    const result = await resume(id);
+    await cancellation?.committed;
+
+    assert.deepEqual(result, { error: "errors.invalidStatus" });
+    assert.deepEqual(expired, [openSession, "cs_pay_1"]);
+    assert.deepEqual(await stateOf(id), {
+      status: "cancelled",
+      payments: [{ status: "cancelled", session: openSession }],
+    });
+  });
+
+  test("the replaced session paid while the new one is created: nothing installed, the new session expired, errors.alreadyPaid", async () => {
+    const { id, openSession } = await openCheckout();
+    let completion: { committed: Promise<void> } | undefined;
+    // The completion of the replaced session, as checkout.session.completed
+    // writes it: the reservation's row, then the payment completed, then the
+    // reservation confirmed. It commits once the install waits on it.
+    afterCreate = async () => {
+      completion = await commitOnceWaitedOn([
+        ["SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]],
+        [
+          "UPDATE payments SET payment_status = 'completed' WHERE stripe_checkout_session_id = ?",
+          [openSession],
+        ],
+        ["UPDATE reservations SET reservation_status = 'confirmed' WHERE id = ?", [id]],
+      ]);
+    };
+
+    const result = await resume(id);
+    await completion?.committed;
+
+    assert.deepEqual(result, { error: "errors.alreadyPaid" });
+    assert.deepEqual(expired, [openSession, "cs_pay_1"]);
+    assert.deepEqual(await stateOf(id), {
+      status: "confirmed",
+      payments: [{ status: "completed", session: openSession }],
+    });
+  });
+
+  test("two resumes at once: one installs its session, the other is refused and its session expired; one payment open", async () => {
+    const { id, openSession } = await openCheckout();
+
+    // Both have read the reservation, then wait on its row.
+    const answers = await raceOnLockedRow(database, { table: "reservations", id }, [
+      () => resume(id),
+      () => resume(id),
+    ]);
+
+    const installed = answers.flatMap((answer) => ("sessionId" in answer ? [answer] : []));
+    const refused = answers.filter((answer) => "error" in answer);
+    assert.equal(installed.length, 1, JSON.stringify(answers));
+    assert.deepEqual(refused, [{ error: "errors.paymentSessionError" }]);
+    const winner = String(installed[0]?.sessionId);
+    const loser = ["cs_pay_1", "cs_pay_2"].find((session) => session !== winner);
+    // The open session is expired by the resume that cancelled its row, and again by the
+    // other, which reads it as an earlier session still within its lifetime.
+    assert.deepEqual([...new Set(expired)].sort(), [openSession, String(loser)].sort());
+    assert.ok(expired.includes(String(loser)), "the loser's session expired");
+    assert.deepEqual(await stateOf(id), {
+      status: "pending",
+      payments: [
+        { status: "cancelled", session: openSession },
+        { status: "pending", session: winner },
+      ],
+    });
+  });
+
+  test("a replaced session Stripe no longer expires, read as expired: a new session, as when it expires it", async () => {
+    const { id, openSession } = await openCheckout();
+    replacedAtStripe = "expired";
+
+    const result = await resume(id);
+
+    assert.ok(!("error" in result), JSON.stringify(result));
+    assert.deepEqual(retrieved, [openSession]);
+    assert.equal(sessions.length, 1);
+    assert.deepEqual(await stateOf(id), {
+      status: "pending",
+      payments: [
+        { status: "cancelled", session: openSession },
+        { status: "pending", session: "cs_pay_1" },
+      ],
+    });
+  });
+
+  test("a replaced session neither expired nor read: no new session, its row left cancelled, errors.paymentSessionError", async () => {
+    for (const state of ["unreachable", "open"] as const) {
+      const { id, openSession } = await openCheckout();
+      replacedAtStripe = state;
+
+      const result = await resume(id);
+
+      assert.deepEqual(result, { error: "errors.paymentSessionError" }, state);
+      assert.deepEqual(retrieved, [openSession], state);
+      assert.equal(sessions.length, 0, `${state}: no session created`);
+      assert.deepEqual(
+        await stateOf(id),
+        { status: "pending", payments: [{ status: "cancelled", session: openSession }] },
+        state,
+      );
+      retrieved.length = 0;
+    }
+  });
+
+  /** A rental payment of the reservation, cancelled, whose session was created `ageMs` ago. */
+  async function earlierSession(
+    reservationId: string,
+    ageMs: number,
+    { settled = false }: { settled?: boolean } = {},
+  ) {
+    const session = `cs_earlier_${++counter}`;
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `pay_${session}`,
+      reservationId,
+      amount: "100.00",
+      type: "rental",
+      method: "stripe",
+      status: "cancelled",
+      stripeCheckoutSessionId: session,
+      stripeAccountId: "acct_pay_session",
+      origin: "customer_session",
+      currency: "EUR",
+      sessionSettledAt: settled ? new Date(Date.now() - ageMs) : null,
+      createdAt: new Date(Date.now() - ageMs),
+    });
+    return session;
+  }
+
+  test("a resume refused for an unknown session leaves its row cancelled: the next one asks Stripe again", async () => {
+    const outcomes = [
+      ["unreachable", { error: "errors.paymentSessionError" }],
+      ["expired", null],
+    ] as const;
+    for (const [state, refusal] of outcomes) {
+      const { id, openSession } = await openCheckout();
+      replacedAtStripe = "unreachable";
+      assert.deepEqual(await resume(id), { error: "errors.paymentSessionError" }, state);
+      assert.deepEqual(
+        await stateOf(id),
+        { status: "pending", payments: [{ status: "cancelled", session: openSession }] },
+        `${state}: its row stays cancelled`,
+      );
+      expireAsked.length = 0;
+      retrieved.length = 0;
+
+      // Stripe now answers about the first session: still unread, or expired.
+      replacedAtStripe = state;
+      const result = await resume(id);
+
+      assert.deepEqual(expireAsked, [openSession], state);
+      assert.deepEqual(retrieved, [openSession], state);
+      if (refusal) {
+        assert.deepEqual(result, refusal, state);
+        assert.equal(sessions.length, 0, `${state}: no session created`);
+      } else {
+        assert.ok(!("error" in result), `${state}: ${JSON.stringify(result)}`);
+        assert.deepEqual(
+          await stateOf(id),
+          {
+            status: "pending",
+            payments: [
+              { status: "cancelled", session: openSession },
+              { status: "pending", session: "cs_pay_1" },
+            ],
+          },
+          state,
+        );
+      }
+      sessions.length = 0;
+      expireAsked.length = 0;
+      retrieved.length = 0;
+    }
+  });
+
+  test("an unsettled session is read at Stripe whatever its age, and marked once Stripe says it is over; a settled one is never read", async () => {
+    const { id, openSession } = await openCheckout();
+    // Two hours old: past any session's lifetime.
+    const unsettled = await earlierSession(id, 2 * 60 * 60 * 1000);
+    const settled = await earlierSession(id, 2 * 60 * 60 * 1000, { settled: true });
+    // Stripe no longer expires an earlier session, and reads it expired.
+    replacedAtStripe = "expired";
+
+    const result = await resume(id);
+
+    assert.ok(!("error" in result), JSON.stringify(result));
+    assert.deepEqual(expireAsked.sort(), [openSession, unsettled].sort());
+    assert.deepEqual(retrieved.sort(), [openSession, unsettled].sort());
+    assert.ok(!expireAsked.includes(settled) && !retrieved.includes(settled));
+    assert.equal(sessions.length, 1);
+    assert.deepEqual(await settledOf(id), [openSession, settled, unsettled].sort());
+  });
+
+  test("four resumes in a row: once earlier sessions are marked, each asks Stripe about its predecessor alone, then creates its own", async () => {
+    const { id, openSession } = await openCheckout();
+    let previous = openSession;
+    for (let run = 1; run <= 4; run += 1) {
+      expireAsked.length = 0;
+      retrieved.length = 0;
+      const before = sessions.length;
+
+      const result = await resume(id);
+
+      assert.ok(!("error" in result), `${run}: ${JSON.stringify(result)}`);
+      assert.deepEqual(expireAsked, [previous], `resume ${run}: its predecessor expired`);
+      assert.deepEqual(retrieved, [], `resume ${run}: nothing read`);
+      assert.equal(sessions.length, before + 1, `resume ${run}: one session created`);
+      previous = String(result.sessionId);
+    }
   });
 });

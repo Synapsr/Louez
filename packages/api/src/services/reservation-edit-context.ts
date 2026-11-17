@@ -10,10 +10,12 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import type { LegMethod, PricingKind, StockKind } from "@louez/types";
+import type { LegMethod, PricingKind, ProductTaxSettings, StockKind } from "@louez/types";
 import type { SeasonalPricingConfig } from "@louez/utils";
 
-const NON_EDITABLE_STATUSES = new Set(["completed", "cancelled", "rejected"]);
+import { isReservationEditable } from "./reservation-editable";
+import { reservationEditToken } from "./util.reservation-edit";
+
 const AVAILABILITY_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface RawTier {
@@ -46,6 +48,7 @@ interface RawProduct {
   pricingMode: string | null;
   basePeriodMinutes: number | null;
   enforceStrictTiers: boolean;
+  taxSettings: ProductTaxSettings | null;
   pricingTiers: RawTier[];
   seasonalPricings: RawSeasonalPricing[];
   tulipMapping?: { productId: string } | null;
@@ -112,6 +115,8 @@ function mapProduct(p: RawProduct) {
     pricingMode: p.pricingMode,
     basePeriodMinutes: p.basePeriodMinutes,
     enforceStrictTiers: p.enforceStrictTiers,
+    // The form's preview totals the lines with the tax engine, as the edit does.
+    taxSettings: p.taxSettings,
     tulipInsurable: Boolean(p.tulipMapping?.productId),
     pricingTiers: mapPricingTiers(p.pricingTiers),
     seasonalPricings: mapSeasonalPricings(p.seasonalPricings),
@@ -206,7 +211,8 @@ export async function getDashboardReservationEditContext(params: {
     throw new ORPCError("NOT_FOUND", { message: "errors.reservationNotFound" });
   }
 
-  if (NON_EDITABLE_STATUSES.has(reservation.status)) {
+  // The edit page opens only what the edit itself accepts (slice 8a).
+  if (!isReservationEditable(reservation.status)) {
     return { editable: false as const };
   }
 
@@ -264,6 +270,9 @@ export async function getDashboardReservationEditContext(params: {
       totalAmount: reservation.totalAmount,
       deliveryFee: reservation.deliveryFee,
       discountAmount: reservation.discountAmount,
+      taxDisplayMode: reservation.taxDisplayMode,
+      // The reservation as the form loads it: the edit applies to it or is refused.
+      editToken: reservationEditToken(reservation, reservation.items),
       tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
       tulipInsuranceAmount: reservation.tulipInsuranceAmount,
       delivery: {
@@ -297,6 +306,8 @@ export async function getDashboardReservationEditContext(params: {
         unitPrice: item.unitPrice,
         depositPerUnit: item.depositPerUnit,
         totalPrice: item.totalPrice,
+        // The rate a line the edit leaves as it was keeps (slice 11).
+        taxRate: item.taxRate,
         isCustomItem: item.isCustomItem,
         pricingBreakdown: item.pricingBreakdown,
         productSnapshot: item.productSnapshot,

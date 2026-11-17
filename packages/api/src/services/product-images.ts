@@ -18,7 +18,11 @@ import { z } from "zod";
 import type { JobView } from "../contracts/jobs";
 import { productErrors, productImageErrors } from "../contracts/products";
 import type { StoreActor } from "../platform/actor";
-import { checkConfirmation } from "../platform/confirmation";
+import {
+  checkConfirmation,
+  raiseConfirmation,
+  type ConfirmationRefusal,
+} from "../platform/confirmation";
 import { platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import {
@@ -280,7 +284,7 @@ export async function startImageJob(
   const kind = IMAGE_JOB_KINDS[operation];
   const slotKey = slotKeyOf(input.id, input.imageUrl);
 
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let queued: string | null = null;
   const job = await db.transaction(async (tx) => {
     if (!(await lockStoreRow(tx, actor.storeId))) throw platformErrors.noStore();
@@ -342,8 +346,8 @@ export async function startImageJob(
       const balance = balanceText(quote);
       const summary = `${VERB[operation].doing} photo ${position + 1} of "${product.name}" costs ${credits(quote.priceMicro)} AI credits${balance ? ` (${balance})` : ""}. In about ${imageJobDuration(operation)} the result replaces this photo on the product${store.onboardingCompleted ? " and its online page" : ""}; the original stays among the photo's versions, and products_use_image_version puts it back. Nothing is charged if it fails.`;
       refusal = await checkConfirmation({
+        consequences: ["credits"],
         executor: tx,
-        always: true,
         actor,
         headers: starter.headers,
         procedure: starter.procedure,
@@ -399,8 +403,9 @@ export async function startImageJob(
     return row ?? null;
   });
 
-  if (refusal) throw refusal;
-  if (!job) throw productErrors.notFound(input.id);
+  if (refusal) return raiseConfirmation(refusal);
+  // The job was queued and committed, so no refusal: its key must never queue another.
+  if (!job) throw new Error("The job was queued, but it could not be read back.");
   if (queued) ports.dispatchJobs?.([queued]);
   return imageJobView(job, {
     urls: ports.urls,

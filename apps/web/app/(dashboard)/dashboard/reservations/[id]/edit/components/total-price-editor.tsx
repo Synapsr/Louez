@@ -5,13 +5,17 @@ import { useState } from "react";
 import { PenLine } from "lucide-react";
 
 import { Badge, Button, InputPrice, Tooltip, TooltipContent, TooltipTrigger } from "@louez/ui";
-import { cn } from "@louez/utils";
+import { cn, formatCurrency } from "@louez/utils";
+
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface TotalPriceEditorProps {
   value: number;
   savings: number;
   isManual?: boolean;
   currencySymbol: string;
+  /** The reservation's currency, the amounts shown in it. */
+  currency: string;
   ariaLabel: string;
   onChange: (value: number) => void;
 }
@@ -21,10 +25,12 @@ export function TotalPriceEditor({
   savings,
   isManual,
   currencySymbol,
+  currency,
   ariaLabel,
   onChange,
 }: TotalPriceEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const { intl: formatLocale } = useFormatLocale();
 
   if (isEditing) {
     return (
@@ -49,8 +55,7 @@ export function TotalPriceEditor({
     <div className="flex w-32 flex-col items-end">
       <div className="flex h-9 items-center justify-end gap-1">
         <p className="font-semibold tabular-nums">
-          {value.toFixed(2)}
-          {currencySymbol}
+          {formatCurrency(value, currency, formatLocale)}
         </p>
         <Tooltip>
           <TooltipTrigger
@@ -71,8 +76,7 @@ export function TotalPriceEditor({
       </div>
       {savings > 0 && !isManual && (
         <Badge variant="success" className="text-[10px] tabular-nums">
-          -{savings.toFixed(2)}
-          {currencySymbol}
+          -{formatCurrency(savings, currency, formatLocale)}
         </Badge>
       )}
     </div>

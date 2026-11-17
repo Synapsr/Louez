@@ -577,6 +577,7 @@
       "invitationCancelled": "Einladung storniert",
       "invitationResent": "Einladung erneut gesendet",
       "invitationAlreadySent": "Eine Einladung wurde bereits an diese E-Mail gesendet",
+      "invitationEmailLimit": "Dieser Shop hat in den letzten 24 Stunden {max} Einladungs-E-Mails angefordert, ob sie versendet werden konnten oder nicht: mehr sind nicht möglich. Versuchen Sie es später erneut.",
       "resend": "Erneut senden",
       "cancel": "Abbrechen",
       "invitedOn": "Eingeladen am {date}",
@@ -2251,7 +2252,16 @@
         "confirmRelease": "Kaution freigeben",
         "invalidCaptureAmount": "Ungültiger Betrag",
         "captureExceedsDeposit": "Betrag übersteigt Kaution",
-        "reasonRequired": "Bitte geben Sie einen Grund an"
+        "reasonRequired": "Bitte geben Sie einen Grund an",
+        "unconfirmed": {
+          "open": "Mit Stripe klären",
+          "title": "Unbestätigte Autorisierung",
+          "description": "Stripe hat diese Autorisierungsanfrage nie bestätigt. Prüfen Sie den Bereich Zahlungen im Stripe-Dashboard des Kontos, auf dem sie angefragt wurde.",
+          "explanation": "Das Schließen der Anfrage storniert bei Stripe nichts. Louez sucht zuerst selbst nach der Autorisierung und erfasst sie, wenn sie der Anfrage entspricht. Findet Louez eine, die nicht entspricht (Betrag, Karte oder Referenz geändert), bleibt die Anfrage offen und Louez weist Sie darauf hin: Stornieren Sie diese Autorisierung in Stripe, wodurch der reservierte Betrag freigegeben wird, und schließen Sie die Anfrage dann erneut. Ziehen Sie sie stattdessen in Stripe ein, erfasst Louez diesen Betrag nicht und die Anfrage bleibt offen: Wenden Sie sich an den Louez-Support. Taucht später eine Autorisierung auf, erfasst Louez sie, sobald Stripe sie meldet, sofern sie der Anfrage entspricht: Sie wird zur Kaution dieser Reservierung, wenn diese noch keine hat, und wird freigegeben, wenn bereits eine andere Kautionsreservierung sie absichert. Wird die Anfrage geschlossen, obwohl eine Autorisierung besteht, kann deshalb eine Zeit lang eine zusätzliche Reservierung auf der Karte des Kunden bleiben. Eine Autorisierung, die Sie in Stripe sehen und die Louez nicht erfasst hat, wird in Stripe bearbeitet: Stornieren Sie sie dort.",
+          "confirm": "Anfrage schließen",
+          "closed": "Anfrage geschlossen. Sie können eine neue Autorisierung erstellen.",
+          "recorded": "Louez hat die Autorisierung bei Stripe gefunden und erfasst."
+        }
       },
       "subtotal": "Zwischensumme",
       "source": "Quelle",
@@ -2547,6 +2557,7 @@
         "subtotal": "Zwischensumme",
         "deposit": "Kaution",
         "total": "Gesamt",
+        "taxLine": "Steuer",
         "tulipInsurance": {
           "title": "Tulip-Versicherung",
           "appliesMappedProducts": "Gilt nur für Produkte, die Tulip zugeordnet sind.",
@@ -2709,7 +2720,13 @@
           "shortfall": "Angefragt: {requested} · Verfügbar: {available}",
           "createAnyway": "Trotzdem erstellen",
           "editDescription": "Einige Produkte sind für den Zeitraum nicht in ausreichender Menge verfügbar. Sie können die Änderung trotzdem speichern; die Überbuchung wird im Verlauf sichtbar.",
-          "saveAnyway": "Trotzdem speichern"
+          "saveAnyway": "Trotzdem speichern",
+          "confirmDescription": "Der Bestand deckt diese Reservierung für ihren Zeitraum nicht ab. Sie können sie trotzdem über den verfügbaren Bestand hinaus bestätigen; die Überbuchung wird im Verlauf sichtbar.",
+          "confirmAnyway": "Trotzdem bestätigen",
+          "bufferTitle": "Umschlagspuffer zu kurz",
+          "bufferDescription": "Diese Positionen passen in Ihren Bestand, aber nicht mit dem Umschlagspuffer, den Sie zwischen zwei Vermietungen einhalten. Sie können die Reservierung trotzdem mit weniger Zeit zwischen den Vermietungen bestätigen; diese Entscheidung wird im Verlauf sichtbar.",
+          "bufferShortfall": "Angefragt: {requested} · Frei mit Puffer: {available}",
+          "confirmPastBuffer": "Trotzdem bestätigen"
         },
         "addUnavailable": {
           "title": "Produkt nicht verfügbar",
@@ -2761,6 +2778,7 @@
         "quote_accepted": "Angebot angenommen",
         "quote_declined": "Angebot abgelehnt",
         "overbooked": "Überbucht",
+        "turnoverBufferOverridden": "Puffer verkürzt",
         "contract_signed": "Vertrag unterschrieben",
         "contractUnsigned": "Ohne unterschriebenen Vertrag",
         "signedBy": "Unterschrieben von {name}",
@@ -2787,7 +2805,8 @@
             "incorrectCvc": "Der Sicherheitscode (CVC) der Karte ist für diese Kautionsautorisierung ungültig.",
             "processingError": "Die Kautionsautorisierung ist aufgrund eines vorübergehenden Verarbeitungsfehlers fehlgeschlagen. Versuchen Sie es in einigen Minuten erneut.",
             "doNotHonor": "Die Bank hat die Kautionsautorisierung ohne Angabe von Gründen abgelehnt. Bitten Sie den Kunden, seine Bank zu kontaktieren oder eine andere Karte zu verwenden.",
-            "generic": "Kautionsautorisierung fehlgeschlagen. Bitten Sie den Kunden, es erneut zu versuchen oder eine andere Karte zu verwenden."
+            "generic": "Kautionsautorisierung fehlgeschlagen. Bitten Sie den Kunden, es erneut zu versuchen oder eine andere Karte zu verwenden.",
+            "closedByStore": "Anfrage vom Shop geschlossen: keine Autorisierung in Stripe gefunden."
           }
         }
       },
@@ -2907,6 +2926,8 @@
         "damageRecorded": "Schäden erfasst",
         "invalidAmount": "Ungültiger Betrag",
         "amountExceedsDeposit": "Betrag übersteigt eingezogene Kaution",
+        "amountTooPrecise": "{decimals, plural, =0 {Ein Betrag in {currency} hat keine Nachkommastellen: Geben Sie ganze Einheiten ein.} other {Ein Betrag in {currency} hat höchstens # Nachkommastellen.}}",
+        "currencyNotSupported": "Zahlungen in {currency} können nicht erfasst werden: Louez unterstützt keine Währungen mit drei Nachkommastellen.",
         "deleteConfirmTitle": "Diese Zahlung löschen?",
         "deleteConfirmDescription": "Diese Aktion ist unwiderruflich. Die Zahlung wird dauerhaft aus dem Verlauf gelöscht.",
         "unpaidWarning": "Es sind noch {formattedAmount} für diese Reservierung einzuziehen",
@@ -2949,6 +2970,8 @@
         "statusAuthorized": "Autorisiert",
         "statusRefunded": "Erstattet",
         "statusCancelled": "Storniert",
+        "statusFailed": "Fehlgeschlagen",
+        "statusReleasePending": "Wird freigegeben",
         "requestPayment": "Zahlung anfordern",
         "invoiceGenerated": "Rechnung {number} erstellt"
       },
@@ -2983,9 +3006,13 @@
         "send": "Anfrage senden",
         "success": "Zahlungsanforderung gesendet",
         "successTitle": "Anfrage gesendet!",
-        "successDescription": "Kunde erhält einen Zahlungslink per {channel}",
+        "notSentTitle": "Zahlungslink erstellt",
+        "sentBy": "Per {channels, select, email {E-Mail} sms {SMS} other {E-Mail und SMS}} gesendet.",
+        "partlySent": "Per {sent, select, email {E-Mail} other {SMS}} gesendet, aber nicht per {failed, select, email {E-Mail} other {SMS}}: Kopieren Sie bei Bedarf den Link.",
+        "notSent": "{channels, select, email {Die E-Mail konnte nicht gesendet werden} sms {Die SMS konnte nicht gesendet werden} other {Weder die E-Mail noch die SMS konnten gesendet werden}}: Kopieren Sie den Link und senden Sie ihn selbst.",
         "error": "Fehler beim Senden",
         "paymentLink": "Zahlungslink",
+        "copyLink": "Link kopieren",
         "linkCopied": "Link kopiert",
         "copyFailed": "Kopieren fehlgeschlagen",
         "stripeNotConfigured": "Stripe nicht konfiguriert",
@@ -4475,7 +4502,6 @@
       },
       "integrationsHub": {
         "recommended": "Empfohlen",
-        "comingSoon": "Demnächst",
         "noIntegrations": "Noch keine Integrationen verfügbar.",
         "sections": {
           "byLouez": "Von Louez.io",
@@ -4494,7 +4520,10 @@
           "api": {
             "name": "API REST",
             "description": "Verbinden Sie Ihren Shop mit Ihren bestehenden Tools und automatisieren Sie Ihre täglichen Aufgaben.",
-            "comingSoonDescription": "Die REST-API befindet sich in Entwicklung. Sie können Ihren Shop bald mit jedem Tool oder Service verbinden."
+            "betaTitle": "In der Beta verfügbar",
+            "betaDescription": "Mit der REST-API können Ihre Skripte und Tools die Daten Ihres Shops lesen und ändern. Die Referenz zeigt, was sie kann. Jedes Tool verbindet sich mit einem API-Schlüssel, den Sie auf der MCP-Seite im Bereich API-Schlüssel erstellen.",
+            "openReference": "API-Referenz öffnen",
+            "createKey": "API-Schlüssel erstellen"
           }
         },
         "title": "Integrationen",
@@ -4758,12 +4787,12 @@
         "description": "Verwalten Sie API-Schlüssel, um externe Tools, KI-Assistenten oder benutzerdefinierte Integrationen mit Ihrem Shop zu verbinden.",
         "backToIntegrations": "Integrationen",
         "keysTitle": "API-Schlüssel",
-        "keysDescription": "Erstellen und verwalten Sie Schlüssel für den MCP-Server und die zukünftige REST-API.",
+        "keysDescription": "Erstellen und verwalten Sie Schlüssel für den MCP-Server und die REST-API.",
         "createKey": "Schlüssel erstellen",
         "noKeys": "Noch keine API-Schlüssel. Erstellen Sie einen, um zu beginnen.",
         "keyRevoked": "API-Schlüssel widerrufen.",
         "lastUsed": "Zuletzt verwendet",
-        "confirmSensitive": "Vor sensiblen Aktionen bestätigen",
+        "confirmSensitive": "Optionale Bestätigungen (Freigaben bleiben erforderlich)",
         "confirmSensitiveSaved": "Einstellung gespeichert",
         "endpointsTitle": "Endpunkte",
         "endpointsDescription": "Verwenden Sie diese Endpunkte, um auf Ihre Shop-Daten zuzugreifen.",
@@ -4799,7 +4828,11 @@
           "categories": "Kategorien",
           "payments": "Zahlungen",
           "analytics": "Analysen",
-          "settings": "Einstellungen"
+          "settings": "Einstellungen",
+          "online_store": "Online-Shop",
+          "team": "Team",
+          "billing": "Abonnement",
+          "integrations": "Integrationen"
         },
         "levels": {
           "none": "Kein Zugriff",
@@ -6906,6 +6939,28 @@
         "customers": "Wie viele neue Kunden diesen Monat?",
         "overdue": "Gibt es überfällige Rückgaben?",
         "pending": "Zeig mir Reservierungen, die auf Bestätigung warten"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Diese Zahlung erfassen?",
+          "delete_payment": "Diese Zahlung löschen?",
+          "return_deposit": "Diese Kautionsrückgabe erfassen?"
+        },
+        "amount": "Betrag",
+        "booking": "Buchung",
+        "open": "Prüfen und entscheiden",
+        "expires": "Entscheiden bis {when}",
+        "status": {
+          "pending": "Wartet auf Ihre Entscheidung",
+          "approved": "Genehmigt. Der Assistent führt es aus.",
+          "completed": "Erledigt",
+          "declined": "Abgelehnt. Es wurde nichts getan.",
+          "expired": "Abgelaufen. Es wurde nichts getan.",
+          "ended": "Nicht ausgeführt. Es wurde nichts getan.",
+          "unavailable": "Diese Anfrage kann hier nicht mehr gelesen werden."
+        },
+        "continue": "Weiter",
+        "followUp": "Genehmigt, es geht weiter"
       }
     },
     "breadcrumbs": {
@@ -6954,7 +7009,8 @@
       "settingsTaxes": "Steuern",
       "productsEdit": "Bearbeiten",
       "reservationsEdit": "Bearbeiten",
-      "settingsCustomerFields": "Kundendaten"
+      "settingsCustomerFields": "Kundendaten",
+      "needsALook": "Zu prüfen"
     },
     "notificationsCenter": {
       "title": "Benachrichtigungen",
@@ -7184,6 +7240,111 @@
         "participantNamePlaceholder": "Vorname",
         "saved": "Mietdetails gespeichert"
       }
+    },
+    "needsALook": {
+      "title": "Zu prüfen",
+      "description": "Was Louez nicht selbst klären konnte.",
+      "empty": {
+        "title": "Nichts zu prüfen",
+        "description": "Erstattungen, Kautionen, Gutschriften oder Nachrichten, die dich brauchen, erscheinen hier."
+      },
+      "incomplete": "Einige Einträge konnten nicht geladen werden. Lade die Seite gleich neu.",
+      "urgent": "Dringend",
+      "details": "Details",
+      "markHandled": "Als erledigt markieren",
+      "confirm": {
+        "title": "Als erledigt markieren?",
+        "description": "Er wird für dein ganzes Team ausgeblendet. Er erscheint wieder, wenn das Problem erneut auftritt.",
+        "heldBack": "Der erstattete Betrag bleibt zurückgehalten, bis Stripe antwortet.",
+        "cancel": "Abbrechen",
+        "confirm": "Als erledigt markieren"
+      },
+      "handled": "Als erledigt markiert",
+      "changed": "Dieser Eintrag hat sich inzwischen geändert: die Liste ist aktuell.",
+      "actions": {
+        "viewPayment": "Zahlung ansehen",
+        "viewBooking": "Buchung ansehen",
+        "viewProduct": "Produkt ansehen",
+        "invoicingSettings": "Rechnungseinstellungen",
+        "notificationSettings": "Benachrichtigungseinstellungen",
+        "openTeam": "Team öffnen"
+      },
+      "facts": {
+        "stripeCharge": "Stripe-Zahlung",
+        "stripeRefund": "Stripe-Erstattung",
+        "stripePayment": "Stripe-Zahlung",
+        "stripeDispute": "Stripe-Streitfall",
+        "creditNote": "Gutschrift",
+        "invoice": "Rechnung",
+        "channel": "Kanal",
+        "reference": "Referenz"
+      },
+      "refundUnconfirmed": {
+        "title": "Erstattung nicht bestätigt",
+        "summary": "Stripe hat die Erstattung von {amount} vom {day} für Buchung #{number} nicht bestätigt. Prüfe sie in Stripe, bevor du erneut erstattest.",
+        "heldBack": "Bis Stripe antwortet, hält Louez diesen Betrag von dem zurück, was die Zahlung noch erstatten kann."
+      },
+      "refundUndone": {
+        "title": "Erstattung fehlgeschlagen",
+        "summary": "Die Erstattung von {amount} für Buchung #{number} ist nicht durchgegangen: der Kunde wurde nicht erstattet. Prüfe sie in Stripe und erstatte bei Bedarf erneut.",
+        "summaryListed": "Die Angaben von Stripe zur Erstattung von {amount} für Buchung #{number} widersprechen sich. Prüfe in Stripe, ob der Kunde erstattet wurde, und erstatte bei Bedarf erneut.",
+        "creditNote": "Die Gutschrift {creditNote} bleibt bestehen: korrigiere sie in deiner Buchhaltung."
+      },
+      "creditNoteNotIssued": {
+        "title": "Gutschrift fehlt",
+        "summary": "Die Erstattung von {amount} für Buchung #{number} hat noch keine Gutschrift. Prüfe deine Rechnungseinstellungen.",
+        "reasons": {
+          "mismatch": "Die erfasste Erstattung passt nicht zur Anfrage, daher kann Louez sie nicht selbst ausstellen: kontaktiere den Louez-Support.",
+          "pending": "Die Erstattung war noch nicht abgeschlossen, als Louez es versuchte; Louez versucht es täglich erneut.",
+          "unknown": "Sie konnte nicht ausgestellt werden; Louez versucht es täglich erneut."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Kaution nicht bestätigt",
+        "summary": "Stripe hat die Kautionsreservierung von {amount} vom {day} für Buchung #{number} nicht bestätigt. Prüfe sie in Stripe; eine erneute Anfrage in Louez nimmt nie eine zweite Reservierung vor.",
+        "summaryUnmatched": "Stripe hält für Buchung #{number} eine Kaution, die nicht zu den am {day} angefragten {amount} passt, daher hat Louez sie nicht erfasst. Storniere sie in Stripe und schließe dann die Anfrage im Kautionsbereich der Buchung."
+      },
+      "depositReleaseFailed": {
+        "title": "Kaution möglicherweise noch blockiert",
+        "summary": "Stripe hat die Freigabe einer zweiten Kautionsreservierung von {amount} für Buchung #{number} nicht bestätigt: die Karte des Kunden ist möglicherweise noch belastet. Louez fragt weiter nach; ist sie in Stripe noch blockiert, storniere sie dort."
+      },
+      "disputeOpen": {
+        "title": "Zahlung angefochten",
+        "summaryAnswer": "Der Kunde hat eine Zahlung von {amount} für Buchung #{number} angefochten. Beantworte den Streitfall in Stripe vor Ablauf der Frist.",
+        "summaryReview": "Ein Streitfall über {amount} für Buchung #{number} ist offen: Stripe prüft ihn."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "E-Rechnung abgelehnt",
+        "titleNotSent": "E-Rechnung nicht gesendet",
+        "summaryRejected": "Die Rechnung {invoice} für Buchung #{number} wurde vom E-Rechnungsnetz abgelehnt. Prüfe sie in der Buchung.",
+        "summaryNotSent": "Die Rechnung {invoice} für Buchung #{number} konnte nicht an das E-Rechnungsnetz gesendet werden. Prüfe sie in der Buchung."
+      },
+      "messageNotSent": {
+        "title": "Nachricht nicht gesendet",
+        "titleWhy": "Nachricht nicht gesendet: {why, select, email {kein E-Mail-Dienst} sms {kein SMS-Dienst} recipient {Adresse geändert} other {fehlerhaft verfasst}}",
+        "toCustomer": "Der Kunde hat {message, select, customer_request_accepted {die Annahmenachricht} customer_request_rejected {die Ablehnungsnachricht} customer_reservation_cancelled {die Stornierungsnachricht} customer_reservation_modified {die Änderungsnachricht} customer_quote_sent {das Angebot} customer_reservation_confirmed {die Bestätigungsnachricht} other {die Nachricht}} zu Buchung #{number} nicht erhalten. Kontaktiere ihn selbst.",
+        "toCustomerNoBooking": "Eine Nachricht hat einen Kunden nicht erreicht. Kontaktiere ihn selbst.",
+        "toStore": "Eine Benachrichtigung an dein Team zu Buchung #{number} wurde nicht gesendet.",
+        "toStoreNoBooking": "Eine Benachrichtigung an dein Team wurde nicht gesendet.",
+        "reasons": {
+          "recipientChanged": "Die E-Mail-Adresse des Kunden hat sich nach dem Verfassen geändert.",
+          "emailNotConfigured": "Es ist kein E-Mail-Versanddienst eingerichtet.",
+          "writtenWrong": "Sie war fehlerhaft verfasst und konnte nicht gesendet werden.",
+          "smsNotConfigured": "Es ist kein SMS-Versanddienst eingerichtet."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Einladung nicht gesendet",
+        "summary": "Die Einladungs-E-Mail an {email} wurde nicht gesendet. Sende sie erneut oder teile ihren Link über die Team-Seite."
+      },
+      "operationUnknown": {
+        "title": "Aktion zu prüfen",
+        "summary": "Eine Aktion vom {day} wurde möglicherweise nicht gespeichert. Prüfe den Eintrag, bevor du sie wiederholst.",
+        "summaryBy": "Eine Aktion von {client} am {day} wurde möglicherweise nicht gespeichert. Prüfe den Eintrag, bevor du sie wiederholst."
+      },
+      "unknownTitle": "Etwas zu prüfen",
+      "neutral": "Louez konnte das nicht selbst klären. Öffne es, um zu sehen, was passiert ist.",
+      "viewAll": "Alle ansehen"
     }
   },
   "storefront": {
@@ -8031,6 +8192,10 @@
     "pay": {
       "subtitle": "Reservierung #{number}",
       "amountDue": "Zu zahlender Betrag",
+      "requestKind": {
+        "rental": "Miete",
+        "custom": "Zahlung"
+      },
       "greeting": "Hallo {name}, {store} bittet um eine Zahlung.",
       "payButton": "{amount} bezahlen",
       "redirecting": "Weiterleitung zur Zahlung...",
@@ -8043,6 +8208,7 @@
         "expiredDescription": "Dieser Zahlungslink ist abgelaufen. Bitte kontaktieren Sie den Vermieter für einen neuen Link.",
         "alreadyPaidTitle": "Bereits bezahlt",
         "alreadyPaidDescription": "Diese Zahlung wurde bereits abgeschlossen.",
+        "noLongerCurrentDescription": "Diese Zahlungsanforderung entspricht nicht mehr dem, was für die Reservierung noch offen ist. Bitte kontaktieren Sie den Shop.",
         "cancelledTitle": "Zahlung storniert",
         "cancelledDescription": "Diese Zahlungsanfrage wurde vom Vermieter storniert.",
         "unavailableTitle": "Zahlung nicht verfügbar",
@@ -9267,10 +9433,11 @@
     "emailAlreadyExists": "Ein Kunde mit dieser E-Mail existiert bereits",
     "customerHasReservations": "Kunde mit Reservierungen kann nicht gelöscht werden",
     "cannotCancelReservation": "Diese Reservierung kann nicht storniert werden",
-    "cannotEditCompletedReservation": "Abgeschlossene Reservierungen können nicht bearbeitet werden",
     "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "reservationChangedMeanwhile": "Die Reservierung wurde in der Zwischenzeit geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
-    "endDateBeforeStart": "Enddatum muss nach oder gleich dem Startdatum sein",
+    "editTaxAdded": "Der Gesamtbetrag enthält jetzt die Steuer: vorher {previousTotal}, jetzt {newTotal}.",
+    "editProductGonePriceUnknown": "Das Produkt einer Position wurde gelöscht, daher kann ihr Preis für andere Daten nicht berechnet werden. Geben Sie ihren Preis manuell ein und ändern Sie dann die Daten.",
+    "endDateBeforeStart": "Das Enddatum muss nach dem Startdatum liegen",
     "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",
     "customerRequired": "Kunde erforderlich",
@@ -9283,6 +9450,7 @@
     "assignedUnitsConflict": "Zugewiesene Einheiten sind für die neuen Daten nicht verfügbar: {identifiers}",
     "invalidUnits": "Eine oder mehrere ausgewählte Einheiten sind ungültig",
     "turnoverBufferConflict": "Die ausgewählte Einheit wird nur durch den Umschlagspuffer blockiert",
+    "turnoverBufferShortfall": "Der Umschlagspuffer zwischen zwei Vermietungen verhindert, dass einige Positionen dieser Reservierung bestätigt werden. Geben Sie Bestand um diese Daten frei, verschieben Sie sie oder bestätigen Sie trotzdem mit weniger Zeit zwischen den Vermietungen.",
     "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",
     "unitCombinationMismatch": "Ausgewählte Einheiten stimmen nicht mit der reservierten Kombination für diese Position überein",
     "cannotDisableUnitTrackingWithCombinations": "Einheitenverfolgung kann nicht deaktiviert werden, solange aktive Reservierungen verfolgte Kombinationen für dieses Produkt verwenden.",
@@ -9328,22 +9496,26 @@
       "syncFailed": "Fehler bei der Synchronisierung",
       "dashboardLinkFailed": "Fehler beim Öffnen des Stripe-Dashboards",
       "alreadyConnected": "Stripe-Konto bereits verbunden",
-      "noChargeToRefund": "Keine Stripe-Zahlung zum Erstatten",
-      "alreadyRefunded": "Diese Zahlung wurde bereits erstattet",
-      "refundExceedsCharge": "Der Erstattungsbetrag übersteigt den Zahlungsbetrag",
-      "refundFailed": "Fehler bei der Erstattung",
       "noSavedCard": "Keine Karte für diesen Kunden gespeichert",
       "invalidDepositStatus": "Der Kautionsstatus erlaubt diesen Vorgang nicht",
       "noDepositRequired": "Für diese Reservierung ist keine Kaution erforderlich",
       "authorizationFailed": "Autorisierung konnte nicht erstellt werden",
+      "authorizationInProgress": "Für diese Reservierung wird bereits eine Kautionsreservierung erstellt. Versuchen Sie es gleich noch einmal.",
+      "authorizationUnconfirmed": "Stripe hat die Kautionsreservierung nicht bestätigt. Versuchen Sie es erneut: Es wird dieselbe Reservierung angefragt, nie eine zweite.",
       "noActiveAuthorization": "Keine aktive Autorisierung für diese Reservierung",
       "captureFailed": "Kaution konnte nicht eingezogen werden",
       "releaseFailed": "Kaution konnte nicht freigegeben werden"
     },
     "reasonRequired": "Bitte geben Sie einen Grund an",
     "invalidAmount": "Ungültiger Betrag",
+    "amountExceedsDeposit": "Betrag übersteigt eingezogene Kaution",
+    "amountExceedsDue": "Der Betrag übersteigt den noch offenen Betrag",
+    "paymentNotFound": "Diese Zahlung existiert nicht mehr. Laden Sie die Seite neu.",
+    "amountTooPrecise": "Dieser Betrag hat mehr Nachkommastellen, als seine Währung zulässt.",
+    "currencyNotSupportedForPayments": "Zahlungen in dieser Währung können nicht erfasst werden: Louez unterstützt keine Währungen mit drei Nachkommastellen.",
     "invalidOrExpiredToken": "Dieser Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen Zugriffslink an.",
     "alreadyPaid": "Diese Reservierung ist bereits bezahlt.",
+    "invalidStatus": "Diese Reservierung kann online nicht mehr bezahlt oder geändert werden. Bitte kontaktieren Sie den Shop.",
     "paymentNotAvailable": "Online-Zahlung ist für diesen Shop nicht verfügbar.",
     "paymentSessionError": "Fehler beim Erstellen der Zahlungssitzung",
     "accessLinkSendFailed": "Fehler beim Senden des Zugriffslinks",
@@ -9451,7 +9623,11 @@
     "agentConnectionNotFound": "Dieser verbundene Agent existiert nicht mehr.",
     "oauthRequestInvalid": "Diese Verbindungsanfrage ist nicht mehr gültig. Starten Sie sie erneut in Ihrem Agenten.",
     "stripeRequiredForPaymentMode": "Der Online-Zahlungsmodus erfordert ein verbundenes Stripe-Konto. Verbinden Sie Stripe unter Einstellungen > Zahlungen.",
-    "locationLimitReached": "Ein Shop kann höchstens 50 Abholorte haben. Deaktivieren Sie einen oder verwenden Sie ihn erneut."
+    "locationLimitReached": "Ein Shop kann höchstens 50 Abholorte haben. Deaktivieren Sie einen oder verwenden Sie ihn erneut.",
+    "depositAttempt": {
+      "needsStripe": "Louez hat bei Stripe eine Autorisierung für diese Anfrage gefunden, die aber nicht dem Angefragten entspricht (Betrag, Karte oder Referenz geändert): Louez hat sie nicht erfasst, und die Anfrage bleibt offen. Stornieren Sie sie im Stripe-Dashboard und klicken Sie dann auf „Anfrage schließen“. Ziehen Sie sie stattdessen in Stripe ein, erfasst Louez diesen Betrag nicht und die Anfrage bleibt offen: Wenden Sie sich an den Louez-Support.",
+      "none": "Diese Reservierung hat keine unbestätigte Autorisierung mehr."
+    }
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",
@@ -9569,7 +9745,7 @@
     },
     "confirm": {
       "label": "Vor sensiblen Aktionen um Bestätigung bitten",
-      "description": "Vor einer Löschung oder einer Nachricht an einen Kunden erhält der Agent zuerst eine Vorschau und muss bestätigen; er ist angewiesen, sie Ihnen zuerst zu zeigen. Das Erfassen, Zurückgeben oder Löschen einer Zahlung, das Ausgeben von KI-Guthaben, das Entfernen eines Mitglieds und das Zurückziehen einer Einladung verlangen immer eine Bestätigung, auch wenn dies aus ist."
+      "description": "Vor einer Löschung oder einer Nachricht an einen Kunden erhält der Agent zuerst eine Vorschau und muss bestätigen; er ist angewiesen, sie Ihnen zuerst zu zeigen. Das Erfassen einer Zahlung oder einer bereits erfolgten Kautionsrückzahlung, das Löschen einer Zahlung, das Bestätigen einer Reservierung trotz unzureichenden Bestands oder mit unterschrittenem Umschlagspuffer, das Entfernen eines Mitglieds und das Zurückziehen einer Einladung erfordern Ihre Freigabe, auch wenn diese Einstellung deaktiviert ist: Der Agent gibt Ihnen einen Link, und Sie geben die Aktion auf einer Louez-Seite in Ihrem Konto frei oder lehnen sie ab. Das Ausgeben von KI-Guthaben verlangt immer eine Bestätigung, auch wenn dies aus ist."
     },
     "bundlesTitle": "Angezeigte Tools",
     "bundlesHint": "Der Agent sieht diese Tool-Pakete. Sie können später weitere hinzufügen.",
@@ -9747,6 +9923,10 @@
       "not_allowed": {
         "title": "Das können Sie für diesen Shop nicht tun",
         "description": "Ihre Rolle in diesem Shop erlaubt diesen Schritt nicht. Fragen Sie den Inhaber des Shops."
+      },
+      "changed": {
+        "title": "Diese Anfrage hat sich beim Lesen geändert",
+        "description": "Es wurde nichts ausgeführt: Ihr Agent hat erneut gefragt, seit diese Seite geöffnet wurde. Lesen Sie sie unten noch einmal und antworten Sie dann."
       }
     },
     "done": {
@@ -9780,6 +9960,10 @@
       "access": "Ein Mitglied sieht die Kunden, Reservierungen und Zahlungen des Shops und kann Produkte und Reservierungen ändern.",
       "approve": "Einladung genehmigen",
       "decline": "Ablehnen",
+      "reason": {
+        "label": "Eine Nachricht an Ihren Agenten (optional)",
+        "hint": "Ihr KI-Agent liest sie mit Ihrer Antwort. Höchstens {max} Zeichen."
+      },
       "error": {
         "failed": "Die Einladung konnte nicht verschickt werden. Laden Sie die Seite neu, um den Stand zu sehen."
       },
@@ -9807,6 +9991,209 @@
         "changed": {
           "title": "Seit der Anfrage Ihres Agenten hat sich etwas geändert",
           "description": "Die Adresse hat jetzt ein Louez-Konto, eine Einladung oder einen Platz im Team. Bitten Sie Ihren Agenten, die Anfrage zu wiederholen."
+        }
+      }
+    },
+    "operation_approval": {
+      "title": {
+        "access_removed": "Entzug eines Zugangs genehmigen?",
+        "money": "Zahlung genehmigen?",
+        "stock_override": "Buchung über den Bestand hinaus genehmigen?",
+        "deletion": "Löschung genehmigen?",
+        "customer_message": "Nachricht an einen Kunden genehmigen?",
+        "credits": "Verbrauch von Guthaben genehmigen?",
+        "change": "Diese Änderung genehmigen?",
+        "unknown": "Diese Anfrage genehmigen?"
+      },
+      "provenance": "<place>{store}</place> · angefragt von „<who>{agent}</who>“",
+      "provenanceKey": "<place>{store}</place> · angefragt von einem API-Schlüssel",
+      "provenanceAssistant": "<place>{store}</place> · angefragt von einem KI-Assistenten",
+      "provenanceInApp": "<place>{store}</place> · angefragt über den Louez-Assistenten",
+      "trustShort": "Es zählt nur die Zusammenfassung von Louez.",
+      "stake": {
+        "access_removed": "Entzieht einen Zugang zu Ihrem Shop.",
+        "money": "Ändert das für Ihren Shop erfasste Geld.",
+        "stock_override": "Erlaubt eine Buchung über den verfügbaren Bestand hinaus oder ohne Einhaltung Ihrer Pufferzeit zwischen zwei Vermietungen.",
+        "deletion": "Löscht endgültig: Das lässt sich nicht rückgängig machen.",
+        "customer_message": "Sendet eine Nachricht an einen Kunden: Sie lässt sich nicht zurückholen.",
+        "credits": "Verbraucht Guthaben: Es wird nicht zurückgegeben."
+      },
+      "lapsesSoon": "Verfällt {when}.",
+      "acknowledge": "Ich habe gelesen, was Louez tun wird",
+      "approve": "Genehmigen",
+      "refuse": "Ablehnen",
+      "details": "Details",
+      "askedBy": "Angefragt von",
+      "forAccount": "Für Ihr Konto {email}, in „{store}“.",
+      "apiKey": "API-Schlüssel „{name}“",
+      "apiKeyUnnamed": "Ein API-Schlüssel",
+      "unnamedAgent": "Ein KI-Assistent",
+      "inAppAssistant": "Der Louez-Assistent, aus dem Chat in Ihrem Dashboard",
+      "checked": "Was Louez geprüft hat",
+      "messageDestinationOnFile": "Nachrichten gehen an die hinterlegten Kontaktdaten des Kunden.",
+      "values": {
+        "yes": "Ja",
+        "no": "Nein",
+        "none": "Keine"
+      },
+      "computedAt": "Louez hat dies {when} aus den Daten Ihres Shops ermittelt.",
+      "expires": "Ohne Antwort verfällt die Anfrage {when}.",
+      "trust": "Es zählt nur diese Zusammenfassung von Louez, egal was Ihr Assistent im Chat gesagt hat. Wenn beides nicht übereinstimmt, lehnen Sie ab.",
+      "reason": {
+        "toggle": "Eine Notiz für Ihren Assistenten hinzufügen",
+        "label": "Ihre Notiz (optional)",
+        "hint": "Ihr Assistent liest es mit Ihrer Antwort. Höchstens {max} Zeichen."
+      },
+      "error": {
+        "failed": "Ihre Antwort konnte nicht gespeichert werden. Lesen Sie die Anfrage noch einmal und antworten Sie dann.",
+        "acknowledge": "Setzen Sie das Häkchen und genehmigen Sie dann. Es wurde nichts entschieden."
+      },
+      "unreadable": {
+        "title": "Diese Anfrage kann nicht angezeigt werden",
+        "description": "Daher kann sie hier nicht genehmigt werden. Es wurde nichts getan."
+      },
+      "tooLong": {
+        "title": "Diese Anfrage ist zu lang zum Anzeigen",
+        "description": "Daher kann sie hier nicht genehmigt werden. Es wurde nichts getan."
+      },
+      "done": {
+        "request": "Die Anfrage",
+        "yourWords": "Ihre Worte",
+        "approved": {
+          "title": "Genehmigt",
+          "description": "Ihr Assistent kann es jetzt ausführen. Tut er es nicht, verfällt Ihre Zustimmung {when} und nichts passiert."
+        },
+        "completed": {
+          "title": "Erledigt",
+          "description": "Ihr Assistent hat es {when} ausgeführt. Sie können zum Chat zurückkehren."
+        },
+        "approved_expired": {
+          "title": "Ihre Zustimmung ist verfallen",
+          "description": "Ihre Zustimmung ist nach einer Stunde verfallen, ohne dass Louez eine Ausführung erfasst hat. Hat Ihr Assistent sie im allerletzten Moment ausgeführt, zeigt diese Seite das nach dem Neuladen; sonst passiert nichts."
+        },
+        "refused": {
+          "title": "Abgelehnt",
+          "description": "Es wurde nichts getan. Ihr Assistent sieht Ihre Antwort und muss Sie erneut fragen, um es noch einmal zu versuchen."
+        },
+        "state_changed": {
+          "title": "Nicht ausgeführt: Die Anfrage passte nicht mehr",
+          "description": "Was Ihr Assistent angefragt hat, oder Ihr Shop, entsprach nicht mehr dem, was Sie genehmigt haben, daher wurde nichts getan. Er fragt erneut, wenn er es noch braucht."
+        },
+        "approver_not_allowed": {
+          "title": "Nicht ausgeführt: Ihre Rolle hat sich geändert",
+          "description": "Als Ihr Assistent es versuchte, erlaubte Ihre Rolle im Shop das nicht mehr, daher wurde nichts getan."
+        },
+        "connection_revoked": {
+          "title": "Beendet: Der Assistent wurde getrennt",
+          "description": "Die Verbindung des Assistenten zu Louez wurde entfernt, daher kann diese Anfrage weder beantwortet noch ausgeführt werden. Hat Ihr Assistent sie im allerletzten Moment davor ausgeführt, zeigt diese Seite das nach dem Neuladen; sonst passiert nichts."
+        },
+        "expired": {
+          "title": "Diese Anfrage ist verfallen",
+          "description": "Niemand hat innerhalb eines Tages geantwortet, daher ist die Anfrage verfallen. Wurde genau in diesem Moment eine Antwort gespeichert, zeigt diese Seite sie nach dem Neuladen; sonst passiert nichts, und Ihr Assistent fragt erneut, wenn er es noch braucht."
+        },
+        "ended": {
+          "title": "Diese Anfrage ist beendet",
+          "description": "Hier gibt es nichts mehr zu tun, und es wurde nichts getan. Wenn Ihr Assistent es noch braucht, fragt er erneut."
+        },
+        "shortened": "Die Zusammenfassung war zu lang, um vollständig angezeigt zu werden."
+      },
+      "display": {
+        "told": "Was Ihrem Assistenten gesagt wurde",
+        "headline": {
+          "recordPayment": "Eine erhaltene Zahlung erfassen?",
+          "paidBack": "Eine Rückzahlung an den Kunden erfassen?",
+          "returnDeposit": "Eine zurückgegebene Kaution erfassen?",
+          "recordRefund": "Eine von Hand geleistete Erstattung erfassen?",
+          "refundOnline": "Eine Online-Zahlung erstatten?",
+          "deletePayment": "Eine erfasste Zahlung löschen?",
+          "removeMember": "Jemanden aus Ihrem Team entfernen?",
+          "cancelInvitation": "Eine Einladung in Ihr Team zurückziehen?",
+          "confirmWithinRules": "Die Buchung bestätigen?",
+          "confirmPastBuffer": "Die Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen bestätigen?",
+          "confirmBeyondStock": "Die Buchung über Ihren Bestand hinaus bestätigen?",
+          "confirmBeyondStockAndBuffer": "Die Buchung über Ihren Bestand und Ihre Pufferzeit hinaus bestätigen?",
+          "recordDeposit": "Eine erhaltene Kaution erfassen?",
+          "createQuote": "Das Angebot erstellen?",
+          "createQuotePastBuffer": "Das Angebot erstellen trotz Ihrer Pufferzeit zwischen zwei Vermietungen?",
+          "createQuoteBeyondStock": "Das Angebot erstellen über Ihren Bestand hinaus?",
+          "createQuoteBeyondStockAndBuffer": "Das Angebot erstellen über Ihren Bestand und Ihre Pufferzeit hinaus?",
+          "createBooking": "Die Buchung erstellen?",
+          "createBookingPastBuffer": "Die Buchung erstellen trotz Ihrer Pufferzeit zwischen zwei Vermietungen?",
+          "createBookingBeyondStock": "Die Buchung erstellen über Ihren Bestand hinaus?",
+          "createBookingBeyondStockAndBuffer": "Die Buchung erstellen über Ihren Bestand und Ihre Pufferzeit hinaus?",
+          "moveDatesWithinRules": "Die Daten der Buchung verschieben?",
+          "moveDatesPastBuffer": "Die Daten der Buchung trotz Ihrer Pufferzeit zwischen zwei Vermietungen verschieben?",
+          "moveDatesBeyondStock": "Die Daten der Buchung über Ihren Bestand hinaus verschieben?",
+          "moveDatesBeyondStockAndBuffer": "Die Daten der Buchung über Ihren Bestand und Ihre Pufferzeit hinaus verschieben?"
+        },
+        "facts": {
+          "booking": "Buchung #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Buchung #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgezahlt · <v>{method}</v>",
+          "returned": "Kaution zurückgegeben: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Bisher noch gehaltene Kaution: <v>{held}</v>",
+          "recordOnly": "Louez erfasst es nur: Es wird kein Geld abgebucht oder erstattet.",
+          "refundToCard": "Erstattung: <v>{amount}</v>, auf die <v>{brand}</v>-Karte mit Endziffern <v>{last4}</v>",
+          "refundToPayer": "Erstattung: <v>{amount}</v>, auf das Zahlungsmittel, mit dem bezahlt wurde",
+          "leavesStripeBalance": "Das Geld verlässt Ihr Stripe-Guthaben; die Plattformgebühr auf diesen Teil wird erstattet.",
+          "refundGiven": "Erstattung: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "refundOf": "Erstattete Zahlung: <v>{type}</v>, <v>{amount}</v> am <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Bereits erstattet: <v>{refunded}</v> · Danach noch erstattbar: <v>{left}</v>",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Erfasst am <v>{atDate}</v> um <v>{atTime}</v>",
+          "leavesBalance": "Sie verschwindet aus dem Saldo der Buchung und aus Ihren Zahlen.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Mitglied seit <v>{sinceDate}</v>",
+          "losesAccess": "Verliert sofort den Zugriff auf Ihre Kunden, Buchungen und Zahlungen.",
+          "invited": "Einladung an <v>{email}</v>",
+          "invitedOn": "Gesendet am <v>{atDate}</v>",
+          "linkStops": "Der Link funktioniert nicht mehr: Die Person tritt Ihrem Team nicht bei.",
+          "period": "{periodSameDay, select, yes {Am <v>{periodStartDate}</v> von <v>{periodStartTime}</v> bis <v>{periodEndTime}</v>} other {Vom <v>{periodStartDate}</v> um <v>{periodStartTime}</v> bis <v>{periodEndDate}</v> um <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: {requested} angefragt, {available, plural, =0 {keins frei} other {nur # frei}} mit Ihrer Pufferzeit von <v>{buffer}</v>",
+          "beyondStock": "<v>{product}</v>: {requested} angefragt, {available, plural, =0 {keins auf Lager} other {nur # auf Lager}}: {missing, plural, one {# fehlt} other {# fehlen}}",
+          "moreLines": "{count, plural, one {Und # weitere Position außerhalb Ihrer Regeln} other {Und # weitere Positionen außerhalb Ihrer Regeln}}: siehe Details",
+          "withinRules": "Ihr Bestand und Ihre Pufferzeit decken sie ab: Nichts geht darüber hinaus.",
+          "message": "<v>{customer}</v> erhält {channels, select, sms {die SMS} other {die E-Mail}} „<v>{message}</v>“ an <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> erhält die E-Mail „<v>{message}</v>“ an <v>{email}</v> und die SMS an <v>{phone}</v>",
+          "messageToCustomer": "Der Kunde erhält {channels, select, email {die E-Mail} sms {die SMS} other {die E-Mail und die SMS}} „<v>{message}</v>“",
+          "noMessage": "Der Kunde erhält keine Nachricht.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> erhalten · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, an den Kunden zurückgegeben · <v>{method}</v>",
+          "bookingFor": "Für <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Für <v>{customer}</v> · <v>{email}</v>, neuer Kunde",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> und {others, plural, one {# weitere Position} other {# weitere Positionen}}",
+          "datesMoved": "Daten: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Neuer Gesamtbetrag: <v>{total}</v> (Differenz: <v>{difference}</v>). Es wird nichts abgebucht oder erstattet."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Miete",
+            "deposit": "Kaution",
+            "deposit_hold": "Kautionsvormerkung",
+            "deposit_capture": "Einbehaltene Kaution",
+            "deposit_return": "Kautionsrückgabe",
+            "damage": "Schäden",
+            "adjustment": "Anpassung"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Bar",
+            "card": "Karte",
+            "transfer": "Überweisung",
+            "check": "Scheck",
+            "other": "Sonstige"
+          },
+          "customerMessage": {
+            "request_accepted": "Anfrage angenommen",
+            "request_rejected": "Anfrage abgelehnt",
+            "reservation_cancelled": "Buchung storniert",
+            "quote_sent": "Angebot",
+            "booking_confirmed": "Buchung bestätigt",
+            "reservation_modified": "Buchung geändert"
+          }
         }
       }
     }

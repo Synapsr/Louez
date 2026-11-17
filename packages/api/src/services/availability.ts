@@ -47,10 +47,27 @@ type ReservationWithAssignedUnits = {
   items: Array<{
     productId: string | null;
     combinationKey?: string | null;
+    selectedAttributes?: UnitAttributes | null;
     quantity: number;
     assignedUnits: Array<{ productUnitId: string | null }>;
   }>;
 };
+
+/** What a booked line still asks of the stock, one entry per unit it holds and one for the rest. */
+export type NetReservedItem = {
+  productId: string | null;
+  /** The combination of the unit held, or the one the line chose for the units it has yet to get. */
+  combinationKey?: string | null;
+  /** What the line chose, for the units it has yet to get. */
+  selectedAttributes?: UnitAttributes | null;
+  /** A unit the line holds: it counts on that unit's combination and no other. */
+  heldUnit: boolean;
+  quantity: number;
+  stockKind: StockKind;
+  consumedQuantity: number;
+};
+
+export type NetReservation = { startDate: Date; endDate: Date; items: NetReservedItem[] };
 
 export type ExcludedUnitInfo = {
   lifecycleStatus: "active" | "retired";
@@ -130,11 +147,8 @@ export async function loadExcludedUnitInfo(
   return infoByUnitId;
 }
 
-export function computeReservedNetOfExcludedUnits(params: {
+type NetOfExcludedUnitsParams = {
   reservations: ReservationWithAssignedUnits[];
-  startDate: Date;
-  endDate: Date;
-  turnoverBufferMinutes: number;
   excludedProductUnitIds: ReadonlySet<string>;
   excludedUnitInfo: ReadonlyMap<string, ExcludedUnitInfo>;
   consumableProductIds?: ReadonlySet<string>;
@@ -144,11 +158,16 @@ export function computeReservedNetOfExcludedUnits(params: {
    * that holds the only M unit must make M unavailable, not float.
    */
   combinationKeyByUnitId?: ReadonlyMap<string, string | null>;
-}): {
-  reservedByProduct: Map<string, number>;
-  reservedByProductCombination: Map<string, number>;
-} {
-  const reservations = params.reservations.map((reservation) => ({
+};
+
+/**
+ * What each reservation asks of the stock, to its availability end: a unit
+ * that is out of the stock over the window and absorbs its reservation takes
+ * that much off the line, and each rentable unit a line holds counts on its
+ * own combination.
+ */
+export function netOfExcludedUnits(params: NetOfExcludedUnitsParams): NetReservation[] {
+  return params.reservations.map((reservation) => ({
     startDate: reservation.startDate,
     endDate: getReservationAvailabilityEnd(reservation),
     items: reservation.items.flatMap((item) => {
@@ -195,6 +214,7 @@ export function computeReservedNetOfExcludedUnits(params: {
         ...assigned.map((combinationKey) => ({
           productId: item.productId,
           combinationKey,
+          heldUnit: true,
           quantity: 1,
           stockKind,
           consumedQuantity: 0,
@@ -204,6 +224,8 @@ export function computeReservedNetOfExcludedUnits(params: {
               {
                 productId: item.productId,
                 combinationKey: item.combinationKey,
+                selectedAttributes: item.selectedAttributes,
+                heldUnit: false,
                 quantity: unassignedQuantity,
                 stockKind,
                 consumedQuantity: 0,
@@ -213,9 +235,20 @@ export function computeReservedNetOfExcludedUnits(params: {
       ];
     }),
   }));
+}
 
+export function computeReservedNetOfExcludedUnits(
+  params: NetOfExcludedUnitsParams & {
+    startDate: Date;
+    endDate: Date;
+    turnoverBufferMinutes: number;
+  },
+): {
+  reservedByProduct: Map<string, number>;
+  reservedByProductCombination: Map<string, number>;
+} {
   return calculatePeakReservedQuantities({
-    reservations,
+    reservations: netOfExcludedUnits(params),
     startDate: params.startDate,
     endDate: params.endDate,
     turnoverBufferMinutes: params.turnoverBufferMinutes,

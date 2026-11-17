@@ -4,7 +4,13 @@
  * completed `rental` payment. Deposits, holds and refunds never count.
  */
 
-import { getSettledPaymentAmount, isPaymentInCurrency, isStripeRefundRow } from "@louez/utils";
+import {
+  getRentalPaid,
+  getSettledPaymentAmount,
+  isCustomerDepositHoldRow,
+  isPaymentInCurrency,
+  isStripeRefundRow,
+} from "@louez/utils";
 
 export interface PaymentLike {
   id?: string;
@@ -20,6 +26,8 @@ export interface PaymentLike {
   /** With `currency`, tells a Stripe payment, whose currency is its own. */
   method?: string;
   currency?: string | null;
+  /** On a hold Louez decided against, until the provider released it. */
+  releaseOwedAt?: Date | string | null;
 }
 
 export type ReservationPaymentStatus = "paid" | "processing" | "unpaid";
@@ -32,6 +40,13 @@ export const isRefundRow = (payment: PaymentLike): boolean =>
   Boolean(payment.refundOfPaymentId) ||
   isStripeRefundRow(payment) ||
   payment.type === "deposit_return";
+
+/**
+ * A refund that gave nothing back: Stripe reported it failed or canceled. Its row counts
+ * for nothing, and is never shown as money given back.
+ */
+export const isFailedRefundRow = (payment: PaymentLike): boolean =>
+  isRefundRow(payment) && (payment.status === "failed" || payment.status === "cancelled");
 
 /** With `currency`, the reservation's, a payment in another currency pays nothing. */
 export const isRentalPaid = (payments: readonly PaymentLike[], currency?: string): boolean =>
@@ -55,27 +70,70 @@ export const getReservationPaymentStatus = (
   return "unpaid";
 };
 
+// What settles a rental, defined once beside the money it reads.
+export { getRentalPaid };
+
 /**
- * What the customer paid toward the rental itself: deposits never count. With
- * `currency`, the reservation's, neither does a payment in another currency.
+ * The deposit as the reservation's page reads it, by the shared refund rule
+ * (`getSettledPaymentAmount`), as the cancellation preview reads it: `held`
+ * is the completed deposits, less the completed returns linked to them and
+ * the returns made apart, never below zero. A return linked to a deposit that
+ * is not completed gives back nothing that was held. `collected` is the
+ * completed deposits received. `returned` is the completed returns themselves,
+ * not a difference: a Stripe refund has already brought its deposit down to
+ * its net amount, so it is in `returned` and no longer in `collected` or `held`.
  */
-export const getRentalPaid = (payments: readonly PaymentLike[], currency?: string): number =>
-  getSettledPaymentAmount(payments, "rental", currency);
+export const getDepositTotals = (
+  payments: readonly PaymentLike[],
+): { collected: number; returned: number; held: number } => {
+  const collected = payments
+    .filter(
+      (payment) =>
+        payment.type === "deposit" && payment.status === "completed" && !isRefundRow(payment),
+    )
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const held = Math.max(
+    0,
+    getSettledPaymentAmount(payments, "deposit") -
+      getSettledPaymentAmount(payments, "deposit_return"),
+  );
+  const byId = new Map(payments.flatMap((payment) => (payment.id ? [[payment.id, payment]] : [])));
+  const returned = payments
+    .filter((payment) => {
+      if (payment.type !== "deposit_return" || payment.status !== "completed") return false;
+      if (isStripeRefundRow(payment) || !payment.refundOfPaymentId) return true;
+      const original = byId.get(payment.refundOfPaymentId);
+      return original?.type === "deposit" && original.status === "completed";
+    })
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  return { collected, returned, held };
+};
 
 /** Damage fees charged on top of the rental, refunds subtracted. */
 export const getDamageFees = (payments: readonly PaymentLike[]): number =>
   getSettledPaymentAmount(payments, "damage");
 
 /**
- * The payment rows worth listing to the customer: a hold that was captured
- * is dropped, since the capture row carries the amount actually taken and
- * the hold row would show the full deposit as "taken".
+ * The payment rows worth listing to the customer. Of the deposit holds, only the
+ * one their card carries for the reservation, `depositPaymentIntentId`, with its
+ * release: an authorization the store asked for and Stripe never confirmed, a
+ * refused one and a second one on its way out are not theirs to read
+ * (`isCustomerDepositHoldRow`). A hold that was captured is dropped, since the
+ * capture row carries the amount actually taken and the hold row would show the
+ * full deposit as "taken".
  */
-export const getCustomerPaymentRows = <T extends PaymentLike>(payments: readonly T[]): T[] => {
+export const getCustomerPaymentRows = <T extends PaymentLike>(
+  payments: readonly T[],
+  depositPaymentIntentId: string | null | undefined,
+): T[] => {
   const captured = payments.some(
     (payment) => payment.type === "deposit_capture" && payment.status === "completed",
   );
-  return payments.filter(
-    (payment) => !(captured && payment.type === "deposit_hold" && payment.status === "completed"),
-  );
+  return payments.filter((payment) => {
+    // A refund that gave nothing back is no money given back to the customer.
+    if (isFailedRefundRow(payment)) return false;
+    if (payment.type !== "deposit_hold") return true;
+    if (!isCustomerDepositHoldRow(payment, depositPaymentIntentId)) return false;
+    return !(captured && payment.status === "completed");
+  });
 };

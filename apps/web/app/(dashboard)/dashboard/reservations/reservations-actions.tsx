@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
+import { usePostHog } from "posthog-js/react";
 
 import {
   AlertDialog,
@@ -18,11 +19,23 @@ import {
 } from "@louez/ui";
 
 import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
+import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { isContractSignatureRequiredRefusal } from "@/lib/reservations/contract-signature-refusal";
+import {
+  CONFIRMED_ANYWAY_EVENT,
+  overridesAfter,
+  readStatusStockRefusal,
+  type StatusStockOverrides,
+  type StatusStockRefusal,
+} from "@/lib/reservations/status-stock-refusal";
+import { readUnitConflictRefusal } from "@/lib/reservations/unit-conflict-refusal";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
-import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
+import {
+  reservationAnalyticsActions,
+  reservationManagementAnalyticsBaseProperties,
+} from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
   captureReservationActionStarted,
@@ -54,6 +67,17 @@ interface ConfirmDialogsProps {
   handleReject: () => Promise<void>;
   handleCancel: () => Promise<void>;
   loadingAction: string | null;
+  /**
+   * A confirmation the stock or the turnover buffer cannot cover: the
+   * refusal, and the flags it was sent with, until the store chooses.
+   */
+  stockRefusal: {
+    reservation: Reservation;
+    refusal: StatusStockRefusal;
+    sent: StatusStockOverrides;
+  } | null;
+  setStockRefusal: (stockRefusal: ConfirmDialogsProps["stockRefusal"]) => void;
+  handleConfirmAnyway: () => Promise<void>;
 }
 
 type ActionWarning = {
@@ -65,8 +89,10 @@ export function useReservationActions(): UseReservationActionsReturn {
   const t = useTranslations("dashboard.reservations");
   const tErrors = useTranslations("errors");
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [stockRefusal, setStockRefusal] = useState<ConfirmDialogsProps["stockRefusal"]>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [gateDialogOpen, setGateDialogOpen] = useState(false);
@@ -198,14 +224,11 @@ export function useReservationActions(): UseReservationActionsReturn {
     }),
   );
 
-  const handleStatusChange = async (
-    e: React.MouseEvent,
+  const changeStatus = async (
     reservation: Reservation,
     newStatus: StoreTargetStatus,
+    overrides: StatusStockOverrides = {},
   ) => {
-    e.preventDefault();
-    e.stopPropagation();
-
     const analyticsAction = getReservationStatusAnalyticsAction(newStatus);
     if (analyticsAction) {
       captureReservationActionStarted({
@@ -222,6 +245,7 @@ export function useReservationActions(): UseReservationActionsReturn {
       const result = await updateStatusMutation.mutateAsync({
         id: reservation.id,
         status: newStatus,
+        ...overrides,
       });
 
       const warnings =
@@ -242,13 +266,50 @@ export function useReservationActions(): UseReservationActionsReturn {
           properties: { error_code: "status_update_failed", status_after: newStatus },
         });
       }
+      const refusal = readStatusStockRefusal(error);
       if (isReservationGateRefusal(error)) setGateDialogOpen(true);
       else if (isContractSignatureRequiredRefusal(error))
         toastManager.add({ title: tErrors("contractSignatureRequired"), type: "error" });
-      else toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The stock, or the turnover buffer, is short: the store may confirm
+      // anyway, from the dialog.
+      else if (refusal) setStockRefusal({ reservation, refusal, sent: overrides });
+      else {
+        // Units the reservation holds cannot serve it: the store is told which.
+        const unitConflict = readUnitConflictRefusal(error);
+        toastManager.add({
+          title: unitConflict
+            ? tErrors("assignedUnitsConflict", { identifiers: unitConflict.identifiers })
+            : tErrors("generic"),
+          type: "error",
+        });
+      }
     } finally {
       setLoadingAction(null);
     }
+  };
+
+  const handleStatusChange = async (
+    e: React.MouseEvent,
+    reservation: Reservation,
+    newStatus: StoreTargetStatus,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await changeStatus(reservation, newStatus);
+  };
+
+  const handleConfirmAnyway = async () => {
+    if (!stockRefusal) return;
+    const { reservation, refusal, sent } = stockRefusal;
+    posthog.capture(CONFIRMED_ANYWAY_EVENT[refusal.kind], {
+      ...reservationManagementAnalyticsBaseProperties,
+      reservation_id: reservation.id,
+      shortfall_count: refusal.shortfalls.length,
+      source: "reservation_confirmation",
+      entry_point: "reservations_list",
+    });
+    setStockRefusal(null);
+    await changeStatus(reservation, "confirmed", overridesAfter(refusal, sent));
   };
 
   const handleReject = async () => {
@@ -353,6 +414,9 @@ export function useReservationActions(): UseReservationActionsReturn {
       handleReject,
       handleCancel,
       loadingAction,
+      stockRefusal,
+      setStockRefusal,
+      handleConfirmAnyway,
     },
   };
 }
@@ -367,6 +431,9 @@ export function ReservationConfirmDialogs({
   handleReject,
   handleCancel,
   loadingAction,
+  stockRefusal,
+  setStockRefusal,
+  handleConfirmAnyway,
 }: ConfirmDialogsProps) {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
@@ -416,6 +483,17 @@ export function ReservationConfirmDialogs({
       </AlertDialog>
 
       <ReservationGateDialog open={gateDialogOpen} onOpenChange={setGateDialogOpen} />
+
+      <ReservationOverbookingDialog
+        open={stockRefusal !== null}
+        onOpenChange={(open) => {
+          if (!open) setStockRefusal(null);
+        }}
+        shortfalls={stockRefusal?.refusal.shortfalls ?? []}
+        intent={stockRefusal?.refusal.kind === "buffer" ? "confirmPastBuffer" : "confirm"}
+        isPending={loadingAction?.endsWith("-confirmed") ?? false}
+        onConfirm={handleConfirmAnyway}
+      />
     </>
   );
 }

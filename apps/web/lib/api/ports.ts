@@ -2,8 +2,12 @@ import type { ApiPorts } from "@louez/api";
 import { isEmailConfigured } from "@louez/email";
 
 import { runAfterCommit } from "@/lib/api/after-commit";
+import { depositHoldsPort } from "@/lib/api/deposit-holds-port";
 import { dispatchApiEffects } from "@/lib/api/effects";
 import { dispatchApiJobs } from "@/lib/api/jobs";
+import { paymentRecordsPort } from "@/lib/api/payment-records-port";
+import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
+import { stripeRefundsPort } from "@/lib/api/stripe-refunds-port";
 import { log } from "@/lib/evlog";
 import { productImagesPort } from "@/lib/api/product-images";
 import { apiUrls } from "@/lib/api/urls";
@@ -14,6 +18,7 @@ import { getHostedBy } from "@/lib/hosting";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
 import { apiStorage } from "@/lib/storage/api-storage";
+import { isSmsConfigured } from "@/lib/sms/client";
 import { getStripe, isConnectConfigured } from "@/lib/stripe/client";
 import { newStorePort } from "@/lib/stores/new-store-port";
 
@@ -38,11 +43,21 @@ export const apiPorts: ApiPorts = {
   hostedBy: getHostedBy,
   stripeConnect: () => (isConnectConfigured() ? getStripe() : null),
   billing: billingPort,
+  depositHolds: depositHoldsPort,
+  paymentRecords: paymentRecordsPort,
+  paymentRefunds: paymentRefundsPort,
+  stripeRefunds: stripeRefundsPort,
   team: {
     collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
     emailConfigured: isEmailConfigured,
   },
+  emailConfigured: isEmailConfigured,
+  smsConfigured: isSmsConfigured,
   reportError: reportServerError,
-  // Through evlog, so its redaction and its drain apply too.
-  log: { error: (event) => log.error(event) },
+  // Through evlog, so its redaction and its drain apply too. A refusal (the MCP
+  // bridge's) by its facts only: platform/refusal-log.ts.
+  log: {
+    error: (event) => log.error(event),
+    refusal: (event) => log.warn({ apiRefusal: event }),
+  },
 };

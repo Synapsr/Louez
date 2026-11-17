@@ -10,7 +10,7 @@ import {
 } from "@louez/api/services/handoffs";
 
 import { auth } from "@/lib/auth";
-import { handoffPorts, redirectTo, toLogin } from "@/lib/handoffs/handoff-response";
+import { handoffPorts, postedRevision, redirectTo, toLogin } from "@/lib/handoffs/handoff-response";
 import { isSameOriginPost } from "@/lib/util.active-store-link";
 
 import { env } from "@/env";
@@ -19,8 +19,10 @@ import { env } from "@/env";
  * The user continues a handoff to the provider, from its page's form. Only
  * from this app's pages (Origin, and Sec-Fetch-Site when sent), so another
  * site cannot start the step with the user's cookie; a link preview that
- * only loads the page starts nothing. The link's user, still allowed in the
+ * only loads the page starts nothing. The step's user, still allowed in the
  * store, goes to the provider; anyone else back to the page, which says why.
+ * A step asked for again since the page showed it goes back to the page,
+ * which shows it again.
  */
 export async function POST(
   request: NextRequest,
@@ -37,7 +39,12 @@ export async function POST(
   const userId = session?.user?.id;
   if (!userId) return toLogin(page, 303);
 
-  const continued = await continueHandoff(token, userId);
+  const revision = postedRevision(await request.formData());
+  if (revision === null) return redirectTo(`${page}?changed=1`, 303);
+  const continued = await continueHandoff(token, userId, revision);
+  if (!continued.ok && continued.reason === "changed") {
+    return redirectTo(`${page}?changed=1`, 303);
+  }
   if (!continued.ok || !continued.state) return redirectTo(page, 303);
 
   const launch = await launchHandoff({

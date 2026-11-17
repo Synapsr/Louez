@@ -575,6 +575,7 @@
       "invitationCancelled": "招待がキャンセルされました",
       "invitationResent": "招待状を再送信しました",
       "invitationAlreadySent": "招待状はすでにこのメールに送信されています",
+      "invitationEmailLimit": "このストアは過去24時間に{max}件の招待メールを依頼しました（送信できたかどうかにかかわらず）。これが上限です。しばらくしてからもう一度お試しください。",
       "resend": "Resend",
       "cancel": "キャンセル",
       "invitedOn": "{date} に招待されました",
@@ -2251,7 +2252,16 @@
         "confirmRelease": "デポジットのリリース",
         "invalidCaptureAmount": "無効な金額です",
         "captureExceedsDeposit": "金額がデポジットを超えています",
-        "reasonRequired": "理由を教えてください"
+        "reasonRequired": "理由を教えてください",
+        "unconfirmed": {
+          "open": "Stripe で解決",
+          "title": "未確認のオーソリ",
+          "description": "Stripe はこのオーソリ要求を一度も確認していません。要求先アカウントの Stripe ダッシュボードの「支払い」を確認してください。",
+          "explanation": "要求を閉じても Stripe 側では何も取り消されません。Louez はまず自らオーソリを探し、要求と一致すれば記録します。一致しないオーソリ（金額、カード、または参照が変更されたもの）が見つかった場合、要求は開いたままとなり、Louez がその旨をお知らせします。Stripe でそのオーソリをキャンセルして（確保された金額が解放されます）から、もう一度要求を閉じてください。代わりに Stripe で回収した場合、Louez はその金額を記録せず、要求は開いたままになります。Louez サポートにお問い合わせください。後からオーソリが現れた場合、要求と一致していれば、Stripe から通知があった時点で Louez が記録します。この予約にデポジットがなければそれがデポジットになり、別のオーソリですでに確保されていれば解放されます。そのため、オーソリが存在する状態で要求を閉じると、お客様のカードに余分なオーソリがしばらく残ることがあります。Stripe で確認できても Louez が記録していないオーソリは、Stripe 側でキャンセルしてください。",
+          "confirm": "要求を閉じる",
+          "closed": "要求を閉じました。新しいオーソリを作成できます。",
+          "recorded": "Louez が Stripe でオーソリを見つけ、記録しました。"
+        }
       },
       "subtotal": "小計",
       "source": "ソース",
@@ -2547,6 +2557,7 @@
         "subtotal": "小計",
         "deposit": "保証金",
         "total": "合計",
+        "taxLine": "税金",
         "tulipInsurance": {
           "title": "Tulip 保険",
           "appliesMappedProducts": "Tulip にマッピングされた製品にのみ適用されます。",
@@ -2709,7 +2720,13 @@
           "shortfall": "リクエスト済み: {requested} · 入手可能: {available}",
           "createAnyway": "とにかく作成する",
           "editDescription": "一部の製品は、この期間に十分な数量を確保できません。変更を保存し、タイムラインでオーバーライドを追跡することもできます。",
-          "saveAnyway": "とにかく保存する"
+          "saveAnyway": "とにかく保存する",
+          "confirmDescription": "この予約の期間は在庫でまかなえません。在庫を超えてでも確定できます。この選択は履歴に記録されます。",
+          "confirmAnyway": "それでも確定する",
+          "bufferTitle": "ターンオーバーバッファーが不足しています",
+          "bufferDescription": "これらの明細は在庫には収まりますが、レンタル間に確保しているターンオーバーバッファーを含めると収まりません。レンタル間の時間を短くしてでも予約を確定できます。この選択は履歴に記録されます。",
+          "bufferShortfall": "リクエスト済み: {requested} · バッファー込みの空き: {available}",
+          "confirmPastBuffer": "それでも確定する"
         },
         "addUnavailable": {
           "title": "製品が利用できません",
@@ -2761,6 +2778,7 @@
         "quote_accepted": "見積もりが受け入れられました",
         "quote_declined": "見積は却下されました",
         "overbooked": "オーバーブッキング",
+        "turnoverBufferOverridden": "バッファー短縮",
         "contract_signed": "契約署名",
         "contractUnsigned": "契約未署名",
         "signedBy": "署名者：{name}",
@@ -2787,7 +2805,8 @@
             "incorrectCvc": "カード セキュリティ コード (CVC) は、この入金承認には無効です。",
             "processingError": "一時的な処理の問題により、入金の承認が失敗しました。数分後に再試行してください。",
             "doNotHonor": "銀行は詳細を示さずに預金承認を拒否した。銀行に連絡するか、別のカードを使用するようお客様に依頼します。",
-            "generic": "入金の承認に失敗しました。再試行するか、別のカードを使用するようお客様に依頼します。"
+            "generic": "入金の承認に失敗しました。再試行するか、別のカードを使用するようお客様に依頼します。",
+            "closedByStore": "ストアが要求を閉じました：Stripe にオーソリは見つかりませんでした。"
           }
         }
       },
@@ -2907,6 +2926,8 @@
         "damageRecorded": "記録された損害",
         "invalidAmount": "無効な金額です",
         "amountExceedsDeposit": "徴収されたデポジットを超える金額",
+        "amountTooPrecise": "{decimals, plural, =0 {{currency} の金額に小数はありません。整数で入力してください。} other {{currency} の金額は小数点以下 # 桁までです。}}",
+        "currencyNotSupported": "{currency} の支払いは記録できません。Louez は小数点以下 3 桁の通貨に対応していません。",
         "deleteConfirmTitle": "この支払いを削除しますか?",
         "deleteConfirmDescription": "この操作は元に戻せません。支払いは履歴から完全に削除されます。",
         "unpaidWarning": "この予約ではまだ {formattedAmount} を集める必要があります",
@@ -2949,6 +2970,8 @@
         "statusAuthorized": "認可された",
         "statusRefunded": "返金されました",
         "statusCancelled": "キャンセルされました",
+        "statusFailed": "失敗",
+        "statusReleasePending": "解除中",
         "requestPayment": "支払いを要求する",
         "invoiceGenerated": "請求書 {number} が生成されました"
       },
@@ -2983,9 +3006,13 @@
         "send": "リクエストの送信",
         "success": "支払いリクエストが送信されました",
         "successTitle": "リクエストを送信しました！",
-        "successDescription": "お客様は {channel} 経由で支払いリンクを受け取ります",
+        "notSentTitle": "支払いリンクを作成しました",
+        "sentBy": "{channels, select, email {メール} sms {SMS} other {メールとSMS}}で送信しました。",
+        "partlySent": "{sent, select, email {メール} other {SMS}}では送信しましたが、{failed, select, email {メール} other {SMS}}では送信できなかったため、必要に応じてリンクをコピーしてください。",
+        "notSent": "{channels, select, email {メールを送信できなかった} sms {SMSを送信できなかった} other {メールもSMSも送信できなかった}}ため、リンクをコピーしてご自身で送ってください。",
         "error": "リクエスト送信エラー",
         "paymentLink": "支払いリンク",
+        "copyLink": "リンクをコピー",
         "linkCopied": "リンクがコピーされました",
         "copyFailed": "コピーに失敗しました",
         "stripeNotConfigured": "Stripe が構成されていません",
@@ -3944,7 +3971,6 @@
           }
         },
         "recommended": "おすすめ",
-        "comingSoon": "近日公開予定",
         "noIntegrations": "利用可能な連携はまだありません。",
         "sections": {
           "byLouez": "作成者: Louez.io",
@@ -3963,7 +3989,10 @@
           "api": {
             "name": "API REST",
             "description": "ストアを既存のツールに接続し、日常のタスクを自動化します。",
-            "comingSoonDescription": "REST API は開発中です。間もなく、ストアをあらゆるツールやサービスに接続できるようになります。"
+            "betaTitle": "ベータ版で利用可能",
+            "betaDescription": "REST API を使うと、スクリプトやツールからストアのデータを読み取り、変更できます。できることはリファレンスで確認できます。各ツールは API キーで接続します。API キーは MCP ページの「API キー」セクションで作成します。",
+            "openReference": "API リファレンスを開く",
+            "createKey": "API キーを作成"
           }
         }
       },
@@ -4894,12 +4923,12 @@
         "description": "API キーを管理して、外部ツール、AI アシスタント、またはカスタム連携をストアに接続します。",
         "backToIntegrations": "連携",
         "keysTitle": "API キー",
-        "keysDescription": "MCP サーバーと将来の REST API のキーを作成および管理します。",
+        "keysDescription": "MCP サーバーと REST API のキーを作成および管理します。",
         "createKey": "キーの作成",
         "noKeys": "API キーはまだありません。まずは作成してください。",
         "keyRevoked": "API キーが取り消されました。",
         "lastUsed": "最後に使用した",
-        "confirmSensitive": "重要な操作の前に確認する",
+        "confirmSensitive": "任意の確認（必須の承認は解除されません）",
         "confirmSensitiveSaved": "設定を保存しました",
         "endpointsTitle": "エンドポイント",
         "endpointsDescription": "これらのエンドポイントを使用してストア データに接続します。",
@@ -4935,7 +4964,11 @@
           "categories": "カテゴリー",
           "payments": "支払い",
           "analytics": "分析",
-          "settings": "設定"
+          "settings": "設定",
+          "online_store": "オンラインストア",
+          "team": "チーム",
+          "billing": "サブスクリプション",
+          "integrations": "連携"
         },
         "levels": {
           "none": "アクセス不可",
@@ -6906,6 +6939,28 @@
         "customers": "今月の新規顧客は何人ですか?",
         "overdue": "返却期限を過ぎたものはありますか?",
         "pending": "確認待ちの予約を表示"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "この支払いを記録しますか？",
+          "delete_payment": "この支払いを削除しますか？",
+          "return_deposit": "この保証金の返却を記録しますか？"
+        },
+        "amount": "金額",
+        "booking": "予約",
+        "open": "確認して判断する",
+        "expires": "{when} までに判断してください",
+        "status": {
+          "pending": "あなたの判断を待っています",
+          "approved": "承認済み。アシスタントが実行しています。",
+          "completed": "完了",
+          "declined": "拒否しました。何も行われていません。",
+          "expired": "期限切れです。何も行われていません。",
+          "ended": "実行されませんでした。何も行われていません。",
+          "unavailable": "このリクエストはここでは読み込めなくなりました。"
+        },
+        "continue": "続ける",
+        "followUp": "承認済み、続行します"
       }
     },
     "breadcrumbs": {
@@ -6954,7 +7009,8 @@
       "settingsTaxes": "税金",
       "productsEdit": "編集",
       "reservationsEdit": "編集",
-      "settingsCustomerFields": "顧客情報"
+      "settingsCustomerFields": "顧客情報",
+      "needsALook": "要確認"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -7184,6 +7240,111 @@
         "participantNamePlaceholder": "名",
         "saved": "レンタルの詳細を保存しました"
       }
+    },
+    "needsALook": {
+      "title": "要確認",
+      "description": "Louez が自動で解決できなかったもの。",
+      "empty": {
+        "title": "確認する項目はありません",
+        "description": "対応が必要な返金、デポジット、クレジットノート、メッセージがここに表示されます。"
+      },
+      "incomplete": "一部の項目を読み込めませんでした。しばらくしてからページを再読み込みしてください。",
+      "urgent": "緊急",
+      "details": "詳細",
+      "markHandled": "対応済みにする",
+      "confirm": {
+        "title": "対応済みにしますか？",
+        "description": "チーム全員に対して非表示になります。問題が再発すると再び表示されます。",
+        "heldBack": "Stripe から回答があるまで、返金額は保留されたままです。",
+        "cancel": "キャンセル",
+        "confirm": "対応済みにする"
+      },
+      "handled": "対応済みにしました",
+      "changed": "この項目はその間に変更されました。一覧は最新です。",
+      "actions": {
+        "viewPayment": "支払いを見る",
+        "viewBooking": "予約を見る",
+        "viewProduct": "商品を見る",
+        "invoicingSettings": "請求書の設定",
+        "notificationSettings": "通知の設定",
+        "openTeam": "チームを開く"
+      },
+      "facts": {
+        "stripeCharge": "Stripe の請求",
+        "stripeRefund": "Stripe の返金",
+        "stripePayment": "Stripe の支払い",
+        "stripeDispute": "Stripe の不審請求の申し立て",
+        "creditNote": "クレジットノート",
+        "invoice": "請求書",
+        "channel": "チャネル",
+        "reference": "参照番号"
+      },
+      "refundUnconfirmed": {
+        "title": "返金が未確認",
+        "summary": "{day} に予約 #{number} で行った {amount} の返金を Stripe がまだ確認していません。再度返金する前に Stripe で確認してください。",
+        "heldBack": "Stripe から回答があるまで、Louez はこの金額を支払いからまだ返金できる額から差し引いて保留します。"
+      },
+      "refundUndone": {
+        "title": "返金に失敗",
+        "summary": "予約 #{number} の {amount} の返金は完了しませんでした。お客様には返金されていません。Stripe で確認し、必要なら再度返金してください。",
+        "summaryListed": "予約 #{number} の {amount} の返金について、Stripe の報告が食い違っています。お客様に返金されたか Stripe で確認し、必要なら再度返金してください。",
+        "creditNote": "クレジットノート {creditNote} は発行されたままです。会計で修正してください。"
+      },
+      "creditNoteNotIssued": {
+        "title": "クレジットノート未発行",
+        "summary": "予約 #{number} の {amount} の返金にはまだクレジットノートがありません。請求書の設定を確認してください。",
+        "reasons": {
+          "mismatch": "記録された返金が依頼内容と一致しないため、Louez だけでは発行できません。Louez サポートにお問い合わせください。",
+          "pending": "Louez が試した時点で返金がまだ完了していませんでした。Louez は毎日再試行します。",
+          "unknown": "発行できませんでした。Louez は毎日再試行します。"
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "デポジット未確認",
+        "summary": "{day} に予約 #{number} で依頼した {amount} のデポジットの仮押さえを Stripe がまだ確認していません。Stripe で確認してください。Louez で再依頼しても二重の仮押さえにはなりません。",
+        "summaryUnmatched": "Stripe は予約 #{number} のデポジットを保持していますが、{day} に依頼した {amount} と一致しないため、Louez は記録しませんでした。Stripe で取り消してから、予約のデポジット欄で依頼を閉じてください。"
+      },
+      "depositReleaseFailed": {
+        "title": "デポジットがまだ押さえられている可能性",
+        "summary": "予約 #{number} の 2 件目の {amount} のデポジット仮押さえの解除を Stripe がまだ確認していません。お客様のカードにまだ残っている可能性があります。Louez は依頼を続けます。Stripe でまだ押さえられていれば、そこで取り消してください。"
+      },
+      "disputeOpen": {
+        "title": "支払いに異議",
+        "summaryAnswer": "お客様が予約 #{number} の {amount} の支払いに異議を申し立てました。期限までに Stripe で対応してください。",
+        "summaryReview": "予約 #{number} の {amount} の異議申し立てが進行中です。Stripe が審査しています。"
+      },
+      "einvoiceRejected": {
+        "titleRejected": "電子請求書が却下されました",
+        "titleNotSent": "電子請求書が送信されていません",
+        "summaryRejected": "予約 #{number} の請求書 {invoice} が電子請求書ネットワークに却下されました。予約で確認してください。",
+        "summaryNotSent": "予約 #{number} の請求書 {invoice} を電子請求書ネットワークに送信できませんでした。予約で確認してください。"
+      },
+      "messageNotSent": {
+        "title": "メッセージ未送信",
+        "titleWhy": "メッセージ未送信：{why, select, email {メールサービス未設定} sms {SMSサービス未設定} recipient {宛先が変更されました} other {内容に誤り}}",
+        "toCustomer": "予約 #{number} の{message, select, customer_request_accepted {承認メッセージ} customer_request_rejected {お断りメッセージ} customer_reservation_cancelled {キャンセルメッセージ} customer_reservation_modified {変更メッセージ} customer_quote_sent {見積もり} customer_reservation_confirmed {確認メッセージ} other {メッセージ}}がお客様に届きませんでした。ご自身で連絡してください。",
+        "toCustomerNoBooking": "メッセージがお客様に届きませんでした。ご自身で連絡してください。",
+        "toStore": "予約 #{number} に関するチームへの通知が送信されませんでした。",
+        "toStoreNoBooking": "チームへの通知が送信されませんでした。",
+        "reasons": {
+          "recipientChanged": "作成後にお客様のメールアドレスが変更されました。",
+          "emailNotConfigured": "メール送信サービスが設定されていません。",
+          "writtenWrong": "内容に誤りがあり送信できませんでした。",
+          "smsNotConfigured": "SMS送信サービスが設定されていません。"
+        }
+      },
+      "invitationNotSent": {
+        "title": "招待未送信",
+        "summary": "{email} への招待メールが送信されませんでした。チームページから再送するか、リンクを共有してください。"
+      },
+      "operationUnknown": {
+        "title": "確認が必要な操作",
+        "summary": "{day} の操作が保存されていない可能性があります。やり直す前に記録を確認してください。",
+        "summaryBy": "{client} による {day} の操作が保存されていない可能性があります。やり直す前に記録を確認してください。"
+      },
+      "unknownTitle": "確認事項",
+      "neutral": "Louez が自動で解決できませんでした。開いて内容を確認してください。",
+      "viewAll": "すべて見る"
     }
   },
   "storefront": {
@@ -8031,6 +8192,10 @@
     "pay": {
       "subtitle": "予約番号 #{number}",
       "amountDue": "未払い額",
+      "requestKind": {
+        "rental": "レンタル",
+        "custom": "お支払い"
+      },
       "greeting": "こんにちは、{name}。{store} が支払いを要求しています。",
       "payButton": "{amount}を支払う",
       "redirecting": "支払いにリダイレクトしています...",
@@ -8043,6 +8208,7 @@
         "expiredDescription": "この支払いリンクの有効期限が切れています。新規ご希望の場合は販売店までご連絡ください。",
         "alreadyPaidTitle": "すでに支払われています",
         "alreadyPaidDescription": "この支払いはすでに完了しています。",
+        "noLongerCurrentDescription": "この支払いリクエストは、予約の未払い額と一致しなくなりました。ストアにお問い合わせください。",
         "cancelledTitle": "支払いがキャンセルされました",
         "cancelledDescription": "この支払いリクエストはストアによってキャンセルされました。",
         "unavailableTitle": "支払いは利用できません",
@@ -9267,10 +9433,11 @@
     "emailAlreadyExists": "このメールを受け取った顧客はすでに存在します",
     "customerHasReservations": "予約済みの顧客は削除できません",
     "cannotCancelReservation": "この予約はキャンセルできません",
-    "cannotEditCompletedReservation": "完了した予約は編集できません",
     "reservationStatusChanged": "編集中に予約状況が変更されました。ページをリロードして、もう一度お試しください。",
     "reservationChangedMeanwhile": "編集中に予約が変更されました。ページをリロードして、もう一度お試しください。",
-    "endDateBeforeStart": "終了日は開始日以降である必要があります",
+    "editTaxAdded": "合計に税金が含まれるようになりました：変更前 {previousTotal}、現在 {newTotal}。",
+    "editProductGonePriceUnknown": "明細の商品が削除されているため、別の日程の価格を計算できません。価格を手入力してから日程を変更してください。",
+    "endDateBeforeStart": "終了日時は開始日時より後である必要があります",
     "negativeAmountOnlyForAdjustment": "マイナスの金額は調整の場合にのみ許可されます",
     "productRequired": "必要な製品",
     "customerRequired": "お客様必須",
@@ -9283,6 +9450,7 @@
     "assignedUnitsConflict": "割り当てられたユニットは新しい日付では使用できません: {identifiers}",
     "invalidUnits": "選択した 1 つ以上のユニットが無効です",
     "turnoverBufferConflict": "選択したユニットはターンオーバー バッファーによってのみブロックされます",
+    "turnoverBufferShortfall": "レンタル間のターンオーバーバッファーにより、この予約の一部の明細を確定できません。この日程の前後の在庫を空けるか、日程を変更するか、レンタル間の時間を短くしてでも確定してください。",
     "unitProductMismatch": "選択したユニットはこの製品に属しません",
     "unitCombinationMismatch": "選択したユニットは、このラインアイテムの予約された組み合わせと一致しません",
     "cannotDisableUnitTrackingWithCombinations": "アクティブな予約でこの製品の追跡された組み合わせが使用されている間は、ユニット追跡を無効にすることはできません。",
@@ -9328,22 +9496,26 @@
       "syncFailed": "ステータス同期エラー",
       "dashboardLinkFailed": "Stripe ダッシュボードを開くときにエラーが発生しました",
       "alreadyConnected": "Stripe アカウントはすでに接続されています",
-      "noChargeToRefund": "Stripe の支払いによる返金はありません",
-      "alreadyRefunded": "この支払いはすでに返金されています",
-      "refundExceedsCharge": "払い戻し金額が支払金額を上回っている",
-      "refundFailed": "返金処理エラー",
       "noSavedCard": "この顧客にはカードが保存されていません",
       "invalidDepositStatus": "入金ステータスではこの操作は許可されていません",
       "noDepositRequired": "この予約にはデポジットは必要ありません",
       "authorizationFailed": "承認保留を作成できません",
+      "authorizationInProgress": "この予約のデポジットのオーソリはすでに作成中です。しばらくしてからもう一度お試しください。",
+      "authorizationUnconfirmed": "Stripe がデポジットのオーソリを確認しませんでした。もう一度お試しください。同じオーソリが要求され、2 件目が作成されることはありません。",
       "noActiveAuthorization": "この予約にはアクティブな承認がありません",
       "captureFailed": "デポジットを回収できません",
       "releaseFailed": "デポジットを解放できません"
     },
     "reasonRequired": "理由を教えてください",
     "invalidAmount": "無効な金額です",
+    "amountExceedsDeposit": "徴収されたデポジットを超える金額",
+    "amountExceedsDue": "金額が未払い残高を超えています",
+    "paymentNotFound": "この支払いはもう存在しません。ページを再読み込みしてください。",
+    "amountTooPrecise": "この金額は通貨で許可される小数桁数を超えています。",
+    "currencyNotSupportedForPayments": "この通貨の支払いは記録できません。Louez は小数点以下 3 桁の通貨に対応していません。",
     "invalidOrExpiredToken": "このリンクは無効であるか、有効期限が切れています。新しいアクセス リンクをリクエストしてください。",
     "alreadyPaid": "この予約はすでに支払われています。",
+    "invalidStatus": "この予約はオンラインでのお支払いや変更ができなくなりました。ストアにお問い合わせください。",
     "paymentNotAvailable": "この店舗ではオンライン決済はご利用いただけません。",
     "paymentSessionError": "支払いセッションの作成中にエラーが発生しました",
     "accessLinkSendFailed": "アクセスリンクの送信エラー",
@@ -9451,7 +9623,11 @@
     "agentConnectionNotFound": "この接続済みのエージェントは存在しません。",
     "oauthRequestInvalid": "この接続リクエストは無効になりました。エージェントからやり直してください。",
     "stripeRequiredForPaymentMode": "オンライン決済モードには Stripe アカウントの接続が必要です。設定 > 支払いで Stripe を接続してください。",
-    "locationLimitReached": "1 つのストアに設定できる受け取り場所は最大 50 件です。いずれかを無効にするか、再利用してください。"
+    "locationLimitReached": "1 つのストアに設定できる受け取り場所は最大 50 件です。いずれかを無効にするか、再利用してください。",
+    "depositAttempt": {
+      "needsStripe": "Louez はこの要求に対するオーソリを Stripe で見つけましたが、要求した内容と一致しません（金額、カード、または参照が変更されています）。Louez はこれを記録しておらず、要求は開いたままです。Stripe ダッシュボードでキャンセルしてから、「要求を閉じる」をクリックしてください。代わりに Stripe で回収した場合、Louez はその金額を記録せず、要求は開いたままになります。Louez サポートにお問い合わせください。",
+      "none": "この予約には未確認のオーソリはもうありません。"
+    }
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",
@@ -9569,7 +9745,7 @@
     },
     "confirm": {
       "label": "重要な操作の前に確認を求める",
-      "description": "削除や顧客へのメッセージの前に、エージェントはまずプレビューを受け取り、確認する必要があります。エージェントには、まずそれをあなたに見せるよう指示しています。支払いの記録・返却・削除、AI クレジットの消費、メンバーの削除、招待の取り消しは、この設定がオフでも常に確認を求めます。"
+      "description": "削除や顧客へのメッセージの前に、エージェントはまずプレビューを受け取り、確認する必要があります。エージェントには、まずそれをあなたに見せるよう指示しています。支払いの記録、返却済みのデポジットの記録、支払いの削除、在庫を超える予約やレンタル間の間隔がターンオーバーバッファーより短い予約の確定、メンバーの削除、招待の取り消しには、この設定がオフでもあなたの承認が必要です。エージェントがリンクを渡すので、Louez のページでご自身のアカウントにログインして承認または拒否します。AI クレジットの消費は、この設定がオフでも常に確認を求めます。"
     },
     "bundlesTitle": "表示するツール",
     "bundlesHint": "エージェントにはこれらのツールセットが表示されます。後から追加できます。",
@@ -9747,6 +9923,10 @@
       "not_allowed": {
         "title": "このストアではこの操作を行えません",
         "description": "このストアでのあなたの役割では、この手順を行えません。ストアのオーナーに依頼してください。"
+      },
+      "changed": {
+        "title": "確認中にこのリクエストが変更されました",
+        "description": "何も実行されていません。このページを開いた後にエージェントが再度リクエストしました。下の内容をもう一度確認してから回答してください。"
       }
     },
     "done": {
@@ -9780,6 +9960,10 @@
       "access": "メンバーはストアの顧客、予約、支払いを閲覧でき、商品と予約を変更できます。",
       "approve": "招待を承認",
       "decline": "拒否",
+      "reason": {
+        "label": "エージェントへのひとこと（任意）",
+        "hint": "AI エージェントは回答と一緒にこれを読みます。最大 {max} 文字。"
+      },
       "error": {
         "failed": "招待を送信できませんでした。ページを再読み込みして状況を確認してください。"
       },
@@ -9807,6 +9991,209 @@
         "changed": {
           "title": "エージェントの依頼後に状況が変わりました",
           "description": "このアドレスにはLouezアカウント、招待、またはチームでの席があります。エージェントにもう一度依頼してもらってください。"
+        }
+      }
+    },
+    "operation_approval": {
+      "title": {
+        "access_removed": "アクセスの取り消しを承認しますか？",
+        "money": "支払いを承認しますか？",
+        "stock_override": "在庫を超える予約を承認しますか？",
+        "deletion": "削除を承認しますか？",
+        "customer_message": "お客様へのメッセージを承認しますか？",
+        "credits": "クレジットの使用を承認しますか？",
+        "change": "この変更を承認しますか？",
+        "unknown": "この依頼を承認しますか？"
+      },
+      "provenance": "<place>{store}</place>・「<who>{agent}</who>」からの依頼",
+      "provenanceKey": "<place>{store}</place>・APIキーからの依頼",
+      "provenanceAssistant": "<place>{store}</place>・AIアシスタントからの依頼",
+      "provenanceInApp": "<place>{store}</place>・Louez アシスタント経由の依頼",
+      "trustShort": "有効なのはLouezの要約だけです。",
+      "stake": {
+        "access_removed": "ストアへのアクセス権を取り消します。",
+        "money": "ストアに記録されている金額が変わります。",
+        "stock_override": "利用可能な在庫を超える予約や、レンタル間の間隔を守らない予約を許可します。",
+        "deletion": "完全に削除します。取り消せません。",
+        "customer_message": "お客様にメッセージを送信します。取り消せません。",
+        "credits": "クレジットを使用します。返還されません。"
+      },
+      "lapsesSoon": "{when}に失効します。",
+      "acknowledge": "Louezが行うことを読みました",
+      "approve": "承認する",
+      "refuse": "拒否する",
+      "details": "詳細",
+      "askedBy": "依頼元",
+      "forAccount": "あなたのアカウント（{email}）、「{store}」での操作です。",
+      "apiKey": "APIキー「{name}」",
+      "apiKeyUnnamed": "APIキー",
+      "unnamedAgent": "AIアシスタント",
+      "inAppAssistant": "Louez アシスタント（ダッシュボードのチャットから）",
+      "checked": "Louezが確認した内容",
+      "messageDestinationOnFile": "メッセージは顧客の登録済みの連絡先に送られます。",
+      "values": {
+        "yes": "はい",
+        "no": "いいえ",
+        "none": "なし"
+      },
+      "computedAt": "Louezがストアのデータをもとに{when}算出しました。",
+      "expires": "回答がない場合、この依頼は{when}に失効します。",
+      "trust": "チャットでアシスタントが何と言っても、有効なのはLouezのこの要約だけです。内容が一致しない場合は拒否してください。",
+      "reason": {
+        "toggle": "アシスタントへのメモを追加",
+        "label": "メモ（任意）",
+        "hint": "アシスタントはあなたの回答と一緒に読みます。最大{max}文字です。"
+      },
+      "error": {
+        "failed": "回答を保存できませんでした。依頼をもう一度読んでから回答してください。",
+        "acknowledge": "チェックを入れてから承認してください。まだ何も決定されていません。"
+      },
+      "unreadable": {
+        "title": "この依頼を表示できません",
+        "description": "そのため、ここでは承認できません。何も行われていません。"
+      },
+      "tooLong": {
+        "title": "この依頼は長すぎて表示できません",
+        "description": "そのため、ここでは承認できません。何も行われていません。"
+      },
+      "done": {
+        "request": "依頼内容",
+        "yourWords": "あなたのひとこと",
+        "approved": {
+          "title": "承認しました",
+          "description": "アシスタントが実行できるようになりました。実行されない場合、承認は{when}に失効し、何も行われません。"
+        },
+        "completed": {
+          "title": "完了しました",
+          "description": "アシスタントが{when}実行しました。チャットに戻ってかまいません。"
+        },
+        "approved_expired": {
+          "title": "承認が失効しました",
+          "description": "Louezが実行を記録しないまま、承認は1時間で失効しました。アシスタントが最後の瞬間に実行していた場合は、再読み込みするとこのページに表示されます。そうでなければ何も行われません。"
+        },
+        "refused": {
+          "title": "拒否しました",
+          "description": "何も行われていません。アシスタントはあなたの回答を確認でき、もう一度試すには改めて依頼する必要があります。"
+        },
+        "state_changed": {
+          "title": "実行されませんでした：依頼内容が一致しなくなりました",
+          "description": "アシスタントの依頼内容、またはストアの状態が、あなたが承認した内容と一致しなくなったため、何も行われていません。まだ必要であれば、アシスタントが改めて依頼します。"
+        },
+        "approver_not_allowed": {
+          "title": "実行されませんでした：役割が変わりました",
+          "description": "アシスタントが実行しようとした時点で、ストアでのあなたの役割では許可されていなかったため、何も行われていません。"
+        },
+        "connection_revoked": {
+          "title": "終了：アシスタントの接続が解除されました",
+          "description": "アシスタントとLouezの接続が削除されたため、この依頼には回答も実行もできません。アシスタントがその直前の最後の瞬間に実行していた場合は、再読み込みするとこのページに表示されます。そうでなければ何も行われません。"
+        },
+        "expired": {
+          "title": "この依頼は失効しました",
+          "description": "1日以内に誰も回答しなかったため、この依頼は失効しました。ちょうどその時に回答が記録されていた場合は、再読み込みするとこのページに表示されます。そうでなければ何も行われず、アシスタントはまだ必要であれば改めて依頼します。"
+        },
+        "ended": {
+          "title": "この依頼は終了しました",
+          "description": "ここでできることはもうなく、何も行われていません。アシスタントがまだ必要であれば、改めて依頼します。"
+        },
+        "shortened": "要約が長すぎたため、全文を表示できませんでした。"
+      },
+      "display": {
+        "told": "アシスタントに伝えられた内容",
+        "headline": {
+          "recordPayment": "受け取った支払いを記録しますか？",
+          "paidBack": "お客様への返金を記録しますか？",
+          "returnDeposit": "返却した保証金を記録しますか？",
+          "recordRefund": "手作業で行った返金を記録しますか？",
+          "refundOnline": "オンライン決済を返金しますか？",
+          "deletePayment": "記録済みの支払いを削除しますか？",
+          "removeMember": "チームからメンバーを外しますか？",
+          "cancelInvitation": "チームへの招待を取り消しますか？",
+          "confirmWithinRules": "予約を確定しますか？",
+          "confirmPastBuffer": "レンタル間の間隔を守らずに予約を確定しますか？",
+          "confirmBeyondStock": "在庫を超えて予約を確定しますか？",
+          "confirmBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約を確定しますか？",
+          "recordDeposit": "受け取った保証金を記録しますか？",
+          "createQuote": "見積もりを作成しますか？",
+          "createQuotePastBuffer": "レンタル間の間隔を守らずに見積もりを作成しますか？",
+          "createQuoteBeyondStock": "在庫を超えて見積もりを作成しますか？",
+          "createQuoteBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて見積もりを作成しますか？",
+          "createBooking": "予約を作成しますか？",
+          "createBookingPastBuffer": "レンタル間の間隔を守らずに予約を作成しますか？",
+          "createBookingBeyondStock": "在庫を超えて予約を作成しますか？",
+          "createBookingBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約を作成しますか？",
+          "moveDatesWithinRules": "予約の日程を変更しますか？",
+          "moveDatesPastBuffer": "レンタル間の間隔を守らずに予約の日程を変更しますか？",
+          "moveDatesBeyondStock": "在庫を超えて予約の日程を変更しますか？",
+          "moveDatesBeyondStockAndBuffer": "在庫とレンタル間の間隔を超えて予約の日程を変更しますか？"
+        },
+        "facts": {
+          "booking": "予約 #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "予約 #<v>{number}</v>",
+          "received": "<v>{type}</v>：<v>{amount}</v> を受領 · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>：<v>{amount}</v>、お客様に返金 · <v>{method}</v>",
+          "returned": "保証金の返却：<v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "これまで預かっていた保証金：<v>{held}</v>",
+          "recordOnly": "Louez は記録するだけで、請求も返金も行いません。",
+          "refundToCard": "返金：<v>{amount}</v>、末尾 <v>{last4}</v> の <v>{brand}</v> カードへ",
+          "refundToPayer": "返金：<v>{amount}</v>、支払いに使われた手段へ",
+          "leavesStripeBalance": "お金は Stripe 残高から出ていきます。その分のプラットフォーム手数料は返還されます。",
+          "refundGiven": "返金：<v>{amount}</v>、お客様に返却 · <v>{method}</v>",
+          "refundOf": "返金対象の支払い：<v>{type}</v>、<v>{amount}</v>（<v>{atDate}</v>） · <v>{method}</v>",
+          "refundBalance": "返金済み：<v>{refunded}</v> · この後も返金可能：<v>{left}</v>",
+          "deleted": "<v>{type}</v>：<v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "<v>{atDate}</v> <v>{atTime}</v> に記録",
+          "leavesBalance": "予約の残高と集計から外れます。",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "<v>{sinceDate}</v> からのメンバー",
+          "losesAccess": "お客様、予約、支払いへのアクセスをすぐに失います。",
+          "invited": "<v>{email}</v> への招待",
+          "invitedOn": "<v>{atDate}</v> に送信",
+          "linkStops": "招待リンクは使えなくなり、チームには参加しません。",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v> <v>{periodStartTime}</v>〜<v>{periodEndTime}</v>} other {<v>{periodStartDate}</v> <v>{periodStartTime}</v> から <v>{periodEndDate}</v> <v>{periodEndTime}</v> まで}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>：{requested} 点の依頼、間隔 <v>{buffer}</v> を守ると{available, plural, =0 {空きなし} other {空きは # 点のみ}}",
+          "beyondStock": "<v>{product}</v>：{requested} 点の依頼、{available, plural, =0 {在庫なし} other {在庫は # 点のみ}}：{missing} 点不足",
+          "moreLines": "{count, plural, other {ほかにルールを超える明細が # 件あります}}：詳細をご覧ください",
+          "withinRules": "在庫とレンタル間の間隔の範囲内です：超えるものはありません。",
+          "message": "<v>{customer}</v> 様（<v>{to}</v>）に「<v>{message}</v>」の{channels, select, sms {SMS} other {メール}}が届きます",
+          "messageEmailAndText": "<v>{customer}</v> 様に「<v>{message}</v>」のメール（<v>{email}</v>）と SMS（<v>{phone}</v>）が届きます",
+          "messageToCustomer": "お客様に「<v>{message}</v>」の{channels, select, email {メール} sms {SMS} other {メールと SMS}}が届きます",
+          "noMessage": "お客様にメッセージは送られません。",
+          "depositCollected": "<v>{type}</v>：<v>{amount}</v> を受領 · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>：<v>{amount}</v>、お客様に返却 · <v>{method}</v>",
+          "bookingFor": "<v>{customer}</v> 様 · <v>{email}</v>",
+          "bookingForNewCustomer": "<v>{customer}</v> 様 · <v>{email}</v>（新規のお客様）",
+          "bookingLine": "<v>{product}</v> × {quantity}",
+          "bookingLines": "<v>{product}</v> × {quantity} ほか {others, plural, other {# 件の明細}}",
+          "datesMoved": "日程: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "新しい合計: <v>{total}</v>（差額: <v>{difference}</v>）。請求も返金も行いません。"
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "レンタル料",
+            "deposit": "保証金",
+            "deposit_hold": "保証金の仮押さえ",
+            "deposit_capture": "保証金の徴収",
+            "deposit_return": "保証金の返却",
+            "damage": "損害",
+            "adjustment": "調整"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "現金",
+            "card": "カード",
+            "transfer": "銀行振込",
+            "check": "小切手",
+            "other": "その他"
+          },
+          "customerMessage": {
+            "request_accepted": "リクエスト承認",
+            "request_rejected": "リクエスト不承認",
+            "reservation_cancelled": "予約キャンセル",
+            "quote_sent": "見積もり",
+            "booking_confirmed": "予約確定",
+            "reservation_modified": "予約変更"
+          }
         }
       }
     }

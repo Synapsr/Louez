@@ -125,7 +125,10 @@ export function buildStatusChangeEffects(
     transport: Transport;
     rejectionReason: string | null;
     warningCount: number;
-    /** The customer messages the preview announced, one per channel. */
+    /**
+     * The customer messages the preview names, one per channel: those it
+     * announced, and those it said cannot go (given up at once by their sender).
+     */
     messages: ReadonlyArray<{ message: CustomerStatusMessage; channel: "email" | "sms" }>;
   },
 ): ApiEffect[] {

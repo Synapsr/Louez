@@ -5,7 +5,7 @@ import type { ErrorScope } from "./platform/error-reporting";
 import type { OperationReceipt } from "./platform/operations";
 import type { ApiPorts } from "./platform/ports";
 import type { AvailabilityMemo } from "./services/availability";
-import type { CapacityShortfall } from "./services/reservation-inventory";
+import type { CapacityShortfall } from "./contracts/reservations";
 
 /**
  * Store-configured overrides of an email's wording ({name}/{number}
@@ -124,6 +124,15 @@ export interface BaseContext {
   transport?: Transport;
   /** What the app lends the agent-ready procedures (platform/ports.ts). */
   ports?: ApiPorts;
+  /**
+   * The call is the in-app assistant's, acting for the signed-in user's
+   * session. Set only by the server code that builds the assistant's
+   * clients (apps/web/lib/ai/assistant-api.ts), never read from a request:
+   * no header, body or cookie sets it, and a transport handler never passes
+   * it on. A session marked so is asked a person's approval for a branch
+   * whose consequence is live (`levelOf`, platform/approval-rule.ts).
+   */
+  assistant?: true;
   /** Filled with the operation id of a write, for the transport to hand out. */
   receipt?: OperationReceipt;
   /**
@@ -175,6 +184,10 @@ export interface BaseContext {
         tulipInsuranceOptIn?: boolean;
         overrideTurnoverBuffer?: boolean;
         allowOverbooking?: boolean;
+        /** The total the form showed: the edit refuses to write another one. */
+        expectedTotal?: number;
+        /** The reservation the form loaded: the edit refuses to apply to another one. */
+        loadedEditToken?: string;
         delivery?: {
           outbound: {
             method: "store" | "address";
@@ -332,16 +345,24 @@ export interface BaseContext {
       reservationId: string,
       data: {
         type: "rental" | "deposit" | "custom";
-        amount?: number;
+        /** A custom request's amount, as typed: the action judges this text. */
+        amount?: string;
         channels: { email: boolean; sms: boolean };
         customMessage?: string;
       },
-    ) => Promise<{ success?: boolean; error?: string; paymentUrl?: string }>;
+    ) => Promise<{
+      success?: boolean;
+      error?: string;
+      paymentUrl?: string;
+      /** Each channel tried, and whether it went out; a channel not tried is absent. */
+      notificationResults?: { email?: boolean; sms?: boolean };
+    }>;
     recordPayment?: (
       reservationId: string,
       data: {
         type: "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         paidAt?: Date;
         notes?: string;
@@ -356,7 +377,8 @@ export interface BaseContext {
       reservationId: string,
       data: {
         paymentId: string;
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         notes?: string;
       },
@@ -370,7 +392,8 @@ export interface BaseContext {
     returnDeposit?: (
       reservationId: string,
       data: {
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         notes?: string;
       },
@@ -378,7 +401,8 @@ export interface BaseContext {
     recordDamage?: (
       reservationId: string,
       data: {
-        amount: number;
+        /** As typed: the action judges this text. */
+        amount: string;
         method: "cash" | "card" | "transfer" | "check" | "other";
         notes: string;
       },
@@ -388,7 +412,8 @@ export interface BaseContext {
     ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     captureDepositHold?: (
       reservationId: string,
-      data: { amount: number; reason: string },
+      /** `amount` as typed: the action judges this text. */
+      data: { amount: string; reason: string },
     ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     releaseDepositHold?: (
       reservationId: string,

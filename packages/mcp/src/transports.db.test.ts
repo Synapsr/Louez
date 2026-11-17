@@ -121,7 +121,7 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
     rpc = rpcClient.fixture.notes;
 
     // OpenAPI: only the exposed procedures, as /api/v1 serves them.
-    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (path, body, headers) =>
       (await handleOpenApiRequest(
         openApiHandler,
@@ -153,9 +153,6 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
     httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: {
-        insertRecordedPayment: async () => undefined,
-      },
     };
 
     await louezDb.db.insert(louezDb.users).values([

@@ -11,6 +11,9 @@ import {
   type TestDatabase,
 } from "@louez/db/testing";
 
+import type { ReservationStatus } from "@louez/db";
+
+import * as badges from "./[id]/utils/capacity-verdict-badge";
 import { STORE_KEY } from "./actions-test-stubs";
 
 // An edit of a reservation on a migrated database: it is refused with its
@@ -23,13 +26,20 @@ const DAY = 86_400_000;
 const START = new Date("2031-06-10T09:00:00.000Z");
 const END = new Date(START.getTime() + 2 * DAY);
 
-type Settings = { currency: string; pendingBlocksAvailability?: boolean };
+type Settings = {
+  currency: string;
+  pendingBlocksAvailability?: boolean;
+  turnoverBufferMinutes?: number;
+};
 
 describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let actions: typeof import("./actions");
   let inbox: typeof import("@louez/api/services/inbox");
+  let statusChange: typeof import("@louez/api/services/reservation-status");
+  let editContext: typeof import("@louez/api/services");
+  let priceCart: typeof import("@louez/api/services/price-cart");
   let counter = 0;
 
   const useStore = (settings: Settings = { currency: "eur" }) =>
@@ -53,6 +63,9 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
     inbox = await import("@louez/api/services/inbox");
+    statusChange = await import("@louez/api/services/reservation-status");
+    editContext = await import("@louez/api/services");
+    priceCart = await import("@louez/api/services/price-cart");
 
     await louezDb.db
       .insert(louezDb.stores)
@@ -175,7 +188,7 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
   async function reservation(
     line: { productId: string; quantity: number },
     options: {
-      status?: "pending" | "quote" | "confirmed";
+      status?: ReservationStatus;
       start?: Date;
       end?: Date;
       deliveryFee?: string;
@@ -556,6 +569,141 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     });
   });
 
+  describe("a reservation that is not editable (T3)", () => {
+    for (const status of ["completed", "cancelled", "rejected", "declined"] as const) {
+      test(`${status}: the edit is refused and writes nothing, and its edit page does not open`, async () => {
+        const bikes = await product("Bike", 5);
+        const booking = await reservation({ productId: bikes, quantity: 1 }, { status });
+        const before = await rowsOf(booking.id);
+
+        const result = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2)],
+          endDate: new Date(END.getTime() + DAY),
+        });
+
+        assert.deepEqual(result, { error: "errors.reservationStatusChanged" });
+        assert.deepEqual(await rowsOf(booking.id), before);
+        assert.deepEqual(
+          await editContext.getDashboardReservationEditContext({
+            reservationId: booking.id,
+            storeId: STORE,
+          }),
+          { editable: false },
+        );
+      });
+    }
+
+    test("pending, quote, confirmed and ongoing open their edit page", async () => {
+      const bikes = await product("Bike", 5);
+      for (const status of ["pending", "quote", "confirmed", "ongoing"] as const) {
+        const booking = await reservation({ productId: bikes, quantity: 1 }, { status });
+        const context = await editContext.getDashboardReservationEditContext({
+          reservationId: booking.id,
+          storeId: STORE,
+        });
+        assert.equal(context.editable, true, status);
+      }
+    });
+  });
+
+  describe("a real window (T5)", () => {
+    test("a window of no length is refused, and nothing is written", async () => {
+      const bikes = await product("Bike", 5);
+      const booking = await reservation({ productId: bikes, quantity: 1 });
+      const before = await rowsOf(booking.id);
+
+      const result = await actions.updateReservation(booking.id, { endDate: START });
+
+      assert.deepEqual(result, { error: "errors.endDateBeforeStart" });
+      assert.deepEqual(await rowsOf(booking.id), before);
+    });
+
+    test("an ongoing reservation's start still moves here: the store corrects the pickup time", async () => {
+      const bikes = await product("Bike", 5);
+      const booking = await reservation({ productId: bikes, quantity: 1 }, { status: "ongoing" });
+      const earlier = new Date(START.getTime() - 2 * 3_600_000);
+
+      const result = await actions.updateReservation(booking.id, { startDate: earlier });
+
+      assert.equal(result.error, undefined);
+      assert.equal((await rowsOf(booking.id)).row?.startDate.getTime(), earlier.getTime());
+    });
+  });
+
+  describe("a line whose breakdown only records its facts (slice 9)", () => {
+    test("its product deleted, its dates moved: refused, nothing written", async () => {
+      // 10.00 an hour, booked for two hours by the checkout: 20.00.
+      const hourly = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: hourly,
+        storeId: STORE,
+        name: "Paddle",
+        price: "10.00",
+        pricingMode: "hour",
+        quantity: 5,
+      });
+      const end = new Date(START.getTime() + 2 * 3_600_000);
+      // The checkout's own breakdown of an unpromoted line.
+      const breakdown = priceCart.checkoutLineBreakdown(
+        { price: 10, pricingMode: "hour" },
+        {
+          productId: hourly,
+          productName: "Paddle",
+          quantity: 1,
+          pricingKind: "duration",
+          duration: 2,
+          unitPrice: 20,
+          depositPerUnit: 0,
+          subtotal: 20,
+          originalSubtotal: 20,
+          savings: 0,
+          totalDeposit: 0,
+          taxSettings: null,
+        },
+        { taxRate: null, taxAmount: null, priceExclTax: null, totalExclTax: null },
+      );
+      const id = nextId("res");
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId: "customer_edits",
+        number: id,
+        status: "confirmed",
+        startDate: START,
+        endDate: end,
+        subtotalAmount: "20.00",
+        depositAmount: "0.00",
+        totalAmount: "20.00",
+        deliveryFee: "0.00",
+        discountAmount: "0.00",
+        source: "online",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: nextId("itm"),
+        reservationId: id,
+        productId: hourly,
+        quantity: 1,
+        unitPrice: "20.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        pricingBreakdown: breakdown,
+        productSnapshot: { name: "Paddle", description: null, images: [] },
+      });
+      await louezDb.db.delete(louezDb.products).where(eq(louezDb.products.id, hourly));
+
+      const result = await actions.updateReservation(id, {
+        endDate: new Date(START.getTime() + 3 * 3_600_000),
+      });
+
+      // A line priced by its duration whose product is gone is never scaled to a
+      // new window (slice 11): the store types its price first.
+      assert.equal(result.error, "errors.editProductGonePriceUnknown");
+      const { row, items } = await rowsOf(id);
+      assert.deepEqual([items[0]?.totalPrice, row?.totalAmount], ["20.00", "20.00"]);
+      assert.equal(row?.endDate.getTime(), end.getTime());
+    });
+  });
+
   describe("a reservation changed between the read and the write", () => {
     /** Runs the edit while another transaction, not committed yet, holds the reservation. */
     async function editDuring(
@@ -619,6 +767,29 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       assert.deepEqual(after.activity, []);
     });
 
+    for (const status of ["completed", "cancelled"] as const) {
+      test(`${status} while the edit waits: refused as not editable, and nothing is written`, async () => {
+        const bikes = await product("Bike", 5);
+        const booking = await reservation({ productId: bikes, quantity: 1 }, { status: "ongoing" });
+
+        const result = await editDuring(
+          booking.id,
+          // A fixture's change, written raw: the action only has to see the status under its lock.
+          {
+            sql: "UPDATE reservations SET reservation_status = ? WHERE id = ?",
+            values: [status, booking.id],
+          },
+          () => actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
+        );
+
+        assert.deepEqual(result, { error: "errors.reservationStatusChanged" });
+        const after = await rowsOf(booking.id);
+        assert.equal(after.row?.status, status);
+        assert.equal(after.items[0]?.quantity, 1);
+        assert.deepEqual(after.activity, []);
+      });
+    }
+
     test("a line added meanwhile: the edit is refused", async () => {
       const bikes = await product("Bike", 5);
       const helmets = await product("Helmet", 5);
@@ -647,10 +818,11 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
     );
 
     const results = await raceOnLockedRow(database, { table: "reservations", id: booking.id }, [
-      // One raises the quantity and keeps the delivery fee it read…
+      // One raises the quantity over the dates it read…
       () => actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
-      // …the other moves both legs to the store, which drops the fee.
-      () => actions.updateReservation(booking.id, { delivery: storeDelivery }),
+      // …the other moves the end a day, for the quantity it read. (Both legs
+      // sent again as stored would change nothing that prices it, slice 10.)
+      () => actions.updateReservation(booking.id, { endDate: new Date(END.getTime() + DAY) }),
     ]);
 
     assert.deepEqual(results.map((result) => result.error ?? "written").sort(), [
@@ -666,10 +838,10 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       lines + Number(row.deliveryFee) - Number(row.discountAmount),
     );
     assert.equal(activity.length, 1);
-    // Whichever won, it is one edit as a whole: 2 bikes with the fee, or 1 without.
+    // Whichever won, it is one edit as a whole: 2 bikes for two days, or 1 for three.
     assert.ok(
       (items[0]?.quantity === 2 && row.totalAmount === "50.00") ||
-        (items[0]?.quantity === 1 && row.totalAmount === "15.00"),
+        (items[0]?.quantity === 1 && row.totalAmount === "40.00"),
       `quantity ${items[0]?.quantity}, total ${row.totalAmount}`,
     );
   });
@@ -783,6 +955,84 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       });
     });
 
+    test("dates moved onto a booking that chose the size alone find that size promised", async () => {
+      // One red M, one blue M, one red L, sold by size and colour.
+      const wetsuits = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id: wetsuits,
+        storeId: STORE,
+        name: "Wetsuit",
+        price: "10.00",
+        pricingMode: "day",
+        trackUnits: true,
+        bookingAttributeAxes: [
+          { key: "size", label: "Size", position: 0 },
+          { key: "color", label: "Color", position: 1 },
+        ],
+        quantity: 3,
+      });
+      for (const [size, color] of [
+        ["M", "red"],
+        ["M", "blue"],
+        ["L", "red"],
+      ]) {
+        await louezDb.db.insert(louezDb.productUnits).values({
+          id: nextId("unt"),
+          productId: wetsuits,
+          identifier: `${size}-${color}`,
+          attributes: { size, color },
+          combinationKey: `size:${size}|color:${color}`,
+        });
+      }
+      /** A line of the product on a booking, with the combination or the open choice given. */
+      const choose = (
+        booking: { itemId: string },
+        choice: { combinationKey: string | null; selectedAttributes: Record<string, string> },
+      ) =>
+        louezDb.db
+          .update(louezDb.reservationItems)
+          .set(choice)
+          .where(eq(louezDb.reservationItems.id, booking.itemId));
+      // Two M of any colour are promised on the window.
+      const anyMedium = await reservation({ productId: wetsuits, quantity: 2 });
+      await choose(anyMedium, { combinationKey: null, selectedAttributes: { size: "M" } });
+      // A red M booked five days later moves onto it.
+      const later = {
+        start: new Date(START.getTime() + 5 * DAY),
+        end: new Date(END.getTime() + 5 * DAY),
+      };
+      const mediumRed = await reservation({ productId: wetsuits, quantity: 1 }, later);
+      await choose(mediumRed, {
+        combinationKey: "size:M|color:red",
+        selectedAttributes: { size: "M", color: "red" },
+      });
+      const before = await rowsOf(mediumRed.id);
+      const moved = { startDate: START, endDate: END };
+      const short = {
+        productId: wetsuits,
+        productName: "Wetsuit",
+        combinationKey: "size:M|color:red",
+        requested: 1,
+        available: 0,
+      };
+
+      // Three M would be out for the two the store has.
+      assert.deepEqual(await actions.updateReservation(mediumRed.id, moved), {
+        error: "errors.insufficientCapacity",
+        shortfalls: [short],
+      });
+      assert.deepEqual(await rowsOf(mediumRed.id), before);
+
+      const forced = await actions.updateReservation(mediumRed.id, {
+        ...moved,
+        allowOverbooking: true,
+      });
+      assert.equal(forced.error, undefined);
+      const [verdict] = await activityOf(mediumRed.id);
+      assert.deepEqual([verdict?.overbooked, verdict?.overbookingShortfalls], [true, [short]]);
+      assert.ok((await overbookedInInbox()).includes(mediumRed.id));
+    });
+
     test("a line added with no size is served by units of every size", async () => {
       // Two S and one L cover three units of any size: no override is asked.
       const wetsuits = await sizedProduct(["S", "S", "L"]);
@@ -796,6 +1046,253 @@ describe("updateReservation (database)", { skip: skipWithoutTestDatabase() }, ()
       assert.equal(result.error, undefined);
       const [verdict] = await activityOf(booking.id);
       assert.equal(verdict?.overbooked, false);
+    });
+  });
+
+  describe("the turnover buffer, told apart from the stock", () => {
+    const BUFFER = 120;
+    const HOUR = 3_600_000;
+    /** A window that ends an hour before START: inside a two-hour buffer, clear of it without. */
+    const JUST_BEFORE = {
+      start: new Date(START.getTime() - 2 * DAY - HOUR),
+      end: new Date(START.getTime() - HOUR),
+    };
+
+    /** Runs with a two-hour turnover buffer, in the session and on the store's row, then puts the store back. */
+    async function withBuffer(run: () => Promise<void>) {
+      const s = louezDb.stores;
+      const [saved] = await louezDb.db
+        .select({ settings: s.settings })
+        .from(s)
+        .where(eq(s.id, STORE));
+      assert.ok(saved?.settings);
+      const original = saved.settings;
+      await louezDb.db
+        .update(s)
+        .set({ settings: { ...original, turnoverBufferMinutes: BUFFER } })
+        .where(eq(s.id, STORE));
+      useStore({ currency: "eur", turnoverBufferMinutes: BUFFER });
+      try {
+        await run();
+      } finally {
+        await louezDb.db.update(s).set({ settings: original }).where(eq(s.id, STORE));
+        useStore();
+      }
+    }
+
+    /** The store's confirmation, from its dashboard session. */
+    const confirm = (id: string, flags: { overrideTurnoverBuffer?: boolean } = {}) =>
+      statusChange.changeStoreReservationStatus(
+        {
+          storeId: STORE,
+          userId: "owner_edits",
+          credential: { kind: "session", id: null },
+          transport: "rpc",
+          customers: true,
+          store: {
+            id: STORE,
+            name: "Edits",
+            slug: "edits",
+            ownerUserId: "owner_edits",
+          },
+          ports: {
+            afterCommit: () => {},
+            runReservationEffects: async () => {},
+            insurance: { createContract: async () => null, cancelContract: async () => {} },
+            dispatchEffects: () => {},
+          },
+        },
+        { id, to: "confirmed", ...flags },
+      );
+
+    const session = { kind: "session", id: null };
+    const pastBuffer = (shortfalls: Array<ReturnType<typeof shortfall>>) => ({
+      turnoverBufferOverridden: true,
+      turnoverBufferShortfalls: shortfalls,
+      turnoverBufferMinutes: BUFFER,
+      credential: session,
+    });
+    /** The verdicts of a row, and nothing else. */
+    const verdictsOf = (metadata: Record<string, unknown> | undefined) =>
+      Object.fromEntries(
+        Object.entries(metadata ?? {}).filter(([key]) =>
+          [
+            "overbooked",
+            "overbookingShortfalls",
+            "turnoverBufferOverridden",
+            "turnoverBufferShortfalls",
+            "turnoverBufferMinutes",
+            "credential",
+          ].includes(key),
+        ),
+      );
+
+    test("a reservation confirmed past the buffer, then shortened, and its neighbour moved: never an overbooking", async () => {
+      await withBuffer(async () => {
+        const bike = await product("Bike", 1);
+        // A, then B an hour after A's return: one bike, inside the buffer.
+        const a = await reservation({ productId: bike, quantity: 1 });
+        const bStart = new Date(END.getTime() + HOUR);
+        const bEnd = new Date(bStart.getTime() + 2 * DAY);
+        const b = await reservation(
+          { productId: bike, quantity: 1 },
+          { status: "quote", start: bStart, end: bEnd },
+        );
+
+        await confirm(b.id, { overrideTurnoverBuffer: true });
+        const activity = louezDb.reservationActivity;
+        const [confirmed] = await louezDb.db
+          .select({ metadata: activity.metadata })
+          .from(activity)
+          .where(and(eq(activity.reservationId, b.id), eq(activity.activityType, "confirmed")));
+        assert.deepEqual(
+          [confirmed?.metadata?.overbooked, confirmed?.metadata?.turnoverBufferOverridden],
+          [false, true],
+          "B is confirmed past the buffer, not over the stock",
+        );
+        assert.ok(!(await overbookedInInbox()).includes(b.id));
+
+        // B ends a day earlier, with no flag: nothing is short without the buffer.
+        const shortened = await actions.updateReservation(b.id, {
+          endDate: new Date(bEnd.getTime() - DAY),
+        });
+        assert.equal(shortened.error, undefined);
+        const [bVerdict] = await activityOf(b.id);
+        assert.deepEqual(verdictsOf(bVerdict), { overbooked: false });
+
+        // A starts a day later, with no flag: the same, for A.
+        const moved = await actions.updateReservation(a.id, {
+          startDate: new Date(START.getTime() + DAY),
+        });
+        assert.equal(moved.error, undefined);
+        const [aVerdict] = await activityOf(a.id);
+        assert.deepEqual(verdictsOf(aVerdict), { overbooked: false });
+
+        const listed = await overbookedInInbox();
+        assert.ok(!listed.includes(b.id), "B is not an overbooking");
+        assert.ok(!listed.includes(a.id), "A is not an overbooking");
+      });
+    });
+
+    test("a quantity raised into a buffer-only shortfall: refused as today, then recorded past the buffer with the override", async () => {
+      await withBuffer(async () => {
+        const bikes = await product("Bike", 2);
+        await reservation({ productId: bikes, quantity: 1 }, JUST_BEFORE);
+        const booking = await reservation({ productId: bikes, quantity: 1 });
+        const before = await rowsOf(booking.id);
+
+        // The refusal is today's: the shortfall counted with the buffer.
+        assert.deepEqual(
+          await actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
+          { error: "errors.insufficientCapacity", shortfalls: [shortfall(bikes, "Bike", 2, 1)] },
+        );
+        assert.deepEqual(await rowsOf(booking.id), before);
+
+        const forced = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2)],
+          allowOverbooking: true,
+        });
+
+        assert.equal(forced.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: false,
+          ...pastBuffer([shortfall(bikes, "Bike", 2, 1)]),
+        });
+        assert.ok(!(await overbookedInInbox()).includes(booking.id));
+        const row = { activityType: "modified", metadata: verdict ?? null };
+        assert.equal(badges.showsOverbookedBadge(row), false);
+        assert.equal(badges.showsTurnoverBufferOverriddenBadge(row), true);
+      });
+    });
+
+    test("a quantity raised past the stock itself: an overbooking, counted without the buffer", async () => {
+      await withBuffer(async () => {
+        const bikes = await product("Bike", 2);
+        await reservation({ productId: bikes, quantity: 1 }, JUST_BEFORE);
+        await reservation({ productId: bikes, quantity: 1 });
+        const booking = await reservation({ productId: bikes, quantity: 1 });
+
+        // Refused with the buffered figure, as today: none free.
+        assert.deepEqual(
+          await actions.updateReservation(booking.id, { items: [submitted(booking, 2)] }),
+          { error: "errors.insufficientCapacity", shortfalls: [shortfall(bikes, "Bike", 2, 0)] },
+        );
+
+        const forced = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2)],
+          allowOverbooking: true,
+        });
+
+        assert.equal(forced.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        // Recorded with what the stock leaves without the buffer: one free.
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: true,
+          overbookingShortfalls: [shortfall(bikes, "Bike", 2, 1)],
+        });
+        assert.ok((await overbookedInInbox()).includes(booking.id));
+      });
+    });
+
+    test("one line short only with the buffer, another on the stock, forced: both verdicts, each with its line", async () => {
+      await withBuffer(async () => {
+        const bikes = await product("Bike", 2);
+        const helmets = await product("Helmet", 1);
+        await reservation({ productId: bikes, quantity: 1 }, JUST_BEFORE);
+        await reservation({ productId: helmets, quantity: 1 });
+        const booking = await reservation({ productId: bikes, quantity: 1 });
+
+        const forced = await actions.updateReservation(booking.id, {
+          items: [submitted(booking, 2), added(helmets, 1, "Helmet")],
+          allowOverbooking: true,
+        });
+
+        assert.equal(forced.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: true,
+          overbookingShortfalls: [shortfall(helmets, "Helmet", 1, 0)],
+          ...pastBuffer([shortfall(bikes, "Bike", 2, 1)]),
+        });
+        assert.ok((await overbookedInInbox()).includes(booking.id));
+      });
+    });
+
+    test("dates moved into the buffer with overrideTurnoverBuffer: the row records what it passed", async () => {
+      await withBuffer(async () => {
+        const bike = await product("Bike", 1);
+        const later = await reservation(
+          { productId: bike, quantity: 1 },
+          { start: new Date(START.getTime() + 5 * DAY), end: new Date(END.getTime() + 5 * DAY) },
+        );
+        const booking = await reservation({ productId: bike, quantity: 1 });
+        // Back an hour before the later booking leaves.
+        const moved = {
+          startDate: new Date(START.getTime() + 3 * DAY - HOUR),
+          endDate: new Date(START.getTime() + 5 * DAY - HOUR),
+        };
+
+        assert.deepEqual(await actions.updateReservation(booking.id, moved), {
+          error: "errors.insufficientCapacity",
+          shortfalls: [shortfall(bike, "Bike", 1, 0)],
+        });
+
+        const passed = await actions.updateReservation(booking.id, {
+          ...moved,
+          overrideTurnoverBuffer: true,
+        });
+
+        assert.equal(passed.error, undefined);
+        const [verdict] = await activityOf(booking.id);
+        assert.deepEqual(verdictsOf(verdict), {
+          overbooked: false,
+          ...pastBuffer([shortfall(bike, "Bike", 1, 0)]),
+        });
+        const listed = await overbookedInInbox();
+        assert.ok(!listed.includes(booking.id));
+        assert.ok(!listed.includes(later.id));
+      });
     });
   });
 });

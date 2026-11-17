@@ -17,7 +17,7 @@ import type { ProductPromotion } from "@louez/types";
 import { applyProductPromotion, getProductPromotionStatus } from "@louez/utils";
 import { productPromotionSchema } from "@louez/validations";
 
-import { computeReservationTotals } from "@/lib/reservations/price-cart";
+import { computeReservationTotals } from "@louez/api/services/price-cart";
 import type { StorefrontProductPricing } from "@/lib/storefront/storefront.types";
 import { getStorefrontProductPrice } from "./util.storefront-product-pricing";
 import { getStorefrontPricingSummary, getStorefrontRateRows } from "./util.storefront-pricing";

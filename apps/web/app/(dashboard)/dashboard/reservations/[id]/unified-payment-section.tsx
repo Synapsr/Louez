@@ -26,6 +26,10 @@ import {
   Send,
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
+import {
+  getRentalRemaining,
+  getReservationRentalAmount,
+} from "@/lib/reservations/util.rental-amount";
 import { formatDistanceToNow } from "date-fns";
 
 import { Button } from "@louez/ui";
@@ -55,32 +59,57 @@ import { Label } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Progress } from "@louez/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
-import { cn, getCurrencySymbol } from "@louez/utils";
+import {
+  cn,
+  currencyMinorDigits,
+  depositHoldRowKind,
+  getCurrencySymbol,
+  normalizeCurrency,
+} from "@louez/utils";
+import {
+  currencyMinorOf,
+  depositBalance,
+  depositReturnAmount,
+  recordedPaymentAmount,
+} from "@louez/api/services/payment-amount";
 
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { useStoreTimezone } from "@/contexts/store-context";
 import { ReferralNudge } from "@/components/dashboard/referral-nudge";
 import { orpc } from "@/lib/orpc/react";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
-import { isRefundRow, isStripeRefundRow } from "@/lib/reservations/util.payment-status";
+import { paymentRefusalKey } from "@/lib/reservations/util.payment-refusal";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
+import {
+  getDepositTotals,
+  getRentalPaid,
+  isFailedRefundRow,
+  isRefundRow,
+  isStripeRefundRow,
+} from "@/lib/reservations/util.payment-status";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
+import { DepositAttemptDialog } from "./deposit-attempt-dialog";
 import { ManualPaymentRefundDialog } from "./manual-payment-refund-dialog";
 import { RequestPaymentModal } from "./request-payment-modal";
+import { useReservationMoney } from "./use-reservation-money";
 import {
   getNetCompletedPaymentAmount,
   getRemainingRefundableAmount,
   isManualPaymentMethod,
   isManualPaymentRefundEligible,
 } from "./util.payment-refunds";
+import { paymentHistoryRows } from "./util.payment-history";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface Payment {
   id: string;
   amount: string;
+  /** Its own currency; null on an older row, which is in its reservation's. */
+  currency?: string | null;
   type:
     | "rental"
     | "deposit"
@@ -99,7 +128,22 @@ interface Payment {
   stripeCheckoutSessionId?: string | null;
   stripeRefundId?: string | null;
   refundOfPaymentId: string | null;
+  /** On a deposit hold the reservation does not keep, until Stripe released it. */
+  releaseOwedAt?: Date | string | null;
+  /** On a rental row's Checkout Session: when Stripe said it can no longer be paid. */
+  sessionSettledAt?: Date | string | null;
 }
+
+/** The errors of a deposit hold request that tell the store what to do next. */
+const HOLD_REQUEST_ERRORS = new Set([
+  "errors.stripe.authorizationInProgress",
+  "errors.stripe.authorizationUnconfirmed",
+  "errors.stripe.authorizationFailed",
+  "errors.stripe.invalidDepositStatus",
+  "errors.stripe.noSavedCard",
+  "errors.stripe.noDepositRequired",
+  "errors.depositAttempt.needsStripe",
+]);
 
 interface PaymentMethodInfo {
   id: string;
@@ -125,7 +169,6 @@ interface UnifiedPaymentSectionProps {
   readOnly?: boolean;
   reservationId: string;
   reservationNumber: string;
-  subtotalAmount: string;
   depositAmount: string;
   totalAmount: string;
   payments: Payment[];
@@ -168,31 +211,9 @@ const CARD_BRANDS: Record<string, string> = {
 
 const VISIBLE_HISTORY_COUNT = 3;
 
-function getRentalAmount({
-  subtotalAmount,
-  depositAmount,
-  totalAmount,
-}: {
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-}) {
-  const subtotal = parseFloat(subtotalAmount || "0");
-  const deposit = parseFloat(depositAmount || "0");
-  const total = parseFloat(totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
-}
-
 export function UnifiedPaymentSection({
   reservationId,
   reservationNumber,
-  subtotalAmount,
   depositAmount,
   totalAmount,
   payments,
@@ -214,6 +235,40 @@ export function UnifiedPaymentSection({
   const tErrors = useTranslations("errors");
   const timezone = useStoreTimezone();
   const currencySymbol = getCurrencySymbol(currency);
+  // Every amount the section and its dialogs show, as the items card writes them.
+  const money = useReservationMoney(currency);
+  // The amount inputs take the currency's decimals: whole units in yen.
+  const amountStep = currencyMinorDigits(currency) === 0 ? "1" : "0.01";
+  const amountPlaceholder = currencyMinorDigits(currency) === 0 ? "0" : "0.00";
+  /**
+   * What the form says of an amount the write would refuse, judged by the
+   * write's own functions (`recordedPaymentAmount`, `depositReturnAmount`)
+   * on the number it sends, before anything is sent.
+   */
+  const amountRefusal = (
+    refusal:
+      | "amount_invalid"
+      | "negative_outside_adjustment"
+      | "too_precise"
+      | "currency_unsupported"
+      | "exceeds_balance",
+  ) => {
+    switch (refusal) {
+      case "negative_outside_adjustment":
+        return t("payment.negativeAmountOnlyForAdjustment");
+      case "too_precise":
+        return t("payment.amountTooPrecise", {
+          currency,
+          decimals: currencyMinorDigits(currency) ?? 0,
+        });
+      case "currency_unsupported":
+        return t("payment.currencyNotSupported", { currency });
+      case "exceeds_balance":
+        return t("payment.amountExceedsDeposit");
+      case "amount_invalid":
+        return t("payment.invalidAmount");
+    }
+  };
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -226,6 +281,7 @@ export function UnifiedPaymentSection({
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [captureModalOpen, setCaptureModalOpen] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [attemptDialogOpen, setAttemptDialogOpen] = useState(false);
   const [requestPaymentModalOpen, setRequestPaymentModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null);
 
@@ -252,26 +308,23 @@ export function UnifiedPaymentSection({
     { value: "other", label: t("payment.methods.other") },
   ];
 
-  // totalAmount should exclude the deposit, but older rows may include it.
-  const rental = getRentalAmount({ subtotalAmount, depositAmount, totalAmount });
+  const rental = getReservationRentalAmount({ totalAmount });
   const deposit = parseFloat(depositAmount);
   const depositStatusVal = depositStatusProp || "none";
 
-  const rentalPaid = getNetCompletedPaymentAmount(payments, "rental");
+  const rentalPaid = getRentalPaid(payments, currency);
 
-  const depositCollected = payments
-    .filter((p) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  const depositReturned = payments
-    .filter((p) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  // The deposit by the shared refund rule, as the cancellation preview reads it.
+  const {
+    collected: depositCollected,
+    returned: depositReturned,
+    held: depositToReturn,
+  } = getDepositTotals(payments);
 
   const damagesPaid = getNetCompletedPaymentAmount(payments, "damage");
 
-  const rentalRemaining = Math.max(0, rental - rentalPaid);
+  const rentalRemaining = getRentalRemaining({ totalAmount }, rentalPaid);
   const depositRemaining = Math.max(0, deposit - depositCollected);
-  const depositToReturn = depositCollected - depositReturned;
   const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100;
 
   const isRentalFullyPaid = rentalRemaining === 0;
@@ -292,6 +345,10 @@ export function UnifiedPaymentSection({
       p.status === "pending" &&
       new Date(p.createdAt).getTime() + CHECKOUT_SESSION_TTL_MS > Date.now(),
   );
+
+  // An authorization the store asked for, which Stripe has not confirmed: asking again
+  // asks about that one, never for a second.
+  const holdUnconfirmed = payments.some((payment) => depositHoldRowKind(payment) === "unconfirmed");
 
   // Authorization expiration
   const authorizationExpired = depositAuthorizationExpiresAt
@@ -384,10 +441,8 @@ export function UnifiedPaymentSection({
     }),
   );
 
-  // Filter history payments (exclude pending Stripe)
-  const historyPayments = payments.filter(
-    (p) => !(p.method === "stripe" && p.status === "pending"),
-  );
+  // Money that moved and the attempts that matter (util.payment-history.ts).
+  const historyPayments = paymentHistoryRows(payments);
   const visiblePayments = historyExpanded
     ? historyPayments
     : historyPayments.slice(0, VISIBLE_HISTORY_COUNT);
@@ -401,13 +456,11 @@ export function UnifiedPaymentSection({
 
   // Payment handlers
   const handleRecordPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount === 0) {
-      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
-      return;
-    }
-    if (amount < 0 && paymentType !== "adjustment") {
-      toastManager.add({ title: t("payment.negativeAmountOnlyForAdjustment"), type: "error" });
+    // As typed, normalised as the action does it: the write judges this text.
+    const amount = typedAmount(paymentAmount) ?? "";
+    const verdict = recordedPaymentAmount(amount, paymentType, currency);
+    if (!verdict.ok) {
+      toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
       return;
     }
 
@@ -441,28 +494,26 @@ export function UnifiedPaymentSection({
       router.refresh();
       setPaymentModalOpen(false);
       resetForm();
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.recordPayment,
         properties: { error_code: "record_payment_failed", payment_type: paymentType },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The action's own refusal, translated: "exceeds the deposit" for the
+      // second of two returns sent together, never a generic failure.
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleReturnDeposit = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
-      return;
-    }
-
-    if (amount > depositToReturn) {
-      toastManager.add({ title: t("payment.amountExceedsDeposit"), type: "error" });
+    const amount = typedAmount(paymentAmount) ?? "";
+    const verdict = depositReturnAmount(amount, currency, depositBalance(payments).returnable);
+    if (!verdict.ok) {
+      toastManager.add({ title: amountRefusal(verdict.refusal), type: "error" });
       return;
     }
 
@@ -487,23 +538,29 @@ export function UnifiedPaymentSection({
       toastManager.add({ title: t("payment.depositReturned"), type: "success" });
       setDepositReturnModalOpen(false);
       resetForm();
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.returnDeposit,
         properties: { error_code: "return_deposit_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The action's own refusal, translated: "exceeds the deposit" for the
+      // second of two returns sent together, never a generic failure.
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRecordDamage = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
+    const amount = typedAmount(paymentAmount) ?? "";
+    const verdict = recordedPaymentAmount(amount, "damage", currency);
+    if (!verdict.ok) {
+      // A damage charge is never negative: the amount is simply not valid.
+      const refusal =
+        verdict.refusal === "negative_outside_adjustment" ? "amount_invalid" : verdict.refusal;
+      toastManager.add({ title: amountRefusal(refusal), type: "error" });
       return;
     }
 
@@ -533,14 +590,16 @@ export function UnifiedPaymentSection({
       toastManager.add({ title: t("payment.damageRecorded"), type: "success" });
       setDamageModalOpen(false);
       resetForm();
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.recordDamage,
         properties: { error_code: "record_damage_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // The action's own refusal, translated: "exceeds the deposit" for the
+      // second of two returns sent together, never a generic failure.
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -592,27 +651,45 @@ export function UnifiedPaymentSection({
     try {
       await createHoldMutation.mutateAsync({ reservationId });
       toastManager.add({ title: t("deposit.holdCreated"), type: "success" });
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.createDepositHold,
         properties: { error_code: "create_deposit_hold_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      // A refusal changes what the page shows: the deposit failed, the customer
+      // authorized it meanwhile, or Stripe has not confirmed the request yet.
+      await invalidateReservationAll(queryClient, reservationId);
+      toastManager.add({
+        title:
+          error instanceof Error && HOLD_REQUEST_ERRORS.has(error.message)
+            ? tErrors(error.message.replace("errors.", ""))
+            : tErrors("generic"),
+        type: "error",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCapture = async () => {
-    const captureAmountNum = parseFloat(captureAmount);
-    if (isNaN(captureAmountNum) || captureAmountNum <= 0) {
-      toastManager.add({ title: t("deposit.invalidCaptureAmount"), type: "error" });
+    // As typed, judged by the capture's own function: the currency's decimals,
+    // then the deposit, both in the currency's minor units, never a float.
+    const amount = typedAmount(captureAmount) ?? "";
+    const verdict = recordedPaymentAmount(amount, "damage", currency);
+    if (!verdict.ok) {
+      const title =
+        verdict.refusal === "too_precise" || verdict.refusal === "currency_unsupported"
+          ? amountRefusal(verdict.refusal)
+          : t("deposit.invalidCaptureAmount");
+      toastManager.add({ title, type: "error" });
       return;
     }
 
-    if (captureAmountNum > deposit) {
+    if (
+      currencyMinorOf(verdict.amount, currency) > currencyMinorOf(depositAmount || "0", currency)
+    ) {
       toastManager.add({ title: t("deposit.captureExceedsDeposit"), type: "error" });
       return;
     }
@@ -633,7 +710,7 @@ export function UnifiedPaymentSection({
       await captureHoldMutation.mutateAsync({
         reservationId,
         payload: {
-          amount: captureAmountNum,
+          amount,
           reason: captureReason,
         },
       });
@@ -641,14 +718,14 @@ export function UnifiedPaymentSection({
       setCaptureModalOpen(false);
       setCaptureAmount("");
       setCaptureReason("");
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.captureDepositHold,
         properties: { error_code: "capture_deposit_hold_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      toastManager.add({ title: tErrors(paymentRefusalKey(error) ?? "generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -710,7 +787,8 @@ export function UnifiedPaymentSection({
 
   return (
     <TooltipProvider>
-      <Card>
+      {/* `#payment`: where "needs a look" opens a money item (dashboard/inbox). */}
+      <Card id="payment" className="scroll-mt-20">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
@@ -753,8 +831,7 @@ export function UnifiedPaymentSection({
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                  {parseFloat(stripePendingPayment.amount).toFixed(2)}
-                  {currencySymbol}
+                  {money(stripePendingPayment.amount)}
                 </span>
               </div>
             </div>
@@ -783,8 +860,7 @@ export function UnifiedPaymentSection({
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                  +{parseFloat(stripeRentalPayment.amount).toFixed(2)}
-                  {currencySymbol}
+                  +{money(stripeRentalPayment.amount)}
                 </span>
               </div>
             </div>
@@ -795,9 +871,7 @@ export function UnifiedPaymentSection({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{t("payment.rental")}</span>
               <span className="text-sm text-muted-foreground">
-                {rentalPaid.toFixed(2)}
-                {currencySymbol} / {rental.toFixed(2)}
-                {currencySymbol}
+                {money(rentalPaid)} / {money(rental)}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -816,8 +890,7 @@ export function UnifiedPaymentSection({
               ) : (
                 <div className="flex items-center gap-1.5">
                   <Badge variant="failed" className="font-mono text-xs">
-                    -{rentalRemaining.toFixed(2)}
-                    {currencySymbol}
+                    -{money(rentalRemaining)}
                   </Badge>
                   <Tooltip>
                     <TooltipTrigger
@@ -827,6 +900,7 @@ export function UnifiedPaymentSection({
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("payment.recordRental")}
                           onClick={() => openPaymentModal("rental", rentalRemaining)}
                         />
                       }
@@ -848,10 +922,7 @@ export function UnifiedPaymentSection({
                   <Shield className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">{t("payment.deposit")}</span>
                 </div>
-                <span className="text-sm font-medium">
-                  {deposit.toFixed(2)}
-                  {currencySymbol}
-                </span>
+                <span className="text-sm font-medium">{money(deposit)}</span>
               </div>
 
               {/* Deposit Collection Status */}
@@ -865,8 +936,8 @@ export function UnifiedPaymentSection({
                   />
                   <span className="text-sm text-muted-foreground">
                     {isDepositFullyCollected
-                      ? `${t("payment.collected")}: ${depositCollected.toFixed(2)}${currencySymbol}`
-                      : `${t("payment.toCollect")}: ${depositRemaining.toFixed(2)}${currencySymbol}`}
+                      ? `${t("payment.collected")}: ${money(depositCollected)}`
+                      : `${t("payment.toCollect")}: ${money(depositRemaining)}`}
                   </span>
                 </div>
                 {!isDepositFullyCollected && (
@@ -878,6 +949,7 @@ export function UnifiedPaymentSection({
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("payment.recordDeposit")}
                           onClick={() => openPaymentModal("deposit", depositRemaining)}
                         />
                       }
@@ -902,7 +974,7 @@ export function UnifiedPaymentSection({
                     <span className="text-sm text-muted-foreground">
                       {isDepositFullyReturned
                         ? t("payment.fullyReturned")
-                        : `${t("payment.toReturn")}: ${depositToReturn.toFixed(2)}${currencySymbol}`}
+                        : `${t("payment.toReturn")}: ${money(depositToReturn)}`}
                     </span>
                   </div>
                   {depositToReturn > 0 && (
@@ -914,6 +986,7 @@ export function UnifiedPaymentSection({
                             size="icon"
                             variant="outline"
                             className="h-7 w-7"
+                            aria-label={t("payment.returnDeposit")}
                             onClick={openDepositReturnModal}
                           />
                         }
@@ -992,6 +1065,27 @@ export function UnifiedPaymentSection({
                     </div>
                   )}
 
+                  {depositStatusVal === "card_saved" && holdUnconfirmed && (
+                    <div className="mb-3 space-y-2">
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        {tErrors("stripe.authorizationUnconfirmed")}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={readOnly}
+                        onClick={() => setAttemptDialogOpen(true)}
+                      >
+                        {t("deposit.unconfirmed.open")}
+                      </Button>
+                      <DepositAttemptDialog
+                        reservationId={reservationId}
+                        open={attemptDialogOpen}
+                        onOpenChange={setAttemptDialogOpen}
+                      />
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     {depositStatusVal === "card_saved" && (
                       <Button
@@ -1065,8 +1159,7 @@ export function UnifiedPaymentSection({
                 </span>
               </div>
               <Badge variant="failed" className="font-mono">
-                +{damagesPaid.toFixed(2)}
-                {currencySymbol}
+                +{money(damagesPaid)}
               </Badge>
             </div>
           )}
@@ -1149,9 +1242,21 @@ export function UnifiedPaymentSection({
                                 Stripe
                               </Badge>
                             )}
-                            {payment.status === "authorized" && (
-                              <Badge variant="pending" className="h-4 px-1 text-[9px] border-0">
-                                {t("payment.statusAuthorized")}
+                            {payment.status === "authorized" &&
+                              depositHoldRowKind(payment) !== "release_pending" && (
+                                <Badge variant="pending" className="h-4 px-1 text-[9px] border-0">
+                                  {t("payment.statusAuthorized")}
+                                </Badge>
+                              )}
+                            {depositHoldRowKind(payment) === "release_pending" && (
+                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                {t("payment.statusReleasePending")}
+                              </Badge>
+                            )}
+                            {(depositHoldRowKind(payment) === "failed" ||
+                              isFailedRefundRow(payment)) && (
+                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                {t("payment.statusFailed")}
                               </Badge>
                             )}
                             {payment.status === "refunded" && (
@@ -1186,7 +1291,9 @@ export function UnifiedPaymentSection({
                         <span
                           className={cn(
                             "font-mono font-medium",
-                            isRefundRow(payment) && "text-emerald-600 dark:text-emerald-400",
+                            isRefundRow(payment) &&
+                              !isFailedRefundRow(payment) &&
+                              "text-emerald-600 dark:text-emerald-400",
                             payment.type === "damage" && "text-red-600 dark:text-red-400",
                             payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
                             payment.type === "adjustment" &&
@@ -1195,7 +1302,12 @@ export function UnifiedPaymentSection({
                             payment.type === "adjustment" &&
                               parseFloat(payment.amount) > 0 &&
                               "text-emerald-600 dark:text-emerald-400",
-                            payment.status === "cancelled" && "text-muted-foreground line-through",
+                            (payment.status === "cancelled" ||
+                              depositHoldRowKind(payment) === "failed" ||
+                              isFailedRefundRow(payment)) &&
+                              "text-muted-foreground line-through",
+                            depositHoldRowKind(payment) === "release_pending" &&
+                              "text-muted-foreground",
                           )}
                         >
                           {isRefundRow(payment)
@@ -1205,8 +1317,7 @@ export function UnifiedPaymentSection({
                                 ? ""
                                 : "+"
                               : "+"}
-                          {parseFloat(payment.amount).toFixed(2)}
-                          {currencySymbol}
+                          {money(payment.amount)}
                         </span>
                         {isManualPaymentRefundEligible(payment, payments) && (
                           <Button
@@ -1228,6 +1339,7 @@ export function UnifiedPaymentSection({
                                   size="icon"
                                   variant="ghost"
                                   className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  aria-label={tCommon("delete")}
                                   onClick={() => {
                                     setPaymentToDelete(payment);
                                     setDeleteDialogOpen(true);
@@ -1312,11 +1424,13 @@ export function UnifiedPaymentSection({
                 <div className="relative">
                   <Input
                     type="number"
-                    step="0.01"
+                    step={amountStep}
                     min={paymentType === "adjustment" ? undefined : "0"}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder={paymentType === "adjustment" ? "-0.00" : "0.00"}
+                    placeholder={
+                      paymentType === "adjustment" ? `-${amountPlaceholder}` : amountPlaceholder
+                    }
                     className="pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -1329,10 +1443,10 @@ export function UnifiedPaymentSection({
                   <p className="text-xs text-muted-foreground">
                     {paymentType === "rental"
                       ? t("payment.rentalRemaining", {
-                          formattedAmount: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
+                          formattedAmount: money(rentalRemaining),
                         })
                       : t("payment.depositRemaining", {
-                          formattedAmount: `${depositRemaining.toFixed(2)}${currencySymbol}`,
+                          formattedAmount: money(depositRemaining),
                         })}
                   </p>
                 )}
@@ -1407,34 +1521,24 @@ export function UnifiedPaymentSection({
               <div className="p-3 rounded-lg bg-muted space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>{t("payment.depositCollected")}</span>
-                  <span className="font-medium">
-                    {depositCollected.toFixed(2)}
-                    {currencySymbol}
-                  </span>
+                  <span className="font-medium">{money(depositCollected)}</span>
                 </div>
                 {depositReturned > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>{t("payment.alreadyReturned")}</span>
-                    <span>
-                      -{depositReturned.toFixed(2)}
-                      {currencySymbol}
-                    </span>
+                    <span>-{money(depositReturned)}</span>
                   </div>
                 )}
                 {damagesPaid > 0 && (
                   <div className="flex justify-between text-red-600 dark:text-red-400">
                     <span>{t("payment.damagesDeducted")}</span>
-                    <span>
-                      -{damagesPaid.toFixed(2)}
-                      {currencySymbol}
-                    </span>
+                    <span>-{money(damagesPaid)}</span>
                   </div>
                 )}
                 <div className="border-t pt-2 flex justify-between font-medium">
                   <span>{t("payment.suggestedReturn")}</span>
                   <span className="text-emerald-600 dark:text-emerald-400">
-                    {suggestedReturnAmount.toFixed(2)}
-                    {currencySymbol}
+                    {money(suggestedReturnAmount)}
                   </span>
                 </div>
               </div>
@@ -1444,12 +1548,12 @@ export function UnifiedPaymentSection({
                 <div className="relative">
                   <Input
                     type="number"
-                    step="0.01"
+                    step={amountStep}
                     min="0"
                     max={depositToReturn}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={amountPlaceholder}
                     className="pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -1529,11 +1633,11 @@ export function UnifiedPaymentSection({
                 <div className="relative">
                   <Input
                     type="number"
-                    step="0.01"
+                    step={amountStep}
                     min="0"
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={amountPlaceholder}
                     className="pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -1602,7 +1706,7 @@ export function UnifiedPaymentSection({
           reservationId={reservationId}
           paymentId={paymentToRefund.id}
           remainingAmount={getRemainingRefundableAmount(paymentToRefund, payments)}
-          currencySymbol={currencySymbol}
+          currency={normalizeCurrency(paymentToRefund.currency, currency)}
           defaultMethod={paymentToRefund.method}
           onClose={() => setPaymentToRefund(null)}
         />
@@ -1646,10 +1750,7 @@ export function UnifiedPaymentSection({
               <div className="p-3 rounded-lg bg-muted text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("deposit.maxCapturable")}</span>
-                  <span className="font-medium">
-                    {deposit.toFixed(2)}
-                    {currencySymbol}
-                  </span>
+                  <span className="font-medium">{money(deposit)}</span>
                 </div>
               </div>
 
@@ -1659,12 +1760,12 @@ export function UnifiedPaymentSection({
                   <Input
                     id="captureAmount"
                     type="number"
-                    step="0.01"
-                    min="0.01"
+                    step={amountStep}
+                    min={amountStep}
                     max={deposit}
                     value={captureAmount}
                     onChange={(e) => setCaptureAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={amountPlaceholder}
                     className="pr-12"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -1720,7 +1821,7 @@ export function UnifiedPaymentSection({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("deposit.releaseDescription", {
-                amount: `${deposit.toFixed(2)}${currencySymbol}`,
+                amount: money(deposit),
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>

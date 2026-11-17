@@ -736,6 +736,76 @@
       "when": 1794261876415,
       "tag": "0099_api_handoffs_subject",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "5",
+      "when": 1794503759573,
+      "tag": "0100_deposit_hold_release_and_attempt",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "5",
+      "when": 1794602259227,
+      "tag": "0101_api_handoffs_revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "5",
+      "when": 1794610533532,
+      "tag": "0102_api_handoffs_decision",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "5",
+      "when": 1794617888830,
+      "tag": "0103_api_handoffs_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "5",
+      "when": 1794628852450,
+      "tag": "0104_api_approval_consumption",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "5",
+      "when": 1794680760426,
+      "tag": "0105_payment_session_settled",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "5",
+      "when": 1794776877847,
+      "tag": "0106_payment_refund_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "5",
+      "when": 1794815430675,
+      "tag": "0107_reservation_pricing_facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "5",
+      "when": 1794821967812,
+      "tag": "0108_deposit_out_of_total",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "5",
+      "when": 1794850441218,
+      "tag": "0109_refund_operation_pending",
+      "breakpoints": true
     }
   ]
 }

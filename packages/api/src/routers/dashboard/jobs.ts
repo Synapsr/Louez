@@ -23,7 +23,11 @@ const get = storeProcedure
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/jobs/{id}" })
+  .route({
+    method: "GET",
+    path: "/jobs/{id}",
+    description: `Returns where a background job stands, such as an AI photo enhancement or a background removal: \`queued\`, \`running\`, \`succeeded\` with its result, or \`failed\` with its \`error\` (nothing is charged for a failed run). \`waitSeconds\` (0 by default, ${JOB_WAIT_SECONDS_MAX} at most) waits for the job to end before answering; \`pollAfterSeconds\` says when to read it again. Photo jobs are started by \`POST /products/{id}/images/enhance\` and \`POST /products/{id}/images/remove-background\`. For a photo job, \`source\` is the photo before; once the job succeeded, \`result\` is the photo after, which replaced it on the product, with \`creditsCharged\`. \`source.versionId\` is the original's version id, which \`POST /products/{id}/images/use-version\` takes to put it back. \`links.dashboard\` is the product's page in the Louez dashboard and, while the product is active, \`links.storefront\` its page on the storefront. Needs a key that can read the job's domain, products for photo jobs (\`PERMISSION_DENIED\` otherwise); an unknown id answers \`JOB_NOT_FOUND\`.`,
+  })
   .input(getJobInput)
   .output(getJobOutput)
   .handler(({ context, input }) =>

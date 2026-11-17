@@ -17,6 +17,7 @@ import {
 import { platformErrors } from "../platform/errors";
 import type { ConfirmStep } from "./products";
 import type { SettingsActor, SettingsChange } from "./settings";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * The store's legal identity (`store_legal_profiles`), as the dashboard's
@@ -142,7 +143,7 @@ export async function upsertLegalProfile(
   options: { fallbackCountry: string; confirm?: ConfirmStep<LegalProfilePreview> },
 ): Promise<LegalProfileView> {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const saved = await db.transaction(async (tx) => {
     if (!(await lockStoreRow(tx, storeId))) throw platformErrors.noStore();
@@ -202,7 +203,7 @@ export async function upsertLegalProfile(
     return readProfile(tx, storeId);
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!saved) throw platformErrors.noStore();
 
   try {

@@ -1,17 +1,13 @@
 import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
-import { after, before, beforeEach, describe, test } from "node:test";
-
-import { eq } from "drizzle-orm";
+import { after, before, describe, test } from "node:test";
 
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import type { createAITools } from "./tools";
 
-// The assistant's payment tools on a migrated database: each write carries its
-// billing facts and marks the reservation for the billing service in the same
-// transaction (louez-billing docs/api, README §5.2, Q3, Q4, Q7).
+// The assistant's tools on a migrated database.
 
 // The status-change module the tools import pulls in "server-only".
 Reflect.get(
@@ -23,17 +19,13 @@ Reflect.get(
     context: unknown,
     next: (specifier: string, context: unknown) => unknown,
   ) {
-    return specifier === "server-only"
-      ? { url: "node:module", shortCircuit: true }
-      : next(specifier, context);
+    if (specifier === "server-only") return { url: "node:module", shortCircuit: true };
+    return next(specifier, context);
   },
 });
 
-process.env.LOUEZ_BILLING = "cloud";
-process.env.BILLING_SERVICE_URL = "http://localhost:3100";
-
-const STORE = "store_ai_payments";
-const USER = "user_ai_payments";
+const STORE = "store_ai_tools";
+const USER = "user_ai_tools";
 const SETTINGS = {
   reservationMode: "payment",
   minRentalMinutes: 60,
@@ -45,50 +37,31 @@ const SETTINGS = {
 
 type Tools = ReturnType<typeof createAITools>;
 
-describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase() }, () => {
+describe("assistant tools (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
-  let tools: Tools;
   let counter = 0;
 
   before(async () => {
-    database = await createTestDatabase("ai_payments");
+    database = await createTestDatabase("ai_tools");
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
-    const aiTools = await import("./tools");
-    tools = aiTools.createAITools({
-      storeId: STORE,
-      userId: USER,
-      storeName: "AI payments",
-      urls: createTestUrls(),
-      permissions: {
-        reservations: "write",
-        products: "read",
-        customers: "read",
-        categories: "read",
-        payments: "write",
-        analytics: "read",
-        settings: "read",
-      },
-    });
-
-    // The store prices in EUR; the reservation froze USD at creation (contract Q4).
+    await louezDb.db.insert(louezDb.users).values({ id: USER, email: "owner@ai.test" });
     await louezDb.db.insert(louezDb.stores).values({
       id: STORE,
       userId: USER,
-      name: "AI payments",
-      slug: "ai-payments",
+      name: "AI tools",
+      slug: "ai-tools",
       settings: SETTINGS,
     });
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values({ storeId: STORE, userId: USER, role: "owner" });
   });
 
   after(async () => {
     await louezDb?.db.$client.end();
     await database?.drop();
-  });
-
-  beforeEach(async () => {
-    await louezDb.db.delete(louezDb.billingSyncQueue);
   });
 
   /** 100.00 tax included, 10.00 of it insurance. */
@@ -134,159 +107,7 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
   }
 
   const options = { toolCallId: "call", messages: [] };
-  type Input<K extends keyof Tools> = Parameters<NonNullable<Tools[K]["execute"]>>[0];
 
-  async function recordPayment(input: Input<"record_payment">) {
-    const execute = tools.record_payment.execute;
-    assert.ok(execute, "the tool runs on the server");
-    return execute(input, options);
-  }
-
-  async function deletePayment(input: Input<"delete_payment">) {
-    const execute = tools.delete_payment.execute;
-    assert.ok(execute, "the tool runs on the server");
-    return execute(input, options);
-  }
-
-  async function returnDeposit(input: Input<"return_deposit">) {
-    const execute = tools.return_deposit.execute;
-    assert.ok(execute, "the tool runs on the server");
-    return execute(input, options);
-  }
-
-  async function paymentsOf(reservationId: string) {
-    return louezDb.db
-      .select({
-        id: louezDb.payments.id,
-        type: louezDb.payments.type,
-        amount: louezDb.payments.amount,
-        currency: louezDb.payments.currency,
-        grossMinor: louezDb.payments.grossMinor,
-        insuranceShareMinor: louezDb.payments.insuranceShareMinor,
-        origin: louezDb.payments.origin,
-        status: louezDb.payments.status,
-      })
-      .from(louezDb.payments)
-      .where(eq(louezDb.payments.reservationId, reservationId))
-      .orderBy(louezDb.payments.type);
-  }
-
-  async function queue() {
-    const { billingSyncQueue: queueTable } = louezDb;
-    return louezDb.db
-      .select({
-        type: queueTable.aggregateType,
-        id: queueTable.aggregateId,
-        storeId: queueTable.storeId,
-        version: queueTable.version,
-      })
-      .from(queueTable)
-      .orderBy(queueTable.aggregateType, queueTable.aggregateId);
-  }
-
-  test("record_payment writes the billing facts and marks the reservation", async () => {
-    const reservationId = await createReservation();
-
-    const output = await recordPayment({
-      reservationId,
-      type: "rental",
-      amount: "50.00",
-      method: "cash",
-    });
-
-    assert.deepEqual(output, {
-      success: true,
-      reservationNumber: reservationId,
-      type: "rental",
-      amount: "50.00",
-      method: "cash",
-    });
-    const [payment] = await paymentsOf(reservationId);
-    assert.deepEqual(
-      { ...payment, id: undefined },
-      {
-        id: undefined,
-        type: "rental",
-        amount: "50.00",
-        currency: "USD",
-        grossMinor: 5000,
-        // Half the total, so half the insurance (fees.md §4).
-        insuranceShareMinor: 500,
-        origin: "manual",
-        status: "completed",
-      },
-    );
-    assert.deepEqual(await queue(), [
-      { type: "reservation", id: reservationId, storeId: STORE, version: 1 },
-    ]);
-  });
-
-  test("a deposit return is a deposit-origin payment with no insurance share", async () => {
-    const reservationId = await createReservation();
-    await recordPayment({
-      reservationId,
-      type: "deposit",
-      amount: "30.00",
-      method: "card",
-    });
-
-    await returnDeposit({ reservationId, amount: "20.00", method: "card" });
-
-    assert.deepEqual(
-      (await paymentsOf(reservationId)).map(
-        ({ type, grossMinor, insuranceShareMinor, origin }) => ({
-          type,
-          grossMinor,
-          insuranceShareMinor,
-          origin,
-        }),
-      ),
-      [
-        { type: "deposit", grossMinor: 3000, insuranceShareMinor: 0, origin: "manual" },
-        { type: "deposit_return", grossMinor: 2000, insuranceShareMinor: 0, origin: "deposit" },
-      ],
-    );
-    assert.deepEqual(await queue(), [
-      { type: "reservation", id: reservationId, storeId: STORE, version: 2 },
-    ]);
-  });
-
-  test("delete_payment marks the reservation", async () => {
-    const reservationId = await createReservation();
-    await recordPayment({
-      reservationId,
-      type: "adjustment",
-      amount: "-5.00",
-      method: "other",
-    });
-    const [payment] = await paymentsOf(reservationId);
-    assert.equal(payment?.grossMinor, -500);
-
-    await deletePayment({ paymentId: payment?.id ?? "" });
-
-    assert.deepEqual(await paymentsOf(reservationId), []);
-    assert.deepEqual(await queue(), [
-      { type: "reservation", id: reservationId, storeId: STORE, version: 2 },
-    ]);
-  });
-
-  test("without the billing service the payment is written and nothing is queued", async () => {
-    const reservationId = await createReservation();
-    delete process.env.BILLING_SERVICE_URL;
-    try {
-      await recordPayment({
-        reservationId,
-        type: "rental",
-        amount: "10.00",
-        method: "cash",
-      });
-    } finally {
-      process.env.BILLING_SERVICE_URL = "http://localhost:3100";
-    }
-
-    assert.equal((await paymentsOf(reservationId)).length, 1);
-    assert.deepEqual(await queue(), []);
-  });
   test("a customer's reservation history, ids and links show only to a user who may read reservations", async () => {
     // A reservation of the customer, for its history.
     const reservationId = await createReservation();
@@ -305,7 +126,7 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
       aiTools.createAITools({
         storeId: STORE,
         userId: USER,
-        storeName: "AI payments",
+        storeName: "AI tools",
         urls: createTestUrls(),
         permissions: {
           reservations: "read",

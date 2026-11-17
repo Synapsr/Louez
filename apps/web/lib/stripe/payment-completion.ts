@@ -76,9 +76,19 @@ export const appFeeColumns = (facts: FeeFacts | null) =>
       }
     : {};
 
+/**
+ * The statuses of a row that was paid: `completed`, and `refunded` once the
+ * refund's writer (`recordChargeRefunds`) has given all of it back; a partial
+ * refund leaves it `completed` with its amount netted. A dispute is recorded on
+ * its own rows and changes neither. A completion delivered again finds such a
+ * row claimed, whatever became of it since, and writes nothing; what follows the
+ * claim runs only while the payment stands (`stands`).
+ */
+const PAID_ROW_STATUSES: ReadonlySet<string> = new Set(["completed", "refunded"]);
+
 export async function claimCompletedCheckoutPayment(
   params: ClaimCompletedCheckoutPaymentParams,
-): Promise<{ paymentId: string; claimed: boolean }> {
+): Promise<{ paymentId: string; claimed: boolean; stands: boolean }> {
   return db.transaction(async (tx) => {
     // The reservation lock serializes the success page and webhook before
     // either can claim payment effects for this checkout.
@@ -90,21 +100,6 @@ export async function claimCompletedCheckoutPayment(
 
     if (!lockedReservation) {
       throw new Error("Reservation not found while completing checkout payment");
-    }
-
-    // Idempotent: the first completion wins, a replay changes nothing.
-    if (params.paymentRequestId) {
-      await tx
-        .update(paymentRequests)
-        .set({ status: "completed", completedAt: params.claimedAt })
-        .where(
-          and(
-            eq(paymentRequests.id, params.paymentRequestId),
-            eq(paymentRequests.storeId, lockedReservation.storeId),
-            eq(paymentRequests.reservationId, params.reservationId),
-            ne(paymentRequests.status, "completed"),
-          ),
-        );
     }
 
     const [existingPayment] = await tx
@@ -124,8 +119,31 @@ export async function claimCompletedCheckoutPayment(
       .limit(1)
       .for("update");
 
-    if (existingPayment?.status === "completed") {
-      return { paymentId: existingPayment.id, claimed: false };
+    // A row once paid is claimed: a replay writes nothing, the payment request
+    // included, and answers whether the payment still stands (`completed`, a
+    // partial refund netted) or was given back in full (`refunded`), read here
+    // under the reservation's lock.
+    if (existingPayment && PAID_ROW_STATUSES.has(existingPayment.status)) {
+      return {
+        paymentId: existingPayment.id,
+        claimed: false,
+        stands: existingPayment.status === "completed",
+      };
+    }
+
+    // The payment request this session pays, completed with its payment.
+    if (params.paymentRequestId) {
+      await tx
+        .update(paymentRequests)
+        .set({ status: "completed", completedAt: params.claimedAt })
+        .where(
+          and(
+            eq(paymentRequests.id, params.paymentRequestId),
+            eq(paymentRequests.storeId, lockedReservation.storeId),
+            eq(paymentRequests.reservationId, params.reservationId),
+            ne(paymentRequests.status, "completed"),
+          ),
+        );
     }
 
     const facts = {
@@ -146,6 +164,9 @@ export async function claimCompletedCheckoutPayment(
         .update(payments)
         .set({
           ...facts,
+          // What Stripe took: the row created with the session may state another
+          // precision than the session charged (yen have no decimals).
+          amount: params.amount.toFixed(2),
           status: "completed",
           origin: existingPayment.origin ?? params.origin,
           paymentRequestId: existingPayment.paymentRequestId ?? params.paymentRequestId,
@@ -172,6 +193,6 @@ export async function claimCompletedCheckoutPayment(
     }
 
     await markReservation(tx, lockedReservation);
-    return { paymentId, claimed: true };
+    return { paymentId, claimed: true, stands: true };
   });
 }

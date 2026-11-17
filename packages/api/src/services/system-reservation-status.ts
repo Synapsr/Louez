@@ -1,0 +1,269 @@
+import {
+  changeReservationStatus,
+  db,
+  isCheckoutSessionRow,
+  payments,
+  reservationActivity,
+  reservationCalendarEvents,
+  reservations,
+  runReservationOnlyChange,
+  toWholeSeconds,
+  type ChangeReservationStatusResult,
+  type ReservationEffectRunner,
+  unsettledCheckoutSession,
+} from "@louez/db";
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
+import { nanoid } from "nanoid";
+
+/**
+ * The system's status changes: a storefront checkout cancelled when its
+ * payment window closed unpaid, or when its payment could not be started
+ * (docs/domain/reservation-changes.md, slice 6a-4). Each locks the reservation
+ * alone, since a pending checkout gives back no stock, changes it as the
+ * `system` actor, then runs the fee effects through the runner it is given,
+ * after the commit. Its callers (the Connect webhook, the checkout, the
+ * cleanup script) keep what lives in the app.
+ */
+
+export type SystemReservationStatusRequest =
+  | {
+      /** The checkout's only payment window closed without a payment. */
+      reason: "checkout_abandoned";
+      reservationId: string;
+      checkoutSessionId: string;
+    }
+  | {
+      /** The checkout's payment could not be started. */
+      reason: "checkout_failed";
+      storeId: string;
+      reservationId: string;
+      failure: "amount_too_small" | "session_creation_failed";
+      minimumAmount?: number;
+      currency?: string;
+      /** Left as it is unless the reservation's total is still this one. */
+      expectedAmount?: string;
+    };
+
+/**
+ * The source of a reservation made by the storefront's online checkout: the only
+ * one the system's checkout cancellations, and the scheduled pass over abandoned
+ * checkouts, act on. A marketplace booking has its own expiry.
+ */
+export const ONLINE_CHECKOUT_SOURCE = "online";
+
+/**
+ * Thrown under the lock to leave the reservation: its checkout can still be
+ * paid, or it never had one (a payment request's session is not a checkout).
+ */
+class CheckoutLeftError extends Error {}
+
+/**
+ * A storefront checkout whose only payment window closed without a payment
+ * is not a booking: the pending reservation is cancelled so it stops holding
+ * stock and the owner does not keep a "payment in progress" that never ends.
+ * Anything already confirmed, paid, or paid through another open session is
+ * left alone, and so is a checkout one of whose rental sessions is unsettled
+ * (`unsettledCheckoutSession`): Stripe may still take its payment, and a resume
+ * may be replacing it. So is a reservation whose sessions are all a payment
+ * request's (`isCheckoutSessionRow`): it never had a checkout to abandon. The fee effects run through `runReservationEffects` after commit.
+ * It locks the reservation alone: a pending checkout gives back no stock. Still
+ * busy after the owner entry's runs, it throws and the webhook answers non-2xx,
+ * as a lost deadlock did before. Stripe sends the event again, and the
+ * redelivery, which finds the session's expiry recorded (its `payment_expired`
+ * row), runs this cancellation again: it cancels a reservation still pending,
+ * and changes nothing on one already cancelled
+ * (docs/domain/reservation-changes.md, "System: abandoned checkout").
+ */
+const cancelAbandonedCheckout = async (
+  { reservationId, checkoutSessionId }: { reservationId: string; checkoutSessionId: string },
+  runReservationEffects: ReservationEffectRunner,
+): Promise<boolean> => {
+  const reservation = await db.query.reservations.findFirst({
+    columns: { storeId: true, status: true, source: true },
+    where: eq(reservations.id, reservationId),
+  });
+  if (
+    !reservation ||
+    reservation.status !== "pending" ||
+    reservation.source !== ONLINE_CHECKOUT_SOURCE
+  ) {
+    return false;
+  }
+
+  let change: ChangeReservationStatusResult;
+  try {
+    change = await runReservationOnlyChange(
+      { reservationId, storeId: reservation.storeId },
+      async (tx, lock) => {
+        // Under the lock, with a locking read: a payment claimed, a session
+        // opened or a session a resume is replacing since the read above is seen.
+        const [payment] = await tx
+          .select({ id: payments.id })
+          .from(payments)
+          .where(
+            and(
+              eq(payments.reservationId, reservationId),
+              or(
+                and(
+                  eq(payments.type, "rental"),
+                  inArray(payments.status, ["pending", "completed"]),
+                ),
+                unsettledCheckoutSession,
+              ),
+            ),
+          )
+          .limit(1)
+          .for("share");
+        if (payment) throw new CheckoutLeftError();
+        // A reservation whose sessions are all a payment request's never had a
+        // checkout to abandon: the store's request leaves it as it is.
+        const sessions = await tx
+          .select({
+            type: payments.type,
+            stripeCheckoutSessionId: payments.stripeCheckoutSessionId,
+            origin: payments.origin,
+          })
+          .from(payments)
+          .where(
+            and(
+              eq(payments.reservationId, reservationId),
+              eq(payments.type, "rental"),
+              isNotNull(payments.stripeCheckoutSessionId),
+            ),
+          )
+          .for("share");
+        if (sessions.length > 0 && !sessions.some(isCheckoutSessionRow)) {
+          throw new CheckoutLeftError();
+        }
+        return changeReservationStatus(tx, {
+          lock,
+          reservationId,
+          storeId: reservation.storeId,
+          to: "cancelled",
+          actor: "system",
+          actorUserId: null,
+          expectedFrom: "pending",
+          activity: { metadata: { reason: "payment_expired", checkoutSessionId } },
+        });
+      },
+    );
+  } catch (error) {
+    if (error instanceof CheckoutLeftError) return false;
+    throw error;
+  }
+  if (!change.changed) return false;
+
+  await runReservationEffects(change.effects);
+  return true;
+};
+
+/**
+ * Cancel only an unpaid online checkout; never override a payment or decision.
+ * The fee effects run through `runReservationEffects` after commit. It locks
+ * the reservation alone: a pending checkout gives back no stock. A
+ * reservation still busy after the owner entry's runs throws
+ * `ReservationChangeBusyError`, as a lost deadlock threw before: nothing runs
+ * this cancellation again, so its caller answers the failure (the checkout
+ * logs it and answers `errors.createReservationError`).
+ */
+const cancelFailedCheckout = async (
+  {
+    storeId,
+    reservationId,
+    failure: reason,
+    minimumAmount,
+    currency,
+    expectedAmount,
+  }: Extract<SystemReservationStatusRequest, { reason: "checkout_failed" }>,
+  runReservationEffects: ReservationEffectRunner,
+): Promise<boolean> => {
+  const effects = await runReservationOnlyChange({ reservationId, storeId }, async (tx, lock) => {
+    const [reservation] = await tx
+      .select({
+        id: reservations.id,
+        status: reservations.status,
+        source: reservations.source,
+        totalAmount: reservations.totalAmount,
+      })
+      .from(reservations)
+      .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
+      .for("update");
+    if (
+      !reservation ||
+      reservation.status !== "pending" ||
+      reservation.source !== ONLINE_CHECKOUT_SOURCE
+    ) {
+      return null;
+    }
+    if (expectedAmount !== undefined && reservation.totalAmount !== expectedAmount) return null;
+    const [payment] = await tx
+      .select({ id: payments.id })
+      .from(payments)
+      .where(eq(payments.reservationId, reservation.id))
+      .limit(1);
+    // Any payment row may point to a Stripe session the customer can still pay.
+    if (payment) return null;
+
+    // Whole seconds, as the status change stores its row: MySQL would round this
+    // one up, and the timeline would show the cancellation first.
+    const now = toWholeSeconds(new Date());
+    const metadata = {
+      source: "checkout_payment_failed",
+      reason,
+      ...(minimumAmount !== undefined ? { minimumAmount } : {}),
+      ...(currency ? { currency } : {}),
+    };
+    await tx.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: "payment_failed",
+      metadata,
+      createdAt: now,
+    });
+    const change = await changeReservationStatus(tx, {
+      lock,
+      reservationId,
+      storeId,
+      to: "cancelled",
+      actor: "system",
+      actorUserId: null,
+      expectedFrom: "pending",
+      activity: { metadata },
+    });
+    // The row is locked and pending, so only a bug lands here: roll back the payment_failed row.
+    if (!change.changed) {
+      throw new Error(`Could not cancel failed checkout ${reservationId}: ${change.reason}`);
+    }
+    // Existing calendar events must release the cancelled checkout too.
+    await tx
+      .update(reservationCalendarEvents)
+      .set({
+        syncStatus: "pending",
+        attemptCount: 0,
+        nextAttemptAt: now,
+        lastError: null,
+        updatedAt: now,
+      })
+      .where(eq(reservationCalendarEvents.reservationId, reservationId));
+    return change.effects;
+  });
+  if (!effects) return false;
+
+  await runReservationEffects(effects);
+  return true;
+};
+
+/**
+ * Cancels a storefront checkout as the `system` actor, then runs its fee
+ * effects. Returns whether it cancelled: a reservation outside the request's
+ * conditions is left as it is. A reservation still busy after the owner entry's
+ * runs throws `ReservationChangeBusyError`.
+ */
+export async function changeSystemReservationStatus(
+  request: SystemReservationStatusRequest,
+  runReservationEffects: ReservationEffectRunner,
+): Promise<boolean> {
+  return request.reason === "checkout_abandoned"
+    ? cancelAbandonedCheckout(request, runReservationEffects)
+    : cancelFailedCheckout(request, runReservationEffects);
+}

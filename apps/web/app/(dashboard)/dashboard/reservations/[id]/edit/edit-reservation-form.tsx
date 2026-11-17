@@ -33,7 +33,7 @@ import { Alert, AlertDescription } from "@louez/ui";
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 import { ReservationOverbookingDialog } from "@/components/dashboard/reservation-overbooking-dialog";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
-import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from "@louez/utils";
+import { cn, formatCurrency, getCurrencySymbol } from "@louez/utils";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { calculateDuration } from "@/lib/utils/duration";
 import { useStoreTimezone } from "@/contexts/store-context";
@@ -52,18 +52,25 @@ import {
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
 import { isInsufficientCapacityResult } from "@/lib/reservations/util.insufficient-capacity";
-import type { CapacityShortfall } from "@louez/api/services/reservation-inventory";
+import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import type { PricingMode } from "@louez/types";
 import { EditReservationItemsSection } from "./components/edit-reservation-items-section";
 import { EditReservationSummarySection } from "./components/edit-reservation-summary-section";
 import { EditReservationDeliverySection } from "./components/edit-reservation-delivery-section";
 import { useEditReservationAvailability } from "./hooks/use-edit-reservation-availability";
 import {
-  calculateUnitPriceFromTotal,
+  editSummaryFigures,
+  previewEditTotals,
   useEditReservationPricing,
 } from "./hooks/use-edit-reservation-pricing";
 import { useEditReservationDelivery } from "./hooks/use-edit-reservation-delivery";
-import type { EditReservationFormProps, EditableItem, ReservationItem } from "./types";
+import type { EditReservationFormProps, EditableItem } from "./types";
+import {
+  toEditableItem,
+  toReservationItemPayload,
+  withTotalPriceCommitted,
+  withUnitPriceCommitted,
+} from "./utils/editable-items";
 
 function parseCoordinate(value: string | null): number | null {
   return value ? parseFloat(value) : null;
@@ -79,51 +86,6 @@ function isSameStoreDay(
     formatStoreDate(dateA, timezone, "yyyy-MM-dd", locale) ===
     formatStoreDate(dateB, timezone, "yyyy-MM-dd", locale)
   );
-}
-
-function resolvePricingModeFromMinutes(
-  periodMinutes: number | null | undefined,
-  fallback: PricingMode,
-): PricingMode {
-  if (!periodMinutes || periodMinutes <= 0) {
-    return fallback;
-  }
-
-  const period = minutesToPriceDuration(periodMinutes);
-  if (period.unit === "week") return "week";
-  if (period.unit === "day") return "day";
-  return "hour";
-}
-
-function resolveInitialManualPricingMode(
-  product: EditableItem["product"],
-  fallback: PricingMode,
-  startDate: Date,
-  endDate: Date,
-): PricingMode {
-  if (!product?.basePeriodMinutes || product.basePeriodMinutes <= 0) {
-    return fallback;
-  }
-
-  const durationMinutes = Math.max(
-    1,
-    Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60)),
-  );
-  const periods = [
-    product.basePeriodMinutes,
-    ...product.pricingTiers.map((tier) => tier.period ?? null),
-  ]
-    .filter((period): period is number => typeof period === "number" && period > 0)
-    .sort((a, b) => a - b);
-
-  if (periods.length === 0) {
-    return fallback;
-  }
-
-  const applicablePeriod =
-    [...periods].reverse().find((period) => period <= durationMinutes) ?? periods[0];
-
-  return resolvePricingModeFromMinutes(applicablePeriod, fallback);
 }
 
 function isEmailNotificationResult(
@@ -183,54 +145,6 @@ function isAssignedUnitsConflictResult(value: unknown): value is {
   );
 }
 
-function toReservationItemPayload(item: EditableItem) {
-  return {
-    id: item.id.startsWith("new-") || item.id.startsWith("custom-") ? undefined : item.id,
-    productId: item.productId,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    depositPerUnit: item.depositPerUnit,
-    isManualPrice: item.isManualPrice,
-    pricingMode: item.pricingMode,
-    productSnapshot: {
-      name: item.productSnapshot.name,
-      description: item.productSnapshot.description ?? null,
-    },
-  };
-}
-
-function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): EditableItem {
-  const isManualPrice =
-    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride === true;
-  const fallbackPricingMode = (item.product?.pricingMode ??
-    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.pricingMode ??
-    "day") as PricingMode;
-  const pricingMode = isManualPrice
-    ? resolveInitialManualPricingMode(item.product, fallbackPricingMode, startDate, endDate)
-    : fallbackPricingMode;
-  const duration =
-    item.product?.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, pricingMode);
-  const preciseManualUnitPrice =
-    isManualPrice && item.quantity > 0 && duration > 0
-      ? Number(item.totalPrice) / (duration * item.quantity)
-      : Number(item.unitPrice);
-
-  return {
-    id: item.id,
-    productId: item.productId,
-    quantity: item.quantity,
-    consumedQuantity: item.consumedQuantity,
-    unitPrice: preciseManualUnitPrice,
-    depositPerUnit: parseFloat(item.depositPerUnit),
-    isManualPrice,
-    pricingMode,
-    basePeriodMinutes: item.product?.basePeriodMinutes ?? null,
-    enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
-    productSnapshot: item.productSnapshot,
-    product: item.product,
-  };
-}
-
 function roundComparableNumber(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -269,7 +183,6 @@ export function EditReservationForm({
   const tForm = useTranslations("dashboard.reservations.manualForm");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
-  const tValidation = useTranslations("validation");
   const posthog = usePostHog();
   const { intl: formatLocale } = useFormatLocale();
   const timezone = useStoreTimezone();
@@ -406,7 +319,7 @@ export function EditReservationForm({
       isTulipInsurancePastDateBlocked ||
       !startDate ||
       !endDate ||
-      endDate < startDate ||
+      endDate.getTime() <= startDate.getTime() ||
       tulipInsuranceQuoteItems.length === 0
     ) {
       return null;
@@ -506,8 +419,12 @@ export function EditReservationForm({
       startDate,
       endDate,
       items,
-      originalSubtotal,
       fixedChargesTotal: fixedTulipInsuranceAmount,
+      storedWindow: {
+        start: new Date(reservation.startDate),
+        end: new Date(reservation.endDate),
+      },
+      currency,
     });
   const { availabilityWarnings, availableQuantityByProduct } = useEditReservationAvailability({
     startDate,
@@ -534,16 +451,16 @@ export function EditReservationForm({
     );
   };
 
-  const handlePriceChange = (itemId: string, price: number, pricingMode?: PricingMode) => {
+  const handlePriceChange = (
+    itemId: string,
+    price: number,
+    shownUnitPrice: number,
+    pricingMode: PricingMode,
+  ) => {
     setItems((prev) =>
       prev.map((item) =>
         item.id === itemId
-          ? {
-              ...item,
-              unitPrice: price,
-              isManualPrice: true,
-              pricingMode: pricingMode ?? item.pricingMode,
-            }
+          ? withUnitPriceCommitted(item, { price, shownUnitPrice, pricingMode })
           : item,
       ),
     );
@@ -552,28 +469,20 @@ export function EditReservationForm({
   const handleItemTotalPriceChange = (
     itemId: string,
     totalPrice: number,
-    pricingMode?: PricingMode,
+    shownTotalPrice: number,
+    pricingMode: PricingMode,
   ) => {
     setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId) return item;
-
-        const effectivePricingMode = pricingMode ?? item.pricingMode;
-        const itemDuration = startDate && endDate ? getDurationForMode(effectivePricingMode) : 0;
-        const unitPrice = calculateUnitPriceFromTotal({
-          totalPrice,
-          quantity: item.quantity,
-          duration: itemDuration,
-          pricingKind: item.product?.pricingKind ?? "duration",
-        });
-
-        return {
-          ...item,
-          unitPrice,
-          isManualPrice: true,
-          pricingMode: effectivePricingMode,
-        };
-      }),
+      prev.map((item) =>
+        item.id === itemId
+          ? withTotalPriceCommitted(item, {
+              totalPrice,
+              shownTotalPrice,
+              pricingMode,
+              duration: startDate && endDate ? getDurationForMode(pricingMode) : 0,
+            })
+          : item,
+      ),
     );
   };
 
@@ -641,6 +550,7 @@ export function EditReservationForm({
       pricingMode: (product.pricingMode ?? "day") as PricingMode,
       basePeriodMinutes: product.basePeriodMinutes ?? null,
       enforceStrictTiers: product.enforceStrictTiers ?? false,
+      stored: null,
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -735,6 +645,7 @@ export function EditReservationForm({
       },
       product: null,
       pricingMode: customItemForm.pricingMode,
+      stored: null,
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -832,6 +743,8 @@ export function EditReservationForm({
           allowOverbooking,
           delivery: deliveryPayload,
           items: items.map(toReservationItemPayload),
+          expectedTotal: shownTotal,
+          loadedEditToken: reservation.editToken,
         },
       });
 
@@ -867,11 +780,15 @@ export function EditReservationForm({
           return;
         }
 
-        if (result.error === "errors.reservationChangedMeanwhile") {
+        if (
+          result.error === "errors.reservationChangedMeanwhile" ||
+          result.error === "errors.reservationStatusChanged"
+        ) {
           // The form holds what was read before the other change: only a
-          // reload brings the reservation as it is now.
+          // reload brings the reservation as it is now (a reservation no
+          // longer editable then opens its own page).
           toastManager.add({
-            title: tErrors("reservationChangedMeanwhile"),
+            title: tErrors(getErrorTranslationKey(result.error)),
             type: "error",
             actionProps: {
               children: tCommon("refresh"),
@@ -980,8 +897,8 @@ export function EditReservationForm({
       return;
     }
 
-    if (endDate < startDate) {
-      toastManager.add({ title: tValidation("endDateBeforeStart"), type: "error" });
+    if (endDate.getTime() <= startDate.getTime()) {
+      toastManager.add({ title: tErrors("endDateBeforeStart"), type: "error" });
       return;
     }
 
@@ -1081,6 +998,26 @@ export function EditReservationForm({
   );
   const currentItemsSignature = useMemo(() => buildItemsChangeSignature(items), [items]);
   const hasItemChanges = currentItemsSignature !== originalItemsSignature;
+
+  // The totals the form shows, whose total the edit sends: the server refuses
+  // to write another one (slice 11).
+  const shownTotals = previewEditTotals({
+    items: calculations.items,
+    insuranceAmount: fixedTulipInsuranceAmount,
+    discountAmount: parseFloat(reservation.discountAmount ?? "0"),
+    deliveryFee: delivery.totalFee,
+    deposit: calculations.deposit,
+    storeTax: storeSettings?.tax,
+    recordedTaxDisplayMode: reservation.taxDisplayMode ?? null,
+    currency,
+  });
+  const shownTotal = shownTotals.total;
+  const summaryFigures = editSummaryFigures({
+    storedTotal: parseFloat(reservation.totalAmount),
+    preview: shownTotals,
+    discountAmount: parseFloat(reservation.discountAmount ?? "0"),
+    currency,
+  });
 
   const hasChanges =
     (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
@@ -1297,6 +1234,7 @@ export function EditReservationForm({
                 availableQuantityByProduct={availableQuantityByProduct}
                 itemsCount={items.length}
                 currencySymbol={currencySymbol}
+                currency={currency}
                 getDurationUnit={getDurationUnit}
                 onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
                 onAddProduct={handleAddProduct}
@@ -1318,7 +1256,7 @@ export function EditReservationForm({
                   deliveryMinimumWarning={deliveryMinimumWarning}
                   storeAddress={storeDelivery.address}
                   locations={storeDelivery.locations}
-                  currencySymbol={currencySymbol}
+                  currency={currency}
                   onOutboundMethodChange={delivery.setOutboundMethod}
                   onInboundMethodChange={delivery.setInboundMethod}
                   onOutboundLocationChange={delivery.setOutboundLocationId}
@@ -1419,12 +1357,12 @@ export function EditReservationForm({
               {/* Summary Card */}
               <EditReservationSummarySection
                 availabilityWarnings={availabilityWarnings}
-                originalSubtotal={originalSubtotal}
+                figures={summaryFigures}
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}
-                currencySymbol={currencySymbol}
+                currency={currency}
                 isLoading={isLoading}
                 isDeliveryCalculating={delivery.isCalculating}
                 hasChanges={hasChanges}

@@ -577,6 +577,7 @@
       "invitationCancelled": "Uitnodiging geannuleerd",
       "invitationResent": "Uitnodiging opnieuw verzonden",
       "invitationAlreadySent": "Er is al een uitnodiging naar dit e-mailadres verzonden",
+      "invitationEmailLimit": "Deze winkel heeft de afgelopen 24 uur {max} uitnodigingsmails aangevraagd, of ze nu verzonden konden worden of niet: meer kan niet. Probeer het later opnieuw.",
       "resend": "Opnieuw verzenden",
       "cancel": "Annuleren",
       "invitedOn": "Uitgenodigd op {date}",
@@ -2212,7 +2213,16 @@
         "confirmRelease": "Borg vrijgeven",
         "invalidCaptureAmount": "Ongeldig bedrag",
         "captureExceedsDeposit": "Bedrag overschrijdt borg",
-        "reasonRequired": "Geef een reden op"
+        "reasonRequired": "Geef een reden op",
+        "unconfirmed": {
+          "open": "Oplossen met Stripe",
+          "title": "Onbevestigde autorisatie",
+          "description": "Stripe heeft dit autorisatieverzoek nooit bevestigd. Controleer Betalingen in het Stripe-dashboard van het account waarop het is aangevraagd.",
+          "explanation": "Het verzoek sluiten annuleert niets bij Stripe. Louez zoekt eerst zelf naar de autorisatie en registreert die als ze overeenkomt met het verzoek. Vindt Louez er een die niet overeenkomt (bedrag, kaart of referentie gewijzigd), dan blijft het verzoek open en meldt Louez u dat: annuleer die autorisatie in Stripe, waardoor het geblokkeerde bedrag vrijkomt, en sluit daarna het verzoek opnieuw. Int u ze in plaats daarvan in Stripe, dan registreert Louez dat bedrag niet en blijft het verzoek open: neem contact op met Louez-support. Verschijnt er later een autorisatie, dan registreert Louez die zodra Stripe ze meldt, als ze overeenkomt met het verzoek: ze wordt de borg van deze reservering als die er nog geen heeft, en wordt vrijgegeven als een andere borgreservering de reservering al dekt. Het verzoek sluiten terwijl er een borgreservering bestaat, kan dus een tijdlang een extra borgreservering op de kaart van de klant laten staan. Een autorisatie die u in Stripe ziet maar die Louez niet heeft geregistreerd, handelt u af in Stripe: annuleer ze daar.",
+          "confirm": "Verzoek sluiten",
+          "closed": "Verzoek gesloten. U kunt een nieuwe autorisatie aanmaken.",
+          "recorded": "Louez heeft de autorisatie bij Stripe gevonden en geregistreerd."
+        }
       },
       "subtotal": "Subtotaal",
       "source": "Bron",
@@ -2508,6 +2518,7 @@
         "subtotal": "Subtotaal",
         "deposit": "Borg",
         "total": "Totaal",
+        "taxLine": "Belasting",
         "tulipInsurance": {
           "title": "Tulip verzekering",
           "appliesMappedProducts": "Geldt alleen voor producten die aan Tulip zijn gekoppeld.",
@@ -2670,7 +2681,13 @@
           "shortfall": "Gevraagd: {requested} · Beschikbaar: {available}",
           "createAnyway": "Toch aanmaken",
           "editDescription": "Sommige producten zijn voor de periode niet in voldoende aantal beschikbaar. Je kunt de wijziging toch opslaan; de override wordt zichtbaar in de tijdlijn.",
-          "saveAnyway": "Toch opslaan"
+          "saveAnyway": "Toch opslaan",
+          "confirmDescription": "De voorraad dekt deze reservering niet voor haar periode. Je kunt haar toch bevestigen boven de beschikbare voorraad; deze keuze wordt zichtbaar in de tijdlijn.",
+          "confirmAnyway": "Toch bevestigen",
+          "bufferTitle": "Omlooptijdbuffer te kort",
+          "bufferDescription": "Deze regels passen in je voorraad, maar niet met de omlooptijdbuffer die je tussen twee verhuringen aanhoudt. Je kunt de reservering toch bevestigen met minder tijd tussen de verhuringen; deze keuze wordt zichtbaar in de tijdlijn.",
+          "bufferShortfall": "Gevraagd: {requested} · Vrij met buffer: {available}",
+          "confirmPastBuffer": "Toch bevestigen"
         },
         "addUnavailable": {
           "title": "Product niet beschikbaar",
@@ -2722,6 +2739,7 @@
         "quote_accepted": "Offerte geaccepteerd",
         "quote_declined": "Offerte afgewezen",
         "overbooked": "Overboekt",
+        "turnoverBufferOverridden": "Buffer ingekort",
         "contract_signed": "Contract ondertekend",
         "contractUnsigned": "Zonder ondertekend contract",
         "signedBy": "Ondertekend door {name}",
@@ -2748,7 +2766,8 @@
             "incorrectCvc": "De beveiligingscode (CVC) is ongeldig voor deze borgautorisatie.",
             "processingError": "De borgautorisatie is mislukt door een tijdelijk verwerkingsprobleem. Probeer het over enkele minuten opnieuw.",
             "doNotHonor": "De bank heeft de borgautorisatie zonder details geweigerd. Vraag de klant contact op te nemen met de bank of een andere kaart te gebruiken.",
-            "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken."
+            "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken.",
+            "closedByStore": "Verzoek gesloten door de winkel: geen autorisatie gevonden in Stripe."
           }
         }
       },
@@ -2868,6 +2887,8 @@
         "damageRecorded": "Schade geregistreerd",
         "invalidAmount": "Ongeldig bedrag",
         "amountExceedsDeposit": "Bedrag overschrijdt geïnde borg",
+        "amountTooPrecise": "{decimals, plural, =0 {Een bedrag in {currency} heeft geen decimalen: voer hele eenheden in.} other {Een bedrag in {currency} heeft hoogstens # decimalen.}}",
+        "currencyNotSupported": "Betalingen in {currency} kunnen niet worden geregistreerd: Louez ondersteunt geen valuta met drie decimalen.",
         "deleteConfirmTitle": "Deze betaling verwijderen?",
         "deleteConfirmDescription": "Deze actie is onomkeerbaar. De betaling wordt permanent uit de geschiedenis verwijderd.",
         "unpaidWarning": "Er moet nog {formattedAmount} worden geïnd voor deze reservering",
@@ -2910,6 +2931,8 @@
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
         "statusCancelled": "Geannuleerd",
+        "statusFailed": "Mislukt",
+        "statusReleasePending": "Wordt vrijgegeven",
         "requestPayment": "Betaling aanvragen",
         "invoiceGenerated": "Factuur {number} aangemaakt"
       },
@@ -2944,9 +2967,13 @@
         "send": "Verzoek versturen",
         "success": "Betalingsverzoek verzonden",
         "successTitle": "Verzoek verzonden!",
-        "successDescription": "Klant ontvangt een betalingslink via {channel}",
+        "notSentTitle": "Betalingslink aangemaakt",
+        "sentBy": "Verzonden per {channels, select, email {e-mail} sms {sms} other {e-mail en sms}}.",
+        "partlySent": "Verzonden per {sent, select, email {e-mail} other {sms}}, maar niet per {failed, select, email {e-mail} other {sms}}: kopieer de link indien nodig.",
+        "notSent": "{channels, select, email {De e-mail kon niet worden verzonden} sms {De sms kon niet worden verzonden} other {De e-mail en de sms konden niet worden verzonden}}: kopieer de link om hem zelf te versturen.",
         "error": "Fout bij verzenden",
         "paymentLink": "Betalingslink",
+        "copyLink": "Link kopiëren",
         "linkCopied": "Link gekopieerd",
         "copyFailed": "Kopiëren mislukt",
         "stripeNotConfigured": "Stripe niet geconfigureerd",
@@ -4475,7 +4502,6 @@
       },
       "integrationsHub": {
         "recommended": "Aanbevolen",
-        "comingSoon": "Binnenkort",
         "noIntegrations": "Nog geen integraties beschikbaar.",
         "sections": {
           "byLouez": "Door Louez.io",
@@ -4494,7 +4520,10 @@
           "api": {
             "name": "API REST",
             "description": "Verbind uw winkel met uw bestaande tools en automatiseer uw dagelijkse taken.",
-            "comingSoonDescription": "De REST-API is in ontwikkeling. U kunt uw winkel binnenkort met elke tool of service verbinden."
+            "betaTitle": "Beschikbaar in bèta",
+            "betaDescription": "Met de REST-API kunnen uw scripts en tools de gegevens van uw winkel lezen en wijzigen. De referentie laat zien wat ermee kan. Elke tool maakt verbinding met een API-sleutel, die u aanmaakt op de MCP-pagina, in het gedeelte API-sleutels.",
+            "openReference": "API-referentie openen",
+            "createKey": "API-sleutel aanmaken"
           }
         },
         "title": "Integraties",
@@ -4758,12 +4787,12 @@
         "description": "Beheer API-sleutels om externe tools, AI-assistenten of aangepaste integraties met uw winkel te verbinden.",
         "backToIntegrations": "Integraties",
         "keysTitle": "API-sleutels",
-        "keysDescription": "Maak en beheer sleutels voor de MCP-server en toekomstige REST-API.",
+        "keysDescription": "Maak en beheer sleutels voor de MCP-server en de REST-API.",
         "createKey": "Sleutel aanmaken",
         "noKeys": "Nog geen API-sleutels. Maak er een aan om te beginnen.",
         "keyRevoked": "API-sleutel ingetrokken.",
         "lastUsed": "Laatst gebruikt",
-        "confirmSensitive": "Bevestigen vóór gevoelige acties",
+        "confirmSensitive": "Optionele bevestigingen (verplichte goedkeuring blijft nodig)",
         "confirmSensitiveSaved": "Instelling opgeslagen",
         "endpointsTitle": "Eindpunten",
         "endpointsDescription": "Gebruik deze endpoints om toegang te krijgen tot uw winkelgegevens.",
@@ -4799,7 +4828,11 @@
           "categories": "Categorieën",
           "payments": "Betalingen",
           "analytics": "Analyses",
-          "settings": "Instellingen"
+          "settings": "Instellingen",
+          "online_store": "Online winkel",
+          "team": "Team",
+          "billing": "Abonnement",
+          "integrations": "Integraties"
         },
         "levels": {
           "none": "Geen toegang",
@@ -6906,6 +6939,28 @@
         "customers": "Hoeveel nieuwe klanten deze maand?",
         "overdue": "Zijn er retouren te laat?",
         "pending": "Toon me de reserveringen die wachten op bevestiging"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Deze betaling registreren?",
+          "delete_payment": "Deze betaling verwijderen?",
+          "return_deposit": "Deze terugbetaling van de borg registreren?"
+        },
+        "amount": "Bedrag",
+        "booking": "Boeking",
+        "open": "Bekijken en beslissen",
+        "expires": "Beslis vóór {when}",
+        "status": {
+          "pending": "Wacht op je beslissing",
+          "approved": "Goedgekeurd. De assistent voert het uit.",
+          "completed": "Klaar",
+          "declined": "Geweigerd. Er is niets gedaan.",
+          "expired": "Verlopen. Er is niets gedaan.",
+          "ended": "Niet uitgevoerd. Er is niets gedaan.",
+          "unavailable": "Deze aanvraag kan hier niet meer worden gelezen."
+        },
+        "continue": "Doorgaan",
+        "followUp": "Goedgekeurd, we gaan verder"
       }
     },
     "breadcrumbs": {
@@ -6954,7 +7009,8 @@
       "settingsTaxes": "Belastingen",
       "productsEdit": "Bewerken",
       "reservationsEdit": "Bewerken",
-      "settingsCustomerFields": "Klantgegevens"
+      "settingsCustomerFields": "Klantgegevens",
+      "needsALook": "Te controleren"
     },
     "notificationsCenter": {
       "title": "Meldingen",
@@ -7184,6 +7240,111 @@
         "participantNamePlaceholder": "Voornaam",
         "saved": "Huurgegevens opgeslagen"
       }
+    },
+    "needsALook": {
+      "title": "Te controleren",
+      "description": "Wat Louez niet zelf kon oplossen.",
+      "empty": {
+        "title": "Niets te controleren",
+        "description": "Terugbetalingen, borgen, creditnota's of berichten die jou nodig hebben verschijnen hier."
+      },
+      "incomplete": "Sommige items konden niet worden geladen. Herlaad de pagina zo meteen.",
+      "urgent": "Dringend",
+      "details": "Details",
+      "markHandled": "Markeren als afgehandeld",
+      "confirm": {
+        "title": "Markeren als afgehandeld?",
+        "description": "Het wordt verborgen voor je hele team. Het komt terug als het probleem opnieuw optreedt.",
+        "heldBack": "Het terugbetaalde bedrag blijft ingehouden tot Stripe antwoordt.",
+        "cancel": "Annuleren",
+        "confirm": "Markeren als afgehandeld"
+      },
+      "handled": "Gemarkeerd als afgehandeld",
+      "changed": "Dit item is intussen gewijzigd: de lijst is bijgewerkt.",
+      "actions": {
+        "viewPayment": "Betaling bekijken",
+        "viewBooking": "Reservering bekijken",
+        "viewProduct": "Product bekijken",
+        "invoicingSettings": "Factuurinstellingen",
+        "notificationSettings": "Meldingsinstellingen",
+        "openTeam": "Team openen"
+      },
+      "facts": {
+        "stripeCharge": "Stripe-betaling",
+        "stripeRefund": "Stripe-terugbetaling",
+        "stripePayment": "Stripe-betaling",
+        "stripeDispute": "Stripe-geschil",
+        "creditNote": "Creditnota",
+        "invoice": "Factuur",
+        "channel": "Kanaal",
+        "reference": "Referentie"
+      },
+      "refundUnconfirmed": {
+        "title": "Terugbetaling niet bevestigd",
+        "summary": "Stripe heeft de terugbetaling van {amount} van {day} voor reservering #{number} niet bevestigd. Controleer die in Stripe voordat je opnieuw terugbetaalt.",
+        "heldBack": "Tot Stripe antwoordt, houdt Louez dit bedrag in op wat de betaling nog kan terugbetalen."
+      },
+      "refundUndone": {
+        "title": "Terugbetaling mislukt",
+        "summary": "De terugbetaling van {amount} voor reservering #{number} is niet gelukt: de klant is niet terugbetaald. Controleer die in Stripe en betaal zo nodig opnieuw terug.",
+        "summaryListed": "De meldingen van Stripe over de terugbetaling van {amount} voor reservering #{number} spreken elkaar tegen. Controleer in Stripe of de klant is terugbetaald en betaal zo nodig opnieuw terug.",
+        "creditNote": "Creditnota {creditNote} blijft staan: corrigeer die in je boekhouding."
+      },
+      "creditNoteNotIssued": {
+        "title": "Creditnota ontbreekt",
+        "summary": "De terugbetaling van {amount} voor reservering #{number} heeft nog geen creditnota. Controleer je factuurinstellingen.",
+        "reasons": {
+          "mismatch": "De geregistreerde terugbetaling komt niet overeen met het verzoek, dus Louez kan die niet zelf uitgeven: neem contact op met Louez-support.",
+          "pending": "De terugbetaling was nog niet afgerond toen Louez het probeerde; Louez probeert het elke dag opnieuw.",
+          "unknown": "Die kon niet worden uitgegeven; Louez probeert het elke dag opnieuw."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Borg niet bevestigd",
+        "summary": "Stripe heeft de borgreservering van {amount} aangevraagd op {day} voor reservering #{number} niet bevestigd. Controleer die in Stripe; opnieuw aanvragen in Louez maakt nooit een tweede reservering.",
+        "summaryUnmatched": "Stripe houdt voor reservering #{number} een borg vast die niet overeenkomt met de {amount} aangevraagd op {day}, dus Louez heeft die niet geregistreerd. Annuleer die in Stripe en sluit daarna het verzoek in het borggedeelte van de reservering."
+      },
+      "depositReleaseFailed": {
+        "title": "Borg mogelijk nog geblokkeerd",
+        "summary": "Stripe heeft de vrijgave van een tweede borgreservering van {amount} voor reservering #{number} niet bevestigd: de kaart van de klant kan die nog dragen. Louez blijft het vragen; staat die in Stripe nog vast, annuleer die daar."
+      },
+      "disputeOpen": {
+        "title": "Betaling betwist",
+        "summaryAnswer": "De klant heeft een betaling van {amount} voor reservering #{number} betwist. Beantwoord het geschil in Stripe vóór de deadline.",
+        "summaryReview": "Een geschil van {amount} voor reservering #{number} is open: Stripe beoordeelt het."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "E-factuur geweigerd",
+        "titleNotSent": "E-factuur niet verzonden",
+        "summaryRejected": "Factuur {invoice} voor reservering #{number} is geweigerd door het e-factuurnetwerk. Controleer die bij de reservering.",
+        "summaryNotSent": "Factuur {invoice} voor reservering #{number} kon niet naar het e-factuurnetwerk worden verzonden. Controleer die bij de reservering."
+      },
+      "messageNotSent": {
+        "title": "Bericht niet verzonden",
+        "titleWhy": "Bericht niet verzonden: {why, select, email {geen e-maildienst} sms {geen sms-dienst} recipient {adres gewijzigd} other {verkeerd opgesteld}}",
+        "toCustomer": "De klant heeft {message, select, customer_request_accepted {het acceptatiebericht} customer_request_rejected {het weigeringsbericht} customer_reservation_cancelled {het annuleringsbericht} customer_reservation_modified {het wijzigingsbericht} customer_quote_sent {de offerte} customer_reservation_confirmed {het bevestigingsbericht} other {het bericht}} voor reservering #{number} niet ontvangen. Neem zelf contact op.",
+        "toCustomerNoBooking": "Een bericht heeft een klant niet bereikt. Neem zelf contact op.",
+        "toStore": "Een melding aan je team over reservering #{number} is niet verzonden.",
+        "toStoreNoBooking": "Een melding aan je team is niet verzonden.",
+        "reasons": {
+          "recipientChanged": "Het e-mailadres van de klant is gewijzigd nadat het bericht was geschreven.",
+          "emailNotConfigured": "Er is geen e-maildienst ingesteld voor verzending.",
+          "writtenWrong": "Het was verkeerd opgesteld en kon niet worden verzonden.",
+          "smsNotConfigured": "Er is geen sms-dienst ingesteld voor verzending."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Uitnodiging niet verzonden",
+        "summary": "De uitnodigingsmail aan {email} is niet verzonden. Stuur die opnieuw, of deel de link, vanaf de teampagina."
+      },
+      "operationUnknown": {
+        "title": "Actie te controleren",
+        "summary": "Een actie van {day} is mogelijk niet opgeslagen. Controleer het record voordat je die herhaalt.",
+        "summaryBy": "Een actie van {client} op {day} is mogelijk niet opgeslagen. Controleer het record voordat je die herhaalt."
+      },
+      "unknownTitle": "Iets te controleren",
+      "neutral": "Louez kon dit niet zelf oplossen. Open het om te zien wat er is gebeurd.",
+      "viewAll": "Alles bekijken"
     }
   },
   "storefront": {
@@ -8031,6 +8192,10 @@
     "pay": {
       "subtitle": "Reservering #{number}",
       "amountDue": "Te betalen bedrag",
+      "requestKind": {
+        "rental": "Huur",
+        "custom": "Betaling"
+      },
       "greeting": "Hallo {name}, {store} vraagt een betaling aan.",
       "payButton": "{amount} betalen",
       "redirecting": "Doorverwijzen naar betaling...",
@@ -8043,6 +8208,7 @@
         "expiredDescription": "Deze betalingslink is verlopen. Neem contact op met de verhuurder voor een nieuwe link.",
         "alreadyPaidTitle": "Reeds betaald",
         "alreadyPaidDescription": "Deze betaling is al voltooid.",
+        "noLongerCurrentDescription": "Dit betalingsverzoek komt niet meer overeen met wat er voor de reservering nog verschuldigd is. Neem contact op met de winkel.",
         "cancelledTitle": "Betaling geannuleerd",
         "cancelledDescription": "Dit betalingsverzoek is geannuleerd door de verhuurder.",
         "unavailableTitle": "Betaling niet beschikbaar",
@@ -9267,10 +9433,11 @@
     "emailAlreadyExists": "Er bestaat al een klant met dit e-mailadres",
     "customerHasReservations": "Kan een klant met reserveringen niet verwijderen",
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
-    "cannotEditCompletedReservation": "Voltooide reserveringen kunnen niet worden bewerkt",
     "reservationStatusChanged": "De reserveringsstatus is gewijzigd tijdens het bewerken. Laad de pagina opnieuw en probeer het nogmaals.",
     "reservationChangedMeanwhile": "De reservering is in de tussentijd gewijzigd. Laad de pagina opnieuw en probeer het nogmaals.",
-    "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
+    "editTaxAdded": "Het totaal is nu inclusief belasting: eerst {previousTotal}, nu {newTotal}.",
+    "editProductGonePriceUnknown": "Het product van een regel is verwijderd, dus de prijs kan niet worden berekend voor andere data. Vul de prijs handmatig in en wijzig daarna de data.",
+    "endDateBeforeStart": "Einddatum moet na de startdatum liggen",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",
     "customerRequired": "Klant vereist",
@@ -9283,6 +9450,7 @@
     "assignedUnitsConflict": "Toegewezen eenheden zijn niet beschikbaar voor de nieuwe datums: {identifiers}",
     "invalidUnits": "Een of meer geselecteerde eenheden zijn ongeldig",
     "turnoverBufferConflict": "De geselecteerde eenheid wordt alleen geblokkeerd door de omlooptijdbuffer",
+    "turnoverBufferShortfall": "De omlooptijdbuffer tussen twee verhuringen verhindert dat sommige regels van deze reservering worden bevestigd. Maak voorraad vrij rond deze data, verplaats ze of bevestig toch met minder tijd tussen de verhuringen.",
     "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",
     "unitCombinationMismatch": "Geselecteerde eenheden komen niet overeen met de gereserveerde combinatie voor dit regelitem",
     "cannotDisableUnitTrackingWithCombinations": "Kan eenheidtracering niet uitschakelen terwijl actieve reserveringen gevolgde combinaties gebruiken voor dit product.",
@@ -9328,22 +9496,26 @@
       "syncFailed": "Fout bij synchronisatie",
       "dashboardLinkFailed": "Fout bij openen van Stripe-dashboard",
       "alreadyConnected": "Stripe-account al verbonden",
-      "noChargeToRefund": "Geen Stripe-betaling om terug te betalen",
-      "alreadyRefunded": "Deze betaling is al terugbetaald",
-      "refundExceedsCharge": "Het terugbetalingsbedrag overschrijdt het betalingsbedrag",
-      "refundFailed": "Fout bij terugbetaling",
       "noSavedCard": "Geen kaart opgeslagen voor deze klant",
       "invalidDepositStatus": "De borgstatus staat deze bewerking niet toe",
       "noDepositRequired": "Geen borg vereist voor deze reservering",
       "authorizationFailed": "Kan autorisatie niet aanmaken",
+      "authorizationInProgress": "Er wordt al een borgreservering aangemaakt voor deze reservering. Probeer het zo opnieuw.",
+      "authorizationUnconfirmed": "Stripe heeft de borgreservering niet bevestigd. Probeer het opnieuw: dezelfde reservering wordt aangevraagd, nooit een tweede.",
       "noActiveAuthorization": "Geen actieve autorisatie voor deze reservering",
       "captureFailed": "Kan borg niet innen",
       "releaseFailed": "Kan borg niet vrijgeven"
     },
     "reasonRequired": "Geef een reden op",
     "invalidAmount": "Ongeldig bedrag",
+    "amountExceedsDeposit": "Bedrag overschrijdt geïnde borg",
+    "amountExceedsDue": "Het bedrag is hoger dan wat nog openstaat",
+    "paymentNotFound": "Deze betaling bestaat niet meer. Laad de pagina opnieuw.",
+    "amountTooPrecise": "Dit bedrag heeft meer decimalen dan de valuta toestaat.",
+    "currencyNotSupportedForPayments": "Betalingen in deze valuta kunnen niet worden geregistreerd: Louez ondersteunt geen valuta met drie decimalen.",
     "invalidOrExpiredToken": "Deze link is ongeldig of verlopen. Vraag een nieuwe toegangslink aan.",
     "alreadyPaid": "Deze reservering is al betaald.",
+    "invalidStatus": "Deze reservering kan niet meer online worden betaald of gewijzigd. Neem contact op met de winkel.",
     "paymentNotAvailable": "Online betaling is niet beschikbaar voor deze winkel.",
     "paymentSessionError": "Fout bij aanmaken betalingssessie",
     "accessLinkSendFailed": "Fout bij verzenden toegangslink",
@@ -9451,7 +9623,11 @@
     "agentConnectionNotFound": "Deze gekoppelde agent bestaat niet meer.",
     "oauthRequestInvalid": "Dit koppelverzoek is niet meer geldig. Start het opnieuw vanuit uw agent.",
     "stripeRequiredForPaymentMode": "Online betalen vereist een gekoppeld Stripe-account. Koppel Stripe via Instellingen > Betalingen.",
-    "locationLimitReached": "Een winkel kan maximaal 50 afhaalpunten hebben. Deactiveer er een of gebruik er een opnieuw."
+    "locationLimitReached": "Een winkel kan maximaal 50 afhaalpunten hebben. Deactiveer er een of gebruik er een opnieuw.",
+    "depositAttempt": {
+      "needsStripe": "Louez heeft bij Stripe een autorisatie voor dit verzoek gevonden, maar die komt niet overeen met wat werd gevraagd (bedrag, kaart of referentie gewijzigd): Louez heeft ze niet geregistreerd en het verzoek blijft open. Annuleer ze via het Stripe-dashboard en klik daarna op ‘Verzoek sluiten’. Int u ze in plaats daarvan in Stripe, dan registreert Louez dat bedrag niet en blijft het verzoek open: neem contact op met Louez-support.",
+      "none": "Deze reservering heeft geen onbevestigde autorisatie meer."
+    }
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",
@@ -9569,7 +9745,7 @@
     },
     "confirm": {
       "label": "Om bevestiging vragen vóór gevoelige acties",
-      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling registreren, terugstorten of verwijderen, AI-tegoed uitgeven, een lid verwijderen en een uitnodiging intrekken vragen altijd om bevestiging, ook als dit uit staat."
+      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling of een al uitgevoerde terugbetaling van de borg registreren, een betaling verwijderen, een reservering bevestigen boven de beschikbare voorraad of binnen de omlooptijdbuffer, een lid verwijderen en een uitnodiging intrekken vereisen uw goedkeuring, ook als deze instelling uit staat: de agent geeft u een link, en u keurt de actie goed of wijst deze af op een Louez-pagina, ingelogd op uw account. AI-tegoed uitgeven vraagt altijd om bevestiging, ook als dit uit staat."
     },
     "bundlesTitle": "Getoonde tools",
     "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",
@@ -9747,6 +9923,10 @@
       "not_allowed": {
         "title": "Dit kunt u niet doen voor deze winkel",
         "description": "Uw rol in deze winkel staat deze stap niet toe. Vraag het aan de eigenaar van de winkel."
+      },
+      "changed": {
+        "title": "Dit verzoek is gewijzigd terwijl u las",
+        "description": "Er is niets gedaan: uw agent heeft het opnieuw gevraagd sinds deze pagina openging. Lees het hieronder opnieuw en antwoord dan."
       }
     },
     "done": {
@@ -9780,6 +9960,10 @@
       "access": "Een lid ziet de klanten, reserveringen en betalingen van de winkel en kan producten en reserveringen wijzigen.",
       "approve": "Uitnodiging goedkeuren",
       "decline": "Weigeren",
+      "reason": {
+        "label": "Een woord voor je agent (optioneel)",
+        "hint": "Je AI-agent leest het bij je antwoord. Hoogstens {max} tekens."
+      },
       "error": {
         "failed": "De uitnodiging kon niet worden verstuurd. Laad de pagina opnieuw om te zien hoe het ervoor staat."
       },
@@ -9807,6 +9991,209 @@
         "changed": {
           "title": "Er is iets veranderd sinds je agent het vroeg",
           "description": "Het adres heeft nu een Louez-account, een uitnodiging of een plek in het team. Vraag je agent het opnieuw aan te vragen."
+        }
+      }
+    },
+    "operation_approval": {
+      "title": {
+        "access_removed": "Intrekken van toegang goedkeuren?",
+        "money": "Betaling goedkeuren?",
+        "stock_override": "Boeking boven je voorraad goedkeuren?",
+        "deletion": "Verwijdering goedkeuren?",
+        "customer_message": "Bericht aan een klant goedkeuren?",
+        "credits": "Besteden van tegoed goedkeuren?",
+        "change": "Deze wijziging goedkeuren?",
+        "unknown": "Dit verzoek goedkeuren?"
+      },
+      "provenance": "<place>{store}</place> · gevraagd door ‘<who>{agent}</who>’",
+      "provenanceKey": "<place>{store}</place> · gevraagd door een API-sleutel",
+      "provenanceAssistant": "<place>{store}</place> · gevraagd door een AI-assistent",
+      "provenanceInApp": "<place>{store}</place> · gevraagd via de Louez-assistent",
+      "trustShort": "Alleen de samenvatting van Louez telt.",
+      "stake": {
+        "access_removed": "Trekt een toegang tot je winkel in.",
+        "money": "Wijzigt het geld dat voor je winkel is geregistreerd.",
+        "stock_override": "Staat een boeking toe boven je beschikbare voorraad of zonder de ingestelde tijd tussen twee verhuren aan te houden.",
+        "deletion": "Verwijdert definitief: dit is niet terug te draaien.",
+        "customer_message": "Stuurt een bericht naar een klant: dit is niet terug te halen.",
+        "credits": "Besteedt tegoed: je krijgt het niet terug."
+      },
+      "lapsesSoon": "Vervalt {when}.",
+      "acknowledge": "Ik heb gelezen wat Louez gaat doen",
+      "approve": "Goedkeuren",
+      "refuse": "Weigeren",
+      "details": "Details",
+      "askedBy": "Gevraagd door",
+      "forAccount": "Voor je account {email}, in ‘{store}’.",
+      "apiKey": "API-sleutel ‘{name}’",
+      "apiKeyUnnamed": "Een API-sleutel",
+      "unnamedAgent": "Een AI-assistent",
+      "inAppAssistant": "De Louez-assistent, vanuit de chat in je dashboard",
+      "checked": "Wat Louez heeft gecontroleerd",
+      "messageDestinationOnFile": "Berichten gaan naar de opgeslagen contactgegevens van de klant.",
+      "values": {
+        "yes": "Ja",
+        "no": "Nee",
+        "none": "Geen"
+      },
+      "computedAt": "Louez heeft dit {when} berekend uit de gegevens van je winkel.",
+      "expires": "Als je niet antwoordt, vervalt het verzoek {when}.",
+      "trust": "Alleen deze samenvatting van Louez telt, wat je assistent in de chat ook zei. Komen ze niet overeen, weiger dan.",
+      "reason": {
+        "toggle": "Een notitie voor je assistent toevoegen",
+        "label": "Je notitie (optioneel)",
+        "hint": "Je assistent leest het met je antwoord. Hoogstens {max} tekens."
+      },
+      "error": {
+        "failed": "Je antwoord kon niet worden opgeslagen. Lees het verzoek opnieuw en antwoord dan.",
+        "acknowledge": "Vink het vakje aan en keur dan goed. Er is niets besloten."
+      },
+      "unreadable": {
+        "title": "Dit verzoek kan niet worden getoond",
+        "description": "Het kan hier dus niet worden goedgekeurd. Er is niets gedaan."
+      },
+      "tooLong": {
+        "title": "Dit verzoek is te lang om te tonen",
+        "description": "Het kan hier dus niet worden goedgekeurd. Er is niets gedaan."
+      },
+      "done": {
+        "request": "Het verzoek",
+        "yourWords": "Je woorden",
+        "approved": {
+          "title": "Goedgekeurd",
+          "description": "Je assistent kan het nu uitvoeren. Doet hij dat niet, dan vervalt je goedkeuring {when} en gebeurt er niets."
+        },
+        "completed": {
+          "title": "Klaar",
+          "description": "Je assistent heeft het {when} uitgevoerd. Je kunt terug naar de chat."
+        },
+        "approved_expired": {
+          "title": "Je goedkeuring is vervallen",
+          "description": "Je goedkeuring is na een uur vervallen zonder dat Louez heeft vastgelegd dat het is uitgevoerd. Heeft je assistent het op het allerlaatste moment uitgevoerd, dan toont deze pagina dat na opnieuw laden; anders gebeurt er niets."
+        },
+        "refused": {
+          "title": "Geweigerd",
+          "description": "Er is niets gedaan. Je assistent ziet je antwoord en moet het je opnieuw vragen om het nog eens te proberen."
+        },
+        "state_changed": {
+          "title": "Niet uitgevoerd: het verzoek klopte niet meer",
+          "description": "Wat je assistent vroeg, of je winkel, kwam niet meer overeen met wat je goedkeurde, dus er is niets gedaan. Hij vraagt het opnieuw als hij het nog nodig heeft."
+        },
+        "approver_not_allowed": {
+          "title": "Niet uitgevoerd: je rol is veranderd",
+          "description": "Toen je assistent het probeerde, stond je rol in de winkel dit niet meer toe, dus er is niets gedaan."
+        },
+        "connection_revoked": {
+          "title": "Beëindigd: de assistent is losgekoppeld",
+          "description": "De koppeling van de assistent met Louez is verwijderd, dus dit verzoek kan niet meer worden beantwoord of uitgevoerd. Heeft je assistent het op het allerlaatste moment daarvoor uitgevoerd, dan toont deze pagina dat na opnieuw laden; anders gebeurt er niets."
+        },
+        "expired": {
+          "title": "Dit verzoek is vervallen",
+          "description": "Niemand heeft binnen een dag geantwoord, dus het verzoek is vervallen. Werd er op precies dat moment een antwoord opgeslagen, dan toont deze pagina het na opnieuw laden; anders gebeurt er niets, en je assistent vraagt het opnieuw als hij het nog nodig heeft."
+        },
+        "ended": {
+          "title": "Dit verzoek is beëindigd",
+          "description": "Hier valt niets meer te doen, en er is niets gedaan. Heeft je assistent het nog nodig, dan vraagt hij het opnieuw."
+        },
+        "shortened": "De samenvatting was te lang om volledig te tonen."
+      },
+      "display": {
+        "told": "Wat je assistent te horen kreeg",
+        "headline": {
+          "recordPayment": "Een ontvangen betaling registreren?",
+          "paidBack": "Een terugbetaling aan de klant registreren?",
+          "returnDeposit": "Een teruggegeven borg registreren?",
+          "recordRefund": "Een terugbetaling registreren die je zelf hebt gedaan?",
+          "refundOnline": "Een online betaling terugbetalen?",
+          "deletePayment": "Een geregistreerde betaling verwijderen?",
+          "removeMember": "Iemand uit je team verwijderen?",
+          "cancelInvitation": "Een uitnodiging voor je team intrekken?",
+          "confirmWithinRules": "De boeking bevestigen?",
+          "confirmPastBuffer": "De boeking bevestigen ondanks je tijd tussen twee verhuren?",
+          "confirmBeyondStock": "De boeking bevestigen boven je voorraad?",
+          "confirmBeyondStockAndBuffer": "De boeking bevestigen boven je voorraad en je tijd tussen twee verhuren?",
+          "recordDeposit": "Een ontvangen borg registreren?",
+          "createQuote": "De offerte maken?",
+          "createQuotePastBuffer": "De offerte maken ondanks je tijd tussen twee verhuren?",
+          "createQuoteBeyondStock": "De offerte maken boven je voorraad?",
+          "createQuoteBeyondStockAndBuffer": "De offerte maken boven je voorraad en je tijd tussen twee verhuren?",
+          "createBooking": "De boeking maken?",
+          "createBookingPastBuffer": "De boeking maken ondanks je tijd tussen twee verhuren?",
+          "createBookingBeyondStock": "De boeking maken boven je voorraad?",
+          "createBookingBeyondStockAndBuffer": "De boeking maken boven je voorraad en je tijd tussen twee verhuren?",
+          "moveDatesWithinRules": "De data van de boeking verplaatsen?",
+          "moveDatesPastBuffer": "De data van de boeking verplaatsen ondanks je tijd tussen twee verhuren?",
+          "moveDatesBeyondStock": "De data van de boeking verplaatsen boven je voorraad?",
+          "moveDatesBeyondStockAndBuffer": "De data van de boeking verplaatsen boven je voorraad en je tijd tussen twee verhuren?"
+        },
+        "facts": {
+          "booking": "Boeking #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Boeking #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, terugbetaald aan de klant · <v>{method}</v>",
+          "returned": "Borg teruggegeven: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Borg die je hiervoor nog had: <v>{held}</v>",
+          "recordOnly": "Louez registreert het alleen: er wordt geen geld afgeschreven of terugbetaald.",
+          "refundToCard": "Terugbetaling: <v>{amount}</v>, naar de <v>{brand}</v>-kaart eindigend op <v>{last4}</v>",
+          "refundToPayer": "Terugbetaling: <v>{amount}</v>, naar het betaalmiddel waarmee is betaald",
+          "leavesStripeBalance": "Het geld gaat van je Stripe-saldo af; de platformkosten over dat deel worden teruggegeven.",
+          "refundGiven": "Terugbetaling: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>",
+          "refundOf": "Terugbetaalde betaling: <v>{type}</v>, <v>{amount}</v> op <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Al terugbetaald: <v>{refunded}</v> · Hierna nog terug te betalen: <v>{left}</v>",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Geregistreerd op <v>{atDate}</v> om <v>{atTime}</v>",
+          "leavesBalance": "Het verdwijnt uit het saldo van de boeking en uit je cijfers.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Lid sinds <v>{sinceDate}</v>",
+          "losesAccess": "Verliest meteen de toegang tot je klanten, boekingen en betalingen.",
+          "invited": "Uitnodiging verstuurd naar <v>{email}</v>",
+          "invitedOn": "Verstuurd op <v>{atDate}</v>",
+          "linkStops": "De link werkt niet meer: die persoon komt niet in je team.",
+          "period": "{periodSameDay, select, yes {Op <v>{periodStartDate}</v>, van <v>{periodStartTime}</v> tot <v>{periodEndTime}</v>} other {Van <v>{periodStartDate}</v> om <v>{periodStartTime}</v> tot <v>{periodEndDate}</v> om <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: {requested} gevraagd, {available, plural, =0 {geen vrij} other {maar # vrij}} met je tijd van <v>{buffer}</v> tussen twee verhuren",
+          "beyondStock": "<v>{product}</v>: {requested} gevraagd, {available, plural, =0 {geen op voorraad} other {maar # op voorraad}}: {missing} te weinig",
+          "moreLines": "{count, plural, one {En nog # regel buiten je regels} other {En nog # regels buiten je regels}}: zie de details",
+          "withinRules": "Je voorraad en je tijd tussen twee verhuren dekken het: niets gaat erover.",
+          "message": "<v>{customer}</v> krijgt {channels, select, sms {de sms} other {de e-mail}} ‘<v>{message}</v>’ op <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> krijgt de e-mail ‘<v>{message}</v>’ op <v>{email}</v> en de sms op <v>{phone}</v>",
+          "messageToCustomer": "De klant krijgt {channels, select, email {de e-mail} sms {de sms} other {de e-mail en de sms}} ‘<v>{message}</v>’",
+          "noMessage": "De klant krijgt geen bericht.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> ontvangen · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, teruggegeven aan de klant · <v>{method}</v>",
+          "bookingFor": "Voor <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Voor <v>{customer}</v> · <v>{email}</v>, nieuwe klant",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> en {others, plural, one {nog # regel} other {nog # regels}}",
+          "datesMoved": "Data: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Nieuw totaal: <v>{total}</v> (verschil: <v>{difference}</v>). Er wordt niets afgeschreven of terugbetaald."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Huur",
+            "deposit": "Borg",
+            "deposit_hold": "Borgreservering",
+            "deposit_capture": "Ingehouden borg",
+            "deposit_return": "Teruggave borg",
+            "damage": "Schade",
+            "adjustment": "Aanpassing"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Contant",
+            "card": "Kaart",
+            "transfer": "Overboeking",
+            "check": "Cheque",
+            "other": "Anders"
+          },
+          "customerMessage": {
+            "request_accepted": "aanvraag geaccepteerd",
+            "request_rejected": "aanvraag afgewezen",
+            "reservation_cancelled": "boeking geannuleerd",
+            "quote_sent": "offerte",
+            "booking_confirmed": "boeking bevestigd",
+            "reservation_modified": "boeking gewijzigd"
+          }
         }
       }
     }

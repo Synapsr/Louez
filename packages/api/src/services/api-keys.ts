@@ -6,42 +6,6 @@ import { apiKeys, type ApiKeyPermissions } from '@louez/db/schema'
 import { ApiServiceError } from './errors'
 
 // ============================================================================
-// Permission presets for quick API key creation
-// ============================================================================
-
-export const API_KEY_PERMISSION_PRESETS = {
-  full: {
-    reservations: 'write',
-    products: 'write',
-    customers: 'write',
-    categories: 'write',
-    payments: 'write',
-    analytics: 'read',
-    settings: 'write',
-  },
-  readOnly: {
-    reservations: 'read',
-    products: 'read',
-    customers: 'read',
-    categories: 'read',
-    payments: 'read',
-    analytics: 'read',
-    settings: 'read',
-  },
-  operations: {
-    reservations: 'write',
-    products: 'read',
-    customers: 'write',
-    categories: 'read',
-    payments: 'write',
-    analytics: 'read',
-    settings: 'none',
-  },
-} as const satisfies Record<string, ApiKeyPermissions>
-
-export type ApiKeyPermissionPreset = keyof typeof API_KEY_PERMISSION_PRESETS
-
-// ============================================================================
 // Key generation & hashing
 // ============================================================================
 

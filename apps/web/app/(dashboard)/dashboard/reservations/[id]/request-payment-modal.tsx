@@ -30,15 +30,24 @@ import { Label } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Input } from "@louez/ui";
 import { Checkbox } from "@louez/ui";
-import { cn, formatCurrency } from "@louez/utils";
+import { cn, currencyMinorDigits } from "@louez/utils";
+import { paymentAmount } from "@louez/api/services/payment-amount";
 
 import { orpc } from "@/lib/orpc/react";
+import {
+  customRequestAmount,
+  type PaymentRequestDelivery,
+  paymentRequestDelivery,
+} from "@/lib/reservations/util.payment-request";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
+
+import { useReservationMoney } from "./use-reservation-money";
 
 interface RequestPaymentModalProps {
   open: boolean;
@@ -74,19 +83,26 @@ export function RequestPaymentModal({
   stripeConfigured,
 }: RequestPaymentModalProps) {
   const t = useTranslations("dashboard.reservations.requestPaymentModal");
+  const tReservations = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
+  const money = useReservationMoney(currency);
   const queryClient = useQueryClient();
 
   const [selectedType, setSelectedType] = useState<PaymentType | null>(null);
   const [customAmount, setCustomAmount] = useState("");
+  // Whether the person changed the custom amount: its refusal shows from then on.
+  const [customTouched, setCustomTouched] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
   const [sendSms, setSendSms] = useState(false);
   const [customMessage, setCustomMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  // What the server sent of the request, by the channels chosen.
+  const [delivery, setDelivery] = useState<PaymentRequestDelivery | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const remainingRental = totalAmount - paidAmount;
+  // In hundredths, as the server compares it: 0.57 due with 0.07 paid leaves 0.50, not 0.4999….
+  const remainingRental = (Math.round(totalAmount * 100) - Math.round(paidAmount * 100)) / 100;
   const canRequestDeposit =
     depositAmount > 0 && depositStatus !== "held" && depositStatus !== "captured";
   const canRequestRental = remainingRental >= 0.5;
@@ -131,17 +147,36 @@ export function RequestPaymentModal({
     return types;
   }, [canRequestRental, canRequestDeposit, remainingRental, depositAmount]);
 
+  // A custom amount as typed, judged by the action's own function: the
+  // reservation's currency and its decimals, never a number rounded first.
+  const custom = useMemo(
+    () => customRequestAmount(typedAmount(customAmount) ?? "", currency),
+    [customAmount, currency],
+  );
   const selectedAmount = useMemo(() => {
     if (selectedType === "rental") return remainingRental;
     if (selectedType === "deposit") return depositAmount;
-    if (selectedType === "custom") {
-      const parsed = parseFloat(customAmount);
-      return isNaN(parsed) ? 0 : parsed;
-    }
+    if (selectedType === "custom") return custom.ok ? custom.amount : 0;
     return 0;
-  }, [selectedType, customAmount, remainingRental, depositAmount]);
+  }, [selectedType, custom, remainingRental, depositAmount]);
 
-  const isValidAmount = selectedAmount >= 0.5;
+  const isValidAmount = selectedType === "custom" ? custom.ok : selectedAmount >= 0.5;
+  // The field's own minimum: one whole unit in a currency without decimals, where
+  // 0.50 would make every whole amount a step mismatch; 0.50 otherwise.
+  const decimals = currencyMinorDigits(currency);
+  const fieldMinimum = decimals === 0 ? "1" : "0.50";
+  const typedCustom = typedAmount(customAmount) ?? "";
+  const customRefusal = custom.ok
+    ? null
+    : custom.error === "errors.amountTooPrecise"
+      ? tReservations("payment.amountTooPrecise", { currency, decimals: decimals ?? 0 })
+      : custom.error === "errors.currencyNotSupportedForPayments"
+        ? tReservations("payment.currencyNotSupported", { currency })
+        : // A plain amount above zero is below the minimum; anything else (empty, as a
+          // browser gives what it refused, or malformed) is no amount.
+          paymentAmount(typedCustom) !== null && !typedCustom.startsWith("-")
+          ? t("minAmount", { amount: money(fieldMinimum) })
+          : tReservations("payment.invalidAmount");
   const hasChannel = sendEmail || sendSms;
   const canSubmit = selectedType && isValidAmount && hasChannel && stripeConfigured;
 
@@ -172,13 +207,19 @@ export function RequestPaymentModal({
         reservationId,
         payload: {
           type: selectedType,
-          amount: selectedType === "custom" ? selectedAmount : undefined,
+          amount: selectedType === "custom" ? (typedAmount(customAmount) ?? "") : undefined,
           channels: { email: sendEmail, sms: sendSms },
           customMessage: customMessage || undefined,
         },
       });
 
-      toastManager.add({ title: t("success"), type: "success" });
+      const sent = paymentRequestDelivery(
+        { email: sendEmail, sms: sendSms },
+        result.notificationResults,
+      );
+      setDelivery(sent);
+      // Only what went out is announced; the success screen says the rest.
+      if (sent.state === "sent") toastManager.add({ title: t("success"), type: "success" });
       if (result.paymentUrl) {
         setPaymentUrl(result.paymentUrl);
       }
@@ -214,10 +255,12 @@ export function RequestPaymentModal({
   const resetForm = () => {
     setSelectedType(null);
     setCustomAmount("");
+    setCustomTouched(false);
     setSendEmail(true);
     setSendSms(false);
     setCustomMessage("");
     setPaymentUrl(null);
+    setDelivery(null);
     setCopied(false);
   };
 
@@ -228,21 +271,32 @@ export function RequestPaymentModal({
     onOpenChange(newOpen);
   };
 
-  // Success view after sending
+  // Success view after sending: what went out, and the link in every case.
   if (paymentUrl) {
+    const nothingSent = delivery?.state === "not_sent";
+    // A link the customer did not get is for the store to pass on: its copy comes first.
+    const linkFirst = delivery !== null && delivery.state !== "sent";
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" />
-              {t("successTitle")}
+              {nothingSent ? (
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+              ) : (
+                <Check className="h-5 w-5 text-green-600" />
+              )}
+              {t(nothingSent ? "notSentTitle" : "successTitle")}
             </DialogTitle>
-            <DialogDescription>
-              {t("successDescription", {
-                channel: sendEmail && sendSms ? "email et SMS" : sendEmail ? "email" : "SMS",
-              })}
-            </DialogDescription>
+            {delivery && (
+              <DialogDescription>
+                {delivery.state === "sent"
+                  ? t("sentBy", { channels: delivery.sent })
+                  : delivery.state === "partly_sent"
+                    ? t("partlySent", { sent: delivery.sent, failed: delivery.failed })
+                    : t("notSent", { channels: delivery.failed })}
+              </DialogDescription>
+            )}
           </DialogHeader>
 
           <DialogPanel>
@@ -255,16 +309,35 @@ export function RequestPaymentModal({
                   <code className="flex-1 text-xs break-all font-mono bg-background p-2 rounded border">
                     {paymentUrl}
                   </code>
-                  <Button variant="outline" onClick={handleCopyLink} className="shrink-0">
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+                  {!linkFirst && (
+                    <Button
+                      variant="outline"
+                      onClick={handleCopyLink}
+                      className="shrink-0"
+                      aria-label={t("copyLink")}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           </DialogPanel>
 
           <DialogFooter>
-            <Button onClick={() => handleOpenChange(false)}>{tCommon("close")}</Button>
+            {linkFirst ? (
+              <>
+                <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                  {tCommon("close")}
+                </Button>
+                <Button onClick={handleCopyLink}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {t("copyLink")}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => handleOpenChange(false)}>{tCommon("close")}</Button>
+            )}
           </DialogFooter>
         </DialogPopup>
       </Dialog>
@@ -324,9 +397,7 @@ export function RequestPaymentModal({
                               {t(`types.${type.id}.name`)}
                             </span>
                             {type.amount && (
-                              <span className="text-sm font-semibold">
-                                {formatCurrency(type.amount, currency)}
-                              </span>
+                              <span className="text-sm font-semibold">{money(type.amount)}</span>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -357,10 +428,13 @@ export function RequestPaymentModal({
                     <Input
                       id="amount"
                       type="number"
-                      step="0.01"
-                      min="0.50"
+                      step={currencyMinorDigits(currency) === 0 ? "1" : "0.01"}
+                      min={fieldMinimum}
                       value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setCustomTouched(true);
+                      }}
                       placeholder="0.00"
                       className="pr-12"
                     />
@@ -368,10 +442,8 @@ export function RequestPaymentModal({
                       {currency}
                     </span>
                   </div>
-                  {customAmount && !isValidAmount && (
-                    <p className="text-xs text-destructive">
-                      {t("minAmount", { amount: formatCurrency(0.5, currency) })}
-                    </p>
+                  {customTouched && customRefusal && (
+                    <p className="text-xs text-destructive">{customRefusal}</p>
                   )}
                 </div>
               )}
@@ -449,9 +521,7 @@ export function RequestPaymentModal({
                 <div className="p-3 rounded-lg bg-muted/50 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">{t("amountToRequest")}</span>
-                    <span className="font-semibold text-lg">
-                      {formatCurrency(selectedAmount, currency)}
-                    </span>
+                    <span className="font-semibold text-lg">{money(selectedAmount)}</span>
                   </div>
                 </div>
               )}

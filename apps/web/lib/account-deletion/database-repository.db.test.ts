@@ -5,27 +5,68 @@ import { after, before, describe, test } from "node:test";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import type { StoreSettings } from "@louez/types";
+
+import { STORE_KEY } from "@/app/(dashboard)/dashboard/reservations/actions-test-stubs";
+import {
+  createTestDatabase,
+  readLockWaiters,
+  reservationChangeTestHooks,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type LockWaiter,
+  type RowLock,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 // The purge changes other stores' billing snapshots, and marks them in its
 // transaction (louez-billing docs/api, README §5.2). It also writes the deleted
 // store's final snapshot (§5.5, final-snapshots.db.test.ts covers its reservations),
 // the queue rows outlive the store, and a reservation it purges without a final
-// snapshot is raised once it commits.
+// snapshot is raised once it commits. It takes its stores' products before their
+// reservations, as a status change that moves stock does, and as the unit
+// assignment, the move to another unit and the automatic extension do: each races
+// the purge of its store in both orders, its row locks read while it waits.
 
-// The repository imports "server-only", which throws outside Next.
+// The repository imports "server-only", which throws outside Next. What the
+// product page's actions and the extension call besides the database (the
+// session, the page cache, the contract, the invoice, the calendar, the e-mails)
+// has no runtime in a test; the reservation actions get theirs from
+// actions-test-stubs.
+const STUBS: Record<string, string> = {
+  "next/cache": "export function revalidatePath() {}\n",
+  "@/lib/auth": "export async function auth() { return null; }\n",
+  "@/lib/store-context": `export async function getCurrentStore() { return globalThis[${JSON.stringify(STORE_KEY)}] ?? null; }\n`,
+  "@/lib/pdf/generate": "export async function generateContract() {}\n",
+  "@/lib/invoicing/service":
+    "export async function tryGenerateInvoiceForPayment() { return {}; }\n",
+  "@/lib/integrations/calendar/sync": "export async function markReservationForCalendarSync() {}\n",
+  "@/lib/email/send": "export async function sendReservationModifiedEmail() {}\n",
+};
+const STUBBED_PARENTS = [
+  "/dashboard/products/[id]/actions.ts",
+  "/lib/reservations/extension-service.ts",
+];
+const STUB_SCHEME = "louez-purge-writers-test:";
 Reflect.get(
   nodeModule,
   "registerHooks",
 )({
   resolve(
     specifier: string,
-    context: unknown,
+    context: { parentURL?: string },
     next: (specifier: string, context: unknown) => unknown,
   ) {
-    return specifier === "server-only"
-      ? { url: "node:module", shortCircuit: true }
-      : next(specifier, context);
+    if (specifier === "server-only") return { url: "node:module", shortCircuit: true };
+    const parent = context.parentURL ? decodeURIComponent(context.parentURL) : "";
+    if (STUBBED_PARENTS.some((file) => parent.endsWith(file)) && specifier in STUBS) {
+      return { shortCircuit: true, url: `${STUB_SCHEME}${specifier}` };
+    }
+    return next(specifier, context);
+  },
+  load(url: string, context: unknown, next: (url: string, context: unknown) => unknown) {
+    if (!url.startsWith(STUB_SCHEME)) return next(url, context);
+    return { shortCircuit: true, format: "module", source: STUBS[url.slice(STUB_SCHEME.length)] };
   },
 });
 
@@ -61,12 +102,18 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let repository: typeof import("./database-repository");
+  let assignment: typeof import("@/app/(dashboard)/dashboard/reservations/actions");
+  let move: typeof import("@/app/(dashboard)/dashboard/products/[id]/actions");
+  let extension: typeof import("@/lib/reservations/extension-service");
 
   before(async () => {
     database = await createTestDatabase("purge_marks");
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
     repository = await import("./database-repository");
+    assignment = await import("@/app/(dashboard)/dashboard/reservations/actions");
+    move = await import("@/app/(dashboard)/dashboard/products/[id]/actions");
+    extension = await import("@/lib/reservations/extension-service");
 
     await louezDb.db.insert(louezDb.users).values([
       { id: USER, email: "leaving@example.test" },
@@ -151,6 +198,7 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
   });
 
   after(async () => {
+    Reflect.deleteProperty(globalThis, STORE_KEY);
     await louezDb?.db.$client.end();
     await database?.drop();
   });
@@ -442,4 +490,417 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
       .where(eq(louezDb.smsLogs.storeId, RACE_SMS_STORE));
     assert.deepEqual(left, [], "the store's SMS went with it");
   });
+
+  test("a status change that moves stock and the purge of its store, at once: one after the other, no deadlock nor restart, billing sync off and on", async () => {
+    const hooks = reservationChangeTestHooks();
+    for (const billing of ["off", "on"] as const) {
+      const userId = `user_race_stock_${billing}`;
+      const storeId = `store_race_stock_${billing}`;
+      const productId = `prd_race_stock_${billing}`;
+      const reservationId = `res_race_stock_${billing}`;
+      await louezDb.db
+        .insert(louezDb.users)
+        .values({ id: userId, email: `race-stock-${billing}@example.test` });
+      await louezDb.db
+        .insert(louezDb.stores)
+        .values({ id: storeId, userId, name: "Stock", slug: `race-stock-${billing}` });
+      await louezDb.db.insert(louezDb.storeMembers).values({ storeId, userId, role: "owner" });
+      await louezDb.db.insert(louezDb.products).values({
+        id: productId,
+        storeId,
+        name: "Consumable",
+        price: "1.00",
+        pricingMode: "day",
+        stockKind: "consumable",
+        quantity: 5,
+      });
+      await louezDb.db.insert(louezDb.reservations).values({
+        id: reservationId,
+        storeId,
+        customerId: "customer_race_stock",
+        number: `R-STOCK-${billing}`,
+        status: "pending",
+        startDate: new Date("2026-11-20T09:00:00Z"),
+        endDate: new Date("2026-11-22T09:00:00Z"),
+        subtotalAmount: "2.00",
+        depositAmount: "0.00",
+        totalAmount: "2.00",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: `itm_race_stock_${billing}`,
+        reservationId,
+        productId,
+        quantity: 2,
+        unitPrice: "1.00",
+        depositPerUnit: "0.00",
+        totalPrice: "2.00",
+        productSnapshot: { name: "Consumable", description: null, images: [] },
+      });
+      const context = await repository.accountDeletionRepository.getContext(userId);
+      assert.ok(context, "the user exists");
+      if (billing === "off") process.env.LOUEZ_BILLING = "";
+      hooks.restarts = 0;
+      let purge: Promise<string> = Promise.resolve("not started");
+      try {
+        // The confirmation holds the product's lock when it reaches the reservation's:
+        // the purge starts then, and the confirmation goes on once the purge waits.
+        hooks.beforeReservationLock = async (scope) => {
+          if (scope.reservationId !== reservationId) return;
+          // Once: a run that starts over finds the purge started.
+          hooks.beforeReservationLock = null;
+          purge = settle(
+            repository.accountDeletionRepository.purgeOwnedData(context, {
+              beforePurge: async () => undefined,
+            }),
+          );
+          await lockWait();
+        };
+        const change = await settle(
+          louezDb.runReservationChange({ reservationId, storeId }, (tx, lock) =>
+            louezDb.changeReservationStatus(tx, {
+              reservationId,
+              storeId,
+              to: "confirmed",
+              actor: "store_user",
+              actorUserId: null,
+              lock,
+            }),
+          ),
+        );
+
+        assert.deepEqual(
+          { change, purge: await purge, restarts: hooks.restarts },
+          { change: "committed", purge: "committed", restarts: 0 },
+          `billing sync ${billing}`,
+        );
+      } finally {
+        hooks.beforeReservationLock = null;
+        process.env.LOUEZ_BILLING = "cloud";
+      }
+      const left = await Promise.all([
+        louezDb.db
+          .select({ id: louezDb.reservations.id })
+          .from(louezDb.reservations)
+          .where(eq(louezDb.reservations.id, reservationId)),
+        louezDb.db
+          .select({ id: louezDb.products.id })
+          .from(louezDb.products)
+          .where(eq(louezDb.products.id, productId)),
+        louezDb.db
+          .select({ id: louezDb.stores.id })
+          .from(louezDb.stores)
+          .where(eq(louezDb.stores.id, storeId)),
+      ]);
+      assert.deepEqual(left, [[], [], []], `billing sync ${billing}: the store went whole`);
+    }
+  });
+
+  // The writers that are not status changes, against the purge of their store.
+  const WRITER_SETTINGS: StoreSettings = {
+    reservationMode: "request",
+    advanceNoticeMinutes: 0,
+    currency: "EUR",
+  };
+  /** The extension's new end, as the customer's form sends it, in the store's zone (UTC). */
+  const EXTENDED_END = "2030-06-04T09:00";
+  let writerCounter = 0;
+  // 21 characters, as nanoid ids: the actions check their shape.
+  const writerId = (prefix: string) =>
+    `${prefix}_${String(++writerCounter).padStart(20 - prefix.length, "0")}`;
+
+  /**
+   * A store of its own user, a product of three units, and a confirmed
+   * reservation of one line that holds the first unit. The session's store is
+   * this one, for the dashboard's actions.
+   */
+  async function writerFixture() {
+    const userId = writerId("usr");
+    const storeId = writerId("sto");
+    const customerId = writerId("cus");
+    const productId = writerId("prd");
+    const reservationId = writerId("res");
+    const itemId = writerId("itm");
+    const units = [writerId("unt"), writerId("unt"), writerId("unt")];
+    await louezDb.db.insert(louezDb.users).values({ id: userId, email: `${userId}@example.test` });
+    await louezDb.db.insert(louezDb.stores).values({
+      id: storeId,
+      userId,
+      name: "Writers",
+      slug: storeId.replace(/_/g, "-"),
+      settings: WRITER_SETTINGS,
+    });
+    await louezDb.db.insert(louezDb.storeMembers).values({ storeId, userId, role: "owner" });
+    await louezDb.db.insert(louezDb.customers).values({
+      id: customerId,
+      storeId,
+      email: `${customerId}@example.test`,
+      firstName: "Renter",
+      lastName: "Test",
+    });
+    await louezDb.db.insert(louezDb.products).values({
+      id: productId,
+      storeId,
+      name: "Tracked",
+      price: "0.00",
+      pricingMode: "day",
+      trackUnits: true,
+      quantity: 3,
+    });
+    for (const [index, unitId] of units.entries()) {
+      await louezDb.db
+        .insert(louezDb.productUnits)
+        .values({ id: unitId, productId, identifier: `U-${index + 1}` });
+    }
+    // A fixture, so it may start confirmed.
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: reservationId,
+      storeId,
+      customerId,
+      number: reservationId,
+      status: "confirmed",
+      startDate: new Date("2030-06-01T09:00:00.000Z"),
+      endDate: new Date("2030-06-03T09:00:00.000Z"),
+      subtotalAmount: "0.00",
+      depositAmount: "0.00",
+      totalAmount: "0.00",
+      source: "online",
+    });
+    await louezDb.db.insert(louezDb.reservationItems).values({
+      id: itemId,
+      reservationId,
+      productId,
+      quantity: 1,
+      unitPrice: "0.00",
+      depositPerUnit: "0.00",
+      totalPrice: "0.00",
+      productSnapshot: { name: "Tracked", description: null, images: [] },
+    });
+    await louezDb.db.insert(louezDb.reservationItemUnits).values({
+      id: writerId("asg"),
+      reservationItemId: itemId,
+      productUnitId: units[0] ?? "",
+      identifierSnapshot: units[0] ?? "",
+    });
+    Reflect.set(globalThis, STORE_KEY, {
+      id: storeId,
+      userId: "",
+      name: "Writers",
+      slug: storeId.replace(/_/g, "-"),
+      address: null,
+      settings: WRITER_SETTINGS,
+      stripeAccountId: null,
+    });
+    const context = await repository.accountDeletionRepository.getContext(userId);
+    assert.ok(context, "the user exists");
+    return { userId, storeId, customerId, productId, reservationId, itemId, units, context };
+  }
+  type WriterFixture = Awaited<ReturnType<typeof writerFixture>>;
+
+  /** What a call ended with, without an unhandled rejection while it waits. */
+  const outcome = <T>(call: Promise<T>) =>
+    call.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+
+  /**
+   * Holds the reservation's row while `first` waits for a lock, then while
+   * `second` waits too, then lets them go: `first` was queued first. Returns
+   * what each ended with, and the row locks each held, and waited for, while
+   * it waited.
+   */
+  async function raceInOrder<A, B>(
+    reservationId: string,
+    first: () => Promise<A>,
+    second: () => Promise<B>,
+  ) {
+    const holder = await database.connect();
+    try {
+      await holder.beginTransaction();
+      await holder.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [reservationId]);
+      const firstRun = outcome(first());
+      await waitForLockWaits(holder, database.name, 1);
+      const [firstLocks] = await readLockWaiters(holder, database.name);
+      const secondRun = outcome(second());
+      await waitForLockWaits(holder, database.name, 2);
+      const secondLocks: LockWaiter | undefined = (
+        await readLockWaiters(holder, database.name)
+      ).find((waiter) => waiter.transactionId !== firstLocks?.transactionId);
+      await holder.commit();
+      // Asserted once both calls have ended, so a failing race leaves none running.
+      const raced = { first: await firstRun, second: await secondRun };
+      assert.ok(firstLocks && secondLocks, "both callers waited on a lock");
+      return {
+        first: { ...raced.first, locks: firstLocks },
+        second: { ...raced.second, locks: secondLocks },
+      };
+    } finally {
+      await holder.end();
+    }
+  }
+
+  const rowsOf = (locks: RowLock[], table: RowLock["table"]) =>
+    locks.filter((lock) => lock.table === table).map((lock) => lock.id);
+
+  /** The answer of a writer that went through: the actions answer success, the extension its status. */
+  const succeeded = (answer: unknown) =>
+    typeof answer === "object" &&
+    answer !== null &&
+    (("success" in answer && answer.success === true) ||
+      ("status" in answer && answer.status === "confirmed"));
+
+  const notFound = (answer: unknown) =>
+    JSON.stringify(answer) === JSON.stringify({ error: "errors.notFound" });
+
+  /** What is left of the fixture's store: nothing, once the purge committed. */
+  async function leftOf(fixture: WriterFixture) {
+    const [stores, products, reservations, units] = await Promise.all([
+      louezDb.db
+        .select({ id: louezDb.stores.id })
+        .from(louezDb.stores)
+        .where(eq(louezDb.stores.id, fixture.storeId)),
+      louezDb.db
+        .select({ id: louezDb.products.id })
+        .from(louezDb.products)
+        .where(eq(louezDb.products.id, fixture.productId)),
+      louezDb.db
+        .select({ id: louezDb.reservations.id })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, fixture.reservationId)),
+      louezDb.db
+        .select({ id: louezDb.productUnits.id })
+        .from(louezDb.productUnits)
+        .where(eq(louezDb.productUnits.productId, fixture.productId)),
+    ]);
+    return { stores, products, reservations, units };
+  }
+
+  const WRITERS: Array<{
+    writer: string;
+    run: (fixture: WriterFixture) => Promise<unknown>;
+    /** Whether the writer answered not found: the purge took its reservation away. */
+    gone: (answer: { value?: unknown; error?: unknown }) => boolean;
+  }> = [
+    {
+      writer: "the unit assignment",
+      run: ({ itemId, units }) => assignment.assignUnitsToReservationItem(itemId, [units[1] ?? ""]),
+      gone: (answer) => notFound(answer.value),
+    },
+    {
+      writer: "the move to another unit",
+      run: ({ itemId, units }) =>
+        move.reassignReservationItemUnit({
+          reservationItemId: itemId,
+          fromUnitId: units[0] ?? "",
+          toUnitId: units[2] ?? "",
+        }),
+      gone: (answer) => notFound(answer.value),
+    },
+    {
+      writer: "the automatic extension",
+      run: ({ storeId, customerId, reservationId }) =>
+        extension.startExtension({
+          storeId,
+          customerId,
+          reservationId,
+          endDate: EXTENDED_END,
+          expectedSupplement: 0,
+        }),
+      // The extension throws its refusals.
+      gone: (answer) => answer.error instanceof Error && answer.error.message === "notFound",
+    },
+  ];
+
+  for (const { writer, run, gone } of WRITERS) {
+    test(`${writer}, queued first: it holds its product while it waits for the reservation, the purge waits for that product, then deletes what it wrote`, async () => {
+      const hooks = reservationChangeTestHooks();
+      for (const billing of ["off", "on"] as const) {
+        const fixture = await writerFixture();
+        if (billing === "off") process.env.LOUEZ_BILLING = "";
+        hooks.restarts = 0;
+        try {
+          const raced = await raceInOrder(
+            fixture.reservationId,
+            () => run(fixture),
+            () =>
+              repository.accountDeletionRepository.purgeOwnedData(fixture.context, {
+                beforePurge: async () => undefined,
+              }),
+          );
+          const label = `billing sync ${billing}`;
+          // The writer: its product held, the reservation awaited.
+          assert.deepEqual(rowsOf(raced.first.locks.holds, "products"), [fixture.productId], label);
+          assert.deepEqual(
+            rowsOf(raced.first.locks.waitsFor, "reservations"),
+            [fixture.reservationId],
+            label,
+          );
+          // The purge: behind it on the product, no reservation of the store held.
+          assert.deepEqual(
+            rowsOf(raced.second.locks.waitsFor, "products"),
+            [fixture.productId],
+            label,
+          );
+          assert.deepEqual(rowsOf(raced.second.locks.holds, "reservations"), [], label);
+          assert.ok("value" in raced.first && succeeded(raced.first.value), `${label}: ${writer}`);
+          assert.ok("value" in raced.second, `${label}: the purge committed`);
+          assert.equal(hooks.restarts, 0, `${label}: no run started over`);
+          assert.deepEqual(
+            await leftOf(fixture),
+            { stores: [], products: [], reservations: [], units: [] },
+            label,
+          );
+        } finally {
+          process.env.LOUEZ_BILLING = "cloud";
+        }
+      }
+    });
+
+    test(`${writer}, queued second: the purge holds the store's product while it waits for the reservation, the writer waits for that product holding no reservation, then finds nothing`, async () => {
+      const hooks = reservationChangeTestHooks();
+      for (const billing of ["off", "on"] as const) {
+        const fixture = await writerFixture();
+        if (billing === "off") process.env.LOUEZ_BILLING = "";
+        hooks.restarts = 0;
+        try {
+          const raced = await raceInOrder(
+            fixture.reservationId,
+            () =>
+              repository.accountDeletionRepository.purgeOwnedData(fixture.context, {
+                beforePurge: async () => undefined,
+              }),
+            () => run(fixture),
+          );
+          const label = `billing sync ${billing}`;
+          // The purge: the store's product held, the reservation awaited.
+          assert.deepEqual(rowsOf(raced.first.locks.holds, "products"), [fixture.productId], label);
+          assert.deepEqual(
+            rowsOf(raced.first.locks.waitsFor, "reservations"),
+            [fixture.reservationId],
+            label,
+          );
+          // The writer: behind the purge on the product, no reservation held.
+          assert.deepEqual(
+            rowsOf(raced.second.locks.waitsFor, "products"),
+            [fixture.productId],
+            label,
+          );
+          assert.deepEqual(rowsOf(raced.second.locks.holds, "reservations"), [], label);
+          assert.ok("value" in raced.first, `${label}: the purge committed`);
+          assert.ok(
+            gone(raced.second),
+            `${label}: ${writer} answered ${JSON.stringify("value" in raced.second ? raced.second.value : String(raced.second.error))}`,
+          );
+          assert.equal(hooks.restarts, 0, `${label}: no run started over`);
+          assert.deepEqual(
+            await leftOf(fixture),
+            { stores: [], products: [], reservations: [], units: [] },
+            label,
+          );
+        } finally {
+          process.env.LOUEZ_BILLING = "cloud";
+        }
+      }
+    });
+  }
 });

@@ -1,6 +1,7 @@
 import { markReservation } from "./billing-queue";
 import type { Transaction } from "./index";
 import { assertStoreCanTakeReservations } from "./reservation-gate";
+import { insertedReservationLock, type InsertedReservationLock } from "./reservation-lock";
 import {
   isBillableReservationStatus,
   toWholeSeconds,
@@ -52,6 +53,8 @@ export function planReservationInsert(
  * The one way to insert a reservation at runtime. It writes no activity row and
  * consumes no stock: callers insert the items afterwards and log `created`
  * themselves. It returns the fee effects; the caller runs them after commit.
+ * It also returns the new row's lock, which `consumeReservationStock` takes:
+ * the caller locked the products before the insert.
  *
  * A billable status (a booking created as confirmed) throws
  * StoreNotAcceptingReservationsError when the store's card gate is closed, before
@@ -61,7 +64,7 @@ export async function insertReservation(
   tx: Transaction,
   values: ReservationInsertValues,
   options: { now?: Date } = {},
-): Promise<{ effects: ReservationBillingEffect[] }> {
+): Promise<{ effects: ReservationBillingEffect[]; lock: InsertedReservationLock }> {
   const now = options.now ?? new Date();
   if (isBillableReservationStatus(values.status)) {
     await assertStoreCanTakeReservations(tx, values.storeId, now);
@@ -69,5 +72,8 @@ export async function insertReservation(
   const plan = planReservationInsert(values, now);
   await tx.insert(reservations).values(plan.row);
   await markReservation(tx, { id: values.id, storeId: values.storeId });
-  return { effects: plan.effects };
+  return {
+    effects: plan.effects,
+    lock: insertedReservationLock(tx, { reservationId: values.id, storeId: values.storeId }),
+  };
 }

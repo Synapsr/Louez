@@ -8,12 +8,10 @@ import { grossMinorOf, recordedPaymentFacts, reservationCurrency } from "./payme
 // A manual reservation of 110.00, 10.00 of it insurance, in a store without tax.
 const insured: ReservationTotalsInput = {
   reservation: {
-    createdAt: new Date("2026-10-01T10:00:00Z"),
     currency: null,
     source: "manual",
     totalAmount: "110.00",
     subtotalAmount: "110.00",
-    depositAmount: "0.00",
     deliveryFee: "0.00",
     discountAmount: "0.00",
     subtotalExclTax: null,

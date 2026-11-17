@@ -172,8 +172,9 @@ describe("card gate (database)", { skip: skipWithoutTestDatabase() }, () => {
     actor: ReservationActor = "store_user",
     now = NOW,
   ) =>
-    louezDb.db.transaction((tx) =>
+    louezDb.runReservationChange({ reservationId, storeId }, (tx, lock) =>
       louezDb.changeReservationStatus(tx, {
+        lock,
         reservationId,
         storeId,
         to,

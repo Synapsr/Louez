@@ -22,9 +22,10 @@ const main = async (): Promise<void> => {
     apply: args.includes("--apply"),
   });
   config({ path: value("--env-file") ?? ".env", quiet: true });
-  const { db, cancelFailedCheckoutReservation, payments, reservations, stores } =
-    await import("@louez/db");
+  const { db, payments, reservations, stores } = await import("@louez/db");
   const { env } = await import("@louez/db/env");
+  const { changeSystemReservationStatus } =
+    await import("@louez/api/services/system-reservation-status");
   const { runReservationEffects } = await import("@/lib/billing/reservation-effects");
   const target = new URL(env.DATABASE_URL);
   console.log(
@@ -63,12 +64,13 @@ const main = async (): Promise<void> => {
     });
     if (payment) continue;
     const cancelled = options.apply
-      ? await cancelFailedCheckoutReservation(
+      ? await changeSystemReservationStatus(
           {
+            reason: "checkout_failed",
             storeId: options.storeId,
             reservationId: candidate.id,
             expectedAmount: candidate.totalAmount,
-            reason: "amount_too_small",
+            failure: "amount_too_small",
             ...amount.params,
           },
           runReservationEffects,

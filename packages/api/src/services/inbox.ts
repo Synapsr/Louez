@@ -8,8 +8,11 @@ import {
   inboxAcknowledgements,
   isPaymentReceiptSql,
   lockStoreRow,
+  invoicePayments,
   invoices,
+  isStripeRefundPaymentSql,
   paymentDisputes,
+  paymentRefundOperations,
   payments,
   productUnits,
   products,
@@ -19,6 +22,7 @@ import {
   reservations,
   storeIntegrations,
   storeInvitations,
+  users,
   type ReservationGateReason,
 } from "@louez/db";
 import {
@@ -51,10 +55,12 @@ import {
   type ListInboxInput,
 } from "../contracts/inbox";
 import type { ResourceLinks } from "../contracts/links";
+import { databaseNow } from "../platform/database-clock";
+import { creditNoteStillOwedSql } from "../platform/effects";
 import { platformErrors } from "../platform/errors";
 import { sanitizeError } from "../platform/sanitize-error";
 import { OPERATION_LEASE_SECONDS } from "../platform/operations";
-import type { ApiDomain } from "../platform/permissions";
+import { API_DOMAINS, type ApiDomain } from "../platform/permissions";
 import {
   dashboardPageLinks,
   productLinks,
@@ -63,9 +69,17 @@ import {
   type LinkStore,
 } from "../platform/links";
 import type { LogPort, ProductImageOperation, UrlsPort } from "../platform/ports";
-import { HANDOFF_KINDS } from "../contracts/handoffs";
-import { CAPACITY_VERDICT_ACTIVITY_TYPES } from "./capacity-verdict";
-import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
+import { STEP_KINDS, type StepKind } from "../contracts/handoffs";
+import { CAPACITY_VERDICT_ACTIVITY_TYPES } from "../contracts/reservations";
+import {
+  HANDOFF_KIND_DOMAINS,
+  HANDOFF_WAIT_MS,
+  approvalPayloadOf,
+  connectionReadsApproval,
+  liveConnections,
+  handoffUrl,
+  handoffView,
+} from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
@@ -93,12 +107,32 @@ const PAYMENT_FAILURE_DAYS = 30;
 const STALE_PICKUP_DAYS = 30;
 /** A deposit hold shows this long before it expires. */
 const DEPOSIT_NOTICE_HOURS = 48;
+/**
+ * A deposit authorization Stripe has not confirmed shows once it is this old: a
+ * request and its webhook settle one within seconds. It never leaves by age.
+ */
+const DEPOSIT_UNCONFIRMED_MINUTES = 15;
+/**
+ * A release Louez owes shows once it is this old: the outbox asks Stripe at once, and
+ * again after 1, 2, 4… minutes. It never leaves by age.
+ */
+const DEPOSIT_RELEASE_GRACE_MINUTES = 30;
+/**
+ * A refund of an online payment still open shows once it is this old: past its key's
+ * life, only Stripe's account of the charge settles it (apps/web
+ * lib/reservations/stripe-refund.ts). It never leaves by age.
+ */
+const REFUND_UNCONFIRMED_HOURS = 24;
 /** Rejected e-invoices older than this are left out. */
 const EINVOICE_DAYS = 90;
 /** Operations older than this are left out. */
 const OPERATION_DAYS = 7;
 /** Failed handoffs older than this are left out. */
 const HANDOFF_FAILURE_DAYS = 7;
+/** Approvals that ended without being carried out (refused, expired, revoked) older than this are left out. */
+const APPROVAL_ENDED_DAYS = 7;
+/** What makes a pending approval a warning: money, a stock override, a person's access. */
+const APPROVAL_WARNINGS: readonly string[] = ["money", "stock_override", "access_removed"];
 /** Failed image jobs older than this are left out. */
 const IMAGE_JOB_FAILURE_DAYS = 7;
 
@@ -110,6 +144,11 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   return_overdue: ["reservations"],
   deposit_expiring: ["payments", "reservations"],
   payment_failed: ["payments", "reservations"],
+  deposit_unconfirmed: ["payments", "reservations"],
+  deposit_release_failed: ["payments", "reservations"],
+  refund_unconfirmed: ["payments", "reservations"],
+  refund_undone: ["payments", "reservations"],
+  credit_note_not_issued: ["payments", "reservations"],
   dispute_open: ["payments", "reservations"],
   unit_conflict: ["reservations", "products"],
   overbooking: ["reservations"],
@@ -121,6 +160,8 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   operation_unknown: [],
   // Each handoff by its kind's domain (HANDOFF_KIND_DOMAINS), in its source and acknowledgement.
   handoff_waiting: [],
+  // Each approval to the connection that asked, or by its procedure's domain, in its source and acknowledgement.
+  approval_waiting: [],
   invitation_not_sent: ["team"],
   image_job_failed: ["products"],
 };
@@ -144,11 +185,19 @@ export interface InboxReader {
   hostedBy: "lumycloud" | null;
   /** What the caller may read: the member's role cut down to the connection's scopes. */
   reads: InboxRights;
+  /** The types the caller lists; absent: every type its reads show. */
+  types?: readonly InboxItemType[];
   /**
    * Whose operations show: a connection sees its own (its key), a dashboard
    * session every operation of the store (null).
    */
   operationsOf: string | null;
+  /**
+   * The key or the token that reads, for a connection; absent for a
+   * dashboard session. Its own approvals show to it, in the domains it reads
+   * (`connectionReadsApproval`).
+   */
+  connection?: { kind: string; id: string | null };
   /**
    * Procedures the caller's agent never reaches, by capability id
    * (`ClientWithholding.capabilities`): no item names their tool, and a
@@ -699,6 +748,289 @@ const expiringDeposits: Source = async (window, shaper) => {
   });
 };
 
+const UNMATCHED_ACTIVITY = "inbox_unmatched_activity";
+const unmatchedActivity = alias(reservationActivity, UNMATCHED_ACTIVITY);
+
+/**
+ * A deposit authorization the store asked for, which Stripe has neither confirmed nor
+ * refused (apps/web lib/reservations/deposit-hold.ts): its attempt is still pending.
+ * Louez takes no other authorization for the reservation until Stripe settles this
+ * one, so the store is told to look at it, whatever the reservation's status: the
+ * card may be held. When Louez found a PaymentIntent for it that does not match the
+ * request (the activity line `recordUnmatchedIntent` writes, apps/web
+ * lib/reservations/deposit-hold-writes.ts), the item says so, and names it.
+ */
+const unconfirmedDeposits: Source = async (window, shaper) => {
+  const unmatchedIntent = sql<
+    string | null
+  >`(SELECT JSON_UNQUOTE(JSON_EXTRACT(${unmatchedActivity.metadata}, '$.unmatchedPaymentIntentId')) FROM ${reservationActivity} AS ${sql.identifier(UNMATCHED_ACTIVITY)} WHERE ${unmatchedActivity.reservationId} = ${payments.reservationId} AND ${unmatchedActivity.activityType} = 'payment_updated' AND JSON_UNQUOTE(JSON_EXTRACT(${unmatchedActivity.metadata}, '$.kind')) = 'deposit_unmatched' AND JSON_UNQUOTE(JSON_EXTRACT(${unmatchedActivity.metadata}, '$.attemptId')) = ${payments.id} ORDER BY ${unmatchedActivity.createdAt} DESC LIMIT 1)`;
+  const occurred =
+    sql<Date>`(${payments.createdAt} + INTERVAL ${sql.raw(String(DEPOSIT_UNCONFIRMED_MINUTES))} MINUTE)`.mapWith(
+      payments.createdAt,
+    );
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      paymentId: payments.id,
+      occurredAt: occurred,
+      askedAt: payments.createdAt,
+      amount: payments.amount,
+      currency: payments.currency,
+      unmatchedPaymentIntentId: unmatchedIntent,
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(reservations.storeId, window.storeId),
+        eq(payments.type, "deposit_hold"),
+        eq(payments.status, "pending"),
+        inWindow(window, "deposit_unconfirmed", occurred, payments.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, payments.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const amount = money(row.amount, row.currency ?? shaper.currency);
+    const asked = `the deposit hold${amount ? ` of ${amount}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}`;
+    return candidate("deposit_unconfirmed", row.paymentId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: row.unmatchedPaymentIntentId
+        ? `Louez found an authorization at Stripe (${row.unmatchedPaymentIntentId}) for ${asked}, but it does not match the request (its amount, card or reference changed), so Louez did not record it: cancel it in Stripe, then close the request in the reservation's deposit section. No other hold is taken until then. If it is captured in Stripe instead, Louez does not record that amount and the request stays open: contact Louez support.`
+        : `Stripe has not confirmed ${asked}: check the payment in Stripe. Asking again in Louez asks for the same hold, never a second one, and no other hold is taken until Stripe settles this one or the store, in the reservation's deposit section, says what Stripe shows.`,
+      reservation: about.reservation,
+      details: {
+        reservationId: row.id,
+        reservationNumber: row.number,
+        paymentId: row.paymentId,
+        amount: row.amount,
+        currency: row.currency ?? shaper.currency,
+        askedAt: row.askedAt.toISOString(),
+        unmatchedPaymentIntentId: row.unmatchedPaymentIntentId,
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
+/**
+ * A second deposit authorization Louez decided against (apps/web
+ * lib/reservations/deposit-hold-writes.ts), whose release Stripe has not confirmed
+ * this long after it became owed. The debt on the hold's row
+ * (`payments.release_owed_at`) is what is read, not the outbox row that works on it:
+ * that row may be abandoned, or deleted by the outbox's retention, while the debt
+ * stands, and the cron then adds another (deposit-hold-debts.ts). It leaves once
+ * Stripe says the authorization is cancelled or captured.
+ */
+const unreleasedDeposits: Source = async (window, shaper) => {
+  const occurred =
+    sql<Date>`(${payments.releaseOwedAt} + INTERVAL ${sql.raw(String(DEPOSIT_RELEASE_GRACE_MINUTES))} MINUTE)`.mapWith(
+      payments.createdAt,
+    );
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      paymentId: payments.id,
+      occurredAt: occurred,
+      owedSince: payments.releaseOwedAt,
+      paymentIntentId: payments.stripePaymentIntentId,
+      amount: payments.amount,
+      currency: payments.currency,
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(reservations.storeId, window.storeId),
+        eq(payments.type, "deposit_hold"),
+        isNotNull(payments.releaseOwedAt),
+        inWindow(window, "deposit_release_failed", occurred, payments.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, payments.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const amount = money(row.amount, row.currency ?? shaper.currency);
+    return candidate("deposit_release_failed", row.paymentId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: `Stripe has not confirmed the release of a second deposit hold${amount ? ` of ${amount}` : ""} on ${about.name}, which is not the reservation's hold: the customer's card may still carry it. Louez keeps asking Stripe to cancel it; check the payment${row.paymentIntentId ? ` ${row.paymentIntentId}` : ""} in Stripe and cancel it there if it is still held.`,
+      reservation: about.reservation,
+      details: {
+        reservationId: row.id,
+        reservationNumber: row.number,
+        paymentId: row.paymentId,
+        paymentIntentId: row.paymentIntentId,
+        amount: row.amount,
+        currency: row.currency ?? shaper.currency,
+        owedSince: row.owedSince?.toISOString() ?? null,
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
+/**
+ * A refund of an online payment the store asked for, still open a day after it was
+ * asked (apps/web lib/reservations/stripe-refund.ts): Stripe has not said whether it
+ * made it. Its amount stays held back from what the payment can give back, and no age
+ * closes it: only Stripe's account of the charge does, or its refund when it is heard.
+ */
+const unconfirmedRefunds: Source = async (window, shaper) => {
+  const o = paymentRefundOperations;
+  const occurred =
+    sql<Date>`(${o.createdAt} + INTERVAL ${sql.raw(String(REFUND_UNCONFIRMED_HOURS))} HOUR)`.mapWith(
+      o.createdAt,
+    );
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      operationId: o.id,
+      occurredAt: occurred,
+      askedAt: o.createdAt,
+      paymentId: o.paymentId,
+      chargeId: o.stripeChargeId,
+      amountMinor: o.amountMinor,
+      currency: o.currency,
+      status: o.status,
+    })
+    .from(o)
+    .innerJoin(reservations, eq(reservations.id, o.reservationId))
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(o.storeId, window.storeId),
+        inArray(o.status, ["requested", "unresolved"]),
+        inWindow(window, "refund_unconfirmed", occurred, o.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, o.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const amount = minorToDecimal(row.amountMinor, row.currency);
+    const shown = money(amount, row.currency);
+    return candidate("refund_unconfirmed", row.operationId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: `Stripe has not confirmed the refund${shown ? ` of ${shown}` : ""} asked on ${shaper.day(row.askedAt)} for ${about.name}: check the charge ${row.chargeId} in Stripe. Louez never sends it again once its request is a day old; it keeps the amount held back until Stripe shows the refund or shows it was never made.`,
+      reservation: about.reservation,
+      details: {
+        reservationId: row.id,
+        reservationNumber: row.number,
+        operationId: row.operationId,
+        paymentId: row.paymentId,
+        chargeId: row.chargeId,
+        amount,
+        currency: row.currency,
+        status: row.status,
+        askedAt: row.askedAt.toISOString(),
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
+const UNDONE_LISTED_ACTIVITY = "inbox_undone_listed_activity";
+const undoneListedActivity = alias(reservationActivity, UNDONE_LISTED_ACTIVITY);
+const CREDIT_NOTE_LINK = "inbox_credit_note_link";
+const creditNoteLink = alias(invoicePayments, CREDIT_NOTE_LINK);
+const CREDIT_NOTE = "inbox_credit_note";
+const UNDONE_ORIGINAL = "inbox_undone_original";
+const undoneOriginal = alias(payments, UNDONE_ORIGINAL);
+const creditNote = alias(invoices, CREDIT_NOTE);
+
+/**
+ * Every Stripe refund row that is `failed` (apps/web
+ * lib/reservations/stripe-refund-writes.ts): Stripe reported the refund failed or
+ * canceled, so the customer was not refunded and the payment counts it for nothing.
+ * The store checks it in Stripe and refunds again if needed. A credit note issued for
+ * it stands (invoicing has no document that cancels one): the store corrects it by
+ * hand. A refund Stripe listed as moving money after reporting it failed stays failed
+ * in Louez, and the store checks in Stripe whether the customer was refunded.
+ */
+const undoneRefunds: Source = async (window, shaper) => {
+  const creditNoteNumber = sql<
+    string | null
+  >`(SELECT ${creditNote.number} FROM ${invoicePayments} AS ${sql.identifier(CREDIT_NOTE_LINK)} INNER JOIN ${invoices} AS ${sql.identifier(CREDIT_NOTE)} ON ${creditNote.id} = ${creditNoteLink.invoiceId} WHERE ${creditNoteLink.paymentId} = ${payments.id} AND ${creditNote.type} = 'credit_note' LIMIT 1)`;
+  const listedAfterFailure = sql<number>`EXISTS (SELECT 1 FROM ${reservationActivity} AS ${sql.identifier(UNDONE_LISTED_ACTIVITY)} WHERE ${undoneListedActivity.reservationId} = ${payments.reservationId} AND JSON_UNQUOTE(JSON_EXTRACT(${undoneListedActivity.metadata}, '$.kind')) = 'refund_failed_listed' AND JSON_UNQUOTE(JSON_EXTRACT(${undoneListedActivity.metadata}, '$.paymentId')) = ${payments.id})`;
+  const occurred = sql<Date>`${payments.updatedAt}`.mapWith(payments.updatedAt);
+  const rows = await db
+    .select({
+      ...reservationColumns,
+      listedAfterFailure,
+      refundPaymentId: payments.id,
+      occurredAt: occurred,
+      refundId: payments.stripeRefundId,
+      amount: payments.amount,
+      currency: payments.currency,
+      creditNoteNumber,
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(reservations.storeId, window.storeId),
+        eq(payments.status, "failed"),
+        isStripeRefundPaymentSql(),
+        // The payment it gives back: by its link, or, for an older refund row with none,
+        // the payment of its reservation that holds the same charge, as the writer
+        // found it. The legacy row is not relinked.
+        sql`(${payments.refundOfPaymentId} IS NOT NULL OR EXISTS (SELECT 1 FROM ${payments} AS ${sql.identifier(UNDONE_ORIGINAL)} WHERE ${undoneOriginal.reservationId} = ${payments.reservationId} AND ${undoneOriginal.stripeChargeId} = ${payments.stripeChargeId} AND ${undoneOriginal.id} <> ${payments.id} AND ${undoneOriginal.refundOfPaymentId} IS NULL AND (${undoneOriginal.stripePaymentIntentId} IS NOT NULL OR ${undoneOriginal.stripeCheckoutSessionId} IS NOT NULL)))`,
+        inWindow(window, "refund_undone", occurred, payments.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, payments.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const about = aboutReservation(shaper, row);
+    const currency = row.currency ?? shaper.currency;
+    const shown = money(row.amount, currency);
+    const listed = Number(row.listedAfterFailure) === 1;
+    const refund = `the refund${row.refundId ? ` ${row.refundId}` : ""}${shown ? ` of ${shown}` : ""} on ${about.name}`;
+    return candidate("refund_undone", row.refundPaymentId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: [
+        listed
+          ? `Stripe reported ${refund} failed, then listed it as moving money: Louez keeps it failed. Check in Stripe whether the customer was refunded, and refund again if needed.`
+          : `Stripe reported ${refund} failed: the customer was not refunded, and Louez counts the refund for nothing. Check it in Stripe and refund again if needed.`,
+        row.creditNoteNumber
+          ? `The credit note ${row.creditNoteNumber} issued for it stands: correct it by hand in your accounting.`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      reservation: about.reservation,
+      details: {
+        reservationId: row.id,
+        reservationNumber: row.number,
+        refundPaymentId: row.refundPaymentId,
+        refundId: row.refundId,
+        amount: row.amount,
+        currency,
+        creditNoteNumber: row.creditNoteNumber,
+        listedAfterFailure: listed,
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
+    });
+  });
+};
+
 /**
  * The latest failed online payment or deposit hold of an open reservation,
  * when nothing made it good since: a rental payment completed after the
@@ -1009,7 +1341,8 @@ const unitConflicts: Source = async (window, shaper) => {
 /**
  * A booking the team created or edited over the available stock, not over
  * yet. A reservation's latest capacity verdict decides (services/
- * capacity-verdict.ts): the item leaves once a later edit fits the stock.
+ * capacity-verdict.ts): the item leaves once a later edit or confirmation
+ * fits the stock.
  */
 const overbookings: Source = async (window, shaper) => {
   const later = alias(reservationActivity, "inbox_later_verdict");
@@ -1178,13 +1511,42 @@ const rejectedEinvoices: Source = async (window, shaper) => {
   });
 };
 
-const MESSAGE_TYPES = ["reservation.customerMessage", "reservation.storeNotification"] as const;
+/** The customer e-mails whose type names their message: their payload has no channel nor notification. */
+const CUSTOMER_EMAIL_NOTIFICATION: Record<string, string> = {
+  "reservation.modifiedEmail": "customer_reservation_modified",
+  "reservation.quoteEmail": "customer_quote_sent",
+  "reservation.confirmationEmail": "customer_reservation_confirmed",
+};
+
+const MESSAGE_TYPES = [
+  "reservation.customerMessage",
+  "reservation.storeNotification",
+  ...Object.keys(CUSTOMER_EMAIL_NOTIFICATION),
+];
 
 const MESSAGE_LABELS: Record<string, string> = {
   customer_request_accepted: "acceptance message",
   customer_request_rejected: "rejection message",
   customer_reservation_cancelled: "cancellation message",
+  customer_reservation_modified: "modification message",
+  customer_quote_sent: "quote",
+  customer_reservation_confirmed: "confirmation message",
 };
+
+/**
+ * Why a row was given up at once, by the code its reason starts with
+ * (platform/effects.ts `EffectSendOutcome`); a row given up after every try
+ * has none of these.
+ */
+const GIVEN_UP_AT_ONCE: Record<string, string> = {
+  recipient_changed: "the customer's address changed after it was written",
+  email_not_configured: "no e-mail service is set up",
+  sms_not_configured: "no SMS service is set up",
+  invalid_payload: "it was written wrong",
+  row_mismatch: "it was written wrong",
+};
+const givenUpReason = (lastError: string | null) =>
+  /^Abandoned: ([a-z_]+)/.exec(lastError ?? "")?.[1] ?? null;
 
 /** A message to a customer, or a store notification, the outbox gave up on. */
 const unsentMessages: Source = async (window, shaper) => {
@@ -1193,6 +1555,7 @@ const unsentMessages: Source = async (window, shaper) => {
       effectId: apiEffects.id,
       type: apiEffects.type,
       payload: apiEffects.payload,
+      lastError: apiEffects.lastError,
       // An abandoned row's next attempt is the time it was abandoned (platform/effects.ts).
       occurredAt: apiEffects.nextAttemptAt,
       reservationId: reservations.id,
@@ -1222,9 +1585,11 @@ const unsentMessages: Source = async (window, shaper) => {
 
   return rows.map((row) => {
     const payload = row.payload ?? {};
-    const channel = typeof payload.channel === "string" ? payload.channel : null;
-    const toCustomer = row.type === "reservation.customerMessage";
-    const notification = typeof payload.notification === "string" ? payload.notification : null;
+    const email = CUSTOMER_EMAIL_NOTIFICATION[row.type];
+    const channel = email ? "email" : typeof payload.channel === "string" ? payload.channel : null;
+    const toCustomer = row.type === "reservation.customerMessage" || Boolean(email);
+    const notification =
+      email ?? (typeof payload.notification === "string" ? payload.notification : null);
     const about =
       row.reservationId && row.number && row.startDate && row.endDate
         ? aboutReservation(shaper, {
@@ -1237,15 +1602,17 @@ const unsentMessages: Source = async (window, shaper) => {
             companyName: row.companyName,
           })
         : null;
+    const reason = givenUpReason(row.lastError);
+    const why = reason ? GIVEN_UP_AT_ONCE[reason] : undefined;
     const what = toCustomer
       ? `The ${(notification && MESSAGE_LABELS[notification]) ?? "message"}${channel ? ` (${channel})` : ""} to the customer`
       : `The store notification${channel ? ` (${channel})` : ""}`;
     return candidate("message_not_sent", row.effectId, {
       severity: toCustomer ? "warning" : "info",
       occurredAt: row.occurredAt,
-      summary: `${what}${about ? ` of ${about.name}` : ""} never went out after every try${
-        toCustomer ? ": contact the customer yourself" : ""
-      }.`,
+      summary: `${what}${about ? ` of ${about.name}` : ""} ${
+        why ? `was not sent (${why})` : "never went out after every try"
+      }${toCustomer ? ": contact the customer yourself" : ""}.`,
       reservation: about?.reservation ?? null,
       details: {
         effectId: row.effectId,
@@ -1258,9 +1625,77 @@ const unsentMessages: Source = async (window, shaper) => {
             : null,
         reservationId: row.reservationId,
         reservationNumber: row.number,
+        reason: why ? reason : null,
       },
       tools: about ? RESERVATION_TOOLS : [],
       links: about?.links ?? storeLinks(shaper.reader.urls, shaper.reader.store),
+    });
+  });
+};
+
+/**
+ * A refund's credit note the outbox gave up on after its tries
+ * (`payment.refundCreditNote`, abandoned): the refund is recorded and has no credit
+ * note. It stays owed: the cron arms the row again once a day (apps/web
+ * lib/reservations/stripe-refund-cron.ts), and the item leaves once the note is issued
+ * or turns out not to apply.
+ */
+const unissuedCreditNotes: Source = async (window, shaper) => {
+  const rows = await db
+    .select({
+      effectId: apiEffects.id,
+      payload: apiEffects.payload,
+      lastError: apiEffects.lastError,
+      // An abandoned row's next attempt is the time it was abandoned (platform/effects.ts).
+      occurredAt: apiEffects.nextAttemptAt,
+      ...reservationColumns,
+      // The refund row's own currency: a refund is in its payment's.
+      currency: sql<
+        string | null
+      >`(SELECT ${payments.currency} FROM ${payments} WHERE ${payments.id} = JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.refundId')))`,
+    })
+    .from(apiEffects)
+    .innerJoin(
+      reservations,
+      and(eq(reservations.id, apiEffects.reservationId), eq(reservations.storeId, window.storeId)),
+    )
+    .leftJoin(customers, eq(customers.id, reservations.customerId))
+    .where(
+      and(
+        eq(apiEffects.storeId, window.storeId),
+        eq(apiEffects.status, "abandoned"),
+        eq(apiEffects.type, "payment.refundCreditNote"),
+        // Its refund row is completed and still has no note: one whose refund failed
+        // owes none, and one that names no refund row was never owed.
+        creditNoteStillOwedSql(),
+        inWindow(window, "credit_note_not_issued", apiEffects.nextAttemptAt, apiEffects.id),
+      ),
+    )
+    .orderBy(...inOrder(apiEffects.nextAttemptAt, apiEffects.id))
+    .limit(window.take);
+
+  return rows.map((row) => {
+    const payload = row.payload ?? {};
+    const about = aboutReservation(shaper, row);
+    const amount = typeof payload.amount === "string" ? payload.amount : null;
+    const shown = amount ? money(amount, row.currency ?? shaper.currency) : null;
+    return candidate("credit_note_not_issued", row.effectId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: `The credit note was not issued for the refund${shown ? ` of ${shown}` : ""} on ${about.name}, after every try. Louez tries again once a day; if your invoicing settings changed, check them.`,
+      reservation: about.reservation,
+      details: {
+        effectId: row.effectId,
+        reservationId: row.id,
+        reservationNumber: row.number,
+        paymentId: typeof payload.paymentId === "string" ? payload.paymentId : null,
+        refundId: typeof payload.refundId === "string" ? payload.refundId : null,
+        amount,
+        currency: row.currency ?? shaper.currency,
+        lastError: row.lastError,
+      },
+      tools: RESERVATION_TOOLS,
+      links: about.links,
     });
   });
 };
@@ -1410,8 +1845,8 @@ const offlineStore = async (window: Window, shaper: Shaper): Promise<Candidate[]
   ];
 };
 
-/** The tool that gives each kind of handoff a new link. */
-const HANDOFF_START_TOOLS = {
+/** The tool that starts each kind of handoff again, or gives an expired one another day. */
+const HANDOFF_START_TOOLS: Record<StepKind, string> = {
   stripe_connect_onboarding: "payments_start_stripe_onboarding",
   stripe_dashboard: "payments_open_stripe_dashboard",
   billing_card_setup: "billing_start_card_setup",
@@ -1424,9 +1859,10 @@ const HANDOFF_START_TOOLS = {
  * again since. Each shows to who may read its kind's domain: settings for
  * Stripe, billing for the billing card, the team for an invitation's
  * approval; an approval is started again by a later one for the same address.
+ * Its link is the step's page, where the user takes it or reads how it ended.
  */
 const waitingHandoffs: Source = async (window, shaper) => {
-  const kinds = HANDOFF_KINDS.filter((kind) => shaper.reader.reads[HANDOFF_KIND_DOMAINS[kind]]);
+  const kinds = STEP_KINDS.filter((kind) => shaper.reader.reads[HANDOFF_KIND_DOMAINS[kind]]);
   if (kinds.length === 0) return [];
   const hold = sql.raw(String(HANDOFF_WAIT_MS / 1000));
   const occurred = sql<Date>`CASE
@@ -1476,6 +1912,8 @@ const waitingHandoffs: Source = async (window, shaper) => {
   return rows.map(({ row, occurredAt }) => {
     const view = handoffView(row, { now: window.now, urls, store });
     const waiting = view.status === "pending" || view.status === "opened";
+    // Read among the step kinds alone (`kinds`).
+    const kind = row.kind as StepKind;
     return candidate("handoff_waiting", row.id, {
       severity: row.kind === "billing_card_setup" || !waiting ? "warning" : "info",
       occurredAt,
@@ -1492,21 +1930,161 @@ const waitingHandoffs: Source = async (window, shaper) => {
       },
       // A card Stripe had not confirmed on the return: asking it again may finish it.
       tools: view.confirming
-        ? ["handoffs_refresh", "handoffs_get", HANDOFF_START_TOOLS[row.kind]]
-        : ["handoffs_get", HANDOFF_START_TOOLS[row.kind]],
-      links: view.links,
+        ? ["handoffs_refresh", "handoffs_get", HANDOFF_START_TOOLS[kind]]
+        : ["handoffs_get", HANDOFF_START_TOOLS[kind]],
+      links: { dashboard: handoffUrl(urls, row.id) },
     });
   });
 };
 
 /**
+ * An agent's request for a person's approval: pending at once (a warning for
+ * money, an override or a person's access), or ended without being carried
+ * out (refused, expired, approved and not carried out within its hour, its
+ * connection revoked) for 7 days, unless the same request was asked again
+ * since. It shows to the connection that asked, and to a dashboard session
+ * that reads its procedure's domain; another connection sees none, as it
+ * reads none (`handoffs_get`). It names the request (its preview's summary)
+ * and who may approve it, and links to its page.
+ */
+const waitingApprovals: Source = async (window, shaper) => {
+  const { reader } = shaper;
+  const reads = (domain: ApiDomain) => reader.reads[domain] === true;
+  const domains = API_DOMAINS.filter(reads);
+  const { connection } = reader;
+  // A connection reads its own, in the domains it reads; a session, any in those domains.
+  if (domains.length === 0 || (reader.operationsOf !== null && !connection)) return [];
+  const inDomains = inArray(
+    sql<string>`JSON_UNQUOTE(JSON_EXTRACT(${apiHandoffs.payload}, '$.scope.domain'))`,
+    domains,
+  );
+  const whose = connection
+    ? and(
+        eq(apiHandoffs.credentialKind, connection.kind),
+        connection.id === null
+          ? isNull(apiHandoffs.credentialId)
+          : eq(apiHandoffs.credentialId, connection.id),
+        inDomains,
+      )
+    : inDomains;
+  const now = at(window.now);
+  const occurred = sql<Date>`CASE
+      WHEN ${apiHandoffs.status} = 'failed' THEN ${apiHandoffs.failedAt}
+      WHEN ${apiHandoffs.expiresAt} <= ${now} THEN ${apiHandoffs.expiresAt}
+      ELSE ${apiHandoffs.createdAt} END`.mapWith(apiHandoffs.createdAt);
+  const since = new Date(window.now.getTime() - APPROVAL_ENDED_DAYS * DAY_MS);
+  const later = alias(apiHandoffs, "later_approval");
+  const ofReader = and(
+    eq(apiHandoffs.storeId, window.storeId),
+    eq(apiHandoffs.kind, "operation_approval"),
+    whose,
+  );
+  const inTime = and(eq(apiHandoffs.status, "pending"), sql`${apiHandoffs.expiresAt} > ${now}`);
+  // An approval waits only while the connection that asked still exists
+  // (`liveConnections`): the connections that are gone are found first, so
+  // that their rows are left out before the window is cut, not after.
+  const asking = await db
+    .selectDistinct({
+      credentialKind: apiHandoffs.credentialKind,
+      credentialId: apiHandoffs.credentialId,
+    })
+    .from(apiHandoffs)
+    .where(and(ofReader, inTime));
+  const isLive = await liveConnections(asking);
+  const gone = asking.flatMap((row) =>
+    row.credentialId && !isLive(row) ? [row.credentialId] : [],
+  );
+  const waiting =
+    gone.length === 0
+      ? inTime
+      : and(
+          inTime,
+          or(isNull(apiHandoffs.credentialId), notInArray(apiHandoffs.credentialId, gone)),
+        );
+  const rows = await db
+    .select({ row: apiHandoffs, occurredAt: occurred, approver: users.name, email: users.email })
+    .from(apiHandoffs)
+    .leftJoin(users, eq(users.id, apiHandoffs.userId))
+    .where(
+      and(
+        ofReader,
+        or(
+          waiting,
+          and(
+            or(
+              and(eq(apiHandoffs.status, "failed"), gt(apiHandoffs.failedAt, since)),
+              and(
+                inArray(apiHandoffs.status, ["pending", "approved"]),
+                sql`${apiHandoffs.expiresAt} <= ${now}`,
+                gt(apiHandoffs.expiresAt, since),
+              ),
+            ),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(later)
+                .where(
+                  and(
+                    eq(later.storeId, apiHandoffs.storeId),
+                    eq(later.kind, apiHandoffs.kind),
+                    eq(later.subject, apiHandoffs.subject),
+                    gt(later.createdAt, apiHandoffs.createdAt),
+                  ),
+                ),
+            ),
+          ),
+        ),
+        inWindow(window, "approval_waiting", occurred, apiHandoffs.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, apiHandoffs.id))
+    .limit(window.take);
+
+  const { urls, store } = reader;
+  return rows.flatMap(({ row, occurredAt, approver, email }) => {
+    const payload = approvalPayloadOf(row);
+    if (!payload || (connection && !connectionReadsApproval(connection, row, reads))) return [];
+    const view = handoffView(row, { now: window.now, urls, store });
+    const waiting = view.status === "pending";
+    const who = approver || email || "the user this connection acts for";
+    return [
+      candidate("approval_waiting", row.id, {
+        severity:
+          !waiting ||
+          payload.consequences.some((consequence) => APPROVAL_WARNINGS.includes(consequence))
+            ? "warning"
+            : "info",
+        occurredAt,
+        summary: waiting
+          ? `${payload.preview.summary} It waits for ${who} to approve it in Louez, from its link.`
+          : `${payload.preview.summary} ${view.summary}`,
+        reservation: null,
+        details: {
+          handoffId: row.id,
+          procedure: row.procedure,
+          domain: payload.scope.domain,
+          status: view.status,
+          expiresAt: row.expiresAt.toISOString(),
+          failureCode: view.failure?.code ?? null,
+        },
+        // The connection that asked reads it; a session decides it on its page.
+        tools: connection ? ["handoffs_get"] : [],
+        links: { dashboard: handoffUrl(urls, row.id) },
+      }),
+    ];
+  });
+};
+
+/**
  * A team invitation's e-mail the outbox gave up on, for an invitation still
- * pending: the person never heard of it. Names the address, never the link.
+ * pending: the person never heard of it. Names the address, never the link,
+ * and why when it was given up at once (no e-mail service).
  */
 const unsentInvitations: Source = async (window, shaper) => {
   const rows = await db
     .select({
       effectId: apiEffects.id,
+      lastError: apiEffects.lastError,
       occurredAt: apiEffects.nextAttemptAt,
       invitationId: storeInvitations.id,
       email: storeInvitations.email,
@@ -1535,17 +2113,20 @@ const unsentInvitations: Source = async (window, shaper) => {
     .limit(window.take);
 
   const links = dashboardPageLinks(shaper.reader.urls, shaper.reader.store, "/dashboard/team");
-  return rows.map((row) =>
-    candidate("invitation_not_sent", row.effectId, {
+  return rows.map((row) => {
+    const why = GIVEN_UP_AT_ONCE[givenUpReason(row.lastError) ?? ""];
+    return candidate("invitation_not_sent", row.effectId, {
       severity: "warning",
       occurredAt: row.occurredAt,
-      summary: `The invitation e-mail to ${row.email} never went out after every try: the user sends it again, or shares its link, from the team page.`,
+      summary: `The invitation e-mail to ${row.email} ${
+        why ? `was not sent (${why})` : "never went out after every try"
+      }: the user sends it again, or shares its link, from the team page.`,
       reservation: null,
       details: { effectId: row.effectId, invitationId: row.invitationId, email: row.email },
       tools: ["team_list_invitations"],
       links,
-    }),
-  );
+    });
+  });
 };
 
 /** The tool that starts each kind of image job again, and its capability. */
@@ -1656,6 +2237,11 @@ const SOURCES: Record<InboxItemType, Source> = {
   return_overdue: lateReturns,
   deposit_expiring: expiringDeposits,
   payment_failed: failedPayments,
+  deposit_unconfirmed: unconfirmedDeposits,
+  deposit_release_failed: unreleasedDeposits,
+  refund_unconfirmed: unconfirmedRefunds,
+  refund_undone: undoneRefunds,
+  credit_note_not_issued: unissuedCreditNotes,
   dispute_open: openDisputes,
   unit_conflict: unitConflicts,
   overbooking: overbookings,
@@ -1666,6 +2252,7 @@ const SOURCES: Record<InboxItemType, Source> = {
   message_not_sent: unsentMessages,
   operation_unknown: unknownOperations,
   handoff_waiting: waitingHandoffs,
+  approval_waiting: waitingApprovals,
   invitation_not_sent: unsentInvitations,
   image_job_failed: failedImageJobs,
 };
@@ -1680,17 +2267,6 @@ const positionOf = (entry: Candidate): Position => ({
   k: entry.item.type,
   r: entry.recordId,
 });
-
-/** The database's clock, as every row is dated with it. */
-async function databaseNow(): Promise<Date> {
-  const [result] = await db.execute(sql`SELECT DATE_FORMAT(NOW(3), '%Y-%m-%dT%H:%i:%s.%f') AS now`);
-  const row: unknown = Array.isArray(result) ? result[0] : undefined;
-  const text =
-    row && typeof row === "object" && "now" in row && typeof row.now === "string" ? row.now : "";
-  // The sessions run in UTC (docs/architecture/api-and-agents.md, the outbox).
-  const now = new Date(`${text.slice(0, 23)}Z`);
-  return Number.isNaN(now.getTime()) ? new Date() : now;
-}
 
 interface Occurrence {
   type: InboxItemType;
@@ -1842,7 +2418,9 @@ export async function listInbox(
     now,
     take: limit + 1,
   };
-  const types = INBOX_ITEM_TYPES.filter((type) => mayShow(reader.reads, type));
+  const types = INBOX_ITEM_TYPES.filter(
+    (type) => mayShow(reader.reads, type) && (reader.types?.includes(type) ?? true),
+  );
   const { entries: merged, failures } = await readWindow(reader, types, window);
   for (const failure of failures) logSourceFailure(reader, failure);
   const page = merged.slice(0, limit);

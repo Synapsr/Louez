@@ -1,5 +1,6 @@
 import {
   apiOperations,
+  currentApiOperation,
   db,
   isTransactionInterrupted,
   retryTransactionOnDeadlock,
@@ -11,12 +12,13 @@ import { and, asc, eq, lt, min, sql } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
 import { enqueueEffects, type ApiEffect } from "./effects";
-import { isApiError, platformErrors } from "./errors";
+import { isApiError, isRefusal, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
 
 /** Header of an idempotency key. The MCP bridge maps its `idempotencyKey` argument onto it. */
 export const IDEMPOTENCY_HEADER = "idempotency-key";
-const MAX_IDEMPOTENCY_KEY_LENGTH = 100;
+/** The longest idempotency key accepted; an empty one is refused too. */
+export const MAX_IDEMPOTENCY_KEY_LENGTH = 100;
 
 /**
  * How long a call may stay `running`. Past it, a retry is not told to wait:
@@ -34,7 +36,7 @@ export const OPERATION_RETENTION_MONTHS = 12;
  * The purge deletes this many days before the promised retention runs out,
  * so a backlog or a cron outage of up to a week still keeps the promise.
  */
-const OPERATION_PURGE_MARGIN_DAYS = 7;
+export const OPERATION_PURGE_MARGIN_DAYS = 7;
 const PURGE_BATCH = 500;
 const PURGE_BUDGET_MS = 5_000;
 
@@ -75,8 +77,10 @@ function decodeResult(value: unknown): unknown {
  * With an idempotency key, the row also makes the call safe to retry: the same
  * key with the same input returns the stored result without running again; the
  * same key with another input is refused; a call that arrives while the first
- * still runs is told to retry; a key whose call failed may run again; a key
- * whose outcome was lost (unknown, or running past its lease) never runs again.
+ * still runs is told to retry; a key whose call Louez refused (`isRefusal`) is
+ * `failed` and may run again; a key whose outcome is unknown (the call ended
+ * on any other error, its record was lost, or it ran past its lease) never
+ * runs again.
  */
 export async function runOperation<T>(
   params: {
@@ -105,6 +109,16 @@ export async function runOperation<T>(
     recordedEffects?: RecordedEffects;
     /** Hands the rows' ids to the app once committed (`ApiPorts.dispatchEffects`). */
     dispatchEffects?: (ids: readonly string[]) => void;
+    /**
+     * For a write that records its target in its own transaction
+     * (`recordOperationTarget`): the answer to a key whose outcome is
+     * unknown but whose record names that target, which then committed with
+     * the write. It reads the target as it is now, and is answered as a
+     * replay. Without it, or without a target, the key answers
+     * `OPERATION_OUTCOME_UNKNOWN`. With it, a call whose record fails after
+     * its handler went through answers its result, never that error.
+     */
+    recoverUnknown?: (targetId: string) => Promise<T>;
   },
   execute: () => Promise<T>,
 ): Promise<T> {
@@ -143,6 +157,15 @@ export async function runOperation<T>(
         Object.assign(params.receipt, { operationId: claimed.id, replayed: true });
       return decodeResult(claimed.result) as T;
     }
+    if (claimed.kind === "lost") {
+      // Its write committed with its target; only the record of its answer was lost.
+      if (!params.recoverUnknown || !claimed.targetId) {
+        throw platformErrors.operationOutcomeUnknown(claimed.id);
+      }
+      if (params.receipt)
+        Object.assign(params.receipt, { operationId: claimed.id, replayed: true });
+      return params.recoverUnknown(claimed.targetId);
+    }
     operationId = claimed.id;
   }
   if (params.receipt) params.receipt.operationId = operationId;
@@ -162,7 +185,11 @@ export async function runOperation<T>(
     await db
       .update(apiOperations)
       .set({
-        status: "failed",
+        // A refusal did nothing, so its key may run it again. Any other
+        // error may have come after the handler's commit (a step after it,
+        // a lost acknowledgement of the COMMIT itself): its key never runs
+        // it again.
+        status: isRefusal(error) ? "failed" : "unknown",
         // A refused preview commits its own transaction, the setup mark of
         // the store it locked with it: the write set nothing up.
         setupStoreId: null,
@@ -191,7 +218,8 @@ export async function runOperation<T>(
               status: "succeeded",
               // Results are kept only to replay them; without a key nothing will.
               result: idempotencyKey === null ? null : encodeResult(stored),
-              targetId: targetIdOf(stored),
+              // A target the write recorded itself (`recordOperationTarget`) stays.
+              targetId: targetIdOf(stored) ?? undefined,
             })
             .where(eq(apiOperations.id, operationId));
           return enqueueRecordedEffects(tx, params.recordedEffects, stored, scope);
@@ -201,12 +229,15 @@ export async function runOperation<T>(
   } catch {
     // The handler went through, but the record did not. Marking it failed
     // would let a retry run it a second time: mark it unknown instead, which
-    // refuses retries, and say so.
+    // refuses retries. A write that answers such a key from the target it
+    // recorded with its commit (`recoverUnknown`) answers this call too:
+    // it went through. Any other says so.
     await db
       .update(apiOperations)
       .set({ status: "unknown" })
       .where(eq(apiOperations.id, operationId))
       .catch(() => undefined);
+    if (params.recoverUnknown) return result;
     throw platformErrors.operationOutcomeUnknown(operationId);
   }
   if (effectIds.length > 0) {
@@ -218,6 +249,21 @@ export async function runOperation<T>(
     }
   }
   return result;
+}
+
+/**
+ * Records the target of the running write in the write's own transaction:
+ * the record that a write creates is named with it, so a key whose answer
+ * was lost after the commit still says what it created (`recoverUnknown`).
+ * Nothing outside a recorded write.
+ */
+export async function recordOperationTarget(tx: Transaction, targetId: string): Promise<void> {
+  const operation = currentApiOperation();
+  if (!operation) return;
+  await tx
+    .update(apiOperations)
+    .set({ targetId })
+    .where(eq(apiOperations.id, operation.operationId));
 }
 
 /** Builds a write's recorded effects, in the record's transaction. */
@@ -253,7 +299,11 @@ async function enqueueRecordedEffects(
   }
 }
 
-type ClaimResult = { kind: "run"; id: string } | { kind: "replay"; id: string; result: unknown };
+type ClaimResult =
+  | { kind: "run"; id: string }
+  | { kind: "replay"; id: string; result: unknown }
+  /** Its outcome is unknown; `targetId` is what its write recorded in its own transaction, if anything. */
+  | { kind: "lost"; id: string; targetId: string | null };
 
 async function claimIdempotencyKey(
   row: typeof apiOperations.$inferInsert & { idempotencyKey: string },
@@ -273,6 +323,7 @@ async function claimIdempotencyKey(
       procedure: apiOperations.procedure,
       status: apiOperations.status,
       result: apiOperations.result,
+      targetId: apiOperations.targetId,
       // Read on the database clock, which also wrote `updated_at`.
       leaseExpired: sql<number>`${apiOperations.updatedAt} < NOW() - INTERVAL ${OPERATION_LEASE_SECONDS} SECOND`,
     })
@@ -299,14 +350,17 @@ async function claimIdempotencyKey(
       .update(apiOperations)
       .set({ status: "unknown" })
       .where(and(eq(apiOperations.id, existing.id), eq(apiOperations.status, "running")));
-    throw platformErrors.operationOutcomeUnknown(existing.id);
+    return { kind: "lost", id: existing.id, targetId: existing.targetId };
   }
-  if (existing.status === "unknown") throw platformErrors.operationOutcomeUnknown(existing.id);
+  if (existing.status === "unknown") {
+    return { kind: "lost", id: existing.id, targetId: existing.targetId };
+  }
 
-  // It failed. A procedure writes in one transaction, so it committed nothing
-  // and the same key may run again (procedures that call a provider before
-  // their transaction pass the key on to it). Only one retry can move it back
-  // to running.
+  // It failed: Louez refused it, and a refusal leaves nothing the handler
+  // wrote (`isRefusal`), so the same key may run again (procedures that
+  // call a provider before their transaction pass the key on to it). A record
+  // marked failed before refusals were told from other errors stays as it is.
+  // Only one retry can move it back to running.
   const [retry] = await db
     .update(apiOperations)
     .set({ status: "running", error: null })

@@ -28,15 +28,66 @@ export const redirectTo = (location: string, status: 303 | 307) =>
     },
   });
 
+/**
+ * The revision a handoff page's form posted: the step as the page showed
+ * it. Null when there is none, as from a page served before revisions: the
+ * click then decides nothing and the page shows the step again.
+ */
+export function postedRevision(form: FormData): number | null {
+  const value = form.get("revision");
+  if (typeof value !== "string" || !/^[1-9][0-9]{0,9}$/.test(value)) return null;
+  return Number(value);
+}
+
+/**
+ * What an invitation's page posted of the invitation it showed (its
+ * `invitationShown` digest). Null when there is none: the click decides
+ * nothing and the page shows the invitation again.
+ */
+export function postedShown(form: FormData): string | null {
+  const value = form.get("shown");
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value) ? value : null;
+}
+
+/**
+ * The answer a step's page posted: approve or refuse. A page served before
+ * refusals were named so posts `decline`, which is the same answer. Null for
+ * anything else: the click decides nothing.
+ */
+export function postedDecision(form: FormData): "approve" | "refuse" | null {
+  const value = form.get("decision");
+  if (value === "approve") return "approve";
+  if (value === "refuse" || value === "decline") return "refuse";
+  return null;
+}
+
+/**
+ * The person's own words posted with their answer, as typed; the procedure
+ * holds its length and makes it plain text (`decisionReason`). Undefined
+ * when none was posted.
+ */
+export function postedReason(form: FormData): string | undefined {
+  const value = form.get("reason");
+  return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * Whether the page's box "I have read what Louez will do" was ticked: a
+ * checkbox posts its value only when it is.
+ */
+export function postedAcknowledged(form: FormData): boolean {
+  return form.get("acknowledged") === "yes";
+}
+
 /** Where the login sends the user back: the handoff path kept in a cookie. */
 export const HANDOFF_RESUME_PATH = "/handoffs/resume";
 export const HANDOFF_RESUME_COOKIE = "louez_handoff_next";
 
 /**
- * Signed out: sign in first, then come back to `path`. The path holds the
- * link's secret or the return's state, so it waits in a short-lived cookie
- * scoped to the handoff routes, never in the login page's URL, which the
- * login page's analytics read.
+ * Signed out: sign in first, then come back to `path`. A return's path
+ * holds its state, and an older link its secret, so the path waits in a
+ * short-lived cookie scoped to the handoff routes, never in the login
+ * page's URL, which the login page's analytics read.
  */
 export function toLogin(path: string, status: 303 | 307) {
   const response = redirectTo(createLoginUrl(HANDOFF_RESUME_PATH, env.NEXT_PUBLIC_APP_URL), status);

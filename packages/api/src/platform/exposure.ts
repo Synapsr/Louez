@@ -2,8 +2,16 @@ import type { OpenAPI } from "@orpc/contract";
 import { isProcedure, Procedure, type AnyProcedure, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
-import { MCP_BUNDLES, MCP_TOOL_NAME_MAX, type ApiMeta, type McpBundle, type McpExposure } from "./meta";
+import {
+  MCP_BUNDLES,
+  MCP_TOOL_NAME_MAX,
+  type ApiMeta,
+  type McpBundle,
+  type McpExposure,
+} from "./meta";
+import { referenceGroupOf } from "./openapi-tags";
 import type { ProcedureScope } from "./permissions";
+import { checksCaller } from "./procedures";
 
 /**
  * The procedures the OpenAPI and MCP transports serve, by router path. The RPC
@@ -69,8 +77,10 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.reservations.listUpcoming",
   "dashboard.reservations.listOverdue",
   "dashboard.reservations.updateStatus",
+  "dashboard.reservations.update",
   "dashboard.reservations.cancel",
   "dashboard.reservations.updateNotes",
+  "dashboard.reservations.create",
   "dashboard.onlineStore.update",
   "dashboard.onlineStore.checkSlugAvailability",
   "dashboard.onlineStore.updateSlug",
@@ -104,6 +114,12 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.stores.completeOnboarding",
   "dashboard.inbox.list",
   "dashboard.inbox.acknowledge",
+  "dashboard.payments.record",
+  "dashboard.payments.recordDepositReturn",
+  "dashboard.payments.recordRefund",
+  "dashboard.payments.refund",
+  "dashboard.payments.getRefund",
+  "dashboard.payments.delete",
   "dashboard.payments.startStripeOnboarding",
   "dashboard.payments.openStripeDashboard",
   "dashboard.payments.syncStripeStatus",
@@ -229,6 +245,12 @@ function toolProblems(path: string, meta: ApiMeta, mcp: McpExposure): string[] {
   if (mcp.profile && meta.scope?.level === "write") {
     problems.push(`${path}: a profile tool only reads`);
   }
+  if (meta.personApproval && !meta.sensitive) {
+    problems.push(`${path}: a procedure a person approves is sensitive`);
+  }
+  if (meta.requiresIdempotencyKey && (!writes || meta.secretOutput)) {
+    problems.push(`${path}: only a write that replays requires an idempotency key`);
+  }
   return problems;
 }
 
@@ -254,6 +276,13 @@ function problemsOf(path: string, node: unknown): string[] {
     problems.push(`${path}: only a session may call it`);
   }
   if (meta.platformAdmin) problems.push(`${path}: reserved to platform staff`);
+  // The rule is enforced by the caller checks (`callerRefusal`): a procedure
+  // built without them would run without a key.
+  if (meta.requiresIdempotencyKey && !checksCaller(node)) {
+    problems.push(
+      `${path}: requires an idempotency key but is not built on accountProcedure or storeProcedure`,
+    );
+  }
   if (def.inputSchema) {
     const [, schema] = jsonSchemaConverter.convert(def.inputSchema, { strategy: "input" });
     if (schema.type !== "object") problems.push(`${path}: its input is not an object`);
@@ -271,23 +300,41 @@ function problemsOf(path: string, node: unknown): string[] {
   return problems;
 }
 
+/** A reusable response of the document (`components.responses` in platform/openapi.ts). */
+const responseRef = (name: string) => ({ $ref: `#/components/responses/${name}` });
+
 /**
  * What a write and a sensitive procedure take on top of their input: the
- * idempotency and confirmation headers, and the receipt headers of the answer.
+ * idempotency and confirmation headers, and the receipt headers of the
+ * answer. A write whose output is never stored (`meta.secretOutput`: a
+ * temporary link) ignores an idempotency key and never replays, so it
+ * documents neither the key nor `Louez-Replayed`. Every operation documents
+ * the error body: the statuses any call may meet (400, 401, 429; 403 where
+ * a scope is checked; 412 where a confirmation may be asked; 415 on every
+ * method but GET, whose body is checked: one in a content type the operation
+ * does not take, or any body where it takes none), and `default` for the
+ * others. One a person approves (`meta.personApproval`) documents the
+ * approval's answers instead: its 412 codes, 409 for a refusal, and a 429
+ * that may carry `Retry-After`.
  */
 function documented(
   meta: ExposedMeta,
   operation: OpenAPI.OperationObject,
-  ownOperationId: boolean,
+  options: { ownOperationId: boolean; checksBody: boolean; routePath?: string },
 ): OpenAPI.OperationObject {
   const parameters = [...(operation.parameters ?? [])];
   const isWrite = meta.scope?.level === "write";
-  if (isWrite && !meta.secretOutput) {
-    parameters.push({ $ref: "#/components/parameters/IdempotencyKey" });
+  const replays = isWrite && !meta.secretOutput;
+  if (replays) {
+    parameters.push({
+      $ref: meta.requiresIdempotencyKey
+        ? "#/components/parameters/IdempotencyKeyRequired"
+        : "#/components/parameters/IdempotencyKey",
+    });
   }
   if (meta.sensitive) parameters.push({ $ref: "#/components/parameters/LouezConfirmation" });
 
-  const responses = { ...operation.responses };
+  const responses: OpenAPI.ResponsesObject = { ...operation.responses };
   const success = responses["200"];
   if (isWrite && success && !("$ref" in success)) {
     responses["200"] = {
@@ -295,17 +342,37 @@ function documented(
       headers: {
         ...success.headers,
         "Louez-Operation-Id": { $ref: "#/components/headers/LouezOperationId" },
-        "Louez-Replayed": { $ref: "#/components/headers/LouezReplayed" },
+        ...(replays ? { "Louez-Replayed": { $ref: "#/components/headers/LouezReplayed" } } : {}),
       },
     };
   }
+  responses["400"] = responseRef("BadRequest");
+  responses["401"] = responseRef("Unauthorized");
+  // A procedure without a scope (`stores_list`) refuses no connection.
+  if (meta.scope) responses["403"] = responseRef("Forbidden");
+  if (meta.personApproval) {
+    responses["409"] = responseRef("ApprovalDeclined");
+    responses["412"] = responseRef("ApprovalRequired");
+  } else if (meta.sensitive) {
+    responses["412"] = responseRef("ConfirmationRequired");
+  }
+  if (options.checksBody) responses["415"] = responseRef("UnsupportedMediaType");
+  responses["429"] = responseRef(meta.personApproval ? "ApprovalsFull" : "RateLimited");
+  responses.default = responseRef("Error");
 
   return {
     ...operation,
     // The tool name, unless the procedure names its operation: stable for SDKs.
-    operationId: ownOperationId ? operation.operationId : meta.mcp.name,
+    operationId: options.ownOperationId ? operation.operationId : meta.mcp.name,
+    summary: operation.summary ?? meta.mcp.title,
     description: operation.description ?? meta.mcp.description,
-    tags: operation.tags ?? [meta.scope?.domain ?? "account"],
+    // The reference's group of its route (openapi-tags.ts); the scope's
+    // domain for a route no group holds, such as a test fixture's.
+    tags: operation.tags ?? [
+      (options.routePath ? referenceGroupOf(options.routePath) : undefined) ??
+        meta.scope?.domain ??
+        "account",
+    ],
     parameters,
     responses,
   };
@@ -322,11 +389,12 @@ function withDocumentation(procedure: AnyProcedure, meta: ExposedMeta): AnyProce
     route: {
       ...def.route,
       spec: (operation: OpenAPI.OperationObject) =>
-        documented(
-          meta,
-          typeof spec === "function" ? spec(operation) : operation,
-          def.route.operationId !== undefined,
-        ),
+        documented(meta, typeof spec === "function" ? spec(operation) : operation, {
+          ownOperationId: def.route.operationId !== undefined,
+          // oRPC reads a GET's input from the query string only.
+          checksBody: (def.route.method ?? "POST") !== "GET",
+          routePath: def.route.path,
+        }),
     },
   });
 }

@@ -57,6 +57,10 @@ interface NewReservationSummaryPanelProps {
   tulipInsuranceAmount: number;
   isTulipInsuranceQuoteLoading: boolean;
   deliveryFee: number;
+  /** The total the creation writes, tax included: the tax engine's. */
+  total: number;
+  /** Taxes on: the mode the prices read in, and the tax added on top of prices given before tax. */
+  taxDisplay: { mode: "inclusive" | "exclusive"; taxOnTop: number } | null;
   deposit: number;
   discount: ReservationDiscount;
   /** Discount resolved in currency units, already clamped to the subtotal. */
@@ -84,6 +88,8 @@ export function NewReservationSummaryPanel({
   tulipInsuranceAmount,
   isTulipInsuranceQuoteLoading,
   deliveryFee,
+  total,
+  taxDisplay,
   deposit,
   discount,
   discountAmount,
@@ -95,6 +101,7 @@ export function NewReservationSummaryPanel({
   onNavigateToSection,
 }: NewReservationSummaryPanelProps) {
   const t = useTranslations("dashboard.reservations.manualForm");
+  const tCheckout = useTranslations("storefront.checkout");
   const { intl: formatLocale } = useFormatLocale();
   const [isEditingDiscount, setIsEditingDiscount] = useState(false);
   const [isEditingDeposit, setIsEditingDeposit] = useState(false);
@@ -126,8 +133,6 @@ export function NewReservationSummaryPanel({
   const customerEmail = selectedCustomer?.email;
 
   const durationLabel = useReservationDurationLabel(detailedDuration, duration);
-
-  const total = subtotal + tulipInsuranceAmount + deliveryFee - discountAmount;
 
   return (
     <Card>
@@ -359,11 +364,22 @@ export function NewReservationSummaryPanel({
             )}
           </div>
 
+          {taxDisplay?.mode === "exclusive" && (
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">{t("taxLine")}</span>
+              <span className="tabular-nums">{formatCurrency(taxDisplay.taxOnTop)}</span>
+            </div>
+          )}
           <Separator className="my-2" />
           <div className="flex justify-between gap-2 text-base font-semibold">
             <span>{t("total")}</span>
             <span className="tabular-nums">{formatCurrency(total)}</span>
           </div>
+          {taxDisplay && (
+            <p className="text-muted-foreground text-xs">
+              {tCheckout(taxDisplay.mode === "inclusive" ? "pricesIncludeTax" : "pricesExcludeTax")}
+            </p>
+          )}
         </div>
 
         <Separator />

@@ -1,5 +1,6 @@
 import {
   db,
+  lockStoreProductRows,
   productUnits,
   products,
   variantDefinitions,
@@ -21,6 +22,7 @@ import {
   type ensureVariantDefinitionInput,
   type updateVariantValueInput,
 } from "../contracts/product-variants";
+import { readAfterCommit } from "../platform/errors";
 import {
   emit,
   eventStore,
@@ -33,6 +35,7 @@ import {
   selectProductsUsingVariant,
   type VariantAxisRef,
 } from "./variant-axes";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * The store's variant catalog, moved from the dashboard's variants router.
@@ -328,7 +331,7 @@ export async function ensureVariantDefinition(
     return { id: definitionId, created: !existing };
   });
 
-  return { ...(await getDefinition(db, storeId, id)), created };
+  return { ...(await readAfterCommit(() => getDefinition(db, storeId, id))), created };
 }
 
 /** Renames a variant. Its key stays, so products keep their link to it. */
@@ -344,7 +347,7 @@ export async function updateVariantDefinition(
       .set({ label: input.label, updatedAt: new Date() })
       .where(and(eq(variantDefinitions.id, input.id), eq(variantDefinitions.storeId, storeId)));
   });
-  return getDefinition(db, storeId, input.id);
+  return readAfterCommit(() => getDefinition(db, storeId, input.id));
 }
 
 /**
@@ -377,7 +380,7 @@ export async function deleteVariantDefinition(
   id: string,
   options: { confirm?: ConfirmStep<VariantDeletionPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
     const definition = await getDefinition(tx, storeId, id);
@@ -405,7 +408,7 @@ export async function deleteVariantDefinition(
       .delete(variantDefinitions)
       .where(and(eq(variantDefinitions.id, id), eq(variantDefinitions.storeId, storeId)));
   });
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   return { id };
 }
 
@@ -420,18 +423,13 @@ export async function withdrawVariantFromProducts(
   options: { confirm?: ConfirmStep<VariantWithdrawalPreview> } = {},
 ) {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let affectedProductCount = 0;
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
     // Every product of the store, before the first plain read: the preview
     // names the products the withdrawal then changes.
-    await tx
-      .select({ id: products.id })
-      .from(products)
-      .where(eq(products.storeId, storeId))
-      .orderBy(asc(products.id))
-      .for("update");
+    await lockStoreProductRows(tx, storeId);
     const definition = await findDefinition(tx, storeId, id);
     if (options.confirm) {
       const using = productsUsing(await readStoreUsage(tx, storeId), definition);
@@ -459,7 +457,7 @@ export async function withdrawVariantFromProducts(
     });
     affectedProductCount = removed.productIds.length;
   });
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (affectedProductCount > 0) emit(actor, { type: "products.changed", store: eventStore(actor) });
   return { id, affectedProductCount };
 }
@@ -522,7 +520,7 @@ export async function createVariantValue(
     definitionLabel: _label,
     key: _key,
     ...value
-  } = await findValue(db, storeId, valueId);
+  } = await readAfterCommit(() => findValue(db, storeId, valueId));
   return { ...value, created };
 }
 
@@ -563,7 +561,7 @@ export async function updateVariantValue(
     definitionLabel: _label,
     key: _key,
     ...value
-  } = await findValue(db, storeId, input.id);
+  } = await readAfterCommit(() => findValue(db, storeId, input.id));
   return value;
 }
 
@@ -577,7 +575,7 @@ export async function deleteVariantValue(
   id: string,
   options: { confirm?: ConfirmStep<VariantValueDeletionPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
     const value = await findValue(tx, storeId, id);
@@ -607,6 +605,6 @@ export async function deleteVariantValue(
     }
     await tx.delete(variantValues).where(eq(variantValues.id, id));
   });
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   return { id };
 }

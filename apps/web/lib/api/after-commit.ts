@@ -12,9 +12,15 @@ import {
   notifyStoreSettingsUpdated,
   notifyTeamMemberInvited,
 } from "@/lib/discord/platform-notifications";
-import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
+import {
+  captureProductServerEvent,
+  captureReservationActionSucceeded,
+} from "@/lib/product-analytics/analytics";
 import { invalidateStoreViewport } from "@/lib/storefront/get-store-viewport";
-import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import {
+  productAnalyticsEvents,
+  reservationAnalyticsActions,
+} from "@/lib/product-analytics/analytics-events";
 
 /**
  * The app's effects of a write the agent-ready API committed
@@ -105,6 +111,16 @@ function pathsToRevalidate(event: ApiEvent): Array<string | { path: string; type
       return ["/dashboard/reservations", `/dashboard/reservations/${event.reservationId}`];
     case "reservation.notesUpdated":
       return [`/dashboard/reservations/${event.reservationId}`];
+    case "reservation.created":
+      // As the dashboard's own creation revalidates them.
+      return ["/dashboard/reservations", "/dashboard"];
+    case "reservation.datesChanged":
+      // As the dashboard's edit revalidates: the customer's account too.
+      return [
+        `/${event.store.slug}/account`,
+        "/dashboard/reservations",
+        `/dashboard/reservations/${event.reservationId}`,
+      ];
     case "store.settingsUpdated":
       return settingsPaths(event.section, event.store.slug);
     case "store.storefrontUpdated":
@@ -158,6 +174,20 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
           }),
         ]);
       };
+    case "reservation.created":
+      // The event the dashboard's own creation sends, from where the booking was made.
+      return () =>
+        captureProductServerEvent({
+          distinctId: store.ownerUserId,
+          event: productAnalyticsEvents.dashboardReservationCreated,
+          properties: {
+            feature: "reservation_management",
+            surface: event.facts.transport === "rpc" ? "dashboard" : "api",
+            store_id: store.id,
+            source: event.facts.transport === "rpc" ? "dashboard_procedure" : event.facts.transport,
+            ...event.facts,
+          },
+        });
     case "product.updated":
       return () => notifyProductUpdated(storeInfo, event.productName);
     case "team.memberInvited":
@@ -170,6 +200,22 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
       return event.section === "company" || event.section === "reservationRules"
         ? () => notifyStoreSettingsUpdated(storeInfo)
         : null;
+    case "reservation.datesChanged":
+      // The dashboard's edit event, with who made it.
+      return () =>
+        captureReservationActionSucceeded({
+          distinctId: store.ownerUserId,
+          storeId: store.id,
+          reservationId: event.reservationId,
+          action: reservationAnalyticsActions.editReservation,
+          properties: {
+            reservation_status: event.status,
+            item_count: event.itemCount,
+            warning_count: event.warningCount,
+            notify_customer: event.notifyCustomer,
+            edited_from: event.transport === "rpc" ? "dashboard" : event.transport,
+          },
+        });
     case "reservation.gateRefused":
       return async () =>
         logReservationGateRefusal(

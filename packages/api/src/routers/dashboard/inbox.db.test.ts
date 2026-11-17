@@ -84,6 +84,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   let apiKeys: typeof import("../../services/api-keys");
   let inbox: typeof import("../../services/inbox");
   let router: typeof import("./inbox").dashboardInboxRouter;
+  let reservationsRouter: typeof import("./reservations").dashboardReservationsRouter;
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -111,6 +112,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     apiKeys = await import("../../services/api-keys");
     inbox = await import("../../services/inbox");
     ({ dashboardInboxRouter: router } = await import("./inbox"));
+    ({ dashboardReservationsRouter: reservationsRouter } = await import("./reservations"));
 
     await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@ib.test" });
     await louezDb.db.insert(louezDb.storeMembers).values([
@@ -254,9 +256,21 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     return call(input);
   }
 
+  /** The store's confirmation, from the dashboard (`reservations.updateStatus`). */
+  const confirmFromDashboard = (
+    id: string,
+    options: { allowOverbooking?: boolean; overrideTurnoverBuffer?: boolean } = {},
+  ) =>
+    (
+      orpc.createRouterClient(reservationsRouter, {
+        context: session(),
+        path: ["dashboard", "reservations"],
+      }) as RouterClient<typeof reservationsRouter>
+    ).updateStatus({ id, status: "confirmed", ...options });
+
   const list = (
     context: BaseContext = session(),
-    input: { cursor?: string; limit?: number } = {},
+    input: { cursor?: string; limit?: number; types?: InboxItem["type"][] } = {},
   ) => run("list", input, context);
 
   async function rejects(promise: Promise<unknown>, code: string) {
@@ -535,6 +549,152 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.deepEqual(
       ofType((await list()).items, "deposit_expiring").map((item) => item.reservation?.id),
       [expired],
+    );
+  });
+
+  test("a deposit hold Stripe has not confirmed shows after 15 minutes, whatever its age, until it is settled", async () => {
+    const attempt = async (
+      reservationId: string,
+      createdAt: Date,
+      status: "pending" | "failed" = "pending",
+    ) => {
+      const id = nextId("ib_pay");
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId,
+        amount: "300.00",
+        type: "deposit_hold",
+        method: "stripe",
+        status,
+        currency: "EUR",
+        createdAt,
+        updatedAt: createdAt,
+      });
+      return id;
+    };
+    const waiting = await attempt(await reservation("confirmed"), ago(HOUR));
+    // No age removes it, nor does the end of the rental: the card may be held.
+    const old = await attempt(await reservation("completed"), ago(40 * DAY));
+    // Five minutes old: its webhook may still settle it.
+    await attempt(await reservation("confirmed"), ago(5 * 60_000));
+    // Refused by Stripe: settled, as failed.
+    await attempt(await reservation("confirmed"), ago(HOUR), "failed");
+
+    const items = ofType((await list()).items, "deposit_unconfirmed");
+    assert.deepEqual(
+      items.map((item) => item.id).sort(),
+      [`deposit_unconfirmed:${old}`, `deposit_unconfirmed:${waiting}`].sort(),
+    );
+    const item = items.find((entry) => entry.id === `deposit_unconfirmed:${waiting}`);
+    assert.equal(item?.severity, "warning");
+    assert.match(item?.summary ?? "", /300\.00 EUR/);
+    assert.match(item?.summary ?? "", /never a second one/);
+    assert.equal(item?.details?.unmatchedPaymentIntentId, null);
+
+    // Louez found an authorization for it at Stripe that does not match the request
+    // (deposit-hold-writes.ts, `recordUnmatchedIntent`): the item stays, and says so.
+    const [{ reservationId: waitingReservation }] = await louezDb.db
+      .select({ reservationId: louezDb.payments.reservationId })
+      .from(louezDb.payments)
+      .where(orm.eq(louezDb.payments.id, waiting));
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("ib_act"),
+      reservationId: waitingReservation,
+      activityType: "payment_updated",
+      metadata: {
+        kind: "deposit_unmatched",
+        attemptId: waiting,
+        unmatchedPaymentIntentId: "pi_unmatched",
+        refusal: "facts_mismatch",
+      },
+      createdAt: new Date(),
+    });
+    const unmatched = ofType((await list()).items, "deposit_unconfirmed").find(
+      (entry) => entry.id === `deposit_unconfirmed:${waiting}`,
+    );
+    assert.equal(unmatched?.details?.unmatchedPaymentIntentId, "pi_unmatched");
+    assert.match(unmatched?.summary ?? "", /found an authorization at Stripe \(pi_unmatched\)/);
+    assert.match(unmatched?.summary ?? "", /does not match the request/);
+    assert.match(unmatched?.summary ?? "", /cancel it in Stripe/);
+
+    // Stripe confirms it: the attempt's row becomes the hold.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ status: "authorized", stripePaymentIntentId: "pi_confirmed" })
+      .where(orm.eq(louezDb.payments.id, waiting));
+    assert.deepEqual(
+      ofType((await list()).items, "deposit_unconfirmed").map((entry) => entry.id),
+      [`deposit_unconfirmed:${old}`],
+    );
+  });
+
+  test("a second deposit hold shows while its release is owed, whatever became of the outbox row", async () => {
+    const owed = async (paymentIntentId: string, since: Date) => {
+      const reservationId = await reservation("confirmed", { depositStatus: "authorized" });
+      const id = nextId("ib_pay");
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId,
+        amount: "300.00",
+        type: "deposit_hold",
+        method: "stripe",
+        status: "authorized",
+        stripePaymentIntentId: paymentIntentId,
+        stripeAccountId: "acct_inbox",
+        releaseOwedAt: since,
+        currency: "EUR",
+      });
+      return { reservationId, paymentId: id, paymentIntentId };
+    };
+    const release = async (
+      hold: Awaited<ReturnType<typeof owed>>,
+      status: "abandoned" | "failed",
+    ) => {
+      await louezDb.db.insert(louezDb.apiEffects).values({
+        id: nextId("ib_eff"),
+        storeId: STORE,
+        type: "deposit.holdRelease",
+        payload: { ...hold, accountId: "acct_inbox" },
+        status,
+        attempts: status === "abandoned" ? 8 : 2,
+        nextAttemptAt: ago(HOUR),
+        createdAt: ago(3 * HOUR),
+      });
+    };
+    // Its outbox row abandoned, still being tried, or deleted by the retention: the
+    // debt is what counts.
+    const abandoned = await owed("pi_second_abandoned", ago(3 * HOUR));
+    await release(abandoned, "abandoned");
+    const trying = await owed("pi_second_trying", ago(3 * HOUR));
+    await release(trying, "failed");
+    const pruned = await owed("pi_second_pruned", ago(40 * DAY));
+    // Owed a few minutes ago: the outbox's first tries may still release it.
+    await owed("pi_second_recent", ago(5 * 60_000));
+
+    const items = ofType((await list()).items, "deposit_release_failed");
+    assert.deepEqual(
+      items.map((item) => item.id).sort(),
+      [abandoned, trying, pruned].map((hold) => `deposit_release_failed:${hold.paymentId}`).sort(),
+    );
+    const item = items.find(
+      (entry) => entry.id === `deposit_release_failed:${abandoned.paymentId}`,
+    );
+    assert.equal(item?.severity, "warning");
+    assert.equal(item?.reservation?.id, abandoned.reservationId);
+    assert.match(item?.summary ?? "", /has not confirmed the release/);
+    assert.doesNotMatch(item?.summary ?? "", /held twice/);
+    assert.match(item?.summary ?? "", /pi_second_abandoned/);
+
+    // Stripe says the authorization is cancelled: nothing is owed any more.
+    await louezDb.db
+      .update(louezDb.payments)
+      .set({ status: "cancelled", releaseOwedAt: null })
+      .where(orm.eq(louezDb.payments.id, abandoned.paymentId));
+    assert.deepEqual(
+      ofType((await list()).items, "deposit_release_failed")
+        .map((entry) => entry.id)
+        .sort(),
+      [trying, pruned].map((hold) => `deposit_release_failed:${hold.paymentId}`).sort(),
     );
   });
 
@@ -996,6 +1156,202 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.ok(Math.abs((items[0]?.occurredAt.getTime() ?? 0) - ago(HOUR).getTime()) < 5_000);
   });
 
+  // --- A confirmation's capacity verdict --------------------------------------
+
+  /** A kayak of one, and a reservation of `status` asking for it. */
+  async function kayakBooking(
+    status: "pending" | "quote" | "confirmed",
+    productId?: string,
+  ): Promise<{ productId: string; reservationId: string; itemId: string }> {
+    const id = productId ?? nextId("ib_prd");
+    if (!productId) {
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Kayak",
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 1,
+      });
+    }
+    const reservationId = await reservation(status);
+    const itemId = nextId("ib_itm");
+    await louezDb.db.insert(louezDb.reservationItems).values({
+      id: itemId,
+      reservationId,
+      productId: id,
+      quantity: 1,
+      unitPrice: "10.00",
+      depositPerUnit: "0.00",
+      totalPrice: "20.00",
+      productSnapshot: { name: "Kayak", description: null, images: [] },
+    });
+    return { productId: id, reservationId, itemId };
+  }
+
+  async function activityOf(reservationId: string) {
+    return louezDb.db
+      .select({
+        type: louezDb.reservationActivity.activityType,
+        metadata: louezDb.reservationActivity.metadata,
+        createdAt: louezDb.reservationActivity.createdAt,
+      })
+      .from(louezDb.reservationActivity)
+      .where(orm.eq(louezDb.reservationActivity.reservationId, reservationId))
+      .orderBy(louezDb.reservationActivity.createdAt, louezDb.reservationActivity.activityType);
+  }
+
+  const overbookingIds = async () =>
+    ofType((await list()).items, "overbooking").map((item) => item.reservation?.id);
+
+  test("a quote created over the stock leaves the inbox once the store confirms it, the stock freed", async () => {
+    const other = await kayakBooking("confirmed");
+    const { reservationId: quote } = await kayakBooking("quote", other.productId);
+    await activity(
+      quote,
+      "created",
+      {
+        source: "manual",
+        overbooked: true,
+        overbookingShortfalls: [{ productId: other.productId, requested: 1, available: 0 }],
+      },
+      ago(HOUR),
+    );
+    assert.deepEqual(await overbookingIds(), [quote]);
+
+    // Still short: refused, and nothing is recorded.
+    await rejects(confirmFromDashboard(quote), "RESERVATION_INSUFFICIENT_CAPACITY");
+    assert.deepEqual(await overbookingIds(), [quote]);
+
+    await setStatus(other.reservationId, "cancelled");
+    assert.equal((await confirmFromDashboard(quote)).to, "confirmed");
+
+    const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
+    assert.equal(confirmed?.metadata?.overbooked, false);
+    assert.equal(confirmed?.metadata?.overbookingShortfalls, undefined);
+    assert.deepEqual(await overbookingIds(), []);
+  });
+
+  test("a quote the store confirms over the stock stays in the inbox with the shortfalls it booked over", async () => {
+    const other = await kayakBooking("confirmed");
+    const {
+      productId,
+      reservationId: quote,
+      itemId,
+    } = await kayakBooking("quote", other.productId);
+    await activity(quote, "created", { source: "manual", overbooked: true }, ago(HOUR));
+
+    await confirmFromDashboard(quote, { allowOverbooking: true });
+
+    const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
+    assert.deepEqual(confirmed?.metadata?.overbookingShortfalls, [
+      {
+        productId,
+        productName: "Kayak",
+        combinationKey: null,
+        requested: 1,
+        available: 0,
+        reservationItemId: itemId,
+        selectedAttributes: null,
+      },
+    ]);
+    // Past the inbox's hold-back, still after the creation's verdict.
+    await louezDb.db
+      .update(louezDb.reservationActivity)
+      .set({ createdAt: ago(HOUR / 2) })
+      .where(
+        orm.and(
+          orm.eq(louezDb.reservationActivity.reservationId, quote),
+          orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
+        ),
+      );
+    const items = ofType((await list()).items, "overbooking");
+    assert.deepEqual(
+      items.map((item) => [item.reservation?.id, item.details.productsShort]),
+      [[quote, 1]],
+    );
+    // The confirmation's verdict is the latest: the inbox dates the item by it.
+    assert.ok(Math.abs((items[0]?.occurredAt.getTime() ?? 0) - ago(HOUR / 2).getTime()) < 5_000);
+  });
+
+  test("a quote the store confirms past the turnover buffer lists nothing: the store chose it", async () => {
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ settings: { ...SETTINGS, turnoverBufferMinutes: 30 } })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    // The kayak comes back 15 minutes before the quote starts.
+    const { productId, reservationId: other } = await kayakBooking("confirmed");
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ startDate: ahead(DAY), endDate: new Date(ahead(2 * DAY).getTime() - 15 * 60_000) })
+      .where(orm.eq(louezDb.reservations.id, other));
+    const { reservationId: quote } = await kayakBooking("quote", productId);
+
+    await rejects(confirmFromDashboard(quote), "RESERVATION_TURNOVER_BUFFER_CONFLICT");
+    assert.equal(
+      (await confirmFromDashboard(quote, { overrideTurnoverBuffer: true })).to,
+      "confirmed",
+    );
+
+    const confirmed = (await activityOf(quote)).find((row) => row.type === "confirmed");
+    assert.equal(confirmed?.metadata?.turnoverBufferOverridden, true);
+    // Past the inbox's hold-back.
+    await louezDb.db
+      .update(louezDb.reservationActivity)
+      .set({ createdAt: ago(HOUR / 2) })
+      .where(orm.eq(louezDb.reservationActivity.reservationId, quote));
+    assert.deepEqual(await overbookingIds(), []);
+    assert.deepEqual(
+      (await list()).items.filter((item) => item.reservation?.id === quote),
+      [],
+      "no item of any type",
+    );
+  });
+
+  test("a confirmation of a booking never overbooked records that it fits, and shows nothing", async () => {
+    const { reservationId } = await kayakBooking("pending");
+    await activity(reservationId, "created", { source: "online" }, ago(HOUR));
+
+    await confirmFromDashboard(reservationId);
+
+    const confirmed = (await activityOf(reservationId)).find((row) => row.type === "confirmed");
+    assert.deepEqual(
+      { overbooked: confirmed?.metadata?.overbooked, actor: confirmed?.metadata?.actor },
+      { overbooked: false, actor: "store_user" },
+    );
+    assert.deepEqual(await overbookingIds(), []);
+  });
+
+  test("a confirmation's verdict comes after a creation and an edit of the same second", async () => {
+    const { reservationId: quote } = await kayakBooking("quote");
+    // The creation and an edit fall in one second that the confirmation's
+    // clock has not reached: its row must still come after them, or the
+    // inbox, which takes the strictly latest verdict, would keep the edit's.
+    const second = new Date(Math.floor(ahead(60_000).getTime() / 1000) * 1000);
+    await activity(quote, "created", { source: "manual", overbooked: true }, second);
+    await activity(quote, "modified", { overbooked: true }, second);
+
+    await confirmFromDashboard(quote);
+
+    const rows = await activityOf(quote);
+    const verdicts = rows.filter((row) => row.metadata && "overbooked" in row.metadata);
+    assert.deepEqual(
+      verdicts.map((row) => [row.type, row.createdAt.getTime() - second.getTime()]),
+      [
+        ["created", 0],
+        ["modified", 0],
+        ["confirmed", 1000],
+      ],
+    );
+    assert.equal(verdicts.at(-1)?.metadata?.overbooked, false);
+    // Only the row is dated so: the status's own dates are the change's.
+    const [locked] = await louezDb.db
+      .select({ billableAt: louezDb.reservations.billableAt })
+      .from(louezDb.reservations)
+      .where(orm.eq(louezDb.reservations.id, quote));
+    assert.ok(locked?.billableAt && locked.billableAt < second);
+  });
+
   test("a supplier invoice shows until it is handled, to who may read integrations", async () => {
     await louezDb.db.insert(louezDb.storeIntegrations).values({
       id: nextId("ib_int"),
@@ -1392,6 +1748,81 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.doesNotMatch(redacted?.summary ?? "", /Ada/);
   });
 
+  test("a customer e-mail of a reservation write the outbox gave up on shows, named by its type, with why", async () => {
+    const reservationId = await reservation("quote");
+    const given = (type: string, lastError: string, attempts: number) => ({
+      id: nextId("ib_eff"),
+      storeId: STORE,
+      reservationId,
+      customerId: CUSTOMER,
+      type,
+      payload: { storeId: STORE },
+      status: "abandoned" as const,
+      attempts,
+      lastError,
+      nextAttemptAt: ago(HOUR),
+      createdAt: ago(3 * HOUR),
+    });
+    const rows = [
+      given(
+        "reservation.quoteEmail",
+        "Abandoned: recipient_changed: the reservation's customer or their address is not the one announced",
+        1,
+      ),
+      given(
+        "reservation.confirmationEmail",
+        "Abandoned: email_not_configured: no e-mail service is set up",
+        1,
+      ),
+      given("reservation.modifiedEmail", "SMTP refused the message", 8),
+    ];
+    await louezDb.db.insert(louezDb.apiEffects).values(rows);
+
+    const items = ofType((await list()).items, "message_not_sent");
+    const byId = new Map(items.map((item) => [item.id, item]));
+    for (const [row, label, notification, why, reason] of [
+      [
+        rows[0],
+        "quote",
+        "customer_quote_sent",
+        "was not sent \\(the customer's address changed after it was written\\)",
+        "recipient_changed",
+      ],
+      [
+        rows[1],
+        "confirmation message",
+        "customer_reservation_confirmed",
+        "was not sent \\(no e-mail service is set up\\)",
+        "email_not_configured",
+      ],
+      [
+        rows[2],
+        "modification message",
+        "customer_reservation_modified",
+        "never went out after every try",
+        null,
+      ],
+    ] as const) {
+      const item = byId.get(`message_not_sent:${row?.id}`);
+      assert.match(
+        item?.summary ?? "",
+        new RegExp(
+          `^The ${label} \\(email\\) to the customer of .+ ${why}: contact the customer yourself\\.$`,
+        ),
+      );
+      assert.equal(item?.severity, "warning");
+      assert.deepEqual(
+        [
+          item?.details.audience,
+          item?.details.channel,
+          item?.details.notification,
+          item?.details.reason,
+        ],
+        ["customer", "email", notification, reason],
+      );
+    }
+  });
+
   test("an operation whose outcome is unknown shows to the connection that made it and to the dashboard", async () => {
     const agent = await apiKey();
     const otherAgent = await apiKey();
@@ -1438,7 +1869,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
 
   // --- Rights and isolation ---------------------------------------------------
 
-  test("without payments read, no payment item; without reservations and settings, no inbox", async () => {
+  test("without payments read, no payment item; without reservations and settings, no item but its own approvals", async () => {
     const id = await reservation("confirmed", {
       depositStatus: "authorized",
       depositExpiresAt: ahead(DAY),
@@ -1452,8 +1883,38 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.ok(!types.has("payment_failed"));
     assert.ok(!types.has("deposit_expiring"));
 
+    // Products alone open the inbox to the approvals of products, and to nothing else.
     const productsOnly = await apiKey({ ...none, products: "read" });
-    await rejects(list(productsOnly()), "PERMISSION_DENIED");
+    assert.deepEqual((await list(productsOnly())).items, []);
+  });
+
+  test("types narrows the inbox to those types, never past what the caller may read; an unknown type is refused", async () => {
+    const id = await reservation("confirmed", {
+      depositStatus: "authorized",
+      depositExpiresAt: ahead(DAY),
+    });
+    await activity(id, "payment_failed", { amount: 20 }, ago(HOUR));
+    await reservation("pending");
+
+    const paymentItems = ["payment_failed", "deposit_expiring"] as const;
+    const only = await list(session(), { types: [...paymentItems] });
+    assert.deepEqual(new Set(only.items.map((item) => item.type)), new Set(paymentItems));
+
+    // A key without payments asks for payment items: it gets none, and its cursor still works.
+    const noPayments = await apiKey({ ...everything, payments: "none" });
+    const asked = await list(noPayments(), { types: ["payment_failed", "booking_request"] });
+    assert.deepEqual(
+      asked.items.map((item) => item.type),
+      ["booking_request"],
+    );
+    const again = await list(noPayments(), {
+      types: ["payment_failed", "booking_request"],
+      cursor: asked.nextCursor,
+    });
+    assert.deepEqual(again.items, []);
+
+    await rejects(list(session(), { types: ["not_a_type" as InboxItem["type"]] }), "BAD_REQUEST");
+    await rejects(list(session(), { types: [] }), "BAD_REQUEST");
   });
 
   test("a key of one store never sees another store's items", async () => {

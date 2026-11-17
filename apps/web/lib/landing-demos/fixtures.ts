@@ -275,6 +275,8 @@ export const getDemoReservationItems = (
     subtotalAmount: String(
       lines.reduce((total, line) => total + line.unitPrice * line.quantity, 0),
     ),
+    // A demo carries no tax.
+    taxDisplayMode: null,
     depositAmount: String(
       lines.reduce(
         (total, line) => total + Number(DEMO_PRODUCTS[line.productIndex].deposit) * line.quantity,

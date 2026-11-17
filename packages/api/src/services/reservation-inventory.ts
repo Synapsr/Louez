@@ -1,12 +1,18 @@
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 
-import { loadConsumableReservedQuantities } from "@louez/db";
-import type { BlockingReservationStatus, Database, Transaction } from "@louez/db";
+import { loadConsumableReservedQuantities, lockProductRows } from "@louez/db";
+import type {
+  BlockingReservationStatus,
+  Database,
+  ReservationDemandLine,
+  Transaction,
+} from "@louez/db";
 import {
   getBlockingReservationStatuses,
   buildReservationAvailabilityPredicate,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
+  findBusyUnitIds,
   productAccessories,
   productUnits,
   products,
@@ -15,18 +21,66 @@ import {
 import type { UnitAttributes } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
+  calculatePeakReservedQuantities,
   canonicalizeAttributes,
   getDeterministicCombinationSortValue,
-  getProductCombinationAvailabilityKey,
   isPooledCombinationKey,
   matchesSelectedAttributes,
 } from "@louez/utils";
 
-import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "./availability";
-import { spreadAcrossCombinations } from "./pooled-allocation";
+import type { CapacityShortfall, ReservationUnitConflict } from "../contracts/reservations";
+
+import { loadExcludedUnitInfo, netOfExcludedUnits } from "./availability";
+import {
+  capacityVerdictMetadata,
+  nextCapacityVerdictDate,
+  turnoverBufferVerdictMetadata,
+} from "./capacity-verdict";
+import {
+  allocateStock,
+  combinationsServing,
+  heldUnitsOwed,
+  type StockCombination,
+  type StockLineAllocation,
+} from "./stock-allocation";
 import type { PricingCatalog } from "./pricing-catalog";
 import { validateRequiredAccessoryLines } from "./required-accessories";
 import { failReservation, type ReservationFailure } from "./reservation-failure";
+
+/**
+ * One line of the stock a status change takes, in the canonical form its
+ * confirmation binds: the product, the quantity, the variant the line
+ * selects as the stock check itself reads it (its combination, and its
+ * choice on the product's booking axes today, `canonicalizeAttributes`, or
+ * null for none), its assigned units, sorted, and a consumable's units
+ * consumed and to take, or null. Every field is always present, so two
+ * reads of an unchanged reservation give the same value.
+ */
+export interface StockDemandLine {
+  line: string;
+  product: string;
+  quantity: number;
+  combinationKey: string | null;
+  choice: UnitAttributes | null;
+  units: string[];
+  consumable: { consumed: number; takes: number } | null;
+}
+
+/** The demand read under the locks (`readReservationStockDemand`, packages/db), in its canonical form. */
+export function stockDemandOf(lines: readonly ReservationDemandLine[]): StockDemandLine[] {
+  return lines.map((line) => {
+    const choice = canonicalizeAttributes(line.axes, line.selectedAttributes);
+    return {
+      line: line.line,
+      product: line.product,
+      quantity: line.quantity,
+      combinationKey: line.combinationKey ?? null,
+      choice: Object.keys(choice).length > 0 ? choice : null,
+      units: [...line.units].sort(),
+      consumable: line.consumable ?? null,
+    };
+  });
+}
 
 export interface ReserveInventoryLine {
   lineId?: string;
@@ -60,19 +114,6 @@ export interface ResolvedLineCombination {
 
 type LockedProduct = typeof products.$inferSelect;
 
-/**
- * A line the stock cannot cover whole: how many units it asks for, and how
- * many of them are left next to the other bookings and the lines before it.
- */
-export interface CapacityShortfall {
-  productId: string;
-  productName: string;
-  /** The combination the line chose; null for a counted product or a line served by any unit. */
-  combinationKey: string | null;
-  requested: number;
-  available: number;
-}
-
 export interface ReservedInventory {
   lockedProductsById: Map<string, LockedProduct>;
   /** Resolved unit combination per line key (tracked products only). */
@@ -105,13 +146,7 @@ export const lockReservationProducts = async (
     return new Map();
   }
 
-  const requestedProductIdSql = sql.join(
-    requestedProductIds.map((productId) => sql`${productId}`),
-    sql`, `,
-  );
-  await tx.execute(
-    sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${storeId} FOR UPDATE`,
-  );
+  await lockProductRows(tx, storeId, requestedProductIds);
 
   const lockedProducts = await tx.query.products.findMany({
     where: and(eq(products.storeId, storeId), inArray(products.id, requestedProductIds)),
@@ -125,7 +160,11 @@ interface ReserveInventoryInput {
   /** Booked lines being re-checked themselves, left out of the overlap. */
   excludeReservationItemIds?: string[];
   skipConsumableCheck?: boolean;
-  /** For a single booked line re-checked on its own, outside its reservation. */
+  /**
+   * For lines not composed by this write: a booking the store typed, a
+   * confirmation of the lines as they are, a single booked line re-checked on
+   * its own. A cart a customer composes always checks them.
+   */
   skipRequiredAccessoryCheck?: boolean;
   storeId: string;
   lockedProductsById: Map<string, LockedProduct>;
@@ -137,23 +176,48 @@ interface ReserveInventoryInput {
 
 type InventoryReserved = { ok: true; inventory: ReservedInventory };
 
+/** What `reserveInventory` answers with `onShortfall: "collect"` when it went through. */
+export type CollectedInventory = InventoryReserved & {
+  shortfalls: CapacityShortfall[];
+  /** The position in `lines` of each shortfall, in the same order. */
+  shortfallLineIndexes: number[];
+  /**
+   * What each short line asks of the product's attributes as this check
+   * read it (its choices on the attributes the product has today), in the
+   * same order; null when it asks for none.
+   */
+  shortfallChoices: Array<UnitAttributes | null>;
+  /**
+   * The units held by the lines (`assignedUnitIds`) that the other
+   * bookings need, in the order of the lines (`heldUnitsOwed`).
+   */
+  uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }>;
+};
+
 /**
  * Inside the reservation transaction, after `lockReservationProducts`:
  * re-check required accessories against the current links, recompute what is
  * reserved during the window (pending blocks unless the store says otherwise,
- * turnover buffer applied, consumables shared across lines) and allocate each
- * tracked line to a deterministic unit combination. Nothing is written; the
- * caller inserts.
+ * turnover buffer applied, consumables shared across lines) and give each
+ * tracked line its units. Nothing is written; the caller inserts.
+ *
+ * The lines of a tracked product are allocated by the rule of
+ * `allocateStock` (S1): another booking that left a size or a colour open is
+ * counted on every combination that can serve it, not on the product alone.
+ * A line with an exact combination, or a checkout line, is placed whole on
+ * the first combination of the deterministic order that fits; a line with no
+ * exact combination keeps its pooled key and is served by any matching unit.
  *
  * A line the stock cannot cover stops the check with
  * `errors.productNoLongerAvailable`. With `onShortfall: "collect"` it is
  * recorded instead, takes what is left, and the other lines are still checked:
  * the answer then lists every shortfall, in the order of the lines, for a
- * caller that may book over the stock.
+ * caller that may book over the stock, and each unit a line holds that the
+ * other bookings need, decided apart from the allocation (`heldUnitsOwed`).
  */
 export function reserveInventory(
   input: ReserveInventoryInput & { onShortfall: "collect" },
-): Promise<(InventoryReserved & { shortfalls: CapacityShortfall[] }) | ReservationFailure>;
+): Promise<CollectedInventory | ReservationFailure>;
 export function reserveInventory(
   input: ReserveInventoryInput & { onShortfall?: "fail" },
 ): Promise<InventoryReserved | ReservationFailure>;
@@ -171,16 +235,28 @@ export async function reserveInventory({
   skipRequiredAccessoryCheck = false,
   onShortfall = "fail",
 }: ReserveInventoryInput & { onShortfall?: "fail" | "collect" }): Promise<
-  (InventoryReserved & { shortfalls?: CapacityShortfall[] }) | ReservationFailure
+  | (InventoryReserved & {
+      shortfalls?: CapacityShortfall[];
+      shortfallLineIndexes?: number[];
+      shortfallChoices?: Array<UnitAttributes | null>;
+      uncoveredHeldUnits?: Array<{ lineIndex: number; unitId: string }>;
+    })
+  | ReservationFailure
 > {
   const collect = onShortfall === "collect";
   const shortfallByLineIndex = new Map<number, CapacityShortfall>();
+  const shortfallChoiceByLineIndex = new Map<number, UnitAttributes | null>();
+  const uncoveredHeldUnits: Array<{ lineIndex: number; unitId: string }> = [];
   const recordShortfall = (
     index: number,
     line: ReserveInventoryLine,
     product: LockedProduct,
     combinationKey: string | null,
     available: number,
+    // What the line asks of the product's attributes as this check read it,
+    // against the product's attributes today: a choice on an attribute the
+    // product no longer has restricts nothing, and is not one.
+    selectedAttributes: UnitAttributes = {},
   ) => {
     shortfallByLineIndex.set(index, {
       productId: product.id,
@@ -189,17 +265,23 @@ export async function reserveInventory({
       requested: line.quantity,
       available,
     });
+    shortfallChoiceByLineIndex.set(
+      index,
+      Object.keys(selectedAttributes).length > 0 ? selectedAttributes : null,
+    );
   };
-  const succeed = (inventory: ReservedInventory) =>
-    collect
-      ? {
-          ok: true as const,
-          inventory,
-          shortfalls: [...shortfallByLineIndex.entries()]
-            .sort(([a], [b]) => a - b)
-            .map(([, shortfall]) => shortfall),
-        }
-      : { ok: true as const, inventory };
+  const succeed = (inventory: ReservedInventory) => {
+    if (!collect) return { ok: true as const, inventory };
+    const byLine = [...shortfallByLineIndex.entries()].sort(([a], [b]) => a - b);
+    return {
+      ok: true as const,
+      inventory,
+      shortfalls: byLine.map(([, shortfall]) => shortfall),
+      shortfallLineIndexes: byLine.map(([index]) => index),
+      shortfallChoices: byLine.map(([index]) => shortfallChoiceByLineIndex.get(index) ?? null),
+      uncoveredHeldUnits: [...uncoveredHeldUnits].sort((a, b) => a.lineIndex - b.lineIndex),
+    };
+  };
 
   const requestedProductIds = [...new Set(lines.map((line) => line.productId))];
   if (requestedProductIds.length === 0) {
@@ -296,19 +378,23 @@ export async function reserveInventory({
     trackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
   );
   const excludedUnitInfo = await loadExcludedUnitInfo(tx, excludedProductUnitIds);
-  const combinationKeyByUnitId = new Map(
-    availableUnits.map((unit) => [unit.id, unit.combinationKey || DEFAULT_COMBINATION_KEY]),
-  );
+  const rentableUnitById = new Map(availableUnits.map((unit) => [unit.id, unit]));
 
-  const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
+  const netReservations = netOfExcludedUnits({
     reservations: overlappingReservations,
-    startDate: window.start,
-    endDate: window.end,
-    turnoverBufferMinutes,
     excludedProductUnitIds,
     excludedUnitInfo,
     consumableProductIds: new Set(consumableProductIds),
-    combinationKeyByUnitId,
+    combinationKeyByUnitId: new Map(
+      availableUnits.map((unit) => [unit.id, unit.combinationKey || DEFAULT_COMBINATION_KEY]),
+    ),
+  });
+  // Products counted by quantity: the most the other bookings hold at once.
+  const { reservedByProduct } = calculatePeakReservedQuantities({
+    reservations: netReservations,
+    startDate: window.start,
+    endDate: window.end,
+    turnoverBufferMinutes,
   });
   const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
     storeId,
@@ -319,85 +405,140 @@ export async function reserveInventory({
     reservedByProduct.set(productId, reservedQuantity);
   }
 
-  const combinationsByProduct = new Map<
-    string,
-    Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
+  // Products whose units are tracked: all the lines of a product are placed
+  // at once, next to what the other bookings ask of it at each instant.
+  const trackedByLineIndex = new Map<
+    number,
+    { allocation: StockLineAllocation; pooled: boolean; selectedAttributes: UnitAttributes }
   >();
-  for (const unit of availableUnits) {
-    const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
-    const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
-    const current = productCombinations.get(combinationKey);
-    // Same rule as availability: only the product's current axes are kept,
-    // so a value left over from a removed axis never lands on the booking.
-    const selectedAttributes = canonicalizeAttributes(
-      lockedProductsById.get(unit.productId)?.bookingAttributeAxes,
-      unit.attributes,
+  const combinationsByProduct = new Map<string, Map<string, StockCombination>>();
+  const bufferMs = Math.max(0, turnoverBufferMinutes) * 60_000;
+  for (const product of lockedProducts) {
+    if (!product.trackUnits) continue;
+    const axes = product.bookingAttributeAxes || [];
+    const productLines = lines.flatMap((line, index) =>
+      line.productId === product.id
+        ? [
+            {
+              line,
+              index,
+              pooled: isPooledLine(line, axes),
+              // A booked line keeps the attributes chosen at the time; only
+              // the product's current axes take part in matching, so a value
+              // from an axis withdrawn since then no longer blocks that line.
+              selectedAttributes: canonicalizeAttributes(axes, line.selectedAttributes),
+              // The rentable units of the product the line holds: one that is
+              // not rentable is the unit check's (S4), not the stock's. Each
+              // is counted in its own combination's capacity below.
+              heldUnits: (line.assignedUnitIds ?? []).flatMap((unitId) => {
+                const unit = rentableUnitById.get(unitId);
+                return unit?.productId === product.id
+                  ? [{ unitId, combinationKey: unit.combinationKey || DEFAULT_COMBINATION_KEY }]
+                  : [];
+              }),
+            },
+          ]
+        : [],
+    );
+    if (productLines.length === 0) continue;
+
+    const capacity = new Map<string, number>();
+    const combinationByKey = new Map<string, StockCombination>();
+    for (const unit of availableUnits) {
+      if (unit.productId !== product.id) continue;
+      const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
+      capacity.set(combinationKey, (capacity.get(combinationKey) ?? 0) + 1);
+      // Same rule as availability: only the product's current axes are kept,
+      // so a value left over from a removed axis never lands on the booking.
+      const selectedAttributes = canonicalizeAttributes(axes, unit.attributes);
+      const known = combinationByKey.get(combinationKey);
+      if (!known || Object.keys(known.selectedAttributes).length === 0) {
+        combinationByKey.set(combinationKey, { combinationKey, selectedAttributes });
+      }
+    }
+    combinationsByProduct.set(product.id, combinationByKey);
+    const sortValue = (combination: StockCombination) =>
+      getDeterministicCombinationSortValue(axes, combination.selectedAttributes);
+    const combinations = [...combinationByKey.values()].sort(
+      (a, b) =>
+        sortValue(a).localeCompare(sortValue(b), "en") ||
+        a.combinationKey.localeCompare(b.combinationKey, "en"),
     );
 
-    if (!current) {
-      productCombinations.set(combinationKey, { totalQuantity: 1, selectedAttributes });
-    } else {
-      current.totalQuantity += 1;
-      if (Object.keys(current.selectedAttributes).length === 0) {
-        current.selectedAttributes = selectedAttributes;
-      }
-      productCombinations.set(combinationKey, current);
+    // The span each other booking holds its units, inside the window, both
+    // widened by the turnover buffer as `calculatePeakReservedQuantities` does.
+    const spans = netReservations.flatMap((reservation) => {
+      const start = Math.max(reservation.startDate.getTime(), window.start.getTime());
+      const end = Math.min(reservation.endDate.getTime(), window.end.getTime()) + bufferMs;
+      return reservation.items.flatMap((item) =>
+        item.productId === product.id
+          ? [
+              {
+                start,
+                end,
+                demand: {
+                  quantity: item.quantity,
+                  combinationKeys: item.heldUnit
+                    ? [item.combinationKey || DEFAULT_COMBINATION_KEY]
+                    : combinationsServing(axes, combinations, item),
+                },
+              },
+            ]
+          : [],
+      );
+    });
+
+    const allocations = allocateStock({
+      capacity,
+      bookings: spans,
+      lines: productLines.map(({ line, pooled, selectedAttributes, heldUnits }) => ({
+        quantity: line.quantity,
+        candidates: combinations
+          .filter(
+            (combination) =>
+              (!line.combinationKey ||
+                pooled ||
+                combination.combinationKey === line.combinationKey) &&
+              matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
+          )
+          .map((combination) => combination.combinationKey),
+        // A checkout line books one combination; a pooled line is served by
+        // any unit that matches what it chose, and keeps on their
+        // combinations the units it already holds.
+        single: !pooled,
+        held: pooled ? heldUnits.map((unit) => unit.combinationKey) : [],
+      })),
+    });
+    for (const [position, { index, pooled, selectedAttributes }] of productLines.entries()) {
+      const allocation = allocations[position];
+      if (allocation) trackedByLineIndex.set(index, { allocation, pooled, selectedAttributes });
     }
 
-    combinationsByProduct.set(unit.productId, productCombinations);
+    if (collect) {
+      // Whether a held unit is owed to the other bookings is decided apart
+      // from the allocation, against them and the held units only: every unit
+      // each line holds, whatever it asks for.
+      const { owed } = heldUnitsOwed({
+        capacity,
+        bookings: spans,
+        held: productLines.map(({ heldUnits }) => heldUnits.map((unit) => unit.combinationKey)),
+      });
+      // No held unit is `unplaceable` here: each is a rentable unit of this
+      // product, counted in its own combination's capacity, and a unit is
+      // held by one line of a reservation at most (one assignment per line,
+      // and both writers that assign a unit refuse one a sibling line holds),
+      // so a combination never has more held units than units.
+      for (const { line, position } of owed) {
+        const entry = productLines[line];
+        const unitId = entry?.heldUnits[position]?.unitId;
+        if (entry && unitId) uncoveredHeldUnits.push({ lineIndex: entry.index, unitId });
+      }
+    }
   }
 
   const resolvedCombinationByLineKey = new Map<string, ResolvedLineCombination>();
 
-  // Units already held by pooled lines are charged first, across every line,
-  // so a floating line never takes a unit another line of the booking holds.
-  // Each held unit must still fit its combination next to the other bookings.
-  const heldCountByLineKey = new Map<string, number>();
-  // Collect mode only: held units whose combination is already full.
-  const unfitHeldCountByLineKey = new Map<string, number>();
   for (const [index, line] of lines.entries()) {
-    const product = lockedProductsById.get(line.productId);
-    if (!product?.trackUnits || !line.assignedUnitIds?.length) continue;
-    if (!isPooledLine(line, product.bookingAttributeAxes)) continue;
-    const productCombinations = combinationsByProduct.get(product.id) || new Map();
-    let held = 0;
-    let unfit = 0;
-    for (const unitId of line.assignedUnitIds) {
-      if (held + unfit >= line.quantity) break;
-      const combinationKey = combinationKeyByUnitId.get(unitId);
-      if (!combinationKey) continue;
-      const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
-      const total = productCombinations.get(combinationKey)?.totalQuantity ?? 0;
-      if (total - (reservedByProductCombination.get(key) || 0) < 1) {
-        if (!collect) {
-          return failReservation("errors.productNoLongerAvailable", { name: product.name });
-        }
-        unfit += 1;
-        continue;
-      }
-      reservedByProductCombination.set(key, (reservedByProductCombination.get(key) || 0) + 1);
-      held += 1;
-    }
-    const lineKey = getReservationLineKey(line, index);
-    heldCountByLineKey.set(lineKey, held);
-    unfitHeldCountByLineKey.set(lineKey, unfit);
-  }
-
-  // Lines that chose a combination keep their order; pooled lines come last,
-  // the ones that chose the most first, so a pooled line never takes the
-  // unit a specific line of the same booking needs.
-  const orderedLines = lines
-    .map((line, index) => {
-      const axes = lockedProductsById.get(line.productId)?.bookingAttributeAxes;
-      const pooled = isPooledLine(line, axes);
-      const chosen = pooled
-        ? Object.keys(canonicalizeAttributes(axes, line.selectedAttributes)).length
-        : 0;
-      return { line, index, rank: pooled ? 1 : 0, chosen };
-    })
-    .sort((a, b) => a.rank - b.rank || b.chosen - a.chosen || a.index - b.index);
-
-  for (const { line, index } of orderedLines) {
     const product = lockedProductsById.get(line.productId);
     if (!product) return failReservation("errors.productNotFound");
     if (skipConsumableCheck && product.stockKind === "consumable") continue;
@@ -422,149 +563,122 @@ export async function reserveInventory({
       continue;
     }
 
-    const axes = product.bookingAttributeAxes || [];
-    const productCombinations = combinationsByProduct.get(product.id) || new Map();
-    // A booked line keeps the attributes chosen at the time; only the
-    // product's current axes take part in matching, so a value from an axis
-    // withdrawn since then no longer blocks the confirmation of that line.
-    const selectedAttributes = canonicalizeAttributes(axes, line.selectedAttributes);
-    // A line booked without a choice is served by any unit; units already
-    // promised to such lines are counted on the product, so every line must
-    // also fit in the product's remaining stock, not only in its combination.
-    const pooledLine = isPooledLine(line, axes);
-    const productTotalQuantity = [...productCombinations.values()].reduce(
-      (sum, combinationData) => sum + combinationData.totalQuantity,
-      0,
-    );
-    const productReservedQuantity = reservedByProduct.get(line.productId) || 0;
-    const productFreeQuantity = Math.max(0, productTotalQuantity - productReservedQuantity);
-    if (line.quantity > productFreeQuantity && !collect) {
-      return failReservation("errors.productNoLongerAvailable", { name: product.name });
+    const tracked = trackedByLineIndex.get(index);
+    if (!tracked) continue;
+    const { allocation, pooled, selectedAttributes } = tracked;
+    if (allocation.served < line.quantity) {
+      if (!collect) {
+        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+      }
+      recordShortfall(
+        index,
+        line,
+        product,
+        !pooled && line.combinationKey && line.combinationKey !== DEFAULT_COMBINATION_KEY
+          ? line.combinationKey
+          : null,
+        allocation.served,
+        selectedAttributes,
+      );
     }
 
-    const candidates = [...productCombinations.entries()]
-      .map(([combinationKey, combinationData]) => ({ combinationKey, ...combinationData }))
-      .filter(
-        (combination) =>
-          (!line.combinationKey ||
-            pooledLine ||
-            combination.combinationKey === line.combinationKey) &&
-          matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
-      )
-      .sort((a, b) => {
-        const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes);
-        const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes);
-        return sortA.localeCompare(sortB, "en");
-      });
-    const freeInCombination = (combinationKey: string, totalQuantity: number) =>
-      Math.max(
-        0,
-        totalQuantity -
-          (reservedByProductCombination.get(
-            getProductCombinationAvailabilityKey(product.id, combinationKey),
-          ) || 0),
-      );
-
-    if (pooledLine) {
-      // No single combination has to cover a pooled line. Its held units were
-      // charged above; the rest is taken wherever units are left, and the
-      // line keeps its pooled key.
-      const lineKey = getReservationLineKey(line, index);
-      const held = heldCountByLineKey.get(lineKey) ?? 0;
-      const unfitHeld = unfitHeldCountByLineKey.get(lineKey) ?? 0;
-      const wanted = line.quantity - held - unfitHeld;
-      const floating = spreadAcrossCombinations(
-        candidates,
-        (combinationKey) =>
-          reservedByProductCombination.get(
-            getProductCombinationAvailabilityKey(product.id, combinationKey),
-          ) || 0,
-        // Collect mode only: a line the product cannot cover takes what it has left.
-        Math.max(0, Math.min(wanted, productFreeQuantity - held)),
-      );
-      const served = Math.min(
-        productFreeQuantity,
-        held + [...floating.taken.values()].reduce((sum, quantity) => sum + quantity, 0),
-      );
-      if (served < line.quantity) {
-        if (!collect) {
-          return failReservation("errors.productNoLongerAvailable", { name: product.name });
-        }
-        recordShortfall(index, line, product, null, served);
-      }
-      for (const [combinationKey, quantity] of floating.taken) {
-        const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
-        reservedByProductCombination.set(
-          key,
-          (reservedByProductCombination.get(key) || 0) + quantity,
-        );
-      }
-      reservedByProduct.set(line.productId, (reservedByProduct.get(line.productId) || 0) + served);
+    const lineKey = getReservationLineKey(line, index);
+    if (pooled) {
+      // No single combination has to cover a pooled line: it keeps its pooled key.
       resolvedCombinationByLineKey.set(lineKey, {
         combinationKey: line.combinationKey ?? DEFAULT_COMBINATION_KEY,
         selectedAttributes,
       });
       continue;
     }
-
-    let resolvedCombination = candidates.find(
-      (candidate) =>
-        freeInCombination(candidate.combinationKey, candidate.totalQuantity) >= line.quantity,
-    );
-    let served = line.quantity;
-
-    if (!resolvedCombination || line.quantity > productFreeQuantity) {
-      if (!collect) {
-        return failReservation("errors.productNoLongerAvailable", { name: product.name });
-      }
-      // The line takes what is left of the combination that has the most, the
-      // first of them in the deterministic order.
-      resolvedCombination ??= candidates.reduce<(typeof candidates)[number] | undefined>(
-        (best, candidate) =>
-          best &&
-          freeInCombination(best.combinationKey, best.totalQuantity) >=
-            freeInCombination(candidate.combinationKey, candidate.totalQuantity)
-            ? best
-            : candidate,
-        undefined,
-      );
-      served = Math.min(
-        line.quantity,
-        productFreeQuantity,
-        resolvedCombination
-          ? freeInCombination(resolvedCombination.combinationKey, resolvedCombination.totalQuantity)
-          : 0,
-      );
-      recordShortfall(
-        index,
-        line,
-        product,
-        line.combinationKey && line.combinationKey !== DEFAULT_COMBINATION_KEY
-          ? line.combinationKey
-          : null,
-        served,
-      );
-    }
-
-    reservedByProduct.set(line.productId, (reservedByProduct.get(line.productId) || 0) + served);
-    if (!resolvedCombination) continue;
-
-    const key = getProductCombinationAvailabilityKey(
-      product.id,
-      resolvedCombination.combinationKey,
-    );
-    reservedByProductCombination.set(key, (reservedByProductCombination.get(key) || 0) + served);
-
-    resolvedCombinationByLineKey.set(getReservationLineKey(line, index), {
-      combinationKey: resolvedCombination.combinationKey,
-      selectedAttributes: toResolvedAttributes(
-        selectedAttributes,
-        resolvedCombination.selectedAttributes,
-      ),
+    const resolved =
+      allocation.combinationKey === null
+        ? undefined
+        : combinationsByProduct.get(product.id)?.get(allocation.combinationKey);
+    if (!resolved) continue;
+    resolvedCombinationByLineKey.set(lineKey, {
+      combinationKey: resolved.combinationKey,
+      selectedAttributes: toResolvedAttributes(selectedAttributes, resolved.selectedAttributes),
     });
   }
 
   return succeed({ lockedProductsById, resolvedCombinationByLineKey });
+}
+
+/** A line short in a stock check: its position in the lines, its shortfall, and its choice as that check read it. */
+export interface LineShortfall {
+  lineIndex: number;
+  shortfall: CapacityShortfall;
+  choice: UnitAttributes | null;
+}
+
+const linesShortIn = (check: CollectedInventory): LineShortfall[] =>
+  check.shortfalls.map((shortfall, position) => ({
+    lineIndex: check.shortfallLineIndexes[position] ?? -1,
+    shortfall,
+    choice: check.shortfallChoices[position] ?? null,
+  }));
+
+/**
+ * The shortfalls of one demand, told apart by the turnover buffer, for every
+ * store write that may pass them (S3, S4): the store's confirmation, the
+ * dashboard's creation and its edit.
+ *
+ * - **Capacity shortfalls**: the lines short without the buffer, with what
+ *   that check found free. The stock itself lacks them: only these are an
+ *   overbooking (`overbooked`).
+ * - **Buffer-only shortfalls**: the lines short with the buffer and not
+ *   without it, with what the buffered check found free.
+ *
+ * A line short in both is a capacity shortfall.
+ *
+ * `run` checks the same lines, in the same order, at the buffer it is given;
+ * `first` is the run the caller already made, with the buffer or without it.
+ * Another run is made only when it can change the answer: never without a
+ * buffer; after the run with it, only when that run found a shortfall; after
+ * the run without it, only when the caller wants the buffer-only lines
+ * (`wantBufferOnly`). The buffer is the caller's to give, not read here.
+ *
+ * "A run with the buffer that fits means nothing is short without it" holds
+ * for the lines the three writers give: a line with an exact combination, or
+ * one spread over every combination that matches its choice. It does not hold
+ * for a line that one combination among several must cover whole (a checkout
+ * line with an open choice): fewer bookings in the way can place it elsewhere
+ * and leave a later line short. A caller with such lines must not rely on it.
+ */
+export async function splitShortfallsByTurnoverBuffer(
+  run: (turnoverBufferMinutes: number) => Promise<CollectedInventory | ReservationFailure>,
+  turnoverBufferMinutes: number,
+  first: { withBuffer: boolean; check: CollectedInventory },
+  wantBufferOnly = true,
+): Promise<
+  { ok: true; capacity: LineShortfall[]; bufferOnly: LineShortfall[] } | ReservationFailure
+> {
+  if (turnoverBufferMinutes <= 0) {
+    return { ok: true, capacity: linesShortIn(first.check), bufferOnly: [] };
+  }
+  let buffered: CollectedInventory;
+  let unbuffered: CollectedInventory;
+  if (first.withBuffer) {
+    if (first.check.shortfalls.length === 0) return { ok: true, capacity: [], bufferOnly: [] };
+    buffered = first.check;
+    const second = await run(0);
+    if (!second.ok) return second;
+    unbuffered = second;
+  } else {
+    unbuffered = first.check;
+    if (!wantBufferOnly) return { ok: true, capacity: linesShortIn(unbuffered), bufferOnly: [] };
+    const second = await run(turnoverBufferMinutes);
+    if (!second.ok) return second;
+    buffered = second;
+  }
+  // Both runs place the same lines in the same order: a line is known by its position.
+  const shortWithoutBuffer = new Set(unbuffered.shortfallLineIndexes);
+  return {
+    ok: true,
+    capacity: linesShortIn(unbuffered),
+    bufferOnly: linesShortIn(buffered).filter((line) => !shortWithoutBuffer.has(line.lineIndex)),
+  };
 }
 
 /**
@@ -617,21 +731,178 @@ export const preflightStock = async (
 
 export class ReservationInventoryError extends Error {}
 
-/** Check an existing draft under the same product locks as a new checkout. */
-export const checkExistingReservationInventory = async (
+/**
+ * Units the reservation holds cannot serve it. Its message is the stock
+ * refusal, which any caller may show: a customer never reads which units.
+ * `conflicts` names them, for the store alone.
+ */
+export class ReservationUnitConflictError extends ReservationInventoryError {
+  constructor(readonly conflicts: ReservationUnitConflict[]) {
+    super("errors.productNoLongerAvailable");
+  }
+}
+
+/**
+ * The units a reservation holds, each checked by id over its window (S4):
+ * `hard` when the unit is retired or in downtime, or held by another blocking
+ * booking whose dates overlap; `buffer` when only the turnover buffer around
+ * another booking reaches it. The units are locked, after the products and
+ * the reservation.
+ */
+const findReservationUnitConflicts = async (
+  tx: Transaction,
+  params: {
+    items: Array<{
+      id: string;
+      assignedUnits: Array<{ productUnitId: string | null; identifierSnapshot: string }>;
+    }>;
+    window: { start: Date; end: Date };
+    blockingStatuses: BlockingReservationStatus[];
+    turnoverBufferMinutes: number;
+  },
+): Promise<{
+  hard: ReservationUnitConflict[];
+  buffer: ReservationUnitConflict[];
+  /** Each held unit's name, as the store reads it now. */
+  identifiers: Map<string, string>;
+}> => {
+  const hard: ReservationUnitConflict[] = [];
+  const buffer: ReservationUnitConflict[] = [];
+  const identifiers = new Map<string, string>();
+  // A unit deleted since keeps its name on the line and holds nothing.
+  const heldByItem = params.items.map((item) => ({
+    reservationItemId: item.id,
+    units: item.assignedUnits.flatMap((unit) =>
+      unit.productUnitId
+        ? [{ unitId: unit.productUnitId, identifier: unit.identifierSnapshot }]
+        : [],
+    ),
+  }));
+  const unitIds = [...new Set(heldByItem.flatMap((item) => item.units.map((unit) => unit.unitId)))];
+  if (unitIds.length === 0) return { hard, buffer, identifiers };
+
+  const lockedUnits = await tx
+    .select({ id: productUnits.id, identifier: productUnits.identifier })
+    .from(productUnits)
+    .where(inArray(productUnits.id, unitIds))
+    .orderBy(productUnits.id)
+    .for("update");
+  const identifierById = new Map(lockedUnits.map((unit) => [unit.id, unit.identifier]));
+  const rentableUnits = await tx
+    .select({ id: productUnits.id })
+    .from(productUnits)
+    .where(
+      and(
+        inArray(productUnits.id, unitIds),
+        buildUnitRentableDuringPredicate(tx, params.window.start, params.window.end),
+      ),
+    );
+  const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
+
+  for (const { reservationItemId, units } of heldByItem) {
+    if (units.length === 0) continue;
+    const busyUnitIds = await findBusyUnitIds(tx, {
+      unitIds: units.map((unit) => unit.unitId),
+      start: params.window.start,
+      end: params.window.end,
+      blockingStatuses: params.blockingStatuses,
+      turnoverBufferMinutes: params.turnoverBufferMinutes,
+      excludeReservationItemId: reservationItemId,
+    });
+    for (const unit of units) {
+      const conflict = {
+        reservationItemId,
+        unitId: unit.unitId,
+        identifier: identifierById.get(unit.unitId) || unit.identifier || unit.unitId,
+      };
+      identifiers.set(unit.unitId, conflict.identifier);
+      const busy = busyUnitIds.get(unit.unitId);
+      if (!rentableUnitIds.has(unit.unitId) || busy === "overlap") hard.push(conflict);
+      else if (busy === "buffer") buffer.push(conflict);
+    }
+  }
+  return { hard, buffer, identifiers };
+};
+
+/** The stock refusal of a confirmation, as any caller may show it. */
+const STOCK_GONE = "errors.productNoLongerAvailable";
+
+/**
+ * The store's confirmation finds lines the returnable stock cannot cover,
+ * counted without the turnover buffer: it may book over them on purpose
+ * (`allowOverbooking`). The message is the stock refusal any caller shows.
+ */
+export class ReservationCapacityShortfallError extends ReservationInventoryError {
+  constructor(readonly shortfalls: CapacityShortfall[]) {
+    super(STOCK_GONE);
+  }
+}
+
+/**
+ * The store's confirmation finds lines that fit without the turnover buffer
+ * and not with it, and was not sent with `overrideTurnoverBuffer`;
+ * `allowOverbooking` does not cover them. Each shortfall is the check's with
+ * the buffer.
+ */
+export class ReservationTurnoverBufferShortfallError extends ReservationInventoryError {
+  constructor(readonly shortfalls: CapacityShortfall[]) {
+    super(STOCK_GONE);
+  }
+}
+
+/** What a confirmation's stock check gives its status change's activity row. */
+export interface ConfirmationStockVerdict {
+  activityMetadata: Record<string, unknown>;
+  activityAt: Date;
+}
+
+/**
+ * The stock check of a change into a status that takes stock, under the
+ * product locks, before any refusal: the units the reservation holds, and
+ * the shortfalls of its lines with the turnover buffer and without it. A
+ * reservation that did not block yet (a quote, or a request when requests do
+ * not block) may hold a unit that was since given to another booking: the
+ * stock would still count enough units, so the units are checked by id.
+ *
+ * It confirms the lines as they are: required accessories are checked where
+ * a cart is composed (the checkout, the extension), never here, so a quote
+ * the store typed without one, or a request whose product gained one since,
+ * is not refused for it.
+ *
+ * Throws `ReservationUnitConflictError` for a unit that cannot serve, before
+ * any stock refusal: no caller may book over it (S4). That is a unit another
+ * booking holds, or one retired or in downtime, and also a unit no other
+ * booking holds but that the other bookings need, counted without the
+ * turnover buffer: next to them and the units the reservation holds before
+ * it, it does not fit, and with no other booking it would
+ * (`heldUnitsOwed`, `reason: "owed_to_other_bookings"`). That is decided
+ * apart from the allocation of the lines, so what the lines ask beyond their
+ * units never makes a held unit owed. An override covers only the units a
+ * line does not hold yet. A unit only the turnover buffer around another
+ * booking reaches does not refuse: it is named for the activity row.
+ */
+async function checkConfirmationStock(
   tx: Transaction,
   reservationId: string,
   storeId: string,
-) => {
+  /** The window to check, when it is not the stored one: new dates (`checkDateChangeInventory`). */
+  newWindow?: { start: Date; end: Date },
+) {
   const reservation = await tx.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
     with: {
-      items: { with: { assignedUnits: true } },
+      // The lines in a fixed order: the allocation places them in turn, so
+      // the verdict is the same whichever order the rows are read in.
+      items: {
+        with: { assignedUnits: true },
+        orderBy: (item, { asc }) => [asc(item.createdAt), asc(item.id)],
+      },
       store: { columns: { settings: true } },
     },
   });
   if (!reservation) throw new ReservationInventoryError("errors.reservationNotFound");
-  const lines = reservation.items.flatMap((item) =>
+  const lineItems = reservation.items.filter((item) => item.productId);
+  const lines = lineItems.flatMap((item) =>
     item.productId
       ? [
           {
@@ -642,6 +913,9 @@ export const checkExistingReservationInventory = async (
             assignedUnitIds: item.assignedUnits.flatMap((unit) =>
               unit.productUnitId ? [unit.productUnitId] : [],
             ),
+            // A line booked with no exact combination is served by any unit
+            // that matches what it chose, as when it was created or edited.
+            pooled: item.combinationKey === null,
           },
         ]
       : [],
@@ -651,18 +925,249 @@ export const checkExistingReservationInventory = async (
     storeId,
     lines.map((line) => line.productId),
   );
-  const result = await reserveInventory({
-    tx,
-    storeId,
-    lines,
-    lockedProductsById,
-    window: { start: reservation.startDate, end: reservation.endDate },
-    turnoverBufferMinutes: reservation.store.settings?.turnoverBufferMinutes ?? 0,
-    blockingStatuses: getBlockingReservationStatuses(
-      reservation.store.settings?.pendingBlocksAvailability ?? true,
-    ),
-    excludeReservationId: reservationId,
-    skipConsumableCheck: true,
+  const window = newWindow ?? { start: reservation.startDate, end: reservation.endDate };
+  const turnoverBufferMinutes = reservation.store.settings?.turnoverBufferMinutes ?? 0;
+  const blockingStatuses = getBlockingReservationStatuses(
+    reservation.store.settings?.pendingBlocksAvailability ?? true,
+  );
+  const check = (bufferMinutes: number) =>
+    reserveInventory({
+      tx,
+      storeId,
+      lines,
+      lockedProductsById,
+      window,
+      turnoverBufferMinutes: bufferMinutes,
+      blockingStatuses,
+      excludeReservationId: reservationId,
+      skipConsumableCheck: true,
+      // Every shortfall of the demand, for the verdict and the refusal.
+      onShortfall: "collect",
+      skipRequiredAccessoryCheck: true,
+    });
+  // Without the buffer first: what the stock itself lacks, and which held
+  // units the other bookings need. Then, when the store keeps a buffer, the
+  // same demand with it, for the lines only the buffer makes short.
+  const unbuffered = await check(0);
+  const split = unbuffered.ok
+    ? await splitShortfallsByTurnoverBuffer(check, turnoverBufferMinutes, {
+        withBuffer: false,
+        check: unbuffered,
+      })
+    : unbuffered;
+  const unitConflicts = await findReservationUnitConflicts(tx, {
+    items: reservation.items,
+    window,
+    blockingStatuses,
+    turnoverBufferMinutes,
   });
-  if (!result.ok) throw new ReservationInventoryError("errors.productNoLongerAvailable");
+  if (unitConflicts.hard.length > 0) {
+    throw new ReservationUnitConflictError(unitConflicts.hard);
+  }
+  if (!unbuffered.ok || !split.ok) throw new ReservationInventoryError(STOCK_GONE);
+  // A held unit the other bookings need, counted without the buffer: like a
+  // unit another booking holds, no override books over it.
+  if (unbuffered.uncoveredHeldUnits.length > 0) {
+    throw new ReservationUnitConflictError(
+      unbuffered.uncoveredHeldUnits.map(
+        ({ lineIndex, unitId }): ReservationUnitConflict => ({
+          reservationItemId: lineItems[lineIndex]?.id ?? "",
+          unitId,
+          identifier: unitConflicts.identifiers.get(unitId) ?? unitId,
+          reason: "owed_to_other_bookings",
+        }),
+      ),
+    );
+  }
+
+  // Each shortfall names its line and what the check read of its choice: two
+  // lines of one product, both open on a choice, are otherwise alike, and the
+  // preview's token must not take one for the other. The choice is the
+  // check's own (the line's attributes the product still has), never the
+  // line's stored ones as they are.
+  const ofLine = ({ lineIndex, shortfall, choice }: LineShortfall): CapacityShortfall => {
+    const item = lineItems[lineIndex];
+    return item
+      ? { ...shortfall, reservationItemId: item.id, selectedAttributes: choice }
+      : { ...shortfall };
+  };
+  return {
+    capacityShortfalls: split.capacity.map(ofLine),
+    bufferOnlyShortfalls: split.bufferOnly.map(ofLine),
+    bufferOnlyUnitIds: [...new Set(unitConflicts.buffer.map((conflict) => conflict.unitId))],
+    turnoverBufferMinutes,
+  };
+}
+
+/**
+ * The activity row's facts: the capacity verdict of the demand checked (the
+ * shortfalls booked over, or none), the turnover-buffer verdict of a store
+ * confirmation sent with `overrideTurnoverBuffer` (null for any other), the
+ * units only the buffer reaches, and the row's date
+ * (`nextCapacityVerdictDate`), so that verdict is the reservation's latest
+ * (services/capacity-verdict.ts).
+ */
+async function confirmationVerdict(
+  tx: Transaction,
+  reservationId: string,
+  bookedOver: readonly CapacityShortfall[],
+  bufferOnlyUnitIds: readonly string[],
+  bufferOverride: { shortfalls: readonly CapacityShortfall[]; minutes: number } | null = null,
+): Promise<ConfirmationStockVerdict> {
+  return {
+    activityMetadata: {
+      // What this check observed of the stock: `overbooked: false` says the
+      // demand fits now, not that the store approved anything; `overbooked:
+      // true` lists what the store chose to book over. The latest verdict
+      // counts, so an overbooking flagged earlier leaves the inbox once a
+      // confirmation finds that the stock fits.
+      ...capacityVerdictMetadata(bookedOver),
+      // The buffer the store confirmed past, on this change only: nothing
+      // reads it back as an approval (D5).
+      ...(bufferOverride
+        ? turnoverBufferVerdictMetadata(bufferOverride.shortfalls, bufferOverride.minutes)
+        : {}),
+      ...(bufferOnlyUnitIds.length > 0
+        ? // Confirmed with units the turnover buffer alone reaches: traceable.
+          { turnoverBufferOnlyUnitIds: [...bufferOnlyUnitIds] }
+        : {}),
+    },
+    activityAt: await nextCapacityVerdictDate(tx, reservationId),
+  };
+}
+
+/**
+ * The stock check of a confirmation nobody may book over: the customer's
+ * quote acceptance and the paid confirmation. Any shortfall, counted with
+ * the turnover buffer, refuses with the stock refusal, which names no unit
+ * and no shortfall (D1, docs/domain/reservation-changes.md). It takes no
+ * override, and none can be passed: the store's confirmation has its own
+ * entry, `checkStoreConfirmationInventory`.
+ */
+export const checkExistingReservationInventory = async (
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+): Promise<ConfirmationStockVerdict> => {
+  const stock = await checkConfirmationStock(tx, reservationId, storeId);
+  if (stock.capacityShortfalls.length > 0 || stock.bufferOnlyShortfalls.length > 0) {
+    throw new ReservationInventoryError(STOCK_GONE);
+  }
+  return confirmationVerdict(tx, reservationId, [], stock.bufferOnlyUnitIds);
+};
+
+/**
+ * The stock check of the store's confirmation (S3, S4), with two overrides
+ * that neither covers the other's shortfalls. A unit conflict refuses before
+ * either. Then a line short only with the turnover buffer refuses with
+ * `ReservationTurnoverBufferShortfallError` unless the store confirms past
+ * the buffer on purpose (`overrideTurnoverBuffer`); then a capacity
+ * shortfall, counted without the buffer, refuses with
+ * `ReservationCapacityShortfallError` unless the store books over it
+ * (`allowOverbooking`). The verdict records what each flag passed, on this
+ * change only (D5, docs/domain/reservation-changes.md).
+ *
+ * Only the store's status service calls it (`scripts/reservation-writes.test.mjs`, R7).
+ */
+export const checkStoreConfirmationInventory = async (
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+  options: { allowOverbooking: boolean; overrideTurnoverBuffer: boolean },
+): Promise<
+  ConfirmationStockVerdict & {
+    bookedOver: CapacityShortfall[];
+    /** The buffer-only shortfalls confirmed past the buffer; empty without the flag. */
+    pastBuffer: CapacityShortfall[];
+    turnoverBufferMinutes: number;
+  }
+> => {
+  const stock = await checkConfirmationStock(tx, reservationId, storeId);
+  if (stock.bufferOnlyShortfalls.length > 0 && !options.overrideTurnoverBuffer) {
+    throw new ReservationTurnoverBufferShortfallError(stock.bufferOnlyShortfalls);
+  }
+  if (stock.capacityShortfalls.length > 0 && !options.allowOverbooking) {
+    throw new ReservationCapacityShortfallError(stock.capacityShortfalls);
+  }
+  return {
+    ...(await confirmationVerdict(
+      tx,
+      reservationId,
+      stock.capacityShortfalls,
+      stock.bufferOnlyUnitIds,
+      options.overrideTurnoverBuffer
+        ? { shortfalls: stock.bufferOnlyShortfalls, minutes: stock.turnoverBufferMinutes }
+        : null,
+    )),
+    bookedOver: stock.capacityShortfalls,
+    pastBuffer: options.overrideTurnoverBuffer ? stock.bufferOnlyShortfalls : [],
+    turnoverBufferMinutes: stock.turnoverBufferMinutes,
+  };
+};
+
+/**
+ * The stock check of a reservation's new dates (`reservations.update`,
+ * services/reservation-dates.ts), with the confirmation's meaning (S3, S4):
+ * the same check (`checkConfirmationStock`) over the new window, the units
+ * the reservation holds checked by id, the shortfalls told apart by the
+ * turnover buffer, and the same order of refusals. And with the edit's demand
+ * rule: only a window that reaches outside the stored one asks more of the
+ * stock (`compareReservationDemand`), so a window inside it never refuses for
+ * the stock (`refuses: false`) and records what it found.
+ *
+ * When it refuses: a unit's hard conflict, then a held unit owed to the other
+ * bookings (`ReservationUnitConflictError`), whatever the flags; then a
+ * buffer-only shortfall unless `overrideTurnoverBuffer`
+ * (`ReservationTurnoverBufferShortfallError`); then a capacity shortfall
+ * unless `allowOverbooking` (`ReservationCapacityShortfallError`). The
+ * verdict counts `overbooked` without the buffer (slice 5b), and records the
+ * buffer-only lines only when the flag let them through.
+ */
+export const checkDateChangeInventory = async (
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+  window: { start: Date; end: Date },
+  options: { refuses: boolean; allowOverbooking: boolean; overrideTurnoverBuffer: boolean },
+): Promise<{
+  /** Null when a window that refuses nothing found a unit it cannot judge: no verdict is written. */
+  verdict: ConfirmationStockVerdict | null;
+  bookedOver: CapacityShortfall[];
+  pastBuffer: CapacityShortfall[];
+  turnoverBufferMinutes: number;
+}> => {
+  let stock: Awaited<ReturnType<typeof checkConfirmationStock>>;
+  try {
+    stock = await checkConfirmationStock(tx, reservationId, storeId, window);
+  } catch (error) {
+    // A window inside the stored one asks nothing more of a unit than
+    // before: a conflict it finds was there already. It refuses nothing,
+    // and claims no verdict it did not reach.
+    if (!options.refuses && error instanceof ReservationInventoryError) {
+      return { verdict: null, bookedOver: [], pastBuffer: [], turnoverBufferMinutes: 0 };
+    }
+    throw error;
+  }
+  if (options.refuses) {
+    if (stock.bufferOnlyShortfalls.length > 0 && !options.overrideTurnoverBuffer) {
+      throw new ReservationTurnoverBufferShortfallError(stock.bufferOnlyShortfalls);
+    }
+    if (stock.capacityShortfalls.length > 0 && !options.allowOverbooking) {
+      throw new ReservationCapacityShortfallError(stock.capacityShortfalls);
+    }
+  }
+  const passesBuffer = options.refuses && options.overrideTurnoverBuffer;
+  const pastBuffer = passesBuffer ? stock.bufferOnlyShortfalls : [];
+  return {
+    verdict: await confirmationVerdict(
+      tx,
+      reservationId,
+      stock.capacityShortfalls,
+      stock.bufferOnlyUnitIds,
+      passesBuffer ? { shortfalls: pastBuffer, minutes: stock.turnoverBufferMinutes } : null,
+    ),
+    bookedOver: stock.capacityShortfalls,
+    pastBuffer,
+    turnoverBufferMinutes: stock.turnoverBufferMinutes,
+  };
 };

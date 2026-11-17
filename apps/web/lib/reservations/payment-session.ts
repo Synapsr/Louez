@@ -1,16 +1,8 @@
 import "server-only";
 
 import { and, eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
 
-import {
-  db,
-  markReservation,
-  payments,
-  reservationActivity,
-  reservations,
-  stores,
-} from "@louez/db";
+import { db, reservations, stores } from "@louez/db";
 import { validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
@@ -24,10 +16,10 @@ import {
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import { openRentalCheckoutSession } from "@/lib/reservations/rental-session-gate";
 import { isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
-import { getStripe } from "@/lib/stripe/client";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export async function createReservationPaymentSessionForCustomer(
@@ -42,6 +34,11 @@ export async function createReservationPaymentSessionForCustomer(
     marketplaceSecret?: string;
     /** Trusted callers only: charge this instead of the reservation total (partial deposits). */
     chargeAmount?: number;
+    /**
+     * The verified marketplace only: its checkout holds the booking's marketplace
+     * attempt, in a transaction on another connection, while it awaits this call.
+     */
+    callerHoldsMarketplaceAttempt?: boolean;
   },
 ) {
   try {
@@ -121,35 +118,16 @@ export async function createReservationPaymentSessionForCustomer(
       };
     }
 
-    const pendingPayments = reservation.payments.filter(
-      (payment) => payment.type === "rental" && payment.status === "pending",
-    );
-    for (const pending of pendingPayments) {
-      if (pending.stripeCheckoutSessionId) {
-        try {
-          await getStripe().checkout.sessions.expire(pending.stripeCheckoutSessionId, {
-            stripeAccount: stripeAccountId,
-          });
-        } catch {
-          // Session may already be expired or completed.
-        }
-      }
-      await db.transaction(async (tx) => {
-        await tx
-          .update(payments)
-          .set({ status: "cancelled", updatedAt: new Date() })
-          .where(and(eq(payments.id, pending.id), eq(payments.reservationId, reservation.id)));
-        await markReservation(tx, reservation);
-      });
-    }
-
-    const lineItems = [
-      {
-        name: `Reservation #${reservation.number}`,
-        quantity: 1,
-        unitAmount: chargeCents,
-      },
-    ];
+    // The marketplace's checkout holds the booking's attempt while it awaits this
+    // call, and its expiry and failure take the reservation's lock, then the
+    // attempt: asking for the reservation's lock here, on another connection,
+    // would close a wait cycle the database cannot see. For that caller the gate
+    // runs the same reads, conditions and conditional writes without the
+    // reservation's lock: the attempt its caller holds serialises them against the
+    // marketplace's expiry and failure, which take it too. It does not serialise
+    // them against a store's cancellation of the booking from the dashboard.
+    const callerHoldsMarketplaceAttempt =
+      isVerifiedMarketplaceSource && options?.callerHoldsMarketplaceAttempt === true;
 
     const insuranceShareMinor = paymentInsuranceShareMinor("rental", chargeCents, () =>
       reservationTotalsMinor({
@@ -158,67 +136,83 @@ export async function createReservationPaymentSessionForCustomer(
         items: reservation.items,
       }),
     );
-    const feePlan = await planApplicationFee({
+
+    // The rental's one gate, shared with the payment request: it replaces the
+    // rental's open session, and installs this one only on a reservation still
+    // payable, as its lock holds it.
+    const outcome = await openRentalCheckoutSession({
       storeId: store.id,
       reservationId,
-      kind: "rental",
-      chargeMinor: chargeCents,
-      currency,
-      insuranceShareMinor: insuranceShareMinor ?? 0,
-      includeMarketplaceFee: reservation.source === "marketplace",
-    });
-
-    const { url, sessionId, expiresAt } = await createCheckoutSession({
       stripeAccountId,
-      reservationId,
-      reservationNumber: reservation.number,
-      customerEmail: reservation.customer.email,
-      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
-      lineItems,
-      depositAmount: toStripeCents(Number.parseFloat(reservation.depositAmount), currency),
-      currency,
-      applicationFeeAmount: feePlan.applicationFeeCents,
-      feeMetadata: buildFeeMetadata(feePlan, {
-        insuranceShareMinor: insuranceShareMinor ?? 0,
-        paymentKind: "rental",
-        reservationId,
-        storeId: store.id,
-      }),
-      successUrl:
-        successUrl ??
-        getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=success`),
-      cancelUrl:
-        cancelUrl ??
-        getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),
-      ...(source === "checkout_resume" ? { checkoutFlow: "storefront_checkout" as const } : {}),
-    });
-
-    // The pending payment and its activity land together or not at all.
-    const now = new Date();
-    await db.transaction(async (tx) => {
-      await tx.insert(payments).values({
-        id: nanoid(),
-        reservationId,
-        amount: chargeAmount.toFixed(2),
-        type: "rental",
-        method: "stripe",
-        status: "pending",
-        stripeCheckoutSessionId: sessionId,
-        origin: "customer_session",
+      callerHoldsMarketplaceAttempt,
+      check: async (_tx, locked) => {
+        if (!locked || !allowedStatuses.includes(locked.status)) return "errors.invalidStatus";
+        if (isRentalPaid(locked.payments, currency)) return "errors.alreadyPaid";
+        return null;
+      },
+      create: async ({ idempotencyKey }) => {
+        const feePlan = await planApplicationFee({
+          storeId: store.id,
+          reservationId,
+          kind: "rental",
+          chargeMinor: chargeCents,
+          currency,
+          insuranceShareMinor: insuranceShareMinor ?? 0,
+          includeMarketplaceFee: reservation.source === "marketplace",
+        });
+        const session = await createCheckoutSession({
+          stripeAccountId,
+          idempotencyKey,
+          reservationId,
+          reservationNumber: reservation.number,
+          customerEmail: reservation.customer.email,
+          customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
+          lineItems: [
+            {
+              name: `Reservation #${reservation.number}`,
+              quantity: 1,
+              unitAmount: chargeCents,
+            },
+          ],
+          depositAmount: toStripeCents(Number.parseFloat(reservation.depositAmount), currency),
+          currency,
+          applicationFeeAmount: feePlan.applicationFeeCents,
+          feeMetadata: buildFeeMetadata(feePlan, {
+            insuranceShareMinor: insuranceShareMinor ?? 0,
+            paymentKind: "rental",
+            reservationId,
+            storeId: store.id,
+          }),
+          successUrl:
+            successUrl ??
+            getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=success`),
+          cancelUrl:
+            cancelUrl ??
+            getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),
+          ...(source === "checkout_resume" ? { checkoutFlow: "storefront_checkout" as const } : {}),
+        });
+        return { ...session, feePlan };
+      },
+      attempt: {
+        chargeMinor: chargeCents,
         currency,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await markReservation(tx, reservation);
-
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
-        reservationId,
-        activityType: "payment_initiated",
-        metadata: { checkoutSessionId: sessionId, source },
-        createdAt: now,
-      });
+        origin: "customer_session",
+        activity: { source },
+      },
     });
+    if (!outcome.ok) {
+      // An earlier session was paid: the rental is. One that may still be paid,
+      // or another payment opened meanwhile: nothing new, the next call asks again.
+      return {
+        error:
+          outcome.refusal === "paid"
+            ? "errors.alreadyPaid"
+            : outcome.refusal === "busy"
+              ? "errors.paymentSessionError"
+              : outcome.refusal,
+      };
+    }
+    const { url, sessionId, expiresAt, feePlan } = outcome.session;
 
     await captureProductServerEvent({
       distinctId: customerId,

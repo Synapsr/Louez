@@ -46,7 +46,6 @@ export async function buildReservationSnapshot(
       currency: reservations.currency,
       totalAmount: reservations.totalAmount,
       subtotalAmount: reservations.subtotalAmount,
-      depositAmount: reservations.depositAmount,
       deliveryFee: reservations.deliveryFee,
       discountAmount: reservations.discountAmount,
       subtotalExclTax: reservations.subtotalExclTax,

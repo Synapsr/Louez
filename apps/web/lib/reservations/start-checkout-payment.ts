@@ -23,7 +23,7 @@ import {
   INSURANCE_TAX_LINE_ID,
   type PricedCartLine,
   type ReservationTotals,
-} from "./price-cart";
+} from "@louez/api/services/price-cart";
 
 export interface StartCheckoutPaymentInput {
   store: {
@@ -152,6 +152,8 @@ export const startCheckoutPayment = async ({
         method: "stripe",
         status: "pending",
         stripeCheckoutSessionId: sessionId,
+        // The account the session was created on: its lifecycle is read on it.
+        stripeAccountId: store.stripeAccountId,
         origin: "checkout",
         currency,
         notes: isPartialPayment ? `Acompte ${depositPercentage}%` : null,

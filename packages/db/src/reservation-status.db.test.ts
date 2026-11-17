@@ -141,17 +141,20 @@ describe(
         .orderBy(louezDb.reservationActivity.createdAt);
     }
 
-    type ChangeOptions = Partial<ChangeReservationStatusInput> &
+    type ChangeOptions = Partial<Omit<ChangeReservationStatusInput, "lock">> &
       Pick<ChangeReservationStatusInput, "reservationId" | "to">;
 
     const change = (options: ChangeOptions) =>
-      louezDb.db.transaction((tx) =>
-        louezDb.changeReservationStatus(tx, {
-          storeId: STORE,
-          actor: "store_user",
-          actorUserId: null,
-          ...options,
-        }),
+      louezDb.runReservationChange(
+        { reservationId: options.reservationId, storeId: options.storeId ?? STORE },
+        (tx, lock) =>
+          louezDb.changeReservationStatus(tx, {
+            storeId: STORE,
+            actor: "store_user",
+            actorUserId: null,
+            ...options,
+            lock,
+          }),
       );
 
     test("a rental's life writes the status, updatedAt and each date once", async () => {
@@ -478,8 +481,9 @@ describe(
       const stock = await addConsumable(id, { stock: 5, quantity: 2 });
 
       await assert.rejects(
-        louezDb.db.transaction(async (tx) => {
+        louezDb.runReservationChange({ reservationId: id, storeId: STORE }, async (tx, lock) => {
           const result = await louezDb.changeReservationStatus(tx, {
+            lock,
             reservationId: id,
             storeId: STORE,
             to: "confirmed",

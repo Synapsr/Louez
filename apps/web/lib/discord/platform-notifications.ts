@@ -318,24 +318,62 @@ export async function syncStorePaymentMethodStatus(
 // Tier 3 — Reservations
 // ---------------------------------------------------------------------------
 
-export async function notifyNewReservation(
-  store: StoreInfo,
-  reservation: { number: string; customerName: string; totalAmount: number; currency?: string }
-): Promise<void> {
-  trackFromHello('reservation_created', {
+interface NewReservation {
+  number: string
+  customerName: string
+  totalAmount: number
+  currency?: string
+}
+
+/** A new reservation, as the platform hears of it: the fromHello event and the Discord line. */
+const newReservationEvent = {
+  properties: (store: StoreInfo, reservation: NewReservation) => ({
     storeName: store.name,
     reservationNumber: reservation.number,
     customerName: reservation.customerName,
     totalAmount: reservation.totalAmount,
     currency: reservation.currency || 'EUR',
-  }, { storeId: store.id }).catch(() => {})
+  }),
+  line: (prefix: string, reservation: NewReservation) =>
+    `📦 ${prefix} new reservation #${reservation.number} from ${reservation.customerName} — ${reservation.totalAmount.toFixed(2)} ${(reservation.currency || 'EUR').toUpperCase()}`,
+}
+
+export async function notifyNewReservation(
+  store: StoreInfo,
+  reservation: NewReservation
+): Promise<void> {
+  trackFromHello('reservation_created', newReservationEvent.properties(store, reservation), {
+    storeId: store.id,
+  }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
-  const amount = reservation.totalAmount.toFixed(2)
-  const currency = (reservation.currency || 'EUR').toUpperCase()
-  await send(
-    `📦 ${prefix} new reservation #${reservation.number} from ${reservation.customerName} — ${amount} ${currency}`
-  )
+  await send(newReservationEvent.line(prefix, reservation))
+}
+
+/**
+ * One platform channel of a new reservation, for an outbox row (packages/api
+ * platform/effects.ts): throws when it did not go out, and answers `skipped`
+ * when the channel is not set up here. `beforeSend` runs right before the call.
+ */
+export async function sendPlatformReservationCreated(
+  channel: 'discord' | 'fromhello',
+  store: StoreInfo,
+  reservation: NewReservation,
+  beforeSend: () => Promise<void>,
+): Promise<{ skipped: string } | undefined> {
+  if (channel === 'fromhello') {
+    if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return { skipped: 'fromHello is not set up' }
+    await beforeSend()
+    await trackFromHelloOrThrow('reservation_created', newReservationEvent.properties(store, reservation), {
+      storeId: store.id,
+    })
+    return undefined
+  }
+  if (!isEnabled()) return { skipped: 'the platform webhook is not set up' }
+  const prefix = await storePrefix(store)
+  await beforeSend()
+  await sendOrThrow(newReservationEvent.line(prefix, reservation))
+  return undefined
 }
 
 type ReservationStatusKind = 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'completed'

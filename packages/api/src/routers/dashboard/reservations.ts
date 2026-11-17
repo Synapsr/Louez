@@ -38,6 +38,7 @@ import {
 } from "@louez/validations";
 
 import { dashboardProcedure, requirePermission } from "../../procedures";
+import { resolveDepositAttempt } from "./deposit-attempts";
 import { getDashboardReservationEditContext, signReservationInStore } from "../../services";
 import { toORPCError } from "../../utils/orpc-error";
 import {
@@ -49,9 +50,11 @@ import {
   listOverdue,
   listUpcoming,
   poll,
+  update,
   updateNotes,
   updateStatus,
 } from "./reservation-follow-up";
+import { create } from "./reservation-create";
 
 function toDate(value: string | Date | undefined): Date | undefined {
   if (!value) return undefined;
@@ -688,7 +691,11 @@ const requestPayment = requirePermission("write")
       if (result.error) {
         throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
-      return { success: true as const, paymentUrl: result.paymentUrl || null };
+      return {
+        success: true as const,
+        paymentUrl: result.paymentUrl || null,
+        notificationResults: result.notificationResults ?? {},
+      };
     } catch (error) {
       throw toORPCError(error);
     }
@@ -724,8 +731,11 @@ export const dashboardReservationsRouter = {
   listUpcoming,
   listOverdue,
   updateStatus,
+  update,
   cancel,
   updateNotes,
+  // The store's creation (reservation-create.ts): on every transport.
+  create,
   getEditContext,
   getPaymentMethod,
   getAvailableUnitsForItem,
@@ -742,6 +752,8 @@ export const dashboardReservationsRouter = {
   createDepositHold,
   captureDepositHold,
   releaseDepositHold,
+  // A deposit hold Stripe has not confirmed (deposit-attempts.ts): the dashboard only.
+  resolveDepositAttempt,
   assignUnitsToItem,
   sendReservationEmail,
   getEmailRenderContext,

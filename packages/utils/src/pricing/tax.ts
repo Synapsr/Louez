@@ -1,5 +1,6 @@
 import type { TaxSettings, ProductTaxSettings } from '@louez/types'
 import type { PriceCalculationResult } from './types'
+import { currencyMinorDigits } from '../billing-money'
 
 // ============================================================================
 // Tax Configuration Types
@@ -69,27 +70,56 @@ export interface CalculateTaxBreakdownInput {
   depositAmount?: number
   taxConfig: TaxConfig | undefined
   discountableLineIds?: string[]
+  /**
+   * The currency the amounts are in: the tax, the discount and the totals are
+   * allocated and rounded in its minor unit (¥1, 1 cent). Without one, or for a
+   * three-decimal currency Louez does not carry, in cents.
+   */
+  currency?: string
 }
 
-function roundMoney(amount: number): number {
-  return Math.round(amount * 100) / 100
+/** The number of minor units in one unit of a currency: 1 for the yen, 100 for the euro. */
+export function minorUnitsPerUnit(currency?: string): number {
+  const digits = currency ? currencyMinorDigits(currency) : 2
+  return digits === 0 ? 1 : 100
 }
 
-function toCents(amount: number): number {
-  return Math.round(amount * 100)
+/**
+ * An amount rounded to the currency's minor unit: the number is scaled to
+ * minor units, cut to 15 significant digits (`toPrecision(15)`), then rounded
+ * half away from zero. It rounds a number, not the decimal as written: the
+ * cut absorbs the error of the multiplication for amounts of ordinary size
+ * (1.005 × 100 is 100.49999999999999, cut to 100.5, so 1.01), where
+ * `toFixed(2)` reads the binary value (1.005 gives 1.00, 13385.925 gives
+ * 13385.92; here 13385.93). ¥101.5 is ¥102. The one rounding of a line's
+ * amount, for the dashboard's creation and its form.
+ */
+export function roundToMinorUnit(amount: number, currency?: string): number {
+  const perUnit = minorUnitsPerUnit(currency)
+  const scaled = Number((Math.abs(amount) * perUnit).toPrecision(15))
+  return (Math.sign(amount) * Math.round(scaled)) / perUnit
 }
 
-function fromCents(amount: number): number {
-  return amount / 100
+function roundMoney(amount: number, perUnit = 100): number {
+  return Math.round(amount * perUnit) / perUnit
 }
 
-function allocateDiscountInCents(
+function toMinor(amount: number, perUnit = 100): number {
+  return Math.round(amount * perUnit)
+}
+
+function fromMinor(amount: number, perUnit = 100): number {
+  return amount / perUnit
+}
+
+function allocateDiscountInMinorUnits(
   lines: TaxableLine[],
   discountAmount: number,
   taxEnabled: boolean,
-  discountableLineIds?: string[],
+  discountableLineIds: string[] | undefined,
+  perUnit: number,
 ): number[] {
-  const lineAmounts = lines.map((line) => Math.max(0, toCents(line.amount)))
+  const lineAmounts = lines.map((line) => Math.max(0, toMinor(line.amount, perUnit)))
   const eligibleIndexes = lines.flatMap((line, index) =>
     (discountableLineIds
       ? discountableLineIds.includes(line.id)
@@ -100,7 +130,7 @@ function allocateDiscountInCents(
     0,
   )
   const discount = Math.min(
-    Math.max(0, toCents(discountAmount)),
+    Math.max(0, toMinor(discountAmount, perUnit)),
     eligibleTotal,
   )
   const allocations = lines.map(() => 0)
@@ -139,16 +169,24 @@ function allocateDiscountInCents(
  * Calculate tax amount from an exclusive (HT) amount
  * Formula: taxAmount = amountExclTax * (rate / 100)
  */
-export function calculateTaxFromExclusive(amountExclTax: number, rate: number): number {
-  return Math.round(amountExclTax * (rate / 100) * 100) / 100
+export function calculateTaxFromExclusive(
+  amountExclTax: number,
+  rate: number,
+  perUnit = 100,
+): number {
+  return Math.round(amountExclTax * (rate / 100) * perUnit) / perUnit
 }
 
 /**
  * Extract the exclusive (HT) amount from an inclusive (TTC) amount
  * Formula: amountExclTax = amountInclTax / (1 + rate / 100)
  */
-export function extractExclusiveFromInclusive(amountInclTax: number, rate: number): number {
-  return Math.round((amountInclTax / (1 + rate / 100)) * 100) / 100
+export function extractExclusiveFromInclusive(
+  amountInclTax: number,
+  rate: number,
+  perUnit = 100,
+): number {
+  return Math.round((amountInclTax / (1 + rate / 100)) * perUnit) / perUnit
 }
 
 /**
@@ -200,7 +238,9 @@ export function calculateTaxBreakdown({
   depositAmount = 0,
   taxConfig,
   discountableLineIds,
+  currency,
 }: CalculateTaxBreakdownInput): TaxBreakdownCalculation {
+  const perUnit = minorUnitsPerUnit(currency)
   const sourceLines = [
     ...lines,
     ...(deliveryFee > 0
@@ -214,19 +254,22 @@ export function calculateTaxBreakdown({
       : []),
   ]
 
-  // Allocate document discounts in whole cents using largest remainders, then
-  // round the HT/TVA split on each discounted line. Rate totals are sums of
-  // those line values, so the breakdown always reconciles to the cent.
-  const discountAllocations = allocateDiscountInCents(
+  // Allocate document discounts in whole minor units using largest
+  // remainders, then round the HT/TVA split on each discounted line. Rate
+  // totals are sums of those line values, so the breakdown always reconciles
+  // to the minor unit.
+  const discountAllocations = allocateDiscountInMinorUnits(
     sourceLines,
     discountAmount,
     taxConfig?.enabled ?? false,
     discountableLineIds,
+    perUnit,
   )
   const calculatedLines = sourceLines.map((line, index): TaxLineCalculation => {
-    const allocatedDiscount = fromCents(discountAllocations[index])
-    const amount = fromCents(
-      Math.max(0, toCents(line.amount) - discountAllocations[index]),
+    const allocatedDiscount = fromMinor(discountAllocations[index], perUnit)
+    const amount = fromMinor(
+      Math.max(0, toMinor(line.amount, perUnit) - discountAllocations[index]),
+      perUnit,
     )
 
     if (!taxConfig?.enabled || line.taxRate === null) {
@@ -241,25 +284,25 @@ export function calculateTaxBreakdown({
     }
 
     if (taxConfig.displayMode === 'inclusive') {
-      const amountExclTax = extractExclusiveFromInclusive(amount, line.taxRate)
+      const amountExclTax = extractExclusiveFromInclusive(amount, line.taxRate, perUnit)
       return {
         id: line.id,
         taxRate: line.taxRate,
         discountAmount: allocatedDiscount,
         amountExclTax,
-        taxAmount: roundMoney(amount - amountExclTax),
+        taxAmount: roundMoney(amount - amountExclTax, perUnit),
         amountInclTax: amount,
       }
     }
 
-    const taxAmount = calculateTaxFromExclusive(amount, line.taxRate)
+    const taxAmount = calculateTaxFromExclusive(amount, line.taxRate, perUnit)
     return {
       id: line.id,
       taxRate: line.taxRate,
       discountAmount: allocatedDiscount,
       amountExclTax: amount,
       taxAmount,
-      amountInclTax: roundMoney(amount + taxAmount),
+      amountInclTax: roundMoney(amount + taxAmount, perUnit),
     }
   })
 
@@ -275,19 +318,23 @@ export function calculateTaxBreakdown({
     }
     breakdown.baseExclTax = roundMoney(
       breakdown.baseExclTax + line.amountExclTax,
+      perUnit,
     )
-    breakdown.taxAmount = roundMoney(breakdown.taxAmount + line.taxAmount)
+    breakdown.taxAmount = roundMoney(breakdown.taxAmount + line.taxAmount, perUnit)
     breakdownByRate.set(key, breakdown)
   }
 
   const subtotalExclTax = roundMoney(
     calculatedLines.reduce((total, line) => total + line.amountExclTax, 0),
+    perUnit,
   )
   const taxAmount = roundMoney(
     calculatedLines.reduce((total, line) => total + line.taxAmount, 0),
+    perUnit,
   )
   const totalInclTax = roundMoney(
     calculatedLines.reduce((total, line) => total + line.amountInclTax, 0),
+    perUnit,
   )
 
   return {
@@ -298,7 +345,7 @@ export function calculateTaxBreakdown({
     subtotalExclTax,
     taxAmount,
     totalInclTax,
-    depositAmount: roundMoney(depositAmount),
+    depositAmount: roundMoney(depositAmount, perUnit),
   }
 }
 

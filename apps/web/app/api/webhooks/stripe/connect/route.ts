@@ -2,14 +2,14 @@ import { completeExtensionPayment } from "@/lib/reservations/extension-service";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { and, eq, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { failMarketplaceBookingAttempt } from "@louez/api/services";
 import { completeActiveHandoff } from "@louez/api/services/handoffs";
 import { writeConnectColumns } from "@louez/api/services/stripe-connect";
-import { type Transaction, db, markReservationIds, toWholeSeconds } from "@louez/db";
+import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
+import { db } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
@@ -24,16 +24,31 @@ import {
   recordReservationFee,
 } from "@/lib/pay-as-you-go";
 import { maybeGrantReferrerReward } from "@/lib/referral/rewards";
-import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
-import { cancelAbandonedCheckout } from "@/lib/reservations/cancel-abandoned-checkout";
+import {
+  checkoutSessionAccount,
+  isSessionCreationRow,
+} from "@/lib/reservations/checkout-session-account";
+import {
+  checkoutSessionExpiredLine,
+  hasExpiredLine,
+  lockReservationRow,
+  recordCheckoutSessionExpiry,
+} from "@/lib/reservations/checkout-session-settlement";
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
+import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
 import { env } from "@/env";
+import { dispatchApiEffects } from "@/lib/api/effects";
 
 import { handleChargeDispute } from "./charge-dispute";
-import { handleChargeRefunded } from "./charge-refund";
+import { handleChargeRefunded, handleRefundUpdated, stripeChargeRefund } from "./charge-refund";
+import { alertIfAccountUnreachable, connectedAccountVerdict } from "./connected-account";
+import { type DepositEventDeps, handleDepositEvent } from "./deposit-events";
+import { failedAttemptBinding, failedAttemptReservationId } from "./failed-attempt-binding";
+import { matchesDeploymentMode } from "./matches-deployment-mode";
 import { handlePaymentFailure } from "./payment-failure";
+import { describeWebhookError } from "./webhook-error";
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -84,32 +99,33 @@ type ReservationWithRelations = {
   }>;
 };
 
-const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
-/** The id of a Stripe reference, expanded or not. */
-const stripeRefId = (value: string | { id: string } | null | undefined): string | null =>
-  typeof value === "string" ? value : (value?.id ?? null);
+/** What the deposit events run on: the app's database, Stripe, outbox and invoicing. */
+const depositEventDeps: DepositEventDeps = {
+  ...depositHoldDeps,
+  generateInvoice: (capturePaymentId) =>
+    tryGenerateInvoiceForPayment(capturePaymentId, "stripe_deposit_captured_webhook"),
+};
 
 // ===== VALIDATION HELPERS =====
 // Validates Stripe metadata to prevent manipulation attacks
 
 /**
- * Validates that a reservationId from Stripe metadata is properly formatted
- * @returns true if valid, false otherwise
- */
-function isValidReservationId(reservationId: string | undefined): reservationId is string {
-  return typeof reservationId === "string" && reservationId.length === 21;
-}
-
-/**
- * Validates that the connected account matches the reservation's store
- * Prevents attacks where metadata is manipulated
+ * Validates that the connected account is the one heard about the event's
+ * checkout session: the account its payment row records, or the store's
+ * connected account when the row records none or the session has no row
+ * (`checkoutSessionAccount`). Prevents attacks where metadata is manipulated.
  */
 async function validateConnectedAccountForReservation(
   reservationId: string,
-  connectedAccountId: string | undefined,
+  connectedAccountId: string,
   eventType: string,
+  {
+    recordedAccountId = null,
+    logDetails = {},
+  }: {
+    recordedAccountId?: string | null;
+    logDetails?: Record<string, unknown>;
+  } = {},
 ): Promise<{ valid: boolean; reservation?: ReservationWithRelations }> {
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
@@ -127,15 +143,19 @@ async function validateConnectedAccountForReservation(
     return { valid: false };
   }
 
-  // If we have a connected account, validate it matches the store
-  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+  const sessionAccount = checkoutSessionAccount({
+    recordedAccountId,
+    storeAccountId: reservation.store.stripeAccountId,
+  });
+  if (connectedAccountId !== sessionAccount) {
     log.error({
       stripeWebhook: {
         event: eventType,
         issue: "connected_account_mismatch",
-        expected: reservation.store.stripeAccountId,
+        expected: sessionAccount,
         received: connectedAccountId,
         reservationId,
+        ...logDetails,
       },
     });
     return { valid: false };
@@ -168,7 +188,7 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(body, signature, env.STRIPE_CONNECT_WEBHOOK_SECRET);
   } catch (err) {
     log.error({
-      stripeWebhook: { issue: "signature_verification_failed", error: describeError(err) },
+      stripeWebhook: { issue: "signature_verification_failed", ...describeWebhookError(err) },
     });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
@@ -176,48 +196,106 @@ export async function POST(request: Request) {
   // Get connected account ID from event
   const connectedAccountId = event.account;
 
+  // An event of the other mode than the deployment's key is refused before any
+  // handler, whatever its type: logged with the id of its object, nothing written,
+  // answered 2xx so that Stripe does not send it again.
+  if (!matchesDeploymentMode({ livemode: event.livemode, secretKey: env.STRIPE_SECRET_KEY })) {
+    const object = event.data.object;
+    const objectId = "id" in object ? object.id : undefined;
+    log.error({
+      stripeWebhook: {
+        event: event.type,
+        issue: "livemode_mismatch",
+        stripeEventId: event.id,
+        ...(typeof objectId === "string" && { objectId }),
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        livemode: event.livemode,
+      },
+    });
+    return NextResponse.json({ received: true });
+  }
+
+  // Whether Louez acts on the event's account, from its own rows alone, before
+  // the handler runs (`connectedAccountVerdict`). Nothing Stripe answers makes
+  // the route acknowledge an event: a handler's failure answers 5xx below.
+  let accountOwner: { readonly storeId: string } | null = null;
+  const mayAct = async () => {
+    const verdict = await connectedAccountVerdict({
+      id: event.id,
+      type: event.type,
+      accountId: connectedAccountId,
+    });
+    if (verdict.act) accountOwner = verdict.owner;
+    return verdict.act;
+  };
+
   try {
     switch (event.type) {
       // Checkout events
-      case "checkout.session.completed":
-        await handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session,
-          connectedAccountId,
-        );
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (await mayAct()) await handleCheckoutCompleted(session, connectedAccountId);
         break;
+      }
 
-      case "checkout.session.expired":
-        await handleCheckoutExpired(event.data.object as Stripe.Checkout.Session);
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (await mayAct()) await handleCheckoutExpired(session, connectedAccountId);
         break;
+      }
 
-      // Deposit authorization hold events
+      // Deposit authorization hold events: `handleDepositEvent` ignores a
+      // PaymentIntent that is not a deposit hold's.
       case "payment_intent.amount_capturable_updated":
-        await handleDepositAuthorized(
-          event.data.object as Stripe.PaymentIntent,
-          connectedAccountId,
-        );
-        break;
-
       case "payment_intent.canceled":
-        await handleDepositReleased(event.data.object as Stripe.PaymentIntent, connectedAccountId);
+      case "payment_intent.succeeded": {
+        const deposit = {
+          type: event.type,
+          stripeEventId: event.id,
+          accountId: connectedAccountId,
+          paymentIntent: event.data.object,
+        };
+        if (await mayAct()) await handleDepositEvent(deposit, depositEventDeps);
         break;
+      }
 
-      case "payment_intent.succeeded":
-        await handleDepositCaptured(event.data.object as Stripe.PaymentIntent, connectedAccountId);
+      case "payment_intent.payment_failed": {
+        if (await mayAct()) {
+          await handlePaymentFailed(event, event.data.object, connectedAccountId);
+        }
         break;
-
-      case "payment_intent.payment_failed":
-        await handleDepositFailed(
-          event.data.object as Stripe.PaymentIntent,
-          connectedAccountId,
-          event.id,
-        );
-        break;
+      }
 
       // Refund events
-      case "charge.refunded":
-        await handleChargeRefunded(event.data.object, connectedAccountId);
+      case "charge.refunded": {
+        if (await mayAct()) {
+          await handleChargeRefunded(
+            event.data.object,
+            connectedAccountId,
+            stripeChargeRefund,
+            dispatchApiEffects,
+          );
+        }
         break;
+      }
+
+      // A refund whose status changed after Stripe made it: pending to succeeded,
+      // failed or canceled, or succeeded then failed. Each is handled only when enabled
+      // on the Connect webhook endpoint; without them, the cron's lookup settles a
+      // pending refund's operation.
+      case "refund.failed":
+      case "refund.updated":
+      case "charge.refund.updated": {
+        if (await mayAct()) {
+          await handleRefundUpdated(
+            event.data.object,
+            connectedAccountId,
+            stripeChargeRefund,
+            dispatchApiEffects,
+          );
+        }
+        break;
+      }
 
       // Dispute / chargeback. Stripe only sends the events enabled on the Connect
       // webhook endpoint: all five must be on for the billing facts.
@@ -225,14 +303,17 @@ export async function POST(request: Request) {
       case "charge.dispute.updated":
       case "charge.dispute.closed":
       case "charge.dispute.funds_withdrawn":
-      case "charge.dispute.funds_reinstated":
-        await handleChargeDispute({
-          eventType: event.type,
-          dispute: event.data.object,
-          eventCreatedAt: new Date(event.created * 1000),
-          connectedAccountId,
-        });
+      case "charge.dispute.funds_reinstated": {
+        if (await mayAct()) {
+          await handleChargeDispute({
+            eventType: event.type,
+            dispute: event.data.object,
+            eventCreatedAt: new Date(event.created * 1000),
+            connectedAccountId,
+          });
+        }
         break;
+      }
 
       // Account events
       case "account.updated":
@@ -250,9 +331,20 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
+    // Every failure, whatever Stripe answered: Stripe delivers the event again.
     log.error({
-      stripeWebhook: { event: event.type, issue: "handler_failed", error: describeError(error) },
+      stripeWebhook: {
+        event: event.type,
+        issue: "handler_failed",
+        stripeEventId: event.id,
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        ...describeWebhookError(error),
+      },
     });
+    await alertIfAccountUnreachable(
+      { id: event.id, type: event.type, accountId: connectedAccountId, owner: accountOwner },
+      error,
+    );
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 }
@@ -314,13 +406,35 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  // Validate connected account matches store to prevent metadata manipulation
-  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+  // The account heard about the session: the one its payment row of this
+  // reservation records, the account Louez created the session on, else the
+  // store's connected account (`checkoutSessionAccount`). A session with such a
+  // row is heard from the account that sends its event, so the event names it.
+  const sessionRow =
+    existingPayment?.reservationId === reservationId && isSessionCreationRow(existingPayment)
+      ? existingPayment
+      : null;
+  if (sessionRow && !connectedAccountId) {
+    log.error({
+      stripeWebhook: {
+        event: "checkout.session.completed",
+        issue: "connected_account_missing",
+        reservationId,
+        sessionId: session.id,
+      },
+    });
+    return;
+  }
+  const sessionAccount = checkoutSessionAccount({
+    recordedAccountId: sessionRow?.stripeAccountId ?? null,
+    storeAccountId: reservation.store.stripeAccountId,
+  });
+  if (connectedAccountId && connectedAccountId !== sessionAccount) {
     log.error({
       stripeWebhook: {
         event: "checkout.session.completed",
         issue: "connected_account_mismatch",
-        expected: reservation.store.stripeAccountId,
+        expected: sessionAccount,
         received: connectedAccountId,
         reservationId,
         sessionId: session.id,
@@ -367,7 +481,8 @@ async function handleCheckoutCompleted(
     marketplaceFeeCents: 0,
     hasBreakdown: false,
   };
-  let paymentIntentRetrieveFailed = false;
+  // The read's failure, kept as the cause of the abort below.
+  let paymentIntentRetrieveFailed: unknown = null;
 
   if (session.payment_intent && connectedAccountId) {
     try {
@@ -397,10 +512,10 @@ async function handleCheckoutCompleted(
           event: "checkout.session.completed",
           issue: "payment_intent_retrieve_failed",
           reservationId,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
-      paymentIntentRetrieveFailed = true;
+      paymentIntentRetrieveFailed = error;
     }
   }
 
@@ -408,9 +523,10 @@ async function handleCheckoutCompleted(
   // otherwise platform fees would be dropped (or a PAYG rental misclassified as manual
   // and billed a second time at month-end). If the retrieve failed, abort so Stripe
   // retries the webhook (nothing has been committed yet — the payment is still pending).
-  if (session.payment_intent && paymentIntentRetrieveFailed) {
+  if (session.payment_intent && paymentIntentRetrieveFailed !== null) {
     throw new Error(
       `PaymentIntent retrieve failed for reservation ${reservationId}; aborting so Stripe retries`,
+      { cause: paymentIntentRetrieveFailed },
     );
   }
 
@@ -513,7 +629,7 @@ async function handleCheckoutCompleted(
         referral: {
           event: "referrer_reward_grant_failed",
           reservationId,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
     }
@@ -564,60 +680,136 @@ async function handleCheckoutCompleted(
   });
 }
 
-async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
+/**
+ * An expired Checkout Session acts on the payment row its session id names, on
+ * that payment's reservation, sent by the account that row records, and on
+ * nothing else. The session id is the binding: Louez stored it, with the
+ * account it created the session on, on the row when it created the session. A
+ * row that records no account is heard from its store's connected account. An
+ * event whose reservation or account does not agree with that row is logged
+ * and nothing is written; it is answered 2xx, as Stripe would only send it again.
+ */
+async function handleCheckoutExpired(
+  session: Stripe.Checkout.Session,
+  connectedAccountId: string | undefined,
+) {
+  // An extension's session, or one that names no reservation, is not this
+  // handler's: it returns as before the binding.
   if (session.metadata?.extensionId) return;
+  const namedReservationId = session.metadata?.reservationId;
+  if (!namedReservationId) return;
 
-  const reservationId = session.metadata?.reservationId;
-  if (!reservationId) return;
-
-  const currency = session.currency?.toUpperCase() || "EUR";
-  const amount = fromStripeCents(session.amount_total || 0, currency);
-
-  // Update pending payment to failed/cancelled
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
-
-  // A row still pending here means nobody replaced this session: the
-  // customer simply never paid. A resumed or superseded checkout cancels its
-  // row before expiring the session, so those never reach the cancellation.
-  const abandoned = existingPayment?.status === "pending";
-
-  await db.transaction(async (tx) => {
-    if (existingPayment && existingPayment.status === "pending") {
-      await tx
-        .update(payments)
-        .set({
-          status: "cancelled",
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, existingPayment.id));
-      await markReservationIds(tx, [existingPayment.reservationId]);
-    }
-
-    // Log payment expired activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "payment_expired",
-      description: null,
-      metadata: {
-        checkoutSessionId: session.id,
-        amount,
-        currency,
-        method: "stripe",
+  // The event must say which account sent it: the account its payment row
+  // records, or, for a session with no payment row (a payment request's session
+  // created before the rental's gate wrote one), the account of the store whose
+  // reservation its metadata names.
+  if (!connectedAccountId) {
+    log.error({
+      stripeWebhook: {
+        event: "checkout.session.expired",
+        issue: "connected_account_missing",
+        sessionId: session.id,
       },
-      // Whole seconds, as the status change below stores its `cancelled` row.
-      createdAt: toWholeSeconds(new Date()),
     });
-  });
+    return;
+  }
+  const reservationId = existingPayment?.reservationId ?? namedReservationId;
 
-  await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
+  if (namedReservationId !== reservationId) {
+    log.error({
+      stripeWebhook: {
+        event: "checkout.session.expired",
+        issue: "reservation_mismatch",
+        sessionId: session.id,
+        expected: reservationId,
+        received: namedReservationId,
+      },
+    });
+    return;
+  }
 
+  const { valid } = await validateConnectedAccountForReservation(
+    reservationId,
+    connectedAccountId,
+    "checkout.session.expired",
+    {
+      recordedAccountId:
+        existingPayment && isSessionCreationRow(existingPayment)
+          ? existingPayment.stripeAccountId
+          : null,
+      logDetails: { sessionId: session.id },
+    },
+  );
+  if (!valid) return;
+
+  // The session's row is marked settled, pending or replaced alike. A row still pending
+  // is a payment this session has not settled: the customer never paid. The
+  // checkout's expiry is recorded by the delivery whose update moves the row out
+  // of pending: another delivery of the event, even a concurrent one, finds the
+  // row cancelled under its lock and records nothing. A resumed checkout cancels
+  // its old session's row before it expires that session at Stripe
+  // (lib/reservations/payment-session.ts), so that session's expiry finds the row
+  // no longer pending: it marks it, and records nothing else.
+  const recordedNow =
+    existingPayment !== undefined &&
+    (await recordCheckoutSessionExpiry({ reservationId, paymentId: existingPayment.id, session }));
+  // The checkout is abandoned when this session's expiry is recorded, by this
+  // delivery or by an earlier one whose cancellation of the reservation did not
+  // finish: every delivery asks for it, and the entry, idempotent, cancels a
+  // reservation still pending with no other open or paid rental payment.
+  const abandoned =
+    existingPayment !== undefined &&
+    (recordedNow || (await hasExpiredLine(db, reservationId, session.id)));
+
+  // A payment request's session that no payment row names (one created before the
+  // rental's gate wrote its pending row, `rental-session-gate.ts`, or one the gate
+  // created and expired without handing it out): its line, which tells the store
+  // why no money came, is written once per session. Under
+  // the reservation's lock, a second delivery of the event, even a concurrent
+  // one, finds the line its session id names and writes nothing.
+  if (!existingPayment && session.metadata?.paymentRequestId) {
+    await db.transaction(async (tx) => {
+      if (!(await lockReservationRow(tx, reservationId))) return;
+      if (!(await hasExpiredLine(tx, reservationId, session.id))) {
+        await tx
+          .insert(reservationActivity)
+          .values(checkoutSessionExpiredLine(reservationId, session));
+      }
+    });
+  }
+
+  // A marketplace booking's attempt fails with the expiry of its own open
+  // checkout only: the expiry recorded on a row this delivery, or an earlier one
+  // whose line names the session, moved out of pending. A session another
+  // attempt replaced (its row cancelled before its expiry), a session no row
+  // names and a payment request's session fail nothing: the booking's checkout
+  // may still be paid, or another attempt opened since.
+  // The service itself leaves a booking for which money may be, or has been,
+  // taken (`payment_in_progress`): its own completion or later expiry settles it.
+  if (abandoned && existingPayment?.origin !== "payment_request") {
+    const failure = await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
+    if (failure === "payment_in_progress") {
+      log.info({
+        stripeWebhook: {
+          event: "checkout.session.expired",
+          issue: "marketplace_attempt_payment_in_progress",
+          reservationId,
+          sessionId: session.id,
+        },
+      });
+    }
+  }
+
+  // The flow is a hint of the metadata, not an identifier: it only chooses
+  // whether the entry is asked about this payment's own reservation, which
+  // cancels nothing but an unpaid online checkout.
   const reservationCancelled =
     abandoned && session.metadata?.checkoutFlow === "storefront_checkout"
-      ? await cancelAbandonedCheckout(
-          { reservationId, checkoutSessionId: session.id },
+      ? await changeSystemReservationStatus(
+          { reason: "checkout_abandoned", reservationId, checkoutSessionId: session.id },
           runReservationEffects,
         )
       : false;
@@ -632,394 +824,93 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
   });
 }
 
-// ============================================================================
-// Deposit Authorization Hold Event Handlers
-// ============================================================================
-
 /**
- * Locks the reservation, first in a deposit event's transaction: rows are locked
- * reservation first, then its payments, as the dashboard's deposit writes do.
- * Stripe sends these events for the dashboard's own capture or release, so both
- * run at once for the same PaymentIntent, and the opposite order deadlocks.
+ * A failed payment attempt adds its line and its alert, and changes nothing else:
+ * the Checkout Session stays open for another try, and its completion or its expiry
+ * settles the payment, the booking and a marketplace attempt. The route has refused
+ * an event of the other mode; this one acts from the account that sent it, on the
+ * reservation of the payment rows that record its PaymentIntent, or the one it names
+ * when no row does. A PaymentIntent a `deposit_hold` row records, or one no row records
+ * whose event states a deposit hold's, goes to the deposit events, which read it from
+ * Stripe. An event that does not agree with those records is logged and nothing is
+ * written; it is answered 2xx, as Stripe would only send it again.
  */
-async function lockDepositReservation(tx: Transaction, reservationId: string) {
-  await tx
-    .select({ id: reservations.id })
-    .from(reservations)
-    .where(eq(reservations.id, reservationId))
-    .for("update");
-}
-
-/**
- * Handles successful deposit authorization (empreinte created)
- * Triggered when PaymentIntent status becomes requires_capture
- */
-async function handleDepositAuthorized(
-  paymentIntent: Stripe.PaymentIntent,
-  connectedAccountId?: string,
-) {
-  // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== "deposit_hold") return;
-
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
-    log.error({
-      stripeWebhook: {
-        event: "deposit_authorized",
-        issue: "invalid_reservation_id",
-        reservationId,
-      },
-    });
-    return;
-  }
-
-  // SECURITY: Validate connected account matches store
-  const { valid, reservation } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "deposit_authorized",
-  );
-  if (!valid) return;
-
-  // Check idempotence
-  const existingPayment = await db.query.payments.findFirst({
-    where: eq(payments.stripePaymentIntentId, paymentIntent.id),
-  });
-
-  if (existingPayment) {
-    log.info({
-      stripeWebhook: {
-        event: "deposit_authorized",
-        issue: "already_recorded",
-        reservationId,
-        paymentIntentId: paymentIntent.id,
-      },
-    });
-    return;
-  }
-
-  const currency = paymentIntent.currency.toUpperCase();
-  const amount = fromStripeCents(paymentIntent.amount, currency);
-  const paymentMethodId = stripeRefId(paymentIntent.payment_method);
-
-  // Authorization expires after 7 days
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  await db.transaction(async (tx) => {
-    await lockDepositReservation(tx, reservationId);
-
-    // Create payment record for the authorization hold. A hold is not paid and
-    // carries no charge id: its capture row does (deposit_capture).
-    await tx.insert(payments).values({
-      id: nanoid(),
-      reservationId,
-      amount: amount.toFixed(2),
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-      stripePaymentIntentId: paymentIntent.id,
-      stripePaymentMethodId: paymentMethodId,
-      grossMinor: paymentIntent.amount,
-      insuranceShareMinor: 0,
-      origin: "deposit",
-      stripeAccountId: connectedAccountId ?? reservation?.store.stripeAccountId ?? null,
-      authorizationExpiresAt: expiresAt,
-      currency,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Update reservation deposit status
-    await tx
-      .update(reservations)
-      .set({
-        depositStatus: "authorized",
-        depositPaymentIntentId: paymentIntent.id,
-        depositAuthorizationExpiresAt: expiresAt,
-        stripePaymentMethodId: paymentMethodId,
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Log activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "deposit_authorized",
-      metadata: {
-        paymentIntentId: paymentIntent.id,
-        amount,
-        expiresAt: expiresAt.toISOString(),
-      },
-      createdAt: new Date(),
-    });
-
-    await markReservationIds(tx, [reservationId]);
-  });
-
-  log.info({
-    stripeWebhook: {
-      event: "deposit_authorized",
-      reservationId,
-      paymentIntentId: paymentIntent.id,
-    },
-  });
-}
-
-/**
- * Handles deposit release (authorization cancelled)
- * Triggered when PaymentIntent is cancelled
- */
-async function handleDepositReleased(
-  paymentIntent: Stripe.PaymentIntent,
-  connectedAccountId?: string,
-) {
-  // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== "deposit_hold") return;
-
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
-    log.error({
-      stripeWebhook: { event: "deposit_released", issue: "invalid_reservation_id", reservationId },
-    });
-    return;
-  }
-
-  // SECURITY: Validate connected account matches store
-  const { valid } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "deposit_released",
-  );
-  if (!valid) return;
-
-  const currency = paymentIntent.currency.toUpperCase();
-  const amount = fromStripeCents(paymentIntent.amount, currency);
-
-  await db.transaction(async (tx) => {
-    await lockDepositReservation(tx, reservationId);
-
-    // Find and update the deposit hold payment
-    const depositPayment = await tx.query.payments.findFirst({
-      where: eq(payments.stripePaymentIntentId, paymentIntent.id),
-    });
-
-    if (depositPayment) {
-      await tx
-        .update(payments)
-        .set({
-          status: "cancelled",
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, depositPayment.id));
-      await markReservationIds(tx, [depositPayment.reservationId]);
-    }
-
-    // Update reservation deposit status
-    await tx
-      .update(reservations)
-      .set({
-        depositStatus: "released",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Log activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "deposit_released",
-      metadata: {
-        paymentIntentId: paymentIntent.id,
-        amount,
-      },
-      createdAt: new Date(),
-    });
-  });
-
-  log.info({
-    stripeWebhook: { event: "deposit_released", reservationId, paymentIntentId: paymentIntent.id },
-  });
-}
-
-/**
- * Handles deposit capture (partial or full)
- * Triggered when PaymentIntent succeeds after capture
- */
-async function handleDepositCaptured(
-  paymentIntent: Stripe.PaymentIntent,
-  connectedAccountId?: string,
-) {
-  // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== "deposit_hold") return;
-
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
-    log.error({
-      stripeWebhook: { event: "deposit_captured", issue: "invalid_reservation_id", reservationId },
-    });
-    return;
-  }
-
-  // SECURITY: Validate connected account matches store
-  const { valid, reservation } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "deposit_captured",
-  );
-  if (!valid) return;
-
-  const currency = paymentIntent.currency.toUpperCase();
-  const capturedAmount = fromStripeCents(paymentIntent.amount_received, currency);
-  const originalAmount = fromStripeCents(paymentIntent.amount, currency);
-  const stripeAccountId = connectedAccountId ?? reservation?.store.stripeAccountId ?? null;
-  // A capture is paid when captured: the charge itself dates from the authorization.
-  const paidAt = new Date();
-
-  const capturePaymentId = await db.transaction(async (tx) => {
-    // Locked before the first read below, so that read sees a capture the
-    // dashboard committed while this event waited.
-    await lockDepositReservation(tx, reservationId);
-
-    // Find and update the deposit hold payment. The capture row shares its
-    // PaymentIntent, so match the type.
-    const depositPayment = await tx.query.payments.findFirst({
-      where: and(
-        eq(payments.stripePaymentIntentId, paymentIntent.id),
-        eq(payments.type, "deposit_hold"),
-      ),
-    });
-
-    if (depositPayment) {
-      await tx
-        .update(payments)
-        .set({
-          status: "completed",
-          capturedAmount: capturedAmount.toFixed(2),
-          paidAt,
-          // Holds recorded before the billing facts existed get them now.
-          grossMinor: sql`COALESCE(${payments.grossMinor}, ${paymentIntent.amount})`,
-          insuranceShareMinor: sql`COALESCE(${payments.insuranceShareMinor}, 0)`,
-          origin: sql`COALESCE(${payments.origin}, 'deposit')`,
-          stripeAccountId: sql`COALESCE(${payments.stripeAccountId}, ${stripeAccountId})`,
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, depositPayment.id));
-    }
-
-    // Create a deposit_capture payment record. Guard against duplicates: the dashboard
-    // capture action inserts this row synchronously, and Stripe may re-deliver
-    // payment_intent.succeeded — only insert when no deposit_capture row exists yet for
-    // this PaymentIntent.
-    let captureId: string | null = null;
-    if (capturedAmount > 0) {
-      const existingCapture = await tx.query.payments.findFirst({
-        where: and(
-          eq(payments.stripePaymentIntentId, paymentIntent.id),
-          eq(payments.type, "deposit_capture"),
-        ),
-      });
-      captureId = existingCapture?.id ?? nanoid();
-      if (!existingCapture) {
-        await tx.insert(payments).values({
-          id: captureId,
-          reservationId,
-          amount: capturedAmount.toFixed(2),
-          type: "deposit_capture",
-          method: "stripe",
-          status: "completed",
-          stripePaymentIntentId: paymentIntent.id,
-          stripeChargeId: stripeRefId(paymentIntent.latest_charge),
-          grossMinor: paymentIntent.amount_received,
-          insuranceShareMinor: 0,
-          origin: "deposit",
-          stripeAccountId,
-          currency,
-          paidAt,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-    }
-
-    // Update reservation deposit status
-    await tx
-      .update(reservations)
-      .set({
-        depositStatus: "captured",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Log activity
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "deposit_captured",
-      metadata: {
-        paymentIntentId: paymentIntent.id,
-        capturedAmount,
-        originalAmount,
-        reason: paymentIntent.metadata?.captureReason || null,
-      },
-      createdAt: new Date(),
-    });
-
-    await markReservationIds(tx, [reservationId]);
-    return captureId;
-  });
-
-  if (capturePaymentId) {
-    await tryGenerateInvoiceForPayment(capturePaymentId, "stripe_deposit_captured_webhook");
-  }
-
-  log.info({
-    stripeWebhook: {
-      event: "deposit_captured",
-      reservationId,
-      paymentIntentId: paymentIntent.id,
-      capturedAmount,
-      currency,
-    },
-  });
-}
-
-/**
- * Handles payment failure
- * Triggered when card is declined or payment fails. The owner is told once per
- * event: a redelivered event is recognised and notifies nobody again.
- */
-async function handleDepositFailed(
+async function handlePaymentFailed(
+  event: { readonly id: string },
   paymentIntent: Stripe.PaymentIntent,
   connectedAccountId: string | undefined,
-  stripeEventId: string,
 ) {
-  const reservationId = paymentIntent.metadata?.reservationId;
-
-  // SECURITY: Validate reservationId format
-  if (!isValidReservationId(reservationId)) {
+  const namedReservationId = paymentIntent.metadata?.reservationId;
+  const refuse = (issue: string, details: Record<string, unknown> = {}) => {
     log.error({
-      stripeWebhook: { event: "payment_failed", issue: "invalid_reservation_id", reservationId },
+      stripeWebhook: {
+        event: "payment_failed",
+        issue,
+        stripeEventId: event.id,
+        paymentIntentId: paymentIntent.id,
+        ...(connectedAccountId && { accountId: connectedAccountId }),
+        ...(namedReservationId !== undefined && { namedReservationId }),
+        ...details,
+      },
+    });
+  };
+
+  // The sending account comes first: it holds for a deposit hold's failed attempt too.
+  if (!connectedAccountId) {
+    refuse("connected_account_missing");
+    return;
+  }
+
+  // The payment rows that record the PaymentIntent, of any reservation and any
+  // type: a row's type decides the route.
+  const recorded = await db
+    .select({ reservationId: payments.reservationId, type: payments.type })
+    .from(payments)
+    .where(eq(payments.stripePaymentIntentId, paymentIntent.id));
+  const hold = recorded.find((row) => row.type === "deposit_hold");
+  if (hold || (recorded.length === 0 && paymentIntent.metadata?.type === "deposit_hold")) {
+    await handleDepositEvent(
+      {
+        type: "payment_intent.payment_failed",
+        stripeEventId: event.id,
+        accountId: connectedAccountId,
+        paymentIntent,
+        recordedReservationId: hold?.reservationId ?? null,
+      },
+      depositEventDeps,
+    );
+    return;
+  }
+
+  const recordedReservationIds = recorded.map((row) => row.reservationId);
+  const reservationId = failedAttemptReservationId({ recordedReservationIds, namedReservationId });
+  const reservation = reservationId
+    ? await db.query.reservations.findFirst({
+        where: eq(reservations.id, reservationId),
+        with: { store: true, customer: true },
+      })
+    : undefined;
+  const binding = failedAttemptBinding({
+    accountId: connectedAccountId,
+    namedReservationId,
+    recordedReservationIds,
+    reservation: reservation ?? null,
+  });
+  if (!binding.ok) {
+    refuse(binding.issue, {
+      recordedReservationIds,
+      ...(reservationId !== undefined && { readReservationId: reservationId }),
+      ...(reservation && { storeAccountId: reservation.store.stripeAccountId }),
     });
     return;
   }
 
-  // SECURITY: Validate connected account matches store
-  const { valid, reservation } = await validateConnectedAccountForReservation(
-    reservationId,
-    connectedAccountId,
-    "payment_failed",
-  );
-  if (!valid || !reservation) return;
-
-  await handlePaymentFailure({ reservation, stripeEventId, paymentIntent });
+  await handlePaymentFailure({
+    kind: "rental",
+    reservation: binding.reservation,
+    stripeEventId: event.id,
+    paymentIntent,
+  });
 }
 
 async function handleAccountUpdated(account: Stripe.Account) {

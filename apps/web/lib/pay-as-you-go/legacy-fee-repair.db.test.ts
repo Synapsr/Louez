@@ -482,15 +482,18 @@ describe(
       await reservation(id, FLOW, "pending");
 
       const change = async (to: ReservationStatus, now: string) => {
-        const result = await louezDb.db.transaction((tx) =>
-          louezDb.changeReservationStatus(tx, {
-            reservationId: id,
-            storeId: FLOW,
-            to,
-            actor: "ai_chat",
-            actorUserId: null,
-            now: new Date(now),
-          }),
+        const result = await louezDb.runReservationChange(
+          { reservationId: id, storeId: FLOW },
+          (tx, lock) =>
+            louezDb.changeReservationStatus(tx, {
+              lock,
+              reservationId: id,
+              storeId: FLOW,
+              to,
+              actor: "ai_chat",
+              actorUserId: null,
+              now: new Date(now),
+            }),
         );
         if (!result.changed) throw new Error(`${id} did not move to ${to}: ${result.reason}`);
         return result.effects;

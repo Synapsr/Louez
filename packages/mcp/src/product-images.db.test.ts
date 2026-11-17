@@ -87,7 +87,7 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const { handleMcpRequest } = await import("./transports/http");
     exposure = createExposure(appRouter);
 
-    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (method, path, body, headers) =>
       (await handleOpenApiRequest(
         openApiHandler,
@@ -107,7 +107,6 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: { insertRecordedPayment: async () => undefined },
     };
     connect = async (authorization: string) => {
       const mcp = new Client({ name: "test", version: "0.0.0" });

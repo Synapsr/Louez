@@ -1,6 +1,7 @@
 import { db } from "@louez/db";
 import { z } from "zod";
 
+import { apiKeyPermissionsSchema } from "../../contracts/api-keys";
 import { storeProcedure } from "../../platform/procedures";
 import {
   createApiKey,
@@ -11,28 +12,11 @@ import {
 import { failCredentialHandoffs } from "../../services/handoffs";
 import { toORPCError } from "../../utils/orpc-error";
 
-const permissionLevel = z.enum(["none", "read", "write"]);
-const analyticsPermissionLevel = z.enum(["none", "read"]);
-
-const permissionsSchema = z.object({
-  reservations: permissionLevel,
-  products: permissionLevel,
-  customers: permissionLevel,
-  categories: permissionLevel,
-  payments: permissionLevel,
-  analytics: analyticsPermissionLevel,
-  settings: permissionLevel,
-  online_store: permissionLevel.optional(),
-  integrations: permissionLevel.optional(),
-  team: permissionLevel.optional(),
-  billing: permissionLevel.optional(),
-});
-
 const apiKeySchema = z.object({
   id: z.string(),
   name: z.string(),
   keyPrefix: z.string(),
-  permissions: permissionsSchema,
+  permissions: apiKeyPermissionsSchema,
   confirmSensitive: z.boolean(),
   lastUsedAt: z.date().nullable(),
   expiresAt: z.date().nullable(),
@@ -67,7 +51,7 @@ const create = credentials
   .input(
     z.object({
       name: z.string().min(1).max(100),
-      permissions: permissionsSchema,
+      permissions: apiKeyPermissionsSchema,
       expiresAt: z.coerce
         .date()
         .refine((d) => d > new Date(), "Expiration must be in the future")
@@ -98,7 +82,7 @@ const revoke = credentials
     try {
       await revokeApiKey({ db, storeId: context.actor.storeId, keyId: input.keyId });
       // The links it handed to the user stop working.
-      await failCredentialHandoffs({ kind: "api_key", id: input.keyId });
+      await failCredentialHandoffs({ kind: "api_key", id: input.keyId }, [context.actor.storeId]);
       return { success: true as const };
     } catch (error) {
       throw toORPCError(error);

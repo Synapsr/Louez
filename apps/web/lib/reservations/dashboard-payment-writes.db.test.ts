@@ -7,8 +7,8 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 
 // The dashboard's payment writes on a migrated database: the rows, their billing
 // facts and the reservation's mark, in one transaction (louez-billing docs/api,
-// README §5.2, Q4, Q7). The Stripe calls happen before these writes, in the
-// actions, so none is made here.
+// README §5.2, Q4, Q7). A deposit hold, its capture and its release are written
+// by deposit-hold-writes.ts, with its own suites.
 
 const STORE = "store_pay_writes";
 const OTHER_STORE = "store_pay_other";
@@ -50,9 +50,7 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
 
   const nextId = (prefix: string) => `${prefix}_${++counter}`;
 
-  async function createReservation(
-    options: { storeId?: string; currency?: string | null; depositStatus?: "authorized" } = {},
-  ) {
+  async function createReservation(options: { storeId?: string; currency?: string | null } = {}) {
     const id = nextId("res");
     await louezDb.db.insert(louezDb.reservations).values({
       id,
@@ -66,8 +64,7 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
       depositAmount: "50.00",
       totalAmount: "100.00",
       currency: options.currency ?? null,
-      depositStatus: options.depositStatus ?? "card_saved",
-      depositPaymentIntentId: options.depositStatus ? "pi_hold" : null,
+      depositStatus: "card_saved",
       source: "manual",
     });
     return id;
@@ -76,9 +73,8 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
   async function createPayment(
     reservationId: string,
     values: {
-      type: "rental" | "deposit_capture" | "deposit_hold";
+      type: "rental" | "deposit_capture";
       method: "cash" | "stripe";
-      status?: "completed" | "authorized";
       currency?: string;
       amount?: string;
     },
@@ -90,7 +86,7 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
       amount: values.amount ?? "50.00",
       type: values.type,
       method: values.method,
-      status: values.status ?? "completed",
+      status: "completed",
       stripePaymentIntentId: values.method === "stripe" ? "pi_hold" : null,
       currency: values.currency ?? "EUR",
     });
@@ -120,17 +116,6 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
     return row;
   }
 
-  async function readPaymentsOfType(
-    reservationId: string,
-    type: "deposit_capture" | "deposit_hold",
-  ) {
-    const p = louezDb.payments;
-    return louezDb.db
-      .select({ id: p.id })
-      .from(p)
-      .where(and(eq(p.reservationId, reservationId), eq(p.type, type)));
-  }
-
   async function readMark(reservationId: string) {
     const q = louezDb.billingSyncQueue;
     const [row] = await louezDb.db
@@ -138,19 +123,6 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
       .from(q)
       .where(and(eq(q.aggregateType, "reservation"), eq(q.aggregateId, reservationId)));
     return row ?? null;
-  }
-
-  async function readDeposit(reservationId: string) {
-    const r = louezDb.reservations;
-    const [row] = await louezDb.db
-      .select({
-        depositStatus: r.depositStatus,
-        depositPaymentIntentId: r.depositPaymentIntentId,
-        depositAuthorizationExpiresAt: r.depositAuthorizationExpiresAt,
-      })
-      .from(r)
-      .where(eq(r.id, reservationId));
-    return row;
   }
 
   describe("a manual refund", () => {
@@ -282,209 +254,14 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
     assert.equal(await readMark(reservationId), null);
   });
 
-  test("a deposit hold records the authorization and the hold, with its facts", async () => {
-    const reservationId = await createReservation();
-    const paymentId = nextId("pay");
-    const expiresAt = new Date("2026-03-17T10:00:00.000Z");
-
-    await writes.recordDepositHold(louezDb.db, {
-      paymentId,
-      reservationId,
-      storeId: STORE,
-      stripeAccountId: "acct_store",
-      paymentIntentId: "pi_new_hold",
-      paymentMethodId: "pm_card",
-      expiresAt,
-      amount: "50.00",
-      amountMinor: 5000,
-      currency: "EUR",
-      now: NOW,
-    });
-
-    assert.deepEqual(await readDeposit(reservationId), {
-      depositStatus: "authorized",
-      depositPaymentIntentId: "pi_new_hold",
-      depositAuthorizationExpiresAt: expiresAt,
-    });
-    const hold = await readPayment(paymentId);
-    assert.equal(hold?.type, "deposit_hold");
-    assert.equal(hold?.status, "authorized");
-    assert.equal(hold?.grossMinor, 5000);
-    assert.equal(hold?.insuranceShareMinor, 0);
-    assert.equal(hold?.origin, "deposit");
-    assert.equal(hold?.stripeAccountId, "acct_store");
-    assert.equal((await readMark(reservationId))?.version, 1);
-  });
-
-  test("a deposit capture completes the hold and records the charge", async () => {
-    const reservationId = await createReservation({ depositStatus: "authorized" });
-    const holdId = await createPayment(reservationId, {
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-    });
-    // A hold on another reservation stays as it is.
-    const otherReservationId = await createReservation({ depositStatus: "authorized" });
-    const otherHoldId = await createPayment(otherReservationId, {
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-    });
-    const captureId = nextId("pay");
-
-    await writes.recordDepositCapture(louezDb.db, {
-      capturePaymentId: captureId,
-      reservationId,
-      storeId: STORE,
-      stripeAccountId: "acct_store",
-      paymentIntentId: "pi_hold",
-      stripeChargeId: "ch_capture",
-      amount: "30.00",
-      capturedMinor: 3000,
-      currency: "EUR",
-      reason: "broken wheel",
-      now: NOW,
-    });
-
-    assert.equal((await readDeposit(reservationId))?.depositStatus, "captured");
-    const hold = await readPayment(holdId);
-    assert.equal(hold?.status, "completed");
-    assert.equal(hold?.capturedAmount, "30.00");
-    assert.equal(hold?.notes, "broken wheel");
-    assert.deepEqual(await readPayment(captureId), {
-      amount: "30.00",
-      type: "deposit_capture",
-      method: "stripe",
-      status: "completed",
-      currency: "EUR",
-      grossMinor: 3000,
-      insuranceShareMinor: 0,
-      origin: "deposit",
-      stripeChargeId: "ch_capture",
-      stripeAccountId: "acct_store",
-      refundOfPaymentId: null,
-      capturedAmount: null,
-      notes: "broken wheel",
-    });
-    assert.equal((await readPaymentsOfType(reservationId, "deposit_capture")).length, 1);
-    assert.equal((await readMark(reservationId))?.version, 1);
-
-    assert.equal((await readPayment(otherHoldId))?.status, "authorized");
-    assert.equal(await readMark(otherReservationId), null);
-  });
-
-  test("a deposit release cancels the hold", async () => {
-    const reservationId = await createReservation({ depositStatus: "authorized" });
-    const holdId = await createPayment(reservationId, {
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-    });
-
-    await writes.recordDepositRelease(louezDb.db, { reservationId, storeId: STORE, now: NOW });
-
-    assert.equal((await readDeposit(reservationId))?.depositStatus, "released");
-    assert.equal((await readPayment(holdId))?.status, "cancelled");
-    assert.equal((await readMark(reservationId))?.version, 1);
-  });
-
-  type RawConnection = Awaited<ReturnType<TestDatabase["connect"]>>;
-
-  /**
-   * Resolves once a transaction waits on a row lock of this suite's database.
-   * performance_schema is live, where information_schema.innodb_trx is a cache
-   * that a poll this fast never refreshes.
-   */
-  async function waitForLockWait(connection: RawConnection) {
-    for (let attempt = 0; attempt < 250; attempt++) {
-      const [rows] = await connection.query(
-        `SELECT COUNT(*) AS waiting FROM performance_schema.data_locks
-          WHERE object_schema = DATABASE() AND lock_status = 'WAITING'`,
-      );
-      if (Number((rows as Array<{ waiting: number }>)[0]?.waiting) > 0) return;
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-    throw new Error("No transaction waited on a row lock");
-  }
-
-  // The Connect webhook's deposit events lock the reservation first, then its
-  // payments. Stripe sends them for the dashboard's own capture or release, so a
-  // write here that locked the hold before the reservation would deadlock with them.
-  describe("a deposit write locks the reservation before its hold", () => {
-    const deposits = [
-      {
-        name: "capture",
-        status: "captured",
-        holdStatus: "completed",
-        write: (reservationId: string) =>
-          writes.recordDepositCapture(louezDb.db, {
-            capturePaymentId: nextId("pay"),
-            reservationId,
-            storeId: STORE,
-            stripeAccountId: "acct_store",
-            paymentIntentId: "pi_hold",
-            stripeChargeId: "ch_capture",
-            amount: "30.00",
-            capturedMinor: 3000,
-            currency: "EUR",
-            reason: "broken wheel",
-            now: NOW,
-          }),
-      },
-      {
-        name: "release",
-        status: "released",
-        holdStatus: "cancelled",
-        write: (reservationId: string) =>
-          writes.recordDepositRelease(louezDb.db, { reservationId, storeId: STORE, now: NOW }),
-      },
-    ] as const;
-
-    for (const deposit of deposits) {
-      test(`a ${deposit.name} waits on the reservation with the hold still free`, async () => {
-        const reservationId = await createReservation({ depositStatus: "authorized" });
-        const holdId = await createPayment(reservationId, {
-          type: "deposit_hold",
-          method: "stripe",
-          status: "authorized",
-        });
-        const webhook = await database.connect();
-        const probe = await database.connect();
-        let written: Promise<void> | undefined;
-        try {
-          await webhook.query("START TRANSACTION");
-          await webhook.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [
-            reservationId,
-          ]);
-          written = deposit.write(reservationId);
-          await waitForLockWait(probe);
-          // The webhook would lock the hold next: it must not be locked yet.
-          await probe.query("SELECT id FROM payments WHERE id = ? FOR UPDATE NOWAIT", [holdId]);
-        } finally {
-          await webhook.query("COMMIT");
-          await written;
-          await webhook.end();
-          await probe.end();
-        }
-
-        assert.equal((await readDeposit(reservationId))?.depositStatus, deposit.status);
-        assert.equal((await readPayment(holdId))?.status, deposit.holdStatus);
-      });
-    }
-  });
-
   test("without the billing service, the rows are written and nothing is marked", async () => {
     delete process.env.LOUEZ_BILLING;
-    const reservationId = await createReservation({ depositStatus: "authorized" });
-    const holdId = await createPayment(reservationId, {
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-    });
+    const reservationId = await createReservation();
+    const paymentId = await createPayment(reservationId, { type: "rental", method: "cash" });
 
-    await writes.recordDepositRelease(louezDb.db, { reservationId, storeId: STORE, now: NOW });
+    await writes.deleteRecordedPayment(louezDb.db, { paymentId, reservationId, storeId: STORE });
 
-    assert.equal((await readPayment(holdId))?.status, "cancelled");
+    assert.equal(await readPayment(paymentId), undefined);
     assert.equal(await readMark(reservationId), null);
   });
 });

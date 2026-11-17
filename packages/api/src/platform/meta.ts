@@ -1,5 +1,7 @@
-import type { CredentialKind } from "./actor";
+import type { CredentialKind, StoreActor } from "./actor";
 import type { ProcedureScope } from "./permissions";
+import type { ApiPorts, UrlsPort } from "./ports";
+import type { ActorStore } from "./procedures";
 
 /**
  * What a sensitive operation does, when it needs a confirmation from a
@@ -104,6 +106,12 @@ export interface McpExposure {
   description: string;
   /** Tool bundle the tool is listed in; the connection picks its bundles. */
   bundle: McpBundle;
+  /**
+   * Listed for a connection whatever its bundles (its scopes still apply):
+   * a tool every connection needs to follow what another one started, as
+   * `handoffs_get` reads the approval any bundle's tool may ask for.
+   */
+  everyBundle?: true;
   /** What a write does to the data already there; required on a write, refused on a read. */
   effect?: McpEffect;
   /** Why it reaches outside the user's Louez account; required with `sensitive: "send"`. */
@@ -147,10 +155,55 @@ export interface ApiMeta {
   platformAdmin?: boolean;
   sensitive?: SensitiveKind;
   /**
+   * A branch of it needs a person's approval when a key or a token calls it:
+   * it declares a consequence of `APPROVAL_LIVE` (platform/approval-rule.ts).
+   * Its OpenAPI operation documents the approval's answers (409, the 412's
+   * codes, 429 with `Retry-After`), and its MCP tool's `confirmationToken`
+   * says it takes an approval's id. Only with `sensitive`.
+   */
+  personApproval?: true;
+  /**
    * The output holds a secret (a new API key): it is never stored, so an
    * idempotency key is ignored and the call is only recorded.
    */
   secretOutput?: boolean;
+  /**
+   * A write a retry must never do twice (one that creates a record): an API
+   * key or an OAuth token must send an idempotency key (a blank one is none),
+   * or the call is refused with `IDEMPOTENCY_KEY_REQUIRED` before its
+   * handler, any confirmation or approval, and its operation row; over REST
+   * before its store is read too, while the MCP transport resolves the store
+   * first. A dashboard session is not asked. Its OpenAPI operation marks
+   * `Idempotency-Key` required, and its MCP tool `idempotencyKey`. Only on a
+   * write without `secretOutput`.
+   */
+  requiresIdempotencyKey?: true;
+  /**
+   * A store write whose stored answers may predate a field its contract has
+   * since gained, one derivable from the answer itself: brings such an answer
+   * to the contract when an idempotency key replays it. The write does not
+   * run again.
+   */
+  upgradeReplay?: (stored: unknown, urls: UrlsPort) => unknown;
+  /**
+   * A store write whose handler decides, from the record it reads, whether
+   * the caller may have its answer: the same check before a stored answer is
+   * replayed, as the caller stands now. It throws what the handler would;
+   * nothing is replayed then. The write does not run again.
+   */
+  authorizeReplay?: (stored: unknown, actor: StoreActor) => Promise<void>;
+  /**
+   * A store write that records what it created in its own transaction
+   * (`recordOperationTarget`, platform/operations.ts): the answer to its
+   * idempotency key when the write committed and the record of its answer
+   * was lost, built from that record as it is now. Answered as a replay
+   * (`Louez-Replayed`), through the output schema; the write does not run
+   * again. Without it, such a key answers `OPERATION_OUTCOME_UNKNOWN`.
+   */
+  recoverUnknown?: (
+    targetId: string,
+    context: { actor: StoreActor; store: ActorStore; ports: ApiPorts },
+  ) => Promise<unknown>;
   /**
    * Largest request body this procedure legitimately takes, when it is more
    * than the transports take by default (2 MiB on `/api/v1`, 4 MiB on

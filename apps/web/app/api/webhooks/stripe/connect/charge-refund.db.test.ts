@@ -62,6 +62,7 @@ function fakeStripe() {
         return {
           id: chargeId,
           amount: charge.amount,
+          amount_captured: charge.amount,
           amount_refunded: charge.refunded,
           application_fee: charge.feeId,
           payment_intent: null,
@@ -71,7 +72,7 @@ function fakeStripe() {
         const refunded = feeRefunds
           .filter((refund) => refund.feeId === feeId)
           .reduce((sum, refund) => sum + refund.amount, 0);
-        return { id: feeId, amount: 300, amount_refunded: refunded };
+        return { id: feeId, amount: 300, amount_refunded: refunded, currency: "eur" };
       },
       async listDisputes() {
         return [];
@@ -351,7 +352,7 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
     );
   });
 
-  test("every Stripe refund gets one row, once; a failed refund none", async () => {
+  test("every Stripe refund gets one row, once; a failed refund a failed row that counts for nothing", async () => {
     const stripe = fakeStripe();
     const reservationId = await createReservation();
     const chargeId = `ch_${RUN}_rental`;
@@ -382,10 +383,12 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.deepEqual(
       rows
         .filter((row) => row.refundId !== null)
-        .map((row) => [row.type, row.refundId, row.amount, row.refundOf]),
+        .map((row) => [row.type, row.refundId, row.amount, row.status, row.refundOf]),
       [
-        ["rental", `re_${RUN}_a`, "30.00", paymentId],
-        ["rental", `re_${RUN}_b`, "10.00", paymentId],
+        ["rental", `re_${RUN}_a`, "30.00", "completed", paymentId],
+        ["rental", `re_${RUN}_b`, "10.00", "completed", paymentId],
+        // Kept under its id, so an older listing that shows it moving money never records it.
+        ["rental", `re_${RUN}_c`, "60.00", "failed", paymentId],
       ],
     );
     assert.equal(rows.find((row) => row.id === paymentId)?.amount, "60.00");

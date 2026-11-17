@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: true,
   // Enable standalone output for Docker deployment
   output: "standalone",
-  // A handoff's URL holds a secret: the development request log leaves it out.
+  // A handoff's URL may hold a secret: the development request log leaves it out.
   logging: { incomingRequests: { ignore: [/^\/handoffs(?:\/|$)/] } },
   // The changelog reads its write-ups from content/whats-new/**/*.md at runtime.
   // Tracing only follows imports, so the files must be listed explicitly or the

@@ -11,12 +11,9 @@ import { consumeRateLimit, rateLimitKey, rateLimitReached } from "@louez/api/pla
 
 import type { McpRequestContext } from "../auth/context";
 import { resolveMcpAccount, resolveMcpContext } from "../auth/resolve";
-import type { McpServerDeps } from "../deps";
 import { createMcpServer } from "../server";
 
 export interface McpHttpOptions {
-  /** What the app lends the hand-written tools. */
-  deps: McpServerDeps;
   /** What the app lends the procedures (`apiPorts`). */
   ports: ApiPorts;
   /** The procedures served as tools (`createExposure(appRouter).procedures`). */
@@ -316,7 +313,7 @@ async function serveMcpRequest(
   // One handler per request, bound to this request's context. It keeps
   // nothing once the answer is sent. GET and DELETE (2025 session operations)
   // get 405 from the SDK: there is no session to stream on or to close.
-  const handler = createMcpHandler(() => createMcpServer(ctx, options.deps, options.procedures), {
+  const handler = createMcpHandler(() => createMcpServer(ctx, options.procedures), {
     legacy: "stateless",
   });
   return await handler.fetch(

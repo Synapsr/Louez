@@ -33,6 +33,12 @@ import {
   Switch,
   toastManager,
 } from "@louez/ui";
+import {
+  API_KEY_DOMAINS,
+  API_KEY_PERMISSION_PRESETS,
+  type ApiKeyDomain,
+  type ApiKeyPermissionPreset,
+} from "@louez/api/contracts/api-keys";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { EyeIcon, KeyIcon, TerminalIcon, WarningIcon } from "@louez/ui/icons";
 
@@ -58,51 +64,13 @@ export type ApiKeyItem = {
 
 // ── Permission presets ───────────────────────────────────────────────────
 
-const PERMISSION_PRESETS = {
-  full: {
-    reservations: "write",
-    products: "write",
-    customers: "write",
-    categories: "write",
-    payments: "write",
-    analytics: "read",
-    settings: "write",
-  },
-  readOnly: {
-    reservations: "read",
-    products: "read",
-    customers: "read",
-    categories: "read",
-    payments: "read",
-    analytics: "read",
-    settings: "read",
-  },
-  operations: {
-    reservations: "write",
-    products: "read",
-    customers: "write",
-    categories: "read",
-    payments: "write",
-    analytics: "read",
-    settings: "none",
-  },
-} as const satisfies Record<string, ApiKeyPermissions>;
-
-type PresetKey = keyof typeof PERMISSION_PRESETS;
-const PRESET_KEYS = ["full", "readOnly", "operations"] as const satisfies readonly PresetKey[];
-const isPresetKey = (value: unknown): value is PresetKey =>
+const PRESET_KEYS = [
+  "full",
+  "readOnly",
+  "operations",
+] as const satisfies readonly ApiKeyPermissionPreset[];
+const isPresetKey = (value: unknown): value is ApiKeyPermissionPreset =>
   PRESET_KEYS.some((key) => key === value);
-
-const DOMAINS = [
-  "reservations",
-  "products",
-  "customers",
-  "categories",
-  "payments",
-  "analytics",
-  "settings",
-] as const;
-type PermissionDomain = (typeof DOMAINS)[number];
 
 const PERMISSION_LEVELS = ["none", "read", "write"] as const;
 type PermissionLevel = (typeof PERMISSION_LEVELS)[number];
@@ -110,12 +78,16 @@ const isPermissionLevel = (value: unknown): value is PermissionLevel =>
   PERMISSION_LEVELS.some((level) => level === value);
 
 // Analytics can be read, never written.
-const levelsFor = (domain: PermissionDomain): readonly PermissionLevel[] =>
+const levelsFor = (domain: ApiKeyDomain): readonly PermissionLevel[] =>
   domain === "analytics" ? ["none", "read"] : PERMISSION_LEVELS;
+
+// A key created before a domain existed holds none of it.
+const levelOf = (permissions: ApiKeyPermissions, domain: ApiKeyDomain): PermissionLevel =>
+  permissions[domain] ?? "none";
 
 const withLevel = (
   permissions: ApiKeyPermissions,
-  domain: PermissionDomain,
+  domain: ApiKeyDomain,
   level: PermissionLevel,
 ): ApiKeyPermissions => {
   if (domain === "analytics") {
@@ -125,9 +97,11 @@ const withLevel = (
 };
 
 /** The preset these rights match, or "custom" once a domain was changed by hand. */
-const findPreset = (permissions: ApiKeyPermissions): PresetKey | "custom" =>
+const findPreset = (permissions: ApiKeyPermissions): ApiKeyPermissionPreset | "custom" =>
   PRESET_KEYS.find((key) =>
-    DOMAINS.every((domain) => PERMISSION_PRESETS[key][domain] === permissions[domain]),
+    API_KEY_DOMAINS.every(
+      (domain) => API_KEY_PERMISSION_PRESETS[key][domain] === levelOf(permissions, domain),
+    ),
   ) ?? "custom";
 
 // ── Component ────────────────────────────────────────────────────────────
@@ -151,7 +125,9 @@ export function ApiKeysPageContent({
 
   const [showCreate, setShowCreate] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
-  const [permissions, setPermissions] = useState<ApiKeyPermissions>(PERMISSION_PRESETS.full);
+  const [permissions, setPermissions] = useState<ApiKeyPermissions>(
+    API_KEY_PERMISSION_PRESETS.full,
+  );
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [showMcpConfig, setShowMcpConfig] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
@@ -171,7 +147,7 @@ export function ApiKeysPageContent({
     onSuccess: (data: { id: string; key: string; prefix: string }) => {
       setCreatedKey(data.key);
       setNewKeyName("");
-      setPermissions(PERMISSION_PRESETS.full);
+      setPermissions(API_KEY_PERMISSION_PRESETS.full);
       queryClient.invalidateQueries({
         queryKey: orpc.dashboard.apiKeys.list.queryOptions({ input: {} }).queryKey,
       });
@@ -278,9 +254,11 @@ export function ApiKeysPageContent({
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="hidden flex-wrap gap-1 sm:flex">
-                      {DOMAINS.filter((d) => apiKey.permissions[d] !== "none").map((d) => (
+                      {API_KEY_DOMAINS.filter(
+                        (d) => levelOf(apiKey.permissions, d) !== "none",
+                      ).map((d) => (
                         <Badge key={d} variant="expired" className="text-xs">
-                          {d}:{apiKey.permissions[d]}
+                          {d}:{levelOf(apiKey.permissions, d)}
                         </Badge>
                       ))}
                     </div>
@@ -445,7 +423,7 @@ export function ApiKeysPageContent({
                   <Select
                     value={selectedPreset}
                     onValueChange={(value) => {
-                      if (isPresetKey(value)) setPermissions(PERMISSION_PRESETS[value]);
+                      if (isPresetKey(value)) setPermissions(API_KEY_PERMISSION_PRESETS[value]);
                     }}
                   >
                     <SelectTrigger data-api-key-preset>
@@ -490,14 +468,14 @@ export function ApiKeysPageContent({
                 <div className="space-y-2">
                   <Label>{t("permissionsDetail")}</Label>
                   <div className="grid grid-cols-1 gap-1.5">
-                    {DOMAINS.map((domain) => (
+                    {API_KEY_DOMAINS.map((domain) => (
                       <div
                         key={domain}
                         className="flex items-center justify-between gap-3 rounded-md border px-3 py-1.5"
                       >
                         <span className="text-sm">{t(`domains.${domain}`)}</span>
                         <Select
-                          value={permissions[domain]}
+                          value={levelOf(permissions, domain)}
                           onValueChange={(value) => {
                             if (isPermissionLevel(value)) {
                               setPermissions((current) => withLevel(current, domain, value));
@@ -510,7 +488,7 @@ export function ApiKeysPageContent({
                             aria-label={t(`domains.${domain}`)}
                             data-api-key-domain={domain}
                           >
-                            <SelectValue>{t(`levels.${permissions[domain]}`)}</SelectValue>
+                            <SelectValue>{t(`levels.${levelOf(permissions, domain)}`)}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {levelsFor(domain).map((level) => (

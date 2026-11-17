@@ -34,11 +34,15 @@ import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes"
 import { SmartReservationActions } from "./smart-reservation-actions";
 import { UnifiedPaymentSection, type PaymentMethod } from "./unified-payment-section";
 import { hasMobileReservationQuickActions } from "./util.mobile-reservation-quick-actions";
-import { getNetCompletedPaymentAmount } from "./util.payment-refunds";
+import { getDepositTotals, getRentalPaid } from "@/lib/reservations/util.payment-status";
 import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-store-legs-summary";
 import { storeLegLocationFromSnapshot } from "@/components/dashboard/util.reservation-store-legs";
+import {
+  getRentalRemaining,
+  getReservationRentalAmount,
+} from "@/lib/reservations/util.rental-amount";
 import { InvoiceDocumentsCard, type ReservationInvoiceDocument } from "./invoice-documents-card";
 import { getReservationDeliveryDisplayMode } from "./util.reservation-delivery-display";
 
@@ -105,23 +109,6 @@ interface ReservationDetailClientProps {
 function toDate(value: Date | string | null | undefined) {
   if (!value) return null;
   return value instanceof Date ? value : new Date(value);
-}
-
-function getRentalAmount(reservation: {
-  subtotalAmount?: string | null;
-  depositAmount?: string | null;
-  totalAmount?: string | null;
-}) {
-  const subtotal = parseFloat(reservation.subtotalAmount || "0");
-  const deposit = parseFloat(reservation.depositAmount || "0");
-  const total = parseFloat(reservation.totalAmount || "0");
-
-  if (!Number.isFinite(total) || total <= 0) return subtotal;
-  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit);
-  }
-
-  return total;
 }
 
 export function ReservationDetailClient({
@@ -196,22 +183,19 @@ export function ReservationDetailClient({
   const durationDays = Math.floor(totalHours / 24);
   const durationHours = totalHours % 24;
 
-  const rental = getRentalAmount(reservation);
+  const rental = getReservationRentalAmount(reservation);
   const deposit = parseFloat(reservation.depositAmount || "0");
   const deliveryDisplayMode = getReservationDeliveryDisplayMode({
     reservation,
     showStoreLocations,
   });
 
-  const rentalPaid = getNetCompletedPaymentAmount(reservation.payments || [], "rental");
+  const rentalPaid = getRentalPaid(reservation.payments || [], currency);
 
-  const depositCollected = (reservation.payments || [])
-    .filter((p: any) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
-
-  const depositReturned = (reservation.payments || [])
-    .filter((p: any) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+  // The deposit by the shared refund rule, as the payment section reads it.
+  const { collected: depositCollected, returned: depositReturned } = getDepositTotals(
+    reservation.payments || [],
+  );
 
   const hasOnlinePaymentPending = (reservation.payments || []).some(
     (p: any) => p.method === "stripe" && p.type === "rental" && p.status === "pending",
@@ -252,7 +236,7 @@ export function ReservationDetailClient({
   const hasActiveDepositAuthorization =
     reservation.depositStatus === "authorized" &&
     (!depositAuthorizationExpiresAt || depositAuthorizationExpiresAt > new Date());
-  const rentalRemaining = Math.max(0, rental - rentalPaid);
+  const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
   const showMobileQuickActions = hasMobileReservationQuickActions({
     status,
     rentalRemaining,
@@ -655,7 +639,6 @@ export function ReservationDetailClient({
             readOnly={readOnly}
             reservationId={reservation.id}
             reservationNumber={reservation.number}
-            subtotalAmount={reservation.subtotalAmount}
             depositAmount={reservation.depositAmount}
             totalAmount={reservation.totalAmount}
             payments={reservation.payments}

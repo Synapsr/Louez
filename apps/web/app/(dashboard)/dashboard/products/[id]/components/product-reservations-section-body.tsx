@@ -105,6 +105,11 @@ export const ProductReservationsSectionBody = ({
     router.refresh();
   };
 
+  const handleConfirmAnywayAndRefresh = async () => {
+    await confirmDialogsProps.handleConfirmAnyway();
+    router.refresh();
+  };
+
   return (
     <>
       <CardHeader>
@@ -154,6 +159,7 @@ export const ProductReservationsSectionBody = ({
             <ReservationConfirmDialogs
               {...confirmDialogsProps}
               handleReject={handleRejectAndRefresh}
+              handleConfirmAnyway={handleConfirmAnywayAndRefresh}
             />
             {reservationsPage.total > reservationsPage.items.length && (
               <p className="text-muted-foreground mt-3 text-center text-xs">

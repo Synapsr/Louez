@@ -7,7 +7,7 @@ import {
   customers,
   effectiveProductQuantitySql,
 } from "@louez/db";
-import { resolveReservationBilling } from "@louez/utils";
+import { paymentRowStatus, resolveReservationBilling } from "@louez/utils";
 import { eq, and, between, asc, desc } from "drizzle-orm";
 import { queryCustomersExport } from "./customers";
 import type { ExportParams } from "./types";
@@ -56,6 +56,7 @@ async function queryPaymentsData(storeId: string, params: ExportParams) {
       type: payments.type,
       method: payments.method,
       status: payments.status,
+      releaseOwedAt: payments.releaseOwedAt,
       currency: payments.currency,
       stripePaymentIntentId: payments.stripePaymentIntentId,
       paidAt: payments.paidAt,
@@ -75,7 +76,12 @@ async function queryPaymentsData(storeId: string, params: ExportParams) {
     )
     .orderBy(desc(payments.createdAt));
 
-  return rows;
+  // A deposit hold reads for what it is, in the CSV and in the JSON alike:
+  // `unconfirmed`, `failed` and `release_pending` are no hold of the reservation.
+  return rows.map(({ releaseOwedAt, ...row }) => ({
+    ...row,
+    status: paymentRowStatus({ type: row.type, status: row.status, releaseOwedAt }),
+  }));
 }
 
 function paymentsToRows(data: Awaited<ReturnType<typeof queryPaymentsData>>): string[][] {

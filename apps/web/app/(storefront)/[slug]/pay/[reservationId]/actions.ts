@@ -7,16 +7,23 @@ import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 
 import { acceptReservationContract } from "@louez/api/services";
-import { db, paymentRequests, reservations } from "@louez/db";
-import { validateStripePaymentAmount } from "@louez/utils";
+import { db, paymentRequests, reservations, type Transaction } from "@louez/db";
+import { normalizeCurrency, validateStripePaymentAmount } from "@louez/utils";
 
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import {
+  openRentalCheckoutSession,
+  type LockedReservation,
+} from "@/lib/reservations/rental-session-gate";
+import { getRentalPaid } from "@/lib/reservations/util.payment-status";
+import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { createPaymentRequestSession, toStripeCents } from "@/lib/stripe";
+import { createPaymentRequestSession, fromStripeCents, toStripeCents } from "@/lib/stripe";
 import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export type PaymentRequestError =
@@ -24,6 +31,7 @@ export type PaymentRequestError =
   | "reservation_not_found"
   | "invalid_token"
   | "already_paid"
+  | "no_longer_current"
   | "cancelled"
   | "stripe_not_configured"
   | "session_creation_failed";
@@ -33,7 +41,8 @@ export type PaymentRequestData =
       ok: true;
       store: { name: string; slug: string };
       reservation: { id: string; number: string };
-      paymentRequest: { id: string; amount: number; currency: string; description: string };
+      /** What the store asks for: the rental still due, or an amount of its choice. */
+      paymentRequest: { id: string; amount: number; currency: string; type: "rental" | "custom" };
       customer: { firstName: string };
       /** The customer has not accepted the rental terms yet: they do it before paying. */
       requiresContractAcceptance: boolean;
@@ -71,6 +80,81 @@ const requiresContractAcceptance = (
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+/**
+ * The statuses on which a request may still be paid: the store sends one before
+ * it confirms, while the rental runs, or after it ends, for what remains or for
+ * damage. A cancelled, rejected or declined reservation, or a quote not accepted,
+ * opens nothing.
+ */
+const REQUEST_PAYABLE_STATUSES: ReadonlySet<string> = new Set([
+  "pending",
+  "confirmed",
+  "ongoing",
+  "completed",
+]);
+
+type PaymentRequestRow = typeof paymentRequests.$inferSelect;
+
+/**
+ * Whether the request may still be paid on the reservation, read when the page
+ * loads and again under the reservation's lock when its session is installed.
+ * A rental request never collects more than the rental still owed: a request
+ * written before the total went down, or before a payment was recorded, is no
+ * longer current and the store asks again. Nothing is charged and the request is
+ * left as it is. What it would charge is compared, in the currency's precision
+ * (a yen request of 100.60 charges 101). A request in another currency than the reservation's settles
+ * none of it, and is no longer current either. A custom request asks what the
+ * store chose.
+ */
+const requestRefusal = (
+  paymentRequest: Pick<PaymentRequestRow, "type" | "currency" | "amount" | "status" | "expiresAt">,
+  reservation: Pick<LockedReservation, "status" | "totalAmount" | "currency" | "payments">,
+  storeSettings: Parameters<typeof reservationCurrency>[1],
+): PaymentRequestError | null => {
+  if (paymentRequest.status === "completed") return "already_paid";
+  if (paymentRequest.status === "cancelled") return "cancelled";
+  if (paymentRequest.expiresAt.getTime() <= Date.now()) return "invalid_token";
+  if (!REQUEST_PAYABLE_STATUSES.has(reservation.status)) return "cancelled";
+  if (paymentRequest.type !== "rental") return null;
+  const currency = reservationCurrency(reservation.currency, storeSettings);
+  if (normalizeCurrency(paymentRequest.currency, "") !== currency) return "no_longer_current";
+  const owed = getRentalRemaining(reservation, getRentalPaid(reservation.payments, currency));
+  const owedHundredths = Math.round(owed * 100);
+  if (owedHundredths === 0) return "already_paid";
+  // What the session would charge, in the currency's precision: a request the
+  // rounding takes above what is owed is no longer current either.
+  const charged = fromStripeCents(toStripeCents(Number(paymentRequest.amount), currency), currency);
+  if (Math.round(charged * 100) > owedHundredths) return "no_longer_current";
+  return null;
+};
+
+/**
+ * The request as the reservation's lock holds it: its completion takes that lock
+ * before it completes the request, so one completed meanwhile is seen.
+ */
+const readRequest = async (
+  tx: Transaction,
+  { id, storeId, reservationId }: Pick<PaymentRequestRow, "id" | "storeId" | "reservationId">,
+) => {
+  const [row] = await tx
+    .select({
+      type: paymentRequests.type,
+      currency: paymentRequests.currency,
+      amount: paymentRequests.amount,
+      status: paymentRequests.status,
+      expiresAt: paymentRequests.expiresAt,
+    })
+    .from(paymentRequests)
+    .where(
+      and(
+        eq(paymentRequests.id, id),
+        eq(paymentRequests.storeId, storeId),
+        eq(paymentRequests.reservationId, reservationId),
+      ),
+    );
+  return row;
+};
+
 /** Store, live token, reservation and Stripe checks shared by both actions. */
 const loadPaymentRequestContext = async ({
   slug,
@@ -96,12 +180,6 @@ const loadPaymentRequestContext = async ({
   if (!paymentRequest) {
     return { ok: false as const, error: "invalid_token" as const };
   }
-  if (paymentRequest.status === "completed") {
-    return { ok: false as const, error: "already_paid" as const };
-  }
-  if (paymentRequest.status === "cancelled") {
-    return { ok: false as const, error: "cancelled" as const };
-  }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
@@ -109,10 +187,17 @@ const loadPaymentRequestContext = async ({
       customer: true,
       // The insurance share of a rental payment reads the reservation's totals.
       items: { columns: { productId: true, taxRate: true, totalPrice: true } },
+      // What a rental request may still collect reads what was paid.
+      payments: true,
     },
   });
   if (!reservation) {
     return { ok: false as const, error: "reservation_not_found" as const };
+  }
+
+  const refusal = requestRefusal(paymentRequest, reservation, store.settings);
+  if (refusal) {
+    return { ok: false as const, error: refusal };
   }
 
   // Read once: a connected account that cannot charge yet is "not configured".
@@ -151,7 +236,7 @@ export const getPaymentRequestData = async (
       id: paymentRequest.id,
       amount: Number.parseFloat(paymentRequest.amount),
       currency: paymentRequest.currency,
-      description: paymentRequest.description,
+      type: paymentRequest.type,
     },
     customer: { firstName: reservation.customer.firstName },
     requiresContractAcceptance: requiresContractAcceptance(reservation, paymentRequest),
@@ -203,18 +288,6 @@ export const initiatePayment = async (
   }
 
   try {
-    const [successUrl, locale] = await Promise.all([
-      createReservationInstantAccessUrl({
-        storeId: store.id,
-        storeSlug: store.slug,
-        customerEmail: reservation.customer.email,
-        reservationId: reservation.id,
-        redirectPath: `/account/reservations/${reservation.id}?event=payment_received`,
-        ttlMs: PAYMENT_RETURN_ACCESS_TTL_MS,
-      }),
-      getLocale(),
-    ]);
-
     const paymentKind = paymentRequest.type === "rental" ? "rental" : "custom_request";
     const insuranceShareMinor = paymentInsuranceShareMinor(paymentKind, chargeCents, () =>
       reservationTotalsMinor({
@@ -223,44 +296,88 @@ export const initiatePayment = async (
         items: reservation.items,
       }),
     );
-    // The legacy planner takes no fee on a custom charge (damage fees); a store the
-    // billing service bills pays what its policy says of the kind. The payment
-    // copies the fee from the metadata when it completes.
-    const feePlan = await planApplicationFee({
+
+    // The rental's one gate, shared with the customer's own payment session: a
+    // custom request's payment is recorded as a rental payment too, so it takes
+    // the same gate, without the rental's balance. Sending the request again
+    // replaces its session; another door's open session is replaced the same way.
+    const outcome = await openRentalCheckoutSession({
       storeId: store.id,
       reservationId: reservation.id,
-      kind: paymentKind,
-      chargeMinor: chargeCents,
-      currency,
-      insuranceShareMinor: insuranceShareMinor ?? 0,
-    });
-
-    const session = await createPaymentRequestSession({
       stripeAccountId: store.stripeAccountId,
-      reservationId: reservation.id,
-      reservationNumber: reservation.number,
-      customerEmail: reservation.customer.email,
-      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
-      amount: chargeCents,
-      description: paymentRequest.description,
-      currency,
-      successUrl,
-      cancelUrl: getStorefrontUrl(
-        store.slug,
-        `/pay/${reservation.id}?token=${encodeURIComponent(parsed.data.token)}`,
-      ),
-      paymentRequestId: paymentRequest.id,
-      applicationFeeAmount: feePlan.applicationFeeCents,
-      feeMetadata: buildFeeMetadata(feePlan, {
-        insuranceShareMinor: insuranceShareMinor ?? 0,
-        paymentKind,
-        reservationId: reservation.id,
-        storeId: store.id,
-      }),
-      locale,
+      check: async (tx, locked) => {
+        if (!locked) return "reservation_not_found";
+        const current = await readRequest(tx, paymentRequest);
+        return current ? requestRefusal(current, locked, store.settings) : "invalid_token";
+      },
+      create: async ({ idempotencyKey }) => {
+        const [successUrl, locale] = await Promise.all([
+          createReservationInstantAccessUrl({
+            storeId: store.id,
+            storeSlug: store.slug,
+            customerEmail: reservation.customer.email,
+            reservationId: reservation.id,
+            redirectPath: `/account/reservations/${reservation.id}?event=payment_received`,
+            ttlMs: PAYMENT_RETURN_ACCESS_TTL_MS,
+          }),
+          getLocale(),
+        ]);
+        // The legacy planner takes no fee on a custom charge (damage fees); a store the
+        // billing service bills pays what its policy says of the kind. The payment
+        // copies the fee from the metadata when it completes.
+        const feePlan = await planApplicationFee({
+          storeId: store.id,
+          reservationId: reservation.id,
+          kind: paymentKind,
+          chargeMinor: chargeCents,
+          currency,
+          insuranceShareMinor: insuranceShareMinor ?? 0,
+        });
+        return createPaymentRequestSession({
+          stripeAccountId: store.stripeAccountId,
+          idempotencyKey,
+          reservationId: reservation.id,
+          reservationNumber: reservation.number,
+          customerEmail: reservation.customer.email,
+          customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
+          amount: chargeCents,
+          description: paymentRequest.description,
+          currency,
+          successUrl,
+          cancelUrl: getStorefrontUrl(
+            store.slug,
+            `/pay/${reservation.id}?token=${encodeURIComponent(parsed.data.token)}`,
+          ),
+          paymentRequestId: paymentRequest.id,
+          applicationFeeAmount: feePlan.applicationFeeCents,
+          feeMetadata: buildFeeMetadata(feePlan, {
+            insuranceShareMinor: insuranceShareMinor ?? 0,
+            paymentKind,
+            reservationId: reservation.id,
+            storeId: store.id,
+          }),
+          locale,
+        });
+      },
+      attempt: {
+        chargeMinor: chargeCents,
+        currency: normalizeCurrency(paymentRequest.currency),
+        origin: "payment_request",
+        paymentRequestId: paymentRequest.id,
+        activity: { source: "payment_request" },
+      },
     });
-
-    return { ok: true, url: session.url };
+    if (outcome.ok) return { ok: true, url: outcome.session.url };
+    if (outcome.refusal === "paid") {
+      // An earlier session of the rental was paid and is now recorded: the request
+      // reads what that leaves.
+      const now = await loadPaymentRequestContext(parsed.data);
+      return now.ok ? { ok: false, error: "session_creation_failed" } : now;
+    }
+    // A session that may still be paid, or another one opened meanwhile: nothing
+    // new, and the next try asks again.
+    if (outcome.refusal === "busy") return { ok: false, error: "session_creation_failed" };
+    return { ok: false, error: outcome.refusal };
   } catch (error) {
     log.error("pay", `payment session failed: ${describeError(error)}`);
     return { ok: false, error: "session_creation_failed" };

@@ -41,7 +41,7 @@ export const answerPageInput = {
     .max(ANSWER_PAGE_MAX)
     .optional()
     .describe(
-      `Items per page, at most ${ANSWER_PAGE_MAX}. Without it, an agent (MCP) gets ${ANSWER_PAGE_MCP_DEFAULT}, the API every item.`,
+      `Items per page, at most ${ANSWER_PAGE_MAX}. Without it, a page holds ${ANSWER_PAGE_MCP_DEFAULT} over MCP and every item over the REST API.`,
     ),
 };
 
@@ -86,8 +86,7 @@ export function answerPage<T>(
   const keyed = items
     .map((item) => ({ item, key: order.key(item) }))
     .sort((a, b) => compare(a.key, b.key));
-  const after =
-    request.cursor === undefined ? null : decodeCursor(request.cursor, context.tool);
+  const after = request.cursor === undefined ? null : decodeCursor(request.cursor, context.tool);
   const rest = after === null ? keyed : keyed.filter((entry) => compare(entry.key, after) > 0);
   const limit =
     request.limit ??

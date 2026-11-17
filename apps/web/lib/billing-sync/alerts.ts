@@ -28,10 +28,13 @@ export type BillingAlertKind =
   | "policies_stale"
   | "policies_cutoff_mismatch"
   | "fee_fail_closed"
+  | "fee_over_returned"
   | "manifest_rejected"
   | "final_snapshot_skipped"
   | "final_snapshot_large"
-  | "platform_customer_mismatch";
+  | "platform_customer_mismatch"
+  /** Stripe refuses the platform a connected account Louez holds payments of. */
+  | "connected_account_unreachable";
 
 export type BillingLog = {
   error(tag: string, message: string): void;
@@ -41,10 +44,11 @@ export type BillingLog = {
 export type BillingAlerts = {
   readonly log: BillingLog;
   /**
-   * Logs the alert and, at most once an hour per kind, posts it to Discord. Never
-   * throws. With `schedule`, it returns once the alert is logged.
+   * Logs the alert and, at most once an hour per kind, posts it to Discord, followed
+   * by `channelNote` when given. Never throws. With `schedule`, it returns once the
+   * alert is logged.
    */
-  alert(kind: BillingAlertKind, message: string): Promise<void>;
+  alert(kind: BillingAlertKind, message: string, channelNote?: string): Promise<void>;
 };
 
 const DISCORD_INTERVAL_MS = 60 * 60 * 1000;
@@ -94,17 +98,20 @@ export function createBillingAlerts(
     try {
       if (await claimDiscordSlot(kind, new Date())) await notify(kind, message);
     } catch (error) {
+      // The error's class and code only: its message can hold a provider's text.
+      const name = error instanceof Error ? error.name : typeof error;
+      const code = error instanceof Error ? Reflect.get(error, "code") : undefined;
       log.error(
         "billing",
-        `billing sync alert ${kind} could not reach Discord: ${error instanceof Error ? error.message : String(error)}`,
+        `billing sync alert ${kind} could not reach Discord: ${name}${typeof code === "string" || typeof code === "number" ? ` (${code})` : ""}`,
       );
     }
   };
   return {
     log,
-    async alert(kind, message) {
+    async alert(kind, message, channelNote) {
       log.error("billing", `billing sync alert ${kind}: ${message}`);
-      const task = () => postToDiscord(kind, message);
+      const task = () => postToDiscord(kind, channelNote ? `${message} ${channelNote}` : message);
       if (!schedule) return task();
       try {
         schedule(task);

@@ -10,13 +10,26 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
 
+// A dashboard session, read from a test header: Better Auth stays out. The
+// owner decides an override's approval with it, as the approval's page does.
+const SESSION_HEADER = "x-test-session-user";
 mock.module(apiDependencyUrl("@louez/auth"), {
-  namedExports: { auth: {}, authInstance: { api: { getSession: async () => null } } },
+  namedExports: {
+    auth: {},
+    authInstance: {
+      api: {
+        getSession: async ({ headers }: { headers: Headers }) => {
+          const id = headers.get(SESSION_HEADER);
+          return id ? { user: { id, email: `${id}@rt.test` } } : null;
+        },
+      },
+    },
+  },
 });
 
 // The reservation follow-up tools, through the app's real router and the
 // real MCP and OpenAPI handlers: what an agent sees in the daily bundle, the
-// confirmation of a status change.
+// confirmation of a status change, and the owner's approval of an override.
 
 const OWNER = "rt_owner_user_000001";
 const STORE = "rt_store_a_000000001";
@@ -28,6 +41,8 @@ type Json = Record<string, unknown>;
 describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
+  /** The owner's answer on an approval's page: `handoffs.decide`, with their session, on RPC. */
+  let decide: (input: object) => Promise<unknown>;
   let apiKeys: typeof import("@louez/api/services");
   let orm: typeof import("drizzle-orm");
   let exposure: import("@louez/api/platform/exposure").Exposure;
@@ -63,7 +78,28 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     const { handleMcpRequest } = await import("./transports/http");
     exposure = createExposure(appRouter);
 
-    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    const { RPCHandler } = await import("@orpc/server/fetch");
+    const { createORPCClient } = await import("@orpc/client");
+    const { RPCLink } = await import("@orpc/client/fetch");
+    const rpcHandler = new RPCHandler(appRouter);
+    const client = createORPCClient<{
+      dashboard: { handoffs: { decide: (input: object) => Promise<unknown> } };
+    }>(
+      new RPCLink({
+        url: "http://louez.test/api/rpc",
+        headers: { [SESSION_HEADER]: OWNER, cookie: `louez_active_store=${STORE}` },
+        fetch: async (request) => {
+          const { response } = await rpcHandler.handle(request, {
+            prefix: "/api/rpc",
+            context: { headers: request.headers, transport: "rpc", ports, receipt: {} },
+          });
+          return response ?? new Response(null, { status: 404 });
+        },
+      }),
+    );
+    decide = (input) => client.dashboard.handoffs.decide(input);
+
+    const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (method, path, body, headers) =>
       (await handleOpenApiRequest(
         openApiHandler,
@@ -83,9 +119,6 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     const httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: {
-        insertRecordedPayment: async () => undefined,
-      },
     };
     const connect = async (authorization: string) => {
       const mcp = new Client({ name: "test", version: "0.0.0" });
@@ -169,6 +202,30 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     return error.details?.confirmationToken ?? "";
   };
 
+  /** The approval an override asks for, approved by the owner on its page: its id. */
+  const approvedId = async (result: ToolResult) => {
+    const error = toolError(result) as {
+      code?: string;
+      details?: { confirmationToken?: string; approval?: { id: string } };
+    };
+    assert.equal(error?.code, "APPROVAL_REQUIRED", JSON.stringify(result.content));
+    const id = error.details?.approval?.id ?? "";
+    assert.equal(error.details?.confirmationToken, id);
+    const [row] = await louezDb.db
+      .select()
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    assert.ok(row, `approval ${id}`);
+    await decide({
+      id,
+      decision: "approve",
+      revision: row.revision,
+      shown: row.bindingHash,
+      acknowledged: true,
+    });
+    return id;
+  };
+
   let counter = 0;
   async function reservation(status: "pending" | "confirmed" | "ongoing", endDate?: Date) {
     const id = `rt_res_${String(++counter).padStart(14, "0")}`;
@@ -204,6 +261,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     );
     assert.deepEqual(tools.map((entry) => entry.meta.mcp.name).sort(), [
       "reservations_cancel",
+      "reservations_create",
       "reservations_get",
       "reservations_get_planning_timeline",
       "reservations_list",
@@ -211,6 +269,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       "reservations_list_overdue",
       "reservations_list_upcoming",
       "reservations_poll",
+      "reservations_update",
       "reservations_update_notes",
       "reservations_update_status",
       "search_global",
@@ -239,9 +298,25 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     const listed = output(await mcpCall(authorization, "reservations_list", { limit: 10 }));
     assert.ok((listed.items as Json[]).some((item) => item.id === pending));
 
+    // A checkout the customer left: its row says when Stripe said its session was over.
+    const settledAt = new Date("2030-05-20T10:00:00Z");
+    await louezDb.db.insert(louezDb.payments).values({
+      id: `rt_pay_${pending.slice(-14)}`,
+      reservationId: pending,
+      amount: "20.00",
+      type: "rental",
+      method: "stripe",
+      status: "cancelled",
+      stripeCheckoutSessionId: `cs_rt_${pending.slice(-14)}`,
+      sessionSettledAt: settledAt,
+    });
     const got = output(await mcpCall(authorization, "reservations_get", { id: pending }));
     assert.equal(got.id, pending);
     assert.equal((got.customer as Json).firstName, "Ada");
+    assert.deepEqual(
+      (got.payments as Json[]).map((payment) => [payment.status, payment.sessionSettledAt]),
+      [["cancelled", settledAt.toISOString()]],
+    );
 
     const poll = output(await mcpCall(authorization, "reservations_poll", {}));
     assert.equal(poll.pendingCount, 1);
@@ -279,13 +354,254 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(await statusOf(pending), "rejected");
   });
 
+  test("an agent confirms over the stock only once the owner approved the preview that lists the shortfalls", async (t) => {
+    const authorization = await key();
+    // Its bookings share the calendar's dates: gone once it ends.
+    const created: string[] = [];
+    t.after(async () => {
+      await louezDb.db
+        .delete(louezDb.reservationActivity)
+        .where(orm.inArray(louezDb.reservationActivity.reservationId, created));
+      await louezDb.db
+        .delete(louezDb.reservationItems)
+        .where(orm.inArray(louezDb.reservationItems.reservationId, created));
+      await louezDb.db
+        .delete(louezDb.reservations)
+        .where(orm.inArray(louezDb.reservations.id, created));
+    });
+    const productId = `rt_prd_${String(++counter).padStart(14, "0")}`;
+    await louezDb.db.insert(louezDb.products).values({
+      id: productId,
+      storeId: STORE,
+      name: "Kayak",
+      price: "10.00",
+      pricingMode: "day",
+      quantity: 1,
+    });
+    const line = async (reservationId: string, selectedAttributes?: Record<string, string>) => {
+      created.push(reservationId);
+      const itemId = `rt_itm_${String(++counter).padStart(14, "0")}`;
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: itemId,
+        reservationId,
+        productId,
+        quantity: 1,
+        selectedAttributes: selectedAttributes ?? null,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        productSnapshot: { name: "Kayak", description: null, images: [] },
+      });
+      return itemId;
+    };
+    await line(await reservation("confirmed"));
+    const pending = await reservation("pending");
+    // The line keeps a colour, but this product is counted by quantity: the
+    // colour restricts nothing in the stock check, so no choice is named.
+    const itemId = await line(pending, { color: "red" });
+    // Each shortfall names its line and what the stock check read of its choice.
+    const shortfalls = [
+      {
+        productId,
+        productName: "Kayak",
+        combinationKey: null,
+        requested: 1,
+        available: 0,
+        reservationItemId: itemId,
+        selectedAttributes: null,
+      },
+    ];
+
+    const refused = toolError(
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
+        status: "confirmed",
+      }),
+    ) as { code?: string; details?: unknown };
+    assert.deepEqual(
+      { code: refused?.code, details: refused?.details },
+      { code: "RESERVATION_INSUFFICIENT_CAPACITY", details: { shortfalls } },
+    );
+
+    const asked = await mcpCall(authorization, "reservations_update_status", {
+      id: pending,
+      status: "confirmed",
+      allowOverbooking: true,
+    });
+    const preview = (
+      toolError(asked) as {
+        details?: { preview?: { summary?: string; details?: { overbooking?: unknown } } };
+      }
+    ).details?.preview;
+    assert.deepEqual(preview?.details?.overbooking, { shortfalls });
+    assert.match(preview?.summary ?? "", /Kayak, 1 asked, 0 free/);
+    assert.doesNotMatch(preview?.summary ?? "", /red/);
+    assert.equal(await statusOf(pending), "pending");
+
+    const confirmed = output(
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
+        status: "confirmed",
+        allowOverbooking: true,
+        confirmationToken: await approvedId(asked),
+      }),
+    );
+    assert.equal(confirmed.to, "confirmed");
+    const [row] = await louezDb.db
+      .select({ metadata: louezDb.reservationActivity.metadata })
+      .from(louezDb.reservationActivity)
+      .where(
+        orm.and(
+          orm.eq(louezDb.reservationActivity.reservationId, pending),
+          orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
+        ),
+      );
+    assert.deepEqual(
+      { actor: row?.metadata?.actor, overbooked: row?.metadata?.overbooked },
+      { actor: "mcp", overbooked: true },
+    );
+  });
+
+  test("an agent confirms past the turnover buffer only once the owner approved the preview that lists its lines", async (t) => {
+    const authorization = await key();
+    // Its bookings share the calendar's dates, and its buffer the store: gone once it ends.
+    const created: string[] = [];
+    t.after(async () => {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: null })
+        .where(orm.eq(louezDb.stores.id, STORE));
+      await louezDb.db
+        .delete(louezDb.reservationActivity)
+        .where(orm.inArray(louezDb.reservationActivity.reservationId, created));
+      await louezDb.db
+        .delete(louezDb.reservationItems)
+        .where(orm.inArray(louezDb.reservationItems.reservationId, created));
+      await louezDb.db
+        .delete(louezDb.reservations)
+        .where(orm.inArray(louezDb.reservations.id, created));
+    });
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({
+        settings: {
+          reservationMode: "request",
+          advanceNoticeMinutes: 0,
+          turnoverBufferMinutes: 120,
+        },
+      })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const productId = `rt_prd_${String(++counter).padStart(14, "0")}`;
+    await louezDb.db.insert(louezDb.products).values({
+      id: productId,
+      storeId: STORE,
+      name: "Kayak",
+      price: "10.00",
+      pricingMode: "day",
+      quantity: 1,
+    });
+    const line = async (reservationId: string) => {
+      created.push(reservationId);
+      const itemId = `rt_itm_${String(++counter).padStart(14, "0")}`;
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: itemId,
+        reservationId,
+        productId,
+        quantity: 1,
+        unitPrice: "10.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        productSnapshot: { name: "Kayak", description: null, images: [] },
+      });
+      return itemId;
+    };
+    // Back an hour before the request starts; the store asks two.
+    const returned = `rt_res_${String(++counter).padStart(14, "0")}`;
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: returned,
+      storeId: STORE,
+      customerId: CUSTOMER,
+      number: `2030-${String(counter).padStart(4, "0")}`,
+      status: "confirmed",
+      startDate: new Date("2030-05-30T09:00:00Z"),
+      endDate: new Date("2030-06-01T08:00:00Z"),
+      subtotalAmount: "20.00",
+      depositAmount: "0.00",
+      totalAmount: "20.00",
+    });
+    await line(returned);
+    const pending = await reservation("pending");
+    const itemId = await line(pending);
+    const shortfalls = [
+      {
+        productId,
+        productName: "Kayak",
+        combinationKey: null,
+        requested: 1,
+        available: 0,
+        reservationItemId: itemId,
+        selectedAttributes: null,
+      },
+    ];
+
+    const refused = toolError(
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
+        status: "confirmed",
+      }),
+    ) as { code?: string; details?: unknown };
+    assert.deepEqual(
+      { code: refused?.code, details: refused?.details },
+      { code: "RESERVATION_TURNOVER_BUFFER_CONFLICT", details: { shortfalls } },
+    );
+
+    const asked = await mcpCall(authorization, "reservations_update_status", {
+      id: pending,
+      status: "confirmed",
+      overrideTurnoverBuffer: true,
+    });
+    const preview = (
+      toolError(asked) as { details?: { preview?: { details?: { turnoverBuffer?: unknown } } } }
+    ).details?.preview;
+    assert.deepEqual(preview?.details?.turnoverBuffer, {
+      shortfalls,
+      turnoverBufferMinutes: 120,
+    });
+    assert.equal(await statusOf(pending), "pending");
+
+    const confirmed = output(
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
+        status: "confirmed",
+        overrideTurnoverBuffer: true,
+        confirmationToken: await approvedId(asked),
+      }),
+    );
+    assert.equal(confirmed.to, "confirmed");
+    const [row] = await louezDb.db
+      .select({ metadata: louezDb.reservationActivity.metadata })
+      .from(louezDb.reservationActivity)
+      .where(
+        orm.and(
+          orm.eq(louezDb.reservationActivity.reservationId, pending),
+          orm.eq(louezDb.reservationActivity.activityType, "confirmed"),
+        ),
+      );
+    assert.deepEqual(
+      {
+        actor: row?.metadata?.actor,
+        turnoverBufferOverridden: row?.metadata?.turnoverBufferOverridden,
+      },
+      { actor: "mcp", turnoverBufferOverridden: true },
+    );
+  });
+
   test("a calendar window comes a page at a time with a cursor; the API gets it whole", async () => {
     const authorization = await key();
     const window = { from: "2030-06-01T00:00:00Z", to: "2030-06-30T00:00:00Z" };
     for (let index = 0; index < 3; index++) await reservation("confirmed");
-    const all = output(
-      await mcpCall(authorization, "reservations_list_calendar_period", window),
-    ).items as Json[];
+    const all = output(await mcpCall(authorization, "reservations_list_calendar_period", window))
+      .items as Json[];
     assert.ok(all.length >= 3);
 
     // Pages of two, read on with each nextCursor, give every entry once, in order.
@@ -316,12 +632,9 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(planning.nextCursor, null);
 
     const whole = (await (
-      await openApi(
-        "GET",
-        `/reservations/calendar?from=${window.from}&to=${window.to}`,
-        null,
-        { authorization },
-      )
+      await openApi("GET", `/reservations/calendar?from=${window.from}&to=${window.to}`, null, {
+        authorization,
+      })
     ).json()) as Json;
     assert.equal((whole.items as Json[]).length, all.length);
     assert.equal(whole.nextCursor, null);
@@ -384,5 +697,109 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     const redacted = JSON.stringify(output(await mcpCall(blind, "reservations_get", { id })));
     assert.ok(!redacted.includes(CUSTOMER), redacted.slice(0, 300));
     assert.ok(redacted.includes(dashboard));
+  });
+  test("reservations_update and POST /reservations/{id}: one input, one answer, the same codes", async () => {
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Dates agent",
+      permissions: { ...readOnly, reservations: "write" },
+    });
+    // Its confirmations off: each call runs at once.
+    await louezDb.db
+      .update(louezDb.apiKeys)
+      .set({ confirmSensitive: false })
+      .where(orm.eq(louezDb.apiKeys.id, created.id));
+    const authorization = `Bearer ${created.key}`;
+    const productId = "rt_dates_product_001";
+    await louezDb.db.insert(louezDb.products).values({
+      id: productId,
+      storeId: STORE,
+      name: "Dates kayak",
+      price: "10.00",
+      pricingMode: "day",
+      quantity: 5,
+    });
+    const start = new Date("2031-06-01T09:00:00.000Z");
+    const booked = async (id: string) => {
+      // Priced as the checkout prices it: two days at 10.00, no tax.
+      await louezDb.db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId: CUSTOMER,
+        number: id,
+        status: "confirmed",
+        startDate: start,
+        endDate: new Date("2031-06-03T09:00:00.000Z"),
+        subtotalAmount: "20.00",
+        depositAmount: "0.00",
+        totalAmount: "20.00",
+        currency: "EUR",
+        source: "online",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: id.replace("res", "itm"),
+        reservationId: id,
+        productId,
+        quantity: 1,
+        unitPrice: "20.00",
+        depositPerUnit: "0.00",
+        totalPrice: "20.00",
+        productSnapshot: { name: "Dates kayak", description: null, images: [] },
+      });
+    };
+    const viaMcp = "rt_dates_res_mcp_01";
+    const viaRest = "rt_dates_res_rst_01";
+    await booked(viaMcp);
+    await booked(viaRest);
+    const arguments_ = { endDate: "2031-06-04T11:00:00+02:00", notifyCustomer: false };
+
+    const byTool = output(
+      await mcpCall(authorization, "reservations_update", { id: viaMcp, ...arguments_ }),
+    );
+    const response = await openApi("POST", `/reservations/${viaRest}`, arguments_, {
+      authorization,
+    });
+    assert.equal(response.status, 200, await response.clone().text());
+    const byRest = (await response.json()) as Json;
+    for (const answer of [byTool, byRest]) {
+      assert.equal(answer.changed, true);
+      assert.equal(answer.previousTotal, "20.00");
+      assert.equal(answer.totalAmount, "30.00");
+      assert.equal(answer.difference, "10.00");
+      assert.equal(new Date(String(answer.endDate)).toISOString(), "2031-06-04T09:00:00.000Z");
+    }
+
+    // A refusal answers the same code on both.
+    const inverted = { endDate: "2031-05-30T09:00:00Z", notifyCustomer: false };
+    const toolRefusal = await mcpCall(authorization, "reservations_update", {
+      id: viaMcp,
+      ...inverted,
+    });
+    assert.equal(toolError(toolRefusal)?.code, "RESERVATION_WINDOW_INVALID");
+    const restRefusal = await openApi("POST", `/reservations/${viaRest}`, inverted, {
+      authorization,
+    });
+    assert.equal(restRefusal.status, 400);
+    const restError = (await restRefusal.json()) as { data?: { code?: string } };
+    assert.equal(restError.data?.code, "RESERVATION_WINDOW_INVALID");
+    // An unknown field is refused, never ignored.
+    const extra = await openApi(
+      "POST",
+      `/reservations/${viaRest}`,
+      { ...arguments_, lines: [] },
+      { authorization },
+    );
+    assert.equal(extra.status, 400);
+
+    // A read-only key: refused on both.
+    const reader = await key(readOnly);
+    const readerTool = await mcpCall(reader, "reservations_update", { id: viaMcp, ...arguments_ });
+    assert.equal(toolError(readerTool)?.code, "PERMISSION_DENIED");
+    const readerRest = await openApi("POST", `/reservations/${viaRest}`, arguments_, {
+      authorization: reader,
+    });
+    assert.equal(readerRest.status, 403);
   });
 });

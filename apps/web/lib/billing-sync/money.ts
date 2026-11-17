@@ -1,29 +1,16 @@
 import type { StoreSettings } from "@louez/types";
-import { beforeTaxRateBps, normalizeCurrency } from "@louez/utils";
+import {
+  beforeTaxRateBps,
+  normalizeCurrency,
+  THREE_DECIMAL_CURRENCIES,
+  ZERO_DECIMAL_CURRENCIES,
+} from "@louez/utils";
 
 // Integer money for the billing contract (louez-billing docs/api, fees.md §2-§4).
 // Amounts are minor units as Stripe counts them. Nothing here goes through a float.
 
-/** Stripe's zero-decimal currencies (fees.md §3; the list in lib/stripe.ts). */
-const ZERO_DECIMAL = new Set([
-  "BIF",
-  "CLP",
-  "DJF",
-  "GNF",
-  "JPY",
-  "KMF",
-  "KRW",
-  "MGA",
-  "PYG",
-  "RWF",
-  "UGX",
-  "VND",
-  "VUV",
-  "XAF",
-  "XOF",
-  "XPF",
-]);
-const THREE_DECIMAL = new Set(["BHD", "JOD", "KWD", "OMR", "TND"]);
+// The currencies' digits are @louez/utils's (`ZERO_DECIMAL_CURRENCIES`,
+// `THREE_DECIMAL_CURRENCIES`), the one list Louez counts amounts with.
 
 // apps/web targets ES2017, which has no BigInt literals.
 const B0 = BigInt(0);
@@ -33,7 +20,7 @@ const B5000 = BigInt(5000);
 const B10000 = BigInt(10000);
 
 export function currencyExponent(currency: string): 0 | 2 {
-  return ZERO_DECIMAL.has(currency.toUpperCase()) ? 0 : 2;
+  return ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase()) ? 0 : 2;
 }
 
 export type MinorResult =
@@ -46,7 +33,7 @@ export type MinorResult =
  */
 export function toMinor(decimal: string, currency: string): MinorResult {
   const code = currency.toUpperCase();
-  if (THREE_DECIMAL.has(code)) return { error: "unsupported_currency" };
+  if (THREE_DECIMAL_CURRENCIES.has(code)) return { error: "unsupported_currency" };
   const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(decimal.trim());
   if (!match) return { error: "invalid" };
   const exponent = currencyExponent(code);
@@ -114,23 +101,13 @@ export function insuranceShare(input: {
   return Number(share);
 }
 
-/**
- * Before this date some reservations stored a total that included the deposit.
- * Commit 954a509f (2026-03-19) made every writer exclude it; the margin covers the
- * deploy. Later rows never get the deposit taken out, because their total minus
- * subtotal can exceed the deposit for honest reasons (delivery, tax).
- */
-export const DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE = new Date("2026-04-01T00:00:00Z");
-
 export type ReservationTotalsInput = {
   readonly reservation: {
-    readonly createdAt: Date;
     readonly currency: string | null;
     /** `manual` when the dashboard created the row; the storefront checkout writes the others. */
     readonly source: string | null;
     readonly totalAmount: string;
     readonly subtotalAmount: string;
-    readonly depositAmount: string;
     readonly deliveryFee: string | null;
     readonly discountAmount: string | null;
     /** The tax engine's split of the total; the dashboard never writes it. */
@@ -167,8 +144,8 @@ type ToMinor = (value: string | null) => number;
  *
  * The row does not record the display mode the dashboard priced under, so such a
  * total follows the store's tax settings as they are now, and a change of
- * `beforeTaxRateBps` moves it. Rows from before DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE whose
- * total includes the deposit are read the way `getReservationRentalAmount` reads them.
+ * `beforeTaxRateBps` moves it. A total never contains the deposit (migration
+ * 0108 made the older rows fit): it is read as stored.
  */
 export function reservationTotalsMinor(input: ReservationTotalsInput): ReservationTotalsMinor {
   const { reservation } = input;
@@ -179,13 +156,7 @@ export function reservationTotalsMinor(input: ReservationTotalsInput): Reservati
   );
   const minor: ToMinor = (value) => toMinorOrThrow(value, currency);
 
-  const subtotal = minor(reservation.subtotalAmount);
-  const deposit = minor(reservation.depositAmount);
   let total = minor(reservation.totalAmount);
-  const mayIncludeDeposit = reservation.createdAt < DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE;
-  if (mayIncludeDeposit && total > 0 && deposit > 0 && total - subtotal >= deposit - 1) {
-    total = Math.max(0, total - deposit);
-  }
 
   const insurance = Math.max(0, minor(reservation.tulipInsuranceAmount));
   const defaultBps = beforeTaxRateBps(input.storeSettings?.tax);

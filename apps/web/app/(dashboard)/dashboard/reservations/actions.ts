@@ -3,14 +3,42 @@
 import {
   capacityVerdictMetadata,
   nextCapacityVerdictDate,
+  turnoverBufferVerdictMetadata,
 } from "@louez/api/services/capacity-verdict";
+import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 import {
-  type CapacityShortfall,
   lockReservationProducts,
   reserveInventory,
+  splitShortfallsByTurnoverBuffer,
 } from "@louez/api/services/reservation-inventory";
 
-import { validateReservationContract } from "@louez/api/services";
+import {
+  isReservationEditable,
+  NOT_RECORDED,
+  pricingBasisOf,
+  recordedTaxDisplayMode,
+  validateReservationContract,
+} from "@louez/api/services";
+import {
+  cataloguePriceWithRecordedPromotion,
+  priceEditedProductLine,
+  priceProductGoneLine,
+  storedProductLineOf,
+  TAX_OF_TODAY,
+  type EditedLineTax,
+} from "@louez/api/services/edit-line-pricing";
+import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
+import {
+  priceReservationEdit,
+  type EditedLine,
+  type EditPricingInput,
+} from "@louez/api/services/reservation-edit-pricing";
+import {
+  computeReservationTotals,
+  getReservationItemTaxFields,
+  INSURANCE_TAX_LINE_ID,
+  type ReservationItemTaxFields,
+} from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
@@ -18,12 +46,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, gte, inArray, not, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import {
-  computeReservedNetOfExcludedUnits,
-  getRouteDistance,
-  getStorefrontAvailability,
-  loadExcludedUnitInfo,
-} from "@louez/api/services";
+import { getRouteDistance, getStorefrontAvailability } from "@louez/api/services";
 import {
   ConsumableStockError,
   consumeReservationStock,
@@ -31,17 +54,18 @@ import {
   getEffectiveProductQuantities,
   insertReservation,
   isStoreNotAcceptingReservationsError,
-  isStripeRefundPaymentSql,
-  loadConsumableReservedQuantities,
+  lockCustomerRow,
+  lockReservationInTransaction,
+  lockStoreRow,
   markReservation,
   reconcileReservationStock,
   reservationStatusConsumesStock,
-  retryOnceOnDeadlock,
+  type ReservationTransaction,
   retryTransactionOnDeadlock,
+  runReservationTransaction,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
-  buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   customers,
   findBusyUnitIds,
@@ -60,6 +84,7 @@ import {
   reservationItemUnits,
   reservationItems,
   reservations,
+  stores,
   verificationCodes,
 } from "@louez/db";
 import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, type Rate } from "@louez/types";
@@ -77,9 +102,6 @@ import {
   buildCombinationKey,
   billingFromCustomer,
   canonicalizeAttributes,
-  getCurrencySymbol,
-  getDeterministicCombinationSortValue,
-  getProductCombinationAvailabilityKey,
   hasCompleteAttributes,
   matchesSelectedAttributes,
   resolveReservationBilling,
@@ -115,7 +137,6 @@ import {
   sendDepositAuthorizationRequestEmail,
   sendPaymentRequestEmail,
   sendReservationConfirmationEmail,
-  sendReservationModifiedEmail,
 } from "@/lib/email/send";
 import {
   createTulipContractForReservation,
@@ -139,24 +160,31 @@ import {
   productAnalyticsEvents,
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
+import { dispatchApiEffects } from "@/lib/api/effects";
+import { paymentRecordsPort } from "@/lib/api/payment-records-port";
+import { paymentRefundsPort } from "@/lib/api/payment-refunds-port";
+import { paymentErrorKey } from "@/lib/reservations/util.payment-error-key";
+import { typedAmount } from "@/lib/reservations/util.typed-amount";
 import {
   deleteRecordedPayment,
-  insertManualRefund,
   insertRecordedPayment,
-  recordDepositCapture,
-  recordDepositHold,
-  recordDepositRelease,
+  insertRecordedPaymentWithFacts,
 } from "@/lib/reservations/dashboard-payment-writes";
-import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
-import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import {
-  getReservationRentalAmount,
-  paymentRequestTerms,
-} from "@/lib/reservations/util.payment-request";
+  authorizeDepositHold,
+  captureDepositHold as captureReferencedDepositHold,
+  releaseDepositHold as releaseReferencedDepositHold,
+} from "@/lib/reservations/deposit-hold";
+import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
+import { resolveReservationLocationSnapshot } from "@louez/api/services/location-snapshots";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
+import { paymentRequestTerms } from "@/lib/reservations/util.payment-request";
+import { getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 import {
   compareReservationDemand,
   fingerprintReservationEdit,
-} from "@/lib/reservations/util.reservation-edit";
+  reservationEditToken,
+} from "@louez/api/services/util.reservation-edit";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
@@ -166,31 +194,23 @@ import {
 } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { sendReservationModificationEmailForStore } from "@/lib/reservations/modification-email";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import {
-  tryEnsureRefundPaymentRecord,
-  tryGenerateCreditNoteForRefund,
-  tryGenerateInvoiceForPayment,
-} from "@/lib/invoicing/service";
+import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
-import { log } from "@/lib/evlog";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
 
-import {
-  captureDeposit,
-  createDepositAuthorization,
-  createRefund,
-  fromStripeCents,
-  getChargeRefundableAmount,
-  getDepositAuthorizationStatus,
-  getPaymentMethodDetails,
-  releaseDeposit,
-  toStripeCents,
-} from "@/lib/stripe";
+import { getPaymentMethodDetails } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
-import { evaluateReservationRules } from "@louez/utils";
+import { evaluateReservationRules, minorUnitsPerUnit, roundToMinorUnit } from "@louez/utils";
+import {
+  paymentAmount,
+  recordedPaymentAmount,
+  type RecordedAmountVerdict,
+} from "@louez/api/services/payment-amount";
+import { recordDepositReturn, recordPaymentRefund } from "@louez/api/services/payment-records";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,
@@ -442,8 +462,14 @@ async function generateReservationNumber(storeId: string): Promise<string> {
   return `${year}-${String(nextNumber).padStart(4, "0")}`;
 }
 
-/** The answer to a booking the card gate refused inside its transaction. */
-function refuseClosedGate(error: unknown) {
+/**
+ * The answer to a booking its transaction refused: consumable stock that no
+ * override takes below zero, or the card gate.
+ */
+function refuseCreation(error: unknown) {
+  if (error instanceof ConsumableStockError) {
+    return { ok: false as const, error: error.message, shortfalls: [] };
+  }
   if (!isStoreNotAcceptingReservationsError(error)) throw error;
   logReservationGateRefusal(error, "dashboard");
   return { ok: false as const, error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, shortfalls: [] };
@@ -506,18 +532,59 @@ interface CreateReservationData {
   sendConfirmationEmail?: boolean;
   sendAsQuote?: boolean;
   allowOverbooking?: boolean;
+  /**
+   * The total the form showed. Compared under the locks with the total about
+   * to be written; a difference refuses the creation as changed meanwhile.
+   */
+  expectedTotal?: number;
 }
 
-function normalizeUnitAttributes(attributes: unknown): UnitAttributes {
-  if (!attributes || typeof attributes !== "object" || Array.isArray(attributes)) {
-    return {};
-  }
+/**
+ * What a line typed in the dashboard chose, read against the product as it is
+ * under its lock: its exact combination when every axis has a value, none when
+ * it left a choice open (any unit that matches what it did choose serves it).
+ */
+function resolveManualLineChoice(
+  product: { trackUnits: boolean; bookingAttributeAxes: BookingAttributeAxis[] | null },
+  requestedAttributes: UnitAttributes | undefined,
+): { combinationKey: string | null; selectedAttributes: UnitAttributes | null } {
+  const axes = product.bookingAttributeAxes ?? [];
+  const chosen = canonicalizeAttributes(axes, requestedAttributes);
+  const combinationKey =
+    axes.length > 0
+      ? hasCompleteAttributes(axes, chosen)
+        ? buildCombinationKey(axes, chosen)
+        : null
+      : product.trackUnits
+        ? DEFAULT_COMBINATION_KEY
+        : null;
+  return { combinationKey, selectedAttributes: Object.keys(chosen).length > 0 ? chosen : null };
+}
 
-  return Object.fromEntries(
-    Object.entries(attributes).filter(
-      (entry): entry is [string, string] => typeof entry[1] === "string",
-    ),
-  );
+/**
+ * The verdicts a creation or an edit records with its write
+ * (services/capacity-verdict.ts). Its capacity verdict, which the inbox
+ * reads, is built from what the stock itself lacks, counted without the
+ * turnover buffer: a line short only with the buffer is never an
+ * overbooking. Such lines that a flag of the write let through are recorded
+ * apart, with the buffer they were checked with and the session's
+ * credential, as the store's confirmation records them.
+ */
+function stockVerdictMetadata(
+  bookedOver: readonly CapacityShortfall[],
+  pastBuffer: readonly CapacityShortfall[],
+  turnoverBufferMinutes: number,
+) {
+  return {
+    ...capacityVerdictMetadata(bookedOver),
+    ...(pastBuffer.length > 0
+      ? {
+          ...turnoverBufferVerdictMetadata(pastBuffer, turnoverBufferMinutes),
+          // The dashboard's writes come with the user's session.
+          credential: { kind: "session" as const, id: null },
+        }
+      : {}),
+  };
 }
 
 export async function createManualReservation(data: CreateReservationData) {
@@ -525,6 +592,9 @@ export async function createManualReservation(data: CreateReservationData) {
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  // Frozen at creation: the store can change its currency later (billing contract Q4).
+  // Every line's amount is rounded in its minor unit, as the form rounds it.
+  const currency = reservationCurrency(null, store.settings);
 
   // A booking created as confirmed asks the card gate (README §8.4) before it writes a
   // new customer or calls the routing API. insertReservation asks again under the
@@ -534,10 +604,13 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   let customerId = data.customerId;
+  // A new customer is written in the creation's transaction, after the
+  // product locks (store, products, customer, reservation rows): a refused
+  // creation leaves nothing behind. Until then it is the row it will be.
+  let pendingCustomer: typeof customers.$inferInsert | null = null;
+  let customer: CreationCustomer | undefined;
 
-  // Create new customer if needed
   if (!customerId && data.newCustomer) {
-    // Check if customer exists
     const existingCustomer = await db.query.customers.findFirst({
       where: and(eq(customers.storeId, store.id), eq(customers.email, data.newCustomer.email)),
     });
@@ -545,17 +618,33 @@ export async function createManualReservation(data: CreateReservationData) {
     if (existingCustomer) {
       customerId = existingCustomer.id;
     } else {
-      const newCustomerId = nanoid();
-      await db.insert(customers).values({
-        id: newCustomerId,
+      customerId = nanoid();
+      pendingCustomer = {
+        id: customerId,
         storeId: store.id,
         email: data.newCustomer.email,
         firstName: data.newCustomer.firstName,
         lastName: data.newCustomer.lastName,
         phone: data.newCustomer.phone || null,
         createdVia: "dashboard",
-      });
-      customerId = newCustomerId;
+      };
+      // The columns' own defaults, as the row will hold them.
+      customer = {
+        id: customerId,
+        email: pendingCustomer.email,
+        firstName: pendingCustomer.firstName,
+        lastName: pendingCustomer.lastName,
+        phone: pendingCustomer.phone ?? null,
+        customerType: "individual",
+        companyName: null,
+        companyNumber: null,
+        companyNumberScheme: null,
+        vatNumber: null,
+        address: null,
+        city: null,
+        postalCode: null,
+        country: "FR",
+      };
     }
   }
 
@@ -563,13 +652,15 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: "errors.customerRequired" };
   }
 
-  const customer = await db.query.customers.findFirst({
+  customer ??= await db.query.customers.findFirst({
     where: and(eq(customers.id, customerId), eq(customers.storeId, store.id)),
   });
 
   if (!customer) {
     return { error: "errors.customerNotFound" };
   }
+  // The customer booked: a new one's id, or the one with its email written meanwhile.
+  let bookedCustomerId: string = customerId;
 
   const tulipMode = await getDashboardTulipInsuranceMode(store.id);
   const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
@@ -595,25 +686,6 @@ export async function createManualReservation(data: CreateReservationData) {
       if (!product) {
         throw new Error(`errors.productNotFound`);
       }
-
-      const bookingAttributeAxes = (product.bookingAttributeAxes || []) as BookingAttributeAxis[];
-      const normalizedSelectedAttributes = canonicalizeAttributes(
-        bookingAttributeAxes,
-        item.selectedAttributes,
-      );
-      const hasSelectedAttributes = Object.keys(normalizedSelectedAttributes).length > 0;
-      const hasCompleteSelection = hasCompleteAttributes(
-        bookingAttributeAxes,
-        normalizedSelectedAttributes,
-      );
-      const combinationKey =
-        bookingAttributeAxes.length > 0
-          ? hasCompleteSelection
-            ? buildCombinationKey(bookingAttributeAxes, normalizedSelectedAttributes)
-            : null
-          : product.trackUnits
-            ? DEFAULT_COMBINATION_KEY
-            : null;
 
       // Get effective pricing mode for this product
       const effectivePricingMode = toPricingMode(product.pricingMode);
@@ -704,12 +776,12 @@ export async function createManualReservation(data: CreateReservationData) {
       return {
         product,
         quantity: item.quantity,
-        unitPrice: effectiveUnitPrice.toFixed(2),
+        unitPrice: roundToMinorUnit(effectiveUnitPrice, currency).toFixed(2),
         depositPerUnit: product.deposit || "0",
-        totalPrice: effectiveSubtotal.toFixed(2),
+        totalPrice: roundToMinorUnit(effectiveSubtotal, currency).toFixed(2),
         pricingBreakdown,
-        combinationKey,
-        selectedAttributes: hasSelectedAttributes ? normalizedSelectedAttributes : null,
+        // What the line chose, as submitted: read against the product under its lock.
+        requestedAttributes: item.selectedAttributes,
         isCustomItem: false,
       };
     }),
@@ -728,9 +800,9 @@ export async function createManualReservation(data: CreateReservationData) {
       name: item.name,
       description: item.description,
       quantity: item.quantity,
-      unitPrice: item.unitPrice.toFixed(2),
+      unitPrice: roundToMinorUnit(item.unitPrice, currency).toFixed(2),
       depositPerUnit: item.deposit.toFixed(2),
-      totalPrice: totalPrice.toFixed(2),
+      totalPrice: roundToMinorUnit(totalPrice, currency).toFixed(2),
       pricingBreakdown: {
         basePrice: item.unitPrice,
         effectivePrice: item.unitPrice,
@@ -785,7 +857,6 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   // Delivery validation and fee calculation
-  let deliveryFeeAmount = 0;
   let deliveryDistanceKm: number | null = null;
   let returnDistanceKm: number | null = null;
   const storeDeliverySettings = store.settings?.delivery;
@@ -869,26 +940,11 @@ export async function createManualReservation(data: CreateReservationData) {
         return { error: "errors.returnAddressTooFar" };
       }
     }
-
-    // Calculate delivery fee server-side
-    const isIncluded = storeDeliverySettings.mode === "included";
-    if (isIncluded) {
-      deliveryFeeAmount = 0;
-    } else {
-      const feeResult = calculateTotalDeliveryFee(
-        deliveryDistanceKm,
-        returnDistanceKm,
-        storeDeliverySettings,
-        subtotalAmount,
-      );
-      deliveryFeeAmount = feeResult.totalFee;
-    }
   }
 
   // Generate reservation number
   const reservationNumber = await generateReservationNumber(store.id);
 
-  const manualDiscountAmount = Math.min(Math.max(data.discountAmount ?? 0, 0), subtotalAmount);
   if (
     data.depositOverride != null &&
     Number.isFinite(data.depositOverride) &&
@@ -896,309 +952,243 @@ export async function createManualReservation(data: CreateReservationData) {
   ) {
     depositAmount = data.depositOverride;
   }
-  const totalAmount = subtotalAmount - manualDiscountAmount + deliveryFeeAmount;
 
   // Create reservation. Created as confirmed, insertReservation asks the card gate.
   const reservationId = nanoid();
+  const reservationStatus = data.sendAsQuote ? "quote" : "confirmed";
+  const actorUserId = await getActorUserId();
   const reservationWriteResult = await db.transaction(async (tx) => {
-    const requestedProductIds = [...new Set(productDetails.map((detail) => detail.product.id))];
-
-    if (requestedProductIds.length > 0) {
-      const requestedProductIdSql = sql.join(
-        requestedProductIds.map((productId) => sql`${productId}`),
-        sql`, `,
-      );
-      await tx.execute(
-        sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${store.id} FOR UPDATE`,
-      );
+    // The repository's lock order (DL-12), as the API's creation takes it:
+    // the store row first, so two creations of one store run one after the
+    // other; then the products by id; then the customer; then the
+    // reservation's rows. Everything the stock decision reads comes
+    // after them: the products, the store's availability rules, the other
+    // bookings, and which combination each line chose.
+    if (!(await lockStoreRow(tx, store.id))) {
+      return { ok: false as const, error: "errors.storeNotFound", shortfalls: [] };
     }
-
-    const lockedProducts =
-      requestedProductIds.length > 0
-        ? await tx.query.products.findMany({
-            where: and(eq(products.storeId, store.id), inArray(products.id, requestedProductIds)),
-          })
-        : [];
-    const productsById = new Map(lockedProducts.map((product) => [product.id, product]));
-    const blockingStatuses = getBlockingReservationStatuses(
-      store.settings?.pendingBlocksAvailability ?? true,
+    const lockedProductsById = await lockReservationProducts(
+      tx,
+      store.id,
+      productDetails.map((detail) => detail.product.id),
     );
-    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
-    const overlappingReservations = await tx.query.reservations.findMany({
-      where: and(
-        eq(reservations.storeId, store.id),
-        inArray(reservations.status, blockingStatuses),
-        buildReservationOverlapPredicate({
-          start: data.startDate,
-          end: data.endDate,
-          turnoverBufferMinutes,
-        }),
-      ),
-      with: {
-        activity: { columns: { metadata: true } },
-        items: {
-          with: {
-            assignedUnits: true,
-          },
-        },
-      },
-    });
-
-    const trackedProductIds = lockedProducts
-      .filter((product) => product.trackUnits)
-      .map((product) => product.id);
-    const trackedUnits =
-      trackedProductIds.length > 0
-        ? await tx
-            .select({
-              id: productUnits.id,
-            })
-            .from(productUnits)
-            .where(inArray(productUnits.productId, trackedProductIds))
-        : [];
-    const availableUnits =
-      trackedProductIds.length > 0
-        ? await tx
-            .select({
-              id: productUnits.id,
-              productId: productUnits.productId,
-              combinationKey: productUnits.combinationKey,
-              attributes: productUnits.attributes,
-            })
-            .from(productUnits)
-            .where(
-              and(
-                inArray(productUnits.productId, trackedProductIds),
-                buildUnitRentableDuringPredicate(tx, data.startDate, data.endDate),
-              ),
-            )
-        : [];
-    const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
-    const excludedProductUnitIds = new Set(
-      trackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
-    );
-    const excludedUnitInfo = await loadExcludedUnitInfo(tx, excludedProductUnitIds);
-    const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
-      reservations: overlappingReservations,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      turnoverBufferMinutes,
-      excludedProductUnitIds,
-      excludedUnitInfo,
-      consumableProductIds: new Set(
-        lockedProducts
-          .filter((product) => product.stockKind === "consumable")
-          .map((product) => product.id),
-      ),
-      combinationKeyByUnitId: new Map(availableUnits.map((unit) => [unit.id, unit.combinationKey])),
-    });
-    const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
-      storeId: store.id,
-      productIds: lockedProducts
-        .filter((product) => product.stockKind === "consumable")
-        .map((product) => product.id),
-      blockingStatuses,
-    });
-    for (const [productId, reservedQuantity] of consumableReservedByProduct) {
-      reservedByProduct.set(productId, reservedQuantity);
-    }
-    const combinationsByProduct = new Map<
-      string,
-      Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
-    >();
-
-    for (const unit of availableUnits) {
-      const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
-      const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
-      const current = productCombinations.get(combinationKey);
-      const selectedAttributes = normalizeUnitAttributes(unit.attributes);
-
-      if (!current) {
-        productCombinations.set(combinationKey, {
-          totalQuantity: 1,
-          selectedAttributes,
-        });
-      } else {
-        current.totalQuantity += 1;
-        if (
-          Object.keys(current.selectedAttributes).length === 0 &&
-          Object.keys(selectedAttributes).length > 0
-        ) {
-          current.selectedAttributes = selectedAttributes;
-        }
-        productCombinations.set(combinationKey, current);
+    // A customer the store has is locked by its id, through the primary key
+    // (`lockCustomerRow`), and read again: one deleted meanwhile books nothing.
+    if (!pendingCustomer) {
+      await lockCustomerRow(tx, bookedCustomerId);
+      const [stillThere] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.id, bookedCustomerId), eq(customers.storeId, store.id)));
+      if (!stillThere) {
+        return { ok: false as const, error: "errors.customerNotFound", shortfalls: [] };
       }
-
-      combinationsByProduct.set(unit.productId, productCombinations);
     }
+    const [availabilityRules] = await tx
+      .select({ settings: stores.settings })
+      .from(stores)
+      .where(eq(stores.id, store.id));
 
-    const remainingByProduct = new Map<string, number>();
-    const remainingByProductCombination = new Map<string, number>();
-
-    for (const product of lockedProducts) {
-      if (!product.trackUnits) {
-        if (product.stockKind === "untracked") {
-          continue;
-        }
-
-        const reserved = reservedByProduct.get(product.id) || 0;
-        remainingByProduct.set(product.id, Math.max(0, product.quantity - reserved));
-        continue;
-      }
-
-      const productCombinations = combinationsByProduct.get(product.id) || new Map();
-      let totalUnits = 0;
-      for (const [combinationKey, combination] of productCombinations) {
-        const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
-        const reserved = reservedByProductCombination.get(key) || 0;
-        remainingByProductCombination.set(key, Math.max(0, combination.totalQuantity - reserved));
-        totalUnits += combination.totalQuantity;
-      }
-      // Lines booked without a choice only count on the product, so the
-      // product total caps every combination (same rule as availability).
-      remainingByProduct.set(
-        product.id,
-        Math.max(0, totalUnits - (reservedByProduct.get(product.id) || 0)),
-      );
-    }
-
-    const shortfalls: CapacityShortfall[] = [];
-
+    const lines: Array<{
+      detail: (typeof productDetails)[number];
+      choice: ReturnType<typeof resolveManualLineChoice>;
+    }> = [];
     for (const detail of productDetails) {
-      const product = productsById.get(detail.product.id);
+      const product = lockedProductsById.get(detail.product.id);
       if (!product) {
-        return {
-          ok: false as const,
-          error: "errors.productNotFound" as const,
-          shortfalls: [],
-        };
+        return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
       }
-
-      if (!product.trackUnits) {
-        if (product.stockKind === "untracked") {
-          continue;
-        }
-
-        const available = remainingByProduct.get(product.id) || 0;
-        if (detail.quantity > available) {
-          shortfalls.push({
-            productId: product.id,
-            productName: product.name,
-            combinationKey: null,
-            requested: detail.quantity,
-            available,
-          });
-          remainingByProduct.set(product.id, 0);
-          continue;
-        }
-
-        remainingByProduct.set(product.id, available - detail.quantity);
-        continue;
-      }
-
-      const productCombinations = combinationsByProduct.get(product.id) || new Map();
-      const selectedAttributes = detail.selectedAttributes || {};
-      const productRemaining = remainingByProduct.get(product.id) || 0;
-
-      if (detail.combinationKey) {
-        const key = getProductCombinationAvailabilityKey(product.id, detail.combinationKey);
-        const available = Math.min(remainingByProductCombination.get(key) || 0, productRemaining);
-        if (detail.quantity > available) {
-          shortfalls.push({
-            productId: product.id,
-            productName: product.name,
-            combinationKey: detail.combinationKey,
-            requested: detail.quantity,
-            available,
-          });
-          remainingByProductCombination.set(key, 0);
-          continue;
-        }
-
-        remainingByProductCombination.set(key, available - detail.quantity);
-        remainingByProduct.set(product.id, productRemaining - detail.quantity);
-        continue;
-      }
-
-      const candidates = [...productCombinations.entries()]
-        .map(([combinationKey, combination]) => ({
-          combinationKey,
-          ...combination,
-        }))
-        .filter((combination) =>
-          matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
-        )
-        .sort((a, b) => {
-          const sortA = getDeterministicCombinationSortValue(
-            product.bookingAttributeAxes,
-            a.selectedAttributes,
-          );
-          const sortB = getDeterministicCombinationSortValue(
-            product.bookingAttributeAxes,
-            b.selectedAttributes,
-          );
-          return sortA.localeCompare(sortB, "en");
-        });
-      const resolvedCombination =
-        detail.quantity <= productRemaining
-          ? candidates.find((candidate) => {
-              const key = getProductCombinationAvailabilityKey(
-                product.id,
-                candidate.combinationKey,
-              );
-              return (remainingByProductCombination.get(key) || 0) >= detail.quantity;
-            })
-          : undefined;
-
-      if (!resolvedCombination) {
-        const available = Math.min(
-          productRemaining,
-          candidates.reduce((sum, candidate) => {
-            const key = getProductCombinationAvailabilityKey(product.id, candidate.combinationKey);
-            return sum + (remainingByProductCombination.get(key) || 0);
-          }, 0),
-        );
-        shortfalls.push({
-          productId: product.id,
-          productName: product.name,
-          combinationKey: null,
-          requested: detail.quantity,
-          available,
-        });
-        continue;
-      }
-
-      const key = getProductCombinationAvailabilityKey(
-        product.id,
-        resolvedCombination.combinationKey,
-      );
-      const available = remainingByProductCombination.get(key) || 0;
-      remainingByProductCombination.set(key, available - detail.quantity);
-      remainingByProduct.set(product.id, productRemaining - detail.quantity);
+      lines.push({
+        detail,
+        choice: resolveManualLineChoice(product, detail.requestedAttributes),
+      });
     }
 
-    if (shortfalls.length > 0 && !data.allowOverbooking) {
+    // Priced under the locks (slice 10): a line priced from its product is
+    // priced from the catalogue the locks hold, and that is what is written.
+    // A price typed by hand stands as typed.
+    const lockedCatalog = await loadPricingCatalog(tx, {
+      storeId: store.id,
+      productIds: lines.map(({ detail }) => detail.product.id),
+      timezone: availabilityRules?.settings?.timezone,
+      includeInactive: true,
+    });
+    const lockedLines: Array<{ unitPrice: string; totalPrice: string }> = [];
+    for (const { detail } of lines) {
+      if (detail.pricingBreakdown.isManualOverride) {
+        lockedLines.push({ unitPrice: detail.unitPrice, totalPrice: detail.totalPrice });
+        continue;
+      }
+      const lockedProduct = lockedCatalog.get(detail.product.id);
+      if (!lockedProduct) {
+        return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
+      }
+      const priced = priceRegularCatalogLine(lockedProduct, {
+        productId: lockedProduct.id,
+        quantity: detail.quantity,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
+      });
+      lockedLines.push({
+        unitPrice: roundToMinorUnit(priced.unitPrice, currency).toFixed(2),
+        totalPrice: roundToMinorUnit(priced.subtotal, currency).toFixed(2),
+      });
+    }
+    const lockedSubtotal =
+      lockedLines.reduce((sum, line) => sum + Number(line.totalPrice), 0) +
+      customItemDetails.reduce((sum, customItem) => sum + Number(customItem.totalPrice), 0) +
+      tulipInsuranceAmount;
+    const discountUnderLocks = Math.min(Math.max(data.discountAmount ?? 0, 0), lockedSubtotal);
+    // The delivery fee, from the routes measured above and the delivery
+    // settings the store holds now.
+    const lockedDelivery = availabilityRules?.settings?.delivery;
+    const deliveryFeeUnderLocks = !hasAnyDelivery
+      ? 0
+      : !lockedDelivery?.enabled || lockedDelivery.mode === "included"
+        ? 0
+        : calculateTotalDeliveryFee(
+            deliveryDistanceKm,
+            returnDistanceKm,
+            lockedDelivery,
+            lockedSubtotal,
+          ).totalFee;
+
+    // The totals: the tax engine over the lines as priced here, the
+    // insurance (exempt), the delivery fee and the discount, as the checkout
+    // computes them, with the store's tax settings read here (slice 10, M1).
+    const taxSettings = availabilityRules?.settings?.tax;
+    const taxedLines = [
+      ...lines.map(({ detail }, index) => ({
+        subtotal: Number(lockedLines[index]!.totalPrice),
+        unitPrice: Number(lockedLines[index]!.unitPrice),
+        taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
+      })),
+      ...customItemDetails.map((customItem) => ({
+        subtotal: Number(customItem.totalPrice),
+        unitPrice: Number(customItem.unitPrice),
+        taxSettings: null,
+      })),
+    ];
+    const totals = computeReservationTotals({
+      lines: taxedLines,
+      insuranceAmount: tulipInsuranceAmount,
+      discountAmount: discountUnderLocks,
+      deliveryFee: deliveryFeeUnderLocks,
+      totalDeposit: depositAmount,
+      taxSettings,
+      currency,
+    });
+    // What the person confirmed is what is written: the total the form
+    // showed, compared to the minor unit with the total about to be
+    // inserted, its delivery fee and insurance included. A difference
+    // refuses the creation, and the form reads what it prices from again.
+    if (data.expectedTotal !== undefined) {
+      const perUnit = minorUnitsPerUnit(currency);
+      if (Math.round(totals.total * perUnit) !== Math.round(data.expectedTotal * perUnit)) {
+        return { ok: false as const, error: "errors.reservationChangedMeanwhile", shortfalls: [] };
+      }
+    }
+
+    // The stock rule every booking is checked against. Each shortfall is
+    // listed, for the store to book over on purpose. Consumables are checked
+    // here against what other bookings hold, and again when they are taken.
+    const turnoverBufferMinutes = availabilityRules?.settings?.turnoverBufferMinutes ?? 0;
+    const checkStock = (bufferMinutes: number) =>
+      reserveInventory({
+        tx,
+        storeId: store.id,
+        lockedProductsById,
+        lines: lines.map(({ detail, choice }) => ({
+          productId: detail.product.id,
+          quantity: detail.quantity,
+          selectedAttributes: choice.selectedAttributes ?? undefined,
+          combinationKey: choice.combinationKey,
+          // A line with no exact combination is served by any unit that
+          // matches what it chose (resolveUnitAssignmentScope).
+          pooled: choice.combinationKey === null,
+        })),
+        window: { start: data.startDate, end: data.endDate },
+        blockingStatuses: getBlockingReservationStatuses(
+          availabilityRules?.settings?.pendingBlocksAvailability ?? true,
+        ),
+        turnoverBufferMinutes: bufferMinutes,
+        // A booking the team types does not ask for the required accessories.
+        skipRequiredAccessoryCheck: true,
+        onShortfall: "collect",
+      });
+    const inventory = await checkStock(turnoverBufferMinutes);
+    if (!inventory.ok) {
+      return { ok: false as const, error: inventory.error, shortfalls: [] };
+    }
+    if (inventory.shortfalls.length > 0 && !data.allowOverbooking) {
       return {
         ok: false as const,
-        error: "errors.insufficientCapacity" as const,
-        shortfalls,
+        error: "errors.insufficientCapacity",
+        shortfalls: inventory.shortfalls,
       };
     }
+    // What the override let through, told apart: only what the stock itself
+    // lacks is an overbooking; a line short only with the buffer is recorded
+    // as passed past it. The check without the buffer runs only when the
+    // buffered one was short.
+    const split = await splitShortfallsByTurnoverBuffer(checkStock, turnoverBufferMinutes, {
+      withBuffer: true,
+      check: inventory,
+    });
+    if (!split.ok) {
+      return { ok: false as const, error: split.error, shortfalls: [] };
+    }
 
-    const { effects } = await insertReservation(tx, {
+    const lineTaxValues = (index: number) =>
+      reservationItemTaxValues({
+        ...getReservationItemTaxFields(totals, taxedLines[index]!, index),
+        taxExempt: false,
+      });
+    const insuranceTax = totals.taxEnabled
+      ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)
+      : undefined;
+
+    // The new customer, once nothing refuses the creation any more, after the
+    // products and before the reservation's rows: a refused creation writes
+    // nothing. It is added against the store's unique (store, e-mail), as the
+    // API's creation adds one: a customer with this e-mail added meanwhile
+    // makes the insert write nothing, and is the one booked, as it is. The
+    // checkout and the customer form add customers without the store's lock:
+    // the read back is a locking read, which sees a row committed after this
+    // transaction's first read.
+    if (pendingCustomer) {
+      await tx
+        .insert(customers)
+        .values(pendingCustomer)
+        .onDuplicateKeyUpdate({ set: { id: sql`id` } });
+      const [booked] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.storeId, store.id), eq(customers.email, pendingCustomer.email)))
+        .for("update");
+      if (!booked) throw new Error("The customer written in this transaction could not be read back.");
+      bookedCustomerId = booked.id;
+    }
+
+    const { effects, lock } = await insertReservation(tx, {
       id: reservationId,
       storeId: store.id,
-      customerId,
+      customerId: bookedCustomerId,
       number: reservationNumber,
-      status: data.sendAsQuote ? "quote" : "confirmed",
+      status: reservationStatus,
       // Frozen at creation: the store can change its currency later (billing contract Q4).
-      currency: reservationCurrency(null, store.settings),
+      currency,
       startDate: data.startDate,
       endDate: data.endDate,
-      subtotalAmount: subtotalAmount.toFixed(2),
+      subtotalAmount: totals.subtotal.toFixed(2),
       depositAmount: depositAmount.toFixed(2),
-      totalAmount: totalAmount.toFixed(2),
-      discountAmount: manualDiscountAmount.toFixed(2),
+      totalAmount: totals.total.toFixed(2),
+      subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
+      taxAmount: totals.taxAmount?.toFixed(2) ?? null,
+      taxRate: totals.taxRate?.toFixed(2) ?? null,
+      discountAmount: discountUnderLocks.toFixed(2),
+      // The mode its totals were computed in (slice 9).
+      taxDisplayMode: totals.displayMode,
       internalNotes: data.internalNotes || null,
       source: "manual",
       // Staff books on the customer's behalf: the profile's default identity
@@ -1219,7 +1209,7 @@ export async function createManualReservation(data: CreateReservationData) {
       deliveryLongitude:
         hasOutboundDelivery && outboundLeg.longitude ? outboundLeg.longitude.toString() : null,
       deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
-      deliveryFee: deliveryFeeAmount.toFixed(2),
+      deliveryFee: deliveryFeeUnderLocks.toFixed(2),
       returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
       returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
       returnPostalCode: hasReturnDelivery ? (returnLeg.postalCode ?? null) : null,
@@ -1235,31 +1225,33 @@ export async function createManualReservation(data: CreateReservationData) {
       returnLocationSnapshot: returnLocation?.snapshot ?? null,
     });
 
-    // Create reservation items for catalog products
-    for (const detail of productDetails) {
+    // Create reservation items for catalog products. A line keeps the
+    // combination it chose, also when it was booked over the stock.
+    for (const [lineIndex, { detail, choice }] of lines.entries()) {
       await tx.insert(reservationItems).values({
         reservationId,
         productId: detail.product.id,
         isCustomItem: false,
         quantity: detail.quantity,
-        unitPrice: detail.unitPrice,
+        unitPrice: lockedLines[lineIndex]!.unitPrice,
         depositPerUnit: detail.depositPerUnit,
-        totalPrice: detail.totalPrice,
+        totalPrice: lockedLines[lineIndex]!.totalPrice,
         pricingBreakdown: detail.pricingBreakdown,
-        combinationKey: detail.combinationKey,
-        selectedAttributes: detail.selectedAttributes,
+        ...lineTaxValues(lineIndex),
+        combinationKey: choice.combinationKey,
+        selectedAttributes: choice.selectedAttributes,
         productSnapshot: {
           name: detail.product.name,
           description: detail.product.description,
           images: detail.product.images || [],
-          combinationKey: detail.combinationKey,
-          selectedAttributes: detail.selectedAttributes,
+          combinationKey: choice.combinationKey,
+          selectedAttributes: choice.selectedAttributes,
         },
       });
     }
 
     // Create reservation items for custom items
-    for (const customItem of customItemDetails) {
+    for (const [customIndex, customItem] of customItemDetails.entries()) {
       await tx.insert(reservationItems).values({
         reservationId,
         productId: null,
@@ -1269,6 +1261,7 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: customItem.depositPerUnit,
         totalPrice: customItem.totalPrice,
         pricingBreakdown: customItem.pricingBreakdown,
+        ...lineTaxValues(lines.length + customIndex),
         productSnapshot: {
           name: customItem.name,
           description: customItem.description,
@@ -1286,6 +1279,14 @@ export async function createManualReservation(data: CreateReservationData) {
         unitPrice: tulipInsuranceAmount.toFixed(2),
         depositPerUnit: "0.00",
         totalPrice: tulipInsuranceAmount.toFixed(2),
+        // Insurance carries no VAT, whatever the store's settings.
+        ...reservationItemTaxValues({
+          taxRate: null,
+          taxAmount: insuranceTax?.taxAmount ?? null,
+          priceExclTax: insuranceTax?.amountExclTax ?? null,
+          totalExclTax: insuranceTax?.amountExclTax ?? null,
+          taxExempt: true,
+        }),
         productSnapshot: {
           name: "Garantie casse/vol",
           description: "Garantie casse/vol",
@@ -1294,17 +1295,42 @@ export async function createManualReservation(data: CreateReservationData) {
       });
     }
 
+    // Written with the booking: its history, and its capacity verdict for the inbox.
+    await tx.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      userId: actorUserId,
+      activityType: "created",
+      metadata: {
+        source: "manual",
+        status: reservationStatus,
+        tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
+        tulipInsuranceAmount,
+        // Every line short only with the buffer was let through by the override.
+        ...stockVerdictMetadata(
+          split.capacity.map((line) => line.shortfall),
+          split.bufferOnly.map((line) => line.shortfall),
+          turnoverBufferMinutes,
+        ),
+        ...(tulipQuoteError && { tulipQuoteError }),
+      },
+    });
+
     if (!data.sendAsQuote) {
-      await consumeReservationStock(tx, reservationId, store.id);
+      // Consumable stock is physical: the override never takes it below zero.
+      await consumeReservationStock(tx, lock);
       await validateReservationContract(tx, reservationId, store.id, "confirmation");
     }
 
     return {
       ok: true as const,
-      overbookingShortfalls: shortfalls,
       effects,
+      totalAmount: totals.total,
+      subtotalAmount: totals.subtotal,
+      discountAmount: discountUnderLocks,
+      deliveryFee: deliveryFeeUnderLocks,
     };
-  }).catch(refuseClosedGate);
+  }).catch(refuseCreation);
 
   if (!reservationWriteResult.ok) {
     return {
@@ -1312,28 +1338,12 @@ export async function createManualReservation(data: CreateReservationData) {
       shortfalls: reservationWriteResult.shortfalls,
     };
   }
+  // The total the tax engine gave, as written.
+  const { totalAmount } = reservationWriteResult;
 
   // Right after commit: a reservation created as confirmed records its
   // pay-as-you-go fee. A quote records it when it is accepted.
   await runReservationEffects(reservationWriteResult.effects);
-
-  const overbookingShortfalls =
-    reservationWriteResult.overbookingShortfalls.length > 0
-      ? reservationWriteResult.overbookingShortfalls
-      : null;
-
-  // Log activity for manual reservation creation
-  await logReservationActivity(reservationId, "created", {
-    source: "manual",
-    status: data.sendAsQuote ? "quote" : "confirmed",
-    tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
-    tulipInsuranceAmount,
-    ...(overbookingShortfalls && {
-      overbooked: true,
-      overbookingShortfalls,
-    }),
-    ...(tulipQuoteError && { tulipQuoteError }),
-  });
 
   const catalogQuantity = productDetails.reduce((total, detail) => total + detail.quantity, 0);
   const customQuantity = customItemDetails.reduce((total, detail) => total + detail.quantity, 0);
@@ -1347,9 +1357,9 @@ export async function createManualReservation(data: CreateReservationData) {
       surface: "dashboard",
       store_id: store.id,
       reservation_id: reservationId,
-      customer_id: customerId,
+      customer_id: bookedCustomerId,
       source: "dashboard_manual",
-      reservation_status: data.sendAsQuote ? "quote" : "confirmed",
+      reservation_status: reservationStatus,
       catalog_line_count: productDetails.length,
       custom_line_count: customItemDetails.length,
       total_line_count:
@@ -1362,9 +1372,9 @@ export async function createManualReservation(data: CreateReservationData) {
       tulip_insurance_opt_in: appliedTulipInsuranceOptIn,
       sent_as_quote: Boolean(data.sendAsQuote),
       send_confirmation_email: shouldSendEmail,
-      subtotal_amount_cents: toAnalyticsAmountCents(subtotalAmount),
-      discount_amount_cents: toAnalyticsAmountCents(manualDiscountAmount),
-      delivery_fee_cents: toAnalyticsAmountCents(deliveryFeeAmount),
+      subtotal_amount_cents: toAnalyticsAmountCents(reservationWriteResult.subtotalAmount),
+      discount_amount_cents: toAnalyticsAmountCents(reservationWriteResult.discountAmount),
+      delivery_fee_cents: toAnalyticsAmountCents(reservationWriteResult.deliveryFee),
       deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
       total_amount_cents: toAnalyticsAmountCents(totalAmount),
       currency: store.settings?.currency ?? "EUR",
@@ -1460,7 +1470,7 @@ export async function createManualReservation(data: CreateReservationData) {
           startDate: data.startDate,
           endDate: data.endDate,
           totalAmount,
-          subtotalAmount,
+          subtotalAmount: reservationWriteResult.subtotalAmount,
           depositAmount,
         },
         items: emailItems,
@@ -1489,7 +1499,7 @@ export async function createManualReservation(data: CreateReservationData) {
               number: reservationNumber,
               startDate: data.startDate,
               endDate: data.endDate,
-              subtotalAmount,
+              subtotalAmount: reservationWriteResult.subtotalAmount,
               depositAmount,
               totalAmount,
             },
@@ -1597,6 +1607,20 @@ interface UpdateReservationData {
   overrideTurnoverBuffer?: boolean;
   /** Write the edit although it asks more stock than is free; the history keeps the shortfalls. */
   allowOverbooking?: boolean;
+  /**
+   * The total the form showed. When the edit prices the reservation, it is
+   * compared under the locks with the total about to be written; a
+   * difference refuses the edit as changed meanwhile.
+   */
+  expectedTotal?: number;
+  /**
+   * The reservation as the form loaded it (`reservationEditToken`, from the
+   * edit context). Compared under the locks, before any write, with the
+   * reservation stored now: a difference refuses the edit as changed
+   * meanwhile, and nothing is written. A caller that sends none is not
+   * compared.
+   */
+  loadedEditToken?: string;
   delivery?: {
     outbound: UpdateDeliveryLeg;
     return: UpdateDeliveryLeg;
@@ -1640,6 +1664,22 @@ type ReservationItemUpdateValues = Pick<
   | "totalPrice"
   | "pricingBreakdown"
 >;
+
+type ReservationItemTaxValues = Pick<
+  ReservationItemInsertValues,
+  "taxRate" | "taxAmount" | "priceExclTax" | "totalExclTax" | "taxExempt"
+>;
+
+/** A line's tax figures as its row stores them. */
+const reservationItemTaxValues = (
+  tax: ReservationItemTaxFields & { taxExempt: boolean },
+): ReservationItemTaxValues => ({
+  taxRate: tax.taxRate?.toFixed(2) ?? null,
+  taxAmount: tax.taxAmount?.toFixed(2) ?? null,
+  priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
+  totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+  taxExempt: tax.taxExempt,
+});
 
 type ReservationItemWrite =
   | { type: "insert"; values: ReservationItemInsertValues }
@@ -2013,6 +2053,80 @@ export async function previewReservationTulipQuote(
   });
 }
 
+/** An amount written with its currency's precision: "150" for the yen, "150.00" for the euro. */
+const amountInCurrency = (amount: number, currency: string) =>
+  amount.toFixed(minorUnitsPerUnit(currency) === 1 ? 0 : 2);
+
+/** An amount in cents, to compare two amounts written differently ("20" and "20.00"). */
+const toCents = (value: string | number | null | undefined) =>
+  Math.round(Number(value ?? 0) * 100);
+
+/** The delivery legs as a reservation stores them: what an edit compares to know they changed. */
+const DELIVERY_LEG_FIELDS = [
+  "outboundMethod",
+  "returnMethod",
+  "pickupLocationId",
+  "returnLocationId",
+  "deliveryAddress",
+  "deliveryCity",
+  "deliveryPostalCode",
+  "deliveryCountry",
+  "deliveryLatitude",
+  "deliveryLongitude",
+  "returnAddress",
+  "returnCity",
+  "returnPostalCode",
+  "returnCountry",
+  "returnLatitude",
+  "returnLongitude",
+] as const satisfies ReadonlyArray<keyof ReservationDeliveryUpdateValues>;
+
+/** A leg's value, the same however it was written: a coordinate's trailing zeros, an empty text. */
+const normalizeLegValue = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const asNumber = typeof value === "string" ? Number(value) : value;
+  return typeof asNumber === "number" && Number.isFinite(asNumber)
+    ? String(asNumber)
+    : String(value);
+};
+
+/** The customer a creation books: the row, or the one it is about to write. */
+type CreationCustomer = Pick<
+  typeof customers.$inferSelect,
+  | "id"
+  | "email"
+  | "firstName"
+  | "lastName"
+  | "phone"
+  | "customerType"
+  | "companyName"
+  | "companyNumber"
+  | "companyNumberScheme"
+  | "vatNumber"
+  | "address"
+  | "city"
+  | "postalCode"
+  | "country"
+>;
+
+/** What the insurer is told of the renter: the reservation's billing identity and the customer's contact. */
+function insurerCustomerOf(
+  reservation: Parameters<typeof resolveReservationBilling>[0],
+  customer: typeof customers.$inferSelect,
+) {
+  return {
+    ...resolveReservationBilling(reservation, customer),
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    email: customer.email,
+    phone: customer.phone || "",
+    address: customer.address || "",
+    city: customer.city || "",
+    postalCode: customer.postalCode || "",
+    country: customer.country,
+  };
+}
+
 export async function updateReservation(
   reservationId: string,
   data: UpdateReservationData,
@@ -2038,9 +2152,12 @@ export async function updateReservation(
     return { error: "errors.reservationNotFound" };
   }
 
-  // Cannot edit completed reservations
-  if (reservation.status === "completed") {
-    return { error: "errors.cannotEditCompletedReservation" };
+  // Only a pending, quote, confirmed or ongoing reservation is edited (T3);
+  // read again under the lock. The page opens no other, so a refusal here
+  // means the status changed while the form was open: the API's
+  // RESERVATION_NOT_EDITABLE says the same.
+  if (!isReservationEditable(reservation.status)) {
+    return { error: "errors.reservationStatusChanged" };
   }
 
   // Store previous state for activity log
@@ -2063,7 +2180,10 @@ export async function updateReservation(
   // Determine new dates
   const newStartDate = data.startDate || reservation.startDate;
   const newEndDate = data.endDate || reservation.endDate;
-  if (newEndDate < newStartDate) {
+  // A real window (T5): the end after the start, so never of no length. The
+  // start of an ongoing reservation may still move here, unlike the API's
+  // date change: the store corrects the pickup time it recorded.
+  if (newEndDate.getTime() <= newStartDate.getTime()) {
     return { error: "errors.endDateBeforeStart" };
   }
 
@@ -2088,8 +2208,19 @@ export async function updateReservation(
     storeSettings: store.settings,
   });
 
-  // Calculate new totals
-  let newSubtotalAmount = 0;
+  const dateChanged =
+    newStartDate.getTime() !== reservation.startDate.getTime() ||
+    newEndDate.getTime() !== reservation.endDate.getTime();
+  // A typed price's total is rounded once, by `roundToMinorUnit`, as the edit
+  // form rounds it: the form previews what is written. A line kept, priced
+  // from the catalogue or following a deleted product keeps the amount it is
+  // given, to the last digit stored.
+  const lineCurrency = reservationCurrency(reservation.currency, store.settings);
+  // Every line the edit leaves, but the insurance, as it prices it: a line it
+  // does not change at its stored price, the others by the edit's rules
+  // (slice 11); the tax engine totals them under the locks (slice 10).
+  const editedLines: Array<Omit<EditedLine, "taxExempt"> & { id: string }> = [];
+  let linesChanged = false;
   let newDepositAmount = 0;
   let nextTulipInsuranceAmount: number | null = null;
   const tulipWarnings: Array<{
@@ -2100,6 +2231,9 @@ export async function updateReservation(
     tulipWarnings.push({ key: "errors.tulipInsuranceDisabledPastDate" });
   }
   const insuranceQuoteItems: Array<{ productId: string; quantity: number }> = [];
+  // What the insurer was told of the renter, and where the routes start from.
+  let quotedCustomer: ReturnType<typeof insurerCustomerOf> | null = null;
+  let routedFromStore: { latitude: string | null; longitude: string | null } | null = null;
   const legacyInsuranceItemIds = reservation.items
     .filter((item) =>
       isLegacyTulipInsuranceItem({
@@ -2152,6 +2286,7 @@ export async function updateReservation(
     removedReservationItemIds = existingNonInsuranceItems
       .filter((item) => !submittedExistingItemIds.has(item.id))
       .map((item) => item.id);
+    if (removedReservationItemIds.length > 0) linesChanged = true;
 
     // Insert new items
     for (const item of reservationItemsWithoutLegacyInsurance) {
@@ -2161,6 +2296,23 @@ export async function updateReservation(
       let duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
       let totalPrice = item.unitPrice * duration * item.quantity;
       let manualPricingKind: PricingKind = "duration";
+      let pricedFromProductId: string | null = null;
+      // A line priced from its product that the edit does not change keeps its price (slice 11).
+      const existingProductLine =
+        item.id && item.productId && !item.isManualPrice
+          ? existingItemsById.get(item.id)
+          : undefined;
+      const storedProductLine =
+        existingProductLine && existingProductLine.productId === item.productId
+          ? storedProductLineOf(existingProductLine)
+          : null;
+      const productLinePrice = priceEditedProductLine({
+        stored: storedProductLine,
+        quantity: item.quantity,
+        windowChanged: dateChanged,
+      });
+      let lineTax: EditedLineTax = TAX_OF_TODAY;
+      let promotionPercentage: number | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
@@ -2170,7 +2322,7 @@ export async function updateReservation(
         // The product may have been deleted since the reservation was created;
         // the stored breakdown keeps the kind so the manual price stays editable.
         const existingBreakdown = item.id
-          ? existingItemsById.get(item.id)?.pricingBreakdown
+          ? pricingBasisOf(existingItemsById.get(item.id)?.pricingBreakdown)
           : undefined;
         manualPricingKind =
           manualPriceProduct?.pricingKind ?? toPricingKind(existingBreakdown?.pricingKind);
@@ -2178,14 +2330,20 @@ export async function updateReservation(
         totalPrice = item.unitPrice * duration * item.quantity;
       }
 
-      // If not manual price and has a productId, calculate with tiers
-      if (!item.isManualPrice && item.productId) {
+      if (productLinePrice.kind === "kept" && existingProductLine) {
+        finalUnitPrice = productLinePrice.unitPrice;
+        totalPrice = productLinePrice.subtotal;
+        pricingBreakdown = existingProductLine.pricingBreakdown;
+        lineTax = productLinePrice.tax;
+      } else if (!item.isManualPrice && item.productId) {
+        // Priced again, with tiers.
         const product = await db.query.products.findFirst({
           where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
           with: { pricingTiers: true },
         });
 
         if (product) {
+          pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           itemPricingMode = effectivePricingMode;
           duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
@@ -2238,17 +2396,37 @@ export async function updateReservation(
             deposit: seasonalResultForItem.deposit,
           };
 
-          pricingBreakdown = buildReservationPricingBreakdown({
-            pricingKind: product.pricingKind,
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || "0"),
-            pricingMode: itemPricingMode,
+          // The promotion the line recorded, applied as recorded (slice 11).
+          const priced = cataloguePriceWithRecordedPromotion(
+            {
+              subtotal: priceResult.subtotal,
+              breakdown: buildReservationPricingBreakdown({
+                pricingKind: product.pricingKind,
+                basePrice: parseFloat(product.price),
+                deposit: parseFloat(product.deposit || "0"),
+                pricingMode: itemPricingMode,
+                quantity: item.quantity,
+                durationMinutes,
+                result: seasonalResultForItem,
+              }),
+            },
+            storedProductLine,
+          );
+          pricingBreakdown = priced.breakdown;
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
+          totalPrice = priced.subtotal;
+        } else {
+          // Its product deleted since: only what it stored prices it, or the edit is refused (slice 11).
+          const gone = priceProductGoneLine({
+            stored: storedProductLine,
             quantity: item.quantity,
-            durationMinutes,
-            result: seasonalResultForItem,
+            windowChanged: dateChanged,
           });
-          finalUnitPrice = priceResult.subtotal / Math.max(1, item.quantity);
-          totalPrice = priceResult.subtotal;
+          if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
+          finalUnitPrice = gone.unitPrice;
+          totalPrice = gone.subtotal;
+          pricingBreakdown = gone.breakdown;
         }
       } else if (item.isManualPrice) {
         pricingBreakdown = {
@@ -2268,8 +2446,10 @@ export async function updateReservation(
         };
       }
 
+      if (item.isManualPrice || !item.productId) {
+        totalPrice = roundToMinorUnit(totalPrice, lineCurrency);
+      }
       const itemDeposit = item.depositPerUnit * item.quantity;
-      newSubtotalAmount += totalPrice;
       newDepositAmount += itemDeposit;
       if (item.productId) {
         insuranceQuoteItems.push({
@@ -2292,6 +2472,32 @@ export async function updateReservation(
         images: item.productSnapshot.images || [],
       };
 
+      // A line changes what prices the reservation when it is new, or its
+      // quantity, deposit or price typed by hand is not the one stored.
+      const storedLine = item.id ? existingItemsById.get(item.id) : undefined;
+      const typedPrice = Boolean(item.isManualPrice) || !item.productId;
+      if (
+        !storedLine ||
+        storedLine.quantity !== item.quantity ||
+        toCents(storedLine.depositPerUnit) !== toCents(item.depositPerUnit) ||
+        (pricingBasisOf(storedLine.pricingBreakdown)?.isManualOverride === true) !==
+          Boolean(item.isManualPrice) ||
+        (typedPrice && toCents(storedLine.totalPrice) !== toCents(totalPrice))
+      ) {
+        linesChanged = true;
+      }
+      // A new line's id is drawn now: its tax figures are merged into its insert under the locks.
+      const lineId = item.id ?? nanoid();
+      editedLines.push({
+        id: lineId,
+        pricedFromProductId,
+        productId: item.productId || null,
+        quantity: item.quantity,
+        subtotal: Number(totalPrice.toFixed(2)),
+        unitPrice: Number(finalUnitPrice.toFixed(2)),
+        tax: lineTax,
+        promotionPercentage,
+      });
       if (item.id) {
         const existingItem = existingItemsById.get(item.id);
         if (!existingItem) {
@@ -2311,7 +2517,7 @@ export async function updateReservation(
         itemWrites.push({
           type: "insert",
           values: {
-            id: nanoid(),
+            id: lineId,
             reservationId,
             ...itemValues,
             productSnapshot,
@@ -2322,13 +2528,29 @@ export async function updateReservation(
   } else {
     // Just recalculate existing items with new duration
     for (const item of existingNonInsuranceItems) {
-      const pricingBreakdown = item.pricingBreakdown as Record<string, unknown> | null;
+      // A breakdown written only to record facts is read as none, as before (slice 9).
+      const pricingBreakdown = pricingBasisOf(item.pricingBreakdown);
       const isManualPrice = pricingBreakdown?.isManualOverride === true;
 
       let totalPrice: number;
       let finalUnitPrice = parseFloat(item.unitPrice);
+      let pricedFromProductId: string | null = null;
+      // A line priced from its product keeps its price when the window did not move (slice 11).
+      const storedProductLine =
+        !isManualPrice && item.productId ? storedProductLineOf(item) : null;
+      const productLinePrice = priceEditedProductLine({
+        stored: storedProductLine,
+        quantity: item.quantity,
+        windowChanged: dateChanged,
+      });
+      let lineTax: EditedLineTax = TAX_OF_TODAY;
+      let promotionPercentage: number | null = null;
 
-      if (!isManualPrice && item.productId) {
+      if (productLinePrice.kind === "kept") {
+        totalPrice = productLinePrice.subtotal;
+        finalUnitPrice = productLinePrice.unitPrice;
+        lineTax = productLinePrice.tax;
+      } else if (!isManualPrice && item.productId) {
         // Recalculate with tiers
         const product = await db.query.products.findFirst({
           where: eq(products.id, item.productId),
@@ -2336,6 +2558,7 @@ export async function updateReservation(
         });
 
         if (product) {
+          pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           const itemDurationMinutes = calculateDurationMinutes(newStartDate, newEndDate);
           const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
@@ -2379,17 +2602,26 @@ export async function updateReservation(
             item.quantity,
           );
 
-          const newBreakdown = buildReservationPricingBreakdown({
-            pricingKind: product.pricingKind,
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || "0"),
-            pricingMode: effectivePricingMode,
-            quantity: item.quantity,
-            durationMinutes: itemDurationMinutes,
-            result: seasonalResultForDate,
-          });
-          finalUnitPrice = seasonalResultForDate.subtotal / Math.max(1, item.quantity);
-          totalPrice = seasonalResultForDate.subtotal;
+          // The promotion the line recorded, applied as recorded (slice 11).
+          const priced = cataloguePriceWithRecordedPromotion(
+            {
+              subtotal: seasonalResultForDate.subtotal,
+              breakdown: buildReservationPricingBreakdown({
+                pricingKind: product.pricingKind,
+                basePrice: parseFloat(product.price),
+                deposit: parseFloat(product.deposit || "0"),
+                pricingMode: effectivePricingMode,
+                quantity: item.quantity,
+                durationMinutes: itemDurationMinutes,
+                result: seasonalResultForDate,
+              }),
+            },
+            storedProductLine,
+          );
+          const newBreakdown = priced.breakdown;
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.subtotal / Math.max(1, item.quantity);
+          totalPrice = priced.subtotal;
 
           const itemValues = {
             productId: item.productId,
@@ -2408,21 +2640,23 @@ export async function updateReservation(
             });
           }
         } else {
-          const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode);
-          const fallbackPricingKind = toPricingKind(pricingBreakdown?.pricingKind);
-          const itemDuration =
-            fallbackPricingKind === "fixed"
-              ? 1
-              : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
-          totalPrice = finalUnitPrice * itemDuration * item.quantity;
+          // Its product deleted since: only what it stored prices it, or the edit is refused (slice 11).
+          const gone = priceProductGoneLine({
+            stored: storedProductLine,
+            quantity: item.quantity,
+            windowChanged: dateChanged,
+          });
+          if (gone.kind === "refused") return { error: "errors.editProductGonePriceUnknown" };
+          finalUnitPrice = gone.unitPrice;
+          totalPrice = gone.subtotal;
           const itemValues = {
             productId: item.productId,
             isCustomItem: item.isCustomItem,
             quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            unitPrice: gone.unitPrice.toFixed(2),
             depositPerUnit: item.depositPerUnit,
             totalPrice: totalPrice.toFixed(2),
-            pricingBreakdown: item.pricingBreakdown,
+            pricingBreakdown: gone.breakdown,
           } satisfies ReservationItemUpdateValues;
           if (hasReservationItemChanges(item, itemValues)) {
             itemWrites.push({
@@ -2447,10 +2681,10 @@ export async function updateReservation(
           manualPricingKind === "fixed"
             ? 1
             : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
-        totalPrice = finalUnitPrice * itemDuration * item.quantity;
-        const nextPricingBreakdown = item.pricingBreakdown
+        totalPrice = roundToMinorUnit(finalUnitPrice * itemDuration * item.quantity, lineCurrency);
+        const nextPricingBreakdown = pricingBreakdown
           ? {
-              ...item.pricingBreakdown,
+              ...pricingBreakdown,
               duration: itemDuration,
               pricingMode: fallbackPricingMode,
               pricingKind: manualPricingKind,
@@ -2474,7 +2708,16 @@ export async function updateReservation(
         }
       }
 
-      newSubtotalAmount += totalPrice;
+      editedLines.push({
+        id: item.id,
+        pricedFromProductId,
+        productId: item.productId,
+        quantity: item.quantity,
+        subtotal: Number(totalPrice.toFixed(2)),
+        unitPrice: Number(finalUnitPrice.toFixed(2)),
+        tax: lineTax,
+        promotionPercentage,
+      });
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
       if (item.productId) {
         insuranceQuoteItems.push({
@@ -2493,19 +2736,10 @@ export async function updateReservation(
       }
     } else {
       try {
+        quotedCustomer = insurerCustomerOf(reservation, reservation.customer);
         const quote = await previewTulipQuoteForCheckout({
           storeId: store.id,
-          customer: {
-            ...resolveReservationBilling(reservation, reservation.customer),
-            firstName: reservation.customer.firstName,
-            lastName: reservation.customer.lastName,
-            email: reservation.customer.email,
-            phone: reservation.customer.phone || "",
-            address: reservation.customer.address || "",
-            city: reservation.customer.city || "",
-            postalCode: reservation.customer.postalCode || "",
-            country: reservation.customer.country,
-          },
+          customer: quotedCustomer,
           items: insuranceQuoteItems,
           startDate: newStartDate,
           endDate: newEndDate,
@@ -2542,10 +2776,6 @@ export async function updateReservation(
     (!nextTulipInsuranceAmount || nextTulipInsuranceAmount < previousTulipInsuranceAmount)
   ) {
     nextTulipInsuranceAmount = previousTulipInsuranceAmount;
-  }
-
-  if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
-    newSubtotalAmount += nextTulipInsuranceAmount;
   }
 
   if (data.items && data.items.length > 0) {
@@ -2616,8 +2846,12 @@ export async function updateReservation(
     extraInsuranceItemIdsToDelete = legacyInsuranceItemIds;
   }
 
-  // Process delivery changes
-  let deliveryFee = parseFloat(reservation.deliveryFee || "0");
+  // Process delivery changes. The fee is the stored one, or the new
+  // delivery's, computed under the locks from the routes measured here and
+  // the store's settings read there.
+  let deliveryFeeUnderLocks: EditPricingInput["deliveryFee"] = parseFloat(
+    reservation.deliveryFee || "0",
+  );
   const deliveryUpdateFields: ReservationDeliveryUpdateValues = {};
 
   if (data.delivery) {
@@ -2724,31 +2958,28 @@ export async function updateReservation(
       deliveryUpdateFields.returnDistanceKm = null;
     }
 
-    // Calculate delivery fee
-    if (deliverySettings?.enabled) {
-      const outDist = deliveryUpdateFields.deliveryDistanceKm
-        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
-        : null;
-      const retDist = deliveryUpdateFields.returnDistanceKm
-        ? parseFloat(deliveryUpdateFields.returnDistanceKm)
-        : null;
-
-      if (deliverySettings.mode === "included") {
-        deliveryFee = 0;
-      } else {
-        const feeResult = calculateTotalDeliveryFee(
-          outDist,
-          retDist,
-          deliverySettings as Parameters<typeof calculateTotalDeliveryFee>[2],
-          newSubtotalAmount,
-        );
-        deliveryFee = feeResult.totalFee;
-      }
-    } else {
-      deliveryFee = 0;
+    const outDist = deliveryUpdateFields.deliveryDistanceKm
+      ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
+      : null;
+    const retDist = deliveryUpdateFields.returnDistanceKm
+      ? parseFloat(deliveryUpdateFields.returnDistanceKm)
+      : null;
+    deliveryFeeUnderLocks = (subtotal, settings) => {
+      const lockedDelivery = (settings as Record<string, unknown> | null)?.delivery as
+        | DeliverySettings
+        | undefined;
+      if (!lockedDelivery?.enabled || lockedDelivery.mode === "included") return 0;
+      return calculateTotalDeliveryFee(
+        outDist,
+        retDist,
+        lockedDelivery as Parameters<typeof calculateTotalDeliveryFee>[2],
+        subtotal,
+      ).totalFee;
+    };
+    // The routes were measured from the store's position: it is read again under the locks.
+    if (data.delivery.outbound.method === "address" || data.delivery.return.method === "address") {
+      routedFromStore = { latitude: store.latitude ?? null, longitude: store.longitude ?? null };
     }
-
-    deliveryUpdateFields.deliveryFee = deliveryFee.toFixed(2);
 
     // Update legacy field for backward compatibility
     const hasAddressLeg =
@@ -2756,13 +2987,35 @@ export async function updateReservation(
     deliveryUpdateFields.deliveryOption = hasAddressLeg ? "delivery" : "pickup";
   }
 
-  // Calculate total: subtotal + delivery fee - discount
   const existingDiscount = parseFloat(reservation.discountAmount || "0");
-  const newTotalAmount = newSubtotalAmount + deliveryFee - existingDiscount;
-  const difference = newTotalAmount - previousState.totalAmount;
-  const dateChanged =
-    newStartDate.getTime() !== reservation.startDate.getTime() ||
-    newEndDate.getTime() !== reservation.endDate.getTime();
+  // What prices a reservation (slice 10): its window, its lines (a line added
+  // or removed, a quantity, a deposit, a price typed by hand), its delivery
+  // legs and the insurance the store asks for; its discount the edit does not
+  // change. An edit that changes none of it changes no amount: every monetary
+  // column stays as stored, and nothing is recorded again.
+  const deliveryChanged =
+    data.delivery !== undefined &&
+    DELIVERY_LEG_FIELDS.some(
+      (field) =>
+        normalizeLegValue(deliveryUpdateFields[field]) !== normalizeLegValue(reservation[field]),
+    );
+  const pricingChanged =
+    dateChanged ||
+    linesChanged ||
+    deliveryChanged ||
+    // An old row may hold no opt-in at all: none asked.
+    requestedTulipInsuranceOptIn !== Boolean(reservation.tulipInsuranceOptIn);
+  if (!pricingChanged) {
+    itemWrites.length = 0;
+    insuranceItemWrites.length = 0;
+    extraInsuranceItemIdsToDelete = [];
+    for (const field of Object.keys(deliveryUpdateFields)) {
+      delete deliveryUpdateFields[field as keyof ReservationDeliveryUpdateValues];
+    }
+  }
+  // What the insurer's quote and the routes were computed from, outside the
+  // transaction: compared again under the locks.
+  const outsideBasis = JSON.stringify({ quotedCustomer, routedFromStore });
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
   );
@@ -2801,6 +3054,27 @@ export async function updateReservation(
             discountAmount: reservations.discountAmount,
             tulipInsuranceOptIn: reservations.tulipInsuranceOptIn,
             tulipInsuranceAmount: reservations.tulipInsuranceAmount,
+            outboundMethod: reservations.outboundMethod,
+            pickupLocationId: reservations.pickupLocationId,
+            deliveryOption: reservations.deliveryOption,
+            deliveryAddress: reservations.deliveryAddress,
+            deliveryCity: reservations.deliveryCity,
+            deliveryPostalCode: reservations.deliveryPostalCode,
+            deliveryCountry: reservations.deliveryCountry,
+            deliveryLatitude: reservations.deliveryLatitude,
+            deliveryLongitude: reservations.deliveryLongitude,
+            returnMethod: reservations.returnMethod,
+            returnLocationId: reservations.returnLocationId,
+            returnAddress: reservations.returnAddress,
+            returnCity: reservations.returnCity,
+            returnPostalCode: reservations.returnPostalCode,
+            returnCountry: reservations.returnCountry,
+            returnLatitude: reservations.returnLatitude,
+            returnLongitude: reservations.returnLongitude,
+            customerId: reservations.customerId,
+            billingSnapshot: reservations.billingSnapshot,
+            taxDisplayMode: reservations.taxDisplayMode,
+            taxAmount: reservations.taxAmount,
           })
           .from(reservations)
           .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
@@ -2808,6 +3082,11 @@ export async function updateReservation(
 
         if (!lockedReservation) {
           return { error: "errors.reservationNotFound" };
+        }
+        // A completion or a cancellation that landed since the read: refused
+        // as such, before the fingerprint would only say "changed".
+        if (!isReservationEditable(lockedReservation.status)) {
+          return { error: "errors.reservationStatusChanged" };
         }
 
         const lockedItems = await tx
@@ -2821,6 +3100,7 @@ export async function updateReservation(
             pricingBreakdown: reservationItems.pricingBreakdown,
             combinationKey: reservationItems.combinationKey,
             selectedAttributes: reservationItems.selectedAttributes,
+            taxExempt: reservationItems.taxExempt,
           })
           .from(reservationItems)
           .where(eq(reservationItems.reservationId, reservationId));
@@ -2830,6 +3110,15 @@ export async function updateReservation(
         // A line added meanwhile is caught here too, before its product would
         // have to be locked after the reservation.
         if (fingerprintReservationEdit(lockedReservation, lockedItems) !== editBasis) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+        // The form edits the reservation it loaded, or nothing: another save
+        // since its read (another tab, the API, an extension) would be
+        // overwritten by the lines and the window it sends.
+        if (
+          data.loadedEditToken !== undefined &&
+          reservationEditToken(lockedReservation, lockedItems) !== data.loadedEditToken
+        ) {
           return { error: "errors.reservationChangedMeanwhile" };
         }
 
@@ -2842,6 +3131,134 @@ export async function updateReservation(
             return { error: "errors.productNotFound" };
           }
         }
+
+        // The insurer's quote and the routes were taken outside: what they were
+        // computed from must still hold (the renter, the store's position).
+        const [lockedStore] = await tx
+          .select({ latitude: stores.latitude, longitude: stores.longitude })
+          .from(stores)
+          .where(eq(stores.id, store.id));
+        const [lockedCustomer] =
+          quotedCustomer && lockedReservation.customerId
+            ? await tx
+                .select()
+                .from(customers)
+                .where(eq(customers.id, lockedReservation.customerId))
+            : [];
+        const insideBasis = JSON.stringify({
+          quotedCustomer:
+            quotedCustomer && lockedCustomer
+              ? insurerCustomerOf(lockedReservation, lockedCustomer)
+              : null,
+          routedFromStore: routedFromStore && {
+            latitude: lockedStore?.latitude ?? null,
+            longitude: lockedStore?.longitude ?? null,
+          },
+        });
+        if (insideBasis !== outsideBasis) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+
+        // The totals: the tax engine over the lines, under the locks (M1),
+        // when the edit changes what prices the reservation.
+        const taxExemptById = new Map(lockedItems.map((item) => [item.id, item.taxExempt]));
+        const recordedMode = recordedTaxDisplayMode(lockedReservation);
+        const priceEditedReservation = async () => {
+          const pricing = await priceReservationEdit(tx, {
+            storeId: store.id,
+            window: { start: newStartDate, end: newEndDate },
+            lines: editedLines.map((line) => ({
+              ...line,
+              taxExempt: taxExemptById.get(line.id) ?? null,
+            })),
+            insuranceAmount: nextTulipInsuranceAmount ?? 0,
+            discountAmount: existingDiscount,
+            totalDeposit: newDepositAmount,
+            deliveryFee: deliveryFeeUnderLocks,
+            recordedTaxDisplayMode: recordedMode === NOT_RECORDED ? null : recordedMode,
+            currency: reservationCurrency(reservation.currency, store.settings),
+          });
+          // A product's prices changed while the store was editing.
+          if (!pricing.ok) return { kind: "changed_meanwhile" } as const;
+          // Each line's tax figures go with its write, or alone when the line is not rewritten.
+          const writesById = new Map(
+            itemWrites.map((write) => [write.type === "insert" ? write.values.id : write.id, write]),
+          );
+          const taxOnlyWrites: Array<{ id: string; values: ReservationItemTaxValues }> = [];
+          for (const [index, line] of editedLines.entries()) {
+            const values = reservationItemTaxValues(pricing.lines[index]!);
+            const write = writesById.get(line.id);
+            if (write) Object.assign(write.values, values);
+            else taxOnlyWrites.push({ id: line.id, values });
+          }
+          for (const insuranceItemWrite of insuranceItemWrites) {
+            Object.assign(
+              insuranceItemWrite.values,
+              reservationItemTaxValues({ ...pricing.insurance, taxExempt: true }),
+            );
+          }
+          if (data.delivery) {
+            deliveryUpdateFields.deliveryFee = pricing.deliveryFee.toFixed(2);
+          }
+          return { kind: "priced", ...pricing, taxOnlyWrites } as const;
+        };
+        const priced = pricingChanged
+          ? await priceEditedReservation()
+          : ({ kind: "unchanged" } as const);
+        if (priced.kind === "changed_meanwhile") {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+        const taxOnlyWrites = priced.kind === "priced" ? priced.taxOnlyWrites : [];
+        const newTotalAmount =
+          priced.kind === "priced" ? priced.totals.total : previousState.totalAmount;
+        const difference = Math.round((newTotalAmount - previousState.totalAmount) * 100) / 100;
+        // The tax now comes on top of a total that carried none, when three
+        // facts hold at once: the row recorded no display mode (the tax
+        // engine never totalled it, whatever its tax columns hold); its
+        // stored total carried no tax (it is its subtotal, plus delivery,
+        // less the discount, to the minor unit); and the engine added tax on
+        // top (its tax above zero in a store that prices before tax).
+        const perUnit = minorUnitsPerUnit(reservationCurrency(reservation.currency, store.settings));
+        const amount = (value: string | null) => Number(value ?? 0);
+        // The sum rounded once, as a writer that stored it rounded it.
+        const storedTotalCarriedNoTax =
+          Math.round(amount(lockedReservation.totalAmount) * perUnit) ===
+          Math.round(
+            (amount(lockedReservation.subtotalAmount) +
+              amount(lockedReservation.deliveryFee) -
+              amount(lockedReservation.discountAmount)) *
+              perUnit,
+          );
+        // On a row that recorded its mode, a line kept at its stored price
+        // that recorded no rate (taxes were off when it was priced) has no
+        // tax fact to keep: it is taxed by today's settings (slice 11), and
+        // when that puts tax on top of it the store is told the same way.
+        const keptLineTaxed =
+          priced.kind === "priced" &&
+          recordedMode !== NOT_RECORDED &&
+          editedLines.some(
+            (line, index) =>
+              line.tax.kind === "not_recorded" && (priced.lines[index]?.taxAmount ?? 0) > 0,
+          );
+        // What the person confirmed is what is written (slice 11): a line the
+        // edit keeps enters at the price read under the locks, which another
+        // edit may have changed since the form read it. The total the form
+        // showed is compared to the minor unit with the total about to be
+        // written; a difference refuses the edit, and the form reads the
+        // reservation again.
+        if (
+          priced.kind === "priced" &&
+          data.expectedTotal !== undefined &&
+          Math.round(newTotalAmount * perUnit) !== Math.round(data.expectedTotal * perUnit)
+        ) {
+          return { error: "errors.reservationChangedMeanwhile" };
+        }
+        const taxAdded =
+          priced.kind === "priced" &&
+          priced.totals.taxEnabled &&
+          priced.totals.displayMode === "exclusive" &&
+          (priced.totals.taxAmount ?? 0) > 0 &&
+          ((recordedMode === NOT_RECORDED && storedTotalCarriedNoTax) || keptLineTaxed);
 
         await tx
           .select({ id: productUnits.id })
@@ -3090,24 +3507,26 @@ export async function updateReservation(
           (productId) => lockedProductsById.get(productId)?.bookingAttributeAxes,
         );
         const holdsStock = blockingStatuses.some((status) => status === lockedReservation.status);
-        let capacityVerdict: ReturnType<typeof capacityVerdictMetadata> | null = null;
+        let capacityVerdict: ReturnType<typeof stockVerdictMetadata> | null = null;
         if (holdsStock && demand.changed) {
-          const inventory = await reserveInventory({
-            tx,
-            storeId: store.id,
-            lockedProductsById,
-            // A line whose product was deleted since has no stock to check.
-            lines: finalLines.filter((line) => lockedProductsById.has(line.productId)),
-            window: { start: newStartDate, end: newEndDate },
-            blockingStatuses,
-            turnoverBufferMinutes: overrideTurnoverBuffer ? 0 : turnoverBufferMinutes,
-            excludeReservationId: reservationId,
-            // Consumable stock is reconciled below; like a booking the team
-            // creates, an edit does not ask for the required accessories.
-            skipConsumableCheck: true,
-            skipRequiredAccessoryCheck: true,
-            onShortfall: "collect",
-          });
+          const checkStock = (bufferMinutes: number) =>
+            reserveInventory({
+              tx,
+              storeId: store.id,
+              lockedProductsById,
+              // A line whose product was deleted since has no stock to check.
+              lines: finalLines.filter((line) => lockedProductsById.has(line.productId)),
+              window: { start: newStartDate, end: newEndDate },
+              blockingStatuses,
+              turnoverBufferMinutes: bufferMinutes,
+              excludeReservationId: reservationId,
+              // Consumable stock is reconciled below; like a booking the team
+              // creates, an edit does not ask for the required accessories.
+              skipConsumableCheck: true,
+              skipRequiredAccessoryCheck: true,
+              onShortfall: "collect",
+            });
+          const inventory = await checkStock(overrideTurnoverBuffer ? 0 : turnoverBufferMinutes);
           if (!inventory.ok) {
             return { error: inventory.error };
           }
@@ -3119,7 +3538,28 @@ export async function updateReservation(
           ) {
             return { error: "errors.insufficientCapacity", shortfalls: inventory.shortfalls };
           }
-          capacityVerdict = capacityVerdictMetadata(inventory.shortfalls);
+          // The verdict, told apart: only what the stock itself lacks is an
+          // overbooking. A line short only with the buffer is recorded when a
+          // flag let it through, on a product the edit asks more of; one the
+          // edit did not raise needed no flag and records nothing. The other
+          // run is made only when the first was short, or, sent with
+          // `overrideTurnoverBuffer`, to trace what it passed.
+          const split = await splitShortfallsByTurnoverBuffer(
+            checkStock,
+            turnoverBufferMinutes,
+            { withBuffer: !overrideTurnoverBuffer, check: inventory },
+            demand.raisedProductIds.size > 0,
+          );
+          if (!split.ok) {
+            return { error: split.error };
+          }
+          capacityVerdict = stockVerdictMetadata(
+            split.capacity.map((line) => line.shortfall),
+            split.bufferOnly.flatMap((line) =>
+              demand.raisedProductIds.has(line.shortfall.productId) ? [line.shortfall] : [],
+            ),
+            turnoverBufferMinutes,
+          );
         }
 
         const unitEvents: Array<typeof productUnitEvents.$inferInsert> = assignmentsToRemove.map(
@@ -3173,6 +3613,13 @@ export async function updateReservation(
           }
         }
 
+        for (const taxOnlyWrite of taxOnlyWrites) {
+          await tx
+            .update(reservationItems)
+            .set(taxOnlyWrite.values)
+            .where(eq(reservationItems.id, taxOnlyWrite.id));
+        }
+
         for (const insuranceItemWrite of insuranceItemWrites) {
           if (insuranceItemWrite.type === "insert") {
             await tx.insert(reservationItems).values(insuranceItemWrite.values);
@@ -3211,19 +3658,30 @@ export async function updateReservation(
             );
         }
 
+        const repriced = priced.kind === "priced" ? priced : null;
         await tx
           .update(reservations)
           .set({
             startDate: newStartDate,
             endDate: newEndDate,
-            subtotalAmount: newSubtotalAmount.toFixed(2),
-            depositAmount: newDepositAmount.toFixed(2),
-            totalAmount: newTotalAmount.toFixed(2),
-            tulipInsuranceOptIn: nextTulipInsuranceOptIn,
-            tulipInsuranceAmount:
-              nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
+            // An edit that does not reprice writes no monetary column: each key
+            // is undefined then, which Drizzle leaves out. A repriced edit
+            // writes null where the engine clears a column.
+            subtotalAmount: repriced ? repriced.totals.subtotal.toFixed(2) : undefined,
+            depositAmount: repriced ? newDepositAmount.toFixed(2) : undefined,
+            totalAmount: repriced ? newTotalAmount.toFixed(2) : undefined,
+            subtotalExclTax: repriced
+              ? (repriced.totals.subtotalExclTax?.toFixed(2) ?? null)
+              : undefined,
+            taxAmount: repriced ? (repriced.totals.taxAmount?.toFixed(2) ?? null) : undefined,
+            taxRate: repriced ? (repriced.totals.taxRate?.toFixed(2) ?? null) : undefined,
+            taxDisplayMode: repriced ? repriced.taxDisplayMode : undefined,
+            tulipInsuranceOptIn: repriced ? nextTulipInsuranceOptIn : undefined,
+            tulipInsuranceAmount: repriced
+              ? nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
                 ? nextTulipInsuranceAmount.toFixed(2)
-                : null,
+                : null
+              : undefined,
             ...deliveryUpdateFields,
             updatedAt: new Date(),
             // The inbox dates a late pickup or return from its last schedule change.
@@ -3258,8 +3716,9 @@ export async function updateReservation(
             updated: {
               startDate: newStartDate,
               endDate: newEndDate,
-              subtotalAmount: newSubtotalAmount,
-              depositAmount: newDepositAmount,
+              subtotalAmount:
+                priced.kind === "priced" ? priced.totals.subtotal : previousState.subtotalAmount,
+              depositAmount: priced.kind === "priced" ? newDepositAmount : previousState.depositAmount,
             },
             difference,
             ...capacityVerdict,
@@ -3270,7 +3729,13 @@ export async function updateReservation(
           },
           createdAt: capacityVerdict ? await nextCapacityVerdictDate(tx, reservationId) : undefined,
         });
-        return { success: true, reservationStatus: lockedReservation.status };
+        return {
+          success: true,
+          reservationStatus: lockedReservation.status,
+          difference,
+          newTotalAmount,
+          taxAdded,
+        };
       },
       { isolationLevel: "read committed" },
     ),
@@ -3307,6 +3772,7 @@ export async function updateReservation(
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
+  const reservationCurrencyCode = reservationCurrency(reservation.currency, store.settings);
   const responseWarnings = [
     ...validationWarnings.map((warning) => ({
       code: warning.code,
@@ -3314,6 +3780,19 @@ export async function updateReservation(
       params: warning.params,
     })),
     ...tulipWarnings,
+    // Repriced, a total stored without its tax now carries it: the store is told.
+    ...(transactionResult.taxAdded
+      ? [
+          {
+            key: "errors.editTaxAdded",
+            // In the reservation's currency, with its own precision (¥150, €150.00).
+            params: {
+              previousTotal: amountInCurrency(previousState.totalAmount, reservationCurrencyCode),
+              newTotal: amountInCurrency(transactionResult.newTotalAmount, reservationCurrencyCode),
+            },
+          },
+        ]
+      : []),
   ];
 
   let emailNotification:
@@ -3327,6 +3806,7 @@ export async function updateReservation(
         startDate: reservation.startDate,
         endDate: reservation.endDate,
       },
+      period: { startDate: newStartDate, endDate: newEndDate },
     });
 
     if (emailResult.error) {
@@ -3359,8 +3839,8 @@ export async function updateReservation(
 
   return {
     success: true,
-    difference,
-    newTotal: newTotalAmount,
+    difference: transactionResult.difference,
+    newTotal: transactionResult.newTotalAmount,
     previousTotal: previousState.totalAmount,
     ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
     ...(emailNotification && { emailNotification }),
@@ -3374,9 +3854,12 @@ export async function updateReservation(
 export type PaymentType = "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
 export type PaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
 
+/** An amount as the form sent it: the text typed, which the writes judge as it is. */
+type TypedAmount = string;
+
 interface RecordPaymentData {
   type: PaymentType;
-  amount: number;
+  amount: TypedAmount;
   method: PaymentMethod;
   paidAt?: Date;
   notes?: string;
@@ -3384,7 +3867,7 @@ interface RecordPaymentData {
 
 interface RefundManualPaymentData {
   paymentId: string;
-  amount: number;
+  amount: TypedAmount;
   method: PaymentMethod;
   notes?: string;
 }
@@ -3393,11 +3876,64 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * An amount a payment form sent, as typed, judged as the agents' writes judge it
+ * (`recordedPaymentAmount`, packages/api services/payment-amount.ts): its
+ * text, its sign for its type, and at most the decimals of the reservation's
+ * currency, in a currency the money layer carries. Accepted, it is the text
+ * the row holds, as `toFixed(2)` wrote it ("1500.00" in yen, "7.50" in euros).
+ */
+function formAmount(
+  amount: TypedAmount,
+  type: PaymentType,
+  reservation: { currency: string | null },
+  storeSettings: Parameters<typeof reservationCurrency>[1],
+): RecordedAmountVerdict {
+  return recordedPaymentAmount(
+    amount,
+    type,
+    reservationCurrency(reservation.currency, storeSettings),
+  );
+}
+
+/** The length of a record id's column (`id()`, `@louez/db` schema): none is longer. */
+const RECORD_ID_MAX_LENGTH = 21;
+
+/**
+ * Whether a call names a record by a string an id can be. An action called
+ * directly with anything else (an array, a number, megabytes of text) is
+ * refused as a record not found, before any read: never a database error.
+ */
+function isRecordId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= RECORD_ID_MAX_LENGTH;
+}
+
+/** The dashboard's text for an amount `formAmount` refused. */
+function formAmountErrorKey(
+  refusal: Exclude<RecordedAmountVerdict, { ok: true }>["refusal"],
+): string {
+  switch (refusal) {
+    case "negative_outside_adjustment":
+      return "errors.negativeAmountOnlyForAdjustment";
+    case "too_precise":
+      return "errors.amountTooPrecise";
+    case "currency_unsupported":
+      return "errors.currencyNotSupportedForPayments";
+    case "amount_invalid":
+      return "errors.invalidAmount";
+  }
+}
+
 export async function recordPayment(reservationId: string, data: RecordPaymentData) {
   const store = await getStoreForUser();
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
@@ -3410,25 +3946,25 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     return { error: "errors.reservationNotFound" };
   }
 
-  if (data.amount === 0) {
-    return { error: "errors.invalidAmount" };
-  }
+  // Only an adjustment can be negative; the decimals are the currency's.
+  const verdict = formAmount(typed, data.type, reservation, store.settings);
+  if (!verdict.ok) return { error: formAmountErrorKey(verdict.refusal) };
+  // The amount the row holds, as a number for the checks and the logs below.
+  const amount = Number(verdict.amount);
 
-  // Only adjustment type can have negative amounts
-  if (data.amount < 0 && data.type !== "adjustment") {
-    return { error: "errors.negativeAmountOnlyForAdjustment" };
-  }
+  if (amount > 0 && data.type === "rental") {
+    const rentalPaid = getRentalPaid(
+      reservation.payments,
+      reservationCurrency(reservation.currency, store.settings),
+    );
+    const rentalRemaining = getRentalRemaining(reservation, rentalPaid);
 
-  if (data.amount > 0 && data.type === "rental") {
-    const rentalPaid = getRentalPaid(reservation.payments);
-    const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
-
-    if (data.amount > rentalRemaining) {
-      return { error: "errors.invalidAmount" };
+    if (amount > rentalRemaining) {
+      return { error: "errors.amountExceedsDue" };
     }
   }
 
-  if (data.amount > 0 && data.type === "deposit") {
+  if (amount > 0 && data.type === "deposit") {
     const depositCollected = reservation.payments
       .filter((p) => p.type === "deposit" && p.status === "completed")
       .reduce((sum, p) => sum + parseFloat(p.amount), 0);
@@ -3436,8 +3972,8 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
       parseFloat(reservation.depositAmount || "0") - depositCollected,
     );
 
-    if (data.amount > depositRemaining) {
-      return { error: "errors.invalidAmount" };
+    if (amount > depositRemaining) {
+      return { error: "errors.amountExceedsDue" };
     }
   }
 
@@ -3448,20 +3984,20 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
       reservationId,
       storeId: store.id,
       storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
+      amount: verdict.amount,
       type: data.type,
       method: data.method,
       origin: "manual",
       paidAt: data.paidAt || new Date(),
       notes: data.notes || null,
     });
-    if (data.type === "rental" && data.amount > 0) {
+    if (data.type === "rental" && amount > 0) {
       await validateReservationContract(tx, reservationId, store.id, "payment");
     }
   });
 
   let invoiceNumber: string | undefined;
-  if (["rental", "damage", "adjustment"].includes(data.type) && data.amount > 0) {
+  if (["rental", "damage", "adjustment"].includes(data.type) && amount > 0) {
     const invoiceGeneration = await tryGenerateInvoiceForPayment(
       paymentId,
       "dashboard_record_payment",
@@ -3478,7 +4014,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
     type: data.type,
-    amount: data.amount,
+    amount,
     method: data.method,
   });
 
@@ -3486,7 +4022,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   notifyPaymentReceived(
     { id: store.id, name: store.name, slug: store.slug },
     reservation.number,
-    data.amount,
+    amount,
     reservationCurrency(reservation.currency, store.settings),
   ).catch(() => {});
 
@@ -3500,7 +4036,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     properties: {
       payment_type: data.type,
       payment_method: data.method,
-      amount_cents: toAnalyticsAmountCents(data.amount),
+      amount_cents: toAnalyticsAmountCents(amount),
     },
   });
   return { success: true, paymentId, invoiceNumber };
@@ -3511,104 +4047,44 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  if (!isRecordId(data.paymentId)) return { error: "errors.paymentNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
-  if (!Number.isFinite(data.amount) || data.amount <= 0) {
-    return { error: "errors.invalidAmount" };
-  }
-
-  let refundPaymentId: string;
+  // The one writer of a refund given by hand, the agents' too: the person
+  // clicked, so nothing is asked.
+  let refund: Awaited<ReturnType<typeof recordPaymentRefund>>;
   try {
-    refundPaymentId = await db.transaction(async (tx) => {
-      const [originalPayment] = await tx
-        .select({
-          id: payments.id,
-          amount: payments.amount,
-          type: payments.type,
-          method: payments.method,
-          status: payments.status,
-          currency: payments.currency,
-          refundOfPaymentId: payments.refundOfPaymentId,
-          reservationCurrency: reservations.currency,
-        })
-        .from(payments)
-        .innerJoin(reservations, eq(reservations.id, payments.reservationId))
-        .where(
-          and(
-            eq(payments.id, data.paymentId),
-            eq(payments.reservationId, reservationId),
-            eq(reservations.storeId, store.id),
-          ),
-        )
-        .for("update");
-
-      if (!originalPayment) {
-        throw new Error("errors.paymentNotFound");
-      }
-
-      if (
-        originalPayment.status !== "completed" ||
-        !["rental", "damage", "adjustment", "deposit_capture"].includes(originalPayment.type) ||
-        originalPayment.refundOfPaymentId !== null ||
-        Number(originalPayment.amount) <= 0
-      ) {
-        throw new Error("errors.invalidAmount");
-      }
-
-      const [refundTotal] = await tx
-        .select({
-          amount: sql<string>`coalesce(sum(${payments.amount}), 0)`,
-        })
-        .from(payments)
-        .where(
-          and(
-            eq(payments.refundOfPaymentId, originalPayment.id),
-            eq(payments.status, "completed"),
-            // A Stripe refund linked to its charge already came off that
-            // charge's amount: counting it here would subtract it twice.
-            not(isStripeRefundPaymentSql()),
-          ),
-        );
-
-      const remainingAmount = roundMoney(
-        Number(originalPayment.amount) - Number(refundTotal?.amount ?? 0),
-      );
-      if (data.amount > remainingAmount) {
-        throw new Error("errors.invalidAmount");
-      }
-
-      const paymentId = nanoid();
-      await insertManualRefund(tx, {
-        id: paymentId,
-        reservationId,
+    refund = await recordPaymentRefund(
+      {
         storeId: store.id,
-        storeSettings: store.settings,
-        reservationCurrency: originalPayment.reservationCurrency,
-        original: originalPayment,
-        amount: data.amount.toFixed(2),
-        type: originalPayment.type === "deposit_capture" ? "deposit_return" : "rental",
+        storeSettings: store.settings ?? null,
+        port: paymentRefundsPort,
+        confirm: async () => null,
+        dispatchEffects: dispatchApiEffects,
+      },
+      {
+        reservationId,
+        paymentId: data.paymentId,
+        // As typed: 19.999 is judged as 19.999, never rounded to 20.00
+        // before the writer sees it.
+        amount: typed,
         method: data.method,
-        notes: data.notes?.trim() || null,
-        paidAt: new Date(),
-      });
-
-      return paymentId;
-    });
+        notes: data.notes,
+      },
+      { source: "dashboard_refund_manual_payment" },
+    );
   } catch (error) {
-    return { error: getActionErrorKey(error, "errors.invalidAmount") };
+    return { error: paymentErrorKey(error) };
   }
-
-  const creditNoteGeneration = await tryGenerateCreditNoteForRefund(
-    { originalPaymentId: data.paymentId, refundPaymentId },
-    data.amount,
-    "dashboard_refund_manual_payment",
-  );
-  const creditNoteNumber =
-    creditNoteGeneration.status === "generated" ? creditNoteGeneration.number : undefined;
 
   await logReservationActivity(reservationId, "payment_updated", {
     paymentId: data.paymentId,
-    refundPaymentId,
-    amount: data.amount,
+    refundPaymentId: refund.refundId,
+    amount: Number(refund.amount),
     method: data.method,
     action: "refunded",
   });
@@ -3616,7 +4092,11 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
-  return { success: true, refundPaymentId, creditNoteNumber };
+  return {
+    success: true,
+    refundPaymentId: refund.refundId,
+    creditNoteNumber: refund.creditNote.number ?? undefined,
+  };
 }
 
 export async function deletePayment(paymentId: string) {
@@ -3624,6 +4104,7 @@ export async function deletePayment(paymentId: string) {
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(paymentId)) return { error: "errors.paymentNotFound" };
 
   // Get payment with reservation to verify ownership
   const payment = await db.query.payments.findFirst({
@@ -3681,7 +4162,7 @@ export async function deletePayment(paymentId: string) {
 }
 
 interface ReturnDepositData {
-  amount: number;
+  amount: TypedAmount;
   method: PaymentMethod;
   notes?: string;
 }
@@ -3691,59 +4172,47 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      payments: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  if (data.amount <= 0) {
-    return { error: "errors.invalidAmount" };
-  }
-
-  // Calculate how much deposit was collected
-  const depositCollected = reservation.payments
-    .filter((p) => p.type === "deposit" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  // Calculate how much was already returned
-  const depositReturned = reservation.payments
-    .filter((p) => p.type === "deposit_return" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-  const maxReturnable = depositCollected - depositReturned;
-
-  if (data.amount > maxReturnable) {
-    return { error: "errors.amountExceedsDeposit" };
-  }
-
+  // The one writer of a deposit return, the agents' too: under the
+  // reservation's lock, the balance counted there in hundredths. The person
+  // clicked, so nothing is asked.
   const paymentId = nanoid();
-  await db.transaction((tx) =>
-    insertRecordedPayment(tx, {
-      id: paymentId,
-      reservationId,
-      storeId: store.id,
-      storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
-      type: "deposit_return",
-      method: data.method,
-      origin: "deposit",
-      paidAt: new Date(),
-      notes: data.notes || null,
-    }),
-  );
+  let recorded: Awaited<ReturnType<typeof recordDepositReturn>>;
+  try {
+    recorded = await recordDepositReturn(
+      {
+        storeId: store.id,
+        storeSettings: store.settings ?? null,
+        port: {
+          ...paymentRecordsPort,
+          insert: (tx, payment) =>
+            insertRecordedPaymentWithFacts(tx, { ...payment, id: paymentId }),
+        },
+        confirm: async () => null,
+      },
+      {
+        reservationId,
+        amount: typed,
+        method: data.method,
+        notes: data.notes || undefined,
+      },
+    );
+  } catch (error) {
+    return { error: paymentErrorKey(error) };
+  }
+  // The amount the row holds, as a number for the log and the analytics.
+  const amount = Number(paymentAmount(recorded.amount));
 
   // Log activity
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
     type: "deposit_return",
-    amount: data.amount,
+    amount,
     method: data.method,
   });
 
@@ -3756,7 +4225,7 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
     action: reservationAnalyticsActions.returnDeposit,
     properties: {
       payment_method: data.method,
-      amount_cents: toAnalyticsAmountCents(data.amount),
+      amount_cents: toAnalyticsAmountCents(amount),
     },
   });
   return { success: true, paymentId };
@@ -3764,12 +4233,17 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
 
 export async function recordDamage(
   reservationId: string,
-  data: { amount: number; method: PaymentMethod; notes: string },
+  data: { amount: TypedAmount; method: PaymentMethod; notes: string },
 ) {
   const store = await getStoreForUser();
   if (!store) {
     return { error: "errors.unauthorized" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`): anything
+  // else, a number or an array sent to the action directly, is no amount.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
@@ -3779,9 +4253,18 @@ export async function recordDamage(
     return { error: "errors.reservationNotFound" };
   }
 
-  if (data.amount <= 0) {
-    return { error: "errors.invalidAmount" };
+  const verdict = formAmount(typed, "damage", reservation, store.settings);
+  if (!verdict.ok) {
+    // A damage charge is never negative: its amount is simply not valid.
+    return {
+      error:
+        verdict.refusal === "negative_outside_adjustment"
+          ? "errors.invalidAmount"
+          : formAmountErrorKey(verdict.refusal),
+    };
   }
+  // The amount the row holds, as a number for the log and the analytics.
+  const amount = Number(verdict.amount);
 
   const paymentId = nanoid();
   await db.transaction((tx) =>
@@ -3790,7 +4273,7 @@ export async function recordDamage(
       reservationId,
       storeId: store.id,
       storeSettings: store.settings,
-      amount: data.amount.toFixed(2),
+      amount: verdict.amount,
       type: "damage",
       method: data.method,
       origin: "manual",
@@ -3805,7 +4288,7 @@ export async function recordDamage(
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
     type: "damage",
-    amount: data.amount,
+    amount,
     method: data.method,
     notes: data.notes,
   });
@@ -3819,333 +4302,137 @@ export async function recordDamage(
     action: reservationAnalyticsActions.recordDamage,
     properties: {
       payment_method: data.method,
-      amount_cents: toAnalyticsAmountCents(data.amount),
+      amount_cents: toAnalyticsAmountCents(amount),
     },
   });
   return { success: true, paymentId };
 }
 
-type DepositActivityType =
-  | "deposit_authorized"
-  | "deposit_captured"
-  | "deposit_released"
-  | "deposit_failed";
-
-async function logDepositActivity(
-  reservationId: string,
-  activityType: DepositActivityType,
-  description?: string,
-  metadata?: Record<string, unknown>,
-) {
-  const session = await auth();
-  const userId = session?.user?.id || null;
-
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId,
-    userId,
-    activityType,
-    description,
-    metadata,
-  });
-}
-
 /**
- * Create a deposit authorization hold (empreinte bancaire)
+ * Create a deposit authorization hold (empreinte bancaire). At most one
+ * authorization per attempt, whoever asks at the same time: see
+ * lib/reservations/deposit-hold.ts.
  */
 export async function createDepositHold(reservationId: string) {
   const store = await getStoreForUser();
   if (!store || !store.stripeAccountId) {
     return { error: "errors.noStripeAccount" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
+  const result = await authorizeDepositHold(
+    {
+      reservationId,
+      storeId: store.id,
+      stripeAccountId: store.stripeAccountId,
+      storeSettings: store.settings,
+      actorUserId: await getActorUserId(),
     },
+    depositHoldDeps,
+  );
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  if (!result.ok) {
+    return { error: result.error };
+  }
+
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.createDepositHold,
+    properties: { amount_cents: toAnalyticsAmountCents(result.amount) },
   });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  // Check prerequisites
-  if (!reservation.stripeCustomerId || !reservation.stripePaymentMethodId) {
-    return { error: "errors.stripe.noSavedCard" };
-  }
-
-  if (reservation.depositStatus !== "card_saved") {
-    return { error: "errors.stripe.invalidDepositStatus" };
-  }
-
-  const depositAmount = parseFloat(reservation.depositAmount);
-  if (depositAmount <= 0) {
-    return { error: "errors.stripe.noDepositRequired" };
-  }
-
-  // The deposit was agreed in the reservation's currency, whatever the store's is now.
-  const currency = reservationCurrency(reservation.currency, store.settings);
-  const amountMinor = toStripeCents(depositAmount, currency);
-
-  try {
-    const result = await createDepositAuthorization({
-      stripeAccountId: store.stripeAccountId,
-      customerId: reservation.stripeCustomerId,
-      paymentMethodId: reservation.stripePaymentMethodId,
-      amount: amountMinor,
-      currency,
-      reservationId,
-      reservationNumber: reservation.number,
-      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
-    });
-
-    // An off-session confirmation only yields a usable hold when it reaches
-    // requires_capture. Any other status (requires_action, processing, …) means no funds
-    // are actually held — do not mark the deposit authorized; surface it as failed so the
-    // owner can re-request via the on-storefront card flow.
-    if (result.status !== "requires_capture") {
-      await db
-        .update(reservations)
-        .set({ depositStatus: "failed", updatedAt: new Date() })
-        .where(eq(reservations.id, reservationId));
-
-      await logDepositActivity(
-        reservationId,
-        "deposit_failed",
-        `Empreinte non capturable (statut Stripe: ${result.status})`,
-        { paymentIntentId: result.paymentIntentId, status: result.status },
-      );
-
-      return { error: "errors.stripe.authorizationFailed" };
-    }
-
-    await recordDepositHold(db, {
-      paymentId: nanoid(),
-      reservationId,
-      storeId: store.id,
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: result.paymentIntentId,
-      paymentMethodId: reservation.stripePaymentMethodId,
-      expiresAt: result.expiresAt,
-      amount: depositAmount.toFixed(2),
-      amountMinor,
-      currency,
-      now: new Date(),
-    });
-
-    // Log activity
-    const currencySymbol = getCurrencySymbol(currency);
-    await logDepositActivity(
-      reservationId,
-      "deposit_authorized",
-      `Empreinte de ${depositAmount.toFixed(2)}${currencySymbol} créée`,
-      {
-        paymentIntentId: result.paymentIntentId,
-        amount: depositAmount,
-        expiresAt: result.expiresAt.toISOString(),
-      },
-    );
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.createDepositHold,
-      properties: { amount_cents: toAnalyticsAmountCents(depositAmount) },
-    });
-    return { success: true, paymentIntentId: result.paymentIntentId };
-  } catch (error) {
-    console.error("Failed to create deposit hold:", error);
-
-    // Update status to failed
-    await db
-      .update(reservations)
-      .set({
-        depositStatus: "failed",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    await logDepositActivity(
-      reservationId,
-      "deposit_failed",
-      `Échec de l'empreinte: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { error: error instanceof Error ? error.message : "Unknown error" },
-    );
-
-    return { error: "errors.stripe.authorizationFailed" };
-  }
+  return { success: true, paymentIntentId: result.paymentIntentId };
 }
 
 /**
- * Capture deposit from authorization hold (for damage/loss)
+ * Capture deposit from authorization hold (for damage/loss). The capture is asked and
+ * recorded on the hold the reservation references, on the connected account that holds
+ * it: see lib/reservations/deposit-hold.ts.
  */
 export async function captureDepositHold(
   reservationId: string,
-  data: { amount: number; reason: string },
+  data: { amount: TypedAmount; reason: string },
 ) {
   const store = await getStoreForUser();
-  if (!store || !store.stripeAccountId) {
+  if (!store) {
     return { error: "errors.noStripeAccount" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+  // Text only, normalised as the form does it (`typedAmount`); judged with the
+  // hold's currency before Stripe is asked anything.
+  const typed = typedAmount(data.amount);
+  if (typed === null) return { error: "errors.invalidAmount" };
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  if (reservation.depositStatus !== "authorized" || !reservation.depositPaymentIntentId) {
-    return { error: "errors.stripe.noActiveAuthorization" };
-  }
-
-  const depositAmount = parseFloat(reservation.depositAmount);
-  if (data.amount <= 0 || data.amount > depositAmount) {
-    return { error: "errors.invalidAmount" };
-  }
-
-  if (!data.reason.trim()) {
-    return { error: "errors.reasonRequired" };
-  }
-
-  // The deposit the store sees, and the amount it typed, are in the reservation's
-  // currency, whatever the store's is now.
-  const currency = reservationCurrency(reservation.currency, store.settings);
-
-  try {
-    // An amount sent against the hold is counted in the hold's own currency. A hold
-    // authorized in another one (before the store changed its own) cannot be read
-    // in the reservation's: the store captures it from Stripe.
-    // Stripe says which: a payment row may hold the column's default, or two rows
-    // may disagree.
-    const { currency: holdCurrency } = await getDepositAuthorizationStatus(
-      store.stripeAccountId,
-      reservation.depositPaymentIntentId,
-    );
-    if (holdCurrency !== currency) {
-      log.warn(
-        "deposit-capture",
-        `refused for reservation ${reservationId}: its hold ${reservation.depositPaymentIntentId} is in ${holdCurrency}, its deposit in ${currency}; capture it from Stripe`,
-      );
-      return { error: "errors.stripe.captureFailed" };
-    }
-
-    const result = await captureDeposit({
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: reservation.depositPaymentIntentId,
-      amountToCapture: toStripeCents(data.amount, holdCurrency),
-    });
-    // What is recorded is what Stripe captured, in the currency it captured it in.
-    const capturedAmount = fromStripeCents(result.amountCaptured, result.currency);
-
-    const capturePaymentId = nanoid();
-    await recordDepositCapture(db, {
-      capturePaymentId,
+  const result = await captureReferencedDepositHold(
+    {
       reservationId,
       storeId: store.id,
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: reservation.depositPaymentIntentId,
-      stripeChargeId: result.chargeId,
-      amount: capturedAmount.toFixed(2),
-      capturedMinor: result.amountCaptured,
-      currency: result.currency,
+      fallbackAccountId: store.stripeAccountId,
+      storeSettings: store.settings,
+      actorUserId: await getActorUserId(),
+      amount: typed,
       reason: data.reason,
-      now: new Date(),
-    });
-
-    await tryGenerateInvoiceForPayment(capturePaymentId, "dashboard_capture_deposit_hold");
-
-    // Log activity
-    const currencySymbol = getCurrencySymbol(result.currency);
-    await logDepositActivity(
-      reservationId,
-      "deposit_captured",
-      `Caution capturée: ${capturedAmount.toFixed(2)}${currencySymbol} - ${data.reason}`,
-      {
-        paymentIntentId: reservation.depositPaymentIntentId,
-        amount: capturedAmount,
-        reason: data.reason,
-      },
-    );
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.captureDepositHold,
-      properties: { amount_cents: toAnalyticsAmountCents(data.amount) },
-    });
-    return { success: true, amountCaptured: result.amountCaptured };
-  } catch (error) {
-    console.error("Failed to capture deposit:", error);
-    return { error: "errors.stripe.captureFailed" };
+    },
+    depositHoldDeps,
+  );
+  if (!result.ok) {
+    return { error: result.error };
   }
+
+  if (result.capturePaymentId) {
+    await tryGenerateInvoiceForPayment(result.capturePaymentId, "dashboard_capture_deposit_hold");
+  }
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.captureDepositHold,
+    properties: { amount_cents: toAnalyticsAmountCents(Number(typed)) },
+  });
+  return { success: true, amountCaptured: result.amountCapturedMinor };
 }
 
 /**
- * Release deposit authorization (no damage)
+ * Release deposit authorization (no damage). Recorded on the hold that was cancelled:
+ * see lib/reservations/deposit-hold.ts.
  */
 export async function releaseDepositHold(reservationId: string) {
   const store = await getStoreForUser();
-  if (!store || !store.stripeAccountId) {
+  if (!store) {
     return { error: "errors.noStripeAccount" };
   }
+  if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  if (reservation.depositStatus !== "authorized" || !reservation.depositPaymentIntentId) {
-    return { error: "errors.stripe.noActiveAuthorization" };
-  }
-
-  try {
-    await releaseDeposit({
-      stripeAccountId: store.stripeAccountId,
-      paymentIntentId: reservation.depositPaymentIntentId,
-    });
-
-    await recordDepositRelease(db, { reservationId, storeId: store.id, now: new Date() });
-
-    // Log activity
-    const currency = reservationCurrency(reservation.currency, store.settings);
-    const currencySymbol = getCurrencySymbol(currency);
-    const depositAmount = parseFloat(reservation.depositAmount);
-    await logDepositActivity(
+  const result = await releaseReferencedDepositHold(
+    {
       reservationId,
-      "deposit_released",
-      `Caution de ${depositAmount.toFixed(2)}${currencySymbol} libérée`,
-      {
-        paymentIntentId: reservation.depositPaymentIntentId,
-        amount: depositAmount,
-      },
-    );
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
       storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.releaseDepositHold,
-      properties: { amount_cents: toAnalyticsAmountCents(depositAmount) },
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to release deposit:", error);
-    return { error: "errors.stripe.releaseFailed" };
+      fallbackAccountId: store.stripeAccountId,
+      storeSettings: store.settings,
+      actorUserId: await getActorUserId(),
+    },
+    depositHoldDeps,
+  );
+  if (!result.ok) {
+    return { error: result.error };
   }
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.releaseDepositHold,
+    properties: { amount_cents: toAnalyticsAmountCents(result.amount) },
+  });
+  return { success: true };
 }
 
 /**
@@ -4174,111 +4461,6 @@ export async function getReservationPaymentMethod(reservationId: string) {
 }
 
 // ============================================================================
-// Stripe Refunds
-// ============================================================================
-
-interface ProcessStripeRefundData {
-  type: "deposit_return" | "rental_refund";
-  amount: number;
-  notes?: string;
-}
-
-export async function processStripeRefund(reservationId: string, data: ProcessStripeRefundData) {
-  const store = await getStoreForUser();
-  if (!store || !store.stripeAccountId) {
-    return { error: "errors.noStripeAccount" };
-  }
-
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      payments: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  // Find the original Stripe payment with a charge
-  const stripePayment = reservation.payments.find(
-    (p) => p.method === "stripe" && p.status === "completed" && p.stripeChargeId,
-  );
-
-  if (!stripePayment || !stripePayment.stripeChargeId) {
-    return { error: "errors.stripe.noChargeToRefund" };
-  }
-
-  try {
-    // Check refundable amount. A refund is counted in its charge's own currency:
-    // the payment row may hold the column's default, never the store's of today.
-    const {
-      refundable,
-      amount: maxRefundable,
-      currency,
-    } = await getChargeRefundableAmount(store.stripeAccountId, stripePayment.stripeChargeId);
-
-    if (!refundable) {
-      return { error: "errors.stripe.alreadyRefunded" };
-    }
-
-    const refundAmountCents = toStripeCents(data.amount, currency);
-
-    if (refundAmountCents > maxRefundable) {
-      return { error: "errors.stripe.refundExceedsCharge" };
-    }
-
-    // Process refund
-    const refund = await createRefund({
-      stripeAccountId: store.stripeAccountId,
-      chargeId: stripePayment.stripeChargeId,
-      amount: refundAmountCents,
-    });
-
-    // What is recorded, credited and logged is what Stripe refunded: an amount
-    // typed with more decimals than the currency has was rounded on its way.
-    const refundedAmount = fromStripeCents(refund.amount, refund.currency);
-    const refundPaidAt = new Date();
-    const paymentId = await tryEnsureRefundPaymentRecord(
-      {
-        originalPaymentId: stripePayment.id,
-        stripeRefundId: refund.refundId,
-        amount: refundedAmount,
-        grossMinor: refund.amount,
-        type: data.type === "deposit_return" ? "deposit_return" : "rental",
-        currency: refund.currency,
-        notes: data.notes,
-        paidAt: refundPaidAt,
-      },
-      "dashboard_process_stripe_refund",
-    );
-
-    if (data.type === "rental_refund" && paymentId) {
-      await tryGenerateCreditNoteForRefund(
-        { originalPaymentId: stripePayment.id, refundPaymentId: paymentId },
-        refundedAmount,
-        "dashboard_process_stripe_refund",
-      );
-    }
-
-    // Log activity
-    await logReservationActivity(reservationId, "payment_updated", {
-      paymentId,
-      refundId: refund.refundId,
-      amount: refundedAmount,
-      type: data.type,
-    });
-
-    revalidatePath("/dashboard/reservations");
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    return { success: true, refundId: refund.refundId };
-  } catch (error) {
-    console.error("Stripe refund error:", error);
-    return { error: "errors.stripe.refundFailed" };
-  }
-}
-
-// ============================================================================
 // Email Actions
 // ============================================================================
 
@@ -4295,6 +4477,8 @@ export async function sendReservationModificationEmail(
       startDate: Date;
       endDate: Date;
     };
+    /** The dates the change set; by default the reservation's now. */
+    period?: { startDate: Date; endDate: Date };
   },
 ) {
   // sendEmail degrades to a logged no-op without a transport; a manual send
@@ -4308,79 +4492,30 @@ export async function sendReservationModificationEmail(
     return { error: "errors.unauthorized" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
-    },
+  const sent = await sendReservationModificationEmailForStore({
+    store,
+    reservationId,
+    previousPeriod: data?.previousPeriod,
+    period: data?.period,
+    userId: await getActorUserId(),
   });
-
-  if (!reservation) {
+  if (sent.status === "not_found") {
     return { error: "errors.reservationNotFound" };
   }
 
-  const storeData = {
-    id: store.id,
-    name: store.name,
-    logoUrl: store.logoUrl,
-    darkLogoUrl: store.darkLogoUrl,
-    email: store.email,
-    phone: store.phone,
-    address: store.address,
-    theme: store.theme,
-    settings: store.settings,
-    emailSettings: store.emailSettings,
-  };
-
-  const customerData = {
-    firstName: reservation.customer.firstName,
-    lastName: reservation.customer.lastName,
-    email: reservation.customer.email,
-  };
-
-  const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
-
-  try {
-    await sendReservationModifiedEmail({
-      to: customerData.email,
-      store: storeData,
-      customer: customerData,
-      reservation: {
-        id: reservation.id,
-        number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-      },
-      previousPeriod: data?.previousPeriod,
-      reservationUrl,
-      locale: getLocaleFromCountry(store.settings?.country),
-    });
-
-    await logReservationActivity(reservationId, "note_updated", {
-      templateId: "reservation_modified",
-      to: customerData.email,
-      customerEmailNotification: "sent",
-    });
-
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: reservationAnalyticsActions.sendEmail,
-      properties: { template_id: "reservation_modified", channel: "email" },
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to send reservation modification email:", error);
-    await logReservationActivity(reservationId, "note_updated", {
-      templateId: "reservation_modified",
-      to: customerData.email,
-      customerEmailNotification: "failed",
-    });
-    revalidatePath(`/dashboard/reservations/${reservationId}`);
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  if (sent.status === "failed") {
+    console.error("Failed to send reservation modification email:", sent.error);
     return { error: "errors.emailSendFailed" };
   }
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId,
+    action: reservationAnalyticsActions.sendEmail,
+    properties: { template_id: "reservation_modified", channel: "email" },
+  });
+  return { success: true };
 }
 
 /**
@@ -4772,7 +4907,8 @@ export async function sendAccessLinkBySms(reservationId: string) {
 
 export interface RequestPaymentInput {
   type: "rental" | "deposit" | "custom";
-  amount?: number; // Required for custom type
+  /** A custom request's amount, as typed: required for the `custom` type. */
+  amount?: TypedAmount;
   channels: { email: boolean; sms: boolean };
   customMessage?: string;
 }
@@ -4784,12 +4920,20 @@ export async function requestPayment(
   success?: boolean;
   error?: string;
   paymentUrl?: string;
+  notificationResults?: { email?: boolean; sms?: boolean };
 }> {
   try {
     const store = await getStoreForUser();
     if (!store) {
       return { error: "errors.unauthorized" };
     }
+    if (!isRecordId(reservationId)) return { error: "errors.reservationNotFound" };
+
+    // A custom amount is text, normalised as the form does it (`typedAmount`),
+    // and judged as typed with the reservation's currency below: anything
+    // else is no amount, and nothing is created or sent.
+    const typedCustom = data.type === "custom" ? typedAmount(data.amount) : undefined;
+    if (typedCustom === null) return { error: "errors.invalidAmount" };
 
     // Check Stripe is configured and able to take payments
     if (!store.stripeAccountId || !store.stripeChargesEnabled) {
@@ -4825,7 +4969,7 @@ export async function requestPayment(
     // The amount, in the reservation's currency, whatever the store's is now.
     const terms = paymentRequestTerms({
       type: data.type,
-      customAmount: data.amount,
+      customAmount: typedCustom,
       reservation,
       storeSettings: store.settings,
     });
@@ -4882,10 +5026,13 @@ export async function requestPayment(
       paymentUrl = `${baseUrl}/pay/${reservationId}?token=${token}`;
     }
 
-    // Send notifications
+    // Send notifications. A channel counts as sent only when its message
+    // really went out; the request and its link stay whatever happened.
     const notificationResults: { email?: boolean; sms?: boolean } = {};
 
-    if (data.channels.email) {
+    if (data.channels.email && !isEmailConfigured()) {
+      notificationResults.email = false;
+    } else if (data.channels.email) {
       try {
         if (data.type === "deposit") {
           await sendDepositAuthorizationRequestEmail({
@@ -4954,8 +5101,11 @@ export async function requestPayment(
 
     if (data.channels.sms && reservation.customer.phone) {
       try {
+        // The sender answers a missing provider, the quota or a refused number
+        // with `success: false`, without throwing.
+        let smsResult: { success: boolean };
         if (data.type === "deposit") {
-          await sendDepositAuthorizationRequestSms({
+          smsResult = await sendDepositAuthorizationRequestSms({
             store: {
               id: store.id,
               name: store.name,
@@ -4983,7 +5133,7 @@ export async function requestPayment(
                 ?.smsMessage,
           });
         } else {
-          await sendPaymentRequestSms({
+          smsResult = await sendPaymentRequestSms({
             store: {
               id: store.id,
               name: store.name,
@@ -5009,7 +5159,7 @@ export async function requestPayment(
               store.customerNotificationSettings?.templates?.customer_payment_requested?.smsMessage,
           });
         }
-        notificationResults.sms = true;
+        notificationResults.sms = smsResult.success === true;
       } catch (error) {
         console.error("Failed to send payment request SMS:", error);
         notificationResults.sms = false;
@@ -5046,6 +5196,8 @@ export async function requestPayment(
     return {
       success: true,
       paymentUrl,
+      // What went out, by channel: the dialog says it as it is.
+      notificationResults,
     };
   } catch (error) {
     console.error("Failed to request payment:", error);
@@ -5132,27 +5284,22 @@ export async function assignUnitsToReservationItem(
     );
     const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
 
-    const assignUnits = async (tx: Transaction) => {
-      // Locks come first, as locking reads only, in the order of the other
-      // reservation writers (reservation, then product, then units). The
-      // first consistent read happens after them, so every validation below
-      // sees what was committed before the locks were taken.
+    const assignUnits = async (tx: Transaction, owner: ReservationTransaction) => {
+      // Locks come first, in the lock order of every reservation writer: the
+      // reservation's products by id, then the reservation, then the units by
+      // id. The owner entry runs READ COMMITTED, so every validation below,
+      // under these locks, reads the latest commit.
+      await lockReservationInTransaction(owner, {
+        reservationId: item.reservationId,
+        storeId: store.id,
+      });
       const [lockedReservation] = await tx
         .select({ id: reservations.id })
         .from(reservations)
-        .where(and(eq(reservations.id, item.reservationId), eq(reservations.storeId, store.id)))
-        .for("update");
+        .where(and(eq(reservations.id, item.reservationId), eq(reservations.storeId, store.id)));
 
       if (!lockedReservation) {
         return { error: "errors.notFound" };
-      }
-
-      if (item.productId) {
-        await tx
-          .select({ id: products.id })
-          .from(products)
-          .where(and(eq(products.id, item.productId), eq(products.storeId, store.id)))
-          .for("update");
       }
 
       const sortedLockUnitIds = [...new Set(selectedUnitIds)].sort((a, b) =>
@@ -5167,10 +5314,6 @@ export async function assignUnitsToReservationItem(
           .orderBy(productUnits.id)
           .for("update");
       }
-
-      const lockedProductsById = item.productId
-        ? await lockReservationProducts(tx, store.id, [item.productId])
-        : new Map();
 
       const [currentItem] = await tx
         .select({
@@ -5190,6 +5333,12 @@ export async function assignUnitsToReservationItem(
       if (!currentItem) {
         return { error: "errors.notFound" };
       }
+
+      // A line of the reservation found under its lock: its product is one the
+      // lock above holds already.
+      const lockedProductsById = currentItem.productId
+        ? await lockReservationProducts(tx, store.id, [currentItem.productId])
+        : new Map();
 
       if (selectedUnitIds.length > currentItem.quantity) {
         return { error: "errors.tooManyUnitsAssigned" };
@@ -5317,7 +5466,8 @@ export async function assignUnitsToReservationItem(
           });
         const strictStock = await checkStock(0);
         if (!strictStock.ok) {
-          return { error: "errors.invalidUnits", failedUnitIds: addedUnitIds };
+          // The units are valid; the stock is short: another booking needs them.
+          return { error: "errors.insufficientCapacity", failedUnitIds: addedUnitIds };
         }
         if (!overrideTurnoverBuffer && turnoverBufferMinutes > 0) {
           const bufferedStock = await checkStock(turnoverBufferMinutes);
@@ -5473,7 +5623,9 @@ export async function assignUnitsToReservationItem(
         ),
       };
     };
-    const assignmentResult = await retryOnceOnDeadlock(() => db.transaction(assignUnits));
+    const assignmentResult = await runReservationTransaction(assignUnits, {
+      reservationId: item.reservationId,
+    });
 
     if ("error" in assignmentResult && assignmentResult.error) {
       return assignmentResult;

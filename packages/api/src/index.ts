@@ -30,8 +30,16 @@ export type {
   BillingPort,
   InsurancePort,
   LogPort,
+  PaymentRecordsPort,
+  PaymentRefundsPort,
   ProductImagesPort,
+  RecordedPayment,
+  RecordedPaymentDraft,
+  RecordedPaymentFacts,
+  RecordedRefund,
+  RefundCreditNoteOutcome,
   StoragePort,
+  StripeRefundsPort,
   UrlsPort,
 } from "./platform/ports";
 export type { Transport } from "./platform/actor";

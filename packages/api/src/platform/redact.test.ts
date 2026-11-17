@@ -58,7 +58,13 @@ describe("handoff secrets in logs", () => {
       redactHandoffSecrets(`return_url=https%3A%2F%2Fapp%2Fhandoffs%2Freturn%2F${ID}%2F${STATE}`),
       "return_url=https%3A%2F%2Fapp%2Fhandoffs%2F[redacted]",
     );
-    for (const text of [`/handoffs/done/${ID}`, "/handoffs/resume", "/dashboard/settings"]) {
+    for (const text of [
+      `/handoffs/${ID}`,
+      `https://app.louez.test/handoffs/${ID}/continue`,
+      `/handoffs/done/${ID}`,
+      "/handoffs/resume",
+      "/dashboard/settings",
+    ]) {
       assert.equal(redactHandoffSecrets(text), text);
     }
   });

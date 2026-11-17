@@ -36,7 +36,11 @@ export const dashboardProcedure = publicProcedure.use(async ({ context, next }) 
       message: "errors.unauthorized",
     });
   }
-  if (context.errorScope) context.errorScope.client = "session";
+  if (context.errorScope) {
+    context.errorScope.client = "session";
+    context.errorScope.storeId = store.id;
+    context.errorScope.actorId = session.user.id;
+  }
 
   return next({
     context: {

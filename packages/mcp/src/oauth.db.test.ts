@@ -71,9 +71,6 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       ports,
       procedures: createExposure(appRouter).procedures,
       resourceMetadataUrl: RESOURCE_METADATA,
-      deps: {
-        insertRecordedPayment: async () => undefined,
-      },
     };
 
     await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@mo.test" });

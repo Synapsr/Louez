@@ -48,6 +48,7 @@ import type { ApiEvent, ApiEventStore, SettingsSection } from "../platform/ports
 import { toAppearanceView } from "./online-store";
 import type { ConfirmStep } from "./products";
 import { agentTextToStoredHtml } from "./rich-text";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * The store settings an agent or the dashboard sets before a store goes
@@ -388,7 +389,7 @@ async function writeUnderLock<T>(
     tx: Transaction,
   ) => Promise<{ preview?: SettingsPreview | null; write: () => Promise<T> }>,
 ): Promise<T> {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let result: T | undefined;
   let slug = actor.store.slug;
   await db.transaction(async (tx) => {
@@ -401,7 +402,7 @@ async function writeUnderLock<T>(
     }
     result = await step.write();
   });
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   emit(actor, section, slug);
   return result as T;
 }

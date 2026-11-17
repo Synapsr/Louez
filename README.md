@@ -254,6 +254,8 @@ The bundled docker-compose deployment configures all of the required variables f
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` |          | Google sign-in — optional                                                   |
 | `STRIPE_*`                              |          | Online payments — optional; storefronts fall back to booking requests       |
 
+Open the dashboard on `NEXT_PUBLIC_APP_URL` (or `AUTH_URL`) or on an origin listed in `BETTER_AUTH_TRUSTED_ORIGINS` (comma-separated): the in-app assistant's chat refuses a request from any other origin, and the server logs which origin it refused.
+
 Advanced integrations (AI providers, telephony, SMS, analytics, calendar sync…) are documented in [.env.example](.env.example).
 
 </details>

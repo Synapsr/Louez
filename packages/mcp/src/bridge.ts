@@ -1,11 +1,12 @@
 import { CONFIRMATION_HEADER } from "@louez/api/platform/confirmation";
 import type { ExposedProcedure } from "@louez/api/platform/exposure";
 import { reportUnexpectedErrors } from "@louez/api/platform/error-reporting";
+import { logRefusals } from "@louez/api/platform/refusal-log";
 import { apiError } from "@louez/api/platform/errors";
 import { platformErrors } from "@louez/api/platform/errors";
 import { mcpToolAnnotations } from "@louez/api/platform/meta";
 import { IDEMPOTENCY_HEADER, type OperationReceipt } from "@louez/api/platform/operations";
-import { STORE_HEADER } from "@louez/api/platform/procedures";
+import { hasIdempotencyKey, STORE_HEADER } from "@louez/api/platform/procedures";
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
 import { call } from "@orpc/server";
 
@@ -38,6 +39,16 @@ export const CONFIRMATION_ARGUMENT = {
 } as const;
 
 /**
+ * The same argument on a tool a person approves (`meta.personApproval`): it
+ * carries an approval's id as it carries a token.
+ */
+export const APPROVAL_ARGUMENT = {
+  type: "string",
+  description:
+    "Leave it out on the first call. Where the user must approve, the tool answers APPROVAL_REQUIRED with a link for them and an approval: once handoffs_get says it is approved, call again with the same arguments and the approval's id here. Where it asks for a confirmation instead, it answers CONFIRMATION_REQUIRED with a preview and a token: after the user confirms, call again with the same arguments and the token.",
+} as const;
+
+/**
  * The arguments of a tool: the procedure's input, plus the headers it maps.
  * Only listed: the procedure validates the input, as it does for RPC and
  * OpenAPI, so every transport answers a bad input with the same error.
@@ -50,11 +61,24 @@ function toolInputSchema(entry: ExposedProcedure, ctx: McpRequestContext): Tool[
       type: "string",
       minLength: 1,
       maxLength: 100,
-      description:
-        "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
+      description: entry.meta.requiresIdempotencyKey
+        ? "Required, so that a retry never does this action twice: a new unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice."
+        : "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
     };
   }
-  if (entry.meta.sensitive) properties.confirmationToken = CONFIRMATION_ARGUMENT;
+  if (entry.meta.sensitive) {
+    properties.confirmationToken = entry.meta.personApproval
+      ? APPROVAL_ARGUMENT
+      : CONFIRMATION_ARGUMENT;
+  }
+  if (entry.meta.requiresIdempotencyKey) {
+    const required = (entry.inputJsonSchema.required as string[] | undefined) ?? [];
+    return {
+      ...entry.inputJsonSchema,
+      properties,
+      required: [...required, "idempotencyKey"],
+    } as Tool["inputSchema"];
+  }
   return { ...entry.inputJsonSchema, properties } as Tool["inputSchema"];
 }
 
@@ -74,7 +98,13 @@ async function callProcedure(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   // The store was read from `storeId` when the request came in.
-  const { idempotencyKey, confirmationToken, storeId: _store, ...input } = args;
+  const { idempotencyKey: sentKey, confirmationToken, storeId: _store, ...input } = args;
+  // On a write that requires a key, a blank one is none: it is sent as
+  // absent, and the procedure refuses the call (IDEMPOTENCY_KEY_REQUIRED).
+  const idempotencyKey =
+    entry.meta.requiresIdempotencyKey && typeof sentKey === "string" && !hasIdempotencyKey(sentKey)
+      ? undefined
+      : sentKey;
   const needsStore = !entry.meta.account;
   if (needsStore && ctx.storeError) return errorResult(entry.meta.mcp.name, ctx.storeError);
   if (needsStore && !ctx.storeChosen) {
@@ -108,7 +138,11 @@ async function callProcedure(
     const output = await call(entry.procedure, input, {
       context: { headers, transport: "mcp", ports: ctx.ports, receipt },
       path: entry.path.split("."),
-      interceptors: [reportUnexpectedErrors],
+      // A refusal is logged by its facts, never its words (platform/refusal-log.ts).
+      interceptors: [
+        reportUnexpectedErrors,
+        logRefusals((event) => ctx.ports.log?.refusal?.(event)),
+      ],
     });
     // How an agent sees it (a page of a long list), after a run or a replay alike.
     const whole = jsonSafe(output);
@@ -175,7 +209,8 @@ export function registerExposedTools(
         !isWithheld(ctx, entry.meta.capability) &&
         (entry.meta.account
           ? isAccountToolListed(ctx, entry.meta.scope)
-          : entry.meta.scope !== undefined && isListed(ctx, entry.meta.scope, bundle)),
+          : entry.meta.scope !== undefined &&
+            isListed(ctx, entry.meta.scope, entry.meta.mcp.everyBundle ? null : bundle)),
       call: (args) => callProcedure(entry, ctx, args),
     });
   }

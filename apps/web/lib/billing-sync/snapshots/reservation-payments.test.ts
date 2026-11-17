@@ -197,6 +197,47 @@ describe("kinds and shares", () => {
     assert.equal(payments[5]?.grossMinor, -500, "adjustments are signed");
   });
 
+  test("a deposit hold is sent as the hold it is, whatever its state: its status, and no rental money", () => {
+    const hold = (id: string, overrides: Partial<PaymentRow>) =>
+      row({
+        id,
+        type: "deposit_hold",
+        amount: "50.00",
+        grossMinor: 5000,
+        insuranceShareMinor: 0,
+        origin: "deposit",
+        paidAt: null,
+        ...overrides,
+      });
+    const payments = build([
+      // Asked by the store, not confirmed by Stripe: it names no PaymentIntent yet.
+      hold("attempt", { status: "pending" }),
+      hold("refused", { status: "failed", stripePaymentIntentId: "pi_refused" }),
+      hold("held", { status: "authorized", stripePaymentIntentId: "pi_held" }),
+      // A second authorization, being released: Stripe still holds it.
+      hold("second", { status: "authorized", stripePaymentIntentId: "pi_second" }),
+      hold("released", { status: "cancelled", stripePaymentIntentId: "pi_released" }),
+    ]);
+
+    assert.deepEqual(
+      payments.map((payment) => [
+        payment.paymentId,
+        payment.kind,
+        payment.status,
+        payment.insuranceShareMinor,
+        payment.paidAt,
+        payment.refunds.length,
+      ]),
+      [
+        ["attempt", "deposit_hold", "pending", 0, null, 0],
+        ["refused", "deposit_hold", "failed", 0, null, 0],
+        ["held", "deposit_hold", "authorized", 0, null, 0],
+        ["second", "deposit_hold", "authorized", 0, null, 0],
+        ["released", "deposit_hold", "cancelled", 0, null, 0],
+      ],
+    );
+  });
+
   test("the insurance share is the stored one, else computed now, and 0 for other kinds", () => {
     const payments = build(
       [

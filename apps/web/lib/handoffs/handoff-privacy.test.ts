@@ -25,6 +25,7 @@ describe("handoff privacy", () => {
 
   test("the login goes back to a handoff path only", () => {
     for (const path of [
+      `/handoffs/${ID}`,
       `/handoffs/${ID}${SECRET}`,
       `/handoffs/return/${ID}/${STATE}`,
       `/handoffs/return/${ID}/${STATE}?checkout=cs_test_1`,
@@ -38,6 +39,8 @@ describe("handoff privacy", () => {
       "https://evil.test/",
       "//evil.test/handoffs/x",
       `/handoffs/${ID}${SECRET}/../../dashboard`,
+      `/handoffs/${ID}x`,
+      `/handoffs/${ID}/../../dashboard`,
       `/handoffs/return/${ID}/${STATE}?next=https://evil.test`,
       "/dashboard",
     ]) {

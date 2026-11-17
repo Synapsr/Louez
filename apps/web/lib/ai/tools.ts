@@ -1,6 +1,5 @@
 import { tool } from "ai";
 import { and, desc, eq, exists, gte, inArray, or, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
@@ -17,12 +16,13 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import type { AppRouter, UrlsPort } from "@louez/api";
+import { ORPCError, type AppRouter, type UrlsPort } from "@louez/api";
 import { ANALYTICS_PERIODS } from "@louez/api/contracts/analytics";
 import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import type { RouterClient } from "@orpc/server";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
+import { depositHoldRowKind, describeDepositHoldRow } from "@louez/utils";
 import {
   customerFieldSearchCondition,
   getCustomerFieldValues,
@@ -33,11 +33,13 @@ import {
   checkCustomerFieldEntries,
   toReadableCustomerFields,
 } from "@louez/api/services/customer-tools";
-
 import {
-  deleteRecordedPayment,
-  insertRecordedPayment,
-} from "@/lib/reservations/dashboard-payment-writes";
+  RECORDED_PAYMENT_METHODS,
+  RECORDED_PAYMENT_TYPES,
+  tooPreciseMessage,
+} from "@louez/api/contracts/payment-records";
+
+import { approvalResultOf, type ApprovalToolResult } from "./payment-approval";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -62,13 +64,35 @@ export type AIChatContext = {
   api?: AssistantApi;
 };
 
-/** The procedures the assistant calls, through a server-side client bound to the user's session. */
+/** The dashboard domains the assistant holds a client of: its tools reach no other. */
+export const ASSISTANT_API_DOMAINS = [
+  "analytics",
+  "categories",
+  "payments",
+  "products",
+  "reservations",
+  "settings",
+] as const;
+
+/**
+ * What a tool hands a call besides its input: the approval id it presents,
+ * for a payment the person approved. The client puts it where every
+ * caller's approval goes (`louez-confirmation`), and the procedure checks it
+ * as it checks an agent's.
+ */
+export interface AssistantApiContext {
+  approvalId?: string;
+}
+
+/**
+ * The procedures the assistant calls, through a server-side client bound to
+ * the user's session and marked as the assistant's (lib/ai/assistant-api.ts).
+ */
 export type AssistantApi = {
-  analytics: RouterClient<AppRouter["dashboard"]["analytics"]>;
-  categories: RouterClient<AppRouter["dashboard"]["categories"]>;
-  products: RouterClient<AppRouter["dashboard"]["products"]>;
-  reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
-  settings: RouterClient<AppRouter["dashboard"]["settings"]>;
+  [Domain in (typeof ASSISTANT_API_DOMAINS)[number]]: RouterClient<
+    AppRouter["dashboard"][Domain],
+    AssistantApiContext
+  >;
 };
 
 function assistantApi(ctx: AIChatContext): AssistantApi {
@@ -87,6 +111,69 @@ function requirePermission(
   }
   if (level === "write" && perm === "read") {
     throw new Error(`Permission denied: requires ${domain}:write (current: read)`);
+  }
+}
+
+/** An amount with too many decimals for the reservation's currency, in the chat's words. */
+const tooPreciseWords = (details: Record<string, unknown>) =>
+  tooPreciseMessage(String(details.currency), Number(details.decimals)).replace(/\.$/, "");
+
+/**
+ * The chat's own words for the payment procedures' refusals, as its tools
+ * answered before they called them.
+ */
+const PAYMENT_REFUSALS: Record<string, (details: Record<string, unknown>) => string> = {
+  RESERVATION_NOT_FOUND: () => "Reservation not found",
+  PAYMENT_NOT_FOUND: () => "Payment not found",
+  PAYMENT_AMOUNT_INVALID: (details) =>
+    details.currency
+      ? tooPreciseWords(details)
+      : 'Amount must be a plain decimal, not zero, with at most 8 digits before the point and 2 after (such as "150" or "-20.50")',
+  PAYMENT_CURRENCY_NOT_SUPPORTED: (details) =>
+    `This reservation is in ${String(details.currency)}, a three-decimal currency Louez's billing does not count: a payment on it cannot be recorded`,
+  PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT: () =>
+    'Only "adjustment" payments can have a negative amount',
+  PAYMENT_RESERVATION_CLOSED: (details) =>
+    `Cannot record payment on a ${String(details.status)} reservation`,
+  PAYMENT_STRIPE_NOT_DELETABLE: () =>
+    "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+  DEPOSIT_RETURN_AMOUNT_INVALID: (details) =>
+    details.currency
+      ? tooPreciseWords(details)
+      : 'Amount must be a plain decimal above zero, with at most 8 digits before the point and 2 after (such as "150.00")',
+  DEPOSIT_RETURN_EXCEEDS_BALANCE: (details) =>
+    `Amount exceeds returnable deposit. Collected: ${String(details.collected)}, already returned: ${String(details.returned)}, max returnable: ${String(details.returnable)}`,
+};
+
+/** The optional argument of the three payment tools: the approval a later call presents. */
+const approvalIdArgument = z
+  .string()
+  .optional()
+  .describe(
+    "Leave it out the first time. Only once the chat says the person approved: the approvalId it gave for these exact same arguments. Never make one up, never ask the person for it.",
+  );
+
+/**
+ * A payment procedure's answer, its refusal in the chat's words, or where
+ * the person's approval stands (`approvalResultOf`): nothing is recorded
+ * until the procedure carries out a request the person approved, and it
+ * says so. Any other error is thrown. An `approvalId` that is not an
+ * approval's id is presented as it is: the procedure refuses it, never
+ * falling back to running without one.
+ */
+async function paymentAnswer<T>(
+  run: (context: AssistantApiContext) => Promise<T>,
+  approvalId: string | undefined,
+): Promise<T | ApprovalToolResult | { error: string }> {
+  try {
+    return await run(approvalId === undefined ? {} : { approvalId });
+  } catch (error) {
+    const approval = approvalResultOf(error);
+    if (approval) return approval;
+    const data = error instanceof ORPCError ? (error.data as Record<string, unknown>) : null;
+    const words = typeof data?.code === "string" ? PAYMENT_REFUSALS[data.code] : undefined;
+    if (!words) throw error;
+    return { error: words((data?.details as Record<string, unknown> | undefined) ?? {}) };
   }
 }
 
@@ -121,14 +208,6 @@ const customFieldEntriesSchema = z
 export function createAITools(ctx: AIChatContext) {
   /** The chat's store, named by every dashboard link the tools return. */
   const linkStore = { id: ctx.storeId };
-  /** The settings a recorded payment's currency and insurance share are read with. */
-  const loadStoreSettings = async () => {
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.id, ctx.storeId),
-      columns: { settings: true },
-    });
-    return store?.settings ?? null;
-  };
 
   return {
     // ── Products ──────────────────────────────────────────────────────────
@@ -318,7 +397,7 @@ export function createAITools(ctx: AIChatContext) {
 
     update_reservation_status: tool({
       description:
-        "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also tells the customer when a request is confirmed or rejected and when the store cancels, as the store's customer notification settings say, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation.",
+        "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also tells the customer when a request is confirmed or rejected and when the store cancels, as the store's customer notification settings say, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation. A confirmation the stock cannot cover, or whose lines fit the stock but not the turnover buffer the store keeps between rentals, is refused with each line short: tell the user, who may confirm it anyway from the reservation's page in the dashboard, where the lines are shown first. This tool never books over the stock and never confirms past the turnover buffer.",
       inputSchema: z.object({
         reservationId: z.string().describe("The reservation ID"),
         status: z
@@ -326,7 +405,10 @@ export function createAITools(ctx: AIChatContext) {
           .describe("New status"),
       }),
       // As on the dashboard: the stock check, the fees, the insurance contract,
-      // the emails and the notifications.
+      // the emails and the notifications. Never `allowOverbooking` nor
+      // `overrideTurnoverBuffer`: the chat calls with the user's session,
+      // which no confirmation stops, so booking over the stock or past the
+      // buffer stays a click in the dashboard's dialog.
       execute: async ({ reservationId, status }) => {
         const change = await assistantApi(ctx).reservations.updateStatus({
           id: reservationId,
@@ -696,160 +778,97 @@ export function createAITools(ctx: AIChatContext) {
           orderBy: [payments.createdAt],
         });
 
-        return { payments: rows, reservationNumber: reservation.number };
+        return {
+          // A deposit hold's status follows Stripe: what it is for the reservation
+          // (not confirmed, refused, the hold, a second one being released) is said
+          // next to it.
+          payments: rows.map((row) => {
+            const kind = depositHoldRowKind(row);
+            return kind ? { ...row, depositHold: describeDepositHoldRow(kind) } : row;
+          }),
+          reservationNumber: reservation.number,
+        };
       },
     }),
 
+    // Each of the three asks the person's approval: the first call prepares
+    // the request and the chat shows its card; once the person approved it on
+    // its page, the same arguments with its approvalId carry it out, once.
+
     record_payment: tool({
-      description: "Record a manual payment for a reservation",
+      description:
+        "Prepare a manual payment on a reservation for the person's approval; once they approved it, carry it out. Nothing is recorded until this returns success.",
       inputSchema: z.object({
-        reservationId: z.string(),
-        type: z.enum(["rental", "deposit", "deposit_return", "damage", "adjustment"]),
+        reservationId: z.string().describe("The reservation ID"),
+        type: z.enum(RECORDED_PAYMENT_TYPES),
         amount: z.string().describe('Amount (e.g. "150.00")'),
-        method: z.enum(["cash", "card", "transfer", "check", "other"]),
+        method: z.enum(RECORDED_PAYMENT_METHODS),
         notes: z.string().optional(),
+        approvalId: approvalIdArgument,
       }),
-      execute: async ({ reservationId, type, amount, method, notes }) => {
+      execute: async ({ approvalId, ...input }) => {
         requirePermission(ctx, "payments", "write");
-
-        const numAmount = parseFloat(amount);
-        if (isNaN(numAmount) || numAmount === 0) {
-          return { error: "Amount must be a non-zero number" };
-        }
-
-        const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          columns: { id: true, number: true, status: true },
-        });
-        if (!reservation) return { error: "Reservation not found" };
-
-        if (reservation.status === "cancelled" || reservation.status === "rejected") {
+        return paymentAnswer(async (context) => {
+          const recorded = await assistantApi(ctx).payments.record(input, { context });
           return {
-            error: `Cannot record payment on a ${reservation.status} reservation`,
+            status: "done" as const,
+            success: true,
+            reservationNumber: recorded.number,
+            type: recorded.type,
+            amount: recorded.amount,
+            method: recorded.method,
+            ...(recorded.links ? { links: recorded.links } : {}),
           };
-        }
-
-        // The dashboard's writer: billing facts, currency and the reservation's mark.
-        const storeSettings = await loadStoreSettings();
-        await db.transaction((tx) =>
-          insertRecordedPayment(tx, {
-            id: nanoid(),
-            reservationId,
-            storeId: ctx.storeId,
-            storeSettings,
-            amount,
-            type,
-            method,
-            origin: "manual",
-            paidAt: new Date(),
-            notes: notes ?? null,
-          }),
-        );
-
-        return {
-          success: true,
-          reservationNumber: reservation.number,
-          type,
-          amount,
-          method,
-        };
+        }, approvalId);
       },
     }),
 
     delete_payment: tool({
-      description: "Delete a manual payment record (cannot delete Stripe payments)",
+      description:
+        "Prepare the deletion of a manual payment record for the person's approval (never a Stripe payment); once they approved it, carry it out. Nothing is deleted until this returns success.",
       inputSchema: z.object({
         paymentId: z.string().describe("The payment ID to delete"),
+        approvalId: approvalIdArgument,
       }),
-      execute: async ({ paymentId }) => {
+      execute: async ({ approvalId, paymentId }) => {
         requirePermission(ctx, "payments", "write");
-
-        const payment = await db.query.payments.findFirst({
-          where: eq(payments.id, paymentId),
-          with: { reservation: { columns: { storeId: true, number: true } } },
-        });
-
-        if (!payment || payment.reservation?.storeId !== ctx.storeId) {
-          return { error: "Payment not found" };
-        }
-
-        if (payment.method === "stripe") {
+        return paymentAnswer(async (context) => {
+          const deleted = await assistantApi(ctx).payments.delete({ paymentId }, { context });
           return {
-            error: "Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.",
+            status: "done" as const,
+            success: true,
+            reservationNumber: deleted.number,
+            ...(deleted.links ? { links: deleted.links } : {}),
           };
-        }
-
-        await deleteRecordedPayment(db, {
-          paymentId,
-          reservationId: payment.reservationId,
-          storeId: ctx.storeId,
-        });
-        return {
-          success: true,
-          reservationNumber: payment.reservation?.number,
-        };
+        }, approvalId);
       },
     }),
 
     return_deposit: tool({
-      description: "Record a deposit return for a reservation (validates max returnable amount)",
+      description:
+        "Prepare the record of a deposit given back on a reservation for the person's approval (at most the deposit still held); once they approved it, carry it out. Nothing is recorded until this returns success.",
       inputSchema: z.object({
         reservationId: z.string().describe("The reservation ID"),
         amount: z.string().describe('Amount to return (e.g. "100.00")'),
-        method: z.enum(["cash", "card", "transfer", "check", "other"]).describe("Return method"),
+        method: z.enum(RECORDED_PAYMENT_METHODS).describe("Return method"),
         notes: z.string().optional(),
+        approvalId: approvalIdArgument,
       }),
-      execute: async ({ reservationId, amount, method, notes }) => {
+      execute: async ({ approvalId, ...input }) => {
         requirePermission(ctx, "payments", "write");
-
-        const numAmount = parseFloat(amount);
-        if (isNaN(numAmount) || numAmount <= 0) {
-          return { error: "Amount must be greater than zero" };
-        }
-
-        const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          columns: { id: true, number: true },
-          with: { payments: true },
-        });
-        if (!reservation) return { error: "Reservation not found" };
-
-        const depositCollected = reservation.payments
-          .filter((p) => p.type === "deposit" && p.status === "completed")
-          .reduce((s, p) => s + parseFloat(p.amount), 0);
-        const depositReturned = reservation.payments
-          .filter((p) => p.type === "deposit_return" && p.status === "completed")
-          .reduce((s, p) => s + parseFloat(p.amount), 0);
-        const maxReturnable = depositCollected - depositReturned;
-
-        if (numAmount > maxReturnable) {
+        return paymentAnswer(async (context) => {
+          const recorded = await assistantApi(ctx).payments.recordDepositReturn(input, {
+            context,
+          });
           return {
-            error: `Amount exceeds returnable deposit. Collected: ${depositCollected.toFixed(2)}, already returned: ${depositReturned.toFixed(2)}, max returnable: ${maxReturnable.toFixed(2)}`,
+            status: "done" as const,
+            success: true,
+            reservationNumber: recorded.number,
+            amount: recorded.amount,
+            method: recorded.method,
+            ...(recorded.links ? { links: recorded.links } : {}),
           };
-        }
-
-        const storeSettings = await loadStoreSettings();
-        await db.transaction((tx) =>
-          insertRecordedPayment(tx, {
-            id: nanoid(),
-            reservationId,
-            storeId: ctx.storeId,
-            storeSettings,
-            amount,
-            type: "deposit_return",
-            method,
-            origin: "deposit",
-            paidAt: new Date(),
-            notes: notes ?? null,
-          }),
-        );
-
-        return {
-          success: true,
-          reservationNumber: reservation.number,
-          amount,
-          method,
-        };
+        }, approvalId);
       },
     }),
 

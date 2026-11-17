@@ -1,0 +1,591 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { after, before, describe, mock, test } from "node:test";
+
+import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+
+import { createMemoryStorage } from "../platform/memory-storage";
+import { createTestNewStores } from "../platform/test-new-stores";
+import { createTestUrls, TEST_APP_URL } from "../platform/test-urls";
+
+process.env.NODE_ENV = "test";
+
+// tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
+const require = createRequire(import.meta.url);
+for (const name of [
+  "@louez/types",
+  "@louez/utils",
+  "@louez/utils/sanitize-rich-text",
+  "@louez/validations",
+]) {
+  const namedExports: Record<string, unknown> = require(name);
+  mock.module(name, { namedExports });
+}
+mock.module("@louez/auth", { namedExports: { auth: {}, authInstance: { api: {} } } });
+
+// The six branches a person approves (docs/architecture/api-and-agents.md,
+// "Pull requests", 6b and 7), run through their real procedures and
+// services on a migrated database, as an API key asks: the preview the
+// agent receives and what its approval is bound to, pinned byte for byte as
+// the token's were before the switch, and the approval's answer around them.
+// Nothing a person's display adds may change one of them.
+//
+// Each branch also hands its check what a person reads first (`display`,
+// services/approval-display.ts), built from the same values in the same
+// call: captured here as the check receives it, it is pinned too, and read
+// back as the page reads it.
+
+const OWNER = "ab_owner_user_000001";
+const MEMBER_USER = "ab_member_user_00001";
+const STORE = "ab_store_000000000001";
+const KEY = "ab_api_key_000000001";
+const CUSTOMER = "ab_customer_00000001";
+const SILENT = "ab_customer_silent01";
+const MEMBERSHIP = "ab_membership_000001";
+const INVITATION = "ab_invitation_000001";
+const PAID = "ab_reservation_00001";
+const PAYMENT = "ab_payment_000000001";
+const BUFFERED = "ab_reservation_00002";
+const SHORT = "ab_reservation_00003";
+const COVERED = "ab_reservation_00004";
+const EARLIER = "ab_reservation_00005";
+const HOUR = 3_600_000;
+const AT = new Date("2026-12-13T13:00:00.000Z");
+const UNTIL = new Date("2026-12-17T13:00:00.000Z");
+
+/** Each branch: its procedure, its input, and what the agent is answered. */
+const BRANCHES = [
+  {
+    name: "a payment recorded",
+    path: ["dashboard", "payments", "record"],
+    input: { reservationId: PAID, type: "rental", amount: "120.00", method: "cash" },
+  },
+  {
+    name: "a negative adjustment recorded",
+    path: ["dashboard", "payments", "record"],
+    input: { reservationId: PAID, type: "adjustment", amount: "-20.00", method: "card" },
+  },
+  {
+    name: "a deposit return recorded",
+    path: ["dashboard", "payments", "recordDepositReturn"],
+    input: { reservationId: PAID, amount: "150.00", method: "transfer" },
+  },
+  {
+    name: "a payment deleted",
+    path: ["dashboard", "payments", "delete"],
+    input: { paymentId: PAYMENT },
+  },
+  {
+    name: "a member removed",
+    path: ["dashboard", "team", "removeMember"],
+    input: { id: MEMBERSHIP },
+  },
+  {
+    name: "an invitation cancelled",
+    path: ["dashboard", "team", "cancelInvitation"],
+    input: { id: INVITATION },
+  },
+  {
+    name: "a booking confirmed past the turnover buffer, a message goes",
+    path: ["dashboard", "reservations", "updateStatus"],
+    input: { id: BUFFERED, status: "confirmed", overrideTurnoverBuffer: true },
+  },
+  {
+    name: "a booking confirmed beyond the stock, no message",
+    path: ["dashboard", "reservations", "updateStatus"],
+    input: { id: SHORT, status: "confirmed", allowOverbooking: true },
+  },
+  {
+    name: "a booking confirmed with both flags, nothing short, a message goes",
+    path: ["dashboard", "reservations", "updateStatus"],
+    input: { id: COVERED, status: "confirmed", allowOverbooking: true, overrideTurnoverBuffer: true },
+  },
+] as const;
+
+/** The display each branch hands its check, as JSON. */
+const DISPLAYS: Record<(typeof BRANCHES)[number]["name"], string> = {
+  "a payment recorded":
+    "{\"headline\":{\"key\":\"recordPayment\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"received\",\"values\":{\"type\":{\"type\":\"choice\",\"list\":\"paymentType\",\"value\":\"rental\"},\"amount\":{\"type\":\"money\",\"amount\":\"120.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"cash\"}}},{\"key\":\"recordOnly\",\"values\":{}}]}",
+  "a negative adjustment recorded":
+    "{\"headline\":{\"key\":\"paidBack\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"paidBack\",\"values\":{\"type\":{\"type\":\"choice\",\"list\":\"paymentType\",\"value\":\"adjustment\"},\"amount\":{\"type\":\"money\",\"amount\":\"-20.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"card\"}}},{\"key\":\"recordOnly\",\"values\":{}}]}",
+  "a deposit return recorded":
+    "{\"headline\":{\"key\":\"returnDeposit\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"returned\",\"values\":{\"amount\":{\"type\":\"money\",\"amount\":\"150.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"transfer\"}}},{\"key\":\"depositHeld\",\"values\":{\"held\":{\"type\":\"money\",\"amount\":\"300.00\",\"currency\":\"EUR\"}}},{\"key\":\"recordOnly\",\"values\":{}}]}",
+  "a payment deleted":
+    "{\"headline\":{\"key\":\"deletePayment\",\"values\":{}},\"facts\":[{\"key\":\"bookingNumber\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00090\"}},\"ref\":\"ab_reservation_00001\"},{\"key\":\"deleted\",\"values\":{\"type\":{\"type\":\"choice\",\"list\":\"paymentType\",\"value\":\"rental\"},\"amount\":{\"type\":\"money\",\"amount\":\"80.00\",\"currency\":\"EUR\"},\"method\":{\"type\":\"choice\",\"list\":\"paymentMethod\",\"value\":\"cash\"}},\"ref\":\"ab_payment_000000001\"},{\"key\":\"recordedOn\",\"values\":{\"at\":{\"type\":\"dateTime\",\"at\":\"2026-11-12T15:30:00.000Z\"}}},{\"key\":\"leavesBalance\",\"values\":{}}]}",
+  "a member removed":
+    "{\"headline\":{\"key\":\"removeMember\",\"values\":{}},\"facts\":[{\"key\":\"member\",\"values\":{\"name\":{\"type\":\"text\",\"text\":\"Lucas Bernard\"},\"email\":{\"type\":\"text\",\"text\":\"lucas.bernard@ab.test\"}},\"ref\":\"ab_membership_000001\"},{\"key\":\"memberSince\",\"values\":{\"since\":{\"type\":\"dateTime\",\"at\":\"2026-03-03T09:00:00.000Z\"}}},{\"key\":\"losesAccess\",\"values\":{}}]}",
+  "an invitation cancelled":
+    "{\"headline\":{\"key\":\"cancelInvitation\",\"values\":{}},\"facts\":[{\"key\":\"invited\",\"values\":{\"email\":{\"type\":\"text\",\"text\":\"nina.roux@ab.test\"}},\"ref\":\"ab_invitation_000001\"},{\"key\":\"invitedOn\",\"values\":{\"at\":{\"type\":\"dateTime\",\"at\":\"2026-11-02T08:30:00.000Z\"}}},{\"key\":\"linkStops\",\"values\":{}}]}",
+  "a booking confirmed past the turnover buffer, a message goes":
+    "{\"headline\":{\"key\":\"confirmPastBuffer\",\"values\":{\"to\":{\"type\":\"choice\",\"list\":\"reservationStatus\",\"value\":\"confirmed\"}}},\"facts\":[{\"key\":\"booking\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00094\"},\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"}},\"ref\":\"ab_reservation_00002\"},{\"key\":\"period\",\"values\":{\"period\":{\"type\":\"dateRange\",\"start\":\"2026-12-13T13:00:00.000Z\",\"end\":\"2026-12-17T13:00:00.000Z\"},\"total\":{\"type\":\"money\",\"amount\":\"98.00\",\"currency\":\"EUR\"}}},{\"key\":\"pastBuffer\",\"values\":{\"product\":{\"type\":\"text\",\"text\":\"Kayak biplace\"},\"requested\":{\"type\":\"count\",\"value\":1},\"available\":{\"type\":\"count\",\"value\":0},\"buffer\":{\"type\":\"duration\",\"minutes\":120}}},{\"key\":\"message\",\"values\":{\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"},\"message\":{\"type\":\"choice\",\"list\":\"customerMessage\",\"value\":\"request_accepted\"},\"channels\":{\"type\":\"choice\",\"list\":\"messageChannels\",\"value\":\"email\"},\"to\":{\"type\":\"text\",\"text\":\"camille.simon@ab.test\"}}}]}",
+  "a booking confirmed beyond the stock, no message":
+    "{\"headline\":{\"key\":\"confirmBeyondStock\",\"values\":{\"to\":{\"type\":\"choice\",\"list\":\"reservationStatus\",\"value\":\"confirmed\"}}},\"facts\":[{\"key\":\"booking\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00095\"},\"customer\":{\"type\":\"text\",\"text\":\"Bo Ray\"}},\"ref\":\"ab_reservation_00003\"},{\"key\":\"period\",\"values\":{\"period\":{\"type\":\"dateRange\",\"start\":\"2026-12-13T13:00:00.000Z\",\"end\":\"2026-12-17T13:00:00.000Z\"},\"total\":{\"type\":\"money\",\"amount\":\"98.00\",\"currency\":\"EUR\"}}},{\"key\":\"beyondStock\",\"values\":{\"product\":{\"type\":\"text\",\"text\":\"Paddle\"},\"requested\":{\"type\":\"count\",\"value\":2},\"available\":{\"type\":\"count\",\"value\":1},\"missing\":{\"type\":\"count\",\"value\":1}}},{\"key\":\"noMessage\",\"values\":{}}]}",
+  "a booking confirmed with both flags, nothing short, a message goes":
+    "{\"headline\":{\"key\":\"confirmWithinRules\",\"values\":{\"to\":{\"type\":\"choice\",\"list\":\"reservationStatus\",\"value\":\"confirmed\"}}},\"facts\":[{\"key\":\"booking\",\"values\":{\"number\":{\"type\":\"text\",\"text\":\"R-00096\"},\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"}},\"ref\":\"ab_reservation_00004\"},{\"key\":\"period\",\"values\":{\"period\":{\"type\":\"dateRange\",\"start\":\"2026-12-13T13:00:00.000Z\",\"end\":\"2026-12-17T13:00:00.000Z\"},\"total\":{\"type\":\"money\",\"amount\":\"98.00\",\"currency\":\"EUR\"}}},{\"key\":\"withinRules\",\"values\":{}},{\"key\":\"message\",\"values\":{\"customer\":{\"type\":\"text\",\"text\":\"Camille Simon\"},\"message\":{\"type\":\"choice\",\"list\":\"customerMessage\",\"value\":\"request_accepted\"},\"channels\":{\"type\":\"choice\",\"list\":\"messageChannels\",\"value\":\"email\"},\"to\":{\"type\":\"text\",\"text\":\"camille.simon@ab.test\"}}}]}",
+};
+
+/**
+ * What each branch answered an agent before the switch, as JSON: the
+ * message, the details but the token, the binding. The preview and the
+ * binding are still these, byte for byte; the message ends on the
+ * approval's link instead of the token.
+ */
+const ANSWERS: Record<(typeof BRANCHES)[number]["name"], string> = {
+  "a payment recorded":
+    "{\"message\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a rental payment of €120.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"120.00\",\"method\":\"cash\"}}},\"bindingHash\":\"4d303a2b28ee7470b95e0ffae6ce8c1b93d8e5fffce8b4982a30d46df13959a7\"}",
+  "a negative adjustment recorded":
+    "{\"message\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a adjustment payment of -€20.00 (card) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"type\":\"adjustment\",\"amount\":\"-20.00\",\"method\":\"card\"}}},\"bindingHash\":\"4b98b4a2c6e2a49d726324f98282e225a0d0d8ae247fda9845462ab259b88e4e\"}",
+  "a deposit return recorded":
+    "{\"message\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Record a deposit return of €150.00 (transfer) on reservation #R-00090.\",\"details\":{\"sensitive\":\"money\",\"reservationId\":\"ab_reservation_00001\",\"number\":\"R-00090\",\"amount\":\"150.00\",\"method\":\"transfer\",\"returnable\":\"300.00\"}}},\"bindingHash\":\"cde7042c4c506442076091d758e21dec242a4aeac60cab4df3e2fe6244eed137\"}",
+  "a payment deleted":
+    "{\"message\":\"Delete the rental payment of €80.00 (cash) on reservation #R-00090. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Delete the rental payment of €80.00 (cash) on reservation #R-00090.\",\"details\":{\"sensitive\":\"destructive\",\"paymentId\":\"ab_payment_000000001\",\"number\":\"R-00090\",\"type\":\"rental\",\"amount\":\"80.00\",\"method\":\"cash\"}}},\"bindingHash\":\"a6178616dd6b98fb15222101c4fe29b2d37b9c70d7c91080e5aa57005fa95671\"}",
+  "a member removed":
+    "{\"message\":\"Remove Lucas Bernard (lucas.bernard@ab.test) from \\\"Vélo Liberté\\\". They lose access to the store at once: its customers, reservations and payments. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Remove Lucas Bernard (lucas.bernard@ab.test) from \\\"Vélo Liberté\\\". They lose access to the store at once: its customers, reservations and payments.\",\"details\":{\"member\":{\"id\":\"ab_membership_000001\",\"userId\":\"ab_member_user_00001\",\"name\":\"Lucas Bernard\",\"email\":\"lucas.bernard@ab.test\",\"imageUrl\":null,\"role\":\"member\",\"joinedAt\":\"2026-03-03T09:00:00.000Z\"}}}},\"bindingHash\":\"4a2c8457c3a779fd3c9f885d9aeb7cc8d686ccbd985e193b4c099c94412f5082\"}",
+  "an invitation cancelled":
+    "{\"message\":\"Cancel the invitation of nina.roux@ab.test to \\\"Vélo Liberté\\\". Its link stops working, and they do not join the store. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Cancel the invitation of nina.roux@ab.test to \\\"Vélo Liberté\\\". Its link stops working, and they do not join the store.\",\"details\":{\"invitation\":{\"id\":\"ab_invitation_000001\",\"email\":\"nina.roux@ab.test\",\"role\":\"member\",\"invitedAt\":\"2026-11-02T08:30:00.000Z\",\"expiresAt\":\"2030-01-01T00:00:00.000Z\",\"expired\":false}}}},\"bindingHash\":\"8486b2e0fd42e9730a0c18ff67a165fce0cef6bc171df3a390f28017e8eea6ca\"}",
+  "a booking confirmed past the turnover buffer, a message goes":
+    "{\"message\":\"Change reservation #R-00094 for Camille Simon (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. Camille Simon (camille.simon@ab.test) gets the \\\"request accepted\\\" message by email. Its items leave the stock for these dates. These lines fit the stock but not the 120-minute turnover buffer the store keeps between rentals, and are confirmed past it all the same: Kayak biplace, 1 asked, 0 free with the buffer. The reservation's history records it. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Change reservation #R-00094 for Camille Simon (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. Camille Simon (camille.simon@ab.test) gets the \\\"request accepted\\\" message by email. Its items leave the stock for these dates. These lines fit the stock but not the 120-minute turnover buffer the store keeps between rentals, and are confirmed past it all the same: Kayak biplace, 1 asked, 0 free with the buffer. The reservation's history records it.\",\"details\":{\"reservation\":{\"id\":\"ab_reservation_00002\",\"number\":\"R-00094\",\"from\":\"pending\",\"to\":\"confirmed\",\"startDate\":\"2026-12-13T13:00:00.000Z\",\"endDate\":\"2026-12-17T13:00:00.000Z\",\"totalAmount\":\"98.00\",\"currency\":\"EUR\"},\"customer\":{\"name\":\"Camille Simon\",\"email\":\"camille.simon@ab.test\"},\"messages\":[{\"message\":\"request_accepted\",\"channel\":\"email\",\"to\":\"camille.simon@ab.test\"}],\"reducesAvailability\":true,\"overbooking\":null,\"turnoverBuffer\":{\"shortfalls\":[{\"productId\":\"ab_product_kayak_001\",\"productName\":\"Kayak biplace\",\"combinationKey\":null,\"requested\":1,\"available\":0,\"reservationItemId\":\"ab_line_00002\",\"selectedAttributes\":null}],\"turnoverBufferMinutes\":120},\"money\":null,\"insuranceContract\":null}}},\"bindingHash\":\"c3e44e9d6f5b77604b056c726ea6d3d48322d88de4752003f71523cf184831d3\"}",
+  "a booking confirmed beyond the stock, no message":
+    "{\"message\":\"Change reservation #R-00095 for Bo Ray (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. No message goes to the customer. Its items leave the stock for these dates. The stock cannot cover it, and it is booked over the stock all the same: Paddle, 2 asked, 1 free. The reservation's history records it. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Change reservation #R-00095 for Bo Ray (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. No message goes to the customer. Its items leave the stock for these dates. The stock cannot cover it, and it is booked over the stock all the same: Paddle, 2 asked, 1 free. The reservation's history records it.\",\"details\":{\"reservation\":{\"id\":\"ab_reservation_00003\",\"number\":\"R-00095\",\"from\":\"pending\",\"to\":\"confirmed\",\"startDate\":\"2026-12-13T13:00:00.000Z\",\"endDate\":\"2026-12-17T13:00:00.000Z\",\"totalAmount\":\"98.00\",\"currency\":\"EUR\"},\"customer\":{\"name\":\"Bo Ray\",\"email\":\"\"},\"messages\":[],\"reducesAvailability\":true,\"overbooking\":{\"shortfalls\":[{\"productId\":\"ab_product_kayak_002\",\"productName\":\"Paddle\",\"combinationKey\":null,\"requested\":2,\"available\":1,\"reservationItemId\":\"ab_line_00003\",\"selectedAttributes\":null}]},\"turnoverBuffer\":null,\"money\":null,\"insuranceContract\":null}}},\"bindingHash\":\"e68e8db7771a63afe9a289bbda62a462677214c5beac60bfd5f627d830270e29\"}",
+  "a booking confirmed with both flags, nothing short, a message goes":
+    "{\"message\":\"Change reservation #R-00096 for Camille Simon (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. Camille Simon (camille.simon@ab.test) gets the \\\"request accepted\\\" message by email. Its items leave the stock for these dates. The turnover buffer stops no line: nothing is confirmed past it. The stock covers it: nothing is booked over the stock. Nothing was done yet. To go ahead, call again with the same input and this confirmation token.\",\"details\":{\"preview\":{\"summary\":\"Change reservation #R-00096 for Camille Simon (2026-12-13T13:00:00.000Z to 2026-12-17T13:00:00.000Z, 98.00 EUR) from pending to confirmed. Camille Simon (camille.simon@ab.test) gets the \\\"request accepted\\\" message by email. Its items leave the stock for these dates. The turnover buffer stops no line: nothing is confirmed past it. The stock covers it: nothing is booked over the stock.\",\"details\":{\"reservation\":{\"id\":\"ab_reservation_00004\",\"number\":\"R-00096\",\"from\":\"pending\",\"to\":\"confirmed\",\"startDate\":\"2026-12-13T13:00:00.000Z\",\"endDate\":\"2026-12-17T13:00:00.000Z\",\"totalAmount\":\"98.00\",\"currency\":\"EUR\"},\"customer\":{\"name\":\"Camille Simon\",\"email\":\"camille.simon@ab.test\"},\"messages\":[{\"message\":\"request_accepted\",\"channel\":\"email\",\"to\":\"camille.simon@ab.test\"}],\"reducesAvailability\":true,\"overbooking\":{\"shortfalls\":[]},\"turnoverBuffer\":{\"shortfalls\":[],\"turnoverBufferMinutes\":120},\"money\":null,\"insuranceContract\":null}}},\"bindingHash\":\"9d0fec7a177396bdb2361619e058b78fcbbfcf11b936ab3e83bef7e55de24250\"}",
+};
+
+describe("the six branches a person approves, as an agent is answered (database)", {
+  skip: skipWithoutTestDatabase(),
+}, () => {
+  let database: TestDatabase;
+  let louezDb: typeof import("@louez/db");
+  let orm: typeof import("drizzle-orm");
+  let permissions: typeof import("../platform/permissions");
+  let routers: Record<string, Record<string, unknown>>;
+  let preview: typeof import("./approval-preview");
+  /** What the last call handed `checkConfirmation` as its display. */
+  let displays: unknown[] = [];
+
+  const ports = {
+    planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
+    dispatchEffects: () => {},
+    storage: createMemoryStorage(),
+    urls: createTestUrls(),
+    afterCommit: () => {},
+    team: { collaboratorLimit: async () => 10, emailConfigured: () => true },
+    // Every branch here is asked first: its writer is never reached. Its
+    // billing facts, as a stand-in: the reservation's currency, no gross, no share.
+    paymentRecords: {
+      facts: async (tx: import("@louez/db").Transaction, draft: { reservationId: string }) => {
+        const [row] = await tx
+          .select({ currency: louezDb.reservations.currency })
+          .from(louezDb.reservations)
+          .where(orm.eq(louezDb.reservations.id, draft.reservationId));
+        return { currency: row?.currency ?? "EUR", grossMinor: null, insuranceShareMinor: 0 };
+      },
+      insert: async () => {
+        throw new Error("the payment writer is not reached");
+      },
+    },
+  };
+
+  before(async () => {
+    database = await createTestDatabase("api_approval_branches");
+    louezDb = await import("@louez/db");
+    orm = await import("drizzle-orm");
+    permissions = await import("../platform/permissions");
+    preview = await import("./approval-preview");
+    // The check as it is, with the display each call hands it kept.
+    const confirmation: Record<string, unknown> = await import("../platform/confirmation");
+    const check = confirmation.checkConfirmation as (input: { display?: unknown }) => unknown;
+    mock.module(import.meta.resolve("../platform/confirmation"), {
+      namedExports: {
+        ...confirmation,
+        checkConfirmation: (input: { display?: unknown }) => {
+          displays.push(input.display);
+          return check(input);
+        },
+      },
+    });
+    routers = {
+      team: (await import("../routers/dashboard/team")).dashboardTeamRouter,
+      reservations: (await import("../routers/dashboard/reservations"))
+        .dashboardReservationsRouter,
+      payments: (await import("../routers/dashboard/payments")).dashboardPaymentsRouter,
+    };
+    const { db } = louezDb;
+    await db.insert(louezDb.users).values([
+      { id: OWNER, email: "owner@ab.test", name: "Olga Owner" },
+      { id: MEMBER_USER, email: "lucas.bernard@ab.test", name: "Lucas Bernard" },
+    ]);
+    await db.insert(louezDb.stores).values({
+      id: STORE,
+      userId: OWNER,
+      name: "Vélo Liberté",
+      slug: "ab-velo-liberte",
+      onboardingCompleted: true,
+      settings: {
+        reservationMode: "request" as const,
+        currency: "EUR",
+        timezone: "Europe/Paris",
+        pendingBlocksAvailability: false,
+        advanceNoticeMinutes: 0,
+        minRentalMinutes: 0,
+        turnoverBufferMinutes: 120,
+      },
+    });
+    // The key the calls come from: an approval is requested only for a connection that exists.
+    await db.insert(louezDb.apiKeys).values({
+      id: KEY,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Sample assistant",
+      keyPrefix: "lz_ab",
+      keyHash: "ab".repeat(32),
+      permissions: {
+        reservations: "write",
+        products: "write",
+        customers: "write",
+        categories: "write",
+        payments: "write",
+        analytics: "read",
+        settings: "write",
+      },
+    });
+    await db.insert(louezDb.storeMembers).values([
+      { storeId: STORE, userId: OWNER, role: "owner" },
+      {
+        id: MEMBERSHIP,
+        storeId: STORE,
+        userId: MEMBER_USER,
+        role: "member",
+        createdAt: new Date("2026-03-03T09:00:00.000Z"),
+      },
+    ]);
+    await db.insert(louezDb.storeInvitations).values({
+      id: INVITATION,
+      storeId: STORE,
+      email: "nina.roux@ab.test",
+      role: "member",
+      token: "ab_invitation_token_0000000000000001",
+      invitedBy: OWNER,
+      expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+      createdAt: new Date("2026-11-02T08:30:00.000Z"),
+    });
+    await db.insert(louezDb.customers).values([
+      {
+        id: CUSTOMER,
+        storeId: STORE,
+        email: "camille.simon@ab.test",
+        firstName: "Camille",
+        lastName: "Simon",
+      },
+      // No email, no phone: no message can go.
+      { id: SILENT, storeId: STORE, email: "", firstName: "Bo", lastName: "Ray" },
+    ]);
+    const product = (id: string, name: string) =>
+      db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name,
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 1,
+      });
+    await product("ab_product_kayak_001", "Kayak biplace");
+    await product("ab_product_kayak_002", "Paddle");
+    await product("ab_product_kayak_003", "Vélo cargo");
+    const reservation = (
+      id: string,
+      number: string,
+      status: "pending" | "confirmed",
+      customerId: string,
+      start: Date,
+      end: Date,
+    ) =>
+      db.insert(louezDb.reservations).values({
+        id,
+        storeId: STORE,
+        customerId,
+        number,
+        status,
+        startDate: start,
+        endDate: end,
+        subtotalAmount: "98.00",
+        depositAmount: "300.00",
+        totalAmount: "98.00",
+        currency: "EUR",
+      });
+    const line = (reservationId: string, productId: string, name: string, quantity: number) =>
+      db.insert(louezDb.reservationItems).values({
+        id: `${reservationId.replace("reservation", "line")}`,
+        reservationId,
+        productId,
+        quantity,
+        unitPrice: "49.00",
+        depositPerUnit: "0.00",
+        totalPrice: "98.00",
+        productSnapshot: { name, description: null, images: [] },
+      });
+    await reservation(PAID, "R-00090", "confirmed", CUSTOMER, AT, UNTIL);
+    await db.insert(louezDb.payments).values([
+      {
+        id: "ab_payment_deposit01",
+        reservationId: PAID,
+        amount: "300.00",
+        type: "deposit",
+        method: "card",
+        status: "completed",
+        currency: "EUR",
+        paidAt: new Date("2026-11-10T09:00:00.000Z"),
+      },
+      {
+        id: PAYMENT,
+        reservationId: PAID,
+        amount: "80.00",
+        type: "rental",
+        method: "cash",
+        status: "completed",
+        currency: "EUR",
+        paidAt: new Date("2026-11-12T15:30:00.000Z"),
+      },
+    ]);
+    // One kayak asked, free only without the turnover buffer.
+    await reservation(BUFFERED, "R-00094", "pending", CUSTOMER, AT, UNTIL);
+    await line(BUFFERED, "ab_product_kayak_001", "Kayak biplace", 1);
+    await reservation(
+      EARLIER,
+      "R-00093",
+      "confirmed",
+      SILENT,
+      new Date(AT.getTime() - 24 * HOUR),
+      new Date(AT.getTime() - HOUR),
+    );
+    await line(EARLIER, "ab_product_kayak_001", "Kayak biplace", 1);
+    // Two paddles asked of one.
+    await reservation(SHORT, "R-00095", "pending", SILENT, AT, UNTIL);
+    await line(SHORT, "ab_product_kayak_002", "Paddle", 2);
+    // A cargo bike the stock and the buffer cover.
+    await reservation(COVERED, "R-00096", "pending", CUSTOMER, AT, UNTIL);
+    await line(COVERED, "ab_product_kayak_003", "Vélo cargo", 1);
+  });
+
+  after(async () => {
+    await louezDb?.db.$client.end();
+    await database?.drop();
+  });
+
+  async function context() {
+    const store = await louezDb.db.query.stores.findFirst({
+      where: orm.eq(louezDb.stores.id, STORE),
+    });
+    return {
+      transport: "mcp" as const,
+      headers: new Headers(),
+      ports,
+      receipt: {},
+      store,
+      actor: {
+        transport: "mcp" as const,
+        isPlatformAdmin: false,
+        credential: {
+          kind: "api_key" as const,
+          id: KEY,
+          clientName: "Sample assistant",
+          userId: OWNER,
+          email: "owner@ab.test",
+          storeId: STORE,
+          stores: null,
+          scopes: permissions.presetScopes("write"),
+          confirmSensitive: true,
+          bundles: null,
+        },
+        storeId: STORE,
+        role: "owner" as const,
+      },
+    };
+  }
+
+  /** The store's approvals: each enumerating test clears them, as the caps would refuse its many requests. */
+  const clearApprovals = () =>
+    louezDb.db.delete(louezDb.apiHandoffs).where(orm.eq(louezDb.apiHandoffs.storeId, STORE));
+
+  /** What the agent is answered: its message, its details, and the approval's binding. */
+  async function answerOf(branch: (typeof BRANCHES)[number]) {
+    const [, domain, name] = branch.path;
+    const procedure = routers[domain]?.[name] as
+      | { "~orpc": { handler: (options: unknown) => Promise<unknown> } }
+      | undefined;
+    assert.ok(procedure, `${branch.path.join(".")} is a procedure`);
+    let error: unknown = null;
+    displays = [];
+    try {
+      await procedure["~orpc"].handler({
+        context: await context(),
+        input: branch.input,
+        path: branch.path,
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    const data = (error as { data?: { code?: string; details?: Record<string, unknown> } }).data;
+    assert.equal(data?.code, "APPROVAL_REQUIRED", `${branch.name}: asked`);
+    const details = (data?.details ?? {}) as {
+      preview?: unknown;
+      approval?: { id: string; url: string } & Record<string, unknown>;
+      confirmationToken?: string;
+    };
+    const id = String(details.approval?.id);
+    const [row] = await louezDb.db
+      .select({ bindingHash: louezDb.apiHandoffs.bindingHash })
+      .from(louezDb.apiHandoffs)
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+    assert.ok(row, `${branch.name}: its approval is recorded`);
+    return {
+      message: (error as Error).message,
+      details,
+      id,
+      bindingHash: row.bindingHash,
+      json: JSON.stringify({ message: (error as Error).message, details }),
+    };
+  }
+
+  test("an amount the payment writes take is the amount its row holds: MySQL's own `decimal(10,2)`", async () => {
+    const { paymentAmount } = await import("./payment-amount");
+    // Every shape the writes take, as the writer hands it the column: the
+    // amount as it was sent (apps/web lib/reservations/dashboard-payment-writes.ts).
+    const taken = ["1.49", "1.2", "-20.05", "-0.01", "0.01", "120", "120.5", "007.5", "1500.00", "99999999.99"];
+    for (const [index, amount] of taken.entries()) {
+      const id = `ab_amount_${String(index).padStart(11, "0")}`;
+      await louezDb.db.insert(louezDb.payments).values({
+        id,
+        reservationId: PAID,
+        amount,
+        type: "rental",
+        method: "cash",
+        status: "pending",
+        currency: "JPY",
+      });
+      const [row] = await louezDb.db
+        .select({ amount: louezDb.payments.amount })
+        .from(louezDb.payments)
+        .where(orm.eq(louezDb.payments.id, id));
+      assert.equal(paymentAmount(amount), row?.amount, amount);
+      await louezDb.db.delete(louezDb.payments).where(orm.eq(louezDb.payments.id, id));
+    }
+    // A text the column would round, or refuse past eight integer digits: the writes refuse it.
+    for (const amount of ["1.234", "-20.005", "0.004", "99999999.994", "99999999.995", "100000000"]) {
+      assert.equal(paymentAmount(amount), null, amount);
+    }
+  });
+
+  /** A call's answer code, and the displays its checks were handed (none when it was refused before asking). */
+  async function asked(path: readonly string[], input: object) {
+    const [, domain, name] = path;
+    const procedure = routers[domain ?? ""]?.[name ?? ""] as {
+      "~orpc": { handler: (options: unknown) => Promise<unknown> };
+    };
+    displays = [];
+    let code: string | undefined;
+    try {
+      await procedure["~orpc"].handler({ context: await context(), input, path });
+    } catch (caught) {
+      code = (caught as { data?: { code?: string } }).data?.code;
+    }
+    await clearApprovals();
+    return { code, displays: [...displays] };
+  }
+
+  test("each amount the payment writes accept gets a display; each they refuse is refused before anything is asked", async () => {
+    // Plain decimals of at most two decimals, a sign, zero, and texts a
+    // number reader would take ("1e2", " 5", "12abc"), for each type.
+    const shapes = [
+      "120.00", "120", "120.5", "007.5", "0.01", "-0.01", "-20.00", "99999999.99",
+      "0", "0.00", "-0", "0.004", "1.234", "-20.005", "100000000", "1e2", "+5", " 5", "5 ",
+      "5.", ".5", "12abc", "1,50", "", "Infinity", "NaN", "0x10",
+    ];
+    const accepted = (amount: string, type: string) =>
+      /^-?\d{1,8}(\.\d{1,2})?$/.test(amount) && Number(amount) !== 0 && (type === "adjustment" || !amount.startsWith("-"));
+    for (const type of ["rental", "deposit", "deposit_return", "damage", "adjustment"]) {
+      for (const amount of shapes) {
+        const call = await asked(["dashboard", "payments", "record"], { reservationId: PAID, type, amount, method: "cash" });
+        const label = `${type} ${JSON.stringify(amount)}: ${call.code}`;
+        if (accepted(amount, type)) {
+          assert.equal(call.code, "APPROVAL_REQUIRED", label);
+          assert.equal(call.displays.length, 1, label);
+          assert.ok(call.displays[0], `${label}: a display`);
+        } else {
+          assert.ok(
+            call.code === "PAYMENT_AMOUNT_INVALID" || call.code === "PAYMENT_NEGATIVE_AMOUNT_NOT_ADJUSTMENT",
+            label,
+          );
+          assert.deepEqual(call.displays, [], `${label}: nothing asked`);
+        }
+      }
+    }
+    // A deposit return: above zero and within the 300.00 still held.
+    for (const amount of [...shapes, "300.00", "300.01", "299.99"]) {
+      const call = await asked(["dashboard", "payments", "recordDepositReturn"], { reservationId: PAID, amount, method: "cash" });
+      const label = `return ${JSON.stringify(amount)}: ${call.code}`;
+      if (accepted(amount, "deposit_return") && Number(amount) <= 300) {
+        assert.equal(call.code, "APPROVAL_REQUIRED", label);
+        assert.ok(call.displays[0], `${label}: a display`);
+      } else {
+        assert.ok(
+          call.code === "DEPOSIT_RETURN_AMOUNT_INVALID" || call.code === "DEPOSIT_RETURN_EXCEEDS_BALANCE",
+          label,
+        );
+        assert.deepEqual(call.displays, [], `${label}: nothing asked`);
+      }
+    }
+  });
+
+  for (const branch of BRANCHES) {
+    test(`${branch.name}: its check gets a display the page shows, kept out of the answer`, async () => {
+      const { json: answer } = await answerOf(branch);
+      assert.equal(displays.length, 1);
+      const [display] = displays;
+      assert.equal(JSON.stringify(display), DISPLAYS[branch.name]);
+      const shown = preview.shownDisplay(display);
+      assert.ok(shown?.readable, "the page reads it whole");
+      // Nothing of it reaches the agent.
+      assert.doesNotMatch(answer, /headline|"facts"|"key":/);
+    });
+  }
+
+  for (const branch of BRANCHES) {
+    test(`${branch.name}: the agent gets the preview and the binding as before, byte for byte, and the approval`, async () => {
+      const answer = await answerOf(branch);
+      const before = JSON.parse(ANSWERS[branch.name]) as {
+        message: string;
+        details: { preview: unknown };
+        bindingHash: string;
+      };
+      assert.equal(
+        JSON.stringify(answer.details.preview),
+        JSON.stringify(before.details.preview),
+        "the preview",
+      );
+      assert.equal(answer.bindingHash, before.bindingHash, "the binding");
+      const url = `${TEST_APP_URL}/handoffs/${answer.id}`;
+      assert.equal(
+        answer.message,
+        before.message.replace(
+          " To go ahead, call again with the same input and this confirmation token.",
+          ` The user approves it in Louez, signed in, from this link: ${url}`,
+        ),
+      );
+      const { expiresAt, ...approval } = answer.details.approval ?? {};
+      assert.ok(typeof expiresAt === "string");
+      assert.deepEqual(approval, {
+        id: answer.id,
+        url,
+        status: "pending",
+        pollAfterSeconds: 30,
+        decision: null,
+      });
+      assert.equal(answer.details.confirmationToken, answer.id);
+      assert.deepEqual(Object.keys(answer.details).sort(), ["approval", "confirmationToken", "preview"]);
+    });
+  }
+});

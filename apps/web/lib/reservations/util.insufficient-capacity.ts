@@ -1,4 +1,4 @@
-import type { CapacityShortfall } from "@louez/api/services/reservation-inventory";
+import type { CapacityShortfall } from "@louez/api/contracts/reservations";
 
 /**
  * The server's refusal of a reservation for lack of stock, with the lines it

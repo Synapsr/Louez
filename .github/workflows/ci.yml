@@ -30,10 +30,25 @@ jobs:
       - run: pnpm lint
       - run: pnpm type-check
 
+  # The suites run as three jobs side by side, each on its own MySQL server:
+  # the API's and the web app's are the long ones, and together they no longer
+  # fit one job's time.
   test:
-    name: Tests
+    name: Tests (${{ matrix.name }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            run: pnpm exec turbo run test --continue --filter=@louez/api
+          - name: web
+            run: pnpm exec turbo run test --continue --filter=@louez/web
+          - name: others
+            run: >-
+              pnpm exec turbo run test --continue --filter=!@louez/api --filter=!@louez/web
+              && node --test "scripts/**/*.test.mjs"
     # A throwaway MySQL server for the database suites.
     services:
       mysql:
@@ -64,7 +79,17 @@ jobs:
         run: pnpm --filter @louez/db db:migrate:run
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}/louez_test
-      - run: pnpm test
+      - run: ${{ matrix.run }}
         env:
           # The pricing-lock suite runs alone on louez_test, migrated above.
           PRICING_LOCK_TEST_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}/louez_test
+
+  # One check for the three jobs above, under the name the branch protection asks for.
+  tests:
+    name: Tests
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: test "${{ needs.test.result }}" = "success"

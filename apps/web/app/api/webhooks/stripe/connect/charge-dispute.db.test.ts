@@ -43,13 +43,14 @@ function fakeStripe() {
       return {
         id: chargeId,
         amount: 10_000,
+        amount_captured: 10_000,
         amount_refunded: 0,
         application_fee: `fee_${chargeId}`,
         payment_intent: null,
       };
     },
     async retrieveApplicationFee(feeId) {
-      return { id: feeId, amount: 250, amount_refunded: feeRefunded };
+      return { id: feeId, amount: 250, amount_refunded: feeRefunded, currency: "eur" };
     },
     async listDisputes() {
       return [{ id: "dp_disputed", amount: 10_000, status: "needs_response" }];

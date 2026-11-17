@@ -45,7 +45,7 @@ for (const mode of ["request", "payment", "payment-unavailable"]) {
       getEffectiveReservationMode: () => (mode === "request" ? "request" : "payment"),
       getCheckoutChargeAmount,
       validateStripePaymentAmount,
-      cancelFailedCheckoutReservation: async () => true,
+      changeSystemReservationStatus: async () => true,
       runReservationEffects: async () => {},
       runPostCreationEffects: async () => {},
       notifyRequestReceived: async () => {},
@@ -139,7 +139,7 @@ const checkoutFixture = ({
       notifications.push(input);
     },
     startCheckoutPayment: async () => paymentUrl,
-    cancelFailedCheckoutReservation: async (input, runner) => {
+    changeSystemReservationStatus: async (input, runner) => {
       cancellations.push({ input, runner });
       return true;
     },
@@ -258,16 +258,15 @@ const writeFixture = ({ supersede }) => {
   const events = [];
   const tx = { insert: () => ({ values: async () => {} }) };
   const write = runInNewContext(`${writeSource}; writeReservation`, {
-    db: {
-      transaction: async (work) => {
-        const result = await work(tx);
-        events.push("commit");
-        return result;
-      },
+    // The owner entry: one run, then its commit.
+    runReservationTransaction: async (work) => {
+      const result = await work(tx, {});
+      events.push("commit");
+      return result;
     },
     getBlockingReservationStatuses: () => [],
     lockReservationProducts: async () => new Map(),
-    lockResumableCheckout: async (_tx, _storeId, resumable) => resumable,
+    lockResumableCheckout: async (_tx, _owner, _storeId, resumable) => resumable,
     reserveInventory: async () => ({
       ok: true,
       inventory: { resolvedCombinationByLineKey: new Map() },

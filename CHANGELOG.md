@@ -8,6 +8,10 @@ All notable changes to Louez are documented here.
 
 ## [Unreleased]
 
+### 🤖 API & Agents
+
+- **Create a reservation from the API or an assistant** — `POST /reservations` and the `reservations_create` tool create a quote or a confirmed booking of catalog products, picked up at the store. Prices are those the online store's checkout would charge for the same cart, the stock is checked as a confirmation checks it, booking over the stock or past the turnover buffer needs the account owner's approval in Louez, and an idempotency key is required so a retry never books twice. Custom lines, typed prices, discounts, delivery and insurance stay in the dashboard.
+
 ### 📞 Voice Agent
 
 - **Direct live audio** — The phone agent now streams Twilio audio to OpenAI GPT-Live, with store context, selectable voices and language-aware voice previews. Business tools remain in the application backend.
@@ -696,6 +700,10 @@ Toutes les évolutions notables de Louez sont documentées ici.
 ---
 
 ## [À venir]
+
+### 🤖 API et agents
+
+- **Créer une réservation depuis l'API ou un assistant** — `POST /reservations` et l'outil `reservations_create` créent un devis ou une réservation confirmée de produits du catalogue, retirés en boutique. Les prix sont ceux que le paiement de la boutique en ligne appliquerait au même panier, le stock est vérifié comme à une confirmation, réserver au-delà du stock ou du délai entre deux locations demande l'accord du titulaire du compte dans Louez, et une clé d'idempotence est exigée pour qu'une nouvelle tentative ne réserve jamais deux fois. Les lignes libres, les prix saisis, les remises, la livraison et l'assurance restent dans le tableau de bord.
 
 ### 📞 Agent vocal
 

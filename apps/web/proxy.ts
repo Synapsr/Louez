@@ -436,7 +436,7 @@ async function routeRequest(request: NextRequest): Promise<NextResponse> {
     return withRuntimeSecurityHeaders(response, pathname, getRuntimePublicEnv());
   }
 
-  // A handoff's URL holds a secret: the root layout loads no analytics for it, and
+  // A handoff's URL may hold a secret: the root layout loads no analytics for it, and
   // no page or redirect of it tells another site where the user came from.
   if (isHandoffPath(pathname)) {
     const requestHeaders = new Headers(request.headers);

@@ -1,6 +1,12 @@
 import Stripe from "stripe";
-import { validateStripePaymentAmount } from "@louez/utils";
+import { validateStripePaymentAmount, ZERO_DECIMAL_CURRENCIES } from "@louez/utils";
 import { stripe, getStripe } from "./stripe/client";
+
+/**
+ * How long a Checkout Session Louez creates for a reservation stays payable,
+ * from its creation by Louez's clock (`expires_at`).
+ */
+export const CHECKOUT_SESSION_LIFETIME_SECONDS = 30 * 60;
 
 export { stripe, getStripe };
 
@@ -36,6 +42,11 @@ interface CreateCheckoutSessionParams {
    * payment link of the same reservation.
    */
   checkoutFlow?: CheckoutSessionFlow;
+  /**
+   * The key of this one create: Stripe answers the client's own retry of it with
+   * the same session. A fresh key for each call ties no two calls together.
+   */
+  idempotencyKey?: string;
 }
 
 export type CheckoutSessionFlow = "storefront_checkout";
@@ -45,7 +56,7 @@ function normalizeStripeReferenceValue(value: string | null | undefined): string
   return normalized || undefined;
 }
 
-function buildReservationPaymentReference({
+export function buildReservationPaymentReference({
   reservationId,
   reservationNumber,
   customerName,
@@ -90,6 +101,7 @@ export async function createCheckoutSession({
   feeMetadata,
   locale,
   checkoutFlow,
+  idempotencyKey,
 }: CreateCheckoutSessionParams) {
   const paymentAmount = validateStripePaymentAmount(
     fromStripeCents(
@@ -134,7 +146,7 @@ export async function createCheckoutSession({
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || "auto",
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
+    expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_SESSION_LIFETIME_SECONDS,
     // Create customer on connected account for future charges (deposit hold)
     customer_creation: "always",
     metadata: {
@@ -156,6 +168,7 @@ export async function createCheckoutSession({
 
   const session = await stripe.checkout.sessions.create(sessionParams, {
     stripeAccount: stripeAccountId,
+    ...(idempotencyKey ? { idempotencyKey } : {}),
   });
 
   return {
@@ -207,6 +220,11 @@ interface CreatePaymentRequestSessionParams {
   /** Fee metadata v4, on the session and on its PaymentIntent (billing fees.md §8). */
   feeMetadata?: Record<string, string>;
   locale?: string;
+  /**
+   * The key of this one create: Stripe answers the client's own retry of it with
+   * the same session. A fresh key for each call ties no two calls together.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -229,6 +247,7 @@ export async function createPaymentRequestSession({
   applicationFeeAmount,
   feeMetadata,
   locale,
+  idempotencyKey,
 }: CreatePaymentRequestSessionParams) {
   const paymentAmount = validateStripePaymentAmount(fromStripeCents(amount, currency), currency);
   if (!paymentAmount.ok) throw new Error(paymentAmount.error);
@@ -265,7 +284,7 @@ export async function createPaymentRequestSession({
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || "auto",
-    expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
+    expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_SESSION_LIFETIME_SECONDS,
     metadata: {
       ...paymentReference.metadata,
       ...feeMetadata,
@@ -286,63 +305,12 @@ export async function createPaymentRequestSession({
 
   const session = await stripe.checkout.sessions.create(sessionParams, {
     stripeAccount: stripeAccountId,
+    ...(idempotencyKey ? { idempotencyKey } : {}),
   });
 
   return {
     sessionId: session.id,
     url: session.url!,
-  };
-}
-
-// ============================================================================
-// Refunds
-// ============================================================================
-
-interface CreateRefundParams {
-  stripeAccountId: string;
-  chargeId: string;
-  amount?: number; // In cents, omit for full refund
-  reason?: "requested_by_customer" | "duplicate" | "fraudulent";
-}
-
-export async function createRefund({
-  stripeAccountId,
-  chargeId,
-  amount,
-  reason = "requested_by_customer",
-}: CreateRefundParams) {
-  const refundParams: Stripe.RefundCreateParams = {
-    charge: chargeId,
-    reason,
-  };
-
-  if (amount) {
-    refundParams.amount = amount;
-  }
-
-  const refund = await stripe.refunds.create(refundParams, {
-    stripeAccount: stripeAccountId,
-  });
-
-  return {
-    refundId: refund.id,
-    amount: refund.amount,
-    status: refund.status,
-    currency: refund.currency.toUpperCase(),
-  };
-}
-
-export async function getChargeRefundableAmount(stripeAccountId: string, chargeId: string) {
-  const charge = await stripe.charges.retrieve(chargeId, {
-    stripeAccount: stripeAccountId,
-  });
-
-  return {
-    refundable: !charge.refunded && charge.amount > charge.amount_refunded,
-    amount: charge.amount - charge.amount_refunded,
-    alreadyRefunded: charge.amount_refunded,
-    /** The charge's own currency, which a refund of it is counted in. */
-    currency: charge.currency.toUpperCase(),
   };
 }
 
@@ -402,147 +370,6 @@ export async function createDepositAuthorizationIntent({
   };
 }
 
-interface CreateDepositAuthorizationParams {
-  stripeAccountId: string;
-  customerId: string;
-  paymentMethodId: string;
-  amount: number; // In cents
-  currency: string;
-  reservationId: string;
-  reservationNumber: string;
-  customerName?: string | null;
-}
-
-/**
- * Creates an authorization hold on the customer's card for the deposit amount.
- * This blocks the funds on the card but does NOT charge them.
- * The authorization expires after 7 days.
- */
-export async function createDepositAuthorization({
-  stripeAccountId,
-  customerId,
-  paymentMethodId,
-  amount,
-  currency,
-  reservationId,
-  reservationNumber,
-  customerName,
-}: CreateDepositAuthorizationParams) {
-  const paymentReference = buildReservationPaymentReference({
-    reservationId,
-    reservationNumber,
-    customerName,
-    type: "deposit_hold",
-  });
-
-  const paymentIntent = await stripe.paymentIntents.create(
-    {
-      amount,
-      currency: currency.toLowerCase(),
-      description: `Deposit hold - ${paymentReference.description}`,
-      customer: customerId,
-      payment_method: paymentMethodId,
-      capture_method: "manual", // Authorization only, no immediate capture
-      confirm: true, // Confirm immediately to create the authorization
-      off_session: true, // No customer interaction required
-      metadata: paymentReference.metadata,
-    },
-    {
-      stripeAccount: stripeAccountId,
-    },
-  );
-
-  // Authorization expires after 7 days
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-    expiresAt,
-  };
-}
-
-interface CaptureDepositParams {
-  stripeAccountId: string;
-  paymentIntentId: string;
-  amountToCapture?: number; // In cents, if partial capture
-}
-
-/**
- * Captures the deposit (fully or partially) from an authorization hold.
- * Any uncaptured amount is automatically released.
- */
-export async function captureDeposit({
-  stripeAccountId,
-  paymentIntentId,
-  amountToCapture,
-}: CaptureDepositParams) {
-  const captureParams: Stripe.PaymentIntentCaptureParams = {};
-
-  if (amountToCapture !== undefined) {
-    captureParams.amount_to_capture = amountToCapture;
-  }
-
-  const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, captureParams, {
-    stripeAccount: stripeAccountId,
-  });
-
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-    amountCaptured: paymentIntent.amount_received,
-    currency: paymentIntent.currency.toUpperCase(),
-    // The payment row needs it to be matched with Stripe's application fees.
-    chargeId:
-      typeof paymentIntent.latest_charge === "string"
-        ? paymentIntent.latest_charge
-        : (paymentIntent.latest_charge?.id ?? null),
-  };
-}
-
-interface ReleaseDepositParams {
-  stripeAccountId: string;
-  paymentIntentId: string;
-}
-
-/**
- * Releases (cancels) an authorization hold without capturing any funds.
- * The blocked amount is immediately released back to the customer.
- */
-export async function releaseDeposit({ stripeAccountId, paymentIntentId }: ReleaseDepositParams) {
-  const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId, {
-    stripeAccount: stripeAccountId,
-  });
-
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-  };
-}
-
-/**
- * Retrieves the current status of a deposit authorization.
- */
-export async function getDepositAuthorizationStatus(
-  stripeAccountId: string,
-  paymentIntentId: string,
-) {
-  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-    stripeAccount: stripeAccountId,
-  });
-
-  return {
-    paymentIntentId: paymentIntent.id,
-    status: paymentIntent.status,
-    amount: paymentIntent.amount,
-    amountCapturable: paymentIntent.amount_capturable,
-    amountReceived: paymentIntent.amount_received,
-    currency: paymentIntent.currency.toUpperCase(),
-    metadata: paymentIntent.metadata,
-  };
-}
-
 /**
  * Retrieves customer's saved payment method details (last 4 digits, brand, etc.)
  */
@@ -564,25 +391,7 @@ export async function getPaymentMethodDetails(stripeAccountId: string, paymentMe
 // Currency Utilities
 // ============================================================================
 
-// Stripe zero-decimal currencies (amount in whole units, not cents)
-const ZERO_DECIMAL_CURRENCIES = new Set([
-  "BIF",
-  "CLP",
-  "DJF",
-  "GNF",
-  "JPY",
-  "KMF",
-  "KRW",
-  "MGA",
-  "PYG",
-  "RWF",
-  "UGX",
-  "VND",
-  "VUV",
-  "XAF",
-  "XOF",
-  "XPF",
-]);
+// Stripe zero-decimal currencies (amount in whole units, not cents): `ZERO_DECIMAL_CURRENCIES`, @louez/utils.
 
 export function toStripeCents(amount: number, currency: string): number {
   if (ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase())) {

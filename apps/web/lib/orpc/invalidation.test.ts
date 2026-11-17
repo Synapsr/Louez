@@ -6,7 +6,11 @@ import { QueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc/react";
 import { productsQueries } from "@/lib/queries/products.queries";
 
-import { invalidateProductInventory, invalidateVariantCatalog } from "./invalidation";
+import {
+  invalidateManualCreationQuotes,
+  invalidateProductInventory,
+  invalidateVariantCatalog,
+} from "./invalidation";
 
 const seed = (client: QueryClient, keys: ReadonlyArray<readonly unknown[]>) => {
   for (const key of keys) client.setQueryData(key, { seeded: true });
@@ -46,4 +50,34 @@ test("a catalog change marks the variants and their usage stale, not the unit hi
   assert.equal(invalidated(client, variants), true);
   assert.equal(invalidated(client, usage), true);
   assert.equal(invalidated(client, history), false);
+});
+
+test("a creation refused as changed meanwhile marks the insurer's quote and the routes stale", async () => {
+  const client = new QueryClient();
+  const quote = orpc.dashboard.reservations.previewManualTulipQuote.queryOptions({
+    input: {
+      payload: {
+        startDate: "2030-01-01T09:00:00.000Z",
+        endDate: "2030-01-03T09:00:00.000Z",
+        tulipInsuranceOptIn: true,
+        items: [],
+      },
+    },
+  }).queryKey;
+  const route = orpc.public.address.distance.queryOptions({
+    input: {
+      originLatitude: 48.1,
+      originLongitude: -1.6,
+      destinationLatitude: 48.2,
+      destinationLongitude: -1.7,
+    },
+  }).queryKey;
+  const list = productsQueries.list().queryKey;
+  seed(client, [quote, route, list]);
+
+  await invalidateManualCreationQuotes(client);
+
+  assert.equal(invalidated(client, quote), true);
+  assert.equal(invalidated(client, route), true);
+  assert.equal(invalidated(client, list), false, "other queries stay fresh");
 });

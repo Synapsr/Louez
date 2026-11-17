@@ -41,12 +41,13 @@ type Json = Record<string, unknown>;
 
 describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
+  let invitationShown: typeof import("@louez/api/services/handoffs").invitationShown;
   let louezDb: typeof import("@louez/db");
   let apiKeys: typeof import("@louez/api/services");
   let exposure: import("@louez/api/platform/exposure").Exposure;
   let rpc: (name: string, input: object) => Promise<unknown>;
-  /** The RPC endpoint called with other headers than the owner's session (an API key). */
-  let rpcWith: (headers: Record<string, string>, name: string, input: object) => Promise<unknown>;
+  /** A person's answer on a step's page (`handoffs.decide`), with the given headers. */
+  let decideWith: (headers: Record<string, string>, input: object) => Promise<unknown>;
   let openApi: (
     method: string,
     path: string,
@@ -72,6 +73,7 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     database = await createTestDatabase("api_team_transports");
     louezDb = await import("@louez/db");
     apiKeys = await import("@louez/api/services");
+    ({ invitationShown } = await import("@louez/api/services/handoffs"));
     const { appRouter } = await import("@louez/api/router");
     const { createExposure } = await import("@louez/api/platform/exposure");
     const { createOpenApiHandler, handleOpenApiRequest } =
@@ -86,7 +88,10 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     const rpcHandler = new RPCHandler(appRouter);
     const clientWith = (headers: Record<string, string>) =>
       createORPCClient<{
-        dashboard: { team: Record<string, (input: object) => Promise<unknown>> };
+        dashboard: {
+          team: Record<string, (input: object) => Promise<unknown>>;
+          handoffs: Record<string, (input: object) => Promise<unknown>>;
+        };
       }>(
         new RPCLink({
           url: "http://louez.test/api/rpc",
@@ -102,10 +107,10 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
       );
     const client = clientWith({ [SESSION_HEADER]: OWNER });
     rpc = (name, input) => client.dashboard.team[name](input);
-    rpcWith = (headers, name, input) => clientWith(headers).dashboard.team[name](input);
+    decideWith = (headers, input) => clientWith(headers).dashboard.handoffs.decide(input);
 
     // OpenAPI: the exposed procedures at their REST paths, as /api/v1 serves them.
-    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    const openApiHandler = createOpenApiHandler(exposure.router);
     openApi = async (method, path, body, headers) =>
       (await handleOpenApiRequest(
         openApiHandler,
@@ -126,7 +131,6 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     const httpOptions = {
       ports,
       procedures: exposure.procedures,
-      deps: { insertRecordedPayment: async () => undefined },
     };
     const connect = async (authorization: string) => {
       const mcp = new Client({ name: "test", version: "0.0.0" });
@@ -298,7 +302,7 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     const asked = output(await mcpCall(authorization, "team_invite_member", { email: "b@tt.test" }));
     assert.equal(asked.outcome, "approval_requested");
     const approval = asked.approval as { url: string; handoff: { id: string } };
-    assert.match(approval.url, /\/handoffs\/[A-Za-z0-9_-]{64}$/);
+    assert.match(approval.url, new RegExp(`/handoffs/${approval.handoff.id}$`));
     const viaOpenApi = await openApi("POST", "/team/invitations", { email: "c@tt.test" }, { authorization });
     assert.equal(viaOpenApi.status, 200);
     assert.equal(((await viaOpenApi.json()) as Json).outcome, "approval_requested");
@@ -307,11 +311,22 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
 
     // The owner approves from the link's page, signed in.
     assert.equal(
-      json(await rpc("decideInvitation", { token: tokenOf(approval.url), decision: "approve" })).decision,
+      json(
+        await decideWith({ [SESSION_HEADER]: OWNER }, {
+          id: tokenOf(approval.url),
+          decision: "approve",
+          revision: 1,
+          shown: invitationShown({ email: "b@tt.test", role: "member", joinsAtOnce: false }),
+        }),
+      ).decision,
       "approved",
     );
     const handoff = output(await mcpCall(authorization, "handoffs_get", { id: approval.handoff.id }));
     assert.equal(handoff.status, "completed");
+    // The agent reads what the owner decided, on MCP as on OpenAPI.
+    assert.equal((handoff.decision as { outcome: string }).outcome, "approved");
+    const viaRest = await openApi("GET", `/handoffs/${approval.handoff.id}`, null, { authorization });
+    assert.deepEqual(((await viaRest.json()) as Json).decision, JSON.parse(JSON.stringify(handoff.decision)));
     const row = (await louezDb.db.select().from(louezDb.storeInvitations)).find(
       (invitation) => invitation.email === "b@tt.test",
     );
@@ -327,15 +342,15 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     // MCP and OpenAPI do not serve it; the RPC endpoint refuses a key.
     assert.ok(!(await mcpTools(authorization)).some((name) => name.includes("decide")));
     await assert.rejects(
-      mcpCall(authorization, "team_decide_invitation", { token, decision: "approve" }),
+      mcpCall(authorization, "handoffs_decide", { id: token, decision: "approve", revision: 1, shown: "0".repeat(64) }),
       /not found/,
     );
-    for (const path of ["/team/decide", "/dashboard/team/decideInvitation"]) {
-      const viaOpenApi = await openApi("POST", path, { token, decision: "approve" }, { authorization });
+    for (const path of ["/handoffs/decide", `/handoffs/${token}/decide`, "/dashboard/handoffs/decide"]) {
+      const viaOpenApi = await openApi("POST", path, { id: token, decision: "approve", revision: 1, shown: "0".repeat(64) }, { authorization });
       assert.equal(viaOpenApi.status, 404);
     }
     let refused: unknown = null;
-    await rpcWith({ authorization }, "decideInvitation", { token, decision: "approve" }).catch(
+    await decideWith({ authorization }, { id: token, decision: "approve", revision: 1, shown: "0".repeat(64) }).catch(
       (error: unknown) => {
         refused = error;
       },
@@ -391,20 +406,45 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     assert.equal(toolError(missing)?.code, "TEAM_MEMBER_NOT_FOUND");
   });
 
-  test("removing a member: the dashboard runs it directly; an agent confirms first, on OpenAPI and MCP", async () => {
+  test("removing a member: the dashboard runs it directly; an agent's needs the owner's approval, on OpenAPI and MCP", async () => {
     const authorization = await key({ ...readOnly, team: "write" }, false);
     const viaOpenApi = await openApi("DELETE", `/team/members/${MEMBER_ID}`, null, {
       authorization,
     });
     assert.equal(viaOpenApi.status, 412);
+    const asked = (await viaOpenApi.json()) as {
+      data: { code: string; details: { approval: { id: string } } };
+    };
+    assert.equal(asked.data.code, "APPROVAL_REQUIRED");
 
+    // The same request on MCP: the same approval, whatever the transport.
     const first = await mcpCall(authorization, "team_remove_member", { id: MEMBER_ID });
-    assert.equal(toolError(first)?.code, "CONFIRMATION_REQUIRED");
+    assert.equal(toolError(first)?.code, "APPROVAL_REQUIRED");
     assert.match(text(first), /Maël Member \(member@tt\.test\)/);
+    const approvalId = String(toolError(first)?.details?.confirmationToken);
+    assert.equal(approvalId, asked.data.details.approval.id);
+    assert.ok(
+      (await louezDb.db.select().from(louezDb.storeMembers)).some((member) => member.id === MEMBER_ID),
+      "nothing was done yet",
+    );
+    const row = (await louezDb.db.select().from(louezDb.apiHandoffs)).find(
+      (handoff) => handoff.id === approvalId,
+    );
+    assert.ok(row);
+    await decideWith(
+      { [SESSION_HEADER]: OWNER },
+      {
+        id: approvalId,
+        decision: "approve",
+        revision: row.revision,
+        shown: row.bindingHash,
+        acknowledged: true,
+      },
+    );
     const done = output(
       await mcpCall(authorization, "team_remove_member", {
         id: MEMBER_ID,
-        confirmationToken: toolError(first)?.details?.confirmationToken,
+        confirmationToken: approvalId,
       }),
     );
     assert.equal(done.removed, true);

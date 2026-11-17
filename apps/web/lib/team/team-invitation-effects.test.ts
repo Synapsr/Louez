@@ -35,6 +35,7 @@ describe("team invitation e-mail sender", () => {
 
   const context: EffectSendContext = {
     effectId: "effect_test",
+    row: { storeId: "store", reservationId: null, customerId: null },
     signal: new AbortController().signal,
     throwIfAborted: () => {},
     assertClaim: async () => {
@@ -84,14 +85,23 @@ describe("team invitation e-mail sender", () => {
     assert.match(sent[0]?.invitationUrl ?? "", /\/invitation\/the-current-token$/);
   });
 
-  test("an invitation no longer pending, or no e-mail on this instance, sends nothing", async () => {
+  test("an invitation no longer pending sends nothing, even without e-mail", async () => {
     pending = null;
     assert.deepEqual(await senders["team.invitationEmail"](payload, context), {
       skipped: "invitation_not_pending",
     });
     emailConfigured = false;
     assert.deepEqual(await senders["team.invitationEmail"](payload, context), {
-      skipped: "email_not_configured",
+      skipped: "invitation_not_pending",
+    });
+    assert.equal(sent.length, 0);
+    assert.equal(claims, 0);
+  });
+
+  test("a pending invitation without e-mail on this instance is given up at once, not retried", async () => {
+    emailConfigured = false;
+    assert.deepEqual(await senders["team.invitationEmail"](payload, context), {
+      abandoned: "email_not_configured: no e-mail service is set up",
     });
     assert.equal(sent.length, 0);
     assert.equal(claims, 0);

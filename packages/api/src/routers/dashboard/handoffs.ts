@@ -1,22 +1,31 @@
 import {
   HANDOFF_TTL_HOURS,
+  decideHandoffInput,
+  decideHandoffOutput,
   getHandoffInput,
   getHandoffOutput,
+  handoffErrors,
   refreshHandoffInput,
   refreshHandoffOutput,
-  type HandoffKind,
   type HandoffLink,
+  type StepKind,
 } from "../../contracts/handoffs";
+import type { StoreActor } from "../../platform/actor";
+import { APPROVAL_DECIDE_TIME, APPROVAL_EXECUTE_TIME } from "../../platform/approval-help";
 import { platformErrors } from "../../platform/errors";
-import { allows } from "../../platform/permissions";
-import { storeProcedure } from "../../platform/procedures";
+import { API_DOMAINS, allows } from "../../platform/permissions";
+import { accountProcedure, missingTransport, storeProcedure } from "../../platform/procedures";
+import { decideHandoff } from "../../services/handoff-decisions";
 import {
   HANDOFF_CHECK_LEASE_SECONDS,
-  HANDOFF_KIND_DOMAINS,
   getHandoffRow,
+  connectionReadsApproval,
+  handoffDomain,
   handoffView,
   issueHandoff,
   settlePendingCardSetup,
+  stepNow,
+  upgradeStoredView,
 } from "../../services/handoffs";
 import { mayRead, type ProductContext } from "./product-context";
 
@@ -32,10 +41,39 @@ import { mayRead, type ProductContext } from "./product-context";
  */
 
 /** What every procedure that starts a handoff says of the link it returns. */
-export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page where they sign in, then continue to the provider and come back; only they can finish this step. The link works for ${HANDOFF_TTL_HOURS} hours, only for the user this connection acts for, and calling the tool again replaces it. handoff.id is what handoffs_get takes to follow the step: pending, opened, completed, expired or failed.`;
+export const HANDOFF_HELP = `It returns a link (url) for the user: a Louez page where they sign in, then continue to the provider and come back; only they can finish this step. The link works for ${HANDOFF_TTL_HOURS} hours, only for the user this connection acts for; a new call gives the same link ${HANDOFF_TTL_HOURS} more hours. handoff.id is what handoffs_get takes to follow the step: pending, opened, completed, expired or failed.`;
+
+/** The REST reference's own text (`.route({ description })`) of the link a step starts with, for a developer. */
+export const REST_HANDOFF_HELP = `It returns \`url\`, a link to the step's page in Louez, to open in a browser: it opens for the Louez user the key belongs to, once signed in, who goes on to the provider from there and comes back. Only that person can finish the step. The link works for ${HANDOFF_TTL_HOURS} hours. Calling again returns the same link for ${HANDOFF_TTL_HOURS} more hours, an expired one included; after a step completed or failed, it starts a new one. \`handoff.id\` is what \`GET /handoffs/{id}\` takes to read where the step stands: \`pending\`, \`opened\`, \`completed\`, \`expired\` or \`failed\`.`;
+
+/** Every domain but the one a scope names: a read of any of them opens `handoffs_get`. */
+const OTHER_DOMAINS = API_DOMAINS.filter((domain) => domain !== "settings");
+
+/**
+ * The store's step, for a caller who reads its domain. A step of a domain the
+ * caller does not read answers as an id no step has: an id says nothing to
+ * who may not read the step. An operation's approval is read by the
+ * connection that asked for it while it reads its domain
+ * (`connectionReadsApproval`), and by nobody else on any transport, its
+ * domain's other readers included: it holds the request's input and
+ * preview, which are that connection's (its approver reads it on its page,
+ * signed in).
+ */
+async function readableHandoff(context: Pick<ProductContext, "actor">, id: string) {
+  const row = await getHandoffRow(context.actor.storeId, id);
+  if (
+    row.kind === "operation_approval" &&
+    !connectionReadsApproval(context.actor.credential, row, (domain) => mayRead(context, domain))
+  ) {
+    throw handoffErrors.notFound(id);
+  }
+  const domain = handoffDomain(row);
+  if (!domain || !mayRead(context, domain)) throw handoffErrors.notFound(id);
+  return { row, domain };
+}
 
 /** Starts or resumes a handoff for the caller, bound to their user and connection. */
-export function startHandoff(context: ProductContext, kind: HandoffKind): Promise<HandoffLink> {
+export function startHandoff(context: ProductContext, kind: StepKind): Promise<HandoffLink> {
   const { actor, ports } = context;
   return issueHandoff(
     {
@@ -53,24 +91,29 @@ export function startHandoff(context: ProductContext, kind: HandoffKind): Promis
 const get = storeProcedure
   .meta({
     capability: "handoffs.get",
-    // Opened by any domain a kind belongs to; the handler checks the step's own.
-    scope: { domain: "settings", level: "read", anyOf: ["billing", "team"] },
+    // Opened by any domain's read; the handler reads only a step of a domain the caller reads (`readableHandoff`).
+    scope: { domain: "settings", level: "read", anyOf: OTHER_DOMAINS },
     mcp: {
       name: "handoffs_get",
       title: "Get Handoff Status",
-      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; the tool that started it makes a new one) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). Never returns the link again. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval.`,
+      description: `Where a step handed to the user stands, by the id the tool that started it returned. A provider step or an invitation is pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; calling the tool that started it again opens the same link for another day) or failed (with why). An approval of an action the user must approve (approval.id of an APPROVAL_REQUIRED answer) is pending (not decided yet), approved (the user approved and the action is not carried out yet), completed (carried out), failed (refused, or ended: \`failure\` says why) or expired (undecided within ${APPROVAL_DECIDE_TIME}, or approved and not carried out within ${APPROVAL_EXECUTE_TIME}). Only the connection that asked reads its approval, and the result holds neither the call's arguments nor its tool. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once a provider step is completed, the result is where it leads (payments_sync_stripe_status, billing_get_status). \`url\` is the step's link, the same the tool that started it returned, for the user to open signed in to Louez. For a team invitation's or an action's approval, \`decision\` says what the user decided (approved or refused), when, and their own words if they gave any (\`reason\`, plain text); null until they answer. An approved invitation that could not go out stays approved there, and \`failure\` says why. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval, the action's own for an action's approval (payments, team or reservations); without it, the id answers as not found.`,
       bundle: "daily",
+      // Any bundle's tool may ask for an approval, which only this reads.
+      everyBundle: true,
       annotations: { idempotentHint: true },
     },
   })
-  .route({ method: "GET", path: "/handoffs/{id}" })
+  .route({
+    method: "GET",
+    path: "/handoffs/{id}",
+    description: `Returns where a step taken in a browser stands, by the \`handoff.id\` the operation that started it returned: \`pending\` (the link waits), \`opened\` (the person is on the provider's page), \`completed\`, \`expired\` (the link ran out; calling the operation that started it again gives the same link for another ${HANDOFF_TTL_HOURS} hours) or \`failed\`, with \`failure\` saying why. It only reads. \`confirming\` is true while the person came back from Stripe with a billing card Stripe has not confirmed yet; \`POST /handoffs/{id}/refresh\` asks Stripe again. \`url\` is the step's link, the same the starting operation returned. Once completed, the result is read where the step leads: \`POST /payments/stripe/sync\` for Stripe, \`GET /billing\` for the billing card. For an approval (\`operation_approval\`, by the \`data.details.approval.id\` of an \`APPROVAL_REQUIRED\` answer): \`pending\` until the key's owner decides, \`approved\` once they approved and until the write is carried out, \`completed\` once the same request carried it out, \`failed\` when they refused or it ended (\`failure.code\`: \`declined\`, \`state_changed\`, \`approver_not_allowed\` or \`connection_revoked\`), \`expired\` when undecided within ${APPROVAL_DECIDE_TIME} or not carried out within ${APPROVAL_EXECUTE_TIME} of the approval. Only the key that asked reads its approval, and the answer holds neither the request's input nor its operation: keep the request you sent. For a \`team_invitation\` step or an approval, \`decision\` holds what was decided on its page (\`approved\` or \`refused\`), when, and the \`reason\` given, as plain text; it is null until then. Needs a key that can read the step's domain: settings for Stripe, billing for the billing card, team for a team invitation, the write's own for an approval (payments, team or reservations); otherwise, and for an id the store does not have, it answers \`HANDOFF_NOT_FOUND\`.`,
+  })
   .input(getHandoffInput)
   .output(getHandoffOutput)
   .handler(async ({ context, input }) => {
-    let row = await getHandoffRow(context.actor.storeId, input.id);
-    const domain = HANDOFF_KIND_DOMAINS[row.kind];
-    if (!mayRead(context, domain)) throw platformErrors.permissionDenied(`${domain}:read`);
-    return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
+    const { row } = await readableHandoff(context, input.id);
+    const now = await stepNow(row, new Date());
+    return handoffView(row, { now, urls: context.ports.urls, store: context.store });
   });
 
 /** Settling a step saves what the user did there: the right to change its domain. */
@@ -81,10 +124,33 @@ const REFRESH_SCOPE = {
   anyOf: ["settings"],
 } as const;
 
+/**
+ * The step a caller may settle: one they read, of a domain they may change.
+ * The handler's check, and the one a stored answer is replayed behind.
+ */
+async function refreshableHandoff(actor: StoreActor, id: string) {
+  const { row, domain } = await readableHandoff({ actor }, id);
+  if (!allows(actor.role, actor.credential.scopes, { ...REFRESH_SCOPE, domain, anyOf: [] })) {
+    throw platformErrors.permissionDenied(`${domain}:write`);
+  }
+  return row;
+}
+
+/** The id of the step a stored refresh answer is about. */
+function storedHandoffId(stored: unknown): string {
+  const id = stored && typeof stored === "object" && "id" in stored ? stored.id : null;
+  return typeof id === "string" ? id : "";
+}
+
 const refresh = storeProcedure
   .meta({
     capability: "handoffs.refresh",
     scope: REFRESH_SCOPE,
+    authorizeReplay: async (stored, actor) => {
+      await refreshableHandoff(actor, storedHandoffId(stored));
+    },
+    // Its answers stored before views carried `url` or `decision` replay with them.
+    upgradeReplay: upgradeStoredView,
     mcp: {
       name: "handoffs_refresh",
       title: "Refresh Handoff Status",
@@ -94,18 +160,51 @@ const refresh = storeProcedure
       reach: "provider",
     },
   })
-  .route({ method: "POST", path: "/handoffs/{id}/refresh" })
+  .route({
+    method: "POST",
+    path: "/handoffs/{id}/refresh",
+    description: `Asks the provider again where a step stands, records it and returns the step as \`GET /handoffs/{id}\` does. It acts on a billing card the person came back from while Stripe had not confirmed it (\`confirming: true\`): once Stripe confirms, the card is saved in place of the one on file and the step completes. Louez asks Stripe at most once in ${HANDOFF_CHECK_LEASE_SECONDS.min} seconds, a wait that grows after each check up to ${HANDOFF_CHECK_LEASE_SECONDS.max / 60} minutes; during that wait, and for any other step, it answers without asking. Needs a key that can change the step's domain: billing for the billing card, settings for Stripe; otherwise \`PERMISSION_DENIED\`. An id the key cannot read answers \`HANDOFF_NOT_FOUND\`.`,
+  })
   .input(refreshHandoffInput)
   .output(refreshHandoffOutput)
   .handler(async ({ context, input }) => {
-    let row = await getHandoffRow(context.actor.storeId, input.id);
-    const domain = HANDOFF_KIND_DOMAINS[row.kind];
-    const { role, credential } = context.actor;
-    if (!allows(role, credential.scopes, { ...REFRESH_SCOPE, domain, anyOf: [] })) {
-      throw platformErrors.permissionDenied(`${domain}:write`);
-    }
-    row = await settlePendingCardSetup(row, context.ports);
-    return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
+    const row = await settlePendingCardSetup(
+      await refreshableHandoff(context.actor, input.id),
+      context.ports,
+    );
+    const now = await stepNow(row, new Date());
+    return handoffView(row, { now, urls: context.ports.urls, store: context.store });
   });
 
-export const dashboardHandoffsRouter = { get, refresh };
+/**
+ * A person's answer on a step's page (`/handoffs/<id>`), signed in: a
+ * session only, so no agent decides for a person on any transport. Whose
+ * step it is comes first, then whether they may still decide it, then its
+ * kind's own decision (services/handoff-decisions.ts). A team invitation
+ * approved runs as the dashboard's invitation, as the owner.
+ */
+const decide = accountProcedure
+  .meta({
+    capability: "handoffs.decide",
+    // A team invitation's approval or an operation's: who may decide is each
+    // kind's own rule (`mayApprove` for an operation's), in `decideHandoff`.
+    scope: { domain: "team", level: "write" },
+    actors: ["session"],
+    // A page opened from a link given before links were addressed by id posts its secret: nothing is replayed.
+    secretOutput: true,
+    mcp: { exclude: "a person decides on the step's page, signed in to Louez" },
+  })
+  .input(decideHandoffInput)
+  .output(decideHandoffOutput)
+  .handler(async ({ context, input }) => {
+    const { ports } = context;
+    if (!ports) throw missingTransport();
+    const { effectIds, ...result } = await decideHandoff(
+      { ...input, userId: context.actor.credential.userId },
+      ports,
+    );
+    ports.dispatchEffects(effectIds);
+    return result;
+  });
+
+export const dashboardHandoffsRouter = { get, refresh, decide };

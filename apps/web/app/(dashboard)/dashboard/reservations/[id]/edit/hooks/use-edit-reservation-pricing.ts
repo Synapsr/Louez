@@ -1,14 +1,34 @@
 import { useMemo } from "react";
 import { useStoreTimezone } from "@/contexts/store-context";
 
-import type { PricingKind, PricingMode } from "@louez/types";
-import { calculateDurationMinutes, isRateBasedProduct, minutesToPriceDuration } from "@louez/utils";
+import {
+  editedLineTaxSettings,
+  priceEditedProductLine,
+  priceProductGoneLine,
+  subtotalWithRecordedPromotion,
+  TAX_OF_TODAY,
+  type EditedLineTax,
+} from "@louez/api/services/edit-line-pricing";
+import { taxSettingsForRepricing, type TaxDisplayMode } from "@louez/api/services/pricing-facts";
+import { computeReservationTotals } from "@louez/api/services/reservation-totals";
+import type { PricingKind, PricingMode, TaxSettings } from "@louez/types";
+import {
+  calculateDurationMinutes,
+  isRateBasedProduct,
+  minutesToPriceDuration,
+  roundToMinorUnit,
+} from "@louez/utils";
 
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { calculateDuration } from "@/lib/utils/duration";
 import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
 
-import type { CalculatedEditableItem, EditableItem, ReservationCalculations } from "../types";
+import type {
+  CalculatedEditableItem,
+  EditableItem,
+  Product,
+  ReservationCalculations,
+} from "../types";
 
 function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
@@ -64,16 +84,22 @@ function buildTierLabel(
 }
 
 /**
- * Calculate the price for a single editable item using the shared pricing
- * utilities. Manual-price items use the user-set unit price directly.
- * Product-based items delegate to `calculateCartItemPrice` which handles
- * all pricing modes: seasonal, rate-based, tier-based, and fixed.
+ * Calculate the price for a single editable item, as the server prices it
+ * (slice 11, `@louez/api/services/edit-line-pricing`): a line priced from its
+ * product that the edit does not change keeps its stored price; priced again,
+ * it goes through `calculateCartItemPrice` (seasonal, rate-based, tier-based
+ * and fixed pricing), with the promotion it recorded; a line whose product
+ * is gone follows what it recorded. Manual-price items use the user-set unit
+ * price directly. `windowChanged`: the window is not the one stored.
  */
 export function calculateEditableItemPrice(
   item: EditableItem,
   startDate: Date,
   endDate: Date,
   timezone?: string,
+  windowChanged = false,
+  /** The reservation's currency: a typed price's total rounded once in its minor unit, as the server rounds it. */
+  currency?: string,
 ): {
   totalPrice: number;
   effectiveUnitPrice: number;
@@ -85,6 +111,7 @@ export function calculateEditableItemPrice(
   discountPercent: number | null;
   duration: number;
   displayDuration: number;
+  tax: EditedLineTax;
 } {
   const resolvePricingModeFromMinutes = (
     periodMinutes: number | null | undefined,
@@ -125,9 +152,49 @@ export function calculateEditableItemPrice(
   const duration =
     item.product?.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, mode);
 
+  // A line priced from its product, kept at its stored price, or its product gone.
+  if (!item.isManualPrice && item.productId) {
+    const kept = priceEditedProductLine({
+      stored: item.stored,
+      quantity: item.quantity,
+      windowChanged,
+    });
+    const gone =
+      kept.kind === "kept" || item.product
+        ? null
+        : priceProductGoneLine({
+            stored: item.stored,
+            quantity: item.quantity,
+            windowChanged,
+          });
+    if (kept.kind === "kept" || gone) {
+      // A line the server refuses (its product gone, priced by its duration, its window moved) is written nothing.
+      const totalPrice =
+        kept.kind === "kept"
+          ? kept.subtotal
+          : gone?.kind === "priced"
+            ? gone.subtotal
+            : (item.stored?.totalPrice ?? 0);
+      return {
+        totalPrice,
+        effectiveUnitPrice:
+          duration > 0 && item.quantity > 0 ? totalPrice / duration / item.quantity : totalPrice,
+        displayPricingMode: item.pricingMode,
+        tierLabel: null,
+        discount: 0,
+        originalSubtotal: totalPrice,
+        savings: 0,
+        discountPercent: null,
+        duration,
+        displayDuration: duration,
+        tax: kept.kind === "kept" ? kept.tax : TAX_OF_TODAY,
+      };
+    }
+  }
+
   // Manual price or custom item (no product): simple multiplication
   if (item.isManualPrice || !item.product) {
-    const totalPrice = roundCurrency(item.unitPrice * duration * item.quantity);
+    const totalPrice = roundToMinorUnit(item.unitPrice * duration * item.quantity, currency);
     return {
       totalPrice,
       effectiveUnitPrice: item.unitPrice,
@@ -139,6 +206,7 @@ export function calculateEditableItemPrice(
       discountPercent: null,
       duration,
       displayDuration: duration,
+      tax: TAX_OF_TODAY,
     };
   }
 
@@ -174,6 +242,8 @@ export function calculateEditableItemPrice(
     null,
   );
 
+  // Priced again: the promotion the line recorded, applied as recorded.
+  const subtotal = subtotalWithRecordedPromotion(result.subtotal, item.stored).subtotal;
   const tierLabel = buildTierLabel(item, result.discountPercent, duration);
 
   const displayPricingMode = isRateBasedProduct({
@@ -187,11 +257,11 @@ export function calculateEditableItemPrice(
   // Derive an effective unit price for display (total / duration / quantity)
   const effectiveUnitPrice =
     displayDuration > 0 && item.quantity > 0
-      ? result.subtotal / displayDuration / item.quantity
+      ? subtotal / displayDuration / item.quantity
       : parseFloat(product.price);
 
   return {
-    totalPrice: result.subtotal,
+    totalPrice: subtotal,
     effectiveUnitPrice,
     displayPricingMode,
     tierLabel,
@@ -203,23 +273,114 @@ export function calculateEditableItemPrice(
     discountPercent: result.discountPercent,
     duration,
     displayDuration,
+    tax: TAX_OF_TODAY,
   };
 }
+
+/** What the edit form's summary shows of the totals the edit will write. */
+export interface EditPreviewTotals {
+  /** The lines plus the insurance, as the reservation stores its subtotal. */
+  subtotal: number;
+  /** The tax, or null with taxes off. */
+  taxAmount: number | null;
+  /** The total tax included: what the edit writes, and the form sends. */
+  total: number;
+  /** Prices given before tax: the subtotal and the tax are shown as lines of their own. */
+  taxOnTop: boolean;
+}
+
+/**
+ * The totals the edit will write (slice 10): the tax engine over the lines,
+ * the insurance (exempt), the delivery fee and the discount, in the mode the
+ * reservation recorded or else the store's, with the same function and the
+ * same inputs as the server (`priceReservationEdit`). One call gives the
+ * total and the figures the summary shows beside it.
+ */
+export function previewEditTotals(params: {
+  items: ReadonlyArray<{
+    totalPrice: number;
+    effectiveUnitPrice: number;
+    product: Product | null;
+    /** The tax it is priced with (slice 11): a rate it keeps, or today's settings. */
+    tax?: EditedLineTax;
+  }>;
+  insuranceAmount: number;
+  discountAmount: number;
+  deliveryFee: number;
+  deposit: number;
+  storeTax: TaxSettings | undefined;
+  recordedTaxDisplayMode: TaxDisplayMode | null;
+  /** The reservation's currency, as the server totals it. */
+  currency?: string;
+}): EditPreviewTotals {
+  const totals = computeReservationTotals({
+    lines: params.items.map((item) => ({
+      subtotal: roundCurrency(item.totalPrice),
+      unitPrice: roundCurrency(item.effectiveUnitPrice),
+      taxSettings: editedLineTaxSettings(item.tax ?? TAX_OF_TODAY, item.product?.taxSettings),
+    })),
+    insuranceAmount: params.insuranceAmount,
+    discountAmount: params.discountAmount,
+    deliveryFee: params.deliveryFee,
+    totalDeposit: params.deposit,
+    taxSettings: taxSettingsForRepricing(params.storeTax, params.recordedTaxDisplayMode),
+    currency: params.currency,
+  });
+  return {
+    subtotal: totals.subtotal,
+    taxAmount: totals.taxAmount,
+    total: totals.total,
+    taxOnTop: totals.taxEnabled && totals.displayMode === "exclusive",
+  };
+}
+
+/** The edit summary's figures, each one stored now or about to be written. */
+export interface EditSummaryFigures {
+  /** The total as stored, tax included. */
+  before: number;
+  /** The total the edit writes, tax included. */
+  after: number;
+  /** `after` less `before`, in the currency's minor unit. */
+  difference: number;
+  /** The discount stored, which `after` takes off; zero for none. */
+  discount: number;
+  /** With prices before tax: the subtotal and the tax of `after`; else null. */
+  taxLines: { subtotal: number; tax: number } | null;
+}
+
+export const editSummaryFigures = (input: {
+  storedTotal: number;
+  preview: EditPreviewTotals;
+  discountAmount: number;
+  currency: string;
+}): EditSummaryFigures => ({
+  before: input.storedTotal,
+  after: input.preview.total,
+  difference: roundToMinorUnit(input.preview.total - input.storedTotal, input.currency),
+  discount: input.discountAmount > 0 ? input.discountAmount : 0,
+  taxLines: input.preview.taxOnTop
+    ? { subtotal: input.preview.subtotal, tax: input.preview.taxAmount ?? 0 }
+    : null,
+});
 
 interface UseEditReservationPricingParams {
   startDate: Date | undefined;
   endDate: Date | undefined;
   items: EditableItem[];
-  originalSubtotal: number;
   fixedChargesTotal?: number;
+  /** The window as stored: a line is priced again when the window is not this one. */
+  storedWindow?: { start: Date; end: Date };
+  /** The reservation's currency, in whose minor unit a typed price's total is rounded. */
+  currency?: string;
 }
 
 export function useEditReservationPricing({
   startDate,
   endDate,
   items,
-  originalSubtotal,
   fixedChargesTotal = 0,
+  storedWindow,
+  currency,
 }: UseEditReservationPricingParams) {
   const timezone = useStoreTimezone();
   const getDurationForMode = (mode: PricingMode) => {
@@ -231,6 +392,8 @@ export function useEditReservationPricing({
     mode === "hour" ? "h" : mode === "week" ? "sem" : "j";
 
   const newDuration = startDate && endDate ? calculateDuration(startDate, endDate, "day") : 0;
+  const storedStart = storedWindow?.start.getTime();
+  const storedEnd = storedWindow?.end.getTime();
 
   const calculations = useMemo<ReservationCalculations>(() => {
     if (!startDate || !endDate) {
@@ -247,21 +410,32 @@ export function useEditReservationPricing({
           originalSubtotal: 0,
           savings: 0,
           discountPercent: null,
+          tax: TAX_OF_TODAY,
         })),
         subtotal: 0,
         deposit: 0,
-        difference: -originalSubtotal,
         totalSavings: 0,
       };
     }
 
+    const windowChanged =
+      storedStart === undefined ||
+      startDate.getTime() !== storedStart ||
+      endDate.getTime() !== storedEnd;
     const calculatedItems: CalculatedEditableItem[] = [];
     let subtotal = 0;
     let deposit = 0;
     let totalSavings = 0;
 
     for (const item of items) {
-      const priceResult = calculateEditableItemPrice(item, startDate, endDate, timezone);
+      const priceResult = calculateEditableItemPrice(
+        item,
+        startDate,
+        endDate,
+        timezone,
+        windowChanged,
+        currency,
+      );
 
       calculatedItems.push({
         ...item,
@@ -275,6 +449,7 @@ export function useEditReservationPricing({
         originalSubtotal: priceResult.originalSubtotal,
         savings: priceResult.savings,
         discountPercent: priceResult.discountPercent,
+        tax: priceResult.tax,
       });
 
       subtotal = roundCurrency(subtotal + priceResult.totalPrice);
@@ -289,10 +464,9 @@ export function useEditReservationPricing({
       items: calculatedItems,
       subtotal: subtotalWithFixedCharges,
       deposit,
-      difference: roundCurrency(subtotalWithFixedCharges - originalSubtotal),
       totalSavings,
     };
-  }, [items, startDate, endDate, originalSubtotal, fixedChargesTotal, timezone]);
+  }, [items, startDate, endDate, fixedChargesTotal, timezone, storedStart, storedEnd, currency]);
 
   return {
     getDurationForMode,

@@ -5,6 +5,8 @@ import {
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
+  lockProductRows,
+  lockStoreProductRows,
   lockStoreRow,
   marketplaceCatalogTombstones,
   nextProductSlug,
@@ -75,12 +77,14 @@ import {
 } from "../contracts/products";
 import type { ApiEvent, ApiEventStore } from "../platform/ports";
 import type { Transport } from "../platform/actor";
+import { readAfterCommit } from "../platform/errors";
 import {
   hasTrackedUnitCapacityConflict,
   shouldValidateTrackedUnitCapacity,
 } from "./product-unit-capacity";
 import { syncProductCombinationKeys } from "./variant-axes";
 import { createUnits, deleteUnits, updateUnits, type UpdateUnitMutation } from "./unit-mutations";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * Products of a store: the business rules behind the products procedures,
@@ -106,8 +110,11 @@ export interface ProductActor {
   afterCommit: (event: ApiEvent) => void;
 }
 
-/** Asks the caller to confirm, under the write's lock: null goes on, an error stops. */
-export type ConfirmStep<TPreview> = (preview: TPreview, tx: Transaction) => Promise<Error | null>;
+/** Asks the caller to confirm, under the write's lock: null goes on, a refusal stops, raised once the transaction is over. */
+export type ConfirmStep<TPreview> = (
+  preview: TPreview,
+  tx: Transaction,
+) => Promise<ConfirmationRefusal | null>;
 
 /** Where a store's product images live in storage; `isOwnedImageUrl` checks the prefix. */
 const productImagePrefix = (storeId: string) => `${storeId}/products`;
@@ -796,6 +803,13 @@ export async function createProduct(actor: ProductActor, input: CreateProductInp
 
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
+    // The accessories the new product names, by id, before any write: a link
+    // to a product takes that product's row for its foreign-key check.
+    await lockProductRows(
+      tx,
+      storeId,
+      (data.accessories ?? []).map((link) => link.accessoryId),
+    );
     categoryIds = await resolveCategoryIds(tx, storeId, data);
 
     await tx.insert(products).values({
@@ -900,7 +914,7 @@ export async function createProduct(actor: ProductActor, input: CreateProductInp
     },
   });
 
-  return getProduct(actor, productId);
+  return readAfterCommit(() => getProduct(actor, productId));
 }
 
 // --- Update ------------------------------------------------------------------
@@ -1143,13 +1157,17 @@ export async function updateProduct(
   const { storeId } = actor;
   const pendingBlocksAvailability = actor.store.settings?.pendingBlocksAvailability ?? true;
   const blockingStatuses = getBlockingReservationStatuses(pendingBlocksAvailability);
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let savedName = "";
 
   await retryOnceOnDeadlock(() =>
     db.transaction(async (tx) => {
       refusal = null;
       await lockStoreProducts(tx, storeId);
+      // The store's products, by id, before this one's row: the save rewrites
+      // the product's accessory links, known only once the product is read,
+      // and each link takes its accessory's row for its foreign-key check.
+      await lockStoreProductRows(tx, storeId);
       // Every lock before the first plain read: InnoDB reads at the snapshot of
       // that first read, so a reservation committed while this waited for the
       // product's row must not be missed. Checkout locks the product first,
@@ -1362,7 +1380,7 @@ export async function updateProduct(
     }),
   );
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
 
   emit(actor, {
     type: "product.updated",
@@ -1370,7 +1388,7 @@ export async function updateProduct(
     productId: input.id,
     productName: savedName,
   });
-  return getProduct(actor, input.id);
+  return readAfterCommit(() => getProduct(actor, input.id));
 }
 
 /** "SKI-2 (size 170)": a unit as a person tells it apart. */
@@ -1671,7 +1689,7 @@ export async function updateProductStatus(
   options: { confirm?: ConfirmStep<ProductStatusPreview> } = {},
 ) {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let previousStatus: StoredProduct["status"] = null;
   let slug: string | null = null;
 
@@ -1730,7 +1748,7 @@ export async function updateProductStatus(
     }
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   emit(actor, { type: "products.changed", store: eventStore(actor) });
   return { id: input.id, status: input.status, previousStatus, slug };
 }
@@ -1757,7 +1775,7 @@ export async function deleteProduct(
   options: { confirm?: ConfirmStep<ProductDeletionPreview> } = {},
 ) {
   const { storeId } = actor;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let deletedUnitCount = 0;
 
   await db.transaction(async (tx) => {
@@ -1835,7 +1853,7 @@ export async function deleteProduct(
     deletedUnitCount = units.length;
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   emit(actor, { type: "products.changed", store: eventStore(actor) });
   return { id, deletedUnitCount };
 }
@@ -1919,7 +1937,7 @@ export async function duplicateProduct(actor: ProductActor, id: string) {
   });
 
   emit(actor, { type: "products.changed", store: eventStore(actor) });
-  return getProduct(actor, newId);
+  return readAfterCommit(() => getProduct(actor, newId));
 }
 
 // --- Order -------------------------------------------------------------------
@@ -1929,7 +1947,7 @@ export async function duplicateProduct(actor: ProductActor, id: string) {
  * already held among themselves, so a list showing part of the catalog
  * (filters, page) leaves every other product in its place; then every
  * position is renumbered so no two products share one. Ids of other stores
- * are ignored.
+ * are ignored. Locks: the store's row, then the products that move, by id.
  */
 export async function reorderProducts(actor: ProductActor, ids: readonly string[]) {
   const { storeId } = actor;
@@ -1952,6 +1970,11 @@ export async function reorderProducts(actor: ProductActor, ids: readonly string[
       reorderedSet.has(row.id) ? reordered[next++] : row.id,
     );
     const before = new Map(current.map((row) => [row.id, row.displayOrder]));
+    // The rows about to move, locked in id order before any is written: the
+    // order a reservation's writers take their products in, whatever the
+    // order the catalog is put in.
+    const moved = finalOrder.filter((id, index) => before.get(id) !== index);
+    await lockProductRows(tx, storeId, moved);
     const now = new Date();
     for (const [index, id] of finalOrder.entries()) {
       if (before.get(id) === index) continue;

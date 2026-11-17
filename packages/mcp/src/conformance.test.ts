@@ -21,12 +21,9 @@ const RESOURCE_METADATA = "https://app.louez.test/.well-known/oauth-protected-re
 const LEGACY_TOOLS = [
   "check_availability",
   "create_customer",
-  "delete_payment",
   "get_customer",
   "list_customers",
   "list_payments",
-  "record_deposit_return",
-  "record_payment",
   "update_customer",
 ];
 
@@ -83,11 +80,7 @@ describe("MCP directory conformance", () => {
       storeArgument: true,
       resourceMetadataUrl: RESOURCE_METADATA,
     };
-    const server = createMcpServer(
-      ctx,
-      { insertRecordedPayment: async () => undefined },
-      createExposure(appRouter).procedures,
-    );
+    const server = createMcpServer(ctx, createExposure(appRouter).procedures);
     // A call whose token expired after the request's check.
     addTool(server, ctx, {
       name: "test_expired_token",
@@ -304,13 +297,25 @@ describe("MCP directory conformance", () => {
       reservations_list_overdue: "read",
       reservations_list_upcoming: "read",
       reservations_poll: "read",
+      reservations_update: "overwrite/customer",
       reservations_update_notes: "overwrite",
+      reservations_create: "additive/customer",
       reservations_update_status: "overwrite/customer",
       search_global: "read",
       // Statistics procedures, under the names they had as hand-written tools.
       get_dashboard_stats: "read",
       get_product_performance: "read",
       get_revenue_report: "read",
+      // The payment procedures, under the names they had as hand-written
+      // tools. A payment row added; nothing recorded before changes.
+      delete_payment: "delete",
+      record_deposit_return: "additive",
+      record_payment: "additive",
+      // A refund given by hand: its own row; the payment it refunds is left as it was.
+      record_refund: "additive",
+      // A refund through Stripe: its own operation and row; the payment is netted by it.
+      refund_payment: "additive",
+      get_refund: "read",
       settings_create_location: "additive/public",
       settings_get: "read",
       settings_get_legal_profile: "read",
@@ -338,13 +343,9 @@ describe("MCP directory conformance", () => {
       // The hand-written tools.
       check_availability: "read",
       create_customer: "additive",
-      delete_payment: "delete",
       get_customer: "read",
       list_customers: "read",
       list_payments: "read",
-      // A payment row added; nothing recorded before changes.
-      record_deposit_return: "additive",
-      record_payment: "additive",
       update_customer: "overwrite",
     };
     assert.deepEqual(tools.map((tool) => tool.name).sort(), Object.keys(EXPECTED).sort());
@@ -416,6 +417,109 @@ describe("MCP directory conformance", () => {
     assert.match(essentials, /^Louez runs rental stores/);
     assert.match(essentials, /`links`/);
     assert.match(essentials, /CONFIRMATION_REQUIRED/);
+    // The approval: its code, the link for the user, how to follow it and carry it out.
+    assert.match(
+      essentials,
+      /APPROVAL_REQUIRED: give approval\.url to the user; retry with approval\.id as confirmationToken only after handoffs_get says approved\./,
+    );
+  });
+
+  test("the instructions say which actions the user approves on a page, and how one is followed", () => {
+    for (const name of [
+      "record_payment",
+      "record_deposit_return",
+      "record_refund",
+      "refund_payment",
+      "delete_payment",
+      "team_remove_member",
+      "team_cancel_invitation",
+      "allowOverbooking or overrideTurnoverBuffer (reservations_update_status, reservations_create, reservations_update)",
+    ]) {
+      assert.ok(instructions.includes(name), name);
+    }
+    assert.match(instructions, /need the user's approval, whatever the connection's setting/);
+    assert.match(instructions, /handoffs_get with the approval's id then says where it stands/);
+    assert.match(instructions, /the approval's id as confirmationToken carries the action out, once/);
+    // After a refusal: tell the user, stop, and ask again only if they ask.
+    assert.match(instructions, /if refused, tell the user nothing was done and stop/);
+    assert.match(instructions, /Request another approval only if the user asks, and respect retryAt/);
+    assert.match(instructions, /if completed, do not execute it again\./);
+    // The team's removals no longer answer a confirmation.
+    assert.doesNotMatch(instructions, /team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED/);
+  });
+
+  test("a tool a person approves says, in its description and its argument, how its approval goes", async () => {
+    const { APPROVAL_ARGUMENT, CONFIRMATION_ARGUMENT } = await import("./bridge");
+    const APPROVING = [
+      "record_payment",
+      "record_deposit_return",
+      "record_refund",
+      "refund_payment",
+      "delete_payment",
+      "team_remove_member",
+      "team_cancel_invitation",
+      "reservations_update_status",
+      "reservations_create",
+      "reservations_update",
+    ];
+    for (const tool of tools) {
+      const argument = (tool.inputSchema.properties as Record<string, unknown> | undefined)
+        ?.confirmationToken;
+      if (APPROVING.includes(tool.name)) {
+        assert.deepEqual(argument, APPROVAL_ARGUMENT, tool.name);
+        assert.match(tool.description ?? "", /answers APPROVAL_REQUIRED with/, tool.name);
+        assert.match(tool.description ?? "", /handoffs_get with the approval's id/, tool.name);
+        // Each reason its own instruction: a used approval is never a reason to ask again.
+        assert.match(tool.description ?? "", /used means the action already ran, so read the record before acting again/, tool.name);
+        assert.match(tool.description ?? "", /The action's own refusals .* answer first/, tool.name);
+        assert.doesNotMatch(tool.description ?? "", /the same call without it asks the user again/, tool.name);
+        assert.doesNotMatch(tool.description ?? "", /token proves|always asks for a confirmation/, tool.name);
+      } else if (argument !== undefined) {
+        assert.deepEqual(argument, CONFIRMATION_ARGUMENT, tool.name);
+        assert.doesNotMatch(tool.description ?? "", /APPROVAL_REQUIRED/, tool.name);
+      }
+    }
+    const handoffs = tools.find((tool) => tool.name === "handoffs_get");
+    assert.match(handoffs?.description ?? "", /An approval of an action the user must approve/);
+    assert.match(handoffs?.description ?? "", /Only the connection that asked reads its approval/);
+  });
+
+  test("a connection granted the team bundle alone lists handoffs_get, which reads the approvals its tools ask for", async () => {
+    const { Client, InMemoryTransport } = await import("@modelcontextprotocol/client");
+    const { appRouter } = await import("@louez/api/router");
+    const { createExposure } = await import("@louez/api/platform/exposure");
+    const { createMcpServer } = await import("./server");
+    const { testRequestContext } = await import("./testing/request-context");
+    const base = testRequestContext({
+      storeId: "store_team_only",
+      userId: "user_team_only",
+      permissions: { team: "write" },
+    });
+    const listed = async (bundles: Array<"team">) => {
+      const ctx = {
+        ...base,
+        actor: {
+          ...base.actor,
+          credential: { ...base.actor.credential, kind: "oauth" as const, bundles },
+        },
+      };
+      const server = createMcpServer(ctx, createExposure(appRouter).procedures);
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      await server.connect(serverTransport);
+      const teamClient = new Client({ name: "team-only", version: "0.0.0" });
+      await teamClient.connect(clientTransport);
+      try {
+        return (await teamClient.listTools()).tools.map((tool) => tool.name);
+      } finally {
+        await teamClient.close();
+      }
+    };
+    const team = await listed(["team"]);
+    assert.ok(team.includes("team_remove_member"), "the team's tools");
+    assert.ok(team.includes("handoffs_get"), "and the tool that reads their approvals");
+    // Only provider steps need a refresh: it stays in its own bundle.
+    assert.ok(!team.includes("handoffs_refresh"));
+    assert.ok(!team.includes("record_payment"), "the other bundles stay out");
   });
 
   test("the instructions set no schedule and give the model no orders", () => {
@@ -463,7 +567,8 @@ describe("MCP directory conformance", () => {
       const essentials = serverInstructions(ctx, ["daily"]).slice(0, INSTRUCTIONS_ESSENTIALS_MAX);
       assert.match(essentials, /^Louez runs rental stores/, name);
       assert.match(essentials, /never build or guess a Louez URL/, name);
-      assert.match(essentials, /confirmationToken only once they agree\./, name);
+      assert.match(essentials, /confirmationToken if the user agrees\./, name);
+      assert.match(essentials, /only after handoffs_get says approved\.$/m, name);
       if (name === "severalStores" || name === "severalStoresOneNamed") {
         assert.match(essentials, /call stores_list first/, name);
       }
@@ -564,11 +669,7 @@ describe("MCP directory conformance", () => {
           },
         },
       };
-      const server = createMcpServer(
-        ctx,
-        { insertRecordedPayment: async () => undefined },
-        procedures,
-      );
+      const server = createMcpServer(ctx, procedures);
       const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
       await server.connect(serverTransport);
       const mcp = new Client({ name: "withheld", version: "0.0.0" });

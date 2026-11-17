@@ -575,6 +575,7 @@
       "invitationCancelled": "Undangan dibatalkan",
       "invitationResent": "Undangan dikirim ulang",
       "invitationAlreadySent": "Undangan telah dikirim ke email ini",
+      "invitationEmailLimit": "Toko ini telah meminta {max} email undangan dalam 24 jam terakhir, terkirim atau tidak: itu batas maksimalnya. Coba lagi nanti.",
       "resend": "Resend",
       "cancel": "Batalkan",
       "invitedOn": "Diundang pada {date}",
@@ -2251,7 +2252,16 @@
         "confirmRelease": "Rilis setoran",
         "invalidCaptureAmount": "Jumlah tidak valid",
         "captureExceedsDeposit": "Jumlah melebihi deposit",
-        "reasonRequired": "Harap berikan alasannya"
+        "reasonRequired": "Harap berikan alasannya",
+        "unconfirmed": {
+          "open": "Selesaikan dengan Stripe",
+          "title": "Otorisasi belum dikonfirmasi",
+          "description": "Stripe tidak pernah mengonfirmasi permintaan otorisasi ini. Periksa Pembayaran di dasbor Stripe akun tempat otorisasi itu diminta.",
+          "explanation": "Menutup permintaan tidak membatalkan apa pun di Stripe. Louez terlebih dahulu mencari sendiri otorisasi tersebut dan mencatatnya jika sesuai dengan permintaan. Jika Louez menemukan otorisasi yang tidak sesuai (jumlah, kartu, atau referensi berubah), permintaan tetap terbuka dan Louez memberi tahu Anda: batalkan otorisasi itu di Stripe, yang akan melepaskan jumlah yang ditahan, lalu tutup kembali permintaannya. Jika Anda malah mengambilnya di Stripe, Louez tidak mencatat jumlah itu dan permintaan tetap terbuka: hubungi dukungan Louez. Jika otorisasi muncul kemudian, Louez mencatatnya saat Stripe melaporkannya, jika sesuai dengan permintaan: otorisasi itu menjadi deposit reservasi ini jika belum ada, dan dilepaskan jika penahanan lain sudah menjaminnya. Karena itu, menutup permintaan saat penahanan sudah ada dapat menyisakan penahanan tambahan di kartu pelanggan untuk sementara. Otorisasi yang Anda lihat di Stripe tetapi belum dicatat Louez ditangani di Stripe: batalkan dari sana.",
+          "confirm": "Tutup permintaan",
+          "closed": "Permintaan ditutup. Anda dapat membuat otorisasi baru.",
+          "recorded": "Louez menemukan otorisasi di Stripe dan mencatatnya."
+        }
       },
       "subtotal": "Subtotal",
       "source": "Sumber",
@@ -2547,6 +2557,7 @@
         "subtotal": "Subtotal",
         "deposit": "Uang jaminan",
         "total": "Jumlah",
+        "taxLine": "Pajak",
         "tulipInsurance": {
           "title": "asuransi bunga tulip",
           "appliesMappedProducts": "Hanya berlaku untuk produk yang dipetakan ke Tulip.",
@@ -2709,7 +2720,13 @@
           "shortfall": "Diminta: {requested} · Tersedia: {available}",
           "createAnyway": "Tetap buat",
           "editDescription": "Beberapa produk tidak tersedia dalam jumlah yang cukup untuk periode ini. Anda masih dapat menyimpan perubahan dan melacak penggantian di timeline.",
-          "saveAnyway": "Tetap simpan"
+          "saveAnyway": "Tetap simpan",
+          "confirmDescription": "Stok tidak mencukupi reservasi ini untuk periodenya. Anda tetap dapat mengonfirmasinya melebihi stok yang tersedia, dan pilihan ini akan terlihat di riwayat.",
+          "confirmAnyway": "Tetap konfirmasi",
+          "bufferTitle": "Buffer turnover tidak cukup",
+          "bufferDescription": "Baris ini muat dalam stok Anda, tetapi tidak dengan buffer turnover yang Anda sisakan di antara dua penyewaan. Anda tetap dapat mengonfirmasi reservasi dengan jeda yang lebih singkat di antara penyewaan, dan pilihan ini akan terlihat di riwayat.",
+          "bufferShortfall": "Diminta: {requested} · Tersedia dengan buffer: {available}",
+          "confirmPastBuffer": "Tetap konfirmasi"
         },
         "addUnavailable": {
           "title": "Produk tidak tersedia",
@@ -2761,6 +2778,7 @@
         "quote_accepted": "Penawaran diterima",
         "quote_declined": "Penawaran ditolak",
         "overbooked": "Pemesanan berlebih",
+        "turnoverBufferOverridden": "Buffer dipersingkat",
         "contract_signed": "Kontrak ditandatangani",
         "contractUnsigned": "Tanpa kontrak bertanda tangan",
         "signedBy": "Ditandatangani oleh {name}",
@@ -2787,7 +2805,8 @@
             "incorrectCvc": "Kode keamanan kartu (CVC) tidak valid untuk otorisasi deposit ini.",
             "processingError": "Otorisasi setoran gagal karena masalah pemrosesan sementara. Coba lagi dalam beberapa menit.",
             "doNotHonor": "Bank menolak otorisasi setoran tanpa rincian. Minta pelanggan untuk menghubungi banknya atau menggunakan kartu lain.",
-            "generic": "Otorisasi setoran gagal. Minta pelanggan untuk mencoba lagi atau menggunakan kartu lain."
+            "generic": "Otorisasi setoran gagal. Minta pelanggan untuk mencoba lagi atau menggunakan kartu lain.",
+            "closedByStore": "Permintaan ditutup oleh toko: tidak ada otorisasi yang ditemukan di Stripe."
           }
         }
       },
@@ -2907,6 +2926,8 @@
         "damageRecorded": "Kerusakan dicatat",
         "invalidAmount": "Jumlah tidak valid",
         "amountExceedsDeposit": "Jumlah melebihi deposit yang dikumpulkan",
+        "amountTooPrecise": "{decimals, plural, =0 {Jumlah dalam {currency} tidak memiliki desimal: masukkan satuan bulat.} other {Jumlah dalam {currency} memiliki paling banyak # desimal.}}",
+        "currencyNotSupported": "Pembayaran dalam {currency} tidak dapat dicatat: Louez tidak mendukung mata uang dengan tiga desimal.",
         "deleteConfirmTitle": "Hapus pembayaran ini?",
         "deleteConfirmDescription": "Tindakan ini tidak dapat diubah. Pembayaran akan dihapus secara permanen dari riwayat.",
         "unpaidWarning": "Masih ada {formattedAmount} yang harus dikumpulkan pada reservasi ini",
@@ -2949,6 +2970,8 @@
         "statusAuthorized": "Resmi",
         "statusRefunded": "Dikembalikan",
         "statusCancelled": "Dibatalkan",
+        "statusFailed": "Gagal",
+        "statusReleasePending": "Sedang dilepaskan",
         "requestPayment": "Minta pembayaran",
         "invoiceGenerated": "Faktur {number} dibuat"
       },
@@ -2983,9 +3006,13 @@
         "send": "Kirim permintaan",
         "success": "Permintaan pembayaran terkirim",
         "successTitle": "Permintaan terkirim!",
-        "successDescription": "Pelanggan akan menerima link pembayaran melalui {channel}",
+        "notSentTitle": "Tautan pembayaran dibuat",
+        "sentBy": "Terkirim lewat {channels, select, email {email} sms {SMS} other {email dan SMS}}.",
+        "partlySent": "Terkirim lewat {sent, select, email {email} other {SMS}}, tetapi tidak lewat {failed, select, email {email} other {SMS}}: salin tautan jika perlu.",
+        "notSent": "{channels, select, email {Email tidak dapat dikirim} sms {SMS tidak dapat dikirim} other {Email maupun SMS tidak dapat dikirim}}: salin tautan untuk mengirimkannya sendiri.",
         "error": "Terjadi kesalahan saat mengirim permintaan",
         "paymentLink": "Tautan pembayaran",
+        "copyLink": "Salin tautan",
         "linkCopied": "Tautan disalin",
         "copyFailed": "Gagal menyalin",
         "stripeNotConfigured": "Stripe tidak dikonfigurasi",
@@ -3944,7 +3971,6 @@
           }
         },
         "recommended": "Direkomendasikan",
-        "comingSoon": "Segera hadir",
         "noIntegrations": "Belum ada integrasi yang tersedia.",
         "sections": {
           "byLouez": "Oleh Louez.io",
@@ -3963,7 +3989,10 @@
           "api": {
             "name": "API REST",
             "description": "Hubungkan toko Anda ke alat yang ada dan otomatiskan tugas harian Anda.",
-            "comingSoonDescription": "REST API sedang dalam pengembangan. Anda akan segera dapat menghubungkan toko Anda ke alat atau layanan apa pun."
+            "betaTitle": "Tersedia dalam versi beta",
+            "betaDescription": "Dengan REST API, skrip dan alat Anda dapat membaca dan mengubah data toko Anda. Referensinya menjelaskan apa saja yang dapat dilakukan. Setiap alat terhubung dengan kunci API, yang Anda buat di halaman MCP, pada bagian Kunci API.",
+            "openReference": "Buka referensi API",
+            "createKey": "Buat kunci API"
           }
         }
       },
@@ -4894,12 +4923,12 @@
         "description": "Kelola kunci API untuk menghubungkan alat eksternal, asisten AI, atau integrasi khusus ke toko Anda.",
         "backToIntegrations": "Integrasi",
         "keysTitle": "Kunci API",
-        "keysDescription": "Membuat dan mengelola kunci untuk server MCP dan REST API di masa mendatang.",
+        "keysDescription": "Membuat dan mengelola kunci untuk server MCP dan REST API.",
         "createKey": "Buat kunci",
         "noKeys": "Belum ada kunci API. Buat satu untuk memulai.",
         "keyRevoked": "Kunci API dicabut.",
         "lastUsed": "Terakhir digunakan",
-        "confirmSensitive": "Konfirmasi sebelum tindakan sensitif",
+        "confirmSensitive": "Konfirmasi opsional (persetujuan wajib tetap berlaku)",
         "confirmSensitiveSaved": "Pengaturan disimpan",
         "endpointsTitle": "Titik akhir",
         "endpointsDescription": "Gunakan titik akhir ini untuk terhubung ke data penyimpanan Anda.",
@@ -4935,7 +4964,11 @@
           "categories": "Kategori",
           "payments": "Pembayaran",
           "analytics": "Analisis",
-          "settings": "Pengaturan"
+          "settings": "Pengaturan",
+          "online_store": "Toko daring",
+          "team": "Tim",
+          "billing": "Langganan",
+          "integrations": "Integrasi"
         },
         "levels": {
           "none": "Tidak ada akses",
@@ -6906,6 +6939,28 @@
         "customers": "Berapa banyak pelanggan baru bulan ini?",
         "overdue": "Apakah ada pengembalian yang terlambat?",
         "pending": "Tunjukkan pada saya reservasi yang menunggu konfirmasi"
+      },
+      "approval": {
+        "title": {
+          "record_payment": "Catat pembayaran ini?",
+          "delete_payment": "Hapus pembayaran ini?",
+          "return_deposit": "Catat pengembalian deposit ini?"
+        },
+        "amount": "Jumlah",
+        "booking": "Pemesanan",
+        "open": "Tinjau dan putuskan",
+        "expires": "Putuskan sebelum {when}",
+        "status": {
+          "pending": "Menunggu keputusan Anda",
+          "approved": "Disetujui. Asisten sedang menjalankannya.",
+          "completed": "Selesai",
+          "declined": "Ditolak. Tidak ada yang dilakukan.",
+          "expired": "Kedaluwarsa. Tidak ada yang dilakukan.",
+          "ended": "Tidak dijalankan. Tidak ada yang dilakukan.",
+          "unavailable": "Permintaan ini tidak dapat dibaca lagi di sini."
+        },
+        "continue": "Lanjutkan",
+        "followUp": "Disetujui, melanjutkan"
       }
     },
     "breadcrumbs": {
@@ -6954,7 +7009,8 @@
       "settingsTaxes": "Pajak",
       "productsEdit": "Sunting",
       "reservationsEdit": "Sunting",
-      "settingsCustomerFields": "Data pelanggan"
+      "settingsCustomerFields": "Data pelanggan",
+      "needsALook": "Perlu dicek"
     },
     "notificationsCenter": {
       "title": "Pemberitahuan",
@@ -7184,6 +7240,111 @@
         "participantNamePlaceholder": "Nama depan",
         "saved": "Detail penyewaan disimpan"
       }
+    },
+    "needsALook": {
+      "title": "Perlu dicek",
+      "description": "Hal yang tidak bisa diselesaikan Louez sendiri.",
+      "empty": {
+        "title": "Tidak ada yang perlu dicek",
+        "description": "Pengembalian dana, deposit, nota kredit, atau pesan yang memerlukan Anda akan muncul di sini."
+      },
+      "incomplete": "Beberapa item tidak dapat dimuat. Muat ulang halaman sebentar lagi.",
+      "urgent": "Mendesak",
+      "details": "Detail",
+      "markHandled": "Tandai sudah ditangani",
+      "confirm": {
+        "title": "Tandai sudah ditangani?",
+        "description": "Item ini akan disembunyikan untuk seluruh tim Anda. Item muncul lagi jika masalahnya terulang.",
+        "heldBack": "Jumlah yang dikembalikan tetap ditahan sampai Stripe menjawab.",
+        "cancel": "Batal",
+        "confirm": "Tandai sudah ditangani"
+      },
+      "handled": "Ditandai sudah ditangani",
+      "changed": "Item ini berubah sementara itu: daftar sudah diperbarui.",
+      "actions": {
+        "viewPayment": "Lihat pembayaran",
+        "viewBooking": "Lihat pemesanan",
+        "viewProduct": "Lihat produk",
+        "invoicingSettings": "Pengaturan faktur",
+        "notificationSettings": "Pengaturan notifikasi",
+        "openTeam": "Buka tim"
+      },
+      "facts": {
+        "stripeCharge": "Tagihan Stripe",
+        "stripeRefund": "Pengembalian Stripe",
+        "stripePayment": "Pembayaran Stripe",
+        "stripeDispute": "Sengketa Stripe",
+        "creditNote": "Nota kredit",
+        "invoice": "Faktur",
+        "channel": "Saluran",
+        "reference": "Referensi"
+      },
+      "refundUnconfirmed": {
+        "title": "Pengembalian dana belum dikonfirmasi",
+        "summary": "Stripe belum mengonfirmasi pengembalian dana {amount} pada {day} untuk pemesanan #{number}. Periksa di Stripe sebelum mengembalikan dana lagi.",
+        "heldBack": "Sampai Stripe menjawab, Louez menahan jumlah ini dari yang masih bisa dikembalikan dari pembayaran."
+      },
+      "refundUndone": {
+        "title": "Pengembalian dana gagal",
+        "summary": "Pengembalian dana {amount} untuk pemesanan #{number} tidak berhasil: pelanggan belum menerima dana. Periksa di Stripe dan kembalikan lagi jika perlu.",
+        "summaryListed": "Laporan Stripe tentang pengembalian dana {amount} untuk pemesanan #{number} saling bertentangan. Periksa di Stripe apakah pelanggan sudah menerima dana, dan kembalikan lagi jika perlu.",
+        "creditNote": "Nota kredit {creditNote} tetap berlaku: koreksi di pembukuan Anda."
+      },
+      "creditNoteNotIssued": {
+        "title": "Nota kredit belum terbit",
+        "summary": "Pengembalian dana {amount} untuk pemesanan #{number} belum memiliki nota kredit. Periksa pengaturan faktur Anda.",
+        "reasons": {
+          "mismatch": "Pengembalian dana yang tercatat tidak cocok dengan permintaan, jadi Louez tidak bisa menerbitkannya sendiri: hubungi dukungan Louez.",
+          "pending": "Pengembalian dana belum selesai saat Louez mencoba; Louez mencoba lagi setiap hari.",
+          "unknown": "Nota kredit tidak dapat diterbitkan; Louez mencoba lagi setiap hari."
+        }
+      },
+      "depositUnconfirmed": {
+        "title": "Deposit belum dikonfirmasi",
+        "summary": "Stripe belum mengonfirmasi penahanan deposit {amount} yang diminta pada {day} untuk pemesanan #{number}. Periksa di Stripe; meminta lagi di Louez tidak pernah membuat penahanan kedua.",
+        "summaryUnmatched": "Stripe menahan deposit untuk pemesanan #{number} yang tidak cocok dengan {amount} yang diminta pada {day}, jadi Louez tidak mencatatnya. Batalkan di Stripe, lalu tutup permintaannya di bagian deposit pemesanan."
+      },
+      "depositReleaseFailed": {
+        "title": "Deposit mungkin masih ditahan",
+        "summary": "Stripe belum mengonfirmasi pelepasan penahanan deposit kedua sebesar {amount} pada pemesanan #{number}: kartu pelanggan mungkin masih menanggungnya. Louez terus meminta; jika masih ditahan di Stripe, batalkan di sana."
+      },
+      "disputeOpen": {
+        "title": "Pembayaran disengketakan",
+        "summaryAnswer": "Pelanggan menyengketakan pembayaran {amount} untuk pemesanan #{number}. Tanggapi sengketa di Stripe sebelum tenggat.",
+        "summaryReview": "Sengketa {amount} untuk pemesanan #{number} sedang terbuka: Stripe sedang meninjaunya."
+      },
+      "einvoiceRejected": {
+        "titleRejected": "E-faktur ditolak",
+        "titleNotSent": "E-faktur tidak terkirim",
+        "summaryRejected": "Faktur {invoice} untuk pemesanan #{number} ditolak oleh jaringan e-faktur. Periksa di pemesanan.",
+        "summaryNotSent": "Faktur {invoice} untuk pemesanan #{number} tidak dapat dikirim ke jaringan e-faktur. Periksa di pemesanan."
+      },
+      "messageNotSent": {
+        "title": "Pesan tidak terkirim",
+        "titleWhy": "Pesan tidak terkirim: {why, select, email {tidak ada layanan email} sms {tidak ada layanan SMS} recipient {alamat berubah} other {ditulis dengan salah}}",
+        "toCustomer": "{message, select, customer_request_accepted {pesan penerimaan} customer_request_rejected {pesan penolakan} customer_reservation_cancelled {pesan pembatalan} customer_reservation_modified {pesan perubahan} customer_quote_sent {penawaran} customer_reservation_confirmed {pesan konfirmasi} other {pesan}} untuk pemesanan #{number} tidak sampai ke pelanggan. Hubungi mereka sendiri.",
+        "toCustomerNoBooking": "Sebuah pesan tidak sampai ke pelanggan. Hubungi mereka sendiri.",
+        "toStore": "Notifikasi ke tim Anda tentang pemesanan #{number} tidak terkirim.",
+        "toStoreNoBooking": "Notifikasi ke tim Anda tidak terkirim.",
+        "reasons": {
+          "recipientChanged": "Alamat email pelanggan berubah setelah pesan ditulis.",
+          "emailNotConfigured": "Belum ada layanan pengiriman email yang diatur.",
+          "writtenWrong": "Pesan ditulis dengan salah dan tidak dapat dikirim.",
+          "smsNotConfigured": "Belum ada layanan pengiriman SMS yang diatur."
+        }
+      },
+      "invitationNotSent": {
+        "title": "Undangan tidak terkirim",
+        "summary": "Email undangan ke {email} tidak terkirim. Kirim lagi, atau bagikan tautannya, dari halaman tim."
+      },
+      "operationUnknown": {
+        "title": "Tindakan perlu dicek",
+        "summary": "Tindakan pada {day} mungkin tidak tersimpan. Periksa catatannya sebelum mengulanginya.",
+        "summaryBy": "Tindakan oleh {client} pada {day} mungkin tidak tersimpan. Periksa catatannya sebelum mengulanginya."
+      },
+      "unknownTitle": "Sesuatu perlu dicek",
+      "neutral": "Louez tidak bisa menyelesaikan ini sendiri. Buka untuk melihat apa yang terjadi.",
+      "viewAll": "Lihat semua"
     }
   },
   "storefront": {
@@ -8031,6 +8192,10 @@
     "pay": {
       "subtitle": "Reservasi #{number}",
       "amountDue": "Jumlah yang harus dibayar",
+      "requestKind": {
+        "rental": "Sewa",
+        "custom": "Pembayaran"
+      },
       "greeting": "Hai {name}, {store} meminta pembayaran.",
       "payButton": "Bayar {amount}",
       "redirecting": "Mengalihkan ke pembayaran...",
@@ -8043,6 +8208,7 @@
         "expiredDescription": "Tautan pembayaran ini telah kedaluwarsa. Silakan hubungi toko untuk meminta yang baru.",
         "alreadyPaidTitle": "Sudah dibayar",
         "alreadyPaidDescription": "Pembayaran ini telah selesai.",
+        "noLongerCurrentDescription": "Permintaan pembayaran ini tidak lagi sesuai dengan sisa tagihan reservasi. Silakan hubungi toko.",
         "cancelledTitle": "Pembayaran dibatalkan",
         "cancelledDescription": "Permintaan pembayaran ini telah dibatalkan oleh toko.",
         "unavailableTitle": "Pembayaran tidak tersedia",
@@ -9267,10 +9433,11 @@
     "emailAlreadyExists": "Pelanggan dengan email ini sudah ada",
     "customerHasReservations": "Tidak dapat menghapus pelanggan dengan reservasi",
     "cannotCancelReservation": "Reservasi ini tidak dapat dibatalkan",
-    "cannotEditCompletedReservation": "Reservasi yang sudah selesai tidak dapat diedit",
     "reservationStatusChanged": "Status reservasi berubah saat Anda mengedit. Muat ulang halaman dan coba lagi.",
     "reservationChangedMeanwhile": "Reservasi diubah sementara Anda mengedit. Muat ulang halaman dan coba lagi.",
-    "endDateBeforeStart": "Tanggal akhir harus setelah atau sama dengan tanggal mulai",
+    "editTaxAdded": "Total kini sudah termasuk pajak: sebelumnya {previousTotal}, sekarang {newTotal}.",
+    "editProductGonePriceUnknown": "Produk sebuah baris telah dihapus, sehingga harganya tidak dapat dihitung untuk tanggal lain. Ketik harganya secara manual, lalu ubah tanggalnya.",
+    "endDateBeforeStart": "Tanggal akhir harus setelah tanggal mulai",
     "negativeAmountOnlyForAdjustment": "Jumlah negatif hanya diperbolehkan untuk penyesuaian",
     "productRequired": "Produk diperlukan",
     "customerRequired": "Diperlukan pelanggan",
@@ -9283,6 +9450,7 @@
     "assignedUnitsConflict": "Unit yang ditetapkan tidak tersedia untuk tanggal baru: {identifiers}",
     "invalidUnits": "Satu atau lebih unit yang dipilih tidak valid",
     "turnoverBufferConflict": "Unit yang dipilih hanya diblokir oleh buffer turnover",
+    "turnoverBufferShortfall": "Buffer turnover di antara dua penyewaan mencegah konfirmasi beberapa baris reservasi ini. Kosongkan stok di sekitar tanggal ini, pindahkan tanggalnya, atau tetap konfirmasi dengan jeda yang lebih singkat di antara penyewaan.",
     "unitProductMismatch": "Unit yang dipilih bukan milik produk ini",
     "unitCombinationMismatch": "Unit yang dipilih tidak cocok dengan kombinasi yang dipesan untuk item baris ini",
     "cannotDisableUnitTrackingWithCombinations": "Tidak dapat menonaktifkan pelacakan unit saat reservasi aktif menggunakan kombinasi terlacak untuk produk ini.",
@@ -9328,22 +9496,26 @@
       "syncFailed": "Kesalahan saat menyinkronkan status",
       "dashboardLinkFailed": "Kesalahan saat membuka dasbor Stripe",
       "alreadyConnected": "Akun Stripe sudah terhubung",
-      "noChargeToRefund": "Tidak ada pembayaran Stripe yang dapat dikembalikan",
-      "alreadyRefunded": "Pembayaran ini telah dikembalikan",
-      "refundExceedsCharge": "Jumlah pengembalian dana melebihi jumlah pembayaran",
-      "refundFailed": "Terjadi kesalahan saat memproses pengembalian dana",
       "noSavedCard": "Tidak ada kartu yang disimpan untuk pelanggan ini",
       "invalidDepositStatus": "Status deposit tidak mengizinkan operasi ini",
       "noDepositRequired": "Tidak diperlukan deposit untuk reservasi ini",
       "authorizationFailed": "Tidak dapat membuat penangguhan otorisasi",
+      "authorizationInProgress": "Penahanan deposit untuk reservasi ini sedang dibuat. Coba lagi sebentar lagi.",
+      "authorizationUnconfirmed": "Stripe tidak mengonfirmasi penahanan deposit. Coba lagi: penahanan yang sama yang diminta, bukan yang kedua.",
       "noActiveAuthorization": "Tidak ada otorisasi aktif untuk reservasi ini",
       "captureFailed": "Tidak dapat mengambil setoran",
       "releaseFailed": "Tidak dapat melepaskan deposit"
     },
     "reasonRequired": "Harap berikan alasannya",
     "invalidAmount": "Jumlah tidak valid",
+    "amountExceedsDeposit": "Jumlah melebihi deposit yang dikumpulkan",
+    "amountExceedsDue": "Jumlah melebihi sisa yang harus dibayar",
+    "paymentNotFound": "Pembayaran ini sudah tidak ada. Muat ulang halaman.",
+    "amountTooPrecise": "Jumlah ini memiliki lebih banyak desimal daripada yang diizinkan mata uangnya.",
+    "currencyNotSupportedForPayments": "Pembayaran dalam mata uang ini tidak dapat dicatat: Louez tidak mendukung mata uang dengan tiga desimal.",
     "invalidOrExpiredToken": "Tautan ini tidak valid atau telah kedaluwarsa. Silakan minta tautan akses baru.",
     "alreadyPaid": "Reservasi ini sudah dibayar.",
+    "invalidStatus": "Reservasi ini tidak dapat lagi dibayar atau diubah secara online. Silakan hubungi toko.",
     "paymentNotAvailable": "Pembayaran online tidak tersedia untuk toko ini.",
     "paymentSessionError": "Terjadi kesalahan saat membuat sesi pembayaran",
     "accessLinkSendFailed": "Terjadi kesalahan saat mengirim tautan akses",
@@ -9451,7 +9623,11 @@
     "agentConnectionNotFound": "Agen terhubung ini sudah tidak ada.",
     "oauthRequestInvalid": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang dari agen Anda.",
     "stripeRequiredForPaymentMode": "Mode pembayaran online memerlukan akun Stripe yang terhubung. Hubungkan Stripe di Pengaturan > Pembayaran.",
-    "locationLimitReached": "Satu toko dapat memiliki paling banyak 50 titik pengambilan. Nonaktifkan salah satu atau gunakan kembali."
+    "locationLimitReached": "Satu toko dapat memiliki paling banyak 50 titik pengambilan. Nonaktifkan salah satu atau gunakan kembali.",
+    "depositAttempt": {
+      "needsStripe": "Louez menemukan otorisasi di Stripe untuk permintaan ini, tetapi tidak sesuai dengan yang diminta (jumlah, kartu, atau referensi berubah): Louez tidak mencatatnya dan permintaan tetap terbuka. Batalkan dari dasbor Stripe, lalu klik “Tutup permintaan”. Jika Anda malah mengambilnya di Stripe, Louez tidak mencatat jumlah itu dan permintaan tetap terbuka: hubungi dukungan Louez.",
+      "none": "Reservasi ini tidak lagi memiliki otorisasi yang belum dikonfirmasi."
+    }
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",
@@ -9569,7 +9745,7 @@
     },
     "confirm": {
       "label": "Minta konfirmasi sebelum tindakan sensitif",
-      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat, mengembalikan, atau menghapus pembayaran, memakai kredit AI, mengeluarkan anggota, dan membatalkan undangan selalu meminta konfirmasi, meski ini dimatikan."
+      "description": "Sebelum penghapusan atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi; agen diminta menunjukkannya kepada Anda lebih dulu. Mencatat pembayaran atau pengembalian deposit yang sudah dilakukan, menghapus pembayaran, mengonfirmasi reservasi melebihi stok yang tersedia atau tanpa memenuhi buffer turnover, mengeluarkan anggota, dan membatalkan undangan memerlukan persetujuan Anda, meskipun pengaturan ini dimatikan: agen memberi Anda tautan, lalu Anda menyetujui atau menolaknya di halaman Louez setelah masuk ke akun Anda. Memakai kredit AI selalu meminta konfirmasi, meski ini dimatikan."
     },
     "bundlesTitle": "Alat yang ditampilkan",
     "bundlesHint": "Agen melihat kumpulan alat ini. Anda dapat menambahkan lainnya nanti.",
@@ -9747,6 +9923,10 @@
       "not_allowed": {
         "title": "Anda tidak dapat melakukan ini untuk toko ini",
         "description": "Peran Anda di toko ini tidak mengizinkan langkah ini. Mintalah kepada pemilik toko."
+      },
+      "changed": {
+        "title": "Permintaan ini berubah saat Anda membacanya",
+        "description": "Tidak ada yang dilakukan: agen Anda meminta lagi sejak halaman ini dibuka. Baca lagi di bawah, lalu jawab."
       }
     },
     "done": {
@@ -9780,6 +9960,10 @@
       "access": "Anggota dapat melihat pelanggan, reservasi, dan pembayaran toko, serta dapat mengubah produk dan reservasi.",
       "approve": "Setujui undangan",
       "decline": "Tolak",
+      "reason": {
+        "label": "Pesan untuk agen Anda (opsional)",
+        "hint": "Agen AI Anda membacanya bersama jawaban Anda. Paling banyak {max} karakter."
+      },
       "error": {
         "failed": "Undangan tidak dapat dikirim. Muat ulang halaman ini untuk melihat statusnya."
       },
@@ -9807,6 +9991,209 @@
         "changed": {
           "title": "Ada yang berubah sejak agen Anda meminta",
           "description": "Alamat ini kini punya akun Louez, undangan, atau tempat di tim. Minta agen Anda untuk mengajukannya lagi."
+        }
+      }
+    },
+    "operation_approval": {
+      "title": {
+        "access_removed": "Setujui pencabutan akses?",
+        "money": "Setujui pembayaran?",
+        "stock_override": "Setujui pemesanan melebihi stok?",
+        "deletion": "Setujui penghapusan?",
+        "customer_message": "Setujui pesan ke pelanggan?",
+        "credits": "Setujui penggunaan kredit?",
+        "change": "Setujui perubahan ini?",
+        "unknown": "Setujui permintaan ini?"
+      },
+      "provenance": "<place>{store}</place> · diminta oleh “<who>{agent}</who>”",
+      "provenanceKey": "<place>{store}</place> · diminta oleh kunci API",
+      "provenanceAssistant": "<place>{store}</place> · diminta oleh asisten AI",
+      "provenanceInApp": "<place>{store}</place> · diminta melalui asisten Louez",
+      "trustShort": "Hanya ringkasan Louez yang berlaku.",
+      "stake": {
+        "access_removed": "Mencabut sebuah akses ke toko Anda.",
+        "money": "Mengubah uang yang tercatat untuk toko Anda.",
+        "stock_override": "Mengizinkan pemesanan yang melebihi stok tersedia atau tidak mematuhi jeda antarsewa Anda.",
+        "deletion": "Menghapus secara permanen: tidak dapat dibatalkan.",
+        "customer_message": "Mengirim pesan ke pelanggan: tidak dapat ditarik kembali.",
+        "credits": "Memakai kredit: tidak dikembalikan."
+      },
+      "lapsesSoon": "Berakhir {when}.",
+      "acknowledge": "Saya sudah membaca apa yang akan dilakukan Louez",
+      "approve": "Setujui",
+      "refuse": "Tolak",
+      "details": "Detail",
+      "askedBy": "Diminta oleh",
+      "forAccount": "Untuk akun Anda {email}, di “{store}”.",
+      "apiKey": "Kunci API “{name}”",
+      "apiKeyUnnamed": "Sebuah kunci API",
+      "unnamedAgent": "Sebuah asisten AI",
+      "inAppAssistant": "Asisten Louez, dari chat di dasbor Anda",
+      "checked": "Yang diperiksa Louez",
+      "messageDestinationOnFile": "Pesan dikirim ke kontak pelanggan yang tersimpan.",
+      "values": {
+        "yes": "Ya",
+        "no": "Tidak",
+        "none": "Tidak ada"
+      },
+      "computedAt": "Louez menghitung ini {when} dari data toko Anda.",
+      "expires": "Jika Anda tidak menjawab, permintaan ini berakhir {when}.",
+      "trust": "Hanya ringkasan dari Louez ini yang berlaku, apa pun yang dikatakan asisten Anda di obrolan. Jika tidak cocok, tolak.",
+      "reason": {
+        "toggle": "Tambahkan catatan untuk asisten Anda",
+        "label": "Catatan Anda (opsional)",
+        "hint": "Asisten Anda membacanya bersama jawaban Anda. Maksimal {max} karakter."
+      },
+      "error": {
+        "failed": "Jawaban Anda tidak dapat disimpan. Baca kembali permintaannya, lalu jawab.",
+        "acknowledge": "Centang kotaknya, lalu setujui. Belum ada yang diputuskan."
+      },
+      "unreadable": {
+        "title": "Permintaan ini tidak dapat ditampilkan",
+        "description": "Jadi tidak dapat disetujui di sini. Tidak ada yang dilakukan."
+      },
+      "tooLong": {
+        "title": "Permintaan ini terlalu panjang untuk ditampilkan",
+        "description": "Jadi tidak dapat disetujui di sini. Tidak ada yang dilakukan."
+      },
+      "done": {
+        "request": "Permintaan",
+        "yourWords": "Kata-kata Anda",
+        "approved": {
+          "title": "Disetujui",
+          "description": "Asisten Anda sekarang dapat melaksanakannya. Jika tidak, persetujuan Anda berakhir {when} dan tidak ada yang dilakukan."
+        },
+        "completed": {
+          "title": "Selesai",
+          "description": "Asisten Anda melaksanakannya {when}. Anda dapat kembali ke obrolan."
+        },
+        "approved_expired": {
+          "title": "Persetujuan Anda telah berakhir",
+          "description": "Persetujuan Anda berakhir setelah satu jam tanpa Louez mencatat bahwa permintaan itu dilaksanakan. Jika asisten Anda melaksanakannya pada detik terakhir, halaman ini menampilkannya setelah dimuat ulang; jika tidak, tidak ada yang dilakukan."
+        },
+        "refused": {
+          "title": "Ditolak",
+          "description": "Tidak ada yang dilakukan. Asisten Anda melihat jawaban Anda dan harus meminta lagi untuk mencoba kembali."
+        },
+        "state_changed": {
+          "title": "Tidak dilaksanakan: permintaan tidak lagi cocok",
+          "description": "Apa yang diminta asisten Anda, atau toko Anda, tidak lagi cocok dengan yang Anda setujui, jadi tidak ada yang dilakukan. Asisten akan meminta lagi jika masih perlu."
+        },
+        "approver_not_allowed": {
+          "title": "Tidak dilaksanakan: peran Anda berubah",
+          "description": "Saat asisten Anda mencoba, peran Anda di toko tidak lagi mengizinkannya, jadi tidak ada yang dilakukan."
+        },
+        "connection_revoked": {
+          "title": "Berakhir: asisten diputuskan",
+          "description": "Koneksi asisten ke Louez telah dihapus, jadi permintaan ini tidak dapat lagi dijawab atau dilaksanakan. Jika asisten Anda melaksanakannya pada detik terakhir sebelum itu, halaman ini menampilkannya setelah dimuat ulang; jika tidak, tidak ada yang dilakukan."
+        },
+        "expired": {
+          "title": "Permintaan ini sudah berakhir",
+          "description": "Tidak ada yang menjawab dalam satu hari, jadi permintaan ini berakhir. Jika ada jawaban yang sedang disimpan tepat pada saat itu, halaman ini menampilkannya setelah dimuat ulang; jika tidak, tidak ada yang dilakukan, dan asisten Anda akan meminta lagi jika masih perlu."
+        },
+        "ended": {
+          "title": "Permintaan ini sudah selesai",
+          "description": "Tidak ada lagi yang bisa dilakukan di sini, dan tidak ada yang dilakukan. Jika asisten Anda masih perlu, ia akan meminta lagi."
+        },
+        "shortened": "Ringkasan terlalu panjang untuk ditampilkan utuh."
+      },
+      "display": {
+        "told": "Yang disampaikan kepada asisten Anda",
+        "headline": {
+          "recordPayment": "Catat pembayaran yang diterima?",
+          "paidBack": "Catat uang yang dikembalikan ke pelanggan?",
+          "returnDeposit": "Catat uang jaminan yang dikembalikan?",
+          "recordRefund": "Catat pengembalian dana yang dilakukan secara manual?",
+          "refundOnline": "Kembalikan dana pembayaran online?",
+          "deletePayment": "Hapus pembayaran yang tercatat?",
+          "removeMember": "Keluarkan seseorang dari tim Anda?",
+          "cancelInvitation": "Batalkan undangan ke tim Anda?",
+          "confirmWithinRules": "Konfirmasi pemesanan?",
+          "confirmPastBuffer": "Konfirmasi pemesanan meski melanggar jeda antarsewa Anda?",
+          "confirmBeyondStock": "Konfirmasi pemesanan melebihi stok Anda?",
+          "confirmBeyondStockAndBuffer": "Konfirmasi pemesanan melebihi stok dan jeda antarsewa Anda?",
+          "recordDeposit": "Catat uang jaminan yang diterima?",
+          "createQuote": "Buat penawaran?",
+          "createQuotePastBuffer": "Buat penawaran meski melanggar jeda antarsewa Anda?",
+          "createQuoteBeyondStock": "Buat penawaran melebihi stok Anda?",
+          "createQuoteBeyondStockAndBuffer": "Buat penawaran melebihi stok dan jeda antarsewa Anda?",
+          "createBooking": "Buat pemesanan?",
+          "createBookingPastBuffer": "Buat pemesanan meski melanggar jeda antarsewa Anda?",
+          "createBookingBeyondStock": "Buat pemesanan melebihi stok Anda?",
+          "createBookingBeyondStockAndBuffer": "Buat pemesanan melebihi stok dan jeda antarsewa Anda?",
+          "moveDatesWithinRules": "Pindahkan tanggal pemesanan?",
+          "moveDatesPastBuffer": "Pindahkan tanggal pemesanan meski melanggar jeda antarsewa Anda?",
+          "moveDatesBeyondStock": "Pindahkan tanggal pemesanan melebihi stok Anda?",
+          "moveDatesBeyondStockAndBuffer": "Pindahkan tanggal pemesanan melebihi stok dan jeda antarsewa Anda?"
+        },
+        "facts": {
+          "booking": "Pemesanan #<v>{number}</v> · <v>{customer}</v>",
+          "bookingNumber": "Pemesanan #<v>{number}</v>",
+          "received": "<v>{type}</v>: <v>{amount}</v> diterima · <v>{method}</v>",
+          "paidBack": "<v>{type}</v>: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>",
+          "returned": "Uang jaminan dikembalikan: <v>{amount}</v> · <v>{method}</v>",
+          "depositHeld": "Uang jaminan yang masih dipegang sebelum ini: <v>{held}</v>",
+          "recordOnly": "Louez hanya mencatatnya: tidak ada uang yang ditagih atau dikembalikan.",
+          "refundToCard": "Pengembalian dana: <v>{amount}</v>, ke kartu <v>{brand}</v> berakhiran <v>{last4}</v>",
+          "refundToPayer": "Pengembalian dana: <v>{amount}</v>, ke metode yang digunakan untuk membayar",
+          "leavesStripeBalance": "Uang keluar dari saldo Stripe Anda; biaya platform atas bagian itu dikembalikan.",
+          "refundGiven": "Pengembalian dana: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>",
+          "refundOf": "Pembayaran yang dikembalikan: <v>{type}</v>, <v>{amount}</v> pada <v>{atDate}</v> · <v>{method}</v>",
+          "refundBalance": "Sudah dikembalikan: <v>{refunded}</v> · Masih bisa dikembalikan setelah ini: <v>{left}</v>",
+          "deleted": "<v>{type}</v>: <v>{amount}</v> · <v>{method}</v>",
+          "recordedOn": "Dicatat pada <v>{atDate}</v> pukul <v>{atTime}</v>",
+          "leavesBalance": "Pembayaran ini keluar dari saldo pemesanan dan angka toko Anda.",
+          "member": "<v>{name}</v> · <v>{email}</v>",
+          "memberEmail": "<v>{email}</v>",
+          "memberSince": "Anggota sejak <v>{sinceDate}</v>",
+          "losesAccess": "Langsung kehilangan akses ke pelanggan, pemesanan, dan pembayaran Anda.",
+          "invited": "Undangan dikirim ke <v>{email}</v>",
+          "invitedOn": "Dikirim pada <v>{atDate}</v>",
+          "linkStops": "Tautannya tidak berfungsi lagi: orang itu tidak akan bergabung dengan tim Anda.",
+          "period": "{periodSameDay, select, yes {<v>{periodStartDate}</v>, pukul <v>{periodStartTime}</v>–<v>{periodEndTime}</v>} other {Dari <v>{periodStartDate}</v> pukul <v>{periodStartTime}</v> sampai <v>{periodEndDate}</v> pukul <v>{periodEndTime}</v>}} · <v>{total}</v>",
+          "pastBuffer": "<v>{product}</v>: diminta {requested}, {available, plural, =0 {tidak ada yang kosong} other {hanya # yang kosong}} dengan jeda <v>{buffer}</v> Anda",
+          "beyondStock": "<v>{product}</v>: diminta {requested}, {available, plural, =0 {stok habis} other {stok hanya #}}: kurang {missing}",
+          "moreLines": "{count, plural, other {Dan # baris lagi di luar aturan Anda}}: lihat detailnya",
+          "withinRules": "Stok dan jeda antarsewa Anda mencukupi: tidak ada yang terlampaui.",
+          "message": "<v>{customer}</v> akan menerima {channels, select, sms {SMS} other {email}} “<v>{message}</v>” di <v>{to}</v>",
+          "messageEmailAndText": "<v>{customer}</v> akan menerima email “<v>{message}</v>” di <v>{email}</v> dan SMS di <v>{phone}</v>",
+          "messageToCustomer": "Pelanggan akan menerima {channels, select, email {email} sms {SMS} other {email dan SMS}} “<v>{message}</v>”",
+          "noMessage": "Tidak ada pesan yang dikirim ke pelanggan.",
+          "depositCollected": "<v>{type}</v>: <v>{amount}</v> diterima · <v>{method}</v>",
+          "depositGivenBack": "<v>{type}</v>: <v>{amount}</v>, dikembalikan ke pelanggan · <v>{method}</v>",
+          "bookingFor": "Untuk <v>{customer}</v> · <v>{email}</v>",
+          "bookingForNewCustomer": "Untuk <v>{customer}</v> · <v>{email}</v>, pelanggan baru",
+          "bookingLine": "{quantity} × <v>{product}</v>",
+          "bookingLines": "{quantity} × <v>{product}</v> dan {others, plural, other {# baris lagi}}",
+          "datesMoved": "Tanggal: <v>{beforeStartDate}</v> – <v>{beforeEndDate}</v> → <v>{afterStartDate}</v> <v>{afterStartTime}</v> – <v>{afterEndDate}</v> <v>{afterEndTime}</v>",
+          "newTotal": "Total baru: <v>{total}</v> (selisih: <v>{difference}</v>). Tidak ada yang ditagih atau dikembalikan."
+        },
+        "choices": {
+          "paymentType": {
+            "rental": "Sewa",
+            "deposit": "Uang jaminan",
+            "deposit_hold": "Penahanan uang jaminan",
+            "deposit_capture": "Uang jaminan ditarik",
+            "deposit_return": "Pengembalian uang jaminan",
+            "damage": "Kerusakan",
+            "adjustment": "Penyesuaian"
+          },
+          "paymentMethod": {
+            "stripe": "Stripe",
+            "cash": "Tunai",
+            "card": "Kartu",
+            "transfer": "Transfer bank",
+            "check": "Cek",
+            "other": "Lainnya"
+          },
+          "customerMessage": {
+            "request_accepted": "permintaan diterima",
+            "request_rejected": "permintaan ditolak",
+            "reservation_cancelled": "pemesanan dibatalkan",
+            "quote_sent": "penawaran",
+            "booking_confirmed": "pemesanan dikonfirmasi",
+            "reservation_modified": "pemesanan diubah"
+          }
         }
       }
     }

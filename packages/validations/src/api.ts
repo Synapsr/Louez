@@ -240,11 +240,18 @@ export const dashboardReservationAssignUnitsInputSchema = z.object({
   overrideTurnoverBuffer: z.boolean().optional(),
 });
 
+/**
+ * An amount a dashboard payment form sends: the text the person typed, which
+ * the write judges as it is (no number in between to round it). The write
+ * refuses any text that is not a plain decimal its currency holds.
+ */
+const typedAmountSchema = z.string().max(32);
+
 export const dashboardReservationRequestPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
     type: z.enum(["rental", "deposit", "custom"]),
-    amount: z.number().min(0.5).optional(),
+    amount: typedAmountSchema.optional(),
     channels: z.object({
       email: z.boolean(),
       sms: z.boolean(),
@@ -261,7 +268,7 @@ export const dashboardReservationRecordPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
     type: z.enum(["rental", "deposit", "deposit_return", "damage", "adjustment"]),
-    amount: z.number(),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     paidAt: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     notes: z.string().max(10000).optional(),
@@ -272,7 +279,7 @@ export const dashboardReservationRefundManualPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
     paymentId: z.string().length(21),
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     notes: z.string().max(10000).optional(),
   }),
@@ -285,7 +292,7 @@ export const dashboardReservationDeletePaymentInputSchema = z.object({
 export const dashboardReservationReturnDepositInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     notes: z.string().max(10000).optional(),
   }),
@@ -294,7 +301,7 @@ export const dashboardReservationReturnDepositInputSchema = z.object({
 export const dashboardReservationRecordDamageInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     method: z.enum(["cash", "card", "transfer", "check", "other"]),
     notes: z.string().max(10000),
   }),
@@ -307,7 +314,7 @@ export const dashboardReservationCreateDepositHoldInputSchema = z.object({
 export const dashboardReservationCaptureDepositHoldInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
-    amount: z.number().min(0.01),
+    amount: typedAmountSchema,
     reason: z.string().trim().min(1).max(10000),
   }),
 });
@@ -361,6 +368,10 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
     tulipInsuranceOptIn: z.boolean().optional(),
     overrideTurnoverBuffer: z.boolean().optional(),
     allowOverbooking: z.boolean().optional(),
+    // The total the form showed, compared under the locks with what is written.
+    expectedTotal: z.number().min(0).optional(),
+    // The reservation as the form loaded it, compared under the locks with the one stored.
+    loadedEditToken: z.string().max(128).optional(),
     delivery: z
       .object({
         outbound: z.object({
@@ -516,6 +527,8 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     sendConfirmationEmail: z.boolean().optional(),
     sendAsQuote: z.boolean().optional(),
     allowOverbooking: z.boolean().optional(),
+    // The total the form showed, compared under the locks with what is written.
+    expectedTotal: z.number().min(0).optional(),
   }),
 });
 

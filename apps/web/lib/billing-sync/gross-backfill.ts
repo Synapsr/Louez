@@ -273,12 +273,10 @@ async function loadContexts(
       .select({
         id: reservations.id,
         storeId: reservations.storeId,
-        createdAt: reservations.createdAt,
         currency: reservations.currency,
         source: reservations.source,
         totalAmount: reservations.totalAmount,
         subtotalAmount: reservations.subtotalAmount,
-        depositAmount: reservations.depositAmount,
         deliveryFee: reservations.deliveryFee,
         discountAmount: reservations.discountAmount,
         subtotalExclTax: reservations.subtotalExclTax,

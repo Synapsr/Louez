@@ -10,16 +10,28 @@ import {
   getBlockingReservationStatuses,
   buildUnitRentableDuringPredicate,
   findBusyUnitIds,
+  lockReservationInTransaction,
+  runReservationTransaction,
   type Transaction,
 } from "@louez/db";
 import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
+import {
+  NOT_RECORDED,
+  recordedPromotion,
+  recordedTaxDisplayMode,
+  taxSettingsForRepricing,
+} from "@louez/api/services/pricing-facts";
 import { isWithinBusinessHours } from "@louez/utils";
 import { validateRentalDuration } from "./validate-rental-window";
 import {
   lockReservationProducts,
   reserveInventory,
 } from "@louez/api/services/reservation-inventory";
-import { computeReservationTotals, getReservationItemTaxFields, priceCart } from "./price-cart";
+import {
+  computeReservationTotals,
+  getReservationItemTaxFields,
+  priceCart,
+} from "@louez/api/services/price-cart";
 import {
   getExtensionAttempt,
   type ExtensionAttempt,
@@ -34,23 +46,12 @@ export const money = (value: number | null): string | null =>
   value === null ? null : value.toFixed(2);
 export const cents = (value: number | string) => Math.round(Number(value) * 100);
 
-export const loadExtensionReservation = async (
+const readExtensionReservation = async (
   tx: Transaction,
   storeId: string,
   reservationId: string,
   customerId?: string,
 ) => {
-  await tx
-    .select({ id: reservations.id })
-    .from(reservations)
-    .where(
-      and(
-        eq(reservations.id, reservationId),
-        eq(reservations.storeId, storeId),
-        customerId ? eq(reservations.customerId, customerId) : undefined,
-      ),
-    )
-    .for("update");
   const reservation = await tx.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
@@ -68,7 +69,53 @@ export const loadExtensionReservation = async (
   if (!reservation) throw new ExtensionError("notFound");
   return reservation;
 };
-export type ExtensionReservation = Awaited<ReturnType<typeof loadExtensionReservation>>;
+export type ExtensionReservation = Awaited<ReturnType<typeof readExtensionReservation>>;
+
+/**
+ * The reservation's row locked alone, then the reservation read: for a
+ * transaction that locks no product. One that quotes or checks the stock runs
+ * in `runExtensionQuote`.
+ */
+export const loadExtensionReservation = async (
+  tx: Transaction,
+  storeId: string,
+  reservationId: string,
+  customerId?: string,
+) => {
+  await tx
+    .select({ id: reservations.id })
+    .from(reservations)
+    .where(
+      and(
+        eq(reservations.id, reservationId),
+        eq(reservations.storeId, storeId),
+        customerId ? eq(reservations.customerId, customerId) : undefined,
+      ),
+    )
+    .for("update");
+  return readExtensionReservation(tx, storeId, reservationId, customerId);
+};
+
+/**
+ * A transaction that quotes an extension, and may write it: the owner entry of
+ * `@louez/db`, which locks the reservation's products by id, then the
+ * reservation (`lockReservationInTransaction`), before `work` reads it. The
+ * quote's stock check then locks the units. A product added to the reservation
+ * meanwhile starts the whole transaction over, three runs in all, then
+ * `ReservationChangeBusyError`; `work` holds no outside effect.
+ */
+export const runExtensionQuote = <T>(
+  scope: { storeId: string; reservationId: string; customerId?: string },
+  work: (tx: Transaction, reservation: ExtensionReservation) => Promise<T>,
+) =>
+  runReservationTransaction(
+    async (tx, owner) => {
+      const { storeId, reservationId, customerId } = scope;
+      await lockReservationInTransaction(owner, { storeId, reservationId });
+      return work(tx, await readExtensionReservation(tx, storeId, reservationId, customerId));
+    },
+    { reservationId: scope.reservationId },
+  );
 
 export const extensionFingerprint = (reservation: ExtensionReservation) =>
   createHash("sha256")
@@ -191,6 +238,9 @@ export const checkExtensionInventory = async (
               quantity: item.quantity,
               selectedAttributes: item.selectedAttributes ?? undefined,
               combinationKey: item.combinationKey,
+              // A line stored with no combination is served by any unit that
+              // matches what it chose, as every writer stored it.
+              pooled: item.combinationKey === null,
               assignedUnitIds: item.assignedUnits.flatMap((unit) =>
                 unit.productUnitId ? [unit.productUnitId] : [],
               ),
@@ -204,7 +254,12 @@ export const checkExtensionInventory = async (
     excludeReservationId: reservation.id,
     skipConsumableCheck: true,
   });
-  if (!stock.ok) throw new ExtensionError("unavailable");
+  // A booking the store composed without a product's required accessory cannot
+  // be extended as a cart: another date changes nothing, the store has to look.
+  if (!stock.ok)
+    throw new ExtensionError(
+      stock.details?.code === "required_accessories_missing" ? "manualRequired" : "unavailable",
+    );
   for (const item of reservation.items) {
     const ids = item.assignedUnits.flatMap((unit) =>
       unit.productUnitId ? [unit.productUnitId] : [],
@@ -323,6 +378,18 @@ export const quoteExtension = async (
   const original = price(reservation.endDate);
   const extended = price(end);
   if (!original.ok || !extended.ok) return { preview: { mode: "manual", reason: "manualPrice" } };
+  // Priced in the mode the reservation was priced in, when it recorded one
+  // (slice 10): the added days mean what the booked ones meant. Recorded
+  // before tax while the store has turned taxes off, it cannot be: the
+  // store extends it by hand.
+  const recordedMode = recordedTaxDisplayMode(reservation);
+  if (recordedMode === "exclusive" && !settings?.tax?.enabled) {
+    return { preview: { mode: "manual", reason: "manualPrice" } };
+  }
+  const taxSettings = taxSettingsForRepricing(
+    settings?.tax,
+    recordedMode === NOT_RECORDED ? null : recordedMode,
+  );
   const totals = (cart: typeof original.cart) =>
     computeReservationTotals({
       lines: cart.lines,
@@ -330,7 +397,8 @@ export const quoteExtension = async (
       discountAmount: 0,
       deliveryFee: Number(reservation.deliveryFee ?? 0),
       totalDeposit: Number(reservation.depositAmount),
-      taxSettings: settings?.tax,
+      taxSettings,
+      currency: reservationCurrency(reservation.currency, settings ?? null),
     });
   const originalTotals = totals(original.cart);
   if (
@@ -356,10 +424,13 @@ export const quoteExtension = async (
     subtotalExclTax: money(next.subtotalExclTax),
     taxAmount: money(next.taxAmount),
     taxRate: money(next.taxRate),
+    // A recorded fact is the one these amounts were computed with (slice 9).
+    taxDisplayMode: next.displayMode,
     items: extended.cart.lines.map((line, index) => {
       const tax = getReservationItemTaxFields(next, line, index);
       const product = catalog.get(line.productId);
       if (!product) throw new ExtensionError("unavailable");
+      const recordsPromotion = recordedPromotion(reservation.items[index]) !== NOT_RECORDED;
       return {
         id: reservation.items[index].id,
         pricingBreakdown: {
@@ -375,6 +446,10 @@ export const quoteExtension = async (
               : null,
           discountAmount: line.savings,
           tierApplied: null,
+          // A line that recorded its promotion keeps it recorded (slice 9): the
+          // one its extended price applied, which the check above has shown is
+          // the stored one still in force, or null for none.
+          ...(recordsPromotion ? { promotion: line.promotion ?? null } : {}),
           taxRate: tax.taxRate,
           taxAmount: tax.taxAmount,
           subtotalExclTax: tax.totalExclTax,
@@ -389,6 +464,8 @@ export const quoteExtension = async (
         taxAmount: money(tax.taxAmount),
         priceExclTax: money(tax.priceExclTax),
         totalExclTax: money(tax.totalExclTax),
+        // A product line: the engine applied its rate.
+        taxExempt: false,
       };
     }),
   };

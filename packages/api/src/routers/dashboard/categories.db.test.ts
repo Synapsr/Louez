@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  readLockWaiters,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import type { RouterClient } from "@orpc/server";
 
@@ -457,6 +463,53 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     );
   });
 
+  test("deleting a category locks its products by id before it writes any link or product", async () => {
+    const [low, high] = ["ca_p_lock_aaaa", "ca_p_lock_zzzz"];
+    // The links run opposite to the products: the higher product's link comes first.
+    const links = { [high]: "ca_l_lock_aaaa", [low]: "ca_l_lock_zzzz" };
+    for (const held of [low, high]) {
+      const category = await run("create", { name: `Locked ${held}` }, session());
+      for (const id of [low, high]) {
+        await louezDb.db.insert(louezDb.products).values({
+          id,
+          storeId: STORE,
+          name: id,
+          price: "1.00",
+          pricingMode: "day",
+          categoryId: category.id,
+        });
+        await louezDb.db
+          .insert(louezDb.productCategories)
+          .values({ id: links[id], productId: id, categoryId: category.id, position: 0 });
+      }
+      const holder = await database.connect();
+      try {
+        await holder.beginTransaction();
+        await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [held]);
+        const deleting = run("delete", { id: category.id }, session());
+        await waitForLockWaits(holder, database.name, 1);
+        const [waiter] = await readLockWaiters(holder, database.name);
+        await holder.commit();
+        await deleting;
+        // Asserted once the call has ended, so a failing run leaves none running.
+        const products = (locks: Array<{ table: string; id: string }> = []) => [
+          ...new Set(locks.filter((lock) => lock.table === "products").map((lock) => lock.id)),
+        ];
+        assert.deepEqual(products(waiter?.waitsFor), [held], `waits for ${held}`);
+        assert.deepEqual(products(waiter?.holds), held === low ? [] : [low], `holding ${held}`);
+        // Nothing is written before the products are held: no link is deleted yet.
+        assert.deepEqual(
+          waiter?.holds.filter((lock) => lock.table === "product_categories"),
+          [],
+          `no link written while waiting for ${held}`,
+        );
+      } finally {
+        await holder.end();
+      }
+      await louezDb.db.delete(louezDb.products).where(orm.inArray(louezDb.products.id, [low, high]));
+    }
+  });
+
   test("deleting a category into a replacement that is deleted at the same time leaves no dangling link", async () => {
     const a = await run("create", { name: "Race A" }, session());
     const b = await run("create", { name: "Race B" }, session());
@@ -840,6 +893,86 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       "PERMISSION_DENIED",
     );
     assert.equal(storage.objects.size, 1, "only the other store's image");
+  });
+
+  describe("an upload refused once its bytes are stored", () => {
+    /** The storage reports another type than the one stored: the metadata check refuses. */
+    const misreported = () => {
+      storage.head = async (key) => {
+        const object = storage.objects.get(key);
+        return object ? { size: object.bytes.byteLength, contentType: "text/html" } : null;
+      };
+    };
+    const recorded = async (idempotencyKey: string) => {
+      const [row] = await louezDb.db
+        .select({ status: louezDb.apiOperations.status, error: louezDb.apiOperations.error })
+        .from(louezDb.apiOperations)
+        .where(orm.eq(louezDb.apiOperations.idempotencyKey, idempotencyKey));
+      return { status: row?.status, code: (row?.error as { code?: string } | null)?.code };
+    };
+
+    test("deleted again: a refusal, nothing stored, and the same key runs it again", async () => {
+      const context = await apiKey();
+      misreported();
+      await rejects(
+        run(
+          "uploadImage",
+          { contentBase64: base64(PNG) },
+          context({ "idempotency-key": "refused-upload" }),
+        ),
+        "UPLOAD_TYPE_NOT_ALLOWED",
+      );
+      assert.equal(storage.objects.size, 0, "nothing stored");
+      assert.deepEqual(await recorded("refused-upload"), {
+        status: "failed",
+        code: "UPLOAD_TYPE_NOT_ALLOWED",
+      });
+
+      storage = createMemoryStorage();
+      const sent = await run(
+        "uploadImage",
+        { contentBase64: base64(PNG) },
+        context({ "idempotency-key": "refused-upload" }),
+      );
+      assert.equal(storage.objects.get(sent.key)?.public, true, "the same key ran it again");
+      assert.equal((await recorded("refused-upload")).status, "succeeded");
+    });
+
+    test("not deleted: unknown, and the same key never stores a second object", async (t) => {
+      t.mock.method(console, "error", () => {});
+      const context = await apiKey();
+      misreported();
+      storage.delete = async () => {
+        throw Object.assign(new Error("Access denied"), { name: "AccessDenied" });
+      };
+      await assert.rejects(
+        run(
+          "uploadImage",
+          { contentBase64: base64(PNG) },
+          context({ "idempotency-key": "orphaned-upload" }),
+        ),
+        (error: unknown) => {
+          assert.notEqual(
+            (error as { data?: { code?: string } }).data?.code,
+            "UPLOAD_TYPE_NOT_ALLOWED",
+            "no refusal: an object remains",
+          );
+          return true;
+        },
+      );
+      assert.equal(storage.objects.size, 1, "the object remains");
+      assert.deepEqual(await recorded("orphaned-upload"), { status: "unknown", code: "INTERNAL" });
+
+      await rejects(
+        run(
+          "uploadImage",
+          { contentBase64: base64(PNG) },
+          context({ "idempotency-key": "orphaned-upload" }),
+        ),
+        "OPERATION_OUTCOME_UNKNOWN",
+      );
+      assert.equal(storage.objects.size, 1, "one stored object, never two");
+    });
   });
 
   // --- Images by URL --------------------------------------------------------

@@ -1,9 +1,11 @@
 import type { ReservationEffectRunner, ReservationGateReason, Transaction } from "@louez/db";
+import type { StoreSettings } from "@louez/types";
 
 import type { StripeConnectClient } from "../adapters/stripe-connect";
 import type { BillingStatus } from "../contracts/billing";
 import type { Transport } from "./actor";
 import type { ReportServerError } from "./error-reporting";
+import type { RefusalLogEvent } from "./refusal-log";
 
 /**
  * What the agent-ready API takes from the app that serves it: only what is
@@ -69,10 +71,45 @@ export interface ApiPorts {
   /** Louez's billing of the store, owned by the app and the billing service. */
   billing?: BillingPort;
   /**
+   * The store's deposit holds (apps/web lib/reservations/deposit-hold.ts): its Stripe
+   * calls and its one writer, until the deposit hold moves into the package. Absent
+   * where no procedure needs it.
+   */
+  depositHolds?: DepositHoldsPort;
+  /**
+   * The app's writer of a payment the store records by hand
+   * (services/payment-records.ts): the billing facts it adds are the app's.
+   * Absent where no procedure needs it.
+   */
+  paymentRecords?: PaymentRecordsPort;
+  /**
+   * The app's writer of a refund the store gave by hand, and of its credit
+   * note (services/payment-records.ts, `recordPaymentRefund`): the row's
+   * billing facts and the invoicing are the app's. Absent where no procedure
+   * needs it.
+   */
+  paymentRefunds?: PaymentRefundsPort;
+  /**
+   * The refund of a payment taken online, through Stripe: one durable operation per
+   * refund (apps/web lib/reservations/stripe-refund.ts). Absent where no procedure
+   * refunds online.
+   */
+  stripeRefunds?: StripeRefundsPort;
+  /**
    * What the team procedures read from the app (services/team.ts). Absent
    * where no procedure needs it: no seat limit, and e-mail counted as sent.
    */
   team?: TeamPort;
+  /**
+   * Whether this instance can send e-mail (SMTP configured): a write that
+   * promises the customer an e-mail refuses it without. Absent: it can.
+   */
+  emailConfigured?: () => boolean;
+  /**
+   * Whether this instance can send SMS (an SMS provider configured): a
+   * preview names an SMS it cannot send as not sent. Absent: it can.
+   */
+  smsConfigured?: () => boolean;
   /**
    * Sends an unexpected server error to the app's error tracking
    * (platform/error-reporting.ts). Never throws, never waits. Absent: nothing
@@ -87,9 +124,290 @@ export interface ApiPorts {
   log?: LogPort;
 }
 
+/** What the store's closing of an unconfirmed deposit hold came to. */
+export type DepositAttemptResolution =
+  | {
+      ok: true;
+      /** `closed`, or what the PaymentIntent Louez found at Stripe was recorded as. */
+      outcome:
+        | "closed"
+        | "authorized"
+        | "superseded"
+        | "captured"
+        | "released"
+        | "failed"
+        | "pending";
+      paymentIntentId: string | null;
+    }
+  | {
+      ok: false;
+      error: "reservation_not_found" | "no_unconfirmed_attempt" | "attempt_in_progress";
+    }
+  | {
+      ok: false;
+      /**
+       * Louez found the attempt's PaymentIntent, which does not match the attempt, and
+       * Stripe may hold funds on it: the attempt is not closed.
+       */
+      error: "attempt_needs_stripe";
+      paymentIntentId: string;
+      /** Its status at Stripe. */
+      status: string;
+      /** Why it is not the attempt's: `facts_mismatch`, `other_reservation`… */
+      reason: string;
+      /** For a `facts_mismatch`, what differs: `amount`, `currency`, `card`, `customer`. */
+      unmatchedFacts: readonly string[];
+    };
+
+/** The store's deposit holds, lent by the app (apps/web lib/api/deposit-holds-port.ts). */
+export interface DepositHoldsPort {
+  /**
+   * Closes the reservation's deposit hold attempt Stripe has not confirmed, on the
+   * store's word, once Louez's own lookup, when it can make one, found nothing; what it
+   * finds is recorded instead, and what it finds but cannot record keeps the attempt
+   * open while Stripe may hold funds on it.
+   */
+  resolveUnconfirmedAttempt: (input: {
+    reservationId: string;
+    storeId: string;
+    actorUserId: string;
+  }) => Promise<DepositAttemptResolution>;
+}
+
 /** A structured log event: a name, then fields that hold no personal data. */
 export interface LogPort {
   error: (event: { event: string } & Record<string, unknown>) => void;
+  /**
+   * A call refused on purpose, by its facts only (platform/refusal-log.ts): the MCP
+   * bridge's, which has no request log of its own. Absent: not logged.
+   */
+  refusal?: (event: RefusalLogEvent) => void;
+}
+
+/** What the billing facts of a payment the store records by hand are computed from. */
+export interface RecordedPaymentDraft {
+  reservationId: string;
+  storeId: string;
+  /** The store's settings as the call read them: its currency and its tax settings. */
+  storeSettings: Pick<StoreSettings, "currency" | "tax"> | null;
+  type: "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
+  /** As stored, `decimal(10,2)`. */
+  amount: string;
+}
+
+/**
+ * The billing facts a recorded payment's row takes, as the app derives them
+ * (apps/web `recordedPaymentFacts`): the currency it is recorded in, its
+ * gross in minor units, and its insurance share.
+ */
+export interface RecordedPaymentFacts {
+  currency: string;
+  grossMinor: number | null;
+  insuranceShareMinor: number | null;
+}
+
+/** A payment the store records by hand, as the app's writer takes it: with the facts it was bound to. */
+export interface RecordedPayment {
+  reservationId: string;
+  storeId: string;
+  type: RecordedPaymentDraft["type"];
+  method: "cash" | "card" | "transfer" | "check" | "other";
+  /** As stored, `decimal(10,2)`. */
+  amount: string;
+  /** `deposit` for a deposit given back, `manual` otherwise. */
+  origin: "manual" | "deposit";
+  paidAt: Date;
+  notes: string | null;
+  /** The billing facts `facts` computed for it, under the same lock: the row takes them as they are. */
+  facts: RecordedPaymentFacts;
+}
+
+/** The app's writer of the payments a store records by hand (`ApiPorts.paymentRecords`). */
+export interface PaymentRecordsPort {
+  /**
+   * In the caller's transaction, under the reservation's lock: the billing
+   * facts the payment's row would take, read from the reservation and its
+   * lines and the store's settings. Writes nothing.
+   */
+  facts: (tx: Transaction, draft: RecordedPaymentDraft) => Promise<RecordedPaymentFacts>;
+  /**
+   * In the caller's transaction: the payment, under a new id, with the
+   * billing facts it is handed, and the reservation's mark for the billing
+   * service.
+   */
+  insert: (tx: Transaction, payment: RecordedPayment) => Promise<void>;
+}
+
+/**
+ * A refund the store gave by hand, as the app's writer takes it: one positive
+ * row pointing at the payment it gives back, in that payment's currency,
+ * which the approval showed. The payment it refunds keeps its amount.
+ */
+export interface RecordedRefund {
+  reservationId: string;
+  storeId: string;
+  /** The payment it gives back: the row's `refundOfPaymentId`. */
+  paymentId: string;
+  /** `deposit_return` for a kept deposit given back, `rental` otherwise. */
+  type: "rental" | "deposit_return";
+  method: RecordedPayment["method"];
+  /** As stored, `decimal(10,2)`, above zero. */
+  amount: string;
+  /** The refunded payment's currency, as the approval showed it. */
+  currency: string;
+  paidAt: Date;
+  notes: string | null;
+}
+
+/**
+ * What issuing a refund's credit note came to: issued (now, or by an
+ * earlier run: one credit note per refund), nothing to issue (the store
+ * issues no invoices, or the payment refunded has none), or a failure that
+ * may pass.
+ */
+export type RefundCreditNoteOutcome =
+  | { status: "issued"; number: string }
+  | { status: "not_applicable"; reason: string }
+  | { status: "failed"; reason: string };
+
+/** The app's writer of the refunds a store gives by hand (`ApiPorts.paymentRefunds`). */
+export interface PaymentRefundsPort {
+  /**
+   * In the caller's transaction, under the reservation's lock: the refund's
+   * row, under a new id, and the reservation's mark for the billing service.
+   * Returns the row's id.
+   */
+  insert: (tx: Transaction, refund: RecordedRefund) => Promise<{ id: string }>;
+  /**
+   * The refund's credit note, issued once per refund whoever asks and
+   * however often: the writer's one attempt once the refund committed, and
+   * the outbox row it owes it by (`payment.refundCreditNote`). Never throws.
+   */
+  creditNote: (refund: {
+    paymentId: string;
+    refundId: string;
+    amount: string;
+    /** Who asked, for the invoicing log. */
+    source: string;
+  }) => Promise<RefundCreditNoteOutcome>;
+}
+
+/** A refusal of the refund of an online payment, by its stable code, with its facts. */
+export interface StripeRefundRefusal {
+  code: string;
+  [fact: string]: unknown;
+}
+
+/** The charge a refund comes off, as Stripe states it, read before any lock. */
+export interface StripeRefundCharge {
+  paymentId: string;
+  reservationId: string;
+  accountId: string;
+  chargeId: string;
+  amountCapturedMinor: number;
+  amountRefundedMinor: number;
+  /** Upper case. */
+  currency: string;
+  /** The card that paid, when Stripe states it. */
+  card?: { brand: string; last4: string } | null;
+}
+
+/** A refund asked of the app's service: the payment, its amount in the charge's minor units. */
+export interface StripeRefundRequest {
+  storeId: string;
+  paymentId: string;
+  amountMinor: number;
+  currency: string;
+  reason: "requested_by_customer" | "duplicate";
+  notes: string | null;
+  charge: StripeRefundCharge;
+}
+
+/** What a refund is checked against under the caller's locks, writing nothing. */
+export interface StripeRefundChecked {
+  reservationId: string;
+  accountId: string;
+  chargeId: string;
+  currency: string;
+  paymentStatus: string;
+  grossMinor: number | null;
+  refunds: readonly { id: string; amountMinor: number }[];
+  openOperations: readonly { id: string; amountMinor: number }[];
+  /** Every dispute ever opened on the payment, by id: one opening since ends an approval. */
+  disputes: readonly string[];
+  ceiling: {
+    paidMinor: number;
+    refundedMinor: number;
+    inFlightMinor: number;
+    refundableMinor: number;
+  };
+}
+
+/** A refund operation as its caller reads it. */
+export interface StripeRefundView {
+  id: string;
+  status: "requested" | "unresolved" | "pending" | "succeeded" | "failed";
+  paymentId: string;
+  reservationId: string;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  createdAt: Date;
+  stripeRefundId: string | null;
+  refundPaymentId: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  /**
+   * The refund row's credit note: issued, still owed, or none to issue. `needsCorrection`
+   * when the refund failed after its note was issued: the note stands, the store corrects it.
+   */
+  creditNote: {
+    status: "issued" | "pending" | "not_applicable";
+    number: string | null;
+    needsCorrection: boolean;
+  };
+}
+
+/** The app's service of the refund of an online payment (`ApiPorts.stripeRefunds`). */
+export interface StripeRefundsPort {
+  /** The payment's charge at Stripe, before any lock. Throws when Stripe cannot be read. */
+  readCharge: (input: {
+    storeId: string;
+    paymentId: string;
+  }) => Promise<
+    { ok: false; refusal: StripeRefundRefusal } | { ok: true; charge: StripeRefundCharge }
+  >;
+  /** In the caller's transaction, under the reservation's lock: every check, nothing written. */
+  check: (
+    tx: Transaction,
+    request: StripeRefundRequest,
+  ) => Promise<
+    { ok: false; refusal: StripeRefundRefusal } | { ok: true; checked: StripeRefundChecked }
+  >;
+  /** In the same transaction: the operation recorded, with the approval it carries out. */
+  request: (
+    tx: Transaction,
+    request: StripeRefundRequest & {
+      approvalId: string | null;
+      requestedBy: { userId: string | null; credentialId: string | null };
+    },
+  ) => Promise<
+    | { ok: false; refusal: StripeRefundRefusal }
+    | { ok: true; operationId: string; effectIds: readonly string[] }
+  >;
+  /** After the commit: one attempt through the outbox's sender, with a short timeout. Never throws. */
+  attempt: (effectIds: readonly string[]) => Promise<void>;
+  /**
+   * The store's operation of that id on that payment (on any of its payments with
+   * `paymentId` null); null when it has none. With `reconcile`, an open one is first
+   * given one bounded attempt to settle, unless an attempt was made too recently.
+   */
+  get: (input: {
+    storeId: string;
+    paymentId: string | null;
+    operationId: string;
+    reconcile: boolean;
+  }) => Promise<StripeRefundView | null>;
 }
 
 /** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */
@@ -387,6 +705,25 @@ export type ApiEvent =
   /** A reservation's status or notes changed: its pages are revalidated. Its messages go to the outbox. */
   | { type: "reservation.statusChanged"; store: ApiEventStore; reservationId: string }
   | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
+  /** A reservation the store created (`reservations.create`): its pages, and the analytics event. */
+  | {
+      type: "reservation.created";
+      store: ApiEventStore;
+      reservationId: string;
+      /** Facts about the new reservation, for analytics. */
+      facts: Record<string, string | number | boolean | null>;
+    }
+  /** A reservation's dates moved through the API: its pages, and the edit's analytics event. */
+  | {
+      type: "reservation.datesChanged";
+      store: ApiEventStore;
+      reservationId: string;
+      transport: Transport;
+      status: string;
+      itemCount: number;
+      warningCount: number;
+      notifyCustomer: boolean;
+    }
   /** A section of the store settings changed: its pages are revalidated. */
   | { type: "store.settingsUpdated"; store: ApiEventStore; section: SettingsSection }
   /** The online store's sections or look changed; `themeChanged`: its cached theme colour is stale. */

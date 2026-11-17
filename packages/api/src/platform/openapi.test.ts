@@ -107,7 +107,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations, the statistics, the settings, the online store, the stores, the inbox, Stripe, billing, handoffs and jobs at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations and their payments, the statistics, the settings, the online store, the stores, the inbox, Stripe, billing, handoffs and jobs at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -184,9 +184,17 @@ describe("OpenAPI document", () => {
         "GET /reservations/planning": "reservations_get_planning_timeline",
         "GET /reservations/upcoming": "reservations_list_upcoming",
         "GET /reservations/overdue": "reservations_list_overdue",
+        "POST /reservations/{id}": "reservations_update",
         "POST /reservations/{id}/status": "reservations_update_status",
         "POST /reservations/{id}/cancel": "reservations_cancel",
         "PATCH /reservations/{id}/notes": "reservations_update_notes",
+        "POST /reservations": "reservations_create",
+        "POST /reservations/{reservationId}/payments": "record_payment",
+        "POST /reservations/{reservationId}/deposit-returns": "record_deposit_return",
+        "POST /payments/{paymentId}/refund-records": "record_refund",
+        "POST /payments/{paymentId}/refunds": "refund_payment",
+        "GET /payments/{paymentId}/refunds/{refundId}": "get_refund",
+        "DELETE /payments/{paymentId}": "delete_payment",
         "PATCH /online-store": "online_store_update",
         "GET /online-store/slug-availability": "online_store_check_slug_availability",
         "POST /online-store/slug": "online_store_update_slug",
@@ -280,6 +288,923 @@ describe("OpenAPI document", () => {
   });
 });
 
+/**
+ * Words that speak of the code, of unfinished work or of the MCP bridge's own
+ * arguments: none belongs in the public reference.
+ */
+const INTERNAL_WORDING = [
+  /\bTODO\b/,
+  /\bFIXME\b/,
+  /\blot \d+[a-z]?\b/i,
+  /\bbridge\b/i,
+  /\bidempotencyKey\b/,
+  /\bthe agent's\b/i,
+  /\ban agent gets\b/i,
+  /\.agent-docs\b/,
+  /\b(?:packages|apps)\/[a-z]/,
+  /\blocalhost\b|127\.0\.0\.1/,
+];
+
+describe("the public reference", () => {
+  type Ref = { $ref?: string };
+  type Operation = {
+    operationId?: string;
+    summary?: string;
+    description?: string;
+    security?: unknown[];
+    tags?: string[];
+    parameters?: Array<Ref & { name?: string; in?: string }>;
+    requestBody?: { content: Record<string, unknown> };
+    responses: Record<string, Ref & { headers?: Record<string, unknown> }>;
+  };
+  type PublicDocument = {
+    openapi: string;
+    info: { title: string; version: string; description: string };
+    servers: Array<{ url: string }>;
+    security: unknown[];
+    tags: Array<{ name: string; description: string }>;
+    paths: Record<string, Record<string, Operation>>;
+    components: {
+      schemas: Record<string, { required?: string[]; properties?: Record<string, unknown> }>;
+      responses: Record<string, { content: Record<string, { schema: Ref }> }>;
+      parameters: Record<
+        string,
+        { name: string; schema: { minLength?: number; maxLength?: number } }
+      >;
+    };
+  };
+
+  const SERVER = "https://app.louez.test/api/v1";
+  let serve: (
+    path: string,
+    headers?: Record<string, string>,
+    init?: RequestInit,
+  ) => Promise<Response | undefined>;
+  let exposedNames: string[];
+  let procedures: readonly import("./exposure").ExposedProcedure[];
+  let openapi: typeof import("./openapi");
+
+  before(async () => {
+    const { createExposure } = await import("./exposure");
+    openapi = await import("./openapi");
+    const { appRouter } = await import("../router");
+    const exposure = createExposure(appRouter);
+    procedures = exposure.procedures;
+    exposedNames = exposure.procedures.map(
+      ({ procedure, meta }) => procedure["~orpc"].route.operationId ?? meta.mcp.name,
+    );
+    const handler = openapi.createOpenApiHandler(exposure.router);
+    const reference = openapi.createApiReference(exposure.router);
+    const ports = {
+      urls: { dashboard: (path: string) => `https://app.louez.test${path}` },
+    } as unknown as import("./ports").ApiPorts;
+    serve = (path, headers = {}, init = {}) =>
+      openapi.handleOpenApiRequest(handler, new Request(`${SERVER}${path}`, { ...init, headers }), {
+        ports,
+        reference,
+      });
+  });
+
+  const fetchDocument = async () => {
+    const response = await serve("/openapi.json");
+    assert.equal(response?.status, 200);
+    return (await response.json()) as PublicDocument;
+  };
+  const operationsOf = (document: PublicDocument) =>
+    Object.entries(document.paths).flatMap(([path, methods]) =>
+      Object.entries(methods).map(([method, operation]) => ({
+        route: `${method.toUpperCase()} ${path}`,
+        operation,
+      })),
+    );
+  /** Each exposed procedure with its operation in the served document. */
+  const servedProcedures = async () => {
+    const byId = new Map(
+      operationsOf(await fetchDocument()).map(({ operation }) => [
+        operation.operationId,
+        operation,
+      ]),
+    );
+    return procedures.map((exposed) => {
+      const operation = byId.get(
+        exposed.procedure["~orpc"].route.operationId ?? exposed.meta.mcp.name,
+      );
+      assert.ok(operation, `${exposed.path} is served`);
+      return { ...exposed, operation };
+    });
+  };
+
+  test("serves the document to anyone, with a public cache lifetime and an ETag", async () => {
+    const response = await serve("/openapi.json");
+    assert.equal(response?.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+    assert.equal(response.headers.get("cache-control"), "public, max-age=300");
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    assert.equal(response.headers.get("set-cookie"), null);
+    const etag = response.headers.get("etag");
+    assert.match(etag ?? "", /^"[0-9a-f]{32}"$/);
+
+    // Generated once: the next request gets the same document.
+    const again = await serve("/openapi.json/");
+    assert.equal(again?.headers.get("etag"), etag);
+    assert.equal(await again?.text(), await response.text());
+
+    const current = await serve("/openapi.json", { "if-none-match": `W/${etag}` });
+    assert.equal(current?.status, 304);
+    assert.equal(await current?.text(), "");
+  });
+
+  test("serves the reference page: the pinned renderer, the same-origin document, no cookie", async () => {
+    const response = await serve("/docs");
+    assert.equal(response?.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^text\/html/);
+    assert.equal(response.headers.get("set-cookie"), null);
+    assert.equal(response.headers.get("cache-control"), "public, max-age=300");
+    const html = await response.text();
+    assert.match(
+      html,
+      /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@scalar\/api-reference@\d+\.\d+\.\d+\/[^"]+" integrity="sha384-[A-Za-z0-9+/=]+" crossorigin="anonymous"><\/script>/,
+    );
+    assert.match(html, /"url":"\/api\/v1\/openapi\.json"/);
+    assert.match(html, /"telemetry":false/);
+    assert.match(html, /<title>Louez API reference \(beta\)<\/title>/);
+  });
+
+  test("the reference page links to the document outside <noscript>, and no site may frame it", async () => {
+    const page = await serve("/docs");
+    const html = (await page?.text()) ?? "";
+    const visible = html.replace(/<noscript>[\s\S]*?<\/noscript>/g, "");
+    assert.match(visible, /<a href="\/api\/v1\/openapi\.json">/);
+    for (const [name, value] of Object.entries(openapi.REFERENCE_PAGE_FRAMING_HEADERS)) {
+      assert.equal(page?.headers.get(name), value);
+    }
+    assert.equal(page?.headers.get("content-security-policy"), "frame-ancestors 'none'");
+    assert.equal(page?.headers.get("x-frame-options"), "DENY");
+    // Not on the document, which any site may read.
+    const document = await serve("/openapi.json");
+    assert.equal(document?.headers.get("content-security-policy"), null);
+    assert.equal(document?.headers.get("x-frame-options"), null);
+  });
+
+  test("leaves every other path to the procedures", async () => {
+    assert.equal(await serve("/docs/openapi.json"), undefined);
+    assert.equal(await serve("/openapi.yaml"), undefined);
+  });
+
+  test("states that the API is in beta, where changes are announced, and a beta version", async () => {
+    const { info } = await fetchDocument();
+    assert.equal(info.version, "1.0.0-beta");
+    assert.match(info.version, /-beta$/);
+    // The notice comes first: the reference shows the description at the top.
+    assert.ok(info.description.startsWith(openapi.OPENAPI_BETA_NOTICE));
+    assert.match(openapi.OPENAPI_BETA_NOTICE, /^> \*\*Beta\.\*\* The Louez REST API is in beta\./);
+    assert.ok(info.description.includes(`(${openapi.API_CHANGELOG_URL})`));
+    assert.ok(info.description.includes(openapi.API_KEYS_PAGE_PATH));
+    for (const code of [
+      "UNAUTHENTICATED",
+      "PERMISSION_DENIED",
+      "CONFIRMATION_REQUIRED",
+      "IDEMPOTENCY_KEY_REUSED",
+      "RATE_LIMITED",
+    ]) {
+      assert.ok(info.description.includes(`\`${code}\``), `the guide names ${code}`);
+    }
+  });
+
+  test("names this deployment as its server, and no local address anywhere", async () => {
+    const document = await fetchDocument();
+    assert.deepEqual(document.servers, [{ url: SERVER }]);
+    assert.doesNotMatch(JSON.stringify(document), /localhost|127\.0\.0\.1|0\.0\.0\.0/);
+  });
+
+  test("is OpenAPI 3.1 whose every operation is named, summed up, answers and asks for the key", async () => {
+    const document = await fetchDocument();
+    assert.match(document.openapi, /^3\.1\./);
+    assert.deepEqual(document.security, [{ apiKey: [] }]);
+    for (const { route, operation } of operationsOf(document)) {
+      assert.ok(operation.operationId, `${route} has an operationId`);
+      assert.ok(operation.summary?.trim(), `${route} has a summary`);
+      assert.ok(operation.description?.trim(), `${route} has a description`);
+      assert.ok(
+        Object.keys(operation.responses).some((status) => /^2\d\d$/.test(status)),
+        `${route} has a success response`,
+      );
+      // No operation opts out of the document's API key requirement.
+      assert.equal(operation.security, undefined, `${route} keeps the API key requirement`);
+    }
+  });
+
+  test("holds exactly the operations of the exposure registry", async () => {
+    const served = operationsOf(await fetchDocument()).map(
+      ({ operation }) => operation.operationId,
+    );
+    assert.deepEqual([...served].sort(), [...exposedNames].sort());
+    assert.equal(new Set(served).size, served.length, "each operation once");
+  });
+
+  test("groups each operation by the record it acts on, in a group the menu declares with its sentence", async () => {
+    const document = await fetchDocument();
+    const { REFERENCE_GROUPS } = await import("./openapi-tags");
+    assert.deepEqual(
+      document.tags,
+      REFERENCE_GROUPS.map(({ name, description }) => ({ name, description })),
+    );
+    const names = new Set(document.tags.map(({ name }) => name));
+    const used = new Set<string>();
+    for (const { route, operation } of operationsOf(document)) {
+      assert.equal(operation.tags?.length, 1, `${route} is in one group`);
+      const [group] = operation.tags ?? [];
+      assert.ok(names.has(group), `${route} is in a declared group, not ${group}`);
+      used.add(group);
+    }
+    assert.deepEqual(
+      [...names].filter((name) => !used.has(name)),
+      [],
+      "no group is empty",
+    );
+    const groupOf = (method: string, path: string) => document.paths[path]?.[method]?.tags?.[0];
+    assert.equal(groupOf("get", "/reservations/{id}"), "Reservations");
+    assert.equal(groupOf("post", "/reservations/{reservationId}/payments"), "Payments");
+    assert.equal(groupOf("post", "/payments/stripe/onboarding"), "Stripe");
+    assert.equal(groupOf("get", "/products/{id}/units"), "Units");
+    assert.equal(groupOf("post", "/products/units/{unitId}/retire"), "Units");
+    assert.equal(groupOf("get", "/products/{productId}/seasonal-pricings"), "Seasonal pricing");
+    assert.equal(groupOf("patch", "/products/{id}"), "Products");
+  });
+
+  test("states its numbers and names from the code they come from", async () => {
+    const { info } = await fetchDocument();
+    const text = info.description;
+    const { API_RATE_LIMIT } = await import("./rate-limit");
+    const operations = await import("./operations");
+    const { CONFIRMATION_HEADER, CONFIRMATION_TTL_MS } = await import("./confirmation");
+
+    assert.equal(API_RATE_LIMIT.windowMs, 60_000, "the limit is a minute's");
+    assert.ok(text.includes(`at most ${API_RATE_LIMIT.max} request units a minute`));
+    assert.ok(
+      text.includes(`at most ${openapi.OPENAPI_MAX_BODY_BYTES / (1024 * 1024)} MiB`),
+      "the body cap",
+    );
+    assert.ok(text.includes(`1 to ${operations.MAX_IDEMPOTENCY_KEY_LENGTH} characters`));
+    // The purge may run a week early: replays last whole months less one.
+    assert.ok(operations.OPERATION_PURGE_MARGIN_DAYS > 0);
+    assert.ok(operations.OPERATION_PURGE_MARGIN_DAYS < 28);
+    assert.equal(openapi.IDEMPOTENCY_REPLAY_MONTHS, operations.OPERATION_RETENTION_MONTHS - 1);
+    assert.ok(text.includes(`at least ${openapi.IDEMPOTENCY_REPLAY_MONTHS} months`));
+    assert.ok(text.includes(`for ${CONFIRMATION_TTL_MS / 60_000} minutes`));
+    for (const header of [
+      operations.IDEMPOTENCY_HEADER,
+      CONFIRMATION_HEADER,
+      openapi.OPERATION_ID_HEADER,
+      openapi.REPLAYED_HEADER,
+    ]) {
+      assert.match(text, new RegExp(`\`${header}`, "i"), `the guide names ${header}`);
+    }
+    assert.ok(text.includes(openapi.API_KEYS_PAGE_PATH));
+    // The one answer outside the Error shape, as the route sends it.
+    assert.ok(text.includes('`{"message":"Not found"}`'));
+  });
+
+  test("states which retries run a write again: a refused call's, never one whose outcome is unknown", async () => {
+    const { info } = await fetchDocument();
+    const text = info.description;
+    for (const sentence of [
+      "- It succeeded: the retry returns its stored result without running it again, with `Louez-Replayed: true`.",
+      "- Louez refused it before doing it, for instance `CONFIRMATION_REQUIRED`, `APPROVAL_REQUIRED`, `PERMISSION_DENIED` or `RESERVATION_BUSY`: the retry runs the write again. So one key serves a write's whole approval, from the first call to the one that carries it out.",
+      "- Louez does not know whether it went through (it ended on an error Louez did not expect, or its outcome was not recorded): the retry answers `OPERATION_OUTCOME_UNKNOWN` and never runs the write again. Check the current state, then use a new key if the write is still needed; for a write that asks for a confirmation or an approval, call it without the token or the approval's id for a new preview, as either is spent if the write went through.",
+      "- It still runs: the retry answers `OPERATION_IN_PROGRESS`; retry shortly with the same key.",
+      "If you do not know how a call ended (a timeout, a dropped connection), retry it with the same key: the answer says which of these it was.",
+    ]) {
+      assert.ok(text.includes(sentence), sentence);
+    }
+    // `data.code` is no test of a refusal: OPERATION_OUTCOME_UNKNOWN has one too.
+    const section = text.slice(
+      text.indexOf("## Idempotency and receipts"),
+      text.indexOf("## Limits"),
+    );
+    assert.doesNotMatch(section, /data\.code/);
+    assert.doesNotMatch(text, /after a call that failed, the same key runs the write again/);
+    const [, , row] = openapi.COMMON_ERROR_CODES.find(
+      ([, code]) => code === "OPERATION_OUTCOME_UNKNOWN",
+    )!;
+    assert.match(row, /does not know whether an earlier call/);
+    assert.match(row, /never runs the write again/);
+  });
+
+  test("its table of common codes holds each with the status the platform answers", async () => {
+    const { info } = await fetchDocument();
+    const { approvalErrors, platformErrors } = await import("./errors");
+    const { largeBodyBusy } = await import("./large-bodies");
+    const { answerPage } = await import("./answer-pages");
+    const thrown = (run: () => unknown) => {
+      try {
+        run();
+      } catch (error) {
+        return error as { status: number; data: { code: string } };
+      }
+      assert.fail("expected an error");
+    };
+    const tooLarge = await serve(
+      "/categories",
+      {
+        "content-type": "application/json",
+        "content-length": String(openapi.OPENAPI_MAX_BODY_BYTES + 1),
+      },
+      { method: "POST", body: "{}" },
+    );
+    assert.ok(tooLarge, "the body cap answers");
+    const unsupported = await serve(
+      "/categories",
+      { "content-type": "text/plain" },
+      { method: "POST", body: "{}" },
+    );
+    assert.ok(unsupported, "the content type check answers");
+    const conflicting = await serve(
+      "/categories/in-the-path",
+      { "content-type": "application/json" },
+      { method: "PATCH", body: JSON.stringify({ id: "another" }) },
+    );
+    assert.ok(conflicting, "the path parameter check answers");
+    const statusOf: Record<string, number> = {
+      INVALID_CURSOR: thrown(() =>
+        answerPage([], { key: String }, { cursor: "%" }, { transport: "openapi", tool: "t" }),
+      ).status,
+      UNAUTHENTICATED: platformErrors.unauthenticated().status,
+      CREDENTIAL_NOT_ACCEPTED: platformErrors.credentialNotAccepted("openapi").status,
+      PERMISSION_DENIED: platformErrors.permissionDenied("x").status,
+      NO_STORE_ACCESS: platformErrors.noStore().status,
+      API_ACCESS_NOT_IN_PLAN: platformErrors.apiAccessNotInPlan().status,
+      CONNECTION_BOUND_TO_STORES: platformErrors.connectionBoundToStores("api_key").status,
+      IDEMPOTENCY_KEY_REUSED: platformErrors.idempotencyConflict().status,
+      OPERATION_IN_PROGRESS: platformErrors.operationInProgress().status,
+      OPERATION_OUTCOME_UNKNOWN: platformErrors.operationOutcomeUnknown("op").status,
+      // Asked inside a handler, with a token written to the database.
+      CONFIRMATION_REQUIRED: 412,
+      CONFIRMATION_INVALID: platformErrors.confirmationInvalid().status,
+      APPROVAL_REQUIRED: approvalErrors.required({ summary: "x" }, {
+        id: "a",
+        url: "u",
+        status: "pending",
+        expiresAt: "t",
+        pollAfterSeconds: 30,
+        decision: null,
+      }).status,
+      APPROVAL_PENDING: approvalErrors.pending({
+        id: "a",
+        url: "u",
+        status: "pending",
+        expiresAt: "t",
+        pollAfterSeconds: 30,
+        decision: null,
+      }).status,
+      APPROVAL_INVALID: approvalErrors.invalid("used").status,
+      APPROVAL_DECLINED: approvalErrors.declined("a", null).status,
+      APPROVAL_RECENTLY_DECLINED: approvalErrors.recentlyDeclined(new Date(1), new Date(0)).status,
+      APPROVALS_FULL: approvalErrors.full("connectionOpen", new Date(1), new Date(0)).status,
+      REQUEST_TOO_LARGE: tooLarge.status,
+      UNSUPPORTED_MEDIA_TYPE: unsupported.status,
+      PATH_PARAMETER_CONFLICT: conflicting.status,
+      IDEMPOTENCY_KEY_REQUIRED: platformErrors.idempotencyKeyRequired("openapi").status,
+      RATE_LIMITED: platformErrors.rateLimited(1).status,
+      LARGE_BODY_BUSY: largeBodyBusy().status,
+    };
+    assert.equal(
+      ((await tooLarge.json()) as { data: { code: string } }).data.code,
+      "REQUEST_TOO_LARGE",
+    );
+    assert.equal(
+      ((await unsupported.json()) as { data: { code: string } }).data.code,
+      "UNSUPPORTED_MEDIA_TYPE",
+    );
+    assert.equal(
+      ((await conflicting.json()) as { data: { code: string } }).data.code,
+      "PATH_PARAMETER_CONFLICT",
+    );
+    // A write may require a key: every integration meets its refusal.
+    assert.ok(
+      openapi.COMMON_ERROR_CODES.some(
+        ([status, code]) => status === 400 && code === "IDEMPOTENCY_KEY_REQUIRED",
+      ),
+    );
+    assert.deepEqual(
+      openapi.COMMON_ERROR_CODES.map(([status, code]) => [code, status]),
+      openapi.COMMON_ERROR_CODES.map(([, code]) => [code, statusOf[code]]),
+    );
+    for (const [status, code] of openapi.COMMON_ERROR_CODES) {
+      assert.ok(
+        info.description.includes(`| ${status} | \`${code}\` |`),
+        `the table holds ${code}`,
+      );
+    }
+  });
+
+  test("its error guide is what the transport answers", async () => {
+    const post = (body: string) =>
+      serve("/categories", { "content-type": "application/json" }, { method: "POST", body });
+
+    // A JSON body that cannot be parsed: 400 without data.
+    const malformed = await post("{not json");
+    assert.equal(malformed?.status, 400);
+    const malformedBody = (await malformed?.json()) as Record<string, unknown>;
+    assert.equal(malformedBody.code, "BAD_REQUEST");
+    assert.equal(malformedBody.data, undefined);
+
+    // An empty body is an input with nothing in it: issues, on the input as a whole.
+    const empty = await post("");
+    assert.equal(empty?.status, 400);
+    const emptyBody = (await empty?.json()) as { data?: { issues?: { path: unknown[] }[] } };
+    assert.deepEqual(
+      emptyBody.data?.issues?.map((issue) => issue.path),
+      [[]],
+    );
+
+    // An input the operation does not accept: issues with their path, no code.
+    const invalid = await post(JSON.stringify({ name: 5 }));
+    assert.equal(invalid?.status, 400);
+    const invalidBody = (await invalid?.json()) as {
+      code: string;
+      data: { code?: string; issues: Array<{ path: unknown[]; message: string }> };
+    };
+    assert.equal(invalidBody.code, "BAD_REQUEST");
+    assert.equal(invalidBody.data.code, undefined);
+    assert.ok(invalidBody.data.issues.some((issue) => issue.path[0] === "name"));
+
+    // The whole input at fault: an empty path. JSON that is not an object is
+    // never read as one.
+    for (const body of [JSON.stringify("text"), "[]", JSON.stringify([{ name: "Bikes" }])]) {
+      const whole = await post(body);
+      assert.equal(whole?.status, 400, body);
+      const wholeBody = (await whole?.json()) as { data: { issues: Array<{ path: unknown[] }> } };
+      assert.deepEqual(wholeBody.data.issues[0].path, [], body);
+    }
+
+    // A body in a content type the operation does not take: 415 before
+    // anything reads it, with the types it takes. Here, without a key: a
+    // body that reached the operation would answer 400 or 401 instead.
+    const raw = (body: string) => new TextEncoder().encode(body);
+    const valid = JSON.stringify({ name: "Bikes" });
+    // A form as bytes: Node cannot cancel a body it streams from a FormData.
+    const form = new FormData();
+    form.set("name", "Bikes");
+    const multipart = new Response(form);
+    const multipartType = multipart.headers.get("content-type") ?? "";
+    const multipartBody = new Uint8Array(await multipart.arrayBuffer());
+    for (const [label, headers, body] of [
+      ["application/octet-stream", { "content-type": "application/octet-stream" }, raw(valid)],
+      ["application/problem+json", { "content-type": "application/problem+json" }, raw(valid)],
+      ["image/png", { "content-type": "image/png" }, raw(valid)],
+      ["multipart/form-data", { "content-type": multipartType }, multipartBody],
+      ["application/x-www-form-urlencoded", {}, new URLSearchParams({ name: "Bikes" })],
+      ["text/plain", { "content-type": "text/plain" }, valid],
+      ["application/jsonp", { "content-type": "application/jsonp" }, raw(valid)],
+      ["no content type", {}, raw(valid)],
+      ["an empty octet stream", { "content-type": "application/octet-stream" }, raw("")],
+      [
+        "a file's Content-Disposition",
+        { "content-type": "application/json", "content-disposition": 'attachment; filename="x"' },
+        raw(valid),
+      ],
+      [
+        "an empty body with a file's Content-Disposition",
+        { "content-disposition": 'attachment; filename="Bikes"' },
+        raw(""),
+      ],
+    ] as const) {
+      const refused = await serve("/categories", headers, { method: "POST", body });
+      assert.ok(refused, label);
+      assert.equal(refused.status, 415, label);
+      const { message, ...envelope } = (await refused.json()) as { message: string };
+      assert.deepEqual(
+        envelope,
+        {
+          defined: false,
+          code: "UNSUPPORTED_MEDIA_TYPE",
+          status: 415,
+          data: {
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            retryable: false,
+            details: { contentTypes: ["application/json"] },
+          },
+        },
+        label,
+      );
+      assert.match(message, /application\/json/, label);
+    }
+
+    // JSON, whatever the case of its type and with a charset, is read as JSON.
+    for (const type of ["application/json; charset=utf-8", "Application/JSON"]) {
+      const read = await serve(
+        "/categories",
+        { "content-type": type },
+        { method: "POST", body: JSON.stringify({ name: 5 }) },
+      );
+      assert.equal(read?.status, 400, type);
+      const readBody = (await read?.json()) as { data: { issues: Array<{ path: unknown[] }> } };
+      assert.ok(
+        readBody.data.issues.some((issue) => issue.path[0] === "name"),
+        type,
+      );
+    }
+    // A read takes no body, so its content type is not looked at.
+    const read = await serve("/categories", { "content-type": "application/octet-stream" });
+    assert.equal(read?.status, 401);
+
+    // No operation: the route answers its own 404.
+    assert.equal(await serve("/nothing-here"), undefined);
+  });
+
+  test("documents the error body on every operation", async () => {
+    const document = await fetchDocument();
+    const { Error: schema } = document.components.schemas;
+    assert.deepEqual(schema.required, ["defined", "code", "status", "message"]);
+    assert.ok(schema.properties?.data);
+    for (const [name, response] of Object.entries(document.components.responses)) {
+      assert.equal(
+        response.content["application/json"].schema.$ref,
+        "#/components/schemas/Error",
+        `${name} answers the Error body`,
+      );
+    }
+
+    const served = await servedProcedures();
+    assert.equal(served.length, exposedNames.length);
+    const ref = (name: string) => `#/components/responses/${name}`;
+    for (const { path, meta, procedure, operation } of served) {
+      const { responses } = operation;
+      assert.equal(responses.default?.$ref, ref("Error"), `${path}: default`);
+      assert.equal(responses["400"]?.$ref, ref("BadRequest"), `${path}: 400`);
+      // Every operation but a read takes a body, so may refuse its content type.
+      assert.equal(
+        responses["415"]?.$ref,
+        procedure["~orpc"].route.method === "GET" ? undefined : ref("UnsupportedMediaType"),
+        `${path}: 415`,
+      );
+      assert.equal(responses["401"]?.$ref, ref("Unauthorized"), `${path}: 401`);
+      // An operation a person approves documents the approval's answers.
+      const person = meta.personApproval === true;
+      assert.equal(
+        responses["429"]?.$ref,
+        ref(person ? "ApprovalsFull" : "RateLimited"),
+        `${path}: 429`,
+      );
+      assert.equal(
+        responses["403"]?.$ref,
+        meta.scope ? ref("Forbidden") : undefined,
+        `${path}: 403`,
+      );
+      assert.equal(
+        responses["412"]?.$ref,
+        person ? ref("ApprovalRequired") : meta.sensitive ? ref("ConfirmationRequired") : undefined,
+        `${path}: 412`,
+      );
+      assert.equal(
+        responses["409"]?.$ref,
+        person ? ref("ApprovalDeclined") : undefined,
+        `${path}: 409`,
+      );
+    }
+  });
+
+  /** Every operation but a read, as `METHOD /path`. */
+  const writesOf = (served: Awaited<ReturnType<typeof servedProcedures>>) =>
+    served.flatMap((entry) => {
+      const { method = "POST", path = "" } = entry.procedure["~orpc"].route;
+      return method === "GET" ? [] : [{ ...entry, route: `${method} ${path}` }];
+    });
+
+  /**
+   * The operations whose request body, in the served document, differs from
+   * what the transport reads: an absent request body means it takes none.
+   */
+  const bodyMismatches = (served: Awaited<ReturnType<typeof servedProcedures>>) =>
+    writesOf(served).flatMap(({ route, inputJsonSchema, procedure, operation }) => {
+      const documented = Object.keys(operation.requestBody?.content ?? {});
+      const read = openapi.requestBodyMediaTypes(inputJsonSchema, procedure["~orpc"].route);
+      return JSON.stringify(documented) === JSON.stringify(read)
+        ? []
+        : [`${route}: documents [${documented}], reads [${read}]`];
+    });
+
+  /** The writes whose whole input is in their path: they take no body. */
+  const BODILESS = [
+    "DELETE /payments/{paymentId}",
+    "DELETE /products/downtimes/{downtimeId}",
+    "DELETE /products/seasonal-pricings/{id}",
+    "DELETE /products/{id}",
+    "DELETE /team/members/{id}",
+    "DELETE /variants/values/{id}",
+    "DELETE /variants/{id}",
+    "POST /handoffs/{id}/refresh",
+    "POST /products/seasonal-pricings/{id}/duplicate",
+    "POST /products/units/{unitId}/reinstate",
+    "POST /products/{id}/duplicate",
+    "POST /reservations/{id}/cancel",
+    "POST /team/invitations/{id}/cancel",
+    "POST /variants/{id}/withdraw",
+  ];
+
+  test("documents each request body in the content types the transport reads it in", async () => {
+    const served = await servedProcedures();
+    assert.deepEqual(bodyMismatches(served), []);
+
+    const writes = writesOf(served);
+    assert.deepEqual(
+      writes
+        .filter(({ operation }) => !operation.requestBody)
+        .map(({ route }) => route)
+        .sort(),
+      BODILESS,
+    );
+    // The comparison sees a request body go: without its own, each operation
+    // that has one differs from what the transport reads.
+    const withBody = writes.filter(({ operation }) => operation.requestBody);
+    assert.ok(withBody.length > 0);
+    for (const entry of withBody) {
+      const { requestBody: _dropped, ...operation } = entry.operation;
+      assert.equal(bodyMismatches([{ ...entry, operation }]).length, 1, entry.route);
+    }
+  });
+
+  test("an operation whose whole input is in its path reads no body", async () => {
+    const bodiless = writesOf(await servedProcedures()).filter(
+      ({ operation }) => !operation.requestBody,
+    );
+    assert.equal(bodiless.length, BODILESS.length);
+    const json = { "content-type": "application/json" };
+    for (const { route, procedure } of bodiless) {
+      const { method = "POST", path = "" } = procedure["~orpc"].route;
+      const url = path.replace(/\{\w+\}/g, "in-the-path");
+      // A body with anything in it is refused before the operation: without
+      // a key, a body that reached it would answer 401.
+      for (const [label, headers, body] of [
+        ["a JSON field", json, JSON.stringify({ id: "another" })],
+        ["the path's own id", json, JSON.stringify({ id: "in-the-path" })],
+        ["JSON null", json, "null"],
+        ["a JSON array", json, "[]"],
+        ["text", { "content-type": "text/plain" }, "another"],
+        ["a field without Content-Type", {}, JSON.stringify({ id: "another" })],
+      ] as const) {
+        const refused = await serve(url, headers, { method, body });
+        assert.equal(refused?.status, 415, `${route}: ${label}`);
+        assert.deepEqual(
+          await refused.json(),
+          {
+            defined: false,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            status: 415,
+            message: "This operation takes no request body.",
+            data: {
+              code: "UNSUPPORTED_MEDIA_TYPE",
+              retryable: false,
+              details: { contentTypes: [] },
+            },
+          },
+          `${route}: ${label}`,
+        );
+      }
+      // No body, an empty one whatever its type, or JSON's empty object:
+      // the operation runs.
+      for (const [label, headers, body] of [
+        ["no body", {}, undefined],
+        ["an empty JSON body", json, ""],
+        ["an empty body without Content-Type", {}, ""],
+        ["an empty text body", { "content-type": "text/plain" }, ""],
+        ["JSON's empty object", json, "{}"],
+        ["JSON's empty object, spaced", json, " { }\n"],
+      ] as const) {
+        const ran = await serve(url, headers, { method, body });
+        assert.equal(ran?.status, 401, `${route}: ${label}`);
+      }
+    }
+  });
+
+  test("a field named as a path parameter must hold the path's value", async () => {
+    const served = await servedProcedures();
+    const withParameters = served.filter(({ procedure }) =>
+      /\{\w+\}/.test(procedure["~orpc"].route.path ?? ""),
+    );
+    const bodiless = new Set(BODILESS);
+    let checked = 0;
+    for (const { procedure, operation } of withParameters) {
+      const { method = "POST", path = "" } = procedure["~orpc"].route;
+      const route = `${method} ${path}`;
+      if (bodiless.has(route)) continue;
+      const names = [...path.matchAll(/\{(\w+)\}/g)].map(([, name]) => name);
+      const url = path.replace(/\{(\w+)\}/g, (_, name: string) => `path-${name}`);
+      for (const name of names) {
+        // A read takes its input from the query string; a write, from its body.
+        const send = (value: unknown) =>
+          method === "GET"
+            ? serve(`${url}?${new URLSearchParams({ [name]: String(value) })}`)
+            : serve(
+                url,
+                { "content-type": "application/json" },
+                { method, body: JSON.stringify({ [name]: value, other: "kept" }) },
+              );
+        const values: unknown[] = ["another", `path-${name}x`, ""];
+        // JSON carries other types; a query string, only text.
+        if (method !== "GET") values.push(5, null, [`path-${name}`]);
+        for (const value of values) {
+          const refused = await send(value);
+          assert.equal(refused?.status, 400, `${route}: ${name}=${JSON.stringify(value)}`);
+          const { message, ...envelope } = (await refused.json()) as { message: string };
+          assert.deepEqual(
+            envelope,
+            {
+              defined: false,
+              code: "BAD_REQUEST",
+              status: 400,
+              data: {
+                code: "PATH_PARAMETER_CONFLICT",
+                retryable: false,
+                details: { parameter: name },
+              },
+            },
+            `${route}: ${name}=${JSON.stringify(value)}`,
+          );
+          assert.match(message, new RegExp(name), route);
+        }
+        // The path's own value, repeated, is read: without a key, 401, or 400
+        // with the issues of an input that lacks a field.
+        const same = await send(`path-${name}`);
+        assert.ok(same, route);
+        const read = (await same.json()) as { data?: { code?: string; issues?: unknown[] } };
+        if (same.status === 400) assert.ok(read.data?.issues, `${route}: ${name} repeated`);
+        else assert.equal(same.status, 401, `${route}: ${name} repeated`);
+        checked++;
+      }
+      assert.ok(operation.responses["400"], route);
+    }
+    assert.ok(checked > 30, `${checked} parameters checked`);
+  });
+
+  test("documents the idempotency key and the replay only on the writes that replay", async () => {
+    const document = await fetchDocument();
+    const { MAX_IDEMPOTENCY_KEY_LENGTH } = await import("./operations");
+    assert.deepEqual(document.components.parameters.IdempotencyKey.schema, {
+      type: "string",
+      minLength: 1,
+      maxLength: MAX_IDEMPOTENCY_KEY_LENGTH,
+    });
+
+    const served = await servedProcedures();
+    const secret = served.filter(({ meta }) => meta.secretOutput).map(({ meta }) => meta.mcp.name);
+    // Upload URLs. A hand-off's link is its page, the same for its whole life: those replay.
+    assert.ok(secret.length >= 3, `writes that return a temporary link: ${secret.join(", ")}`);
+    for (const name of [
+      "payments_start_stripe_onboarding",
+      "payments_open_stripe_dashboard",
+      "billing_start_card_setup",
+      "team_invite_member",
+    ]) {
+      assert.ok(!secret.includes(name), `${name} replays`);
+    }
+    for (const { path, meta, operation } of served) {
+      const writes = meta.scope?.level === "write";
+      // procedures.ts passes no key to runOperation for these.
+      const replays = writes && !meta.secretOutput;
+      const keyRef = meta.requiresIdempotencyKey ? "IdempotencyKeyRequired" : "IdempotencyKey";
+      const takesKey = (operation.parameters ?? []).some(
+        (parameter) => parameter.$ref === `#/components/parameters/${keyRef}`,
+      );
+      const headers = Object.keys(operation.responses["200"]?.headers ?? {});
+      assert.equal(takesKey, replays, `${path}: Idempotency-Key`);
+      assert.equal(headers.includes("Louez-Replayed"), replays, `${path}: Louez-Replayed`);
+      assert.equal(headers.includes("Louez-Operation-Id"), writes, `${path}: Louez-Operation-Id`);
+    }
+  });
+
+  test("says, on each operation no API key can call, that an API key is refused", async () => {
+    const { accountRefusal, allows, normalizeScopes } = await import("./permissions");
+    const { apiKeyPermissionsSchema } = await import("../contracts/api-keys");
+    // The widest key there can be: write on every domain a key may hold.
+    const scopes = normalizeScopes(
+      Object.fromEntries(
+        Object.keys(apiKeyPermissionsSchema.shape).map((domain) => [domain, "write"]),
+      ),
+    );
+    const key = { kind: "api_key" as const, storeId: "store_1", stores: null, scopes };
+
+    const refused = (await servedProcedures()).flatMap(({ path, meta, operation }) => {
+      if (meta.actors && !meta.actors.includes("api_key"))
+        return [{ path, why: "actors", operation }];
+      if (!meta.scope) return [];
+      if (meta.account) {
+        const refusal = accountRefusal(key, meta.scope);
+        return refusal ? [{ path, why: refusal, operation, meta }] : [];
+      }
+      return allows("owner", scopes, meta.scope) ? [] : [{ path, why: "scope", operation }];
+    });
+    assert.deepEqual(
+      refused.map(({ path }) => path),
+      ["dashboard.stores.create"],
+    );
+    const sentence =
+      "an API key is bound to its store and is answered 403 CONNECTION_BOUND_TO_STORES";
+    for (const { path, why, operation, meta } of refused) {
+      // Another reason needs its own sentence.
+      assert.equal(why, "bound", path);
+      // The reference says it to a developer; the tool says who may call it.
+      assert.ok(operation.description?.includes(sentence), `${path} says an API key is refused`);
+      assert.ok(meta?.mcp.description.includes(sentence), `${path}'s tool says it too`);
+      assert.ok(meta?.mcp.description.includes("connected over MCP"), `${path} says who may`);
+    }
+    const others = (await servedProcedures()).filter(
+      ({ path }) => !refused.some((entry) => entry.path === path),
+    );
+    for (const { path, operation } of others) {
+      assert.ok(!operation.description?.includes(sentence), `${path} does not say it`);
+    }
+  });
+
+  test("gives every operation a text of its own, written for developers, without an assistant's words", async () => {
+    const assistantWording = [
+      // What an assistant is told to do for the person it helps.
+      /\b(?:show|give|tell|ask|offer|remind|send)\b(?:\s+(?:it|them|this|these|that))?\s+(?:to\s+)?the user\b/i,
+      /\b(?:show|give|tell)\s+(?:it|them|the \w+)\s+to the user\b/i,
+      /\bto the user\b/i,
+      /\bthe user (?:wants|asks|chose|agrees|says|decides|confirms)\b/i,
+      /\bonce they agree\b/i,
+      /\b(?:ask|tell) them\b/i,
+      // The words of the MCP transport.
+      /\btools?\b/i,
+      /\bMCP\b/i,
+      /\bconnection\b/i,
+      /\bagents?\b/i,
+      /\bstoreId\b/i,
+    ];
+    // Every MCP tool name, in lower case: the exposed procedures' and the hand-written tools'.
+    const { capabilities } = await import("./inventory");
+    const toolNames = new Set(
+      [
+        ...procedures.map(({ meta }) => meta.mcp.name),
+        ...capabilities.flatMap(({ sources }) =>
+          sources.filter(({ kind }) => kind === "mcp-tool").map(({ name }) => name),
+        ),
+      ].map((name) => name.toLowerCase()),
+    );
+    assert.ok(toolNames.has("products_get") && toolNames.has("check_availability"));
+    // The whole identifiers of a text that are a tool's name, whatever their case:
+    // a longer identifier that merely contains one is not.
+    const toolsNamed = (text: string) =>
+      (text.match(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/gi) ?? []).filter((word) =>
+        toolNames.has(word.toLowerCase()),
+      );
+    for (const { path, meta, operation } of await servedProcedures()) {
+      // `.route({ description })`; the tool keeps `meta.mcp.description`.
+      assert.ok(operation.description, `${path} has a REST text`);
+      assert.notEqual(operation.description, meta.mcp.description, `${path} has its own REST text`);
+      for (const word of assistantWording) {
+        assert.doesNotMatch(operation.description, word, `${path} says ${word}`);
+      }
+      assert.deepEqual(toolsNamed(operation.description), [], `${path} names no tool`);
+    }
+    // The guard catches what it is meant to.
+    const caught = (text: string) =>
+      assistantWording.some((word) => word.test(text)) || toolsNamed(text).length > 0;
+    for (const text of [
+      "Show the user the preview.",
+      "Call products_get first.",
+      "Give it to the user as is.",
+      "Ask the user which one.",
+      "When the user wants a refund.",
+      "Call PRODUCTS_GET first.",
+      "Use mcp for this request.",
+    ]) {
+      assert.ok(caught(text), `the guard catches "${text}"`);
+    }
+    for (const text of [
+      "It opens for the Louez user the key belongs to.",
+      "Send the same request again with the token.",
+      "The answer's `my_products_get` field is a longer identifier.",
+    ]) {
+      assert.ok(!caught(text), `the guard lets "${text}" through`);
+    }
+  });
+
+  test("speaks of no internals in any description", async () => {
+    const document = await fetchDocument();
+    const descriptions: string[] = [];
+    const walk = (node: unknown) => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      for (const [key, value] of Object.entries(node)) {
+        if ((key === "description" || key === "summary") && typeof value === "string") {
+          descriptions.push(value);
+        }
+        walk(value);
+      }
+    };
+    walk(document);
+    assert.ok(descriptions.length > 100);
+    for (const text of descriptions) {
+      for (const word of INTERNAL_WORDING) {
+        assert.doesNotMatch(text, word, `"${text.slice(0, 80)}…" says ${word}`);
+      }
+    }
+  });
+});
+
 describe("the /api/v1 body cap", () => {
   let serve: (request: Request) => Promise<Response | undefined>;
   let limits: Array<{ method: string; pattern: RegExp; maxBytes: number }>;
@@ -298,7 +1223,7 @@ describe("the /api/v1 body cap", () => {
     ({ PRODUCT_LIST_LIMITS: listLimits } = await import("@louez/validations"));
     const { appRouter } = await import("../router");
     const exposure = createExposure(appRouter);
-    const handler = openapi.createOpenApiHandler(exposure.router, { docs: false });
+    const handler = openapi.createOpenApiHandler(exposure.router);
     limits = openapi.routeBodyLimits(exposure.procedures);
     ({ MAX_LARGE_BODY_READS: maxLargeReads } = await import("./large-bodies"));
     serve = (request) =>
@@ -520,5 +1445,159 @@ describe("the /api/v1 body cap", () => {
     const after = await serve(post("/products", next.body, KNOWN));
     assert.equal(next.sent.bytes, 3 * MiB, "read");
     assert.notEqual(after?.status, 503);
+  });
+});
+
+describe("the content types an operation takes", () => {
+  let openapi: typeof import("./openapi");
+  let procedures: readonly import("./exposure").ExposedProcedure[];
+  let toJsonSchema: (schema: import("zod").ZodType) => unknown;
+  let z: typeof import("zod").z;
+
+  before(async () => {
+    openapi = await import("./openapi");
+    const { createExposure } = await import("./exposure");
+    const { appRouter } = await import("../router");
+    procedures = createExposure(appRouter).procedures;
+    ({ z } = await import("zod"));
+    const { ZodToJsonSchemaConverter } = await import("@orpc/zod/zod4");
+    const converter = new ZodToJsonSchemaConverter();
+    toJsonSchema = (schema) => converter.convert(schema, { strategy: "input" })[1];
+  });
+
+  test("are decided from the input: JSON, and a multipart form when it holds a file", () => {
+    const table: Array<[string, import("zod").ZodType, string[]]> = [
+      ["an object", z.object({ name: z.string() }), ["application/json"]],
+      ["an empty object", z.object({}), ["application/json"]],
+      [
+        "an object with a file",
+        z.object({ file: z.file(), note: z.string() }),
+        ["application/json", "multipart/form-data"],
+      ],
+      [
+        "an object with a nested image",
+        z.object({ images: z.array(z.object({ file: z.file().mime("image/png") })) }),
+        ["application/json", "multipart/form-data"],
+      ],
+      ["no schema at all", z.any(), []],
+    ];
+    for (const [label, schema, types] of table) {
+      assert.deepEqual(openapi.requestBodyMediaTypes(toJsonSchema(schema)), types, label);
+    }
+  });
+
+  test("are decided once the path parameters are taken out, as the document's generator does", () => {
+    const id = z.string();
+    const table: Array<[string, `/${string}`, import("zod").ZodType, string[]]> = [
+      ["an input all in the path", "/things/{id}", z.object({ id }), []],
+      [
+        "an input all in the path, two parameters",
+        "/things/{id}/parts/{partId}",
+        z.object({ id, partId: id }),
+        [],
+      ],
+      [
+        "a field beside the path",
+        "/things/{id}",
+        z.object({ id, name: z.string() }),
+        ["application/json"],
+      ],
+      [
+        "an optional field beside the path",
+        "/things/{id}",
+        z.object({ id, name: z.string().optional() }),
+        ["application/json"],
+      ],
+      [
+        "a file beside the path",
+        "/things/{id}",
+        z.object({ id, file: z.file() }),
+        ["application/json", "multipart/form-data"],
+      ],
+      ["no path parameter", "/things", z.object({ id }), ["application/json"]],
+    ];
+    for (const [label, path, schema, types] of table) {
+      for (const method of ["POST", "PATCH", "DELETE"]) {
+        assert.deepEqual(
+          openapi.requestBodyMediaTypes(toJsonSchema(schema), { method, path }),
+          types,
+          `${method}: ${label}`,
+        );
+      }
+      // A read takes its input from the query string.
+      assert.deepEqual(
+        openapi.requestBodyMediaTypes(toJsonSchema(schema), { method: "GET", path }),
+        [],
+        `GET: ${label}`,
+      );
+    }
+  });
+
+  test("every exposed write takes JSON, unless its whole input is in its path", () => {
+    let none = 0;
+    for (const { path, inputJsonSchema, procedure } of procedures) {
+      const route = procedure["~orpc"].route;
+      const inPath = [...(route.path ?? "").matchAll(/\{(\w+)\}/g)].map(([, name]) => name);
+      const fields = Object.keys((inputJsonSchema as { properties?: object }).properties ?? {});
+      // An input with no field still takes a body when nothing is in its path.
+      const takesNone =
+        route.method === "GET" ||
+        (inPath.length > 0 && fields.every((field) => inPath.includes(field)));
+      if (takesNone && route.method !== "GET") none++;
+      assert.deepEqual(
+        openapi.requestBodyMediaTypes(inputJsonSchema, route),
+        takesNone ? [] : ["application/json"],
+        path,
+      );
+    }
+    assert.equal(none, 14);
+  });
+
+  test("an operation with a file field reads a multipart form and JSON, and nothing else", async () => {
+    const { os } = await import("@orpc/server");
+    const router = {
+      files: os
+        .route({ method: "POST", path: "/files" })
+        .input(z.object({ file: z.file(), note: z.string() }))
+        .handler(({ input }) => ({ name: input.file.name, note: input.note })),
+    };
+    const handler = openapi.createOpenApiHandler(router);
+    const serve = (init: RequestInit) =>
+      openapi.handleOpenApiRequest(
+        handler,
+        new Request("https://app.louez.test/api/v1/files", { method: "POST", ...init }),
+        { ports: {} as import("./ports").ApiPorts },
+      );
+
+    const form = new FormData();
+    form.set("file", new File(["bytes"], "photo.png", { type: "image/png" }));
+    form.set("note", "front");
+    const sent = await serve({ body: form });
+    assert.equal(sent?.status, 200);
+    assert.deepEqual(await sent?.json(), { name: "photo.png", note: "front" });
+
+    // JSON is read, and cannot carry the file: the input is refused on it.
+    const json = await serve({
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: "bytes", note: "front" }),
+    });
+    assert.ok(json);
+    assert.equal(json.status, 400);
+    const issues = ((await json.json()) as { data: { issues: Array<{ path: unknown[] }> } }).data
+      .issues;
+    assert.deepEqual(
+      issues.map((issue) => issue.path),
+      [["file"]],
+    );
+
+    const raw = await serve({
+      headers: { "content-type": "application/octet-stream" },
+      body: new TextEncoder().encode("bytes"),
+    });
+    assert.ok(raw);
+    assert.equal(raw.status, 415);
+    assert.deepEqual(((await raw.json()) as { data: { details: unknown } }).data.details, {
+      contentTypes: ["application/json", "multipart/form-data"],
+    });
   });
 });

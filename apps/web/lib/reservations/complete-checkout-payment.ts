@@ -1,21 +1,15 @@
 import {
-  checkExistingReservationInventory,
-  ReservationInventoryError,
-} from "@louez/api/services/reservation-inventory";
+  confirmPaidReservation,
+  type PaidConfirmationDepositStatus,
+  type PaidConfirmationInput,
+} from "@louez/api/services/payment-reservation-status";
+import { ReservationInventoryError } from "@louez/api/services/reservation-inventory";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { validateReservationContract, confirmMarketplaceBookingAttempt } from "@louez/api/services";
-import {
-  ConsumableStockError,
-  changeReservationStatus,
-  consumeReservationStock,
-  db,
-  retryTransactionOnDeadlock,
-  toWholeSeconds,
-  type ReservationBillingEffect,
-} from "@louez/db";
-import { paymentRequests, reservationActivity, reservations, stores } from "@louez/db";
+import { ConsumableStockError, db, toWholeSeconds } from "@louez/db";
+import { payments, paymentRequests, reservationActivity, reservations, stores } from "@louez/db";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
@@ -44,9 +38,9 @@ import {
 } from "@/lib/stripe/payment-completion";
 import { evaluateReservationRules } from "@louez/utils";
 
-export type CheckoutPaymentCompletionSource = "webhook" | "return";
+import { checkoutSessionAccount, isSessionCreationRow } from "./checkout-session-account";
 
-type DepositStatus = "none" | "card_saved" | "pending";
+export type CheckoutPaymentCompletionSource = "webhook" | "return";
 
 /** What the Stripe Checkout session and its PaymentIntent tell us. */
 export interface CheckoutPaymentStripeDetails {
@@ -134,101 +128,20 @@ const insuranceShareAtClaim = async (
 };
 
 /**
- * Confirms a paid pending reservation as the `payment` actor, with its
- * `confirmed` activity row. Returns false when it was not pending. Exported for
- * its database test.
+ * Confirm a paid pending reservation and consume its consumable stock, through
+ * the payment's status service (packages/api), with the app's fee runner. Stock
+ * that ran out between checkout and confirmation leaves the reservation
+ * pending rather than failing the webhook or the customer's return: the
+ * merchant restocks and confirms from the dashboard, or confirms it there
+ * over the returnable stock (`allowOverbooking`) or past the turnover buffer
+ * (`overrideTurnoverBuffer`), which no payment passes. Still busy, it throws.
  */
-export const confirmPaidReservationOrThrow = async (params: {
-  reservationId: string;
-  storeId: string;
-  stripeCustomerId: string | null;
-  stripePaymentMethodId: string | null;
-  depositStatus: DepositStatus;
-  /** The metadata of the `confirmed` activity row. */
-  activityMetadata: Record<string, unknown>;
-}): Promise<boolean> => {
-  // Keep payment/deposit metadata even when stock consumption rolls back. A
-  // merchant can then restock and confirm the paid reservation manually.
-  await db
-    .update(reservations)
-    .set({
-      stripeCustomerId: params.stripeCustomerId,
-      stripePaymentMethodId: params.stripePaymentMethodId,
-      depositStatus: params.depositStatus,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(reservations.id, params.reservationId),
-        eq(reservations.storeId, params.storeId),
-        eq(reservations.status, "pending"),
-      ),
-    );
-
-  // The confirmation locks the reservation, then its products: a lost
-  // deadlock runs the whole transaction again (DL-12). It records no payment,
-  // so a new run cannot record one twice; the effects run once, after it.
-  const result = await retryTransactionOnDeadlock(() =>
-    db.transaction(
-      async (tx): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
-        const change = await changeReservationStatus(tx, {
-          reservationId: params.reservationId,
-          storeId: params.storeId,
-          to: "confirmed",
-          actor: "payment",
-          actorUserId: null,
-          expectedFrom: "pending",
-          beforeWrite: (lockedTx) =>
-            checkExistingReservationInventory(lockedTx, params.reservationId, params.storeId),
-          activity: { metadata: params.activityMetadata },
-        });
-
-        if (!change.changed) {
-          // Already confirmed, by the other completion path or the merchant: make
-          // sure its consumables were taken. Consuming twice changes nothing.
-          if (change.from === "confirmed") {
-            await consumeReservationStock(tx, params.reservationId, params.storeId);
-          }
-          return { confirmed: false, effects: [] };
-        }
-
-        await tx
-          .update(reservations)
-          .set({
-            stripeCustomerId: params.stripeCustomerId,
-            stripePaymentMethodId: params.stripePaymentMethodId,
-            depositStatus: params.depositStatus,
-          })
-          .where(
-            and(
-              eq(reservations.id, params.reservationId),
-              eq(reservations.storeId, params.storeId),
-            ),
-          );
-
-        return { confirmed: true, effects: change.effects };
-      },
-      { isolationLevel: "read committed" },
-    ),
-  );
-
-  // The webhook records a paid checkout's fee itself, so this is empty today.
-  await runReservationEffects(result.effects);
-  return result.confirmed;
-};
-
-/**
- * Confirm a paid pending reservation and consume its consumable stock. A
- * consumable that ran out between checkout and confirmation leaves the
- * reservation pending (the merchant restocks and confirms from the
- * dashboard) rather than failing the webhook or the customer's return.
- */
-const confirmPaidReservation = async (
-  params: Parameters<typeof confirmPaidReservationOrThrow>[0],
+const confirmPaidReservationLoggingRefusal = async (
+  params: PaidConfirmationInput,
   source: CheckoutPaymentCompletionSource,
 ): Promise<boolean> => {
   try {
-    return await confirmPaidReservationOrThrow(params);
+    return await confirmPaidReservation(params, runReservationEffects);
   } catch (error) {
     if (error instanceof ReservationInventoryError) {
       log.error("checkout", `Inventory conflict on paid confirmation: ${params.reservationId}`);
@@ -312,7 +225,7 @@ const runCheckoutPaymentCompletion = async ({
   const currency = stripeDetails.currency;
   const totalAmount = fromStripeCents(stripeDetails.amountTotalCents, currency);
   const depositAmount = Number(reservation.depositAmount) || 0;
-  const depositStatus: DepositStatus =
+  const depositStatus: PaidConfirmationDepositStatus =
     depositAmount > 0
       ? stripeDetails.stripeCustomerId && stripeDetails.stripePaymentMethodId
         ? "card_saved"
@@ -353,6 +266,23 @@ const runCheckoutPaymentCompletion = async ({
     paymentRequestId: paymentRequestId ?? null,
     feeFacts,
   });
+
+  // A payment given back in full since an earlier delivery (`refunded`) is no
+  // longer the booking's: the replay leaves the contract, the marketplace
+  // attempt, the invoice, the messages and the confirmation as they are. A
+  // payment that stands (a partial refund netted included) finishes what an
+  // earlier delivery left undone.
+  if (!paymentClaim.stands) {
+    log.info({
+      checkout: {
+        event: "payment_no_longer_held",
+        source,
+        reservationId,
+        paymentId: paymentClaim.paymentId,
+      },
+    });
+    return { status: "completed", claimed: false, reservationConfirmed: false };
+  }
 
   await db.transaction((tx) =>
     validateReservationContract(tx, reservationId, reservation.storeId, "payment"),
@@ -412,10 +342,11 @@ const runCheckoutPaymentCompletion = async ({
     endDate: reservation.endDate,
     storeSettings: store.settings,
   });
-  const reservationConfirmed = await confirmPaidReservation(
+  const reservationConfirmed = await confirmPaidReservationLoggingRefusal(
     {
       reservationId,
       storeId: store.id,
+      paymentId: paymentClaim.paymentId,
       stripeCustomerId: stripeDetails.stripeCustomerId,
       stripePaymentMethodId: stripeDetails.stripePaymentMethodId,
       depositStatus,
@@ -559,7 +490,10 @@ const runCheckoutPaymentCompletion = async ({
 
 /**
  * Shared completion of a Stripe Checkout payment for a reservation, used by
- * the Connect webhook and by the customer's return from Stripe.
+ * the Connect webhook and by the customer's return from Stripe. The return
+ * reads the session and its PaymentIntent on the account the session's
+ * payment row records, the one Louez created it on, else on the store's
+ * connected account (`checkoutSessionAccount`), and gives the claim that account.
  */
 export const completeCheckoutPayment = async (
   input: CompleteCheckoutPaymentInput,
@@ -589,7 +523,27 @@ export const completeCheckoutPayment = async (
     return { status: "payment_unavailable" };
   }
 
-  const session = await getCheckoutSession(store.stripeAccountId, input.stripeCheckoutSessionId);
+  // The session's payment row of this reservation in this store, read before
+  // Stripe is asked: its account is the one the session lives on.
+  const [sessionRow] = await db
+    .select({ origin: payments.origin, stripeAccountId: payments.stripeAccountId })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .where(
+      and(
+        eq(payments.reservationId, input.reservationId),
+        eq(payments.stripeCheckoutSessionId, input.stripeCheckoutSessionId),
+        eq(reservations.storeId, store.id),
+      ),
+    )
+    .limit(1);
+  const sessionAccount = checkoutSessionAccount({
+    recordedAccountId:
+      sessionRow && isSessionCreationRow(sessionRow) ? sessionRow.stripeAccountId : null,
+    storeAccountId: store.stripeAccountId,
+  });
+
+  const session = await getCheckoutSession(sessionAccount, input.stripeCheckoutSessionId);
 
   // The session id comes from the URL: it must be the session created for
   // THIS reservation (`createCheckoutSession` stamps the id in the metadata),
@@ -620,7 +574,7 @@ export const completeCheckoutPayment = async (
     const paymentIntent = await stripe.paymentIntents.retrieve(
       session.paymentIntentId,
       { expand: ["latest_charge"] },
-      { stripeAccount: store.stripeAccountId },
+      { stripeAccount: sessionAccount },
     );
     paymentIntentId = paymentIntent.id;
     const charge = paymentIntent.latest_charge;
@@ -656,7 +610,7 @@ export const completeCheckoutPayment = async (
       chargeCreatedAt,
       stripeCustomerId,
       stripePaymentMethodId,
-      stripeAccountId: store.stripeAccountId,
+      stripeAccountId: sessionAccount,
       paymentIntentMetadata,
       sessionMetadata: session.metadata,
     },

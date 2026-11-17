@@ -8,12 +8,17 @@ import {
   storeMembers,
   stores,
   users,
+  type ApiHandoffPayload,
   type Transaction,
 } from "@louez/db";
-import { and, count, desc, eq, gt, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import type { HandoffLink } from "../contracts/handoffs";
+import {
+  handoffErrors,
+  type HandoffDecisionOutcome,
+  type HandoffLink,
+} from "../contracts/handoffs";
 import {
   INVITATION_EMAILS_PER_DAY,
   INVITATION_VALIDITY_DAYS,
@@ -29,7 +34,15 @@ import { enqueueEffects } from "../platform/effects";
 import { isApiError, platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import type { ApiEvent, ApiEventStore, ApiPorts, UrlsPort } from "../platform/ports";
-import { issueHandoff, readHandoffLink, type HandoffRequester } from "./handoffs";
+import {
+  invitationPayloadOf,
+  invitationShown,
+  issueHandoff,
+  type HandoffRequester,
+} from "./handoffs";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
+import type { ApprovalPresentation } from "./approval-display";
+import { cancelInvitationPresentation, removeMemberPresentation } from "./approval-presentations";
 
 /**
  * The store's team: its members and pending invitations, and the writes the
@@ -50,8 +63,16 @@ export interface TeamCaller {
   ports: Pick<ApiPorts, "team" | "afterCommit">;
 }
 
-/** Asks for the confirmation under the write's lock: null to go on, else the refusal to throw. */
-type Confirm<TPreview> = (preview: TPreview, tx: Transaction) => Promise<Error | null>;
+/**
+ * Asks for the confirmation under the write's lock: null to go on, else the
+ * refusal to raise once the transaction is over. `presentation` is what a
+ * person reads first, built from the preview's own values.
+ */
+type Confirm<TPreview> = (
+  preview: TPreview,
+  tx: Transaction,
+  presentation?: ApprovalPresentation,
+) => Promise<ConfirmationRefusal | null>;
 
 const DAY_MS = 86_400_000;
 
@@ -210,8 +231,9 @@ const sendsEmail = (caller: Pick<TeamCaller, "ports">) =>
 
 /**
  * Refuses an invitation e-mail past the store's daily cap
- * (`INVITATION_EMAILS_PER_DAY`): the e-mails queued in the last 24 hours,
- * on the database's clock. Read under the store's lock, as every invitation
+ * (`INVITATION_EMAILS_PER_DAY`): every e-mail queued in the last 24 hours,
+ * whatever became of it, on the database's clock, whether this instance
+ * sends e-mail or not. Read under the store's lock, as every invitation
  * write of the store takes it.
  */
 async function assertEmailQuota(tx: Transaction, storeId: string) {
@@ -228,13 +250,18 @@ async function assertEmailQuota(tx: Transaction, storeId: string) {
   if ((row?.count ?? 0) >= INVITATION_EMAILS_PER_DAY) throw teamErrors.emailLimit();
 }
 
-/** The invitation e-mail, queued in the write's transaction when this instance sends e-mail. */
+/**
+ * The invitation e-mail, queued in the write's transaction. It is owed even
+ * when this instance sends no e-mail: its sender then gives it up at once and
+ * the inbox shows it (`invitation_not_sent`), and the answer says
+ * `not_configured`, for the user to share the link. The daily cap holds
+ * either way.
+ */
 async function queueInvitationEmail(
   tx: Transaction,
   caller: TeamCaller,
   invitationId: string,
 ): Promise<{ invitationEmail: "queued" | "not_configured"; effectIds: string[] }> {
-  if (!sendsEmail(caller)) return { invitationEmail: "not_configured", effectIds: [] };
   await assertEmailQuota(tx, caller.storeId);
   const effectIds = await enqueueEffects(tx, caller.storeId, [
     {
@@ -251,7 +278,31 @@ async function queueInvitationEmail(
       orderingKey: `invitation:${invitationId}:email`,
     },
   ]);
-  return { invitationEmail: "queued", effectIds };
+  return { invitationEmail: sendsEmail(caller) ? "queued" : "not_configured", effectIds };
+}
+
+/**
+ * The invitation's e-mails not yet delivered, made pointless by a resend:
+ * waiting, failed or given up, they are `cancelled` and lose their payload,
+ * so neither an old one goes out beside the new nor the inbox keeps showing
+ * one as not sent. A row being sent right now is left to finish.
+ */
+async function cancelUndeliveredInvitationEmails(
+  tx: Transaction,
+  storeId: string,
+  invitationId: string,
+) {
+  await tx
+    .update(apiEffects)
+    .set({ status: "cancelled", payload: {}, claimToken: null })
+    .where(
+      and(
+        eq(apiEffects.storeId, storeId),
+        eq(apiEffects.type, "team.invitationEmail"),
+        inArray(apiEffects.status, ["pending", "failed", "abandoned"]),
+        eq(sql`JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.invitationId'))`, invitationId),
+      ),
+    );
 }
 
 const invitationExpiry = (now: Date) => new Date(now.getTime() + INVITATION_VALIDITY_DAYS * DAY_MS);
@@ -302,12 +353,68 @@ async function checkInvitable(tx: Transaction, caller: TeamCaller, email: string
   return { existingUserId: existingUser?.id ?? null, memberLimit };
 }
 
-/** The handoff an owner approves an agent's invitation through, as the invitation locks it. */
+/** The handoff an owner approves an agent's invitation through, as their page showed it. */
 interface Approval {
   handoffId: string;
-  tokenHash: string;
-  /** What the owner was shown: the address joins at once. */
-  joinsAtOnce: boolean;
+  /** The user who decides: the step's user when their page was read. */
+  userId: string;
+  revision: number;
+  /** `invitationShown` of what the page showed. */
+  shown: string;
+  /** The owner's own words with their answer (`decisionReason`), or null. */
+  reason: string | null;
+}
+
+/**
+ * What the row records of an owner's answer, in the statement that ends the
+ * approval: the decision as made, once. The approval is active and locked
+ * when it is written, and an ended approval is never active again, so the
+ * columns are never rewritten.
+ */
+const decided = (approval: Approval, outcome: HandoffDecisionOutcome, now: Date) => ({
+  decision: outcome,
+  decidedAt: now,
+  decidedByUserId: approval.userId,
+  decisionReason: approval.reason,
+});
+
+/** The store's active approval of that id, locked: under the store's lock, as every team write. */
+async function lockApproval(tx: Transaction, storeId: string, handoffId: string) {
+  const [row] = await tx
+    .select({
+      kind: apiHandoffs.kind,
+      userId: apiHandoffs.userId,
+      revision: apiHandoffs.revision,
+      payload: apiHandoffs.payload,
+      expiresAt: apiHandoffs.expiresAt,
+    })
+    .from(apiHandoffs)
+    .where(
+      and(
+        eq(apiHandoffs.id, handoffId),
+        eq(apiHandoffs.storeId, storeId),
+        eq(apiHandoffs.activeSlot, 1),
+      ),
+    )
+    .for("update");
+  if (!row) return null;
+  return { ...row, payload: invitationPayloadOf(row) };
+}
+
+/**
+ * Whether the approval is still what the owner's page showed, and still
+ * theirs to decide: the same user, the same revision and the same facts
+ * (`invitationShown`). Any one differing decides nothing.
+ */
+function stillShown(
+  row: { userId: string; revision: number; payload: ApiHandoffPayload },
+  approval: Pick<Approval, "userId" | "revision" | "shown">,
+): boolean {
+  return (
+    row.userId === approval.userId &&
+    row.revision === approval.revision &&
+    invitationShown(row.payload) === approval.shown
+  );
 }
 
 /**
@@ -330,26 +437,22 @@ export async function inviteMember(
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
+    // What the owner was shown, read under the store's lock: active, in time,
+    // and still as their page showed it, so a request changed since decides nothing.
+    let shown: ApiHandoffPayload | null = null;
     if (approval) {
-      // Still the link the owner opened, active and in time.
-      const [handoff] = await tx
-        .select({ id: apiHandoffs.id })
-        .from(apiHandoffs)
-        .where(
-          and(
-            eq(apiHandoffs.id, approval.handoffId),
-            eq(apiHandoffs.storeId, caller.storeId),
-            eq(apiHandoffs.tokenHash, approval.tokenHash),
-            eq(apiHandoffs.activeSlot, 1),
-            gt(apiHandoffs.expiresAt, now),
-          ),
-        )
-        .for("update");
-      if (!handoff) throw teamErrors.approvalInvalid("invalid");
+      const handoff = await lockApproval(tx, caller.storeId, approval.handoffId);
+      if (!handoff?.payload || handoff.expiresAt <= now) {
+        throw handoffErrors.decisionInvalid("invalid");
+      }
+      if (!stillShown({ ...handoff, payload: handoff.payload }, approval)) {
+        throw handoffErrors.decisionInvalid("changed");
+      }
+      shown = handoff.payload;
     }
 
     const { existingUserId } = await checkInvitable(tx, caller, email);
-    if (approval && approval.joinsAtOnce !== (existingUserId !== null)) {
+    if (shown && shown.joinsAtOnce !== (existingUserId !== null)) {
       throw teamErrors.approvalChanged();
     }
 
@@ -417,7 +520,13 @@ export async function inviteMember(
     if (approval) {
       await tx
         .update(apiHandoffs)
-        .set({ status: "completed", completedAt: now, activeSlot: null, updatedAt: now })
+        .set({
+          status: "completed",
+          completedAt: now,
+          activeSlot: null,
+          ...decided(approval, "approved", now),
+          updatedAt: now,
+        })
         .where(eq(apiHandoffs.id, approval.handoffId));
     }
     return outcome;
@@ -431,10 +540,12 @@ export async function inviteMember(
  * An agent's invitation: nothing is created yet. It records an approval for
  * the address (a `team_invitation` handoff: the store, the address, the
  * role and whether the address joins at once) and returns the link an owner
- * approves it from. The same address asked again gets the same approval with
- * a new link. The checks of an invitation run first, so a request that could
- * never be approved is refused at once; a store holds at most
- * `MAX_OPEN_INVITATION_APPROVALS` open approvals.
+ * approves it from. The same address asked again gets the same approval and
+ * link, its payload read again and its revision raised, so a page opened
+ * before shows the request again rather than approve it. The checks of an
+ * invitation run first, so a request that could never be approved is
+ * refused at once; a store holds at most `MAX_OPEN_INVITATION_APPROVALS`
+ * open approvals.
  */
 export async function requestInvitationApproval(
   caller: TeamCaller,
@@ -450,7 +561,7 @@ export async function requestInvitationApproval(
     subject: sha256(email),
     prepare: async (tx, active) => {
       const { existingUserId } = await checkInvitable(tx, caller, email);
-      if (!existingUserId && sendsEmail(caller)) await assertEmailQuota(tx, caller.storeId);
+      if (!existingUserId) await assertEmailQuota(tx, caller.storeId);
       // A new approval, or an expired one coming back to life, opens one
       // more: the cap holds for both. Only one still open is asked again freely.
       if (!active || active.expiresAt.getTime() <= now.getTime()) {
@@ -489,41 +600,86 @@ function approvalFailure(error: unknown): string | null {
   }
 }
 
-/** Ends an approval, while its link is still the current one. */
-async function endApproval(handoffId: string, tokenHash: string, code: string, now: Date) {
-  await db
-    .update(apiHandoffs)
-    .set({ status: "failed", failedAt: now, failureCode: code, activeSlot: null, updatedAt: now })
-    .where(
-      and(
-        eq(apiHandoffs.id, handoffId),
-        eq(apiHandoffs.tokenHash, tokenHash),
-        eq(apiHandoffs.activeSlot, 1),
-      ),
-    );
+/**
+ * Ends an approval as failed with `code`, recording the owner's answer, under
+ * the store's lock, while it is still active and as the owner's page showed
+ * it. False when that changed: nothing ended, nothing recorded.
+ */
+async function endApproval(
+  approval: Approval & { storeId: string },
+  code: string,
+  outcome: HandoffDecisionOutcome,
+  now: Date,
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    await lockStore(tx, approval.storeId);
+    const handoff = await lockApproval(tx, approval.storeId, approval.handoffId);
+    if (!handoff?.payload || !stillShown({ ...handoff, payload: handoff.payload }, approval)) {
+      return false;
+    }
+    await tx
+      .update(apiHandoffs)
+      .set({
+        status: "failed",
+        failedAt: now,
+        failureCode: code,
+        activeSlot: null,
+        ...decided(approval, outcome, now),
+        updatedAt: now,
+      })
+      .where(eq(apiHandoffs.id, approval.handoffId));
+    return true;
+  });
 }
 
 /**
- * An owner's answer to an agent's invitation, signed in on its link's page:
- * the link's user, still allowed to manage the team (`manage_members`). To
+ * An owner's answer to an agent's invitation, from its page, once
+ * `handoffs.decide` found it theirs and theirs to decide
+ * (services/handoff-decisions.ts): with the revision and the facts the page
+ * showed (`stillShown`); a request that changed since decides nothing
+ * (`HANDOFF_DECISION_INVALID`, `changed`), and the page shows it again. To
  * approve runs the invitation as the dashboard does and completes the
- * approval; to decline ends it as failed (`declined`). An invitation that
- * can no longer go out as shown (the address joined, got an account or an
- * invitation since, the seats are full) ends the approval too, with why.
+ * approval; to refuse ends it as failed (`declined`). An invitation that can
+ * no longer go out as shown (the address joined, got an account or an
+ * invitation since, the seats are full) ends the approval too, with why, and
+ * the row records that the owner approved it. Each records the answer, with
+ * the owner's words, in the statement that ends the approval.
  */
-export async function decideInvitation(
-  input: { token: string; decision: "approve" | "decline"; userId: string },
+export async function answerInvitation(
+  row: Pick<
+    typeof apiHandoffs.$inferSelect,
+    "id" | "kind" | "storeId" | "userId" | "revision" | "payload"
+  >,
+  input: {
+    decision: "approve" | "refuse";
+    reason: string | null;
+    revision: number;
+    /** `invitationShown` of what the page showed. */
+    shown: string;
+    userId: string;
+  },
   ports: Pick<ApiPorts, "team" | "afterCommit">,
   now = new Date(),
 ) {
-  const checked = await readHandoffLink(input.token, input.userId, now);
-  if (!checked.ok) throw teamErrors.approvalInvalid(checked.reason);
-  const { row } = checked;
-  if (row.kind !== "team_invitation" || !row.payload) throw teamErrors.approvalInvalid("invalid");
+  const payload = invitationPayloadOf(row);
+  if (!payload) throw handoffErrors.decisionInvalid("invalid");
+  const approval = {
+    handoffId: row.id,
+    userId: input.userId,
+    revision: input.revision,
+    shown: input.shown,
+    reason: input.reason,
+    storeId: row.storeId,
+  };
+  if (!stillShown({ ...row, payload }, approval)) {
+    throw handoffErrors.decisionInvalid("changed");
+  }
 
-  if (input.decision === "decline") {
-    await endApproval(row.id, row.tokenHash, "declined", now);
-    return { handoffId: row.id, decision: "declined" as const, outcome: null, effectIds: [] };
+  if (input.decision === "refuse") {
+    if (!(await endApproval(approval, "declined", "refused", now))) {
+      throw handoffErrors.decisionInvalid("changed");
+    }
+    return { handoffId: row.id, decision: "refused" as const, outcome: null, effectIds: [] };
   }
 
   const [store] = await db
@@ -540,18 +696,7 @@ export async function decideInvitation(
   if (!store) throw platformErrors.noStore();
   const caller: TeamCaller = { storeId: store.id, userId: input.userId, store, ports };
   try {
-    const result = await inviteMember(
-      caller,
-      { email: row.payload.email },
-      {
-        approval: {
-          handoffId: row.id,
-          tokenHash: row.tokenHash,
-          joinsAtOnce: row.payload.joinsAtOnce,
-        },
-        now,
-      },
-    );
+    const result = await inviteMember(caller, { email: payload.email }, { approval, now });
     return {
       handoffId: row.id,
       decision: "approved" as const,
@@ -559,8 +704,9 @@ export async function decideInvitation(
       effectIds: result.effectIds,
     };
   } catch (error) {
+    // The owner approved; the invitation could not go out as shown.
     const failure = approvalFailure(error);
-    if (failure) await endApproval(row.id, row.tokenHash, failure, now);
+    if (failure) await endApproval(approval, failure, "approved", now);
     throw error;
   }
 }
@@ -592,6 +738,7 @@ export async function resendInvitation(caller: TeamCaller, id: string, now = new
       .update(storeInvitations)
       .set({ token: nanoid(32), expiresAt })
       .where(eq(storeInvitations.id, id));
+    await cancelUndeliveredInvitationEmails(tx, caller.storeId, id);
     const queued = await queueInvitationEmail(tx, caller, id);
     return {
       invitation: toInvitation(
@@ -641,7 +788,7 @@ export async function cancelInvitation(
   options: { confirm?: Confirm<CancelInvitationPreview>; now?: Date } = {},
 ) {
   const now = options.now ?? new Date();
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
@@ -654,6 +801,7 @@ export async function cancelInvitation(
           invitation,
         },
         tx,
+        cancelInvitationPresentation(invitation),
       )) ?? null;
     if (refusal) return null;
 
@@ -664,7 +812,7 @@ export async function cancelInvitation(
     return { id, email: invitation.email };
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.changed", store: eventStore(caller) });
   return result;
@@ -674,6 +822,8 @@ export async function cancelInvitation(
 export interface RemoveMemberPreview {
   summary: string;
   member: TeamMember;
+  /** Their pending invitations to the store, which the removal cancels: read under the store's lock. */
+  pendingInvitations: number;
 }
 
 /**
@@ -687,7 +837,7 @@ export async function removeMember(
   id: string,
   options: { confirm?: Confirm<RemoveMemberPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
@@ -703,13 +853,20 @@ export async function removeMember(
     if (member.role === "owner") throw teamErrors.ownerNotRemovable(id);
 
     const who = member.name ? `${member.name} (${member.email})` : member.email;
+    // Every team write holds the store's lock: none changes them meanwhile.
+    const [pending] = await tx
+      .select({ count: count() })
+      .from(storeInvitations)
+      .where(pendingOf(caller.storeId, normalizeEmail(member.email)));
     refusal =
       (await options.confirm?.(
         {
           summary: `Remove ${who} from "${caller.store.name}". They lose access to the store at once: its customers, reservations and payments.`,
           member,
+          pendingInvitations: pending?.count ?? 0,
         },
         tx,
+        removeMemberPresentation(member),
       )) ?? null;
     if (refusal) return null;
 
@@ -723,7 +880,7 @@ export async function removeMember(
     return { id, userId: member.userId, email: member.email };
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.changed", store: eventStore(caller) });
   return result;

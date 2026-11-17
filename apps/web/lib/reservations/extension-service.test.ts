@@ -113,48 +113,61 @@ const tx = {
     },
   }),
 };
+const transaction = async <T>(fn: (transaction: typeof tx) => Promise<T>) => {
+  const before = serial;
+  let release = () => {};
+  serial = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await before;
+  const snapshot = structuredClone(reservation);
+  const oldPayments = structuredClone(paymentRows);
+  try {
+    return await fn(tx);
+  } catch (error) {
+    reservation = snapshot;
+    paymentRows = oldPayments;
+    throw error;
+  } finally {
+    release();
+  }
+};
+const loadExtensionReservation = async (
+  _tx: unknown,
+  storeId: string,
+  reservationId: string,
+  customerId?: string,
+) => {
+  if (
+    storeId !== reservation.storeId ||
+    reservationId !== reservation.id ||
+    (customerId && customerId !== reservation.customerId)
+  )
+    throw new ExtensionError("notFound");
+  return reservation;
+};
 const dependencies = {
   ...schema,
   env: { NEXT_PUBLIC_APP_URL: "https://example.invalid" },
   db: {
-    transaction: async <T>(fn: (transaction: typeof tx) => Promise<T>) => {
-      const before = serial;
-      let release = () => {};
-      serial = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      await before;
-      const snapshot = structuredClone(reservation);
-      const oldPayments = structuredClone(paymentRows);
-      try {
-        return await fn(tx);
-      } catch (error) {
-        reservation = snapshot;
-        paymentRows = oldPayments;
-        throw error;
-      } finally {
-        release();
-      }
-    },
+    transaction,
     query: { stores: { findFirst: async () => reservation.store } },
   },
   ExtensionError,
   cents: (amount: number) => Math.round(amount * 100),
   extensionFingerprint: fingerprint,
-  loadExtensionReservation: async (
-    _tx: unknown,
-    storeId: string,
-    reservationId: string,
-    customerId?: string,
-  ) => {
-    if (
-      storeId !== reservation.storeId ||
-      reservationId !== reservation.id ||
-      (customerId && customerId !== reservation.customerId)
-    )
-      throw new ExtensionError("notFound");
-    return reservation;
-  },
+  loadExtensionReservation,
+  // The quote's transaction, run once, as `transaction` runs the others.
+  runExtensionQuote: <T>(
+    scope: { storeId: string; reservationId: string; customerId?: string },
+    work: (transaction: typeof tx, row: typeof reservation) => Promise<T>,
+  ) =>
+    transaction(async (inner) =>
+      work(
+        inner,
+        await loadExtensionReservation(inner, scope.storeId, scope.reservationId, scope.customerId),
+      ),
+    ),
   parseExtensionEnd: () => requestedEnd,
   quoteExtension: async () => {
     if (unavailable) throw new ExtensionError("unavailable");

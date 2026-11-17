@@ -120,6 +120,12 @@ export function formatPaymentFailureDescription({
     return { message: description }
   }
 
+  // An authorization request the store closed, having found nothing in Stripe: no
+  // card failed, so no advice for the customer.
+  if (activityType === 'deposit_failed' && metadata?.closedBy === 'store') {
+    return { message: t('activity.paymentFailure.deposit_failed.closedByStore') }
+  }
+
   // For payment/deposit failures, use metadata error instead of raw description
   const failureType = activityType as FailureActivityType
   const rawErrorMessage = getRawErrorMessage(description, metadata)

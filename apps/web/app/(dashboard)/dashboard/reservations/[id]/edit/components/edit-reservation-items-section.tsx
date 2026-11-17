@@ -22,12 +22,25 @@ interface EditReservationItemsSectionProps {
   availableQuantityByProduct: Map<string, StockQuantityLimit>;
   itemsCount: number;
   currencySymbol: string;
+  /** The reservation's currency, the amounts shown in it. */
+  currency: string;
   getDurationUnit: (mode: PricingMode) => string;
   onOpenCustomItemDialog: () => void;
   onAddProduct: (productId: string) => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
-  onPriceChange: (itemId: string, price: number, pricingMode?: PricingMode) => void;
-  onTotalPriceChange: (itemId: string, totalPrice: number, pricingMode?: PricingMode) => void;
+  /** A price the field committed, with the one it showed: an unchanged one types nothing. */
+  onPriceChange: (
+    itemId: string,
+    price: number,
+    shownUnitPrice: number,
+    pricingMode: PricingMode,
+  ) => void;
+  onTotalPriceChange: (
+    itemId: string,
+    totalPrice: number,
+    shownTotalPrice: number,
+    pricingMode: PricingMode,
+  ) => void;
   onDepositChange: (itemId: string, depositPerUnit: number) => void;
   onToggleManualPrice: (
     itemId: string,
@@ -44,6 +57,7 @@ export function EditReservationItemsSection({
   availableQuantityByProduct,
   itemsCount,
   currencySymbol,
+  currency,
   getDurationUnit,
   onOpenCustomItemDialog,
   onAddProduct,
@@ -118,6 +132,7 @@ export function EditReservationItemsSection({
               )}
               itemsCount={itemsCount}
               currencySymbol={currencySymbol}
+              currency={currency}
               getDurationUnit={getDurationUnit}
               onQuantityChange={onQuantityChange}
               onPriceChange={onPriceChange}

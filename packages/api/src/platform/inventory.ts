@@ -337,6 +337,16 @@ export const capabilities = [
     plan: { lot: "6" },
     migrated: true,
   },
+  {
+    // A person's answer on a step's page (an agent's team invitation): a
+    // session only, so no agent grants itself access or decides for a person.
+    id: "handoffs.decide",
+    sources: [procedure("handoffs", "decide")],
+    kind: "write",
+    sensitive: "send",
+    plan: { lot: "6" },
+    actors: ["session"],
+  },
 
   // --- Background jobs (7): work a call starts, such as an AI photo -------
   {
@@ -348,6 +358,15 @@ export const capabilities = [
   },
 
   // --- Reservations: creation and changes (2b) ---------------------------
+  {
+    // An agent's or a member's creation, priced as the checkout prices it.
+    id: "reservations.create",
+    sources: [procedure("reservations", "create")],
+    kind: "write",
+    sensitive: "send",
+    plan: { lot: "2b" },
+    migrated: true,
+  },
   {
     id: "reservations.checkAvailability",
     sources: [
@@ -407,8 +426,11 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "updateReservation"),
       procedure("reservations", "updateReservation"),
+      // The dates alone, for every transport (docs/domain/reservation-changes.md, slice 12a).
+      procedure("reservations", "update"),
     ],
     kind: "write",
+    sensitive: "send",
     plan: { lot: "2b" },
   },
   {
@@ -473,7 +495,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "recordPayment"),
       procedure("reservations", "recordPayment"),
-      tool(MCP.payments, "record_payment"),
+      procedure("payments", "record"),
     ],
     kind: "write",
     sensitive: "money",
@@ -484,14 +506,16 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "refundManualPayment"),
       procedure("reservations", "refundManualPayment"),
+      procedure("payments", "recordRefund"),
     ],
     kind: "write",
     sensitive: "money",
     plan: { lot: "2c" },
   },
   {
+    // An agent, with a person's approval; no dashboard screen yet (a session is refused).
     id: "reservations.refundStripePayment",
-    sources: [action(SA.reservations, "processStripeRefund")],
+    sources: [procedure("payments", "refund"), procedure("payments", "getRefund")],
     kind: "write",
     sensitive: "money",
     plan: { lot: "2c" },
@@ -501,7 +525,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "deletePayment"),
       procedure("reservations", "deletePayment"),
-      tool(MCP.payments, "delete_payment"),
+      procedure("payments", "delete"),
     ],
     kind: "write",
     sensitive: "destructive",
@@ -512,7 +536,7 @@ export const capabilities = [
     sources: [
       action(SA.reservations, "returnDeposit"),
       procedure("reservations", "returnDeposit"),
-      tool(MCP.payments, "record_deposit_return"),
+      procedure("payments", "recordDepositReturn"),
     ],
     kind: "write",
     sensitive: "money",
@@ -554,6 +578,16 @@ export const capabilities = [
     kind: "write",
     sensitive: "money",
     plan: { lot: "2c" },
+  },
+  {
+    // The store resolves a deposit hold Stripe has not confirmed, on its word: a session
+    // only (the procedure says why).
+    id: "reservations.resolveDepositAttempt",
+    sources: [procedure("reservations", "resolveDepositAttempt")],
+    kind: "write",
+    sensitive: "money",
+    plan: { lot: "2c" },
+    actors: ["session"],
   },
   {
     id: "reservations.requestPayment",
@@ -2002,7 +2036,7 @@ export const capabilities = [
   {
     // Always as a member, never an owner (Téo's decision, 2026-11-09). An
     // agent's invitation creates nothing until an owner approves it from a
-    // link (team.approveInvitation). No procedure changes a role.
+    // link (handoffs.decide). No procedure changes a role.
     id: "team.inviteMember",
     sources: [procedure("team", "invite")],
     kind: "write",
@@ -2024,16 +2058,6 @@ export const capabilities = [
     id: "team.getInvitationLink",
     sources: [procedure("team", "invitationLink")],
     kind: "read",
-    plan: { lot: "8" },
-    actors: ["session"],
-  },
-  {
-    // An owner approves or declines an agent's invitation from its link's
-    // page: a session only, so no agent grants itself access.
-    id: "team.approveInvitation",
-    sources: [procedure("team", "decideInvitation")],
-    kind: "write",
-    sensitive: "send",
     plan: { lot: "8" },
     actors: ["session"],
   },

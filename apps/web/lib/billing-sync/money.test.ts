@@ -78,12 +78,10 @@ describe("reservationTotalsMinor", () => {
   // (100.00 + 20.00) adds up to the total.
   const base = {
     reservation: {
-      createdAt: new Date("2026-10-01T10:00:00Z"),
       currency: null,
       source: "online",
       totalAmount: "120.00",
       subtotalAmount: "120.00",
-      depositAmount: "0.00",
       deliveryFee: "0.00",
       discountAmount: "0.00",
       subtotalExclTax: "100.00",
@@ -227,30 +225,27 @@ describe("reservationTotalsMinor", () => {
     assert.equal(totals.totalInclTaxMinor, 10000);
   });
 
-  test("drops the deposit from a total of before April 2026 that includes it", () => {
+  test("reads a total as stored: the deposit is never taken out of it", () => {
+    // An online booking of before April 2026, no mode recorded: 100 of rental, 50 of
+    // delivery, a deposit of 30. Its total of 180 held the deposit; migration 0108 made it 150.
+    // The row as the callers read it, its creation date and deposit with it.
+    const row = {
+      ...base.reservation,
+      createdAt: new Date("2026-02-10T10:00:00Z"),
+      taxDisplayMode: null,
+      subtotalAmount: "100.00",
+      deliveryFee: "50.00",
+      depositAmount: "30.00",
+      totalAmount: "150.00",
+      subtotalExclTax: null,
+      taxAmount: null,
+    };
     const totals = reservationTotalsMinor({
       ...base,
-      reservation: {
-        ...base.reservation,
-        createdAt: new Date("2026-02-10T10:00:00Z"),
-        totalAmount: "170.00",
-        depositAmount: "50.00",
-      },
+      storeSettings: { currency: "EUR", tax: undefined },
+      reservation: row,
     });
-    assert.equal(totals.totalInclTaxMinor, 12000);
-  });
-
-  test("keeps a recent total whose delivery fee exceeds the deposit", () => {
-    const totals = reservationTotalsMinor({
-      ...base,
-      reservation: {
-        ...base.reservation,
-        totalAmount: "130.00",
-        subtotalAmount: "100.00",
-        depositAmount: "25.00",
-      },
-    });
-    assert.equal(totals.totalInclTaxMinor, 13000);
+    assert.equal(totals.totalInclTaxMinor, 15000);
   });
 
   test("prefers the reservation's frozen currency, and counts yen in whole units", () => {

@@ -36,6 +36,9 @@ export const extensionAttemptSchema = z.object({
     subtotalExclTax: nullableMoney,
     taxAmount: nullableMoney,
     taxRate: nullableMoney,
+    // The mode the plan's amounts were computed with, written with them; absent
+    // from a plan made before it was recorded (slice 9).
+    taxDisplayMode: z.enum(["inclusive", "exclusive"]).optional(),
     items: z.array(
       z.object({
         id: z.string(),
@@ -50,6 +53,16 @@ export const extensionAttemptSchema = z.object({
             discountPercent: z.number().nullable(),
             discountAmount: z.number(),
             tierApplied: z.string().nullable(),
+            // The line's recorded promotion, carried through as stored (slice 9);
+            // absent when the line recorded none.
+            promotion: z
+              .object({
+                percentage: z.number(),
+                originalSubtotal: z.number(),
+                discountAmount: z.number(),
+              })
+              .nullable()
+              .optional(),
             taxRate: z.number().nullable(),
             taxAmount: z.number().nullable(),
             subtotalExclTax: z.number().nullable(),
@@ -62,6 +75,7 @@ export const extensionAttemptSchema = z.object({
         taxAmount: nullableMoney,
         priceExclTax: nullableMoney,
         totalExclTax: nullableMoney,
+        taxExempt: z.boolean().optional(),
       }),
     ),
   }),

@@ -12,16 +12,20 @@ import type { StoreSettings } from "@louez/types";
 
 import type { ReservationTotalsInput } from "@/lib/billing-sync/money";
 import {
+  type RecordedPaymentFacts,
   type RecordedPaymentType,
   grossMinorOf,
   recordedPaymentFacts,
   reservationCurrency,
 } from "@/lib/reservations/payment-billing-facts";
 
-// The payment writes of the dashboard's reservation actions, which the assistant's
-// payment tools share. Each one writes its rows and marks the reservation for the
-// billing service in one transaction (louez-billing docs/api, README §5.2). Stripe
-// calls stay with the caller, before the transaction.
+// The payment writes of the dashboard's reservation actions. The payment
+// procedures (packages/api services/payment-records.ts) record through
+// `insertRecordedPayment`, lent as `ApiPorts.paymentRecords`. Each one writes its
+// rows and marks the reservation for the billing service in one transaction
+// (louez-billing docs/api, README §5.2). Stripe calls stay with the caller, before
+// the transaction. A deposit hold, its capture and
+// its release are written by lib/reservations/deposit-hold-writes.ts.
 
 type TotalsSettings = Pick<StoreSettings, "currency" | "tax"> | null;
 type RecordedPaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
@@ -78,15 +82,30 @@ export type RecordedPaymentInput = ReservationRef & {
 };
 
 /**
- * Inserts a payment the store records by hand, in the reservation's currency
- * rather than the column's EUR default (contract Q4), with its billing facts.
+ * The billing facts a payment recorded by hand takes (contract Q4, Q7): its
+ * currency, gross and insurance share, read from the reservation and its
+ * lines in the caller's transaction. Writes nothing. The payment procedures
+ * bind them with their preview, then hand them back to
+ * `insertRecordedPaymentWithFacts`, so the row holds what was approved.
  */
-export async function insertRecordedPayment(
+export async function recordedPaymentFactsOf(
   tx: Transaction,
-  input: RecordedPaymentInput,
-): Promise<void> {
+  input: ReservationRef & {
+    readonly storeSettings: TotalsSettings;
+    readonly type: RecordedPaymentType;
+    readonly amount: string;
+  },
+): Promise<RecordedPaymentFacts> {
   const totals = await loadTotalsInput(tx, input, input.storeSettings, input.type === "rental");
-  const facts = recordedPaymentFacts({ type: input.type, amount: input.amount, totals });
+  return recordedPaymentFacts({ type: input.type, amount: input.amount, totals });
+}
+
+/** A payment recorded by hand with the billing facts it was bound to, and the reservation's mark. */
+export async function insertRecordedPaymentWithFacts(
+  tx: Transaction,
+  input: Omit<RecordedPaymentInput, "storeSettings"> & { readonly facts: RecordedPaymentFacts },
+): Promise<void> {
+  const { facts } = input;
   await tx.insert(payments).values({
     id: input.id,
     reservationId: input.reservationId,
@@ -102,6 +121,18 @@ export async function insertRecordedPayment(
     origin: input.origin,
   });
   await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
+}
+
+/**
+ * Inserts a payment the store records by hand, in the reservation's currency
+ * rather than the column's EUR default (contract Q4), with its billing facts.
+ */
+export async function insertRecordedPayment(
+  tx: Transaction,
+  input: RecordedPaymentInput,
+): Promise<void> {
+  const facts = await recordedPaymentFactsOf(tx, input);
+  await insertRecordedPaymentWithFacts(tx, { ...input, facts });
 }
 
 export type ManualRefundInput = ReservationRef & {
@@ -162,170 +193,6 @@ export async function deleteRecordedPayment(
       .where(
         and(eq(payments.id, input.paymentId), eq(payments.reservationId, input.reservationId)),
       );
-    await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
-  });
-}
-
-export type DepositHoldInput = ReservationRef & {
-  readonly paymentId: string;
-  readonly stripeAccountId: string;
-  readonly paymentIntentId: string;
-  readonly paymentMethodId: string;
-  readonly expiresAt: Date;
-  readonly amount: string;
-  /** The amount sent to Stripe. */
-  readonly amountMinor: number;
-  readonly currency: string;
-  readonly now: Date;
-};
-
-/** Records an authorized deposit hold on the reservation and as a payment. */
-export async function recordDepositHold(
-  database: Database,
-  input: DepositHoldInput,
-): Promise<void> {
-  await database.transaction(async (tx) => {
-    await tx
-      .update(reservations)
-      .set({
-        depositStatus: "authorized",
-        depositPaymentIntentId: input.paymentIntentId,
-        depositAuthorizationExpiresAt: input.expiresAt,
-        updatedAt: input.now,
-      })
-      .where(
-        and(eq(reservations.id, input.reservationId), eq(reservations.storeId, input.storeId)),
-      );
-
-    await tx.insert(payments).values({
-      id: input.paymentId,
-      reservationId: input.reservationId,
-      amount: input.amount,
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-      stripePaymentIntentId: input.paymentIntentId,
-      stripePaymentMethodId: input.paymentMethodId,
-      stripeAccountId: input.stripeAccountId,
-      authorizationExpiresAt: input.expiresAt,
-      currency: input.currency,
-      grossMinor: input.amountMinor,
-      insuranceShareMinor: 0,
-      origin: "deposit",
-      createdAt: input.now,
-      updatedAt: input.now,
-    });
-    await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
-  });
-}
-
-/**
- * The reservation's authorized hold, locked. Call it after the reservation's
- * update: the reservation is locked first, then its payments, as the Connect
- * webhook's deposit events do. The two run at once for the same PaymentIntent,
- * and the opposite order deadlocks.
- */
-async function lockAuthorizedHold(tx: Transaction, reservationId: string) {
-  const [hold] = await tx
-    .select({ id: payments.id })
-    .from(payments)
-    .where(
-      and(
-        eq(payments.reservationId, reservationId),
-        eq(payments.type, "deposit_hold"),
-        eq(payments.status, "authorized"),
-      ),
-    )
-    .limit(1)
-    .for("update");
-  return hold ?? null;
-}
-
-export type DepositCaptureInput = ReservationRef & {
-  readonly capturePaymentId: string;
-  readonly stripeAccountId: string;
-  readonly paymentIntentId: string;
-  /** The PaymentIntent's latest charge, which the service matches application fees on. */
-  readonly stripeChargeId: string | null;
-  readonly amount: string;
-  /** What Stripe captured, `amount_received`. */
-  readonly capturedMinor: number;
-  /** The PaymentIntent's currency. */
-  readonly currency: string;
-  readonly reason: string;
-  readonly now: Date;
-};
-
-/** Records a captured deposit: the hold completes and a deposit_capture row holds the money. */
-export async function recordDepositCapture(
-  database: Database,
-  input: DepositCaptureInput,
-): Promise<void> {
-  await database.transaction(async (tx) => {
-    await tx
-      .update(reservations)
-      .set({ depositStatus: "captured", updatedAt: input.now })
-      .where(
-        and(eq(reservations.id, input.reservationId), eq(reservations.storeId, input.storeId)),
-      );
-
-    const hold = await lockAuthorizedHold(tx, input.reservationId);
-    if (hold) {
-      await tx
-        .update(payments)
-        .set({
-          status: "completed",
-          capturedAmount: input.amount,
-          notes: input.reason,
-          paidAt: input.now,
-          updatedAt: input.now,
-        })
-        .where(eq(payments.id, hold.id));
-    }
-
-    await tx.insert(payments).values({
-      id: input.capturePaymentId,
-      reservationId: input.reservationId,
-      amount: input.amount,
-      type: "deposit_capture",
-      method: "stripe",
-      status: "completed",
-      stripePaymentIntentId: input.paymentIntentId,
-      stripeChargeId: input.stripeChargeId,
-      stripeAccountId: input.stripeAccountId,
-      currency: input.currency,
-      grossMinor: input.capturedMinor,
-      insuranceShareMinor: 0,
-      origin: "deposit",
-      notes: input.reason,
-      paidAt: input.now,
-      createdAt: input.now,
-      updatedAt: input.now,
-    });
-    await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
-  });
-}
-
-/** Records a released deposit: the hold is cancelled. */
-export async function recordDepositRelease(
-  database: Database,
-  input: ReservationRef & { readonly now: Date },
-): Promise<void> {
-  await database.transaction(async (tx) => {
-    await tx
-      .update(reservations)
-      .set({ depositStatus: "released", updatedAt: input.now })
-      .where(
-        and(eq(reservations.id, input.reservationId), eq(reservations.storeId, input.storeId)),
-      );
-
-    const hold = await lockAuthorizedHold(tx, input.reservationId);
-    if (hold) {
-      await tx
-        .update(payments)
-        .set({ status: "cancelled", updatedAt: input.now })
-        .where(eq(payments.id, hold.id));
-    }
     await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
   });
 }

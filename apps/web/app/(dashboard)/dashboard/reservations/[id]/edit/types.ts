@@ -1,3 +1,4 @@
+import type { EditedLineTax, StoredProductLine } from "@louez/api/services/edit-line-pricing";
 import type { DateChangeRequest } from "@louez/validations";
 import type {
   DeliverySettings,
@@ -5,6 +6,7 @@ import type {
   PricingBreakdown,
   PricingKind,
   PricingMode,
+  ProductTaxSettings,
   ReservationLocationSnapshot,
   ProductSnapshot,
   StoreSettings,
@@ -35,6 +37,7 @@ export interface Product {
   pricingMode: string | null;
   basePeriodMinutes?: number | null;
   enforceStrictTiers?: boolean;
+  taxSettings?: ProductTaxSettings | null;
   pricingTiers: PricingTier[];
   seasonalPricings?: SeasonalPricingConfig[];
 }
@@ -47,6 +50,7 @@ export interface ReservationItem {
   unitPrice: string;
   depositPerUnit: string;
   totalPrice: string;
+  taxRate: string | null;
   isCustomItem: boolean;
   pricingBreakdown: PricingBreakdown | null;
   productSnapshot: ProductSnapshot;
@@ -101,6 +105,9 @@ export interface Reservation {
   totalAmount: string;
   deliveryFee: string | null;
   discountAmount: string | null;
+  taxDisplayMode?: "inclusive" | "exclusive" | null;
+  /** The reservation as the form loaded it: sent back, the edit applies to it or is refused. */
+  editToken: string;
   tulipInsuranceOptIn: boolean | null;
   tulipInsuranceAmount: string | null;
   delivery: ReservationDelivery;
@@ -124,6 +131,12 @@ export interface EditableItem {
   enforceStrictTiers?: boolean;
   productSnapshot: ProductSnapshot;
   product: Product | null;
+  /**
+   * The line as stored, when it is priced from its product: what the edit
+   * keeps or prices again from (slice 11). Null for a new line or a price
+   * typed by hand.
+   */
+  stored: StoredProductLine | null;
 }
 
 export interface AvailabilityWarning {
@@ -174,12 +187,13 @@ export interface CalculatedEditableItem extends EditableItem {
   originalSubtotal: number;
   savings: number;
   discountPercent: number | null;
+  /** The tax it is priced with (slice 11): a rate it keeps, or today's settings. */
+  tax: EditedLineTax;
 }
 
 export interface ReservationCalculations {
   items: CalculatedEditableItem[];
   subtotal: number;
   deposit: number;
-  difference: number;
   totalSavings: number;
 }

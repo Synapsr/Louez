@@ -2,16 +2,16 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
-import { failMarketplaceBookingAttempt } from "@louez/api/services";
-import { db, markReservationIds } from "@louez/db";
+import { db } from "@louez/db";
 import { payments, reservationActivity, reservations } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
-import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { notifyPaymentFailed } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import { fromStripeCents } from "@/lib/stripe";
+
+import { describeWebhookError } from "./webhook-error";
 
 /** The fields of a failed PaymentIntent the webhook reads. */
 export type FailedPaymentIntent = Pick<
@@ -19,10 +19,13 @@ export type FailedPaymentIntent = Pick<
   "id" | "amount" | "currency" | "metadata" | "last_payment_error"
 >;
 
+/** Whose PaymentIntent failed: the route tells, from the rows that record it. */
+export type PaymentFailureKind = "deposit_hold" | "rental";
+
 export type PaymentFailureRecord =
   | {
       readonly recorded: true;
-      readonly kind: "deposit_hold" | "rental";
+      readonly kind: PaymentFailureKind;
       readonly amount: number;
       /** Upper case. */
       readonly currency: string;
@@ -33,50 +36,75 @@ export type PaymentFailureRecord =
       readonly recorded: false;
       /**
        * `duplicate_event`: Stripe delivered this event again. `completed_payment`:
-       * the payment went through on a later attempt.
+       * the payment went through on a later attempt, and a row of the reservation
+       * records it `completed` or `refunded`. `deposit_held`: the reservation's
+       * deposit is authorized or captured by another PaymentIntent, so the failure of
+       * this one is no news.
        */
-      readonly reason: "duplicate_event" | "completed_payment";
+      readonly reason: "duplicate_event" | "completed_payment" | "deposit_held";
     };
 
 /**
- * Records a `payment_intent.payment_failed` event on its reservation: a failed
- * deposit hold, or a failed rental payment and its payment row. Each event is
- * recorded once, by its Stripe event id kept on the activity row, under a lock on
- * the reservation row: a redelivered event changes nothing, while each failed
- * attempt of one PaymentIntent is its own event and is recorded.
+ * Records a `payment_intent.payment_failed` event on its reservation: the line of a
+ * failed deposit hold, or of a failed attempt of a rental payment. It writes that line
+ * and nothing else: a failed attempt leaves its Checkout Session open for another try,
+ * and the session's completion or expiry settles the payment. Each event is recorded
+ * once, by its Stripe event id kept on the activity row, under a lock on the
+ * reservation row: a redelivered event changes nothing, while each failed attempt of
+ * one PaymentIntent is its own event and is recorded. A rental payment a row of the
+ * reservation records `completed` or `refunded` under that lock, a completion that
+ * committed while this one waited included, makes the event stale.
  */
 export async function recordPaymentFailure(input: {
+  readonly kind: PaymentFailureKind;
   readonly reservationId: string;
   readonly stripeEventId: string;
   readonly paymentIntent: FailedPaymentIntent;
 }): Promise<PaymentFailureRecord> {
-  const { reservationId, stripeEventId, paymentIntent } = input;
+  const { kind, reservationId, stripeEventId, paymentIntent } = input;
   const currency = paymentIntent.currency.toUpperCase();
   const amount = fromStripeCents(paymentIntent.amount, currency);
   const errorMessage = paymentIntent.last_payment_error?.message || "Unknown error";
   const errorCode = paymentIntent.last_payment_error?.code || null;
   const declineCode = paymentIntent.last_payment_error?.decline_code || null;
-  const kind = paymentIntent.metadata?.type === "deposit_hold" ? "deposit_hold" : "rental";
-
-  // A failed event for a payment that later went through is stale.
-  const existingPayment =
-    kind === "rental"
-      ? await db.query.payments.findFirst({
-          where: eq(payments.stripePaymentIntentId, paymentIntent.id),
-          columns: { id: true, reservationId: true, status: true },
-        })
-      : undefined;
-  if (existingPayment?.status === "completed") {
-    return { recorded: false, reason: "completed_payment" };
-  }
 
   const recorded = await db.transaction(async (tx) => {
     // Two deliveries of one event queue here, so only one finds it unrecorded.
-    await tx
-      .select({ id: reservations.id })
+    const [reservation] = await tx
+      .select({
+        depositStatus: reservations.depositStatus,
+        depositPaymentIntentId: reservations.depositPaymentIntentId,
+      })
       .from(reservations)
       .where(eq(reservations.id, reservationId))
       .for("update");
+    // A deposit another PaymentIntent holds, read under the lock its writer takes: a
+    // failure of this one, however late it arrives, tells nobody anything true.
+    if (
+      kind === "deposit_hold" &&
+      (reservation?.depositStatus === "authorized" || reservation?.depositStatus === "captured") &&
+      reservation.depositPaymentIntentId !== null &&
+      reservation.depositPaymentIntentId !== paymentIntent.id
+    ) {
+      return "deposit_held" as const;
+    }
+    // The rows of the reservation that record this PaymentIntent, read under the lock
+    // the completion's claim takes first: a payment it recorded is read once committed.
+    if (kind === "rental") {
+      const [paid] = await tx
+        .select({ id: payments.id })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.reservationId, reservationId),
+            eq(payments.stripePaymentIntentId, paymentIntent.id),
+            inArray(payments.status, ["completed", "refunded"]),
+          ),
+        )
+        .limit(1)
+        .for("share");
+      if (paid) return "completed_payment" as const;
+    }
     const [seen] = await tx
       .select({ id: reservationActivity.id })
       .from(reservationActivity)
@@ -88,15 +116,12 @@ export async function recordPaymentFailure(input: {
         ),
       )
       .limit(1);
-    if (seen) return false;
+    if (seen) return "duplicate_event" as const;
 
     if (kind === "deposit_hold") {
-      // No payment changes, so no billing mark: the deposit status is not part of
-      // the reservation snapshot.
-      await tx
-        .update(reservations)
-        .set({ depositStatus: "failed", updatedAt: new Date() })
-        .where(eq(reservations.id, reservationId));
+      // The hold's row and the reservation's deposit are written by the deposit events,
+      // from the PaymentIntent as Stripe has it (deposit-events.ts): this is the line
+      // of the event, which tells the store why the try failed.
       await tx.insert(reservationActivity).values({
         id: nanoid(),
         reservationId,
@@ -111,16 +136,9 @@ export async function recordPaymentFailure(input: {
         },
         createdAt: new Date(),
       });
-      return true;
+      return "recorded" as const;
     }
 
-    if (existingPayment && existingPayment.status !== "failed") {
-      await tx
-        .update(payments)
-        .set({ status: "failed", updatedAt: new Date() })
-        .where(eq(payments.id, existingPayment.id));
-      await markReservationIds(tx, [existingPayment.reservationId]);
-    }
     await tx.insert(reservationActivity).values({
       id: nanoid(),
       reservationId,
@@ -137,19 +155,18 @@ export async function recordPaymentFailure(input: {
       },
       createdAt: new Date(),
     });
-    return true;
+    return "recorded" as const;
   });
 
-  return recorded
+  return recorded === "recorded"
     ? { recorded: true, kind, amount, currency, errorCode, declineCode }
-    : { recorded: false, reason: "duplicate_event" };
+    : { recorded: false, reason: recorded };
 }
 
 /** The reservation a failed payment belongs to, as the webhook loaded it. */
 export interface FailedPaymentReservation {
   readonly id: string;
   readonly number: string;
-  readonly source: string | null;
   readonly startDate: Date;
   readonly endDate: Date;
   readonly totalAmount: string;
@@ -176,34 +193,28 @@ export interface FailedPaymentReservation {
 export interface PaymentFailureDeps {
   readonly dispatchNotification: typeof dispatchNotification;
   readonly notifyPaymentFailed: typeof notifyPaymentFailed;
-  readonly failMarketplaceBookingAttempt: (reservationId: string) => Promise<void>;
 }
 
-const defaultDeps: PaymentFailureDeps = {
-  dispatchNotification,
-  notifyPaymentFailed,
-  failMarketplaceBookingAttempt: (reservationId) =>
-    failMarketplaceBookingAttempt(reservationId, runReservationEffects),
-};
-
-const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
+const defaultDeps: PaymentFailureDeps = { dispatchNotification, notifyPaymentFailed };
 
 /**
- * A failed payment of a reservation whose connected account was checked: records
- * it, expires a marketplace attempt still waiting for its checkout, and tells the
- * owner and the platform, once per Stripe event.
+ * A failed payment of a reservation the event was bound to: records its line and
+ * tells the owner and the platform, once per Stripe event. A marketplace booking
+ * stays `pending` and its attempt `checkout_pending` while its customer tries again
+ * in the open session.
  */
 export async function handlePaymentFailure(
   input: {
+    readonly kind: PaymentFailureKind;
     readonly reservation: FailedPaymentReservation;
     readonly stripeEventId: string;
     readonly paymentIntent: FailedPaymentIntent;
   },
   deps: PaymentFailureDeps = defaultDeps,
 ): Promise<void> {
-  const { reservation, stripeEventId, paymentIntent } = input;
+  const { kind, reservation, stripeEventId, paymentIntent } = input;
   const failure = await recordPaymentFailure({
+    kind,
     reservationId: reservation.id,
     stripeEventId,
     paymentIntent,
@@ -216,13 +227,13 @@ export async function handlePaymentFailure(
         issue:
           failure.reason === "completed_payment"
             ? "stale_event_for_completed_payment"
-            : "duplicate_event",
+            : failure.reason === "deposit_held"
+              ? "stale_failure_deposit_held"
+              : "duplicate_event",
         reservationId: reservation.id,
         paymentIntentId: paymentIntent.id,
       },
     });
-    // A redelivery is how a marketplace expiry that failed is tried again.
-    if (failure.reason === "duplicate_event") await expireMarketplaceAttempt(input, deps);
     return;
   }
 
@@ -273,7 +284,7 @@ export async function handlePaymentFailure(
           event: "payment_failed",
           issue: "notification_dispatch_failed",
           reservationId: reservation.id,
-          error: describeError(error),
+          ...describeWebhookError(error),
         },
       });
     });
@@ -284,27 +295,4 @@ export async function handlePaymentFailure(
       reservation.number,
     )
     .catch(() => {});
-
-  // After the alerts, so an expiry that throws does not stop them: the webhook then
-  // answers 500 and Stripe's redelivery tries the expiry again.
-  await expireMarketplaceAttempt(input, deps);
-}
-
-/**
- * Expires a marketplace attempt still waiting for its checkout. Idempotent, so a
- * redelivered event may run it again.
- */
-async function expireMarketplaceAttempt(
-  input: {
-    readonly reservation: FailedPaymentReservation;
-    readonly paymentIntent: FailedPaymentIntent;
-  },
-  deps: PaymentFailureDeps,
-): Promise<void> {
-  if (
-    input.paymentIntent.metadata?.type !== "deposit_hold" &&
-    input.reservation.source === "marketplace"
-  ) {
-    await deps.failMarketplaceBookingAttempt(input.reservation.id);
-  }
 }

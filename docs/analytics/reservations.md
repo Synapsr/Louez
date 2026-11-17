@@ -34,6 +34,13 @@ deux mêmes événements de capacité quand le serveur refuse une modification f
 quand l'admin l'enregistre quand même. Ils portent alors `feature: reservation_management`,
 `reservation_id` et `source: reservation_edit`.
 
+La confirmation d'une demande ou d'un devis (liste des réservations, réservations d'un produit,
+page de la réservation) émet `dashboard_reservation_overbooking_confirmed` quand l'admin confirme
+au-delà du stock, et `dashboard_reservation_turnover_buffer_overridden` quand il confirme malgré la
+marge de rotation. Les deux portent `feature: reservation_management`, `reservation_id`,
+`shortfall_count`, `source: reservation_confirmation` et `entry_point` (`reservations_list` ou
+`reservation_detail`).
+
 > `dashboard_reservation_step_viewed` a existé brièvement (wizard à étapes, jamais déployé)
 > et a été retiré avec le passage en page unique. L'insight PostHog « Funnel creation
 > reservation (dashboard) » doit être redéfini en `creation_started` → `created`.

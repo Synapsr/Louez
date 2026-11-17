@@ -1,6 +1,7 @@
 import {
   categories,
   db,
+  lockProductRows,
   lockStoreRow,
   nextCategorySlug,
   productCategories,
@@ -20,6 +21,8 @@ import {
   type deleteCategoryInput,
   type updateCategoryInput,
 } from "../contracts/categories";
+import { readAfterCommit } from "../platform/errors";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * Categories of a store: the business rules behind the categories procedures.
@@ -194,7 +197,7 @@ export async function createCategory(
     return { id: inserted.id, created: true };
   });
 
-  return { ...(await getCategory(storeId, id)), created };
+  return { ...(await readAfterCommit(() => getCategory(storeId, id))), created };
 }
 
 /** Changes the fields given: a field left out is unchanged, `null` clears it. */
@@ -243,7 +246,7 @@ export async function updateCategory(
       .where(and(eq(categories.id, input.id), eq(categories.storeId, storeId)));
   });
 
-  return getCategory(storeId, input.id);
+  return readAfterCommit(() => getCategory(storeId, input.id));
 }
 
 /** What deleting a category would do, for its confirmation preview. */
@@ -332,11 +335,14 @@ export async function deleteCategory(
   storeId: string,
   input: z.infer<typeof deleteCategoryInput>,
   options: {
-    confirm?: (preview: CategoryDeletionPreview, tx: Transaction) => Promise<Error | null>;
+    confirm?: (
+      preview: CategoryDeletionPreview,
+      tx: Transaction,
+    ) => Promise<ConfirmationRefusal | null>;
   } = {},
 ): Promise<{ id: string; affectedProductCount: number; replacementCategoryId: string | null }> {
   const replacementId = input.replacementCategoryId ?? null;
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
 
   const affectedProductCount = await db.transaction(async (tx) => {
     await lockStoreCategories(tx, storeId);
@@ -351,9 +357,13 @@ export async function deleteCategory(
       .innerJoin(products, eq(products.id, productCategories.productId))
       .where(and(eq(products.storeId, storeId), eq(productCategories.categoryId, input.id)));
 
+    // The products the deletion then writes, by id, before its first write:
+    // the links are read in their own order, not the products'.
+    const affectedIds = affectedLinks.map((link) => link.productId);
+    await lockProductRows(tx, storeId, affectedIds);
+
     await tx.delete(productCategories).where(eq(productCategories.categoryId, input.id));
 
-    const affectedIds = affectedLinks.map((link) => link.productId);
     if (affectedIds.length > 0) {
       if (replacementId) {
         const alreadyLinked = new Set(
@@ -414,7 +424,7 @@ export async function deleteCategory(
     return affectedIds.length;
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   return { id: input.id, affectedProductCount, replacementCategoryId: replacementId };
 }
 

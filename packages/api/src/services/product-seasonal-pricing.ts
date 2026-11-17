@@ -17,8 +17,10 @@ import {
   type createSeasonalPricingInput,
   type updateSeasonalPricingInput,
 } from "../contracts/products";
+import { readAfterCommit } from "../platform/errors";
 import type { ApiEvent } from "../platform/ports";
 import { lockStoreProducts, type ConfirmStep, type ProductActor } from "./products";
+import { raiseConfirmation, type ConfirmationRefusal } from "../platform/confirmation";
 
 /**
  * Seasonal prices of a product: a base price and tiers that replace the
@@ -256,7 +258,7 @@ export async function createSeasonalPricing(
     }
   });
   emit(actor, input.productId);
-  return getSeason(actor.storeId, id);
+  return readAfterCommit(() => getSeason(actor.storeId, id));
 }
 
 /** Partial: a field left out is unchanged; rateTiers sent replaces the tiers. */
@@ -295,7 +297,7 @@ export async function updateSeasonalPricing(
     }
   });
   emit(actor, productId);
-  return getSeason(actor.storeId, input.id);
+  return readAfterCommit(() => getSeason(actor.storeId, input.id));
 }
 
 /**
@@ -341,7 +343,7 @@ export async function duplicateSeasonalPricing(actor: ProductActor, id: string) 
     }
   });
   emit(actor, productId);
-  return getSeason(actor.storeId, newId);
+  return readAfterCommit(() => getSeason(actor.storeId, newId));
 }
 
 /** What deleting a season would do, for its confirmation preview. */
@@ -368,7 +370,7 @@ export async function deleteSeasonalPricing(
   id: string,
   options: { confirm?: ConfirmStep<SeasonalPricingDeletionPreview> } = {},
 ) {
-  let refusal: Error | null = null;
+  let refusal: ConfirmationRefusal | null = null;
   let productId = "";
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, actor.storeId);
@@ -405,7 +407,7 @@ export async function deleteSeasonalPricing(
     await tx.delete(productSeasonalPricing).where(eq(productSeasonalPricing.id, id));
   });
 
-  if (refusal) throw refusal;
+  if (refusal) return raiseConfirmation(refusal);
   emit(actor, productId);
   return { id, productId };
 }

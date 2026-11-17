@@ -84,7 +84,9 @@ const pageInput = (listTool: string) =>
       .string()
       .max(64)
       .optional()
-      .describe(`The nextCursor of the previous ${listTool} page. Leave it out for the first page.`),
+      .describe(
+        `The nextCursor of the previous ${listTool} page. Leave it out for the first page.`,
+      ),
     limit: z.coerce
       .number()
       .int()
@@ -116,23 +118,18 @@ export const listInvitationsOutput = z.object({
 });
 
 export const inviteMemberInput = z.object({
-  email: z
-    .email()
-    .max(255)
-    .describe("The e-mail address of the person to invite."),
+  email: z.email().max(255).describe("The e-mail address of the person to invite."),
   role: z
     .literal("member")
     .optional()
-    .describe(
-      'Always "member", the only role an invitation gives. Owners are never invited.',
-    ),
+    .describe('Always "member", the only role an invitation gives. Owners are never invited.'),
 });
 export const inviteMemberOutput = z.object({
   /**
    * `invited`: an invitation went out, valid 7 days. `added`: the person
    * already had a Louez account and joined the store at once.
    * `approval_requested` (an agent): nothing was created yet; an owner
-   * approves or declines from `approval.url`.
+   * approves or refuses from `approval.url`.
    */
   outcome: z.enum(["invited", "added", "approval_requested"]),
   invitation: teamInvitationSchema.nullable(),
@@ -145,22 +142,11 @@ export const inviteMemberOutput = z.object({
   invitationEmail: z.enum(["queued", "not_configured"]).nullable(),
   /**
    * An agent's request: the link to give the user, and the handoff to read
-   * with handoffs_get (completed once approved, failed once declined).
+   * with handoffs_get (completed once approved and carried out, failed
+   * otherwise; `decision` says what the owner decided).
    */
   approval: handoffLinkSchema.nullable(),
   links: teamPageLinks,
-});
-
-/** An owner's answer to an agent's invitation, from its link's page. */
-export const decideInvitationInput = z.object({
-  token: z.string().min(1).max(128),
-  decision: z.enum(["approve", "decline"]),
-});
-export const decideInvitationOutput = z.object({
-  /** The handoff the agent reads. */
-  handoffId: z.string(),
-  decision: z.enum(["approved", "declined"]),
-  outcome: z.enum(["invited", "added"]).nullable(),
 });
 
 /** The invited person accepts, signed in with the invited address. */
@@ -247,21 +233,15 @@ export const teamErrors = {
     }),
   approvalsFull: () =>
     apiError("CONFLICT", "TEAM_APPROVALS_FULL", {
-      message: `This store already has ${MAX_OPEN_INVITATION_APPROVALS} invitations waiting for an owner's approval. The user approves or declines them from their links, or they expire after a day.`,
+      message: `This store already has ${MAX_OPEN_INVITATION_APPROVALS} invitations waiting for an owner's approval. The user approves or refuses them from their links, or they expire after a day.`,
       details: { max: MAX_OPEN_INVITATION_APPROVALS },
     }),
   emailLimit: () =>
     apiError("TOO_MANY_REQUESTS", "TEAM_INVITATION_EMAIL_LIMIT", {
-      message: `This store sent ${INVITATION_EMAILS_PER_DAY} invitation e-mails in the last 24 hours, the most it may. Try again later.`,
-      i18nKey: "errors.tooManyRequests",
+      message: `This store requested ${INVITATION_EMAILS_PER_DAY} invitation e-mails in the last 24 hours, whether or not they could be sent, the most it may. Try again later.`,
+      i18nKey: "dashboard.team.invitationEmailLimit",
       retryable: true,
       details: { max: INVITATION_EMAILS_PER_DAY },
-    }),
-  approvalInvalid: (reason: string) =>
-    apiError("BAD_REQUEST", "TEAM_APPROVAL_INVALID", {
-      message: "This approval link no longer works, or is not for this account.",
-      i18nKey: `handoff.refused.${reason}.title`,
-      details: { reason },
     }),
   approvalChanged: () =>
     apiError("CONFLICT", "TEAM_APPROVAL_CHANGED", {

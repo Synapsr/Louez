@@ -1,8 +1,17 @@
+import type { BookingAttributeAxis, UnitAttributes } from '@louez/types'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 
 import type { Database, Transaction } from './index'
-import { products, reservationItems, reservations } from './schema'
-import type { BlockingReservationStatus } from './unit-availability'
+import {
+  assertReservationLock,
+  type ReservationProductsLock,
+  type ReservationStockLock,
+} from './reservation-lock'
+import { products, reservationItemUnits, reservationItems, reservations } from './schema'
+import {
+  buildReservationAvailabilityPredicate,
+  type BlockingReservationStatus,
+} from './unit-availability'
 
 export interface ConsumableStockItem {
   itemId: string
@@ -156,12 +165,19 @@ export function planConsumableStockMutation(
   }
 }
 
-async function mutateReservationStock(
+/**
+ * What a mutation of the reservation's consumables would change, read under
+ * the locks it takes (the reservation, then its consumable lines and their
+ * products, by id), checked as it would be applied: a product missing, or
+ * a quantity that would fall below zero, throws `ConsumableStockError`.
+ * Null when nothing would change. It writes nothing.
+ */
+async function checkedStockPlan(
   tx: Transaction,
   reservationId: string,
   storeId: string,
   mode: ConsumableStockMutationMode,
-): Promise<void> {
+): Promise<ConsumableStockMutationPlan | null> {
   const lockedReservation = await tx
     .select({ id: reservations.id })
     .from(reservations)
@@ -211,7 +227,7 @@ async function mutateReservationStock(
   const plan = planConsumableStockMutation(consumableItems, mode)
 
   if (plan.itemChanges.length === 0) {
-    return
+    return null
   }
 
   const productIds = plan.productChanges.map((change) => change.productId)
@@ -253,6 +269,18 @@ async function mutateReservationStock(
     }
   }
 
+  return plan
+}
+
+async function mutateReservationStock(
+  tx: Transaction,
+  reservationId: string,
+  storeId: string,
+  mode: ConsumableStockMutationMode,
+): Promise<void> {
+  const plan = await checkedStockPlan(tx, reservationId, storeId, mode)
+  if (!plan) return
+
   for (const change of plan.productChanges) {
     await tx
       .update(products)
@@ -282,20 +310,142 @@ async function mutateReservationStock(
   }
 }
 
+/**
+ * Takes the reservation's consumables, under its products' lock: a lock from
+ * the owner entry (`runReservationChange`), or the one `insertReservation`
+ * gives for the row it inserted after locking its products, which this use
+ * spends. The reservation is the one the lock was issued for.
+ */
 export async function consumeReservationStock(
   tx: Transaction,
-  reservationId: string,
-  storeId: string,
+  lock: ReservationStockLock,
 ): Promise<void> {
-  await mutateReservationStock(tx, reservationId, storeId, 'consume')
+  const grant = assertReservationLock(tx, lock, ['products', 'inserted'])
+  await mutateReservationStock(tx, grant.reservationId, grant.storeId, 'consume')
 }
 
+/**
+ * Whether the reservation's consumables can be taken, as
+ * `consumeReservationStock` would take them, under its products' lock
+ * (`runReservationChange`): throws the `ConsumableStockError` that taking
+ * them would throw, and writes nothing. A change that asks someone first
+ * checks it before it asks: no override passes a consumable short.
+ */
+export async function checkReservationConsumables(
+  tx: Transaction,
+  lock: ReservationProductsLock,
+): Promise<void> {
+  const grant = assertReservationLock(tx, lock, ['products'])
+  await checkedStockPlan(tx, grant.reservationId, grant.storeId, 'consume')
+}
+
+/**
+ * One line of a reservation's stock demand as a status change takes it, as
+ * read under its locks (`readReservationStockDemand`): what it books (the
+ * product, the quantity, the variant as the line stores it, with the
+ * product's booking axes to read it by, the units assigned to it) and, for a
+ * consumable, what is consumed and what the change takes.
+ */
+export interface ReservationDemandLine {
+  line: string
+  product: string
+  quantity: number
+  /** The line's combination: null for a line served by any unit that matches its choice. */
+  combinationKey: string | null
+  /** The attributes the line chose, as stored; read against `axes` (packages/api `stockDemandOf`). */
+  selectedAttributes: UnitAttributes | null
+  axes: BookingAttributeAxis[] | null
+  /** The ids of the units assigned to it, sorted. */
+  units: string[]
+  /** A consumable's units already taken, and what the change takes (negative: gives back). */
+  consumable?: { consumed: number; takes: number }
+}
+
+/**
+ * The reservation's stock demand as a status change will take it, under its
+ * products' lock (`runReservationChange`): per line with a product, the
+ * product, the quantity, the variant and the assigned units, and for a
+ * consumable what is already consumed and what `action` takes (`consume`:
+ * up to the quantity; `restore`: all of it back; null: nothing), in the
+ * lines' id order. A confirmation binds it (in its canonical form,
+ * packages/api `stockDemandOf`), so a line changed since its preview voids
+ * the preview's token or approval. Writes nothing.
+ */
+export async function readReservationStockDemand(
+  tx: Transaction,
+  lock: ReservationProductsLock,
+  action: 'consume' | 'restore' | null,
+): Promise<ReservationDemandLine[]> {
+  const grant = assertReservationLock(tx, lock, ['products'])
+  const rows = await tx
+    .select({
+      line: reservationItems.id,
+      product: products.id,
+      quantity: reservationItems.quantity,
+      consumed: reservationItems.consumedQuantity,
+      combinationKey: reservationItems.combinationKey,
+      selectedAttributes: reservationItems.selectedAttributes,
+      axes: products.bookingAttributeAxes,
+      stockKind: products.stockKind,
+    })
+    .from(reservationItems)
+    .innerJoin(products, eq(reservationItems.productId, products.id))
+    .where(
+      and(
+        eq(reservationItems.reservationId, grant.reservationId),
+        eq(products.storeId, grant.storeId),
+      ),
+    )
+    .orderBy(reservationItems.id)
+    .for('update')
+  const assigned =
+    rows.length === 0
+      ? []
+      : await tx
+          .select({
+            line: reservationItemUnits.reservationItemId,
+            unit: reservationItemUnits.productUnitId,
+          })
+          .from(reservationItemUnits)
+          .where(
+            inArray(
+              reservationItemUnits.reservationItemId,
+              rows.map((row) => row.line),
+            ),
+          )
+          .orderBy(reservationItemUnits.reservationItemId, reservationItemUnits.productUnitId)
+          .for('update')
+  return rows.map(({ consumed, stockKind, ...row }) => {
+    const units = assigned.flatMap((entry) =>
+      entry.line === row.line && entry.unit ? [entry.unit] : [],
+    )
+    const demand = {
+      line: row.line,
+      product: row.product,
+      quantity: row.quantity,
+      combinationKey: row.combinationKey,
+      selectedAttributes: row.selectedAttributes,
+      axes: row.axes,
+      units,
+    }
+    if (stockKind !== 'consumable') return demand
+    const takes =
+      action === 'consume'
+        ? Math.max(consumed, row.quantity) - consumed
+        : action === 'restore'
+          ? -consumed
+          : 0
+    return { ...demand, consumable: { consumed, takes } }
+  })
+}
+
+/** Gives the reservation's consumables back, under its products' lock (`runReservationChange`). */
 export async function restoreReservationStock(
   tx: Transaction,
-  reservationId: string,
-  storeId: string,
+  lock: ReservationProductsLock,
 ): Promise<void> {
-  await mutateReservationStock(tx, reservationId, storeId, 'restore')
+  const grant = assertReservationLock(tx, lock, ['products'])
+  await mutateReservationStock(tx, grant.reservationId, grant.storeId, 'restore')
 }
 
 export async function reconcileReservationStock(
@@ -319,16 +469,14 @@ export async function loadConsumableReservedQuantities(
     return new Map()
   }
 
-  const reservationPredicate = params.excludeReservationId
-    ? and(
-        eq(reservations.storeId, params.storeId),
-        inArray(reservations.status, params.blockingStatuses),
-        ne(reservations.id, params.excludeReservationId),
-      )
-    : and(
-        eq(reservations.storeId, params.storeId),
-        inArray(reservations.status, params.blockingStatuses),
-      )
+  // The same reservations as returnable stock counts: a pending marketplace
+  // booking whose hold expired holds nothing.
+  const reservationPredicate = and(
+    eq(reservations.storeId, params.storeId),
+    inArray(reservations.status, params.blockingStatuses),
+    buildReservationAvailabilityPredicate(database),
+    params.excludeReservationId ? ne(reservations.id, params.excludeReservationId) : undefined,
+  )
   const rows = await database
     .select({
       productId: reservationItems.productId,

@@ -1,38 +1,43 @@
-'use client'
+"use client";
 
-import { AlertTriangle, ChevronRight } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { AlertTriangle, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Button, Card, CardContent, Checkbox, Separator } from '@louez/ui'
-import { cn } from '@louez/utils'
+import { Button, Card, CardContent, Checkbox, Separator } from "@louez/ui";
+import { cn, formatCurrency } from "@louez/utils";
 
-import type { AvailabilityWarning, ReservationCalculations } from '../types'
+import { useFormatLocale } from "@/hooks/use-format-locale";
+
+import type { EditSummaryFigures } from "../hooks/use-edit-reservation-pricing";
+import type { AvailabilityWarning, ReservationCalculations } from "../types";
 
 interface EditReservationSummarySectionProps {
-  availabilityWarnings: AvailabilityWarning[]
-  originalSubtotal: number
-  originalDeposit: number
-  originalDeliveryFee: number
-  calculations: ReservationCalculations
-  deliveryFee: number
-  currencySymbol: string
-  isLoading: boolean
-  isDeliveryCalculating: boolean
-  hasChanges: boolean
-  notifyCustomerByEmail: boolean
-  onNotifyCustomerByEmailChange: (checked: boolean) => void
-  hasScheduleChanges: boolean
-  onSave: () => void
+  availabilityWarnings: AvailabilityWarning[];
+  /** Totals tax included, stored now and about to be written (`editSummaryFigures`). */
+  figures: EditSummaryFigures;
+  originalDeposit: number;
+  originalDeliveryFee: number;
+  calculations: ReservationCalculations;
+  deliveryFee: number;
+  /** The reservation's currency: every amount is shown in it, at its precision. */
+  currency: string;
+  isLoading: boolean;
+  isDeliveryCalculating: boolean;
+  hasChanges: boolean;
+  notifyCustomerByEmail: boolean;
+  onNotifyCustomerByEmailChange: (checked: boolean) => void;
+  hasScheduleChanges: boolean;
+  onSave: () => void;
 }
 
-export function EditReservationSummarySection({
+export const EditReservationSummarySection = ({
   availabilityWarnings,
-  originalSubtotal,
+  figures,
   originalDeposit,
   originalDeliveryFee,
   calculations,
   deliveryFee,
-  currencySymbol,
+  currency,
   isLoading,
   isDeliveryCalculating,
   hasChanges,
@@ -40,127 +45,120 @@ export function EditReservationSummarySection({
   onNotifyCustomerByEmailChange,
   hasScheduleChanges,
   onSave,
-}: EditReservationSummarySectionProps) {
-  const t = useTranslations('dashboard.reservations')
-
-  const newTotal = calculations.subtotal + deliveryFee
-  const originalTotal = originalSubtotal + originalDeliveryFee
-  const difference = newTotal - originalTotal
+}: EditReservationSummarySectionProps) => {
+  const t = useTranslations("dashboard.reservations");
+  const { intl: formatLocale } = useFormatLocale();
+  const money = (amount: number) => formatCurrency(amount, currency, formatLocale);
+  const { difference } = figures;
 
   const scrollToFirstConflict = () => {
     const target = document.getElementById(
       `edit-item-product-${availabilityWarnings[0]?.productId}`,
-    )
-    const reducedMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
+    );
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     target?.scrollIntoView({
-      behavior: reducedMotion ? 'auto' : 'smooth',
-      block: 'center',
-    })
-  }
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "center",
+    });
+  };
 
   return (
     <Card className="lg:sticky lg:top-24">
       <CardContent className="p-4 sm:p-6">
-        <h2 className="mb-4 text-sm font-medium text-muted-foreground">{t('edit.summary')}</h2>
+        <h2 className="mb-4 text-sm font-medium text-muted-foreground">{t("edit.summary")}</h2>
 
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t('edit.before')}</span>
-            <span>
-              {originalSubtotal.toFixed(2)}
-              {currencySymbol}
-            </span>
+            <span className="text-muted-foreground">{t("edit.before")}</span>
+            <span className="tabular-nums">{money(figures.before)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t('edit.after')}</span>
-            <span className="font-medium">
-              {calculations.subtotal.toFixed(2)}
-              {currencySymbol}
-            </span>
-          </div>
+
+          <Separator />
+
+          {figures.taxLines && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t("subtotalExclTax")}</span>
+              <span className="tabular-nums">{money(figures.taxLines.subtotal)}</span>
+            </div>
+          )}
 
           {calculations.totalSavings > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-emerald-600">{t('edit.delivery.savings')}</span>
-              <span className="text-emerald-600">
-                -{calculations.totalSavings.toFixed(2)}
-                {currencySymbol}
+              <span className="text-emerald-600">{t("edit.delivery.savings")}</span>
+              <span className="text-emerald-600 tabular-nums">
+                -{money(calculations.totalSavings)}
               </span>
             </div>
           )}
 
           {(deliveryFee > 0 || originalDeliveryFee > 0) && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('edit.delivery.deliveryFee')}</span>
-              <span>
-                {originalDeliveryFee !== deliveryFee && originalDeliveryFee > 0 ? (
-                  <>
-                    <span className="mr-2 text-muted-foreground line-through">
-                      {originalDeliveryFee.toFixed(2)}
-                    </span>
-                    {deliveryFee.toFixed(2)}
-                    {currencySymbol}
-                  </>
-                ) : (
-                  <>
-                    {deliveryFee.toFixed(2)}
-                    {currencySymbol}
-                  </>
+              <span className="text-muted-foreground">{t("edit.delivery.deliveryFee")}</span>
+              <span className="tabular-nums">
+                {originalDeliveryFee !== deliveryFee && originalDeliveryFee > 0 && (
+                  <span className="mr-2 text-muted-foreground line-through">
+                    {money(originalDeliveryFee)}
+                  </span>
                 )}
+                {money(deliveryFee)}
               </span>
             </div>
           )}
 
+          {figures.discount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t("manualForm.globalDiscount.label")}</span>
+              <span className="tabular-nums">-{money(figures.discount)}</span>
+            </div>
+          )}
+
+          {figures.taxLines && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t("manualForm.taxLine")}</span>
+              <span className="tabular-nums">{money(figures.taxLines.tax)}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t("edit.after")}</span>
+            <span className="font-medium tabular-nums">{money(figures.after)}</span>
+          </div>
+
           <Separator />
 
           <div className="flex justify-between">
-            <span className="font-medium">{t('edit.difference')}</span>
+            <span className="font-medium">{t("edit.difference")}</span>
             <span
               className={cn(
-                'text-lg font-bold',
-                difference > 0 && 'text-emerald-600',
-                difference < 0 && 'text-red-600'
+                "text-lg font-bold tabular-nums",
+                difference > 0 && "text-emerald-600",
+                difference < 0 && "text-red-600",
               )}
             >
-              {difference >= 0 ? '+' : ''}
-              {difference.toFixed(2)}
-              {currencySymbol}
+              {difference > 0 ? "+" : ""}
+              {money(difference)}
             </span>
           </div>
 
           {difference !== 0 && (
             <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
               {difference > 0
-                ? t('edit.adjustmentPositive', {
-                    amount: `${difference.toFixed(2)}${currencySymbol}`,
-                  })
-                : t('edit.adjustmentNegative', {
-                    amount: `${Math.abs(difference).toFixed(2)}${currencySymbol}`,
-                  })}
+                ? t("edit.adjustmentPositive", { amount: money(difference) })
+                : t("edit.adjustmentNegative", { amount: money(Math.abs(difference)) })}
             </p>
           )}
 
           <Separator />
 
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t('edit.deposit')}</span>
-            <span>
-              {originalDeposit !== calculations.deposit ? (
-                <>
-                  <span className="mr-2 text-muted-foreground line-through">
-                    {originalDeposit.toFixed(2)}
-                  </span>
-                  {calculations.deposit.toFixed(2)}
-                  {currencySymbol}
-                </>
-              ) : (
-                <>
-                  {calculations.deposit.toFixed(2)}
-                  {currencySymbol}
-                </>
+            <span className="text-muted-foreground">{t("edit.deposit")}</span>
+            <span className="tabular-nums">
+              {originalDeposit !== calculations.deposit && (
+                <span className="mr-2 text-muted-foreground line-through">
+                  {money(originalDeposit)}
+                </span>
               )}
+              {money(calculations.deposit)}
             </span>
           </div>
         </div>
@@ -172,7 +170,7 @@ export function EditReservationSummarySection({
               <span className="flex min-w-0 items-center gap-1.5 text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">
-                  {t('edit.availabilityConflicts', {
+                  {t("edit.availabilityConflicts", {
                     count: availabilityWarnings.length,
                   })}
                 </span>
@@ -184,7 +182,7 @@ export function EditReservationSummarySection({
                 className="h-7 shrink-0 px-2 text-xs"
                 onClick={scrollToFirstConflict}
               >
-                {t('edit.seeConflict')}
+                {t("edit.seeConflict")}
               </Button>
             </div>
           </>
@@ -195,8 +193,8 @@ export function EditReservationSummarySection({
         <label
           htmlFor="notifyCustomerByEmailSummary"
           className={cn(
-            'flex items-start gap-3 rounded-lg border p-3 text-sm',
-            hasChanges ? 'cursor-pointer bg-background' : 'cursor-not-allowed bg-muted/40',
+            "flex items-start gap-3 rounded-lg border p-3 text-sm",
+            hasChanges ? "cursor-pointer bg-background" : "cursor-not-allowed bg-muted/40",
           )}
         >
           <Checkbox
@@ -207,13 +205,13 @@ export function EditReservationSummarySection({
             className="mt-0.5"
           />
           <span className="space-y-1">
-            <span className="block font-medium">{t('edit.notifyCustomerByEmail')}</span>
+            <span className="block font-medium">{t("edit.notifyCustomerByEmail")}</span>
             <span className="block text-xs text-muted-foreground">
               {hasChanges
                 ? hasScheduleChanges
-                  ? t('edit.notifyCustomerScheduleHelp')
-                  : t('edit.notifyCustomerHelp')
-                : t('edit.notifyCustomerDisabledHelp')}
+                  ? t("edit.notifyCustomerScheduleHelp")
+                  : t("edit.notifyCustomerHelp")
+                : t("edit.notifyCustomerDisabledHelp")}
             </span>
           </span>
         </label>
@@ -226,9 +224,9 @@ export function EditReservationSummarySection({
           disabled={isDeliveryCalculating || !hasChanges}
         >
           <ChevronRight data-slot="icon" />
-          {t('edit.save')}
+          {t("edit.save")}
         </Button>
       </CardContent>
     </Card>
-  )
-}
+  );
+};

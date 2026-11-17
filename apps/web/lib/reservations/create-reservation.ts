@@ -6,23 +6,27 @@ import { saveCustomerFieldValues } from "@louez/api/services/customer-fields";
 import { saveReservationItemDetails } from "@louez/api/services/customer-fields-online";
 import { saveCustomerProfileValues } from "@louez/api/services/customer-profile-fields";
 import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pricing-catalog";
+import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
 import {
   aiAdvisorConversations,
-  cancelFailedCheckoutReservation,
   changeReservationStatus,
   db,
   getBlockingReservationStatuses,
   insertReservation,
+  lockReservationOnlyInTransaction,
   payments,
   productAccessories,
   products,
   reservationActivity,
   reservationItems,
   reservations,
+  runReservationTransaction,
   stores,
   toWholeSeconds,
   type ReservationBillingEffect,
   type ReservationInsertValues,
+  type ReservationOnlyLock,
+  type ReservationTransaction,
   type Transaction,
 } from "@louez/db";
 import {
@@ -49,6 +53,7 @@ import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { normalizePhoneNumber } from "@/lib/sms/phone";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 import { getStripe } from "@/lib/stripe/client";
 
 import { applyPromoCode, consumePromoCode, type AppliedPromoCode } from "./apply-promo-code";
@@ -58,14 +63,15 @@ import {
   runPostCreationEffects,
 } from "./post-creation-effects";
 import {
+  checkoutLineBreakdown,
   computeReservationTotals,
   getReservationItemTaxFields,
   INSURANCE_TAX_LINE_ID,
   priceCart,
   type PricedCart,
   type ReservationTotals,
-} from "./price-cart";
-import { generateUniqueReservationNumber } from "./reservation-number";
+} from "@louez/api/services/price-cart";
+import { generateUniqueReservationNumber } from "@louez/api/services/reservation-number";
 import { failReservation, type ReservationFailure } from "@louez/api/services/reservation-failure";
 
 import type {
@@ -476,6 +482,8 @@ const prepareReservation = async (
     deliveryFee: delivery.fee,
     totalDeposit: cart.totalDeposit,
     taxSettings: settings?.tax,
+    // The currency the reservation is written in: the tax and totals in its minor unit.
+    currency: normalizeCurrency(settings?.currency),
   });
 
   return {
@@ -678,6 +686,8 @@ const buildReservationValues = (
     subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
     taxAmount: totals.taxAmount?.toFixed(2) ?? null,
     taxRate: totals.taxRate?.toFixed(2) ?? null,
+    // The facts it was priced with (slice 9).
+    taxDisplayMode: totals.displayMode,
     customerNotes: request.customerNotes || null,
     source: request.source,
     // The web checkout requires accepting the rental terms: the customer signs here.
@@ -751,28 +761,8 @@ const buildReservationItemValues = (
       unitPrice: line.unitPrice.toFixed(2),
       depositPerUnit: line.depositPerUnit.toFixed(2),
       totalPrice: line.subtotal.toFixed(2),
-      ...(line.promotion
-        ? {
-            pricingBreakdown: {
-              basePrice: prepared.catalog.get(line.productId)?.price ?? line.unitPrice,
-              effectivePrice: line.unitPrice,
-              duration: line.duration,
-              pricingMode: prepared.catalog.get(line.productId)?.pricingMode ?? "day",
-              pricingKind: line.pricingKind,
-              discountPercent: line.promotion.percentage,
-              discountAmount: line.promotion.discountAmount,
-              tierApplied: null,
-              promotion: line.promotion,
-              taxRate: tax.taxRate,
-              taxAmount: tax.taxAmount,
-              subtotalExclTax: tax.totalExclTax,
-              subtotalInclTax:
-                tax.totalExclTax !== null && tax.taxAmount !== null
-                  ? tax.totalExclTax + tax.taxAmount
-                  : line.subtotal,
-            },
-          }
-        : {}),
+      // What its pricing used, the promotion included, on every line (slice 9).
+      pricingBreakdown: checkoutLineBreakdown(prepared.catalog.get(line.productId), line, tax),
       productSnapshot: buildProductSnapshot(prepared.catalog, item, resolved),
       combinationKey: resolved?.combinationKey || item.resolvedCombinationKey || null,
       selectedAttributes:
@@ -781,6 +771,7 @@ const buildReservationItemValues = (
       taxAmount: tax.taxAmount?.toFixed(2) ?? null,
       priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
       totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+      taxExempt: false,
     };
   });
 
@@ -799,6 +790,8 @@ const buildReservationItemValues = (
       taxAmount: insuranceTax?.taxAmount.toFixed(2) ?? null,
       priceExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
       totalExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
+      // Insurance carries no VAT, whatever the store's settings.
+      taxExempt: true,
       productSnapshot: {
         name: INSURANCE_ITEM_NAME,
         description: null,
@@ -814,14 +807,22 @@ const buildReservationItemValues = (
  * Locks the checkout being resumed and checks it again: still pending, nothing
  * paid. It was read before the transaction, and the webhook may have paid it
  * since. Then this is a fresh booking, and the stock check counts the paid one.
- * A payment claimed later waits for this write. Exported for its database test.
+ * A payment claimed later waits for this write. The checkout's products are
+ * locked already: the resumed reservation takes the reservation-only lock,
+ * which allows no stock move, and none of its own products. Exported for its
+ * database test.
  */
 export const lockResumableCheckout = async <Checkout extends { id: string }>(
   tx: Transaction,
+  owner: ReservationTransaction,
   storeId: string,
   resumable: Checkout | null,
-): Promise<Checkout | null> => {
+): Promise<(Checkout & { lock: ReservationOnlyLock }) | null> => {
   if (!resumable) return null;
+  const lock = await lockReservationOnlyInTransaction(owner, {
+    reservationId: resumable.id,
+    storeId,
+  });
   const [locked] = await tx
     .select({ status: reservations.status })
     .from(reservations)
@@ -841,7 +842,7 @@ export const lockResumableCheckout = async <Checkout extends { id: string }>(
     )
     .limit(1)
     .for("share");
-  return paid ? null : resumable;
+  return paid ? null : { ...resumable, lock };
 };
 
 /**
@@ -855,13 +856,13 @@ export const lockResumableCheckout = async <Checkout extends { id: string }>(
  */
 export const supersedePendingCheckout = async (
   tx: Transaction,
-  storeId: string,
-  superseded: Pick<ResumableCheckout, "id">,
+  lock: ReservationOnlyLock,
   replacementId: string,
 ): Promise<{ sessionIds: string[]; effects: ReservationBillingEffect[] }> => {
   const change = await changeReservationStatus(tx, {
-    reservationId: superseded.id,
-    storeId,
+    lock,
+    reservationId: lock.reservationId,
+    storeId: lock.storeId,
     to: "cancelled",
     actor: "customer",
     actorUserId: null,
@@ -871,7 +872,7 @@ export const supersedePendingCheckout = async (
     },
   });
   if (!change.changed) {
-    throw new Error(`Could not supersede checkout ${superseded.id}: ${change.reason}`);
+    throw new Error(`Could not supersede checkout ${lock.reservationId}: ${change.reason}`);
   }
 
   const openPayments = await tx
@@ -879,7 +880,7 @@ export const supersedePendingCheckout = async (
     .from(payments)
     .where(
       and(
-        eq(payments.reservationId, superseded.id),
+        eq(payments.reservationId, lock.reservationId),
         eq(payments.type, "rental"),
         eq(payments.status, "pending"),
       ),
@@ -963,7 +964,13 @@ const writeReservation = async (
   const supersededSessions: string[] = [];
   const effects: ReservationBillingEffect[] = [];
 
-  const written = await db.transaction(async (tx): Promise<WriteResult> => {
+  // The owner entry: READ COMMITTED, and the whole write again on a lost
+  // deadlock. It holds no effect: the fees run and the superseded sessions
+  // expire after it, once.
+  const written = await runReservationTransaction(async (tx, owner): Promise<WriteResult> => {
+    // A run that rolled back keeps nothing of what it gathered.
+    supersededSessions.length = 0;
+    effects.length = 0;
     // Product locks first: a marketplace retry then waits for the attempt it
     // races with, and reads its reservation as a replay instead of colliding.
     const lockedProductsById = await lockReservationProducts(
@@ -979,7 +986,7 @@ const writeReservation = async (
 
     // Locked before the stock check: the resumed reservation is either reused
     // or replaced below, so its own hold must not count against this checkout.
-    const resumed = await lockResumableCheckout(tx, store.id, resumable);
+    const resumed = await lockResumableCheckout(tx, owner, store.id, resumable);
     const inventoryResult = await reserveInventory({
       tx,
       storeId: store.id,
@@ -1114,7 +1121,7 @@ const writeReservation = async (
     });
 
     if (resumed) {
-      const replaced = await supersedePendingCheckout(tx, store.id, resumed, reservationId);
+      const replaced = await supersedePendingCheckout(tx, resumed.lock, reservationId);
       supersededSessions.push(...replaced.sessionIds);
       effects.push(...replaced.effects);
     }
@@ -1274,7 +1281,12 @@ export const createReservation = async (
           store,
           reservationId: written.reservationId,
         });
-        paymentUrl = resumed.ok ? resumed.url : null;
+        // Found paid: the customer goes to the reservation, as the return sends them.
+        paymentUrl = resumed.ok
+          ? resumed.url
+          : resumed.error === "already_paid"
+            ? getStorefrontUrl(store.slug, `/account/reservations/${written.reservationId}`)
+            : null;
       } else {
         paymentUrl = await startCheckoutPayment({
           store,
@@ -1294,11 +1306,12 @@ export const createReservation = async (
     }
 
     if (effectiveReservationMode === "payment" && paymentUrl === null) {
-      await cancelFailedCheckoutReservation(
+      await changeSystemReservationStatus(
         {
+          reason: "checkout_failed",
           storeId: store.id,
           reservationId: written.reservationId,
-          reason: "session_creation_failed",
+          failure: "session_creation_failed",
         },
         runReservationEffects,
       );

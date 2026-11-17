@@ -29,7 +29,15 @@ const INBOX_HELP =
  * The billing card is named only to a connection that may reach billing.
  */
 const handoffHelp = (billing: boolean) =>
-  `Some steps only the user can take (Stripe's identity checks${billing ? ", a billing card" : ""}): their tool returns a link for the user to open, as it is, in their own browser. handoffs_get with its id then says where the step stands, so the user need not report back; while they are on it, a call every minute or so is enough, and inbox_list also shows a step still waiting. While it answers \`confirming: true\` (the user is back, the provider has not confirmed yet), handoffs_refresh asks the provider again. Calling the same tool again replaces an expired or failed link. Once Stripe's onboarding completes, or when the user says Stripe asked them for something, payments_sync_stripe_status says whether charges are enabled${billing ? "; once a card is added, billing_get_status shows it" : ""}.`;
+  `Some steps only the user can take (Stripe's identity checks${billing ? ", a billing card" : ""}): their tool returns a link for the user to open, as it is, in their own browser. handoffs_get with its id then says where the step stands, so the user need not report back, and gives the same link again (url) if they need it; while they are on it, a call every minute or so is enough, and inbox_list also shows a step still waiting. While it answers \`confirming: true\` (the user is back, the provider has not confirmed yet), handoffs_refresh asks the provider again. Calling the same tool again gives an expired link another day, or a new link for a failed step. Once Stripe's onboarding completes, or when the user says Stripe asked them for something, payments_sync_stripe_status says whether charges are enabled${billing ? "; once a card is added, billing_get_status shows it" : ""}.`;
+
+/**
+ * The actions the user approves on a Louez page, whatever the connection's
+ * confirmation setting (docs/architecture/api-and-agents.md, "The flow, by
+ * transport"): how the agent follows one to its end.
+ */
+const APPROVAL_HELP =
+  "Recording a payment, a deposit return or a refund given by hand, refunding a payment taken online, and deleting a payment (record_payment, record_deposit_return, record_refund, refund_payment, delete_payment), removing a member or cancelling an invitation (team_remove_member, team_cancel_invitation), and confirming, creating or moving the dates of a reservation with allowOverbooking or overrideTurnoverBuffer (reservations_update_status, reservations_create, reservations_update) need the user's approval, whatever the connection's setting: the first call does nothing and answers APPROVAL_REQUIRED with a preview and a link. Give the user the link as it is: they approve or refuse in Louez, signed in. handoffs_get with the approval's id then says where it stands, until approved, completed, failed or expired; a call every minute or so is enough. Once it is approved, the same tool with the same arguments and the approval's id as confirmationToken carries the action out, once. If handoffs_get returns failed, read failure and decision; if refused, tell the user nothing was done and stop. Calling the write with a refused approval answers APPROVAL_DECLINED. Request another approval only if the user asks, and respect retryAt if APPROVAL_RECENTLY_DECLINED is returned. If expired, request a new approval only if the action is still wanted; if completed, do not execute it again.";
 
 /** The new store's address check, for a client that creates stores. */
 const STORE_SLUG_HELP = "stores_check_slug_availability before stores_create, ";
@@ -65,7 +73,8 @@ const CHAINING_HELP = [
   "The legal texts: you may draft the terms and the legal notice from the store's data (settings_get, settings_get_legal_profile, the products) and the user's answers to what it lacks (such as the publication director); show the draft to the user and save it with settings_update_legal once they agree. stores_get_launch_checklist says what the law asks of the store's country.",
   "stores_get_launch_checklist says what a store lacks before stores_go_live, and which tool fixes each item; what no tool fixes is for the user.",
   "After inbox_acknowledge rejects items, inbox_list without a cursor gives what the inbox holds now.",
-  "The team: team_invite_member creates nothing by itself. It answers with approval.url, a link for the user to open as it is: they approve the invitation from it, signed in as an owner of the store. handoffs_get with approval.handoff.id then says completed once approved, failed once declined. team_remove_member and team_cancel_invitation take access away and answer CONFIRMATION_REQUIRED first, whatever the connection's setting, with a preview for the user to approve. Sending an invitation again or sharing its link is the user's, in Louez, on the team page whose link team_list_members returns.",
+  "To book for a customer: the customer's id from search_global, or their e-mail and name, and the products from products_list, then reservations_create with a new idempotencyKey; send the same key again after a lost answer, never a new one. Refused for missing required accessories, it names them in details.missing: add them as lines. Refused for the stock or the turnover buffer, tell the user before sending allowOverbooking or overrideTurnoverBuffer.",
+  "The team: team_invite_member creates nothing by itself. It answers with approval.url, a link for the user to open as it is: they approve the invitation from it, signed in as an owner of the store. handoffs_get with approval.handoff.id then gives the user's decision (approved or refused, with their words if they added any) and says completed once the invitation went out, failed when refused or no longer possible. Sending an invitation again or sharing its link is the user's, in Louez, on the team page whose link team_list_members returns.",
 ].join(" ");
 
 /** How the tools chain, without those the client's directory forbids. */
@@ -90,16 +99,16 @@ export const INSTRUCTIONS_ESSENTIALS_MAX = 512;
 const LINKS_ESSENTIAL =
   "Give the user the `links` records come with, as they are; never build or guess a Louez URL.";
 
-/** Sensitive actions confirm with the user first. */
+/** Sensitive actions confirm with the user first, or wait for their approval in Louez. */
 const CONFIRMATION_ESSENTIAL =
-  "A sensitive action (money, deletion, a message to a customer) may answer CONFIRMATION_REQUIRED with a preview: show it to the user, and call again with its confirmationToken only once they agree.";
+  "CONFIRMATION_REQUIRED: show the preview; retry with its confirmationToken if the user agrees. APPROVAL_REQUIRED: give approval.url to the user; retry with approval.id as confirmationToken only after handoffs_get says approved.";
 
 /**
  * The server's instructions. The essentials first, within
  * `INSTRUCTIONS_ESSENTIALS_MAX` characters: what Louez is, which store the
  * connection acts on (stores_list first when it covers several), the links,
- * the confirmations. Then the details: the store, how it goes live, the
- * inbox, the handoffs and the tool bundles. A bundle that is not listed is
+ * the confirmations and approvals. Then the details: the store, how it goes
+ * live, the inbox, the handoffs, the approvals and the tool bundles. A bundle that is not listed is
  * enabled by the user in Louez, never by the agent. `toolBundles` are the
  * bundles that hold a tool (`bundlesWithTools`): a bundle without one is
  * neither listed nor offered.
@@ -157,8 +166,13 @@ export function serverInstructions(
   }
 
   const { scopes, withheld } = ctx.actor.credential;
-  if (!ctx.noStore)
-    lines.push(INBOX_HELP, handoffHelp(scopes === null || scopes.billing !== "none"));
+  if (!ctx.noStore) {
+    lines.push(
+      INBOX_HELP,
+      handoffHelp(scopes === null || scopes.billing !== "none"),
+      APPROVAL_HELP,
+    );
+  }
 
   const { bundles } = ctx.actor.credential;
   if (bundles) {

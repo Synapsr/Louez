@@ -1,9 +1,7 @@
 import { stepCountIs, streamText } from "ai";
-import { STORE_HEADER } from "@louez/api/platform/procedures";
-import { appRouter } from "@louez/api/router";
+import { isTrustedAuthOrigin } from "@louez/auth";
 import { db, aiChats, aiChatMessages } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
-import { createRouterClient } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -11,6 +9,9 @@ import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { apiPorts } from "@/lib/api/ports";
+import { createAssistantApi } from "@/lib/ai/assistant-api";
+import { chatRequestRefusal, refusalLogLine } from "@/lib/ai/chat-request";
+import { log } from "@/lib/evlog";
 import { getAIModel, isAIChatConfigured } from "@/lib/ai/provider";
 import { checkRateLimit, validateMessageLength } from "@/lib/ai/rate-limit";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
@@ -18,12 +19,7 @@ import { createAITools } from "@/lib/ai/tools";
 import type { AIChatContext } from "@/lib/ai/tools";
 import { notifyAiChatStarted } from "@/lib/discord/platform-notifications";
 
-/** The request's headers (its session cookie) with the store pinned to `storeId`. */
-function storeHeaders(headers: Headers, storeId: string): Headers {
-  const pinned = new Headers(headers);
-  pinned.set(STORE_HEADER, storeId);
-  return pinned;
-}
+import { env } from "@/env";
 
 const chatRequestSchema = z.object({
   messages: z
@@ -66,6 +62,18 @@ function roleToPermissions(role: string): ApiKeyPermissions {
 }
 
 export async function POST(req: Request) {
+  // Only this app's own pages, with the chat's JSON: first, before the session.
+  const refusal = await chatRequestRefusal(req, {
+    appUrl: env.NEXT_PUBLIC_APP_URL,
+    isTrusted: isTrustedAuthOrigin,
+  });
+  if (refusal) {
+    // One line per origin now and then, for an operator: never a header or the body.
+    const line = refusalLogLine(refusal);
+    if (line) log.warn("chat", line);
+    return refusal.response;
+  }
+
   // Auth check
   const session = await auth();
   if (!session?.user?.id) {
@@ -175,49 +183,9 @@ export async function POST(req: Request) {
     storeName: store.name,
     permissions: roleToPermissions(store.role),
     urls: apiPorts.urls,
-    // The procedures, as this signed-in user, on this chat's store: the store
-    // header is set to it, whatever the request sent.
-    api: {
-      analytics: createRouterClient(appRouter.dashboard.analytics, {
-        context: {
-          headers: storeHeaders(req.headers, store.id),
-          transport: "rpc",
-          ports: apiPorts,
-        },
-        path: ["dashboard", "analytics"],
-      }),
-      categories: createRouterClient(appRouter.dashboard.categories, {
-        context: {
-          headers: storeHeaders(req.headers, store.id),
-          transport: "rpc",
-          ports: apiPorts,
-        },
-      }),
-      products: createRouterClient(appRouter.dashboard.products, {
-        context: {
-          headers: storeHeaders(req.headers, store.id),
-          transport: "rpc",
-          ports: apiPorts,
-        },
-        path: ["dashboard", "products"],
-      }),
-      reservations: createRouterClient(appRouter.dashboard.reservations, {
-        context: {
-          headers: storeHeaders(req.headers, store.id),
-          transport: "rpc",
-          ports: apiPorts,
-        },
-        path: ["dashboard", "reservations"],
-      }),
-      settings: createRouterClient(appRouter.dashboard.settings, {
-        context: {
-          headers: storeHeaders(req.headers, store.id),
-          transport: "rpc",
-          ports: apiPorts,
-        },
-        path: ["dashboard", "settings"],
-      }),
-    },
+    // The procedures, as this signed-in user, on this chat's store, marked
+    // as the assistant's: money it prepares waits for the person's approval.
+    api: createAssistantApi({ headers: req.headers, storeId: store.id, ports: apiPorts }),
   };
 
   const tools = createAITools(aiCtx);

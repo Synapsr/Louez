@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
+import { getSettledPaymentAmount } from "@louez/utils";
+
 import {
   getCustomerPaymentRows,
   getDamageFees,
+  getDepositTotals,
   getRentalPaid,
   getReservationPaymentStatus,
   hasRentalPaymentInProgress,
+  isFailedRefundRow,
   isRefundRow,
   isRentalPaid,
   isStripeRefundRow,
@@ -117,53 +121,138 @@ describe("getReservationPaymentStatus", () => {
 describe("getRentalPaid", () => {
   test("counts completed rental money only, refunds of it subtracted", () => {
     assert.equal(
-      getRentalPaid([
-        { id: "a", type: "rental", status: "completed", amount: "100.50" },
-        { id: "b", type: "deposit", status: "completed", amount: 200 },
-        { id: "c", type: "deposit_return", status: "completed", amount: "200" },
-        { id: "d", type: "rental", status: "pending", amount: "999" },
-        { id: "e", type: "rental", status: "completed", amount: "abc" },
-        { id: "f", type: "rental", status: "completed", amount: "20", refundOfPaymentId: "a" },
-        { id: "g", type: "damage", status: "completed", amount: "30" },
-        {
-          id: "h",
-          type: "deposit_return",
-          status: "completed",
-          amount: "5",
-          refundOfPaymentId: "x",
-        },
-      ]),
+      getRentalPaid(
+        [
+          { id: "a", type: "rental", status: "completed", amount: "100.50" },
+          { id: "b", type: "deposit", status: "completed", amount: 200 },
+          { id: "c", type: "deposit_return", status: "completed", amount: "200" },
+          { id: "d", type: "rental", status: "pending", amount: "999" },
+          { id: "e", type: "rental", status: "completed", amount: "abc" },
+          { id: "f", type: "rental", status: "completed", amount: "20", refundOfPaymentId: "a" },
+          { id: "g", type: "damage", status: "completed", amount: "30" },
+          {
+            id: "h",
+            type: "deposit_return",
+            status: "completed",
+            amount: "5",
+            refundOfPaymentId: "x",
+          },
+        ],
+        "EUR",
+      ),
       80.5,
     );
   });
 
   test("a Stripe refund row is neither added nor subtracted: its charge is already net", () => {
     assert.equal(
-      getRentalPaid([
-        {
-          id: "a",
-          type: "rental",
-          status: "completed",
-          amount: "70",
-          stripePaymentIntentId: "pi_1",
-        },
-        { id: "b", ...stripeRefund("30") },
-      ]),
+      getRentalPaid(
+        [
+          {
+            id: "a",
+            type: "rental",
+            status: "completed",
+            amount: "70",
+            stripePaymentIntentId: "pi_1",
+          },
+          { id: "b", ...stripeRefund("30") },
+        ],
+        "EUR",
+      ),
       70,
     );
     // Same once the refund row also points at its charge.
     assert.equal(
-      getRentalPaid([
+      getRentalPaid(
+        [
+          {
+            id: "a",
+            type: "rental",
+            status: "completed",
+            amount: "70",
+            stripePaymentIntentId: "pi_1",
+          },
+          { id: "b", ...stripeRefund("30"), refundOfPaymentId: "a" },
+        ],
+        "EUR",
+      ),
+      70,
+    );
+  });
+});
+
+describe("getDepositTotals", () => {
+  test("a return linked to a deposit that failed gives back nothing held, as the cancellation preview reads it", () => {
+    const payments = [
+      { id: "held", type: "deposit", status: "completed", amount: "60.00" },
+      { id: "failed", type: "deposit", status: "failed", amount: "40.00" },
+      {
+        id: "return",
+        type: "deposit_return",
+        status: "completed",
+        amount: "20.00",
+        refundOfPaymentId: "failed",
+      },
+    ];
+
+    assert.deepEqual(getDepositTotals(payments), { collected: 60, returned: 0, held: 60 });
+    // The cancellation preview's reading of the same rows.
+    assert.equal(
+      getSettledPaymentAmount(payments, "deposit") -
+        getSettledPaymentAmount(payments, "deposit_return"),
+      60,
+    );
+  });
+
+  test("a Stripe refund of a deposit is returned money, and its deposit already reads net", () => {
+    const refund = (amount: string) => ({
+      ...stripeRefund(amount, "deposit_return"),
+      refundOfPaymentId: "card",
+    });
+    // 100 taken by card, 30 refunded: the webhook brought the deposit down to 70.
+    assert.deepEqual(
+      getDepositTotals([
         {
-          id: "a",
-          type: "rental",
+          id: "card",
+          type: "deposit",
           status: "completed",
-          amount: "70",
+          amount: "70.00",
           stripePaymentIntentId: "pi_1",
         },
-        { id: "b", ...stripeRefund("30"), refundOfPaymentId: "a" },
+        refund("30.00"),
       ]),
-      70,
+      { collected: 70, returned: 30, held: 70 },
+    );
+    // Refunded in full: nothing is held any more, and the 100 went back.
+    assert.deepEqual(
+      getDepositTotals([
+        {
+          id: "card",
+          type: "deposit",
+          status: "refunded",
+          amount: "0.00",
+          stripePaymentIntentId: "pi_1",
+        },
+        refund("100.00"),
+      ]),
+      { collected: 0, returned: 100, held: 0 },
+    );
+  });
+
+  test("returns linked to a deposit and returns made apart both go back", () => {
+    assert.deepEqual(
+      getDepositTotals([
+        { id: "held", type: "deposit", status: "completed", amount: "100.00" },
+        {
+          id: "linked",
+          type: "deposit_return",
+          status: "completed",
+          amount: "30.00",
+          refundOfPaymentId: "held",
+        },
+        { id: "apart", type: "deposit_return", status: "completed", amount: "20.00" },
+      ]),
+      { collected: 100, returned: 50, held: 50 },
     );
   });
 });
@@ -185,10 +274,41 @@ describe("getCustomerPaymentRows", () => {
   test("drops a captured hold once the capture row exists", () => {
     const hold = { id: "h", type: "deposit_hold", status: "completed", amount: "100" };
     const capture = { id: "c", type: "deposit_capture", status: "completed", amount: "40" };
-    assert.deepEqual(getCustomerPaymentRows([hold, capture]), [capture]);
-    assert.deepEqual(getCustomerPaymentRows([hold]), [hold]);
+    assert.deepEqual(getCustomerPaymentRows([hold, capture], "pi_hold"), [capture]);
+    assert.deepEqual(getCustomerPaymentRows([hold], "pi_hold"), [hold]);
     const live = { id: "h", type: "deposit_hold", status: "authorized", amount: "100" };
-    assert.deepEqual(getCustomerPaymentRows([live]), [live]);
+    assert.deepEqual(getCustomerPaymentRows([live], "pi_hold"), [live]);
+  });
+
+  test("of the deposit holds, the customer reads the one their card carries, and its release", () => {
+    const row = (id: string, status: string, values: Record<string, unknown> = {}) => ({
+      id,
+      type: "deposit_hold",
+      status,
+      amount: "100",
+      stripePaymentIntentId: `pi_${id}`,
+      ...values,
+    });
+    const rental = { id: "r", type: "rental", status: "completed", amount: "80" };
+    const held = row("held", "authorized");
+    const released = row("released", "cancelled");
+    const rows = [
+      rental,
+      // Asked by the store, never confirmed by Stripe.
+      row("attempt", "pending", { stripePaymentIntentId: null }),
+      row("refused", "failed"),
+      // A second authorization, being released.
+      row("second", "authorized", { releaseOwedAt: new Date() }),
+      // A PaymentIntent that never was the reservation's hold.
+      row("never", "cancelled"),
+    ];
+
+    assert.deepEqual(getCustomerPaymentRows([...rows, held], "pi_held"), [rental, held]);
+    assert.deepEqual(getCustomerPaymentRows([...rows, released], "pi_released"), [
+      rental,
+      released,
+    ]);
+    assert.deepEqual(getCustomerPaymentRows(rows, null), [rental]);
   });
 
   test("a refund is any row pointing at another, or a deposit return", () => {
@@ -199,5 +319,34 @@ describe("getCustomerPaymentRows", () => {
     assert.equal(isRefundRow({ type: "deposit_return", status: "completed", amount: 1 }), true);
     assert.equal(isRefundRow({ type: "rental", status: "completed", amount: 1 }), false);
     assert.equal(isRefundRow(stripeRefund("30")), true);
+  });
+});
+
+describe("a refund that failed", () => {
+  const failed = { ...stripeRefund("60.00"), status: "failed" };
+  const charge = {
+    id: "pay_charge",
+    type: "rental",
+    status: "completed",
+    amount: "100.00",
+    stripePaymentIntentId: "pi_1",
+    stripeCheckoutSessionId: null,
+    stripeRefundId: null,
+  };
+
+  test("is told apart from one that gave money back, and from a payment that failed", () => {
+    assert.equal(isFailedRefundRow(failed), true);
+    assert.equal(isFailedRefundRow({ ...failed, refundOfPaymentId: "pay_charge" }), true);
+    assert.equal(isFailedRefundRow(stripeRefund("60.00")), false);
+    assert.equal(isFailedRefundRow({ ...charge, status: "failed" }), false);
+  });
+
+  test("is not shown to the customer as money given back", () => {
+    assert.deepEqual(
+      getCustomerPaymentRows([charge, failed, stripeRefund("10.00")], null).map(
+        (row) => row.status,
+      ),
+      ["completed", "completed"],
+    );
   });
 });

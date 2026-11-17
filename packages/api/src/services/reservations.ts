@@ -11,7 +11,7 @@ import {
   reservations,
   storeIntegrations,
 } from "@louez/db";
-import { getSettledPaymentAmount, hasReservationInsuranceCoverage } from "@louez/utils";
+import { getRentalPaid, hasReservationInsuranceCoverage } from "@louez/utils";
 import {
   and,
   asc,
@@ -73,9 +73,9 @@ export interface ReservationReader {
   payments: boolean;
 }
 
-/** What was paid toward the rental, refunds taken off, as a decimal string. */
-const rentalPaidOf = (rows: Parameters<typeof getSettledPaymentAmount>[0]) =>
-  getSettledPaymentAmount(rows, "rental").toFixed(2);
+/** What settles the rental (`getRentalPaid`), in its currency, as a decimal string. */
+const rentalPaidOf = (rows: Parameters<typeof getRentalPaid>[0], currency: string) =>
+  getRentalPaid(rows, currency).toFixed(2);
 
 /** Activity entries about payments and deposits: their text needs payments read. */
 const isPaymentActivity = (activityType: string) =>
@@ -405,6 +405,8 @@ export async function listReservations(reader: ReservationReader, input: ListRes
             totalAmount: true,
             signedAt: true,
             signatureMethod: true,
+            // Read for what settles the rental; not part of the list item.
+            currency: true,
           },
           with: {
             customer: { columns: { id: true, firstName: true, lastName: true, email: true } },
@@ -422,9 +424,12 @@ export async function listReservations(reader: ReservationReader, input: ListRes
               columns: {
                 id: true,
                 amount: true,
+                // Read for what settles the rental; not part of the list item.
+                currency: true,
                 type: true,
                 method: true,
                 status: true,
+                releaseOwedAt: true,
                 refundOfPaymentId: true,
                 stripeRefundId: true,
                 stripePaymentIntentId: true,
@@ -435,14 +440,17 @@ export async function listReservations(reader: ReservationReader, input: ListRes
         });
   const byId = new Map(rows.map((row) => [row.id, row]));
   const items: ReservationListItem[] = page.flatMap(({ id }) => {
-    const row = byId.get(id);
-    if (!row) return [];
+    const found = byId.get(id);
+    if (!found) return [];
+    const { currency, ...row } = found;
     return [
       {
         ...row,
         customer: reader.customers ? row.customer : null,
-        rentalPaid: rentalPaidOf(row.payments),
-        payments: reader.payments ? row.payments : [],
+        rentalPaid: rentalPaidOf(row.payments, currency ?? reader.currency),
+        payments: reader.payments
+          ? row.payments.map(({ currency: _currency, ...payment }) => payment)
+          : [],
         items: row.items.map((item) => ({
           ...item,
           productSnapshot: { name: item.productSnapshot.name },
@@ -467,8 +475,17 @@ export async function listReservations(reader: ReservationReader, input: ListRes
 // --- Detail ------------------------------------------------------------------
 
 /** One reservation with everything its dashboard page shows. */
-export async function getReservation(reader: ReservationReader, id: string): Promise<Reservation> {
-  const row = await db.query.reservations.findFirst({
+/**
+ * `executor`: the transaction a write reads its own answer in, after its
+ * write and before its commit, so the answer is the write's and no later
+ * one's (`changeReservationDates`). Absent: the database, for a read.
+ */
+export async function getReservation(
+  reader: ReservationReader,
+  id: string,
+  executor: Pick<typeof db, "query" | "select" | "selectDistinct"> = db,
+): Promise<Reservation> {
+  const row = await executor.query.reservations.findFirst({
     where: and(eq(reservations.id, id), eq(reservations.storeId, reader.storeId)),
     columns: {
       storeId: false,
@@ -543,9 +560,11 @@ export async function getReservation(reader: ReservationReader, id: string): Pro
           refundOfPaymentId: true,
           capturedAmount: true,
           authorizationExpiresAt: true,
+          releaseOwedAt: true,
           stripeRefundId: true,
           stripePaymentIntentId: true,
           stripeCheckoutSessionId: true,
+          sessionSettledAt: true,
         },
       },
       documents: {
@@ -571,7 +590,7 @@ export async function getReservation(reader: ReservationReader, id: string): Pro
   );
   const insured =
     hasReservationInsuranceCoverage(row) && productIds.length > 0
-      ? await db
+      ? await executor
           .selectDistinct({ productId: productsTulip.productId })
           .from(productsTulip)
           .innerJoin(products, eq(productsTulip.productId, products.id))
@@ -586,7 +605,7 @@ export async function getReservation(reader: ReservationReader, id: string): Pro
 
   const reservation: Reservation = {
     ...row,
-    rentalPaid: rentalPaidOf(row.payments),
+    rentalPaid: rentalPaidOf(row.payments, row.currency ?? reader.currency),
     currency: row.currency ?? reader.currency,
     insuredProductIds: insured.map((mapping) => mapping.productId),
     items: row.items.map((item) => ({

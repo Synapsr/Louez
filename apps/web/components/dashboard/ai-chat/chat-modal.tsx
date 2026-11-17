@@ -46,6 +46,8 @@ export const ChatModal = ({ open, onOpenChange }: ChatModalProps) => {
   const {
     messages,
     isLoading,
+    continueApproval,
+    followUpIds,
     chatId,
     historyRef,
     errorMessage,
@@ -198,7 +200,12 @@ export const ChatModal = ({ open, onOpenChange }: ChatModalProps) => {
             >
               <div className="flex min-h-full flex-col px-4 py-4 sm:px-5">
                 {messages.length > 0 ? (
-                  <ChatMessages messages={messages} isLoading={isLoading} />
+                  <ChatMessages
+                    messages={messages}
+                    isLoading={isLoading}
+                    onApprovalContinue={continueApproval}
+                    followUpIds={followUpIds}
+                  />
                 ) : (
                   <ChatEmptyState onPrompt={send} />
                 )}
