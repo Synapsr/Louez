@@ -1,4 +1,4 @@
-import { and, eq, type SQL } from "drizzle-orm";
+import { and, eq, sql, type SQL } from "drizzle-orm";
 
 import type { Database, Transaction } from "./index";
 import { customers, reservations } from "./schema";
@@ -19,14 +19,17 @@ import { customers, reservations } from "./schema";
  * and `isTest`.
  */
 
+// The flag is compared with a literal, never a bound boolean: one SQL for MySQL and
+// for the SQLite the query tests run on.
+
 /** Rows that are not test reservations. Combine with `and(...)` on any read of `reservations`. */
 export function excludeTestReservations(): SQL {
-  return eq(reservations.isTest, false);
+  return sql`${reservations.isTest} = 0`;
 }
 
 /** Rows that are not test customers. Combine with `and(...)` on any read of `customers`. */
 export function excludeTestCustomers(): SQL {
-  return eq(customers.isTest, false);
+  return sql`${customers.isTest} = 0`;
 }
 
 /** Whether the reservation is a test one. False when it does not exist. */
