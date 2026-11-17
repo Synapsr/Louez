@@ -175,6 +175,7 @@ export function EditReservationForm({
   storeSettings,
   storeDelivery,
   dateChangeRequest,
+  pricedAt,
 }: EditReservationFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -425,6 +426,7 @@ export function EditReservationForm({
         end: new Date(reservation.endDate),
       },
       currency,
+      pricedAt,
     });
   const { availabilityWarnings, availableQuantityByProduct } = useEditReservationAvailability({
     startDate,

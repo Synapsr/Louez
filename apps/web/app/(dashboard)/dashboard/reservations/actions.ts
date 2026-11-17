@@ -2299,6 +2299,15 @@ export async function updateReservation(
   const insuranceItemWrites: ReservationItemWrite[] = [];
   let extraInsuranceItemIdsToDelete: string[] = [];
 
+  // A line the edit adds is priced as the creation prices it, with the
+  // promotion in force at this instant, and stored as every creator stores
+  // it (`catalogueLineValues`): under the locks, with its tax figures.
+  const editedAt = new Date();
+  const addedCatalogueLines = new Map<
+    string,
+    { catalogue: PricingCatalogProduct; priced: PricedCartLine }
+  >();
+
   // Process items
   if (data.items && data.items.length > 0) {
     const reservationItemsWithoutLegacyInsurance = data.items.filter(
@@ -2348,6 +2357,7 @@ export async function updateReservation(
       });
       let lineTax: EditedLineTax = TAX_OF_TODAY;
       let promotionPercentage: number | null = null;
+      let addedLine: { catalogue: PricingCatalogProduct; priced: PricedCartLine } | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
@@ -2377,7 +2387,38 @@ export async function updateReservation(
           with: { pricingTiers: true },
         });
 
-        if (product) {
+        if (product && !item.id) {
+          // Added: the catalogue as the server reads it, the promotion in force now.
+          const catalogue = (
+            await loadPricingCatalog(db, {
+              storeId: store.id,
+              productIds: [product.id],
+              timezone: store.settings?.timezone,
+              includeInactive: true,
+            })
+          ).get(product.id);
+          if (!catalogue) return { error: "errors.productNotFound" };
+          pricedFromProductId = product.id;
+          itemPricingMode = catalogue.pricingMode;
+          duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
+          const priced = priceCartLine(
+            catalogue,
+            {
+              productId: product.id,
+              quantity: item.quantity,
+              startDate: newStartDate.toISOString(),
+              endDate: newEndDate.toISOString(),
+            },
+            editedAt,
+          );
+          addedLine = { catalogue, priced };
+          // Its breakdown, with its tax figures, is written under the locks.
+          pricingBreakdown = null;
+          // The percentage it applied, which the locked pricing applies again.
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.unitPrice;
+          totalPrice = priced.subtotal;
+        } else if (product) {
           pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           itemPricingMode = effectivePricingMode;
@@ -2523,13 +2564,15 @@ export async function updateReservation(
       }
       // A new line's id is drawn now: its tax figures are merged into its insert under the locks.
       const lineId = item.id ?? nanoid();
+      if (addedLine) addedCatalogueLines.set(lineId, addedLine);
       editedLines.push({
         id: lineId,
         pricedFromProductId,
         productId: item.productId || null,
         quantity: item.quantity,
-        subtotal: Number(totalPrice.toFixed(2)),
-        unitPrice: Number(finalUnitPrice.toFixed(2)),
+        // An added line enters the tax engine as the checkout gives it a line, as priced.
+        subtotal: addedLine ? addedLine.priced.subtotal : Number(totalPrice.toFixed(2)),
+        unitPrice: addedLine ? addedLine.priced.unitPrice : Number(finalUnitPrice.toFixed(2)),
         tax: lineTax,
         promotionPercentage,
       });
@@ -3223,7 +3266,14 @@ export async function updateReservation(
           for (const [index, line] of editedLines.entries()) {
             const values = reservationItemTaxValues(pricing.lines[index]!);
             const write = writesById.get(line.id);
-            if (write) Object.assign(write.values, values);
+            const added = addedCatalogueLines.get(line.id);
+            if (write && added) {
+              // As every creator stores it; the deposit as the store set it in the form.
+              Object.assign(write.values, {
+                ...catalogueLineValues(added.catalogue, added.priced, pricing.lines[index]!),
+                depositPerUnit: write.values.depositPerUnit,
+              });
+            } else if (write) Object.assign(write.values, values);
             else taxOnlyWrites.push({ id: line.id, values });
           }
           for (const insuranceItemWrite of insuranceItemWrites) {

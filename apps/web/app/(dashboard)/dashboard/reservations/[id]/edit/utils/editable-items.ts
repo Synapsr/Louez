@@ -104,6 +104,9 @@ export const toEditableItem = (
   };
 };
 
+/** A line the store added in the form: the server receives it without an id. */
+export const isAddedLine = (item: Pick<EditableItem, "id">) => item.id.startsWith("new-");
+
 /** A line as the form sends it to `updateReservation`. */
 export const toReservationItemPayload = (item: EditableItem) => ({
   id: item.id.startsWith("new-") || item.id.startsWith("custom-") ? undefined : item.id,
