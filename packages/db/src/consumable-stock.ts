@@ -8,7 +8,7 @@ import {
   type ReservationStockLock,
 } from './reservation-lock'
 import { products, reservationItemUnits, reservationItems, reservations } from './schema'
-import { isTestReservation } from './test-reservations'
+import { excludeTestReservations, isTestReservation } from './test-reservations'
 import {
   buildReservationAvailabilityPredicate,
   type BlockingReservationStatus,
@@ -80,6 +80,8 @@ export async function getProductStockKindChangeBlockers(
         eq(reservations.storeId, params.storeId),
         eq(reservationItems.productId, params.productId),
         inArray(reservations.status, stockConsumingReservationStatuses),
+        // A test reservation consumes nothing: it never blocks the change.
+        excludeTestReservations(),
       ),
     )
     .orderBy(reservations.number)
@@ -97,6 +99,8 @@ export async function lockProductReservationsForStockKindChange(
       and(
         eq(reservations.storeId, params.storeId),
         eq(reservationItems.productId, params.productId),
+        // A test reservation consumes nothing: it never blocks the change.
+        excludeTestReservations(),
       ),
     )
     .orderBy(reservations.id)

@@ -329,6 +329,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Test",
+      "start": "Make a test booking",
+      "resume": "Resume the test booking",
+      "startError": "Your store could not open in test mode. Please try again.",
+      "toast": {
+        "description": "Your store is ready. Make a test booking to see what your customers go through."
+      },
+      "homeCard": {
+        "title": "First step",
+        "description": "Book on your store as a customer would, then manage the booking here. Nothing is paid or billed."
+      },
+      "guide": {
+        "title": "Test booking",
+        "description": "Manage it like a real booking, with the buttons on this page.",
+        "closed": "This test booking stopped along the way. Delete it to start a new one.",
+        "howTo": "How do I do it?",
+        "expires": "It will be deleted automatically on {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Confirm",
+            "help": "Click “{button}” on this page. You get the confirmation email, just like your customer."
+          },
+          "departureInspection": {
+            "title": "Pickup",
+            "help": "Do the pickup inspection, as you would when handing over the equipment.",
+            "action": "Do the pickup inspection"
+          },
+          "pickup": {
+            "title": "Pickup",
+            "help": "Click “{button}” when the customer leaves with the equipment."
+          },
+          "return": {
+            "title": "Return and close",
+            "help": "When the equipment comes back, click “{button}”. The rental is complete."
+          }
+        }
+      },
+      "done": {
+        "title": "All set. Share your store",
+        "description": "You have seen what your customers go through. All that is left is to give them the link.",
+        "share": "Share my store",
+        "marketplace": "My listing on reeent"
+      },
+      "delete": {
+        "button": "Delete test data",
+        "title": "Delete test data?",
+        "description": "The test booking, its test customer, its simulated payments and its inspections are deleted. Your products and settings stay as they are.",
+        "cancel": "Cancel",
+        "confirm": "Delete",
+        "success": "Test data deleted",
+        "error": "The deletion failed. Please try again."
+      }
+    },
     "purchaseInvoices": {
       "title": "Supplier invoices",
       "description": "Invoices your suppliers sent to your company through the electronic invoicing network.",
@@ -7348,6 +7402,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Test mode: nothing is charged.",
+      "leave": "Leave test mode",
+      "emailLocked": "Test e-mails are sent to you at {email}.",
+      "badge": "Test",
+      "contractWatermark": "TEST — no value",
+      "payment": {
+        "title": "Simulated payment",
+        "description": "No card, no charge.",
+        "reservation": "Reservation {number}",
+        "amountDue": "Amount to pay",
+        "deposit": "Deposit",
+        "depositNote": "The deposit is not taken during a test.",
+        "submit": "Simulate the payment",
+        "notPending": "This reservation is no longer waiting for a payment.",
+        "viewReservation": "View the reservation"
+      }
+    },
     "notFound": {
       "title": "This page isn't available",
       "description": "The product or page you're looking for no longer exists or isn't online yet.",
@@ -9401,6 +9473,9 @@
     }
   },
   "errors": {
+    "testReservationExists": "You already have a test reservation. Delete it from the dashboard to make a new one.",
+    "testReservationRefused": "Not possible on a test reservation: nothing is charged on it.",
+    "testModeRequired": "Test mode is no longer active. Start it again from the dashboard.",
     "storeNotAcceptingReservations": "This store isn't taking reservations online right now. {hasContact, select, yes {Contact the store: {contact}} other {Please contact the store directly.}}",
     "generic": "An error occurred",
     "contractNotSignable": "This contract can no longer be signed.",

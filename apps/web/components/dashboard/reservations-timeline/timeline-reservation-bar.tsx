@@ -28,6 +28,7 @@ import {
 import { cn, formatCurrency } from "@louez/utils";
 
 import { useFormatLocale } from "@/hooks/use-format-locale";
+import { TestBadge } from "@/components/dashboard/test-reservation/test-badge";
 import { getReservationDetailHref } from "@/lib/product-analytics/reservation-analytics";
 
 import { TimelineReservationDetails } from "./timeline-reservation-details";
@@ -234,6 +235,7 @@ export function TimelineReservationBar({
                   {reservation.quantity > 1 && (
                     <span className="tabular-nums">×{reservation.quantity}</span>
                   )}
+                  <TestBadge reservationId={reservation.id} />
                 </p>
               </div>
               <Badge variant={BADGE_VARIANTS[status]} className="mt-0.5 shrink-0">
@@ -272,6 +274,7 @@ export function TimelineReservationBar({
                   {reservation.quantity > 1 && (
                     <span className="tabular-nums">×{reservation.quantity}</span>
                   )}
+                  <TestBadge reservationId={reservation.id} />
                 </DrawerDescription>
               </div>
               <Badge variant={BADGE_VARIANTS[status]} className="shrink-0">

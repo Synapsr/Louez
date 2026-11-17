@@ -1,4 +1,9 @@
-import { type Transaction, db } from '@louez/db'
+import {
+  type Transaction,
+  db,
+  excludeTestCustomers,
+  excludeTestReservations,
+} from '@louez/db'
 import {
   products,
   reservations,
@@ -173,7 +178,9 @@ export async function getStoreUsage(storeId: string): Promise<StoreUsage> {
         and(
           eq(reservations.storeId, storeId),
           gte(reservations.createdAt, startOfMonth),
-          sql`${reservations.status} NOT IN ('cancelled', 'rejected')`
+          sql`${reservations.status} NOT IN ('cancelled', 'rejected')`,
+          // A test reservation never counts toward the plan's limits.
+          excludeTestReservations()
         )
       )
       .then((res) => res[0]?.count || 0),
@@ -182,7 +189,8 @@ export async function getStoreUsage(storeId: string): Promise<StoreUsage> {
     db
       .select({ count: count() })
       .from(customers)
-      .where(eq(customers.storeId, storeId))
+      // A test customer never counts toward the plan's limits.
+      .where(and(eq(customers.storeId, storeId), excludeTestCustomers()))
       .then((res) => res[0]?.count || 0),
   ])
 

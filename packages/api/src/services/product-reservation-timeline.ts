@@ -1,6 +1,7 @@
 import {
   customers,
   db,
+  excludeTestReservations,
   productUnitDowntimes,
   productUnits,
   products,
@@ -32,6 +33,8 @@ const DAY_MS = 86_400_000;
 export async function getProductReservationTimeline(
   storeId: string,
   input: { id: string; from: Date; to: Date },
+  /** The caller sees test reservations (platform/test-reservation-visibility.ts). */
+  options: { testReservations: boolean },
 ): Promise<Timeline> {
   const { from: start, to: end } = input;
   if (end < start || end.getTime() - start.getTime() > PRODUCT_TIMELINE_MAX_DAYS * DAY_MS) {
@@ -68,6 +71,7 @@ export async function getProductReservationTimeline(
         and(
           eq(reservations.storeId, storeId),
           eq(reservationItems.productId, input.id),
+          options.testReservations ? undefined : excludeTestReservations(),
           lte(reservations.startDate, end),
           gte(reservations.endDate, start),
         ),

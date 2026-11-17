@@ -21,6 +21,7 @@ import {
 import {
   checkoutSessionRowIn,
   db,
+  excludeTestReservations,
   isCheckoutSessionRow,
   isUnsettledCheckoutSession,
   markCheckoutSessionSettled,
@@ -136,6 +137,8 @@ export function abandonedCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
         lt(payments.createdAt, lookBefore(now)),
         eq(reservations.status, "pending"),
         eq(reservations.source, ONLINE_CHECKOUT_SOURCE),
+        // A test checkout has no Stripe session: the test's cleanup removes it.
+        excludeTestReservations(),
         notExists(
           db
             .select({ id: completed.id })
@@ -186,6 +189,8 @@ export function settledCheckoutsQuery(now: Date, order: SQL = RANDOM_ORDER) {
         lt(payments.sessionSettledAt, lookBefore(now)),
         eq(reservations.status, "pending"),
         eq(reservations.source, ONLINE_CHECKOUT_SOURCE),
+        // A test checkout has no Stripe session: the test's cleanup removes it.
+        excludeTestReservations(),
         // No payment left, no session that may still be paid, and no mark younger
         // than the delay: the newest mark decides.
         notExists(

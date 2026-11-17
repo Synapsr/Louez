@@ -1,4 +1,8 @@
 {
+  "testReservation": {
+    "subjectPrefix": "[Test] ",
+    "banner": "Dies ist eine Testreservierung: Es wurde nichts berechnet."
+  },
   "common": {
     "greeting": "Hallo {name},",
     "regards": "Mit freundlichen Grüßen,",

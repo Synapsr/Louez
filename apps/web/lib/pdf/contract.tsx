@@ -247,7 +247,23 @@ interface ContractDocumentProps {
   currency?: string;
   timezone?: string;
   fullCgvHtml?: string | null;
+  /** Printed across every page: a test reservation's "TEST — sans valeur". */
+  watermark?: string | null;
 }
+
+/** The watermark's place: centred on the page, diagonal, behind nothing it hides. */
+const WATERMARK_STYLE = {
+  position: "absolute",
+  top: 360,
+  left: 0,
+  right: 0,
+  textAlign: "center",
+  fontSize: 54,
+  lineHeight: 1,
+  color: "#d64545",
+  opacity: 0.18,
+  transform: "rotate(-30deg)",
+} as const;
 
 // Currency formatting based on locale and currency
 function formatCurrencyValue(
@@ -279,6 +295,7 @@ export function ContractDocument({
   currency = "EUR",
   timezone,
   fullCgvHtml,
+  watermark,
 }: ContractDocumentProps) {
   const primaryColor = store.primaryColor || "#0066FF";
   const styles = createContractStyles(primaryColor, locale);
@@ -306,6 +323,11 @@ export function ContractDocument({
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
+        {watermark ? (
+          <Text style={WATERMARK_STYLE} fixed>
+            {watermark}
+          </Text>
+        ) : null}
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>

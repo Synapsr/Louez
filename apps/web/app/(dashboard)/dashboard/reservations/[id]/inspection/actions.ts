@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { FilesError } from "files-sdk";
 
-import { db } from "@louez/db";
+import { db, isTestReservation } from "@louez/db";
 import {
   inspectionItems,
   inspectionPhotos,
@@ -32,6 +32,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { getImageFiles } from "@/lib/storage/files";
 import { captureReservationActionSucceeded } from "@/lib/product-analytics/analytics";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
+import { captureTestInspection } from "@/lib/test-reservations/lifecycle";
 
 export interface RepairDowntimeSuggestion {
   units: Array<{
@@ -209,6 +210,7 @@ export async function createInspection(data: CreateInspectionInput): Promise<{
       photo_count: inspectionPhotoRows.length,
     },
   });
+  await captureTestInspection({ storeId: store.id, reservationId, type, step: "created" });
 
   return { inspectionId };
 }
@@ -297,7 +299,8 @@ export async function completeInspection(
 
   let repairDowntimeSuggestion: RepairDowntimeSuggestion | undefined;
 
-  if (inspection.type === "return") {
+  // A test inspection never takes a real unit out of service (lib/test-reservations).
+  if (inspection.type === "return" && !(await isTestReservation(db, inspection.reservationId))) {
     const damagedUnits = await db
       .select({
         id: productUnits.id,
@@ -344,6 +347,12 @@ export async function completeInspection(
       has_damage: hasDamage,
       damaged_unit_count: repairDowntimeSuggestion?.units.length ?? 0,
     },
+  });
+  await captureTestInspection({
+    storeId: store.id,
+    reservationId: inspection.reservationId,
+    type: inspection.type,
+    step: "completed",
   });
 
   return { success: true, repairDowntimeSuggestion };

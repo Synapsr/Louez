@@ -4,13 +4,15 @@ import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/a
 import { storeHasAgentConnection } from "@louez/api/services/agent-grants";
 import { db, users } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
-import { reservations } from "@louez/db";
+import { excludeTestReservations, reservations } from "@louez/db";
 import { eq, and, gte, lt, desc } from "drizzle-orm";
 import { salesStore } from "@louez/api/services/sales-analytics";
 import { getStoreMetrics } from "@louez/api/services/store-metrics";
 import { getStoreCalendar, type StoreCalendar } from "@louez/api/services/sales-window";
 import { determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
+import type { GetTestReservationOutput } from "@louez/api/contracts/test-reservations";
+import { TestReservationHomeCard } from "@/components/dashboard/test-reservation/test-reservation-home-card";
 import { serverApi } from "@/lib/api/server-api";
 import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
@@ -49,6 +51,8 @@ async function getTodaysDeparturesList(storeId: string, now: Date, calendar: Sto
     where: and(
       eq(reservations.storeId, storeId),
       eq(reservations.status, "confirmed"),
+      // The test reservation has its own card (test-reservations).
+      excludeTestReservations(),
       gte(reservations.startDate, calendar.todayStart),
       lt(reservations.startDate, calendar.tomorrowStart),
     ),
@@ -75,6 +79,8 @@ async function getTodaysReturnsList(storeId: string, now: Date, calendar: StoreC
     where: and(
       eq(reservations.storeId, storeId),
       eq(reservations.status, "ongoing"),
+      // The test reservation has its own card (test-reservations).
+      excludeTestReservations(),
       gte(reservations.endDate, calendar.todayStart),
       lt(reservations.endDate, calendar.tomorrowStart),
     ),
@@ -97,7 +103,12 @@ async function getTodaysReturnsList(storeId: string, now: Date, calendar: StoreC
 
 async function getPendingReservationsList(storeId: string) {
   return db.query.reservations.findMany({
-    where: and(eq(reservations.storeId, storeId), eq(reservations.status, "pending")),
+    where: and(
+      eq(reservations.storeId, storeId),
+      eq(reservations.status, "pending"),
+      // The test reservation has its own card (test-reservations).
+      excludeTestReservations(),
+    ),
     with: {
       customer: true,
       items: {
@@ -125,6 +136,8 @@ interface DashboardContentProps {
   isFromReeent: boolean;
   hasStripeAccount: boolean;
   dismissedNoticeIds: DismissibleNoticeId[];
+  /** The test reservation's card, or null when the store does not need it. */
+  testReservation: GetTestReservationOutput | null;
 }
 
 async function DashboardContent({
@@ -137,6 +150,7 @@ async function DashboardContent({
   isFromReeent,
   hasStripeAccount,
   dismissedNoticeIds,
+  testReservation,
 }: DashboardContentProps) {
   // Stores that want online payments track the Stripe KYC left pending during
   // onboarding (payment mode degrades to request mode until Stripe can charge).
@@ -179,6 +193,8 @@ async function DashboardContent({
       {shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection }) && (
         <AgentAssistantNotice {...getMcpEndpoint()} />
       )}
+
+      {testReservation && <TestReservationHomeCard initialState={testReservation} />}
 
       {/* Stores from reeent are not published there until Stripe can charge. */}
       {isFromReeent && onlinePaymentsStep === "todo" && (
@@ -244,7 +260,13 @@ export default async function DashboardHomePage() {
       })
     : undefined;
 
-  const launchChecklist = await (await serverApi()).stores.getLaunchChecklist({});
+  const api = await serverApi();
+  const launchChecklist = await api.stores.getLaunchChecklist({});
+  // The test reservation's card: a product to book, no real reservation yet.
+  const testReservation =
+    launchChecklist.catalog.hasActiveProduct && !launchChecklist.milestones?.firstReservation
+      ? await api.testReservations.get({})
+      : null;
 
   return (
     <DashboardContent
@@ -257,6 +279,7 @@ export default async function DashboardHomePage() {
       isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
       hasStripeAccount={store.stripeAccountId !== null}
       dismissedNoticeIds={parseDismissedNotices(userRow?.dismissedNotices)}
+      testReservation={testReservation}
     />
   );
 }

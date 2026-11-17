@@ -14,6 +14,7 @@
     "./services": "./src/services/index.ts",
     "./services/agent-client-icons": "./src/services/agent-client-icons.ts",
     "./services/test-reservation-token": "./src/services/test-reservation-token.ts",
+    "./services/test-reservations": "./src/services/test-reservations.ts",
     "./services/agent-grants": "./src/services/agent-grants.ts",
     "./services/analytics": "./src/services/analytics.ts",
     "./services/approval-display": "./src/services/approval-display.ts",

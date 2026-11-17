@@ -329,6 +329,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Test",
+      "start": "Testbuchung machen",
+      "resume": "Testbuchung fortsetzen",
+      "startError": "Dein Shop konnte nicht im Testmodus geöffnet werden. Bitte versuche es erneut.",
+      "toast": {
+        "description": "Dein Shop ist bereit. Mach eine Testbuchung, um zu sehen, was deine Kunden erleben."
+      },
+      "homeCard": {
+        "title": "Erster Schritt",
+        "description": "Buche in deinem Shop wie ein Kunde und verwalte die Buchung danach hier. Nichts wird bezahlt oder abgerechnet."
+      },
+      "guide": {
+        "title": "Testbuchung",
+        "description": "Verwalte sie wie eine echte Buchung, mit den Schaltflächen auf dieser Seite.",
+        "closed": "Diese Testbuchung wurde unterwegs abgebrochen. Lösche sie, um eine neue zu machen.",
+        "howTo": "Wie geht das?",
+        "expires": "Sie wird am {date} automatisch gelöscht.",
+        "steps": {
+          "confirm": {
+            "title": "Bestätigen",
+            "help": "Klicke auf dieser Seite auf „{button}“. Du erhältst die Bestätigungs-E-Mail, genau wie dein Kunde."
+          },
+          "departureInspection": {
+            "title": "Abholung",
+            "help": "Mach das Übergabeprotokoll, wie bei der Übergabe der Ausrüstung.",
+            "action": "Übergabeprotokoll erstellen"
+          },
+          "pickup": {
+            "title": "Abholung",
+            "help": "Klicke auf „{button}“, wenn der Kunde mit der Ausrüstung losgeht."
+          },
+          "return": {
+            "title": "Rückgabe und Abschluss",
+            "help": "Wenn die Ausrüstung zurück ist, klicke auf „{button}“. Die Vermietung ist abgeschlossen."
+          }
+        }
+      },
+      "done": {
+        "title": "Alles bereit. Teile deinen Shop",
+        "description": "Du hast gesehen, was deine Kunden erleben. Jetzt fehlt nur noch der Link für sie.",
+        "share": "Meinen Shop teilen",
+        "marketplace": "Mein Eintrag auf reeent"
+      },
+      "delete": {
+        "button": "Testdaten löschen",
+        "title": "Testdaten löschen?",
+        "description": "Die Testbuchung, ihr Testkunde, ihre simulierten Zahlungen und ihre Protokolle werden gelöscht. Deine Produkte und Einstellungen bleiben unverändert.",
+        "cancel": "Abbrechen",
+        "confirm": "Löschen",
+        "success": "Testdaten gelöscht",
+        "error": "Das Löschen ist fehlgeschlagen. Bitte versuche es erneut."
+      }
+    },
     "purchaseInvoices": {
       "title": "Lieferantenrechnungen",
       "description": "Rechnungen, die Ihre Lieferanten über das Netzwerk für elektronische Rechnungsstellung an Ihr Unternehmen gesendet haben.",
@@ -7348,6 +7402,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Testmodus: Es wird nichts berechnet.",
+      "leave": "Testmodus beenden",
+      "emailLocked": "Test-E-Mails werden an dich gesendet: {email}.",
+      "badge": "Test",
+      "contractWatermark": "TEST — ohne Wert",
+      "payment": {
+        "title": "Simulierte Zahlung",
+        "description": "Keine Karte, keine Abbuchung.",
+        "reservation": "Reservierung {number}",
+        "amountDue": "Zu zahlender Betrag",
+        "deposit": "Kaution",
+        "depositNote": "Die Kaution wird bei einem Test nicht erhoben.",
+        "submit": "Zahlung simulieren",
+        "notPending": "Diese Reservierung wartet nicht mehr auf eine Zahlung.",
+        "viewReservation": "Reservierung ansehen"
+      }
+    },
     "notFound": {
       "title": "Diese Seite ist nicht verfügbar",
       "description": "Das gesuchte Produkt oder die Seite existiert nicht mehr oder ist noch nicht online.",
@@ -9401,6 +9473,9 @@
     }
   },
   "errors": {
+    "testReservationExists": "Du hast bereits eine Testreservierung. Lösche sie im Dashboard, um eine neue zu erstellen.",
+    "testReservationRefused": "Bei einer Testreservierung nicht möglich: Es wird nichts berechnet.",
+    "testModeRequired": "Der Testmodus ist nicht mehr aktiv. Starte ihn im Dashboard neu.",
     "storeNotAcceptingReservations": "Dieser Shop nimmt gerade keine Online-Reservierungen an. {hasContact, select, yes {Kontaktieren Sie den Shop: {contact}} other {Bitte kontaktieren Sie den Shop direkt.}}",
     "generic": "Ein Fehler ist aufgetreten",
     "contractNotSignable": "Dieser Vertrag kann nicht mehr unterschrieben werden.",

@@ -9,6 +9,7 @@ import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql-proxy";
 import { formatInTimeZone } from "date-fns-tz";
 import * as paymentReceipts from "@louez/db/payment-receipts";
+import * as testReservations from "@louez/db/test-reservations";
 import * as schema from "@louez/db/schema";
 import utils from "@louez/utils";
 import * as windowUtils from "./sales-window.ts";
@@ -24,6 +25,7 @@ function loadQueries(file, db, extra = {}) {
     ...orm,
     ...schema,
     ...paymentReceipts,
+    ...testReservations,
     ...windowUtils,
     db,
     alias,
@@ -54,6 +56,8 @@ function fixture() {
       ('foreign', 'other-store', 'customer', 'confirmed', '2026-09-10 00:00:00', '2026-09-11 00:00:00', 1000, 1000, 0, NULL);
     INSERT INTO products VALUES ('bike', 'store', 'Bike', 'bike', 1, 0, 'active', 'returnable'), ('free', 'store', 'Free', NULL, 1, 0, 'active', 'returnable');
     INSERT INTO reservation_items VALUES ('a','r','bike',1,200), ('b','r','bike',1,35), ('c','r','free',1,0), ('d','r',NULL,1,28), ('e','r','deleted',1,28);
+    ALTER TABLE reservations ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE customers ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0;
   `);
   const db = drizzle(async (sql, params) => {
     const statement = sqlite.prepare(sql.replaceAll("TIMESTAMPDIFF(MINUTE,", "minutes_between("));

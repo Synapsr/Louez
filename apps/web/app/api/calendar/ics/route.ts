@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 
-import { db } from '@louez/db';
+import { db, excludeTestReservations } from '@louez/db';
 import { reservations, stores } from '@louez/db';
 
 import { buildReservationCalendarDescription } from '@/lib/integrations/calendar/reservation-event-details';
@@ -205,7 +205,8 @@ export async function GET(request: Request) {
 
   // Get all reservations including cancelled/rejected (needed for proper ICS STATUS:CANCELLED)
   const storeReservations = await db.query.reservations.findMany({
-    where: eq(reservations.storeId, storeId),
+    // A test reservation never reaches a calendar.
+    where: and(eq(reservations.storeId, storeId), excludeTestReservations()),
     with: {
       customer: true,
       items: {

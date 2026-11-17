@@ -152,6 +152,8 @@ export interface ProductFormProps {
   imageBackgroundRemovalEnabled?: boolean;
   /** The member may delete what the form deletes (seasonal prices). */
   canDelete?: boolean;
+  /** The store has no active product yet: its creation offers the test reservation. */
+  isFirstProduct?: boolean;
 }
 
 export type ProductFormValues = Omit<ProductInput, "taxSettings"> & {

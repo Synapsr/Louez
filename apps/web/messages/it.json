@@ -329,6 +329,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Test",
+      "start": "Fai una prenotazione di prova",
+      "resume": "Riprendi la prenotazione di prova",
+      "startError": "Il negozio non si è aperto in modalità di prova. Riprova.",
+      "toast": {
+        "description": "Il tuo negozio è pronto. Fai una prenotazione di prova per vedere cosa vivono i tuoi clienti."
+      },
+      "homeCard": {
+        "title": "Primo passo",
+        "description": "Prenota sul tuo negozio come un cliente, poi gestisci la prenotazione qui. Niente viene pagato né fatturato."
+      },
+      "guide": {
+        "title": "Prenotazione di prova",
+        "description": "Gestiscila come una vera prenotazione, con i pulsanti di questa pagina.",
+        "closed": "Questa prenotazione di prova si è fermata a metà. Eliminala per farne un'altra.",
+        "howTo": "Come si fa?",
+        "expires": "Verrà eliminata automaticamente il {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Conferma",
+            "help": "Clicca su «{button}» in questa pagina. Ricevi l'e-mail di conferma, come il tuo cliente."
+          },
+          "departureInspection": {
+            "title": "Ritiro",
+            "help": "Compila il verbale di consegna, come alla consegna dell'attrezzatura.",
+            "action": "Compila il verbale di consegna"
+          },
+          "pickup": {
+            "title": "Ritiro",
+            "help": "Clicca su «{button}» quando il cliente parte con l'attrezzatura."
+          },
+          "return": {
+            "title": "Restituzione e chiusura",
+            "help": "Al rientro dell'attrezzatura, clicca su «{button}». Il noleggio è concluso."
+          }
+        }
+      },
+      "done": {
+        "title": "Tutto pronto. Condividi il tuo negozio",
+        "description": "Hai visto cosa vivono i tuoi clienti. Non resta che dare loro il link.",
+        "share": "Condividi il mio negozio",
+        "marketplace": "La mia pubblicazione su reeent"
+      },
+      "delete": {
+        "button": "Elimina i dati di prova",
+        "title": "Eliminare i dati di prova?",
+        "description": "La prenotazione di prova, il suo cliente di prova, i pagamenti simulati e i verbali vengono eliminati. I tuoi prodotti e le impostazioni restano invariati.",
+        "cancel": "Annulla",
+        "confirm": "Elimina",
+        "success": "Dati di prova eliminati",
+        "error": "L'eliminazione non è riuscita. Riprova."
+      }
+    },
     "purchaseInvoices": {
       "title": "Fatture fornitori",
       "description": "Fatture che i tuoi fornitori hanno inviato alla tua azienda tramite la rete di fatturazione elettronica.",
@@ -7348,6 +7402,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Modalità test: non viene addebitato nulla.",
+      "leave": "Esci dalla modalità test",
+      "emailLocked": "Le e-mail di test ti vengono inviate a {email}.",
+      "badge": "Test",
+      "contractWatermark": "TEST — senza valore",
+      "payment": {
+        "title": "Pagamento simulato",
+        "description": "Nessuna carta, nessun addebito.",
+        "reservation": "Prenotazione {number}",
+        "amountDue": "Importo da pagare",
+        "deposit": "Cauzione",
+        "depositNote": "La cauzione non viene trattenuta durante un test.",
+        "submit": "Simula il pagamento",
+        "notPending": "Questa prenotazione non è più in attesa di pagamento.",
+        "viewReservation": "Vedi la prenotazione"
+      }
+    },
     "notFound": {
       "title": "Questa pagina non è disponibile",
       "description": "Il prodotto o la pagina che cerchi non esiste più o non è ancora online.",
@@ -9401,6 +9473,9 @@
     }
   },
   "errors": {
+    "testReservationExists": "Hai già una prenotazione di test. Eliminala dalla dashboard per farne un'altra.",
+    "testReservationRefused": "Non è possibile su una prenotazione di test: non viene addebitato nulla.",
+    "testModeRequired": "La modalità test non è più attiva. Riavviala dalla dashboard.",
     "storeNotAcceptingReservations": "Questo negozio non accetta prenotazioni online al momento. {hasContact, select, yes {Contatta il negozio: {contact}} other {Contatta direttamente il negozio.}}",
     "generic": "Si è verificato un errore",
     "contractNotSignable": "Questo contratto non può più essere firmato.",

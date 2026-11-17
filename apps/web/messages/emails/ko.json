@@ -1,4 +1,8 @@
 {
+  "testReservation": {
+    "subjectPrefix": "[테스트] ",
+    "banner": "테스트 예약입니다: 아무것도 청구되지 않았습니다."
+  },
   "common": {
     "greeting": "안녕하세요 {name}님,",
     "regards": "감사합니다.",

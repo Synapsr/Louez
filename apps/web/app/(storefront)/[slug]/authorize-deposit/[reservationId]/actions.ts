@@ -106,7 +106,9 @@ const loadDepositContext = async ({
     return { ok: false as const, error: "invalid_token" as const };
   }
 
-  if (!store.stripeAccountId || !store.stripeChargesEnabled) {
+  // A test reservation holds nothing on a card (lib/test-reservations): for it,
+  // online payment is not available, before Stripe is asked anything.
+  if (!store.stripeAccountId || !store.stripeChargesEnabled || reservation.isTest) {
     return { ok: false as const, error: "stripe_not_configured" as const };
   }
 

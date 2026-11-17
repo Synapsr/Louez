@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { reservationLinks } from '@louez/api/platform/links'
-import { db, payments, reservations } from '@louez/db'
+import { db, excludeTestReservations, payments, reservations } from '@louez/db'
 import { depositHoldRowKind, describeDepositHoldRow } from '@louez/utils'
 import { and, eq } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/server'
@@ -53,7 +53,9 @@ export function registerPaymentTools(server: McpServer, ctx: McpRequestContext) 
       const reservation = await db.query.reservations.findFirst({
         where: and(
           eq(reservations.storeId, ctx.storeId),
-          eq(reservations.id, reservationId)
+          eq(reservations.id, reservationId),
+          // An agent never sees a test reservation.
+          excludeTestReservations()
         ),
         columns: { id: true, number: true },
       })

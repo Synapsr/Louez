@@ -57,6 +57,7 @@ import {
   type StatusChangeSnapshot,
 } from "./reservation-effects";
 import { validateReservationContract } from "./reservation-contract-validation";
+import { recordTestReservationEvent, testReservationAnalytics } from "./test-reservations";
 import {
   ReservationCapacityShortfallError,
   ReservationInventoryError,
@@ -251,6 +252,7 @@ async function readLockedReservation(tx: Transaction, reservationId: string, sto
       taxAmount: reservations.taxAmount,
       locale: reservations.locale,
       signedAt: reservations.signedAt,
+      isTest: reservations.isTest,
     })
     .from(reservations)
     .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)));
@@ -499,8 +501,9 @@ async function buildPreview(
     };
   }
 
+  // A test reservation is never insured (packages/db test-reservations.ts).
   const insuranceContract =
-    takesStock(locked.status, to) && locked.tulipInsuranceOptIn
+    takesStock(locked.status, to) && locked.tulipInsuranceOptIn && !locked.isTest
       ? "created"
       : to === "cancelled" && locked.tulipContractId
         ? "cancelled"
@@ -631,7 +634,8 @@ export async function changeStoreReservationStatus(
         // Checks before the confirmation, so a caller is never asked to
         // confirm what cannot happen: the card gate, then the stock and the
         // consumables.
-        if (requiresReservationGate(from, to, actor)) {
+        // A test reservation is never billed, and passes it (packages/db test-reservations.ts).
+        if (!locked.isTest && requiresReservationGate(from, to, actor)) {
           await assertStoreCanTakeReservations(tx, storeId);
         }
         // A change that takes stock is checked here, before the preview; its
@@ -792,7 +796,7 @@ export async function changeStoreReservationStatus(
   await caller.ports.runReservationEffects(outcome.effects);
 
   const warnings = [...outcome.warnings];
-  if (takesStock(outcome.from, outcome.to)) {
+  if (takesStock(outcome.from, outcome.to) && !outcome.locked.isTest) {
     const contractWarning = await caller.ports.insurance.createContract(id);
     if (contractWarning) warnings.push(contractWarning);
   } else if (outcome.to === "cancelled" && outcome.locked.tulipContractId) {
@@ -803,8 +807,19 @@ export async function changeStoreReservationStatus(
   if (analyticsId && warnings.length !== outcome.warnings.length) {
     await amendEffectPayload(analyticsId, "warningCount", warnings.length).catch(() => {});
   }
+  // A test reservation's own event: who rehearses the management side.
+  const testEffectIds =
+    outcome.locked.isTest && caller.userId
+      ? await recordTestReservationEvent(
+          testReservationAnalytics("test_reservation_managed", {
+            storeId,
+            distinctId: caller.userId,
+            properties: { action: `status_${outcome.to}` },
+          }),
+        )
+      : [];
   try {
-    caller.ports.dispatchEffects(outcome.effectIds);
+    caller.ports.dispatchEffects([...outcome.effectIds, ...testEffectIds]);
   } catch (error) {
     // The rows stay pending: the cron sends them.
     console.error("Dispatching the effects of a status change failed:", error);

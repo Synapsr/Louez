@@ -73,6 +73,7 @@ export async function issueRefundCreditNote(
       case "invoicing_disabled":
       case "feature_disabled":
       case "payment_not_eligible":
+      case "test_reservation":
         return { status: "not_applicable", reason: result.reason };
       case "payment_not_found":
       case "generation_failed":

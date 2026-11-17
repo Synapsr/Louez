@@ -18,3 +18,7 @@ const messages = { fr, en, it, nl, pt, de, es, pl, zh, ja, ru, id, ko };
 
 export const getContractTranslations = (locale: Locale): ContractTranslations =>
   messages[locale].contract;
+
+/** The mark across every page of a test reservation's contract: "TEST — sans valeur". */
+export const getContractTestWatermark = (locale: Locale): string =>
+  messages[locale].storefront.testMode.contractWatermark;

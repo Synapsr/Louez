@@ -15,6 +15,7 @@ import {
   db,
   customers,
   effectiveProductQuantitySql,
+  excludeTestReservations,
   isPaymentReceiptSql,
   isStripeRefundPaymentSql,
   payments,
@@ -90,6 +91,8 @@ const anyCurrencyReceiptConditions = (storeFilter: SQL) => [
   eq(payments.status, "completed"),
   eq(payments.type, "rental"),
   isPaymentReceiptSql(),
+  // A test reservation's simulated payment is no revenue.
+  excludeTestReservations(),
 ];
 
 /**
@@ -483,6 +486,8 @@ export async function getOccupancyStats(
           eq(products.status, "active"),
           eq(products.stockKind, "returnable"),
           inArray(reservations.status, OCCUPYING_STATUSES),
+          // A test reservation occupies nothing.
+          excludeTestReservations(),
           // Only the stays overlapping the window can contribute unit-days.
           lt(reservations.startDate, end),
           gte(reservations.endDate, start),
@@ -551,6 +556,8 @@ export async function getUpcomingRevenue(
       and(
         eq(reservations.storeId, store.id),
         eq(payments.status, "completed"),
+        // Test reservations are left out of the figures.
+        excludeTestReservations(),
         sql`${receiptDate} < ${instantSql(now)}`,
       ),
     )
@@ -575,6 +582,8 @@ export async function getUpcomingRevenue(
         // A balance is in its reservation's currency: only the store's adds up.
         sql`${reservationCurrency(store)} = ${store.currency}`,
         eq(reservations.status, "confirmed"),
+        // Test reservations are left out of the figures.
+        excludeTestReservations(),
         gte(reservations.startDate, now),
         sql`${remaining} > 0`,
       ),
@@ -607,6 +616,8 @@ export async function getAverageRentalDuration(
       and(
         eq(reservations.storeId, storeId),
         inArray(reservations.status, OCCUPYING_STATUSES),
+        // Test reservations are left out of the figures.
+        excludeTestReservations(),
         gte(reservations.startDate, start),
         lt(reservations.startDate, end),
       ),
@@ -642,6 +653,8 @@ export async function getPeriodReservationStats(
         and(
           eq(reservations.storeId, storeId),
           inArray(reservations.status, BOOKED_STATUSES),
+          // Test reservations are left out of the figures.
+          excludeTestReservations(),
           gte(reservations.startDate, from),
           lt(reservations.startDate, to),
         ),

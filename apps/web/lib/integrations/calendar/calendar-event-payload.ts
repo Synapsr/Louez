@@ -64,6 +64,8 @@ export async function buildReservationCalendarEventPayload(params: {
 
   const cancelled = isCancelledStatus(reservation.status);
   const shouldDelete =
+    // A test reservation never stays on a calendar.
+    reservation.isTest ||
     (cancelled && params.cancelledReservationBehavior === 'hide') ||
     (reservation.status === 'pending' && !params.syncPendingReservations);
 

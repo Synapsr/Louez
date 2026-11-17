@@ -57,6 +57,12 @@ export type CreateReservationRequest = CreateReservationInput & {
    * rental terms, which signs the contract; the IP is recorded with it.
    */
   termsAcceptedFromIp?: string;
+  /**
+   * Server-only: the storefront is in test mode (lib/test-reservations), read from
+   * its signed cookie, never from the form. The reservation is a test one, booked
+   * under the owner's e-mail, paid on a simulated page.
+   */
+  testMode?: { userId: string; ownerEmail: string };
 };
 
 /** A quote prices the same cart without a customer, amounts or notes. */
@@ -72,6 +78,7 @@ export type QuoteReservationRequest = Omit<
   | "marketplaceSecret"
   | "customerSignedIn"
   | "termsAcceptedFromIp"
+  | "testMode"
   | "customerFields"
   | "itemDetails"
   | "profileFields"

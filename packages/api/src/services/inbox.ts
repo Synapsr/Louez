@@ -5,6 +5,7 @@ import {
   apiOperations,
   customers,
   db,
+  excludeTestReservations,
   inboxAcknowledgements,
   isPaymentReceiptSql,
   lockStoreRow,
@@ -499,6 +500,8 @@ const bookingRequests: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         eq(reservations.status, "pending"),
         sql`COALESCE(${reservations.source}, 'online') <> 'marketplace'`,
         notExists(
@@ -552,6 +555,8 @@ const dateChangeRequests: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         inArray(reservations.status, ["confirmed", "ongoing"]),
         eq(reservationActivity.activityType, "note_updated"),
         sql`${field("$.kind")} = 'return_date_request'`,
@@ -614,6 +619,8 @@ const latePickups: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         eq(reservations.status, "confirmed"),
         gt(reservations.endDate, new Date(window.now.getTime() - STALE_PICKUP_DAYS * DAY_MS)),
         inWindow(window, "pickup_overdue", occurred, reservations.id),
@@ -660,6 +667,8 @@ const lateReturns: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         eq(reservations.status, "ongoing"),
         inWindow(window, "return_overdue", occurred, reservations.id),
       ),
@@ -711,6 +720,8 @@ const expiringDeposits: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         inArray(reservations.status, ["pending", "confirmed", "ongoing"]),
         eq(reservations.depositStatus, "authorized"),
         isNotNull(reservations.depositAuthorizationExpiresAt),
@@ -784,6 +795,8 @@ const unconfirmedDeposits: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         eq(payments.type, "deposit_hold"),
         eq(payments.status, "pending"),
         inWindow(window, "deposit_unconfirmed", occurred, payments.id),
@@ -848,6 +861,8 @@ const unreleasedDeposits: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         eq(payments.type, "deposit_hold"),
         isNotNull(payments.releaseOwedAt),
         inWindow(window, "deposit_release_failed", occurred, payments.id),
@@ -909,6 +924,8 @@ const unconfirmedRefunds: Source = async (window, shaper) => {
     .where(
       and(
         eq(o.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         inArray(o.status, ["requested", "unresolved"]),
         inWindow(window, "refund_unconfirmed", occurred, o.id),
       ),
@@ -983,6 +1000,8 @@ const undoneRefunds: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         eq(payments.status, "failed"),
         isStripeRefundPaymentSql(),
         // The payment it gives back: by its link, or, for an older refund row with none,
@@ -1054,6 +1073,8 @@ const failedPayments: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         inArray(reservations.status, ["pending", "quote", "confirmed", "ongoing"]),
         inArray(reservationActivity.activityType, ["payment_failed", "deposit_failed"]),
         gt(
@@ -1172,6 +1193,8 @@ const openDisputes: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         eq(paymentDisputes.status, "open"),
         inWindow(window, "dispute_open", occurred, paymentDisputes.id),
       ),
@@ -1274,6 +1297,8 @@ const unitConflicts: Source = async (window, shaper) => {
       .where(
         and(
           eq(reservations.storeId, window.storeId),
+          // Test reservations stay out of the inbox.
+          excludeTestReservations(),
           inArray(
             reservations.id,
             page.map((entry) => entry.conflict.reservationId),
@@ -1358,6 +1383,8 @@ const overbookings: Source = async (window, shaper) => {
     .where(
       and(
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         inArray(reservations.status, ["pending", "quote", "confirmed", "ongoing"]),
         gt(reservations.endDate, window.now),
         inArray(reservationActivity.activityType, CAPACITY_VERDICT_ACTIVITY_TYPES),
@@ -1477,6 +1504,8 @@ const rejectedEinvoices: Source = async (window, shaper) => {
       and(
         eq(invoices.storeId, window.storeId),
         eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
         or(
           eq(invoices.transmissionStatus, "rejected"),
           and(eq(invoices.transmissionStatus, "failed"), isNull(invoices.nextAttemptAt)),
@@ -1577,6 +1606,8 @@ const unsentMessages: Source = async (window, shaper) => {
         eq(apiEffects.storeId, window.storeId),
         eq(apiEffects.status, "abandoned"),
         inArray(apiEffects.type, [...MESSAGE_TYPES]),
+        // Test reservations stay out of the inbox; a message of none stays in.
+        or(isNull(reservations.id), excludeTestReservations()),
         inWindow(window, "message_not_sent", apiEffects.nextAttemptAt, apiEffects.id),
       ),
     )
@@ -1657,7 +1688,12 @@ const unissuedCreditNotes: Source = async (window, shaper) => {
     .from(apiEffects)
     .innerJoin(
       reservations,
-      and(eq(reservations.id, apiEffects.reservationId), eq(reservations.storeId, window.storeId)),
+      and(
+        eq(reservations.id, apiEffects.reservationId),
+        eq(reservations.storeId, window.storeId),
+        // Test reservations stay out of the inbox.
+        excludeTestReservations(),
+      ),
     )
     .leftJoin(customers, eq(customers.id, reservations.customerId))
     .where(

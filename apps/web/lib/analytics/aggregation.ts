@@ -1,4 +1,4 @@
-import { db } from '@louez/db'
+import { db, excludeTestReservations } from '@louez/db'
 import {
   pageViews,
   storefrontEvents,
@@ -83,7 +83,9 @@ export async function aggregateDailyAnalytics(now = new Date()) {
           and(
             eq(reservations.storeId, store.id),
             gte(reservations.createdAt, yesterday),
-            lt(reservations.createdAt, today)
+            lt(reservations.createdAt, today),
+            // Test reservations are left out of the figures.
+            excludeTestReservations()
           )
         )
 

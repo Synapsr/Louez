@@ -10,6 +10,7 @@ import {
   recordDepositReturnOutput,
   recordPaymentInput,
   recordPaymentOutput,
+  paymentRecordErrors,
   recordRefundInput,
   recordRefundOutput,
 } from "../../contracts/payment-records";
@@ -43,6 +44,7 @@ import { apiError } from "../../platform/errors";
 import { dashboardPageLinks, reservationLinks } from "../../platform/links";
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
+import { hidesTestPayment, hidesTestReservation } from "../../platform/test-reservation-visibility";
 import { dashboardProcedure } from "../../procedures";
 import { bookingModeOf } from "../../services/launch";
 import {
@@ -319,6 +321,10 @@ const record = storeProcedure
   .input(recordPaymentInput)
   .output(recordPaymentOutput)
   .handler(async ({ context, input, path }) => {
+    // A test reservation is not found by a key, an agent or the assistant.
+    if (await hidesTestReservation(context.actor, input.reservationId)) {
+      throw paymentRecordErrors.reservationNotFound(input.reservationId);
+    }
     const recorded = await recordPayment(
       paymentRecordsCaller(context, path, input, "money", context.ports.paymentRecords),
       input,
@@ -348,6 +354,10 @@ const recordDepositReturnProcedure = storeProcedure
   .input(recordDepositReturnInput)
   .output(recordDepositReturnOutput)
   .handler(async ({ context, input, path }) => {
+    // A test reservation is not found by a key, an agent or the assistant.
+    if (await hidesTestReservation(context.actor, input.reservationId)) {
+      throw paymentRecordErrors.reservationNotFound(input.reservationId);
+    }
     const recorded = await recordDepositReturn(
       paymentRecordsCaller(context, path, input, "money", context.ports.paymentRecords),
       input,
@@ -385,6 +395,10 @@ const recordRefund = storeProcedure
   .input(recordRefundInput)
   .output(recordRefundOutput)
   .handler(async ({ context, input, path }) => {
+    // A test reservation's payment is not found by a key, an agent or the assistant.
+    if (await hidesTestPayment(context.actor, input.paymentId)) {
+      throw paymentRecordErrors.paymentNotFound(input.paymentId);
+    }
     const refund = await recordPaymentRefund(
       {
         ...paymentRecordsCaller(context, path, input, "money", context.ports.paymentRefunds),
@@ -418,6 +432,10 @@ const deletePaymentProcedure = storeProcedure
   .input(deletePaymentInput)
   .output(deletePaymentOutput)
   .handler(async ({ context, input, path }) => {
+    // A test reservation's payment is not found by a key, an agent or the assistant.
+    if (await hidesTestPayment(context.actor, input.paymentId)) {
+      throw paymentRecordErrors.paymentNotFound(input.paymentId);
+    }
     const deleted = await deletePayment(
       paymentRecordsCaller(context, path, input, "destructive", context.ports.paymentRecords),
       input,
@@ -476,6 +494,10 @@ const refund = storeProcedure
     if (credential.kind === "session" && credential.assistant !== true) {
       throw stripeRefundErrors.notFromDashboard();
     }
+    // A test reservation's payment is not found by a key, an agent or the assistant.
+    if (await hidesTestPayment(context.actor, input.paymentId)) {
+      throw stripeRefundErrors.paymentNotFound(input.paymentId);
+    }
     const port = context.ports.stripeRefunds;
     if (!port) throw stripeRefundErrors.unavailable();
     const presented = context.headers.get(CONFIRMATION_HEADER);
@@ -510,6 +532,10 @@ const getRefund = storeProcedure
   .input(getRefundInput)
   .output(refundPaymentOutput)
   .handler(async ({ context, input }) => {
+    // A test reservation's payment is not found by a key, an agent or the assistant.
+    if (await hidesTestPayment(context.actor, input.paymentId)) {
+      throw stripeRefundErrors.paymentNotFound(input.paymentId);
+    }
     const port = context.ports.stripeRefunds;
     if (!port) throw stripeRefundErrors.unavailable();
     const read = await getOnlineRefund({ storeId: context.actor.storeId, port }, input);

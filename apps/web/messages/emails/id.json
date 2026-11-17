@@ -1,4 +1,8 @@
 {
+  "testReservation": {
+    "subjectPrefix": "[Uji] ",
+    "banner": "Ini adalah reservasi uji: tidak ada yang ditagih."
+  },
   "common": {
     "greeting": "Halo {name},",
     "regards": "Hormat kami,",

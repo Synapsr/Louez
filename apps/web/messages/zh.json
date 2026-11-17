@@ -329,6 +329,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "测试",
+      "start": "进行一次测试预订",
+      "resume": "继续测试预订",
+      "startError": "无法以测试模式打开店铺，请重试。",
+      "toast": {
+        "description": "您的店铺已准备就绪。进行一次测试预订，看看您的客户会经历什么。"
+      },
+      "homeCard": {
+        "title": "第一步",
+        "description": "像客户一样在您的店铺下单，然后在这里管理这笔预订。不会产生任何付款或账单。"
+      },
+      "guide": {
+        "title": "测试预订",
+        "description": "像真实预订一样管理它，使用本页上的按钮即可。",
+        "closed": "这笔测试预订中途停止了。删除它即可重新开始。",
+        "howTo": "怎么操作？",
+        "expires": "它将于 {date} 自动删除。",
+        "steps": {
+          "confirm": {
+            "title": "确认",
+            "help": "点击本页上的“{button}”。您会像客户一样收到确认邮件。"
+          },
+          "departureInspection": {
+            "title": "取件",
+            "help": "进行取件检查，就像交付设备时一样。",
+            "action": "进行取件检查"
+          },
+          "pickup": {
+            "title": "取件",
+            "help": "客户带着设备离开时，点击“{button}”。"
+          },
+          "return": {
+            "title": "归还并结束",
+            "help": "设备归还后，点击“{button}”。租赁即完成。"
+          }
+        }
+      },
+      "done": {
+        "title": "一切就绪。分享您的店铺",
+        "description": "您已经看到客户会经历什么。现在只需把链接发给他们。",
+        "share": "分享我的店铺",
+        "marketplace": "我在 reeent 上的发布"
+      },
+      "delete": {
+        "button": "删除测试数据",
+        "title": "删除测试数据？",
+        "description": "测试预订、其测试客户、模拟付款和检查记录都将被删除。您的商品和设置保持不变。",
+        "cancel": "取消",
+        "confirm": "删除",
+        "success": "测试数据已删除",
+        "error": "删除失败，请重试。"
+      }
+    },
     "purchaseInvoices": {
       "title": "供应商发票",
       "description": "您的供应商通过电子发票网络发送给您公司的发票。",
@@ -7348,6 +7402,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "测试模式：不会收取任何费用。",
+      "leave": "退出测试模式",
+      "emailLocked": "测试邮件将发送到 {email}。",
+      "badge": "测试",
+      "contractWatermark": "测试 — 无效",
+      "payment": {
+        "title": "模拟付款",
+        "description": "无需银行卡，不会扣款。",
+        "reservation": "预订 {number}",
+        "amountDue": "应付金额",
+        "deposit": "押金",
+        "depositNote": "测试期间不收取押金。",
+        "submit": "模拟付款",
+        "notPending": "此预订已不再等待付款。",
+        "viewReservation": "查看预订"
+      }
+    },
     "notFound": {
       "title": "该页面不可用",
       "description": "您正在寻找的产品或页面已不存在或尚未上线。",
@@ -9401,6 +9473,9 @@
     }
   },
   "errors": {
+    "testReservationExists": "您已有一个测试预订。请在控制台中删除后再创建新的。",
+    "testReservationRefused": "测试预订无法执行此操作：不会收取任何费用。",
+    "testModeRequired": "测试模式已失效。请从控制台重新开启。",
     "storeNotAcceptingReservations": "该商店目前不接受在线预订。{hasContact, select, yes {商店联系方式：{contact}} other {请直接联系商店。}}",
     "generic": "发生错误",
     "contractNotSignable": "此合同已无法签署。",

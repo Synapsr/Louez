@@ -238,8 +238,12 @@ const unitChanged = (actor: ProductActor, productId: string) =>
 
 // --- History -----------------------------------------------------------------
 
-export async function getUnitHistory(storeId: string, unitId: string) {
-  const history = await getProductUnitHistory({ storeId, unitId });
+export async function getUnitHistory(
+  storeId: string,
+  unitId: string,
+  options: { testReservations: boolean },
+) {
+  const history = await getProductUnitHistory({ storeId, unitId, ...options });
   if (!history) throw productUnitErrors.unitNotFound(unitId);
   return history;
 }

@@ -1,4 +1,8 @@
 {
+  "testReservation": {
+    "subjectPrefix": "[Тест] ",
+    "banner": "Это тестовое бронирование: деньги не списаны."
+  },
   "common": {
     "greeting": "Привет {name}!",
     "regards": "С уважением,",

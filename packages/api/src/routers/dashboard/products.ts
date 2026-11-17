@@ -47,6 +47,7 @@ import { readAfterCommit } from "../../platform/errors";
 import { productLinks } from "../../platform/links";
 import type { ProductImageOperation } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
+import { canSeeTestReservations } from "../../platform/test-reservation-visibility";
 import { withSetupMark } from "../../platform/setup-analytics";
 import { getProductUnitActivityPage } from "../../services/product-activity";
 import { getProductReservationTimeline } from "../../services/product-reservation-timeline";
@@ -751,7 +752,11 @@ const getReservationTimeline = storeProcedure
     // the connection must read those too, not only products.
     requireReservationsAndCustomers(context);
     const { id, from, to } = input;
-    const timeline = await getProductReservationTimeline(context.actor.storeId, { id, from, to });
+    const timeline = await getProductReservationTimeline(
+      context.actor.storeId,
+      { id, from, to },
+      { testReservations: canSeeTestReservations(context.actor) },
+    );
     // By start date, then id: a total order, whatever order the grouping left.
     const order = {
       key: (reservation: (typeof timeline.reservations)[number]) =>

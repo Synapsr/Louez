@@ -1,4 +1,10 @@
-import { db, customers, reservations } from "@louez/db";
+import {
+  db,
+  customers,
+  excludeTestCustomers,
+  excludeTestReservations,
+  reservations,
+} from "@louez/db";
 import { CUSTOMER_ACQUISITION_SOURCES, CUSTOMER_CREATED_VIA } from "@louez/types";
 import { customerFieldDefinitionSchema, customerFieldValuesSchema } from "@louez/validations";
 import { and, count, desc, eq, exists, gte, lt, or, sql } from "drizzle-orm";
@@ -124,7 +130,12 @@ const list = dashboardProcedure
       .from(customers)
       .leftJoin(
         reservations,
-        and(eq(reservations.customerId, customers.id), eq(reservations.storeId, storeId)),
+        and(
+          eq(reservations.customerId, customers.id),
+          eq(reservations.storeId, storeId),
+          // A test reservation counts only on its test customer.
+          or(eq(customers.isTest, true), excludeTestReservations()),
+        ),
       )
       .where(whereClause)
       .groupBy(customers.id)
@@ -147,7 +158,11 @@ const list = dashboardProcedure
     const [customerRows, filteredCountResult, totalCountResult, definitions] = await Promise.all([
       query.limit(pageSize).offset((page - 1) * pageSize),
       db.select({ count: count() }).from(customers).where(whereClause),
-      db.select({ count: count() }).from(customers).where(eq(customers.storeId, storeId)),
+      // A test customer counts toward no plan limit.
+      db
+        .select({ count: count() })
+        .from(customers)
+        .where(and(eq(customers.storeId, storeId), excludeTestCustomers())),
       listCustomerFieldDefinitions(storeId, { activeOnly: true, scope: "customer" }),
     ]);
 

@@ -2,7 +2,7 @@ import {
   getCustomerFieldValuesByCustomer,
   listCustomerFieldDefinitions,
 } from "@louez/api/services/customer-fields";
-import { customers, db } from "@louez/db";
+import { customers, db, excludeTestCustomers } from "@louez/db";
 import type { CustomerFieldValues } from "@louez/types";
 import { and, between, desc, eq } from "drizzle-orm";
 
@@ -41,6 +41,8 @@ export async function queryCustomersExport(storeId: string, params: ExportParams
       .where(
         and(
           eq(customers.storeId, storeId),
+          // Test customers are never exported.
+          excludeTestCustomers(),
           params.startDate && params.endDate
             ? between(customers.createdAt, params.startDate, params.endDate)
             : undefined,

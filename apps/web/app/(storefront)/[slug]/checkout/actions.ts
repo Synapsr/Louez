@@ -16,6 +16,7 @@ import {
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import { log } from "@/lib/evlog";
 import { getClientIp } from "@/lib/request";
+import { getStorefrontTestMode } from "@/lib/test-reservations/storefront-test-mode";
 import { getTulipCoverageSummary } from "@/lib/integrations/tulip/contracts";
 import {
   searchFrenchCompanies,
@@ -217,7 +218,7 @@ export type CreateReservationActionResult =
       reservationNumber: string;
       paymentUrl: string | null;
       customerId: string;
-      /** Token URL to /r/{id} when the reservation is a request (no Stripe step). */
+      /** Token URL to /r/{id}: a test request lands its owner on it signed in. */
       instantAccessUrl: string | null;
       error?: undefined;
       errorParams?: undefined;
@@ -246,11 +247,16 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     return { error: "errors.invalidData" };
   }
 
+  // Test mode is read from its signed cookie only (lib/test-reservations).
+  const testMode = await getStorefrontTestMode(parsed.data.storeId);
   const result = await createReservationInternal({
     ...parsed.data,
     source: "online",
-    customerSignedIn: await isSignedInAs(parsed.data.storeId, parsed.data.customer.email),
+    customerSignedIn: testMode
+      ? false
+      : await isSignedInAs(parsed.data.storeId, parsed.data.customer.email),
     termsAcceptedFromIp: getClientIp(await headers()),
+    ...(testMode ? { testMode: { userId: testMode.userId, ownerEmail: testMode.ownerEmail } } : {}),
   });
 
   if (!result.ok) {

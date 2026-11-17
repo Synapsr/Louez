@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import {
   customers,
   db,
+  excludeTestReservations,
   productUnitDowntimes,
   productUnitEvents,
   productUnits,
@@ -39,9 +40,12 @@ const getDowntimeStatusOrder = (status: ProductUnitDowntimeStatus) => {
 export const getProductUnitHistory = async ({
   storeId,
   unitId,
+  testReservations,
 }: {
   storeId: string;
   unitId: string;
+  /** The caller sees test reservations (platform/test-reservation-visibility.ts). */
+  testReservations: boolean;
 }) => {
   const [unit] = await db
     .select({ id: productUnits.id })
@@ -89,7 +93,11 @@ export const getProductUnitHistory = async ({
       .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
       .leftJoin(customers, eq(reservations.customerId, customers.id))
       .where(
-        and(eq(reservationItemUnits.productUnitId, unitId), eq(reservations.storeId, storeId)),
+        and(
+          eq(reservationItemUnits.productUnitId, unitId),
+          eq(reservations.storeId, storeId),
+          testReservations ? undefined : excludeTestReservations(),
+        ),
       ),
     db
       .select({

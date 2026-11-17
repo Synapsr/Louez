@@ -20,6 +20,7 @@ import {
 import { ANSWER_PAGE_MAX, ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import type { Consequences } from "../../platform/approval-rule";
 import { storeProcedure } from "../../platform/procedures";
+import { canSeeTestReservations } from "../../platform/test-reservation-visibility";
 import * as units from "../../services/product-units";
 import type { UnitAvailabilityPreview } from "../../services/product-units";
 import type { UnitConflict } from "../../services/unit-conflicts";
@@ -165,7 +166,9 @@ export const getUnitHistory = storeProcedure
   .output(unitHistoryOutput)
   .handler(async ({ context, input }) => {
     requireReservationsAndCustomers(context);
-    const history = await units.getUnitHistory(context.actor.storeId, input.unitId);
+    const history = await units.getUnitHistory(context.actor.storeId, input.unitId, {
+      testReservations: canSeeTestReservations(context.actor),
+    });
     // Newest first, as the history reads; its kind and id tell entries of one instant apart.
     const order = {
       key: (entry: (typeof history.timeline)[number]) =>

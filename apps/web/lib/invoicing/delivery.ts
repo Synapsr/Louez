@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, eq } from "drizzle-orm";
 
-import { db, documents, invoices, payments } from "@louez/db";
+import { db, documents, invoices, payments, reservations } from "@louez/db";
 
 import type { EmailAttachment } from "@/lib/email/client";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
@@ -10,6 +10,8 @@ import { sendPaymentConfirmationEmail } from "@/lib/email/send";
 import { log } from "@/lib/evlog";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+
+import { isStoreInvoiceGenerationEnabled } from "./service";
 
 const MAX_DOCUMENT_ATTACHMENTS_BYTES = 8 * 1024 * 1024;
 const PDF_DATA_URL_PREFIX = "data:application/pdf;base64,";
@@ -34,9 +36,41 @@ function decodePdfAttachment(input: {
   return { filename: input.fileName, content, cid: input.cid };
 }
 
+/**
+ * A test reservation has no invoice (packages/db test-reservations.ts): where the
+ * store's confirmation would attach its documents, it attaches the watermarked
+ * contract alone; elsewhere the e-mail links to the account page, as for anyone.
+ */
+async function prepareTestReservationDelivery(
+  reservationId: string,
+  storeId: string,
+): Promise<InitialInvoiceEmailDelivery> {
+  if (!(await isStoreInvoiceGenerationEnabled(storeId))) return { attachments: [] };
+  const contract = await db.query.documents.findFirst({
+    where: and(eq(documents.reservationId, reservationId), eq(documents.type, "contract")),
+    columns: { id: true, fileName: true, fileUrl: true },
+  });
+  const attachment = contract
+    ? decodePdfAttachment({
+        fileName: contract.fileName,
+        fileUrl: contract.fileUrl,
+        cid: `contract-${contract.id}`,
+      })
+    : null;
+  return { attachments: attachment ? [attachment] : [] };
+}
+
 export async function prepareInitialInvoiceEmailDelivery(
   reservationId: string,
 ): Promise<InitialInvoiceEmailDelivery> {
+  const [testReservation] = await db
+    .select({ storeId: reservations.storeId })
+    .from(reservations)
+    .where(and(eq(reservations.id, reservationId), eq(reservations.isTest, true)))
+    .limit(1);
+  if (testReservation)
+    return prepareTestReservationDelivery(reservationId, testReservation.storeId);
+
   const initialInvoice = await db.query.invoices.findFirst({
     where: and(eq(invoices.reservationId, reservationId), eq(invoices.kind, "initial")),
     columns: { id: true },

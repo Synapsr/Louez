@@ -21,6 +21,7 @@ import { isBillingEnabled } from "@/lib/billing/mode";
 import { isBillingSyncEnabled } from "@/lib/billing-sync/config";
 import { processReminders } from "@/lib/reminders/automation";
 import { processReviewRequests } from "@/lib/review-booster/automation";
+import { runTestReservationsPurge } from "@/lib/test-reservations/lifecycle";
 
 import { env } from "@/env";
 
@@ -60,6 +61,8 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Google Places cache refresh: daily at 3:00 AM
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
  * - Cache cleanup: daily at 4:00 AM UTC
+ * - Test reservations past their 7 days: daily at 4:15 AM UTC, through the same
+ *   deletion as the dashboard's (packages/api services/test-reservations.ts)
  * - Expired legal archive cleanup: daily at 4:30 AM UTC
  * - Legacy fee report and billable_at check: daily at 4:45 AM UTC, billing only
  *   (lists fee effects that may have been lost; writes nothing)
@@ -232,6 +235,12 @@ async function handleCron(request: Request) {
       tasks.push("cache-cleanup");
       const cleaned = await cleanExpiredCache();
       results.cacheCleanup = { cleaned };
+    }
+
+    // Test reservations past their lifetime: daily at 4:15 AM UTC (lib/test-reservations).
+    if (now.getUTCHours() === 4 && now.getUTCMinutes() === 15) {
+      tasks.push("test-reservations-purge");
+      results.testReservationsPurge = await runTestReservationsPurge();
     }
 
     if (now.getUTCHours() === 4 && now.getUTCMinutes() === 30) {

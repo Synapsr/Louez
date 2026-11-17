@@ -1,4 +1,4 @@
-import { db, reservations, stores } from '@louez/db'
+import { db, excludeTestReservations, reservations, stores } from '@louez/db'
 import { revenueReport } from '@louez/api/services/analytics'
 import { and, eq, lte, sql } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/server'
@@ -50,7 +50,8 @@ export function registerDashboardResources(server: McpServer, ctx: McpRequestCon
           count: sql<number>`COUNT(*)`,
         })
         .from(reservations)
-        .where(eq(reservations.storeId, ctx.storeId))
+        // An agent never sees a test reservation.
+        .where(and(eq(reservations.storeId, ctx.storeId), excludeTestReservations()))
         .groupBy(reservations.status)
 
       const counts: Record<string, number> = {}
@@ -65,6 +66,8 @@ export function registerDashboardResources(server: McpServer, ctx: McpRequestCon
         .where(
           and(
             eq(reservations.storeId, ctx.storeId),
+            // An agent never sees a test reservation.
+            excludeTestReservations(),
             eq(reservations.status, 'ongoing'),
             lte(reservations.endDate, now)
           )
@@ -98,7 +101,9 @@ export function registerDashboardResources(server: McpServer, ctx: McpRequestCon
       const rows = await db.query.reservations.findMany({
         where: and(
           eq(reservations.storeId, ctx.storeId),
-          eq(reservations.status, 'pending')
+          eq(reservations.status, 'pending'),
+          // An agent never sees a test reservation.
+          excludeTestReservations()
         ),
         with: { customer: { columns: { firstName: true, lastName: true, email: true } } },
         orderBy: [reservations.createdAt],

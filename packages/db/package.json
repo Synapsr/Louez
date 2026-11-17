@@ -10,6 +10,7 @@
     "./schema": "./src/schema.ts",
     "./env": "./src/env.ts",
     "./payment-receipts": "./src/payment-receipts.ts",
+    "./test-reservations": "./src/test-reservations.ts",
     "./billing-queue": "./src/billing-queue.ts",
     "./billing-policy": "./src/billing-policy.ts",
     "./testing": "./src/testing/test-database.ts"

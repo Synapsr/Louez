@@ -6,6 +6,7 @@ import {
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   db,
+  excludeTestReservations,
   getBlockingReservationStatuses,
   loadConsumableReservedQuantities,
   productUnits,
@@ -63,6 +64,8 @@ export function registerCalendarTools(server: McpServer, ctx: McpRequestContext)
         where: and(
           eq(reservations.storeId, ctx.storeId),
           inArray(reservations.status, blockingStatuses),
+          // A test reservation holds no stock, and an agent never sees one.
+          excludeTestReservations(),
           buildReservationOverlapPredicate({
             start,
             end,

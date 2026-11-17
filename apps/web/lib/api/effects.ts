@@ -19,12 +19,15 @@ import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-ef
 import { createStoreLaunchEffectSenders } from "@/lib/stores/store-launch-effects";
 import { createStoreSetupEffectSenders } from "@/lib/stores/store-setup-effects";
 import { createTeamInvitationEffectSenders } from "@/lib/team/team-invitation-effects";
+import { createTestReservationEffectSenders } from "@/lib/test-reservations/lifecycle-effects";
+import { withTestReservationMessagePolicy } from "@/lib/test-reservations/message-policy";
 
 /**
  * The app's senders of the outbox rows (packages/api platform/effects.ts), by
- * effect type. A domain that adds an effect type adds its sender here.
+ * effect type. A domain that adds an effect type adds its sender here. A test
+ * reservation's rows follow its message policy (lib/test-reservations).
  */
-export const apiEffectSenders: ApiEffectSenders = {
+export const apiEffectSenders: ApiEffectSenders = withTestReservationMessagePolicy({
   ...createDepositHoldEffectSenders(),
   ...createRefundCreditNoteEffectSenders(),
   ...createReservationEffectSenders(),
@@ -35,7 +38,8 @@ export const apiEffectSenders: ApiEffectSenders = {
   ...createStoreLaunchEffectSenders(),
   ...createStoreSetupEffectSenders(),
   ...createTeamInvitationEffectSenders(),
-};
+  ...createTestReservationEffectSenders(),
+});
 
 /**
  * `ApiPorts.dispatchEffects`: sends a committed write's rows once the answer

@@ -61,6 +61,7 @@ import type {
   ProductFormValues,
   SeasonalPricingData,
 } from "./types";
+import { useFirstProductToast } from "@/components/dashboard/test-reservation/use-first-product-toast";
 
 type ProductFormSubmitIntent = "save" | "save-and-duplicate";
 const PRODUCT_COPY_DRAFT_STORAGE_KEY = "louez:product-copy-draft";
@@ -147,6 +148,7 @@ export function ProductForm({
   imageEnhanceEnabled = false,
   imageBackgroundRemovalEnabled = false,
   canDelete = false,
+  isFirstProduct = false,
 }: ProductFormProps) {
   const router = useRouter();
   const t = useTranslations("dashboard.products.form");
@@ -156,6 +158,7 @@ export function ProductForm({
   const currencySymbol = getCurrencySymbol(currency);
 
   const isEditMode = !!product;
+  const showFirstProductToast = useFirstProductToast();
   const queryClient = useQueryClient();
   const {
     isSaving,
@@ -456,10 +459,14 @@ export function ProductForm({
           return;
         }
 
-        toastManager.add({
-          title: product ? t("productUpdated") : t("productCreated"),
-          type: "success",
-        });
+        if (!product && isFirstProduct && value.status === "active") {
+          showFirstProductToast(t("productCreated"));
+        } else {
+          toastManager.add({
+            title: product ? t("productUpdated") : t("productCreated"),
+            type: "success",
+          });
+        }
         router.push(product ? `/dashboard/products/${product.id}` : "/dashboard/products");
       } catch (error) {
         if (copyDraft) {

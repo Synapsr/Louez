@@ -10,7 +10,7 @@
  * Called by the cron job every minute to check for pending reminders.
  */
 
-import { db } from '@louez/db'
+import { db, excludeTestReservations } from '@louez/db'
 import { reservations, customers, reminderLogs, adminDigestLogs } from '@louez/db'
 import { eq, and, gte, lte, inArray } from 'drizzle-orm'
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
@@ -316,6 +316,8 @@ async function findEligibleReservations(
       and(
         eq(reservations.storeId, storeId),
         eq(reservations.status, status),
+        // A test reservation gets no reminder.
+        excludeTestReservations(),
         gte(dateColumn, windowStart),
         lte(dateColumn, windowEnd)
       )
@@ -690,6 +692,8 @@ async function findDigestReservations(
       and(
         eq(reservations.storeId, storeId),
         inArray(reservations.status, ['confirmed', 'ongoing']),
+        // A test reservation stays out of the digest.
+        excludeTestReservations(),
         gte(dateColumn, dayStart),
         lte(dateColumn, dayEnd)
       )

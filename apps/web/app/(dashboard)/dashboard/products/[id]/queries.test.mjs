@@ -8,6 +8,7 @@ import * as orm from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql-proxy";
 import { stripTypeScriptTypes } from "node:module";
 import * as paymentReceipts from "@louez/db/payment-receipts";
+import * as testReservations from "@louez/db/test-reservations";
 import * as schema from "@louez/db/schema";
 // Execute the revenue queries against fixtures without server auth or a live DB.
 const source = readFileSync(new URL("./queries.ts", import.meta.url), "utf8");
@@ -29,6 +30,7 @@ test("product receipts use line totals, payment periods and store isolation", as
         ('booking', 'free-product', 0), ('booking', 'bags', 28), ('booking', 'insurance', 28),
         ('booking', 'bike', 200), ('booking', 'bike', 35),
         ('foreign', 'bike', 1000), ('free', 'free-product', 0);
+      ALTER TABLE reservations ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0;
     `);
     const db = drizzle(async (query, params) => {
       const statement = sqlite.prepare(query);
@@ -52,6 +54,7 @@ test("product receipts use line totals, payment periods and store isolation", as
       ...dateFns,
       ...schema,
       ...paymentReceipts,
+      ...testReservations,
       db,
     });
     const stats = (productId) => getStats({ storeId: "store", productId });

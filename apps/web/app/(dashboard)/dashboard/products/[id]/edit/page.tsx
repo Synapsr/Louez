@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { getAccessoryCandidates } from "@louez/api/services";
 import {
   db,
+  excludeTestReservations,
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
   getProductStockKindChangeBlockers,
@@ -156,6 +157,8 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
               inArray(reservationItemUnits.productUnitId, unitIds),
               eq(reservations.storeId, store.id),
               inArray(reservations.status, blockingStatuses),
+              // A test reservation holds no unit.
+              excludeTestReservations(),
               reservationStillHoldsUnitsSql(),
             ),
           )

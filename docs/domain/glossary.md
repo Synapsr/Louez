@@ -44,6 +44,10 @@ _Avoid_: Stripe commission
 A Reservation in status `confirmed`, `ongoing` or `completed`, the statuses the Louez commission is charged on. `billable_at` records the first time it entered them; `withdrawn_at` records when a cancellation took it out. A rejected or declined reservation was never billable.
 _Avoid_: paid reservation (a billable reservation may be unpaid), confirmed (alone)
 
+**Test reservation**:
+A Reservation a store owner makes on their own Online Store to see the whole journey, from the customer's side then the dashboard's: payment is simulated, nothing is charged, and messages go to that owner alone, tagged "Test", with no text message. It holds no stock, is never a Billable reservation, stays out of every figure, export, calendar and reminder, and only a person in the dashboard sees it, with a "Test" badge. A Store has at most one; it is deleted in one click or after 7 days. Its Customer is a test customer, seen by the same people. Stored as `reservations.is_test` and `customers.is_test`. French UI: "Réservation test".
+_Avoid_: demo reservation, sandbox, fake booking
+
 **Platform billing**:
 Louez billing its Stores: the Louez commission, plans, top-ups, referral rewards and month-end invoices. On only when `LOUEZ_BILLING=cloud` (Louez Cloud); a self-hosted instance, single-store or multi-store, bills no Store, writes no billing rows, gives every Store every feature without a plan limit, and has no plan, billing, referral or platform-admin page.
 _Avoid_: payments (a Customer paying a Store), Stripe Connect

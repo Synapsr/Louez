@@ -3,6 +3,7 @@ import { and, eq, exists, gte, inArray, ne, or } from "drizzle-orm";
 
 import {
   db,
+  excludeTestReservations,
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
   products,
@@ -136,6 +137,8 @@ async function getActiveReservations(
       eq(reservations.storeId, storeId),
       ne(reservations.id, excludeReservationId),
       inArray(reservations.status, blockingStatuses),
+      // A test reservation holds no stock.
+      excludeTestReservations(),
       or(
         gte(reservations.endDate, lookbackStart),
         exists(

@@ -46,7 +46,11 @@ export async function isTestReservation(
 export async function findStoreTestReservation(
   executor: Pick<Database, "select"> | Transaction,
   storeId: string,
-): Promise<{ id: string; status: (typeof reservations.$inferSelect)["status"]; createdAt: Date } | null> {
+): Promise<{
+  id: string;
+  status: (typeof reservations.$inferSelect)["status"];
+  createdAt: Date;
+} | null> {
   const [row] = await executor
     .select({ id: reservations.id, status: reservations.status, createdAt: reservations.createdAt })
     .from(reservations)

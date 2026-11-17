@@ -5,6 +5,7 @@ import {
 import type { SendEmailOptions } from '@louez/email';
 
 import { throwIfEffectAborted } from '@/lib/api/effect-signal';
+import { markTestReservationEmail } from '@/lib/test-reservations/email-mark';
 
 /**
  * App-level transactional email refuses to pretend: without a transport the
@@ -22,7 +23,8 @@ export const sendEmail = async (options: SendEmailOptions) => {
   // An outbox sender may have timed out while the email was prepared (logo,
   // rendering); SMTP cannot be aborted once started, so check last.
   throwIfEffectAborted();
-  return transportSendEmail(options);
+  // A test reservation's e-mail says so in its subject and body (lib/test-reservations).
+  return transportSendEmail(markTestReservationEmail(options));
 };
 
 export type { EmailAttachment, SendEmailOptions } from '@louez/email';

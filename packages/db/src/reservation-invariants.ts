@@ -3,6 +3,7 @@ import { and, count, inArray, isNull } from "drizzle-orm";
 import type { Database, Transaction } from "./index";
 import { BILLABLE_RESERVATION_STATUSES } from "./reservation-status";
 import { reservations } from "./schema";
+import { excludeTestReservations } from "./test-reservations";
 
 /**
  * Billable reservations that have no `billable_at`. It should be 0: migration
@@ -20,6 +21,8 @@ export async function countBillableReservationsWithoutBillableAt(
       and(
         inArray(reservations.status, [...BILLABLE_RESERVATION_STATUSES]),
         isNull(reservations.billableAt),
+        // A test reservation is never billed: it has no `billable_at` on purpose.
+        excludeTestReservations(),
       ),
     );
   return row?.missing ?? 0;

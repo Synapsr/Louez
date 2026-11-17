@@ -30,6 +30,10 @@ import {
 import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { customerLinks, productLinks, reservationLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
+import {
+  canSeeTestReservations,
+  hidesTestReservation,
+} from "../../platform/test-reservation-visibility";
 import { changeReservationDates, type DateChangePreview } from "../../services/reservation-dates";
 import {
   changeStoreReservationStatus,
@@ -68,7 +72,13 @@ const reader = (context: ProductContext): ReservationReader => ({
   currency: context.store.settings?.currency ?? "EUR",
   customers: mayRead(context, "customers"),
   payments: mayRead(context, "payments"),
+  testReservations: canSeeTestReservations(context.actor),
 });
+
+/** A test reservation the caller may not see answers as an id the store does not have. */
+async function refuseHiddenTestReservation(context: ProductContext, id: string) {
+  if (await hidesTestReservation(context.actor, id)) throw reservationErrors.notFound(id);
+}
 
 const statusCaller = (context: ProductContext): StatusChangeCaller => ({
   storeId: context.actor.storeId,
@@ -466,8 +476,9 @@ const updateStatus = storeProcedure
   })
   .input(updateReservationStatusInput)
   .output(statusChangeOutput)
-  .handler(async ({ context, input, path }) =>
-    linker(context).reservation(
+  .handler(async ({ context, input, path }) => {
+    await refuseHiddenTestReservation(context, input.id);
+    return linker(context).reservation(
       await changeStoreReservationStatus(
         statusCaller(context),
         {
@@ -479,8 +490,8 @@ const updateStatus = storeProcedure
         },
         { confirm: statusConfirmation(context, path, input) },
       ),
-    ),
-  );
+    );
+  });
 
 const update = storeProcedure
   .meta({
@@ -517,6 +528,7 @@ const update = storeProcedure
   .input(updateReservationInput)
   .output(updateReservationOutput)
   .handler(async ({ context, input, path }) => {
+    await refuseHiddenTestReservation(context, input.id);
     const change = await changeReservationDates(
       {
         storeId: context.actor.storeId,
@@ -566,15 +578,16 @@ const cancel = storeProcedure
   })
   .input(cancelReservationInput)
   .output(statusChangeOutput)
-  .handler(async ({ context, input, path }) =>
-    linker(context).reservation(
+  .handler(async ({ context, input, path }) => {
+    await refuseHiddenTestReservation(context, input.id);
+    return linker(context).reservation(
       await changeStoreReservationStatus(
         statusCaller(context),
         { id: input.id, to: "cancelled" },
         { confirm: statusConfirmation(context, path, input) },
       ),
-    ),
-  );
+    );
+  });
 
 const updateNotes = storeProcedure
   .meta({
@@ -605,6 +618,7 @@ const updateNotes = storeProcedure
           storeId: context.actor.storeId,
           store: statusCaller(context).store,
           transport: context.actor.transport,
+          testReservations: canSeeTestReservations(context.actor),
           ports: context.ports,
         },
         input,

@@ -5,7 +5,7 @@
  * after rentals are completed.
  */
 
-import { db } from "@louez/db";
+import { db, excludeTestReservations } from "@louez/db";
 import { reservations, customers, reviewRequestLogs } from "@louez/db";
 import { eq, and, lte, gte, inArray, sql } from "drizzle-orm";
 import { sendThankYouReviewSms } from "@/lib/sms/send";
@@ -124,6 +124,8 @@ async function processEmailRequests(
       and(
         eq(reservations.storeId, store.id),
         eq(reservations.status, "completed"),
+        // A test reservation gets no review request.
+        excludeTestReservations(),
         lte(reservations.returnedAt, cutoffDate),
         gte(reservations.returnedAt, maxAgeDate),
       ),
@@ -219,6 +221,8 @@ async function processSmsRequests(
       and(
         eq(reservations.storeId, store.id),
         eq(reservations.status, "completed"),
+        // A test reservation gets no review request.
+        excludeTestReservations(),
         lte(reservations.returnedAt, cutoffDate),
         gte(reservations.returnedAt, maxAgeDate),
       ),

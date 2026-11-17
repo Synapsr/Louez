@@ -60,6 +60,7 @@ import {
   getReservationDetailHref,
   isReservationAnalyticsSource,
 } from "@/lib/product-analytics/reservation-analytics";
+import { TestBadge } from "@/components/dashboard/test-reservation/test-badge";
 
 const STATUS_ICON_MAP: Record<ReservationStatus, typeof PendingSolidIcon> = {
   pending: PendingSolidIcon,
@@ -319,10 +320,13 @@ export function ReservationsTableView({
 
                     {/* Status */}
                     <TableCell>
-                      <Badge variant={statusConfig.badgeVariant} className="gap-1">
-                        <StatusIcon className="h-3 w-3" />
-                        {t(`status.${status}`)}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant={statusConfig.badgeVariant} className="gap-1">
+                          <StatusIcon className="h-3 w-3" />
+                          {t(`status.${status}`)}
+                        </Badge>
+                        <TestBadge reservationId={reservation.id} />
+                      </div>
                     </TableCell>
 
                     {/* Payment (hidden on small screens) */}

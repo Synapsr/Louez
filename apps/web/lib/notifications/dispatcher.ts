@@ -48,6 +48,10 @@ import {
   reservationCurrencyOf,
 } from "@/lib/notifications/util.notification-currency";
 import { isPushConfigured, sendPush } from "@/lib/push/client";
+import {
+  readTestReservationMessagesForDispatch,
+  sendAsTestReservation,
+} from "@/lib/test-reservations/message-policy";
 import { log } from "@/lib/evlog";
 import { buildAdminPushPayload } from "@/lib/push/notifications";
 import type { NotificationEventType, NotificationSettings } from "@louez/types";
@@ -941,7 +945,12 @@ export async function dispatchNotification(
   // over the defaults so stores saved before a channel existed (e.g. `push`)
   // still inherit that channel's default instead of resolving to undefined.
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
-  const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
+  const storePrefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
+  // A test reservation reaches the owner by e-mail only, marked "[Test]".
+  const testPolicy = await readTestReservationMessagesForDispatch(ctx.reservation?.id);
+  const prefs = testPolicy
+    ? { ...storePrefs, sms: false, push: false, discord: false }
+    : storePrefs;
 
   // Determine locale from store country
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
@@ -957,7 +966,9 @@ export async function dispatchNotification(
   // Email to the store owner. Events without an owner template answer "not sent".
   if (prefs.email) {
     try {
-      result.email = await deps.sendAdminEventEmail(eventType, ctx);
+      result.email = await sendAsTestReservation(testPolicy, () =>
+        deps.sendAdminEventEmail(eventType, ctx),
+      );
     } catch (error) {
       failed("email", error);
       result.email = { sent: false, error: describeChannelError(error) };

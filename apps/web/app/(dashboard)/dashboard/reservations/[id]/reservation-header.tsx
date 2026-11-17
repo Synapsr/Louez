@@ -233,6 +233,7 @@ export function ReservationHeader({
             <ReservationBackButton onBack={onBack} readOnly={readOnly} />
 
             <ReservationIdentity
+              reservationId={reservationId}
               reservationNumber={reservationNumber}
               status={status}
               rentalAmount={rentalAmount}

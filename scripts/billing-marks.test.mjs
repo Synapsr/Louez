@@ -128,6 +128,20 @@ const EXCLUDED_PREFIX = "packages/db/src/";
  */
 const ALLOWLIST = [
   {
+    file: "packages/api/src/services/test-reservations.ts",
+    writes: { reservationItems: 1, paymentDisputes: 1, payments: 1 },
+    reason:
+      "deletes a test reservation's rows; a test reservation is never billed and has no " +
+      "snapshot (packages/db test-reservations.ts)",
+  },
+  {
+    file: "apps/web/lib/test-reservations/simulate-payment.ts",
+    writes: { payments: 1 },
+    reason:
+      "the simulated payment of a test reservation, which is never billed and has no " +
+      "snapshot (packages/db test-reservations.ts)",
+  },
+  {
     file: "apps/web/lib/reservations/create-reservation.ts",
     writes: { payments: 1, reservationItems: 1 },
     reason:

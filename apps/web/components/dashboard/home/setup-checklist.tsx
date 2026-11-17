@@ -11,6 +11,7 @@ import { Button } from "@louez/ui";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import { cn } from "@louez/utils";
 
+import { StartTestReservationButton } from "@/components/dashboard/test-reservation/start-test-reservation-button";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import { storesQueries } from "@/lib/queries/stores.queries";
 
@@ -334,14 +335,20 @@ export function SetupChecklist({
                                 </p>
                                 {(item.href || item.showStoreLink) && (
                                   <div className="mt-2.5 flex flex-col  gap-1 items-start">
-                                    {item.href && (
-                                      <Button
-                                        className="h-7.5 text-xs"
-                                        render={<Link href={item.href} />}
-                                      >
-                                        {t(item.action || "setup.start")}
-                                        <ArrowRight />
-                                      </Button>
+                                    {/* With a product to book, the first reservation is rehearsed first (test-reservation). */}
+                                    {item.key === "firstReservation" &&
+                                    checklist.catalog.hasActiveProduct ? (
+                                      <StartTestReservationButton size="sm" />
+                                    ) : (
+                                      item.href && (
+                                        <Button
+                                          className="h-7.5 text-xs"
+                                          render={<Link href={item.href} />}
+                                        >
+                                          {t(item.action || "setup.start")}
+                                          <ArrowRight />
+                                        </Button>
+                                      )
                                     )}
                                     {item.showStoreLink && (
                                       <Button

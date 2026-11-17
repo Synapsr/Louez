@@ -6,6 +6,7 @@ import {
   BLOCKING_RESERVATION_STATUSES,
   customers,
   db,
+  excludeTestReservations,
   findBusyUnitIds,
   getBlockingReservationStatuses,
   isPaymentReceiptSql,
@@ -76,7 +77,8 @@ async function getProductRentalPaymentStats(params: {
     })
     .from(reservationItems)
     .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-    .where(eq(reservations.storeId, storeId))
+    // A test reservation's simulated payment is no revenue.
+    .where(and(eq(reservations.storeId, storeId), excludeTestReservations()))
     .groupBy(reservationItems.reservationId)
     .having(sql`SUM(CASE WHEN ${reservationItems.productId} = ${productId} THEN 1 ELSE 0 END) > 0`)
     .as("item_totals");
@@ -192,7 +194,14 @@ export async function getProductReservationCounts(params: {
     })
     .from(reservationItems)
     .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-    .where(and(eq(reservations.storeId, storeId), eq(reservationItems.productId, productId)))
+    .where(
+      and(
+        eq(reservations.storeId, storeId),
+        eq(reservationItems.productId, productId),
+        // Test reservations are not counted.
+        excludeTestReservations(),
+      ),
+    )
     .groupBy(reservations.status);
 
   const counts = Object.fromEntries(RESERVATION_STATUSES.map((status) => [status, 0])) as Record<
@@ -274,6 +283,8 @@ export async function getProductUtilizationRate(params: {
             eq(reservations.storeId, storeId),
             eq(reservationItems.productId, productId),
             inArray(reservations.status, BLOCKING_RESERVATION_STATUSES),
+            // A test reservation occupies nothing.
+            excludeTestReservations(),
           ),
         )
     : await db
@@ -287,6 +298,8 @@ export async function getProductUtilizationRate(params: {
             eq(reservations.storeId, storeId),
             eq(reservationItems.productId, productId),
             inArray(reservations.status, BLOCKING_RESERVATION_STATUSES),
+            // A test reservation occupies nothing.
+            excludeTestReservations(),
           ),
         );
 

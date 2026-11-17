@@ -329,6 +329,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "Prueba",
+      "start": "Hacer una reserva de prueba",
+      "resume": "Retomar la reserva de prueba",
+      "startError": "No se pudo abrir la tienda en modo de prueba. Inténtalo de nuevo.",
+      "toast": {
+        "description": "Tu tienda está lista. Haz una reserva de prueba para ver lo que viven tus clientes."
+      },
+      "homeCard": {
+        "title": "Primer paso",
+        "description": "Reserva en tu tienda como un cliente y luego gestiona la reserva aquí. No se paga ni se factura nada."
+      },
+      "guide": {
+        "title": "Reserva de prueba",
+        "description": "Gestiónala como una reserva real, con los botones de esta página.",
+        "closed": "Esta reserva de prueba se quedó a medias. Elimínala para hacer otra.",
+        "howTo": "¿Cómo se hace?",
+        "expires": "Se eliminará automáticamente el {date}.",
+        "steps": {
+          "confirm": {
+            "title": "Confirmar",
+            "help": "Haz clic en «{button}» en esta página. Recibes el correo de confirmación, igual que tu cliente."
+          },
+          "departureInspection": {
+            "title": "Recogida",
+            "help": "Haz la inspección de salida, como al entregar el material.",
+            "action": "Hacer la inspección de salida"
+          },
+          "pickup": {
+            "title": "Recogida",
+            "help": "Haz clic en «{button}» cuando el cliente se vaya con el material."
+          },
+          "return": {
+            "title": "Devolución y cierre",
+            "help": "Cuando vuelva el material, haz clic en «{button}». El alquiler queda terminado."
+          }
+        }
+      },
+      "done": {
+        "title": "Todo listo. Comparte tu tienda",
+        "description": "Ya has visto lo que viven tus clientes. Solo falta darles el enlace.",
+        "share": "Compartir mi tienda",
+        "marketplace": "Mi publicación en reeent"
+      },
+      "delete": {
+        "button": "Eliminar los datos de prueba",
+        "title": "¿Eliminar los datos de prueba?",
+        "description": "Se eliminan la reserva de prueba, su cliente de prueba, sus pagos simulados y sus inspecciones. Tus productos y ajustes no cambian.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar",
+        "success": "Datos de prueba eliminados",
+        "error": "No se pudo eliminar. Inténtalo de nuevo."
+      }
+    },
     "purchaseInvoices": {
       "title": "Facturas de proveedores",
       "description": "Facturas que tus proveedores han enviado a tu empresa a través de la red de facturación electrónica.",
@@ -7348,6 +7402,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "Modo de prueba: no se cobra nada.",
+      "leave": "Salir del modo de prueba",
+      "emailLocked": "Los correos de prueba se te envían a {email}.",
+      "badge": "Prueba",
+      "contractWatermark": "PRUEBA — sin valor",
+      "payment": {
+        "title": "Pago simulado",
+        "description": "Sin tarjeta, sin cobro.",
+        "reservation": "Reserva {number}",
+        "amountDue": "Importe a pagar",
+        "deposit": "Fianza",
+        "depositNote": "La fianza no se retiene durante una prueba.",
+        "submit": "Simular el pago",
+        "notPending": "Esta reserva ya no espera un pago.",
+        "viewReservation": "Ver la reserva"
+      }
+    },
     "notFound": {
       "title": "Esta página no está disponible",
       "description": "El producto o la página que buscas ya no existe o todavía no está en línea.",
@@ -9401,6 +9473,9 @@
     }
   },
   "errors": {
+    "testReservationExists": "Ya tienes una reserva de prueba. Elimínala desde el panel para hacer otra.",
+    "testReservationRefused": "No es posible en una reserva de prueba: no se cobra nada.",
+    "testModeRequired": "El modo de prueba ya no está activo. Vuelve a iniciarlo desde el panel.",
     "storeNotAcceptingReservations": "Esta tienda no acepta reservas en línea en este momento. {hasContact, select, yes {Ponte en contacto con la tienda: {contact}} other {Ponte en contacto directamente con la tienda.}}",
     "generic": "Ocurrió un error",
     "contractNotSignable": "Este contrato ya no se puede firmar.",

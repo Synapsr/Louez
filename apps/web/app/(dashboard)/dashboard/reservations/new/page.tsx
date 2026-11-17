@@ -6,6 +6,8 @@ import { getTranslations } from 'next-intl/server';
 
 import {
   db,
+  excludeTestCustomers,
+  excludeTestReservations,
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
 } from '@louez/db';
@@ -34,7 +36,8 @@ export const instant = false;
 
 async function getCustomers(storeId: string) {
   return db.query.customers.findMany({
-    where: eq(customers.storeId, storeId),
+    // A test customer is never offered for a real booking.
+    where: and(eq(customers.storeId, storeId), excludeTestCustomers()),
     orderBy: (customers, { desc }) => [desc(customers.createdAt)],
   });
 }
@@ -117,6 +120,8 @@ async function getActiveReservations(
     where: and(
       eq(reservations.storeId, storeId),
       inArray(reservations.status, blockingStatuses),
+      // A test reservation holds no stock.
+      excludeTestReservations(),
       or(
         gte(reservations.endDate, thirtyDaysAgo),
         exists(

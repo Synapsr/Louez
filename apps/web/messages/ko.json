@@ -329,6 +329,60 @@
     }
   },
   "dashboard": {
+    "testReservation": {
+      "badge": "테스트",
+      "start": "테스트 예약하기",
+      "resume": "테스트 예약 이어서 하기",
+      "startError": "스토어를 테스트 모드로 열지 못했습니다. 다시 시도해 주세요.",
+      "toast": {
+        "description": "스토어가 준비되었습니다. 테스트 예약을 해서 고객이 겪는 과정을 확인해 보세요."
+      },
+      "homeCard": {
+        "title": "첫 단계",
+        "description": "고객처럼 스토어에서 예약한 뒤, 여기에서 그 예약을 관리하세요. 결제나 청구는 발생하지 않습니다."
+      },
+      "guide": {
+        "title": "테스트 예약",
+        "description": "이 페이지의 버튼으로 실제 예약처럼 관리하세요.",
+        "closed": "이 테스트 예약은 중간에 멈췄습니다. 삭제하고 새로 시작하세요.",
+        "howTo": "어떻게 하나요?",
+        "expires": "{date}에 자동으로 삭제됩니다.",
+        "steps": {
+          "confirm": {
+            "title": "확정",
+            "help": "이 페이지에서 “{button}”을(를) 클릭하세요. 고객과 똑같이 확인 이메일을 받게 됩니다."
+          },
+          "departureInspection": {
+            "title": "출고",
+            "help": "장비를 건넬 때처럼 출고 점검을 하세요.",
+            "action": "출고 점검하기"
+          },
+          "pickup": {
+            "title": "출고",
+            "help": "고객이 장비를 가지고 떠날 때 “{button}”을(를) 클릭하세요."
+          },
+          "return": {
+            "title": "반납 및 완료",
+            "help": "장비가 돌아오면 “{button}”을(를) 클릭하세요. 대여가 완료됩니다."
+          }
+        }
+      },
+      "done": {
+        "title": "모든 준비 완료. 스토어를 공유하세요",
+        "description": "고객이 겪는 과정을 확인했습니다. 이제 링크만 전달하면 됩니다.",
+        "share": "내 스토어 공유하기",
+        "marketplace": "reeent 게시 정보"
+      },
+      "delete": {
+        "button": "테스트 데이터 삭제",
+        "title": "테스트 데이터를 삭제할까요?",
+        "description": "테스트 예약, 테스트 고객, 모의 결제와 점검 기록이 삭제됩니다. 상품과 설정은 그대로 유지됩니다.",
+        "cancel": "취소",
+        "confirm": "삭제",
+        "success": "테스트 데이터를 삭제했습니다",
+        "error": "삭제하지 못했습니다. 다시 시도해 주세요."
+      }
+    },
     "purchaseInvoices": {
       "title": "공급업체 송장",
       "description": "전자 송장 발행 네트워크를 통해 공급자가 회사에 보낸 송장입니다.",
@@ -7348,6 +7402,24 @@
     }
   },
   "storefront": {
+    "testMode": {
+      "banner": "테스트 모드: 아무것도 청구되지 않습니다.",
+      "leave": "테스트 모드 종료",
+      "emailLocked": "테스트 이메일은 {email}(으)로 발송됩니다.",
+      "badge": "테스트",
+      "contractWatermark": "테스트 — 효력 없음",
+      "payment": {
+        "title": "모의 결제",
+        "description": "카드 없음, 청구 없음.",
+        "reservation": "예약 {number}",
+        "amountDue": "결제할 금액",
+        "deposit": "보증금",
+        "depositNote": "테스트 중에는 보증금을 받지 않습니다.",
+        "submit": "결제 시뮬레이션",
+        "notPending": "이 예약은 더 이상 결제를 기다리지 않습니다.",
+        "viewReservation": "예약 보기"
+      }
+    },
     "notFound": {
       "title": "이 페이지를 사용할 수 없습니다",
       "description": "찾고 있는 제품이나 페이지가 더 이상 존재하지 않거나 아직 온라인 상태가 아닙니다.",
@@ -9401,6 +9473,9 @@
     }
   },
   "errors": {
+    "testReservationExists": "이미 테스트 예약이 있습니다. 새로 만들려면 대시보드에서 삭제하세요.",
+    "testReservationRefused": "테스트 예약에서는 할 수 없습니다: 아무것도 청구되지 않습니다.",
+    "testModeRequired": "테스트 모드가 더 이상 활성화되어 있지 않습니다. 대시보드에서 다시 시작하세요.",
     "storeNotAcceptingReservations": "이 매장은 현재 온라인 예약을 받지 않습니다. {hasContact, select, yes {매장 연락처: {contact}} other {매장에 직접 문의해 주세요.}}",
     "generic": "오류가 발생했습니다",
     "contractNotSignable": "이 계약서는 더 이상 서명할 수 없습니다.",

@@ -207,6 +207,7 @@ import { creationTotals } from "./new/utils/creation-totals";
 import { typedLineSubtotal } from "./new/utils/product-line-pricing";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
+import { TEST_RESERVATION_REFUSED_ERROR } from "@/lib/test-reservations/refusal";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
@@ -4108,13 +4109,15 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     method: data.method,
   });
 
-  // Platform admin notification
-  notifyPaymentReceived(
-    { id: store.id, name: store.name, slug: store.slug },
-    reservation.number,
-    amount,
-    reservationCurrency(reservation.currency, store.settings),
-  ).catch(() => {});
+  // Platform admin notification; none for a test reservation (lib/test-reservations).
+  if (!reservation.isTest) {
+    notifyPaymentReceived(
+      { id: store.id, name: store.name, slug: store.slug },
+      reservation.number,
+      amount,
+      reservationCurrency(reservation.currency, store.settings),
+    ).catch(() => {});
+  }
 
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -4919,6 +4922,10 @@ export async function sendAccessLinkBySms(reservationId: string) {
   if (!reservation) {
     return { error: "errors.reservationNotFound" };
   }
+  // A test reservation sends no SMS (lib/test-reservations).
+  if (reservation.isTest) {
+    return { error: TEST_RESERVATION_REFUSED_ERROR };
+  }
 
   if (!reservation.customer.phone) {
     return { error: "errors.customerNoPhone" };
@@ -5041,6 +5048,10 @@ export async function requestPayment(
 
     if (!reservation) {
       return { error: "errors.reservationNotFound" };
+    }
+    // A test reservation is never paid through Stripe (lib/test-reservations).
+    if (reservation.isTest) {
+      return { error: TEST_RESERVATION_REFUSED_ERROR };
     }
 
     // Validate at least one channel is selected

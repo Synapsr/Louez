@@ -1,4 +1,4 @@
-import { db } from '@louez/db'
+import { db, excludeTestCustomers, excludeTestReservations } from '@louez/db'
 import {
   stores,
   reservations,
@@ -140,7 +140,9 @@ export async function getMultiStoreMetrics(
           and(
             inArray(reservations.storeId, storeIds),
             gte(reservations.createdAt, startDate),
-            eq(reservations.status, 'completed')
+            eq(reservations.status, 'completed'),
+            // Test reservations are left out of the figures.
+            excludeTestReservations()
           )
         ),
 
@@ -155,7 +157,9 @@ export async function getMultiStoreMetrics(
             inArray(reservations.storeId, storeIds),
             gte(reservations.createdAt, prevStartDate),
             lte(reservations.createdAt, prevEndDate),
-            eq(reservations.status, 'completed')
+            eq(reservations.status, 'completed'),
+            // Test reservations are left out of the figures.
+            excludeTestReservations()
           )
         ),
 
@@ -166,7 +170,8 @@ export async function getMultiStoreMetrics(
           newThisPeriod: sql<number>`SUM(CASE WHEN ${customers.createdAt} >= ${startDate} THEN 1 ELSE 0 END)`,
         })
         .from(customers)
-        .where(inArray(customers.storeId, storeIds)),
+        // Test customers are left out of the figures.
+        .where(and(inArray(customers.storeId, storeIds), excludeTestCustomers())),
 
       // Pending reservations count
       db
@@ -175,7 +180,9 @@ export async function getMultiStoreMetrics(
         .where(
           and(
             inArray(reservations.storeId, storeIds),
-            eq(reservations.status, 'pending')
+            eq(reservations.status, 'pending'),
+            // Test reservations are left out of the figures.
+            excludeTestReservations()
           )
         ),
     ])
@@ -258,7 +265,9 @@ export async function getStorePerformance(
       .where(
         and(
           inArray(reservations.storeId, storeIds),
-          gte(reservations.createdAt, startDate)
+          gte(reservations.createdAt, startDate),
+          // Test reservations are left out of the figures.
+          excludeTestReservations()
         )
       )
       .groupBy(reservations.storeId)
@@ -275,7 +284,9 @@ export async function getStorePerformance(
           inArray(reservations.storeId, storeIds),
           gte(reservations.createdAt, prevStartDate),
           lte(reservations.createdAt, prevEndDate),
-          eq(reservations.status, 'completed')
+          eq(reservations.status, 'completed'),
+          // Test reservations are left out of the figures.
+          excludeTestReservations()
         )
       )
       .groupBy(reservations.storeId)
@@ -287,7 +298,8 @@ export async function getStorePerformance(
         count: count(),
       })
       .from(customers)
-      .where(inArray(customers.storeId, storeIds))
+      // Test customers are left out of the figures.
+      .where(and(inArray(customers.storeId, storeIds), excludeTestCustomers()))
       .groupBy(customers.storeId)
 
     // Build maps for quick lookup
