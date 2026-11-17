@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Zoek een adres...",
       "coordinatesSaved": "Coördinaten opgeslagen",
-      "editLocation": "Locatie bewerken"
+      "editLocation": "Locatie bewerken",
+      "chooseFromList": "Kies het adres uit de lijst.",
+      "chooseFromListOrMap": "Kies het adres uit de lijst of plaats het op de kaart."
     },
     "addressModal": {
       "title": "Adresdetails",

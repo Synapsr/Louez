@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "住所を検索してください...",
       "coordinatesSaved": "座標が保存されました",
-      "editLocation": "場所を編集する"
+      "editLocation": "場所を編集する",
+      "chooseFromList": "リストから住所を選択してください。",
+      "chooseFromListOrMap": "リストから住所を選択するか、地図上で指定してください。"
     },
     "addressModal": {
       "title": "住所詳細",

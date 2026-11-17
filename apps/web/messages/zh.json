@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "搜索地址...",
       "coordinatesSaved": "坐标已保存",
-      "editLocation": "编辑位置"
+      "editLocation": "编辑位置",
+      "chooseFromList": "请从列表中选择地址。",
+      "chooseFromListOrMap": "请从列表中选择地址，或在地图上标出。"
     },
     "addressModal": {
       "title": "地址详情",

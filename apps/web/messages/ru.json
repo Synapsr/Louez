@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Искать адрес...",
       "coordinatesSaved": "Координаты сохранены.",
-      "editLocation": "Изменить местоположение"
+      "editLocation": "Изменить местоположение",
+      "chooseFromList": "Выберите адрес из списка.",
+      "chooseFromListOrMap": "Выберите адрес из списка или отметьте его на карте."
     },
     "addressModal": {
       "title": "Детали адреса",

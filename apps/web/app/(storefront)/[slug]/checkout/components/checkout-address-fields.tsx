@@ -10,7 +10,6 @@ import { withForm } from "@/hooks/form/form";
 import { getFieldError } from "@/hooks/form/form-context";
 
 import {
-  CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT,
   type CustomerAddressPick,
   getCustomerAddressFields,
   getLocalityAfterStreetEdit,
@@ -78,7 +77,7 @@ export const CheckoutAddressFields = withForm({
                       longitude: details.longitude,
                     });
                   }}
-                  resolvesTypedText={CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT}
+                  needsCoordinates={false}
                   // A pick still answering loses to any change of the locality.
                   relatedValues={[postalCode, city]}
                   onBlur={field.handleBlur}

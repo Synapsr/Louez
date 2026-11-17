@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -24,13 +25,13 @@ import {
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
-import { resolveTypedText } from '@/components/ui/util.address-input';
 
 import { orpc } from '@/lib/orpc/react';
 
 export interface AddressInputSource {
   search: (query: string) => AddressSuggestion[] | Promise<AddressSuggestion[]>;
-  resolve: (queryOrPlaceId: string) => AddressDetails | null | Promise<AddressDetails | null>;
+  /** The address of a suggestion the person picked. */
+  details: (placeId: string) => AddressDetails | null | Promise<AddressDetails | null>;
 }
 
 interface AddressInputProps {
@@ -56,11 +57,14 @@ interface AddressInputProps {
   onBlur?: () => void;
   onAddressResolved?: (details: AddressDetails) => void;
   /**
-   * Whether leaving the field, or pressing Enter with no suggestion list open,
-   * replaces the typed text by the lookup's best match. Off, the typed text
-   * stays as typed and only a suggestion picked from the list replaces it.
+   * Whether what depends on this address needs its coordinates (a delivery
+   * fee, a store's location). They come only from what the person chose: a
+   * suggestion picked from the list, the map, or an address set from outside.
+   * Typed text is never replaced by a best match; the field asks for a choice
+   * and offers the suggestions for that text again. Off (an address kept as
+   * typed), it does neither.
    */
-  resolvesTypedText?: boolean;
+  needsCoordinates?: boolean;
   /** Supplied address service; when present, no remote lookup is performed. */
   source?: AddressInputSource;
   /** Whether clearing the field may return focus to the input. */
@@ -93,7 +97,7 @@ export const AddressInput = ({
   showMapPicker = true,
   onBlur,
   onAddressResolved,
-  resolvesTypedText = true,
+  needsCoordinates = true,
   source,
   autoFocus = true,
   autoComplete,
@@ -110,16 +114,22 @@ export const AddressInput = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const hintId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const shouldSkipBlurResolveRef = useRef(false);
+  // A pointer press on a suggestion blurs the input before its click lands:
+  // the list must still be there for it.
+  const isPressingSuggestionRef = useRef(false);
   const lastRequestRef = useRef(0);
-  // Every write to the field (an edit, a clear, a pick, a lookup, a value or a
-  // related value set from outside, the field unmounting) moves this on; an
+  // Every write to the field (an edit, a clear, a pick, a value or a related
+  // value set from outside, the field unmounting) moves this on; an
   // answer asked before it moved on is dropped, success or failure.
   const writeGenerationRef = useRef(0);
   const pickInFlightRef = useRef<number | null>(null);
+  // The text the current suggestion list answers.
+  const suggestionsTextRef = useRef<string | null>(null);
   // The text the field shows, and whether it is still there: a suggestion
   // list answers one text of a mounted field.
   const inputTextRef = useRef(value);
@@ -248,6 +258,7 @@ export const AddressInput = ({
               }),
             );
         if (!isCurrent()) return;
+        suggestionsTextRef.current = query;
         setSuggestions(data.suggestions || []);
         setIsOpen((data.suggestions || []).length > 0);
         setSelectedIndex(-1);
@@ -262,67 +273,6 @@ export const AddressInput = ({
   );
 
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
-
-  const resolveTypedAddress = useCallback(async () => {
-    // A pick still answering speaks for the field.
-    if (pickInFlightRef.current === writeGenerationRef.current) return;
-
-    let request: number | null = null;
-    let isCurrent = () => true;
-    try {
-      const details = await resolveTypedText(
-        {
-          resolvesTypedText,
-          text: inputValue,
-          displayAddress,
-          hasCoordinates:
-            latitude !== null &&
-            latitude !== undefined &&
-            longitude !== null &&
-            longitude !== undefined,
-          disabled: Boolean(disabled),
-        },
-        async (query) => {
-          isCurrent = claimWrite();
-          request = startLoading();
-          const data = source
-            ? { details: await source.resolve(query) }
-            : await queryClient.fetchQuery(
-                orpc.public.address.resolve.queryOptions({
-                  input: { query },
-                }),
-              );
-          return data.details;
-        },
-      );
-
-      if (!details || !isCurrent()) {
-        return;
-      }
-
-      const { formattedAddress, latitude: lat, longitude: lng } = details;
-
-      setInputValue(formattedAddress);
-      emitChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
-      onAddressResolved?.(details);
-    } catch (error) {
-      console.error('Address resolve error:', error);
-    } finally {
-      if (request !== null) stopLoading(request);
-    }
-  }, [
-    additionalInfo,
-    disabled,
-    displayAddress,
-    inputValue,
-    latitude,
-    longitude,
-    onChange,
-    onAddressResolved,
-    queryClient,
-    resolvesTypedText,
-    source,
-  ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -354,7 +304,7 @@ export const AddressInput = ({
       };
       try {
         const data = source
-          ? { details: await source.resolve(suggestion.placeId) }
+          ? { details: await source.details(suggestion.placeId) }
           : await queryClient.fetchQuery(
               orpc.public.address.details.queryOptions({
                 input: { placeId: suggestion.placeId },
@@ -401,11 +351,37 @@ export const AddressInput = ({
     if (autoFocus) inputRef.current?.focus();
   };
 
+  const hasCoordinates =
+    latitude !== null &&
+    latitude !== undefined &&
+    longitude !== null &&
+    longitude !== undefined;
+  // Text the person typed, or that was set without a place: nothing chosen yet.
+  const needsChoice = needsCoordinates && inputValue.trim() !== '' && !hasCoordinates;
+
+  /** Shows the suggestions for the text the field holds, searching them if needed. */
+  const offerSuggestions = () => {
+    if (pickInFlightRef.current === writeGenerationRef.current) return;
+    if (suggestions.length > 0 && suggestionsTextRef.current === inputTextRef.current) {
+      setIsOpen(true);
+      return;
+    }
+    debouncedSearch.cancel();
+    void searchAddresses(inputTextRef.current);
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (needsChoice) offerSuggestions();
+    else if (suggestions.length > 0) setIsOpen(true);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
-      if (e.key === 'Enter' && resolvesTypedText) {
+      if (e.key === 'Enter' && needsCoordinates) {
+        // Enter never sends a form from here: it shows what can be chosen.
         e.preventDefault();
-        void resolveTypedAddress();
+        if (needsChoice) offerSuggestions();
       }
       return;
     }
@@ -434,20 +410,18 @@ export const AddressInput = ({
     }
   };
 
+  // Leaving the field closes its list and keeps what it holds: the text the
+  // person typed is never looked up and replaced.
   const handleBlur = () => {
     onBlur?.();
-    const generationAtBlur = writeGenerationRef.current;
+    setIsFocused(false);
 
     window.setTimeout(() => {
-      if (shouldSkipBlurResolveRef.current) {
-        shouldSkipBlurResolveRef.current = false;
+      if (isPressingSuggestionRef.current) {
+        isPressingSuggestionRef.current = false;
         return;
       }
-
       setIsOpen(false);
-      // Typed on since: that text is not the one left behind.
-      if (writeGenerationRef.current !== generationAtBlur) return;
-      void resolveTypedAddress();
     }, 120);
   };
 
@@ -469,11 +443,7 @@ export const AddressInput = ({
     );
   };
 
-  const hasCoordinates =
-    latitude !== null &&
-    latitude !== undefined &&
-    longitude !== null &&
-    longitude !== undefined;
+  const showsChoiceHint = needsChoice && !disabled && !isFocused && !isLoading;
 
   return (
     <>
@@ -489,10 +459,11 @@ export const AddressInput = ({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+            onFocus={handleFocus}
             placeholder={placeholder || t('placeholder')}
             disabled={disabled}
             aria-invalid={ariaInvalid}
+            aria-describedby={showsChoiceHint ? hintId : undefined}
             autoComplete={autoComplete ?? 'one-time-code'}
             autoCorrect="off"
             autoCapitalize="off"
@@ -539,6 +510,15 @@ export const AddressInput = ({
           </InputGroupAddon>
         </InputGroup>
       </div>
+      {showsChoiceHint && (
+        <p
+          id={hintId}
+          data-address-choice-hint=""
+          className="text-muted-foreground text-sm"
+        >
+          {showMapPicker ? t('chooseFromListOrMap') : t('chooseFromList')}
+        </p>
+      )}
 
       {/* Suggestions dropdown (portal to escape overflow clipping) */}
       {isOpen &&
@@ -555,7 +535,7 @@ export const AddressInput = ({
                 data-address-suggestion={suggestion.placeId}
                 type="button"
                 onMouseDown={() => {
-                  shouldSkipBlurResolveRef.current = true;
+                  isPressingSuggestionRef.current = true;
                 }}
                 onClick={() => handleSelect(suggestion)}
                 className={cn(

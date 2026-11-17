@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Cerca un indirizzo...",
       "coordinatesSaved": "Coordinate salvate",
-      "editLocation": "Modifica posizione"
+      "editLocation": "Modifica posizione",
+      "chooseFromList": "Scegli l’indirizzo dall’elenco.",
+      "chooseFromListOrMap": "Scegli l’indirizzo dall’elenco o posizionalo sulla mappa."
     },
     "addressModal": {
       "title": "Dettagli indirizzo",

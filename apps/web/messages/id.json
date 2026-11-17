@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Cari alamat...",
       "coordinatesSaved": "Koordinat disimpan",
-      "editLocation": "Sunting lokasi"
+      "editLocation": "Sunting lokasi",
+      "chooseFromList": "Pilih alamat dari daftar.",
+      "chooseFromListOrMap": "Pilih alamat dari daftar, atau tandai di peta."
     },
     "addressModal": {
       "title": "Detail alamat",
