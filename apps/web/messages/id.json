@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "Abaikan",
         "lockPrice": "Harga kunci",
         "unlockPrice": "Kembali ke penetapan harga otomatis (menggantikan harga yang dimasukkan)",
-        "adjustmentPositive": "{amount} tambahan perlu dikumpulkan.",
         "adjustmentNegative": "Pengembalian dana sebesar {amount} dapat diberikan.",
         "warningDialogTitle": "Konfirmasikan perubahan luar biasa",
         "warningDialogDescription": "Pembaruan ini tidak sesuai dengan aturan reservasi biasanya. Tinjau peringatan sebelum menyimpan.",

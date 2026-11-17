@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "忽略",
         "lockPrice": "锁定价格",
         "unlockPrice": "返回自动定价（替换输入的价格）",
-        "adjustmentPositive": "需要额外收集 {amount}。",
         "adjustmentNegative": "可退款{amount}。",
         "warningDialogTitle": "确认异常变更",
         "warningDialogDescription": "此更新与通常的预订规则不符。保存前查看警告。",

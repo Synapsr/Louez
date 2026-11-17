@@ -1016,6 +1016,7 @@ export function EditReservationForm({
     storedTotal: parseFloat(reservation.totalAmount),
     preview: shownTotals,
     discountAmount: parseFloat(reservation.discountAmount ?? "0"),
+    rentalPaid: reservation.rentalPaid,
     currency,
   });
 

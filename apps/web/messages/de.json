@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "Ignorieren",
         "lockPrice": "Preis sperren",
         "unlockPrice": "Zurück zum automatischen Preis (ersetzt den eingegebenen Preis)",
-        "adjustmentPositive": "Ein Aufpreis von {amount} muss erhoben werden.",
         "adjustmentNegative": "Eine Rückerstattung von {amount} kann gewährt werden.",
         "warningDialogTitle": "Ausnahmeänderung bestätigen",
         "warningDialogDescription": "Diese Aktualisierung entspricht nicht den üblichen Reservierungsregeln. Überprüfen Sie die Warnungen vor dem Speichern.",

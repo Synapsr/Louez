@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "Ignore",
         "lockPrice": "Lock price",
         "unlockPrice": "Back to automatic pricing (replaces the entered price)",
-        "adjustmentPositive": "An additional {amount} will need to be collected.",
         "adjustmentNegative": "A refund of {amount} can be issued.",
         "warningDialogTitle": "Confirm exceptional change",
         "warningDialogDescription": "This update does not match the usual reservation rules. Review the warnings before saving.",

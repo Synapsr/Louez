@@ -30,3 +30,16 @@ export function getRentalRemaining(
   const total = Math.max(0, toHundredths(reservation.totalAmount));
   return Math.max(0, total - toHundredths(rentalPaid)) / 100;
 }
+
+/**
+ * What was paid for the rental beyond its total: what settles it
+ * (`getRentalPaid`) less the total, in whole hundredths, never below zero. The
+ * other side of `getRentalRemaining`: at most one of the two is above zero.
+ */
+export function getRentalOverpaid(
+  reservation: { readonly totalAmount: string | number | null },
+  rentalPaid: number,
+): number {
+  const total = Math.max(0, toHundredths(reservation.totalAmount));
+  return Math.max(0, toHundredths(rentalPaid) - total) / 100;
+}

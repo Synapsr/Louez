@@ -19,6 +19,7 @@ import {
   roundToMinorUnit,
 } from "@louez/utils";
 
+import { getRentalOverpaid, getRentalRemaining } from "@/lib/reservations/util.rental-amount";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { calculateDuration } from "@/lib/utils/duration";
 import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
@@ -346,12 +347,27 @@ export interface EditSummaryFigures {
   discount: number;
   /** With prices before tax: the subtotal and the tax of `after`; else null. */
   taxLines: { subtotal: number; tax: number } | null;
+  /**
+   * What `after` leaves between the store and the customer, from what settles the
+   * rental now (`getRentalPaid`): `refund`, what was paid beyond it; `due`, what is
+   * still to pay; null when it is paid exactly.
+   */
+  balance: { kind: "refund" | "due"; amount: number } | null;
 }
+
+const balanceAfter = (after: number, rentalPaid: number): EditSummaryFigures["balance"] => {
+  const overpaid = getRentalOverpaid({ totalAmount: after }, rentalPaid);
+  if (overpaid > 0) return { kind: "refund", amount: overpaid };
+  const due = getRentalRemaining({ totalAmount: after }, rentalPaid);
+  return due > 0 ? { kind: "due", amount: due } : null;
+};
 
 export const editSummaryFigures = (input: {
   storedTotal: number;
   preview: EditPreviewTotals;
   discountAmount: number;
+  /** What settles the rental now (`getRentalPaid`), in the reservation's currency. */
+  rentalPaid: number;
   currency: string;
 }): EditSummaryFigures => ({
   before: input.storedTotal,
@@ -361,6 +377,7 @@ export const editSummaryFigures = (input: {
   taxLines: input.preview.taxOnTop
     ? { subtotal: input.preview.subtotal, tax: input.preview.taxAmount ?? 0 }
     : null,
+  balance: balanceAfter(input.preview.total, input.rentalPaid),
 });
 
 interface UseEditReservationPricingParams {

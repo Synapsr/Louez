@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "Ignorar",
         "lockPrice": "Bloquear precio",
         "unlockPrice": "Volver al precio automático (reemplaza el precio introducido)",
-        "adjustmentPositive": "Se deberá cobrar un complemento de {amount}.",
         "adjustmentNegative": "Se puede emitir un reembolso de {amount}.",
         "warningDialogTitle": "Confirmar cambio excepcional",
         "warningDialogDescription": "Esta modificación no cumple con las reglas habituales de reserva. Revise las advertencias antes de guardar.",

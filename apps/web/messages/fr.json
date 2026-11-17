@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "Ignorer",
         "lockPrice": "Figer le prix",
         "unlockPrice": "Revenir au prix automatique (remplace le prix saisi)",
-        "adjustmentPositive": "Un complément de {amount} devra être encaissé.",
         "adjustmentNegative": "Un remboursement de {amount} pourra être effectué.",
         "warningDialogTitle": "Confirmer une modification exceptionnelle",
         "warningDialogDescription": "Cette modification ne respecte pas les règles habituelles de réservation. Vérifiez les avertissements avant d'enregistrer.",

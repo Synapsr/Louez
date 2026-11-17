@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "無視する",
         "lockPrice": "ロック価格",
         "unlockPrice": "自動価格設定に戻る (入力した価格を置き換えます)",
-        "adjustmentPositive": "追加の {amount} を収集する必要があります。",
         "adjustmentNegative": "{amount} の払い戻しが可能です。",
         "warningDialogTitle": "例外的な変更を確認する",
         "warningDialogDescription": "この更新は通常の予約ルールと一致しません。保存する前に警告を確認してください。",

@@ -2408,7 +2408,6 @@
         "ignoreEmailFailure": "Ignorar",
         "lockPrice": "Bloquear preço",
         "unlockPrice": "Voltar ao preço automático (substitui o preço inserido)",
-        "adjustmentPositive": "Um complemento de {amount} deverá ser cobrado.",
         "adjustmentNegative": "Um reembolso de {amount} pode ser emitido.",
         "warningDialogTitle": "Confirmar alteração excecional",
         "warningDialogDescription": "Esta atualização não corresponde às regras habituais de reserva. Reveja os avisos antes de guardar.",

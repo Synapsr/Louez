@@ -2408,7 +2408,6 @@
         "ignoreEmailFailure": "Negeren",
         "lockPrice": "Prijs vergrendelen",
         "unlockPrice": "Terug naar automatische prijs (vervangt de ingevoerde prijs)",
-        "adjustmentPositive": "Er moet een toeslag van {amount} worden geïnd.",
         "adjustmentNegative": "Er kan een terugbetaling van {amount} worden verstrekt.",
         "warningDialogTitle": "Uitzonderlijke wijziging bevestigen",
         "warningDialogDescription": "Deze update komt niet overeen met de gebruikelijke reserveringsregels. Controleer de waarschuwingen voordat u opslaat.",

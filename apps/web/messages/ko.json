@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "무시",
         "lockPrice": "가격 고정",
         "unlockPrice": "자동 가격 책정으로 돌아가기(입력된 가격 대체)",
-        "adjustmentPositive": "{amount}를 추가로 수집해야 합니다.",
         "adjustmentNegative": "{amount}의 환불이 가능합니다.",
         "warningDialogTitle": "예외적인 변경 확인",
         "warningDialogDescription": "이번 업데이트는 일반적인 예약 규정과 일치하지 않습니다. 저장하기 전에 경고를 검토하세요.",
