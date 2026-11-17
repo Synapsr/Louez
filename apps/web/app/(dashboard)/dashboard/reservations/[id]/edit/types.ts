@@ -130,6 +130,11 @@ export interface EditableItem {
   depositPerUnit: number;
   isManualPrice: boolean;
   pricingMode: PricingMode;
+  /**
+   * One fixed amount or an amount per period: the product's kind, or the one
+   * the line recorded once its product is gone (`linePricingKind`).
+   */
+  pricingKind: PricingKind;
   basePeriodMinutes?: number | null;
   enforceStrictTiers?: boolean;
   productSnapshot: ProductSnapshot;

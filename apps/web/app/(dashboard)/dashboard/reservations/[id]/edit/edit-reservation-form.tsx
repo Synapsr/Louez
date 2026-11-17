@@ -53,6 +53,7 @@ import {
 } from "@/lib/product-analytics/reservation-analytics-client";
 import { isInsufficientCapacityResult } from "@/lib/reservations/util.insufficient-capacity";
 import type { CapacityShortfall } from "@louez/api/contracts/reservations";
+import { linePricingKind } from "@louez/api/services/pricing-facts";
 import type { PricingMode } from "@louez/types";
 import { EditReservationItemsSection } from "./components/edit-reservation-items-section";
 import { EditReservationSummarySection } from "./components/edit-reservation-summary-section";
@@ -550,6 +551,7 @@ export function EditReservationForm({
       },
       product,
       pricingMode: (product.pricingMode ?? "day") as PricingMode,
+      pricingKind: linePricingKind({ product }),
       basePeriodMinutes: product.basePeriodMinutes ?? null,
       enforceStrictTiers: product.enforceStrictTiers ?? false,
       stored: null,
@@ -647,6 +649,7 @@ export function EditReservationForm({
       },
       product: null,
       pricingMode: customItemForm.pricingMode,
+      pricingKind: "duration",
       stored: null,
     };
 

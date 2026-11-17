@@ -82,7 +82,7 @@ export function EditReservationItemCard({
   const [open, setOpen] = useState(() => Boolean(warning));
 
   const unitLabel = getDurationUnit(item.displayPricingMode);
-  const isFixedPrice = item.product?.pricingKind === "fixed";
+  const isFixedPrice = item.pricingKind === "fixed";
   const displayedUnitPrice = item.isManualPrice ? item.unitPrice : item.effectiveUnitPrice;
   // A reservation keeps at least one item. The button stays focusable so the
   // tooltip and the click toast can explain why it does nothing.

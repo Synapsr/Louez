@@ -14,7 +14,7 @@ import type {
 
 import { toPricingCatalogProduct } from "@louez/api/services/catalogue-line-pricing";
 import { storedProductLineOf } from "@louez/api/services/edit-line-pricing";
-import { pricingBasisOf } from "@louez/api/services/pricing-facts";
+import { linePricingKind, pricingBasisOf } from "@louez/api/services/pricing-facts";
 
 import type { EditableItem } from "./[id]/edit/types";
 import {
@@ -298,6 +298,8 @@ describe(
         /** Lines the store adds in the form, priced at `pricedAt`, the server's instant. */
         added?: Array<{ productId: string; quantity: number }>;
         pricedAt?: Date;
+        /** Prices the store types in a line's price field, by line id. */
+        typed?: Record<string, number>;
       },
     ) {
       const row = await reservationRow(reservationId);
@@ -340,6 +342,7 @@ describe(
           depositPerUnit: 0,
           isManualPrice: false,
           pricingMode: product.pricingMode,
+          pricingKind: linePricingKind({ product }),
           productSnapshot: { name: product.name, description: null, images: [] },
           product: formProduct(product),
           stored: null,
@@ -354,18 +357,22 @@ describe(
           : [];
         const basis = pricingBasisOf(item.pricingBreakdown);
         const typed = basis?.isManualOverride === true;
+        const typedNow = edit.typed?.[item.id];
         editable.push({
           id: item.id,
           productId: item.productId,
           quantity: edit.quantities?.[item.id] ?? item.quantity,
           consumedQuantity: 0,
           // A typed price read from its total over the stored window, as the form reads it.
-          unitPrice: typed
-            ? Number(item.totalPrice) / (periodsOf(row, basis.pricingMode) * item.quantity)
-            : Number(item.unitPrice),
+          unitPrice:
+            typedNow ??
+            (typed
+              ? Number(item.totalPrice) / (periodsOf(row, basis.pricingMode) * item.quantity)
+              : Number(item.unitPrice)),
           depositPerUnit: 0,
-          isManualPrice: basis?.isManualOverride === true,
+          isManualPrice: typedNow !== undefined || basis?.isManualOverride === true,
           pricingMode: product?.pricingMode ?? basis?.pricingMode ?? "day",
+          pricingKind: linePricingKind({ product, pricingBreakdown: item.pricingBreakdown }),
           productSnapshot: item.productSnapshot,
           product: product ? formProduct(product) : null,
           stored: item.productId ? storedProductLineOf(item) : null,
@@ -1027,6 +1034,45 @@ describe(
         assert.equal(more.error, undefined);
         assert.equal((await lineOf(id, gone)).totalPrice, "45.03");
         assert.equal(shown, "45.03");
+      });
+
+      test("a price typed on a fixed-price line stays one amount, for a line the dashboard created and for one the checkout did", async () => {
+        await useStore({});
+        // 30.00 once, over three days; then the product is deleted.
+        const fromDashboard = await product("30.00");
+        await louezDb.db
+          .update(louezDb.products)
+          .set({ pricingKind: "fixed" })
+          .where(eq(louezDb.products.id, fromDashboard));
+        const dashboardId = await dashboardBooking([fromDashboard], THREE_DAYS);
+        await deleteProduct(fromDashboard);
+        const checkout = await checkoutBooking(
+          { subtotal: 30, duration: 1, pricingKind: "fixed" },
+          THREE_DAYS,
+        );
+
+        for (const [id, gone] of [
+          [dashboardId, fromDashboard],
+          [checkout.id, checkout.gone],
+        ] as const) {
+          const line = await lineOf(id, gone);
+          // The store types 20 in the line's price field: 20.00, not 20.00 a day.
+          const shown = await previewOf(id, { typed: { [line.id]: 20 } });
+          const result = await actions.updateReservation(id, {
+            items: (await formLines(id)).map((item) =>
+              item.id === line.id ? { ...item, unitPrice: 20, isManualPrice: true } : item,
+            ),
+            expectedTotal: Number(shown),
+          });
+
+          assert.equal(result.error, undefined);
+          const written = await lineOf(id, gone);
+          assert.deepEqual(
+            [shown, written.totalPrice, written.pricingBreakdown?.pricingKind],
+            ["20.00", "20.00", "fixed"],
+          );
+          assert.equal((await reservationRow(id)).totalAmount, "20.00");
+        }
       });
 
       test("a line priced by its duration whose window moved: refused with its own message, nothing written", async () => {

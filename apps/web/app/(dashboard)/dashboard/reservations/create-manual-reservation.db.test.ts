@@ -81,6 +81,17 @@ const INSURER_STUBS: Record<string, string> = {
   export async function createTulipContractForReservation() {}
   export async function syncTulipContractForReservation() {}\n`,
 };
+// The e-mail sender, as the action sees it: the confirmation it is asked to
+// send is handed to whoever waits for it under this key; nothing is sent.
+const CONFIRMATION_EMAIL_KEY = "__louezCreationTestConfirmationEmail";
+INSURER_STUBS["@/lib/email/send"] =
+  `export async function sendReservationConfirmationEmail(input) {
+    globalThis[${JSON.stringify(CONFIRMATION_EMAIL_KEY)}]?.(input);
+    return { success: true };
+  }
+  export async function sendPaymentRequestEmail() { return { success: true }; }
+  export async function sendDepositAuthorizationRequestEmail() { return { success: true }; }
+  export async function logEmail() {}\n`;
 const INSURER_SCHEME = "louez-creation-test-insurer:";
 Reflect.get(
   nodeModule,
@@ -1806,6 +1817,46 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       );
       return { shown, result };
     }
+
+    test(
+      "the confirmation e-mail states the line as written, the promotion applied",
+      { timeout: 30_000 },
+      async () => {
+        // Two for two days at 5.35, 50 % off: the line is 10.70, and so is the total.
+        const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
+        const asked = new Promise<{
+          items: Array<{ name: string; quantity: number; unitPrice: number; totalPrice: number }>;
+          reservation: { subtotalAmount: number; totalAmount: number };
+        }>((resolve) => Reflect.set(globalThis, CONFIRMATION_EMAIL_KEY, resolve));
+        try {
+          const result = await at(AT, () =>
+            actions.createManualReservation({
+              customerId: CUSTOMER,
+              startDate: START,
+              endDate: END,
+              items: [{ productId: paddles, quantity: 2 }],
+            }),
+          );
+          assert.ok(result.reservationId, JSON.stringify(result));
+          const email = await asked;
+          const written = await moneyOf(result.reservationId);
+
+          assert.deepEqual(
+            email.items.map((item) => [
+              item.name,
+              item.quantity,
+              item.unitPrice.toFixed(2),
+              item.totalPrice.toFixed(2),
+            ]),
+            [["Paddle", 2, written.unitPrice, written.totalPrice]],
+          );
+          assert.equal(written.totalPrice, "10.70");
+          assert.equal(Number(email.reservation.subtotalAmount).toFixed(2), "10.70");
+        } finally {
+          Reflect.deleteProperty(globalThis, CONFIRMATION_EMAIL_KEY);
+        }
+      },
+    );
 
     const DISCOUNTED = {
       subtotal: "10.70",

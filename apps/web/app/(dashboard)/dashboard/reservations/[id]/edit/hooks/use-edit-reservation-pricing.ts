@@ -156,8 +156,7 @@ export function calculateEditableItemPrice(
   };
 
   const mode = item.pricingMode;
-  const duration =
-    item.product?.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, mode);
+  const duration = item.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, mode);
 
   // A line priced from its product, kept at its stored price, or its product gone.
   if (!item.isManualPrice && item.productId) {

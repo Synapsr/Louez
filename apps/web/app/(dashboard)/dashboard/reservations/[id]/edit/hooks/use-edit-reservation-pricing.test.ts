@@ -57,6 +57,7 @@ const fixedProductItem: EditableItem = {
   depositPerUnit: 0,
   isManualPrice: true,
   pricingMode: 'day',
+  pricingKind: 'fixed',
   basePeriodMinutes: null,
   enforceStrictTiers: false,
   productSnapshot: {

@@ -14,6 +14,7 @@ import {
 
 import {
   isReservationEditable,
+  linePricingKind,
   NOT_RECORDED,
   pricingBasisOf,
   recordedTaxDisplayMode,
@@ -1364,6 +1365,13 @@ export async function createManualReservation(data: CreateReservationData) {
       subtotalAmount: totals.subtotal,
       discountAmount: discountUnderLocks,
       deliveryFee: deliveryFeeUnderLocks,
+      // The product lines as written, for what states them to the customer.
+      productLines: lines.map(({ detail }, lineIndex) => ({
+        name: detail.product.name,
+        quantity: detail.quantity,
+        unitPrice: lockedLines[lineIndex]!.taxed.unitPrice,
+        totalPrice: lockedLines[lineIndex]!.taxed.subtotal,
+      })),
     };
   }).catch(refuseCreation);
 
@@ -1453,13 +1461,10 @@ export async function createManualReservation(data: CreateReservationData) {
     };
 
     // Combine catalog products and custom items for email
+    // The product lines as the creation wrote them (a promotion applied under
+    // the locks included), not as the form sent them.
     const emailItems = [
-      ...productDetails.map((detail) => ({
-        name: detail.product.name,
-        quantity: detail.quantity,
-        unitPrice: parseFloat(detail.unitPrice),
-        totalPrice: parseFloat(detail.totalPrice),
-      })),
+      ...reservationWriteResult.productLines,
       ...customItemDetails.map((item) => ({
         name: item.name,
         quantity: item.quantity,
@@ -2364,13 +2369,13 @@ export async function updateReservation(
           where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
           columns: { pricingKind: true },
         });
-        // The product may have been deleted since the reservation was created;
-        // the stored breakdown keeps the kind so the manual price stays editable.
-        const existingBreakdown = item.id
-          ? pricingBasisOf(existingItemsById.get(item.id)?.pricingBreakdown)
-          : undefined;
-        manualPricingKind =
-          manualPriceProduct?.pricingKind ?? toPricingKind(existingBreakdown?.pricingKind);
+        // The product may have been deleted since the reservation was created:
+        // the line's breakdown recorded its kind, so a price typed on a
+        // fixed-price line stays one amount (`linePricingKind`).
+        manualPricingKind = linePricingKind({
+          product: manualPriceProduct,
+          pricingBreakdown: item.id ? existingItemsById.get(item.id)?.pricingBreakdown : null,
+        });
         duration = manualPricingKind === "fixed" ? 1 : duration;
         totalPrice = item.unitPrice * duration * item.quantity;
       }
