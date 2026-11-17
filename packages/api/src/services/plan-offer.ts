@@ -8,7 +8,7 @@ import type { ApiPorts } from "../platform/ports";
 /**
  * The dashboard's offer of a Louez plan to a store a plan would have cost less
  * (docs/domain/plan-offer.md). The rule and the figures are the app's billing code
- * (`ports.billing.planOffer`); this records what a member does with the card.
+ * (`ports.billing.planOffer`); this records what the owner does with the card.
  */
 
 type Ports = Pick<ApiPorts, "billing" | "dispatchEffects">;
@@ -24,7 +24,7 @@ export async function getPlanOffer(input: {
   return read({ storeId: input.storeId, now: input.now ?? new Date() });
 }
 
-/** Counts the card as seen by the member, with the figures it showed them. */
+/** Counts the card as seen by the owner, with the figures it showed them. */
 export async function recordPlanOfferShown(input: {
   storeId: string;
   userId: string;

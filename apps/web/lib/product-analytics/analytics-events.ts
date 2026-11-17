@@ -50,6 +50,7 @@ export const productAnalyticsEvents = {
   subscriptionChanged: 'subscription_changed',
   subscriptionCanceled: 'subscription_canceled',
   paygFeeCharged: 'payg_fee_charged',
+  // The dashboard's plan offer (docs/domain/plan-offer.md), on the store's owner.
   planOfferShown: 'plan_offer_shown',
   planOfferDismissed: 'plan_offer_dismissed',
   planOfferClicked: 'plan_offer_clicked',

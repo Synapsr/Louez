@@ -23,7 +23,7 @@ import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events
 import { planOfferProperties } from "./plan-offer";
 
 // The senders of the plan offer's rows (packages/api services/plan-offer.ts and
-// plan-offer-email.ts): a member's close or click on the card, counted in PostHog, and
+// plan-offer-email.ts): the owner's close or click on the card, counted in PostHog, and
 // the owner's one e-mail. Each throws when nothing went out (the row is retried) and
 // answers `skipped` when there is nothing to send.
 

@@ -304,13 +304,14 @@ export interface ApiEffectPayloads {
     ownerUserId: string;
     properties: Record<string, string | number | boolean | null>;
   };
-   * The analytics event of the dashboard's plan offer, closed or clicked by a member
-   * (services/plan-offer.ts), with the figures the card showed. Its shown event is sent
-   * at once, keyed by day (apps/web lib/billing/plan-offer.ts).
+  /**
+   * The analytics event of the dashboard's plan offer, closed or clicked by the store's
+   * owner (services/plan-offer.ts), with the figures the card showed. Its shown event is
+   * sent at once, best effort (apps/web lib/billing/plan-offer.ts).
    */
   "billing.planOfferAnalytics": AnalyticsEventIdentity & {
     event: "plan_offer_dismissed" | "plan_offer_clicked";
-    /** The member who acted: the event's person. */
+    /** The owner who acted: the event's person. */
     userId: string;
     storeId: string;
     offer: PlanOfferFacts;

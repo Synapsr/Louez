@@ -176,3 +176,5 @@ valeurs du cookie après le filtre ci-dessus. Les tests :
   `utm_campaign`.
 - Revenu d'une campagne : somme de `payg_fee_charged.fee_cents` et `subscription_started.mrr_cents`
   par `first_touch_utm_campaign`.
+- Effet de l'offre d'abonnement du tableau de bord : `plan_offer_shown` → `plan_offer_clicked` →
+  `subscription_started`, par `store_id` ([offre d'abonnement](../domain/plan-offer.md)).

@@ -114,8 +114,10 @@ Les trois événements sont envoyés côté serveur. Ils portent `store_id`, `pl
 | `plan_offer_dismissed` | Le propriétaire ferme la carte. Passe par la file de sortie, dans la transaction de la fermeture. |
 | `plan_offer_clicked` | Le Checkout est ouvert. Passe par la file de sortie. |
 
-Le début de l'abonnement (`subscription_started`) est un événement du cycle de vie de la
-boutique : il n'est pas émis ici.
+Ils sont comptés sur le propriétaire (seul à voir la carte), comme les étapes du cycle de vie
+de la boutique, et portent le groupe PostHog `store` (`withStoreGroup`). L'abonnement qui suit
+un clic est `subscription_started`, émis par le webhook Stripe
+([cycle de vie](../analytics/lifecycle.md)) : il n'est pas émis ici.
 
 ## Limites connues
 
