@@ -1,3 +1,4 @@
+import type { PricingCatalogProduct } from "@louez/api/services/catalogue-line-pricing";
 import type { EditedLineTax, StoredProductLine } from "@louez/api/services/edit-line-pricing";
 import type { DateChangeRequest } from "@louez/validations";
 import type {
@@ -40,6 +41,8 @@ export interface Product {
   taxSettings?: ProductTaxSettings | null;
   pricingTiers: PricingTier[];
   seasonalPricings?: SeasonalPricingConfig[];
+  /** The product as the server's catalogue holds it: a line the edit adds is priced from it, as the server prices it. */
+  catalogue: PricingCatalogProduct;
 }
 
 export interface ReservationItem {
@@ -127,6 +130,11 @@ export interface EditableItem {
   depositPerUnit: number;
   isManualPrice: boolean;
   pricingMode: PricingMode;
+  /**
+   * One fixed amount or an amount per period: the product's kind, or the one
+   * the line recorded once its product is gone (`linePricingKind`).
+   */
+  pricingKind: PricingKind;
   basePeriodMinutes?: number | null;
   enforceStrictTiers?: boolean;
   productSnapshot: ProductSnapshot;
@@ -173,6 +181,8 @@ export interface EditReservationFormProps {
   tulipInsuranceMode: TulipPublicMode;
   storeSettings: StoreSettings | null;
   storeDelivery: StoreDeliveryInfo | null;
+  /** The server's instant when it read the reservation: a line the edit adds takes the promotion in force at it. */
+  pricedAt: Date;
 }
 
 export interface CalculatedEditableItem extends EditableItem {

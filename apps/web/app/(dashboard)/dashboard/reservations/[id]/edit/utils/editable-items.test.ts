@@ -15,6 +15,7 @@ const fromProduct: EditableItem = {
   depositPerUnit: 0,
   isManualPrice: false,
   pricingMode: "day",
+  pricingKind: "duration",
   productSnapshot: { name: "Kayak", description: null, images: [] },
   product: null,
   stored: { quantity: 2, unitPrice: 16, totalPrice: 32, taxRate: null, pricingBreakdown: null },

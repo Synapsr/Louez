@@ -44,7 +44,8 @@ import {
   type PricedCart,
   type ReservationTotals,
 } from "./price-cart";
-import { loadPricingCatalog, type PricingCatalog } from "./pricing-catalog";
+import { type PricingCatalog } from "./catalogue-line-pricing";
+import { loadPricingCatalog } from "./pricing-catalog";
 import { NOT_RECORDED, recordedPromotion } from "./pricing-facts";
 import { validateReservationContract } from "./reservation-contract-validation";
 import { isReservationEditable } from "./reservation-editable";

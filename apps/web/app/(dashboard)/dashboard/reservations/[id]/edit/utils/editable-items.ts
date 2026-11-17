@@ -1,5 +1,5 @@
 import { storedProductLineOf } from "@louez/api/services/edit-line-pricing";
-import { pricingBasisOf } from "@louez/api/services/pricing-facts";
+import { linePricingKind, pricingBasisOf } from "@louez/api/services/pricing-facts";
 import type { PricingMode } from "@louez/types";
 import { minutesToPriceDuration } from "@louez/utils";
 
@@ -80,8 +80,8 @@ export const toEditableItem = (
   const pricingMode = isManualPrice
     ? resolveInitialManualPricingMode(item.product, fallbackPricingMode, startDate, endDate)
     : fallbackPricingMode;
-  const duration =
-    item.product?.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, pricingMode);
+  const pricingKind = linePricingKind(item);
+  const duration = pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, pricingMode);
   const preciseManualUnitPrice =
     isManualPrice && item.quantity > 0 && duration > 0
       ? Number(item.totalPrice) / (duration * item.quantity)
@@ -96,6 +96,7 @@ export const toEditableItem = (
     depositPerUnit: parseFloat(item.depositPerUnit),
     isManualPrice,
     pricingMode,
+    pricingKind,
     basePeriodMinutes: item.product?.basePeriodMinutes ?? null,
     enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
     productSnapshot: item.productSnapshot,
@@ -103,6 +104,9 @@ export const toEditableItem = (
     stored: item.productId ? storedProductLineOf(item) : null,
   };
 };
+
+/** A line the store added in the form: the server receives it without an id. */
+export const isAddedLine = (item: Pick<EditableItem, "id">) => item.id.startsWith("new-");
 
 /** A line as the form sends it to `updateReservation`. */
 export const toReservationItemPayload = (item: EditableItem) => ({
@@ -164,7 +168,7 @@ export const withTotalPriceCommitted = (
     totalPrice: committed.totalPrice,
     quantity: item.quantity,
     duration: committed.duration,
-    pricingKind: item.product?.pricingKind ?? "duration",
+    pricingKind: item.pricingKind,
   });
   return { ...item, unitPrice, isManualPrice: true, pricingMode: committed.pricingMode };
 };

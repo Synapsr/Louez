@@ -124,7 +124,9 @@ export function applyRecordedPromotion(
  * looked up again in today's catalogue and never dropped, so a booking made
  * during a promotion keeps it when its window or quantity changes, after the
  * promotion ended too. A recorded "none" stays recorded. A line that recorded
- * nothing (a new line, an older row) is priced without one, as before.
+ * nothing (an older row) is priced without one, as before. A line the edit
+ * adds is not priced here: it takes the promotion in force, as the creation
+ * prices a line (`priceCartLine`).
  */
 export function cataloguePriceWithRecordedPromotion(
   regular: { subtotal: number; breakdown: PricingBreakdown },

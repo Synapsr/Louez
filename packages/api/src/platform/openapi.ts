@@ -450,7 +450,7 @@ Some writes change what customers see or pay, or cannot be undone; their descrip
 
 ## Approvals
 
-Recording a payment or a deposit return, deleting a payment, removing a member, cancelling an invitation, and confirming a reservation over the stock or past the turnover buffer need the approval of the key's owner, on a Louez page, whatever the key's confirmation option. Their description says so.
+Recording a payment, a deposit return or a refund already given by hand, refunding a payment taken online, deleting a payment, removing a member, cancelling an invitation, and creating or confirming a reservation, or changing its dates, over the stock or past the turnover buffer need the approval of the key's owner, on a Louez page, whatever the key's confirmation option. Their description says so.
 
 1. The first call changes nothing and answers 412 \`APPROVAL_REQUIRED\`: \`message\` says what would happen, \`data.details.preview\` holds the facts, and \`data.details.approval\` the approval: its \`id\` (also \`data.details.confirmationToken\`), \`url\`, \`status\`, \`expiresAt\` and \`pollAfterSeconds\`.
 2. Give \`url\` to the key's owner. They open it signed in to Louez, read Louez's own summary of the write, and approve or refuse it, within ${APPROVAL_DECIDE_TIME}.

@@ -77,6 +77,7 @@ export const EditReservationPageClient = ({
       tulipInsuranceMode={tulipInsuranceMode}
       storeSettings={storeSettings}
       storeDelivery={storeDelivery}
+      pricedAt={new Date(context.pricedAt)}
     />
   );
 };

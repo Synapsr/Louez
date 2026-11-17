@@ -11,7 +11,7 @@ import {
   priceCatalogLine,
   toPricingCatalogProduct,
   type PricingProductRow,
-} from "@louez/api/services/pricing-catalog";
+} from "@louez/api/services/catalogue-line-pricing";
 import { evaluatePromoCode } from "@louez/api/services/promo";
 import type { ProductPromotion } from "@louez/types";
 import { applyProductPromotion, getProductPromotionStatus } from "@louez/utils";

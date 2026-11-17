@@ -43,7 +43,7 @@ import {
   type StockCombination,
   type StockLineAllocation,
 } from "./stock-allocation";
-import type { PricingCatalog } from "./pricing-catalog";
+import type { PricingCatalog } from "./catalogue-line-pricing";
 import { validateRequiredAccessoryLines } from "./required-accessories";
 import { failReservation, type ReservationFailure } from "./reservation-failure";
 

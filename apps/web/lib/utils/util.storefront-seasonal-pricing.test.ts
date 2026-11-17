@@ -12,7 +12,10 @@ import {
   getVisibleSeasonalPricing,
 } from "./util.storefront-seasonal-pricing";
 import { getStorefrontProductPrice } from "./util.storefront-product-pricing";
-import { priceCatalogLine, type PricingCatalogProduct } from "@louez/api/services/pricing-catalog";
+import {
+  priceCatalogLine,
+  type PricingCatalogProduct,
+} from "@louez/api/services/catalogue-line-pricing";
 
 const product = {
   price: "25",
