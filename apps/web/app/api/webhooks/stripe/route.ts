@@ -60,7 +60,7 @@ export async function POST(request: Request) {
         break
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        await handleSubscriptionDeleted(event.data.object, event.created)
         break
 
       case 'invoice.paid':

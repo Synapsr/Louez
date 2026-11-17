@@ -53,7 +53,7 @@ export function priceProperties(
   if (!price)
     return { plan: null, interval: null, amount_cents: null, mrr_cents: null, currency: null };
   const interval = intervalOf(price, planOf);
-  const amount = price.unit_amount === null ? null : price.unit_amount * (quantity ?? 1);
+  const amount = typeof price.unit_amount === "number" ? price.unit_amount * (quantity ?? 1) : null;
   const months =
     interval === "yearly"
       ? 12

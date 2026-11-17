@@ -460,7 +460,6 @@ const stubs: Record<string, Record<string, unknown>> = {
     },
   },
   "@/lib/referral/analytics": { captureReferralServerEvent: async () => undefined },
-  "@/lib/product-analytics/lifecycle-events": { queueStoreLifecycleEvent: async () => undefined },
   "@/lib/discord/platform-notifications": {
     notifyBillingAlert: (kind: string, message: string) =>
       discord.notifyBillingAlert(kind, message),
@@ -1466,6 +1465,26 @@ describe(
       };
       fakeStripe.addSubscription("sub_lg_plan_buy", PRICE.proMonthly);
       await clearMarks("lg_plan_buy");
+      // The store's lifecycle events, as their outbox rows hold them.
+      const lifecycleEvents = async () =>
+        (
+          await louezDb.db
+            .select({ payload: louezDb.apiEffects.payload })
+            .from(louezDb.apiEffects)
+            .where(
+              and(
+                eq(louezDb.apiEffects.storeId, "lg_plan_buy"),
+                eq(louezDb.apiEffects.type, "store.lifecycleAnalytics"),
+              ),
+            )
+            .orderBy(louezDb.apiEffects.seq)
+        ).map(({ payload }) => {
+          const { event, properties } = Object(payload) as {
+            event: string;
+            properties: Record<string, unknown>;
+          };
+          return [event, properties.plan, properties.interval];
+        });
 
       await webhooks.handleSubscriptionCheckoutCompleted({
         metadata: { storeId: "lg_plan_buy", planSlug: "pro" },
@@ -1474,6 +1493,7 @@ describe(
       });
       assert.deepEqual(planSyncs, ["lg_plan_buy"]);
       assert.deepEqual(await Promise.all(plansAtSync), [["subscription", "pro"]]);
+      assert.deepEqual(await lifecycleEvents(), [["subscription_started", "pro", "monthly"]]);
       // Stripe delivers it again: the row is written again, and the plan stays as it was.
       await webhooks.handleSubscriptionCheckoutCompleted({
         metadata: { storeId: "lg_plan_buy", planSlug: "pro" },
@@ -1481,6 +1501,8 @@ describe(
         customer: "cus_lg_plan_buy",
       });
       assert.deepEqual(planSyncs, ["lg_plan_buy"]);
+      // The row held the subscription already: the start is not counted again.
+      assert.equal((await lifecycleEvents()).length, 1);
       assert.deepEqual(await planColumns("lg_plan_buy"), {
         billingMode: "subscription",
         planSlug: "pro",
@@ -1522,6 +1544,12 @@ describe(
       );
       assert.deepEqual(await marksOf("lg_plan_buy"), ["legacy_store", "store"]);
       assert.equal(await planInSnapshot(), null);
+      // The end is counted with it, once: a redelivery finds the row ended.
+      await webhooks.handleSubscriptionDeleted({ id: "sub_lg_plan_buy", metadata: {} });
+      assert.deepEqual(await lifecycleEvents(), [
+        ["subscription_started", "pro", "monthly"],
+        ["subscription_canceled", null, null],
+      ]);
     });
 
     test("a new store's port writes the legacy row only for a store Louez bills, and says so", async () => {

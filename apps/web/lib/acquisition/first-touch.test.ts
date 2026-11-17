@@ -82,6 +82,19 @@ describe("parseFirstTouchCookie", () => {
     assert.deepEqual(touch, {});
   });
 
+  test("an e-mail address, encoded or not, is dropped wherever it hides", () => {
+    const touch = parseFirstTouchCookie(
+      cookieOf({
+        utm_term: "jane%40example.com",
+        utm_content: "jane%2540example.com",
+        utm_campaign: "jane(at)example.com",
+        landing_path: "/invite/jane%40example.com",
+        utm_source: "newsletter",
+      }),
+    );
+    assert.deepEqual(touch, { utm_source: "newsletter" });
+  });
+
   test("readFirstTouch finds the cookie among the request's", () => {
     const headers = new Headers({
       cookie: `louez_referral=ABC; louez_attribution=${cookieOf({ fbclid: "fb.1" })}; other=1`,

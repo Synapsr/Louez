@@ -866,7 +866,8 @@ export const stores = mysqlTable(
     // When the store's Stripe account could first take payments: set once, by the
     // first write that finds charges enabled (packages/api services/stripe-connect.ts),
     // which then counts `stripe_connect_completed`. Stores chargeable before the
-    // column got their last update time instead, so none of them counts it again.
+    // column, or that took a Stripe payment before, got their last update time
+    // instead, so none of them counts it again.
     stripeConnectCompletedAt: timestamp("stripe_connect_completed_at", { mode: "date" }),
 
     // Email settings

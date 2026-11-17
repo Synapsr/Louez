@@ -40,6 +40,8 @@ import { depositHoldDeps } from "@/lib/reservations/deposit-hold-live";
 
 import { env } from "@/env";
 import { dispatchApiEffects } from "@/lib/api/effects";
+import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
+import { paygFeeOfPayment } from "@/lib/pay-as-you-go/payg-fee-analytics";
 import { queueStoreLifecycleEvent } from "@/lib/product-analytics/lifecycle-events";
 
 import { handleChargeDispute } from "./charge-dispute";
@@ -548,22 +550,19 @@ async function handleCheckoutCompleted(
 
   const paidAt = new Date();
 
-  // New PaymentIntents carry the exact reservation commission in metadata (recorded
-  // verbatim — no recompute drift). For a legacy/missing breakdown with a positive
-  // application fee (deploy seam / stripped metadata), the whole application fee was the
-  // reservation commission.
-  const reservationFeeCents =
-    !feeBreakdown.hasBreakdown && applicationFeeCollectedCents > 0
-      ? applicationFeeCollectedCents
-      : feeBreakdown.reservationFeeCents;
-
   // Record the pay-as-you-go reservation commission skimmed from this charge BEFORE the
   // payment is marked completed, so a transient failure aborts the webhook (Stripe retries
   // with the payment still pending) instead of silently dropping it. Idempotent per
   // reservation. recordReservationFee itself waives the fee (source='free') when the store
   // still has welcome-allowance credits.
   if (paymentIntentId && isPayAsYouGoStore) {
+    // New PaymentIntents carry the exact reservation commission in metadata (recorded
+    // verbatim — no recompute drift). For a legacy/missing breakdown with a positive
+    // application fee (deploy seam / stripped metadata), the whole application fee was the
+    // reservation commission.
+    let reservationFeeCents = feeBreakdown.reservationFeeCents;
     if (!feeBreakdown.hasBreakdown && applicationFeeCollectedCents > 0) {
+      reservationFeeCents = applicationFeeCollectedCents;
       log.warn({
         payg: {
           event: "fee_breakdown_metadata_missing",
@@ -639,24 +638,34 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // The pay-as-you-go commission Stripe took from this charge, on the store owner,
-  // keyed on the PaymentIntent: the webhook's redeliveries count it once. An extension's
-  // payment takes its own commission too.
-  if (paymentIntentId && isPayAsYouGoStore && reservationFeeCents > 0) {
-    await queueStoreLifecycleEvent({
-      storeId: reservation.store.id,
-      event: "payg_fee_charged",
-      properties: {
-        reservation_id: reservationId,
-        fee_cents: reservationFeeCents,
-        currency,
-        collection: "application_fee",
-        payment_amount_cents: session.amount_total ?? null,
-        fee_breakdown_present: feeBreakdown.hasBreakdown,
-      },
-      dedupKey: `payg_fee_charged:${paymentIntentId}`,
-      ...(chargeCreatedAt ? { occurredAt: chargeCreatedAt } : {}),
-    });
+  // The pay-as-you-go commission of this charge, on the store owner, from the fee facts
+  // the payment was created with, whoever bills the store (Louez's legacy metering or
+  // the billing service) and whatever its billing mode is now. Keyed on the
+  // PaymentIntent, at Stripe's time of the charge (or of the session): the webhook's
+  // redeliveries count it once. An extension's payment takes its own commission too.
+  const paygFee = paygFeeOfPayment({
+    feeFacts: readFeeMetadata(paymentIntentMetadata),
+    applicationFeeCents: applicationFeeCollectedCents,
+    isPayAsYouGoStore,
+  });
+  if (paymentIntentId && paygFee) {
+    dispatchApiEffects(
+      await queueStoreLifecycleEvent({
+        storeId: reservation.store.id,
+        event: "payg_fee_charged",
+        properties: {
+          reservation_id: reservationId,
+          fee_cents: paygFee.feeCents,
+          currency,
+          collection: "application_fee",
+          application_fee_cents: applicationFeeCollectedCents,
+          payment_amount_cents: session.amount_total ?? null,
+          policy_scope: paygFee.policyScope,
+        },
+        dedupKey: `payg_fee_charged:${paymentIntentId}`,
+        occurredAt: chargeCreatedAt ?? new Date(session.created * 1000),
+      }),
+    );
   }
 
   // Claim → confirm → effects, shared with the customer's return from Stripe

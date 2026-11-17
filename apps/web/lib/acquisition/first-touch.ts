@@ -7,8 +7,10 @@
  * sign-up's own request, the e-mail code's or the Google callback's.
  *
  * The cookie comes from a browser, so nothing in it is trusted: unknown keys are
- * dropped, every value is checked and capped, a value that looks like an e-mail
- * address is dropped, and a cookie that does not decode reads as no cookie.
+ * dropped, every value is checked and capped, a value that holds an e-mail address
+ * (encoded or not) is dropped, and a cookie that does not decode reads as no cookie.
+ * The utm values themselves are the advertiser's campaign names: no filter can tell a
+ * person's name typed there, so links must not carry one.
  */
 
 import { z } from "zod";
@@ -70,8 +72,28 @@ function cleanValue(key: StringKey, raw: unknown): string | undefined {
     if (!DOMAIN.test(value)) return undefined;
   }
   if (value.length === 0 || value.length > MAX_VALUE_LENGTH) return undefined;
-  if (!PRINTABLE.test(value) || value.includes("@")) return undefined;
+  if (!PRINTABLE.test(value) || looksLikeAnAddress(value)) return undefined;
   return value;
+}
+
+/**
+ * An e-mail address, as typed or percent-encoded once or twice (`jane%40example.com`):
+ * the one personal value a url carries by mistake that a filter can tell.
+ */
+function looksLikeAnAddress(value: string): boolean {
+  let current = value;
+  for (let pass = 0; pass < 3; pass += 1) {
+    if (current.includes("@") || /\(at\)|\[at\]/i.test(current)) return true;
+    let next: string;
+    try {
+      next = decodeURIComponent(current.replace(/\+/g, " "));
+    } catch {
+      return /%40/i.test(current);
+    }
+    if (next === current) return false;
+    current = next;
+  }
+  return /%40/i.test(current) || current.includes("@");
 }
 
 /** The decoded cookie: an object, whose values `cleanValue` checks one by one. */
