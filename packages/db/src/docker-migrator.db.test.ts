@@ -46,6 +46,7 @@ const RELEASE = [
   "0107_reservation_pricing_facts",
   "0108_deposit_out_of_total",
   "0109_refund_operation_pending",
+  "0110_lifecycle_analytics",
 ];
 
 interface Journal {
@@ -140,6 +141,8 @@ describe("Docker migrator after the app's runner (database)", { skip: skipWithou
       ["payments", "claim_token"],
       ["payments", "stripe_customer_id"],
       ["payments", "session_settled_at"],
+      ["stores", "stripe_connect_completed_at"],
+      ["users", "first_touch_attribution"],
     ] as const) {
       assert.ok(await columnExists(table, column), `${table}.${column} exists`);
     }

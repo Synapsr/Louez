@@ -87,7 +87,7 @@ Exemple d'`account_created` avec un cookie Google Ads :
     "first_touch_gclid": "EAIaIQobChMI…",
     "first_touch_gad_source": "1",
     "first_touch_landing_path": "/fr/logiciel-location",
-    "first_touch_ts": 1794850441218,
+    "first_touch_ts": "2026-11-17T10:42:05.123Z",
     "utm_source": "google",
     "utm_medium": "cpc",
     "utm_campaign": "fr-search-location",
@@ -101,7 +101,7 @@ Exemple d'`account_created` avec un cookie Google Ads :
       "first_touch_gclid": "EAIaIQobChMI…",
       "first_touch_gad_source": "1",
       "first_touch_landing_path": "/fr/logiciel-location",
-      "first_touch_ts": 1794850441218,
+      "first_touch_ts": "2026-11-17T10:42:05.123Z",
       "first_touch_acquisition_channel": "google_ads"
     }
   }

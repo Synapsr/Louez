@@ -81,8 +81,8 @@ export interface FirstTouchAttributionRecord {
   fbclid?: string;
   landing_path?: string;
   referrer_domain?: string;
-  /** When the site saw the touch, in milliseconds since the epoch. */
-  ts?: number;
+  /** When the site saw the touch, ISO 8601. */
+  ts?: string;
 }
 
 export const users = mysqlTable("users", {

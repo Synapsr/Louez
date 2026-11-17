@@ -43,7 +43,7 @@ describe("parseFirstTouchCookie", () => {
         gad_source: "1",
         landing_path: "/fr/location-velos?email=jane@example.com#top",
         referrer_domain: "WWW.Google.FR",
-        ts: 1794850441218,
+        ts: "2026-11-17T10:42:05.123Z",
         // Not in the contract: dropped.
         email: "jane@example.com",
         name: "Jane",
@@ -57,8 +57,36 @@ describe("parseFirstTouchCookie", () => {
       gad_source: "1",
       landing_path: "/fr/location-velos",
       referrer_domain: "google.fr",
-      ts: 1794850441218,
+      ts: "2026-11-17T10:42:05.123Z",
     });
+  });
+
+  test("the site's own cookie, as its contract shows it (Synapsr/Louez-Website docs/analytics.md)", () => {
+    // base64url without padding, ts in ISO 8601, the referrer as a host name.
+    const value = Buffer.from(
+      '{"utm_source":"google","utm_medium":"cpc","utm_campaign":"fr-search","gclid":"Cj0KCQ-abc","gad_source":"1","landing_path":"/","referrer_domain":"www.google.com","ts":"2026-11-17T10:42:05.123Z"}',
+    )
+      .toString("base64url")
+      .replace(/=+$/, "");
+    assert.deepEqual(parseFirstTouchCookie(value), {
+      utm_source: "google",
+      utm_medium: "cpc",
+      utm_campaign: "fr-search",
+      gclid: "Cj0KCQ-abc",
+      gad_source: "1",
+      landing_path: "/",
+      referrer_domain: "google.com",
+      ts: "2026-11-17T10:42:05.123Z",
+    });
+  });
+
+  test("the touch's time: ISO 8601 or milliseconds, kept as ISO 8601; anything else dropped", () => {
+    const tsOf = (ts: unknown) => parseFirstTouchCookie(cookieOf({ ts }))?.ts;
+    assert.equal(tsOf("2026-11-17T10:42:05.123Z"), "2026-11-17T10:42:05.123Z");
+    assert.equal(tsOf(Date.UTC(2026, 10, 17)), "2026-11-17T00:00:00.000Z");
+    for (const ts of ["soon", 1, -5, "1970-01-01T00:00:00Z", "9999-01-01", null, {}]) {
+      assert.equal(tsOf(ts), undefined, String(ts));
+    }
   });
 
   test("a URL-encoded cookie decodes too", () => {
@@ -144,13 +172,13 @@ describe("account_created properties", () => {
       utm_source: "google",
       utm_medium: "cpc",
       gclid: "EAIa",
-      ts: 1,
+      ts: "2026-11-17T10:42:05.123Z",
     });
     assert.deepEqual(properties, {
       first_touch_utm_source: "google",
       first_touch_utm_medium: "cpc",
       first_touch_gclid: "EAIa",
-      first_touch_ts: 1,
+      first_touch_ts: "2026-11-17T10:42:05.123Z",
       // The standard names too, on the event only: Marketing Analytics reads them.
       utm_source: "google",
       utm_medium: "cpc",
@@ -161,7 +189,7 @@ describe("account_created properties", () => {
         first_touch_utm_source: "google",
         first_touch_utm_medium: "cpc",
         first_touch_gclid: "EAIa",
-        first_touch_ts: 1,
+        first_touch_ts: "2026-11-17T10:42:05.123Z",
         // Not `acquisition_channel`: on the person, that one is the owner's own answer.
         first_touch_acquisition_channel: "google_ads",
       },

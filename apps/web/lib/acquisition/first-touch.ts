@@ -36,8 +36,8 @@ const STRING_KEYS = [
 type StringKey = (typeof STRING_KEYS)[number];
 
 export type FirstTouch = Partial<Record<StringKey, string>> & {
-  /** When the site saw the touch, in milliseconds since the epoch. */
-  ts?: number;
+  /** When the site saw the touch, ISO 8601 (the site writes it so). */
+  ts?: string;
 };
 
 export const ACQUISITION_CHANNELS = [
@@ -118,9 +118,26 @@ export function parseFirstTouchCookie(value: string | null | undefined): FirstTo
     const cleaned = cleanValue(key, record[key]);
     if (cleaned !== undefined) touch[key] = cleaned;
   }
-  const ts = typeof record.ts === "string" ? Number(record.ts) : record.ts;
-  if (typeof ts === "number" && Number.isFinite(ts) && ts > 0) touch.ts = Math.round(ts);
+  const ts = touchTime(record.ts);
+  if (ts !== undefined) touch.ts = ts;
   return touch;
+}
+
+/**
+ * The touch's time, as ISO 8601: the site writes an ISO 8601 string; milliseconds since
+ * the epoch are read too. Anything else, or a time outside 2020–2100, is dropped.
+ */
+function touchTime(value: unknown): string | undefined {
+  const ms =
+    typeof value === "string" && value.length <= 40
+      ? Date.parse(value)
+      : typeof value === "number"
+        ? value
+        : Number.NaN;
+  if (!Number.isFinite(ms) || ms < Date.UTC(2020, 0, 1) || ms > Date.UTC(2100, 0, 1)) {
+    return undefined;
+  }
+  return new Date(ms).toISOString();
 }
 
 /** The value of `name` in a Cookie header, or undefined. */
