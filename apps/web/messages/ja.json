@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "無視する",
         "lockPrice": "ロック価格",
         "unlockPrice": "自動価格設定に戻る (入力した価格を置き換えます)",
-        "adjustmentPositive": "追加の {amount} を収集する必要があります。",
         "adjustmentNegative": "{amount} の払い戻しが可能です。",
         "warningDialogTitle": "例外的な変更を確認する",
         "warningDialogDescription": "この更新は通常の予約ルールと一致しません。保存する前に警告を確認してください。",
@@ -2808,7 +2807,14 @@
             "generic": "入金の承認に失敗しました。再試行するか、別のカードを使用するようお客様に依頼します。",
             "closedByStore": "ストアが要求を閉じました：Stripe にオーソリは見つかりませんでした。"
           }
-        }
+        },
+        "refundDone": "返金済み",
+        "refundFailed": "返金失敗",
+        "refundToCheck": "Stripeで返金を確認してください",
+        "approvedBy": "承認者",
+        "refundIssued": "Stripeで返金を発行済み",
+        "stripeRefundCount": "Stripeはこの支払いに{amount}の返金を計上しています",
+        "stripeRefundCountFull": "Stripeはこの支払いを全額返金として計上しています"
       },
       "unitAssignment": {
         "title": "単位の割り当て",
@@ -2973,7 +2979,9 @@
         "statusFailed": "失敗",
         "statusReleasePending": "解除中",
         "requestPayment": "支払いを要求する",
-        "invoiceGenerated": "請求書 {number} が生成されました"
+        "invoiceGenerated": "請求書 {number} が生成されました",
+        "refundProcessing": "返金処理中",
+        "refundIssued": "Stripeで返金を発行済み"
       },
       "requestPaymentModal": {
         "title": "支払いを要求する",
@@ -8462,8 +8470,6 @@
         "payment_received": "オンライン支払いを受け取りました",
         "payment_received_amount": "オンライン支払いを受け取りました ({amount})",
         "payment_failed": "オンライン支払いが拒否されました",
-        "refunded": "払い戻しが行われました",
-        "refunded_amount": "{amount}の返金",
         "payment_added_rental": "レンタル料の支払いが記録されました ({amount})",
         "payment_added_deposit": "デポジットを受け取りました ({amount})",
         "payment_added_deposit_return": "デポジットが返還されました ({amount})",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "集荷状況レポート完了",
         "inspection_return_completed": "返品条件レポート完了",
         "inspection_damage_detected": "コンディションレポートに記載されたダメージ",
-        "inspection_signed": "状態報告書に署名"
+        "inspection_signed": "状態報告書に署名",
+        "stripe_refund_count": "この支払いについてStripeが計上した返金：{amount}"
       },
       "inspections": {
         "title": "状態レポート",
@@ -8531,6 +8538,15 @@
           "refunded": "返金されました",
           "cancelled": "キャンセルされました",
           "authorized": "承認済み"
+        },
+        "refundStatus": {
+          "done": "返金済み",
+          "issued": "発行済み",
+          "processing": "処理中",
+          "failed": "失敗"
+        },
+        "refundedStatus": {
+          "issued": "返金を発行済み"
         }
       },
       "reviewPrompt": {
@@ -9745,7 +9761,7 @@
     },
     "confirm": {
       "label": "重要な操作の前に確認を求める",
-      "description": "削除や顧客へのメッセージの前に、エージェントはまずプレビューを受け取り、確認する必要があります。エージェントには、まずそれをあなたに見せるよう指示しています。支払いの記録、返却済みのデポジットの記録、支払いの削除、在庫を超える予約やレンタル間の間隔がターンオーバーバッファーより短い予約の確定、メンバーの削除、招待の取り消しには、この設定がオフでもあなたの承認が必要です。エージェントがリンクを渡すので、Louez のページでご自身のアカウントにログインして承認または拒否します。AI クレジットの消費は、この設定がオフでも常に確認を求めます。"
+      "description": "削除や顧客へのメッセージの前に、エージェントはまずプレビューを受け取り、確認する必要があります。エージェントには、まずそれをあなたに見せるよう指示しています。支払いの記録、返却済みのデポジットの記録、支払いの削除、支払いの返金、返金済みの金額の記録、在庫を超える予約やレンタル間の間隔がターンオーバーバッファーより短い予約の作成・確定・日程変更、メンバーの削除、招待の取り消しには、この設定がオフでもあなたの承認が必要です。エージェントがリンクを渡すので、Louez のページでご自身のアカウントにログインして承認または拒否します。AI クレジットの消費は、この設定がオフでも常に確認を求めます。"
     },
     "bundlesTitle": "表示するツール",
     "bundlesHint": "エージェントにはこれらのツールセットが表示されます。後から追加できます。",

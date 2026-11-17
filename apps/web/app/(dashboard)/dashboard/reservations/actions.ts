@@ -14,6 +14,7 @@ import {
 
 import {
   isReservationEditable,
+  linePricingKind,
   NOT_RECORDED,
   pricingBasisOf,
   recordedTaxDisplayMode,
@@ -27,17 +28,23 @@ import {
   TAX_OF_TODAY,
   type EditedLineTax,
 } from "@louez/api/services/edit-line-pricing";
-import { loadPricingCatalog, priceRegularCatalogLine } from "@louez/api/services/pricing-catalog";
+import {
+  catalogueLineValues,
+  priceCartLine,
+  type PricedCartLine,
+} from "@louez/api/services/price-cart";
+import type { PricingCatalogProduct } from "@louez/api/services/catalogue-line-pricing";
+import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
 import {
   priceReservationEdit,
   type EditedLine,
   type EditPricingInput,
 } from "@louez/api/services/reservation-edit-pricing";
 import {
-  computeReservationTotals,
   getReservationItemTaxFields,
   INSURANCE_TAX_LINE_ID,
   type ReservationItemTaxFields,
+  type TaxedLine,
 } from "@louez/api/services/reservation-totals";
 
 import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
@@ -196,6 +203,8 @@ import { getCurrentStore } from "@/lib/store-context";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { sendReservationModificationEmailForStore } from "@/lib/reservations/modification-email";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import { creationTotals } from "./new/utils/creation-totals";
+import { typedLineSubtotal } from "./new/utils/product-line-pricing";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
@@ -689,7 +698,6 @@ export async function createManualReservation(data: CreateReservationData) {
 
       // Get effective pricing mode for this product
       const effectivePricingMode = toPricingMode(product.pricingMode);
-      const duration = calculateDuration(data.startDate, data.endDate, effectivePricingMode);
       const durationMinutes = calculateDurationMinutes(data.startDate, data.endDate);
 
       // Convert pricing tiers to the expected format
@@ -758,8 +766,15 @@ export async function createManualReservation(data: CreateReservationData) {
 
       if (hasPriceOverride) {
         effectiveUnitPrice = item.priceOverride!.unitPrice;
-        effectiveSubtotal =
-          effectiveUnitPrice * (product.pricingKind === "fixed" ? 1 : duration) * item.quantity;
+        // As the form totals it (`typedLineSubtotal`), rounded once below.
+        effectiveSubtotal = typedLineSubtotal({
+          unitPrice: effectiveUnitPrice,
+          quantity: item.quantity,
+          pricingKind: product.pricingKind,
+          pricingMode: effectivePricingMode,
+          startDate: data.startDate,
+          endDate: data.endDate,
+        });
 
         // Update pricing breakdown to reflect the override
         pricingBreakdown = {
@@ -1005,37 +1020,57 @@ export async function createManualReservation(data: CreateReservationData) {
     }
 
     // Priced under the locks (slice 10): a line priced from its product is
-    // priced from the catalogue the locks hold, and that is what is written.
-    // A price typed by hand stands as typed.
+    // priced from the catalogue the locks hold, as the checkout prices it,
+    // the product's promotion in force now included, and stored as the
+    // checkout stores it (`catalogueLineValues`): its amounts to the cent,
+    // never rounded to the currency's minor unit, its breakdown and its tax
+    // figures. A price typed by hand stands as typed, never discounted, its
+    // total rounded once in the minor unit.
     const lockedCatalog = await loadPricingCatalog(tx, {
       storeId: store.id,
       productIds: lines.map(({ detail }) => detail.product.id),
       timezone: availabilityRules?.settings?.timezone,
       includeInactive: true,
     });
-    const lockedLines: Array<{ unitPrice: string; totalPrice: string }> = [];
+    const pricedAt = new Date();
+    const lockedLines: Array<
+      | { typed: true; taxed: TaxedLine; detail: (typeof productDetails)[number] }
+      | { typed: false; taxed: PricedCartLine; product: PricingCatalogProduct }
+    > = [];
     for (const { detail } of lines) {
       if (detail.pricingBreakdown.isManualOverride) {
-        lockedLines.push({ unitPrice: detail.unitPrice, totalPrice: detail.totalPrice });
+        lockedLines.push({
+          typed: true,
+          detail,
+          taxed: {
+            subtotal: Number(detail.totalPrice),
+            unitPrice: Number(detail.unitPrice),
+            taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
+          },
+        });
         continue;
       }
       const lockedProduct = lockedCatalog.get(detail.product.id);
       if (!lockedProduct) {
         return { ok: false as const, error: "errors.productNotFound", shortfalls: [] };
       }
-      const priced = priceRegularCatalogLine(lockedProduct, {
-        productId: lockedProduct.id,
-        quantity: detail.quantity,
-        startDate: data.startDate.toISOString(),
-        endDate: data.endDate.toISOString(),
-      });
       lockedLines.push({
-        unitPrice: roundToMinorUnit(priced.unitPrice, currency).toFixed(2),
-        totalPrice: roundToMinorUnit(priced.subtotal, currency).toFixed(2),
+        typed: false,
+        product: lockedProduct,
+        taxed: priceCartLine(
+          lockedProduct,
+          {
+            productId: lockedProduct.id,
+            quantity: detail.quantity,
+            startDate: data.startDate.toISOString(),
+            endDate: data.endDate.toISOString(),
+          },
+          pricedAt,
+        ),
       });
     }
     const lockedSubtotal =
-      lockedLines.reduce((sum, line) => sum + Number(line.totalPrice), 0) +
+      lockedLines.reduce((sum, line) => sum + line.taxed.subtotal, 0) +
       customItemDetails.reduce((sum, customItem) => sum + Number(customItem.totalPrice), 0) +
       tulipInsuranceAmount;
     const discountUnderLocks = Math.min(Math.max(data.discountAmount ?? 0, 0), lockedSubtotal);
@@ -1055,27 +1090,19 @@ export async function createManualReservation(data: CreateReservationData) {
 
     // The totals: the tax engine over the lines as priced here, the
     // insurance (exempt), the delivery fee and the discount, as the checkout
-    // computes them, with the store's tax settings read here (slice 10, M1).
-    const taxSettings = availabilityRules?.settings?.tax;
-    const taxedLines = [
-      ...lines.map(({ detail }, index) => ({
-        subtotal: Number(lockedLines[index]!.totalPrice),
-        unitPrice: Number(lockedLines[index]!.unitPrice),
-        taxSettings: lockedProductsById.get(detail.product.id)?.taxSettings ?? null,
-      })),
-      ...customItemDetails.map((customItem) => ({
+    // computes them, with the store's tax settings read here (slice 10, M1),
+    // by the function the form totals with.
+    const { taxedLines, ...totals } = creationTotals({
+      productLines: lockedLines.map((line) => ({ ...line.taxed, typed: line.typed })),
+      customLines: customItemDetails.map((customItem) => ({
         subtotal: Number(customItem.totalPrice),
         unitPrice: Number(customItem.unitPrice),
-        taxSettings: null,
       })),
-    ];
-    const totals = computeReservationTotals({
-      lines: taxedLines,
       insuranceAmount: tulipInsuranceAmount,
       discountAmount: discountUnderLocks,
       deliveryFee: deliveryFeeUnderLocks,
-      totalDeposit: depositAmount,
-      taxSettings,
+      deposit: depositAmount,
+      taxSettings: availabilityRules?.settings?.tax,
       currency,
     });
     // What the person confirmed is what is written: the total the form
@@ -1228,16 +1255,25 @@ export async function createManualReservation(data: CreateReservationData) {
     // Create reservation items for catalog products. A line keeps the
     // combination it chose, also when it was booked over the stock.
     for (const [lineIndex, { detail, choice }] of lines.entries()) {
+      const locked = lockedLines[lineIndex]!;
       await tx.insert(reservationItems).values({
         reservationId,
         productId: detail.product.id,
         isCustomItem: false,
         quantity: detail.quantity,
-        unitPrice: lockedLines[lineIndex]!.unitPrice,
-        depositPerUnit: detail.depositPerUnit,
-        totalPrice: lockedLines[lineIndex]!.totalPrice,
-        pricingBreakdown: detail.pricingBreakdown,
-        ...lineTaxValues(lineIndex),
+        ...(locked.typed
+          ? {
+              unitPrice: detail.unitPrice,
+              depositPerUnit: detail.depositPerUnit,
+              totalPrice: detail.totalPrice,
+              pricingBreakdown: detail.pricingBreakdown,
+              ...lineTaxValues(lineIndex),
+            }
+          : catalogueLineValues(
+              locked.product,
+              locked.taxed,
+              getReservationItemTaxFields(totals, locked.taxed, lineIndex),
+            )),
         combinationKey: choice.combinationKey,
         selectedAttributes: choice.selectedAttributes,
         productSnapshot: {
@@ -1329,6 +1365,13 @@ export async function createManualReservation(data: CreateReservationData) {
       subtotalAmount: totals.subtotal,
       discountAmount: discountUnderLocks,
       deliveryFee: deliveryFeeUnderLocks,
+      // The product lines as written, for what states them to the customer.
+      productLines: lines.map(({ detail }, lineIndex) => ({
+        name: detail.product.name,
+        quantity: detail.quantity,
+        unitPrice: lockedLines[lineIndex]!.taxed.unitPrice,
+        totalPrice: lockedLines[lineIndex]!.taxed.subtotal,
+      })),
     };
   }).catch(refuseCreation);
 
@@ -1418,13 +1461,10 @@ export async function createManualReservation(data: CreateReservationData) {
     };
 
     // Combine catalog products and custom items for email
+    // The product lines as the creation wrote them (a promotion applied under
+    // the locks included), not as the form sent them.
     const emailItems = [
-      ...productDetails.map((detail) => ({
-        name: detail.product.name,
-        quantity: detail.quantity,
-        unitPrice: parseFloat(detail.unitPrice),
-        totalPrice: parseFloat(detail.totalPrice),
-      })),
+      ...reservationWriteResult.productLines,
       ...customItemDetails.map((item) => ({
         name: item.name,
         quantity: item.quantity,
@@ -2264,6 +2304,15 @@ export async function updateReservation(
   const insuranceItemWrites: ReservationItemWrite[] = [];
   let extraInsuranceItemIdsToDelete: string[] = [];
 
+  // A line the edit adds is priced as the creation prices it, with the
+  // promotion in force at this instant, and stored as every creator stores
+  // it (`catalogueLineValues`): under the locks, with its tax figures.
+  const editedAt = new Date();
+  const addedCatalogueLines = new Map<
+    string,
+    { catalogue: PricingCatalogProduct; priced: PricedCartLine }
+  >();
+
   // Process items
   if (data.items && data.items.length > 0) {
     const reservationItemsWithoutLegacyInsurance = data.items.filter(
@@ -2313,19 +2362,20 @@ export async function updateReservation(
       });
       let lineTax: EditedLineTax = TAX_OF_TODAY;
       let promotionPercentage: number | null = null;
+      let addedLine: { catalogue: PricingCatalogProduct; priced: PricedCartLine } | null = null;
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
           where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
           columns: { pricingKind: true },
         });
-        // The product may have been deleted since the reservation was created;
-        // the stored breakdown keeps the kind so the manual price stays editable.
-        const existingBreakdown = item.id
-          ? pricingBasisOf(existingItemsById.get(item.id)?.pricingBreakdown)
-          : undefined;
-        manualPricingKind =
-          manualPriceProduct?.pricingKind ?? toPricingKind(existingBreakdown?.pricingKind);
+        // The product may have been deleted since the reservation was created:
+        // the line's breakdown recorded its kind, so a price typed on a
+        // fixed-price line stays one amount (`linePricingKind`).
+        manualPricingKind = linePricingKind({
+          product: manualPriceProduct,
+          pricingBreakdown: item.id ? existingItemsById.get(item.id)?.pricingBreakdown : null,
+        });
         duration = manualPricingKind === "fixed" ? 1 : duration;
         totalPrice = item.unitPrice * duration * item.quantity;
       }
@@ -2342,7 +2392,38 @@ export async function updateReservation(
           with: { pricingTiers: true },
         });
 
-        if (product) {
+        if (product && !item.id) {
+          // Added: the catalogue as the server reads it, the promotion in force now.
+          const catalogue = (
+            await loadPricingCatalog(db, {
+              storeId: store.id,
+              productIds: [product.id],
+              timezone: store.settings?.timezone,
+              includeInactive: true,
+            })
+          ).get(product.id);
+          if (!catalogue) return { error: "errors.productNotFound" };
+          pricedFromProductId = product.id;
+          itemPricingMode = catalogue.pricingMode;
+          duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
+          const priced = priceCartLine(
+            catalogue,
+            {
+              productId: product.id,
+              quantity: item.quantity,
+              startDate: newStartDate.toISOString(),
+              endDate: newEndDate.toISOString(),
+            },
+            editedAt,
+          );
+          addedLine = { catalogue, priced };
+          // Its breakdown, with its tax figures, is written under the locks.
+          pricingBreakdown = null;
+          // The percentage it applied, which the locked pricing applies again.
+          promotionPercentage = priced.promotion?.percentage ?? null;
+          finalUnitPrice = priced.unitPrice;
+          totalPrice = priced.subtotal;
+        } else if (product) {
           pricedFromProductId = product.id;
           const effectivePricingMode = toPricingMode(product.pricingMode);
           itemPricingMode = effectivePricingMode;
@@ -2488,13 +2569,15 @@ export async function updateReservation(
       }
       // A new line's id is drawn now: its tax figures are merged into its insert under the locks.
       const lineId = item.id ?? nanoid();
+      if (addedLine) addedCatalogueLines.set(lineId, addedLine);
       editedLines.push({
         id: lineId,
         pricedFromProductId,
         productId: item.productId || null,
         quantity: item.quantity,
-        subtotal: Number(totalPrice.toFixed(2)),
-        unitPrice: Number(finalUnitPrice.toFixed(2)),
+        // An added line enters the tax engine as the checkout gives it a line, as priced.
+        subtotal: addedLine ? addedLine.priced.subtotal : Number(totalPrice.toFixed(2)),
+        unitPrice: addedLine ? addedLine.priced.unitPrice : Number(finalUnitPrice.toFixed(2)),
         tax: lineTax,
         promotionPercentage,
       });
@@ -3188,7 +3271,14 @@ export async function updateReservation(
           for (const [index, line] of editedLines.entries()) {
             const values = reservationItemTaxValues(pricing.lines[index]!);
             const write = writesById.get(line.id);
-            if (write) Object.assign(write.values, values);
+            const added = addedCatalogueLines.get(line.id);
+            if (write && added) {
+              // As every creator stores it; the deposit as the store set it in the form.
+              Object.assign(write.values, {
+                ...catalogueLineValues(added.catalogue, added.priced, pricing.lines[index]!),
+                depositPerUnit: write.values.depositPerUnit,
+              });
+            } else if (write) Object.assign(write.values, values);
             else taxOnlyWrites.push({ id: line.id, values });
           }
           for (const insuranceItemWrite of insuranceItemWrites) {

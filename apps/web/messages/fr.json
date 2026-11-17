@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "Ignorer",
         "lockPrice": "Figer le prix",
         "unlockPrice": "Revenir au prix automatique (remplace le prix saisi)",
-        "adjustmentPositive": "Un complément de {amount} devra être encaissé.",
         "adjustmentNegative": "Un remboursement de {amount} pourra être effectué.",
         "warningDialogTitle": "Confirmer une modification exceptionnelle",
         "warningDialogDescription": "Cette modification ne respecte pas les règles habituelles de réservation. Vérifiez les avertissements avant d'enregistrer.",
@@ -2817,7 +2816,14 @@
             "generic": "L'empreinte de caution a échoué. Demandez au client de réessayer ou d'utiliser une autre carte.",
             "closedByStore": "Demande close par la boutique : aucune autorisation trouvée dans Stripe."
           }
-        }
+        },
+        "refundDone": "Remboursement effectué",
+        "refundFailed": "Remboursement échoué",
+        "refundToCheck": "Remboursement à vérifier dans Stripe",
+        "approvedBy": "Approuvé par",
+        "refundIssued": "Remboursement émis sur Stripe",
+        "stripeRefundCount": "Stripe compte {amount} de remboursements sur ce paiement",
+        "stripeRefundCountFull": "Stripe compte ce paiement comme entièrement remboursé"
       },
       "unitAssignment": {
         "title": "Assignation des unités",
@@ -2982,7 +2988,9 @@
         "statusFailed": "Échoué",
         "statusReleasePending": "Libération en cours",
         "requestPayment": "Demander un paiement",
-        "invoiceGenerated": "Facture {number} générée"
+        "invoiceGenerated": "Facture {number} générée",
+        "refundProcessing": "Remboursement en cours",
+        "refundIssued": "Remboursement émis sur Stripe"
       },
       "requestPaymentModal": {
         "title": "Demander un paiement",
@@ -8462,8 +8470,6 @@
         "payment_received": "Paiement en ligne reçu",
         "payment_received_amount": "Paiement en ligne reçu ({amount})",
         "payment_failed": "Paiement en ligne refusé",
-        "refunded": "Remboursement effectué",
-        "refunded_amount": "Remboursement de {amount}",
         "payment_added_rental": "Paiement de la location enregistré ({amount})",
         "payment_added_deposit": "Caution reçue ({amount})",
         "payment_added_deposit_return": "Caution restituée ({amount})",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "État des lieux de départ réalisé",
         "inspection_return_completed": "État des lieux de retour réalisé",
         "inspection_damage_detected": "Dommages constatés à l’état des lieux",
-        "inspection_signed": "État des lieux signé"
+        "inspection_signed": "État des lieux signé",
+        "stripe_refund_count": "{amount} de remboursement compté par Stripe sur ce paiement"
       },
       "inspections": {
         "title": "États des lieux",
@@ -8531,6 +8538,15 @@
           "refunded": "Remboursé",
           "cancelled": "Annulé",
           "authorized": "Autorisé"
+        },
+        "refundStatus": {
+          "done": "Remboursé",
+          "issued": "Émis",
+          "processing": "En cours",
+          "failed": "Échoué"
+        },
+        "refundedStatus": {
+          "issued": "Remboursement émis"
         }
       },
       "reviewPrompt": {
@@ -9745,7 +9761,7 @@
     },
     "confirm": {
       "label": "Demander une confirmation avant les actions sensibles",
-      "description": "Avant une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer ; il a pour consigne de vous le montrer d’abord. Enregistrer un paiement ou une restitution de caution déjà effectuée, supprimer un paiement, confirmer une réservation au-delà du stock disponible ou malgré la marge de rotation, retirer un membre et annuler une invitation nécessitent votre approbation, même si cette option est désactivée : l’agent vous donne un lien, et vous approuvez ou refusez sur une page Louez, depuis votre compte. Dépenser des crédits IA demande toujours une confirmation, même désactivé."
+      "description": "Avant une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer ; il a pour consigne de vous le montrer d’abord. Enregistrer un paiement ou une restitution de caution déjà effectuée, supprimer un paiement, rembourser un paiement ou enregistrer un remboursement déjà effectué, créer ou confirmer une réservation, ou changer ses dates, au-delà du stock disponible ou malgré la marge de rotation, retirer un membre et annuler une invitation nécessitent votre approbation, même si cette option est désactivée : l’agent vous donne un lien, et vous approuvez ou refusez sur une page Louez, depuis votre compte. Dépenser des crédits IA demande toujours une confirmation, même désactivé."
     },
     "bundlesTitle": "Outils affichés",
     "bundlesHint": "L’agent voit ces ensembles d’outils. Vous pourrez en ajouter plus tard.",

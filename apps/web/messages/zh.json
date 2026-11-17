@@ -2447,7 +2447,6 @@
         "ignoreEmailFailure": "忽略",
         "lockPrice": "锁定价格",
         "unlockPrice": "返回自动定价（替换输入的价格）",
-        "adjustmentPositive": "需要额外收集 {amount}。",
         "adjustmentNegative": "可退款{amount}。",
         "warningDialogTitle": "确认异常变更",
         "warningDialogDescription": "此更新与通常的预订规则不符。保存前查看警告。",
@@ -2808,7 +2807,14 @@
             "generic": "存款授权失败。请客户重试或使用另一张卡。",
             "closedByStore": "店铺已关闭请求：在 Stripe 中未找到授权。"
           }
-        }
+        },
+        "refundDone": "退款已完成",
+        "refundFailed": "退款失败",
+        "refundToCheck": "请在 Stripe 中核对退款",
+        "approvedBy": "批准人",
+        "refundIssued": "已在 Stripe 发起退款",
+        "stripeRefundCount": "Stripe 在此付款上计入 {amount} 退款",
+        "stripeRefundCountFull": "Stripe 将此付款计为全额退款"
       },
       "unitAssignment": {
         "title": "单元分配",
@@ -2973,7 +2979,9 @@
         "statusFailed": "失败",
         "statusReleasePending": "正在释放",
         "requestPayment": "请求付款",
-        "invoiceGenerated": "生成发票 {number}"
+        "invoiceGenerated": "生成发票 {number}",
+        "refundProcessing": "退款处理中",
+        "refundIssued": "已在 Stripe 发起退款"
       },
       "requestPaymentModal": {
         "title": "请求付款",
@@ -8462,8 +8470,6 @@
         "payment_received": "已收到网上付款",
         "payment_received_amount": "已收到在线付款（{amount}）",
         "payment_failed": "在线支付被拒绝",
-        "refunded": "退款已发出",
-        "refunded_amount": "退款{amount}",
         "payment_added_rental": "已记录租金付款（{amount}）",
         "payment_added_deposit": "收到押金 ({amount})",
         "payment_added_deposit_return": "押金退还（{amount}）",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "已完成拾取状况报告",
         "inspection_return_completed": "退货状况报告已完成",
         "inspection_damage_detected": "状况报告中注明的损坏",
-        "inspection_signed": "已签署状况报告"
+        "inspection_signed": "已签署状况报告",
+        "stripe_refund_count": "Stripe 在此付款上计入的退款：{amount}"
       },
       "inspections": {
         "title": "状况报告",
@@ -8531,6 +8538,15 @@
           "refunded": "已退款",
           "cancelled": "取消",
           "authorized": "已授权"
+        },
+        "refundStatus": {
+          "done": "已退款",
+          "issued": "已发起",
+          "processing": "处理中",
+          "failed": "失败"
+        },
+        "refundedStatus": {
+          "issued": "已发起退款"
         }
       },
       "reviewPrompt": {
@@ -9745,7 +9761,7 @@
     },
     "confirm": {
       "label": "敏感操作前请求确认",
-      "description": "在删除或给客户发消息之前，智能体会先收到预览，并且必须确认；它会被要求先把预览给您看。记录付款或已完成的押金退还、删除付款、确认超出可用库存或两次租赁之间的间隔短于周转缓冲时间的预订、移除成员和取消邀请，即使关闭此项也仍需您的批准：智能体会给您一个链接，您登录自己的账户后在 Louez 页面上批准或拒绝。消耗 AI 积分即使关闭此项也始终需要确认。"
+      "description": "在删除或给客户发消息之前，智能体会先收到预览，并且必须确认；它会被要求先把预览给您看。记录付款或已完成的押金退还、删除付款、退还付款或记录已完成的退款、在超出可用库存或两次租赁之间的间隔短于周转缓冲时间的情况下创建、确认预订或更改其日期、移除成员和取消邀请，即使关闭此项也仍需您的批准：智能体会给您一个链接，您登录自己的账户后在 Louez 页面上批准或拒绝。消耗 AI 积分即使关闭此项也始终需要确认。"
     },
     "bundlesTitle": "显示的工具",
     "bundlesHint": "智能体会看到这些工具组。您以后可以添加更多。",

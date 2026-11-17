@@ -2408,7 +2408,6 @@
         "ignoreEmailFailure": "Negeren",
         "lockPrice": "Prijs vergrendelen",
         "unlockPrice": "Terug naar automatische prijs (vervangt de ingevoerde prijs)",
-        "adjustmentPositive": "Er moet een toeslag van {amount} worden geïnd.",
         "adjustmentNegative": "Er kan een terugbetaling van {amount} worden verstrekt.",
         "warningDialogTitle": "Uitzonderlijke wijziging bevestigen",
         "warningDialogDescription": "Deze update komt niet overeen met de gebruikelijke reserveringsregels. Controleer de waarschuwingen voordat u opslaat.",
@@ -2769,7 +2768,14 @@
             "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken.",
             "closedByStore": "Verzoek gesloten door de winkel: geen autorisatie gevonden in Stripe."
           }
-        }
+        },
+        "refundDone": "Terugbetaling uitgevoerd",
+        "refundFailed": "Terugbetaling mislukt",
+        "refundToCheck": "Terugbetaling controleren in Stripe",
+        "approvedBy": "Goedgekeurd door",
+        "refundIssued": "Terugbetaling uitgegeven bij Stripe",
+        "stripeRefundCount": "Stripe telt {amount} aan terugbetalingen op deze betaling",
+        "stripeRefundCountFull": "Stripe telt deze betaling als volledig terugbetaald"
       },
       "unitAssignment": {
         "title": "Eenheid toewijzing",
@@ -2934,7 +2940,9 @@
         "statusFailed": "Mislukt",
         "statusReleasePending": "Wordt vrijgegeven",
         "requestPayment": "Betaling aanvragen",
-        "invoiceGenerated": "Factuur {number} aangemaakt"
+        "invoiceGenerated": "Factuur {number} aangemaakt",
+        "refundProcessing": "Terugbetaling bezig",
+        "refundIssued": "Terugbetaling uitgegeven bij Stripe"
       },
       "requestPaymentModal": {
         "title": "Betaling aanvragen",
@@ -8473,8 +8481,6 @@
         "payment_received": "Online betaling ontvangen",
         "payment_received_amount": "Online betaling ontvangen ({amount})",
         "payment_failed": "Online betaling geweigerd",
-        "refunded": "Terugbetaling uitgevoerd",
-        "refunded_amount": "Terugbetaling van {amount}",
         "payment_added_rental": "Huurbetaling geregistreerd ({amount})",
         "payment_added_deposit": "Borg ontvangen ({amount})",
         "payment_added_deposit_return": "Borg terugbetaald ({amount})",
@@ -8492,7 +8498,8 @@
         "inspection_departure_completed": "Staat van oplevering bij ophalen opgemaakt",
         "inspection_return_completed": "Staat van oplevering bij inleveren opgemaakt",
         "inspection_damage_detected": "Schade vastgesteld bij de inspectie",
-        "inspection_signed": "Staat van oplevering ondertekend"
+        "inspection_signed": "Staat van oplevering ondertekend",
+        "stripe_refund_count": "{amount} aan terugbetalingen door Stripe geteld op deze betaling"
       },
       "inspections": {
         "title": "Staten van oplevering",
@@ -8542,6 +8549,15 @@
           "refunded": "Terugbetaald",
           "cancelled": "Geannuleerd",
           "authorized": "Geautoriseerd"
+        },
+        "refundStatus": {
+          "done": "Terugbetaald",
+          "issued": "Uitgegeven",
+          "processing": "Bezig",
+          "failed": "Mislukt"
+        },
+        "refundedStatus": {
+          "issued": "Terugbetaling uitgegeven"
         }
       },
       "reviewPrompt": {
@@ -9745,7 +9761,7 @@
     },
     "confirm": {
       "label": "Om bevestiging vragen vóór gevoelige acties",
-      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling of een al uitgevoerde terugbetaling van de borg registreren, een betaling verwijderen, een reservering bevestigen boven de beschikbare voorraad of binnen de omlooptijdbuffer, een lid verwijderen en een uitnodiging intrekken vereisen uw goedkeuring, ook als deze instelling uit staat: de agent geeft u een link, en u keurt de actie goed of wijst deze af op een Louez-pagina, ingelogd op uw account. AI-tegoed uitgeven vraagt altijd om bevestiging, ook als dit uit staat."
+      "description": "Vóór een verwijdering of een bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen; hij is gevraagd het u eerst te tonen. Een betaling of een al uitgevoerde terugbetaling van de borg registreren, een betaling verwijderen, een betaling terugbetalen of een al uitgevoerde terugbetaling registreren, een reservering aanmaken of bevestigen, of de datums ervan wijzigen, boven de beschikbare voorraad of binnen de omlooptijdbuffer, een lid verwijderen en een uitnodiging intrekken vereisen uw goedkeuring, ook als deze instelling uit staat: de agent geeft u een link, en u keurt de actie goed of wijst deze af op een Louez-pagina, ingelogd op uw account. AI-tegoed uitgeven vraagt altijd om bevestiging, ook als dit uit staat."
     },
     "bundlesTitle": "Getoonde tools",
     "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",

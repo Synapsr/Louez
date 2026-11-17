@@ -2408,7 +2408,6 @@
         "ignoreEmailFailure": "Ignora",
         "lockPrice": "Blocca prezzo",
         "unlockPrice": "Torna al prezzo automatico (sostituisce il prezzo inserito)",
-        "adjustmentPositive": "Dovrà essere riscosso un supplemento di {amount}.",
         "adjustmentNegative": "Può essere emesso un rimborso di {amount}.",
         "warningDialogTitle": "Conferma modifica eccezionale",
         "warningDialogDescription": "Questo aggiornamento non rispetta le regole abituali di prenotazione. Verifichi gli avvisi prima di salvare.",
@@ -2769,7 +2768,14 @@
             "generic": "Autorizzazione del deposito fallita. Chieda al cliente di riprovare o di utilizzare un'altra carta.",
             "closedByStore": "Richiesta chiusa dal negozio: nessuna autorizzazione trovata in Stripe."
           }
-        }
+        },
+        "refundDone": "Rimborso effettuato",
+        "refundFailed": "Rimborso non riuscito",
+        "refundToCheck": "Rimborso da verificare in Stripe",
+        "approvedBy": "Approvato da",
+        "refundIssued": "Rimborso emesso su Stripe",
+        "stripeRefundCount": "Stripe conta {amount} di rimborsi su questo pagamento",
+        "stripeRefundCountFull": "Stripe conta questo pagamento come rimborsato per intero"
       },
       "unitAssignment": {
         "title": "Assegnazione unità",
@@ -2934,7 +2940,9 @@
         "statusFailed": "Non riuscito",
         "statusReleasePending": "Rilascio in corso",
         "requestPayment": "Richiedi pagamento",
-        "invoiceGenerated": "Fattura {number} generata"
+        "invoiceGenerated": "Fattura {number} generata",
+        "refundProcessing": "Rimborso in corso",
+        "refundIssued": "Rimborso emesso su Stripe"
       },
       "requestPaymentModal": {
         "title": "Richiedi pagamento",
@@ -8462,8 +8470,6 @@
         "payment_received": "Pagamento online ricevuto",
         "payment_received_amount": "Pagamento online ricevuto ({amount})",
         "payment_failed": "Pagamento online rifiutato",
-        "refunded": "Rimborso effettuato",
-        "refunded_amount": "Rimborso di {amount}",
         "payment_added_rental": "Pagamento del noleggio registrato ({amount})",
         "payment_added_deposit": "Cauzione ricevuta ({amount})",
         "payment_added_deposit_return": "Cauzione restituita ({amount})",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "Verbale di consegna compilato",
         "inspection_return_completed": "Verbale di riconsegna compilato",
         "inspection_damage_detected": "Danni rilevati nel verbale",
-        "inspection_signed": "Verbale firmato"
+        "inspection_signed": "Verbale firmato",
+        "stripe_refund_count": "{amount} di rimborso conteggiato da Stripe su questo pagamento"
       },
       "inspections": {
         "title": "Verbali di stato",
@@ -8531,6 +8538,15 @@
           "refunded": "Rimborsato",
           "cancelled": "Annullato",
           "authorized": "Autorizzato"
+        },
+        "refundStatus": {
+          "done": "Rimborsato",
+          "issued": "Emesso",
+          "processing": "In corso",
+          "failed": "Non riuscito"
+        },
+        "refundedStatus": {
+          "issued": "Rimborso emesso"
         }
       },
       "reviewPrompt": {
@@ -9745,7 +9761,7 @@
     },
     "confirm": {
       "label": "Chiedi conferma prima delle azioni sensibili",
-      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare un pagamento o una restituzione del deposito già effettuata, eliminare un pagamento, confermare una prenotazione oltre lo stock disponibile o senza rispettare il margine di rotazione, rimuovere un membro e annullare un invito richiedono la sua approvazione, anche con questa opzione disattivata: l’agente le dà un link e lei approva o rifiuta su una pagina di Louez, dal suo account. Spendere crediti IA chiede sempre conferma, anche se disattivato."
+      "description": "Prima di un’eliminazione o di un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare; ha istruzione di mostrargliela prima. Registrare un pagamento o una restituzione del deposito già effettuata, eliminare un pagamento, rimborsare un pagamento o registrare un rimborso già effettuato, creare o confermare una prenotazione, o cambiarne le date, oltre lo stock disponibile o senza rispettare il margine di rotazione, rimuovere un membro e annullare un invito richiedono la sua approvazione, anche con questa opzione disattivata: l’agente le dà un link e lei approva o rifiuta su una pagina di Louez, dal suo account. Spendere crediti IA chiede sempre conferma, anche se disattivato."
     },
     "bundlesTitle": "Strumenti mostrati",
     "bundlesHint": "L’agente vede questi gruppi di strumenti. Potrà aggiungerne altri in seguito.",

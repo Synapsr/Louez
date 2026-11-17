@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
-import { after, before, describe, test } from "node:test";
+import { after, before, describe, mock, test } from "node:test";
 
+import { fromZonedTime } from "date-fns-tz";
 import { and, eq } from "drizzle-orm";
 
 import {
@@ -11,7 +12,7 @@ import {
   skipWithoutTestDatabase,
   type TestDatabase,
 } from "@louez/db/testing";
-import type { StoreSettings, UnitAttributes } from "@louez/types";
+import type { ProductPromotion, StoreSettings, UnitAttributes } from "@louez/types";
 import { buildCombinationKey } from "@louez/utils";
 
 import {
@@ -22,6 +23,10 @@ import {
 } from "@louez/api/services/pricing-facts";
 
 import { STORE_KEY } from "./actions-test-stubs";
+import type { Product as FormProduct } from "./new/types";
+import { creationTotals } from "./new/utils/creation-totals";
+import { productLinePricing } from "./new/utils/product-line-pricing";
+import { buildSeasonalPricingConfigs } from "@louez/api/services/catalogue-line-pricing";
 
 // A booking typed in the dashboard, on a migrated database: what stock it is
 // checked against, when it is refused with its shortfalls, what it writes when
@@ -76,6 +81,17 @@ const INSURER_STUBS: Record<string, string> = {
   export async function createTulipContractForReservation() {}
   export async function syncTulipContractForReservation() {}\n`,
 };
+// The e-mail sender, as the action sees it: the confirmation it is asked to
+// send is handed to whoever waits for it under this key; nothing is sent.
+const CONFIRMATION_EMAIL_KEY = "__louezCreationTestConfirmationEmail";
+INSURER_STUBS["@/lib/email/send"] =
+  `export async function sendReservationConfirmationEmail(input) {
+    globalThis[${JSON.stringify(CONFIRMATION_EMAIL_KEY)}]?.(input);
+    return { success: true };
+  }
+  export async function sendPaymentRequestEmail() { return { success: true }; }
+  export async function sendDepositAuthorizationRequestEmail() { return { success: true }; }
+  export async function logEmail() {}\n`;
 const INSURER_SCHEME = "louez-creation-test-insurer:";
 Reflect.get(
   nodeModule,
@@ -118,6 +134,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
   let actions: typeof import("./actions");
   let checkout: typeof import("@/lib/reservations/create-reservation");
   let inbox: typeof import("@louez/api/services/inbox");
+  let extension: typeof import("@/lib/reservations/extension-quote");
   let counter = 0;
   const savedMarketplaceSecret = process.env.MARKETPLACE_CATALOG_SECRET;
 
@@ -162,6 +179,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
     louezDb = await import("@louez/db");
     actions = await import("./actions");
     checkout = await import("@/lib/reservations/create-reservation");
+    extension = await import("@/lib/reservations/extension-quote");
     // packages/api is ES modules: its services need the CommonJS packages'
     // names by hand. Loaded last, as the mocks change how later modules load.
     await import("@louez/mcp/testing/cjs-named-exports");
@@ -333,6 +351,71 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       sendConfirmationEmail: false,
       ...options,
     });
+
+  /** A product as the creation page loads it (`getProductsWithTiers`), its seasons as the server reads them. */
+  async function formProductOf(productId: string): Promise<FormProduct> {
+    const row = await louezDb.db.query.products.findFirst({
+      where: eq(louezDb.products.id, productId),
+      with: { pricingTiers: true, seasonalPricings: { with: { tiers: true } } },
+    });
+    assert.ok(row);
+    return {
+      ...row,
+      units: [],
+      seasonalPricings:
+        buildSeasonalPricingConfigs(
+          row.seasonalPricings,
+          row.seasonalPricings.flatMap((season) => season.tiers),
+        ).get(row.id) ?? [],
+    };
+  }
+
+  /**
+   * The total the creation form shows, and sends, for these lines: each
+   * priced by the form (`productLinePricing`) at `now`, totalled by
+   * `creationTotals` in the store's settings.
+   */
+  async function formTotal(
+    lines: Array<{ productId: string; quantity: number; priceOverride?: number }>,
+    window: { start: Date; end: Date; now: Date },
+    settings: StoreSettings,
+  ) {
+    const productLines = [];
+    for (const [index, line] of lines.entries()) {
+      const product = await formProductOf(line.productId);
+      const pricing = productLinePricing({
+        product,
+        selectedItem: {
+          lineId: String(index),
+          productId: line.productId,
+          quantity: line.quantity,
+          ...(line.priceOverride === undefined
+            ? {}
+            : { priceOverride: { unitPrice: line.priceOverride } }),
+        },
+        startDate: window.start,
+        endDate: window.end,
+        timezone: settings.timezone,
+        now: window.now,
+      });
+      productLines.push({
+        subtotal: pricing.lineSubtotal,
+        unitPrice: pricing.lineUnitPrice,
+        typed: pricing.hasPriceOverride,
+        taxSettings: product.taxSettings ?? null,
+      });
+    }
+    return creationTotals({
+      productLines,
+      customLines: [],
+      insuranceAmount: 0,
+      deliveryFee: 0,
+      discountAmount: 0,
+      deposit: 0,
+      taxSettings: settings.tax,
+      currency: settings.currency,
+    }).total;
+  }
 
   /** How many reservations and activity rows the store holds: unchanged by a refusal. */
   async function storeCounts() {
@@ -1148,7 +1231,8 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
           MANUAL_LINES,
         );
 
-        // The facts: the store's mode; the insurance outside the tax; no promotion priced.
+        // The facts: the store's mode; the insurance outside the tax; the product
+        // line priced with the promotion in force, none here; the custom line records none.
         assert.equal(recordedTaxDisplayMode(row), "exclusive");
         assert.deepEqual(
           items.map((item) => [item.productSnapshot.name, recordedTaxExempt(item)]),
@@ -1158,10 +1242,791 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
             ["Garantie casse/vol", true],
           ],
         );
-        assert.equal(recordedPromotion(items[0]!), NOT_RECORDED);
+        assert.deepEqual(
+          items.slice(0, 2).map((item) => [item.productSnapshot.name, recordedPromotion(item)]),
+          [
+            ["Bike", null],
+            ["Delivery", NOT_RECORDED],
+          ],
+        );
       } finally {
         Reflect.deleteProperty(globalThis, INSURANCE_QUOTE_KEY);
       }
+    });
+  });
+
+  describe("a line priced from the catalogue is stored as the checkout stores it", () => {
+    // Promotions without dates: in force whatever the day.
+    const ALWAYS = { startsOn: null, endsOn: null };
+    const BEFORE_TAX = { enabled: true, defaultRate: 20, displayMode: "exclusive" as const };
+
+    interface Case {
+      name: string;
+      settings: Partial<StoreSettings>;
+      product: Partial<typeof louezDb.products.$inferInsert>;
+      /** Duration tiers, or the rates of a rate-based product. */
+      tiers?: Array<
+        { minDuration: number; discountPercent: string } | { period: number; price: string }
+      >;
+      days: number;
+      quantity: number;
+    }
+
+    const CASES: Case[] = [
+      {
+        name: "EUR, 5.35 a day for one day, two of them, 50 % off: 2.675 a unit",
+        settings: {},
+        product: { price: "5.35", promotion: { percentage: 50, ...ALWAYS } },
+        days: 1,
+        quantity: 2,
+      },
+      {
+        name: "JPY, ¥101 a day for one day, 50 % off: a line of ¥50.50",
+        settings: { currency: "JPY" },
+        product: { price: "101.00", promotion: { percentage: 50, ...ALWAYS } },
+        days: 1,
+        quantity: 1,
+      },
+      {
+        name: "a duration tier and a promotion, three days, two of them",
+        settings: {},
+        product: { price: "9.90", promotion: { percentage: 15, ...ALWAYS } },
+        tiers: [{ minDuration: 3, discountPercent: "12.500000" }],
+        days: 3,
+        quantity: 2,
+      },
+      {
+        name: "a rate-based product, four days, three of them, 10 % off",
+        settings: {},
+        product: {
+          price: "12.00",
+          basePeriodMinutes: 24 * 60,
+          promotion: { percentage: 10, ...ALWAYS },
+        },
+        tiers: [{ period: 3 * 24 * 60, price: "29.90" }],
+        days: 4,
+        quantity: 3,
+      },
+      {
+        name: "a fixed price, three of them, 20 % off",
+        settings: {},
+        product: {
+          price: "19.99",
+          pricingKind: "fixed",
+          promotion: { percentage: 20, ...ALWAYS },
+        },
+        days: 2,
+        quantity: 3,
+      },
+      {
+        name: "a product at its own 5.5 % in a store that prices before tax at 20 %, 50 % off",
+        settings: { tax: BEFORE_TAX },
+        product: {
+          price: "7.15",
+          taxSettings: { inheritFromStore: false, customRate: 5.5 },
+          promotion: { percentage: 50, ...ALWAYS },
+        },
+        days: 3,
+        quantity: 2,
+      },
+      {
+        name: "no promotion, JPY, prices before tax",
+        settings: { currency: "JPY", tax: BEFORE_TAX },
+        product: { price: "333.00" },
+        days: 1,
+        quantity: 1,
+      },
+    ];
+
+    async function catalogueProduct(spec: Case) {
+      const id = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Kayak",
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 50,
+        ...spec.product,
+      });
+      for (const [index, tier] of (spec.tiers ?? []).entries()) {
+        await louezDb.db.insert(louezDb.productPricingTiers).values({
+          id: nextId("tie"),
+          productId: id,
+          displayOrder: index,
+          ...tier,
+        });
+      }
+      return id;
+    }
+
+    /** What a reservation stores of its money, and of its one line. */
+    async function storedRow(reservationId: string) {
+      const r = louezDb.reservations;
+      const i = louezDb.reservationItems;
+      const [row] = await louezDb.db.select().from(r).where(eq(r.id, reservationId));
+      const [line] = await louezDb.db.select().from(i).where(eq(i.reservationId, reservationId));
+      assert.ok(row && line);
+      return {
+        reservation: {
+          currency: row.currency,
+          subtotalAmount: row.subtotalAmount,
+          depositAmount: row.depositAmount,
+          totalAmount: row.totalAmount,
+          subtotalExclTax: row.subtotalExclTax,
+          taxAmount: row.taxAmount,
+          taxRate: row.taxRate,
+          taxDisplayMode: row.taxDisplayMode,
+        },
+        line: {
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          depositPerUnit: line.depositPerUnit,
+          totalPrice: line.totalPrice,
+          pricingBreakdown: line.pricingBreakdown,
+          taxRate: line.taxRate,
+          taxAmount: line.taxAmount,
+          priceExclTax: line.priceExclTax,
+          totalExclTax: line.totalExclTax,
+          taxExempt: line.taxExempt,
+        },
+      };
+    }
+
+    /** The same booking by hand and through the checkout (a trusted caller, nothing paid). */
+    async function bookBoth(spec: Case) {
+      const productId = await catalogueProduct(spec);
+      const end = new Date(START.getTime() + spec.days * DAY);
+      return withSettings(spec.settings, async () => {
+        const byHand = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: end,
+          items: [{ productId, quantity: spec.quantity }],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(byHand.reservationId, JSON.stringify(byHand));
+        const byCheckout = await checkout.createReservation({
+          source: "phone",
+          storeId: STORE,
+          customer: { email: "caller@example.test", firstName: "Call", lastName: "In" },
+          items: [
+            {
+              lineId: "0",
+              productId,
+              quantity: spec.quantity,
+              startDate: START.toISOString(),
+              endDate: end.toISOString(),
+              unitPrice: 0,
+              depositPerUnit: 0,
+            },
+          ],
+          subtotalAmount: 0,
+          depositAmount: 0,
+          totalAmount: 0,
+        });
+        assert.ok(byCheckout.ok, JSON.stringify(byCheckout));
+        return {
+          productId,
+          byHand: await storedRow(byHand.reservationId),
+          byCheckout: await storedRow(byCheckout.reservationId),
+        };
+      });
+    }
+
+    for (const spec of CASES) {
+      test(`${spec.name}: the same stored row`, async () => {
+        const { byHand, byCheckout } = await bookBoth(spec);
+        assert.deepEqual(byHand, byCheckout);
+      });
+    }
+
+    test("the reviewer's figures: 2.67 a unit in EUR, a line of ¥50.50", async () => {
+      const [euros, yen] = [await bookBoth(CASES[0]!), await bookBoth(CASES[1]!)];
+      assert.deepEqual(
+        [euros.byHand.line.unitPrice, euros.byHand.line.totalPrice],
+        ["2.67", "5.35"],
+      );
+      assert.equal(yen.byHand.line.totalPrice, "50.50");
+    });
+
+    test("a paid hand-created promoted line in yen is extended automatically, not left to the store", async () => {
+      const { byHand } = await bookBoth(CASES[1]!);
+      const reservationId = await withSettings({ currency: "JPY" }, async () => {
+        const productId = await catalogueProduct(CASES[1]!);
+        const created = await actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: new Date(START.getTime() + DAY),
+          items: [{ productId, quantity: 1 }],
+          sendConfirmationEmail: false,
+        });
+        assert.ok(created.reservationId, JSON.stringify(created));
+        return created.reservationId;
+      });
+      // Paid in full, in yen.
+      await louezDb.db.insert(louezDb.payments).values({
+        id: nextId("pay"),
+        reservationId,
+        amount: byHand.reservation.totalAmount,
+        type: "rental",
+        method: "cash",
+        status: "completed",
+        currency: "JPY",
+      });
+      // The store takes payments online: a supplement can be charged.
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ stripeAccountId: "acct_creations", stripeChargesEnabled: true })
+        .where(eq(louezDb.stores.id, STORE));
+      try {
+        const quoted = await withSettings({ currency: "JPY" }, () =>
+          extension.runExtensionQuote({ storeId: STORE, reservationId }, (tx, reservation) =>
+            extension.quoteExtension(tx, reservation, new Date(START.getTime() + 2 * DAY)),
+          ),
+        );
+        assert.notEqual(
+          quoted.preview.mode === "manual" ? quoted.preview.reason : null,
+          "manualPrice",
+        );
+        assert.ok(quoted.plan, JSON.stringify(quoted.preview));
+      } finally {
+        await louezDb.db
+          .update(louezDb.stores)
+          .set({ stripeAccountId: null, stripeChargesEnabled: false })
+          .where(eq(louezDb.stores.id, STORE));
+      }
+    });
+  });
+
+  describe("the total the form shows is the server's", () => {
+    const HOUR = 60 * MINUTE;
+    const ALWAYS = { startsOn: null, endsOn: null };
+    const BEFORE_TAX = { enabled: true, defaultRate: 20, displayMode: "exclusive" as const };
+    const WITH_TAX = { enabled: true, defaultRate: 20, displayMode: "inclusive" as const };
+
+    interface Shape {
+      name: string;
+      product: Partial<typeof louezDb.products.$inferInsert>;
+      tiers?: Array<
+        { minDuration: number; discountPercent: string } | { period: number; price: string }
+      >;
+      /** Seasons over the window, each with its own price and tiers. */
+      seasons?: Array<{
+        startDate: string;
+        endDate: string;
+        price: string;
+        tiers?: Array<{ minDuration: number; discountPercent: string }>;
+      }>;
+      settings: Partial<StoreSettings>;
+      hours: number;
+      quantity: number;
+      priceOverride?: number;
+    }
+
+    const SHAPES: Shape[] = [
+      {
+        name: "the reviewer's: 0.29 a day, a 50 % tier landing on a half cent, a 1 % promotion",
+        product: { price: "0.29", promotion: { percentage: 1, ...ALWAYS } },
+        tiers: [{ minDuration: 1, discountPercent: "50.000000" }],
+        settings: {},
+        hours: 24,
+        quantity: 1,
+      },
+      {
+        name: "the same half cent with no promotion at all",
+        product: { price: "0.29" },
+        tiers: [{ minDuration: 1, discountPercent: "50.000000" }],
+        settings: {},
+        hours: 24,
+        quantity: 1,
+      },
+      {
+        name: "a half cent from a 12.5 % tier, three of them, prices with tax",
+        product: { price: "1.13" },
+        tiers: [{ minDuration: 2, discountPercent: "12.500000" }],
+        settings: { tax: WITH_TAX },
+        hours: 48,
+        quantity: 3,
+      },
+      {
+        name: "an hourly product over five hours and a half, 15 % off, before tax",
+        product: { price: "3.35", pricingMode: "hour", promotion: { percentage: 15, ...ALWAYS } },
+        settings: { tax: BEFORE_TAX },
+        hours: 5.5,
+        quantity: 2,
+      },
+      {
+        name: "a weekly product over ten days, in yen, 50 % off",
+        product: {
+          price: "1001.00",
+          pricingMode: "week",
+          promotion: { percentage: 50, ...ALWAYS },
+        },
+        settings: { currency: "JPY" },
+        hours: 240,
+        quantity: 1,
+      },
+      {
+        name: "rates with strict packages, 10 % off",
+        product: {
+          price: "12.35",
+          basePeriodMinutes: 24 * 60,
+          enforceStrictTiers: true,
+          promotion: { percentage: 10, ...ALWAYS },
+        },
+        tiers: [{ period: 3 * 24 * 60, price: "29.95" }],
+        settings: { tax: BEFORE_TAX },
+        hours: 96,
+        quantity: 2,
+      },
+      {
+        name: "rates prorated over a partial period, in yen",
+        product: { price: "333.00", basePeriodMinutes: 24 * 60 },
+        tiers: [{ period: 3 * 24 * 60, price: "777.00" }],
+        settings: { currency: "JPY", tax: WITH_TAX },
+        hours: 100,
+        quantity: 1,
+      },
+      {
+        name: "two seasons overlapping each other and the window, a tier in one, 25 % off",
+        product: { price: "9.99", promotion: { percentage: 25, ...ALWAYS } },
+        seasons: [
+          {
+            startDate: "2031-06-01",
+            endDate: "2031-06-11",
+            price: "7.77",
+            tiers: [{ minDuration: 2, discountPercent: "12.500000" }],
+          },
+          { startDate: "2031-06-11", endDate: "2031-06-20", price: "3.33" },
+        ],
+        settings: {},
+        hours: 72,
+        quantity: 3,
+      },
+      {
+        name: "a fixed price at a half cent of a promotion, prices with tax",
+        product: { price: "0.25", pricingKind: "fixed", promotion: { percentage: 50, ...ALWAYS } },
+        settings: { tax: WITH_TAX },
+        hours: 24,
+        quantity: 1,
+      },
+      {
+        name: "a price typed by hand at a half cent, a promotion not applied to it",
+        product: { price: "10.00", promotion: { percentage: 50, ...ALWAYS } },
+        settings: {},
+        hours: 72,
+        quantity: 3,
+        priceOverride: 0.015,
+      },
+    ];
+
+    async function shapedProduct(shape: Shape) {
+      const id = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Board",
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 50,
+        ...shape.product,
+      });
+      for (const [index, tier] of (shape.tiers ?? []).entries()) {
+        await louezDb.db
+          .insert(louezDb.productPricingTiers)
+          .values({ id: nextId("tie"), productId: id, displayOrder: index, ...tier });
+      }
+      for (const season of shape.seasons ?? []) {
+        const seasonId = nextId("sea");
+        await louezDb.db.insert(louezDb.productSeasonalPricing).values({
+          id: seasonId,
+          productId: id,
+          name: season.startDate,
+          startDate: season.startDate,
+          endDate: season.endDate,
+          price: season.price,
+        });
+        for (const [index, tier] of (season.tiers ?? []).entries()) {
+          await louezDb.db.insert(louezDb.productSeasonalPricingTiers).values({
+            id: nextId("stt"),
+            seasonalPricingId: seasonId,
+            displayOrder: index,
+            ...tier,
+          });
+        }
+      }
+      return id;
+    }
+
+    for (const shape of SHAPES) {
+      test(`${shape.name}: accepted, written as shown`, async () => {
+        const productId = await shapedProduct(shape);
+        const end = new Date(START.getTime() + shape.hours * HOUR);
+        const line = {
+          productId,
+          quantity: shape.quantity,
+          ...(shape.priceOverride === undefined ? {} : { priceOverride: shape.priceOverride }),
+        };
+        const result = await withSettings(shape.settings, async () => {
+          const shown = await formTotal(
+            [line],
+            { start: START, end, now: START },
+            { ...SETTINGS, ...shape.settings },
+          );
+          const created = await actions.createManualReservation({
+            customerId: CUSTOMER,
+            startDate: START,
+            endDate: end,
+            items: [
+              {
+                productId,
+                quantity: shape.quantity,
+                ...(shape.priceOverride === undefined
+                  ? {}
+                  : { priceOverride: { unitPrice: shape.priceOverride } }),
+              },
+            ],
+            expectedTotal: shown,
+            sendConfirmationEmail: false,
+          });
+          return { shown, created };
+        });
+
+        assert.equal(result.created.error, undefined, JSON.stringify(result));
+        const [row] = await louezDb.db
+          .select({ total: louezDb.reservations.totalAmount })
+          .from(louezDb.reservations)
+          .where(eq(louezDb.reservations.id, result.created.reservationId!));
+        assert.equal(row?.total, result.shown.toFixed(2));
+      });
+    }
+  });
+
+  describe("a product on promotion", () => {
+    // The checkout's rule for a promotion in force: the day the booking is
+    // made, in the store's timezone (Europe/Paris when it has none), both of
+    // the promotion's dates included. Each test stops the clock at one
+    // instant for its fixtures, the form and the server: none reads the wall
+    // clock.
+    const PARIS = "Europe/Paris";
+    const AUCKLAND = "Pacific/Auckland";
+    /** 20 November 2030, 11:00 in Paris. */
+    const AT = new Date("2030-11-20T10:00:00.000Z");
+
+    /** Runs `work` with the clock stopped at `instant`. */
+    async function at<T>(instant: Date, work: () => Promise<T>): Promise<T> {
+      mock.timers.enable({ apis: ["Date"], now: instant });
+      try {
+        return await work();
+      } finally {
+        mock.timers.reset();
+      }
+    }
+
+    /** An instant by the wall clock of a timezone. */
+    const wallClock = (local: string, timezone: string) => fromZonedTime(local, timezone);
+
+    /** A product at 5.35 a day, with this promotion. */
+    async function promoted(promotion: ProductPromotion) {
+      const id = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Paddle",
+        price: "5.35",
+        pricingMode: "day",
+        quantity: 10,
+        promotion,
+      });
+      return id;
+    }
+
+    /** The reservation's money and its one product line, as written. */
+    async function moneyOf(reservationId: string) {
+      const [row] = await louezDb.db
+        .select()
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, reservationId));
+      const [line] = await louezDb.db
+        .select()
+        .from(louezDb.reservationItems)
+        .where(eq(louezDb.reservationItems.reservationId, reservationId));
+      assert.ok(row && line);
+      return {
+        subtotal: row.subtotalAmount,
+        total: row.totalAmount,
+        unitPrice: line.unitPrice,
+        totalPrice: line.totalPrice,
+        promotion: recordedPromotion(line),
+      };
+    }
+
+    /** The same line booked through the checkout (a trusted caller, nothing paid). */
+    async function bookedByCheckout(productId: string, quantity: number) {
+      const result = await checkout.createReservation({
+        source: "phone",
+        storeId: STORE,
+        customer: { email: "caller@example.test", firstName: "Call", lastName: "In" },
+        items: [
+          {
+            lineId: "0",
+            productId,
+            quantity,
+            startDate: START.toISOString(),
+            endDate: END.toISOString(),
+            unitPrice: 5.35,
+            depositPerUnit: 0,
+          },
+        ],
+        subtotalAmount: 0,
+        depositAmount: 0,
+        totalAmount: 0,
+      });
+      assert.ok(result.ok, JSON.stringify(result));
+      return moneyOf(result.reservationId);
+    }
+
+    /**
+     * Two paddles for two days, created by hand as the form sends them: the
+     * form priced at `shownAt` (the instant the server gave the page), the
+     * server at its own clock, `submittedAt`.
+     */
+    async function createdByHand(
+      productId: string,
+      shownAt: Date,
+      submittedAt: Date,
+      settings: StoreSettings,
+    ) {
+      const shown = await at(shownAt, () =>
+        formTotal(
+          [{ productId, quantity: 2 }],
+          { start: START, end: END, now: new Date() },
+          settings,
+        ),
+      );
+      const result = await at(submittedAt, () =>
+        actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: END,
+          items: [{ productId, quantity: 2 }],
+          expectedTotal: shown,
+          sendConfirmationEmail: false,
+        }),
+      );
+      return { shown, result };
+    }
+
+    test(
+      "the confirmation e-mail states the line as written, the promotion applied",
+      { timeout: 30_000 },
+      async () => {
+        // Two for two days at 5.35, 50 % off: the line is 10.70, and so is the total.
+        const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
+        const asked = new Promise<{
+          items: Array<{ name: string; quantity: number; unitPrice: number; totalPrice: number }>;
+          reservation: { subtotalAmount: number; totalAmount: number };
+        }>((resolve) => Reflect.set(globalThis, CONFIRMATION_EMAIL_KEY, resolve));
+        try {
+          const result = await at(AT, () =>
+            actions.createManualReservation({
+              customerId: CUSTOMER,
+              startDate: START,
+              endDate: END,
+              items: [{ productId: paddles, quantity: 2 }],
+            }),
+          );
+          assert.ok(result.reservationId, JSON.stringify(result));
+          const email = await asked;
+          const written = await moneyOf(result.reservationId);
+
+          assert.deepEqual(
+            email.items.map((item) => [
+              item.name,
+              item.quantity,
+              item.unitPrice.toFixed(2),
+              item.totalPrice.toFixed(2),
+            ]),
+            [["Paddle", 2, written.unitPrice, written.totalPrice]],
+          );
+          assert.equal(written.totalPrice, "10.70");
+          assert.equal(Number(email.reservation.subtotalAmount).toFixed(2), "10.70");
+        } finally {
+          Reflect.deleteProperty(globalThis, CONFIRMATION_EMAIL_KEY);
+        }
+      },
+    );
+
+    const DISCOUNTED = {
+      subtotal: "10.70",
+      total: "10.70",
+      unitPrice: "5.35",
+      totalPrice: "10.70",
+      promotion: { percentage: 50, originalSubtotal: 21.4, discountAmount: 10.7 },
+    };
+    const FULL_PRICE = {
+      subtotal: "21.40",
+      total: "21.40",
+      unitPrice: "10.70",
+      totalPrice: "21.40",
+      promotion: null,
+    };
+
+    test("in force: the line is priced with it and records it, as the checkout prices and records it", async () => {
+      // Two for two days at 5.35, 50 % off: 10.70, not 21.40.
+      const paddles = await promoted({
+        percentage: 50,
+        startsOn: "2030-11-20",
+        endsOn: "2030-11-20",
+      });
+
+      const { result } = await createdByHand(paddles, AT, AT, SETTINGS);
+      const byHand = await moneyOf((await writtenBy(result)).reservationId);
+
+      assert.deepEqual(byHand, DISCOUNTED);
+      assert.deepEqual(byHand, await at(AT, () => bookedByCheckout(paddles, 2)));
+    });
+
+    test("over, or not started: nothing changes, and the line records none", async () => {
+      for (const promotion of [
+        { percentage: 50, startsOn: "2030-11-10", endsOn: "2030-11-19" },
+        { percentage: 50, startsOn: "2030-11-21", endsOn: null },
+      ]) {
+        const paddles = await promoted(promotion);
+
+        const { result } = await createdByHand(paddles, AT, AT, SETTINGS);
+        const byHand = await moneyOf((await writtenBy(result)).reservationId);
+
+        assert.deepEqual(byHand, FULL_PRICE);
+        assert.deepEqual(byHand, await at(AT, () => bookedByCheckout(paddles, 2)));
+      }
+    });
+
+    for (const timezone of [undefined, AUCKLAND]) {
+      const zone = timezone ?? PARIS;
+      const store = timezone ? `a store in ${timezone}` : "a store with no timezone (Paris)";
+      const boundaries = [
+        {
+          name: "the last second of its end",
+          promotion: { percentage: 50, startsOn: null, endsOn: "2030-11-20" },
+          instant: wallClock("2030-11-20T23:59:59", zone),
+          expected: DISCOUNTED,
+        },
+        {
+          name: "the first second after its end",
+          promotion: { percentage: 50, startsOn: null, endsOn: "2030-11-20" },
+          instant: wallClock("2030-11-21T00:00:00", zone),
+          expected: FULL_PRICE,
+        },
+        {
+          name: "the last second before its start",
+          promotion: { percentage: 50, startsOn: "2030-11-20", endsOn: null },
+          instant: wallClock("2030-11-19T23:59:59", zone),
+          expected: FULL_PRICE,
+        },
+        {
+          name: "the first second of its start",
+          promotion: { percentage: 50, startsOn: "2030-11-20", endsOn: null },
+          instant: wallClock("2030-11-20T00:00:00", zone),
+          expected: DISCOUNTED,
+        },
+      ];
+      for (const boundary of boundaries) {
+        test(`${store}, at ${boundary.name}: priced as the checkout prices it at that second`, async () => {
+          const paddles = await promoted(boundary.promotion);
+          const settings = { ...SETTINGS, ...(timezone ? { timezone } : {}) };
+
+          const { byHand, byCheckout } = await withSettings(settings, async () => {
+            const { result } = await createdByHand(
+              paddles,
+              boundary.instant,
+              boundary.instant,
+              settings,
+            );
+            return {
+              byHand: await moneyOf((await writtenBy(result)).reservationId),
+              byCheckout: await at(boundary.instant, () => bookedByCheckout(paddles, 2)),
+            };
+          });
+
+          assert.deepEqual(byHand, boundary.expected);
+          assert.deepEqual(byHand, byCheckout);
+        });
+      }
+    }
+
+    test("the page loaded before midnight, sent after the promotion ended: refused once, then accepted at the reloaded price", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: "2030-11-20" });
+      const loaded = wallClock("2030-11-20T23:59:30", PARIS);
+      const sent = wallClock("2030-11-21T00:00:10", PARIS);
+      const before = await storeCounts();
+
+      // The form shows the promotion the server's instant had in force.
+      const first = await createdByHand(paddles, loaded, sent, SETTINGS);
+      assert.equal(first.shown, 10.7);
+      assert.equal(first.result.error, "errors.reservationChangedMeanwhile");
+      assert.deepEqual(await storeCounts(), before, "nothing written");
+
+      // The refusal reloads the page: its new instant is the server's, after midnight.
+      const second = await createdByHand(paddles, sent, sent, SETTINGS);
+      assert.equal(second.shown, 21.4);
+      assert.deepEqual(await moneyOf((await writtenBy(second.result)).reservationId), FULL_PRICE);
+    });
+
+    test("the form's price does not follow the browser's clock, only the instant the server gave it", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: "2030-11-20" });
+      const product = await formProductOf(paddles);
+      // The browser's clock reads a year later; the page was given AT.
+      const shown = await at(new Date("2031-11-20T10:00:00.000Z"), async () =>
+        productLinePricing({
+          product,
+          selectedItem: { lineId: "0", productId: paddles, quantity: 2 },
+          startDate: START,
+          endDate: END,
+          timezone: undefined,
+          now: AT,
+        }),
+      );
+      assert.equal(shown.lineSubtotal, 10.7);
+    });
+
+    test("a price typed by hand is not discounted", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
+
+      const result = await at(AT, async () =>
+        actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: END,
+          // 8.00 a day, typed, for two days.
+          items: [{ productId: paddles, quantity: 1, priceOverride: { unitPrice: 8 } }],
+          expectedTotal: await formTotal(
+            [{ productId: paddles, quantity: 1, priceOverride: 8 }],
+            { start: START, end: END, now: AT },
+            SETTINGS,
+          ),
+          sendConfirmationEmail: false,
+        }),
+      );
+
+      const typed = await moneyOf((await writtenBy(result)).reservationId);
+      assert.equal(typed.totalPrice, "16.00");
+      assert.equal(typed.total, "16.00");
+      assert.ok(
+        typed.promotion === NOT_RECORDED || typed.promotion === null,
+        "no promotion applied to a typed price",
+      );
+    });
+
+    test("the total the form shows is the total written, the promotion included", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
+
+      const { shown, result } = await createdByHand(paddles, AT, AT, SETTINGS);
+
+      const written = await moneyOf((await writtenBy(result)).reservationId);
+      assert.equal(shown.toFixed(2), written.total);
+      assert.equal(written.total, (await at(AT, () => bookedByCheckout(paddles, 2))).total);
     });
   });
 

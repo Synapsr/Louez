@@ -90,6 +90,7 @@ export const createDemoReservationDetail = (
       totalAmount: items.subtotalAmount,
       customer: { ...getDemoCustomer(index), phone: null },
       payments,
+      refunds: [],
       activity: paid ? activity : activity.slice(-1),
       depositStatus: paid ? "authorized" : "pending",
       depositAuthorizationExpiresAt: paid ? new Date(period.end.getTime() + 86_400_000) : null,

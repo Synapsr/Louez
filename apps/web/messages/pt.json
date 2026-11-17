@@ -2408,7 +2408,6 @@
         "ignoreEmailFailure": "Ignorar",
         "lockPrice": "Bloquear preço",
         "unlockPrice": "Voltar ao preço automático (substitui o preço inserido)",
-        "adjustmentPositive": "Um complemento de {amount} deverá ser cobrado.",
         "adjustmentNegative": "Um reembolso de {amount} pode ser emitido.",
         "warningDialogTitle": "Confirmar alteração excecional",
         "warningDialogDescription": "Esta atualização não corresponde às regras habituais de reserva. Reveja os avisos antes de guardar.",
@@ -2769,7 +2768,14 @@
             "generic": "A autorização de depósito falhou. Peça ao cliente para tentar novamente ou usar outro cartão.",
             "closedByStore": "Pedido fechado pela loja: nenhuma autorização encontrada no Stripe."
           }
-        }
+        },
+        "refundDone": "Reembolso efetuado",
+        "refundFailed": "Reembolso falhou",
+        "refundToCheck": "Reembolso a verificar no Stripe",
+        "approvedBy": "Aprovado por",
+        "refundIssued": "Reembolso emitido no Stripe",
+        "stripeRefundCount": "O Stripe conta {amount} de reembolsos neste pagamento",
+        "stripeRefundCountFull": "O Stripe conta este pagamento como totalmente reembolsado"
       },
       "unitAssignment": {
         "title": "Atribuição de unidades",
@@ -2934,7 +2940,9 @@
         "statusFailed": "Falhou",
         "statusReleasePending": "Libertação em curso",
         "requestPayment": "Solicitar pagamento",
-        "invoiceGenerated": "Fatura {number} gerada"
+        "invoiceGenerated": "Fatura {number} gerada",
+        "refundProcessing": "Reembolso em curso",
+        "refundIssued": "Reembolso emitido no Stripe"
       },
       "requestPaymentModal": {
         "title": "Solicitar pagamento",
@@ -8462,8 +8470,6 @@
         "payment_received": "Pagamento online recebido",
         "payment_received_amount": "Pagamento online recebido ({amount})",
         "payment_failed": "Pagamento online recusado",
-        "refunded": "Reembolso efetuado",
-        "refunded_amount": "Reembolso de {amount}",
         "payment_added_rental": "Pagamento do aluguer registado ({amount})",
         "payment_added_deposit": "Caução recebida ({amount})",
         "payment_added_deposit_return": "Caução devolvida ({amount})",
@@ -8481,7 +8487,8 @@
         "inspection_departure_completed": "Auto de entrega realizado",
         "inspection_return_completed": "Auto de devolução realizado",
         "inspection_damage_detected": "Danos constatados no auto",
-        "inspection_signed": "Auto assinado"
+        "inspection_signed": "Auto assinado",
+        "stripe_refund_count": "{amount} de reembolso contabilizado pelo Stripe neste pagamento"
       },
       "inspections": {
         "title": "Autos de estado",
@@ -8531,6 +8538,15 @@
           "refunded": "Reembolsado",
           "cancelled": "Cancelado",
           "authorized": "Autorizado"
+        },
+        "refundStatus": {
+          "done": "Reembolsado",
+          "issued": "Emitido",
+          "processing": "Em curso",
+          "failed": "Falhou"
+        },
+        "refundedStatus": {
+          "issued": "Reembolso emitido"
         }
       },
       "reviewPrompt": {
@@ -9745,7 +9761,7 @@
     },
     "confirm": {
       "label": "Pedir confirmação antes de ações sensíveis",
-      "description": "Antes de uma exclusão ou de uma mensagem a um cliente, o agente recebe primeiro uma pré-visualização e precisa confirmar; ele é instruído a mostrá-la a você antes. Registrar um pagamento ou uma devolução de caução já realizada, excluir um pagamento, confirmar uma reserva além do stock disponível ou sem respeitar a margem de rotação, remover um membro e cancelar um convite exigem a sua aprovação, mesmo com esta opção desativada: o agente envia um link para você, que aprova ou recusa em uma página do Louez, na sua conta. Gastar créditos de IA sempre pede confirmação, mesmo desativado."
+      "description": "Antes de uma exclusão ou de uma mensagem a um cliente, o agente recebe primeiro uma pré-visualização e precisa confirmar; ele é instruído a mostrá-la a você antes. Registrar um pagamento ou uma devolução de caução já realizada, excluir um pagamento, reembolsar um pagamento ou registrar um reembolso já realizado, criar ou confirmar uma reserva, ou alterar as suas datas, além do stock disponível ou sem respeitar a margem de rotação, remover um membro e cancelar um convite exigem a sua aprovação, mesmo com esta opção desativada: o agente envia um link para você, que aprova ou recusa em uma página do Louez, na sua conta. Gastar créditos de IA sempre pede confirmação, mesmo desativado."
     },
     "bundlesTitle": "Ferramentas exibidas",
     "bundlesHint": "O agente vê estes conjuntos de ferramentas. Você poderá adicionar outros depois.",

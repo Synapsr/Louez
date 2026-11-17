@@ -5,7 +5,8 @@ import { validateRequiredAccessoryLines } from "@louez/api/services";
 import { saveCustomerFieldValues } from "@louez/api/services/customer-fields";
 import { saveReservationItemDetails } from "@louez/api/services/customer-fields-online";
 import { saveCustomerProfileValues } from "@louez/api/services/customer-profile-fields";
-import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pricing-catalog";
+import { type PricingCatalog } from "@louez/api/services/catalogue-line-pricing";
+import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
 import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
 import {
   aiAdvisorConversations,
@@ -63,7 +64,7 @@ import {
   runPostCreationEffects,
 } from "./post-creation-effects";
 import {
-  checkoutLineBreakdown,
+  catalogueLineValues,
   computeReservationTotals,
   getReservationItemTaxFields,
   INSURANCE_TAX_LINE_ID,
@@ -758,20 +759,12 @@ const buildReservationItemValues = (
       productId: item.productId,
       isCustomItem: false,
       quantity: item.quantity,
-      unitPrice: line.unitPrice.toFixed(2),
-      depositPerUnit: line.depositPerUnit.toFixed(2),
-      totalPrice: line.subtotal.toFixed(2),
-      // What its pricing used, the promotion included, on every line (slice 9).
-      pricingBreakdown: checkoutLineBreakdown(prepared.catalog.get(line.productId), line, tax),
+      // Its prices, breakdown (the promotion included, slice 9) and tax figures, as every creator stores them.
+      ...catalogueLineValues(prepared.catalog.get(line.productId), line, tax),
       productSnapshot: buildProductSnapshot(prepared.catalog, item, resolved),
       combinationKey: resolved?.combinationKey || item.resolvedCombinationKey || null,
       selectedAttributes:
         resolved?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null,
-      taxRate: tax.taxRate?.toFixed(2) ?? null,
-      taxAmount: tax.taxAmount?.toFixed(2) ?? null,
-      priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
-      totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
-      taxExempt: false,
     };
   });
 

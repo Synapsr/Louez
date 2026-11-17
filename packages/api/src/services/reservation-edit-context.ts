@@ -10,9 +10,16 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import type { LegMethod, PricingKind, ProductTaxSettings, StockKind } from "@louez/types";
-import type { SeasonalPricingConfig } from "@louez/utils";
+import type { LegMethod } from "@louez/types";
+import { getRentalPaid, normalizeCurrency, type SeasonalPricingConfig } from "@louez/utils";
 
+import {
+  buildSeasonalPricingConfigs,
+  toPricingCatalogProduct,
+  type PricingProductRow,
+  type SeasonalPricingRow,
+  type SeasonalPricingTierRow,
+} from "./catalogue-line-pricing";
 import { isReservationEditable } from "./reservation-editable";
 import { reservationEditToken } from "./util.reservation-edit";
 
@@ -27,32 +34,14 @@ interface RawTier {
   displayOrder: number | null;
 }
 
-interface RawSeasonalPricing {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  price: string;
-  tiers: RawTier[];
-}
+type RawSeasonalPricing = SeasonalPricingRow & { tiers: SeasonalPricingTierRow[] };
 
-interface RawProduct {
-  id: string;
-  name: string;
-  price: string;
-  deposit: string | null;
-  images: string[] | null;
-  quantity: number;
-  stockKind: StockKind;
-  pricingKind: PricingKind;
-  pricingMode: string | null;
-  basePeriodMinutes: number | null;
-  enforceStrictTiers: boolean;
-  taxSettings: ProductTaxSettings | null;
+/** A product row as the edit reads it, with its tiers and its seasons. */
+type RawProduct = PricingProductRow & {
   pricingTiers: RawTier[];
   seasonalPricings: RawSeasonalPricing[];
   tulipMapping?: { productId: string } | null;
-}
+};
 
 function toLegMethod(value: string | null): LegMethod {
   return value === "address" ? "address" : "store";
@@ -90,7 +79,7 @@ function mapSeasonalPricings(seasonalPricings: RawSeasonalPricing[]): SeasonalPr
       })),
     rates: sp.tiers
       .filter(
-        (t): t is RawTier & { period: number; price: string } =>
+        (t): t is SeasonalPricingTierRow & { period: number; price: string } =>
           typeof t.period === "number" && t.period > 0 && typeof t.price === "string",
       )
       .map((t, i) => ({
@@ -120,6 +109,16 @@ function mapProduct(p: RawProduct) {
     tulipInsurable: Boolean(p.tulipMapping?.productId),
     pricingTiers: mapPricingTiers(p.pricingTiers),
     seasonalPricings: mapSeasonalPricings(p.seasonalPricings),
+    // The product as the server's catalogue holds it (`loadPricingCatalog`):
+    // the form prices a line the edit adds with it, as the server does.
+    catalogue: toPricingCatalogProduct(
+      p,
+      p.pricingTiers,
+      buildSeasonalPricingConfigs(
+        p.seasonalPricings,
+        p.seasonalPricings.flatMap((season) => season.tiers),
+      ).get(p.id) ?? [],
+    ),
   };
 }
 
@@ -193,6 +192,21 @@ export async function getDashboardReservationEditContext(params: {
         orderBy: (activity, { desc }) => [desc(activity.createdAt)],
       },
       customer: { columns: { firstName: true, lastName: true } },
+      // Read for what settles the rental (`getRentalPaid`), as the payment section reads it.
+      payments: {
+        columns: {
+          id: true,
+          amount: true,
+          currency: true,
+          type: true,
+          method: true,
+          status: true,
+          refundOfPaymentId: true,
+          stripeRefundId: true,
+          stripePaymentIntentId: true,
+          stripeCheckoutSessionId: true,
+        },
+      },
       items: {
         with: {
           product: {
@@ -216,7 +230,7 @@ export async function getDashboardReservationEditContext(params: {
     return { editable: false as const };
   }
 
-  const [availableProducts, existingReservations] = await Promise.all([
+  const [availableProducts, [existingReservations, storeCurrency]] = await Promise.all([
     db.query.products.findMany({
       where: and(eq(products.storeId, storeId), eq(products.status, "active")),
       with: {
@@ -230,12 +244,16 @@ export async function getDashboardReservationEditContext(params: {
     }),
     db.query.stores
       .findFirst({ where: eq(stores.id, storeId), columns: { settings: true } })
-      .then((store) =>
-        getActiveReservations(
-          storeId,
-          reservationId,
-          store?.settings?.pendingBlocksAvailability ?? true,
-        ),
+      .then(
+        async (store) =>
+          [
+            await getActiveReservations(
+              storeId,
+              reservationId,
+              store?.settings?.pendingBlocksAvailability ?? true,
+            ),
+            normalizeCurrency(store?.settings?.currency),
+          ] as const,
       ),
   ]);
 
@@ -257,6 +275,8 @@ export async function getDashboardReservationEditContext(params: {
 
   return {
     editable: true as const,
+    // The server's instant: a line the edit adds takes the promotion in force at it.
+    pricedAt: new Date(),
     activity: reservation.activity,
     reservation: {
       id: reservation.id,
@@ -268,6 +288,11 @@ export async function getDashboardReservationEditContext(params: {
       subtotalAmount: reservation.subtotalAmount,
       depositAmount: reservation.depositAmount,
       totalAmount: reservation.totalAmount,
+      // What settles the rental now, in the reservation's currency, as the payment section reads it.
+      rentalPaid: getRentalPaid(
+        reservation.payments,
+        normalizeCurrency(reservation.currency, storeCurrency),
+      ),
       deliveryFee: reservation.deliveryFee,
       discountAmount: reservation.discountAmount,
       taxDisplayMode: reservation.taxDisplayMode,

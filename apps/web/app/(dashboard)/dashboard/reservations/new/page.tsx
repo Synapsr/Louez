@@ -17,6 +17,8 @@ import {
   storeLocations,
 } from '@louez/db';
 
+import { buildSeasonalPricingConfigs } from '@louez/api/services/catalogue-line-pricing';
+
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { resolveDashboardCreationSource } from '@/lib/openreplay/events';
@@ -88,29 +90,12 @@ async function getProductsWithTiers(storeId: string) {
         attributes: unit.attributes ?? null,
         inDowntimeNow: currentDowntimeUnitIds.has(unit.id),
       })),
-      seasonalPricings: p.seasonalPricings.map((sp) => ({
-        id: sp.id,
-        name: sp.name,
-        startDate: sp.startDate,
-        endDate: sp.endDate,
-        basePrice: parseFloat(sp.price),
-        tiers: sp.tiers
-          .filter((t) => t.minDuration !== null && t.discountPercent !== null)
-          .map((t) => ({
-            id: t.id,
-            minDuration: t.minDuration!,
-            discountPercent: parseFloat(t.discountPercent!),
-            displayOrder: t.displayOrder ?? 0,
-          })),
-        rates: sp.tiers
-          .filter((t) => t.period !== null && t.price !== null)
-          .map((t) => ({
-            id: t.id,
-            period: t.period!,
-            price: parseFloat(t.price!),
-            displayOrder: t.displayOrder ?? 0,
-          })),
-      })),
+      // As the server's catalogue reads them (`loadPricingCatalog`): the form prices with them.
+      seasonalPricings:
+        buildSeasonalPricingConfigs(
+          p.seasonalPricings,
+          p.seasonalPricings.flatMap((sp) => sp.tiers),
+        ).get(p.id) ?? [],
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
@@ -243,6 +228,8 @@ export default async function NewReservationPage({
         products={productsList}
         taxSettings={store.settings?.tax}
         currency={reservationCurrency(null, store.settings)}
+        // The server's clock decides which promotions are in force, not the browser's.
+        pricedAt={new Date()}
         tulipInsuranceMode={tulipInsuranceMode}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
