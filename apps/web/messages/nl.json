@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Zoek een adres...",
       "coordinatesSaved": "Coördinaten opgeslagen",
-      "editLocation": "Locatie bewerken"
+      "editLocation": "Locatie bewerken",
+      "chooseFromList": "Kies het adres uit de lijst.",
+      "chooseFromListOrMap": "Kies het adres uit de lijst of plaats het op de kaart."
     },
     "addressModal": {
       "title": "Adresdetails",
@@ -2450,6 +2452,8 @@
           "included": "Inbegrepen",
           "totalFee": "Totale bezorgkosten",
           "tooFar": "Adres overschrijdt maximale afstand ({maxDistance} km)",
+          "outboundAddressNotChosen": "Kies het afleveradres uit de lijst of plaats het op de kaart.",
+          "returnAddressNotChosen": "Kies het ophaaladres uit de lijst of plaats het op de kaart.",
           "savings": "Besparing",
           "deliveryFee": "Bezorgkosten"
         }
@@ -8174,6 +8178,13 @@
           "sessionFailed": "De betaling kon niet opnieuw worden gestart. Probeer het zo meteen opnieuw."
         }
       },
+      "paid": {
+        "metaTitle": "Betaling",
+        "received": "Je betaling voor boeking {number} bij {store} is ontvangen.",
+        "receivedEmailed": "Je betaling voor boeking {number} bij {store} is ontvangen. Er is een bevestiging naar je e-mail gestuurd.",
+        "unverifiedTitle": "Betaling nog niet gecontroleerd",
+        "unverified": "We konden de betaling voor boeking {number} bij {store} nog niet controleren. Als die gelukt is, wordt je boeking bijgewerkt."
+      },
       "customFields": {
         "savedSummary": "Gegevens al opgeslagen",
         "detailsIntro": "Zo kan {store} uw materiaal klaarzetten."
@@ -9564,6 +9575,8 @@
     "deliveryNotEnabled": "Levering is niet ingeschakeld voor deze winkel",
     "deliveryMinimumOrderAmountNotMet": "Bezorging is beschikbaar vanaf {amount} aan huur",
     "deliveryAddressRequired": "Voer een geldig afleveradres in",
+    "deliveryAddressNotChosen": "Het afleveradres moet uit de lijst worden gekozen of op de kaart worden geplaatst.",
+    "returnAddressNotChosen": "Het ophaaladres moet uit de lijst worden gekozen of op de kaart worden geplaatst.",
     "storeCoordinatesNotConfigured": "Winkelcoördinaten zijn niet geconfigureerd",
     "deliveryTooFar": "Het afleveradres is te ver weg (maximaal {maxDistance} km)",
     "deliveryRequired": "Bezorging is verplicht voor deze winkel",

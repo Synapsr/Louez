@@ -26,11 +26,16 @@ export const mount = (node: ReactNode) => {
   };
 };
 
-/** Lets pending promise callbacks and the renders they cause run. */
+/**
+ * Lets pending promise callbacks and the renders they cause run, enough
+ * rounds for a call through the app's oRPC client to be sent and answered.
+ */
 export const settle = async () => {
-  await act(async () => {
-    for (let round = 0; round < 5; round += 1) await Promise.resolve();
-  });
+  for (let pass = 0; pass < 4; pass += 1) {
+    await act(async () => {
+      for (let round = 0; round < 5; round += 1) await Promise.resolve();
+    });
+  }
 };
 
 export const tick = async (milliseconds: number) => {

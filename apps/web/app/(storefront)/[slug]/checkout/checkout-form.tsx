@@ -58,7 +58,7 @@ import {
   hasCheckoutDetailsStep,
 } from "./util.checkout-custom-fields";
 import { calculateCheckoutTotals, getCheckoutSubmitLabel } from "./util.checkout-totals";
-import { type CustomerAddressPick, getPickedCoordinates } from "./util.customer-address";
+import { type CustomerAddressPick, getDeliveryPrefill } from "./util.customer-address";
 import {
   checkoutFormOptions,
   createCheckoutValidator,
@@ -225,6 +225,7 @@ export const CheckoutForm = ({
     isDeliveryEnabled: delivery.isDeliveryEnabled,
     hasDetailsStep,
     validateCurrentStep,
+    isDeliveryReady: delivery.canContinue,
     scrollTargetRef: stepRef,
   });
 
@@ -355,28 +356,13 @@ export const CheckoutForm = ({
 
   const handleUseCustomerAddress = (leg: "outbound" | "return") => {
     const legAddress = leg === "outbound" ? delivery.outboundAddress : delivery.returnAddress;
-    const coordinates = getPickedCoordinates(customerAddressPick, values);
-    if (
-      legAddress.address ||
-      !values.address ||
-      coordinates.latitude === null ||
-      coordinates.longitude === null
-    ) {
-      return;
-    }
+    const prefill = getDeliveryPrefill(customerAddressPick, values);
+    if (legAddress.address || !prefill) return;
     const change =
       leg === "outbound"
         ? delivery.handleOutboundAddressChange
         : delivery.handleReturnAddressChange;
-    change(values.address, coordinates.latitude, coordinates.longitude);
-  };
-
-  const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
-    if (event.key !== "Enter" || stepFlow.isLastStep) return;
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || target.getAttribute("role") === "combobox") return;
-    event.preventDefault();
-    void stepFlow.goToNextStep();
+    change(prefill.address, prefill.latitude, prefill.longitude);
   };
 
   if (!isHydrated || resolutionStatus === "loading") {
@@ -498,7 +484,7 @@ export const CheckoutForm = ({
       }
     >
       <form.AppForm>
-        <form.Form formName="checkout" onKeyDown={handleFormKeyDown}>
+        <form.Form formName="checkout" onKeyDown={stepFlow.handleFormKeyDown}>
           {stepFlow.currentStep === "contact" && (
             <CheckoutContactStep
               form={form}

@@ -56,18 +56,18 @@ test("the returning customer's local checkout cannot submit before accepting the
   assert.equal(validator.safeParse({ ...values, acceptCgv: true }).success, true);
 });
 
-test("local address search resolves supplied suggestions and rejects unknown input without a fallback", async () => {
+test("local address search gives a picked suggestion its address and nothing for any other text", async () => {
   assert.deepEqual(await CHECKOUT_DEMO_ADDRESS_SOURCE.search("24"), []);
   const suggestions = await CHECKOUT_DEMO_ADDRESS_SOURCE.search("24 rue du Moulin");
   assert.equal(suggestions.length, 1);
   assert.equal(suggestions[0].placeId, "demo-checkout-carquefou");
-  const address = await CHECKOUT_DEMO_ADDRESS_SOURCE.resolve(suggestions[0].placeId);
+  const address = await CHECKOUT_DEMO_ADDRESS_SOURCE.details(suggestions[0].placeId);
   assert.deepEqual(address, CHECKOUT_DEMO_ADDRESSES[0]);
-  assert.deepEqual(
-    await CHECKOUT_DEMO_ADDRESS_SOURCE.resolve(CHECKOUT_DEMO_ADDRESSES[0].formattedAddress),
-    address,
+  assert.equal(
+    await CHECKOUT_DEMO_ADDRESS_SOURCE.details(CHECKOUT_DEMO_ADDRESSES[0].formattedAddress),
+    null,
   );
-  assert.equal(await CHECKOUT_DEMO_ADDRESS_SOURCE.resolve("unknown"), null);
+  assert.equal(await CHECKOUT_DEMO_ADDRESS_SOURCE.details("unknown"), null);
   assert.deepEqual(await CHECKOUT_DEMO_ADDRESS_SOURCE.search("unknown"), []);
   assert.equal((await CHECKOUT_DEMO_ADDRESS_SOURCE.search("reze")).length, 1);
 });

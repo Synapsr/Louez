@@ -846,6 +846,8 @@ export const DeliverySettingsForm = ({
                         <div className="space-y-4">
                           <AddressInput
                             value={testAddress}
+                            latitude={testLatitude}
+                            longitude={testLongitude}
                             onChange={handleTestAddressChange}
                             placeholder={t("simulator.testAddressPlaceholder")}
                           />

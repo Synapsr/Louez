@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "주소 검색...",
       "coordinatesSaved": "좌표가 저장되었습니다",
-      "editLocation": "위치 수정"
+      "editLocation": "위치 수정",
+      "chooseFromList": "목록에서 주소를 선택하세요.",
+      "chooseFromListOrMap": "목록에서 주소를 선택하거나 지도에 표시하세요."
     },
     "addressModal": {
       "title": "주소 세부정보",
@@ -2489,6 +2491,8 @@
           "included": "포함됨",
           "totalFee": "총 배송비",
           "tooFar": "주소가 최대 거리({maxDistance}km)를 초과합니다.",
+          "outboundAddressNotChosen": "목록에서 배송 주소를 선택하거나 지도에 표시하세요.",
+          "returnAddressNotChosen": "목록에서 회수 주소를 선택하거나 지도에 표시하세요.",
           "savings": "절약",
           "deliveryFee": "배송비"
         }
@@ -8174,6 +8178,13 @@
           "sessionFailed": "결제를 다시 시작할 수 없습니다. 잠시 후에 다시 시도해 보세요."
         }
       },
+      "paid": {
+        "metaTitle": "결제",
+        "received": "{store}의 예약 {number} 결제가 완료되었습니다.",
+        "receivedEmailed": "{store}의 예약 {number} 결제가 완료되었습니다. 확인 이메일을 보내 드렸습니다.",
+        "unverifiedTitle": "결제가 아직 확인되지 않았습니다",
+        "unverified": "{store}의 예약 {number} 결제를 아직 확인하지 못했습니다. 결제가 완료되었다면 예약이 업데이트됩니다."
+      },
       "customFields": {
         "savedSummary": "이미 등록된 정보",
         "detailsIntro": "이 정보는 {store}에서 장비를 준비하는 데 도움이 됩니다."
@@ -9564,6 +9575,8 @@
     "deliveryNotEnabled": "이 매장에는 배달이 활성화되어 있지 않습니다.",
     "deliveryMinimumOrderAmountNotMet": "렌탈 {amount}부터 배송 가능",
     "deliveryAddressRequired": "유효한 배송 주소를 입력하세요.",
+    "deliveryAddressNotChosen": "배송 주소는 목록에서 선택하거나 지도에 표시해야 합니다.",
+    "returnAddressNotChosen": "회수 주소는 목록에서 선택하거나 지도에 표시해야 합니다.",
     "storeCoordinatesNotConfigured": "매장 좌표가 구성되지 않았습니다.",
     "deliveryTooFar": "배송 주소가 너무 멀습니다(최대 {maxDistance}km).",
     "deliveryRequired": "이 매장은 배달이 필요합니다.",

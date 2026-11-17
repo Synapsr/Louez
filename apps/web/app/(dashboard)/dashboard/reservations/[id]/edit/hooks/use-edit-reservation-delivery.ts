@@ -10,7 +10,25 @@ import {
 } from '@/lib/utils/geo'
 import { fetchDeliveryDistanceKm } from '@/lib/utils/delivery-distance'
 
+import { lacksChosenPlace } from '@/app/(dashboard)/dashboard/reservations/util.delivery-leg-choice'
 import type { ReservationDelivery, StoreDeliveryInfo } from '../types'
+
+/**
+ * A leg's error when it goes to an address with no place chosen: it cannot
+ * be measured, so the edit cannot be saved until the address is chosen from
+ * the list, placed on the map, or the leg is switched to the store.
+ */
+export const ADDRESS_NOT_CHOSEN = 'addressNotChosen'
+
+const errorOf = (leg: DeliveryLegState) =>
+  leg.error ??
+  (lacksChosenPlace({
+    method: leg.method,
+    latitude: leg.address.latitude,
+    longitude: leg.address.longitude,
+  })
+    ? ADDRESS_NOT_CHOSEN
+    : null)
 
 export interface DeliveryLegAddress {
   address: string
@@ -299,12 +317,18 @@ export function useEditReservationDelivery({
   const hasDeliveryLegs =
     outbound.method === 'address' || inbound.method === 'address'
 
-  const hasErrors = outbound.error !== null || inbound.error !== null
+  // The rule holds only when the form shows and sends its delivery section
+  // (a store with delivery or several locations): without one, the person
+  // has no field to choose an address in, and the edit neither checks nor
+  // rewrites the legs.
+  const outboundError = storeDelivery ? errorOf(outbound) : outbound.error
+  const inboundError = storeDelivery ? errorOf(inbound) : inbound.error
+  const hasErrors = outboundError !== null || inboundError !== null
   const isCalculating = outboundIsCalculating || inboundIsCalculating
 
   return {
-    outbound: { ...outbound, fee: fees.outboundFee },
-    inbound: { ...inbound, fee: fees.returnFee },
+    outbound: { ...outbound, error: outboundError, fee: fees.outboundFee },
+    inbound: { ...inbound, error: inboundError, fee: fees.returnFee },
     totalFee: fees.totalFee,
     hasDeliveryLegs,
     hasErrors,

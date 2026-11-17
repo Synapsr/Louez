@@ -13,8 +13,8 @@ import { getRequestHost, isStorefrontHost } from "@/lib/util.storefront-host";
 // Product images (/files/…) stay crawlable on purpose.
 const PRIVATE_PATHS = [
   "/api/",
-  // Storefront funnels (/checkout also covers /checkout/return and
-  // /checkout/cancelled; /confirmation/{id} is a redirect to /account)
+  // Storefront funnels (/checkout also covers /checkout/return,
+  // /checkout/paid and /checkout/cancelled; /confirmation/{id} is a redirect to /account)
   "/account",
   "/checkout",
   "/pay/",

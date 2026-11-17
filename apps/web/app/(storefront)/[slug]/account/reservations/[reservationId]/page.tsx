@@ -25,6 +25,7 @@ import {
 } from "@louez/db";
 
 import { ReservationCartReset } from "@/components/storefront/account/reservation-cart-reset";
+import { cartResetOutcome } from "@/components/storefront/account/util.cart-reset-outcome";
 import type { ReservationDepositView } from "@/components/storefront/account/reservation-deposit-card";
 import type { ReservationInspectionView } from "@/components/storefront/account/reservation-inspections-card";
 
@@ -392,7 +393,10 @@ export default async function ReservationDetailPage({
   return (
     <>
       <StorefrontPageRefresh renderedAt={Date.now()} />
-      <ReservationCartReset event={event} />
+      <ReservationCartReset
+        reservationId={reservation.id}
+        outcome={cartResetOutcome(event, paymentStatus)}
+      />
       <ReservationPageView
         number={reservation.number}
         status={status}

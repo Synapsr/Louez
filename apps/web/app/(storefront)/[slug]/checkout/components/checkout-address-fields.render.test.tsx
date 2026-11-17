@@ -1,4 +1,6 @@
 import "@/lib/testing/install-dom";
+// Before the field, which builds the oRPC client with the `fetch` it finds.
+import { controlledRpc } from "@/lib/testing/fake-fetch";
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
@@ -9,10 +11,10 @@ import { NextIntlClientProvider } from "next-intl";
 
 import type { AddressDetails, AddressSuggestion } from "@louez/types";
 
+import { PublicEnvProvider } from "@/components/shared/public-env-provider";
 import { useAppForm } from "@/hooks/form/form";
 import {
   blur,
-  deferred,
   enableMockTimers,
   focus,
   mount,
@@ -22,6 +24,7 @@ import {
   tick,
   typeInto,
 } from "@/lib/testing/dom";
+import { publicEnvSchema } from "@/lib/validators/validator.public-env";
 import messages from "@/messages/fr.json";
 
 import {
@@ -57,24 +60,11 @@ const voltaireSuggestion: AddressSuggestion = {
   secondaryText: "Saint-Ouen-sur-Seine",
 };
 
-type Answer = ReturnType<typeof deferred<unknown>>;
-
-/** The address endpoints, answered by the test when it chooses. */
-const controlledQueryClient = () => {
-  const requests: Array<{ endpoint: "autocomplete" | "details" | "resolve"; answer: Answer }> = [];
-  const queryClient = new QueryClient();
-  queryClient.fetchQuery = ((options: { queryKey: unknown }) => {
-    const key = JSON.stringify(options.queryKey);
-    const endpoint = (["autocomplete", "details", "resolve"] as const).find((name) =>
-      key.includes(`"${name}"`),
-    );
-    assert.ok(endpoint, `unexpected query ${key}`);
-    const answer = deferred<unknown>();
-    requests.push({ endpoint, answer });
-    return answer.promise;
-  }) as unknown as typeof queryClient.fetchQuery;
-  return { queryClient, requests };
-};
+/** The address calls, at the network, answered by the test when it chooses. */
+const controlledNetwork = () => ({
+  queryClient: new QueryClient(),
+  requests: controlledRpc({}),
+});
 
 interface Snapshot {
   values: CustomerAddressFields;
@@ -123,7 +113,7 @@ const AddressFields = ({
 };
 
 const renderAddress = () => {
-  const { queryClient, requests } = controlledQueryClient();
+  const { queryClient, requests } = controlledNetwork();
   const snapshot = {
     current: {
       values: { address: "", postalCode: "", city: "" },
@@ -132,11 +122,18 @@ const renderAddress = () => {
   };
   const controls: Controls = { reset: () => {}, setShown: () => {} };
   const view = mount(
-    <QueryClientProvider client={queryClient}>
-      <NextIntlClientProvider locale="fr" messages={messages}>
-        <AddressFields snapshot={snapshot} controls={controls} />
-      </NextIntlClientProvider>
-    </QueryClientProvider>,
+    <PublicEnvProvider
+      config={publicEnvSchema.parse({
+        NEXT_PUBLIC_APP_URL: "https://app.louez.test",
+        NEXT_PUBLIC_APP_DOMAIN: "louez.test",
+      })}
+    >
+      <QueryClientProvider client={queryClient}>
+        <NextIntlClientProvider locale="fr" messages={messages}>
+          <AddressFields snapshot={snapshot} controls={controls} />
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    </PublicEnvProvider>,
   );
   const byId = (id: string) =>
     view.container.querySelector(`#${id}`) as unknown as HTMLInputElement;

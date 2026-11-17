@@ -30,12 +30,6 @@ export const getCustomerAddressFields = (details: AddressDetails): CustomerAddre
 };
 
 /**
- * The customer's own address keeps what they typed: leaving the field never
- * looks it up, only a suggestion they pick replaces it.
- */
-export const CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT = false;
-
-/**
  * The picked address's coordinates, while the street, the postal code and the
  * city still hold what the pick filled; none once any of them differs.
  */
@@ -49,6 +43,29 @@ export const getPickedCoordinates = (
   pick.fields.city === values.city
     ? { latitude: pick.latitude, longitude: pick.longitude }
     : NO_COORDINATES;
+
+/**
+ * What a delivery or collection address starts from: the customer's own. A
+ * picked address comes with its coordinates; one typed, or saved without a
+ * pick, comes as its text alone, street, postal code and city, so the field
+ * asks for a choice and searches that text when it is focused. Nothing when
+ * the customer gave no street.
+ */
+export const getDeliveryPrefill = (
+  pick: CustomerAddressPick | null,
+  values: CustomerAddressFields,
+): (Coordinates & { address: string }) | null => {
+  if (!values.address.trim()) return null;
+  const coordinates = getPickedCoordinates(pick, values);
+  if (coordinates.latitude !== null && coordinates.longitude !== null) {
+    return { address: values.address, ...coordinates };
+  }
+  const locality = [values.postalCode.trim(), values.city.trim()].filter(Boolean).join(" ");
+  return {
+    address: [values.address.trim(), locality].filter(Boolean).join(", "),
+    ...NO_COORDINATES,
+  };
+};
 
 /**
  * The postal code and the city once the street is edited: a value the pick

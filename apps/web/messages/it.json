@@ -78,7 +78,9 @@
     "addressInput": {
       "placeholder": "Cerca un indirizzo...",
       "coordinatesSaved": "Coordinate salvate",
-      "editLocation": "Modifica posizione"
+      "editLocation": "Modifica posizione",
+      "chooseFromList": "Scegli l’indirizzo dall’elenco.",
+      "chooseFromListOrMap": "Scegli l’indirizzo dall’elenco o posizionalo sulla mappa."
     },
     "addressModal": {
       "title": "Dettagli indirizzo",
@@ -2450,6 +2452,8 @@
           "included": "Incluso",
           "totalFee": "Tariffa di consegna totale",
           "tooFar": "L'indirizzo supera la distanza massima ({maxDistance} km)",
+          "outboundAddressNotChosen": "Scegli l’indirizzo di consegna dall’elenco o posizionalo sulla mappa.",
+          "returnAddressNotChosen": "Scegli l’indirizzo di ritiro dall’elenco o posizionalo sulla mappa.",
           "savings": "Risparmio",
           "deliveryFee": "Spese di consegna"
         }
@@ -8174,6 +8178,13 @@
           "sessionFailed": "Non è stato possibile riavviare il pagamento. Riprova tra poco."
         }
       },
+      "paid": {
+        "metaTitle": "Pagamento",
+        "received": "Il pagamento della prenotazione {number} presso {store} è stato ricevuto.",
+        "receivedEmailed": "Il pagamento della prenotazione {number} presso {store} è stato ricevuto. Ti abbiamo inviato una conferma via e-mail.",
+        "unverifiedTitle": "Pagamento non ancora verificato",
+        "unverified": "Non abbiamo ancora potuto verificare il pagamento della prenotazione {number} presso {store}. Se è andato a buon fine, la prenotazione verrà aggiornata."
+      },
       "customFields": {
         "savedSummary": "Informazioni già registrate",
         "detailsIntro": "Queste informazioni aiutano {store} a preparare la tua attrezzatura."
@@ -9564,6 +9575,8 @@
     "deliveryNotEnabled": "La consegna non è attivata per questo negozio",
     "deliveryMinimumOrderAmountNotMet": "La consegna è disponibile a partire da {amount} di noleggio",
     "deliveryAddressRequired": "Inserisci un indirizzo di consegna valido",
+    "deliveryAddressNotChosen": "L’indirizzo di consegna deve essere scelto dall’elenco o posizionato sulla mappa.",
+    "returnAddressNotChosen": "L’indirizzo di ritiro deve essere scelto dall’elenco o posizionato sulla mappa.",
     "storeCoordinatesNotConfigured": "Le coordinate del negozio non sono configurate",
     "deliveryTooFar": "L'indirizzo di consegna è troppo lontano (massimo {maxDistance} km)",
     "deliveryRequired": "La consegna è obbligatoria per questo negozio",
