@@ -23,7 +23,7 @@ interface UseCheckoutStepFlowParams {
   /**
    * Whether the delivery step holds what the order needs (each address leg
    * chosen and priced). The step is left forward only then, whatever asks:
-   * its button or a key.
+   * its button, a key, or a jump to a later step.
    */
   isDeliveryReady: boolean;
   /** Element scrolled into view when the step changes. */
@@ -97,13 +97,19 @@ export const useCheckoutStepFlow = ({
 
   const goToStep = useCallback(
     (stepId: StepId) => {
-      const targetIndex = steps.indexOf(stepId);
-      if (targetIndex < 0 || targetIndex === currentStepIndex) return;
+      const requestedIndex = steps.indexOf(stepId);
+      if (requestedIndex < 0) return;
+      // A jump past a delivery step still to complete stops on it.
+      const deliveryIndex = steps.indexOf("delivery");
+      const stopsOnDelivery =
+        deliveryIndex >= 0 && requestedIndex > deliveryIndex && !isDeliveryReady;
+      const targetIndex = stopsOnDelivery ? deliveryIndex : requestedIndex;
+      if (targetIndex === currentStepIndex) return;
 
       setStepDirection(targetIndex > currentStepIndex ? "forward" : "backward");
-      setCurrentStep(stepId);
+      setCurrentStep(steps[targetIndex]);
     },
-    [currentStepIndex, steps],
+    [currentStepIndex, isDeliveryReady, steps],
   );
 
   return {

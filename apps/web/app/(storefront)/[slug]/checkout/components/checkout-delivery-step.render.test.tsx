@@ -25,6 +25,7 @@ import {
 import { publicEnvSchema } from "@/lib/validators/validator.public-env";
 import messages from "@/messages/en.json";
 
+import type { StepId } from "../checkout.types";
 import { useCheckoutDelivery } from "../hooks/use-checkout-delivery";
 import { useCheckoutStepFlow } from "../hooks/use-checkout-step-flow";
 import {
@@ -198,6 +199,7 @@ const renderStep = ({
     distances,
     delivery,
     currentStep: () => flow.current?.currentStep,
+    goToStep: (stepId: StepId) => act(() => flow.current?.goToStep(stepId)),
     get input() {
       return view.container.querySelector(
         "#fulfillment-outbound-address",
@@ -301,6 +303,37 @@ test("Enter leaves the delivery step only once its address is chosen", async () 
   pressKey(step.input, "Enter");
   await settle();
   assert.equal(step.currentStep(), "confirm");
+});
+
+test("a jump to a later step stops on a delivery step whose address is no longer chosen", async () => {
+  const step = renderStep();
+  unmount = step.unmount;
+
+  typeInto(step.input, "24 rue du moulin");
+  await tick(SEARCH_DELAY);
+  step.searches.at(-1)?.answer.resolve([carquefouSuggestion]);
+  await settle();
+  pressKey(step.input, "ArrowDown");
+  pressKey(step.input, "Enter");
+  step.details[0].answer.resolve(carquefou);
+  await settle();
+  await tick(BLUR_DELAY * 2);
+  step.goToStep("confirm");
+  assert.equal(step.currentStep(), "confirm");
+
+  // Back on the step, the address is typed over: it is to choose again.
+  step.goToStep("delivery");
+  typeInto(step.input, "25 rue du moulin");
+  await settle();
+  assert.equal(step.canContinue(), false);
+  step.goToStep("confirm");
+  assert.equal(step.currentStep(), "delivery");
+
+  // From an earlier step too, the jump lands on the delivery step.
+  step.goToStep("contact");
+  assert.equal(step.currentStep(), "contact");
+  step.goToStep("confirm");
+  assert.equal(step.currentStep(), "delivery");
 });
 
 test("the customer's own address without a pick starts the delivery address as text to choose", async () => {
