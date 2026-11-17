@@ -82,6 +82,19 @@ describe("strict analytics capture", () => {
     assert.equal(Reflect.get(properties, "$lib"), "posthog-node");
   });
 
+  test("an event about a store carries its store group; one without a store has none", async () => {
+    await analytics.captureReservationActionSucceededOrThrow(event);
+    assert.deepEqual(Reflect.get(Object(requests[0]?.body.properties), "$groups"), {
+      store: "store",
+    });
+    await analytics.captureServerEventOrThrow({
+      distinctId: "owner",
+      event: "something",
+      properties: { feature: "x" },
+    });
+    assert.equal(Reflect.get(Object(requests[1]?.body.properties), "$groups"), undefined);
+  });
+
   test("a retried row sends the same event id and time, so PostHog keeps one event", async () => {
     const identity = {
       eventUuid: "0190f3f0-5b6e-7c3a-9d2e-1a2b3c4d5e6f",
