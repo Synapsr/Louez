@@ -1,4 +1,6 @@
 import "@/lib/testing/install-dom";
+// Before the field, which builds the oRPC client with the `fetch` it finds.
+import { controlledRpc } from "@/lib/testing/fake-fetch";
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
@@ -10,7 +12,6 @@ import type { AddressDetails, AddressSuggestion, DeliverySettings } from "@louez
 
 import {
   blur,
-  deferred,
   enableMockTimers,
   mount,
   pointerClick,
@@ -94,29 +95,14 @@ const deliveredTo = (outbound: {
   returnDistanceKm: null,
 });
 
-/** The address and distance endpoints; a distance answers 12 km at once. */
-const controlledQueryClient = () => {
-  const requests: Array<{
-    endpoint: "autocomplete" | "details" | "distance";
-    answer: ReturnType<typeof deferred<unknown>>;
-  }> = [];
-  const queryClient = new QueryClient();
-  queryClient.fetchQuery = ((options: { queryKey: unknown }) => {
-    const key = JSON.stringify(options.queryKey);
-    const endpoint = (["autocomplete", "details", "distance"] as const).find((name) =>
-      key.includes(`"${name}"`),
-    );
-    assert.ok(endpoint, `unexpected query ${key}`);
-    const answer = deferred<unknown>();
-    requests.push({ endpoint, answer });
-    if (endpoint === "distance") answer.resolve({ distanceKm: 12 });
-    return answer.promise;
-  }) as unknown as typeof queryClient.fetchQuery;
-  return { queryClient, requests };
-};
+/** The address and distance calls, at the network, answered by the test; a distance answers 12 km at once. */
+const controlledNetwork = () => ({
+  queryClient: new QueryClient(),
+  requests: controlledRpc({ distance: { distanceKm: 12 } }),
+});
 
 const renderSection = (initialDelivery: ReservationDelivery) => {
-  const { queryClient, requests } = controlledQueryClient();
+  const { queryClient, requests } = controlledNetwork();
   const delivery = { current: null as ReturnType<typeof useEditReservationDelivery> | null };
 
   const Section = () => {
@@ -207,6 +193,8 @@ test("a delivery address typed over a priced one is an error until a suggestion 
   pointerClick(
     document.querySelector('[data-address-suggestion="carquefou"]') as unknown as HTMLElement,
   );
+  // The pick is sent through the client once its steps have run.
+  await settle();
   section.requests
     .findLast((request) => request.endpoint === "details")
     ?.answer.resolve({

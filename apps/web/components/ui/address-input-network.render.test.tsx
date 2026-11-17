@@ -11,6 +11,7 @@ import { NextIntlClientProvider } from "next-intl";
 import type { AddressSuggestion } from "@louez/types";
 
 import { PublicEnvProvider } from "@/components/shared/public-env-provider";
+import { orpc } from "@/lib/orpc/react";
 import { enableMockTimers, mount, pressKey, settle, tick, typeInto } from "@/lib/testing/dom";
 import { publicEnvSchema } from "@/lib/validators/validator.public-env";
 import messages from "@/messages/en.json";
@@ -18,9 +19,11 @@ import messages from "@/messages/en.json";
 import { AddressInput } from "./address-input";
 import { ADDRESS_REQUEST_BOUND_MS } from "./util.address-input";
 
-// The address field through the app's own client and a real query client: a
-// request given up at the bound is cancelled, so asking the same text again
-// reaches the network again. A request another field still waits for is not.
+// The address field through the app's own client, next to a real query
+// client: each search and pick of the field is its own request, aborted when
+// the field gives it up (at the bound, or when it goes), so asking the same
+// text again reaches the network again. A query of the same text that another
+// consumer runs through the query client is never cancelled by the field.
 
 const SEARCH_DELAY = 300;
 
@@ -64,7 +67,15 @@ const Field = ({ name }: { name: string }) => {
   );
 };
 
-const renderFields = (names: string[]) => {
+/** The query clients of the suite, emptied after each test so no query outlives it. */
+const queryClients: QueryClient[] = [];
+const newQueryClient = () => {
+  const queryClient = new QueryClient();
+  queryClients.push(queryClient);
+  return queryClient;
+};
+
+const renderFields = (names: string[], queryClient = newQueryClient()) => {
   const view = mount(
     <PublicEnvProvider
       config={publicEnvSchema.parse({
@@ -72,7 +83,7 @@ const renderFields = (names: string[]) => {
         NEXT_PUBLIC_APP_DOMAIN: "louez.test",
       })}
     >
-      <QueryClientProvider client={new QueryClient()}>
+      <QueryClientProvider client={queryClient}>
         <NextIntlClientProvider locale="en" timeZone="Europe/Paris" messages={messages}>
           {names.map((name) => (
             <Field key={name} name={name} />
@@ -104,6 +115,7 @@ beforeEach(() => enableMockTimers());
 afterEach(() => {
   unmount?.();
   unmount = null;
+  for (const queryClient of queryClients.splice(0)) queryClient.clear();
   document.body.innerHTML = "";
   mock.timers.reset();
 });
@@ -133,7 +145,7 @@ test("a search given up at the bound is cancelled, and asking the same text agai
   assert.deepEqual(view.shownSuggestions(), ["brest"]);
 });
 
-test("a search another field still waits for is not cancelled when the first gives up", async () => {
+test("each field asks on its own: one giving up aborts only its own request", async () => {
   const calls = network();
   const view = renderFields(["delivery", "collection"]);
   unmount = view.unmount;
@@ -145,13 +157,58 @@ test("a search another field still waits for is not cancelled when the first giv
   typeInto(view.input("collection"), "8 quai");
   await tick(SEARCH_DELAY);
   await flush();
-  assert.equal(calls.length, 1, "the second field waits for the same request");
+  assert.equal(calls.length, 2, "each field sends its own request");
 
   await tick(ADDRESS_REQUEST_BOUND_MS / 2);
   await flush();
-  assert.equal(calls[0].signal.aborted, false, "the other field still waits for it");
+  assert.equal(calls[0].signal.aborted, true, "the first field gave its request up");
+  assert.equal(calls[1].signal.aborted, false, "the second field still waits for its own");
 
-  calls[0].answer(rpcAnswer({ suggestions: [brest] }));
+  calls[1].answer(rpcAnswer({ suggestions: [brest] }));
   await flush();
   assert.deepEqual(view.shownSuggestions(), ["brest"]);
 });
+
+for (const [ending, end] of [
+  [
+    "gives its search up",
+    (_view: ReturnType<typeof renderFields>) => tick(ADDRESS_REQUEST_BOUND_MS),
+  ],
+  [
+    "goes",
+    async (view: ReturnType<typeof renderFields>) => {
+      view.unmount();
+      unmount = null;
+    },
+  ],
+] as const) {
+  test(`a query of the same text another consumer runs is not cancelled when the field ${ending}`, async () => {
+    const calls = network();
+    const queryClient = newQueryClient();
+    const view = renderFields(["delivery"], queryClient);
+    unmount = view.unmount;
+
+    const consumer = queryClient.fetchQuery(
+      orpc.public.address.autocomplete.queryOptions({ input: { query: "8 quai" } }),
+    );
+    // What the other consumer got: its answer, or the error it was cancelled with.
+    let outcome: unknown = "pending";
+    consumer.then(
+      (answer) => (outcome = answer),
+      (error: unknown) => (outcome = error),
+    );
+    await flush();
+    assert.equal(calls.length, 1);
+    typeInto(view.input("delivery"), "8 quai");
+    await tick(SEARCH_DELAY);
+    await flush();
+
+    await end(view);
+    await flush();
+    assert.equal(calls[0].signal.aborted, false, "the other consumer's request goes on");
+
+    calls[0].answer(rpcAnswer({ suggestions: [brest] }));
+    await flush();
+    assert.deepEqual(outcome, { suggestions: [brest] });
+  });
+}

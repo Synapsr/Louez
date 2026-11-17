@@ -1,4 +1,6 @@
 import "@/lib/testing/install-dom";
+// Before the field, which builds the oRPC client with the `fetch` it finds.
+import { controlledRpc } from "@/lib/testing/fake-fetch";
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
@@ -9,7 +11,6 @@ import type { AddressDetails, AddressSuggestion, DeliverySettings } from "@louez
 
 import {
   blur,
-  deferred,
   enableMockTimers,
   focus,
   mount,
@@ -18,6 +19,8 @@ import {
   tick,
   typeInto,
 } from "@/lib/testing/dom";
+import { PublicEnvProvider } from "@/components/shared/public-env-provider";
+import { publicEnvSchema } from "@/lib/validators/validator.public-env";
 import messages from "@/messages/en.json";
 
 import { useNewReservationDelivery } from "../hooks/use-new-reservation-delivery";
@@ -54,32 +57,14 @@ const carquefouSuggestion: AddressSuggestion = {
   secondaryText: "Carquefou",
 };
 
-type Endpoint = "autocomplete" | "details" | "distance";
-
-/** The address endpoints answered by the test; a distance answers 12 km at once. */
-const controlledQueryClient = () => {
-  const requests: Array<{
-    endpoint: Endpoint;
-    key: string;
-    answer: ReturnType<typeof deferred<unknown>>;
-  }> = [];
-  const queryClient = new QueryClient();
-  queryClient.fetchQuery = ((options: { queryKey: unknown }) => {
-    const key = JSON.stringify(options.queryKey);
-    const endpoint = (["autocomplete", "details", "distance"] as const).find((name) =>
-      key.includes(`"${name}"`),
-    );
-    assert.ok(endpoint, `unexpected query ${key}`);
-    const answer = deferred<unknown>();
-    requests.push({ endpoint, key, answer });
-    if (endpoint === "distance") answer.resolve({ distanceKm: 12 });
-    return answer.promise;
-  }) as unknown as typeof queryClient.fetchQuery;
-  return { queryClient, requests };
-};
+/** The address and distance calls, at the network, answered by the test; a distance answers 12 km at once. */
+const controlledNetwork = () => ({
+  queryClient: new QueryClient(),
+  requests: controlledRpc({ distance: { distanceKm: 12 } }),
+});
 
 const renderStep = () => {
-  const { queryClient, requests } = controlledQueryClient();
+  const { queryClient, requests } = controlledNetwork();
   const delivery = { current: null as ReturnType<typeof useNewReservationDelivery> | null };
 
   const Step = () => {
@@ -122,11 +107,18 @@ const renderStep = () => {
   };
 
   const view = mount(
-    <QueryClientProvider client={queryClient}>
-      <NextIntlClientProvider locale="en" timeZone="Europe/Paris" messages={messages}>
-        <Step />
-      </NextIntlClientProvider>
-    </QueryClientProvider>,
+    <PublicEnvProvider
+      config={publicEnvSchema.parse({
+        NEXT_PUBLIC_APP_URL: "https://app.louez.test",
+        NEXT_PUBLIC_APP_DOMAIN: "louez.test",
+      })}
+    >
+      <QueryClientProvider client={queryClient}>
+        <NextIntlClientProvider locale="en" timeZone="Europe/Paris" messages={messages}>
+          <Step />
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    </PublicEnvProvider>,
   );
   const lookups = () => requests.filter((request) => request.endpoint === "details");
   return {
@@ -187,6 +179,8 @@ test("a picked delivery address is priced from the pick and stays when the field
   pointerClick(
     document.querySelector('[data-address-suggestion="carquefou"]') as unknown as HTMLElement,
   );
+  // The pick is sent through the client once its steps have run.
+  await settle();
   step.lookups()[0].answer.resolve({ details: carquefou });
   await settle();
   await tick(BLUR_DELAY);
@@ -196,7 +190,7 @@ test("a picked delivery address is priced from the pick and stays when the field
 
   assert.equal(step.lookups().length, 1);
   assert.equal(step.distances().length, 1);
-  assert.ok(step.distances()[0].key.includes(String(carquefou.latitude)));
+  assert.equal(step.delivery.current?.outboundDistance, 12, "measured from the pick");
   assert.equal(step.input.value, carquefou.formattedAddress);
   assert.equal(step.delivery.current?.outboundAddress.latitude, carquefou.latitude);
   assert.equal(step.delivery.current?.canContinue, true);

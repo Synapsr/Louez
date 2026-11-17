@@ -9,7 +9,6 @@ import {
   useState,
 } from 'react';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, MapPin, Search, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
@@ -26,12 +25,11 @@ import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
 import {
-  fetchWithinBound,
-  isGivenUp,
-  withinRequestBound,
+  AddressRequestTimeout,
+  askWithinBound,
 } from '@/components/ui/util.address-input';
 
-import { orpc } from '@/lib/orpc/react';
+import { orpcClient } from '@/lib/orpc/client';
 
 export interface AddressInputSource {
   search: (query: string) => AddressSuggestion[] | Promise<AddressSuggestion[]>;
@@ -115,7 +113,6 @@ export const AddressInput = ({
   relatedValues,
 }: AddressInputProps) => {
   const t = useTranslations('common.addressInput');
-  const queryClient = useQueryClient();
   const [inputValue, setInputValueState] = useState(value);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   // The spinner belongs to the request that last started one: an earlier
@@ -145,8 +142,10 @@ export const AddressInput = ({
   // list answers one text of a mounted field.
   const inputTextRef = useRef(value);
   const unmountedRef = useRef(false);
-  // Aborted with the field: its requests stop waiting, their timers cleared.
-  const lifetimeRef = useRef<AbortController | null>(null);
+  // The field's own requests, never shared: a newer search or pick, or the
+  // field going, aborts the one before, and clears its bound.
+  const searchRequestRef = useRef<AbortController | null>(null);
+  const pickRequestRef = useRef<AbortController | null>(null);
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Writes the text the field shows; the ref moves at once, before React commits. */
   const setInputValue = (text: string) => {
@@ -196,12 +195,11 @@ export const AddressInput = ({
   // void, and none of its timers is left to run.
   useEffect(() => {
     unmountedRef.current = false;
-    const lifetime = new AbortController();
-    lifetimeRef.current = lifetime;
     return () => {
       unmountedRef.current = true;
       writeGenerationRef.current += 1;
-      lifetime.abort();
+      searchRequestRef.current?.abort();
+      pickRequestRef.current?.abort();
       if (blurTimerRef.current !== null) clearTimeout(blurTimerRef.current);
       blurTimerRef.current = null;
     };
@@ -269,24 +267,29 @@ export const AddressInput = ({
       // does not void it: the street's suggestions are still the street's.
       const isCurrent = () => !unmountedRef.current && inputTextRef.current === query;
       const request = startLoading();
+      searchRequestRef.current?.abort();
+      const ask = new AbortController();
+      searchRequestRef.current = ask;
       try {
-        const signal = lifetimeRef.current?.signal;
-        const search = orpc.public.address.autocomplete.queryOptions({ input: { query } });
-        const data = source
-          ? { suggestions: await withinRequestBound(source.search(query), { signal }) }
-          : await fetchWithinBound(
-              queryClient,
-              search.queryKey,
-              () => queryClient.fetchQuery(search),
-              signal,
-            );
+        const found = await askWithinBound(
+          (signal) =>
+            source
+              ? source.search(query)
+              : orpcClient.public.address
+                  .autocomplete({ query }, { signal })
+                  .then((data) => data.suggestions),
+          ask,
+        );
         if (!isCurrent()) return;
         suggestionsTextRef.current = query;
-        setSuggestions(data.suggestions || []);
-        setIsOpen((data.suggestions || []).length > 0);
+        setSuggestions(found || []);
+        setIsOpen((found || []).length > 0);
         setSelectedIndex(-1);
       } catch (error) {
-        if (!unmountedRef.current) console.error('Address search error:', error);
+        // A search a newer one replaced, or that its field took with it, is no failure.
+        if (!ask.signal.aborted || error instanceof AddressRequestTimeout) {
+          console.error('Address search error:', error);
+        }
         // Failed or given up: the field is back to no list, so Enter or a
         // focus searches the text again.
         if (isCurrent()) {
@@ -294,10 +297,11 @@ export const AddressInput = ({
           setIsOpen(false);
         }
       } finally {
+        if (searchRequestRef.current === ask) searchRequestRef.current = null;
         stopLoading(request);
       }
     },
-    [queryClient, source],
+    [source],
   );
 
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
@@ -330,39 +334,37 @@ export const AddressInput = ({
           '',
         );
       };
+      pickRequestRef.current?.abort();
+      const ask = new AbortController();
+      pickRequestRef.current = ask;
       try {
-        const signal = lifetimeRef.current?.signal;
-        const lookup = orpc.public.address.details.queryOptions({
-          input: { placeId: suggestion.placeId },
-        });
-        const data = source
-          ? { details: await withinRequestBound(source.details(suggestion.placeId), { signal }) }
-          : await fetchWithinBound(
-              queryClient,
-              lookup.queryKey,
-              () => queryClient.fetchQuery(lookup),
-              signal,
-            );
+        const details = await askWithinBound(
+          (signal) =>
+            source
+              ? source.details(suggestion.placeId)
+              : orpcClient.public.address
+                  .details({ placeId: suggestion.placeId }, { signal })
+                  .then((data) => data.details),
+          ask,
+        );
 
         if (!isCurrent()) return;
-        if (data.details) {
-          const {
-            formattedAddress,
-            latitude: lat,
-            longitude: lng,
-          } = data.details;
+        if (details) {
+          const { formattedAddress, latitude: lat, longitude: lng } = details;
           setInputValue(formattedAddress);
           emitChange(formattedAddress, lat, lng, formattedAddress, '');
-          onAddressResolved?.(data.details);
+          onAddressResolved?.(details);
         } else {
           keepDescription();
         }
       } catch (error) {
-        if (!unmountedRef.current || !isGivenUp(error)) {
+        // A pick a newer one replaced, or that its field took with it, is no failure.
+        if (!ask.signal.aborted || error instanceof AddressRequestTimeout) {
           console.error('Error fetching address details:', error);
         }
         if (isCurrent()) keepDescription();
       } finally {
+        if (pickRequestRef.current === ask) pickRequestRef.current = null;
         stopLoading(request);
         if (pickInFlightRef.current === generation) {
           pickInFlightRef.current = null;
@@ -374,7 +376,7 @@ export const AddressInput = ({
         }
       }
     },
-    [onAddressResolved, onChange, queryClient, source],
+    [onAddressResolved, onChange, source],
   );
 
   const handleClear = () => {
