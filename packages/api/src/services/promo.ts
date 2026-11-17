@@ -5,11 +5,8 @@ import { promoCodes } from "@louez/db/schema";
 import type { PromoCodeSnapshot } from "@louez/types";
 import type { StorefrontPromoValidateOutput } from "@louez/validations";
 
-import {
-  loadPricingCatalog,
-  priceCatalogLine,
-  type PricingCatalogLineInput,
-} from "./pricing-catalog";
+import { priceCatalogLine, type PricingCatalogLineInput } from "./catalogue-line-pricing";
+import { loadPricingCatalog } from "./pricing-catalog";
 
 /** The promo row fields the evaluation needs (a subset of `promoCodes`). */
 export interface PromoCodeEvaluationRow {

@@ -26,6 +26,7 @@ import { STORE_KEY } from "./actions-test-stubs";
 import type { Product as FormProduct } from "./new/types";
 import { creationTotals } from "./new/utils/creation-totals";
 import { productLinePricing } from "./new/utils/product-line-pricing";
+import { buildSeasonalPricingConfigs } from "@louez/api/services/catalogue-line-pricing";
 
 // A booking typed in the dashboard, on a migrated database: what stock it is
 // checked against, when it is refused with its shortfalls, what it writes when
@@ -339,6 +340,71 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       sendConfirmationEmail: false,
       ...options,
     });
+
+  /** A product as the creation page loads it (`getProductsWithTiers`), its seasons as the server reads them. */
+  async function formProductOf(productId: string): Promise<FormProduct> {
+    const row = await louezDb.db.query.products.findFirst({
+      where: eq(louezDb.products.id, productId),
+      with: { pricingTiers: true, seasonalPricings: { with: { tiers: true } } },
+    });
+    assert.ok(row);
+    return {
+      ...row,
+      units: [],
+      seasonalPricings:
+        buildSeasonalPricingConfigs(
+          row.seasonalPricings,
+          row.seasonalPricings.flatMap((season) => season.tiers),
+        ).get(row.id) ?? [],
+    };
+  }
+
+  /**
+   * The total the creation form shows, and sends, for these lines: each
+   * priced by the form (`productLinePricing`) at `now`, totalled by
+   * `creationTotals` in the store's settings.
+   */
+  async function formTotal(
+    lines: Array<{ productId: string; quantity: number; priceOverride?: number }>,
+    window: { start: Date; end: Date; now: Date },
+    settings: StoreSettings,
+  ) {
+    const productLines = [];
+    for (const [index, line] of lines.entries()) {
+      const product = await formProductOf(line.productId);
+      const pricing = productLinePricing({
+        product,
+        selectedItem: {
+          lineId: String(index),
+          productId: line.productId,
+          quantity: line.quantity,
+          ...(line.priceOverride === undefined
+            ? {}
+            : { priceOverride: { unitPrice: line.priceOverride } }),
+        },
+        startDate: window.start,
+        endDate: window.end,
+        timezone: settings.timezone,
+        now: window.now,
+      });
+      productLines.push({
+        subtotal: pricing.lineSubtotal,
+        unitPrice: pricing.lineUnitPrice,
+        typed: pricing.hasPriceOverride,
+        taxSettings: product.taxSettings ?? null,
+      });
+    }
+    return creationTotals({
+      productLines,
+      customLines: [],
+      insuranceAmount: 0,
+      deliveryFee: 0,
+      discountAmount: 0,
+      deposit: 0,
+      taxSettings: settings.tax,
+      currency: settings.currency,
+    }).total;
+  }
 
   /** How many reservations and activity rows the store holds: unchanged by a refusal. */
   async function storeCounts() {
@@ -1422,6 +1488,210 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
     });
   });
 
+  describe("the total the form shows is the server's", () => {
+    const HOUR = 60 * MINUTE;
+    const ALWAYS = { startsOn: null, endsOn: null };
+    const BEFORE_TAX = { enabled: true, defaultRate: 20, displayMode: "exclusive" as const };
+    const WITH_TAX = { enabled: true, defaultRate: 20, displayMode: "inclusive" as const };
+
+    interface Shape {
+      name: string;
+      product: Partial<typeof louezDb.products.$inferInsert>;
+      tiers?: Array<
+        { minDuration: number; discountPercent: string } | { period: number; price: string }
+      >;
+      /** Seasons over the window, each with its own price and tiers. */
+      seasons?: Array<{
+        startDate: string;
+        endDate: string;
+        price: string;
+        tiers?: Array<{ minDuration: number; discountPercent: string }>;
+      }>;
+      settings: Partial<StoreSettings>;
+      hours: number;
+      quantity: number;
+      priceOverride?: number;
+    }
+
+    const SHAPES: Shape[] = [
+      {
+        name: "the reviewer's: 0.29 a day, a 50 % tier landing on a half cent, a 1 % promotion",
+        product: { price: "0.29", promotion: { percentage: 1, ...ALWAYS } },
+        tiers: [{ minDuration: 1, discountPercent: "50.000000" }],
+        settings: {},
+        hours: 24,
+        quantity: 1,
+      },
+      {
+        name: "the same half cent with no promotion at all",
+        product: { price: "0.29" },
+        tiers: [{ minDuration: 1, discountPercent: "50.000000" }],
+        settings: {},
+        hours: 24,
+        quantity: 1,
+      },
+      {
+        name: "a half cent from a 12.5 % tier, three of them, prices with tax",
+        product: { price: "1.13" },
+        tiers: [{ minDuration: 2, discountPercent: "12.500000" }],
+        settings: { tax: WITH_TAX },
+        hours: 48,
+        quantity: 3,
+      },
+      {
+        name: "an hourly product over five hours and a half, 15 % off, before tax",
+        product: { price: "3.35", pricingMode: "hour", promotion: { percentage: 15, ...ALWAYS } },
+        settings: { tax: BEFORE_TAX },
+        hours: 5.5,
+        quantity: 2,
+      },
+      {
+        name: "a weekly product over ten days, in yen, 50 % off",
+        product: {
+          price: "1001.00",
+          pricingMode: "week",
+          promotion: { percentage: 50, ...ALWAYS },
+        },
+        settings: { currency: "JPY" },
+        hours: 240,
+        quantity: 1,
+      },
+      {
+        name: "rates with strict packages, 10 % off",
+        product: {
+          price: "12.35",
+          basePeriodMinutes: 24 * 60,
+          enforceStrictTiers: true,
+          promotion: { percentage: 10, ...ALWAYS },
+        },
+        tiers: [{ period: 3 * 24 * 60, price: "29.95" }],
+        settings: { tax: BEFORE_TAX },
+        hours: 96,
+        quantity: 2,
+      },
+      {
+        name: "rates prorated over a partial period, in yen",
+        product: { price: "333.00", basePeriodMinutes: 24 * 60 },
+        tiers: [{ period: 3 * 24 * 60, price: "777.00" }],
+        settings: { currency: "JPY", tax: WITH_TAX },
+        hours: 100,
+        quantity: 1,
+      },
+      {
+        name: "two seasons overlapping each other and the window, a tier in one, 25 % off",
+        product: { price: "9.99", promotion: { percentage: 25, ...ALWAYS } },
+        seasons: [
+          {
+            startDate: "2031-06-01",
+            endDate: "2031-06-11",
+            price: "7.77",
+            tiers: [{ minDuration: 2, discountPercent: "12.500000" }],
+          },
+          { startDate: "2031-06-11", endDate: "2031-06-20", price: "3.33" },
+        ],
+        settings: {},
+        hours: 72,
+        quantity: 3,
+      },
+      {
+        name: "a fixed price at a half cent of a promotion, prices with tax",
+        product: { price: "0.25", pricingKind: "fixed", promotion: { percentage: 50, ...ALWAYS } },
+        settings: { tax: WITH_TAX },
+        hours: 24,
+        quantity: 1,
+      },
+      {
+        name: "a price typed by hand at a half cent, a promotion not applied to it",
+        product: { price: "10.00", promotion: { percentage: 50, ...ALWAYS } },
+        settings: {},
+        hours: 72,
+        quantity: 3,
+        priceOverride: 0.015,
+      },
+    ];
+
+    async function shapedProduct(shape: Shape) {
+      const id = nextId("prd");
+      await louezDb.db.insert(louezDb.products).values({
+        id,
+        storeId: STORE,
+        name: "Board",
+        price: "10.00",
+        pricingMode: "day",
+        quantity: 50,
+        ...shape.product,
+      });
+      for (const [index, tier] of (shape.tiers ?? []).entries()) {
+        await louezDb.db
+          .insert(louezDb.productPricingTiers)
+          .values({ id: nextId("tie"), productId: id, displayOrder: index, ...tier });
+      }
+      for (const season of shape.seasons ?? []) {
+        const seasonId = nextId("sea");
+        await louezDb.db.insert(louezDb.productSeasonalPricing).values({
+          id: seasonId,
+          productId: id,
+          name: season.startDate,
+          startDate: season.startDate,
+          endDate: season.endDate,
+          price: season.price,
+        });
+        for (const [index, tier] of (season.tiers ?? []).entries()) {
+          await louezDb.db.insert(louezDb.productSeasonalPricingTiers).values({
+            id: nextId("stt"),
+            seasonalPricingId: seasonId,
+            displayOrder: index,
+            ...tier,
+          });
+        }
+      }
+      return id;
+    }
+
+    for (const shape of SHAPES) {
+      test(`${shape.name}: accepted, written as shown`, async () => {
+        const productId = await shapedProduct(shape);
+        const end = new Date(START.getTime() + shape.hours * HOUR);
+        const line = {
+          productId,
+          quantity: shape.quantity,
+          ...(shape.priceOverride === undefined ? {} : { priceOverride: shape.priceOverride }),
+        };
+        const result = await withSettings(shape.settings, async () => {
+          const shown = await formTotal(
+            [line],
+            { start: START, end, now: new Date() },
+            { ...SETTINGS, ...shape.settings },
+          );
+          const created = await actions.createManualReservation({
+            customerId: CUSTOMER,
+            startDate: START,
+            endDate: end,
+            items: [
+              {
+                productId,
+                quantity: shape.quantity,
+                ...(shape.priceOverride === undefined
+                  ? {}
+                  : { priceOverride: { unitPrice: shape.priceOverride } }),
+              },
+            ],
+            expectedTotal: shown,
+            sendConfirmationEmail: false,
+          });
+          return { shown, created };
+        });
+
+        assert.equal(result.created.error, undefined, JSON.stringify(result));
+        const [row] = await louezDb.db
+          .select({ total: louezDb.reservations.totalAmount })
+          .from(louezDb.reservations)
+          .where(eq(louezDb.reservations.id, result.created.reservationId!));
+        assert.equal(row?.total, result.shown.toFixed(2));
+      });
+    }
+  });
+
   describe("a product on promotion", () => {
     // The checkout's rule for a promotion in force: the day of the booking in
     // the store's timezone (Europe/Paris when it has none), both ends included.
@@ -1489,43 +1759,6 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       return moneyOf(result.reservationId);
     }
 
-    /** The total the creation form shows for the line, from the product as its page loads it. */
-    async function formTotal(productId: string, quantity: number, priceOverride?: number) {
-      const [row] = await louezDb.db
-        .select()
-        .from(louezDb.products)
-        .where(eq(louezDb.products.id, productId));
-      assert.ok(row);
-      const formProduct: FormProduct = {
-        ...row,
-        units: [],
-        pricingTiers: [],
-        seasonalPricings: [],
-      };
-      const line = productLinePricing({
-        product: formProduct,
-        selectedItem: {
-          lineId: "0",
-          productId,
-          quantity,
-          ...(priceOverride === undefined ? {} : { priceOverride: { unitPrice: priceOverride } }),
-        },
-        startDate: START,
-        endDate: END,
-        timezone: undefined,
-      });
-      return creationTotals({
-        productLines: [{ amount: line.lineSubtotal, taxSettings: row.taxSettings }],
-        customLines: [],
-        insuranceAmount: 0,
-        deliveryFee: 0,
-        discountAmount: 0,
-        deposit: 0,
-        taxSettings: SETTINGS.tax,
-        currency: SETTINGS.currency,
-      }).total;
-    }
-
     test("in force: the line is priced with it and records it, as the checkout prices and records it", async () => {
       // Two for two days at 5.35, 50 % off: 10.70, not 21.40.
       const paddles = await promoted({ percentage: 50, startsOn: today, endsOn: today });
@@ -1575,7 +1808,11 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
         endDate: END,
         // 8.00 a day, typed, for two days.
         items: [{ productId: paddles, quantity: 1, priceOverride: { unitPrice: 8 } }],
-        expectedTotal: await formTotal(paddles, 1, 8),
+        expectedTotal: await formTotal(
+          [{ productId: paddles, quantity: 1, priceOverride: 8 }],
+          { start: START, end: END, now: new Date() },
+          SETTINGS,
+        ),
         sendConfirmationEmail: false,
       });
 
@@ -1590,7 +1827,11 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
 
     test("the total the form shows is the total written, the promotion included", async () => {
       const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
-      const shown = await formTotal(paddles, 2);
+      const shown = await formTotal(
+        [{ productId: paddles, quantity: 2 }],
+        { start: START, end: END, now: new Date() },
+        SETTINGS,
+      );
 
       const result = await actions.createManualReservation({
         customerId: CUSTOMER,

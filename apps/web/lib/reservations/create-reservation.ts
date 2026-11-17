@@ -5,7 +5,8 @@ import { validateRequiredAccessoryLines } from "@louez/api/services";
 import { saveCustomerFieldValues } from "@louez/api/services/customer-fields";
 import { saveReservationItemDetails } from "@louez/api/services/customer-fields-online";
 import { saveCustomerProfileValues } from "@louez/api/services/customer-profile-fields";
-import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pricing-catalog";
+import { type PricingCatalog } from "@louez/api/services/catalogue-line-pricing";
+import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
 import { changeSystemReservationStatus } from "@louez/api/services/system-reservation-status";
 import {
   aiAdvisorConversations,

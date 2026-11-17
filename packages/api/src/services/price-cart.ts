@@ -4,7 +4,7 @@ import {
   type PricingCatalog,
   type PricingCatalogLineInput,
   type PricingCatalogProduct,
-} from "./pricing-catalog";
+} from "./catalogue-line-pricing";
 import type { PricingBreakdown, ProductTaxSettings } from "@louez/types";
 import type { ReservationItemTaxFields } from "./reservation-totals";
 

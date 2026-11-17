@@ -1,10 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { useStoreTimezone } from "@/contexts/store-context";
 
+import { calculateDuration } from "@louez/utils";
+
 import { getDetailedDuration } from "@/lib/utils/duration";
 
 import type { CustomItem, Product, ProductPricingDetails, SelectedProduct } from "../types";
-import { durationForMode, productLinePricing } from "../utils/product-line-pricing";
+import { productLinePricing } from "../utils/product-line-pricing";
 
 interface UseNewReservationPricingParams {
   startDate: Date | undefined;
@@ -22,7 +24,7 @@ export function useNewReservationPricing({
   products,
 }: UseNewReservationPricingParams) {
   const timezone = useStoreTimezone();
-  const calculateDurationForMode = durationForMode;
+  const calculateDurationForMode = calculateDuration;
 
   const duration = useMemo(() => {
     if (!startDate || !endDate) {
@@ -44,7 +46,7 @@ export function useNewReservationPricing({
 
   const getProductPricingDetails = useCallback(
     (product: Product, selectedItem?: SelectedProduct): ProductPricingDetails =>
-      productLinePricing({ product, selectedItem, startDate, endDate, timezone }),
+      productLinePricing({ product, selectedItem, startDate, endDate, timezone, now: new Date() }),
     [endDate, startDate, timezone],
   );
 

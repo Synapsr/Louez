@@ -9,7 +9,7 @@ import {
   type PricingTierRow,
   type SeasonalPricingRow,
   type SeasonalPricingTierRow,
-} from "@louez/api/services/pricing-catalog";
+} from "@louez/api/services/catalogue-line-pricing";
 import { evaluatePromoCode } from "@louez/api/services/promo";
 import type { DeliverySettings, ProductTaxSettings, Rate, TaxSettings } from "@louez/types";
 import {

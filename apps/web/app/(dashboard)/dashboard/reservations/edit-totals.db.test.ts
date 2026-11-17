@@ -825,7 +825,7 @@ describe(
       /** What the form shows for one kayak over START–END at 10.00 a day, in `tax`. */
       const shown = (tax: TaxSettings | undefined, insuranceAmount = 0) =>
         creationTotals({
-          productLines: [{ amount: 20, taxSettings: null }],
+          productLines: [{ subtotal: 20, unitPrice: 20, typed: false, taxSettings: null }],
           customLines: [],
           insuranceAmount,
           deliveryFee: 0,
@@ -1061,7 +1061,7 @@ describe(
           quantity: 20,
         });
         const shownTotal = creationTotals({
-          productLines: [{ amount: 0.015 * 3, taxSettings: null }],
+          productLines: [{ subtotal: 0.015 * 3, unitPrice: 0.015, typed: true, taxSettings: null }],
           customLines: [],
           insuranceAmount: 0,
           deliveryFee: 0,

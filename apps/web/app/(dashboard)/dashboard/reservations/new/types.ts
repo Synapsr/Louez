@@ -199,6 +199,8 @@ export interface ProductPricingDetails {
   hasTieredPricing: boolean;
   isRateBased: boolean;
   lineSubtotal: number;
+  /** The line's price for one unit over the whole rental, as the server gives it to the tax engine. */
+  lineUnitPrice: number;
   lineOriginalSubtotal: number;
   lineSavings: number;
   reductionPercent: number | null;

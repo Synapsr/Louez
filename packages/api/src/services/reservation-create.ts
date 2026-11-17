@@ -72,7 +72,8 @@ import {
   type PricedCart,
   type ReservationTotals,
 } from "./price-cart";
-import { loadPricingCatalog, type PricingCatalog } from "./pricing-catalog";
+import { type PricingCatalog } from "./catalogue-line-pricing";
+import { loadPricingCatalog } from "./pricing-catalog";
 import { validateRequiredAccessoryLines } from "./required-accessories";
 import { validateReservationContract } from "./reservation-contract-validation";
 import {

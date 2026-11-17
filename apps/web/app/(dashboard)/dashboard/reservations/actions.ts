@@ -32,17 +32,14 @@ import {
   priceCartLine,
   type PricedCartLine,
 } from "@louez/api/services/price-cart";
-import {
-  loadPricingCatalog,
-  type PricingCatalogProduct,
-} from "@louez/api/services/pricing-catalog";
+import type { PricingCatalogProduct } from "@louez/api/services/catalogue-line-pricing";
+import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
 import {
   priceReservationEdit,
   type EditedLine,
   type EditPricingInput,
 } from "@louez/api/services/reservation-edit-pricing";
 import {
-  computeReservationTotals,
   getReservationItemTaxFields,
   INSURANCE_TAX_LINE_ID,
   type ReservationItemTaxFields,
@@ -205,6 +202,8 @@ import { getCurrentStore } from "@/lib/store-context";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { sendReservationModificationEmailForStore } from "@/lib/reservations/modification-email";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import { creationTotals } from "./new/utils/creation-totals";
+import { typedLineSubtotal } from "./new/utils/product-line-pricing";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
@@ -698,7 +697,6 @@ export async function createManualReservation(data: CreateReservationData) {
 
       // Get effective pricing mode for this product
       const effectivePricingMode = toPricingMode(product.pricingMode);
-      const duration = calculateDuration(data.startDate, data.endDate, effectivePricingMode);
       const durationMinutes = calculateDurationMinutes(data.startDate, data.endDate);
 
       // Convert pricing tiers to the expected format
@@ -767,8 +765,15 @@ export async function createManualReservation(data: CreateReservationData) {
 
       if (hasPriceOverride) {
         effectiveUnitPrice = item.priceOverride!.unitPrice;
-        effectiveSubtotal =
-          effectiveUnitPrice * (product.pricingKind === "fixed" ? 1 : duration) * item.quantity;
+        // As the form totals it (`typedLineSubtotal`), rounded once below.
+        effectiveSubtotal = typedLineSubtotal({
+          unitPrice: effectiveUnitPrice,
+          quantity: item.quantity,
+          pricingKind: product.pricingKind,
+          pricingMode: effectivePricingMode,
+          startDate: data.startDate,
+          endDate: data.endDate,
+        });
 
         // Update pricing breakdown to reflect the override
         pricingBreakdown = {
@@ -1084,23 +1089,19 @@ export async function createManualReservation(data: CreateReservationData) {
 
     // The totals: the tax engine over the lines as priced here, the
     // insurance (exempt), the delivery fee and the discount, as the checkout
-    // computes them, with the store's tax settings read here (slice 10, M1).
-    const taxSettings = availabilityRules?.settings?.tax;
-    const taxedLines: TaxedLine[] = [
-      ...lockedLines.map((line) => line.taxed),
-      ...customItemDetails.map((customItem) => ({
+    // computes them, with the store's tax settings read here (slice 10, M1),
+    // by the function the form totals with.
+    const { taxedLines, ...totals } = creationTotals({
+      productLines: lockedLines.map((line) => ({ ...line.taxed, typed: line.typed })),
+      customLines: customItemDetails.map((customItem) => ({
         subtotal: Number(customItem.totalPrice),
         unitPrice: Number(customItem.unitPrice),
-        taxSettings: null,
       })),
-    ];
-    const totals = computeReservationTotals({
-      lines: taxedLines,
       insuranceAmount: tulipInsuranceAmount,
       discountAmount: discountUnderLocks,
       deliveryFee: deliveryFeeUnderLocks,
-      totalDeposit: depositAmount,
-      taxSettings,
+      deposit: depositAmount,
+      taxSettings: availabilityRules?.settings?.tax,
       currency,
     });
     // What the person confirmed is what is written: the total the form

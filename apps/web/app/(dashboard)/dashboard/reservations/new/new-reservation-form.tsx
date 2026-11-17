@@ -1291,16 +1291,21 @@ export function NewReservationForm({
   const totals = creationTotals({
     productLines: selectedProducts.flatMap((line) => {
       const product = products.find((item) => item.id === line.productId);
-      return product
-        ? [
-            {
-              amount: getProductPricingDetails(product, line).lineSubtotal,
-              taxSettings: product.taxSettings ?? null,
-            },
-          ]
-        : [];
+      if (!product) return [];
+      const pricing = getProductPricingDetails(product, line);
+      return [
+        {
+          subtotal: pricing.lineSubtotal,
+          unitPrice: pricing.lineUnitPrice,
+          typed: pricing.hasPriceOverride,
+          taxSettings: product.taxSettings ?? null,
+        },
+      ];
     }),
-    customLines: customItems.map((item) => ({ amount: getCustomItemTotal(item) })),
+    customLines: customItems.map((item) => ({
+      subtotal: getCustomItemTotal(item),
+      unitPrice: item.unitPrice,
+    })),
     insuranceAmount: tulipInsuranceAmount,
     deliveryFee: delivery.totalFee,
     // Rounded as it is sent.
