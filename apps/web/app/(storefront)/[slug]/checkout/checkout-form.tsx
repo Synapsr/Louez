@@ -225,6 +225,7 @@ export const CheckoutForm = ({
     isDeliveryEnabled: delivery.isDeliveryEnabled,
     hasDetailsStep,
     validateCurrentStep,
+    isDeliveryReady: delivery.canContinue,
     scrollTargetRef: stepRef,
   });
 
@@ -364,14 +365,6 @@ export const CheckoutForm = ({
     change(prefill.address, prefill.latitude, prefill.longitude);
   };
 
-  const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
-    if (event.key !== "Enter" || stepFlow.isLastStep) return;
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || target.getAttribute("role") === "combobox") return;
-    event.preventDefault();
-    void stepFlow.goToNextStep();
-  };
-
   if (!isHydrated || resolutionStatus === "loading") {
     return <CheckoutSkeleton />;
   }
@@ -491,7 +484,7 @@ export const CheckoutForm = ({
       }
     >
       <form.AppForm>
-        <form.Form formName="checkout" onKeyDown={handleFormKeyDown}>
+        <form.Form formName="checkout" onKeyDown={stepFlow.handleFormKeyDown}>
           {stepFlow.currentStep === "contact" && (
             <CheckoutContactStep
               form={form}
