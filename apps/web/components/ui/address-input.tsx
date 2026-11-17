@@ -18,6 +18,7 @@ import {
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
+import { resolveTypedText } from '@/components/ui/util.address-input';
 
 import { orpc } from '@/lib/orpc/react';
 
@@ -48,6 +49,12 @@ interface AddressInputProps {
   showMapPicker?: boolean;
   onBlur?: () => void;
   onAddressResolved?: (details: AddressDetails) => void;
+  /**
+   * Whether leaving the field, or pressing Enter with no suggestion list open,
+   * replaces the typed text by the lookup's best match. Off, the typed text
+   * stays as typed and only a suggestion picked from the list replaces it.
+   */
+  resolvesTypedText?: boolean;
   /** Supplied address service; when present, no remote lookup is performed. */
   source?: AddressInputSource;
   /** Whether clearing the field may return focus to the input. */
@@ -75,6 +82,7 @@ export const AddressInput = ({
   showMapPicker = true,
   onBlur,
   onAddressResolved,
+  resolvesTypedText = true,
   source,
   autoFocus = true,
   autoComplete,
@@ -172,40 +180,41 @@ export const AddressInput = ({
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
 
   const resolveTypedAddress = useCallback(async () => {
-    const query = inputValue.trim();
-    const hasCoordinates =
-      latitude !== null &&
-      latitude !== undefined &&
-      longitude !== null &&
-      longitude !== undefined;
-
-    if (
-      query.length < 3 ||
-      (hasCoordinates && query === displayAddress) ||
-      disabled
-    ) {
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      const data = source
-        ? { details: await source.resolve(query) }
-        : await queryClient.fetchQuery(
-            orpc.public.address.resolve.queryOptions({
-              input: { query },
-            }),
-          );
+      const details = await resolveTypedText(
+        {
+          resolvesTypedText,
+          text: inputValue,
+          displayAddress,
+          hasCoordinates:
+            latitude !== null &&
+            latitude !== undefined &&
+            longitude !== null &&
+            longitude !== undefined,
+          disabled: Boolean(disabled),
+        },
+        async (query) => {
+          setIsLoading(true);
+          const data = source
+            ? { details: await source.resolve(query) }
+            : await queryClient.fetchQuery(
+                orpc.public.address.resolve.queryOptions({
+                  input: { query },
+                }),
+              );
+          return data.details;
+        },
+      );
 
-      if (!data.details) {
+      if (!details) {
         return;
       }
 
-      const { formattedAddress, latitude: lat, longitude: lng } = data.details;
+      const { formattedAddress, latitude: lat, longitude: lng } = details;
 
       setInputValue(formattedAddress);
       onChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
-      onAddressResolved?.(data.details);
+      onAddressResolved?.(details);
     } catch (error) {
       console.error('Address resolve error:', error);
     } finally {
@@ -221,6 +230,7 @@ export const AddressInput = ({
     onChange,
     onAddressResolved,
     queryClient,
+    resolvesTypedText,
     source,
   ]);
 
@@ -296,7 +306,7 @@ export const AddressInput = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && resolvesTypedText) {
         e.preventDefault();
         void resolveTypedAddress();
       }

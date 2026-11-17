@@ -9,7 +9,10 @@ import { withForm } from "@/hooks/form/form";
 import { getFieldError } from "@/hooks/form/form-context";
 
 import type { DeliveryAddress } from "../checkout.types";
-import { getCustomerAddressFields } from "../util.customer-address";
+import {
+  CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT,
+  getCustomerAddressFields,
+} from "../util.customer-address";
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 
 interface CheckoutAddressFieldsProps {
@@ -18,7 +21,7 @@ interface CheckoutAddressFieldsProps {
   onCoordinatesChange: (coordinates: Pick<DeliveryAddress, "latitude" | "longitude">) => void;
 }
 
-/** Customer address: autocomplete line, then postal code and city filled from it. */
+/** Customer address: autocomplete line, then postal code and city, filled from a picked suggestion. */
 export const CheckoutAddressFields = withForm({
   ...checkoutFormOptions,
   props: checkoutStepProps<CheckoutAddressFieldsProps>(),
@@ -59,6 +62,7 @@ export const CheckoutAddressFields = withForm({
                     form.setFieldValue("postalCode", addressFields.postalCode);
                     form.setFieldValue("city", addressFields.city);
                   }}
+                  resolvesTypedText={CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT}
                   onBlur={field.handleBlur}
                   placeholder={t("addressPlaceholder")}
                   ariaInvalid={hasError}

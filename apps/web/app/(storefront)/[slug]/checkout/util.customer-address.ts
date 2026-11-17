@@ -15,3 +15,9 @@ export const getCustomerAddressFields = (details: AddressDetails): CustomerAddre
     city: details.city?.trim() ?? "",
   };
 };
+
+/**
+ * The customer's own address keeps what they typed: leaving the field never
+ * looks it up, only a suggestion they pick replaces it.
+ */
+export const CUSTOMER_ADDRESS_RESOLVES_TYPED_TEXT = false;
