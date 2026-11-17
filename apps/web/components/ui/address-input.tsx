@@ -91,7 +91,10 @@ export const AddressInput = ({
   const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState(value);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // The spinner belongs to the request that last started one: an earlier
+  // request that settles later never hides it.
+  const [loadingRequest, setLoadingRequest] = useState<number | null>(null);
+  const isLoading = loadingRequest !== null;
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -99,11 +102,42 @@ export const AddressInput = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const shouldSkipBlurResolveRef = useRef(false);
+  const lastRequestRef = useRef(0);
+  // Every write to the field (an edit, a clear, a pick, a lookup) moves this
+  // on; an answer asked before it moved on is dropped, success or failure.
+  const writeGenerationRef = useRef(0);
+  const pickInFlightRef = useRef<number | null>(null);
+  const emittedTextRef = useRef<string | null>(null);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const startLoading = () => {
+    const request = ++lastRequestRef.current;
+    setLoadingRequest(request);
+    return request;
+  };
+  const stopLoading = (request: number) =>
+    setLoadingRequest((current) => (current === request ? null : current));
+
+  /** Marks a write: answers asked before it no longer apply. */
+  const claimWrite = () => {
+    const generation = ++writeGenerationRef.current;
+    return () => writeGenerationRef.current === generation;
+  };
+
+  const emitChange: typeof onChange = (address, lat, lng, display, info) => {
+    emittedTextRef.current = display || address;
+    onChange(address, lat, lng, display, info);
+  };
 
   // Sync with external value
   useEffect(() => {
-    setInputValue(displayAddress || value);
+    const text = displayAddress || value;
+    // A text set from outside (a located address, a reset) is a write too.
+    if (text !== emittedTextRef.current) {
+      emittedTextRef.current = text;
+      writeGenerationRef.current += 1;
+    }
+    setInputValue(text);
   }, [value, displayAddress]);
 
   // Close dropdown on outside click
@@ -155,7 +189,7 @@ export const AddressInput = ({
         return;
       }
 
-      setIsLoading(true);
+      const request = startLoading();
       try {
         const data = source
           ? { suggestions: await source.search(query) }
@@ -171,7 +205,7 @@ export const AddressInput = ({
         console.error('Address search error:', error);
         setSuggestions([]);
       } finally {
-        setIsLoading(false);
+        stopLoading(request);
       }
     },
     [queryClient, source],
@@ -180,6 +214,11 @@ export const AddressInput = ({
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
 
   const resolveTypedAddress = useCallback(async () => {
+    // A pick still answering speaks for the field.
+    if (pickInFlightRef.current === writeGenerationRef.current) return;
+
+    let request: number | null = null;
+    let isCurrent = () => true;
     try {
       const details = await resolveTypedText(
         {
@@ -194,7 +233,8 @@ export const AddressInput = ({
           disabled: Boolean(disabled),
         },
         async (query) => {
-          setIsLoading(true);
+          isCurrent = claimWrite();
+          request = startLoading();
           const data = source
             ? { details: await source.resolve(query) }
             : await queryClient.fetchQuery(
@@ -206,19 +246,19 @@ export const AddressInput = ({
         },
       );
 
-      if (!details) {
+      if (!details || !isCurrent()) {
         return;
       }
 
       const { formattedAddress, latitude: lat, longitude: lng } = details;
 
       setInputValue(formattedAddress);
-      onChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
+      emitChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
       onAddressResolved?.(details);
     } catch (error) {
       console.error('Address resolve error:', error);
     } finally {
-      setIsLoading(false);
+      if (request !== null) stopLoading(request);
     }
   }, [
     additionalInfo,
@@ -236,18 +276,32 @@ export const AddressInput = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    claimWrite();
     setInputValue(newValue);
     debouncedSearch(newValue);
 
     // If user types manually, clear coordinates
     if (newValue !== value) {
-      onChange(newValue, null, null, newValue, '');
+      emitChange(newValue, null, null, newValue, '');
     }
   };
 
   const handleSelect = useCallback(
     async (suggestion: AddressSuggestion) => {
-      setIsLoading(true);
+      const isCurrent = claimWrite();
+      const generation = writeGenerationRef.current;
+      pickInFlightRef.current = generation;
+      const request = startLoading();
+      const keepDescription = () => {
+        setInputValue(suggestion.description);
+        emitChange(
+          suggestion.description,
+          null,
+          null,
+          suggestion.description,
+          '',
+        );
+      };
       try {
         const data = source
           ? { details: await source.resolve(suggestion.placeId) }
@@ -257,6 +311,7 @@ export const AddressInput = ({
               }),
             );
 
+        if (!isCurrent()) return;
         if (data.details) {
           const {
             formattedAddress,
@@ -264,41 +319,33 @@ export const AddressInput = ({
             longitude: lng,
           } = data.details;
           setInputValue(formattedAddress);
-          onChange(formattedAddress, lat, lng, formattedAddress, '');
+          emitChange(formattedAddress, lat, lng, formattedAddress, '');
           onAddressResolved?.(data.details);
         } else {
-          setInputValue(suggestion.description);
-          onChange(
-            suggestion.description,
-            null,
-            null,
-            suggestion.description,
-            '',
-          );
+          keepDescription();
         }
       } catch (error) {
         console.error('Error fetching address details:', error);
-        setInputValue(suggestion.description);
-        onChange(
-          suggestion.description,
-          null,
-          null,
-          suggestion.description,
-          '',
-        );
+        if (isCurrent()) keepDescription();
       } finally {
-        setSuggestions([]);
-        setIsOpen(false);
-        setIsLoading(false);
-        inputRef.current?.blur();
+        stopLoading(request);
+        if (pickInFlightRef.current === generation) {
+          pickInFlightRef.current = null;
+        }
+        if (isCurrent()) {
+          setSuggestions([]);
+          setIsOpen(false);
+          inputRef.current?.blur();
+        }
       }
     },
     [onAddressResolved, onChange, queryClient, source],
   );
 
   const handleClear = () => {
+    claimWrite();
     setInputValue('');
-    onChange('', null, null, '', '');
+    emitChange('', null, null, '', '');
     setSuggestions([]);
     setIsOpen(false);
     if (autoFocus) inputRef.current?.focus();
@@ -339,6 +386,7 @@ export const AddressInput = ({
 
   const handleBlur = () => {
     onBlur?.();
+    const generationAtBlur = writeGenerationRef.current;
 
     window.setTimeout(() => {
       if (shouldSkipBlurResolveRef.current) {
@@ -347,6 +395,8 @@ export const AddressInput = ({
       }
 
       setIsOpen(false);
+      // Typed on since: that text is not the one left behind.
+      if (writeGenerationRef.current !== generationAtBlur) return;
       void resolveTypedAddress();
     }, 120);
   };
@@ -358,8 +408,9 @@ export const AddressInput = ({
     latitude: number | null;
     longitude: number | null;
   }) => {
+    claimWrite();
     setInputValue(data.displayAddress || data.address);
-    onChange(
+    emitChange(
       data.address,
       data.latitude,
       data.longitude,

@@ -123,6 +123,7 @@
     "@types/web-push": "^3.6.4",
     "agentation": "^2.2.0",
     "drizzle-kit": "^0.31.8",
+    "happy-dom": "21.0.4",
     "playwright-core": "1.55.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
