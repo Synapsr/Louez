@@ -1891,6 +1891,11 @@ export const reservations = mysqlTable(
 
     // Source
     source: varchar("source", { length: 20 }).default("online"),
+    // Where the booking came from, apart from how it was made (`source`):
+    // "marketplace" when the renter came from reeent, through its Booking API
+    // or a storefront visit carrying its channel. Null otherwise and on rows
+    // older than the column. It changes no fee: those read `source`.
+    salesChannel: varchar("sales_channel", { length: 20 }),
 
     // Tulip insurance contract
     tulipInsuranceOptIn: boolean("tulip_insurance_opt_in"),

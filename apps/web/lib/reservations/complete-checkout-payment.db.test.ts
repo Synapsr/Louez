@@ -339,6 +339,9 @@ describe("the paid checkout's completion (database)", { skip: skipWithoutTestDat
     request?: boolean;
   }) {
     const storeId = options.storeId ?? STORE;
+    const source = options.source ?? "online";
+    // A Booking API hold (source "marketplace") always comes through reeent.
+    const salesChannel = source === "marketplace" ? "marketplace" : null;
     const productId = nextId("prd");
     const consumableId = nextId("csm");
     await louezDb.db.insert(louezDb.products).values([
@@ -373,7 +376,8 @@ describe("the paid checkout's completion (database)", { skip: skipWithoutTestDat
       depositAmount: "50.00",
       totalAmount: "100.00",
       currency: "EUR",
-      source: options.source ?? "online",
+      source,
+      salesChannel,
     });
     await louezDb.db.insert(louezDb.reservationItems).values([
       {
@@ -426,7 +430,16 @@ describe("the paid checkout's completion (database)", { skip: skipWithoutTestDat
     }
     watchedProduct = productId;
     await writes();
-    return { id, storeId, productId, consumableId, sessionId, paymentRequestId };
+    return {
+      id,
+      storeId,
+      productId,
+      consumableId,
+      sessionId,
+      paymentRequestId,
+      source,
+      salesChannel,
+    };
   }
 
   type Booking = Awaited<ReturnType<typeof bookingOf>>;
@@ -712,6 +725,9 @@ describe("the paid checkout's completion (database)", { skip: skipWithoutTestDat
         reservation_id: booking.id,
         customer_id: customerOf(booking.storeId),
         source: "stripe_connect_webhook",
+        reservation_source: booking.source,
+        sales_channel: booking.salesChannel,
+        ...(booking.salesChannel === "marketplace" && { marketplace: "reeent" }),
         payment_provider: "stripe",
         amount_cents: 10000,
         deposit_amount_cents: 5000,
