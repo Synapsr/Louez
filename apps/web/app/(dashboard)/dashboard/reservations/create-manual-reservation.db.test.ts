@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
-import { after, before, describe, test } from "node:test";
+import { after, before, describe, mock, test } from "node:test";
 
-import { formatInTimeZone } from "date-fns-tz";
+import { fromZonedTime } from "date-fns-tz";
 import { and, eq } from "drizzle-orm";
 
 import {
@@ -1660,7 +1660,7 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
         const result = await withSettings(shape.settings, async () => {
           const shown = await formTotal(
             [line],
-            { start: START, end, now: new Date() },
+            { start: START, end, now: START },
             { ...SETTINGS, ...shape.settings },
           );
           const created = await actions.createManualReservation({
@@ -1693,11 +1693,28 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
   });
 
   describe("a product on promotion", () => {
-    // The checkout's rule for a promotion in force: the day of the booking in
-    // the store's timezone (Europe/Paris when it has none), both ends included.
-    const today = formatInTimeZone(new Date(), "Europe/Paris", "yyyy-MM-dd");
-    const dayFromToday = (days: number) =>
-      new Date(Date.parse(`${today}T00:00:00.000Z`) + days * DAY).toISOString().slice(0, 10);
+    // The checkout's rule for a promotion in force: the day the booking is
+    // made, in the store's timezone (Europe/Paris when it has none), both of
+    // the promotion's dates included. Each test stops the clock at one
+    // instant for its fixtures, the form and the server: none reads the wall
+    // clock.
+    const PARIS = "Europe/Paris";
+    const AUCKLAND = "Pacific/Auckland";
+    /** 20 November 2030, 11:00 in Paris. */
+    const AT = new Date("2030-11-20T10:00:00.000Z");
+
+    /** Runs `work` with the clock stopped at `instant`. */
+    async function at<T>(instant: Date, work: () => Promise<T>): Promise<T> {
+      mock.timers.enable({ apis: ["Date"], now: instant });
+      try {
+        return await work();
+      } finally {
+        mock.timers.reset();
+      }
+    }
+
+    /** An instant by the wall clock of a timezone. */
+    const wallClock = (local: string, timezone: string) => fromZonedTime(local, timezone);
 
     /** A product at 5.35 a day, with this promotion. */
     async function promoted(promotion: ProductPromotion) {
@@ -1759,62 +1776,188 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
       return moneyOf(result.reservationId);
     }
 
+    /**
+     * Two paddles for two days, created by hand as the form sends them: the
+     * form priced at `shownAt` (the instant the server gave the page), the
+     * server at its own clock, `submittedAt`.
+     */
+    async function createdByHand(
+      productId: string,
+      shownAt: Date,
+      submittedAt: Date,
+      settings: StoreSettings,
+    ) {
+      const shown = await at(shownAt, () =>
+        formTotal(
+          [{ productId, quantity: 2 }],
+          { start: START, end: END, now: new Date() },
+          settings,
+        ),
+      );
+      const result = await at(submittedAt, () =>
+        actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: END,
+          items: [{ productId, quantity: 2 }],
+          expectedTotal: shown,
+          sendConfirmationEmail: false,
+        }),
+      );
+      return { shown, result };
+    }
+
+    const DISCOUNTED = {
+      subtotal: "10.70",
+      total: "10.70",
+      unitPrice: "5.35",
+      totalPrice: "10.70",
+      promotion: { percentage: 50, originalSubtotal: 21.4, discountAmount: 10.7 },
+    };
+    const FULL_PRICE = {
+      subtotal: "21.40",
+      total: "21.40",
+      unitPrice: "10.70",
+      totalPrice: "21.40",
+      promotion: null,
+    };
+
     test("in force: the line is priced with it and records it, as the checkout prices and records it", async () => {
       // Two for two days at 5.35, 50 % off: 10.70, not 21.40.
-      const paddles = await promoted({ percentage: 50, startsOn: today, endsOn: today });
-
-      const byHand = await moneyOf(
-        (await writtenBy(await create([{ productId: paddles, quantity: 2 }]))).reservationId,
-      );
-
-      assert.deepEqual(byHand, {
-        subtotal: "10.70",
-        total: "10.70",
-        unitPrice: "5.35",
-        totalPrice: "10.70",
-        promotion: { percentage: 50, originalSubtotal: 21.4, discountAmount: 10.7 },
+      const paddles = await promoted({
+        percentage: 50,
+        startsOn: "2030-11-20",
+        endsOn: "2030-11-20",
       });
-      assert.deepEqual(byHand, await bookedByCheckout(paddles, 2));
+
+      const { result } = await createdByHand(paddles, AT, AT, SETTINGS);
+      const byHand = await moneyOf((await writtenBy(result)).reservationId);
+
+      assert.deepEqual(byHand, DISCOUNTED);
+      assert.deepEqual(byHand, await at(AT, () => bookedByCheckout(paddles, 2)));
     });
 
     test("over, or not started: nothing changes, and the line records none", async () => {
       for (const promotion of [
-        { percentage: 50, startsOn: dayFromToday(-10), endsOn: dayFromToday(-1) },
-        { percentage: 50, startsOn: dayFromToday(1), endsOn: null },
+        { percentage: 50, startsOn: "2030-11-10", endsOn: "2030-11-19" },
+        { percentage: 50, startsOn: "2030-11-21", endsOn: null },
       ]) {
         const paddles = await promoted(promotion);
 
-        const byHand = await moneyOf(
-          (await writtenBy(await create([{ productId: paddles, quantity: 2 }]))).reservationId,
-        );
+        const { result } = await createdByHand(paddles, AT, AT, SETTINGS);
+        const byHand = await moneyOf((await writtenBy(result)).reservationId);
 
-        assert.deepEqual(byHand, {
-          subtotal: "21.40",
-          total: "21.40",
-          unitPrice: "10.70",
-          totalPrice: "21.40",
-          promotion: null,
-        });
-        assert.deepEqual(byHand, await bookedByCheckout(paddles, 2));
+        assert.deepEqual(byHand, FULL_PRICE);
+        assert.deepEqual(byHand, await at(AT, () => bookedByCheckout(paddles, 2)));
       }
+    });
+
+    for (const timezone of [undefined, AUCKLAND]) {
+      const zone = timezone ?? PARIS;
+      const store = timezone ? `a store in ${timezone}` : "a store with no timezone (Paris)";
+      const boundaries = [
+        {
+          name: "the last second of its end",
+          promotion: { percentage: 50, startsOn: null, endsOn: "2030-11-20" },
+          instant: wallClock("2030-11-20T23:59:59", zone),
+          expected: DISCOUNTED,
+        },
+        {
+          name: "the first second after its end",
+          promotion: { percentage: 50, startsOn: null, endsOn: "2030-11-20" },
+          instant: wallClock("2030-11-21T00:00:00", zone),
+          expected: FULL_PRICE,
+        },
+        {
+          name: "the last second before its start",
+          promotion: { percentage: 50, startsOn: "2030-11-20", endsOn: null },
+          instant: wallClock("2030-11-19T23:59:59", zone),
+          expected: FULL_PRICE,
+        },
+        {
+          name: "the first second of its start",
+          promotion: { percentage: 50, startsOn: "2030-11-20", endsOn: null },
+          instant: wallClock("2030-11-20T00:00:00", zone),
+          expected: DISCOUNTED,
+        },
+      ];
+      for (const boundary of boundaries) {
+        test(`${store}, at ${boundary.name}: priced as the checkout prices it at that second`, async () => {
+          const paddles = await promoted(boundary.promotion);
+          const settings = { ...SETTINGS, ...(timezone ? { timezone } : {}) };
+
+          const { byHand, byCheckout } = await withSettings(settings, async () => {
+            const { result } = await createdByHand(
+              paddles,
+              boundary.instant,
+              boundary.instant,
+              settings,
+            );
+            return {
+              byHand: await moneyOf((await writtenBy(result)).reservationId),
+              byCheckout: await at(boundary.instant, () => bookedByCheckout(paddles, 2)),
+            };
+          });
+
+          assert.deepEqual(byHand, boundary.expected);
+          assert.deepEqual(byHand, byCheckout);
+        });
+      }
+    }
+
+    test("the page loaded before midnight, sent after the promotion ended: refused once, then accepted at the reloaded price", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: "2030-11-20" });
+      const loaded = wallClock("2030-11-20T23:59:30", PARIS);
+      const sent = wallClock("2030-11-21T00:00:10", PARIS);
+      const before = await storeCounts();
+
+      // The form shows the promotion the server's instant had in force.
+      const first = await createdByHand(paddles, loaded, sent, SETTINGS);
+      assert.equal(first.shown, 10.7);
+      assert.equal(first.result.error, "errors.reservationChangedMeanwhile");
+      assert.deepEqual(await storeCounts(), before, "nothing written");
+
+      // The refusal reloads the page: its new instant is the server's, after midnight.
+      const second = await createdByHand(paddles, sent, sent, SETTINGS);
+      assert.equal(second.shown, 21.4);
+      assert.deepEqual(await moneyOf((await writtenBy(second.result)).reservationId), FULL_PRICE);
+    });
+
+    test("the form's price does not follow the browser's clock, only the instant the server gave it", async () => {
+      const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: "2030-11-20" });
+      const product = await formProductOf(paddles);
+      // The browser's clock reads a year later; the page was given AT.
+      const shown = await at(new Date("2031-11-20T10:00:00.000Z"), async () =>
+        productLinePricing({
+          product,
+          selectedItem: { lineId: "0", productId: paddles, quantity: 2 },
+          startDate: START,
+          endDate: END,
+          timezone: undefined,
+          now: AT,
+        }),
+      );
+      assert.equal(shown.lineSubtotal, 10.7);
     });
 
     test("a price typed by hand is not discounted", async () => {
       const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
 
-      const result = await actions.createManualReservation({
-        customerId: CUSTOMER,
-        startDate: START,
-        endDate: END,
-        // 8.00 a day, typed, for two days.
-        items: [{ productId: paddles, quantity: 1, priceOverride: { unitPrice: 8 } }],
-        expectedTotal: await formTotal(
-          [{ productId: paddles, quantity: 1, priceOverride: 8 }],
-          { start: START, end: END, now: new Date() },
-          SETTINGS,
-        ),
-        sendConfirmationEmail: false,
-      });
+      const result = await at(AT, async () =>
+        actions.createManualReservation({
+          customerId: CUSTOMER,
+          startDate: START,
+          endDate: END,
+          // 8.00 a day, typed, for two days.
+          items: [{ productId: paddles, quantity: 1, priceOverride: { unitPrice: 8 } }],
+          expectedTotal: await formTotal(
+            [{ productId: paddles, quantity: 1, priceOverride: 8 }],
+            { start: START, end: END, now: AT },
+            SETTINGS,
+          ),
+          sendConfirmationEmail: false,
+        }),
+      );
 
       const typed = await moneyOf((await writtenBy(result)).reservationId);
       assert.equal(typed.totalPrice, "16.00");
@@ -1827,24 +1970,12 @@ describe("createManualReservation (database)", { skip: skipWithoutTestDatabase()
 
     test("the total the form shows is the total written, the promotion included", async () => {
       const paddles = await promoted({ percentage: 50, startsOn: null, endsOn: null });
-      const shown = await formTotal(
-        [{ productId: paddles, quantity: 2 }],
-        { start: START, end: END, now: new Date() },
-        SETTINGS,
-      );
 
-      const result = await actions.createManualReservation({
-        customerId: CUSTOMER,
-        startDate: START,
-        endDate: END,
-        items: [{ productId: paddles, quantity: 2 }],
-        expectedTotal: shown,
-        sendConfirmationEmail: false,
-      });
+      const { shown, result } = await createdByHand(paddles, AT, AT, SETTINGS);
 
       const written = await moneyOf((await writtenBy(result)).reservationId);
       assert.equal(shown.toFixed(2), written.total);
-      assert.equal(written.total, (await bookedByCheckout(paddles, 2)).total);
+      assert.equal(written.total, (await at(AT, () => bookedByCheckout(paddles, 2))).total);
     });
   });
 

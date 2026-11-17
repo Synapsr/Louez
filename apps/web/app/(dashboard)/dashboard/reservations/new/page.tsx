@@ -228,6 +228,8 @@ export default async function NewReservationPage({
         products={productsList}
         taxSettings={store.settings?.tax}
         currency={reservationCurrency(null, store.settings)}
+        // The server's clock decides which promotions are in force, not the browser's.
+        pricedAt={new Date()}
         tulipInsuranceMode={tulipInsuranceMode}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}

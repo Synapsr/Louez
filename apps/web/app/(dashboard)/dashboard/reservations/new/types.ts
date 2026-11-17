@@ -163,6 +163,12 @@ export interface NewReservationFormProps {
   /** The store's tax settings and the currency the reservation is written in, as the server totals it. */
   taxSettings?: TaxSettings;
   currency?: string;
+  /**
+   * The server's instant when it loaded the page: a promotion is in force at
+   * it, never at the browser's clock. A creation the server refuses as
+   * changed meanwhile reloads the page, and with it this instant.
+   */
+  pricedAt: Date;
 }
 
 export type StepFieldName = "customerId" | "startDate" | "endDate";

@@ -11,6 +11,8 @@ import { productLinePricing } from "../utils/product-line-pricing";
 interface UseNewReservationPricingParams {
   startDate: Date | undefined;
   endDate: Date | undefined;
+  /** The server's instant a promotion is in force at (`NewReservationFormProps.pricedAt`). */
+  pricedAt: Date;
   selectedProducts: SelectedProduct[];
   customItems: CustomItem[];
   products: Product[];
@@ -19,6 +21,7 @@ interface UseNewReservationPricingParams {
 export function useNewReservationPricing({
   startDate,
   endDate,
+  pricedAt,
   selectedProducts,
   customItems,
   products,
@@ -46,8 +49,8 @@ export function useNewReservationPricing({
 
   const getProductPricingDetails = useCallback(
     (product: Product, selectedItem?: SelectedProduct): ProductPricingDetails =>
-      productLinePricing({ product, selectedItem, startDate, endDate, timezone, now: new Date() }),
-    [endDate, startDate, timezone],
+      productLinePricing({ product, selectedItem, startDate, endDate, timezone, now: pricedAt }),
+    [endDate, pricedAt, startDate, timezone],
   );
 
   const getCustomItemTotal = useCallback(

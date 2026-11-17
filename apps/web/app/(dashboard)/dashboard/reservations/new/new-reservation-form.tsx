@@ -123,6 +123,7 @@ export function NewReservationForm({
   storeLocations,
   taxSettings,
   currency,
+  pricedAt,
 }: NewReservationFormProps & { onReservationCreated: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -644,6 +645,7 @@ export function NewReservationForm({
   } = useNewReservationPricing({
     startDate: watchStartDate,
     endDate: watchEndDate,
+    pricedAt,
     selectedProducts,
     customItems,
     products,
