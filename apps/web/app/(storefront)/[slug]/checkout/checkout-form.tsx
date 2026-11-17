@@ -58,7 +58,7 @@ import {
   hasCheckoutDetailsStep,
 } from "./util.checkout-custom-fields";
 import { calculateCheckoutTotals, getCheckoutSubmitLabel } from "./util.checkout-totals";
-import { type CustomerAddressPick, getPickedCoordinates } from "./util.customer-address";
+import { type CustomerAddressPick, getDeliveryPrefill } from "./util.customer-address";
 import {
   checkoutFormOptions,
   createCheckoutValidator,
@@ -355,20 +355,13 @@ export const CheckoutForm = ({
 
   const handleUseCustomerAddress = (leg: "outbound" | "return") => {
     const legAddress = leg === "outbound" ? delivery.outboundAddress : delivery.returnAddress;
-    const coordinates = getPickedCoordinates(customerAddressPick, values);
-    if (
-      legAddress.address ||
-      !values.address ||
-      coordinates.latitude === null ||
-      coordinates.longitude === null
-    ) {
-      return;
-    }
+    const prefill = getDeliveryPrefill(customerAddressPick, values);
+    if (legAddress.address || !prefill) return;
     const change =
       leg === "outbound"
         ? delivery.handleOutboundAddressChange
         : delivery.handleReturnAddressChange;
-    change(values.address, coordinates.latitude, coordinates.longitude);
+    change(prefill.address, prefill.latitude, prefill.longitude);
   };
 
   const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {

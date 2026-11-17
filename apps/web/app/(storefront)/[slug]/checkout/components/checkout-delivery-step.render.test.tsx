@@ -2,6 +2,7 @@ import "@/lib/testing/install-dom";
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
+import { useStore } from "@tanstack/react-form";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 
@@ -13,6 +14,7 @@ import {
   blur,
   deferred,
   enableMockTimers,
+  focus,
   mount,
   pressKey,
   settle,
@@ -23,12 +25,17 @@ import { publicEnvSchema } from "@/lib/validators/validator.public-env";
 import messages from "@/messages/en.json";
 
 import { useCheckoutDelivery } from "../hooks/use-checkout-delivery";
+import {
+  type CustomerAddressFields,
+  type CustomerAddressPick,
+  getDeliveryPrefill,
+} from "../util.customer-address";
 import { checkoutFormOptions } from "../validator.checkout";
 import { CheckoutDeliveryStep } from "./checkout-delivery-step";
 
 // The delivery step of the checkout, mounted as the checkout mounts it, for a
 // store that delivers every order: the fee is computed only from an address
-// the customer chose.
+// the customer chose, and the address starts from the customer's own.
 
 const SEARCH_DELAY = 300;
 const BLUR_DELAY = 120;
@@ -62,7 +69,13 @@ interface Destination {
   longitude: number;
 }
 
-const renderStep = () => {
+const renderStep = ({
+  customer = { address: "", postalCode: "", city: "" },
+  pick = null,
+}: {
+  customer?: CustomerAddressFields;
+  pick?: CustomerAddressPick | null;
+} = {}) => {
   const searches: Array<{
     query: string;
     answer: ReturnType<typeof deferred<AddressSuggestion[]>>;
@@ -86,7 +99,10 @@ const renderStep = () => {
   };
 
   const Step = () => {
-    const form = useAppForm(checkoutFormOptions);
+    const form = useAppForm({
+      ...checkoutFormOptions,
+      defaultValues: { ...checkoutFormOptions.defaultValues, ...customer },
+    });
     const state = useCheckoutDelivery({
       deliverySettings: DELIVERY,
       storeLatitude: STORE.latitude,
@@ -98,6 +114,22 @@ const renderStep = () => {
       },
     });
     delivery.current = state;
+    const values = useStore(form.store, (formState) => ({
+      address: formState.values.address,
+      postalCode: formState.values.postalCode,
+      city: formState.values.city,
+    }));
+    // As the checkout does: a leg that switches to an address starts from the customer's.
+    const useCustomerAddress = (leg: "outbound" | "return") => {
+      const legAddress = leg === "outbound" ? state.outboundAddress : state.returnAddress;
+      const prefill = getDeliveryPrefill(pick, values);
+      if (legAddress.address || !prefill) return;
+      (leg === "outbound" ? state.handleOutboundAddressChange : state.handleReturnAddressChange)(
+        prefill.address,
+        prefill.latitude,
+        prefill.longitude,
+      );
+    };
     return (
       <form.AppForm>
         <CheckoutDeliveryStep
@@ -108,7 +140,7 @@ const renderStep = () => {
           storeName="Atelier"
           storeLatitude={STORE.latitude}
           storeLongitude={STORE.longitude}
-          onUseCustomerAddress={() => {}}
+          onUseCustomerAddress={useCustomerAddress}
           onBack={() => {}}
           onContinue={() => {}}
           stepDirection="forward"
@@ -213,4 +245,50 @@ test("a delivery address picked with the keyboard is priced from the pick, and n
   assert.equal(step.input.value, carquefou.formattedAddress);
   assert.equal(step.hint(), null);
   assert.equal(step.canContinue(), true);
+});
+
+test("the customer's own address without a pick starts the delivery address as text to choose", async () => {
+  const step = renderStep({
+    customer: { address: "24 rue du Moulin", postalCode: "44470", city: "Carquefou" },
+  });
+  unmount = step.unmount;
+  await settle();
+
+  assert.equal(step.input.value, "24 rue du Moulin, 44470 Carquefou");
+  assert.equal(step.delivery.current?.outboundAddress.latitude, null);
+  assert.deepEqual(step.distances, []);
+  assert.equal(step.hint(), CHOOSE_HINT);
+  assert.equal(step.canContinue(), false);
+
+  focus(step.input);
+  await settle();
+  assert.deepEqual(
+    step.searches.map((search) => search.query),
+    ["24 rue du Moulin, 44470 Carquefou"],
+  );
+});
+
+test("the customer's picked address starts the delivery address with its coordinates", async () => {
+  const fields = { address: "24 Rue du Moulin", postalCode: "44470", city: "Carquefou" };
+  const step = renderStep({
+    customer: fields,
+    pick: { fields, latitude: carquefou.latitude, longitude: carquefou.longitude },
+  });
+  unmount = step.unmount;
+  await settle();
+
+  assert.equal(step.input.value, "24 Rue du Moulin");
+  assert.deepEqual(step.distances.at(-1), {
+    latitude: carquefou.latitude,
+    longitude: carquefou.longitude,
+  });
+  assert.equal(step.hint(), null);
+  assert.equal(step.canContinue(), true);
+
+  focus(step.input);
+  blur(step.input);
+  await tick(BLUR_DELAY);
+  assert.deepEqual(step.searches, []);
+  assert.deepEqual(step.details, []);
+  assert.equal(step.delivery.current?.outboundAddress.latitude, carquefou.latitude);
 });
